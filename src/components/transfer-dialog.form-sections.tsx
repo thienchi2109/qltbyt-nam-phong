@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { toLocalDateInputValue } from "@/components/transfer-dialog.date-utils"
 import type { TransferDialogFormData } from "@/components/transfer-dialog.shared"
 
 type SetFormData = React.Dispatch<React.SetStateAction<TransferDialogFormData>>
@@ -29,14 +30,7 @@ function updateCurrentDepartmentFields(
   }
 }
 
-export function toLocalDateInputValue(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, "0")
-  const day = String(date.getDate()).padStart(2, "0")
-
-  return `${year}-${month}-${day}`
-}
-
+/** Renders the transfer type select field. */
 export function TransferTypeField({
   disabled,
   formData,
@@ -85,6 +79,7 @@ export function TransferTypeField({
   )
 }
 
+/** Renders internal transfer department selects. */
 export function TransferInternalSelectFields({
   departments,
   disabled,
@@ -98,6 +93,16 @@ export function TransferInternalSelectFields({
   setFormData: SetFormData
   lockCurrentDepartment: boolean
 }) {
+  const destinationDepartments = React.useMemo(() => {
+    const options: string[] = []
+    for (const department of departments) {
+      if (department !== formData.khoa_phong_hien_tai) {
+        options.push(department)
+      }
+    }
+    return options
+  }, [departments, formData.khoa_phong_hien_tai])
+
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <div className="space-y-2">
@@ -135,9 +140,7 @@ export function TransferInternalSelectFields({
             <SelectValue placeholder="Chọn khoa/phòng nhận" />
           </SelectTrigger>
           <SelectContent>
-            {departments
-              .filter((department) => department !== formData.khoa_phong_hien_tai)
-              .map((department) => (
+            {destinationDepartments.map((department) => (
                 <SelectItem key={department} value={department}>
                   {department}
                 </SelectItem>
@@ -149,6 +152,7 @@ export function TransferInternalSelectFields({
   )
 }
 
+/** Renders locked internal transfer department inputs. */
 export function TransferInternalInputFields({
   disabled,
   formData,
@@ -195,6 +199,7 @@ export function TransferInternalInputFields({
   )
 }
 
+/** Renders external transfer destination and return fields. */
 export function TransferExternalFields({
   disabled,
   formData,
@@ -304,6 +309,7 @@ export function TransferExternalFields({
   )
 }
 
+/** Renders the transfer reason textarea. */
 export function TransferReasonField({
   disabled,
   formData,

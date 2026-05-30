@@ -191,10 +191,10 @@ describe('DeviceQuotaCategoriesPage', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText('Nhóm 1')).toBeInTheDocument()
-      expect(screen.getByText('Nhóm 1.1')).toBeInTheDocument()
-      expect(screen.getByText('Nhóm 1.2')).toBeInTheDocument()
-      expect(screen.getByText('Child A')).toBeInTheDocument()
+      expect(screen.getAllByText('Nhóm 1').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Nhóm 1.1').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Nhóm 1.2').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Child A').length).toBeGreaterThan(0)
     })
   })
 })

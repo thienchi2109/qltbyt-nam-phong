@@ -1,15 +1,46 @@
 import * as React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MobileBottomSheet } from '../mobile-bottom-sheet'
 
 describe('MobileBottomSheet', () => {
+    let showModal: ReturnType<typeof vi.fn>
+    let close: ReturnType<typeof vi.fn>
+
     const defaultProps = {
         open: true,
         onOpenChange: vi.fn(),
         ariaLabel: 'Test bottom sheet',
     }
+
+    beforeEach(() => {
+        showModal = vi.fn(function (this: HTMLDialogElement) {
+            this.setAttribute('open', '')
+        })
+        close = vi.fn(function (this: HTMLDialogElement) {
+            this.removeAttribute('open')
+        })
+        Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+            configurable: true,
+            value: showModal,
+        })
+        Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+            configurable: true,
+            value: close,
+        })
+    })
+
+    it('opens the native dialog modally when open', () => {
+        render(
+            <MobileBottomSheet {...defaultProps}>
+                <p>Sheet content</p>
+            </MobileBottomSheet>,
+        )
+
+        expect(showModal).toHaveBeenCalledTimes(1)
+        expect(close).not.toHaveBeenCalled()
+    })
 
     it('renders children when open', () => {
         render(
@@ -31,7 +62,7 @@ describe('MobileBottomSheet', () => {
         expect(screen.queryByText('Sheet content')).not.toBeInTheDocument()
     })
 
-    it('calls onOpenChange(false) on Escape key press', () => {
+    it('calls onOpenChange(false) when the native dialog is cancelled', () => {
         const onOpenChange = vi.fn()
 
         render(
@@ -40,7 +71,7 @@ describe('MobileBottomSheet', () => {
             </MobileBottomSheet>,
         )
 
-        fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+        fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }))
         expect(onOpenChange).toHaveBeenCalledWith(false)
     })
 

@@ -31,8 +31,8 @@ vi.mock("@/components/ui/select", () => ({
   SelectTrigger: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   SelectValue: () => null,
   SelectContent: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SelectItem: ({ value, children }: { value: string; children: React.ReactNode }) => (
-    <option value={value}>{typeof children === "string" ? children : value}</option>
+  SelectItem: ({ value }: { value: string; children: React.ReactNode }) => (
+    <option value={value}>{value}</option>
   ),
 }))
 
@@ -40,8 +40,8 @@ import { TransferDialogEquipmentSearch } from "@/components/transfer-dialog.equi
 import {
   TransferInternalInputFields,
   TransferInternalSelectFields,
-  toLocalDateInputValue,
 } from "@/components/transfer-dialog.form-sections"
+import { toLocalDateInputValue } from "@/components/transfer-dialog.date-utils"
 import { createEmptyTransferDialogFormData } from "@/components/transfer-dialog.shared"
 
 const equipmentOption = {

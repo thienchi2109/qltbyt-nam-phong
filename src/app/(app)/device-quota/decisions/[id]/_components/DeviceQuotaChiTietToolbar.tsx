@@ -53,7 +53,7 @@ function StatusBadge({ status }: { status: 'draft' | 'active' | 'inactive' }) {
  * - Decision status badge
  */
 export function DeviceQuotaChiTietToolbar() {
-  const router = useRouter()
+  const { push } = useRouter()
   const { toast } = useToast()
   const {
     decision,
@@ -118,7 +118,7 @@ export function DeviceQuotaChiTietToolbar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => router.push('/device-quota/decisions')}
+            onClick={() => push('/device-quota/decisions')}
             aria-label="Quay lại danh sách quyết định"
             className="size-9"
           >

@@ -216,8 +216,9 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
 // Main Table Component
 // ============================================
 
+/** Renders quota decisions with row-level view, activate, and delete actions. */
 export function DeviceQuotaDecisionsTable() {
-  const router = useRouter()
+  const { push } = useRouter()
   const {
     decisions,
     isLoading,
@@ -232,8 +233,8 @@ export function DeviceQuotaDecisionsTable() {
 
   // Navigate to decision detail page
   const handleViewDetails = React.useCallback((decisionId: number) => {
-    router.push(`/device-quota/decisions/${decisionId}`)
-  }, [router])
+    push(`/device-quota/decisions/${decisionId}`)
+  }, [push])
 
   const handleActivateConfirm = React.useCallback(() => {
     if (!activateDialog) return

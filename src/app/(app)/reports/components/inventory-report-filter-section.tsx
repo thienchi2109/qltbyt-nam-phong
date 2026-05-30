@@ -14,6 +14,39 @@ import { cn } from "@/lib/utils"
 import type { DateRange } from "../hooks/use-report-filters"
 
 const MIN_REPORT_DATE = new Date("1900-01-01")
+let maxReportDateSnapshot = new Date()
+
+function getMaxReportDateSnapshot(): Date {
+  return maxReportDateSnapshot
+}
+
+function subscribeToMaxReportDate(onStoreChange: () => void) {
+  let refreshTimer: ReturnType<typeof setTimeout>
+
+  const refreshMaxReportDateSnapshot = () => {
+    maxReportDateSnapshot = new Date()
+    onStoreChange()
+  }
+
+  const scheduleNextReportDateRefresh = () => {
+    const now = new Date()
+    const nextLocalMidnight = new Date(now)
+    nextLocalMidnight.setHours(24, 0, 0, 0)
+
+    refreshTimer = setTimeout(
+      () => {
+        refreshMaxReportDateSnapshot()
+        scheduleNextReportDateRefresh()
+      },
+      Math.max(nextLocalMidnight.getTime() - now.getTime(), 1000)
+    )
+  }
+
+  refreshMaxReportDateSnapshot()
+  scheduleNextReportDateRefresh()
+
+  return () => clearTimeout(refreshTimer)
+}
 
 interface InventoryReportFilterSectionProps {
   readonly dateRange: DateRange
@@ -29,6 +62,7 @@ interface InventoryReportFilterSectionProps {
   readonly onExport: () => void
 }
 
+/** Renders inventory report filters, refresh, and export controls. */
 export function InventoryReportFilterSection({
   dateRange,
   onDateRangeChange,
@@ -42,27 +76,11 @@ export function InventoryReportFilterSection({
   onRefresh,
   onExport,
 }: InventoryReportFilterSectionProps) {
-  const [maxReportDate, setMaxReportDate] = React.useState(() => new Date())
-
-  React.useEffect(() => {
-    let refreshTimer: ReturnType<typeof setTimeout>
-
-    const refreshMaxReportDate = () => {
-      const now = new Date()
-      const nextLocalMidnight = new Date(now)
-      nextLocalMidnight.setHours(24, 0, 0, 0)
-
-      setMaxReportDate(now)
-      refreshTimer = setTimeout(
-        refreshMaxReportDate,
-        Math.max(nextLocalMidnight.getTime() - now.getTime(), 1000)
-      )
-    }
-
-    refreshMaxReportDate()
-
-    return () => clearTimeout(refreshTimer)
-  }, [])
+  const maxReportDate = React.useSyncExternalStore(
+    subscribeToMaxReportDate,
+    getMaxReportDateSnapshot,
+    getMaxReportDateSnapshot,
+  )
 
   const filterControls = (
     <>

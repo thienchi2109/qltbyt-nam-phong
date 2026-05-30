@@ -5,7 +5,8 @@ const TooltipContext = React.createContext<
   { open: boolean; setOpen: (open: boolean) => void } | null
 >(null)
 
-function TooltipProvider({ children }: { children: React.ReactNode }) {
+/** Provides tooltip state for tooltip component tests. */
+export function TooltipProvider({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProviderContext.Provider value={true}>
       {children}
@@ -13,7 +14,8 @@ function TooltipProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Tooltip({ children }: { children: React.ReactNode }) {
+/** Wraps tooltip trigger and content state for tests. */
+export function Tooltip({ children }: { children: React.ReactNode }) {
   const hasProvider = React.useContext(TooltipProviderContext)
 
   if (!hasProvider) {
@@ -21,11 +23,16 @@ function Tooltip({ children }: { children: React.ReactNode }) {
   }
 
   const [open, setOpen] = React.useState(false)
+  const tooltipContextValue = React.useMemo(
+    () => ({ open, setOpen }),
+    [open],
+  )
 
-  return <TooltipContext.Provider value={{ open, setOpen }}>{children}</TooltipContext.Provider>
+  return <TooltipContext.Provider value={tooltipContextValue}>{children}</TooltipContext.Provider>
 }
 
-const TooltipTrigger = React.forwardRef<
+/** Renders a test trigger that opens the tooltip on hover or focus. */
+export const TooltipTrigger = React.forwardRef<
   HTMLSpanElement,
   React.HTMLAttributes<HTMLSpanElement> & { asChild?: boolean }
 >(({ asChild, children, onBlur, onFocus, onMouseEnter, onMouseLeave, ...props }, ref) => {
@@ -67,18 +74,13 @@ const TooltipTrigger = React.forwardRef<
 })
 TooltipTrigger.displayName = "TooltipTrigger"
 
-function TooltipContent({ children }: { children: React.ReactNode }) {
+/** Renders tooltip content while the test tooltip is open. */
+export function TooltipContent({ children }: { children: React.ReactNode }) {
   const context = React.useContext(TooltipContext)
   if (!context?.open) return null
 
   return <div role="tooltip">{children}</div>
 }
 
-export const tooltipMockModule = {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-}
-
+/** Test provider alias for table and equipment tests. */
 export { TooltipProvider as TooltipTestProvider }

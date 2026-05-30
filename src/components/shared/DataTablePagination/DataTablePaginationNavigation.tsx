@@ -127,6 +127,7 @@ const DataTablePaginationPageJump = React.memo(function DataTablePaginationPageJ
   )
 })
 
+/** Renders accessible pagination controls for the shared data table. */
 export const DataTablePaginationNavigation = React.memo(function DataTablePaginationNavigation({
   currentPage,
   totalPages,
@@ -163,14 +164,13 @@ export const DataTablePaginationNavigation = React.memo(function DataTablePagina
 
   return (
     <div className={cn("flex flex-col items-center gap-2", stackClass, className)}>
-      <div
+      <output
         className="text-sm font-medium"
-        role="status"
         aria-live="polite"
         aria-atomic="true"
       >
         {resolvedLabels.pageIndicator} {currentPage} {resolvedLabels.pageSeparator} {totalPages}
-      </div>
+      </output>
       {onPageJump ? (
         <DataTablePaginationPageJump
           key={currentPage}

@@ -14,7 +14,7 @@ vi.mock('@/lib/rpc-client', () => ({
 }))
 
 vi.mock('@/components/ui/tooltip', async () => {
-  const { tooltipMockModule } = await import('@/test-utils/tooltip-mock')
+  const { tooltipMockModule } = await import('@/test-utils/tooltip-mock-module')
   return tooltipMockModule
 })
 
@@ -29,26 +29,17 @@ function renderIndicator(
   equipment: Pick<Equipment, 'id' | 'ma_thiet_bi' | 'tinh_trang_hien_tai' | 'active_repair_request_id'> = baseEquipment,
   onParentClick = vi.fn(),
 ) {
-  const handleParentKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      onParentClick()
-    }
-  }
-
   return {
     onParentClick,
     ...render(
       <LinkedRequestProvider>
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={onParentClick}
-          onKeyDown={handleParentKeyDown}
         >
           parent
           <LinkedRequestRowIndicator equipment={equipment} />
-        </div>
+        </button>
       </LinkedRequestProvider>,
     ),
   }

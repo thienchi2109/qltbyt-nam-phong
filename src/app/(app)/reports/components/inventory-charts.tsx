@@ -29,6 +29,7 @@ const INVENTORY_CHART_SKELETON_KEYS = [
   "inventory-chart-skeleton-4",
 ] as const
 
+/** Renders inventory trend, department, source, and transfer-purpose charts. */
 export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
   // Process data for different chart types
   const processedData = React.useMemo(() => {
@@ -89,7 +90,9 @@ export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
 
     // Group by source for imports
     const sourceMap: Record<string, number> = {}
-    data.filter(item => item.type === 'import').forEach(item => {
+    data.forEach(item => {
+      if (item.type !== 'import') return
+
       const source = item.source === 'manual' ? 'Thêm thủ công' : 
                      item.source === 'excel' ? 'Import Excel' : 'Khác'
       sourceMap[source] = (sourceMap[source] || 0) + 1
@@ -98,7 +101,9 @@ export function InventoryCharts({ data, isLoading }: InventoryChartsProps) {
 
     // Group by transfer purpose for exports
     const purposeMap: Record<string, number> = {}
-    data.filter(item => item.type === 'export').forEach(item => {
+    data.forEach(item => {
+      if (item.type !== 'export') return
+
       let purpose = 'Khác';
       if (item.source === 'transfer_internal') {
         purpose = 'Luân chuyển nội bộ';

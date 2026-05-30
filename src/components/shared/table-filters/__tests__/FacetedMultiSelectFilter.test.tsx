@@ -62,7 +62,7 @@ vi.mock('@/components/ui/popover', () => {
         PopoverTrigger: Trigger,
         PopoverContent: ({ children, open, setOpen: _setOpen, ...rest }: PopoverContentProps) => {
             if (!open) return null
-            return <div data-testid="popover-content" role="dialog" {...rest}>{children}</div>
+            return <dialog data-testid="popover-content" open {...rest}>{children}</dialog>
         },
     }
 })
