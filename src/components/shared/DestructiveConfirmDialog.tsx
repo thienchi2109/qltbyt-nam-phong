@@ -3,9 +3,9 @@
 import * as React from "react"
 import { Loader2 } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -45,14 +45,15 @@ export function DestructiveConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Hủy</AlertDialogCancel>
-          <AlertDialogAction
+          <Button
+            type="button"
             onClick={onConfirm}
             disabled={isPending}
             className="bg-destructive hover:bg-destructive/90"
           >
             {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
             {confirmLabel}
-          </AlertDialogAction>
+          </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

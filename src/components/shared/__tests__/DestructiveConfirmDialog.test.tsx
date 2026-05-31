@@ -10,6 +10,10 @@ vi.mock("lucide-react", () => ({
   ),
 }))
 
+const alertDialogMockState = vi.hoisted(() => ({
+  onOpenChange: undefined as ((open: boolean) => void) | undefined,
+}))
+
 vi.mock("@/components/ui/alert-dialog", () => ({
   AlertDialog: ({
     open,
@@ -19,15 +23,18 @@ vi.mock("@/components/ui/alert-dialog", () => ({
     readonly open: boolean
     readonly onOpenChange: (open: boolean) => void
     readonly children: React.ReactNode
-  }) =>
-    open ? (
+  }) => {
+    alertDialogMockState.onOpenChange = onOpenChange
+
+    return open ? (
       <div data-testid="alert-dialog">
         <button type="button" onClick={() => onOpenChange(false)}>
           mock close
         </button>
         {children}
       </div>
-    ) : null,
+    ) : null
+  },
   AlertDialogContent: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogHeader: ({ children }: { readonly children: React.ReactNode }) => <div>{children}</div>,
   AlertDialogTitle: ({ children }: { readonly children: React.ReactNode }) => <h2>{children}</h2>,
@@ -57,7 +64,15 @@ vi.mock("@/components/ui/alert-dialog", () => ({
     readonly disabled?: boolean
     readonly onClick?: () => void
   }) => (
-    <button type="button" className={className} disabled={disabled} onClick={onClick}>
+    <button
+      type="button"
+      className={className}
+      disabled={disabled}
+      onClick={() => {
+        onClick?.()
+        alertDialogMockState.onOpenChange?.(false)
+      }}
+    >
       {children}
     </button>
   ),
@@ -66,6 +81,7 @@ vi.mock("@/components/ui/alert-dialog", () => ({
 describe("DestructiveConfirmDialog", () => {
   it("renders the confirmation copy and calls the confirm action", () => {
     const onConfirm = vi.fn()
+    const onOpenChange = vi.fn()
 
     render(
       <DestructiveConfirmDialog
@@ -75,7 +91,7 @@ describe("DestructiveConfirmDialog", () => {
         confirmLabel="Xóa"
         isPending={false}
         onConfirm={onConfirm}
-        onOpenChange={vi.fn()}
+        onOpenChange={onOpenChange}
       />
     )
 
@@ -87,6 +103,7 @@ describe("DestructiveConfirmDialog", () => {
 
     fireEvent.click(confirmButton)
     expect(onConfirm).toHaveBeenCalledTimes(1)
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it("forwards close changes and disables actions while pending", () => {
