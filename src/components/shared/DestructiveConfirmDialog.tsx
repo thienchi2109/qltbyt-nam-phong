@@ -36,8 +36,16 @@ export function DestructiveConfirmDialog({
   isPending,
   onConfirm,
 }: DestructiveConfirmDialogProps): React.JSX.Element {
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (isPending && !nextOpen) return
+      onOpenChange(nextOpen)
+    },
+    [isPending, onOpenChange]
+  )
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

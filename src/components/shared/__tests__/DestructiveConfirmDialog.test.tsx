@@ -106,7 +106,26 @@ describe("DestructiveConfirmDialog", () => {
     expect(onOpenChange).not.toHaveBeenCalled()
   })
 
-  it("forwards close changes and disables actions while pending", () => {
+  it("forwards close changes when not pending", () => {
+    const onOpenChange = vi.fn()
+
+    render(
+      <DestructiveConfirmDialog
+        open
+        title="Xóa danh mục"
+        description="Không thể hoàn tác."
+        confirmLabel="Xóa danh mục"
+        isPending={false}
+        onConfirm={vi.fn()}
+        onOpenChange={onOpenChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "mock close" }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+  })
+
+  it("keeps the dialog open and disables actions while pending", () => {
     const onOpenChange = vi.fn()
 
     render(
@@ -126,6 +145,6 @@ describe("DestructiveConfirmDialog", () => {
     expect(screen.getByTestId("pending-spinner")).toHaveClass("animate-spin")
 
     fireEvent.click(screen.getByRole("button", { name: "mock close" }))
-    expect(onOpenChange).toHaveBeenCalledWith(false)
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 })
