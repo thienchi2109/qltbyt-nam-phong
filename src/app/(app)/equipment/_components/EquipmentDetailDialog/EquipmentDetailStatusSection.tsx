@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useFormContext } from "react-hook-form"
 
+import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { RequiredFormLabel } from "@/components/ui/required-form-label"
@@ -13,12 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 
 const CLASSIFICATION_OPTIONS = ["A", "B", "C", "D"] as const
 
+/** Renders status, notes, and classification fields in the equipment detail edit form. */
 export function EquipmentDetailStatusSection() {
   const form = useFormContext<EquipmentFormValues>()
 
@@ -49,19 +50,7 @@ export function EquipmentDetailStatusSection() {
         )}
       />
 
-      <FormField
-        control={form.control}
-        name="ghi_chu"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Ghi chú</FormLabel>
-            <FormControl>
-              <Textarea rows={3} {...field} value={field.value ?? ""} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <EquipmentEditTextareaField name="ghi_chu" label="Ghi chú" rows={3} />
 
       <FormField
         control={form.control}

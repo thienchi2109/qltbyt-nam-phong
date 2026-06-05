@@ -7,20 +7,11 @@
 "use client"
 
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 
+import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 import { columnLabels } from "@/components/equipment/equipment-table-columns"
 import type { Equipment } from "@/types/database"
-import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 
 export interface EquipmentDetailConfigTabProps {
   /** Equipment data to display */
@@ -53,6 +44,7 @@ function LongTextField({
   )
 }
 
+/** Renders the equipment configuration tab in view or edit mode. */
 export function EquipmentDetailConfigTab({
   displayEquipment,
   isEditing,
@@ -83,51 +75,23 @@ export function EquipmentDetailConfigTab({
  * Uses useFormContext to access form from parent FormProvider
  */
 function ConfigEditForm(): React.ReactNode {
-  const form = useFormContext<EquipmentFormValues>()
-
   return (
     <ScrollArea className="h-full pr-4">
       <div className="space-y-6 py-4">
-        {/* Configuration */}
-        <FormField
-          control={form.control}
+        <EquipmentEditTextareaField
           name="cau_hinh_thiet_bi"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cấu hình thiết bị</FormLabel>
-              <FormControl>
-                <Textarea
-                  rows={8}
-                  placeholder="Nhập cấu hình thiết bị…"
-                  className="resize-y min-h-[120px]"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Cấu hình thiết bị"
+          rows={8}
+          placeholder="Nhập cấu hình thiết bị…"
+          className="resize-y min-h-[120px]"
         />
 
-        {/* Accessories */}
-        <FormField
-          control={form.control}
+        <EquipmentEditTextareaField
           name="phu_kien_kem_theo"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Phụ kiện kèm theo</FormLabel>
-              <FormControl>
-                <Textarea
-                  rows={6}
-                  placeholder="Nhập phụ kiện kèm theo…"
-                  className="resize-y min-h-[100px]"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Phụ kiện kèm theo"
+          rows={6}
+          placeholder="Nhập phụ kiện kèm theo…"
+          className="resize-y min-h-[100px]"
         />
       </div>
     </ScrollArea>

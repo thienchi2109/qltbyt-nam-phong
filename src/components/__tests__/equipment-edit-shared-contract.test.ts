@@ -30,6 +30,10 @@ describe("equipment edit shared contract", () => {
       expect.objectContaining({
         ma_thiet_bi: "",
         ten_thiet_bi: "",
+        nam_tinh_hao_mon: null,
+        ty_le_hao_mon: null,
+        chu_ky_bt_dinh_ky: null,
+        ngay_bt_tiep_theo: null,
       })
     )
 
@@ -41,11 +45,53 @@ describe("equipment edit shared contract", () => {
         vi_tri_lap_dat: "Phòng 101",
         khoa_phong_quan_ly: "Khoa Nội",
         nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+        nam_tinh_hao_mon: 2026,
+        ty_le_hao_mon: "10%",
+        chu_ky_bt_dinh_ky: 90,
+        ngay_bt_tiep_theo: "2026-04-01",
       })
     ).toEqual(
       expect.objectContaining({
         ma_thiet_bi: "EQ-001",
         ten_thiet_bi: "Máy siêu âm",
+        nam_tinh_hao_mon: 2026,
+        ty_le_hao_mon: "10%",
+        chu_ky_bt_dinh_ky: 90,
+        ngay_bt_tiep_theo: "2026-04-01",
+      })
+    )
+  })
+
+  it("schema accepts depreciation and maintenance schedule fields", async () => {
+    const mod = await importSharedEquipmentEditModule("../equipment-edit/EquipmentEditTypes.ts")
+
+    const parsed = mod.equipmentFormSchema.parse({
+      ma_thiet_bi: "EQ-001",
+      ten_thiet_bi: "Máy siêu âm",
+      vi_tri_lap_dat: "Phòng 101",
+      khoa_phong_quan_ly: "Khoa Nội",
+      nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+      tinh_trang_hien_tai: "Hoạt động",
+      nam_tinh_hao_mon: "2026",
+      ty_le_hao_mon: "10%",
+      chu_ky_bt_dinh_ky: "90",
+      ngay_bt_tiep_theo: "01/04/2026",
+      chu_ky_hc_dinh_ky: "",
+      ngay_hc_tiep_theo: "",
+      chu_ky_kd_dinh_ky: "365",
+      ngay_kd_tiep_theo: "30/04/2026",
+    })
+
+    expect(parsed).toEqual(
+      expect.objectContaining({
+        nam_tinh_hao_mon: 2026,
+        ty_le_hao_mon: "10%",
+        chu_ky_bt_dinh_ky: 90,
+        ngay_bt_tiep_theo: "2026-04-01",
+        chu_ky_hc_dinh_ky: null,
+        ngay_hc_tiep_theo: null,
+        chu_ky_kd_dinh_ky: 365,
+        ngay_kd_tiep_theo: "2026-04-30",
       })
     )
   })

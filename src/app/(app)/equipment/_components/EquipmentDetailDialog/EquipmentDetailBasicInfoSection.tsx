@@ -1,153 +1,46 @@
 "use client"
 
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 
-import { Input } from "@/components/ui/input"
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  EquipmentEditNullableNumberField,
+  EquipmentEditTextField,
+} from "@/components/equipment-edit/EquipmentEditFieldControls"
 
-import type { EquipmentFormValues } from "./EquipmentDetailTypes"
-
-function toNullableNumber(value: string): number | null {
-  return value === "" ? null : Number(value)
-}
-
+/** Renders core identifying and manufacturing fields in the equipment detail edit form. */
 export function EquipmentDetailBasicInfoSection() {
-  const form = useFormContext<EquipmentFormValues>()
-
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="ma_thiet_bi"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Mã thiết bị</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="VD: EQP-001"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Mã thiết bị"
+          placeholder="VD: EQP-001"
         />
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="ten_thiet_bi"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tên thiết bị</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="VD: Máy siêu âm"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Tên thiết bị"
+          placeholder="VD: Máy siêu âm"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="model"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Model</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="serial"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Serial</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <EquipmentEditTextField name="model" label="Model" />
+        <EquipmentEditTextField name="serial" label="Serial" />
       </div>
 
-      <FormField
-        control={form.control}
+      <EquipmentEditTextField
         name="so_luu_hanh"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Số lưu hành</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="VD: LH-2024-001"
-                {...field}
-                value={field.value ?? ""}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Số lưu hành"
+        placeholder="VD: LH-2024-001"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="hang_san_xuat"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Hãng sản xuất</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="noi_san_xuat"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nơi sản xuất</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <EquipmentEditTextField name="hang_san_xuat" label="Hãng sản xuất" />
+        <EquipmentEditTextField name="noi_san_xuat" label="Nơi sản xuất" />
       </div>
 
-      <FormField
-        control={form.control}
-        name="nam_san_xuat"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Năm sản xuất</FormLabel>
-            <FormControl>
-              <Input
-                type="number"
-                {...field}
-                value={field.value ?? ""}
-                onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <EquipmentEditNullableNumberField name="nam_san_xuat" label="Năm sản xuất" />
     </>
   )
 }

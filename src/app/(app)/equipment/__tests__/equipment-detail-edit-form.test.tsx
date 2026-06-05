@@ -79,8 +79,65 @@ describe("EquipmentDetailEditForm", () => {
     expect(screen.getByLabelText("Mã thiết bị")).toBeInTheDocument()
     expect(screen.getByLabelText("Tên thiết bị")).toBeInTheDocument()
     expect(screen.getByLabelText("Ngày ngừng sử dụng")).toBeInTheDocument()
+    expect(screen.getByLabelText("Năm tính hao mòn")).toBeInTheDocument()
+    expect(screen.getByLabelText("Tỷ lệ hao mòn theo TT23")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày BT tiếp theo")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày HC tiếp theo")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày KĐ tiếp theo")).toBeInTheDocument()
     expect(screen.getByText("Chọn tình trạng")).toBeInTheDocument()
     expect(screen.getByText("Chọn phân loại")).toBeInTheDocument()
+  })
+
+  it("submits maintenance schedule and depreciation fields", async () => {
+    const onSubmit = vi.fn()
+
+    render(<FormHarness onSubmit={onSubmit} />)
+
+    fireEvent.change(screen.getByLabelText("Năm tính hao mòn"), {
+      target: { value: "2026" },
+    })
+    fireEvent.change(screen.getByLabelText("Tỷ lệ hao mòn theo TT23"), {
+      target: { value: "10%" },
+    })
+    fireEvent.change(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)"), {
+      target: { value: "90" },
+    })
+    fireEvent.change(screen.getByLabelText("Ngày BT tiếp theo"), {
+      target: { value: "01/04/2026" },
+    })
+    fireEvent.change(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)"), {
+      target: { value: "180" },
+    })
+    fireEvent.change(screen.getByLabelText("Ngày HC tiếp theo"), {
+      target: { value: "15/04/2026" },
+    })
+    fireEvent.change(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)"), {
+      target: { value: "365" },
+    })
+    fireEvent.change(screen.getByLabelText("Ngày KĐ tiếp theo"), {
+      target: { value: "30/04/2026" },
+    })
+
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled()
+      expect(onSubmit.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({
+          nam_tinh_hao_mon: 2026,
+          ty_le_hao_mon: "10%",
+          chu_ky_bt_dinh_ky: 90,
+          ngay_bt_tiep_theo: "2026-04-01",
+          chu_ky_hc_dinh_ky: 180,
+          ngay_hc_tiep_theo: "2026-04-15",
+          chu_ky_kd_dinh_ky: 365,
+          ngay_kd_tiep_theo: "2026-04-30",
+        })
+      )
+    })
   })
 
   it("auto-fills the decommission date on status transition and submits normalized values", async () => {
