@@ -1,6 +1,7 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { FormProvider, useForm } from "react-hook-form"
 import { describe, expect, it, vi } from "vitest"
 
@@ -106,33 +107,18 @@ describe("EquipmentDetailEditForm", () => {
 
   it("submits maintenance schedule and depreciation fields", async () => {
     const onSubmit = vi.fn()
+    const user = userEvent.setup()
 
     render(<FormHarness onSubmit={onSubmit} />)
 
-    fireEvent.change(screen.getByLabelText("Năm tính hao mòn"), {
-      target: { value: "2026" },
-    })
-    fireEvent.change(screen.getByLabelText("Tỷ lệ hao mòn theo TT23"), {
-      target: { value: "10%" },
-    })
-    fireEvent.change(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)"), {
-      target: { value: "90" },
-    })
-    fireEvent.change(screen.getByLabelText("Ngày BT tiếp theo"), {
-      target: { value: "01/04/2026" },
-    })
-    fireEvent.change(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)"), {
-      target: { value: "180" },
-    })
-    fireEvent.change(screen.getByLabelText("Ngày HC tiếp theo"), {
-      target: { value: "15/04/2026" },
-    })
-    fireEvent.change(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)"), {
-      target: { value: "365" },
-    })
-    fireEvent.change(screen.getByLabelText("Ngày KĐ tiếp theo"), {
-      target: { value: "30/04/2026" },
-    })
+    await user.type(screen.getByLabelText("Năm tính hao mòn"), "2026")
+    await user.type(screen.getByLabelText("Tỷ lệ hao mòn theo TT23"), "10%")
+    await user.type(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)"), "90")
+    await user.type(screen.getByLabelText("Ngày BT tiếp theo"), "01/04/2026")
+    await user.type(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)"), "180")
+    await user.type(screen.getByLabelText("Ngày HC tiếp theo"), "15/04/2026")
+    await user.type(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)"), "365")
+    await user.type(screen.getByLabelText("Ngày KĐ tiếp theo"), "30/04/2026")
 
     fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
 
