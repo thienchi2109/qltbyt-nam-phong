@@ -1,127 +1,44 @@
 "use client"
 
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 
-import { Input } from "@/components/ui/input"
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  EquipmentEditNullableNumberField,
+  EquipmentEditTextField,
+} from "@/components/equipment-edit/EquipmentEditFieldControls"
 
-import type { EquipmentFormValues } from "./EquipmentDetailTypes"
-
-function toNullableNumber(value: string): number | null {
-  return value === "" ? null : Number(value)
-}
-
+/** Renders date and finance fields in the equipment detail edit form. */
 export function EquipmentDetailDatesSection() {
-  const form = useFormContext<EquipmentFormValues>()
-
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="ngay_nhap"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ngày nhập</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Ngày nhập"
+          placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
         />
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="ngay_dua_vao_su_dung"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Ngày đưa vào sử dụng</FormLabel>
-              <FormControl>
-                <Input
-                  placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
-                  {...field}
-                  value={field.value ?? ""}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Ngày đưa vào sử dụng"
+          placeholder="DD/MM/YYYY hoặc MM/YYYY hoặc YYYY"
         />
       </div>
 
-      <FormField
-        control={form.control}
+      <EquipmentEditTextField
         name="ngay_ngung_su_dung"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Ngày ngừng sử dụng</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="DD/MM/YYYY"
-                {...field}
-                value={field.value ?? ""}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Ngày ngừng sử dụng"
+        placeholder="DD/MM/YYYY"
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
-          name="nguon_kinh_phi"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nguồn kinh phí</FormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="gia_goc"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Giá gốc (VNĐ)</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(event) => field.onChange(toNullableNumber(event.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <EquipmentEditTextField name="nguon_kinh_phi" label="Nguồn kinh phí" />
+        <EquipmentEditNullableNumberField name="gia_goc" label="Giá gốc (VNĐ)" />
       </div>
 
-      <FormField
-        control={form.control}
+      <EquipmentEditTextField
         name="han_bao_hanh"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Hạn bảo hành</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="DD/MM/YYYY"
-                {...field}
-                value={field.value ?? ""}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Hạn bảo hành"
+        placeholder="DD/MM/YYYY"
       />
     </>
   )

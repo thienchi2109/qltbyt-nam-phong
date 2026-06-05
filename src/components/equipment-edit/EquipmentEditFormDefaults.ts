@@ -4,6 +4,7 @@ import type { Equipment } from "@/types/database"
 
 import type { EquipmentFormValues, EquipmentStatus } from "./EquipmentEditTypes"
 
+/** Empty values used when initializing the shared equipment edit form. */
 export const DEFAULT_EQUIPMENT_FORM_VALUES: EquipmentFormValues = {
   ma_thiet_bi: "",
   ten_thiet_bi: "",
@@ -29,6 +30,8 @@ export const DEFAULT_EQUIPMENT_FORM_VALUES: EquipmentFormValues = {
   ngay_kd_tiep_theo: null,
   nam_san_xuat: null,
   gia_goc: null,
+  nam_tinh_hao_mon: null,
+  ty_le_hao_mon: null,
   chu_ky_bt_dinh_ky: null,
   chu_ky_hc_dinh_ky: null,
   chu_ky_kd_dinh_ky: null,
@@ -43,6 +46,7 @@ function normalizeEquipmentStatus(
     : null
 }
 
+/** Converts an equipment record into display-ready edit form values. */
 export function equipmentToFormValues(
   equipment: Equipment | null | undefined
 ): EquipmentFormValues {
@@ -80,13 +84,21 @@ export function equipmentToFormValues(
       ) || null,
     han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || null,
     ngay_bt_tiep_theo:
-      (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_bt_tiep_theo?: string | null }).ngay_bt_tiep_theo
+      ) || null,
     ngay_hc_tiep_theo:
-      (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_hc_tiep_theo?: string | null }).ngay_hc_tiep_theo
+      ) || null,
     ngay_kd_tiep_theo:
-      (equipment as Equipment & { ngay_kd_tiep_theo?: string }).ngay_kd_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_kd_tiep_theo?: string | null }).ngay_kd_tiep_theo
+      ) || null,
     nam_san_xuat: equipment.nam_san_xuat ?? null,
     gia_goc: equipment.gia_goc ?? null,
+    nam_tinh_hao_mon: equipment.nam_tinh_hao_mon ?? null,
+    ty_le_hao_mon: equipment.ty_le_hao_mon || null,
     chu_ky_bt_dinh_ky:
       (equipment as Equipment & { chu_ky_bt_dinh_ky?: number }).chu_ky_bt_dinh_ky ?? null,
     chu_ky_hc_dinh_ky:

@@ -1,62 +1,30 @@
 "use client"
 
 import * as React from "react"
-import { useFormContext } from "react-hook-form"
 
-import { Input } from "@/components/ui/input"
-import { FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form"
-import { RequiredFormLabel } from "@/components/ui/required-form-label"
+import { EquipmentEditTextField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 
-import type { EquipmentFormValues } from "./EquipmentDetailTypes"
-
+/** Renders assignment and location fields in the equipment detail edit form. */
 export function EquipmentDetailAssignmentSection() {
-  const form = useFormContext<EquipmentFormValues>()
-
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="khoa_phong_quan_ly"
-          render={({ field }) => (
-            <FormItem>
-              <RequiredFormLabel required>Khoa/Phòng quản lý</RequiredFormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Khoa/Phòng quản lý"
+          required
         />
-        <FormField
-          control={form.control}
+        <EquipmentEditTextField
           name="vi_tri_lap_dat"
-          render={({ field }) => (
-            <FormItem>
-              <RequiredFormLabel required>Vị trí lắp đặt</RequiredFormLabel>
-              <FormControl>
-                <Input {...field} value={field.value ?? ""} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+          label="Vị trí lắp đặt"
+          required
         />
       </div>
 
-      <FormField
-        control={form.control}
+      <EquipmentEditTextField
         name="nguoi_dang_truc_tiep_quan_ly"
-        render={({ field }) => (
-          <FormItem>
-            <RequiredFormLabel required>
-              Người trực tiếp quản lý (sử dụng)
-            </RequiredFormLabel>
-            <FormControl>
-              <Input {...field} value={field.value ?? ""} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Người trực tiếp quản lý (sử dụng)"
+        required
       />
     </>
   )

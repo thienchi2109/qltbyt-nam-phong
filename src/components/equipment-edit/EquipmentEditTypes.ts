@@ -17,7 +17,11 @@ export type EquipmentStatus = (typeof equipmentStatusOptions)[number]
 
 const nullableTextField = () => z.string().optional().nullable()
 
-const nullableNumberField = () => z.coerce.number().optional().nullable()
+const nullableNumberField = () =>
+  z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.coerce.number().optional().nullable()
+  )
 
 const partialDateField = () =>
   z
@@ -33,6 +37,7 @@ const normalizedDateField = () =>
 const requiredTextField = (message: string) =>
   z.preprocess((value) => value ?? "", z.string().min(1, message))
 
+/** Shared schema for validating and normalizing equipment edit form submissions. */
 export const equipmentFormSchema = z
   .object({
     ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
@@ -53,6 +58,8 @@ export const equipmentFormSchema = z
       .transform(normalizeFullDateForForm),
     nguon_kinh_phi: nullableTextField(),
     gia_goc: nullableNumberField(),
+    nam_tinh_hao_mon: nullableNumberField(),
+    ty_le_hao_mon: nullableTextField(),
     han_bao_hanh: partialDateField(),
     vi_tri_lap_dat: requiredTextField("Vị trí lắp đặt là bắt buộc"),
     khoa_phong_quan_ly: requiredTextField("Khoa/Phòng quản lý là bắt buộc"),

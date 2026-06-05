@@ -15,6 +15,7 @@ import { useDecommissionDateAutofill } from "@/components/equipment-decommission
 import { EquipmentDetailAssignmentSection } from "./EquipmentDetailAssignmentSection"
 import { EquipmentDetailBasicInfoSection } from "./EquipmentDetailBasicInfoSection"
 import { EquipmentDetailDatesSection } from "./EquipmentDetailDatesSection"
+import { EquipmentDetailLifecycleSection } from "./EquipmentDetailLifecycleSection"
 import { EquipmentDetailStatusSection } from "./EquipmentDetailStatusSection"
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 
@@ -24,6 +25,7 @@ export interface EquipmentDetailEditFormProps {
   onSubmit: (values: EquipmentFormValues) => void
 }
 
+/** Renders the inline equipment detail edit form inside the details tab. */
 export function EquipmentDetailEditForm({
   formId,
   initialStatus,
@@ -47,6 +49,7 @@ export function EquipmentDetailEditForm({
         <div className="space-y-4 py-4">
           <EquipmentDetailBasicInfoSection />
           <EquipmentDetailDatesSection />
+          <EquipmentDetailLifecycleSection />
           <EquipmentDetailAssignmentSection />
           <EquipmentDetailStatusSection />
         </div>

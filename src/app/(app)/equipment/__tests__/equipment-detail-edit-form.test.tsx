@@ -1,6 +1,7 @@
 import * as React from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { FormProvider, useForm } from "react-hook-form"
 import { describe, expect, it, vi } from "vitest"
 
@@ -40,6 +41,7 @@ import {
   type EquipmentFormValues,
 } from "../_components/EquipmentDetailDialog/EquipmentDetailTypes"
 import { DEFAULT_EQUIPMENT_FORM_VALUES } from "@/components/equipment-edit/EquipmentEditFormDefaults"
+import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 
 function FormHarness({
   initialStatus = "Hoạt động",
@@ -72,6 +74,18 @@ function FormHarness({
   )
 }
 
+function RequiredTextareaHarness() {
+  const form = useForm<EquipmentFormValues>({
+    defaultValues: DEFAULT_EQUIPMENT_FORM_VALUES,
+  })
+
+  return (
+    <FormProvider {...form}>
+      <EquipmentEditTextareaField name="ghi_chu" label="Ghi chú bắt buộc" required />
+    </FormProvider>
+  )
+}
+
 describe("EquipmentDetailEditForm", () => {
   it("renders key fields and classification options", () => {
     render(<FormHarness onSubmit={vi.fn()} />)
@@ -79,8 +93,57 @@ describe("EquipmentDetailEditForm", () => {
     expect(screen.getByLabelText("Mã thiết bị")).toBeInTheDocument()
     expect(screen.getByLabelText("Tên thiết bị")).toBeInTheDocument()
     expect(screen.getByLabelText("Ngày ngừng sử dụng")).toBeInTheDocument()
+    expect(screen.getByLabelText("Năm tính hao mòn")).toBeInTheDocument()
+    expect(screen.getByLabelText("Tỷ lệ hao mòn theo TT23")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày BT tiếp theo")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày HC tiếp theo")).toBeInTheDocument()
+    expect(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)")).toBeInTheDocument()
+    expect(screen.getByLabelText("Ngày KĐ tiếp theo")).toBeInTheDocument()
     expect(screen.getByText("Chọn tình trạng")).toBeInTheDocument()
     expect(screen.getByText("Chọn phân loại")).toBeInTheDocument()
+  })
+
+  it("submits maintenance schedule and depreciation fields", async () => {
+    const onSubmit = vi.fn()
+    const user = userEvent.setup()
+
+    render(<FormHarness onSubmit={onSubmit} />)
+
+    await user.type(screen.getByLabelText("Năm tính hao mòn"), "2026")
+    await user.type(screen.getByLabelText("Tỷ lệ hao mòn theo TT23"), "10%")
+    await user.type(screen.getByLabelText("Chu kỳ BT định kỳ (ngày)"), "90")
+    await user.type(screen.getByLabelText("Ngày BT tiếp theo"), "01/04/2026")
+    await user.type(screen.getByLabelText("Chu kỳ HC định kỳ (ngày)"), "180")
+    await user.type(screen.getByLabelText("Ngày HC tiếp theo"), "15/04/2026")
+    await user.type(screen.getByLabelText("Chu kỳ KĐ định kỳ (ngày)"), "365")
+    await user.type(screen.getByLabelText("Ngày KĐ tiếp theo"), "30/04/2026")
+
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled()
+      expect(onSubmit.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({
+          nam_tinh_hao_mon: 2026,
+          ty_le_hao_mon: "10%",
+          chu_ky_bt_dinh_ky: 90,
+          ngay_bt_tiep_theo: "2026-04-01",
+          chu_ky_hc_dinh_ky: 180,
+          ngay_hc_tiep_theo: "2026-04-15",
+          chu_ky_kd_dinh_ky: 365,
+          ngay_kd_tiep_theo: "2026-04-30",
+        })
+      )
+    })
+  })
+
+  it("renders textarea required marker when requested", () => {
+    render(<RequiredTextareaHarness />)
+
+    expect(screen.getByRole("textbox", { name: /Ghi chú bắt buộc/ })).toBeInTheDocument()
+    expect(screen.getByLabelText("bắt buộc")).toBeInTheDocument()
   })
 
   it("auto-fills the decommission date on status transition and submits normalized values", async () => {
