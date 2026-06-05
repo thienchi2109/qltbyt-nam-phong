@@ -1,4 +1,7 @@
 /** Converts an empty input string to null and numeric input to a number. */
 export function toNullableNumber(value: string): number | null {
-  return value === "" ? null : Number(value)
+  if (value === "") return null
+
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }

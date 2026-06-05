@@ -40,6 +40,7 @@ import {
   type EquipmentFormValues,
 } from "../_components/EquipmentDetailDialog/EquipmentDetailTypes"
 import { DEFAULT_EQUIPMENT_FORM_VALUES } from "@/components/equipment-edit/EquipmentEditFormDefaults"
+import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 
 function FormHarness({
   initialStatus = "Hoạt động",
@@ -68,6 +69,18 @@ function FormHarness({
         initialStatus={initialStatus}
         onSubmit={onSubmit}
       />
+    </FormProvider>
+  )
+}
+
+function RequiredTextareaHarness() {
+  const form = useForm<EquipmentFormValues>({
+    defaultValues: DEFAULT_EQUIPMENT_FORM_VALUES,
+  })
+
+  return (
+    <FormProvider {...form}>
+      <EquipmentEditTextareaField name="ghi_chu" label="Ghi chú bắt buộc" required />
     </FormProvider>
   )
 }
@@ -138,6 +151,13 @@ describe("EquipmentDetailEditForm", () => {
         })
       )
     })
+  })
+
+  it("renders textarea required marker when requested", () => {
+    render(<RequiredTextareaHarness />)
+
+    expect(screen.getByRole("textbox", { name: /Ghi chú bắt buộc/ })).toBeInTheDocument()
+    expect(screen.getByLabelText("bắt buộc")).toBeInTheDocument()
   })
 
   it("auto-fills the decommission date on status transition and submits normalized values", async () => {

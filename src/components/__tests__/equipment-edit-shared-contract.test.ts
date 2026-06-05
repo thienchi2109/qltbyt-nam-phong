@@ -49,6 +49,8 @@ describe("equipment edit shared contract", () => {
         ty_le_hao_mon: "10%",
         chu_ky_bt_dinh_ky: 90,
         ngay_bt_tiep_theo: "2026-04-01",
+        ngay_hc_tiep_theo: "2026-04-15",
+        ngay_kd_tiep_theo: "2026-04-30",
       })
     ).toEqual(
       expect.objectContaining({
@@ -57,7 +59,9 @@ describe("equipment edit shared contract", () => {
         nam_tinh_hao_mon: 2026,
         ty_le_hao_mon: "10%",
         chu_ky_bt_dinh_ky: 90,
-        ngay_bt_tiep_theo: "2026-04-01",
+        ngay_bt_tiep_theo: "01/04/2026",
+        ngay_hc_tiep_theo: "15/04/2026",
+        ngay_kd_tiep_theo: "30/04/2026",
       })
     )
   })
@@ -104,5 +108,16 @@ describe("equipment edit shared contract", () => {
         useEquipmentEditUpdate: expect.any(Function),
       })
     )
+  })
+
+  it("keeps invalid nullable number input out of form state", async () => {
+    const mod = await importSharedEquipmentEditModule(
+      "../equipment-edit/EquipmentEditFieldUtils.ts"
+    )
+
+    expect(mod.toNullableNumber("")).toBeNull()
+    expect(mod.toNullableNumber("-")).toBeNull()
+    expect(mod.toNullableNumber("abc")).toBeNull()
+    expect(mod.toNullableNumber("90")).toBe(90)
   })
 })

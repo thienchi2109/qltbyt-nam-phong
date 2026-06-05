@@ -84,11 +84,17 @@ export function equipmentToFormValues(
       ) || null,
     han_bao_hanh: formatPartialDateToDisplay(equipment.han_bao_hanh) || null,
     ngay_bt_tiep_theo:
-      (equipment as Equipment & { ngay_bt_tiep_theo?: string }).ngay_bt_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_bt_tiep_theo?: string | null }).ngay_bt_tiep_theo
+      ) || null,
     ngay_hc_tiep_theo:
-      (equipment as Equipment & { ngay_hc_tiep_theo?: string }).ngay_hc_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_hc_tiep_theo?: string | null }).ngay_hc_tiep_theo
+      ) || null,
     ngay_kd_tiep_theo:
-      (equipment as Equipment & { ngay_kd_tiep_theo?: string }).ngay_kd_tiep_theo || null,
+      formatFullDateToDisplay(
+        (equipment as Equipment & { ngay_kd_tiep_theo?: string | null }).ngay_kd_tiep_theo
+      ) || null,
     nam_san_xuat: equipment.nam_san_xuat ?? null,
     gia_goc: equipment.gia_goc ?? null,
     nam_tinh_hao_mon: equipment.nam_tinh_hao_mon ?? null,

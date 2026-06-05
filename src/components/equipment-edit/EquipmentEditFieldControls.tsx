@@ -103,6 +103,7 @@ export function EquipmentEditTextareaField({
   name,
   label,
   placeholder,
+  required,
   rows = 3,
   className,
 }: EquipmentEditFieldProps & {
@@ -117,7 +118,7 @@ export function EquipmentEditTextareaField({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{label}</FormLabel>
+          <EquipmentEditLabel required={required}>{label}</EquipmentEditLabel>
           <FormControl>
             <Textarea
               rows={rows}
