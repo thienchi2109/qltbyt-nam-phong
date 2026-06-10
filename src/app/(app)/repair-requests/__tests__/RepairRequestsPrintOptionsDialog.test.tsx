@@ -9,10 +9,31 @@ import type { RepairRequestWithEquipment } from "../types"
 const mockCloseAllDialogs = vi.fn()
 const mockContext = vi.hoisted(() => ({
   useRepairRequestsContext: vi.fn(),
+  handleGenerateRequestSheet: vi.fn(),
+  toast: vi.fn(),
 }))
 
 vi.mock("../_hooks/useRepairRequestsContext", () => ({
   useRepairRequestsContext: () => mockContext.useRepairRequestsContext(),
+}))
+
+vi.mock("../_hooks/useRepairRequestUIHandlers", () => ({
+  useRepairRequestUIHandlers: () => ({
+    handleGenerateRequestSheet: mockContext.handleGenerateRequestSheet,
+  }),
+}))
+
+vi.mock("@/hooks/use-tenant-branding", () => ({
+  useTenantBranding: () => ({
+    data: {
+      name: "CDC Cần Thơ",
+      logo_url: "https://example.com/logo.png",
+    },
+  }),
+}))
+
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: mockContext.toast }),
 }))
 
 vi.mock("@/components/ui/button", () => ({
@@ -90,34 +111,53 @@ describe("RepairRequestsPrintOptionsDialog", () => {
 
   it("prints with requester name prefilled from the primary action", async () => {
     const user = userEvent.setup()
-    const onGenerateSheet = vi.fn()
+    mockContext.handleGenerateRequestSheet.mockReturnValue(true)
     setupContext()
 
-    render(<RepairRequestsPrintOptionsDialog onGenerateSheet={onGenerateSheet} />)
+    render(<RepairRequestsPrintOptionsDialog />)
 
     await user.click(screen.getByRole("button", { name: "Điền sẵn tên" }))
 
-    expect(onGenerateSheet).toHaveBeenCalledWith(requestToPrint, { prefillRequesterName: true })
+    expect(mockContext.handleGenerateRequestSheet).toHaveBeenCalledWith(requestToPrint, {
+      prefillRequesterName: true,
+    })
     expect(mockCloseAllDialogs).toHaveBeenCalledTimes(1)
   })
 
   it("prints with the requester signature name blank from the secondary action", async () => {
     const user = userEvent.setup()
-    const onGenerateSheet = vi.fn()
+    mockContext.handleGenerateRequestSheet.mockReturnValue(true)
     setupContext()
 
-    render(<RepairRequestsPrintOptionsDialog onGenerateSheet={onGenerateSheet} />)
+    render(<RepairRequestsPrintOptionsDialog />)
 
     await user.click(screen.getByRole("button", { name: "Bỏ trống tên" }))
 
-    expect(onGenerateSheet).toHaveBeenCalledWith(requestToPrint, { prefillRequesterName: false })
+    expect(mockContext.handleGenerateRequestSheet).toHaveBeenCalledWith(requestToPrint, {
+      prefillRequesterName: false,
+    })
     expect(mockCloseAllDialogs).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the dialog open when sheet generation fails", async () => {
+    const user = userEvent.setup()
+    mockContext.handleGenerateRequestSheet.mockReturnValue(false)
+    setupContext()
+
+    render(<RepairRequestsPrintOptionsDialog />)
+
+    await user.click(screen.getByRole("button", { name: "Điền sẵn tên" }))
+
+    expect(mockContext.handleGenerateRequestSheet).toHaveBeenCalledWith(requestToPrint, {
+      prefillRequesterName: true,
+    })
+    expect(mockCloseAllDialogs).not.toHaveBeenCalled()
   })
 
   it("does not render when no request is pending print", () => {
     setupContext(null)
 
-    render(<RepairRequestsPrintOptionsDialog onGenerateSheet={vi.fn()} />)
+    render(<RepairRequestsPrintOptionsDialog />)
 
     expect(screen.queryByTestId("print-options-dialog")).not.toBeInTheDocument()
   })

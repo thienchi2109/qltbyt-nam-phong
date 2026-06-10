@@ -36,8 +36,9 @@ describe("useRepairRequestUIHandlers", () => {
       })
     )
 
+    let didPrint: boolean | undefined
     act(() => {
-      result.current.handleGenerateRequestSheet({
+      didPrint = result.current.handleGenerateRequestSheet({
         id: 1,
         thiet_bi: { id: 2, ma_thiet_bi: "TB001", ten_thiet_bi: "Máy A" },
       } as never)
@@ -49,6 +50,7 @@ describe("useRepairRequestUIHandlers", () => {
         description: "Thiếu thông tin thiết bị",
       })
     )
+    expect(didPrint).toBe(false)
   })
 
   it("passes requester prefill options to the print template builder", () => {
@@ -74,7 +76,9 @@ describe("useRepairRequestUIHandlers", () => {
       })
     )
 
-    result.current.handleGenerateRequestSheet(request, { prefillRequesterName: false })
+    const didPrint = result.current.handleGenerateRequestSheet(request, {
+      prefillRequesterName: false,
+    })
 
     expect(mockBuildRepairRequestSheetHtml).toHaveBeenCalledWith(
       request,
@@ -86,5 +90,6 @@ describe("useRepairRequestUIHandlers", () => {
     )
     expect(windowOpenSpy).toHaveBeenCalledWith("", "_blank")
     expect(documentMock.write).toHaveBeenCalledWith("<html><body>print</body></html>")
+    expect(didPrint).toBe(true)
   })
 })

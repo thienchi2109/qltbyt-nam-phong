@@ -14,9 +14,7 @@ const mocks = vi.hoisted(() => ({
   deepLinkHandler: vi.fn(),
   layoutProps: vi.fn(),
   columnOptions: vi.fn(),
-  pageDialogsProps: vi.fn(),
   openPrintOptionsDialog: vi.fn(),
-  handleGenerateRequestSheet: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -71,12 +69,6 @@ vi.mock("../_hooks/useRepairRequestsContext", () => ({
     openCreateSheet: vi.fn(),
     closeAllDialogs: vi.fn(),
     applyAssistantDraft: vi.fn(),
-  }),
-}))
-
-vi.mock("../_hooks/useRepairRequestUIHandlers", () => ({
-  useRepairRequestUIHandlers: () => ({
-    handleGenerateRequestSheet: mocks.handleGenerateRequestSheet,
   }),
 }))
 
@@ -140,10 +132,7 @@ vi.mock("../_components/RepairRequestsDetailView", () => ({
 }))
 
 vi.mock("../_components/RepairRequestsPageDialogs", () => ({
-  RepairRequestsPageDialogs: (props: unknown) => {
-    mocks.pageDialogsProps(props)
-    return null
-  },
+  RepairRequestsPageDialogs: () => null,
 }))
 
 vi.mock("../_components/RepairRequestsPageLayout", () => ({
@@ -277,7 +266,7 @@ describe("RepairRequestsPage Suspense boundary", () => {
     )
   })
 
-  it("routes print action through the prefill choice dialog before generating the sheet", () => {
+  it("routes print action through the prefill choice dialog", () => {
     mocks.useSession.mockReturnValue({
       data: {
         user: {
@@ -318,8 +307,5 @@ describe("RepairRequestsPage Suspense boundary", () => {
         onGenerateSheet: mocks.openPrintOptionsDialog,
       }),
     )
-    expect(mocks.pageDialogsProps).toHaveBeenCalledWith({
-      onGenerateSheet: mocks.handleGenerateRequestSheet,
-    })
   })
 })

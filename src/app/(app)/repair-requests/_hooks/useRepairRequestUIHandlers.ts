@@ -17,7 +17,7 @@ export interface UIHandlersActions {
   handleGenerateRequestSheet: (
     request: RepairRequestWithEquipment,
     options?: RepairRequestSheetOptions
-  ) => void
+  ) => boolean
 }
 
 /**
@@ -34,7 +34,7 @@ export function useRepairRequestUIHandlers(
   const handleGenerateRequestSheet = (
     request: RepairRequestWithEquipment,
     options?: RepairRequestSheetOptions
-  ): void => {
+  ): boolean => {
     const organizationName = branding?.name || "TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ"
     const logoUrl =
       branding?.logo_url ||
@@ -52,6 +52,7 @@ export function useRepairRequestUIHandlers(
         newWindow.document.write(htmlContent)
         newWindow.document.close()
       }
+      return true
     } catch (error) {
       const errorMessage = getUnknownErrorMessage(error, "Không thể tạo phiếu yêu cầu.")
       toast({
@@ -59,6 +60,7 @@ export function useRepairRequestUIHandlers(
         title: "Lỗi",
         description: errorMessage,
       })
+      return false
     }
   }
 

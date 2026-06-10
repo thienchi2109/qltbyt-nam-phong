@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { Button } from "@/components/ui/button"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
+import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
@@ -11,20 +13,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import type { RepairRequestSheetOptions } from "../request-sheet"
+import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
-import type { RepairRequestWithEquipment } from "../types"
-
-interface RepairRequestsPrintOptionsDialogProps {
-  readonly onGenerateSheet: (
-    request: RepairRequestWithEquipment,
-    options?: RepairRequestSheetOptions
-  ) => void
-}
 
 /** Lets users choose whether the printable request sheet pre-fills requester name. */
-export function RepairRequestsPrintOptionsDialog({
-  onGenerateSheet,
-}: RepairRequestsPrintOptionsDialogProps) {
+export function RepairRequestsPrintOptionsDialog() {
+  const { data: branding } = useTenantBranding()
+  const { toast } = useToast()
+  const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
+    branding,
+    toast,
+  })
   const {
     dialogState: { requestToPrint },
     closeAllDialogs,
@@ -32,8 +31,9 @@ export function RepairRequestsPrintOptionsDialog({
 
   const handlePrint = (options: RepairRequestSheetOptions) => {
     if (!requestToPrint) return
-    onGenerateSheet(requestToPrint, options)
-    closeAllDialogs()
+    if (handleGenerateRequestSheet(requestToPrint, options)) {
+      closeAllDialogs()
+    }
   }
 
   return (
