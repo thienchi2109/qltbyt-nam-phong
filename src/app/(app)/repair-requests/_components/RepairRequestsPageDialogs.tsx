@@ -5,6 +5,7 @@ import { RepairRequestsCompleteDialog } from "./RepairRequestsCompleteDialog"
 import { RepairRequestsDeleteDialog } from "./RepairRequestsDeleteDialog"
 import { RepairRequestsDetailView } from "./RepairRequestsDetailView"
 import { RepairRequestsEditDialog } from "./RepairRequestsEditDialog"
+import { RepairRequestsPrintOptionsDialog } from "./RepairRequestsPrintOptionsDialog"
 
 /** Renders the repair-requests dialog stack owned by the page client. */
 export function RepairRequestsPageDialogs() {
@@ -14,6 +15,7 @@ export function RepairRequestsPageDialogs() {
       <RepairRequestsDeleteDialog />
       <RepairRequestsApproveDialog />
       <RepairRequestsCompleteDialog />
+      <RepairRequestsPrintOptionsDialog />
 
       <RepairRequestsDetailView />
     </>

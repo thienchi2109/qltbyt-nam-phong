@@ -146,6 +146,26 @@ describe("buildRepairRequestSheetHtml", () => {
     expect(requesterSection).not.toContain('class="sig-name"')
   })
 
+  it("leaves the requester signature name blank when prefill is disabled", () => {
+    const html = buildRepairRequestSheetHtml(
+      request,
+      {
+        organizationName: "CDC Cần Thơ",
+        logoUrl: "https://example.com/logo.png",
+      },
+      { prefillRequesterName: false }
+    )
+
+    const requesterSection = html.slice(
+      html.indexOf("NGƯỜI ĐỀ NGHỊ"),
+      html.indexOf("BAN GIÁM ĐỐC")
+    )
+
+    expect(requesterSection).toContain('<div class="sig-line"></div>')
+    expect(requesterSection).not.toContain("Nguyễn Văn A")
+    expect(html).not.toContain("Nguyễn Văn A")
+  })
+
   it("centers the department name in the department field", () => {
     const deptValueBlock = REPAIR_SHEET_STYLES.slice(
       REPAIR_SHEET_STYLES.indexOf(".dept-row .dept-value"),

@@ -14,7 +14,6 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { format } from "date-fns"
 import { useSession } from "next-auth/react"
-import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
@@ -31,7 +30,6 @@ import { useRepairRequestsData } from "../_hooks/useRepairRequestsData"
 
 import { useRepairRequestShortcuts } from "../_hooks/useRepairRequestShortcuts"
 import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
-import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
 import { useRepairRequestColumns } from "./RepairRequestsColumns"
 import {
   createRepairRequestsPageState,
@@ -53,7 +51,6 @@ import {
 function RepairRequestsPageClientInner() {
   const { toast } = useToast()
   const { data: session } = useSession()
-  const { data: branding } = useTenantBranding()
   const user = session?.user
   const isMobile = useIsMobile()
   const isSheetMobile = useMediaQuery("(max-width: 1279px)")
@@ -66,6 +63,7 @@ function RepairRequestsPageClientInner() {
     openApproveDialog,
     openCompleteDialog,
     openViewDialog,
+    openPrintOptionsDialog,
     openCreateSheet,
     applyAssistantDraft,
   } = useRepairRequestsContext()
@@ -109,11 +107,6 @@ function RepairRequestsPageClientInner() {
   const setFilterModalOpen = React.useCallback((value: boolean) => {
     dispatchPageState({ type: "set-filter-modal-open", value })
   }, [])
-
-  const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
-    branding,
-    toast,
-  })
 
   const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
 
@@ -165,7 +158,7 @@ function RepairRequestsPageClientInner() {
   }, [openViewDialog])
 
   const columnOptions = React.useMemo(() => ({
-    onGenerateSheet: handleGenerateRequestSheet,
+    onGenerateSheet: openPrintOptionsDialog,
     setEditingRequest: setEditingRequestAdapter,
     setRequestToDelete: setRequestToDeleteAdapter,
     handleApproveRequest: openApproveDialog,
@@ -174,7 +167,7 @@ function RepairRequestsPageClientInner() {
     user,
     isRegionalLeader
   }), [
-    handleGenerateRequestSheet,
+    openPrintOptionsDialog,
     setEditingRequestAdapter,
     setRequestToDeleteAdapter,
     openApproveDialog,

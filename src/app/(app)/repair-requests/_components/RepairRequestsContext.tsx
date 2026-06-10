@@ -30,6 +30,7 @@ interface DialogState {
   requestToApprove: RepairRequestWithEquipment | null
   requestToComplete: RepairRequestWithEquipment | null
   requestToView: RepairRequestWithEquipment | null
+  requestToPrint: RepairRequestWithEquipment | null
   completionType: 'Hoàn thành' | 'Không HT' | null
   isCreateOpen: boolean
   preSelectedEquipment: EquipmentSelectItem | null
@@ -50,6 +51,7 @@ interface RepairRequestsContextValue {
   openApproveDialog: (request: RepairRequestWithEquipment) => void
   openCompleteDialog: (request: RepairRequestWithEquipment, type: 'Hoàn thành' | 'Không HT') => void
   openViewDialog: (request: RepairRequestWithEquipment) => void
+  openPrintOptionsDialog: (request: RepairRequestWithEquipment) => void
   openCreateSheet: (equipment?: EquipmentSelectItem) => void
   closeAllDialogs: () => void
 
@@ -70,6 +72,7 @@ interface RepairRequestsContextValue {
 }
 
 // ============================================
+/** Shared context for repair-request page state, dialogs, and mutations. */
 const RepairRequestsContext = React.createContext<RepairRequestsContextValue | null>(null)
 
 // ============================================
@@ -80,6 +83,7 @@ interface RepairRequestsProviderProps {
   children: React.ReactNode
 }
 
+/** Provides repair-request page state, dialog actions, mutations, and assistant draft state. */
 export function RepairRequestsProvider({ children }: RepairRequestsProviderProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -105,6 +109,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     requestToApprove: null,
     requestToComplete: null,
     requestToView: null,
+    requestToPrint: null,
     completionType: null,
     isCreateOpen: false,
     preSelectedEquipment: null,
@@ -155,6 +160,10 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     setDialogState(prev => ({ ...prev, requestToView: request }))
   }, [])
 
+  const openPrintOptionsDialog = React.useCallback((request: RepairRequestWithEquipment) => {
+    setDialogState(prev => ({ ...prev, requestToPrint: request }))
+  }, [])
+
   const openCreateSheet = React.useCallback((equipment?: EquipmentSelectItem) => {
     setDialogState(prev => ({
       ...prev,
@@ -170,6 +179,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
       requestToApprove: null,
       requestToComplete: null,
       requestToView: null,
+      requestToPrint: null,
       completionType: null,
       isCreateOpen: false,
       preSelectedEquipment: null,
@@ -187,6 +197,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     openApproveDialog,
     openCompleteDialog,
     openViewDialog,
+    openPrintOptionsDialog,
     openCreateSheet,
     closeAllDialogs,
     createMutation,
@@ -208,6 +219,7 @@ export function RepairRequestsProvider({ children }: RepairRequestsProviderProps
     openApproveDialog,
     openCompleteDialog,
     openViewDialog,
+    openPrintOptionsDialog,
     openCreateSheet,
     closeAllDialogs,
     createMutation,
