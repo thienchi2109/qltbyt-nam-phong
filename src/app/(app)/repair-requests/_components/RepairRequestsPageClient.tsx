@@ -66,6 +66,7 @@ function RepairRequestsPageClientInner() {
     openApproveDialog,
     openCompleteDialog,
     openViewDialog,
+    openPrintOptionsDialog,
     openCreateSheet,
     applyAssistantDraft,
   } = useRepairRequestsContext()
@@ -165,7 +166,7 @@ function RepairRequestsPageClientInner() {
   }, [openViewDialog])
 
   const columnOptions = React.useMemo(() => ({
-    onGenerateSheet: handleGenerateRequestSheet,
+    onGenerateSheet: openPrintOptionsDialog,
     setEditingRequest: setEditingRequestAdapter,
     setRequestToDelete: setRequestToDeleteAdapter,
     handleApproveRequest: openApproveDialog,
@@ -174,7 +175,7 @@ function RepairRequestsPageClientInner() {
     user,
     isRegionalLeader
   }), [
-    handleGenerateRequestSheet,
+    openPrintOptionsDialog,
     setEditingRequestAdapter,
     setRequestToDeleteAdapter,
     openApproveDialog,
@@ -282,7 +283,7 @@ function RepairRequestsPageClientInner() {
         applyAssistantDraft={applyAssistantDraft}
         queryClient={queryClient}
       >
-        <RepairRequestsPageDialogs />
+        <RepairRequestsPageDialogs onGenerateSheet={handleGenerateRequestSheet} />
 
         <RepairRequestsPageLayout
           selectedFacilityName={selectedFacilityName}

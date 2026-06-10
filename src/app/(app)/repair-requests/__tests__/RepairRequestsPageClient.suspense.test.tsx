@@ -13,6 +13,10 @@ const mocks = vi.hoisted(() => ({
   useSearchParams: vi.fn(),
   deepLinkHandler: vi.fn(),
   layoutProps: vi.fn(),
+  columnOptions: vi.fn(),
+  pageDialogsProps: vi.fn(),
+  openPrintOptionsDialog: vi.fn(),
+  handleGenerateRequestSheet: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -63,6 +67,7 @@ vi.mock("../_hooks/useRepairRequestsContext", () => ({
     openApproveDialog: vi.fn(),
     openCompleteDialog: vi.fn(),
     openViewDialog: vi.fn(),
+    openPrintOptionsDialog: mocks.openPrintOptionsDialog,
     openCreateSheet: vi.fn(),
     closeAllDialogs: vi.fn(),
     applyAssistantDraft: vi.fn(),
@@ -70,7 +75,9 @@ vi.mock("../_hooks/useRepairRequestsContext", () => ({
 }))
 
 vi.mock("../_hooks/useRepairRequestUIHandlers", () => ({
-  useRepairRequestUIHandlers: () => ({ handleGenerateRequestSheet: vi.fn() }),
+  useRepairRequestUIHandlers: () => ({
+    handleGenerateRequestSheet: mocks.handleGenerateRequestSheet,
+  }),
 }))
 
 vi.mock("../_hooks/useRepairRequestShortcuts", () => ({
@@ -106,7 +113,10 @@ vi.mock("../_hooks/useRepairRequestsSummary", () => ({
 }))
 
 vi.mock("../_components/RepairRequestsColumns", () => ({
-  useRepairRequestColumns: () => [],
+  useRepairRequestColumns: (options: unknown) => {
+    mocks.columnOptions(options)
+    return []
+  },
 }))
 
 vi.mock("../_components/RepairRequestsEditDialog", () => ({
@@ -130,7 +140,10 @@ vi.mock("../_components/RepairRequestsDetailView", () => ({
 }))
 
 vi.mock("../_components/RepairRequestsPageDialogs", () => ({
-  RepairRequestsPageDialogs: () => null,
+  RepairRequestsPageDialogs: (props: unknown) => {
+    mocks.pageDialogsProps(props)
+    return null
+  },
 }))
 
 vi.mock("../_components/RepairRequestsPageLayout", () => ({
@@ -262,5 +275,51 @@ describe("RepairRequestsPage Suspense boundary", () => {
       "data-is-filtered",
       "true",
     )
+  })
+
+  it("routes print action through the prefill choice dialog before generating the sheet", () => {
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: {
+          id: 1,
+          role: "global",
+          don_vi: null,
+          dia_ban_id: null,
+          name: "Global Admin",
+        },
+      },
+      status: "authenticated",
+    })
+
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId: undefined,
+      setSelectedFacilityId: vi.fn(),
+      facilities: [],
+      showSelector: false,
+      shouldFetchData: true,
+      isLoading: false,
+    })
+
+    mocks.useQueryClient.mockReturnValue({
+      invalidateQueries: vi.fn(),
+    })
+
+    mocks.useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+    })
+
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+
+    render(<RepairRequestsPageClient />)
+
+    expect(mocks.columnOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        onGenerateSheet: mocks.openPrintOptionsDialog,
+      }),
+    )
+    expect(mocks.pageDialogsProps).toHaveBeenCalledWith({
+      onGenerateSheet: mocks.handleGenerateRequestSheet,
+    })
   })
 })

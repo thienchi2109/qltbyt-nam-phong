@@ -7,6 +7,10 @@ export type RepairRequestSheetBranding = {
   logoUrl: string
 }
 
+export interface RepairRequestSheetOptions {
+  readonly prefillRequesterName?: boolean
+}
+
 /* ── Shared helpers ── */
 
 const formatValue = (value: unknown) => (value ?? '')
@@ -24,12 +28,14 @@ function buildPage1(
   branding: RepairRequestSheetBranding,
   date: { day: string; month: string; year: string },
   derived: { completionDateValue: string },
+  options: RepairRequestSheetOptions,
 ): string {
   const { organizationName, logoUrl } = branding
   const { day, month, year } = date
   const { completionDateValue } = derived
   const eq = request.thiet_bi!
-  const requesterName = formatValue(request.nguoi_yeu_cau)
+  const requesterName =
+    options.prefillRequesterName === false ? '' : formatValue(request.nguoi_yeu_cau)
 
   return `
     <div class="a4-page">
@@ -147,9 +153,11 @@ function buildPage1(
 
 /* ── Main entry point ── */
 
+/** Builds the printable repair-request sheet HTML for a selected request. */
 export function buildRepairRequestSheetHtml(
   request: RepairRequestWithEquipment,
   branding: RepairRequestSheetBranding,
+  options: RepairRequestSheetOptions = {},
 ): string {
   if (!request || !request.thiet_bi) {
     throw new Error('Không đủ thông tin để tạo phiếu yêu cầu.')
@@ -178,7 +186,7 @@ export function buildRepairRequestSheetHtml(
     <style>${REPAIR_SHEET_STYLES}</style>
 </head>
 <body>
-    ${buildPage1(request, branding, date, derived)}
+    ${buildPage1(request, branding, date, derived, options)}
 </body>
 </html>
   `

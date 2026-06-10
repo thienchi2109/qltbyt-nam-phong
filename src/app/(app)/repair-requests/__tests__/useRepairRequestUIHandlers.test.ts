@@ -1,5 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
 import { renderHook, act } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
+import { buildRepairRequestSheetHtml } from "../request-sheet"
+import type { RepairRequestWithEquipment } from "../types"
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -12,9 +16,6 @@ vi.mock("@/hooks/use-toast", () => ({
 vi.mock("../request-sheet", () => ({
   buildRepairRequestSheetHtml: vi.fn(),
 }))
-
-import { useRepairRequestUIHandlers } from "../_hooks/useRepairRequestUIHandlers"
-import { buildRepairRequestSheetHtml } from "../request-sheet"
 
 const mockBuildRepairRequestSheetHtml = vi.mocked(buildRepairRequestSheetHtml)
 
@@ -48,5 +49,42 @@ describe("useRepairRequestUIHandlers", () => {
         description: "Thiếu thông tin thiết bị",
       })
     )
+  })
+
+  it("passes requester prefill options to the print template builder", () => {
+    mockBuildRepairRequestSheetHtml.mockReturnValue("<html><body>print</body></html>")
+
+    const documentMock = {
+      close: vi.fn(),
+      open: vi.fn(),
+      write: vi.fn(),
+    }
+    const windowOpenSpy = vi
+      .spyOn(window, "open")
+      .mockReturnValue({ document: documentMock } as unknown as Window)
+    const request = { id: 7 } as RepairRequestWithEquipment
+
+    const { result } = renderHook(() =>
+      useRepairRequestUIHandlers({
+        branding: {
+          name: "CDC Cần Thơ",
+          logo_url: "https://example.com/logo.png",
+        },
+        toast: mocks.toast,
+      })
+    )
+
+    result.current.handleGenerateRequestSheet(request, { prefillRequesterName: false })
+
+    expect(mockBuildRepairRequestSheetHtml).toHaveBeenCalledWith(
+      request,
+      {
+        organizationName: "CDC Cần Thơ",
+        logoUrl: "https://example.com/logo.png",
+      },
+      { prefillRequesterName: false }
+    )
+    expect(windowOpenSpy).toHaveBeenCalledWith("", "_blank")
+    expect(documentMock.write).toHaveBeenCalledWith("<html><body>print</body></html>")
   })
 })

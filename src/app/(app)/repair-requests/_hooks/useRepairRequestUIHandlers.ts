@@ -1,5 +1,8 @@
 import type { RepairRequestWithEquipment } from "../types"
-import { buildRepairRequestSheetHtml } from "../request-sheet"
+import {
+  buildRepairRequestSheetHtml,
+  type RepairRequestSheetOptions,
+} from "../request-sheet"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 /** External dependencies for UI handlers */
@@ -11,7 +14,10 @@ export interface UIHandlersDeps {
 /** Returned UI handlers */
 export interface UIHandlersActions {
   /** Generate and open repair request sheet in new window */
-  handleGenerateRequestSheet: (request: RepairRequestWithEquipment) => void
+  handleGenerateRequestSheet: (
+    request: RepairRequestWithEquipment,
+    options?: RepairRequestSheetOptions
+  ) => void
 }
 
 /**
@@ -25,7 +31,10 @@ export function useRepairRequestUIHandlers(
 ): UIHandlersActions {
   const { branding, toast } = deps
 
-  const handleGenerateRequestSheet = (request: RepairRequestWithEquipment): void => {
+  const handleGenerateRequestSheet = (
+    request: RepairRequestWithEquipment,
+    options?: RepairRequestSheetOptions
+  ): void => {
     const organizationName = branding?.name || "TRUNG TÂM KIỂM SOÁT BỆNH TẬT THÀNH PHỐ CẦN THƠ"
     const logoUrl =
       branding?.logo_url ||
@@ -35,7 +44,7 @@ export function useRepairRequestUIHandlers(
       const htmlContent = buildRepairRequestSheetHtml(request, {
         organizationName,
         logoUrl,
-      })
+      }, options)
 
       const newWindow = window.open("", "_blank")
       if (newWindow) {
