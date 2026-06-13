@@ -195,39 +195,6 @@
     @apply sr-only;
   }
 
-  /* Mobile repair request cards optimization */
-  .mobile-repair-card {
-    @apply p-3 md:p-4 gap-2 md:gap-3;
-  }
-
-  .mobile-repair-card-header {
-    @apply p-3 pb-2 md:p-6 md:pb-4;
-  }
-
-  .mobile-repair-card-content {
-    @apply p-3 pt-0 md:p-6 md:pt-0 space-y-2 md:space-y-3;
-  }
-
-  .mobile-repair-card-title {
-    @apply text-sm md:text-base font-medium leading-tight;
-  }
-
-  .mobile-repair-card-description {
-    @apply text-xs md:text-sm text-muted-foreground;
-  }
-
-  .mobile-repair-card-field {
-    @apply flex justify-between items-start gap-2;
-  }
-
-  .mobile-repair-card-label {
-    @apply text-xs md:text-sm text-muted-foreground flex-shrink-0;
-  }
-
-  .mobile-repair-card-value {
-    @apply text-xs md:text-sm font-medium text-right;
-  }
-
   /* Text truncation utilities */
   .line-clamp-1 {
     display: -webkit-box;
