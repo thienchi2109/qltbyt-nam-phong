@@ -349,7 +349,7 @@ React Doctor can auto-switch to diff-only scanning in non-interactive runs. When
 you need a true full-repo scan, force `--full` explicitly:
 
 ```bash
-node scripts/npm-run.js npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose --project nextn --offline --full
+node scripts/npm-run.js npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose --project . --offline --full
 ```
 
 For score-only full scan:

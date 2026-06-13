@@ -119,6 +119,8 @@ export function RepairRequestsMobileList({
   setRequestToView,
   columnOptions,
 }: MobileRequestListProps) {
+  const shouldShowRowActions = Boolean(columnOptions.user) && !columnOptions.isRegionalLeader
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center gap-2 py-6">
@@ -148,7 +150,11 @@ export function RepairRequestsMobileList({
           activationLabel={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || "N/A"}`}
           onActivate={() => setRequestToView(request)}
           primaryAction={getRepairRequestPrimaryAction(request, columnOptions)}
-          actions={<RepairRequestRowActions request={request} options={columnOptions} />}
+          actions={
+            shouldShowRowActions
+              ? <RepairRequestRowActions request={request} options={columnOptions} />
+              : undefined
+          }
         >
           {request.nguoi_yeu_cau && (
             <RepairRequestCardField label="Người yêu cầu" value={request.nguoi_yeu_cau} />

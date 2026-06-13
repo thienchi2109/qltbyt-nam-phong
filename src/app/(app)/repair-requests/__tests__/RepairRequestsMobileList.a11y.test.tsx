@@ -159,7 +159,7 @@ describe("RepairRequestsMobileList accessibility", () => {
       isRegionalLeader: true,
     }
 
-    render(
+    const { container } = render(
       <RepairRequestsMobileList
         requests={[request]}
         isLoading={false}
@@ -170,6 +170,28 @@ describe("RepairRequestsMobileList accessibility", () => {
 
     expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
+    expect(container.querySelector('[role="presentation"]')).not.toBeInTheDocument()
+  })
+
+  it("does not reserve action bar space when no user actions are available", () => {
+    const request = makeRepairRequest()
+    const columnOptions = {
+      ...makeColumnOptions(),
+      user: null,
+    }
+
+    const { container } = render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={columnOptions}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
+    expect(container.querySelector('[role="presentation"]')).not.toBeInTheDocument()
   })
 
   it("keeps block card content outside the activation button", () => {
