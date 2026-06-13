@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 
 import { type Equipment } from "@/types/database"
 import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request"
-import { Card } from "@/components/ui/card"
+import { MobileCompactCard } from "@/components/shared/MobileCompactCard"
 import {
   buildRepairRequestCreateIntentHref,
   buildRepairRequestsByEquipmentHref,
@@ -55,6 +55,48 @@ const getStatusStyle = (status: Equipment["tinh_trang_hien_tai"]) => {
 const isOutOfService = (status: Equipment["tinh_trang_hien_tai"]) =>
   status === "Ngưng sử dụng" || status === "Chưa có nhu cầu sử dụng"
 
+interface EquipmentCardMetaProps {
+  equipment: Equipment
+}
+
+function EquipmentCardMeta({ equipment }: EquipmentCardMetaProps) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <MapPin className="size-3.5 shrink-0" />
+      <span className="truncate">
+        {equipment.khoa_phong_quan_ly || "N/A"}
+        {equipment.vi_tri_lap_dat && ` • ${equipment.vi_tri_lap_dat}`}
+      </span>
+    </div>
+  )
+}
+
+interface EquipmentCardStatusProps {
+  equipment: Equipment
+  status: Equipment["tinh_trang_hien_tai"]
+  statusStyle: ReturnType<typeof getStatusStyle>
+}
+
+function EquipmentCardStatus({
+  equipment,
+  status,
+  statusStyle,
+}: EquipmentCardStatusProps) {
+  if (!status) return null
+
+  return (
+    <>
+      <div className={`flex items-center gap-1.5 rounded-full px-2 py-0.5 ${statusStyle.bg}`}>
+        <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
+        <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
+          {status}
+        </span>
+      </div>
+      <LinkedRequestRowIndicator equipment={equipment} />
+    </>
+  )
+}
+
 /** Renders a compact mobile equipment card with status-aware actions. */
 export function MobileEquipmentListItem({
   equipment,
@@ -65,13 +107,6 @@ export function MobileEquipmentListItem({
   const status = equipment.tinh_trang_hien_tai
   const statusStyle = getStatusStyle(status)
   const outOfService = isOutOfService(status)
-
-  const handleCardClick = (event: React.MouseEvent) => {
-    if (event.target instanceof Element && event.target.closest("[data-mobile-equipment-actions]")) {
-      return
-    }
-    onShowDetails(equipment)
-  }
 
   const handleCreateRepairRequest = React.useCallback(
     (equipmentId: number) => {
@@ -87,57 +122,18 @@ export function MobileEquipmentListItem({
     [push],
   )
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.currentTarget !== e.target) return
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      onShowDetails(equipment)
-    }
-  }
-
   return (
-    <Card
-      className={`rounded-xl overflow-hidden transition-all hover:shadow-md cursor-pointer ${outOfService ? "opacity-70" : ""}`}
-      role="button"
-      tabIndex={0}
-      aria-label={`Thiết bị: ${equipment.ten_thiet_bi}`}
-      onClick={handleCardClick}
-      onKeyDown={handleKeyDown}
-    >
-      <div className="p-3 space-y-2">
-        {/* Row 1: Equipment Code + Status */}
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono tracking-wider text-muted-foreground uppercase">
-            {equipment.ma_thiet_bi}
-          </span>
-          {status && (
-            <div className="flex items-center gap-1">
-              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${statusStyle.bg}`}>
-                <span className={`size-1.5 rounded-full ${statusStyle.dot}`} />
-                <span className={`text-[10px] font-semibold uppercase tracking-tight ${statusStyle.text}`}>
-                  {status}
-                </span>
-              </div>
-              <LinkedRequestRowIndicator equipment={equipment} />
-            </div>
-          )}
-        </div>
-
-        {/* Row 2: Equipment Name */}
-        <h3 className="text-[15px] font-semibold text-foreground leading-tight">
-          {equipment.ten_thiet_bi}
-        </h3>
-
-        {/* Row 3: Department + Location */}
-        <div className="flex items-center text-xs text-muted-foreground gap-1.5">
-          <MapPin className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {equipment.khoa_phong_quan_ly || "N/A"}
-            {equipment.vi_tri_lap_dat && ` • ${equipment.vi_tri_lap_dat}`}
-          </span>
-        </div>
-
-        {/* Row 4: Action Buttons */}
+    <MobileCompactCard
+      eyebrow={equipment.ma_thiet_bi}
+      title={equipment.ten_thiet_bi}
+      MetaComponent={EquipmentCardMeta}
+      metaProps={{ equipment }}
+      TopRightComponent={EquipmentCardStatus}
+      topRightProps={{ equipment, status, statusStyle }}
+      activationLabel={`Thiết bị: ${equipment.ten_thiet_bi}`}
+      onActivate={() => onShowDetails(equipment)}
+      className={outOfService ? "opacity-70" : undefined}
+      actions={(
         <MobileEquipmentActionButtons
           equipment={equipment}
           status={status}
@@ -146,8 +142,8 @@ export function MobileEquipmentListItem({
           onViewRepairDetails={handleViewRepairDetails}
           onShowDetails={onShowDetails}
         />
-      </div>
-    </Card>
+      )}
+    />
   )
 }
 
@@ -181,7 +177,7 @@ function MobileEquipmentActionButtons({
     return (
       <fieldset
         data-mobile-equipment-actions
-        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
+        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
       >
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
@@ -201,7 +197,7 @@ function MobileEquipmentActionButtons({
     return (
       <fieldset
         data-mobile-equipment-actions
-        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
+        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
       >
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
@@ -222,7 +218,7 @@ function MobileEquipmentActionButtons({
     return (
       <fieldset
         data-mobile-equipment-actions
-        className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
+        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
       >
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
@@ -242,7 +238,7 @@ function MobileEquipmentActionButtons({
   return (
     <fieldset
       data-mobile-equipment-actions
-      className="flex min-w-0 gap-2 border-0 p-0 pt-0.5"
+      className="flex min-w-0 flex-1 gap-2 border-0 p-0"
     >
       <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
       <button

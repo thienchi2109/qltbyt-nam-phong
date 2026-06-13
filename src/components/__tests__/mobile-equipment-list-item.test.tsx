@@ -86,6 +86,27 @@ describe("MobileEquipmentListItem", () => {
     expect(onShowDetails).not.toHaveBeenCalled()
   })
 
+  it("opens equipment details from the compact card activation target", async () => {
+    const user = userEvent.setup()
+    const onShowDetails = vi.fn()
+
+    render(
+      <LinkedRequestProvider>
+        <MobileEquipmentListItem
+          equipment={equipment}
+          onShowDetails={onShowDetails}
+        />
+      </LinkedRequestProvider>,
+    )
+
+    await user.click(screen.getByRole("button", { name: "Thiết bị: Máy X-quang" }))
+
+    expect(onShowDetails).toHaveBeenCalledWith(equipment)
+    expect(screen.getByText("TB-042")).toBeInTheDocument()
+    expect(screen.getByText("Máy X-quang")).toBeInTheDocument()
+    expect(screen.getByText(/CDHA/)).toBeInTheDocument()
+  })
+
   it('routes "Chi tiết sự cố" to the equipment-filtered repair requests list without opening create intent', async () => {
     const user = userEvent.setup()
     const onShowDetails = vi.fn()

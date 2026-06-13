@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -109,6 +109,91 @@ describe("RepairRequestsMobileList accessibility", () => {
     expect(setRequestToView).not.toHaveBeenCalled()
   })
 
+  it("shows a state-based primary action for pending requests without opening the card", async () => {
+    const user = userEvent.setup()
+    const request = makeRepairRequest()
+    const setRequestToView = vi.fn()
+    const columnOptions = makeColumnOptions()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={setRequestToView}
+        columnOptions={columnOptions}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "Duyệt" }))
+
+    expect(columnOptions.handleApproveRequest).toHaveBeenCalledWith(request)
+    expect(setRequestToView).not.toHaveBeenCalled()
+  })
+
+  it("shows complete as the primary action for approved requests", async () => {
+    const user = userEvent.setup()
+    const request = {
+      ...makeRepairRequest(),
+      trang_thai: "Đã duyệt",
+    }
+    const columnOptions = makeColumnOptions()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={columnOptions}
+      />,
+    )
+
+    await user.click(screen.getByRole("button", { name: "Hoàn thành" }))
+
+    expect(columnOptions.handleCompletion).toHaveBeenCalledWith(request, "Hoàn thành")
+  })
+
+  it("hides primary and overflow actions for regional leaders", () => {
+    const request = makeRepairRequest()
+    const columnOptions = {
+      ...makeColumnOptions(),
+      isRegionalLeader: true,
+    }
+
+    const { container } = render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={columnOptions}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
+    expect(container.querySelector('[role="presentation"]')).not.toBeInTheDocument()
+  })
+
+  it("does not reserve action bar space when no user actions are available", () => {
+    const request = makeRepairRequest()
+    const columnOptions = {
+      ...makeColumnOptions(),
+      user: null,
+    }
+
+    const { container } = render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={columnOptions}
+      />,
+    )
+
+    expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
+    expect(container.querySelector('[role="presentation"]')).not.toBeInTheDocument()
+  })
+
   it("keeps block card content outside the activation button", () => {
     const request = makeRepairRequest()
 
@@ -123,7 +208,7 @@ describe("RepairRequestsMobileList accessibility", () => {
 
     const activationButton = screen.getByRole("button", { name: /Máy siêu âm/ })
 
-    expect(activationButton.querySelector(".mobile-repair-card-content")).toBeNull()
+    expect(within(activationButton).queryByText("Người yêu cầu")).not.toBeInTheDocument()
     expect(screen.getByText("Người yêu cầu").closest("button")).not.toBe(activationButton)
   })
 })

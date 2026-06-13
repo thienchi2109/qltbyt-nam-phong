@@ -3,8 +3,10 @@ import { format, parseISO } from "date-fns"
 import { vi } from 'date-fns/locale'
 import { Loader2 } from "lucide-react"
 
+import { MobileCompactCard } from "@/components/shared/MobileCompactCard"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
@@ -28,6 +30,85 @@ export interface MobileRequestListProps {
   columnOptions: RepairRequestColumnOptions
 }
 
+function RepairRequestCardField({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
+      <span className="text-right text-xs font-medium">{value}</span>
+    </div>
+  )
+}
+
+function RepairRequestStatusBadge({ status }: { status: string }) {
+  return (
+    <Badge variant={getStatusVariant(status)} className="text-xs">
+      {status}
+    </Badge>
+  )
+}
+
+function getRepairRequestPrimaryAction(
+  request: RepairRequestWithEquipment,
+  columnOptions: RepairRequestColumnOptions,
+) {
+  const {
+    handleApproveRequest,
+    handleCompletion,
+    onGenerateSheet,
+    user,
+    isRegionalLeader,
+  } = columnOptions
+
+  if (!user || isRegionalLeader) return null
+
+  const canManage = isEquipmentManagerRole(user.role)
+  const buttonClassName = "h-8 flex-1 rounded-lg text-xs font-semibold"
+
+  if (canManage && request.trang_thai === "Chờ xử lý") {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        className={buttonClassName}
+        onClick={() => handleApproveRequest(request)}
+      >
+        Duyệt
+      </Button>
+    )
+  }
+
+  if (canManage && request.trang_thai === "Đã duyệt") {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        className={buttonClassName}
+        onClick={() => handleCompletion(request, "Hoàn thành")}
+      >
+        Hoàn thành
+      </Button>
+    )
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      className={buttonClassName}
+      onClick={() => onGenerateSheet(request)}
+    >
+      Xem phiếu
+    </Button>
+  )
+}
+
 /**
  * Mobile card view for repair requests.
  * Displays requests in a card layout optimized for mobile screens.
@@ -38,12 +119,7 @@ export function RepairRequestsMobileList({
   setRequestToView,
   columnOptions,
 }: MobileRequestListProps) {
-  const stopActionPropagation = React.useCallback(
-    (event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>) => {
-      event.stopPropagation()
-    },
-    [],
-  )
+  const shouldShowRowActions = Boolean(columnOptions.user) && !columnOptions.isRegionalLeader
 
   if (isLoading) {
     return (
@@ -65,90 +141,59 @@ export function RepairRequestsMobileList({
   return (
     <div className="space-y-3">
       {requests.map((request) => (
-        <Card
+        <MobileCompactCard
           key={request.id}
-          className="mobile-repair-card relative hover:bg-muted/50"
+          title={request.thiet_bi?.ten_thiet_bi || "N/A"}
+          subtitle={request.thiet_bi?.ma_thiet_bi || "N/A"}
+          TopRightComponent={RepairRequestStatusBadge}
+          topRightProps={{ status: request.trang_thai }}
+          activationLabel={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || "N/A"}`}
+          onActivate={() => setRequestToView(request)}
+          primaryAction={getRepairRequestPrimaryAction(request, columnOptions)}
+          actions={
+            shouldShowRowActions
+              ? <RepairRequestRowActions request={request} options={columnOptions} />
+              : undefined
+          }
         >
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-pointer rounded-lg bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-            onClick={() => setRequestToView(request)}
-            aria-label={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || 'N/A'}`}
+          {request.nguoi_yeu_cau && (
+            <RepairRequestCardField label="Người yêu cầu" value={request.nguoi_yeu_cau} />
+          )}
+
+          <RepairRequestCardField
+            label="Ngày yêu cầu"
+            value={format(parseISO(request.ngay_yeu_cau), "dd/MM/yyyy", { locale: vi })}
           />
-          <CardHeader className="mobile-repair-card-header pointer-events-none relative z-10 flex flex-row items-start justify-between">
-            <div className="min-w-0 flex-1 pr-12">
-              <CardTitle className="mobile-repair-card-title truncate line-clamp-1">
-                {request.thiet_bi?.ten_thiet_bi || 'N/A'}
-              </CardTitle>
-              <CardDescription className="mobile-repair-card-description truncate">
-                {request.thiet_bi?.ma_thiet_bi || 'N/A'}
-              </CardDescription>
+
+          {request.ngay_mong_muon_hoan_thanh && (
+            <div className="space-y-2">
+              <RepairRequestCardField
+                label="Ngày mong muốn HT"
+                value={format(parseISO(request.ngay_mong_muon_hoan_thanh), "dd/MM/yyyy", { locale: vi })}
+              />
+              <DaysRemainingBar
+                deadline={request.ngay_mong_muon_hoan_thanh}
+                status={request.trang_thai}
+              />
             </div>
-          </CardHeader>
-          <CardContent className="mobile-repair-card-content pointer-events-none relative z-10">
-            {/* Người yêu cầu */}
-            {request.nguoi_yeu_cau && (
-              <div className="mobile-repair-card-field">
-                <span className="mobile-repair-card-label">Người yêu cầu</span>
-                <span className="mobile-repair-card-value">{request.nguoi_yeu_cau}</span>
-              </div>
-            )}
+          )}
 
-            {/* Ngày yêu cầu */}
-            <div className="mobile-repair-card-field">
-              <span className="mobile-repair-card-label">Ngày yêu cầu</span>
-              <span className="mobile-repair-card-value">
-                {format(parseISO(request.ngay_yeu_cau), 'dd/MM/yyyy', { locale: vi })}
-              </span>
-            </div>
-
-            {/* Ngày mong muốn hoàn thành */}
-            {request.ngay_mong_muon_hoan_thanh && (
-              <div className="space-y-2">
-                <div className="mobile-repair-card-field">
-                  <span className="mobile-repair-card-label">Ngày mong muốn HT</span>
-                  <span className="mobile-repair-card-value">
-                    {format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy', { locale: vi })}
-                  </span>
-                </div>
-                <DaysRemainingBar
-                  deadline={request.ngay_mong_muon_hoan_thanh}
-                  status={request.trang_thai}
-                />
-              </div>
-            )}
-
-            {/* Trạng thái */}
-            <div className="mobile-repair-card-field">
-              <span className="mobile-repair-card-label">Trạng thái</span>
-              <Badge variant={getStatusVariant(request.trang_thai)} className="text-xs">
-                {request.trang_thai}
-              </Badge>
-            </div>
-
-            {/* Mô tả sự cố */}
-            <div className="space-y-1">
-              <span className="mobile-repair-card-label">Mô tả sự cố:</span>
-              <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.mo_ta_su_co}</p>
-            </div>
-
-            {/* Hạng mục sửa chữa (optional) */}
-            {request.hang_muc_sua_chua && (
-              <div className="space-y-1">
-                <span className="mobile-repair-card-label">Hạng mục sửa chữa:</span>
-                <p className="mobile-repair-card-value text-left text-xs leading-relaxed line-clamp-2">{request.hang_muc_sua_chua}</p>
-              </div>
-            )}
-          </CardContent>
-          <div
-            className="absolute right-6 top-6 z-20 flex-shrink-0"
-            onClick={stopActionPropagation}
-            onKeyDown={stopActionPropagation}
-            role="presentation"
-          >
-            <RepairRequestRowActions request={request} options={columnOptions} />
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">Mô tả sự cố:</span>
+            <p className="line-clamp-2 text-left text-xs font-medium leading-relaxed">
+              {request.mo_ta_su_co}
+            </p>
           </div>
-        </Card>
+
+          {request.hang_muc_sua_chua && (
+            <div className="space-y-1">
+              <span className="text-xs text-muted-foreground">Hạng mục sửa chữa:</span>
+              <p className="line-clamp-2 text-left text-xs font-medium leading-relaxed">
+                {request.hang_muc_sua_chua}
+              </p>
+            </div>
+          )}
+        </MobileCompactCard>
       ))}
     </div>
   )
