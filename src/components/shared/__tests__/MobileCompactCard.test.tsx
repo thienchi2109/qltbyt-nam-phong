@@ -6,6 +6,10 @@ import { describe, expect, it, vi } from "vitest"
 import { MobileCompactCard } from "../MobileCompactCard"
 
 describe("MobileCompactCard", () => {
+  function StatusSlot({ label }: { label: string }) {
+    return <span>{label}</span>
+  }
+
   it("renders compact card slots", () => {
     render(
       <MobileCompactCard
@@ -30,6 +34,48 @@ describe("MobileCompactCard", () => {
     expect(screen.getByText("Ghi chú card")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Báo sửa chữa" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Thêm" })).toBeInTheDocument()
+  })
+
+  it("renders typed component slots from their props", () => {
+    render(
+      <MobileCompactCard
+        title="Máy X-quang"
+        activationLabel="Xem thiết bị Máy X-quang"
+        TopRightComponent={StatusSlot}
+        topRightProps={{ label: "Hoạt động" }}
+        MetaComponent={StatusSlot}
+        metaProps={{ label: "Tầng 2" }}
+      />,
+    )
+
+    expect(screen.getByText("Hoạt động")).toBeInTheDocument()
+    expect(screen.getByText("Tầng 2")).toBeInTheDocument()
+  })
+
+  it("does not mark the action zone as presentational or intercept keyboard events", () => {
+    const { container } = render(
+      <MobileCompactCard
+        title="Máy X-quang"
+        activationLabel="Xem thiết bị Máy X-quang"
+        primaryAction={<button type="button">Duyệt</button>}
+      />,
+    )
+
+    expect(container.querySelector('[role="presentation"]')).not.toBeInTheDocument()
+  })
+
+  it("omits component slots when their props are not provided", () => {
+    render(
+      <MobileCompactCard
+        title="Máy X-quang"
+        activationLabel="Xem thiết bị Máy X-quang"
+        TopRightComponent={StatusSlot}
+        MetaComponent={StatusSlot}
+      />,
+    )
+
+    expect(screen.queryByText("Hoạt động")).not.toBeInTheDocument()
+    expect(screen.queryByText("Tầng 2")).not.toBeInTheDocument()
   })
 
   it("activates by click and keyboard without nesting card content inside the activation button", async () => {

@@ -27,12 +27,6 @@ export interface MobileCompactCardProps<
   disabled?: boolean
 }
 
-function stopActionPropagation(
-  event: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
-) {
-  event.stopPropagation()
-}
-
 /** Renders a mobile card shell with a separate activation target and isolated action zone. */
 export function MobileCompactCard<
   MetaProps extends object = Record<string, never>,
@@ -56,11 +50,11 @@ export function MobileCompactCard<
   disabled = false,
 }: MobileCompactCardProps<MetaProps, TopRightProps>) {
   const canActivate = Boolean(onActivate) && !disabled
-  const topRightContent = TopRightComponent ? (
-    <TopRightComponent {...(topRightProps ?? ({} as TopRightProps))} />
+  const topRightContent = TopRightComponent && topRightProps ? (
+    <TopRightComponent {...topRightProps} />
   ) : topRight
-  const metaContent = MetaComponent ? (
-    <MetaComponent {...(metaProps ?? ({} as MetaProps))} />
+  const metaContent = MetaComponent && metaProps ? (
+    <MetaComponent {...metaProps} />
   ) : meta
 
   return (
@@ -119,12 +113,7 @@ export function MobileCompactCard<
       </div>
 
       {(primaryAction || actions) && (
-        <div
-          className="relative z-20 flex min-w-0 gap-2 px-3 pb-3 pt-0.5"
-          onClick={stopActionPropagation}
-          onKeyDown={stopActionPropagation}
-          role="presentation"
-        >
+        <div className="relative z-20 flex min-w-0 gap-2 px-3 pb-3 pt-0.5">
           {primaryAction}
           {actions}
         </div>
