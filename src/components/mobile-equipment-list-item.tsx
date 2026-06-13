@@ -143,9 +143,7 @@ export function MobileEquipmentListItem({
           onShowDetails={onShowDetails}
         />
       )}
-    >
-      {null}
-    </MobileCompactCard>
+    />
   )
 }
 
