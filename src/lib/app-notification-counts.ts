@@ -6,18 +6,19 @@ export interface AppNotificationCounts {
 
 export type AppNotificationBadgeKey = keyof AppNotificationCounts
 
+/** Empty notification count state used before scoped counts are loaded. */
 export const EMPTY_APP_NOTIFICATION_COUNTS: AppNotificationCounts = {
   repair: 0,
   transfer: 0,
   maintenance: 0,
 }
 
-const BADGE_CAP = 9
-
+/** Converts unknown RPC count values into non-negative integer badge counts. */
 export function normalizeNotificationCount(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0
 }
 
+/** Formats a normalized app notification count for badge display. */
 export function formatNotificationBadgeCount(count: number): string | null {
   const normalizedCount = normalizeNotificationCount(count)
 
@@ -25,9 +26,10 @@ export function formatNotificationBadgeCount(count: number): string | null {
     return null
   }
 
-  return normalizedCount > BADGE_CAP ? "9+" : String(normalizedCount)
+  return String(normalizedCount)
 }
 
+/** Sums selected notification count fields using the shared count normalizer. */
 export function sumNotificationBadgeCounts(
   keys: readonly AppNotificationBadgeKey[],
   counts: AppNotificationCounts

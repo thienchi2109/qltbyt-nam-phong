@@ -65,7 +65,7 @@ describe("NotificationBellDialog", () => {
     )
   })
 
-  it("caps the total badge at 9+", () => {
+  it("shows the exact total badge count above 9", () => {
     render(
       <NotificationBellDialog
         repairCount={4}
@@ -74,7 +74,7 @@ describe("NotificationBellDialog", () => {
       />
     )
 
-    expect(screen.getByText("9+")).toBeInTheDocument()
+    expect(screen.getByText("12")).toBeInTheDocument()
   })
 
   it("closes the dialog after clicking a detail link", async () => {

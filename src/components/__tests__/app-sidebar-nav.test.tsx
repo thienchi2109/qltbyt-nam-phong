@@ -44,9 +44,9 @@ describe("AppSidebarNav", () => {
 
     expect(within(repairLink!).getByText("2")).toBeInTheDocument()
     expect(within(transferLink!).getByText("4")).toBeInTheDocument()
-    expect(within(maintenanceLink!).getByText("9+")).toBeInTheDocument()
+    expect(within(maintenanceLink!).getByText("12")).toBeInTheDocument()
     expect(within(dashboardLink!).queryByText("2")).not.toBeInTheDocument()
     expect(within(dashboardLink!).queryByText("4")).not.toBeInTheDocument()
-    expect(within(dashboardLink!).queryByText("9+")).not.toBeInTheDocument()
+    expect(within(dashboardLink!).queryByText("12")).not.toBeInTheDocument()
   })
 })
