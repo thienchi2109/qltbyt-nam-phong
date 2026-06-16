@@ -2,7 +2,7 @@
  * useAddTasksEquipment.test.ts
  *
  * TDD RED phase: tests for the useAddTasksEquipment hook.
- * Verifies Equipment[] typing, enabled/disabled states, and typed Error handling.
+ * Verifies server-side pagination, filter buckets, enabled states, and typed Error handling.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -54,6 +54,25 @@ const MOCK_EQUIPMENT: Equipment[] = [
   },
 ]
 
+const MOCK_FILTER_BUCKETS = {
+  department: [{ name: 'ICU', count: 5 }],
+  user: [{ name: 'User A', count: 3 }],
+  location: [{ name: 'Room 101', count: 2 }],
+}
+
+const DEFAULT_PARAMS = {
+  open: true,
+  planDonVi: 17,
+  search: '',
+  pagination: { pageIndex: 0, pageSize: 10 },
+  sort: 'id.asc',
+  filters: {
+    departments: [] as string[],
+    users: [] as string[],
+    locations: [] as string[],
+  },
+}
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -74,25 +93,59 @@ function createWrapper() {
 describe('useAddTasksEquipment', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === 'equipment_filter_buckets') {
+        return Promise.resolve(MOCK_FILTER_BUCKETS)
+      }
+      return Promise.resolve({
+        data: MOCK_EQUIPMENT,
+        total: 1947,
+        page: 1,
+        pageSize: 10,
+      })
+    })
   })
 
-  it('returns Equipment[] data when dialog is open', async () => {
-    mockCallRpc.mockResolvedValue(MOCK_EQUIPMENT)
-
-    const { result } = renderHook(() => useAddTasksEquipment(true), {
+  it('fetches equipment with server-side pagination and plan tenant scope', async () => {
+    const { result } = renderHook(() => useAddTasksEquipment({
+      ...DEFAULT_PARAMS,
+      search: 'monitor',
+      pagination: { pageIndex: 2, pageSize: 25 },
+      sort: 'ma_thiet_bi.desc',
+      filters: {
+        departments: ['ICU'],
+        users: ['User A'],
+        locations: ['Room 101'],
+      },
+    }), {
       wrapper: createWrapper(),
     })
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
+      expect(result.current.equipment).toEqual(MOCK_EQUIPMENT)
     })
 
-    expect(result.current.data).toEqual(MOCK_EQUIPMENT)
-    expect(result.current.data?.[0].ma_thiet_bi).toBe('TB-001')
+    expect(result.current.total).toBe(1947)
+    expect(mockCallRpc).toHaveBeenCalledWith(expect.objectContaining({
+      fn: 'equipment_list_enhanced',
+      args: {
+        p_q: 'monitor',
+        p_sort: 'ma_thiet_bi.desc',
+        p_page: 3,
+        p_page_size: 25,
+        p_don_vi: 17,
+        p_khoa_phong_array: ['ICU'],
+        p_nguoi_su_dung_array: ['User A'],
+        p_vi_tri_lap_dat_array: ['Room 101'],
+      },
+    }))
   })
 
   it('does not fetch when dialog is closed', () => {
-    const { result } = renderHook(() => useAddTasksEquipment(false), {
+    const { result } = renderHook(() => useAddTasksEquipment({
+      ...DEFAULT_PARAMS,
+      open: false,
+    }), {
       wrapper: createWrapper(),
     })
 
@@ -101,9 +154,14 @@ describe('useAddTasksEquipment', () => {
   })
 
   it('returns typed Error on RPC failure', async () => {
-    mockCallRpc.mockRejectedValue(new Error('Network error'))
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === 'equipment_filter_buckets') {
+        return Promise.resolve(MOCK_FILTER_BUCKETS)
+      }
+      return Promise.reject(new Error('Network error'))
+    })
 
-    const { result } = renderHook(() => useAddTasksEquipment(true), {
+    const { result } = renderHook(() => useAddTasksEquipment(DEFAULT_PARAMS), {
       wrapper: createWrapper(),
     })
 
@@ -115,41 +173,33 @@ describe('useAddTasksEquipment', () => {
     expect(result.current.error?.message).toBe('Network error')
   })
 
-  it('warns when returned data count hits the fetch limit', async () => {
-    const { EQUIPMENT_FETCH_LIMIT } = await import('../useAddTasksEquipment')
-    const atLimitData = Array.from({ length: EQUIPMENT_FETCH_LIMIT }, (_, i) => ({
-      ...MOCK_EQUIPMENT[0],
-      id: i + 1,
-      ma_thiet_bi: `TB-${String(i + 1).padStart(3, '0')}`,
-    }))
-    mockCallRpc.mockResolvedValue(atLimitData)
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-
-    const { result } = renderHook(() => useAddTasksEquipment(true), {
+  it('fetches filter buckets for the entire plan tenant scope', async () => {
+    const { result } = renderHook(() => useAddTasksEquipment(DEFAULT_PARAMS), {
       wrapper: createWrapper(),
     })
 
     await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
+      expect(result.current.filterOptions.departments).toEqual([{ label: 'ICU', value: 'ICU' }])
     })
 
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('equipment_list returned'),
-    )
-    warnSpy.mockRestore()
+    expect(result.current.filterOptions.users).toEqual([{ label: 'User A', value: 'User A' }])
+    expect(result.current.filterOptions.locations).toEqual([{ label: 'Room 101', value: 'Room 101' }])
+    expect(mockCallRpc).toHaveBeenCalledWith(expect.objectContaining({
+      fn: 'equipment_filter_buckets',
+      args: { p_don_vi: 17 },
+    }))
   })
 
-  it('returns empty array when RPC returns null', async () => {
-    mockCallRpc.mockResolvedValue(null)
-
-    const { result } = renderHook(() => useAddTasksEquipment(true), {
+  it('does not fetch when plan tenant is missing', () => {
+    const { result } = renderHook(() => useAddTasksEquipment({
+      ...DEFAULT_PARAMS,
+      planDonVi: null,
+    }), {
       wrapper: createWrapper(),
     })
 
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true)
-    })
-
-    expect(result.current.data).toEqual([])
+    expect(result.current.equipment).toEqual([])
+    expect(result.current.total).toBe(0)
+    expect(mockCallRpc).not.toHaveBeenCalled()
   })
 })
