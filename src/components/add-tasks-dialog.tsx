@@ -10,9 +10,7 @@
 import * as React from "react"
 import type {
   ColumnDef,
-  ColumnFiltersState,
   PaginationState,
-  RowSelectionState,
   SortingState,
   Updater,
   VisibilityState,
@@ -20,11 +18,6 @@ import type {
 import {
   flexRender,
   getCoreRowModel,
-  getFacetedRowModel,
-  getFacetedUniqueValues,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table"
 import { Loader2, FilterX, ChevronDown } from "lucide-react"
@@ -57,13 +50,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAddTasksEquipment } from "@/hooks/useAddTasksEquipment"
+import type { AddTasksEquipmentFilters } from "@/hooks/useAddTasksEquipment"
 import type { Equipment, MaintenancePlan } from "@/lib/data"
 import { ScrollArea } from "./ui/scroll-area"
 import { useSearchDebounce } from "@/hooks/use-debounce"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { buildAddTasksFilterOptions } from "./add-tasks-dialog-filter-options"
 
 interface AddTasksDialogProps {
   open: boolean
@@ -74,36 +67,38 @@ interface AddTasksDialogProps {
 }
 
 interface AddTasksTableState {
-  columnFilters: ColumnFiltersState
+  filters: AddTasksEquipmentFilters
   columnVisibility: VisibilityState
   pagination: PaginationState
-  rowSelection: RowSelectionState
   searchTerm: string
   sorting: SortingState
 }
 
 type AddTasksTableAction =
   | { type: "reset-dialog" }
-  | { type: "set-column-filters"; updater: Updater<ColumnFiltersState> }
   | { type: "set-column-visibility"; updater: Updater<VisibilityState> }
+  | { type: "set-filter"; key: keyof AddTasksEquipmentFilters; values: string[] }
+  | { type: "clear-filters" }
   | { type: "set-pagination"; updater: Updater<PaginationState> }
-  | { type: "set-row-selection"; updater: Updater<RowSelectionState> }
   | { type: "set-search-term"; value: string }
   | { type: "set-sorting"; updater: Updater<SortingState> }
 
 const initialAddTasksTableState: AddTasksTableState = {
-  columnFilters: [],
+  filters: {
+    departments: [],
+    users: [],
+    locations: [],
+  },
   columnVisibility: {
     "nguoi_dang_truc_tiep_quan_ly": false,
     "vi_tri_lap_dat": false,
   },
   pagination: { pageIndex: 0, pageSize: 10 },
-  rowSelection: {},
   searchTerm: "",
   sorting: [],
 }
 
-const EMPTY_ADD_TASKS_EQUIPMENT: Equipment[] = []
+const DEFAULT_ADD_TASKS_SORT = "id.asc"
 
 function resolveUpdater<T>(updater: Updater<T>, current: T): T {
   if (typeof updater !== "function") {
@@ -121,25 +116,50 @@ function addTasksTableReducer(
     case "reset-dialog":
       return {
         ...initialAddTasksTableState,
-        columnFilters: [...initialAddTasksTableState.columnFilters],
+        filters: {
+          departments: [],
+          users: [],
+          locations: [],
+        },
         columnVisibility: { ...initialAddTasksTableState.columnVisibility },
         pagination: { ...initialAddTasksTableState.pagination },
-        rowSelection: { ...initialAddTasksTableState.rowSelection },
         sorting: [...initialAddTasksTableState.sorting],
       }
-    case "set-column-filters":
-      return { ...state, columnFilters: resolveUpdater(action.updater, state.columnFilters) }
     case "set-column-visibility":
       return { ...state, columnVisibility: resolveUpdater(action.updater, state.columnVisibility) }
+    case "set-filter":
+      return {
+        ...state,
+        filters: { ...state.filters, [action.key]: action.values },
+        pagination: { ...state.pagination, pageIndex: 0 },
+      }
+    case "clear-filters":
+      return {
+        ...state,
+        filters: {
+          departments: [],
+          users: [],
+          locations: [],
+        },
+        pagination: { ...state.pagination, pageIndex: 0 },
+      }
     case "set-pagination":
       return { ...state, pagination: resolveUpdater(action.updater, state.pagination) }
-    case "set-row-selection":
-      return { ...state, rowSelection: resolveUpdater(action.updater, state.rowSelection) }
     case "set-search-term":
-      return { ...state, searchTerm: action.value }
+      return { ...state, searchTerm: action.value, pagination: { ...state.pagination, pageIndex: 0 } }
     case "set-sorting":
-      return { ...state, sorting: resolveUpdater(action.updater, state.sorting) }
+      return {
+        ...state,
+        sorting: resolveUpdater(action.updater, state.sorting),
+        pagination: { ...state.pagination, pageIndex: 0 },
+      }
   }
+}
+
+function getAddTasksSortParam(sorting: SortingState): string {
+  const [primarySort] = sorting
+  if (!primarySort) return DEFAULT_ADD_TASKS_SORT
+  return `${primarySort.id}.${primarySort.desc ? "desc" : "asc"}`
 }
 
 /** Renders the dialog for adding available equipment to a maintenance plan. */
@@ -150,14 +170,48 @@ export function AddTasksDialog({
   existingEquipmentIds,
   onSuccess,
 }: AddTasksDialogProps) {
-  const { data, isLoading, error } = useAddTasksEquipment(open)
-  const equipment = data ?? EMPTY_ADD_TASKS_EQUIPMENT
   const [tableState, dispatchTable] = React.useReducer(
     addTasksTableReducer,
     initialAddTasksTableState,
   )
+  const [selectedEquipmentById, setSelectedEquipmentById] = React.useState<Map<number, Equipment>>(
+    () => new Map(),
+  )
 
   const debouncedSearch = useSearchDebounce(tableState.searchTerm)
+  const sortParam = React.useMemo(() => getAddTasksSortParam(tableState.sorting), [tableState.sorting])
+  const planDonVi = plan?.don_vi ?? null
+  const missingPlanTenant = open && plan !== null && planDonVi === null
+  const existingEquipmentIdSet = React.useMemo(
+    () => new Set(existingEquipmentIds),
+    [existingEquipmentIds],
+  )
+  const {
+    equipment,
+    total,
+    isLoading,
+    isFetching,
+    error,
+    filterOptions,
+  } = useAddTasksEquipment({
+    open,
+    planDonVi,
+    search: debouncedSearch,
+    pagination: tableState.pagination,
+    sort: sortParam,
+    filters: tableState.filters,
+  })
+  const selectedEquipment = React.useMemo(
+    () => Array.from(selectedEquipmentById.values()),
+    [selectedEquipmentById],
+  )
+  const rowSelection = React.useMemo(
+    () => Object.fromEntries(
+      equipment.flatMap((item) => selectedEquipmentById.has(item.id) ? [[String(item.id), true]] : []),
+    ),
+    [equipment, selectedEquipmentById],
+  )
+  const totalPages = Math.max(0, Math.ceil(total / tableState.pagination.pageSize))
 
   const columns: ColumnDef<Equipment>[] = React.useMemo(
     () => [
@@ -185,67 +239,56 @@ export function AddTasksDialog({
       { accessorKey: "ma_thiet_bi", header: "Mã thiết bị" },
       { accessorKey: "ten_thiet_bi", header: "Tên thiết bị" },
       { accessorKey: "model", header: "Model" },
-      {
-        accessorKey: "khoa_phong_quan_ly",
-        header: "Khoa/Phòng",
-        filterFn: (row, id, value) => {
-          const rowValue = row.getValue(id) as string | null
-          return rowValue ? value.includes(rowValue.trim()) : false
-        },
-      },
-      {
-        accessorKey: "nguoi_dang_truc_tiep_quan_ly",
-        header: "Người quản lý",
-        filterFn: (row, id, value) => {
-          const rowValue = row.getValue(id) as string | null
-          return rowValue ? value.includes(rowValue.trim()) : false
-        },
-      },
-      {
-        accessorKey: "vi_tri_lap_dat",
-        header: "Vị trí lắp đặt",
-        filterFn: (row, id, value) => {
-          const rowValue = row.getValue(id) as string | null
-          return rowValue ? value.includes(rowValue.trim()) : false
-        },
-      },
+      { accessorKey: "khoa_phong_quan_ly", header: "Khoa/Phòng" },
+      { accessorKey: "nguoi_dang_truc_tiep_quan_ly", header: "Người quản lý" },
+      { accessorKey: "vi_tri_lap_dat", header: "Vị trí lắp đặt" },
     ], [])
 
   const table = useReactTable({
     data: equipment,
     columns,
+    getRowId: (row) => String(row.id),
     state: {
       sorting: tableState.sorting,
-      columnFilters: tableState.columnFilters,
-      globalFilter: debouncedSearch,
-      rowSelection: tableState.rowSelection,
+      rowSelection,
       columnVisibility: tableState.columnVisibility,
       pagination: tableState.pagination,
     },
-    enableRowSelection: (row) => !existingEquipmentIds.includes(row.original.id),
-    onRowSelectionChange: (updater) => dispatchTable({ type: "set-row-selection", updater }),
+    enableRowSelection: (row) => !existingEquipmentIdSet.has(row.original.id),
+    manualFiltering: true,
+    manualPagination: true,
+    manualSorting: true,
+    pageCount: totalPages,
+    onRowSelectionChange: (updater) => {
+      const nextRowSelection = resolveUpdater(updater, rowSelection)
+      setSelectedEquipmentById((currentSelection) => {
+        const nextSelection = new Map(currentSelection)
+        for (const item of equipment) {
+          if (existingEquipmentIdSet.has(item.id)) continue
+          if (nextRowSelection[String(item.id)]) {
+            nextSelection.set(item.id, item)
+          } else {
+            nextSelection.delete(item.id)
+          }
+        }
+        return nextSelection
+      })
+    },
     onSortingChange: (updater) => dispatchTable({ type: "set-sorting", updater }),
-    onColumnFiltersChange: (updater) => dispatchTable({ type: "set-column-filters", updater }),
     onColumnVisibilityChange: (updater) => dispatchTable({ type: "set-column-visibility", updater }),
     onPaginationChange: (updater) => dispatchTable({ type: "set-pagination", updater }),
-    onGlobalFilterChange: (value: string) => dispatchTable({ type: "set-search-term", value }),
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
   })
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
       dispatchTable({ type: "reset-dialog" })
+      setSelectedEquipmentById(new Map())
     }
     onOpenChange(nextOpen)
   }
 
   const handleAdd = () => {
-    const selectedEquipment = table.getFilteredSelectedRowModel().rows.map(row => row.original);
     if (selectedEquipment.length === 0) {
       return;
     }
@@ -253,11 +296,11 @@ export function AddTasksDialog({
     handleOpenChange(false);
   }
 
-  const filterOptions = React.useMemo(() => buildAddTasksFilterOptions(equipment), [equipment])
-
-  const isFiltered = table.getState().columnFilters.length > 0 || (debouncedSearch?.length ?? 0) > 0;
-
-  const totalSelectableRows = table.getFilteredRowModel().rows.filter(row => row.getCanSelect()).length
+  const hasActiveFilters =
+    tableState.filters.departments.length > 0 ||
+    tableState.filters.users.length > 0 ||
+    tableState.filters.locations.length > 0
+  const isFiltered = hasActiveFilters || (debouncedSearch?.length ?? 0) > 0
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -278,26 +321,29 @@ export function AddTasksDialog({
               className="h-8 w-[150px] lg:w-[250px]"
             />
             <FacetedMultiSelectFilter
-              column={table.getColumn("khoa_phong_quan_ly")}
               title="Khoa/Phòng"
               options={filterOptions.departments}
+              value={tableState.filters.departments}
+              onChange={(values) => dispatchTable({ type: "set-filter", key: "departments", values })}
             />
             <FacetedMultiSelectFilter
-              column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
               title="Người quản lý"
               options={filterOptions.users}
+              value={tableState.filters.users}
+              onChange={(values) => dispatchTable({ type: "set-filter", key: "users", values })}
             />
             <FacetedMultiSelectFilter
-              column={table.getColumn("vi_tri_lap_dat")}
               title="Vị trí"
               options={filterOptions.locations}
+              value={tableState.filters.locations}
+              onChange={(values) => dispatchTable({ type: "set-filter", key: "locations", values })}
             />
             {isFiltered && (
               <Button
                 variant="ghost"
                 onClick={() => {
-                  table.resetColumnFilters();
-                  dispatchTable({ type: "set-search-term", value: "" });
+                  dispatchTable({ type: "clear-filters" })
+                  dispatchTable({ type: "set-search-term", value: "" })
                 }}
                 className="h-8 px-2 lg:px-3"
               >
@@ -359,7 +405,13 @@ export function AddTasksDialog({
                   ))}
                 </TableHeader>
                 <TableBody>
-                  {error ? (
+                  {missingPlanTenant ? (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="h-24 text-center text-destructive">
+                        Không xác định được đơn vị của kế hoạch.
+                      </TableCell>
+                    </TableRow>
+                  ) : error ? (
                     <TableRow>
                       <TableCell colSpan={columns.length} className="h-24 text-center text-destructive">
                         Không thể tải thiết bị: {error.message}
@@ -398,14 +450,32 @@ export function AddTasksDialog({
           </div>
           <div className="flex items-center justify-between">
             <div className="text-sm text-muted-foreground">
-              Đã chọn {table.getFilteredSelectedRowModel().rows.length} trên{" "}
-              {totalSelectableRows} thiết bị (có thể thêm).
+              Đã chọn {selectedEquipment.length} trên {total} thiết bị phù hợp.
             </div>
             <DataTablePagination
               table={table}
-              totalCount={table.getFilteredRowModel().rows.length}
+              totalCount={total}
               entity={{ singular: "thiết bị" }}
+              paginationMode={{
+                mode: "server",
+                currentPage: tableState.pagination.pageIndex + 1,
+                totalPages,
+                pageSize: tableState.pagination.pageSize,
+                onPageChange: (page) => {
+                  dispatchTable({
+                    type: "set-pagination",
+                    updater: (current) => ({ ...current, pageIndex: Math.max(0, page - 1) }),
+                  })
+                },
+                onPageSizeChange: (pageSize) => {
+                  dispatchTable({
+                    type: "set-pagination",
+                    updater: { pageIndex: 0, pageSize },
+                  })
+                },
+              }}
               pageSizeOptions={[10, 20, 50]}
+              isLoading={isFetching}
             />
           </div>
         </div>
@@ -414,8 +484,8 @@ export function AddTasksDialog({
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Hủy
           </Button>
-          <Button onClick={handleAdd} disabled={table.getFilteredSelectedRowModel().rows.length === 0}>
-            Thêm {table.getFilteredSelectedRowModel().rows.length > 0 ? `${table.getFilteredSelectedRowModel().rows.length} thiết bị` : ''}
+          <Button onClick={handleAdd} disabled={selectedEquipment.length === 0}>
+            Thêm {selectedEquipment.length > 0 ? `${selectedEquipment.length} thiết bị` : ''}
           </Button>
         </DialogFooter>
       </DialogContent>

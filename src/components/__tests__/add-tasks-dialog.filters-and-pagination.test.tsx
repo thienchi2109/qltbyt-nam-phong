@@ -11,49 +11,67 @@ import "@testing-library/jest-dom"
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+type MockChildrenProps = { children?: React.ReactNode }
+type MockOpenProps = MockChildrenProps & { open?: boolean }
+type MockTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    asChild?: boolean
+    open?: boolean
+    setOpen?: (open: boolean) => void
+}
+type MockCheckboxItemProps = React.ButtonHTMLAttributes<HTMLButtonElement> & MockChildrenProps & {
+    checked?: boolean
+    onCheckedChange?: (checked: boolean) => void
+    onSelect?: (event: { preventDefault: () => void }) => void
+}
+type RpcRequest = {
+    fn: string
+    args?: Record<string, unknown>
+}
+
 /**
  * Mock radix DropdownMenu for inline rendering in jsdom
  */
 vi.mock('@/components/ui/dropdown-menu', () => {
     return {
-        DropdownMenu: ({ children }: any) => {
+        DropdownMenu: ({ children }: MockChildrenProps) => {
             const [open, setOpen] = React.useState(false)
             return (
                 <div data-testid="dropdown-menu">
-                    {React.Children.map(children, (child: any) =>
+                    {React.Children.map(children, (child: React.ReactNode) =>
                         React.isValidElement(child)
-                            ? React.cloneElement(child as React.ReactElement<any>, { open, setOpen })
+                            ? React.cloneElement(child as React.ReactElement<MockTriggerProps>, { open, setOpen })
                             : child
                     )}
                 </div>
             )
         },
-        DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: any) => {
+        DropdownMenuTrigger: ({ children, asChild, open, setOpen, ...rest }: MockTriggerProps) => {
             const handleClick = () => setOpen?.(!open)
             if (asChild && React.isValidElement(children)) {
-                return React.cloneElement(children as React.ReactElement<any>, {
+                const child = children as React.ReactElement<React.ButtonHTMLAttributes<HTMLButtonElement>>
+                return React.cloneElement(child, {
                     ...rest,
-                    onClick: (...args: any[]) => {
+                    onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
                         handleClick()
-                            ; (children as any).props?.onClick?.(...args)
+                        child.props.onClick?.(event)
                     },
                 })
             }
             return <button {...rest} onClick={handleClick}>{children}</button>
         },
-        DropdownMenuContent: ({ children, open, ...rest }: any) => {
+        DropdownMenuContent: ({ children, open, ...rest }: MockOpenProps & React.HTMLAttributes<HTMLDivElement>) => {
             if (!open) return null
             return <div data-testid="dropdown-content" {...rest}>{children}</div>
         },
-        DropdownMenuCheckboxItem: ({ children, checked, onCheckedChange, onSelect, ...rest }: any) => (
+        DropdownMenuCheckboxItem: ({ children, checked, onCheckedChange, onSelect, ...rest }: MockCheckboxItemProps) => (
             <button {...rest} onClick={() => { onSelect?.({ preventDefault: () => { } }); onCheckedChange?.(!checked) }}>
                 {children}
             </button>
         ),
-        DropdownMenuLabel: ({ children, ...rest }: any) => <div {...rest}>{children}</div>,
+        DropdownMenuLabel: ({ children, ...rest }: MockChildrenProps & React.HTMLAttributes<HTMLDivElement>) => <div {...rest}>{children}</div>,
         DropdownMenuSeparator: () => <hr />,
-        DropdownMenuItem: ({ children, onSelect, ...rest }: any) => (
-            <button {...rest} onClick={onSelect}>{children}</button>
+        DropdownMenuItem: ({ children, onClick, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement> & MockChildrenProps) => (
+            <button {...rest} onClick={onClick}>{children}</button>
         ),
     }
 })
@@ -62,19 +80,19 @@ vi.mock('@/components/ui/dropdown-menu', () => {
  * Mock radix Dialog for inline rendering in jsdom
  */
 vi.mock('@/components/ui/dialog', () => ({
-    Dialog: ({ children, open }: any) => open ? <div data-testid="dialog">{children}</div> : null,
-    DialogContent: ({ children, ...rest }: any) => <div data-testid="dialog-content" {...rest}>{children}</div>,
-    DialogHeader: ({ children }: any) => <div>{children}</div>,
-    DialogTitle: ({ children }: any) => <h2>{children}</h2>,
-    DialogDescription: ({ children }: any) => <p>{children}</p>,
-    DialogFooter: ({ children }: any) => <div data-testid="dialog-footer">{children}</div>,
+    Dialog: ({ children, open }: MockOpenProps) => open ? <div data-testid="dialog">{children}</div> : null,
+    DialogContent: ({ children, ...rest }: MockChildrenProps & React.HTMLAttributes<HTMLDivElement>) => <div data-testid="dialog-content" {...rest}>{children}</div>,
+    DialogHeader: ({ children }: MockChildrenProps) => <div>{children}</div>,
+    DialogTitle: ({ children }: MockChildrenProps) => <h2>{children}</h2>,
+    DialogDescription: ({ children }: MockChildrenProps) => <p>{children}</p>,
+    DialogFooter: ({ children }: MockChildrenProps) => <div data-testid="dialog-footer">{children}</div>,
 }))
 
 /**
  * Mock scroll area for inline rendering
  */
 vi.mock('@/components/ui/scroll-area', () => ({
-    ScrollArea: ({ children }: any) => <div>{children}</div>,
+    ScrollArea: ({ children }: MockChildrenProps) => <div>{children}</div>,
 }))
 
 /**
@@ -94,6 +112,7 @@ vi.mock('@/hooks/use-debounce', () => ({
 
 import { AddTasksDialog } from '../add-tasks-dialog'
 import { callRpc } from '@/lib/rpc-client'
+import type { MaintenancePlan } from '@/lib/data'
 
 const mockCallRpc = vi.mocked(callRpc)
 
@@ -122,18 +141,67 @@ const MOCK_EQUIPMENT = Array.from({ length: 15 }, (_, i) => ({
     vi_tri_lap_dat: `Room ${i + 1}`,
 }))
 
+const MOCK_FILTER_BUCKETS = {
+    department: [
+        { name: 'ICU', count: 5 },
+        { name: 'Surgery', count: 5 },
+        { name: 'Radiology', count: 5 },
+    ],
+    user: [
+        { name: 'User A', count: 8 },
+        { name: 'User B', count: 7 },
+    ],
+    location: [
+        { name: 'Room 1', count: 1 },
+        { name: 'Room 2', count: 1 },
+    ],
+}
+
+function mockRpcByPage() {
+    mockCallRpc.mockImplementation((request: RpcRequest) => {
+        const { fn, args } = request
+        if (fn === 'equipment_filter_buckets') {
+            return Promise.resolve(MOCK_FILTER_BUCKETS)
+        }
+        if (fn === 'equipment_list_enhanced') {
+            const page = Number(args?.p_page ?? 1)
+            const pageSize = Number(args?.p_page_size ?? 10)
+            const start = (page - 1) * pageSize
+            return Promise.resolve({
+                data: MOCK_EQUIPMENT.slice(start, start + pageSize),
+                total: 1947,
+                page,
+                pageSize,
+            })
+        }
+        return Promise.resolve(null)
+    })
+}
+
 describe('AddTasksDialog filters and pagination', () => {
     const baseProps = {
         open: true,
         onOpenChange: vi.fn(),
-        plan: { id: 1, ten_ke_hoach: 'Test Plan' } as any,
+        plan: {
+            id: 1,
+            created_at: '2026-01-01T00:00:00Z',
+            ten_ke_hoach: 'Test Plan',
+            nam: 2026,
+            khoa_phong: null,
+            trang_thai: 'Bản nháp',
+            ngay_phe_duyet: null,
+            nguoi_duyet: null,
+            nguoi_lap_ke_hoach: null,
+            loai_cong_viec: 'Bảo trì',
+            don_vi: 17,
+        } satisfies MaintenancePlan,
         existingEquipmentIds: [] as number[],
         onSuccess: vi.fn(),
     }
 
     beforeEach(() => {
         vi.clearAllMocks()
-        mockCallRpc.mockResolvedValue(MOCK_EQUIPMENT as any)
+        mockRpcByPage()
     })
 
     it('renders SearchInput with type="search" attribute', async () => {
@@ -187,5 +255,47 @@ describe('AddTasksDialog filters and pagination', () => {
         // At least some checkboxes should be disabled (3 existing equipment)
         const disabledCheckboxes = checkboxes.filter(cb => cb.hasAttribute('disabled') || cb.getAttribute('data-disabled') !== null)
         expect(disabledCheckboxes.length).toBeGreaterThan(0)
+    })
+
+    it('requests server-side equipment pages within the plan tenant scope', async () => {
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('TB-001')).toBeInTheDocument()
+        })
+
+        expect(mockCallRpc).toHaveBeenCalledWith(expect.objectContaining({
+            fn: 'equipment_list_enhanced',
+            args: expect.objectContaining({
+                p_page: 1,
+                p_page_size: 10,
+                p_don_vi: 17,
+            }),
+        }))
+        expect(screen.getByText('Đã chọn 0 trên 1947 thiết bị phù hợp.')).toBeInTheDocument()
+    })
+
+    it('keeps selected equipment across server pages', async () => {
+        const onSuccess = vi.fn()
+        renderWithQueryClient(<AddTasksDialog {...baseProps} onSuccess={onSuccess} />)
+
+        await waitFor(() => {
+            expect(screen.getByText('TB-001')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0])
+        fireEvent.click(screen.getByRole('button', { name: /Trang tiếp/i }))
+
+        await waitFor(() => {
+            expect(screen.getByText('TB-011')).toBeInTheDocument()
+        })
+
+        fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0])
+        fireEvent.click(screen.getByRole('button', { name: /Thêm 2 thiết bị/i }))
+
+        expect(onSuccess).toHaveBeenCalledWith([
+            expect.objectContaining({ id: 1 }),
+            expect.objectContaining({ id: 11 }),
+        ])
     })
 })
