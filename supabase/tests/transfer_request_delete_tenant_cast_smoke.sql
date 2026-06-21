@@ -256,6 +256,46 @@ BEGIN
     json_build_object(
       'app_role', 'to_qltb',
       'role', 'authenticated',
+      'don_vi', v_tenant_id::text
+    )::text,
+    true
+  );
+
+  v_failed := false;
+  v_sqlstate := NULL;
+  v_sqlerrm := NULL;
+  BEGIN
+    PERFORM public.transfer_request_delete(v_request_id::integer);
+  EXCEPTION WHEN OTHERS THEN
+    v_failed := true;
+    v_sqlstate := SQLSTATE;
+    v_sqlerrm := SQLERRM;
+  END;
+
+  IF NOT v_failed THEN
+    RAISE EXCEPTION 'Expected transfer_request_delete to fail closed for missing user_id claim';
+  END IF;
+
+  IF v_sqlstate IS DISTINCT FROM '42501' THEN
+    RAISE EXCEPTION 'Expected missing-user transfer_request_delete to deny with 42501, got % (%)', v_sqlstate, v_sqlerrm;
+  END IF;
+
+  SELECT count(*)
+  INTO v_remaining_count
+  FROM public.yeu_cau_luan_chuyen
+  WHERE id = v_request_id;
+
+  IF v_remaining_count IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'Missing-user transfer delete deny should keep request %, remaining count %',
+      v_request_id,
+      v_remaining_count;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'app_role', 'to_qltb',
+      'role', 'authenticated',
       'user_id', v_user_id::text,
       'sub', v_user_id::text,
       'don_vi', v_tenant_id::text
