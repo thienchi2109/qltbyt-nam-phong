@@ -25,6 +25,7 @@ vi.mock("@/hooks/use-mobile", () => ({
 }))
 
 beforeEach(() => {
+  window.localStorage.clear()
   mediaQueryState.responses = {}
   mediaQueryState.useMediaQuery.mockImplementation(
     (query: string) => mediaQueryState.responses[query] ?? false

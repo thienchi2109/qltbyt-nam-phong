@@ -17,6 +17,10 @@ import {
 } from "@tanstack/react-table"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useIsMobile } from "@/hooks/use-mobile"
+import {
+  getEquipmentColumnVisibility,
+  setEquipmentColumnVisibility,
+} from "../_utils/equipmentColumnVisibilityPrefs"
 import type { Equipment } from "../types"
 
 // Columns to hide on medium screens (768px-1800px)
@@ -57,6 +61,19 @@ const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
   so_luu_hanh: true,
 }
 
+function restoreResponsivePreference(
+  visibility: VisibilityState,
+  responsiveSnapshot: VisibilityState | null
+): VisibilityState {
+  if (!responsiveSnapshot) return visibility
+
+  const restored = { ...visibility }
+  RESPONSIVE_HIDE_COLUMNS.forEach((columnId) => {
+    restored[columnId] = responsiveSnapshot[columnId] ?? visibility[columnId]
+  })
+  return restored
+}
+
 export interface UseEquipmentTableParams {
   data: Equipment[]
   total: number
@@ -73,6 +90,7 @@ export interface UseEquipmentTableParams {
   // For pagination reset on filter change
   selectedDonVi: number | null
   selectedFacilityId: number | null | undefined
+  columnVisibilityUserId?: string
 }
 
 export interface UseEquipmentTableReturn {
@@ -93,6 +111,7 @@ export interface UseEquipmentTableReturn {
   >
 }
 
+/** Builds the controlled equipment table state and column visibility preferences. */
 export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipmentTableReturn {
   const {
     data,
@@ -108,14 +127,39 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     setPagination,
     selectedDonVi,
     selectedFacilityId,
+    columnVisibilityUserId,
   } = params
 
   // Column visibility state
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>(DEFAULT_COLUMN_VISIBILITY)
+  const [columnVisibility, setRuntimeColumnVisibility] = React.useState<VisibilityState>(() =>
+    getEquipmentColumnVisibility(columnVisibilityUserId, DEFAULT_COLUMN_VISIBILITY)
+  )
 
   // Track pre-responsive visibility to restore user preferences
   const preResponsiveVisibilityRef = React.useRef<VisibilityState | null>(null)
+
+  React.useEffect(() => {
+    preResponsiveVisibilityRef.current = null
+    setRuntimeColumnVisibility(
+      getEquipmentColumnVisibility(columnVisibilityUserId, DEFAULT_COLUMN_VISIBILITY)
+    )
+  }, [columnVisibilityUserId])
+
+  const setColumnVisibility = React.useCallback<
+    React.Dispatch<React.SetStateAction<VisibilityState>>
+  >(
+    (value) => {
+      setRuntimeColumnVisibility((prev) => {
+        const next = typeof value === "function" ? value(prev) : value
+        setEquipmentColumnVisibility(
+          columnVisibilityUserId,
+          restoreResponsivePreference(next, preResponsiveVisibilityRef.current)
+        )
+        return next
+      })
+    },
+    [columnVisibilityUserId]
+  )
 
   // State preservation after mutations
   const [preservePageState, setPreservePageState] = React.useState<{
@@ -211,7 +255,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
   React.useEffect(() => {
     if (isMediumScreen) {
       // Hide columns when entering medium screen
-      setColumnVisibility((prev) => {
+      setRuntimeColumnVisibility((prev) => {
         if (!preResponsiveVisibilityRef.current) {
           const snapshot: VisibilityState = {}
           RESPONSIVE_HIDE_COLUMNS.forEach((col) => {
@@ -231,7 +275,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
       // Restore columns that were hidden by responsive logic when returning to large screen
       const snapshot = preResponsiveVisibilityRef.current
 
-      setColumnVisibility((prevVisibility) => {
+      setRuntimeColumnVisibility((prevVisibility) => {
         const updated = { ...prevVisibility }
 
         Object.entries(snapshot).forEach(([col, value]) => {
@@ -259,8 +303,8 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
   const isFiltered = table.getState().columnFilters.length > 0
 
-  // Note: useState setters (setPagination, setColumnVisibility, setPreservePageState)
-  // are stable references and intentionally excluded from the dependency array.
+  // Note: useState setters (setPagination, setPreservePageState) are stable references
+  // and intentionally excluded from the dependency array.
   return React.useMemo(
     () => ({
       table,
@@ -281,6 +325,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
       pagination,
       pageCount,
       columnVisibility,
+      setColumnVisibility,
       isFiltered,
       isMobile,
       isCardView,
