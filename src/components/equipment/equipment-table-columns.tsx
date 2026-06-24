@@ -215,24 +215,23 @@ export function createEquipmentColumns(
           return <div className="truncate max-w-xs">{formatted}</div>
         }
 
-        if (value === null || value === undefined || value === "") {
-          return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+        if (key === "khoa_phong_quan_ly") {
+          const label = getEquipmentDepartmentLabel(
+            typeof value === "string" ? value : value == null ? null : String(value)
+          )
+          const colors = departmentColorClassByLabel?.[label]
+          return (
+            <Badge
+              variant="outline"
+              className={cn("max-w-xs truncate border font-medium", colors?.badgeClassName)}
+            >
+              {label}
+            </Badge>
+          )
         }
 
-        if (key === "khoa_phong_quan_ly") {
-          const label = getEquipmentDepartmentLabel(String(value))
-          const colors = departmentColorClassByLabel?.[label]
-
-          if (colors) {
-            return (
-              <Badge
-                variant="outline"
-                className={cn("max-w-xs truncate border font-medium", colors.badgeClassName)}
-              >
-                {label}
-              </Badge>
-            )
-          }
+        if (value === null || value === undefined || value === "") {
+          return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
         }
 
         if (key === "ma_thiet_bi") {

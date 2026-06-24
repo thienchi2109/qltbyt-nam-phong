@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
+import type { DepartmentColorClasses } from "@/components/equipment/equipment-department-grouping"
 import type { Equipment } from "@/types/database"
 import { EquipmentContent } from "../equipment-content"
 
@@ -21,14 +22,26 @@ function EquipmentContentHarness({
 }: {
   equipment: Equipment
   onShowDetails: (equipment: Equipment) => void
-  departmentColorClassByLabel?: Record<string, string>
+  departmentColorClassByLabel?: Record<string, DepartmentColorClasses>
 }) {
   const columns = React.useMemo(
     () =>
       createEquipmentColumns({
         renderActions: () => null,
+        departmentColorClassByLabel,
       }),
-    []
+    [departmentColorClassByLabel]
+  )
+
+  const rowColorClassByLabel = React.useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(departmentColorClassByLabel ?? {}).map(([label, colors]) => [
+          label,
+          colors.rowClassName,
+        ])
+      ),
+    [departmentColorClassByLabel]
   )
 
   const table = useReactTable({
@@ -49,7 +62,7 @@ function EquipmentContentHarness({
         table={table}
         columns={columns}
         onShowDetails={onShowDetails}
-        departmentColorClassByLabel={departmentColorClassByLabel}
+        departmentColorClassByLabel={rowColorClassByLabel}
       />
     </LinkedRequestProvider>
   )
@@ -126,10 +139,42 @@ describe("EquipmentContent desktop interactions", () => {
       <EquipmentContentHarness
         equipment={equipment}
         onShowDetails={vi.fn()}
-        departmentColorClassByLabel={{ "Khoa Ngoại": "bg-sky-50/60 hover:bg-sky-50" }}
+        departmentColorClassByLabel={{
+          "Khoa Ngoại": {
+            rowClassName: "bg-sky-50/60 hover:bg-sky-50",
+            chipClassName: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100",
+            badgeClassName: "border-sky-200 bg-sky-100 text-sky-800",
+          },
+        }}
       />
     )
 
     expect(screen.getByRole("row", { name: /TB-303/ })).toHaveClass("bg-sky-50/60")
+  })
+
+  it("renders missing managing departments with the normalized department badge", () => {
+    const equipment: Equipment = {
+      id: 304,
+      ma_thiet_bi: "TB-304",
+      ten_thiet_bi: "Máy thở",
+      khoa_phong_quan_ly: "",
+      tinh_trang_hien_tai: "Hoạt động",
+    }
+
+    render(
+      <EquipmentContentHarness
+        equipment={equipment}
+        onShowDetails={vi.fn()}
+        departmentColorClassByLabel={{
+          "Chưa cập nhật": {
+            rowClassName: "bg-slate-50/70 hover:bg-slate-100/70",
+            chipClassName: "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100",
+            badgeClassName: "border-slate-200 bg-slate-100 text-slate-700",
+          },
+        }}
+      />
+    )
+
+    expect(screen.getByText("Chưa cập nhật")).toHaveClass("border-slate-200")
   })
 })

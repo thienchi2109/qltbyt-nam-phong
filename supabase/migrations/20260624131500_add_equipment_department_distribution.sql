@@ -5,6 +5,9 @@
 --
 -- Verification: run
 -- supabase/tests/equipment_department_distribution_smoke.sql.
+--
+-- Forward-only rollback: add a follow-up migration that revokes execute and
+-- drops public.equipment_department_distribution with the same signature.
 
 BEGIN;
 

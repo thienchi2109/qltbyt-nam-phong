@@ -54,18 +54,26 @@ const DEPARTMENT_COLOR_PALETTE: DepartmentColorClasses[] = [
   },
 ]
 
+function getStablePaletteIndex(label: string): number {
+  let hash = 0
+  for (let index = 0; index < label.length; index += 1) {
+    hash = (hash * 31 + label.charCodeAt(index)) >>> 0
+  }
+  return hash % DEPARTMENT_COLOR_PALETTE.length
+}
+
 /** Returns a display-safe department label for grouping and coloring equipment rows. */
-export function getEquipmentDepartmentLabel(value: string | null | undefined) {
+export function getEquipmentDepartmentLabel(value: string | null | undefined): string {
   const trimmed = value?.trim()
   return trimmed ? trimmed : UNKNOWN_DEPARTMENT_LABEL
 }
 
-/** Assigns stable pastel color classes to department labels in result order. */
+/** Assigns stable pastel color classes to department labels. */
 export function buildDepartmentColorClassByLabel(
   distribution: DepartmentDistributionLike[]
-) {
-  return distribution.reduce<Record<string, DepartmentColorClasses>>((acc, item, index) => {
-    acc[item.label] = DEPARTMENT_COLOR_PALETTE[index % DEPARTMENT_COLOR_PALETTE.length]
+): Record<string, DepartmentColorClasses> {
+  return distribution.reduce<Record<string, DepartmentColorClasses>>((acc, item) => {
+    acc[item.label] = DEPARTMENT_COLOR_PALETTE[getStablePaletteIndex(item.label)]
     return acc
   }, {})
 }

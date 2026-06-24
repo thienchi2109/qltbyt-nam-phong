@@ -331,7 +331,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       predicate: (q) => {
         const key = q.queryKey
         if (!Array.isArray(key)) return false
-        if (key[0] !== "equipment_list_enhanced") return false
+        if (key[0] !== "equipment_list_enhanced" && key[0] !== "equipment_department_distribution") return false
         const queryParams = key[1] as Record<string, unknown>
         return (
           queryParams?.tenant === effectiveTenantKey &&

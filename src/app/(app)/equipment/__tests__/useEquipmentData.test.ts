@@ -662,6 +662,9 @@ describe('useEquipmentData', () => {
       const callCountBeforeEvent = mockCallRpc.mock.calls.filter(
         (call) => call[0].fn === 'equipment_list_enhanced'
       ).length
+      const distributionCallCountBeforeEvent = mockCallRpc.mock.calls.filter(
+        (call) => call[0].fn === 'equipment_department_distribution'
+      ).length
 
       // Dispatch event
       window.dispatchEvent(new CustomEvent('equipment-cache-invalidated'))
@@ -672,6 +675,11 @@ describe('useEquipmentData', () => {
           (call) => call[0].fn === 'equipment_list_enhanced'
         ).length
         expect(callCountAfterEvent).toBeGreaterThan(callCountBeforeEvent)
+
+        const distributionCallCountAfterEvent = mockCallRpc.mock.calls.filter(
+          (call) => call[0].fn === 'equipment_department_distribution'
+        ).length
+        expect(distributionCallCountAfterEvent).toBeGreaterThan(distributionCallCountBeforeEvent)
       })
     })
   })

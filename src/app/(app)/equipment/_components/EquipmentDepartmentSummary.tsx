@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
-import type { EquipmentDepartmentDistributionItem } from "../types"
+import type { EquipmentDepartmentDistributionItem } from "@/app/(app)/equipment/types"
 import type { DepartmentColorClasses } from "@/components/equipment/equipment-department-grouping"
 
 interface EquipmentDepartmentSummaryProps {
