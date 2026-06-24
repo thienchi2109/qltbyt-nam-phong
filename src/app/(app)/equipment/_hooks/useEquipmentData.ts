@@ -5,7 +5,12 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import { callRpc } from "@/lib/rpc-client"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import type { Equipment } from "../types"
-import type { FilterBottomSheetData, FacilityOption, EquipmentListResponse } from "../types"
+import type {
+  EquipmentDepartmentDistributionItem,
+  EquipmentListResponse,
+  FacilityOption,
+  FilterBottomSheetData,
+} from "../types"
 
 export interface UseEquipmentDataParams {
   isGlobal: boolean
@@ -36,6 +41,7 @@ export interface UseEquipmentDataReturn {
   // Equipment data
   data: Equipment[]
   total: number
+  departmentDistribution: EquipmentDepartmentDistributionItem[]
   isLoading: boolean
   isFetching: boolean
 
@@ -87,6 +93,7 @@ function normalizeBucket(data: EquipmentFilterBucketsResponse | undefined, key: 
   return data?.[key] ?? EMPTY_FILTER_BUCKET
 }
 
+/** Loads equipment table data, filter buckets, and department distribution for the current scope. */
 export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDataReturn {
   const {
     isGlobal,
@@ -214,6 +221,48 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const total = equipmentRes?.total ?? 0
   const isLoading = isEqLoading
 
+  const { data: departmentDistributionData } = useQuery<EquipmentDepartmentDistributionItem[]>({
+    queryKey: [
+      "equipment_department_distribution",
+      {
+        tenant: effectiveTenantKey,
+        role: userRole,
+        diaBan: userDiaBanId,
+        donVi: effectiveSelectedDonVi,
+        q: debouncedSearch || null,
+        khoa_phong_array: selectedDepartments,
+        nguoi_su_dung_array: selectedUsers,
+        vi_tri_lap_dat_array: selectedLocations,
+        tinh_trang_array: selectedStatuses,
+        phan_loai_array: selectedClassifications,
+        nguon_kinh_phi_array: selectedFundingSources,
+      },
+    ],
+    queryFn: async ({ signal }) => {
+      const result = await callRpc<EquipmentDepartmentDistributionItem[]>({
+        fn: "equipment_department_distribution",
+        args: {
+          p_q: debouncedSearch || null,
+          p_don_vi: effectiveSelectedDonVi,
+          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
+          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
+          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
+          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
+          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
+          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+        },
+        signal,
+      })
+      return result ?? []
+    },
+    enabled: shouldFetchData,
+    staleTime: 120_000,
+    gcTime: 10 * 60_000,
+    refetchOnWindowFocus: false,
+  })
+
+  const departmentDistribution = departmentDistributionData ?? []
+
   // Map context facilities to FacilityOption format
   const facilities: FacilityOption[] = React.useMemo(() => {
     if (!showSelector || !contextFacilities) return []
@@ -313,6 +362,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     () => ({
       data,
       total,
+      departmentDistribution,
       isLoading,
       isFetching,
       shouldFetchData,
@@ -337,6 +387,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     [
       data,
       total,
+      departmentDistribution,
       isLoading,
       isFetching,
       shouldFetchData,

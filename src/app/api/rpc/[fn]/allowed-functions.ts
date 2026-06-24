@@ -28,6 +28,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   'equipment_statuses_list_for_tenant',
   'equipment_funding_sources_list_for_tenant',
   'equipment_filter_buckets',
+  'equipment_department_distribution',
   'equipment_bulk_import',
   // Repairs
   'repair_request_list',

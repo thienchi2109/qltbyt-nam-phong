@@ -76,6 +76,8 @@ describe('useEquipmentData', () => {
           return Promise.resolve([])
         case 'equipment_filter_buckets':
           return Promise.resolve({})
+        case 'equipment_department_distribution':
+          return Promise.resolve([])
         case 'get_facilities_with_equipment_count':
           return Promise.resolve([])
         default:
@@ -327,6 +329,64 @@ describe('useEquipmentData', () => {
   })
 
   describe('Filter Options Queries', () => {
+    it('fetches department distribution using current search and filters without pagination', async () => {
+      const mockDistribution = [
+        { department: 'Khoa Ngoai', label: 'Khoa Ngoai', count: 7 },
+        { department: null, label: 'Chưa cập nhật', count: 2 },
+      ]
+
+      mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
+        if (fn === 'equipment_list_enhanced') {
+          return Promise.resolve({ data: [], total: 9 })
+        }
+        if (fn === 'equipment_filter_buckets') {
+          return Promise.resolve({})
+        }
+        if (fn === 'equipment_department_distribution') {
+          return Promise.resolve(mockDistribution)
+        }
+        return Promise.resolve([])
+      })
+
+      const { result } = renderHook(
+        () =>
+          useEquipmentData(
+            createDefaultParams({
+              debouncedSearch: 'bom tiem dien',
+              pagination: { pageIndex: 3, pageSize: 25 },
+              selectedDepartments: ['Khoa Ngoai'],
+              selectedUsers: ['Nguyen Van A'],
+              selectedLocations: ['Phong 101'],
+              selectedStatuses: ['Hoat dong'],
+              selectedClassifications: ['May loai A'],
+              selectedFundingSources: ['Ngan sach'],
+            })
+          ),
+        { wrapper: createWrapper() }
+      )
+
+      await waitFor(() => {
+        expect(result.current.departmentDistribution).toEqual(mockDistribution)
+      })
+
+      const distributionCall = mockCallRpc.mock.calls.find(
+        (call) => call[0].fn === 'equipment_department_distribution'
+      )?.[0]
+
+      expect(distributionCall?.args).toEqual({
+        p_q: 'bom tiem dien',
+        p_don_vi: 5,
+        p_khoa_phong_array: ['Khoa Ngoai'],
+        p_nguoi_su_dung_array: ['Nguyen Van A'],
+        p_vi_tri_lap_dat_array: ['Phong 101'],
+        p_tinh_trang_array: ['Hoat dong'],
+        p_phan_loai_array: ['May loai A'],
+        p_nguon_kinh_phi_array: ['Ngan sach'],
+      })
+      expect(distributionCall?.args).not.toHaveProperty('p_page')
+      expect(distributionCall?.args).not.toHaveProperty('p_page_size')
+    })
+
     it('should fetch all filter option buckets with a single RPC', async () => {
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === 'equipment_list_enhanced') {

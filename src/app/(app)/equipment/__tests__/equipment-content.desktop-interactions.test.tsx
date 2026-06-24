@@ -17,9 +17,11 @@ vi.mock("@/components/ui/tooltip", async () => {
 function EquipmentContentHarness({
   equipment,
   onShowDetails,
+  departmentColorClassByLabel,
 }: {
   equipment: Equipment
   onShowDetails: (equipment: Equipment) => void
+  departmentColorClassByLabel?: Record<string, string>
 }) {
   const columns = React.useMemo(
     () =>
@@ -47,6 +49,7 @@ function EquipmentContentHarness({
         table={table}
         columns={columns}
         onShowDetails={onShowDetails}
+        departmentColorClassByLabel={departmentColorClassByLabel}
       />
     </LinkedRequestProvider>
   )
@@ -108,5 +111,25 @@ describe("EquipmentContent desktop interactions", () => {
 
     await user.click(within(screen.getByRole("table")).getByText(equipment.ma_thiet_bi))
     expect(onShowDetails).toHaveBeenCalledWith(equipment)
+  })
+
+  it("applies subtle department color classes to desktop rows", () => {
+    const equipment: Equipment = {
+      id: 303,
+      ma_thiet_bi: "TB-303",
+      ten_thiet_bi: "Bơm tiêm điện",
+      khoa_phong_quan_ly: "Khoa Ngoại",
+      tinh_trang_hien_tai: "Hoạt động",
+    }
+
+    render(
+      <EquipmentContentHarness
+        equipment={equipment}
+        onShowDetails={vi.fn()}
+        departmentColorClassByLabel={{ "Khoa Ngoại": "bg-sky-50/60 hover:bg-sky-50" }}
+      />
+    )
+
+    expect(screen.getByRole("row", { name: /TB-303/ })).toHaveClass("bg-sky-50/60")
   })
 })

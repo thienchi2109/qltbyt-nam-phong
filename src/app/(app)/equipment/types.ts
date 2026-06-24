@@ -104,6 +104,12 @@ export interface EquipmentListResponse {
   pageSize: number
 }
 
+export interface EquipmentDepartmentDistributionItem {
+  department: string | null
+  label: string
+  count: number
+}
+
 /**
  * Main hook return value interface
  * Dialog state is now managed by EquipmentDialogContext
@@ -126,6 +132,7 @@ export interface UseEquipmentPageReturn {
   // Data
   data: Equipment[]
   total: number
+  departmentDistribution: EquipmentDepartmentDistributionItem[]
   isLoading: boolean
   isFetching: boolean
   shouldFetchEquipment: boolean

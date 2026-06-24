@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/table"
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import type { Equipment } from "@/types/database"
+import { cn } from "@/lib/utils"
+import { getEquipmentDepartmentLabel } from "@/components/equipment/equipment-department-grouping"
 
 export interface EquipmentContentProps {
   isGlobal: boolean
@@ -29,8 +31,10 @@ export interface EquipmentContentProps {
   table: Table<Equipment>
   columns: ColumnDef<Equipment>[]
   onShowDetails: (equipment: Equipment) => void
+  departmentColorClassByLabel?: Record<string, string>
 }
 
+/** Renders the equipment results as desktop table rows or mobile cards. */
 export function EquipmentContent({
   isGlobal,
   isRegionalLeader,
@@ -41,6 +45,7 @@ export function EquipmentContent({
   table,
   columns,
   onShowDetails,
+  departmentColorClassByLabel,
 }: EquipmentContentProps) {
   // Global users and regional leaders must select a tenant/facility first
   if ((isGlobal || isRegionalLeader) && !shouldFetchEquipment) {
@@ -159,7 +164,12 @@ export function EquipmentContent({
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
                 data-equipment-id={row.original.id}
-                className="hover:bg-muted cursor-pointer"
+                className={cn(
+                  "cursor-pointer hover:bg-muted",
+                  departmentColorClassByLabel?.[
+                    getEquipmentDepartmentLabel(row.original.khoa_phong_quan_ly)
+                  ]
+                )}
                 onClick={() => onShowDetails(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (

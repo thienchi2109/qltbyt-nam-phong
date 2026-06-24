@@ -15,6 +15,9 @@ import { LinkedRequestRowIndicator } from "@/components/equipment-linked-request
 import { createSelectionColumn } from "@/components/ui/data-table-selection"
 import { TruncatedText } from "@/components/ui/truncated-text"
 import type { Equipment } from "@/types/database"
+import type { DepartmentColorClasses } from "@/components/equipment/equipment-department-grouping"
+import { getEquipmentDepartmentLabel } from "@/components/equipment/equipment-department-grouping"
+import { cn } from "@/lib/utils"
 import {
   formatFullDateToDisplay,
   formatPartialDateToDisplay,
@@ -131,6 +134,7 @@ const filterableColumns: (keyof Equipment)[] = [
 interface CreateEquipmentColumnsConfig {
   renderActions: (equipment: Equipment) => React.ReactNode
   canBulkSelect?: boolean
+  departmentColorClassByLabel?: Record<string, DepartmentColorClasses>
 }
 
 /**
@@ -141,7 +145,7 @@ interface CreateEquipmentColumnsConfig {
 export function createEquipmentColumns(
   config: CreateEquipmentColumnsConfig
 ): ColumnDef<Equipment>[] {
-  const { renderActions, canBulkSelect = false } = config
+  const { renderActions, canBulkSelect = false, departmentColorClassByLabel } = config
 
   const dataColumns = (Object.keys(columnLabels) as Array<keyof Equipment>).map((key) => {
     const columnDef: ColumnDef<Equipment> = {
@@ -213,6 +217,22 @@ export function createEquipmentColumns(
 
         if (value === null || value === undefined || value === "") {
           return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
+        }
+
+        if (key === "khoa_phong_quan_ly") {
+          const label = getEquipmentDepartmentLabel(String(value))
+          const colors = departmentColorClassByLabel?.[label]
+
+          if (colors) {
+            return (
+              <Badge
+                variant="outline"
+                className={cn("max-w-xs truncate border font-medium", colors.badgeClassName)}
+              >
+                {label}
+              </Badge>
+            )
+          }
         }
 
         if (key === "ma_thiet_bi") {

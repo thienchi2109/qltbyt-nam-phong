@@ -61,6 +61,7 @@ type FiltersState = {
 type DataState = {
   data: { id: number }[]
   total: number
+  departmentDistribution: { department: string | null; label: string; count: number }[]
   isLoading: boolean
   isFetching: boolean
   shouldFetchData: boolean
@@ -222,6 +223,7 @@ function createDataState(overrides?: Partial<DataState>): DataState {
   return {
     data: [],
     total: 0,
+    departmentDistribution: [],
     isLoading: false,
     isFetching: false,
     shouldFetchData: true,
@@ -359,5 +361,17 @@ describe('useEquipmentPage tenant switching', () => {
     expect(mocks.setColumnFilters).toHaveBeenCalledWith([
       { id: 'tinh_trang_hien_tai', value: ['Chờ sửa chữa'] },
     ])
+  })
+
+  it('exposes department distribution from equipment data', () => {
+    const departmentDistribution = [
+      { department: 'Khoa Ngoai', label: 'Khoa Ngoai', count: 7 },
+      { department: null, label: 'Chưa cập nhật', count: 2 },
+    ]
+    state.data = createDataState({ departmentDistribution })
+
+    const { result } = renderHook(() => useEquipmentPage())
+
+    expect(result.current.departmentDistribution).toEqual(departmentDistribution)
   })
 })
