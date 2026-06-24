@@ -21,6 +21,7 @@ export type { UseEquipmentPageReturn } from "./types"
 import type { Equipment } from "./types"
 import type { UseEquipmentPageReturn } from "./types"
 
+/** Composes Equipment page auth, filters, data, table state, and actions. */
 export function useEquipmentPage(): UseEquipmentPageReturn {
   const { toast } = useToast()
   const { data: tenantBranding } = useTenantBranding()
@@ -136,6 +137,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     setPagination,
     selectedDonVi: auth.selectedDonVi,
     selectedFacilityId: data.selectedFacilityId,
+    columnVisibilityUserId: auth.user?.id ? String(auth.user.id) : undefined,
   })
 
   const resetPaginationForFilterChange = React.useCallback(() => {
