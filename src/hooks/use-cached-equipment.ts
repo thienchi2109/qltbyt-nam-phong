@@ -9,6 +9,7 @@ import type { Equipment, User, UserRole } from '@/types/database'
 import { USER_ROLES } from '@/types/database'
 
 // Phase 3: Use advanced cache keys from cache manager
+/** Cache key helpers for legacy cached equipment hooks. */
 export const equipmentKeys = CacheKeys.equipment
 
 type EquipmentPayload = Record<string, unknown>
@@ -34,6 +35,7 @@ function toCacheScopeUser(user: Session['user'] | null | undefined): CacheScopeU
 }
 
 // Phase 3: Enhanced equipment fetching with advanced caching
+/** Loads legacy cached equipment data with user-scoped cache keys. */
 export function useEquipment(filters?: {
   search?: string
   phong_ban?: string
@@ -95,6 +97,7 @@ function useEquipmentDetail(id: string | null) {
 }
 
 // Update equipment mutation with cache invalidation
+/** Updates equipment records and invalidates dependent equipment caches. */
 export function useUpdateEquipment() {
   const queryClient = useQueryClient()
 
@@ -104,6 +107,8 @@ export function useUpdateEquipment() {
     },
     onSuccess: (_result, params) => {
       // Invalidate and refetch equipment lists
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Refetch the edited equipment detail instead of writing an unknown boolean payload into cache
       queryClient.invalidateQueries({ queryKey: equipmentKeys.detail(String(params.id)) })
@@ -136,6 +141,8 @@ function useCreateEquipment() {
     },
     onSuccess: () => {
       // Invalidate all equipment queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
@@ -156,6 +163,7 @@ function useCreateEquipment() {
 }
 
 // Delete equipment mutation
+/** Deletes an equipment record and invalidates active equipment result caches. */
 export function useDeleteEquipment() {
   const queryClient = useQueryClient()
 
@@ -166,6 +174,7 @@ export function useDeleteEquipment() {
     onSuccess: () => {
       // Invalidate main equipment table queries and refetch active pages immediately
       queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       // Keep legacy cache family invalidation for older screens
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Keep active usage status in sync with table actions
@@ -191,6 +200,7 @@ export function useDeleteEquipment() {
 }
 
 // Restore equipment mutation
+/** Restores a deleted equipment record and invalidates active equipment result caches. */
 export function useRestoreEquipment() {
   const queryClient = useQueryClient()
 
@@ -201,6 +211,7 @@ export function useRestoreEquipment() {
     onSuccess: () => {
       // Invalidate main equipment table queries and refetch active pages immediately
       queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       // Keep legacy cache family invalidation for older screens
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Keep active usage status in sync with table actions
@@ -226,6 +237,7 @@ export function useRestoreEquipment() {
 }
 
 // Bulk delete equipment mutation
+/** Deletes multiple equipment records and invalidates active equipment result caches. */
 export function useBulkDeleteEquipment() {
   const queryClient = useQueryClient()
 
@@ -239,6 +251,7 @@ export function useBulkDeleteEquipment() {
     onSuccess: (data, ids) => {
       // Invalidate main equipment table queries and refetch active pages immediately
       queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       // Keep legacy cache family invalidation for older screens
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Keep active usage status in sync with table actions

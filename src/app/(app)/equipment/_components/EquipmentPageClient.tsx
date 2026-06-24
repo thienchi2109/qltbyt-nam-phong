@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import type { ColumnFiltersState } from "@tanstack/react-table"
 import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -33,7 +34,9 @@ import { EquipmentDialogs } from "../equipment-dialogs"
 import { EquipmentDialogProvider } from "./EquipmentDialogContext"
 import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
+import { EquipmentDepartmentSummary } from "./EquipmentDepartmentSummary"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
+import { buildDepartmentColorClassByLabel } from "@/components/equipment/equipment-department-grouping"
 
 const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
 
@@ -121,6 +124,7 @@ function EquipmentPageContent({
 
     // Data
     total,
+    departmentDistribution,
     isLoading,
     isFetching,
     shouldFetchEquipment,
@@ -184,6 +188,33 @@ function EquipmentPageContent({
     canBulkSelect &&
     !isCardView &&
     floatingBarSelectionCount > 0
+  const departmentColorClassByLabel = React.useMemo(
+    () => buildDepartmentColorClassByLabel(departmentDistribution),
+    [departmentDistribution]
+  )
+  const rowDepartmentColorClassByLabel = React.useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(departmentColorClassByLabel).map(([label, colors]) => [
+          label,
+          colors.rowClassName,
+        ])
+      ),
+    [departmentColorClassByLabel]
+  )
+  const selectedDepartments = React.useMemo(() => {
+    const value = columnFilters.find((filter) => filter.id === "khoa_phong_quan_ly")?.value
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+  }, [columnFilters])
+  const handleSelectDepartmentSummary = React.useCallback(
+    (department: string) => {
+      setColumnFilters((current: ColumnFiltersState) => {
+        const withoutDepartment = current.filter((filter) => filter.id !== "khoa_phong_quan_ly")
+        return [...withoutDepartment, { id: "khoa_phong_quan_ly", value: [department] }]
+      })
+    },
+    [setColumnFilters]
+  )
 
   // Handle route sync pending actions using context
   React.useEffect(() => {
@@ -259,6 +290,13 @@ function EquipmentPageContent({
           onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
         />
 
+        <EquipmentDepartmentSummary
+          items={departmentDistribution}
+          colorClassByLabel={departmentColorClassByLabel}
+          selectedDepartments={selectedDepartments}
+          onSelectDepartment={handleSelectDepartmentSummary}
+        />
+
         <Card>
           <CardContent className="space-y-4 px-4 pt-4 md:px-6">
             <EquipmentColumnsDialog table={table} />
@@ -272,6 +310,7 @@ function EquipmentPageContent({
               table={table}
               columns={columns}
               onShowDetails={(eq) => openDetailDialog(eq)}
+              departmentColorClassByLabel={rowDepartmentColorClassByLabel}
             />
           </CardContent>
 

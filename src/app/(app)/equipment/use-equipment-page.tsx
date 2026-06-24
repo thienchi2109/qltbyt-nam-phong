@@ -14,6 +14,7 @@ import { useEquipmentData } from "./_hooks/useEquipmentData"
 import { useEquipmentTable } from "./_hooks/useEquipmentTable"
 import { useEquipmentExport } from "./_hooks/useEquipmentExport"
 import { useEquipmentRouteSync } from "./_hooks/useEquipmentRouteSync"
+import { buildDepartmentColorClassByLabel } from "@/components/equipment/equipment-department-grouping"
 
 // Re-export hook return type
 export type { UseEquipmentPageReturn } from "./types"
@@ -116,10 +117,15 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     [auth.user?.role]
   )
 
+  const departmentColorClassByLabel = React.useMemo(
+    () => buildDepartmentColorClassByLabel(data.departmentDistribution),
+    [data.departmentDistribution]
+  )
+
   // Columns definition
   const columns = React.useMemo(
-    () => createEquipmentColumns({ renderActions, canBulkSelect }),
-    [renderActions, canBulkSelect]
+    () => createEquipmentColumns({ renderActions, canBulkSelect, departmentColorClassByLabel }),
+    [renderActions, canBulkSelect, departmentColorClassByLabel]
   )
 
   // Table hook
@@ -273,6 +279,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       // Data
       data: data.data,
       total: data.total,
+      departmentDistribution: data.departmentDistribution,
       isLoading: data.isLoading,
       isFetching: data.isFetching,
       shouldFetchEquipment: data.shouldFetchData,

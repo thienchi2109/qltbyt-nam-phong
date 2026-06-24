@@ -77,6 +77,7 @@ export interface EquipmentDialogContextValue {
 // Context
 // ============================================
 
+/** Context for equipment page dialog state and mutation invalidation callbacks. */
 const EquipmentDialogContext = React.createContext<EquipmentDialogContextValue | null>(null)
 
 // ============================================
@@ -88,6 +89,7 @@ interface EquipmentDialogProviderProps {
   effectiveTenantKey: string
 }
 
+/** Provides equipment dialog orchestration state for the Equipment page. */
 export function EquipmentDialogProvider({
   children,
   effectiveTenantKey,
@@ -123,7 +125,7 @@ export function EquipmentDialogProvider({
       predicate: (q) => {
         const key = q.queryKey
         if (!Array.isArray(key)) return false
-        if (key[0] !== "equipment_list_enhanced") return false
+        if (key[0] !== "equipment_list_enhanced" && key[0] !== "equipment_department_distribution") return false
         const params = key[1] as Record<string, unknown>
         return params?.tenant === effectiveTenantKey
       },

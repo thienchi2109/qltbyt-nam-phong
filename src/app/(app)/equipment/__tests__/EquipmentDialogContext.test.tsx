@@ -4,7 +4,10 @@ import * as React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { Equipment, UsageLog } from '../types'
 
-const mockUseSession = vi.fn()
+const { mockInvalidateQueries, mockUseSession } = vi.hoisted(() => ({
+  mockInvalidateQueries: vi.fn(),
+  mockUseSession: vi.fn(),
+}))
 
 // Mock next-auth
 vi.mock('next-auth/react', () => ({
@@ -17,7 +20,7 @@ vi.mock('@tanstack/react-query', async () => {
   return {
     ...actual,
     useQueryClient: () => ({
-      invalidateQueries: vi.fn(),
+      invalidateQueries: mockInvalidateQueries,
     }),
   }
 })
@@ -88,6 +91,32 @@ describe('EquipmentDialogContext', () => {
       expect(result.current.dialogState.deleteTarget).toBeNull()
       expect(result.current.dialogState.deleteSource).toBeNull()
       expect(result.current.dialogState.isDeleteOpen).toBe(false)
+    })
+  })
+
+  describe('Cache Invalidation', () => {
+    it('invalidates equipment list and department distribution queries for the active tenant', () => {
+      const { result } = renderHook(() => useEquipmentContext(), {
+        wrapper: createWrapper(),
+      })
+
+      act(() => {
+        result.current.onDataMutationSuccess()
+      })
+
+      const equipmentInvalidation = mockInvalidateQueries.mock.calls.find(
+        ([options]) => typeof options?.predicate === 'function'
+      )?.[0]
+
+      expect(equipmentInvalidation?.predicate({
+        queryKey: ['equipment_list_enhanced', { tenant: '5' }],
+      })).toBe(true)
+      expect(equipmentInvalidation?.predicate({
+        queryKey: ['equipment_department_distribution', { tenant: '5' }],
+      })).toBe(true)
+      expect(equipmentInvalidation?.predicate({
+        queryKey: ['equipment_department_distribution', { tenant: '6' }],
+      })).toBe(false)
     })
   })
 
