@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from "@testing-library/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useEquipmentTable } from "../_hooks/useEquipmentTable"
+import { useEquipmentTable } from "@/app/(app)/equipment/_hooks/useEquipmentTable"
 import type { Equipment } from "@/types/database"
 
 const MEDIA_QUERIES = {
