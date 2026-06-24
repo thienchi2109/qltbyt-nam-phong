@@ -107,6 +107,8 @@ export function useUpdateEquipment() {
     },
     onSuccess: (_result, params) => {
       // Invalidate and refetch equipment lists
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Refetch the edited equipment detail instead of writing an unknown boolean payload into cache
       queryClient.invalidateQueries({ queryKey: equipmentKeys.detail(String(params.id)) })
@@ -139,6 +141,8 @@ function useCreateEquipment() {
     },
     onSuccess: () => {
       // Invalidate all equipment queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ['equipment_list_enhanced'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['equipment_department_distribution'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['equipment'] })
       // Invalidate dashboard stats to update KPI cards
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })

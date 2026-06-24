@@ -31,6 +31,7 @@ import {
   useBulkDeleteEquipment,
   useDeleteEquipment,
   useRestoreEquipment,
+  useUpdateEquipment,
 } from '@/hooks/use-cached-equipment'
 
 describe('use-cached-equipment mutation invalidation', () => {
@@ -39,6 +40,7 @@ describe('use-cached-equipment mutation invalidation', () => {
   })
 
   it.each([
+    ['update', useUpdateEquipment, undefined, { id: '1' }],
     ['delete', useDeleteEquipment, undefined, undefined],
     ['restore', useRestoreEquipment, undefined, undefined],
     ['bulk delete', useBulkDeleteEquipment, { deleted_count: 2 }, [1, 2]],
