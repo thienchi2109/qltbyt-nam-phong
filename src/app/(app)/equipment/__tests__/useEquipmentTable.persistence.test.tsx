@@ -88,6 +88,39 @@ function renderPersistedHook(userId = "user-5") {
   })
 }
 
+function renderHookWithUserId(initialUserId?: string) {
+  return renderHook(() => {
+    const [userId, setUserId] = React.useState<string | undefined>(initialUserId)
+    const [sorting, setSorting] = React.useState([])
+    const [columnFilters, setColumnFilters] = React.useState([])
+    const [searchTerm, setSearchTerm] = React.useState("")
+    const [pagination, setPagination] = React.useState({
+      pageIndex: 0,
+      pageSize: 20,
+    })
+
+    return {
+      table: useEquipmentTable({
+        data,
+        total: 60,
+        columns,
+        sorting,
+        setSorting,
+        columnFilters,
+        setColumnFilters,
+        debouncedSearch: searchTerm,
+        setSearchTerm,
+        pagination,
+        setPagination,
+        selectedDonVi: 5,
+        selectedFacilityId: 5,
+        columnVisibilityUserId: userId,
+      }),
+      setUserId,
+    }
+  })
+}
+
 function setMediaQueryResponses(responses: Record<string, boolean>) {
   mediaQueryState.responses = responses
 }
@@ -118,7 +151,7 @@ describe("useEquipmentTable column visibility persistence", () => {
     })
 
     await waitFor(() => {
-      expect(readStoredColumnVisibility("user-5")).toMatchObject({
+      expect(readStoredColumnVisibility("user-5")).toEqual({
         model: true,
         serial: false,
       })
@@ -206,12 +239,39 @@ describe("useEquipmentTable column visibility persistence", () => {
     })
 
     await waitFor(() => {
-      expect(readStoredColumnVisibility("user-5")).toMatchObject({
+      expect(readStoredColumnVisibility("user-5")).toEqual({
         model: true,
+      })
+    })
+  })
+
+  it("applies responsive auto-hide when auth resolves on a medium screen", async () => {
+    window.localStorage.setItem(
+      columnVisibilityStorageKey("user-5"),
+      JSON.stringify({
         serial: true,
         phan_loai_theo_nd98: true,
         so_luu_hanh: true,
       })
+    )
+    setMediaQueryResponses({
+      [MEDIA_QUERIES.mediumScreen]: true,
+    })
+
+    const { result } = renderHookWithUserId(undefined)
+
+    await waitFor(() => {
+      expect(result.current.table.columnVisibility.serial).toBe(false)
+    })
+
+    act(() => {
+      result.current.setUserId("user-5")
+    })
+
+    await waitFor(() => {
+      expect(result.current.table.columnVisibility.serial).toBe(false)
+      expect(result.current.table.columnVisibility.phan_loai_theo_nd98).toBe(false)
+      expect(result.current.table.columnVisibility.so_luu_hanh).toBe(false)
     })
   })
 })

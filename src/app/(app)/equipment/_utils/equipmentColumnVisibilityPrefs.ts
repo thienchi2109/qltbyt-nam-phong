@@ -2,7 +2,7 @@ import type { VisibilityState } from "@tanstack/react-table"
 
 const STORAGE_KEY_PREFIX = "equipment:columnVisibility:v1:user:"
 
-function getStorageKey(userId: string) {
+function getStorageKey(userId: string): string {
   return `${STORAGE_KEY_PREFIX}${userId}`
 }
 
@@ -16,7 +16,7 @@ function safeGet(key: string): string | null {
   }
 }
 
-function safeSet(key: string, value: VisibilityState) {
+function safeSet(key: string, value: VisibilityState): void {
   if (typeof window === "undefined") return
 
   try {
@@ -24,6 +24,21 @@ function safeSet(key: string, value: VisibilityState) {
   } catch {
     // Browser storage can be unavailable or full; keep table state in memory.
   }
+}
+
+function getVisibilityDiff(
+  visibility: VisibilityState,
+  defaultVisibility: VisibilityState
+): VisibilityState {
+  const diff: VisibilityState = {}
+
+  for (const [columnId, isVisible] of Object.entries(visibility)) {
+    if (defaultVisibility[columnId] !== isVisible) {
+      diff[columnId] = isVisible
+    }
+  }
+
+  return diff
 }
 
 function parseVisibility(value: string | null): VisibilityState | null {
@@ -63,9 +78,10 @@ export function getEquipmentColumnVisibility(
 /** Persists the current user's Equipment column visibility preference. */
 export function setEquipmentColumnVisibility(
   userId: string | undefined,
-  visibility: VisibilityState
-) {
+  visibility: VisibilityState,
+  defaultVisibility: VisibilityState
+): void {
   if (!userId) return
 
-  safeSet(getStorageKey(userId), visibility)
+  safeSet(getStorageKey(userId), getVisibilityDiff(visibility, defaultVisibility))
 }

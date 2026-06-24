@@ -20,46 +20,12 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import {
   getEquipmentColumnVisibility,
   setEquipmentColumnVisibility,
-} from "../_utils/equipmentColumnVisibilityPrefs"
+} from "@/app/(app)/equipment/_utils/equipmentColumnVisibilityPrefs"
+import { DEFAULT_COLUMN_VISIBILITY } from "@/app/(app)/equipment/_constants/equipmentColumnVisibility"
 import type { Equipment } from "../types"
 
 // Columns to hide on medium screens (768px-1800px)
 const RESPONSIVE_HIDE_COLUMNS = ['serial', 'phan_loai_theo_nd98', 'so_luu_hanh'] as const
-
-// Default column visibility
-const DEFAULT_COLUMN_VISIBILITY: VisibilityState = {
-  id: false,
-  ma_thiet_bi: true,
-  ten_thiet_bi: true,
-  model: false,
-  serial: true,
-  cau_hinh_thiet_bi: false,
-  phu_kien_kem_theo: false,
-  hang_san_xuat: false,
-  noi_san_xuat: false,
-  nam_san_xuat: false,
-  ngay_nhap: false,
-  ngay_dua_vao_su_dung: false,
-  nguon_kinh_phi: false,
-  gia_goc: false,
-  nam_tinh_hao_mon: false,
-  ty_le_hao_mon: false,
-  han_bao_hanh: false,
-  vi_tri_lap_dat: false,
-  nguoi_dang_truc_tiep_quan_ly: true,
-  khoa_phong_quan_ly: true,
-  tinh_trang_hien_tai: true,
-  ngay_ngung_su_dung: false,
-  ghi_chu: false,
-  chu_ky_bt_dinh_ky: false,
-  ngay_bt_tiep_theo: false,
-  chu_ky_hc_dinh_ky: false,
-  ngay_hc_tiep_theo: false,
-  chu_ky_kd_dinh_ky: false,
-  ngay_kd_tiep_theo: false,
-  phan_loai_theo_nd98: true,
-  so_luu_hanh: true,
-}
 
 function restoreResponsivePreference(
   visibility: VisibilityState,
@@ -72,6 +38,15 @@ function restoreResponsivePreference(
     restored[columnId] = responsiveSnapshot[columnId] ?? visibility[columnId]
   })
   return restored
+}
+
+function hideResponsiveColumns(visibility: VisibilityState): VisibilityState {
+  return {
+    ...visibility,
+    serial: false,
+    phan_loai_theo_nd98: false,
+    so_luu_hanh: false,
+  }
 }
 
 export interface UseEquipmentTableParams {
@@ -130,6 +105,12 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     columnVisibilityUserId,
   } = params
 
+  // Media queries
+  const isMobile = useIsMobile()
+  const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)")
+  const isCardView = useMediaQuery("(max-width: 1279px)")
+  const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)")
+
   // Column visibility state
   const [columnVisibility, setRuntimeColumnVisibility] = React.useState<VisibilityState>(() =>
     getEquipmentColumnVisibility(columnVisibilityUserId, DEFAULT_COLUMN_VISIBILITY)
@@ -137,12 +118,29 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
   // Track pre-responsive visibility to restore user preferences
   const preResponsiveVisibilityRef = React.useRef<VisibilityState | null>(null)
+  const isMediumScreenRef = React.useRef(false)
 
   React.useEffect(() => {
-    preResponsiveVisibilityRef.current = null
-    setRuntimeColumnVisibility(
-      getEquipmentColumnVisibility(columnVisibilityUserId, DEFAULT_COLUMN_VISIBILITY)
+    isMediumScreenRef.current = isMediumScreen
+  }, [isMediumScreen])
+
+  React.useEffect(() => {
+    const nextVisibility = getEquipmentColumnVisibility(
+      columnVisibilityUserId,
+      DEFAULT_COLUMN_VISIBILITY
     )
+    preResponsiveVisibilityRef.current = null
+    if (isMediumScreenRef.current) {
+      const snapshot: VisibilityState = {}
+      RESPONSIVE_HIDE_COLUMNS.forEach((col) => {
+        snapshot[col] = nextVisibility[col] ?? true
+      })
+      preResponsiveVisibilityRef.current = snapshot
+      setRuntimeColumnVisibility(hideResponsiveColumns(nextVisibility))
+      return
+    }
+
+    setRuntimeColumnVisibility(nextVisibility)
   }, [columnVisibilityUserId])
 
   const setColumnVisibility = React.useCallback<
@@ -153,7 +151,8 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
         const next = typeof value === "function" ? value(prev) : value
         setEquipmentColumnVisibility(
           columnVisibilityUserId,
-          restoreResponsivePreference(next, preResponsiveVisibilityRef.current)
+          restoreResponsivePreference(next, preResponsiveVisibilityRef.current),
+          DEFAULT_COLUMN_VISIBILITY
         )
         return next
       })
@@ -202,12 +201,6 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
     setRowSelection({})
   }, [pagination.pageIndex, pagination.pageSize, sorting])
-
-  // Media queries
-  const isMobile = useIsMobile()
-  const useTabletFilters = useMediaQuery("(min-width: 768px) and (max-width: 1024px)")
-  const isCardView = useMediaQuery("(max-width: 1279px)")
-  const isMediumScreen = useMediaQuery("(min-width: 768px) and (max-width: 1800px)")
 
   // Page count calculation
   const pageCount = Math.max(0, Math.ceil((total || 0) / Math.max(pagination.pageSize, 1)))
@@ -264,12 +257,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
           preResponsiveVisibilityRef.current = snapshot
         }
 
-        return {
-          ...prev,
-          serial: false,
-          phan_loai_theo_nd98: false,
-          so_luu_hanh: false,
-        }
+        return hideResponsiveColumns(prev)
       })
     } else if (preResponsiveVisibilityRef.current) {
       // Restore columns that were hidden by responsive logic when returning to large screen
