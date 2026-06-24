@@ -46,6 +46,7 @@ function buildCategoryPath(
   return path
 }
 
+/** Shows quota metadata and assigned equipment for the selected category. */
 export function DeviceQuotaCategoryDetailPane({
   category,
   allCategories,
@@ -77,9 +78,9 @@ export function DeviceQuotaCategoryDetailPane({
   return (
     <Card
       data-testid="device-quota-category-detail-pane"
-      className="h-full overflow-hidden"
+      className="h-full flex flex-col overflow-hidden"
     >
-      <CardHeader className="space-y-3 pb-4">
+      <CardHeader className="shrink-0 space-y-3 pb-4">
         <CardDescription className="line-clamp-1">
           {parentPath.length > 0
             ? parentPath.map((item) => item.ten_nhom).join(" / ")
@@ -120,7 +121,7 @@ export function DeviceQuotaCategoryDetailPane({
           <QuotaProgressBar current={aggregatedCount} max={quotaMax} />
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
+      <CardContent className="min-h-0 flex-1 overflow-y-auto pt-0">
         {isLeaf ? (
           <DeviceQuotaCategoryAssignedEquipment
             nhomId={category.id}
