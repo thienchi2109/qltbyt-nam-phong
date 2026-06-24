@@ -207,12 +207,13 @@ function classifyEquipmentLookupIntent(
   const mentionsLookupIntent =
     /\b(tra cuu|tim|xem|kiem tra|thong tin|chi tiet|ho so)\b/.test(normalized)
   const mentionsEquipment = /\b(thiet bi|may)\b/.test(normalized)
+  const hasSpecificDescriptor = hasSpecificEquipmentDescriptor(normalized)
 
-  if (!mentionsLookupIntent || !mentionsEquipment) {
+  if (!mentionsLookupIntent || (!mentionsEquipment && !hasSpecificDescriptor)) {
     return null
   }
 
-  if (hasEquipmentIdentifier(text) || hasSpecificEquipmentDescriptor(normalized)) {
+  if (hasEquipmentIdentifier(text) || hasSpecificDescriptor) {
     if (shouldNarrowToEquipmentLookup(normalized, requestedTools)) {
       return {
         kind: 'proceed',

@@ -344,6 +344,18 @@ describe('routeChatIntent', () => {
       })
     })
 
+    it('routes specific equipment-name lookup prompts even without generic device words', () => {
+      const result = routeChatIntent({
+        messages: [makeUserMessage('Tra cứu bơm tiêm điện')],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: 'proceed',
+        requestedTools: ['equipmentLookup'],
+      })
+    })
+
     it('strips query_database from repair-summary routing decisions', () => {
       const result = routeChatIntent({
         messages: [makeUserMessage('Có bao nhiêu phiếu sửa chữa đang chờ xử lý?')],
