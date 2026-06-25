@@ -35,8 +35,8 @@
 - [ ] 4.1 Add a compact header search input for `admin`/`global` and `regional_leader`.
 - [ ] 4.2 Hide the entry point for all other roles.
 - [ ] 4.3 Submit only on Enter or search button click.
-- [ ] 4.4 Navigate to `/global-search?q=<keyword>` on valid submit.
-- [ ] 4.5 Add focused tests for visibility and submit behavior.
+- [ ] 4.4 URL-encode the keyword and navigate to `/global-search?q=<encodedKeyword>` on valid submit.
+- [ ] 4.5 Add focused tests for visibility, submit behavior, and encoded navigation for spaces/reserved characters.
 
 ## 5. Global Search Page
 
@@ -65,8 +65,9 @@
 - [ ] 7.3 Run `node scripts/npm-run.js run typecheck`.
 - [ ] 7.4 Run focused backend/RPC verification for role scopes and field matching.
 - [ ] 7.5 Run focused React tests for changed UI behavior.
-- [ ] 7.6 Run `node scripts/npm-run.js run react-doctor`.
-- [ ] 7.7 Manually verify chart rendering and drill-down in browser.
+- [ ] 7.6 Verify global-search URL hydration by loading `/global-search?q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
+- [ ] 7.7 Run `node scripts/npm-run.js run react-doctor`.
+- [ ] 7.8 Manually verify chart rendering and drill-down in browser.
 
 ## 8. Release Notes
 
