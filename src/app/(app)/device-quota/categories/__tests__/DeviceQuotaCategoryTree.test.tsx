@@ -1,5 +1,6 @@
 import React from 'react'
 import { render, screen, fireEvent, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import "@testing-library/jest-dom"
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -407,7 +408,7 @@ describe('DeviceQuotaCategoryTree', () => {
     const row = screen.getByRole('button', { name: /Chọn danh mục 01\.01: Leaf A/i })
     expect(row).toHaveAttribute('aria-pressed', 'true')
     expect(row).toHaveAttribute('title', 'Leaf A')
-    expect(row).toHaveTextContent('2/5')
+    expect(row).toHaveAccessibleName(/Tình trạng 2\/5/i)
   })
 
   it('clicking a category row updates the detail pane without rendering equipment inline', () => {
@@ -429,7 +430,7 @@ describe('DeviceQuotaCategoryTree', () => {
     renderWithThreeLevelTree()
 
     const leafBRow = screen.getByRole('button', { name: /Chọn danh mục 01\.02: Leaf B/i })
-    const leafBMenu = within(leafBRow).getByRole('button', { name: /Mở menu danh mục Leaf B/i })
+    const leafBMenu = screen.getByRole('button', { name: /Mở menu danh mục Leaf B/i })
 
     fireEvent.keyDown(leafBMenu, { key: 'Enter' })
 
@@ -438,18 +439,21 @@ describe('DeviceQuotaCategoryTree', () => {
     expect(leafBMenu).not.toHaveClass('opacity-0')
   })
 
-  it('selects a focused category row with Enter or Space', () => {
+  it('selects a focused category row with Enter or Space', async () => {
+    const user = userEvent.setup()
     renderWithThreeLevelTree()
 
     const detailPane = screen.getByTestId('device-quota-category-detail-pane')
     const emptyLeaf = screen.getByRole('button', { name: /Chọn danh mục 02\.01: Empty Leaf A/i })
     const emptyLeafB = screen.getByRole('button', { name: /Chọn danh mục 02\.02: Empty Leaf B/i })
 
-    fireEvent.keyDown(emptyLeaf, { key: 'Enter' })
+    emptyLeaf.focus()
+    await user.keyboard('{Enter}')
     expect(emptyLeaf).toHaveAttribute('aria-pressed', 'true')
     expect(within(detailPane).getByText('Empty Leaf A')).toBeInTheDocument()
 
-    fireEvent.keyDown(emptyLeafB, { key: ' ' })
+    emptyLeafB.focus()
+    await user.keyboard(' ')
     expect(emptyLeafB).toHaveAttribute('aria-pressed', 'true')
     expect(within(detailPane).getByText('Empty Leaf B')).toBeInTheDocument()
   })
