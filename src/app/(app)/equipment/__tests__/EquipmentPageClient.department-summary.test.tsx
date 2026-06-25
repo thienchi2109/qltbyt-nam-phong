@@ -73,6 +73,42 @@ vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => null,
 }))
 
+vi.mock("@/components/ui/popover", () => ({
+  Popover: ({ children }: { children: React.ReactNode }) => {
+    const [open, setOpen] = React.useState(false)
+    return (
+      <>
+        {React.Children.map(children, (child) =>
+          React.isValidElement<{ open?: boolean; setOpen?: (open: boolean) => void }>(child)
+            ? React.cloneElement(child, { open, setOpen })
+            : child
+        )}
+      </>
+    )
+  },
+  PopoverTrigger: ({
+    children,
+    open,
+    setOpen,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+    setOpen?: (open: boolean) => void
+  }) =>
+    React.isValidElement<{ onClick?: React.MouseEventHandler }>(children)
+      ? React.cloneElement(children, {
+          onClick: () => setOpen?.(!open),
+        })
+      : <>{children}</>,
+  PopoverContent: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode
+    open?: boolean
+  }) => (open ? <div>{children}</div> : null),
+}))
+
 import { EquipmentPageClient } from "../_components/EquipmentPageClient"
 
 function createPageState(overrides?: Partial<EquipmentPageState>): EquipmentPageState {
@@ -90,7 +126,11 @@ function createPageState(overrides?: Partial<EquipmentPageState>): EquipmentPage
     total: 9,
     departmentDistribution: [
       { department: "Khoa Ngoại", label: "Khoa Ngoại", count: 7 },
-      { department: null, label: "Chưa cập nhật", count: 2 },
+      { department: "Khoa Nội", label: "Khoa Nội", count: 5 },
+      { department: "Khoa HSCC", label: "Khoa HSCC", count: 4 },
+      { department: "Khoa Sản", label: "Khoa Sản", count: 3 },
+      { department: "Khoa Nhi", label: "Khoa Nhi", count: 2 },
+      { department: null, label: "Chưa cập nhật", count: 1 },
     ],
     isLoading: false,
     isFetching: false,
@@ -155,16 +195,29 @@ describe("EquipmentPageClient department summary", () => {
     state.pageState = createPageState()
   })
 
-  it("renders department distribution counts between the toolbar and table", () => {
+  it("renders a compact department summary between the toolbar and table", () => {
     render(<EquipmentPageClient />)
 
     const summary = screen.getByRole("region", { name: "Phân bố theo khoa/phòng" })
 
-    expect(summary).toHaveTextContent("Phân bố theo khoa/phòng")
+    expect(summary).toHaveTextContent("Khoa/phòng")
     expect(within(summary).getByRole("button", { name: /Khoa Ngoại 7 thiết bị/ })).toBeInTheDocument()
-    expect(within(summary).getByText("Chưa cập nhật")).toBeInTheDocument()
+    expect(within(summary).getByRole("button", { name: "Xem thêm 2 khoa/phòng" })).toBeInTheDocument()
+    expect(within(summary).queryByText("Chưa cập nhật")).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment toolbar" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment table" })).toBeInTheDocument()
+  })
+
+  it("shows the remaining departments in a searchable popover list", async () => {
+    const user = userEvent.setup()
+    render(<EquipmentPageClient />)
+
+    await user.click(screen.getByRole("button", { name: "Xem thêm 2 khoa/phòng" }))
+
+    expect(screen.getByText("Tất cả khoa/phòng")).toBeInTheDocument()
+    expect(screen.getByRole("searchbox", { name: "Tìm khoa/phòng" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Khoa Nhi 2 thiết bị/ })).toBeInTheDocument()
+    expect(screen.getByText("Chưa cập nhật")).toBeInTheDocument()
   })
 
   it("clicking a department summary item applies the existing department filter", async () => {

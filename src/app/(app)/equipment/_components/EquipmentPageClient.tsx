@@ -292,7 +292,6 @@ function EquipmentPageContent({
 
         <EquipmentDepartmentSummary
           items={departmentDistribution}
-          colorClassByLabel={departmentColorClassByLabel}
           selectedDepartments={selectedDepartments}
           onSelectDepartment={handleSelectDepartmentSummary}
         />
