@@ -1,3 +1,5 @@
+> Superseded: Do not implement these Zalo Bot group-chat tasks. Use `openspec/changes/add-zalo-repair-request-zbs-phone-notifications/tasks.md` for the active ZBS phone-number roadmap.
+
 ## 1. Zalo Bot Onboarding
 - [ ] 1.1 Create the Zalo Bot and capture the `BOT_TOKEN` in the deployment secret store.
 - [ ] 1.2 Configure a production HTTPS webhook with `setWebhook` and a generated `ZALO_WEBHOOK_SECRET_TOKEN`.
@@ -33,4 +35,3 @@
 - [ ] 5.5 Run focused route-handler and dispatcher tests.
 - [ ] 5.6 Run `node scripts/npm-run.js npx react-doctor@latest . --verbose -y --project nextn --offline --diff main` if any React/Next app code changes.
 - [ ] 5.7 Run `openspec validate add-zalo-repair-request-group-notifications --strict`.
-

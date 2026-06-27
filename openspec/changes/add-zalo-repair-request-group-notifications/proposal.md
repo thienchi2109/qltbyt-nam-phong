@@ -1,3 +1,5 @@
+> Superseded: This Zalo Bot group-chat direction is no longer the current rollout plan. Use `openspec/changes/add-zalo-repair-request-zbs-phone-notifications/` as the source of truth for the approved ZBS phone-number notification direction.
+
 ## Why
 Repair requests currently rely on users opening the application to notice new work. The hospital already has a responsible Zalo group chat, so new repair requests should also create an operational alert in that fixed group.
 
@@ -25,4 +27,3 @@ Zalo Bot group support is currently documented as Beta/internal trial, and the b
   - Route handler tests for webhook secret validation and group `chat.id` parsing.
   - Unit tests for Zalo message formatting, outbound API error handling, idempotency, and retry status transitions.
   - Manual live smoke test against a real Zalo Bot/group before enabling production notification dispatch.
-
