@@ -1,3 +1,5 @@
+> Superseded: This Zalo Bot group-chat design is retained only as historical context. The current approved direction is ZBS phone-number delivery in `openspec/changes/add-zalo-repair-request-zbs-phone-notifications/`.
+
 ## Context
 The target workflow is narrow: when a user creates a repair request through the existing `repair_request_create` RPC, the hospital's existing Zalo group should receive one text alert.
 
@@ -33,4 +35,3 @@ The current hospital group exists, but the Zalo Bot does not. The implementation
 - Before implementation, verify the real Zalo setup manually: bot created, webhook configured over HTTPS, bot added to the group, inbound group event received, group `chat.id` captured, and a test `sendMessage` succeeds.
 - For SQL/DB changes, use Supabase MCP only, preserve `SECURITY DEFINER`, `SET search_path = public, pg_temp`, grants/revokes, JWT guards, and run Supabase security advisor after applying migrations.
 - For TypeScript/React route/client changes, run repo gates in the required order: `verify:no-explicit-any`, `typecheck`, focused tests, and React Doctor diff scan.
-

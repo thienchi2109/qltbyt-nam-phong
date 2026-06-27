@@ -3,7 +3,7 @@
 ## Why
 Repair requests currently rely on users opening the application to notice new work. The hospital now has a Zalo Official Account and wants an automatic Zalo notification sent to a specific Zalo phone number when a repair request is created.
 
-The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bot group chat delivery. This change intentionally replaces that rollout direction with ZBS Template Message delivery to individual recipients by phone number.
+The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bot group chat delivery. This change supersedes that rollout direction with ZBS Template Message delivery to individual recipients by phone number.
 
 ## What Changes
 - Add a ZBS Template Message notification path for newly created repair requests.
