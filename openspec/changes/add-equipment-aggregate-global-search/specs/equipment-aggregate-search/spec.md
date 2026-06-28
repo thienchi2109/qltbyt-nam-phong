@@ -16,7 +16,7 @@ The system SHALL provide a header search entry point for equipment aggregate glo
 
 #### Scenario: Header submit opens search workspace
 - **WHEN** an allowed user submits a non-empty keyword with Enter or the search button
-- **THEN** the system navigates to `/global-search?q=<keyword>`
+- **THEN** the system URL-encodes the keyword and navigates to `/global-search?q=<encodedKeyword>`
 
 #### Scenario: Header does not autocomplete
 - **WHEN** an allowed user types in the header search input
@@ -128,6 +128,7 @@ The system SHALL render aggregate equipment search results as both an interactiv
 #### Scenario: Table mirrors chart
 - **WHEN** aggregate results are loaded
 - **THEN** the table shows the same region or facility groups and counts as the chart
+- **AND** facility-level rows show the matching equipment count as the primary value
 
 #### Scenario: Chart drill-down interaction
 - **WHEN** a user clicks a region bar at region level
@@ -140,6 +141,64 @@ The system SHALL render aggregate equipment search results as both an interactiv
 #### Scenario: Empty result state
 - **WHEN** no equipment matches the keyword within the user's allowed scope
 - **THEN** the workspace displays an empty state instead of an empty chart
+
+### Requirement: Facility Quota Context
+
+The system SHALL include quota context in facility-level aggregate search results without replacing the matching equipment count.
+
+#### Scenario: Facility row shows count and quota
+- **WHEN** a facility has matching equipment with quota data
+- **THEN** the facility row displays the matching equipment count
+- **AND** displays quota context in the form `<current>/<maximum>` or `<current>/<minimum>-<maximum>` when a minimum applies
+
+#### Scenario: Count remains primary
+- **WHEN** quota context is displayed for a facility
+- **THEN** the matching equipment count remains visible as its own primary column
+- **AND** quota context is displayed as supplementary information
+
+#### Scenario: Within quota limit wording
+- **WHEN** the matching equipment count is within the configured quota range
+- **THEN** the user-facing status is `Trong giới hạn định mức`
+
+#### Scenario: Below minimum wording
+- **WHEN** the matching equipment count is lower than the configured minimum
+- **THEN** the user-facing status is `Dưới mức tối thiểu`
+
+#### Scenario: Over limit wording
+- **WHEN** the matching equipment count is higher than the configured maximum
+- **THEN** the user-facing status is `Vượt giới hạn định mức`
+
+#### Scenario: No active quota decision
+- **WHEN** a facility has matching equipment but no active quota decision
+- **THEN** the quota column displays no ratio
+- **AND** the user-facing status is `Chưa có định mức`
+
+#### Scenario: Unassigned equipment category
+- **WHEN** matching equipment has no assigned equipment quota category
+- **THEN** those devices are included in the matching equipment count
+- **AND** the row clearly shows `Chưa gán danh mục định mức`
+
+#### Scenario: Group not in unit quota
+- **WHEN** matching equipment is assigned to an equipment group that is not present in the unit's active quota decision
+- **THEN** those devices are included in the matching equipment count
+- **AND** the row clearly shows `Chưa được gán vào định mức của đơn vị`
+
+#### Scenario: Multiple quota groups matched
+- **WHEN** one facility has matching equipment across multiple quota groups
+- **THEN** the facility row may aggregate current count and maximum quota across those groups
+- **AND** the row clearly shows `Gồm nhiều nhóm định mức`
+
+### Requirement: Read-Only Quota Overlay
+
+The system SHALL present quota information in global search as read-only context for management lookup.
+
+#### Scenario: No quota editing actions
+- **WHEN** a facility row has missing quota assignment, missing active quota, or over-limit status
+- **THEN** global search does not show actions to assign equipment categories, edit quota decisions, or otherwise fix unit data
+
+#### Scenario: Existing equipment detail link only
+- **WHEN** a user chooses to inspect matching equipment
+- **THEN** global search links only to the existing equipment page with the relevant keyword and region/facility context
 
 ### Requirement: Equipment Detail Deep Links
 
@@ -164,6 +223,7 @@ The system SHALL display a concise summary of aggregate equipment search results
 #### Scenario: Summary counts
 - **WHEN** aggregate results are loaded
 - **THEN** the page displays total matching equipment count, number of matching regions, and number of matching facilities within scope
+- **AND** does not replace facility-level equipment counts with quota ratios
 
 #### Scenario: Scope badge
 - **WHEN** aggregate search results are displayed
@@ -175,7 +235,7 @@ The system SHALL compute aggregate search results without returning equipment ro
 
 #### Scenario: Aggregated RPC response
 - **WHEN** the client requests aggregate search results
-- **THEN** the server returns grouped counts and summary metadata
+- **THEN** the server returns grouped counts, quota context, and summary metadata
 - **AND** does not return individual equipment records
 
 #### Scenario: Query stays server-side
