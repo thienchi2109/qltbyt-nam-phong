@@ -75,6 +75,7 @@ describe('RPC proxy whitelist', () => {
     'equipment_filter_buckets',
     'equipment_department_distribution',
     'dashboard_kpi_summary',
+    'equipment_aggregate_search',
   ])('allows performance RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
