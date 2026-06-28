@@ -42,12 +42,12 @@ type EquipmentFilterBucketsResponse = Partial<{
   location: EquipmentFilterBucket[]
 }>
 
-interface AddTasksFilterOption {
+export interface AddTasksFilterOption {
   label: string
   value: string
 }
 
-interface AddTasksFilterOptions {
+export interface AddTasksFilterOptions {
   departments: AddTasksFilterOption[]
   users: AddTasksFilterOption[]
   locations: AddTasksFilterOption[]

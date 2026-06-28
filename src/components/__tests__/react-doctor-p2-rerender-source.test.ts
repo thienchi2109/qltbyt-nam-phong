@@ -41,13 +41,18 @@ describe("React Doctor P2 rerender source guard", () => {
     expect(editSource).not.toContain("setIssueDescription")
   })
 
-  it("keeps AddTasksDialog table state reducer-based and filter options single-pass", () => {
+  it("keeps AddTasksDialog split into focused table, toolbar, and state modules", () => {
     const source = readSource("src/components/add-tasks-dialog.tsx")
+    const tableStateSource = readSource("src/components/add-tasks-dialog.table-state.ts")
 
-    expect(source).toContain("useReducer")
+    expect(source.split("\n").length).toBeLessThan(350)
+    expect(source).toContain("AddTasksDialogToolbar")
+    expect(source).toContain("AddTasksEquipmentTable")
+    expect(source).toContain("addTasksTableReducer")
+    expect(tableStateSource).toContain("export function addTasksTableReducer")
+    expect(tableStateSource).toContain("...initialAddTasksTableState")
     expect(source).not.toContain(".filter(Boolean)")
     expect(source).not.toContain("setRowSelection({})")
-    expect(source).toContain("...initialAddTasksTableState")
   })
 
   it("uses mutation or transition pending state in tenant and user submit dialogs", () => {
