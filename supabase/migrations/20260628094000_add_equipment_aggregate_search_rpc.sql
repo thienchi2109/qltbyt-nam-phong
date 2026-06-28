@@ -63,6 +63,12 @@ BEGIN
     END IF;
   END IF;
 
+  IF v_role = 'global' THEN
+    v_scope_label := CASE WHEN p_region_id IS NULL THEN 'Toàn hệ thống' ELSE 'Theo địa bàn' END;
+  ELSE
+    v_scope_label := 'Địa bàn phụ trách';
+  END IF;
+
   WITH scoped_facilities AS (
     SELECT
       dv.id AS facility_id,
@@ -75,14 +81,14 @@ BEGIN
       AND (v_role = 'global' OR dv.id = ANY(v_allowed_facilities))
       AND (p_region_id IS NULL OR dv.dia_ban_id = p_region_id)
   ),
-  matched_equipment AS (
+  raw_matched_equipment AS (
     SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
     FROM scoped_facilities sf
     JOIN public.thiet_bi tb ON tb.don_vi = sf.facility_id
     WHERE tb.is_deleted = false
       AND tb.ten_thiet_bi ILIKE ('%' || v_sanitized_query || '%')
 
-    UNION
+    UNION ALL
 
     SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
     FROM scoped_facilities sf
@@ -90,7 +96,7 @@ BEGIN
     WHERE tb.is_deleted = false
       AND tb.model ILIKE ('%' || v_sanitized_query || '%')
 
-    UNION
+    UNION ALL
 
     SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
     FROM scoped_facilities sf
@@ -98,7 +104,7 @@ BEGIN
     WHERE tb.is_deleted = false
       AND tb.serial ILIKE ('%' || v_sanitized_query || '%')
 
-    UNION
+    UNION ALL
 
     SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
     FROM scoped_facilities sf
@@ -113,6 +119,11 @@ BEGIN
           WHERE kw.keyword ILIKE ('%' || v_sanitized_query || '%')
         )
       )
+  ),
+  matched_equipment AS (
+    SELECT DISTINCT ON (id) id, facility_id, nhom_thiet_bi_id, region_id, region_name, facility_name
+    FROM raw_matched_equipment
+    ORDER BY id
   ),
   active_decisions AS (
     SELECT DISTINCT ON (qd.don_vi_id)
@@ -320,14 +331,6 @@ BEGIN
   INTO v_rows, v_summary
   FROM totals t
   LEFT JOIN limited_rows lr ON true;
-
-  IF v_role = 'global' THEN
-    v_scope_label := CASE WHEN p_region_id IS NULL THEN 'Toàn hệ thống' ELSE 'Theo địa bàn' END;
-  ELSE
-    v_scope_label := 'Địa bàn phụ trách';
-  END IF;
-
-  v_summary := jsonb_set(v_summary, '{scopeLabel}', to_jsonb(v_scope_label));
 
   RETURN jsonb_build_object(
     'rows', v_rows,
