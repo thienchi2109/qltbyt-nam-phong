@@ -7,7 +7,7 @@
 - Phase 2 backend RPC: #627
 - Phase 3 client data layer: #628
 - Phase 4 header entry: #629
-- Phase 5 global-search workspace: #630
+- Phase 5 Reports equipment-search tab: #630
 - Phase 6 read-only quota context rendering: #631
 - Phase 7 equipment deep-links and final rollout: #632
 
@@ -45,23 +45,24 @@
 
 ## Phase 3 - Client Data Layer (#628)
 
-- [ ] 3.1 Add TypeScript request/response types for aggregate equipment search, including quota fields and status enum.
-- [ ] 3.2 Add a TanStack Query hook with stable query keys.
-- [ ] 3.3 Gate the hook on non-empty trimmed query and allowed role.
-- [ ] 3.4 Normalize API errors into existing UI error patterns.
+- [x] 3.1 Add TypeScript request/response types for aggregate equipment search, including quota fields and status enum.
+- [x] 3.2 Add a TanStack Query hook with stable query keys.
+- [x] 3.3 Gate the hook on non-empty trimmed query and allowed role.
+- [x] 3.4 Normalize API errors into existing UI error patterns.
+- [x] 3.5 Keep the data layer route-agnostic so the Reports tab can consume it without coupling to a page path.
 
 ## Phase 4 - Header Entry Point (#629)
 
 - [ ] 4.1 Add a compact header search input for `admin`/`global` and `regional_leader`.
 - [ ] 4.2 Hide the entry point for all other roles.
 - [ ] 4.3 Submit only on Enter or search button click.
-- [ ] 4.4 URL-encode the keyword and navigate to `/global-search?q=<encodedKeyword>` on valid submit.
+- [ ] 4.4 URL-encode the keyword and navigate to `/reports?tab=equipment-search&q=<encodedKeyword>` on valid submit.
 - [ ] 4.5 Add focused tests for visibility, submit behavior, and encoded navigation for spaces/reserved characters.
 
-## Phase 5 - Global Search Workspace Count-First Flow (#630)
+## Phase 5 - Reports Equipment Search Tab Count-First Flow (#630)
 
-- [ ] 5.1 Add `/global-search` page/route.
-- [ ] 5.2 Read and update keyword from URL query state.
+- [ ] 5.1 Add a dedicated `equipment-search` tab to the existing Reports page with user-facing label `Tìm kiếm thiết bị`.
+- [ ] 5.2 Read and update `tab=equipment-search` and `q=<keyword>` from Reports URL query state.
 - [ ] 5.3 Render top search form, scope badge, summary, chart, table, breadcrumb, loading, error, and empty states.
 - [ ] 5.4 Implement admin/global region-first view.
 - [ ] 5.5 Implement region drill-down to facility grouping.
@@ -91,13 +92,13 @@
 - [ ] 7.9 Run `node scripts/npm-run.js run typecheck`.
 - [ ] 7.10 Run focused backend/RPC verification for role scopes, field matching, quota joining, unassigned/not-in-quota/no-active-quota states, and representative `EXPLAIN` plans.
 - [ ] 7.11 Run focused React tests for changed UI behavior and quota status labels.
-- [ ] 7.12 Verify global-search URL hydration by loading `/global-search?q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
+- [ ] 7.12 Verify Reports tab URL hydration by loading `/reports?tab=equipment-search&q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
 - [ ] 7.13 Run `node scripts/npm-run.js run react-doctor`.
 - [ ] 7.14 Manually verify header search, chart rendering, drill-down, quota labels, and equipment deep-links in browser.
 
 ## Release Notes
 
 - [ ] 8.1 Document that v1 is submit-only and has no autocomplete.
-- [ ] 8.2 Document that global search aggregates equipment counts only.
+- [ ] 8.2 Document that the Reports equipment search tab aggregates equipment counts only.
 - [ ] 8.3 Document that detail inspection happens through existing equipment page deep-links.
 - [ ] 8.4 Document that quota information is read-only in global search and unit-level quota assignment remains outside this workflow.
