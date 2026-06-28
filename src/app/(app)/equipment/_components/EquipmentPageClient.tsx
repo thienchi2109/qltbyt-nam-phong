@@ -36,7 +36,6 @@ import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
 import { EquipmentDepartmentSummary } from "./EquipmentDepartmentSummary"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
-import { buildDepartmentColorClassByLabel } from "@/components/equipment/equipment-department-grouping"
 
 const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
 
@@ -188,20 +187,6 @@ function EquipmentPageContent({
     canBulkSelect &&
     !isCardView &&
     floatingBarSelectionCount > 0
-  const departmentColorClassByLabel = React.useMemo(
-    () => buildDepartmentColorClassByLabel(departmentDistribution),
-    [departmentDistribution]
-  )
-  const rowDepartmentColorClassByLabel = React.useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(departmentColorClassByLabel).map(([label, colors]) => [
-          label,
-          colors.rowClassName,
-        ])
-      ),
-    [departmentColorClassByLabel]
-  )
   const selectedDepartments = React.useMemo(() => {
     const value = columnFilters.find((filter) => filter.id === "khoa_phong_quan_ly")?.value
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
@@ -309,7 +294,6 @@ function EquipmentPageContent({
               table={table}
               columns={columns}
               onShowDetails={(eq) => openDetailDialog(eq)}
-              departmentColorClassByLabel={rowDepartmentColorClassByLabel}
             />
           </CardContent>
 

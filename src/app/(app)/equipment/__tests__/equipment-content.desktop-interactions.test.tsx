@@ -33,17 +33,6 @@ function EquipmentContentHarness({
     [departmentColorClassByLabel]
   )
 
-  const rowColorClassByLabel = React.useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(departmentColorClassByLabel ?? {}).map(([label, colors]) => [
-          label,
-          colors.rowClassName,
-        ])
-      ),
-    [departmentColorClassByLabel]
-  )
-
   const table = useReactTable({
     data: [equipment],
     columns,
@@ -62,7 +51,6 @@ function EquipmentContentHarness({
         table={table}
         columns={columns}
         onShowDetails={onShowDetails}
-        departmentColorClassByLabel={rowColorClassByLabel}
       />
     </LinkedRequestProvider>
   )
@@ -126,7 +114,7 @@ describe("EquipmentContent desktop interactions", () => {
     expect(onShowDetails).toHaveBeenCalledWith(equipment)
   })
 
-  it("applies subtle department color classes to desktop rows", () => {
+  it("keeps desktop rows neutral while preserving department badge colors", () => {
     const equipment: Equipment = {
       id: 303,
       ma_thiet_bi: "TB-303",
@@ -141,15 +129,14 @@ describe("EquipmentContent desktop interactions", () => {
         onShowDetails={vi.fn()}
         departmentColorClassByLabel={{
           "Khoa Ngoại": {
-            rowClassName: "bg-sky-50/60 hover:bg-sky-50",
-            chipClassName: "border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100",
             badgeClassName: "border-sky-200 bg-sky-100 text-sky-800",
           },
         }}
       />
     )
 
-    expect(screen.getByRole("row", { name: /TB-303/ })).toHaveClass("bg-sky-50/60")
+    expect(screen.getByRole("row", { name: /TB-303/ })).not.toHaveClass("bg-sky-50/60")
+    expect(screen.getByText("Khoa Ngoại")).toHaveClass("border-sky-200", "bg-sky-100")
   })
 
   it("renders missing managing departments with the normalized department badge", () => {
@@ -167,8 +154,6 @@ describe("EquipmentContent desktop interactions", () => {
         onShowDetails={vi.fn()}
         departmentColorClassByLabel={{
           "Chưa cập nhật": {
-            rowClassName: "bg-slate-50/70 hover:bg-slate-100/70",
-            chipClassName: "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100",
             badgeClassName: "border-slate-200 bg-slate-100 text-slate-700",
           },
         }}
