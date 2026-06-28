@@ -67,7 +67,6 @@ begin
   values
     (v_qd_over, v_group_over, 1, 0),
     (v_qd_not_in_quota, v_group_other, 5, 0),
-    (v_qd_unassigned, v_group_over, 5, 0),
     (v_qd_below, v_group_below, 5, 2),
     (v_qd_within, v_group_within, 2, 1);
 
