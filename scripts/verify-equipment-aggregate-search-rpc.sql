@@ -210,7 +210,7 @@ begin
   if exists (
     select 1
     from jsonb_array_elements(v_result -> 'rows') as row(value)
-    where (row.value ->> 'parentRegionId')::bigint <> v_region_a
+    where ((row.value ->> 'parentRegionId')::bigint) is distinct from v_region_a
   ) then
     raise exception 'regional leader leaked outside assigned region: %', v_result;
   end if;
