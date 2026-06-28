@@ -1,6 +1,10 @@
 pre-commit:
   parallel: false
   commands:
+    prettier:
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,json,css,scss,md,mdx,yml,yaml}"
+      run: node scripts/npm-run.js run format:staged -- {staged_files}
+      stage_fixed: true
     verify-no-explicit-any:
       run: node scripts/npm-run.js run verify:no-explicit-any
     verify-dedupe:

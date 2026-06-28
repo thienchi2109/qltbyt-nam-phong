@@ -10,29 +10,32 @@ AI guidance for Vietnamese Medical Equipment Management System (multi-tenant hea
 
 ## ⛔ ABSOLUTE RULES - VIOLATION = SECURITY BREACH
 
-| NEVER DO THIS | WHY |
-|---------------|-----|
-| Direct Supabase table access | Bypasses tenant isolation |
-| Trust client-supplied `p_don_vi` | Client can lie about tenant |
-| Use `supabase.from('table')` | No tenant enforcement |
-| Skip RPC whitelist | Exposes unauthorized functions |
-| Use `any` type | Hides security bugs |
-| Bypass `/api/rpc/[fn]` proxy | No JWT signing, no tenant override |
+| NEVER DO THIS                    | WHY                                |
+| -------------------------------- | ---------------------------------- |
+| Direct Supabase table access     | Bypasses tenant isolation          |
+| Trust client-supplied `p_don_vi` | Client can lie about tenant        |
+| Use `supabase.from('table')`     | No tenant enforcement              |
+| Skip RPC whitelist               | Exposes unauthorized functions     |
+| Use `any` type                   | Hides security bugs                |
+| Bypass `/api/rpc/[fn]` proxy     | No JWT signing, no tenant override |
 
 ## ✅ REQUIRED: RPC-Only Architecture
 
 **ALL database access MUST go through:**
+
 ```
 Client → callRpc() → /api/rpc/[fn] → Supabase PostgREST → RPC Function
 ```
 
 **Why this matters:**
+
 1. Proxy validates NextAuth session
 2. Proxy forcibly overrides `p_don_vi` for non-global users (they CANNOT choose tenant)
 3. Proxy signs JWT with claims: `{app_role, don_vi, user_id, dia_ban_id}`
 4. RPC functions extract claims and enforce boundaries
 
 **Critical files:**
+
 - `src/app/api/rpc/[fn]/route.ts` - The security gateway
 - `src/lib/rpc-client.ts` - Client wrapper (`callRpc`)
 
@@ -72,14 +75,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 
 ## Roles & Tenant Access
 
-| Role | Tenant Access | Notes |
-|------|--------------|-------|
-| `global` | All tenants | Full admin access (`admin` is alias) |
-| `regional_leader` | Multi-tenant in region | **Read-only**, limited by `dia_ban_id` |
-| `to_qltb` | Single tenant | Equipment team - full tenant operations |
-| `technician` | Single tenant + dept | Technical staff, department restricted |
-| `qltb_khoa` | Single tenant + dept | Department equipment manager |
-| `user` | Single tenant | Basic read access |
+| Role              | Tenant Access          | Notes                                   |
+| ----------------- | ---------------------- | --------------------------------------- |
+| `global`          | All tenants            | Full admin access (`admin` is alias)    |
+| `regional_leader` | Multi-tenant in region | **Read-only**, limited by `dia_ban_id`  |
+| `to_qltb`         | Single tenant          | Equipment team - full tenant operations |
+| `technician`      | Single tenant + dept   | Technical staff, department restricted  |
+| `qltb_khoa`       | Single tenant + dept   | Department equipment manager            |
+| `user`            | Single tenant          | Basic read access                       |
 
 > ⚠️ **`admin` = `global` alias — ALWAYS normalize!**
 >
@@ -96,13 +99,14 @@ GRANT EXECUTE ON FUNCTION fn_name TO authenticated;
 ---
 
 <!-- OPENSPEC:START -->
+
 ## OpenSpec
 
 Open `@/openspec/AGENTS.md` for: planning/proposals/specs, breaking changes, architecture shifts, security/performance work.
 <!-- OPENSPEC:END -->
 
-
 <!-- CONTEXT-ENGINEERING:START -->
+
 ## Context Engineering
 
 Invoke `context-engineering` skill for: agent systems, token optimization (>70%), memory systems, tool design, subagent workflows (>5 tasks).
@@ -146,20 +150,17 @@ Before re-investigating a non-trivial problem, search `agentmemory` before re-de
 
 If memory conflicts with the current codebase or live system state, trust the current code/live state and save a concise stale-memory correction to `agentmemory`. Do not call Memori MCP for routine recall/save.
 
-
 ---
 
 ## Required Commands
 
-| Command | When to Use |
-|---------|-------------|
-| `/ultra-think` | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems |
-| `/generate-tests` | After implementing features or fixing bugs - generate comprehensive tests |
-| `/next-best-practices` | **AUTO-INVOKE** when writing/reviewing Next.js App Router code, route handlers, metadata, error files, middleware/proxy, RSC boundaries, async request APIs, or Next.js optimizations |
-| `/react-best-practices` | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance |
-| `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance |
-| `/prd` | Create or update a PRD before Ralph execution |
-| `/ralph` | Convert PRD markdown to `prd.json` for Ralph |
+| Command                  | When to Use                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/ultra-think`           | Complex decisions, architecture choices, trade-off analysis, multi-perspective problems                                                                                               |
+| `/generate-tests`        | After implementing features or fixing bugs - generate comprehensive tests                                                                                                             |
+| `/next-best-practices`   | **AUTO-INVOKE** when writing/reviewing Next.js App Router code, route handlers, metadata, error files, middleware/proxy, RSC boundaries, async request APIs, or Next.js optimizations |
+| `/react-best-practices`  | **AUTO-INVOKE** when writing/reviewing React components, hooks, data fetching, or optimizing performance                                                                              |
+| `/web-design-guidelines` | When reviewing UI code for accessibility, UX, or design compliance                                                                                                                    |
 
 ## Additional Skill Guidance
 
@@ -171,81 +172,31 @@ If memory conflicts with the current codebase or live system state, trust the cu
   - define concrete verification before claiming success
 - Treat `karpathy-coding-heuristics` as a supporting heuristic layer. It does not override repo-specific rules, security constraints, or stricter required skills such as `next-best-practices`, `vercel-react-best-practices`, debugging, TDD, or verification workflows.
 
-## Ralph Flow (Claude Code/Codex Execution Contract)
-
-Use this workflow whenever user requests Ralph flow or execution from `prd.json`.
-
-### A) Planning + Conversion
-
-1. Create/align PRD first (`docs/` and/or `tasks/` per user request) using `/prd`.
-2. Convert approved PRD to root `prd.json` using `/ralph`.
-3. In `prd.json`, enforce:
-   - `Typecheck passes` for every story
-   - `Tests pass` for every story
-   - UI stories use `Manual browser verification completed` (no `dev-browser` dependency required)
-4. Keep stories one-iteration sized and dependency-ordered.
-
-### B) Ralph Iteration Loop (one story at a time)
-
-1. Read `prd.json` and `progress.txt` (`## Codebase Patterns` first). If `progress.txt` does not exist, initialize it with:
-   - `## Codebase Patterns`
-   - `## Progress Log`
-2. Ensure current branch matches `prd.json.branchName`; checkout/create from `main` if needed.
-3. Select highest-priority story with `passes: false`.
-4. Implement only that story.
-5. Run quality gates (typecheck/lint/test as required by project).
-   - For TypeScript / React diffs, run `verify:no-explicit-any` before `typecheck`.
-6. If green:
-   - Commit all related changes with: `feat: [Story ID] - [Story Title]`
-   - Set that story `passes: true` in `prd.json`
-   - Append progress to `progress.txt` (append-only)
-7. Add reusable patterns to top `## Codebase Patterns` in `progress.txt` when discovered.
-8. Update nearby `CLAUDE.md` with reusable module-level guidance only (no temporary story notes).
-9. For UI work: verify in browser if tooling is available; otherwise explicitly note manual verification status.
-
-### C) Progress Entry Format (append-only)
-
-```text
-## [Date/Time] - [Story ID]
-- What was implemented
-- Files changed
-- Learnings for future iterations:
-  - Patterns discovered
-  - Gotchas encountered
-  - Useful context
----
-```
-
-### D) Stop Condition
-
-- Complete exactly one story per iteration.
-- If all stories have `passes: true`, return `<promise>COMPLETE</promise>`.
-
 ## MCP Tools
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)
 **File Editing:** `mcp__filesystem-with-morph__edit_file` (NEVER full rewrites)
 **Docs:** Context7 MCP for library documentation (including Supabase docs)
 
-
-
 <!-- SUPABASE-CLI:START -->
+
 ## Supabase CLI + MCP (Hybrid Approach)
 
 Use CLI for schema operations, MCP for SQL execution.
 
-| Task | Tool | Command |
-|------|------|---------|
-| **Execute SQL** | MCP | `mcp__supabase__execute_sql` |
-| **Generate types** | CLI | `node scripts/npm-run.js run db:types` |
-| **DB stats** | CLI | `node scripts/npm-run.js run db:stats` |
-| **Table stats** | CLI | `node scripts/npm-run.js npx supabase inspect db table-stats --linked` |
-| **Index stats** | CLI | `node scripts/npm-run.js npx supabase inspect db index-stats --linked` |
-| **List migrations** | CLI | `node scripts/npm-run.js npx supabase migration list` |
-| **List projects** | CLI | `node scripts/npm-run.js npx supabase projects list` |
+| Task                | Tool | Command                                                                |
+| ------------------- | ---- | ---------------------------------------------------------------------- |
+| **Execute SQL**     | MCP  | `mcp__supabase__execute_sql`                                           |
+| **Generate types**  | CLI  | `node scripts/npm-run.js run db:types`                                 |
+| **DB stats**        | CLI  | `node scripts/npm-run.js run db:stats`                                 |
+| **Table stats**     | CLI  | `node scripts/npm-run.js npx supabase inspect db table-stats --linked` |
+| **Index stats**     | CLI  | `node scripts/npm-run.js npx supabase inspect db index-stats --linked` |
+| **List migrations** | CLI  | `node scripts/npm-run.js npx supabase migration list`                  |
+| **List projects**   | CLI  | `node scripts/npm-run.js npx supabase projects list`                   |
 
 > **Note:** Migration push/pull requires synced history. Use MCP `apply_migration` for DDL changes when drift exists.
 > **Windows:** Always use `node scripts/npm-run.js` wrapper for npm/npx commands to capture output.
+
 <!-- SUPABASE-CLI:END -->
 
 ---
@@ -289,6 +240,7 @@ npm run n:test        # Tests
 ```
 
 **Helper scripts:**
+
 - `scripts/run-cmd.js` - Universal helper for any CLI command
 - `scripts/npm-run.js` - Specialized helper for npm/npx commands
 
@@ -307,11 +259,12 @@ Do not run `gh` directly in plain bash when `context-mode` can carry the command
 
 Run verification in this order before claiming success, committing, or updating a PR:
 
-1. `node scripts/npm-run.js run verify:no-explicit-any`
-2. `node scripts/npm-run.js run verify:dedupe`
-3. `node scripts/npm-run.js run typecheck`
-4. Focused tests for the changed behavior
-5. `node scripts/npm-run.js run react-doctor`
+1. `node scripts/npm-run.js run format:check` for broad formatting checks, or rely on the Lefthook `pre-commit` Prettier auto-format for staged diff files before committing.
+2. `node scripts/npm-run.js run verify:no-explicit-any`
+3. `node scripts/npm-run.js run verify:dedupe`
+4. `node scripts/npm-run.js run typecheck`
+5. Focused tests for the changed behavior
+6. `node scripts/npm-run.js run react-doctor`
 
 `verify:no-explicit-any` is diff-aware. It scans changed TypeScript files from the current branch diff plus staged, unstaged, and untracked files, and fails on explicit `any`. Do not rely on `typecheck` or `react-doctor` alone to catch this class of issue.
 
@@ -327,6 +280,7 @@ Important limitation: a diff-only ESLint/SonarJS scan detects duplicate code ins
 
 Lefthook is installed for this repo and must remain enabled. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes it.
 
+- `pre-commit` runs Prettier first on staged `js/jsx/ts/tsx/mjs/cjs/json/css/scss/md/mdx/yml/yaml` files using `format:staged`, then re-stages fixed files with `stage_fixed: true`.
 - `pre-commit` runs `verify:no-explicit-any` and `verify:dedupe`.
 - `pre-push` runs `verify:no-explicit-any`, `verify:dedupe`, and `typecheck`.
 - Run `node scripts/npm-run.js run hooks:install` after dependency installation if `.git/hooks/pre-commit` or `.git/hooks/pre-push` is missing.
@@ -393,6 +347,7 @@ module/
 **Principles:** Context for shared state • Local form state in dialogs • useMemo on context value • useCallback on actions
 
 <!-- REACT-SKILLS:START -->
+
 ## React/Next.js Skills (Auto-Invoke)
 
 <IMPORTANT>
@@ -402,9 +357,11 @@ When working on React/Next.js code, PROACTIVELY invoke these skills:
 - For Next.js tasks that include substantial component logic, invoke both in order: `/next-best-practices` then `/react-best-practices`.
 
 Reference installed skills:
+
 - `C:\Users\PC\.codex\skills\next-best-practices\`
 - `C:\Users\PC\.codex\skills\vercel-react-best-practices\`
 </IMPORTANT>
+
 <!-- REACT-SKILLS:END -->
 
 ## Data Fetching
@@ -413,9 +370,9 @@ Reference installed skills:
 
 ```typescript
 const { data } = useQuery({
-  queryKey: ['items', { don_vi }],
-  queryFn: () => callRpc({ fn: 'item_list', args: { p_don_vi: don_vi } }),
-  enabled: !!don_vi
+  queryKey: ["items", { don_vi }],
+  queryFn: () => callRpc({ fn: "item_list", args: { p_don_vi: don_vi } }),
+  enabled: !!don_vi,
 })
 ```
 
@@ -462,13 +419,13 @@ Daily Supabase Postgres dump → Google Drive (rclone) is operated by a
 Linux VPS cron job. Source of truth lives in this repo; the live VPS is
 a deployed copy.
 
-| Concern | Path |
-|---|---|
-| Script | `scripts/backup-db.sh` |
-| Env template | `scripts/backup-db.env.example` |
-| Cron template | `scripts/qltbyt-backup.cron.example` |
-| One-time setup | `docs/runbooks/db-backup-setup.md` |
-| Recovery | `docs/runbooks/db-restore.md` |
+| Concern        | Path                                 |
+| -------------- | ------------------------------------ |
+| Script         | `scripts/backup-db.sh`               |
+| Env template   | `scripts/backup-db.env.example`      |
+| Cron template  | `scripts/qltbyt-backup.cron.example` |
+| One-time setup | `docs/runbooks/db-backup-setup.md`   |
+| Recovery       | `docs/runbooks/db-restore.md`        |
 
 **Agent rules**:
 
@@ -489,7 +446,6 @@ a deployed copy.
 - **Types:** Never `any`, explicit interfaces, DB types in `src/types/database.ts`
 - **Files:** **350-line extraction threshold.** When a file approaches ~350 lines, proactively extract logical chunks (helpers, sub-components, types, constants) into separate files. Hard ceiling: **450 lines** — no file should exceed this. When splitting, follow the module prefix naming convention (`{ModuleName}{Chunk}.tsx`).
 - **UI:** Radix + Tailwind, mobile-first, react-hook-form + zod
-
 
 ### UI Layering Contract (MANDATORY)
 
@@ -530,6 +486,7 @@ useRepairRequestsContext.ts         useContext.ts
 **Why:** `grep RepairRequests` finds ALL related files instantly. Generic names like `Table.tsx` or `Context.tsx` are ambiguous across modules.
 
 **Pattern:** `{ModuleName}{ComponentType}.tsx`
+
 - Module: RepairRequests, Transfers, Equipment, Maintenance, Users, etc.
 - Type: Table, Toolbar, Context, Dialog, Sheet, List, Form, etc.
 
@@ -645,11 +602,11 @@ After applying any migration, run `get_advisors(security)` via Supabase MCP to c
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
-| Tool | Answers | Persistence |
-|------|---------|-------------|
-| **AgentMemory** | WHY a decision was made, historical findings, gotchas | Persistent global memory via `agentmemory` |
-| **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
-| **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
+| Tool                  | Answers                                                                             | Persistence                                  |
+| --------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------- |
+| **AgentMemory**       | WHY a decision was made, historical findings, gotchas                               | Persistent global memory via `agentmemory`   |
+| **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context        | Ephemeral (per-query, reflects current code) |
+| **GitNexus**          | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
 ### Standard Session Loop
 
@@ -698,6 +655,7 @@ gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 ### When to Save AgentMemory
 
 Save an `agentmemory` entry when you discover or decide something that a **future agent cannot easily re-derive from code alone**:
+
 - ✅ Architectural trade-off (why X over Y)
 - ✅ Non-obvious bug root cause
 - ✅ Environment / deploy gotcha
@@ -710,18 +668,19 @@ Primary goal: minimize tokens when reading and understanding the codebase. Use C
 
 ### Tool Responsibilities
 
-| Task | Use first | Why |
-|------|-----------|-----|
-| Broad codebase reading or unfamiliar feature discovery | Code Review Graph `get_minimal_context_tool` / `query_graph_tool` | Cheapest first-pass map of relevant files and areas |
-| Review an existing diff or PR | Code Review Graph `get_minimal_context_tool` | Compact change-aware context |
-| Assess changed-file blast radius | Code Review Graph `detect_changes_tool` | Diff-to-impact mapping without broad source dumps |
-| Need exact callers, callees, or process participation for one symbol | GitNexus `context` | Precise symbol-level relationship graph |
-| Plan edits to a narrowed symbol | GitNexus `impact` | Required caller/importer/process blast radius before non-trivial edits |
-| Investigate only the riskiest changed symbols | GitNexus `impact` / `context` | Focused follow-up after Code Review Graph triage |
+| Task                                                                 | Use first                                                         | Why                                                                    |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Broad codebase reading or unfamiliar feature discovery               | Code Review Graph `get_minimal_context_tool` / `query_graph_tool` | Cheapest first-pass map of relevant files and areas                    |
+| Review an existing diff or PR                                        | Code Review Graph `get_minimal_context_tool`                      | Compact change-aware context                                           |
+| Assess changed-file blast radius                                     | Code Review Graph `detect_changes_tool`                           | Diff-to-impact mapping without broad source dumps                      |
+| Need exact callers, callees, or process participation for one symbol | GitNexus `context`                                                | Precise symbol-level relationship graph                                |
+| Plan edits to a narrowed symbol                                      | GitNexus `impact`                                                 | Required caller/importer/process blast radius before non-trivial edits |
+| Investigate only the riskiest changed symbols                        | GitNexus `impact` / `context`                                     | Focused follow-up after Code Review Graph triage                       |
 
 ### Token-Saving Defaults
 
 Code Review Graph:
+
 - Use Code Review Graph first for broad codebase reading, architecture discovery, unfamiliar features, and existing diffs.
 - Keep outputs minimal: `detail_level="minimal"`, `include_source=false`, and small limits unless the narrowed context is insufficient.
 - Use `query_graph_tool` / `semantic_search_nodes_tool` with `detail_level="minimal"` and `limit<=5` for codebase reading.
@@ -730,6 +689,7 @@ Code Review Graph:
 - Use `get_review_context_tool` with `detail_level="minimal"` and `include_source=false` before escalating to source snippets.
 
 GitNexus:
+
 - Use GitNexus after Code Review Graph has narrowed the area, or when exact symbol/process relationships are required.
 - `query`: use small limits (`limit=2-3`, `max_symbols=3-5`) and `include_content=false`.
 - `context`: start with `include_content=false`; request source only when direct file reads are insufficient.
@@ -756,6 +716,7 @@ For existing diffs, PR review, or final handoff:
 Avoid calling both MCPs for the same broad discovery question. Do not use GitNexus as the default broad codebase reader; use Code Review Graph first to conserve tokens, then use GitNexus surgically for precise symbol/process/caller impact.
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence (MCP + CLI)
 
 This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broad, token-efficient codebase reading, then use the **GitNexus MCP server** for precise symbol/process discovery and required impact analysis. Use the **CLI** for repository/index operations such as `analyze`, `status`, `list`, `clean`, `serve`, and `wiki`.
@@ -775,25 +736,25 @@ This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broa
 
 ## MCP Tools Quick Reference
 
-| Tool | When to use | What to expect |
-|------|-------------|----------------|
-| `query` | Start exploration from a concept or feature name | Process-grouped search results and related definitions |
-| `context` | Understand one symbol deeply | Callers, callees, file location, and process participation |
-| `impact` | Before editing any symbol | Blast radius with risk/depth grouping |
-| `detect_changes` | Assess current diff impact | Changed lines mapped to affected processes |
-| `rename` | Coordinate a symbol rename safely | Graph-aware rename guidance across files |
-| `cypher` | Advanced graph inspection | Read-only custom graph queries |
+| Tool             | When to use                                      | What to expect                                             |
+| ---------------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| `query`          | Start exploration from a concept or feature name | Process-grouped search results and related definitions     |
+| `context`        | Understand one symbol deeply                     | Callers, callees, file location, and process participation |
+| `impact`         | Before editing any symbol                        | Blast radius with risk/depth grouping                      |
+| `detect_changes` | Assess current diff impact                       | Changed lines mapped to affected processes                 |
+| `rename`         | Coordinate a symbol rename safely                | Graph-aware rename guidance across files                   |
+| `cypher`         | Advanced graph inspection                        | Read-only custom graph queries                             |
 
 ## CLI Commands Quick Reference
 
-| Command | When to use | Example |
-|---------|-------------|---------|
+| Command   | When to use                       | Example            |
+| --------- | --------------------------------- | ------------------ |
 | `analyze` | Index or refresh the current repo | `gitnexus analyze` |
-| `status` | Check index freshness | `gitnexus status` |
-| `list` | List indexed repos | `gitnexus list` |
-| `clean` | Remove the current repo index | `gitnexus clean` |
-| `serve` | Start local backend for web UI | `gitnexus serve` |
-| `wiki` | Generate repo wiki from the graph | `gitnexus wiki` |
+| `status`  | Check index freshness             | `gitnexus status`  |
+| `list`    | List indexed repos                | `gitnexus list`    |
+| `clean`   | Remove the current repo index     | `gitnexus clean`   |
+| `serve`   | Start local backend for web UI    | `gitnexus serve`   |
+| `wiki`    | Generate repo wiki from the graph | `gitnexus wiki`    |
 
 ## Always Do
 
@@ -805,11 +766,11 @@ This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broa
 
 ## Impact Risk Levels
 
-| Depth | Meaning | Action |
-|-------|---------|--------|
-| d=1 | WILL BREAK — direct callers/importers | MUST update these |
-| d=2 | LIKELY AFFECTED — indirect deps | Should test |
-| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+| Depth | Meaning                               | Action                |
+| ----- | ------------------------------------- | --------------------- |
+| d=1   | WILL BREAK — direct callers/importers | MUST update these     |
+| d=2   | LIKELY AFFECTED — indirect deps       | Should test           |
+| d=3   | MAY NEED TESTING — transitive         | Test if critical path |
 
 ## Keeping the Index Fresh
 

@@ -53,12 +53,12 @@ Do not run `gh` directly in plain bash when `context-mode` can carry the command
 
 ### ctx commands
 
-| Command | Action |
-|---------|--------|
-| `ctx stats` | Call `ctx_stats` and display verbatim. |
-| `ctx doctor` | Call `ctx_doctor`, run returned shell command, display as checklist. |
-| `ctx upgrade` | Call `ctx_upgrade`, run returned shell command, display as checklist. |
-| `ctx purge` | Call `ctx_purge` with `confirm: true`. Warn before wiping the knowledge base. |
+| Command       | Action                                                                        |
+| ------------- | ----------------------------------------------------------------------------- |
+| `ctx stats`   | Call `ctx_stats` and display verbatim.                                        |
+| `ctx doctor`  | Call `ctx_doctor`, run returned shell command, display as checklist.          |
+| `ctx upgrade` | Call `ctx_upgrade`, run returned shell command, display as checklist.         |
+| `ctx purge`   | Call `ctx_purge` with `confirm: true`. Warn before wiping the knowledge base. |
 
 After `/clear` or `/compact`: knowledge base and session stats are preserved. Use `ctx purge` to start fresh.
 
@@ -94,11 +94,12 @@ Do not rely on the default `react-doctor` script when you specifically need full
 
 When a task changes `.ts` / `.tsx` files, run verification in this order before claiming success, committing, or opening/updating a PR:
 
-1. `node scripts/npm-run.js run verify:no-explicit-any`
-2. `node scripts/npm-run.js run verify:dedupe`
-3. `node scripts/npm-run.js run typecheck`
-4. Focused tests for the changed behavior
-5. `node scripts/npm-run.js run react-doctor`
+1. `node scripts/npm-run.js run format:check` for broad formatting checks, or rely on the Lefthook `pre-commit` Prettier auto-format for staged diff files before committing.
+2. `node scripts/npm-run.js run verify:no-explicit-any`
+3. `node scripts/npm-run.js run verify:dedupe`
+4. `node scripts/npm-run.js run typecheck`
+5. Focused tests for the changed behavior
+6. `node scripts/npm-run.js run react-doctor`
 
 `verify:no-explicit-any` is diff-aware. It scans changed TypeScript files (committed branch diff, staged, unstaged, and untracked files) and fails on explicit `any` so REVIEW.md / CLAUDE.md type-safety violations are caught before review.
 
@@ -114,55 +115,11 @@ Important limitation: a diff-only ESLint/SonarJS scan detects duplicate code ins
 
 Lefthook is installed for this repo and must remain enabled. Do not bypass hooks with `--no-verify` unless the user explicitly authorizes it.
 
+- `pre-commit` runs Prettier first on staged `js/jsx/ts/tsx/mjs/cjs/json/css/scss/md/mdx/yml/yaml` files using `format:staged`, then re-stages fixed files with `stage_fixed: true`.
 - `pre-commit` runs `verify:no-explicit-any` and `verify:dedupe`.
 - `pre-push` runs `verify:no-explicit-any`, `verify:dedupe`, and `typecheck`.
 - Run `node scripts/npm-run.js run hooks:install` after dependency installation if `.git/hooks/pre-commit` or `.git/hooks/pre-push` is missing.
 - Lefthook may report `no matching staged files` or `no matching push files` when there is nothing for Git to validate. That skip is acceptable only for that hook event; required verification commands still need to run explicitly before claiming completion when code changed.
-
-## Ralph Flow (Claude Code/Codex Execution)
-
-When running Ralph workflow, follow this exact loop:
-
-1. Read `prd.json` and `progress.txt` (read `## Codebase Patterns` first). If `progress.txt` does not exist, initialize it with:
-   - `## Codebase Patterns`
-   - `## Progress Log`
-2. Ensure git branch matches `prd.json.branchName`; if not, checkout/create from `main`.
-3. Pick the highest-priority story where `passes: false`.
-4. Implement **only that one story**.
-5. Run project quality checks.
-   - For TypeScript / React diffs, run: `verify:no-explicit-any` → `typecheck` → focused tests → other checks as applicable.
-   - Do not skip the explicit-`any` gate just because `typecheck` or `react-doctor` is green.
-6. If checks pass:
-   - Commit all related changes with: `feat: [Story ID] - [Story Title]`
-   - Update `prd.json` to set that story `passes: true`
-   - Append progress to `progress.txt` (never overwrite)
-7. If you discover reusable patterns:
-   - Add general patterns to top `## Codebase Patterns` in `progress.txt`
-   - Update nearby `CLAUDE.md` files with durable, reusable guidance only
-8. UI stories:
-   - Verify in browser if tooling is available
-   - If no browser tooling, record manual verification requirement/status
-9. Stop after one story. If all stories are complete, return: `<promise>COMPLETE</promise>`.
-
-### Progress Report Format (append only)
-
-```text
-## [Date/Time] - [Story ID]
-- What was implemented
-- Files changed
-- Learnings for future iterations:
-  - Patterns discovered
-  - Gotchas encountered
-  - Useful context
----
-```
-
-### Ralph PRD Constraints
-
-- Keep each story small enough for one iteration/context window.
-- Order stories by dependency (schema/backend before UI/aggregation).
-- Every story must include `Typecheck passes` and `Tests pass`.
-- UI stories should use `Manual browser verification completed` in this project.
 
 ## Landing the Plane (Session Completion)
 
@@ -172,6 +129,7 @@ When running Ralph workflow, follow this exact loop:
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
 2. **Run quality gates** (if code changed)
+   - Prettier must pass. For staged commits, Lefthook auto-runs `format:staged` before the other pre-commit gates.
    - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` and `node scripts/npm-run.js run verify:dedupe` before `typecheck`, tests, and `react-doctor`
    - Before commit and push, run the automated duplicate gate as diff-only. Also use the `code-deduplication` skill for semantic cross-file checks when the change introduces or copies reusable behavior. Never expand duplicate scanning to the full codebase unless the user explicitly requests it.
    - Then run the remaining tests/linters/builds required by the task
@@ -187,17 +145,18 @@ When running Ralph workflow, follow this exact loop:
 7. **Hand off** - Provide context for next session
 
 **CRITICAL RULES:**
+
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
 
-**FAST APPLY:** 
+**FAST APPLY:**
 IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with partial code snippets—no need for full file content.
 
+**WARP GREP:**
 
-**WARP GREP:** 
-- warp-grep is a subagent that takes in a search string and tries to find relevant context. Best practice is to use it at the beginning of codebase explorations to fast track finding relevant files/lines. 
+- warp-grep is a subagent that takes in a search string and tries to find relevant context. Best practice is to use it at the beginning of codebase explorations to fast track finding relevant files/lines.
 - Do not use it to pin point keywords, but use it for broader semantic queries. "Find the XYZ flow", "How does XYZ work", "Where is XYZ handled?", "Where is <error message> coming from?"
 
 ## Skill Enforcement
@@ -218,7 +177,7 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - At the start of non-trivial work, recall prior context with `memory_recall` or `memory_smart_search` using task-relevant keywords.
 - Use `memory_sessions` only when session provenance matters, and `memory_diagnose` when memory behavior looks inconsistent.
 - Save durable context with `memory_save` or `memory_lesson_save` when a session produces a durable decision, a non-obvious debugging finding, a workflow rule, a deploy/recovery step, or a repo-specific gotcha that should survive future sessions.
-- Do not save temporary brainstorming, duplicate status chatter, secrets, raw credentials, or information already captured clearly in code, tests, migrations, `progress.txt`, PRs, issues, or canonical docs.
+- Do not save temporary brainstorming, duplicate status chatter, secrets, raw credentials, or information already captured clearly in code, tests, migrations, PRs, issues, or canonical docs.
 - Prefer one concise memory entry near the end of a session instead of many fragmented entries.
 - If a saved memory contains assumptions, mark them explicitly as assumptions.
 - If a previous memory might now be stale, save a new `agentmemory` entry that says what changed and on what date instead of silently contradicting it.
@@ -227,7 +186,6 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 ### Retrieval Rule
 
 At the start of any non-trivial task, search `agentmemory` before re-deriving prior decisions. If memory conflicts with the current codebase or live system state, trust the current code/live state and save a concise stale-memory correction to `agentmemory`.
-
 
 ## ⚠️ Role Normalization (`admin` = `global`)
 
@@ -244,12 +202,8 @@ import { isGlobalRole } from '@/lib/rbac'
 const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 ```
 
-
-
-
-
-
 **Key conventions:**
+
 - Controllers handle HTTP requests/responses only
 - Services contain business logic
 - Models define data structure and DB operations
@@ -263,7 +217,6 @@ const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 - **Naming:** Follow grep-friendly module prefix convention (`{ModuleName}{Chunk}.tsx`).
 
 ---
-
 
 ## Supabase CLI vs MCP (MANDATORY)
 
@@ -300,13 +253,13 @@ Daily Supabase Postgres dump → Google Drive (rclone) is operated by a
 Linux VPS cron job. Source of truth lives in this repo; the live VPS is
 a deployed copy.
 
-| Concern | Path |
-|---|---|
-| Script | `scripts/backup-db.sh` |
-| Env template | `scripts/backup-db.env.example` |
-| Cron template | `scripts/qltbyt-backup.cron.example` |
-| One-time setup | `docs/runbooks/db-backup-setup.md` |
-| Recovery | `docs/runbooks/db-restore.md` |
+| Concern        | Path                                 |
+| -------------- | ------------------------------------ |
+| Script         | `scripts/backup-db.sh`               |
+| Env template   | `scripts/backup-db.env.example`      |
+| Cron template  | `scripts/qltbyt-backup.cron.example` |
+| One-time setup | `docs/runbooks/db-backup-setup.md`   |
+| Recovery       | `docs/runbooks/db-restore.md`        |
 
 **Agent rules**:
 
@@ -322,6 +275,7 @@ a deployed copy.
   "Supabase CLI vs MCP" rule: use Supabase MCP, not the CLI.
 
 ## SQL Code Generation Checklist
+
 **Project ID**: cdthersvldpnlbvpufrr (Supabase MCP)
 Before finalizing any data-access code, verify each item:
 QUERY REVIEW CHECKLIST
@@ -429,11 +383,11 @@ After applying any migration, run `get_advisors(security)` via Supabase MCP to c
 
 These tools complement each other. Use them together while prioritizing token-efficient codebase reading:
 
-| Tool | Answers | Persistence |
-|------|---------|-------------|
-| **AgentMemory** | WHY a decision was made, historical findings, gotchas | Persistent global memory via `agentmemory` |
-| **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context | Ephemeral (per-query, reflects current code) |
-| **GitNexus** | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
+| Tool                  | Answers                                                                             | Persistence                                  |
+| --------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------- |
+| **AgentMemory**       | WHY a decision was made, historical findings, gotchas                               | Persistent global memory via `agentmemory`   |
+| **Code Review Graph** | WHERE to start reading, changed-file impact, compact codebase/review context        | Ephemeral (per-query, reflects current code) |
+| **GitNexus**          | WHAT calls what, precise symbol/process relationships, required impact blast radius | Ephemeral (per-query, reflects current code) |
 
 ### Standard Session Loop
 
@@ -482,6 +436,7 @@ gitnexus impact("RepairRequestSheet") → d=1: 3 callers, d=2: 8 indirect
 ### When to Save AgentMemory
 
 Save an `agentmemory` entry when you discover or decide something that a **future agent cannot easily re-derive from code alone**:
+
 - ✅ Architectural trade-off (why X over Y)
 - ✅ Non-obvious bug root cause
 - ✅ Environment / deploy gotcha
@@ -494,18 +449,19 @@ Primary goal: minimize tokens when reading and understanding the codebase. Use C
 
 ### Tool Responsibilities
 
-| Task | Use first | Why |
-|------|-----------|-----|
-| Broad codebase reading or unfamiliar feature discovery | Code Review Graph `get_minimal_context_tool` / `query_graph_tool` | Cheapest first-pass map of relevant files and areas |
-| Review an existing diff or PR | Code Review Graph `get_minimal_context_tool` | Compact change-aware context |
-| Assess changed-file blast radius | Code Review Graph `detect_changes_tool` | Diff-to-impact mapping without broad source dumps |
-| Need exact callers, callees, or process participation for one symbol | GitNexus `context` | Precise symbol-level relationship graph |
-| Plan edits to a narrowed symbol | GitNexus `impact` | Required caller/importer/process blast radius before non-trivial edits |
-| Investigate only the riskiest changed symbols | GitNexus `impact` / `context` | Focused follow-up after Code Review Graph triage |
+| Task                                                                 | Use first                                                         | Why                                                                    |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Broad codebase reading or unfamiliar feature discovery               | Code Review Graph `get_minimal_context_tool` / `query_graph_tool` | Cheapest first-pass map of relevant files and areas                    |
+| Review an existing diff or PR                                        | Code Review Graph `get_minimal_context_tool`                      | Compact change-aware context                                           |
+| Assess changed-file blast radius                                     | Code Review Graph `detect_changes_tool`                           | Diff-to-impact mapping without broad source dumps                      |
+| Need exact callers, callees, or process participation for one symbol | GitNexus `context`                                                | Precise symbol-level relationship graph                                |
+| Plan edits to a narrowed symbol                                      | GitNexus `impact`                                                 | Required caller/importer/process blast radius before non-trivial edits |
+| Investigate only the riskiest changed symbols                        | GitNexus `impact` / `context`                                     | Focused follow-up after Code Review Graph triage                       |
 
 ### Token-Saving Defaults
 
 Code Review Graph:
+
 - Use Code Review Graph first for broad codebase reading, architecture discovery, unfamiliar features, and existing diffs.
 - Keep outputs minimal: `detail_level="minimal"`, `include_source=false`, and small limits unless the narrowed context is insufficient.
 - Use `query_graph_tool` / `semantic_search_nodes_tool` with `detail_level="minimal"` and `limit<=5` for codebase reading.
@@ -514,6 +470,7 @@ Code Review Graph:
 - Use `get_review_context_tool` with `detail_level="minimal"` and `include_source=false` before escalating to source snippets.
 
 GitNexus:
+
 - Use GitNexus after Code Review Graph has narrowed the area, or when exact symbol/process relationships are required.
 - `query`: use small limits (`limit=2-3`, `max_symbols=3-5`) and `include_content=false`.
 - `context`: start with `include_content=false`; request source only when direct file reads are insufficient.
@@ -540,6 +497,7 @@ For existing diffs, PR review, or final handoff:
 Avoid calling both MCPs for the same broad discovery question. Do not use GitNexus as the default broad codebase reader; use Code Review Graph first to conserve tokens, then use GitNexus surgically for precise symbol/process/caller impact.
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence (MCP + CLI)
 
 This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broad, token-efficient codebase reading, then use the **GitNexus MCP server** for precise symbol/process discovery and required impact analysis. Use the **CLI** for repository/index operations such as `analyze`, `status`, `list`, `clean`, `serve`, and `wiki`.
@@ -559,25 +517,25 @@ This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broa
 
 ## MCP Tools Quick Reference
 
-| Tool | When to use | What to expect |
-|------|-------------|----------------|
-| `query` | Start exploration from a concept or feature name | Process-grouped search results and related definitions |
-| `context` | Understand one symbol deeply | Callers, callees, file location, and process participation |
-| `impact` | Before editing any symbol | Blast radius with risk/depth grouping |
-| `detect_changes` | Assess current diff impact | Changed lines mapped to affected processes |
-| `rename` | Coordinate a symbol rename safely | Graph-aware rename guidance across files |
-| `cypher` | Advanced graph inspection | Read-only custom graph queries |
+| Tool             | When to use                                      | What to expect                                             |
+| ---------------- | ------------------------------------------------ | ---------------------------------------------------------- |
+| `query`          | Start exploration from a concept or feature name | Process-grouped search results and related definitions     |
+| `context`        | Understand one symbol deeply                     | Callers, callees, file location, and process participation |
+| `impact`         | Before editing any symbol                        | Blast radius with risk/depth grouping                      |
+| `detect_changes` | Assess current diff impact                       | Changed lines mapped to affected processes                 |
+| `rename`         | Coordinate a symbol rename safely                | Graph-aware rename guidance across files                   |
+| `cypher`         | Advanced graph inspection                        | Read-only custom graph queries                             |
 
 ## CLI Commands Quick Reference
 
-| Command | When to use | Example |
-|---------|-------------|---------|
+| Command   | When to use                       | Example            |
+| --------- | --------------------------------- | ------------------ |
 | `analyze` | Index or refresh the current repo | `gitnexus analyze` |
-| `status` | Check index freshness | `gitnexus status` |
-| `list` | List indexed repos | `gitnexus list` |
-| `clean` | Remove the current repo index | `gitnexus clean` |
-| `serve` | Start local backend for web UI | `gitnexus serve` |
-| `wiki` | Generate repo wiki from the graph | `gitnexus wiki` |
+| `status`  | Check index freshness             | `gitnexus status`  |
+| `list`    | List indexed repos                | `gitnexus list`    |
+| `clean`   | Remove the current repo index     | `gitnexus clean`   |
+| `serve`   | Start local backend for web UI    | `gitnexus serve`   |
+| `wiki`    | Generate repo wiki from the graph | `gitnexus wiki`    |
 
 ## Always Do
 
@@ -589,11 +547,11 @@ This repo is indexed by GitNexus. In Codex, use Code Review Graph first for broa
 
 ## Impact Risk Levels
 
-| Depth | Meaning | Action |
-|-------|---------|--------|
-| d=1 | WILL BREAK — direct callers/importers | MUST update these |
-| d=2 | LIKELY AFFECTED — indirect deps | Should test |
-| d=3 | MAY NEED TESTING — transitive | Test if critical path |
+| Depth | Meaning                               | Action                |
+| ----- | ------------------------------------- | --------------------- |
+| d=1   | WILL BREAK — direct callers/importers | MUST update these     |
+| d=2   | LIKELY AFFECTED — indirect deps       | Should test           |
+| d=3   | MAY NEED TESTING — transitive         | Test if critical path |
 
 ## Keeping the Index Fresh
 
