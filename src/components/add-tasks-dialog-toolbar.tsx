@@ -1,6 +1,6 @@
 import * as React from "react"
 import type { Dispatch } from "react"
-import type { Table } from "@tanstack/react-table"
+import type { Column, Table } from "@tanstack/react-table"
 import { ChevronDown, FilterX } from "lucide-react"
 
 import type { AddTasksFilterOptions } from "@/hooks/useAddTasksEquipment"
@@ -28,6 +28,14 @@ interface AddTasksDialogToolbarProps {
   filterOptions: AddTasksFilterOptions
   isFiltered: boolean
   dispatchTable: Dispatch<AddTasksTableAction>
+}
+
+function getColumnVisibilityLabel(column: Column<Equipment, unknown>): string {
+  const header = column.columnDef.header
+  if (typeof header === "string" && header.trim().length > 0) {
+    return header
+  }
+  return column.id
 }
 
 /** Renders search, faceted filters, clear-filter action, and column visibility controls. */
@@ -93,7 +101,7 @@ export function AddTasksDialogToolbar({
               .getAllColumns()
               .flatMap((column) => {
                 if (!column.getCanHide()) return []
-                const header = (column.columnDef.header as string) || column.id
+                const header = getColumnVisibilityLabel(column)
                 return [(
                   <DropdownMenuCheckboxItem
                     key={column.id}

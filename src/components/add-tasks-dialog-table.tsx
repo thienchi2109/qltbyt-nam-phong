@@ -58,7 +58,7 @@ export function AddTasksEquipmentTable({
             ) : error ? (
               <TableRow>
                 <TableCell colSpan={columnCount} className="h-24 text-center text-destructive">
-                  Không thể tải thiết bị: {error.message}
+                  Không thể tải thiết bị. Vui lòng thử lại sau.
                 </TableCell>
               </TableRow>
             ) : isLoading ? (

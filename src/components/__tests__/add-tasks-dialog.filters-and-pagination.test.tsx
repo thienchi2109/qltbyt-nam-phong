@@ -10,9 +10,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import "@testing-library/jest-dom"
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { Table } from '@tanstack/react-table'
 
 type MockChildrenProps = { children?: React.ReactNode }
-type MockOpenProps = MockChildrenProps & { open?: boolean }
+type MockOpenProps = MockChildrenProps & { open?: boolean; setOpen?: (open: boolean) => void }
 type MockTriggerProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
     asChild?: boolean
     open?: boolean
@@ -59,7 +60,7 @@ vi.mock('@/components/ui/dropdown-menu', () => {
             }
             return <button {...rest} onClick={handleClick}>{children}</button>
         },
-        DropdownMenuContent: ({ children, open, ...rest }: MockOpenProps & React.HTMLAttributes<HTMLDivElement>) => {
+        DropdownMenuContent: ({ children, open, setOpen: _setOpen, ...rest }: MockOpenProps & React.HTMLAttributes<HTMLDivElement>) => {
             if (!open) return null
             return <div data-testid="dropdown-content" {...rest}>{children}</div>
         },
@@ -111,8 +112,10 @@ vi.mock('@/hooks/use-debounce', () => ({
 }))
 
 import { AddTasksDialog } from '../add-tasks-dialog'
+import { AddTasksDialogToolbar } from '../add-tasks-dialog-toolbar'
+import { initialAddTasksTableState } from '../add-tasks-dialog.table-state'
 import { callRpc } from '@/lib/rpc-client'
-import type { MaintenancePlan } from '@/lib/data'
+import type { Equipment, MaintenancePlan } from '@/lib/data'
 
 const mockCallRpc = vi.mocked(callRpc)
 
@@ -241,6 +244,54 @@ describe('AddTasksDialog filters and pagination', () => {
         // DataTablePagination should render with "Trang tiếp" button
         const nextButton = screen.queryByRole('button', { name: /Trang ti/i })
         expect(nextButton).toBeTruthy()
+    })
+
+    it('renders a safe column visibility label for non-string headers', () => {
+        const toggleVisibility = vi.fn()
+        const table = {
+            getAllColumns: () => [
+                {
+                    id: 'computed-status',
+                    columnDef: { header: () => <span>Computed Status</span> },
+                    getCanHide: () => true,
+                    getIsVisible: () => true,
+                    toggleVisibility,
+                },
+            ],
+        } as unknown as Table<Equipment>
+
+        render(
+            <AddTasksDialogToolbar
+                table={table}
+                tableState={initialAddTasksTableState}
+                filterOptions={{ departments: [], users: [], locations: [] }}
+                isFiltered={false}
+                dispatchTable={vi.fn()}
+            />,
+        )
+
+        fireEvent.click(screen.getByRole('button', { name: /Cột/i }))
+
+        expect(screen.getByRole('button', { name: 'computed-status' })).toBeInTheDocument()
+        expect(screen.queryByText(/function/i)).not.toBeInTheDocument()
+    })
+
+    it('renders a generic equipment load error without backend details', async () => {
+        mockCallRpc.mockImplementation((request: RpcRequest) => {
+            const { fn } = request
+            if (fn === 'equipment_filter_buckets') {
+                return Promise.resolve(MOCK_FILTER_BUCKETS)
+            }
+            if (fn === 'equipment_list_enhanced') {
+                return Promise.reject(new Error('relation internal_equipment_secret does not exist'))
+            }
+            return Promise.resolve(null)
+        })
+
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
+
+        expect(await screen.findByText('Không thể tải thiết bị. Vui lòng thử lại sau.')).toBeInTheDocument()
+        expect(screen.queryByText(/internal_equipment_secret/i)).not.toBeInTheDocument()
     })
 
     it('spans fallback rows across visible columns only', async () => {
