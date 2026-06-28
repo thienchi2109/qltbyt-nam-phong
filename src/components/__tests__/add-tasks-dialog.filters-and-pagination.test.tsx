@@ -108,16 +108,18 @@ vi.mock('@/hooks/use-toast', () => ({
 }))
 
 vi.mock('@/hooks/use-debounce', () => ({
-    useSearchDebounce: (value: string) => value,
+    useSearchDebounce: (value: string) => mockUseSearchDebounce(value),
 }))
 
 import { AddTasksDialog } from '../add-tasks-dialog'
+import { AddTasksEquipmentTable } from '../add-tasks-dialog-table'
 import { AddTasksDialogToolbar } from '../add-tasks-dialog-toolbar'
 import { initialAddTasksTableState } from '../add-tasks-dialog.table-state'
 import { callRpc } from '@/lib/rpc-client'
 import type { Equipment, MaintenancePlan } from '@/lib/data'
 
 const mockCallRpc = vi.mocked(callRpc)
+const mockUseSearchDebounce = vi.fn((value: string) => value)
 
 function createTestQueryClient() {
     return new QueryClient({
@@ -204,6 +206,7 @@ describe('AddTasksDialog filters and pagination', () => {
 
     beforeEach(() => {
         vi.clearAllMocks()
+        mockUseSearchDebounce.mockImplementation((value: string) => value)
         mockRpcByPage()
     })
 
@@ -244,6 +247,22 @@ describe('AddTasksDialog filters and pagination', () => {
         // DataTablePagination should render with "Trang tiếp" button
         const nextButton = screen.queryByRole('button', { name: /Trang ti/i })
         expect(nextButton).toBeTruthy()
+    })
+
+    it('shows clear filters immediately for the live search term', async () => {
+        mockUseSearchDebounce.mockReturnValue('')
+
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
+
+        await waitFor(() => {
+            expect(screen.getByPlaceholderText('Tìm kiếm chung...')).toBeInTheDocument()
+        })
+
+        fireEvent.change(screen.getByPlaceholderText('Tìm kiếm chung...'), {
+            target: { value: 'pump' },
+        })
+
+        expect(screen.getByRole('button', { name: /Xóa bộ lọc/i })).toBeInTheDocument()
     })
 
     it('renders a safe column visibility label for non-string headers', () => {
@@ -292,6 +311,38 @@ describe('AddTasksDialog filters and pagination', () => {
 
         expect(await screen.findByText('Không thể tải thiết bị. Vui lòng thử lại sau.')).toBeInTheDocument()
         expect(screen.queryByText(/internal_equipment_secret/i)).not.toBeInTheDocument()
+    })
+
+    it('passes grouped header colSpan through to table headers', () => {
+        const table = {
+            getHeaderGroups: () => [
+                {
+                    id: 'group-row',
+                    headers: [
+                        {
+                            id: 'asset-group',
+                            colSpan: 2,
+                            isPlaceholder: false,
+                            column: { columnDef: { header: 'Thông tin thiết bị' } },
+                            getContext: () => ({}),
+                        },
+                    ],
+                },
+            ],
+            getRowModel: () => ({ rows: [] }),
+        } as unknown as Table<Equipment>
+
+        render(
+            <AddTasksEquipmentTable
+                table={table}
+                columnCount={2}
+                missingPlanTenant={false}
+                isLoading={false}
+                error={null}
+            />,
+        )
+
+        expect(screen.getByRole('columnheader', { name: 'Thông tin thiết bị' })).toHaveAttribute('colspan', '2')
     })
 
     it('spans fallback rows across visible columns only', async () => {

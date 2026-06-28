@@ -184,7 +184,7 @@ export function AddTasksDialog({
     tableState.filters.departments.length > 0 ||
     tableState.filters.users.length > 0 ||
     tableState.filters.locations.length > 0
-  const isFiltered = hasActiveFilters || (debouncedSearch?.length ?? 0) > 0
+  const isFiltered = hasActiveFilters || tableState.searchTerm.length > 0
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
