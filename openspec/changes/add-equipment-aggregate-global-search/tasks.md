@@ -1,6 +1,17 @@
 # Implementation Tasks
 
-## 1. Discovery And Contracts
+## GitHub Roadmap
+
+- Umbrella: #625
+- Phase 1 contract/discovery: #626
+- Phase 2 backend RPC: #627
+- Phase 3 client data layer: #628
+- Phase 4 header entry: #629
+- Phase 5 global-search workspace: #630
+- Phase 6 read-only quota context rendering: #631
+- Phase 7 equipment deep-links and final rollout: #632
+
+## Phase 1 - Discovery And Contracts (#626)
 
 - [ ] 1.1 Inspect current equipment list search fields, route query params, and facility/region filters.
 - [ ] 1.2 Inspect live schema/RPC patterns for `thiet_bi`, `don_vi`, `dia_ban`, equipment group/category, and regional leader scoping.
@@ -9,7 +20,7 @@
 - [ ] 1.5 Define final RPC name, request shape, response shape, quota fields, and TypeScript types.
 - [ ] 1.6 Confirm existing indexes and query plan before adding new indexes.
 
-## 2. Backend Aggregate Search
+## Phase 2 - Backend Aggregate Search (#627)
 
 - [ ] 2.1 Create Supabase migration for the aggregate equipment search RPC.
 - [ ] 2.2 Validate JWT role/user claims inside the RPC.
@@ -27,14 +38,14 @@
 - [ ] 2.14 Add the RPC to the API proxy allowlist if the app calls it through `/api/rpc/[fn]`.
 - [ ] 2.15 Run Supabase MCP security advisors after applying the migration.
 
-## 3. Client Data Layer
+## Phase 3 - Client Data Layer (#628)
 
 - [ ] 3.1 Add TypeScript request/response types for aggregate equipment search, including quota fields and status enum.
 - [ ] 3.2 Add a TanStack Query hook with stable query keys.
 - [ ] 3.3 Gate the hook on non-empty trimmed query and allowed role.
 - [ ] 3.4 Normalize API errors into existing UI error patterns.
 
-## 4. Header Entry Point
+## Phase 4 - Header Entry Point (#629)
 
 - [ ] 4.1 Add a compact header search input for `admin`/`global` and `regional_leader`.
 - [ ] 4.2 Hide the entry point for all other roles.
@@ -42,7 +53,7 @@
 - [ ] 4.4 URL-encode the keyword and navigate to `/global-search?q=<encodedKeyword>` on valid submit.
 - [ ] 4.5 Add focused tests for visibility, submit behavior, and encoded navigation for spaces/reserved characters.
 
-## 5. Global Search Page
+## Phase 5 - Global Search Workspace Count-First Flow (#630)
 
 - [ ] 5.1 Add `/global-search` page/route.
 - [ ] 5.2 Read and update keyword from URL query state.
@@ -51,32 +62,35 @@
 - [ ] 5.5 Implement region drill-down to facility grouping.
 - [ ] 5.6 Implement regional leader default facility grouping for single-region scope.
 - [ ] 5.7 Implement multi-region regional leader hierarchy when applicable.
-- [ ] 5.8 In facility grouping, show matching equipment count as the primary value and quota display/status as supplementary columns.
-- [ ] 5.9 Use user-facing quota labels: `Trong giới hạn định mức`, `Dưới mức tối thiểu`, `Vượt giới hạn định mức`, `Chưa có định mức`, `Chưa gán danh mục định mức`, and `Chưa được gán vào định mức của đơn vị`.
-- [ ] 5.10 Keep global search read-only for quota data; do not add category assignment, quota editing, or fix-data CTAs.
-- [ ] 5.11 Build deep-links only to the existing equipment page for region/facility context.
-- [ ] 5.12 Add focused tests for drill-down, URL updates, quota labels, read-only quota behavior, and deep-link construction.
+- [ ] 5.8 Keep matching equipment count as the primary facility-row value.
+- [ ] 5.9 Add focused tests for drill-down, URL updates, and count-first rendering.
 
-## 6. Equipment Page Deep-Link Support
+## Phase 6 - Read-Only Quota Context Rendering (#631)
 
-- [ ] 6.1 Add or verify support for `search=<keyword>`.
-- [ ] 6.2 Add or verify support for `region=<regionId>`.
-- [ ] 6.3 Add or verify support for `facility=<facilityId>`.
-- [ ] 6.4 Preserve existing equipment page behavior for normal users.
-- [ ] 6.5 Add focused tests for query-param hydration if new support is required.
+- [ ] 6.1 In facility grouping, show quota display/status as supplementary columns.
+- [ ] 6.2 Use user-facing quota labels: `Trong giới hạn định mức`, `Dưới mức tối thiểu`, `Vượt giới hạn định mức`, `Chưa có định mức`, `Chưa gán danh mục định mức`, and `Chưa được gán vào định mức của đơn vị`.
+- [ ] 6.3 Show `Gồm nhiều nhóm định mức` when one facility result aggregates multiple matched quota groups.
+- [ ] 6.4 Keep global search read-only for quota data; do not add category assignment, quota editing, or fix-data CTAs.
+- [ ] 6.5 Add focused tests for quota labels, missing quota/category states, and read-only quota behavior.
 
-## 7. Verification
+## Phase 7 - Equipment Deep-Links And Final Rollout (#632)
 
-- [ ] 7.1 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 7.2 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 7.3 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 7.4 Run focused backend/RPC verification for role scopes, field matching, quota joining, and unassigned/not-in-quota/no-active-quota states.
-- [ ] 7.5 Run focused React tests for changed UI behavior and quota status labels.
-- [ ] 7.6 Verify global-search URL hydration by loading `/global-search?q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
-- [ ] 7.7 Run `node scripts/npm-run.js run react-doctor`.
-- [ ] 7.8 Manually verify chart rendering and drill-down in browser.
+- [ ] 7.1 Add or verify support for `search=<keyword>`.
+- [ ] 7.2 Add or verify support for `region=<regionId>`.
+- [ ] 7.3 Add or verify support for `facility=<facilityId>`.
+- [ ] 7.4 Preserve existing equipment page behavior for normal users.
+- [ ] 7.5 Build deep-links only to the existing equipment page for region/facility context.
+- [ ] 7.6 Add focused tests for query-param hydration if new support is required.
+- [ ] 7.7 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [ ] 7.8 Run `node scripts/npm-run.js run verify:dedupe`.
+- [ ] 7.9 Run `node scripts/npm-run.js run typecheck`.
+- [ ] 7.10 Run focused backend/RPC verification for role scopes, field matching, quota joining, and unassigned/not-in-quota/no-active-quota states.
+- [ ] 7.11 Run focused React tests for changed UI behavior and quota status labels.
+- [ ] 7.12 Verify global-search URL hydration by loading `/global-search?q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
+- [ ] 7.13 Run `node scripts/npm-run.js run react-doctor`.
+- [ ] 7.14 Manually verify header search, chart rendering, drill-down, quota labels, and equipment deep-links in browser.
 
-## 8. Release Notes
+## Release Notes
 
 - [ ] 8.1 Document that v1 is submit-only and has no autocomplete.
 - [ ] 8.2 Document that global search aggregates equipment counts only.
