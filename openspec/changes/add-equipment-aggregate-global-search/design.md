@@ -112,20 +112,20 @@ Global search must not offer actions to assign categories, edit quota decisions,
 
 ## Data Contract
 
-The aggregate search RPC should return grouped rows, not equipment rows.
+The aggregate search RPC returns grouped rows, not equipment rows. The final RPC name is `equipment_aggregate_search`.
 
-Suggested request:
+Request:
 
 ```ts
 type EquipmentAggregateSearchRequest = {
-  query: string
-  groupBy: "region" | "facility"
-  regionId?: number | null
-  limit?: number
+  p_query: string
+  p_group_by: "region" | "facility"
+  p_region_id?: number | null
+  p_limit?: number
 }
 ```
 
-Suggested response:
+Response:
 
 ```ts
 type EquipmentAggregateSearchRow = {
@@ -152,7 +152,7 @@ type EquipmentAggregateSearchRow = {
 }
 ```
 
-Suggested summary:
+Summary:
 
 ```ts
 type EquipmentAggregateSearchSummary = {
@@ -166,6 +166,10 @@ type EquipmentAggregateSearchSummary = {
 
 ## Search Semantics
 
+V1 uses deterministic SQL keyword matching. It does not use vector search, semantic ranking, autocomplete, or live suggestions.
+
+The RPC must trim the keyword, reject empty input, and sanitize LIKE/ILIKE input with `public._sanitize_ilike_pattern()` before building any search predicate.
+
 The keyword matches:
 
 - equipment name
@@ -178,6 +182,24 @@ The keyword does not match:
 - internal equipment code, because codes are facility-defined and not comparable across the system
 
 Implementation may use accent-insensitive matching if the existing database helpers support it, but the v1 user contract is aggregate scope and field selection, not generalized full-text search.
+
+The current equipment catalog RPC (`equipment_list_enhanced`) includes internal equipment code in its search predicate. The aggregate search RPC must not reuse that predicate unchanged.
+
+## Performance Contract
+
+Live DB inspection confirmed existing search/index support:
+
+- `public.thiet_bi` has trigram indexes for `ten_thiet_bi`, `model`, and `serial`.
+- `public.thiet_bi` has facility/scope indexes on `don_vi` and active/non-deleted reads.
+- `public.don_vi` has region/scope indexes on `dia_ban_id`.
+- `public.nhom_thiet_bi` has FTS/keyword indexes for equipment group search.
+- quota tables have active-decision and line-item indexes for facility quota joins.
+
+The aggregate RPC should apply scope and soft-delete filters before or inside the matched-equipment CTE, then aggregate by `dia_ban` or `don_vi` in SQL. It must not fetch equipment rows to the browser for client-side filtering or grouping.
+
+Before adding any new index in Phase 2, run `EXPLAIN (FORMAT JSON)` for representative `region` and `facility` mode queries. If the planner still uses sequential scans at expected production scale, prefer query-shape changes first: split indexed equipment-field matches from category matches with `UNION`/CTEs, preserve deduplication by equipment id, then add narrowly-scoped indexes only when the plan proves they are needed.
+
+Vector search is explicitly out of scope for v1. It can be revisited as a separate hybrid-search follow-up only if product requirements expand to natural-language synonym discovery. Exact keyword/trigram matching remains the primary path for model, serial, and auditable aggregate counts.
 
 ## Authorization
 

@@ -231,7 +231,7 @@ The system SHALL display a concise summary of aggregate equipment search results
 
 ### Requirement: Aggregate Search Performance
 
-The system SHALL compute aggregate search results without returning equipment rows to the client.
+The system SHALL compute aggregate search results in server-side SQL using deterministic keyword predicates and shall not use vector search in v1.
 
 #### Scenario: Aggregated RPC response
 - **WHEN** the client requests aggregate search results
@@ -241,3 +241,18 @@ The system SHALL compute aggregate search results without returning equipment ro
 #### Scenario: Query stays server-side
 - **WHEN** a keyword matches many equipment records
 - **THEN** aggregation happens in SQL/server-side logic before the response is sent to the browser
+
+#### Scenario: Deterministic keyword search
+- **WHEN** the aggregate search RPC evaluates a keyword
+- **THEN** it uses sanitized SQL keyword predicates over the approved match fields
+- **AND** does not depend on vector embeddings, semantic ranking, autocomplete, or client-side search
+
+#### Scenario: Scope applied before aggregation
+- **WHEN** the aggregate search RPC computes counts for a global or regional leader user
+- **THEN** role scope and soft-delete filters are applied before grouped counts are returned
+- **AND** the browser cannot expand scope by filtering returned equipment rows
+
+#### Scenario: Index changes require query-plan evidence
+- **WHEN** implementation proposes a new search or join index for aggregate search
+- **THEN** the implementation first captures representative `EXPLAIN (FORMAT JSON)` plans for `region` and `facility` grouping
+- **AND** documents why existing trigram, FTS, facility, region, and quota indexes are insufficient

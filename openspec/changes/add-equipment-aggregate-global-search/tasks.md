@@ -13,12 +13,13 @@
 
 ## Phase 1 - Discovery And Contracts (#626)
 
-- [ ] 1.1 Inspect current equipment list search fields, route query params, and facility/region filters.
-- [ ] 1.2 Inspect live schema/RPC patterns for `thiet_bi`, `don_vi`, `dia_ban`, equipment group/category, and regional leader scoping.
-- [ ] 1.3 Confirm whether existing equipment page supports `search`, `region`, and `facility` deep-link params.
-- [ ] 1.4 Inspect existing quota schema/RPCs for `quyet_dinh_dinh_muc`, `chi_tiet_dinh_muc`, `nhom_thiet_bi`, and compliance status labels.
-- [ ] 1.5 Define final RPC name, request shape, response shape, quota fields, and TypeScript types.
-- [ ] 1.6 Confirm existing indexes and query plan before adding new indexes.
+- [x] 1.1 Inspect current equipment list search fields, route query params, and facility/region filters.
+- [x] 1.2 Inspect live schema/RPC patterns for `thiet_bi`, `don_vi`, `dia_ban`, equipment group/category, and regional leader scoping.
+- [x] 1.3 Confirm whether existing equipment page supports `search`, `region`, and `facility` deep-link params.
+- [x] 1.4 Inspect existing quota schema/RPCs for `quyet_dinh_dinh_muc`, `chi_tiet_dinh_muc`, `nhom_thiet_bi`, and compliance status labels.
+- [x] 1.5 Define final RPC name, request shape, response shape, quota fields, and TypeScript types.
+- [x] 1.6 Confirm existing indexes and query plan before adding new indexes.
+- [x] 1.7 Document the v1 search algorithm and performance contract: deterministic SQL keyword search, no vector search, and `EXPLAIN` evidence before new indexes.
 
 ## Phase 2 - Backend Aggregate Search (#627)
 
@@ -28,15 +29,19 @@
 - [ ] 2.4 Enforce admin/global all-facility scope.
 - [ ] 2.5 Enforce regional leader allowed-region/facility scope server-side.
 - [ ] 2.6 Reject unsupported roles for this RPC.
-- [ ] 2.7 Match keyword against equipment name, model, serial, and equipment group/category.
+- [ ] 2.7 Match keyword against equipment name, model, serial, and equipment group/category using sanitized SQL keyword predicates.
 - [ ] 2.8 Exclude internal equipment code from search matching.
-- [ ] 2.9 Join active quota decisions and quota details to compute facility-level quota context for matched equipment.
-- [ ] 2.10 Return grouped aggregate counts for `region` and `facility` modes, with matching equipment count as the primary value.
-- [ ] 2.11 Return quota display fields for facility mode: current count, min, max, status, notes, and multi-group indicator where applicable.
-- [ ] 2.12 Return clear states for no active quota, unassigned equipment category, and equipment groups not assigned into the unit quota decision.
-- [ ] 2.13 Grant execute permission only as required by the app's RPC pattern.
-- [ ] 2.14 Add the RPC to the API proxy allowlist if the app calls it through `/api/rpc/[fn]`.
-- [ ] 2.15 Run Supabase MCP security advisors after applying the migration.
+- [ ] 2.9 Keep vector search, semantic ranking, autocomplete, and client-side filtering out of the v1 backend RPC.
+- [ ] 2.10 Apply role scope and soft-delete filters before grouping; do not return equipment rows for browser-side aggregation.
+- [ ] 2.11 Join active quota decisions and quota details to compute facility-level quota context for matched equipment.
+- [ ] 2.12 Return grouped aggregate counts for `region` and `facility` modes, with matching equipment count as the primary value.
+- [ ] 2.13 Return quota display fields for facility mode: current count, min, max, status, notes, and multi-group indicator where applicable.
+- [ ] 2.14 Return clear states for no active quota, unassigned equipment category, and equipment groups not assigned into the unit quota decision.
+- [ ] 2.15 Capture representative `EXPLAIN (FORMAT JSON)` plans for `region` and `facility` grouping before adding new indexes.
+- [ ] 2.16 Prefer query-shape fixes such as indexed-field/category CTEs or `UNION` before adding new indexes; add indexes only with plan evidence.
+- [ ] 2.17 Grant execute permission only as required by the app's RPC pattern.
+- [ ] 2.18 Add the RPC to the API proxy allowlist if the app calls it through `/api/rpc/[fn]`.
+- [ ] 2.19 Run Supabase MCP security advisors after applying the migration.
 
 ## Phase 3 - Client Data Layer (#628)
 
@@ -84,7 +89,7 @@
 - [ ] 7.7 Run `node scripts/npm-run.js run verify:no-explicit-any`.
 - [ ] 7.8 Run `node scripts/npm-run.js run verify:dedupe`.
 - [ ] 7.9 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 7.10 Run focused backend/RPC verification for role scopes, field matching, quota joining, and unassigned/not-in-quota/no-active-quota states.
+- [ ] 7.10 Run focused backend/RPC verification for role scopes, field matching, quota joining, unassigned/not-in-quota/no-active-quota states, and representative `EXPLAIN` plans.
 - [ ] 7.11 Run focused React tests for changed UI behavior and quota status labels.
 - [ ] 7.12 Verify global-search URL hydration by loading `/global-search?q=...` directly and confirming the query and selected scope restore after refresh or back navigation.
 - [ ] 7.13 Run `node scripts/npm-run.js run react-doctor`.
