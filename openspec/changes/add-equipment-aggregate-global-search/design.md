@@ -189,11 +189,10 @@ The current equipment catalog RPC (`equipment_list_enhanced`) includes internal 
 
 Live DB inspection confirmed existing search/index support:
 
-- `public.thiet_bi` has trigram indexes for `ten_thiet_bi`, `model`, and `serial`.
-- `public.thiet_bi` has facility/scope indexes on `don_vi` and active/non-deleted reads.
-- `public.don_vi` has region/scope indexes on `dia_ban_id`.
-- `public.nhom_thiet_bi` has FTS/keyword indexes for equipment group search.
-- quota tables have active-decision and line-item indexes for facility quota joins.
+- `public.thiet_bi`: trigram indexes for `ten_thiet_bi`, `model`, and `serial`; facility/scope indexes on `don_vi` and active/non-deleted reads.
+- `public.don_vi`: region/scope indexes on `dia_ban_id`.
+- `public.nhom_thiet_bi`: FTS/keyword indexes for equipment group search.
+- quota tables: active-decision and line-item indexes for facility quota joins.
 
 The aggregate RPC should apply scope and soft-delete filters before or inside the matched-equipment CTE, then aggregate by `dia_ban` or `don_vi` in SQL. It must not fetch equipment rows to the browser for client-side filtering or grouping.
 
