@@ -1,6 +1,8 @@
 -- Phase 2 of add-equipment-aggregate-global-search.
 -- EXPLAIN (FORMAT JSON) was captured before this migration; no new indexes are added.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.equipment_aggregate_search(
   p_query text,
   p_group_by text DEFAULT 'region',
@@ -29,7 +31,7 @@ BEGIN
     v_role := 'global';
   END IF;
 
-  IF v_role IS NULL OR v_role = '' THEN
+  IF v_role = '' THEN
     RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
   END IF;
 
@@ -227,16 +229,52 @@ BEGIN
       fq.quota_notes
   ),
   selected_rows AS (
-    SELECT *
+    SELECT
+      group_type,
+      group_id,
+      group_name,
+      parent_region_id,
+      parent_region_name,
+      equipment_count,
+      facility_count,
+      quota_current_count,
+      quota_min_count,
+      quota_max_count,
+      quota_status,
+      quota_notes
     FROM region_rows
     WHERE v_group_by = 'region'
     UNION ALL
-    SELECT *
+    SELECT
+      group_type,
+      group_id,
+      group_name,
+      parent_region_id,
+      parent_region_name,
+      equipment_count,
+      facility_count,
+      quota_current_count,
+      quota_min_count,
+      quota_max_count,
+      quota_status,
+      quota_notes
     FROM facility_rows
     WHERE v_group_by = 'facility'
   ),
   limited_rows AS (
-    SELECT *
+    SELECT
+      group_type,
+      group_id,
+      group_name,
+      parent_region_id,
+      parent_region_name,
+      equipment_count,
+      facility_count,
+      quota_current_count,
+      quota_min_count,
+      quota_max_count,
+      quota_status,
+      quota_notes
     FROM selected_rows
     ORDER BY equipment_count DESC, group_name ASC, group_id ASC
     LIMIT v_limit
@@ -244,7 +282,10 @@ BEGIN
   totals AS (
     SELECT
       COUNT(*)::bigint AS total_equipment_count,
-      COUNT(DISTINCT region_id)::bigint AS region_count,
+      (
+        COUNT(DISTINCT region_id)
+        + CASE WHEN COUNT(*) FILTER (WHERE region_id IS NULL) > 0 THEN 1 ELSE 0 END
+      )::bigint AS region_count,
       COUNT(DISTINCT facility_id)::bigint AS facility_count
     FROM matched_equipment
   )
@@ -300,3 +341,5 @@ GRANT EXECUTE ON FUNCTION public.equipment_aggregate_search(text, text, bigint, 
 
 COMMENT ON FUNCTION public.equipment_aggregate_search(text, text, bigint, integer)
 IS 'Role-scoped deterministic aggregate equipment keyword search for global/admin and regional leader users.';
+
+COMMIT;
