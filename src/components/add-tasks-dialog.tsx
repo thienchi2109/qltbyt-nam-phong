@@ -205,7 +205,7 @@ export function AddTasksDialog({
           />
           <AddTasksEquipmentTable
             table={table}
-            columnCount={columns.length}
+            columnCount={table.getVisibleLeafColumns().length}
             missingPlanTenant={missingPlanTenant}
             isLoading={isLoading}
             error={error}

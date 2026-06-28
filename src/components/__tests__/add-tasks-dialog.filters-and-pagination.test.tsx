@@ -243,6 +243,29 @@ describe('AddTasksDialog filters and pagination', () => {
         expect(nextButton).toBeTruthy()
     })
 
+    it('spans fallback rows across visible columns only', async () => {
+        mockCallRpc.mockImplementation((request: RpcRequest) => {
+            const { fn } = request
+            if (fn === 'equipment_filter_buckets') {
+                return Promise.resolve(MOCK_FILTER_BUCKETS)
+            }
+            if (fn === 'equipment_list_enhanced') {
+                return Promise.resolve({
+                    data: [],
+                    total: 0,
+                    page: 1,
+                    pageSize: 10,
+                })
+            }
+            return Promise.resolve(null)
+        })
+
+        renderWithQueryClient(<AddTasksDialog {...baseProps} />)
+
+        const emptyState = await screen.findByText('Không tìm thấy kết quả phù hợp')
+        expect(emptyState.closest('td')).toHaveAttribute('colspan', '5')
+    })
+
     it('disables selection for already-added equipment', async () => {
         renderWithQueryClient(<AddTasksDialog {...baseProps} existingEquipmentIds={[1, 2, 3]} />)
 
