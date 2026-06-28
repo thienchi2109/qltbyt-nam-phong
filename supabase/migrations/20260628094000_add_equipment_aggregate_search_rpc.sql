@@ -86,23 +86,11 @@ BEGIN
     FROM scoped_facilities sf
     JOIN public.thiet_bi tb ON tb.don_vi = sf.facility_id
     WHERE tb.is_deleted = false
-      AND tb.ten_thiet_bi ILIKE ('%' || v_sanitized_query || '%')
-
-    UNION ALL
-
-    SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
-    FROM scoped_facilities sf
-    JOIN public.thiet_bi tb ON tb.don_vi = sf.facility_id
-    WHERE tb.is_deleted = false
-      AND tb.model ILIKE ('%' || v_sanitized_query || '%')
-
-    UNION ALL
-
-    SELECT tb.id, tb.don_vi AS facility_id, tb.nhom_thiet_bi_id, sf.region_id, sf.region_name, sf.facility_name
-    FROM scoped_facilities sf
-    JOIN public.thiet_bi tb ON tb.don_vi = sf.facility_id
-    WHERE tb.is_deleted = false
-      AND tb.serial ILIKE ('%' || v_sanitized_query || '%')
+      AND (
+        tb.ten_thiet_bi ILIKE ('%' || v_sanitized_query || '%')
+        OR tb.model ILIKE ('%' || v_sanitized_query || '%')
+        OR tb.serial ILIKE ('%' || v_sanitized_query || '%')
+      )
 
     UNION ALL
 
