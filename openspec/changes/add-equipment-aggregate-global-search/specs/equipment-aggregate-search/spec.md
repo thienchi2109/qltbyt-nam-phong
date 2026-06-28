@@ -4,17 +4,17 @@
 
 ### Requirement: Header Aggregate Search Entry
 
-The system SHALL provide a header search entry point for equipment aggregate global search to users with `admin`, `global`, or `regional_leader` roles.
+The system SHALL provide a header search entry point for aggregate equipment search to users with `admin`, `global`, or `regional_leader` roles.
 
 #### Scenario: Elevated user sees header search
 
 - **WHEN** a user with role `admin`, `global`, or `regional_leader` views the authenticated app shell
-- **THEN** the header shows a compact equipment global search input
+- **THEN** the header shows a compact aggregate equipment search input
 
 #### Scenario: Unsupported role does not see header search
 
 - **WHEN** a user with role other than `admin`, `global`, or `regional_leader` views the authenticated app shell
-- **THEN** the header does not show the equipment global search input
+- **THEN** the header does not show the aggregate equipment search input
 
 #### Scenario: Header submit opens search workspace
 
@@ -227,7 +227,7 @@ The system SHALL include quota context in facility-level aggregate search result
 
 ### Requirement: Read-Only Quota Overlay
 
-The system SHALL present quota information in global search as read-only context for management lookup.
+The system SHALL present quota information in the Reports equipment search tab as read-only context for management lookup.
 
 #### Scenario: No quota editing actions
 
@@ -237,7 +237,7 @@ The system SHALL present quota information in global search as read-only context
 #### Scenario: Existing equipment detail link only
 
 - **WHEN** a user chooses to inspect matching equipment
-- **THEN** global search links only to the existing equipment page with the relevant keyword and region/facility context
+- **THEN** the Reports equipment search tab links only to the existing equipment page with the relevant keyword and region/facility context
 
 ### Requirement: Equipment Detail Deep Links
 
@@ -253,7 +253,7 @@ The system SHALL link aggregate search results to the existing equipment page fo
 - **WHEN** a user chooses to view equipment for a facility aggregate result
 - **THEN** the system links to the equipment page with the current keyword and facility parameter
 
-#### Scenario: No device rows in global search
+#### Scenario: No device rows in Reports equipment search tab
 
 - **WHEN** aggregate search results are shown
 - **THEN** the Reports equipment search tab does not render a device-detail list

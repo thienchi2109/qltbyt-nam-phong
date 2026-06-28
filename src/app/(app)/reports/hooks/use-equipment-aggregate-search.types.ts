@@ -37,7 +37,7 @@ export interface EquipmentAggregateSearchRow {
   quotaMinCount: number | null
   quotaMaxCount: number | null
   quotaStatus: EquipmentAggregateSearchQuotaStatus | null
-  quotaNotes: EquipmentAggregateSearchQuotaStatus[]
+  quotaNotes?: string[]
 }
 
 export interface EquipmentAggregateSearchSummary {

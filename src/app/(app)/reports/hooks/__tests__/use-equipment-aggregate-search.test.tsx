@@ -62,10 +62,14 @@ describe("equipment aggregate search types", () => {
       quotaMinCount: 2,
       quotaMaxCount: 4,
       quotaStatus,
-      quotaNotes: ["not_in_unit_quota"],
+      quotaNotes: ["Gồm nhiều nhóm định mức"],
+    }
+    const rowWithoutNotes: EquipmentAggregateSearchRow = {
+      ...row,
+      quotaNotes: undefined,
     }
     const data: EquipmentAggregateSearchData = {
-      rows: [row],
+      rows: [row, rowWithoutNotes],
       summary: {
         totalEquipmentCount: 5,
         regionCount: 1,
@@ -77,6 +81,8 @@ describe("equipment aggregate search types", () => {
 
     expect(request.groupBy).toBe("facility")
     expect(data.rows[0]?.quotaStatus).toBe("not_in_unit_quota")
+    expect(data.rows[0]?.quotaNotes?.[0]).toBe("Gồm nhiều nhóm định mức")
+    expect(data.rows[1]?.quotaNotes).toBeUndefined()
   })
 })
 
@@ -179,6 +185,107 @@ describe("useEquipmentAggregateSearch", () => {
         signal: expect.any(AbortSignal),
       })
     )
+  })
+
+  it("normalizes invalid and oversized limits before keying and calling the RPC", async () => {
+    mocks.callRpc.mockResolvedValueOnce({
+      rows: [],
+      summary: {
+        totalEquipmentCount: 0,
+        regionCount: 0,
+        facilityCount: 0,
+        query: "Máy thở",
+        scopeLabel: "Toàn hệ thống",
+      },
+    })
+
+    const queryClient = createQueryClient()
+
+    renderHook(
+      () =>
+        useEquipmentAggregateSearch({
+          query: "Máy thở",
+          groupBy: "region",
+          role: "global",
+          limit: 250,
+        }),
+      { wrapper: createWrapper(queryClient) }
+    )
+
+    await waitFor(() => expect(mocks.callRpc).toHaveBeenCalledTimes(1))
+
+    expect(
+      buildEquipmentAggregateSearchQueryKey({
+        query: "Máy thở",
+        groupBy: "region",
+        role: "global",
+        limit: Number.NaN,
+      })[2].limit
+    ).toBe(50)
+    expect(
+      buildEquipmentAggregateSearchQueryKey({
+        query: "Máy thở",
+        groupBy: "region",
+        role: "global",
+        limit: 0,
+      })[2].limit
+    ).toBe(1)
+    expect(mocks.callRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        args: expect.objectContaining({
+          p_limit: 100,
+        }),
+      })
+    )
+  })
+
+  it("does not keep previous aggregate rows when the query becomes disabled", async () => {
+    mocks.callRpc.mockResolvedValueOnce({
+      rows: [
+        {
+          groupType: "region",
+          groupId: 1,
+          groupName: "Miền Bắc",
+          parentRegionId: null,
+          parentRegionName: null,
+          equipmentCount: 2,
+          facilityCount: 1,
+          quotaCurrentCount: null,
+          quotaMinCount: null,
+          quotaMaxCount: null,
+          quotaStatus: null,
+          quotaNotes: [],
+        },
+      ],
+      summary: {
+        totalEquipmentCount: 2,
+        regionCount: 1,
+        facilityCount: 1,
+        query: "Máy thở",
+        scopeLabel: "Toàn hệ thống",
+      },
+    } satisfies EquipmentAggregateSearchData)
+
+    const queryClient = createQueryClient()
+    const { result, rerender } = renderHook(
+      ({ query }) =>
+        useEquipmentAggregateSearch({
+          query,
+          groupBy: "region",
+          role: "global",
+        }),
+      {
+        initialProps: { query: "Máy thở" },
+        wrapper: createWrapper(queryClient),
+      }
+    )
+
+    await waitFor(() => expect(result.current.data?.rows).toHaveLength(1))
+
+    rerender({ query: "   " })
+
+    expect(result.current.fetchStatus).toBe("idle")
+    expect(result.current.data?.rows).toEqual([])
   })
 
   it("normalizes unknown API errors for UI display", () => {

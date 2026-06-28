@@ -14,6 +14,7 @@ import type {
 } from "./use-equipment-aggregate-search.types"
 
 const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
 const EMPTY_EQUIPMENT_AGGREGATE_SEARCH: EquipmentAggregateSearchData = {
   rows: [],
   summary: {
@@ -41,6 +42,8 @@ export function normalizeEquipmentAggregateSearchError(error: unknown): string {
 
 /** Builds the stable TanStack Query key for Reports equipment aggregate search. */
 export function buildEquipmentAggregateSearchQueryKey(params: UseEquipmentAggregateSearchParams) {
+  const limit = normalizeEquipmentAggregateSearchLimit(params.limit)
+
   return [
     "reports",
     "equipment-aggregate-search",
@@ -49,9 +52,21 @@ export function buildEquipmentAggregateSearchQueryKey(params: UseEquipmentAggreg
       groupBy: params.groupBy,
       role: params.role ?? null,
       regionId: params.regionId ?? null,
-      limit: params.limit ?? DEFAULT_LIMIT,
+      limit,
     },
   ] as const
+}
+
+function normalizeEquipmentAggregateSearchLimit(limit: number | null | undefined): number {
+  if (limit === null || limit === undefined) {
+    return DEFAULT_LIMIT
+  }
+
+  if (!Number.isFinite(limit)) {
+    return DEFAULT_LIMIT
+  }
+
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_LIMIT)
 }
 
 function buildEquipmentAggregateSearchRpcArgs(
@@ -61,7 +76,7 @@ function buildEquipmentAggregateSearchRpcArgs(
     p_query: params.query.trim(),
     p_group_by: params.groupBy,
     p_region_id: params.regionId ?? null,
-    p_limit: params.limit ?? DEFAULT_LIMIT,
+    p_limit: normalizeEquipmentAggregateSearchLimit(params.limit),
   }
 }
 
@@ -80,7 +95,10 @@ export function useEquipmentAggregateSearch(params: UseEquipmentAggregateSearchP
       })
     },
     enabled,
-    placeholderData: (previousData) => previousData ?? EMPTY_EQUIPMENT_AGGREGATE_SEARCH,
+    placeholderData: (previousData) =>
+      enabled
+        ? (previousData ?? EMPTY_EQUIPMENT_AGGREGATE_SEARCH)
+        : EMPTY_EQUIPMENT_AGGREGATE_SEARCH,
     staleTime: 60_000,
   })
 }
