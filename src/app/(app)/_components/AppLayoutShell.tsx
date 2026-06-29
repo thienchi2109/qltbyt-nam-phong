@@ -203,12 +203,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               onOpenChange={(isOpen) => dispatchUi({ type: "setMobileSheetOpen", isOpen })}
             >
               <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="hidden shrink-0 touch-target"
-                  style={{ display: "none" }}
-                >
+                <Button variant="outline" size="icon" className="shrink-0 touch-target lg:hidden">
                   <Menu className="size-5" />
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>

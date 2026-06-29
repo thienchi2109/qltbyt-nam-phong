@@ -84,10 +84,15 @@ vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
+    ...props
   }: {
     children: React.ReactNode
     onClick?: React.MouseEventHandler<HTMLButtonElement>
-  }) => <button onClick={onClick}>{children}</button>,
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock("@/components/ui/badge", () => ({
@@ -441,5 +446,22 @@ describe("AppLayoutShell", () => {
 
     expect(screen.getAllByTestId("skeleton")).toHaveLength(3)
     expect(screen.queryByText("CVMEMS")).not.toBeInTheDocument()
+  })
+
+  it("keeps the mobile navigation trigger visible", () => {
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    expect(screen.getByRole("button", { name: /toggle navigation menu/i })).toBeVisible()
   })
 })
