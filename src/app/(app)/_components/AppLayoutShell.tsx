@@ -17,11 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Logo } from "@/components/icons"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { TenantLogo } from "@/components/tenant-logo"
 import { TenantName } from "@/components/tenant-name"
@@ -85,8 +83,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
   const [uiState, dispatchUi] = React.useReducer(appLayoutUiReducer, initialAppLayoutUiState)
-  const { isSidebarOpen, isMobileSheetOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } =
-    uiState
+  const { isSidebarOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } = uiState
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
     enabled: status === "authenticated" && shouldFetchData,
@@ -198,41 +195,6 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
         </div>
         <div className="flex flex-col">
           <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md lg:relative lg:z-auto lg:h-[60px] lg:px-6">
-            <Sheet
-              open={isMobileSheetOpen}
-              onOpenChange={(isOpen) => dispatchUi({ type: "setMobileSheetOpen", isOpen })}
-            >
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="shrink-0 touch-target lg:hidden">
-                  <Menu className="size-5" />
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="flex flex-col bg-white p-0">
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Menu Điều Hướng</SheetTitle>
-                </SheetHeader>
-                <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
-                  <Link
-                    href="/"
-                    className="flex flex-col items-center gap-3 font-semibold text-primary"
-                    onClick={() => dispatchUi({ type: "setMobileSheetOpen", isOpen: false })}
-                  >
-                    <Logo />
-                    <span className="text-center heading-responsive-h3">QUẢN LÝ TBYT - CDC</span>
-                  </Link>
-                </div>
-                <AppSidebarNav
-                  items={navItems}
-                  pathname={pathname}
-                  isSidebarOpen
-                  notificationCounts={notificationCounts}
-                  variant="sheet"
-                  className="p-3"
-                  onNavigate={() => dispatchUi({ type: "setMobileSheetOpen", isOpen: false })}
-                />
-              </SheetContent>
-            </Sheet>
             <Button
               variant="outline"
               size="icon"

@@ -72,14 +72,6 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   }) => <button onClick={onClick}>{children}</button>,
 }))
 
-vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
@@ -128,7 +120,7 @@ vi.mock("@/components/realtime-status", () => ({
 }))
 
 vi.mock("@/components/mobile-footer-nav", () => ({
-  MobileFooterNav: () => null,
+  MobileFooterNav: () => <nav aria-label="Điều hướng chính" data-testid="mobile-footer-nav" />,
 }))
 
 vi.mock("@/components/onboarding/HelpButton", () => ({
@@ -448,7 +440,7 @@ describe("AppLayoutShell", () => {
     expect(screen.queryByText("CVMEMS")).not.toBeInTheDocument()
   })
 
-  it("keeps the mobile navigation trigger visible", () => {
+  it("removes the mobile offcanvas navigation while keeping bottom and desktop navigation", () => {
     render(
       <AppLayoutShell
         user={{
@@ -462,11 +454,14 @@ describe("AppLayoutShell", () => {
       </AppLayoutShell>
     )
 
-    const mobileNavTrigger = screen.getByRole("button", { name: /toggle navigation menu/i })
+    expect(
+      screen.queryByRole("button", { name: /toggle navigation menu/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByTestId("mobile-footer-nav")).toBeInTheDocument()
 
-    expect(mobileNavTrigger).toHaveClass("shrink-0", "touch-target", "lg:hidden")
-    expect(mobileNavTrigger).not.toHaveClass("hidden")
-    expect(mobileNavTrigger).not.toHaveStyle({ display: "none" })
+    const desktopSidebarTrigger = screen.getByRole("button", { name: /toggle sidebar/i })
+
+    expect(desktopSidebarTrigger).toHaveClass("hidden", "shrink-0", "touch-target", "lg:flex")
   })
 
   it("keeps the equipment search aligned inside the right header action cluster", () => {

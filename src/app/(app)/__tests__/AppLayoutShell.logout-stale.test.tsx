@@ -72,14 +72,6 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   }) => <button onClick={onClick}>{children}</button>,
 }))
 
-vi.mock("@/components/ui/sheet", () => ({
-  Sheet: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  SheetTrigger: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-}))
-
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
