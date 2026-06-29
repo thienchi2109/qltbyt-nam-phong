@@ -24,6 +24,7 @@ import {
 import { EquipmentSearchSkeleton } from "./equipment-search-report-tab-skeleton"
 import {
   formatEquipmentSearchCount,
+  getEquipmentSearchMaxCount,
   getEquipmentSearchFacilityText,
   getEquipmentSearchQuotaContext,
   normalizeEquipmentSearchRegionId,
@@ -181,7 +182,7 @@ function EquipmentSearchReportTabContent({
     () => sortEquipmentSearchRows(searchQuery.data?.rows ?? []),
     [searchQuery.data?.rows]
   )
-  const maxCount = Math.max(1, ...rows.map((row) => row.equipmentCount))
+  const maxCount = getEquipmentSearchMaxCount(rows)
   const summary = searchQuery.data?.summary
   const trimmedDraft = draftQuery.trim()
   const isInitialEmpty = submittedQuery.length === 0

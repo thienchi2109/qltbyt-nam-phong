@@ -49,6 +49,11 @@ export function getEquipmentSearchQuotaContext(row: EquipmentAggregateSearchRow)
   return limits ? `Định mức: ${limits}` : "Có dữ liệu định mức"
 }
 
+/** Computes the chart scale without spreading arbitrary row counts onto the call stack. */
+export function getEquipmentSearchMaxCount(rows: EquipmentAggregateSearchRow[]): number {
+  return rows.reduce((maxCount, row) => Math.max(maxCount, row.equipmentCount), 1)
+}
+
 /** Sorts aggregate rows by matching equipment count for count-first rendering. */
 export function sortEquipmentSearchRows(
   rows: EquipmentAggregateSearchRow[]

@@ -1,5 +1,5 @@
 import * as React from "react"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const state = vi.hoisted(() => ({
@@ -192,7 +192,19 @@ describe("ReportsPage auth gate", () => {
     expect(screen.getByTestId("reports-tabs-list")).toHaveClass("w-max", "min-w-max")
   })
 
-  it("activates the equipment search tab and hydrates the query from the Reports URL", () => {
+  it("shows the Reports tab skeleton while the equipment search tab loads", () => {
+    state.sessionData = {
+      user: { role: "admin", don_vi: null, dia_ban_id: null },
+    }
+    state.shouldFetchData = true
+    state.searchParams = new URLSearchParams("tab=equipment-search&q=monitor")
+
+    render(<ReportsPage />)
+
+    expect(screen.getAllByTestId("skeleton").length).toBeGreaterThan(0)
+  })
+
+  it("activates the equipment search tab and hydrates the query from the Reports URL", async () => {
     state.sessionData = {
       user: { role: "admin", don_vi: null, dia_ban_id: null },
     }
@@ -205,10 +217,10 @@ describe("ReportsPage auth gate", () => {
       "data-state",
       "active"
     )
-    expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
+    expect(await screen.findByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
   })
 
-  it("updates equipment search query props without remounting the tab component", () => {
+  it("updates equipment search query props without remounting the tab component", async () => {
     state.sessionData = {
       user: { role: "admin", don_vi: null, dia_ban_id: null },
     }
@@ -217,14 +229,16 @@ describe("ReportsPage auth gate", () => {
 
     const { rerender } = render(<ReportsPage />)
 
-    const instanceId = screen
-      .getByTestId("equipment-search-report-tab")
-      .getAttribute("data-instance-id")
+    const instanceId = (await screen.findByTestId("equipment-search-report-tab")).getAttribute(
+      "data-instance-id"
+    )
 
     state.searchParams = new URLSearchParams("tab=equipment-search&q=máy thở")
     rerender(<ReportsPage />)
 
-    expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("máy thở")
+    await waitFor(() =>
+      expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("máy thở")
+    )
     expect(screen.getByTestId("equipment-search-report-tab")).toHaveAttribute(
       "data-instance-id",
       instanceId

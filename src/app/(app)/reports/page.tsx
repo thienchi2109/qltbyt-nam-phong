@@ -11,7 +11,6 @@ import { AuthenticatedPageBoundary } from "@/app/(app)/_components/Authenticated
 import { AuthenticatedPageSkeletonFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
-import { EquipmentSearchReportTab } from "./components/equipment-search-report-tab"
 import { canUseEquipmentAggregateSearch } from "./hooks/use-equipment-aggregate-search"
 
 // Lazy load components to improve initial load time
@@ -28,6 +27,11 @@ const MaintenanceReportTab = React.lazy(() =>
 const UsageAnalyticsDashboard = React.lazy(() =>
   import("@/components/usage-analytics-dashboard").then((module) => ({
     default: module.UsageAnalyticsDashboard,
+  }))
+)
+const EquipmentSearchReportTab = React.lazy(() =>
+  import("./components/equipment-search-report-tab").then((module) => ({
+    default: module.EquipmentSearchReportTab,
   }))
 )
 
@@ -250,13 +254,15 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
             </TabsContent>
             {canUseEquipmentSearch ? (
               <TabsContent value="equipment-search" className="min-w-0 space-y-4">
-                <EquipmentSearchReportTab
-                  key={`${userRole}:${user.dia_ban_id ?? ""}`}
-                  initialQuery={urlQuery}
-                  onQueryCommit={handleEquipmentQueryCommit}
-                  userRegionId={normalizeUserRegionId(user.dia_ban_id)}
-                  userRole={userRole}
-                />
+                <React.Suspense fallback={<TabSkeleton />}>
+                  <EquipmentSearchReportTab
+                    key={`${userRole}:${user.dia_ban_id ?? ""}`}
+                    initialQuery={urlQuery}
+                    onQueryCommit={handleEquipmentQueryCommit}
+                    userRegionId={normalizeUserRegionId(user.dia_ban_id)}
+                    userRole={userRole}
+                  />
+                </React.Suspense>
               </TabsContent>
             ) : null}
           </>
