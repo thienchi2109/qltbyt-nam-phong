@@ -220,6 +220,20 @@ describe("ReportsPage auth gate", () => {
     expect(await screen.findByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
   })
 
+  it("renders equipment search without requiring tenant selection", async () => {
+    state.sessionData = {
+      user: { role: "admin", don_vi: null, dia_ban_id: null },
+    }
+    state.showSelector = true
+    state.shouldFetchData = false
+    state.searchParams = new URLSearchParams("tab=equipment-search&q=monitor")
+
+    render(<ReportsPage />)
+
+    expect(screen.queryByTestId("tenant-selection-tip")).not.toBeInTheDocument()
+    expect(await screen.findByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
+  })
+
   it("updates equipment search query props without remounting the tab component", async () => {
     state.sessionData = {
       user: { role: "admin", don_vi: null, dia_ban_id: null },

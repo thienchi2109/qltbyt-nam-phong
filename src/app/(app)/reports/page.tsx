@@ -133,6 +133,8 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
   const urlTab = searchParams.get("tab")
   const urlQuery = searchParams.get("q") ?? ""
   const activeTab = isReportsTab(urlTab, canUseEquipmentSearch) ? urlTab! : "inventory"
+  const shouldShowTenantSelectionTip =
+    showSelector && !shouldFetchData && activeTab !== "equipment-search"
 
   const updateReportsQuery = React.useCallback(
     (updates: Record<string, string | null>) => {
@@ -204,7 +206,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
       </div>
 
       {/* Show tip when no tenant selected (same pattern as Equipment page) */}
-      {showSelector && !shouldFetchData && <TenantSelectionTip />}
+      {shouldShowTenantSelectionTip && <TenantSelectionTip />}
 
       {/* Report tabs - only render when should fetch */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="min-w-0 space-y-4">
@@ -219,7 +221,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
           </TabsList>
         </div>
 
-        {/* Only show content when shouldFetchData is true */}
+        {/* Only tenant-scoped report tabs wait for tenant selection. */}
         {shouldFetchData ? (
           <>
             <TabsContent value="inventory" className="min-w-0 space-y-4">
@@ -252,20 +254,21 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
                 />
               </React.Suspense>
             </TabsContent>
-            {canUseEquipmentSearch ? (
-              <TabsContent value="equipment-search" className="min-w-0 space-y-4">
-                <React.Suspense fallback={<TabSkeleton />}>
-                  <EquipmentSearchReportTab
-                    key={`${userRole}:${user.dia_ban_id ?? ""}`}
-                    initialQuery={urlQuery}
-                    onQueryCommit={handleEquipmentQueryCommit}
-                    userRegionId={normalizeUserRegionId(user.dia_ban_id)}
-                    userRole={userRole}
-                  />
-                </React.Suspense>
-              </TabsContent>
-            ) : null}
           </>
+        ) : null}
+
+        {canUseEquipmentSearch ? (
+          <TabsContent value="equipment-search" className="min-w-0 space-y-4">
+            <React.Suspense fallback={<TabSkeleton />}>
+              <EquipmentSearchReportTab
+                key={`${userRole}:${user.dia_ban_id ?? ""}`}
+                initialQuery={urlQuery}
+                onQueryCommit={handleEquipmentQueryCommit}
+                userRegionId={normalizeUserRegionId(user.dia_ban_id)}
+                userRole={userRole}
+              />
+            </React.Suspense>
+          </TabsContent>
         ) : null}
       </Tabs>
     </div>

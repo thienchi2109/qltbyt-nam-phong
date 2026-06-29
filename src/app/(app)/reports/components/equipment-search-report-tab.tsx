@@ -83,7 +83,6 @@ function equipmentSearchReducer(
       }
     case "sync-url":
       if (
-        state.draftQuery === action.state.draftQuery &&
         state.submittedQuery === action.state.submittedQuery &&
         state.selectedRegion?.id === action.state.selectedRegion?.id &&
         state.selectedRegion?.name === action.state.selectedRegion?.name

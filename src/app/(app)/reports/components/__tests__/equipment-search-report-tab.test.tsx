@@ -270,6 +270,41 @@ describe("EquipmentSearchReportTab", () => {
     expect(document.activeElement).toBe(updatedSearchbox)
   })
 
+  it("does not clobber in-progress draft input when the URL catches up after submit", () => {
+    const { rerender } = render(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+    const searchbox = screen.getByRole("searchbox", { name: "Từ khóa thiết bị" })
+
+    fireEvent.change(searchbox, { target: { value: "máy thở" } })
+    fireEvent.click(screen.getByRole("button", { name: "Tìm kiếm" }))
+    fireEvent.change(searchbox, { target: { value: "máy thở ICU" } })
+
+    rerender(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="máy thở"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    expect(screen.getByRole("searchbox", { name: "Từ khóa thiết bị" })).toHaveValue("máy thở ICU")
+    expect(mocks.useEquipmentAggregateSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: "máy thở",
+        groupBy: "region",
+        regionId: null,
+        role: "admin",
+      })
+    )
+  })
+
   it("shows the loading state instead of stale placeholder rows during a new fetch", () => {
     mocks.useEquipmentAggregateSearch.mockReturnValue({
       data: createRegionData(),
