@@ -9,7 +9,7 @@ This change adds a role-scoped equipment aggregate search experience: users subm
 ## What Changes
 
 - Add a header global equipment search entry point for `admin`/`global` and `regional_leader` users.
-- Add a dedicated `/global-search` workspace that supports repeated submit-based searches through the page search box and URL query state.
+- Add a dedicated equipment search tab inside the existing Reports page, reachable at `/reports?tab=equipment-search&q=<encodedKeyword>`, that supports repeated submit-based searches through the tab search box and URL query state.
 - Add an equipment aggregate search RPC/API contract that returns grouped counts, not device rows.
 - Include quota context for each facility result using the existing equipment group and device quota data.
 - Match equipment by equipment name, model, serial, and equipment group/category.
@@ -22,16 +22,16 @@ This change adds a role-scoped equipment aggregate search experience: users subm
 - Present regional leader results by facility when the user has a single region scope; use region grouping only when their scope spans multiple regions.
 - Render an interactive horizontal bar chart and a table from the same aggregate data.
 - Keep the facility row centered on the actual matching equipment count; quota display and status are supplementary.
-- Use deep-links into the existing equipment page for read-only detail inspection instead of rendering device rows in global search.
+- Use deep-links into the existing equipment page for read-only detail inspection instead of rendering device rows in the Reports search tab.
 
 ## Non-Goals
 
 - No autocomplete or live suggestions in v1.
 - No status, category, region, facility, or date filters beyond keyword and role scope.
-- No device-detail list inside global search.
+- No device-detail list inside the Reports search tab.
 - No multi-entity search across repairs, transfers, maintenance, or users.
 - No export, trend, or historical comparison.
-- No editing, assigning equipment to quota categories, or managing quota decisions from global search.
+- No editing, assigning equipment to quota categories, or managing quota decisions from the Reports search tab.
 
 ## Impact
 
@@ -43,7 +43,7 @@ This change adds a role-scoped equipment aggregate search experience: users subm
   - Role guard logic must preserve `admin` -> `global` normalization outside the RPC proxy where applicable.
 - Affected frontend areas:
   - App header/navigation search entry point.
-  - New `/global-search` route/page.
+  - New `equipment-search` tab in the existing Reports page.
   - Global search hook/client data layer.
   - Chart/table components using existing Recharts dependency, with quota limit markers or labels where available.
   - Equipment page route-sync/deep-link handling for `search`, `region`, and `facility` query params if not already supported.
