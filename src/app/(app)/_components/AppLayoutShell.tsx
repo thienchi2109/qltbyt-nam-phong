@@ -243,8 +243,8 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               <Menu className="size-5" />
               <span className="sr-only">Toggle sidebar</span>
             </Button>
-            <div className="flex w-full flex-1 items-center">
-              <div className="flex items-center gap-3">
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex min-w-0 items-center gap-3">
                 {branding.isLoading ? (
                   <Skeleton className="size-7 rounded-full" />
                 ) : (
@@ -265,61 +265,66 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               </div>
             </div>
 
-            <HeaderEquipmentSearchEntry userRole={user.role} />
+            <div
+              data-testid="app-header-actions"
+              className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2"
+            >
+              <HeaderEquipmentSearchEntry userRole={user.role} />
 
-            <RealtimeStatus variant="icon" className="hidden md:flex" />
-            <HelpButton className="hidden md:flex" />
+              <RealtimeStatus variant="icon" className="hidden md:flex" />
+              <HelpButton className="hidden md:flex" />
 
-            <NotificationBellDialog
-              repairCount={notificationCounts.repair}
-              transferCount={notificationCounts.transfer}
-              maintenanceCount={notificationCounts.maintenance}
-            />
+              <NotificationBellDialog
+                repairCount={notificationCounts.repair}
+                transferCount={notificationCounts.transfer}
+                maintenanceCount={notificationCounts.maintenance}
+              />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="rounded-full touch-target"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <User className="size-5" />
-                  <span className="sr-only">Toggle user menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel className="pb-2">
-                  <div className="flex flex-col gap-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user.full_name || user.username}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {USER_ROLES[user.role as keyof typeof USER_ROLES]}
-                      </Badge>
-                    </div>
-                    {user.khoa_phong ? (
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user.khoa_phong}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="rounded-full touch-target"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <User className="size-5" />
+                    <span className="sr-only">Toggle user menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="pb-2">
+                    <div className="flex flex-col gap-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user.full_name || user.username}
                       </p>
-                    ) : null}
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => dispatchUi({ type: "setChangePasswordOpen", isOpen: true })}
-                >
-                  <KeyRound className="mr-2 size-4" />
-                  Thay đổi mật khẩu
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="mr-2 size-4" />
-                  Đăng xuất
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {USER_ROLES[user.role as keyof typeof USER_ROLES]}
+                        </Badge>
+                      </div>
+                      {user.khoa_phong ? (
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user.khoa_phong}
+                        </p>
+                      ) : null}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => dispatchUi({ type: "setChangePasswordOpen", isOpen: true })}
+                  >
+                    <KeyRound className="mr-2 size-4" />
+                    Thay đổi mật khẩu
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="mr-2 size-4" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </header>
           <main className="flex flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8">
             <MainContentTransition>{children}</MainContentTransition>

@@ -42,6 +42,18 @@ describe("HeaderEquipmentSearchEntry", () => {
     }
   })
 
+  it("uses compact header sizing instead of expanding as a full-width search block", () => {
+    render(<HeaderEquipmentSearchEntry userRole="global" />)
+
+    const searchForm = screen.getByRole("search", { name: /tìm kiếm thiết bị/i })
+    const searchbox = screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i })
+
+    expect(searchForm).toHaveClass("hidden", "shrink-0", "items-center", "md:flex")
+    expect(searchForm).toHaveClass("w-56", "xl:w-64", "2xl:w-72")
+    expect(searchForm).not.toHaveClass("w-full", "max-w-xs", "lg:max-w-sm")
+    expect(searchbox).toHaveClass("h-8", "rounded-lg", "border-transparent", "bg-muted/50")
+  })
+
   it("navigates to the Reports equipment-search tab with an encoded keyword on Enter submit", async () => {
     const user = userEvent.setup()
     render(<HeaderEquipmentSearchEntry userRole="global" />)
