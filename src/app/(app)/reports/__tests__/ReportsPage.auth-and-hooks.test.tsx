@@ -12,6 +12,7 @@ const state = vi.hoisted(() => ({
   pathname: "/reports",
   tabsValue: "inventory",
   tabsOnValueChange: undefined as ((value: string) => void) | undefined,
+  equipmentSearchInstanceCount: 0,
 }))
 
 const mocks = vi.hoisted(() => ({
@@ -62,9 +63,18 @@ vi.mock("@/app/(app)/reports/components/tenant-selection-tip", () => ({
 }))
 
 vi.mock("../components/equipment-search-report-tab", () => ({
-  EquipmentSearchReportTab: ({ initialQuery }: { initialQuery: string }) => (
-    <div data-testid="equipment-search-report-tab">{initialQuery}</div>
-  ),
+  EquipmentSearchReportTab: ({ initialQuery }: { initialQuery: string }) => {
+    const [instanceId] = React.useState(() => {
+      state.equipmentSearchInstanceCount += 1
+      return state.equipmentSearchInstanceCount
+    })
+
+    return (
+      <div data-instance-id={instanceId} data-testid="equipment-search-report-tab">
+        {initialQuery}
+      </div>
+    )
+  },
 }))
 
 vi.mock("@/components/ui/card", () => ({
@@ -145,6 +155,7 @@ describe("ReportsPage auth gate", () => {
     state.pathname = "/reports"
     state.tabsValue = "inventory"
     state.tabsOnValueChange = undefined
+    state.equipmentSearchInstanceCount = 0
   })
 
   it("shows the loading skeleton without redirecting unauthenticated users", () => {
@@ -195,6 +206,29 @@ describe("ReportsPage auth gate", () => {
       "active"
     )
     expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
+  })
+
+  it("updates equipment search query props without remounting the tab component", () => {
+    state.sessionData = {
+      user: { role: "admin", don_vi: null, dia_ban_id: null },
+    }
+    state.shouldFetchData = true
+    state.searchParams = new URLSearchParams("tab=equipment-search&q=monitor")
+
+    const { rerender } = render(<ReportsPage />)
+
+    const instanceId = screen
+      .getByTestId("equipment-search-report-tab")
+      .getAttribute("data-instance-id")
+
+    state.searchParams = new URLSearchParams("tab=equipment-search&q=máy thở")
+    rerender(<ReportsPage />)
+
+    expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("máy thở")
+    expect(screen.getByTestId("equipment-search-report-tab")).toHaveAttribute(
+      "data-instance-id",
+      instanceId
+    )
   })
 
   it("does not render inactive tab content in the Reports tab mock", () => {

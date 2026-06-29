@@ -42,6 +42,67 @@ interface SelectedRegion {
   name: string
 }
 
+interface EquipmentSearchState {
+  draftQuery: string
+  selectedRegion: SelectedRegion | null
+  submittedQuery: string
+}
+
+type EquipmentSearchAction =
+  | { type: "draft"; query: string }
+  | { type: "select-region"; region: SelectedRegion | null }
+  | { type: "submit"; query: string; selectedRegion: SelectedRegion | null }
+  | { type: "sync-url"; state: EquipmentSearchState }
+
+function createEquipmentSearchState(
+  initialQuery: string,
+  selectedRegion: SelectedRegion | null
+): EquipmentSearchState {
+  return {
+    draftQuery: initialQuery,
+    selectedRegion,
+    submittedQuery: initialQuery.trim(),
+  }
+}
+
+function equipmentSearchReducer(
+  state: EquipmentSearchState,
+  action: EquipmentSearchAction
+): EquipmentSearchState {
+  switch (action.type) {
+    case "draft":
+      return { ...state, draftQuery: action.query }
+    case "select-region":
+      return { ...state, selectedRegion: action.region }
+    case "submit":
+      return {
+        draftQuery: action.query,
+        selectedRegion: action.selectedRegion,
+        submittedQuery: action.query,
+      }
+    case "sync-url":
+      if (
+        state.draftQuery === action.state.draftQuery &&
+        state.submittedQuery === action.state.submittedQuery &&
+        state.selectedRegion?.id === action.state.selectedRegion?.id &&
+        state.selectedRegion?.name === action.state.selectedRegion?.name
+      ) {
+        return state
+      }
+
+      return action.state
+  }
+}
+
+function getDefaultSelectedRegion(
+  startsAtFacility: boolean,
+  normalizedUserRegionId: number | null
+): SelectedRegion | null {
+  return startsAtFacility && normalizedUserRegionId !== null
+    ? { id: normalizedUserRegionId, name: "Cơ sở trong vùng phụ trách" }
+    : null
+}
+
 /** Renders the Reports-owned aggregate equipment search workspace. */
 export function EquipmentSearchReportTab({
   initialQuery,
@@ -64,7 +125,6 @@ export function EquipmentSearchReportTab({
 
   return (
     <EquipmentSearchReportTabContent
-      key={`${initialQuery}:${startsAtFacility}:${normalizedUserRegionId ?? ""}`}
       initialQuery={initialQuery}
       normalizedUserRegionId={normalizedUserRegionId}
       onQueryCommit={onQueryCommit}
@@ -89,13 +149,24 @@ function EquipmentSearchReportTabContent({
   startsAtFacility,
   userRole,
 }: EquipmentSearchReportTabContentProps) {
-  const [draftQuery, setDraftQuery] = React.useState(initialQuery)
-  const [submittedQuery, setSubmittedQuery] = React.useState(() => initialQuery.trim())
-  const [selectedRegion, setSelectedRegion] = React.useState<SelectedRegion | null>(
-    startsAtFacility && normalizedUserRegionId !== null
-      ? { id: normalizedUserRegionId, name: "Cơ sở trong vùng phụ trách" }
-      : null
+  const defaultSelectedRegion = React.useMemo(
+    () => getDefaultSelectedRegion(startsAtFacility, normalizedUserRegionId),
+    [normalizedUserRegionId, startsAtFacility]
   )
+  const [state, dispatch] = React.useReducer(
+    equipmentSearchReducer,
+    { initialQuery, selectedRegion: defaultSelectedRegion },
+    ({ initialQuery: query, selectedRegion }) => createEquipmentSearchState(query, selectedRegion)
+  )
+
+  React.useEffect(() => {
+    dispatch({
+      type: "sync-url",
+      state: createEquipmentSearchState(initialQuery, defaultSelectedRegion),
+    })
+  }, [defaultSelectedRegion, initialQuery])
+
+  const { draftQuery, selectedRegion, submittedQuery } = state
 
   const groupBy = selectedRegion ? "facility" : "region"
   const searchQuery = useEquipmentAggregateSearch({
@@ -122,15 +193,14 @@ function EquipmentSearchReportTabContent({
   const handleSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault()
-      setSubmittedQuery(trimmedDraft)
-      setSelectedRegion(
-        startsAtFacility && normalizedUserRegionId !== null
-          ? { id: normalizedUserRegionId, name: "Cơ sở trong vùng phụ trách" }
-          : null
-      )
+      dispatch({
+        type: "submit",
+        query: trimmedDraft,
+        selectedRegion: defaultSelectedRegion,
+      })
       onQueryCommit(trimmedDraft)
     },
-    [normalizedUserRegionId, onQueryCommit, startsAtFacility, trimmedDraft]
+    [defaultSelectedRegion, onQueryCommit, trimmedDraft]
   )
 
   return (
@@ -156,7 +226,7 @@ function EquipmentSearchReportTabContent({
                 id="reports-equipment-search-query"
                 aria-label="Từ khóa thiết bị"
                 value={draftQuery}
-                onChange={setDraftQuery}
+                onChange={(query) => dispatch({ type: "draft", query })}
                 placeholder="Tên thiết bị, model, serial hoặc nhóm thiết bị"
               />
             </label>
@@ -222,7 +292,7 @@ function EquipmentSearchReportTabContent({
               type="button"
               className="font-medium text-foreground hover:underline disabled:pointer-events-none disabled:text-muted-foreground"
               disabled={!selectedRegion || startsAtFacility}
-              onClick={() => setSelectedRegion(null)}
+              onClick={() => dispatch({ type: "select-region", region: null })}
             >
               Tất cả khu vực
             </button>
@@ -305,7 +375,10 @@ function EquipmentSearchReportTabContent({
                                 variant="ghost"
                                 size="sm"
                                 onClick={() =>
-                                  setSelectedRegion({ id: row.groupId!, name: row.groupName })
+                                  dispatch({
+                                    type: "select-region",
+                                    region: { id: row.groupId!, name: row.groupName },
+                                  })
                                 }
                               >
                                 Xem cơ sở {row.groupName}

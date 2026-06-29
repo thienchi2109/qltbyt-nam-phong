@@ -251,7 +251,7 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
             {canUseEquipmentSearch ? (
               <TabsContent value="equipment-search" className="min-w-0 space-y-4">
                 <EquipmentSearchReportTab
-                  key={`${userRole}:${user.dia_ban_id ?? ""}:${urlQuery}`}
+                  key={`${userRole}:${user.dia_ban_id ?? ""}`}
                   initialQuery={urlQuery}
                   onQueryCommit={handleEquipmentQueryCommit}
                   userRegionId={normalizeUserRegionId(user.dia_ban_id)}

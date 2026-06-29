@@ -244,6 +244,32 @@ describe("EquipmentSearchReportTab", () => {
     )
   })
 
+  it("keeps the search input mounted when the URL-backed query changes", () => {
+    const { rerender } = render(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+    const searchbox = screen.getByRole("searchbox", { name: "Từ khóa thiết bị" })
+    searchbox.focus()
+
+    rerender(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="máy thở"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    const updatedSearchbox = screen.getByRole("searchbox", { name: "Từ khóa thiết bị" })
+    expect(updatedSearchbox).toHaveValue("máy thở")
+    expect(document.activeElement).toBe(updatedSearchbox)
+  })
+
   it("shows the loading state instead of stale placeholder rows during a new fetch", () => {
     mocks.useEquipmentAggregateSearch.mockReturnValue({
       data: createRegionData(),
