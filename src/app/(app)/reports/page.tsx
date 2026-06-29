@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import type { Session } from "next-auth"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,11 +11,47 @@ import { AuthenticatedPageBoundary } from "@/app/(app)/_components/Authenticated
 import { AuthenticatedPageSkeletonFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TenantSelectionTip } from "./components/tenant-selection-tip"
 import { useTenantSelection } from "@/contexts/TenantSelectionContext"
+import { canUseEquipmentAggregateSearch } from "./hooks/use-equipment-aggregate-search"
 
 // Lazy load components to improve initial load time
-const InventoryReportTab = React.lazy(() => import("./components/inventory-report-tab").then(module => ({ default: module.InventoryReportTab })))
-const MaintenanceReportTab = React.lazy(() => import("./components/maintenance-report-tab").then(module => ({ default: module.MaintenanceReportTab })))
-const UsageAnalyticsDashboard = React.lazy(() => import("@/components/usage-analytics-dashboard").then(module => ({ default: module.UsageAnalyticsDashboard })))
+const InventoryReportTab = React.lazy(() =>
+  import("./components/inventory-report-tab").then((module) => ({
+    default: module.InventoryReportTab,
+  }))
+)
+const MaintenanceReportTab = React.lazy(() =>
+  import("./components/maintenance-report-tab").then((module) => ({
+    default: module.MaintenanceReportTab,
+  }))
+)
+const UsageAnalyticsDashboard = React.lazy(() =>
+  import("@/components/usage-analytics-dashboard").then((module) => ({
+    default: module.UsageAnalyticsDashboard,
+  }))
+)
+const EquipmentSearchReportTab = React.lazy(() =>
+  import("./components/equipment-search-report-tab").then((module) => ({
+    default: module.EquipmentSearchReportTab,
+  }))
+)
+
+function normalizeUserRegionId(value: Session["user"]["dia_ban_id"]): number | string | null {
+  return value ?? null
+}
+
+function buildReportsUrl(pathname: string, params: URLSearchParams): string {
+  const query = params.toString()
+  return query ? `${pathname}?${query}` : pathname
+}
+
+function isReportsTab(value: string | null, canUseEquipmentSearch: boolean): boolean {
+  return (
+    value === "inventory" ||
+    value === "maintenance" ||
+    value === "utilization" ||
+    (canUseEquipmentSearch && value === "equipment-search")
+  )
+}
 
 // Loading skeleton for tabs
 function TabSkeleton() {
@@ -31,7 +68,7 @@ function TabSkeleton() {
           </div>
         </CardContent>
       </Card>
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
@@ -46,7 +83,7 @@ function TabSkeleton() {
           </Card>
         ))}
       </div>
-      
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4">
           <CardHeader>
@@ -71,6 +108,7 @@ function TabSkeleton() {
   )
 }
 
+/** Renders the authenticated Reports workspace. */
 export default function ReportsPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSkeletonFallback />}>
@@ -84,15 +122,59 @@ interface ReportsPageContentProps {
 }
 
 function ReportsPageContent({ user }: ReportsPageContentProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   // Get facility selection from shared context
-  const {
-    selectedFacilityId,
-    showSelector,
-    shouldFetchData,
-  } = useTenantSelection()
+  const { selectedFacilityId, showSelector, shouldFetchData } = useTenantSelection()
 
-  // State
-  const [activeTab, setActiveTab] = React.useState("inventory")
+  const userRole = user.role
+  const canUseEquipmentSearch = canUseEquipmentAggregateSearch(userRole)
+  const urlTab = searchParams.get("tab")
+  const urlQuery = searchParams.get("q") ?? ""
+  const activeTab = isReportsTab(urlTab, canUseEquipmentSearch) ? urlTab! : "inventory"
+  const shouldShowTenantSelectionTip =
+    showSelector && !shouldFetchData && activeTab !== "equipment-search"
+
+  const updateReportsQuery = React.useCallback(
+    (updates: Record<string, string | null>) => {
+      const nextParams = new URLSearchParams(searchParams.toString())
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "") {
+          nextParams.delete(key)
+        } else {
+          nextParams.set(key, value)
+        }
+      }
+
+      router.replace(buildReportsUrl(pathname, nextParams), { scroll: false })
+    },
+    [pathname, router, searchParams]
+  )
+
+  const handleTabChange = React.useCallback(
+    (value: string) => {
+      if (value === "inventory") {
+        updateReportsQuery({ tab: null })
+      } else if (value === "equipment-search") {
+        updateReportsQuery({ tab: "equipment-search" })
+      } else {
+        updateReportsQuery({ tab: value })
+      }
+    },
+    [updateReportsQuery]
+  )
+
+  const handleEquipmentQueryCommit = React.useCallback(
+    (query: string) => {
+      updateReportsQuery({
+        tab: "equipment-search",
+        q: query.trim(),
+      })
+    },
+    [updateReportsQuery]
+  )
 
   // Map selectedFacilityId to legacy string-based tenantFilter for child components
   // undefined = 'unset', null = 'all', number = String(number)
@@ -120,31 +202,26 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
         <h2 className="text-3xl font-semibold tracking-tight">Báo cáo</h2>
 
         {/* Tenant selector for global/regional_leader users */}
-        {showSelector && (
-          <TenantSelector className="min-w-[280px] sm:min-w-[360px]" />
-        )}
+        {showSelector && <TenantSelector className="min-w-[280px] sm:min-w-[360px]" />}
       </div>
 
       {/* Show tip when no tenant selected (same pattern as Equipment page) */}
-      {showSelector && !shouldFetchData && (
-        <TenantSelectionTip />
-      )}
+      {shouldShowTenantSelectionTip && <TenantSelectionTip />}
 
       {/* Report tabs - only render when should fetch */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-0 space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="min-w-0 space-y-4">
         <div data-testid="reports-tabs-scroll-container" className="overflow-x-auto pb-1">
           <TabsList className="w-max min-w-max">
             <TabsTrigger value="inventory">Xuất-Nhập-Tồn</TabsTrigger>
-            <TabsTrigger value="maintenance">
-              Bảo trì / Sửa chữa
-            </TabsTrigger>
-            <TabsTrigger value="utilization">
-              Sử dụng thiết bị
-            </TabsTrigger>
+            <TabsTrigger value="maintenance">Bảo trì / Sửa chữa</TabsTrigger>
+            <TabsTrigger value="utilization">Sử dụng thiết bị</TabsTrigger>
+            {canUseEquipmentSearch ? (
+              <TabsTrigger value="equipment-search">Tìm kiếm thiết bị</TabsTrigger>
+            ) : null}
           </TabsList>
         </div>
 
-        {/* Only show content when shouldFetchData is true */}
+        {/* Only tenant-scoped report tabs wait for tenant selection. */}
         {shouldFetchData ? (
           <>
             <TabsContent value="inventory" className="min-w-0 space-y-4">
@@ -178,6 +255,20 @@ function ReportsPageContent({ user }: ReportsPageContentProps) {
               </React.Suspense>
             </TabsContent>
           </>
+        ) : null}
+
+        {canUseEquipmentSearch ? (
+          <TabsContent value="equipment-search" className="min-w-0 space-y-4">
+            <React.Suspense fallback={<TabSkeleton />}>
+              <EquipmentSearchReportTab
+                key={`${userRole}:${user.dia_ban_id ?? ""}`}
+                initialQuery={urlQuery}
+                onQueryCommit={handleEquipmentQueryCommit}
+                userRegionId={normalizeUserRegionId(user.dia_ban_id)}
+                userRole={userRole}
+              />
+            </React.Suspense>
+          </TabsContent>
         ) : null}
       </Tabs>
     </div>
