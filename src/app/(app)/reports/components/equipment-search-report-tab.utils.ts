@@ -1,4 +1,31 @@
 import type { EquipmentAggregateSearchRow } from "../hooks/use-equipment-aggregate-search.types"
+import type { EquipmentAggregateSearchQuotaStatus } from "../hooks/use-equipment-aggregate-search.types"
+
+export interface EquipmentSearchQuotaContext {
+  quotaDisplay: string
+  statusLabel: string
+  notesText: string
+}
+
+const QUOTA_STATUS_LABELS: Record<Exclude<EquipmentAggregateSearchQuotaStatus, "mixed">, string> = {
+  within_limit: "Trong giới hạn định mức",
+  below_minimum: "Dưới mức tối thiểu",
+  over_limit: "Vượt giới hạn định mức",
+  no_active_quota: "Chưa có định mức",
+  unassigned_category: "Chưa gán danh mục định mức",
+  not_in_unit_quota: "Chưa được gán vào định mức của đơn vị",
+}
+
+const MIXED_QUOTA_STATUS_PRIORITY: Exclude<EquipmentAggregateSearchQuotaStatus, "mixed">[] = [
+  "unassigned_category",
+  "not_in_unit_quota",
+  "no_active_quota",
+  "over_limit",
+  "below_minimum",
+  "within_limit",
+]
+
+const MIXED_QUOTA_NOTE = "Gồm nhiều nhóm định mức"
 
 /** Normalizes session region identifiers before passing them to the search RPC hook. */
 export function normalizeEquipmentSearchRegionId(
@@ -31,22 +58,83 @@ export function getEquipmentSearchFacilityText(row: EquipmentAggregateSearchRow)
   return `${count.toLocaleString("vi-VN")} cơ sở`
 }
 
-/** Builds the Phase 5 quota placeholder context without rendering detailed status labels. */
-export function getEquipmentSearchQuotaContext(row: EquipmentAggregateSearchRow): string {
+function formatQuotaNumber(value: number): string {
+  return value.toLocaleString("vi-VN")
+}
+
+function getQuotaDisplay(row: EquipmentAggregateSearchRow): string {
+  if (typeof row.quotaCurrentCount !== "number") {
+    return "-"
+  }
+
+  if (typeof row.quotaMinCount === "number" && typeof row.quotaMaxCount === "number") {
+    return `${formatQuotaNumber(row.quotaCurrentCount)}/${formatQuotaNumber(
+      row.quotaMinCount
+    )}-${formatQuotaNumber(row.quotaMaxCount)}`
+  }
+
+  if (typeof row.quotaMaxCount === "number") {
+    return `${formatQuotaNumber(row.quotaCurrentCount)}/${formatQuotaNumber(row.quotaMaxCount)}`
+  }
+
+  return "-"
+}
+
+function isQuotaStatus(
+  value: string
+): value is Exclude<EquipmentAggregateSearchQuotaStatus, "mixed"> {
+  return value in QUOTA_STATUS_LABELS
+}
+
+function translateQuotaNote(note: string): string {
+  return isQuotaStatus(note) ? QUOTA_STATUS_LABELS[note] : note
+}
+
+function getStatusLabel(row: EquipmentAggregateSearchRow): string {
+  if (row.quotaStatus && row.quotaStatus !== "mixed") {
+    return QUOTA_STATUS_LABELS[row.quotaStatus]
+  }
+
+  const notes = row.quotaNotes ?? []
+  const primaryStatus = MIXED_QUOTA_STATUS_PRIORITY.find((status) =>
+    notes.some((note) => note === status || note === QUOTA_STATUS_LABELS[status])
+  )
+
+  return primaryStatus ? QUOTA_STATUS_LABELS[primaryStatus] : "-"
+}
+
+function getNotesText(row: EquipmentAggregateSearchRow): string {
+  const translatedNotes = (row.quotaNotes ?? [])
+    .map(translateQuotaNote)
+    .filter((note) => note.trim().length > 0)
+  const shouldPrependMixedNote =
+    row.quotaStatus === "mixed" ||
+    translatedNotes.filter((note) => note !== MIXED_QUOTA_NOTE).length > 1
+
+  const notes = shouldPrependMixedNote
+    ? [MIXED_QUOTA_NOTE, ...translatedNotes.filter((note) => note !== MIXED_QUOTA_NOTE)]
+    : translatedNotes
+
+  return notes.length > 0 ? notes.join("; ") : "-"
+}
+
+/** Builds read-only quota context for a facility aggregate row. */
+export function getEquipmentSearchQuotaContext(
+  row: EquipmentAggregateSearchRow
+): EquipmentSearchQuotaContext {
   if (row.groupType !== "facility") {
-    return "Đếm theo khu vực"
+    return {
+      quotaDisplay: "-",
+      statusLabel: "Đếm theo khu vực",
+      notesText: "-",
+    }
   }
 
-  if (row.quotaCurrentCount === null) {
-    return "Chờ ngữ cảnh định mức"
+  return {
+    quotaDisplay: getQuotaDisplay(row),
+    statusLabel: getStatusLabel(row),
+    notesText: getNotesText(row),
   }
-
-  const limits = [row.quotaMinCount, row.quotaMaxCount]
-    .filter((value): value is number => typeof value === "number")
-    .map((value) => value.toLocaleString("vi-VN"))
-    .join(" - ")
-
-  return limits ? `Định mức: ${limits}` : "Có dữ liệu định mức"
 }
 
 /** Computes the chart scale without spreading arbitrary row counts onto the call stack. */
