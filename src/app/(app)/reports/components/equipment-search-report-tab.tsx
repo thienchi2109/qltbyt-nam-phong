@@ -26,7 +26,7 @@ import {
   formatEquipmentSearchCount,
   getEquipmentSearchMaxCount,
   getEquipmentSearchFacilityText,
-  getEquipmentSearchQuotaContext,
+  getEquipmentSearchTableQuotaContext,
   normalizeEquipmentSearchRegionId,
   sortEquipmentSearchRows,
 } from "./equipment-search-report-tab.utils"
@@ -365,7 +365,7 @@ function EquipmentSearchReportTabContent({
                       const facilityText = getEquipmentSearchFacilityText(row)
                       const canDrillDown = row.groupType === "region" && row.groupId !== null
                       const quotaContext =
-                        row.groupType === "facility" ? getEquipmentSearchQuotaContext(row) : null
+                        groupBy === "facility" ? getEquipmentSearchTableQuotaContext(row) : null
 
                       if (quotaContext) {
                         return (

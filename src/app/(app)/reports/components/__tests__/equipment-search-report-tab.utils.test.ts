@@ -105,4 +105,17 @@ describe("equipment-search-report-tab.utils", () => {
         "Gồm nhiều nhóm định mức; Trong giới hạn định mức; Vượt giới hạn định mức; Chưa gán danh mục định mức",
     })
   })
+
+  it("leaves inherited object keys as neutral quota notes", () => {
+    expect(
+      getEquipmentSearchQuotaContext(
+        createFacilityRow("mixed", {
+          quotaNotes: ["toString"],
+        })
+      )
+    ).toMatchObject({
+      statusLabel: "-",
+      notesText: "Gồm nhiều nhóm định mức; toString",
+    })
+  })
 })

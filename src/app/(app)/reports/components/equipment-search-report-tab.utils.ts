@@ -83,7 +83,7 @@ function getQuotaDisplay(row: EquipmentAggregateSearchRow): string {
 function isQuotaStatus(
   value: string
 ): value is Exclude<EquipmentAggregateSearchQuotaStatus, "mixed"> {
-  return value in QUOTA_STATUS_LABELS
+  return Object.prototype.hasOwnProperty.call(QUOTA_STATUS_LABELS, value)
 }
 
 function translateQuotaNote(note: string): string {
@@ -135,6 +135,15 @@ export function getEquipmentSearchQuotaContext(
     statusLabel: getStatusLabel(row),
     notesText: getNotesText(row),
   }
+}
+
+/** Returns quota cells for facility-mode tables, including safe placeholders for unexpected row types. */
+export function getEquipmentSearchTableQuotaContext(
+  row: EquipmentAggregateSearchRow
+): EquipmentSearchQuotaContext {
+  return row.groupType === "facility"
+    ? getEquipmentSearchQuotaContext(row)
+    : { quotaDisplay: "-", statusLabel: "-", notesText: "-" }
 }
 
 /** Computes the chart scale without spreading arbitrary row counts onto the call stack. */

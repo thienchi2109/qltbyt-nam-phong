@@ -249,6 +249,35 @@ describe("EquipmentSearchReportTab", () => {
     ).not.toBeInTheDocument()
   })
 
+  it("keeps facility-mode rows aligned with the quota table columns when row context is missing", () => {
+    const mismatchedFacilityData = {
+      ...createFacilityData(),
+      rows: [{ ...createRegionData().rows[0]!, groupName: "Dữ liệu chưa khớp", equipmentCount: 3 }],
+    }
+
+    mocks.useEquipmentAggregateSearch.mockImplementation((params: HookParams) => ({
+      data: params.groupBy === "facility" ? mismatchedFacilityData : createRegionData(),
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    }))
+
+    render(
+      <EquipmentSearchReportTab
+        userRole="regional_leader"
+        userRegionId={10}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    const table = screen.getByRole("table", { name: "Bảng kết quả tìm kiếm thiết bị" })
+    const row = within(table).getByRole("row", { name: /Dữ liệu chưa khớp.*3 thiết bị/ })
+
+    expect(within(row).getAllByRole("cell")).toHaveLength(5)
+  })
+
   it("submits repeated searches through the Reports-owned query callback", () => {
     render(
       <EquipmentSearchReportTab
