@@ -462,6 +462,10 @@ describe("AppLayoutShell", () => {
       </AppLayoutShell>
     )
 
-    expect(screen.getByRole("button", { name: /toggle navigation menu/i })).toBeVisible()
+    const mobileNavTrigger = screen.getByRole("button", { name: /toggle navigation menu/i })
+
+    expect(mobileNavTrigger).toHaveClass("shrink-0", "touch-target", "lg:hidden")
+    expect(mobileNavTrigger).not.toHaveClass("hidden")
+    expect(mobileNavTrigger).not.toHaveStyle({ display: "none" })
   })
 })
