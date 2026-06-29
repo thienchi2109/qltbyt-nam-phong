@@ -111,13 +111,10 @@ function getNotesText(row: EquipmentAggregateSearchRow): string {
   const translatedNotes = (row.quotaNotes ?? [])
     .map(translateQuotaNote)
     .filter((note) => note.trim().length > 0)
-  const shouldPrependMixedNote =
-    row.quotaStatus === "mixed" ||
-    translatedNotes.filter((note) => note !== MIXED_QUOTA_NOTE).length > 1
+  const filteredNotes = translatedNotes.filter((note) => note !== MIXED_QUOTA_NOTE)
+  const shouldPrependMixedNote = row.quotaStatus === "mixed" || filteredNotes.length > 1
 
-  const notes = shouldPrependMixedNote
-    ? [MIXED_QUOTA_NOTE, ...translatedNotes.filter((note) => note !== MIXED_QUOTA_NOTE)]
-    : translatedNotes
+  const notes = shouldPrependMixedNote ? [MIXED_QUOTA_NOTE, ...filteredNotes] : translatedNotes
 
   return notes.length > 0 ? notes.join("; ") : "-"
 }
