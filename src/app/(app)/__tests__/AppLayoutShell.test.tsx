@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
   updateSession: vi.fn(),
   usePathname: vi.fn(),
+  routerPush: vi.fn(),
   useTenantSelection: vi.fn(),
   useTenantBranding: vi.fn(),
   useAppNotificationCounts: vi.fn(),
@@ -17,6 +18,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.usePathname(),
+  useRouter: () => ({
+    push: mocks.routerPush,
+  }),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -25,9 +29,10 @@ vi.mock("next-auth/react", () => ({
 }))
 
 vi.mock("next/dynamic", () => ({
-  default: () => function DynamicStub() {
-    return null
-  },
+  default: () =>
+    function DynamicStub() {
+      return null
+    },
 }))
 
 vi.mock("@/contexts/TenantSelectionContext", () => ({
