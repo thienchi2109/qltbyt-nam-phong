@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(),
   updateSession: vi.fn(),
   usePathname: vi.fn(),
+  routerPush: vi.fn(),
   useTenantSelection: vi.fn(),
   useTenantBranding: vi.fn(),
   useAppNotificationCounts: vi.fn(),
@@ -17,6 +18,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.usePathname(),
+  useRouter: () => ({
+    push: mocks.routerPush,
+  }),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -25,9 +29,10 @@ vi.mock("next-auth/react", () => ({
 }))
 
 vi.mock("next/dynamic", () => ({
-  default: () => function DynamicStub() {
-    return null
-  },
+  default: () =>
+    function DynamicStub() {
+      return null
+    },
 }))
 
 vi.mock("@/contexts/TenantSelectionContext", () => ({
@@ -79,10 +84,15 @@ vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
     onClick,
+    ...props
   }: {
     children: React.ReactNode
     onClick?: React.MouseEventHandler<HTMLButtonElement>
-  }) => <button onClick={onClick}>{children}</button>,
+  } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
 }))
 
 vi.mock("@/components/ui/badge", () => ({
@@ -436,5 +446,26 @@ describe("AppLayoutShell", () => {
 
     expect(screen.getAllByTestId("skeleton")).toHaveLength(3)
     expect(screen.queryByText("CVMEMS")).not.toBeInTheDocument()
+  })
+
+  it("keeps the mobile navigation trigger visible", () => {
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    const mobileNavTrigger = screen.getByRole("button", { name: /toggle navigation menu/i })
+
+    expect(mobileNavTrigger).toHaveClass("shrink-0", "touch-target", "lg:hidden")
+    expect(mobileNavTrigger).not.toHaveClass("hidden")
+    expect(mobileNavTrigger).not.toHaveStyle({ display: "none" })
   })
 })

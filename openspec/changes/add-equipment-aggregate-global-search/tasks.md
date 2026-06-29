@@ -53,11 +53,11 @@
 
 ## Phase 4 - Header Entry Point (#629)
 
-- [ ] 4.1 Add a compact header search input for `admin`/`global` and `regional_leader`.
-- [ ] 4.2 Hide the entry point for all other roles.
-- [ ] 4.3 Submit only on Enter or search button click.
-- [ ] 4.4 URL-encode the keyword and navigate to `/reports?tab=equipment-search&q=<encodedKeyword>` on valid submit.
-- [ ] 4.5 Add focused tests for visibility, submit behavior, and encoded navigation for spaces/reserved characters.
+- [x] 4.1 Add a compact header search input for `admin`/`global` and `regional_leader`.
+- [x] 4.2 Hide the entry point for all other roles.
+- [x] 4.3 Submit only on Enter or search button click.
+- [x] 4.4 URL-encode the keyword and navigate to `/reports?tab=equipment-search&q=<encodedKeyword>` on valid submit.
+- [x] 4.5 Add focused tests for visibility, submit behavior, and encoded navigation for spaces/reserved characters.
 
 ## Phase 5 - Reports Equipment Search Tab Count-First Flow (#630)
 
