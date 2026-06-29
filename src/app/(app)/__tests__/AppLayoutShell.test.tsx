@@ -468,4 +468,26 @@ describe("AppLayoutShell", () => {
     expect(mobileNavTrigger).not.toHaveClass("hidden")
     expect(mobileNavTrigger).not.toHaveStyle({ display: "none" })
   })
+
+  it("keeps the equipment search aligned inside the right header action cluster", () => {
+    render(
+      <AppLayoutShell
+        user={{
+          role: "global",
+          full_name: "Test User",
+          username: "tester",
+          khoa_phong: "IT",
+        }}
+      >
+        <div>Child Content</div>
+      </AppLayoutShell>
+    )
+
+    const headerActions = screen.getByTestId("app-header-actions")
+
+    expect(headerActions).toHaveClass("ml-auto", "shrink-0")
+    expect(headerActions).toContainElement(
+      screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i })
+    )
+  })
 })

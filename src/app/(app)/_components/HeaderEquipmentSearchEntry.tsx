@@ -14,7 +14,12 @@ type HeaderEquipmentSearchEntryProps = {
 
 const SEARCH_LABEL = "Tìm kiếm thiết bị"
 const SEARCH_BUTTON_ADDON = (
-  <Button type="submit" variant="ghost" size="icon" className="h-7 w-7">
+  <Button
+    type="submit"
+    variant="ghost"
+    size="icon"
+    className="h-6 w-6 rounded-md text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+  >
     <Search className="size-4" />
     <span className="sr-only">{SEARCH_LABEL}</span>
   </Button>
@@ -51,7 +56,7 @@ export function HeaderEquipmentSearchEntry({ userRole }: HeaderEquipmentSearchEn
     <form
       role="search"
       aria-label={SEARCH_LABEL}
-      className="hidden w-full max-w-xs items-center gap-2 md:flex lg:max-w-sm"
+      className="hidden w-56 shrink-0 items-center md:flex xl:w-64 2xl:w-72"
       onSubmit={handleSubmit}
     >
       <SearchInput
@@ -61,7 +66,7 @@ export function HeaderEquipmentSearchEntry({ userRole }: HeaderEquipmentSearchEn
         aria-label={SEARCH_LABEL}
         autoComplete="off"
         placeholder={SEARCH_LABEL}
-        className="h-9 min-w-0"
+        className="h-8 min-w-0 rounded-lg border-transparent bg-muted/50 text-sm shadow-none transition-colors placeholder:text-muted-foreground/80 hover:bg-muted/70 focus-visible:border-primary/30 focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0"
         showClearButton={false}
         endAddon={SEARCH_BUTTON_ADDON}
       />
