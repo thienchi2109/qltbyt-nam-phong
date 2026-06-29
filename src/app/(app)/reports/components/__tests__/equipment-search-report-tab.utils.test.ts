@@ -65,6 +65,15 @@ describe("equipment-search-report-tab.utils", () => {
         createFacilityRow("within_limit", { quotaCurrentCount: 5, quotaMinCount: 10 })
       ).quotaDisplay
     ).toBe("5/10-150")
+    expect(
+      getEquipmentSearchQuotaContext(
+        createFacilityRow("below_minimum", {
+          quotaCurrentCount: 3,
+          quotaMinCount: 5,
+          quotaMaxCount: null,
+        })
+      ).quotaDisplay
+    ).toBe("3/5")
   })
 
   it("uses a dash when quota ratio counts are not available", () => {

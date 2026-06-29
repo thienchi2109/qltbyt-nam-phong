@@ -77,6 +77,10 @@ function getQuotaDisplay(row: EquipmentAggregateSearchRow): string {
     return `${formatQuotaNumber(row.quotaCurrentCount)}/${formatQuotaNumber(row.quotaMaxCount)}`
   }
 
+  if (typeof row.quotaMinCount === "number") {
+    return `${formatQuotaNumber(row.quotaCurrentCount)}/${formatQuotaNumber(row.quotaMinCount)}`
+  }
+
   return "-"
 }
 
