@@ -270,7 +270,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               </div>
             </div>
 
-            <HeaderEquipmentSearchEntry role={user.role} />
+            <HeaderEquipmentSearchEntry userRole={user.role} />
 
             <RealtimeStatus variant="icon" className="hidden md:flex" />
             <HelpButton className="hidden md:flex" />

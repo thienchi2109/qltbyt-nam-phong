@@ -26,14 +26,14 @@ describe("HeaderEquipmentSearchEntry", () => {
     const unsupportedRoles = ["to_qltb", "qltb_khoa", "technician", "user"] as const
 
     for (const role of elevatedRoles) {
-      const { unmount } = render(<HeaderEquipmentSearchEntry role={role} />)
+      const { unmount } = render(<HeaderEquipmentSearchEntry userRole={role} />)
 
       expect(screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i })).toBeInTheDocument()
       unmount()
     }
 
     for (const role of unsupportedRoles) {
-      const { unmount } = render(<HeaderEquipmentSearchEntry role={role} />)
+      const { unmount } = render(<HeaderEquipmentSearchEntry userRole={role} />)
 
       expect(
         screen.queryByRole("searchbox", { name: /tìm kiếm thiết bị/i })
@@ -44,7 +44,7 @@ describe("HeaderEquipmentSearchEntry", () => {
 
   it("navigates to the Reports equipment-search tab with an encoded keyword on Enter submit", async () => {
     const user = userEvent.setup()
-    render(<HeaderEquipmentSearchEntry role="global" />)
+    render(<HeaderEquipmentSearchEntry userRole="global" />)
 
     await user.type(
       screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i }),
@@ -56,9 +56,23 @@ describe("HeaderEquipmentSearchEntry", () => {
     )
   })
 
+  it("clears the header launcher after a successful submit because the Reports URL owns the query", async () => {
+    const user = userEvent.setup()
+    render(<HeaderEquipmentSearchEntry userRole="global" />)
+
+    const searchbox = screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i })
+
+    await user.type(searchbox, "Máy thở{Enter}")
+
+    expect(mocks.routerPush).toHaveBeenCalledWith(
+      "/reports?tab=equipment-search&q=M%C3%A1y+th%E1%BB%9F"
+    )
+    expect(searchbox).toHaveValue("")
+  })
+
   it("navigates to the Reports equipment-search tab with an encoded keyword on button submit", async () => {
     const user = userEvent.setup()
-    render(<HeaderEquipmentSearchEntry role="regional_leader" />)
+    render(<HeaderEquipmentSearchEntry userRole="regional_leader" />)
 
     await user.type(screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i }), "Monitor% khoa")
     await user.click(screen.getByRole("button", { name: /tìm kiếm thiết bị/i }))
@@ -68,7 +82,7 @@ describe("HeaderEquipmentSearchEntry", () => {
 
   it("does not navigate while the user is only typing", async () => {
     const user = userEvent.setup()
-    render(<HeaderEquipmentSearchEntry role="admin" />)
+    render(<HeaderEquipmentSearchEntry userRole="admin" />)
 
     await user.type(screen.getByRole("searchbox", { name: /tìm kiếm thiết bị/i }), "Máy thở")
 
