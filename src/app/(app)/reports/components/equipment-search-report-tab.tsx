@@ -26,7 +26,7 @@ import {
   formatEquipmentSearchCount,
   getEquipmentSearchMaxCount,
   getEquipmentSearchFacilityText,
-  getEquipmentSearchQuotaContext,
+  getEquipmentSearchTableQuotaContext,
   normalizeEquipmentSearchRegionId,
   sortEquipmentSearchRows,
 } from "./equipment-search-report-tab.utils"
@@ -343,17 +343,51 @@ function EquipmentSearchReportTabContent({
               <CardContent>
                 <Table aria-label="Bảng kết quả tìm kiếm thiết bị">
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Nhóm</TableHead>
-                      <TableHead className="text-right">Số thiết bị</TableHead>
-                      <TableHead>Ngữ cảnh</TableHead>
-                      <TableHead className="text-right">Thao tác</TableHead>
-                    </TableRow>
+                    {groupBy === "facility" ? (
+                      <TableRow>
+                        <TableHead>Cơ sở</TableHead>
+                        <TableHead className="text-right">Số lượng hiện có</TableHead>
+                        <TableHead>Định mức</TableHead>
+                        <TableHead>Trạng thái</TableHead>
+                        <TableHead>Ghi chú</TableHead>
+                      </TableRow>
+                    ) : (
+                      <TableRow>
+                        <TableHead>Nhóm</TableHead>
+                        <TableHead className="text-right">Số thiết bị</TableHead>
+                        <TableHead>Ngữ cảnh</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
+                      </TableRow>
+                    )}
                   </TableHeader>
                   <TableBody>
                     {rows.map((row) => {
                       const facilityText = getEquipmentSearchFacilityText(row)
                       const canDrillDown = row.groupType === "region" && row.groupId !== null
+                      const quotaContext =
+                        groupBy === "facility" ? getEquipmentSearchTableQuotaContext(row) : null
+
+                      if (quotaContext) {
+                        return (
+                          <TableRow
+                            key={`${row.groupType}-${row.groupId ?? row.groupName}`}
+                            aria-label={`${row.groupName} ${formatEquipmentSearchCount(row.equipmentCount)} ${quotaContext.quotaDisplay} ${quotaContext.statusLabel} ${quotaContext.notesText}`}
+                          >
+                            <TableCell className="font-medium">{row.groupName}</TableCell>
+                            <TableCell className="text-right font-semibold tabular-nums">
+                              {formatEquipmentSearchCount(row.equipmentCount)}
+                            </TableCell>
+                            <TableCell className="tabular-nums">
+                              {quotaContext.quotaDisplay}
+                            </TableCell>
+                            <TableCell>{quotaContext.statusLabel}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {quotaContext.notesText}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      }
+
                       return (
                         <TableRow
                           key={`${row.groupType}-${row.groupId ?? row.groupName}`}
@@ -363,11 +397,7 @@ function EquipmentSearchReportTabContent({
                           <TableCell className="text-right font-semibold tabular-nums">
                             {formatEquipmentSearchCount(row.equipmentCount)}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {row.groupType === "region"
-                              ? facilityText
-                              : getEquipmentSearchQuotaContext(row)}
-                          </TableCell>
+                          <TableCell className="text-muted-foreground">{facilityText}</TableCell>
                           <TableCell className="text-right">
                             {canDrillDown ? (
                               <Button

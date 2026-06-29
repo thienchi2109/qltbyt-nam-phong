@@ -83,6 +83,7 @@ function createFacilityData(): EquipmentAggregateSearchData {
         quotaMinCount: 4,
         quotaMaxCount: 20,
         quotaStatus: "within_limit",
+        quotaNotes: ["within_limit"],
       },
       {
         groupType: "facility",
@@ -96,6 +97,7 @@ function createFacilityData(): EquipmentAggregateSearchData {
         quotaMinCount: null,
         quotaMaxCount: null,
         quotaStatus: "no_active_quota",
+        quotaNotes: [],
       },
     ],
     summary: {
@@ -172,6 +174,23 @@ describe("EquipmentSearchReportTab", () => {
     expect(screen.getByRole("row", { name: /Bệnh viện A.*12 thiết bị/ })).toBeInTheDocument()
   })
 
+  it("keeps the region grouping drill-down action column", () => {
+    render(
+      <EquipmentSearchReportTab
+        userRole="global"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    const table = screen.getByRole("table", { name: "Bảng kết quả tìm kiếm thiết bị" })
+
+    expect(within(table).getByRole("columnheader", { name: "Nhóm" })).toBeInTheDocument()
+    expect(within(table).getByRole("columnheader", { name: "Thao tác" })).toBeInTheDocument()
+    expect(within(table).getByRole("button", { name: "Xem cơ sở Miền Bắc" })).toBeInTheDocument()
+  })
+
   it("starts a single-region regional leader at facility grouping", () => {
     render(
       <EquipmentSearchReportTab
@@ -192,6 +211,71 @@ describe("EquipmentSearchReportTab", () => {
     )
     expect(screen.getAllByText("Cơ sở trong vùng phụ trách").length).toBeGreaterThan(0)
     expect(screen.getByRole("row", { name: /Bệnh viện A.*12 thiết bị/ })).toBeInTheDocument()
+  })
+
+  it("renders read-only quota context in facility grouping without quota action CTAs", () => {
+    render(
+      <EquipmentSearchReportTab
+        userRole="regional_leader"
+        userRegionId={10}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    const table = screen.getByRole("table", { name: "Bảng kết quả tìm kiếm thiết bị" })
+
+    expect(
+      within(table).getByRole("columnheader", { name: "Số lượng hiện có" })
+    ).toBeInTheDocument()
+    expect(within(table).getByRole("columnheader", { name: "Định mức" })).toBeInTheDocument()
+    expect(within(table).getByRole("columnheader", { name: "Trạng thái" })).toBeInTheDocument()
+    expect(within(table).getByRole("columnheader", { name: "Ghi chú" })).toBeInTheDocument()
+    expect(within(table).queryByRole("columnheader", { name: "Thao tác" })).not.toBeInTheDocument()
+
+    expect(
+      within(table).getByRole("row", {
+        name: /Bệnh viện A.*12 thiết bị.*12\/4-20.*Trong giới hạn định mức.*Trong giới hạn định mức/,
+      })
+    ).toBeInTheDocument()
+    expect(
+      within(table).getByRole("row", { name: /Trung tâm Y tế B.*5 thiết bị.*-.*Chưa có định mức/ })
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole("link", { name: /định mức|gán|sửa|khắc phục/i })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: /định mức|gán|sửa|khắc phục/i })
+    ).not.toBeInTheDocument()
+  })
+
+  it("keeps facility-mode rows aligned with the quota table columns when row context is missing", () => {
+    const mismatchedFacilityData = {
+      ...createFacilityData(),
+      rows: [{ ...createRegionData().rows[0]!, groupName: "Dữ liệu chưa khớp", equipmentCount: 3 }],
+    }
+
+    mocks.useEquipmentAggregateSearch.mockImplementation((params: HookParams) => ({
+      data: params.groupBy === "facility" ? mismatchedFacilityData : createRegionData(),
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+      error: null,
+    }))
+
+    render(
+      <EquipmentSearchReportTab
+        userRole="regional_leader"
+        userRegionId={10}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    const table = screen.getByRole("table", { name: "Bảng kết quả tìm kiếm thiết bị" })
+    const row = within(table).getByRole("row", { name: /Dữ liệu chưa khớp.*3 thiết bị/ })
+
+    expect(within(row).getAllByRole("cell")).toHaveLength(5)
   })
 
   it("submits repeated searches through the Reports-owned query callback", () => {
