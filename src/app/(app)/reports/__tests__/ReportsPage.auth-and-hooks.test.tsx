@@ -117,11 +117,12 @@ vi.mock("@/components/ui/tabs", () => ({
   TabsContent: ({
     children,
     className,
+    value,
   }: {
     children: React.ReactNode
     value: string
     className?: string
-  }) => <div className={className}>{children}</div>,
+  }) => (state.tabsValue === value ? <div className={className}>{children}</div> : null),
 }))
 
 vi.mock("@/components/ui/skeleton", () => ({
@@ -194,6 +195,21 @@ describe("ReportsPage auth gate", () => {
       "active"
     )
     expect(screen.getByTestId("equipment-search-report-tab")).toHaveTextContent("monitor")
+  })
+
+  it("does not render inactive tab content in the Reports tab mock", () => {
+    state.sessionData = {
+      user: { role: "admin", don_vi: null, dia_ban_id: null },
+    }
+    state.shouldFetchData = true
+
+    render(<ReportsPage />)
+
+    expect(screen.getByRole("button", { name: "Xuất-Nhập-Tồn" })).toHaveAttribute(
+      "data-state",
+      "active"
+    )
+    expect(screen.queryByTestId("equipment-search-report-tab")).not.toBeInTheDocument()
   })
 
   it("keeps Reports tab changes in URL query state", () => {

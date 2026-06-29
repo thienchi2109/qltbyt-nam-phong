@@ -51,10 +51,50 @@ export function EquipmentSearchReportTab({
 }: EquipmentSearchReportTabProps) {
   const normalizedUserRegionId = normalizeEquipmentSearchRegionId(userRegionId)
   const startsAtFacility = isRegionalLeaderRole(userRole) && normalizedUserRegionId !== null
+
+  if (!canUseEquipmentAggregateSearch(userRole)) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-sm text-muted-foreground">
+          Bạn không có quyền sử dụng tìm kiếm tổng hợp thiết bị.
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <EquipmentSearchReportTabContent
+      key={`${initialQuery}:${startsAtFacility}:${normalizedUserRegionId ?? ""}`}
+      initialQuery={initialQuery}
+      normalizedUserRegionId={normalizedUserRegionId}
+      onQueryCommit={onQueryCommit}
+      startsAtFacility={startsAtFacility}
+      userRole={userRole}
+    />
+  )
+}
+
+interface EquipmentSearchReportTabContentProps {
+  initialQuery: string
+  normalizedUserRegionId: number | null
+  onQueryCommit: (query: string) => void
+  startsAtFacility: boolean
+  userRole: string | null | undefined
+}
+
+function EquipmentSearchReportTabContent({
+  initialQuery,
+  normalizedUserRegionId,
+  onQueryCommit,
+  startsAtFacility,
+  userRole,
+}: EquipmentSearchReportTabContentProps) {
   const [draftQuery, setDraftQuery] = React.useState(initialQuery)
   const [submittedQuery, setSubmittedQuery] = React.useState(() => initialQuery.trim())
   const [selectedRegion, setSelectedRegion] = React.useState<SelectedRegion | null>(
-    startsAtFacility ? { id: normalizedUserRegionId, name: "Cơ sở trong vùng phụ trách" } : null
+    startsAtFacility && normalizedUserRegionId !== null
+      ? { id: normalizedUserRegionId, name: "Cơ sở trong vùng phụ trách" }
+      : null
   )
 
   const groupBy = selectedRegion ? "facility" : "region"
@@ -74,6 +114,10 @@ export function EquipmentSearchReportTab({
   const summary = searchQuery.data?.summary
   const trimmedDraft = draftQuery.trim()
   const isInitialEmpty = submittedQuery.length === 0
+  const isWaitingForCurrentResult =
+    searchQuery.isLoading ||
+    searchQuery.isPlaceholderData === true ||
+    (searchQuery.isFetching && rows.length === 0)
 
   const handleSubmit = React.useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -88,16 +132,6 @@ export function EquipmentSearchReportTab({
     },
     [normalizedUserRegionId, onQueryCommit, startsAtFacility, trimmedDraft]
   )
-
-  if (!canUseEquipmentAggregateSearch(userRole)) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-sm text-muted-foreground">
-          Bạn không có quyền sử dụng tìm kiếm tổng hợp thiết bị.
-        </CardContent>
-      </Card>
-    )
-  }
 
   return (
     <div data-testid="equipment-search-report-tab" className="space-y-4">
@@ -150,12 +184,11 @@ export function EquipmentSearchReportTab({
         </Card>
       ) : null}
 
-      {!isInitialEmpty &&
-      (searchQuery.isLoading || (searchQuery.isFetching && rows.length === 0)) ? (
+      {!isInitialEmpty && !searchQuery.isError && isWaitingForCurrentResult ? (
         <EquipmentSearchSkeleton />
       ) : null}
 
-      {!isInitialEmpty && !searchQuery.isError && rows.length > 0 ? (
+      {!isInitialEmpty && !searchQuery.isError && !isWaitingForCurrentResult && rows.length > 0 ? (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             <Card>
@@ -292,7 +325,10 @@ export function EquipmentSearchReportTab({
         </>
       ) : null}
 
-      {!isInitialEmpty && !searchQuery.isError && !searchQuery.isLoading && rows.length === 0 ? (
+      {!isInitialEmpty &&
+      !searchQuery.isError &&
+      !isWaitingForCurrentResult &&
+      rows.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-sm text-muted-foreground">
             Không tìm thấy thiết bị phù hợp trong phạm vi hiện tại.

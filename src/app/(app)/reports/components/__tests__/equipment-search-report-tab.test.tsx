@@ -211,4 +211,94 @@ describe("EquipmentSearchReportTab", () => {
 
     expect(mocks.onQueryCommit).toHaveBeenCalledWith("máy thở")
   })
+
+  it("resets the submitted query and drill-down scope when the URL-backed query changes", () => {
+    const { rerender } = render(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Xem cơ sở Miền Bắc" }))
+
+    rerender(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="máy thở"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    expect(screen.getByRole("searchbox", { name: "Từ khóa thiết bị" })).toHaveValue("máy thở")
+    expect(mocks.useEquipmentAggregateSearch).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        query: "máy thở",
+        groupBy: "region",
+        regionId: null,
+        role: "admin",
+      })
+    )
+  })
+
+  it("shows the loading state instead of stale placeholder rows during a new fetch", () => {
+    mocks.useEquipmentAggregateSearch.mockReturnValue({
+      data: createRegionData(),
+      isLoading: false,
+      isFetching: true,
+      isPlaceholderData: true,
+      isError: false,
+      error: null,
+    })
+
+    render(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    expect(screen.queryByText("36 thiết bị phù hợp")).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("table", { name: "Bảng kết quả tìm kiếm thiết bị" })
+    ).not.toBeInTheDocument()
+  })
+
+  it("suppresses the empty state while the current search is still fetching", () => {
+    mocks.useEquipmentAggregateSearch.mockReturnValue({
+      data: {
+        rows: [],
+        summary: {
+          totalEquipmentCount: 0,
+          regionCount: 0,
+          facilityCount: 0,
+          query: "monitor",
+          scopeLabel: "Toàn hệ thống",
+        },
+      },
+      isLoading: false,
+      isFetching: true,
+      isPlaceholderData: true,
+      isError: false,
+      error: null,
+    })
+
+    render(
+      <EquipmentSearchReportTab
+        userRole="admin"
+        userRegionId={null}
+        initialQuery="monitor"
+        onQueryCommit={mocks.onQueryCommit}
+      />
+    )
+
+    expect(
+      screen.queryByText("Không tìm thấy thiết bị phù hợp trong phạm vi hiện tại.")
+    ).not.toBeInTheDocument()
+  })
 })
