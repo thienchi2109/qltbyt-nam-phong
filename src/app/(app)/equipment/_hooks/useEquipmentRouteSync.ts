@@ -10,6 +10,9 @@ import type { Equipment } from "../types"
 export interface UseEquipmentRouteSyncParams {
   data: Equipment[]
   isDataReady: boolean
+  onSearchParamHydrated?: (value: string) => void
+  onFacilityParamHydrated?: (value: number | null) => void
+  selectedFacilityId?: number | null
 }
 
 export interface RouteAction {
@@ -39,10 +42,22 @@ function buildCleanUrl(pathname: string, searchParams: URLSearchParams): string 
   return params.size > 0 ? `${pathname}?${params.toString()}` : pathname
 }
 
+function parseRouteId(value: string | null): number | null {
+  if (!value) return null
+  const parsed = Number(value)
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+/** Synchronizes equipment page URL parameters with filters, facility scope, and route actions. */
 export function useEquipmentRouteSync(
   params: UseEquipmentRouteSyncParams
 ): UseEquipmentRouteSyncReturn {
-  const { data, isDataReady } = params
+  const { data, isDataReady, onFacilityParamHydrated, onSearchParamHydrated, selectedFacilityId } =
+    params
+  const hasSelectedFacilityIdParam = Object.prototype.hasOwnProperty.call(
+    params,
+    "selectedFacilityId"
+  )
 
   const router = useRouter()
   const pathname = usePathname()
@@ -57,6 +72,9 @@ export function useEquipmentRouteSync(
 
   // Track if we've processed the current URL params to prevent re-runs
   const processedParamsRef = React.useRef<string | null>(null)
+
+  // Track non-transient deep-link params independently from action/highlight params.
+  const processedDeepLinkParamsRef = React.useRef<string | null>(null)
 
   // Track in-flight highlight requests so stale responses cannot win races
   const highlightRequestRef = React.useRef(0)
@@ -80,8 +98,37 @@ export function useEquipmentRouteSync(
 
   // Handle URL parameters for dialog opening and equipment highlighting
   React.useEffect(() => {
+    const searchParam = searchParams.get("search")
+    const regionParam = searchParams.get("region")
+    const facilityParam = searchParams.get("facility")
     const actionParam = searchParams.get("action")
     const highlightParam = searchParams.get("highlight")
+    const facilityId = parseRouteId(facilityParam)
+    const regionId = parseRouteId(regionParam)
+    const routeFacilityScope = facilityId ?? (regionId ? null : undefined)
+    const shouldWaitForFacilityScope =
+      hasSelectedFacilityIdParam &&
+      routeFacilityScope !== undefined &&
+      selectedFacilityId !== routeFacilityScope
+    const deepLinkParamsKey = `${searchParam ?? ""}-${regionParam ?? ""}-${facilityParam ?? ""}-${selectedFacilityId ?? ""}`
+
+    if (processedDeepLinkParamsRef.current !== deepLinkParamsKey) {
+      if (
+        routeFacilityScope !== undefined &&
+        onFacilityParamHydrated &&
+        (!hasSelectedFacilityIdParam || selectedFacilityId !== routeFacilityScope)
+      ) {
+        onFacilityParamHydrated(routeFacilityScope)
+      }
+
+      if (!shouldWaitForFacilityScope && searchParam !== null && onSearchParamHydrated) {
+        onSearchParamHydrated(searchParam.trim())
+      }
+
+      if (!shouldWaitForFacilityScope) {
+        processedDeepLinkParamsRef.current = deepLinkParamsKey
+      }
+    }
 
     // Create a key to track if we've processed these params
     const paramsKey = `${actionParam || ""}-${highlightParam || ""}`
@@ -200,7 +247,19 @@ export function useEquipmentRouteSync(
         })()
       }
     }
-  }, [searchParams, router, pathname, data, toast, isDataReady, cancelInFlightHighlightRequest])
+  }, [
+    searchParams,
+    router,
+    pathname,
+    data,
+    toast,
+    isDataReady,
+    cancelInFlightHighlightRequest,
+    onFacilityParamHydrated,
+    onSearchParamHydrated,
+    hasSelectedFacilityIdParam,
+    selectedFacilityId,
+  ])
 
   const clearPendingAction = React.useCallback(() => {
     setPendingAction(null)

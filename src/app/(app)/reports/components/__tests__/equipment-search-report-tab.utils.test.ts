@@ -5,6 +5,7 @@ import type {
   EquipmentAggregateSearchRow,
 } from "../../hooks/use-equipment-aggregate-search.types"
 import {
+  buildEquipmentSearchDetailHref,
   getEquipmentSearchMaxCount,
   getEquipmentSearchQuotaContext,
 } from "../equipment-search-report-tab.utils"
@@ -126,5 +127,14 @@ describe("equipment-search-report-tab.utils", () => {
       statusLabel: "-",
       notesText: "Gồm nhiều nhóm định mức; toString",
     })
+  })
+
+  it("builds encoded equipment detail links for region and facility aggregate rows", () => {
+    expect(buildEquipmentSearchDetailHref("Máy X-quang & CT", createRow(10))).toBe(
+      "/equipment?search=M%C3%A1y+X-quang+%26+CT&region=10"
+    )
+    expect(
+      buildEquipmentSearchDetailHref("monitor", createFacilityRow("within_limit", { groupId: 101 }))
+    ).toBe("/equipment?search=monitor&facility=101")
   })
 })

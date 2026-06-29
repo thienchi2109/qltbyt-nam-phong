@@ -189,6 +189,10 @@ describe("EquipmentSearchReportTab", () => {
     expect(within(table).getByRole("columnheader", { name: "Nhóm" })).toBeInTheDocument()
     expect(within(table).getByRole("columnheader", { name: "Thao tác" })).toBeInTheDocument()
     expect(within(table).getByRole("button", { name: "Xem cơ sở Miền Bắc" })).toBeInTheDocument()
+    expect(within(table).getByRole("link", { name: "Xem thiết bị Miền Bắc" })).toHaveAttribute(
+      "href",
+      "/equipment?search=monitor&region=10"
+    )
   })
 
   it("starts a single-region regional leader at facility grouping", () => {
@@ -238,6 +242,10 @@ describe("EquipmentSearchReportTab", () => {
         name: /Bệnh viện A.*12 thiết bị.*12\/4-20.*Trong giới hạn định mức.*Trong giới hạn định mức/,
       })
     ).toBeInTheDocument()
+    expect(within(table).getByRole("link", { name: "Xem thiết bị Bệnh viện A" })).toHaveAttribute(
+      "href",
+      "/equipment?search=monitor&facility=101"
+    )
     expect(
       within(table).getByRole("row", { name: /Trung tâm Y tế B.*5 thiết bị.*-.*Chưa có định mức/ })
     ).toBeInTheDocument()

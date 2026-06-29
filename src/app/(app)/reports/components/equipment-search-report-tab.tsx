@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { ChevronRight, Search } from "lucide-react"
 
 import { SearchInput } from "@/components/shared/SearchInput"
@@ -22,7 +23,9 @@ import {
   useEquipmentAggregateSearch,
 } from "../hooks/use-equipment-aggregate-search"
 import { EquipmentSearchSkeleton } from "./equipment-search-report-tab-skeleton"
+import { EquipmentSearchSummaryCards } from "./equipment-search-summary-cards"
 import {
+  buildEquipmentSearchDetailHref,
   formatEquipmentSearchCount,
   getEquipmentSearchMaxCount,
   getEquipmentSearchFacilityText,
@@ -260,32 +263,11 @@ function EquipmentSearchReportTabContent({
 
       {!isInitialEmpty && !searchQuery.isError && !isWaitingForCurrentResult && rows.length > 0 ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Card>
-              <CardContent className="py-4">
-                <div className="text-2xl font-semibold tabular-nums">
-                  {formatEquipmentSearchCount(summary?.totalEquipmentCount ?? 0)} phù hợp
-                </div>
-                <p className="text-sm text-muted-foreground">với từ khóa</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="py-4">
-                <div className="text-2xl font-semibold tabular-nums">
-                  {(summary?.regionCount ?? 0).toLocaleString("vi-VN")}
-                </div>
-                <p className="text-sm text-muted-foreground">khu vực có kết quả</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="py-4">
-                <div className="text-2xl font-semibold tabular-nums">
-                  {(summary?.facilityCount ?? 0).toLocaleString("vi-VN")}
-                </div>
-                <p className="text-sm text-muted-foreground">cơ sở có kết quả</p>
-              </CardContent>
-            </Card>
-          </div>
+          <EquipmentSearchSummaryCards
+            facilityCount={summary?.facilityCount ?? 0}
+            regionCount={summary?.regionCount ?? 0}
+            totalEquipmentCount={summary?.totalEquipmentCount ?? 0}
+          />
 
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <button
@@ -366,6 +348,7 @@ function EquipmentSearchReportTabContent({
                       const canDrillDown = row.groupType === "region" && row.groupId !== null
                       const quotaContext =
                         groupBy === "facility" ? getEquipmentSearchTableQuotaContext(row) : null
+                      const detailHref = buildEquipmentSearchDetailHref(submittedQuery, row)
 
                       if (quotaContext) {
                         return (
@@ -373,7 +356,15 @@ function EquipmentSearchReportTabContent({
                             key={`${row.groupType}-${row.groupId ?? row.groupName}`}
                             aria-label={`${row.groupName} ${formatEquipmentSearchCount(row.equipmentCount)} ${quotaContext.quotaDisplay} ${quotaContext.statusLabel} ${quotaContext.notesText}`}
                           >
-                            <TableCell className="font-medium">{row.groupName}</TableCell>
+                            <TableCell className="font-medium">
+                              <Link
+                                href={detailHref}
+                                aria-label={`Xem thiết bị ${row.groupName}`}
+                                className="hover:underline"
+                              >
+                                {row.groupName}
+                              </Link>
+                            </TableCell>
                             <TableCell className="text-right font-semibold tabular-nums">
                               {formatEquipmentSearchCount(row.equipmentCount)}
                             </TableCell>
@@ -400,19 +391,24 @@ function EquipmentSearchReportTabContent({
                           <TableCell className="text-muted-foreground">{facilityText}</TableCell>
                           <TableCell className="text-right">
                             {canDrillDown ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  dispatch({
-                                    type: "select-region",
-                                    region: { id: row.groupId!, name: row.groupName },
-                                  })
-                                }
-                              >
-                                Xem cơ sở {row.groupName}
-                              </Button>
+                              <div className="flex flex-wrap justify-end gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    dispatch({
+                                      type: "select-region",
+                                      region: { id: row.groupId!, name: row.groupName },
+                                    })
+                                  }
+                                >
+                                  Xem cơ sở {row.groupName}
+                                </Button>
+                                <Button asChild variant="ghost" size="sm">
+                                  <Link href={detailHref}>Xem thiết bị {row.groupName}</Link>
+                                </Button>
+                              </div>
                             ) : (
                               <span className="text-xs text-muted-foreground">Tổng hợp</span>
                             )}
