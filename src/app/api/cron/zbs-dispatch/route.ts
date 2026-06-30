@@ -27,6 +27,10 @@ function jsonResponse(body: unknown, status: number): Response {
   return Response.json(body, { status })
 }
 
+function internalServerErrorResponse(status = 500): Response {
+  return jsonResponse({ error: "Internal server error" }, status)
+}
+
 function readDispatchEnabled() {
   return process.env.ZALO_ZBS_DISPATCH_ENABLED === "true"
 }
@@ -133,10 +137,7 @@ export async function GET(request: Request): Promise<Response> {
 
   if (!cronSecret) {
     console.error("Missing ZBS dispatch cron secret")
-    return jsonResponse(
-      { error: "Server configuration error: missing required environment variables" },
-      500
-    )
+    return internalServerErrorResponse()
   }
 
   if (request.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
@@ -160,6 +161,10 @@ export async function GET(request: Request): Promise<Response> {
   } catch (error) {
     console.error("ZBS dispatch cron failed", { error: sanitizeForLog(error) })
     if (error instanceof ZbsDispatchRpcError) {
+      if (error.status >= 500) {
+        return internalServerErrorResponse(error.status)
+      }
+
       return jsonResponse(
         {
           error: "ZBS dispatch failed",
@@ -168,6 +173,6 @@ export async function GET(request: Request): Promise<Response> {
         error.status
       )
     }
-    return jsonResponse({ error: "ZBS dispatch failed" }, 500)
+    return internalServerErrorResponse()
   }
 }

@@ -189,6 +189,54 @@ describe("/api/cron/zbs-dispatch", () => {
     })
   })
 
+  it("sanitizes 5xx RPC failure details in the cron response", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Database role failed",
+            details: { code: "service_role_missing", secret: "do-not-leak" },
+          },
+        }),
+        {
+          status: 500,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    )
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_limit: 1 },
+      })
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+
+    expect(response.status).toBe(500)
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+  })
+
+  it("sanitizes missing cron secret configuration failures", async () => {
+    delete process.env.CRON_SECRET
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(new Request("https://example.test/api/cron/zbs-dispatch"))
+
+    expect(response.status).toBe(500)
+    expect(dispatcherMocks.dispatchPendingZbsNotifications).not.toHaveBeenCalled()
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    consoleErrorSpy.mockRestore()
+  })
+
   it("does not leak dispatcher errors in the response", async () => {
     const dispatchError = new Error("zalo-access-token should not leak")
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
@@ -209,7 +257,7 @@ describe("/api/cron/zbs-dispatch", () => {
         message: dispatchError.message,
       },
     })
-    await expect(response.json()).resolves.toEqual({ error: "ZBS dispatch failed" })
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
     consoleErrorSpy.mockRestore()
   })
 })

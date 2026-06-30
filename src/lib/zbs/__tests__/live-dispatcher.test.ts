@@ -294,6 +294,62 @@ describe("dispatchPendingZbsNotifications", () => {
     })
   })
 
+  it("marks request-build errors failed without aborting the batch", async () => {
+    const invalidRow = { ...baseOutboxRow, id: "invalid-row", recipient_phone: "not-a-phone" }
+    const successRow = { ...baseOutboxRow, id: "success-row", tracking_id: "success" }
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([invalidRow, successRow])
+      .mockResolvedValue([{ id: "updated" }])
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 0, data: { msg_id: "zalo-message-2" } }), {
+        status: 200,
+      })
+    )
+
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_MARK_FAILED_RPC,
+      args: {
+        p_id: "invalid-row",
+        p_retryable: false,
+        p_error_code: "invalid_template_request",
+        p_error_message: "Invalid ZBS recipient phone",
+        p_provider_response: {},
+      },
+    })
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_MARK_SENT_RPC,
+      args: expect.objectContaining({
+        p_id: "success-row",
+        p_provider_message_id: "zalo-message-2",
+      }),
+    })
+    expect(result).toMatchObject({
+      attempted: 2,
+      sent: 1,
+      retryable_failed: 0,
+      failed: 1,
+      results: [
+        {
+          outbox_id: "invalid-row",
+          status: "failed",
+          error_code: "invalid_template_request",
+        },
+        { outbox_id: "success-row", status: "sent" },
+      ],
+    })
+  })
+
   it("aborts hung provider requests and records a retryable network failure", async () => {
     vi.useFakeTimers()
     const rpcClient = vi.fn().mockResolvedValueOnce([baseOutboxRow]).mockResolvedValueOnce(null)

@@ -130,6 +130,15 @@ function classifyProviderFailure(response: JsonObject): ZaloFailure | null {
   }
 }
 
+function classifyRequestBuildFailure(error: unknown): ZaloFailure {
+  return {
+    code: "invalid_template_request",
+    message: errorMessage(error),
+    retryable: false,
+    providerResponse: {},
+  }
+}
+
 function parseSuccess(response: JsonObject, now: Date): ZaloSuccess {
   const providerMessageId = getProviderMessageId(response)
   if (!providerMessageId) {
@@ -276,11 +285,24 @@ async function dispatchRow(
   > &
     Pick<DispatchPendingZbsNotificationsOptions, "appBaseUrl">
 ): Promise<ZbsDispatchResult> {
-  const request = buildZbsTemplateRequest(row, {
-    appBaseUrl: options.appBaseUrl,
-    accessTokenHeader: options.accessToken,
-    repairTemplateId: options.repairTemplateId,
-  })
+  let request: ZbsTemplateRequest
+  try {
+    request = buildZbsTemplateRequest(row, {
+      appBaseUrl: options.appBaseUrl,
+      accessTokenHeader: options.accessToken,
+      repairTemplateId: options.repairTemplateId,
+    })
+  } catch (error) {
+    const failure = classifyRequestBuildFailure(error)
+    await markFailed(options.rpcClient, row, failure)
+    return {
+      outbox_id: row.id,
+      status: "failed",
+      error_code: failure.code,
+      error_message: failure.message,
+    }
+  }
+
   const sendResult = await sendZbsTemplateRequest(options.fetchImpl, request, options.now)
 
   if ("providerMessageId" in sendResult) {
