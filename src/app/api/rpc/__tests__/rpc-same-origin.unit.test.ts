@@ -139,6 +139,44 @@ describe("RPC proxy same-origin guard", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("rejects service-role RPCs before JWT minting for non-maintenance roles", async () => {
+    getServerSessionMock.mockResolvedValueOnce({
+      user: {
+        id: "31",
+        role: "user",
+        don_vi: 17,
+        dia_ban_id: 10,
+        khoa_phong: "ICU",
+      },
+    })
+
+    const res = await POST(buildRequest({ p_limit: 10 }) as never, {
+      params: Promise.resolve({ fn: "zbs_notification_outbox_pending_for_dispatch" }),
+    })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({
+      error: "Service-role RPC not allowed",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("returns a generic response for unexpected RPC proxy failures", async () => {
+    jwtSignMock.mockImplementationOnce(() => {
+      throw new Error("JWT secret internal detail")
+    })
+
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
+    })
+
+    expect(res.status).toBe(500)
+    await expect(res.json()).resolves.toEqual({
+      error: "RPC proxy error",
+    })
+  })
+
   it("preserves upstream 4xx RPC errors for client-side validation handling", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ message: "Validation failed" }), {

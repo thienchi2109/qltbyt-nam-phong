@@ -114,6 +114,10 @@ function tenantScopedRpcBody(
   }
 }
 
+function canInvokeServiceRoleRpc(claims: Pick<RpcSessionClaims, "appRole">): boolean {
+  return claims.appRole === "global" || claims.appRole === "to_qltb"
+}
+
 /** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
@@ -188,6 +192,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       claims.appRole !== "global" && claims.appRole !== "regional_leader"
         ? tenantScopedRpcBody(requestBody, claims)
         : requestBody
+    const dbRole = SERVICE_ROLE_RPC_FUNCTIONS.has(fn) ? "service_role" : "authenticated"
+
+    if (dbRole === "service_role" && !canInvokeServiceRoleRpc(claims)) {
+      return NextResponse.json({ error: "Service-role RPC not allowed" }, { status: 403 })
+    }
 
     const token = mintSupabaseJwt(
       {
@@ -198,7 +207,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
         khoa_phong: claims.khoaPhong,
       },
       {
-        dbRole: SERVICE_ROLE_RPC_FUNCTIONS.has(fn) ? "service_role" : "authenticated",
+        dbRole,
       }
     )
 
@@ -245,6 +254,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     // SECURITY: Log only error message, not full stack trace or request details
     const message = getErrorMessage(err)
     console.error("RPC proxy error:", { message })
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: "RPC proxy error" }, { status: 500 })
   }
 }

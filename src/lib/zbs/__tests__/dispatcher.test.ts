@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  type ReadPendingZbsOutboxRowsOptions,
   ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER,
   ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT,
   ZBS_PENDING_DISPATCH_RPC,
@@ -11,6 +12,9 @@ import {
   normalizeZbsPhoneNumber,
   readPendingZbsOutboxRows,
 } from "../dispatcher"
+
+type TestRpcClient = NonNullable<ReadPendingZbsOutboxRowsOptions["rpcClient"]>
+type TestRpcRows = Awaited<ReturnType<TestRpcClient>>
 
 const baseOutboxRow = {
   id: "outbox-1",
@@ -230,8 +234,9 @@ describe("readPendingZbsOutboxRows", () => {
   })
 
   it("preserves the array contract for malformed RPC responses", async () => {
-    const nullRpcClient = async () => null
-    const objectRpcClient = async () => ({ rows: [baseOutboxRow] })
+    const nullRpcClient: TestRpcClient = async () => null as unknown as TestRpcRows
+    const objectRpcClient: TestRpcClient = async () =>
+      ({ rows: [baseOutboxRow] }) as unknown as TestRpcRows
 
     await expect(readPendingZbsOutboxRows({ rpcClient: nullRpcClient })).resolves.toEqual([])
     await expect(readPendingZbsOutboxRows({ rpcClient: objectRpcClient })).resolves.toEqual([])
