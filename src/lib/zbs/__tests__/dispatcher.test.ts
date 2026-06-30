@@ -44,6 +44,8 @@ describe("normalizeZbsPhoneNumber", () => {
   it("rejects phones outside the ZBS country-code contract", () => {
     expect(() => normalizeZbsPhoneNumber("12345")).toThrow("Invalid ZBS recipient phone")
     expect(() => normalizeZbsPhoneNumber("84987654abc")).toThrow("Invalid ZBS recipient phone")
+    expect(() => normalizeZbsPhoneNumber("8498765432")).toThrow("Invalid ZBS recipient phone")
+    expect(() => normalizeZbsPhoneNumber("849876543210")).toThrow("Invalid ZBS recipient phone")
   })
 })
 

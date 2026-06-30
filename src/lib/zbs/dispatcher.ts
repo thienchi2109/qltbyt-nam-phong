@@ -109,7 +109,7 @@ export function normalizeZbsPhoneNumber(value: string): string {
       ? `84${compacted.slice(1)}`
       : compacted
 
-  if (!/^84[0-9]{8,13}$/.test(normalized)) {
+  if (!/^84[0-9]{9}$/.test(normalized)) {
     throw new Error("Invalid ZBS recipient phone")
   }
 
