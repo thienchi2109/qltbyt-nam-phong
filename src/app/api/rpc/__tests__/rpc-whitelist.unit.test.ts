@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 
-import { POST } from "../[fn]/route"
-import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "../[fn]/allowed-functions"
+import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
+import { POST } from "@/app/api/rpc/[fn]/route"
 
 async function invokeRpcProxy(fn: string) {
   const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST" })

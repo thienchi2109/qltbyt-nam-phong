@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+
+import { authOptions } from "@/auth/config"
+import { toAppRoleClaim } from "@/auth/server-claims"
+import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
+import { sanitizeForLog } from "@/lib/log-sanitizer"
+import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
+
+import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "./allowed-functions"
+
 /** Run the RPC proxy on Node.js so JWT signing uses the server crypto stack. */
 export const runtime = "nodejs"
-import { getServerSession } from "next-auth"
-import { authOptions } from "../../../../auth/config"
-import { toAppRoleClaim } from "@/auth/server-claims"
-import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "./allowed-functions"
-import { sanitizeForLog } from "@/lib/log-sanitizer"
-import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
-import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
 
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
@@ -18,6 +21,15 @@ type RpcProxySessionUser = {
   dia_ban_id?: unknown
   khoa_phong?: unknown
   id?: unknown
+}
+
+type RpcSessionClaims = {
+  role: string
+  donVi: string
+  diaBan: string
+  khoaPhong: string
+  userId: string
+  appRole: string
 }
 
 function getEnv(name: string) {
@@ -38,6 +50,39 @@ function getSessionUser(session: unknown): RpcProxySessionUser | null {
   return user as RpcProxySessionUser
 }
 
+function sessionClaimValue(value: unknown): string | null {
+  if (value == null) {
+    return ""
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value)
+  }
+
+  return null
+}
+
+function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionClaims | null {
+  const role = sessionClaimValue(sessionUser.role)
+  const donVi = sessionClaimValue(sessionUser.don_vi)
+  const diaBan = sessionClaimValue(sessionUser.dia_ban_id)
+  const khoaPhong = sessionClaimValue(sessionUser.khoa_phong)
+  const userId = sessionClaimValue(sessionUser.id)
+
+  if (role == null || donVi == null || diaBan == null || khoaPhong == null || userId == null) {
+    return null
+  }
+
+  return {
+    role,
+    donVi,
+    diaBan,
+    khoaPhong,
+    userId,
+    appRole: toAppRoleClaim(role),
+  }
+}
+
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected error"
 }
@@ -48,6 +93,25 @@ function rpcClientErrorPayload(status: number, payload: unknown) {
   }
 
   return { error: payload || "RPC error" }
+}
+
+function tenantClaimParameter(value: string): number | string | null {
+  if (!value) {
+    return null
+  }
+
+  return Number.isFinite(Number(value)) ? Number(value) : value
+}
+
+function tenantScopedRpcBody(
+  body: Record<string, unknown>,
+  claims: Pick<RpcSessionClaims, "donVi" | "diaBan">
+): Record<string, unknown> {
+  return {
+    ...body,
+    ...(Object.hasOwn(body, "p_don_vi") ? { p_don_vi: tenantClaimParameter(claims.donVi) } : {}),
+    ...(Object.hasOwn(body, "p_dia_ban") ? { p_dia_ban: tenantClaimParameter(claims.diaBan) } : {}),
+  }
 }
 
 /** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
@@ -108,47 +172,30 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const rawRole = sessionUser.role ?? ""
-    const role = typeof rawRole === "string" ? rawRole : String(rawRole)
-    const donVi = sessionUser.don_vi != null ? String(sessionUser.don_vi) : ""
-    const diaBan = sessionUser.dia_ban_id != null ? String(sessionUser.dia_ban_id) : ""
-    const khoaPhong = sessionUser.khoa_phong != null ? String(sessionUser.khoa_phong) : ""
-    const userId = sessionUser.id != null ? String(sessionUser.id) : ""
-    const appRole = toAppRoleClaim(role)
+    const claims = getSessionClaims(sessionUser)
+    if (!claims) {
+      return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
+    }
     // (debug removed)
 
     // Sanitize tenant parameter for non-global users to enforce isolation
     // EXCEPTION: regional_leader users can see multiple tenants, don't override p_don_vi
-    let body: Record<string, unknown> =
+    const requestBody: Record<string, unknown> =
       rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
         ? { ...(rawBody as Record<string, unknown>) }
         : {}
-    if (appRole !== "global" && appRole !== "regional_leader") {
-      try {
-        if (Object.prototype.hasOwnProperty.call(body, "p_don_vi")) {
-          const dv =
-            donVi && donVi !== "" ? (Number.isFinite(Number(donVi)) ? Number(donVi) : donVi) : null
-          body.p_don_vi = dv
-        }
-        if (Object.prototype.hasOwnProperty.call(body, "p_dia_ban")) {
-          const db =
-            diaBan && diaBan !== ""
-              ? Number.isFinite(Number(diaBan))
-                ? Number(diaBan)
-                : diaBan
-              : null
-          body.p_dia_ban = db
-        }
-      } catch {}
-    }
+    const body =
+      claims.appRole !== "global" && claims.appRole !== "regional_leader"
+        ? tenantScopedRpcBody(requestBody, claims)
+        : requestBody
 
     const token = mintSupabaseJwt(
       {
-        id: userId,
-        role,
-        don_vi: donVi,
-        dia_ban_id: diaBan,
-        khoa_phong: khoaPhong,
+        id: claims.userId,
+        role: claims.role,
+        don_vi: claims.donVi,
+        dia_ban_id: claims.diaBan,
+        khoa_phong: claims.khoaPhong,
       },
       {
         dbRole: SERVICE_ROLE_RPC_FUNCTIONS.has(fn) ? "service_role" : "authenticated",

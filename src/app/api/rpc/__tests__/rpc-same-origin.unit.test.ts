@@ -16,7 +16,7 @@ vi.mock("jsonwebtoken", () => ({
   },
 }))
 
-import { POST } from "../[fn]/route"
+import { POST } from "@/app/api/rpc/[fn]/route"
 
 function buildRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   const encodedBody = JSON.stringify(body)
@@ -114,6 +114,29 @@ describe("RPC proxy same-origin guard", () => {
     expect(getServerSessionMock).toHaveBeenCalledOnce()
     expect(jwtSignMock).toHaveBeenCalledOnce()
     expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it("rejects malformed session claim values before JWT minting", async () => {
+    getServerSessionMock.mockResolvedValueOnce({
+      user: {
+        id: { value: "31" },
+        role: "to_qltb",
+        don_vi: 17,
+        dia_ban_id: 10,
+        khoa_phong: "ICU",
+      },
+    })
+
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
+    })
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid session claims",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("preserves upstream 4xx RPC errors for client-side validation handling", async () => {
