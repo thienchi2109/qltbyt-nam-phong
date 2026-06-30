@@ -139,6 +139,10 @@ describe("useEquipmentRouteSync", () => {
       expect(hydrateFacility).toHaveBeenCalledWith(101)
     })
     expect(hydrateSearch).not.toHaveBeenCalled()
+    expect(hydrateFacility).toHaveBeenCalledTimes(1)
+
+    rerender({ selectedFacilityId: undefined })
+    expect(hydrateFacility).toHaveBeenCalledTimes(1)
 
     hydrateFacility.mockClear()
 

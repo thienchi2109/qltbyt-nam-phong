@@ -76,6 +76,9 @@ export function useEquipmentRouteSync(
   // Track non-transient deep-link params independently from action/highlight params.
   const processedDeepLinkParamsRef = React.useRef<string | null>(null)
 
+  // Track facility hydration requests while waiting for parent scope state to catch up.
+  const requestedFacilityHydrationRef = React.useRef<string | null>(null)
+
   // Track in-flight highlight requests so stale responses cannot win races
   const highlightRequestRef = React.useRef(0)
 
@@ -116,8 +119,10 @@ export function useEquipmentRouteSync(
       if (
         routeFacilityScope !== undefined &&
         onFacilityParamHydrated &&
-        (!hasSelectedFacilityIdParam || selectedFacilityId !== routeFacilityScope)
+        (!hasSelectedFacilityIdParam || selectedFacilityId !== routeFacilityScope) &&
+        requestedFacilityHydrationRef.current !== deepLinkParamsKey
       ) {
+        requestedFacilityHydrationRef.current = deepLinkParamsKey
         onFacilityParamHydrated(routeFacilityScope)
       }
 
@@ -127,6 +132,7 @@ export function useEquipmentRouteSync(
 
       if (!shouldWaitForFacilityScope) {
         processedDeepLinkParamsRef.current = deepLinkParamsKey
+        requestedFacilityHydrationRef.current = null
       }
     }
 
