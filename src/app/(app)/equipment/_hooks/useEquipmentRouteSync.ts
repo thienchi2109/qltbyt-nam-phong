@@ -110,7 +110,7 @@ export function useEquipmentRouteSync(
       hasSelectedFacilityIdParam &&
       routeFacilityScope !== undefined &&
       selectedFacilityId !== routeFacilityScope
-    const deepLinkParamsKey = `${searchParam ?? ""}-${regionParam ?? ""}-${facilityParam ?? ""}-${selectedFacilityId ?? ""}`
+    const deepLinkParamsKey = `${searchParam ?? ""}-${regionParam ?? ""}-${facilityParam ?? ""}`
 
     if (processedDeepLinkParamsRef.current !== deepLinkParamsKey) {
       if (

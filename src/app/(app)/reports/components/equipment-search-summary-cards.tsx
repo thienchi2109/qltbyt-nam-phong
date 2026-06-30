@@ -4,10 +4,10 @@ import { Card, CardContent } from "@/components/ui/card"
 
 import { formatEquipmentSearchCount } from "./equipment-search-report-tab.utils"
 
-interface EquipmentSearchSummaryCardsProps {
-  facilityCount: number
-  regionCount: number
-  totalEquipmentCount: number
+export interface EquipmentSearchSummaryCardsProps {
+  readonly facilityCount: number
+  readonly regionCount: number
+  readonly totalEquipmentCount: number
 }
 
 /** Renders aggregate count summary cards for the Reports equipment search tab. */
@@ -15,7 +15,7 @@ export function EquipmentSearchSummaryCards({
   facilityCount,
   regionCount,
   totalEquipmentCount,
-}: EquipmentSearchSummaryCardsProps) {
+}: EquipmentSearchSummaryCardsProps): React.JSX.Element {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <Card>

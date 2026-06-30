@@ -93,15 +93,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     pagination,
   })
 
-  // Route sync hook - defined before renderActions which uses routeSync.router
-  const routeSync = useEquipmentRouteSync({
-    data: data.data,
-    isDataReady: data.shouldFetchData && !data.isLoading,
-    onFacilityParamHydrated: auth.setSelectedFacilityId,
-    onSearchParamHydrated: filters.setSearchTerm,
-    selectedFacilityId: auth.selectedFacilityId,
-  })
-
   // Render actions helper (needed for columns)
   // EquipmentActionsMenu now consumes dialog actions from context directly
   const renderActions = React.useCallback(
@@ -162,6 +153,14 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     },
     [filters.setSearchTerm, resetPaginationForFilterChange]
   )
+
+  const routeSync = useEquipmentRouteSync({
+    data: data.data,
+    isDataReady: data.shouldFetchData && !data.isLoading,
+    onFacilityParamHydrated: auth.setSelectedFacilityId,
+    onSearchParamHydrated: setSearchTermAndReset,
+    selectedFacilityId: auth.selectedFacilityId,
+  })
 
   const setColumnFiltersAndReset = React.useCallback<
     React.Dispatch<React.SetStateAction<typeof filters.columnFilters>>

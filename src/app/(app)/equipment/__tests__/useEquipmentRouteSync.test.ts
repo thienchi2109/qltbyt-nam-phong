@@ -118,6 +118,36 @@ describe("useEquipmentRouteSync", () => {
     })
   })
 
+  it("does not rehydrate facility params after a local facility selection change", async () => {
+    const hydrateSearch = vi.fn()
+    const hydrateFacility = vi.fn()
+    nav.searchParams = new URLSearchParams("search=monitor&facility=101")
+
+    const { rerender } = renderHook(
+      ({ selectedFacilityId }: { selectedFacilityId: number | null | undefined }) =>
+        useEquipmentRouteSync({
+          data: [],
+          isDataReady: true,
+          onSearchParamHydrated: hydrateSearch,
+          onFacilityParamHydrated: hydrateFacility,
+          selectedFacilityId,
+        }),
+      { initialProps: { selectedFacilityId: 101 } }
+    )
+
+    await waitFor(() => {
+      expect(hydrateSearch).toHaveBeenCalledWith("monitor")
+    })
+
+    hydrateSearch.mockClear()
+    hydrateFacility.mockClear()
+
+    rerender({ selectedFacilityId: 202 })
+
+    expect(hydrateSearch).not.toHaveBeenCalled()
+    expect(hydrateFacility).not.toHaveBeenCalled()
+  })
+
   it("keeps highlight action behavior and preserves non-transient params", async () => {
     const equipment = { id: 123, ten_thiet_bi: "X-quang" } as Equipment
     nav.searchParams = new URLSearchParams("highlight=123&view=card&page=4")

@@ -89,7 +89,10 @@ type EquipmentFilterBucketsResponse = Partial<{
 
 const EMPTY_FILTER_BUCKET: FilterBucketItem[] = []
 
-function normalizeBucket(data: EquipmentFilterBucketsResponse | undefined, key: keyof EquipmentFilterBucketsResponse) {
+function normalizeBucket(
+  data: EquipmentFilterBucketsResponse | undefined,
+  key: keyof EquipmentFilterBucketsResponse
+) {
   return data?.[key] ?? EMPTY_FILTER_BUCKET
 }
 
@@ -123,11 +126,11 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const queryClient = useQueryClient()
 
   // Computed: should we fetch data based on tenant/facility selection
-  // For regional_leader, require facility selection before fetching
+  // For regional_leader, undefined means facility context is still hydrating.
+  // Null is an explicit all-allowed-facilities scope for regional deep-links.
   const shouldFetchData = React.useMemo(() => {
     if (!shouldFetchEquipment) return false
-    // Regional leaders must select a specific facility
-    if (isRegionalLeader && (selectedFacilityId === null || selectedFacilityId === undefined)) return false
+    if (isRegionalLeader && selectedFacilityId === undefined) return false
     return true
   }, [shouldFetchEquipment, isRegionalLeader, selectedFacilityId])
 
@@ -135,7 +138,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const effectiveSelectedDonVi = React.useMemo(() => {
     if (isRegionalLeader) {
       // Regional leaders always use selectedFacilityId
-      return selectedFacilityId !== undefined && selectedFacilityId !== null ? selectedFacilityId : null
+      return selectedFacilityId !== undefined && selectedFacilityId !== null
+        ? selectedFacilityId
+        : null
     }
     return selectedDonVi
   }, [isRegionalLeader, selectedFacilityId, selectedDonVi])
@@ -170,13 +175,17 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const effectivePageSize = pagination.pageSize
   const effectivePage = pagination.pageIndex + 1
 
-  const { data: equipmentRes, isLoading: isEqLoading, isFetching: isEqFetching } = useQuery<EquipmentListResponse>({
+  const {
+    data: equipmentRes,
+    isLoading: isEqLoading,
+    isFetching: isEqFetching,
+  } = useQuery<EquipmentListResponse>({
     queryKey: [
       "equipment_list_enhanced",
       {
         tenant: effectiveTenantKey,
-        role: userRole,           // Cache isolation by role
-        diaBan: userDiaBanId,     // Cache isolation by region
+        role: userRole, // Cache isolation by role
+        diaBan: userDiaBanId, // Cache isolation by region
         donVi: effectiveSelectedDonVi,
         page: pagination.pageIndex,
         size: pagination.pageSize,
@@ -282,7 +291,15 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   // Filter buckets are bundled into one RPC to avoid six parallel cold-start calls.
   const { data: filterBucketsData } = useQuery<EquipmentFilterBucketsResponse>({
-    queryKey: ["equipment_filter_buckets", { tenant: effectiveTenantKey, role: userRole, diaBan: userDiaBanId, donVi: effectiveSelectedDonVi }],
+    queryKey: [
+      "equipment_filter_buckets",
+      {
+        tenant: effectiveTenantKey,
+        role: userRole,
+        diaBan: userDiaBanId,
+        donVi: effectiveSelectedDonVi,
+      },
+    ],
     queryFn: async ({ signal }) => {
       const result = await callRpc<EquipmentFilterBucketsResponse>({
         fn: "equipment_filter_buckets",
@@ -304,24 +321,58 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
   const statusesData = normalizeBucket(filterBucketsData, "status")
   const fundingSourcesData = normalizeBucket(filterBucketsData, "fundingSource")
 
-  const departments = React.useMemo(() => departmentsData.map((x) => x.name).filter(Boolean), [departmentsData])
+  const departments = React.useMemo(
+    () => departmentsData.map((x) => x.name).filter(Boolean),
+    [departmentsData]
+  )
   const users = React.useMemo(() => usersData.map((x) => x.name).filter(Boolean), [usersData])
-  const locations = React.useMemo(() => locationsData.map((x) => x.name).filter(Boolean), [locationsData])
-  const classifications = React.useMemo(() => classificationsData.map((x) => x.name).filter(Boolean), [classificationsData])
-  const statuses = React.useMemo(() => statusesData.map((x) => x.name).filter(Boolean), [statusesData])
-  const fundingSources = React.useMemo(() => fundingSourcesData.map((x) => x.name).filter(Boolean), [fundingSourcesData])
+  const locations = React.useMemo(
+    () => locationsData.map((x) => x.name).filter(Boolean),
+    [locationsData]
+  )
+  const classifications = React.useMemo(
+    () => classificationsData.map((x) => x.name).filter(Boolean),
+    [classificationsData]
+  )
+  const statuses = React.useMemo(
+    () => statusesData.map((x) => x.name).filter(Boolean),
+    [statusesData]
+  )
+  const fundingSources = React.useMemo(
+    () => fundingSourcesData.map((x) => x.name).filter(Boolean),
+    [fundingSourcesData]
+  )
 
   // Filter data for bottom sheet
   const filterData: FilterBottomSheetData = React.useMemo(
     () => ({
       status: (statusesData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      department: (departmentsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
+      department: (departmentsData || []).map((x) => ({
+        id: x.name,
+        label: x.name,
+        count: x.count,
+      })),
       location: (locationsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
       user: (usersData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      classification: (classificationsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      fundingSource: (fundingSourcesData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
+      classification: (classificationsData || []).map((x) => ({
+        id: x.name,
+        label: x.name,
+        count: x.count,
+      })),
+      fundingSource: (fundingSourcesData || []).map((x) => ({
+        id: x.name,
+        label: x.name,
+        count: x.count,
+      })),
     }),
-    [statusesData, departmentsData, locationsData, usersData, classificationsData, fundingSourcesData]
+    [
+      statusesData,
+      departmentsData,
+      locationsData,
+      usersData,
+      classificationsData,
+      fundingSourcesData,
+    ]
   )
 
   // Cache invalidation - check all cache isolation fields
@@ -331,7 +382,8 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       predicate: (q) => {
         const key = q.queryKey
         if (!Array.isArray(key)) return false
-        if (key[0] !== "equipment_list_enhanced" && key[0] !== "equipment_department_distribution") return false
+        if (key[0] !== "equipment_list_enhanced" && key[0] !== "equipment_department_distribution")
+          return false
         const queryParams = key[1] as Record<string, unknown>
         return (
           queryParams?.tenant === effectiveTenantKey &&
