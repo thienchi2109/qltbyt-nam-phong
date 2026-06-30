@@ -22,6 +22,7 @@ type SessionProfileJwtClaimInput = TimeBoundClaimInput & {
 
 type SupabaseRpcJwtClaimInput = TimeBoundClaimInput & {
   user: SupabaseRpcUser
+  dbRole?: "authenticated" | "service_role"
 }
 
 function toStringClaim(value: unknown): string {
@@ -51,7 +52,7 @@ export function toAppRoleClaim(role: unknown): string {
 /** Returns a required user_id claim or fails closed before JWT signing. */
 export function toRequiredUserIdClaim(
   userId: unknown,
-  message = "Cannot mint Supabase RPC JWT without user id",
+  message = "Cannot mint Supabase RPC JWT without user id"
 ): string {
   const userIdClaim = toStringClaim(userId)
   if (!userIdClaim) {
@@ -63,7 +64,7 @@ export function toRequiredUserIdClaim(
 
 function toRequiredAppRoleClaim(
   role: unknown,
-  message = "Cannot mint Supabase RPC JWT without app_role",
+  message = "Cannot mint Supabase RPC JWT without app_role"
 ): string {
   const appRole = toAppRoleClaim(role)
   if (!appRole) {
@@ -98,12 +99,13 @@ export function buildSupabaseRpcJwtClaims({
   user,
   issuedAt,
   expiresAt,
+  dbRole = "authenticated",
 }: SupabaseRpcJwtClaimInput): Record<string, AuthJwtClaimValue> {
   const userId = toRequiredUserIdClaim(user.id)
   const appRole = toRequiredAppRoleClaim(user.role)
 
   return {
-    role: "authenticated",
+    role: dbRole,
     iat: issuedAt,
     exp: expiresAt,
     sub: userId,

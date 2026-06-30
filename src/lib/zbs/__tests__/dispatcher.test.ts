@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER,
   ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT,
+  ZBS_PENDING_DISPATCH_RPC,
   ZBS_ISSUE_SUMMARY_MAX_LENGTH,
   buildZbsDryRunDispatches,
   buildZbsTemplateRequest,
@@ -148,90 +149,81 @@ describe("buildZbsDryRunDispatches", () => {
       would_send_live_request: false,
       reason: "ZALO_ZBS_DISPATCH_ENABLED is not true",
     })
-    expect(dispatches[0]?.request.body.tracking_id).toBe("repair_request:42:recipient-1")
+    expect(dispatches[0]?.dispatch_state).toBe("disabled-dispatch")
+    if (dispatches[0]?.dispatch_state !== "build-error") {
+      expect(dispatches[0]?.request.body.tracking_id).toBe("repair_request:42:recipient-1")
+    }
+  })
+
+  it("captures per-row request build failures without aborting the dry-run batch", () => {
+    const dispatches = buildZbsDryRunDispatches([
+      {
+        ...baseOutboxRow,
+        id: "invalid-phone",
+        recipient_phone: "not-a-phone",
+      },
+      {
+        ...baseOutboxRow,
+        id: "valid-phone",
+        recipient_phone: "0987654321",
+        tracking_id: "repair_request:42:valid-phone",
+      },
+    ])
+
+    expect(dispatches).toHaveLength(2)
+    expect(dispatches[0]).toEqual({
+      outbox_id: "invalid-phone",
+      dispatch_state: "build-error",
+      would_send_live_request: false,
+      reason: "Failed to build ZBS request",
+      error: {
+        message: "Invalid ZBS recipient phone",
+      },
+    })
+    expect(dispatches[1]?.dispatch_state).toBe("disabled-dispatch")
+    if (dispatches[1]?.dispatch_state !== "build-error") {
+      expect(dispatches[1]?.request.body).toMatchObject({
+        phone: "84987654321",
+        tracking_id: "repair_request:42:valid-phone",
+      })
+    }
   })
 })
 
 describe("readPendingZbsOutboxRows", () => {
-  it("reads pending repair_request_created rows from public.zbs_notification_outbox", async () => {
-    const calls: string[] = []
+  it("reads pending repair_request_created rows through the RPC proxy contract", async () => {
     const row = { ...baseOutboxRow }
-    const query = {
-      eq(column: string, value: string) {
-        calls.push(`eq:${column}:${value}`)
-        return query
-      },
-      lte(column: string, value: string) {
-        calls.push(`lte:${column}:${value}`)
-        return query
-      },
-      order(column: string, options: { ascending: boolean }) {
-        calls.push(`order:${column}:${options.ascending}`)
-        return query
-      },
-      async limit(count: number) {
-        calls.push(`limit:${count}`)
-        return { data: [row], error: null }
-      },
-    }
-    const client = {
-      from(table: string) {
-        calls.push(`from:${table}`)
-        return {
-          select(columns: string) {
-            calls.push(`select:${columns}`)
-            return query
-          },
-        }
-      },
+    const calls: unknown[] = []
+    const rpcClient = async (options: unknown) => {
+      calls.push(options)
+      return [row]
     }
 
     await expect(
-      readPendingZbsOutboxRows(client, {
+      readPendingZbsOutboxRows({
         now: new Date("2026-06-30T07:30:00.000Z"),
         limit: 10,
+        rpcClient,
       })
     ).resolves.toEqual([row])
     expect(calls).toEqual([
-      "from:zbs_notification_outbox",
-      "select:id,event_type,source_type,source_id,don_vi_id,recipient_config_id,recipient_phone,template_id,template_data,tracking_id,status,provider,next_attempt_at",
-      "eq:status:pending",
-      "eq:provider:zalo_zbs",
-      "eq:event_type:repair_request_created",
-      "eq:source_type:repair_request",
-      "lte:next_attempt_at:2026-06-30T07:30:00.000Z",
-      "order:created_at:true",
-      "limit:10",
+      {
+        fn: ZBS_PENDING_DISPATCH_RPC,
+        args: {
+          p_limit: 10,
+          p_now: "2026-06-30T07:30:00.000Z",
+        },
+      },
     ])
   })
 
-  it("surfaces read failures without attempting dispatch", async () => {
-    const query = {
-      eq() {
-        return query
-      },
-      lte() {
-        return query
-      },
-      order() {
-        return query
-      },
-      async limit() {
-        return { data: null, error: { message: "service role denied" } }
-      },
-    }
-    const client = {
-      from() {
-        return {
-          select() {
-            return query
-          },
-        }
-      },
+  it("surfaces RPC read failures without attempting dispatch", async () => {
+    const rpcClient = async () => {
+      throw new Error("permission denied")
     }
 
-    await expect(readPendingZbsOutboxRows(client)).rejects.toThrow(
-      "Failed to read pending ZBS outbox rows: service role denied"
+    await expect(readPendingZbsOutboxRows({ rpcClient })).rejects.toThrow(
+      "Failed to read pending ZBS outbox rows: permission denied"
     )
   })
 })

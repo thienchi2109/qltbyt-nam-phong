@@ -1,149 +1,164 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
-import { POST } from '../[fn]/route'
+import { POST } from "../[fn]/route"
+import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "../[fn]/allowed-functions"
 
 async function invokeRpcProxy(fn: string) {
-  const req = new Request(`http://localhost/api/rpc/${fn}`, { method: 'POST' })
+  const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST" })
   return POST(req as never, { params: Promise.resolve({ fn }) })
 }
 
-describe('RPC proxy whitelist', () => {
-  it('rejects unknown RPC functions', async () => {
-    const res = await invokeRpcProxy('unknown_rpc_fn')
+describe("RPC proxy whitelist", () => {
+  it("rejects unknown RPC functions", async () => {
+    const res = await invokeRpcProxy("unknown_rpc_fn")
     expect(res.status).toBe(403)
-    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
+    await expect(res.json()).resolves.toEqual({ error: "Function not allowed" })
   })
 
-  it('allows equipment_bulk_delete through whitelist checks', async () => {
-    const res = await invokeRpcProxy('equipment_bulk_delete')
+  it("allows equipment_bulk_delete through whitelist checks", async () => {
+    const res = await invokeRpcProxy("equipment_bulk_delete")
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('allows transfer_request_get through whitelist checks', async () => {
-    const res = await invokeRpcProxy('transfer_request_get')
+  it("allows transfer_request_get through whitelist checks", async () => {
+    const res = await invokeRpcProxy("transfer_request_get")
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('allows repair_request_change_history_list through whitelist checks', async () => {
-    const res = await invokeRpcProxy('repair_request_change_history_list')
+  it("allows repair_request_change_history_list through whitelist checks", async () => {
+    const res = await invokeRpcProxy("repair_request_change_history_list")
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('allows dashboard_recent_activities through whitelist checks', async () => {
-    const res = await invokeRpcProxy('dashboard_recent_activities')
+  it("allows ZBS pending-dispatch RPC through whitelist checks", async () => {
+    const res = await invokeRpcProxy("zbs_notification_outbox_pending_for_dispatch")
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('allows unused_equipment_report_for_reports through whitelist checks', async () => {
-    const res = await invokeRpcProxy('unused_equipment_report_for_reports')
-
-    expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+  it("keeps ZBS pending-dispatch RPC on the server-only DB role path", () => {
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_pending_for_dispatch")).toBe(
+      true
+    )
+    expect([...SERVICE_ROLE_RPC_FUNCTIONS].every((fn) => ALLOWED_FUNCTIONS.has(fn))).toBe(true)
   })
 
-  it('allows change_password through whitelist checks', async () => {
-    const res = await invokeRpcProxy('change_password')
+  it("allows dashboard_recent_activities through whitelist checks", async () => {
+    const res = await invokeRpcProxy("dashboard_recent_activities")
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
+  it("allows unused_equipment_report_for_reports through whitelist checks", async () => {
+    const res = await invokeRpcProxy("unused_equipment_report_for_reports")
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
+  it("allows change_password through whitelist checks", async () => {
+    const res = await invokeRpcProxy("change_password")
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
   it.each([
-    'user_list_for_admin',
-    'user_update_profile',
-    'user_delete_by_admin',
-    'reset_password_by_admin',
+    "user_list_for_admin",
+    "user_update_profile",
+    "user_delete_by_admin",
+    "reset_password_by_admin",
   ])('allows user-management RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
   it.each([
-    'equipment_filter_buckets',
-    'equipment_department_distribution',
-    'dashboard_kpi_summary',
-    'equipment_aggregate_search',
+    "equipment_filter_buckets",
+    "equipment_department_distribution",
+    "dashboard_kpi_summary",
+    "equipment_aggregate_search",
   ])('allows performance RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
   it.each([
-    'ai_equipment_lookup',
-    'ai_maintenance_summary',
-    'ai_maintenance_plan_lookup',
-    'ai_repair_summary',
-    'ai_usage_summary',
-    'ai_attachment_metadata',
-    'ai_device_quota_lookup',
-    'ai_quota_compliance_summary',
-    'ai_category_suggestion',
-    'ai_department_list',
-    'ai_kill_switch_status',
-    'ai_kill_switch_set',
+    "ai_equipment_lookup",
+    "ai_maintenance_summary",
+    "ai_maintenance_plan_lookup",
+    "ai_repair_summary",
+    "ai_usage_summary",
+    "ai_attachment_metadata",
+    "ai_device_quota_lookup",
+    "ai_quota_compliance_summary",
+    "ai_category_suggestion",
+    "ai_department_list",
+    "ai_kill_switch_status",
+    "ai_kill_switch_set",
   ])('allows AI RPC "%s" through whitelist checks', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('rejects non-existent AI RPC', async () => {
-    const res = await invokeRpcProxy('ai_does_not_exist')
+  it("rejects non-existent AI RPC", async () => {
+    const res = await invokeRpcProxy("ai_does_not_exist")
     expect(res.status).toBe(403)
-    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
+    await expect(res.json()).resolves.toEqual({ error: "Function not allowed" })
   })
 
-  it('rejects ai_query_database before any SQL runtime path is introduced', async () => {
-    const res = await invokeRpcProxy('ai_query_database')
+  it("rejects ai_query_database before any SQL runtime path is introduced", async () => {
+    const res = await invokeRpcProxy("ai_query_database")
     expect(res.status).toBe(403)
-    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
+    await expect(res.json()).resolves.toEqual({ error: "Function not allowed" })
   })
 
-  it('allows assistant_query_database_audit_log through whitelist checks', async () => {
-    const res = await invokeRpcProxy('assistant_query_database_audit_log')
+  it("allows assistant_query_database_audit_log through whitelist checks", async () => {
+    const res = await invokeRpcProxy("assistant_query_database_audit_log")
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('allows dinh_muc_unified_import through whitelist checks', async () => {
-    const res = await invokeRpcProxy('dinh_muc_unified_import')
+  it("allows dinh_muc_unified_import through whitelist checks", async () => {
+    const res = await invokeRpcProxy("dinh_muc_unified_import")
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it('rejects retired hybrid_search_category_batch fallback RPC', async () => {
-    const res = await invokeRpcProxy('hybrid_search_category_batch')
+  it("rejects retired hybrid_search_category_batch fallback RPC", async () => {
+    const res = await invokeRpcProxy("hybrid_search_category_batch")
 
     expect(res.status).toBe(403)
-    await expect(res.json()).resolves.toEqual({ error: 'Function not allowed' })
+    await expect(res.json()).resolves.toEqual({ error: "Function not allowed" })
   })
 
-  it('allows dinh_muc_thiet_bi_unassigned_names through whitelist checks', async () => {
-    const res = await invokeRpcProxy('dinh_muc_thiet_bi_unassigned_names')
+  it("allows dinh_muc_thiet_bi_unassigned_names through whitelist checks", async () => {
+    const res = await invokeRpcProxy("dinh_muc_thiet_bi_unassigned_names")
 
     // Whitelist check passed; next guard is missing Content-Length.
     expect(res.status).toBe(411)
-    await expect(res.json()).resolves.toEqual({ error: 'Content-Length header required' })
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 })

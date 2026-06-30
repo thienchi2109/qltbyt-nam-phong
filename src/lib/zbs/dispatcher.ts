@@ -1,4 +1,5 @@
 import { buildRepairRequestViewHref } from "@/lib/repair-request-deep-link"
+import { callRpc } from "@/lib/rpc-client"
 
 /** Official ZBS phone-template endpoint used for dry-run request construction. */
 export const ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT = "https://business.openapi.zalo.me/message/template"
@@ -8,6 +9,8 @@ export const ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER = "<ZALO_ZBS_ACCESS_TOKEN>
 export const ZALO_ZBS_REPAIR_TEMPLATE_ID_PLACEHOLDER = "<ZALO_ZBS_REPAIR_TEMPLATE_ID>"
 /** Conservative cap for the approved `issue_summary` ZBS template field. */
 export const ZBS_ISSUE_SUMMARY_MAX_LENGTH = 120
+/** RPC boundary for reading pending ZBS outbox rows through the app proxy. */
+export const ZBS_PENDING_DISPATCH_RPC = "zbs_notification_outbox_pending_for_dispatch"
 
 type JsonObject = Record<string, unknown>
 
@@ -57,7 +60,7 @@ export interface ZbsDispatcherOptions {
   repairTemplateId?: string
 }
 
-export interface ZbsDryRunDispatch {
+export interface ZbsDryRunDispatchSuccess {
   outbox_id: string
   dispatch_state: "dry-run" | "disabled-dispatch"
   would_send_live_request: false
@@ -65,31 +68,32 @@ export interface ZbsDryRunDispatch {
   request: ZbsTemplateRequest
 }
 
-/** Minimal column list needed to build inspectable pending ZBS dry-run payloads. */
-export const ZBS_PENDING_OUTBOX_SELECT =
-  "id,event_type,source_type,source_id,don_vi_id,recipient_config_id,recipient_phone,template_id,template_data,tracking_id,status,provider,next_attempt_at"
-
-interface ZbsPendingOutboxQuery {
-  eq(column: string, value: string): ZbsPendingOutboxQuery
-  lte(column: string, value: string): ZbsPendingOutboxQuery
-  order(column: string, options: { ascending: boolean }): ZbsPendingOutboxQuery
-  limit(count: number): Promise<{
-    data: ZbsNotificationOutboxRow[] | null
-    error: { message?: string } | null
-  }>
+export interface ZbsDryRunDispatchBuildError {
+  outbox_id: string
+  dispatch_state: "build-error"
+  would_send_live_request: false
+  reason: string
+  error: {
+    message: string
+  }
 }
 
-interface ZbsOutboxTableQuery {
-  select(columns: string): ZbsPendingOutboxQuery
+export type ZbsDryRunDispatch = ZbsDryRunDispatchSuccess | ZbsDryRunDispatchBuildError
+
+interface ZbsPendingDispatchRpcArgs {
+  p_limit: number
+  p_now: string
 }
 
-interface ZbsOutboxClient {
-  from(table: "zbs_notification_outbox"): ZbsOutboxTableQuery
-}
+type ZbsPendingDispatchRpcClient = (options: {
+  fn: typeof ZBS_PENDING_DISPATCH_RPC
+  args: ZbsPendingDispatchRpcArgs
+}) => Promise<ZbsNotificationOutboxRow[]>
 
 export interface ReadPendingZbsOutboxRowsOptions {
   now?: Date
   limit?: number
+  rpcClient?: ZbsPendingDispatchRpcClient
 }
 
 function compactPhone(value: string): string {
@@ -212,6 +216,10 @@ function isPendingRepairRequestNotification(row: ZbsNotificationOutboxRow) {
   )
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "unknown error"
+}
+
 /** Builds dry-run dispatch records for pending repair-request ZBS outbox rows. */
 export function buildZbsDryRunDispatches(
   rows: readonly ZbsNotificationOutboxRow[],
@@ -222,38 +230,46 @@ export function buildZbsDryRunDispatches(
     ? "Dry-run request construction only"
     : "ZALO_ZBS_DISPATCH_ENABLED is not true"
 
-  return rows.filter(isPendingRepairRequestNotification).map((row) => ({
-    outbox_id: row.id,
-    dispatch_state: dispatchState,
-    would_send_live_request: false,
-    reason,
-    request: buildZbsTemplateRequest(row, options),
-  }))
+  return rows.filter(isPendingRepairRequestNotification).map((row) => {
+    try {
+      return {
+        outbox_id: row.id,
+        dispatch_state: dispatchState,
+        would_send_live_request: false,
+        reason,
+        request: buildZbsTemplateRequest(row, options),
+      }
+    } catch (error) {
+      return {
+        outbox_id: row.id,
+        dispatch_state: "build-error",
+        would_send_live_request: false,
+        reason: "Failed to build ZBS request",
+        error: {
+          message: errorMessage(error),
+        },
+      }
+    }
+  })
 }
 
-/** Reads pending repair-request ZBS outbox rows from a service-role Supabase client. */
+/** Reads pending repair-request ZBS outbox rows through the RPC proxy boundary. */
 export async function readPendingZbsOutboxRows(
-  client: ZbsOutboxClient,
   options: ReadPendingZbsOutboxRowsOptions = {}
 ): Promise<ZbsNotificationOutboxRow[]> {
   const limit = options.limit ?? 25
   const now = options.now ?? new Date()
-  const result = await client
-    .from("zbs_notification_outbox")
-    .select(ZBS_PENDING_OUTBOX_SELECT)
-    .eq("status", "pending")
-    .eq("provider", "zalo_zbs")
-    .eq("event_type", "repair_request_created")
-    .eq("source_type", "repair_request")
-    .lte("next_attempt_at", now.toISOString())
-    .order("created_at", { ascending: true })
-    .limit(limit)
+  const rpcClient = options.rpcClient ?? callRpc
 
-  if (result.error) {
-    throw new Error(
-      `Failed to read pending ZBS outbox rows: ${result.error.message ?? "unknown error"}`
-    )
+  try {
+    return await rpcClient({
+      fn: ZBS_PENDING_DISPATCH_RPC,
+      args: {
+        p_limit: limit,
+        p_now: now.toISOString(),
+      },
+    })
+  } catch (error) {
+    throw new Error(`Failed to read pending ZBS outbox rows: ${errorMessage(error)}`)
   }
-
-  return result.data ?? []
 }
