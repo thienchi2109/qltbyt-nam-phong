@@ -37,6 +37,7 @@ describe("RPC proxy same-origin guard", () => {
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-secret")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
+    vi.stubEnv("CRON_SECRET", "cron-secret")
 
     getServerSessionMock.mockReset()
     jwtSignMock.mockReset()
@@ -179,6 +180,63 @@ describe("RPC proxy same-origin guard", () => {
     expect(res.status).toBe(403)
     await expect(res.json()).resolves.toEqual({
       error: "Service-role RPC not allowed",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("allows internal cron calls for ZBS service-role RPCs without a NextAuth session", async () => {
+    getServerSessionMock.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      buildRequest(
+        { p_limit: 10 },
+        {
+          authorization: "Bearer cron-secret",
+          "x-qltbyt-internal-rpc": "zbs-dispatch",
+          origin: "https://app.example.com",
+        }
+      ) as never,
+      { params: Promise.resolve({ fn: "zbs_notification_outbox_claim_for_dispatch" }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(getServerSessionMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).toHaveBeenCalledOnce()
+    expect(jwtSignMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        role: "service_role",
+        app_role: "to_qltb",
+        user_id: "zbs-dispatch-cron",
+      })
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.supabase.co/rest/v1/rpc/zbs_notification_outbox_claim_for_dispatch",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ p_limit: 10 }),
+      })
+    )
+  })
+
+  it("does not treat the cron bearer as a session bypass for non-ZBS RPCs", async () => {
+    getServerSessionMock.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      buildRequest(
+        { query: "SpO2" },
+        {
+          authorization: "Bearer cron-secret",
+          "x-qltbyt-internal-rpc": "zbs-dispatch",
+          origin: "https://app.example.com",
+        }
+      ) as never,
+      { params: Promise.resolve({ fn: "ai_equipment_lookup" }) }
+    )
+
+    expect(res.status).toBe(401)
+    await expect(res.json()).resolves.toEqual({
+      error: "Unauthorized",
     })
     expect(jwtSignMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()

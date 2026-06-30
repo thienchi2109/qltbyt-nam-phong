@@ -39,17 +39,25 @@ describe("RPC proxy whitelist", () => {
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it("allows ZBS pending-dispatch RPC through whitelist checks", async () => {
-    const res = await invokeRpcProxy("zbs_notification_outbox_pending_for_dispatch")
+  it.each([
+    "zbs_notification_outbox_pending_for_dispatch",
+    "zbs_notification_outbox_claim_for_dispatch",
+    "zbs_notification_outbox_mark_sent",
+    "zbs_notification_outbox_mark_failed",
+  ])('allows ZBS dispatch RPC "%s" through whitelist checks', async (fn) => {
+    const res = await invokeRpcProxy(fn)
 
     expect(res.status).toBe(411)
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it("keeps ZBS pending-dispatch RPC on the server-only DB role path", () => {
+  it("keeps ZBS dispatch RPCs on the server-only DB role path", () => {
     expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_pending_for_dispatch")).toBe(
       true
     )
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_claim_for_dispatch")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_sent")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_failed")).toBe(true)
     expect([...SERVICE_ROLE_RPC_FUNCTIONS].every((fn) => ALLOWED_FUNCTIONS.has(fn))).toBe(true)
   })
 

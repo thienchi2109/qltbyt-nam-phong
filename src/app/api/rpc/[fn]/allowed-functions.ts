@@ -45,6 +45,9 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "repair_request_active_for_equipment",
   // ZBS notifications
   "zbs_notification_outbox_pending_for_dispatch",
+  "zbs_notification_outbox_claim_for_dispatch",
+  "zbs_notification_outbox_mark_sent",
+  "zbs_notification_outbox_mark_failed",
   // Transfers
   "transfer_request_list",
   "transfer_request_page_data",
@@ -182,4 +185,14 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
 /** RPCs that must not be directly executable by the PostgREST `authenticated` role. */
 export const SERVICE_ROLE_RPC_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_pending_for_dispatch",
+  "zbs_notification_outbox_claim_for_dispatch",
+  "zbs_notification_outbox_mark_sent",
+  "zbs_notification_outbox_mark_failed",
+])
+
+/** Service-role ZBS dispatch RPCs callable by the cron route via CRON_SECRET only. */
+export const ZBS_CRON_RPC_FUNCTIONS = new Set<string>([
+  "zbs_notification_outbox_claim_for_dispatch",
+  "zbs_notification_outbox_mark_sent",
+  "zbs_notification_outbox_mark_failed",
 ])

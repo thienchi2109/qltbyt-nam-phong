@@ -7,7 +7,11 @@ import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
 import { sanitizeForLog } from "@/lib/log-sanitizer"
 import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
 
-import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "./allowed-functions"
+import {
+  ALLOWED_FUNCTIONS,
+  SERVICE_ROLE_RPC_FUNCTIONS,
+  ZBS_CRON_RPC_FUNCTIONS,
+} from "./allowed-functions"
 
 /** Run the RPC proxy on Node.js so JWT signing uses the server crypto stack. */
 export const runtime = "nodejs"
@@ -118,6 +122,27 @@ function canInvokeServiceRoleRpc(claims: Pick<RpcSessionClaims, "appRole">): boo
   return claims.appRole === "global" || claims.appRole === "to_qltb"
 }
 
+function isInternalZbsCronRpc(req: NextRequest, fn: string): boolean {
+  const cronSecret = process.env.CRON_SECRET
+  return (
+    Boolean(cronSecret) &&
+    ZBS_CRON_RPC_FUNCTIONS.has(fn) &&
+    req.headers.get("x-qltbyt-internal-rpc") === "zbs-dispatch" &&
+    req.headers.get("authorization") === `Bearer ${cronSecret}`
+  )
+}
+
+function getInternalZbsCronClaims(): RpcSessionClaims {
+  return {
+    role: "to_qltb",
+    donVi: "0",
+    diaBan: "0",
+    khoaPhong: "zbs-dispatch",
+    userId: "zbs-dispatch-cron",
+    appRole: "to_qltb",
+  }
+}
+
 /** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
@@ -167,18 +192,26 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
     }
 
-    // Pull claims from NextAuth session securely (no client headers trusted)
-    const session = await getServerSession(authOptions)
-    const sessionUser = getSessionUser(session)
+    const claims = isInternalZbsCronRpc(req, fn)
+      ? getInternalZbsCronClaims()
+      : await (async (): Promise<RpcSessionClaims | NextResponse> => {
+          // Pull claims from NextAuth session securely (no client headers trusted)
+          const session = await getServerSession(authOptions)
+          const sessionUser = getSessionUser(session)
 
-    // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
-    if (!sessionUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+          // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
+          if (!sessionUser) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+          }
 
-    const claims = getSessionClaims(sessionUser)
-    if (!claims) {
-      return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
+          const sessionClaims = getSessionClaims(sessionUser)
+          if (!sessionClaims) {
+            return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
+          }
+          return sessionClaims
+        })()
+    if (claims instanceof NextResponse) {
+      return claims
     }
     // (debug removed)
 

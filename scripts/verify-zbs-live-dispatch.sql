@@ -8,8 +8,8 @@ DECLARE
   v_retry_id uuid;
   v_final_retry_id uuid;
   v_final_id uuid;
+  v_stale_id uuid;
   v_claimed_count integer;
-  v_acl text;
 BEGIN
   SELECT id
     INTO v_don_vi_id
@@ -25,101 +25,145 @@ BEGIN
   VALUES (v_don_vi_id, 'repair_request_created', '84900000001', true)
   RETURNING id INTO v_recipient_id;
 
-  INSERT INTO public.zbs_notification_outbox (
-    event_type,
-    source_type,
-    source_id,
-    don_vi_id,
-    recipient_config_id,
-    recipient_phone,
-    template_id,
-    template_data,
-    tracking_id
+  WITH inserted AS (
+    INSERT INTO public.zbs_notification_outbox (
+      event_type,
+      source_type,
+      source_id,
+      don_vi_id,
+      recipient_config_id,
+      recipient_phone,
+      template_id,
+      template_data,
+      tracking_id
+    )
+    VALUES
+      (
+        'repair_request_created',
+        'repair_request',
+        -90001,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90001),
+        'verify-zbs-live-dispatch:sent'
+      ),
+      (
+        'repair_request_created',
+        'repair_request',
+        -90002,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90002),
+        'verify-zbs-live-dispatch:retry'
+      ),
+      (
+        'repair_request_created',
+        'repair_request',
+        -90003,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90003),
+        'verify-zbs-live-dispatch:final-retry'
+      ),
+      (
+        'repair_request_created',
+        'repair_request',
+        -90004,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90004),
+        'verify-zbs-live-dispatch:final'
+      ),
+      (
+        'repair_request_created',
+        'repair_request',
+        -90005,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90005),
+        'verify-zbs-live-dispatch:stale-processing'
+      )
+    RETURNING id, tracking_id
   )
-  VALUES
-    (
-      'repair_request_created',
-      'repair_request',
-      -90001,
-      v_don_vi_id,
-      v_recipient_id,
-      '84900000001',
-      'template-test',
-      jsonb_build_object('repair_request_id', -90001),
-      'verify-zbs-live-dispatch:sent'
-    ),
-    (
-      'repair_request_created',
-      'repair_request',
-      -90002,
-      v_don_vi_id,
-      v_recipient_id,
-      '84900000001',
-      'template-test',
-      jsonb_build_object('repair_request_id', -90002),
-      'verify-zbs-live-dispatch:retry'
-    ),
-    (
-      'repair_request_created',
-      'repair_request',
-      -90003,
-      v_don_vi_id,
-      v_recipient_id,
-      '84900000001',
-      'template-test',
-      jsonb_build_object('repair_request_id', -90003),
-      'verify-zbs-live-dispatch:final-retry'
-    ),
-    (
-      'repair_request_created',
-      'repair_request',
-      -90004,
-      v_don_vi_id,
-      v_recipient_id,
-      '84900000001',
-      'template-test',
-      jsonb_build_object('repair_request_id', -90004),
-      'verify-zbs-live-dispatch:final'
-    );
-
-  SELECT id INTO v_sent_id
-  FROM public.zbs_notification_outbox
-  WHERE tracking_id = 'verify-zbs-live-dispatch:sent';
-
-  SELECT id INTO v_retry_id
-  FROM public.zbs_notification_outbox
-  WHERE tracking_id = 'verify-zbs-live-dispatch:retry';
-
-  SELECT id INTO v_final_retry_id
-  FROM public.zbs_notification_outbox
-  WHERE tracking_id = 'verify-zbs-live-dispatch:final-retry';
-
-  SELECT id INTO v_final_id
-  FROM public.zbs_notification_outbox
-  WHERE tracking_id = 'verify-zbs-live-dispatch:final';
+  SELECT
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:sent'),
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:retry'),
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:final-retry'),
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:final'),
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:stale-processing')
+  INTO v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id
+  FROM (SELECT 1) AS captured;
 
   UPDATE public.zbs_notification_outbox
   SET attempt_count = 2
   WHERE id = v_final_retry_id;
 
+  UPDATE public.zbs_notification_outbox
+  SET
+    status = 'processing',
+    attempt_count = 1,
+    last_attempt_at = now() - interval '15 minutes'
+  WHERE id = v_stale_id;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    '{"role":"authenticated","app_role":"to_qltb","user_id":"verify-zbs-live-dispatch"}',
+    true
+  );
+
+  BEGIN
+    PERFORM public.zbs_notification_outbox_claim_for_dispatch(10, now(), ARRAY[v_sent_id]);
+    RAISE EXCEPTION 'claim RPC did not reject non-service_role JWT';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    '{"role":"service_role","app_role":"to_qltb","user_id":"verify-zbs-live-dispatch"}',
+    true
+  );
+
   SELECT count(*) INTO v_claimed_count
   FROM public.zbs_notification_outbox_claim_for_dispatch(
     10,
     now(),
-    ARRAY[v_sent_id, v_retry_id, v_final_retry_id, v_final_id]
+    ARRAY[v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id]
   );
 
-  IF v_claimed_count <> 4 THEN
-    RAISE EXCEPTION 'expected 4 claimed rows, got %', v_claimed_count;
+  IF v_claimed_count <> 5 THEN
+    RAISE EXCEPTION 'expected 5 claimed rows including stale processing, got %', v_claimed_count;
   END IF;
 
   IF EXISTS (
     SELECT 1
     FROM public.zbs_notification_outbox
-    WHERE id IN (v_sent_id, v_retry_id, v_final_retry_id, v_final_id)
+    WHERE id IN (v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id)
       AND status <> 'processing'
   ) THEN
     RAISE EXCEPTION 'claim did not move all targeted rows to processing';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.zbs_notification_outbox
+    WHERE id = v_stale_id
+      AND status = 'processing'
+      AND attempt_count = 2
+      AND last_attempt_at > now() - interval '1 minute'
+  ) THEN
+    RAISE EXCEPTION 'stale processing row was not reclaimed with a fresh lease';
   END IF;
 
   PERFORM public.zbs_notification_outbox_mark_sent(
@@ -198,14 +242,68 @@ BEGIN
     RAISE EXCEPTION 'non-retryable failure did not finalize row';
   END IF;
 
-  SELECT coalesce(proacl::text, '') INTO v_acl
-  FROM pg_proc p
-  JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public'
-    AND p.proname = 'zbs_notification_outbox_claim_for_dispatch';
+  IF (
+    SELECT count(*)
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN (
+        'zbs_notification_outbox_claim_for_dispatch',
+        'zbs_notification_outbox_mark_sent',
+        'zbs_notification_outbox_mark_failed'
+      )
+  ) <> 3 THEN
+    RAISE EXCEPTION 'expected exactly three ZBS live dispatch RPCs';
+  END IF;
 
-  IF v_acl !~ 'service_role=X' OR v_acl ~ 'authenticated=X' THEN
-    RAISE EXCEPTION 'claim RPC grants are not service_role-only: %', v_acl;
+  IF EXISTS (
+    WITH target AS (
+      SELECT p.oid, p.proacl, p.proowner
+      FROM pg_proc p
+      JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname IN (
+          'zbs_notification_outbox_claim_for_dispatch',
+          'zbs_notification_outbox_mark_sent',
+          'zbs_notification_outbox_mark_failed'
+        )
+    ),
+    grants AS (
+      SELECT
+        target.oid,
+        acl.grantee,
+        acl.privilege_type
+      FROM target
+      CROSS JOIN LATERAL aclexplode(coalesce(target.proacl, acldefault('f', target.proowner))) acl
+    )
+    SELECT 1
+    FROM grants
+    WHERE grants.privilege_type = 'EXECUTE'
+      AND (
+        grants.grantee = 0
+        OR grants.grantee NOT IN ('postgres'::regrole::oid, 'service_role'::regrole::oid)
+      )
+  ) THEN
+    RAISE EXCEPTION 'ZBS live dispatch RPC grants are not limited to postgres and service_role';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname IN (
+        'zbs_notification_outbox_claim_for_dispatch',
+        'zbs_notification_outbox_mark_sent',
+        'zbs_notification_outbox_mark_failed'
+      )
+      AND (
+        NOT has_function_privilege('service_role', p.oid, 'EXECUTE')
+        OR has_function_privilege('anon', p.oid, 'EXECUTE')
+        OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      )
+  ) THEN
+    RAISE EXCEPTION 'ZBS live dispatch RPC privilege allowlist check failed';
   END IF;
 END $$;
 

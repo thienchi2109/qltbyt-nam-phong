@@ -1,11 +1,26 @@
-import { createClient } from "@supabase/supabase-js"
-
 import { dispatchPendingZbsNotifications } from "@/lib/zbs/live-dispatcher"
 
 /** Keep the ZBS dispatch endpoint uncached so each cron/manual call evaluates live state. */
 export const dynamic = "force-dynamic"
-/** Use Node.js runtime for service-role Supabase RPC calls and outbound Zalo fetches. */
+/** Use Node.js runtime for internal RPC proxy calls and outbound Zalo fetches. */
 export const runtime = "nodejs"
+
+type RpcErrorPayload = {
+  error?: unknown
+  details?: unknown
+}
+
+class ZbsDispatchRpcError extends Error {
+  readonly status: number
+  readonly details?: unknown
+
+  constructor(status: number, message: string, details?: unknown) {
+    super(message)
+    this.name = "ZbsDispatchRpcError"
+    this.status = status
+    this.details = details
+  }
+}
 
 function jsonResponse(body: unknown, status: number): Response {
   return Response.json(body, { status })
@@ -30,11 +45,85 @@ function readOutboxIds(request: Request): string[] | undefined {
   return ids.length > 0 ? ids : undefined
 }
 
-function readSupabaseEnv(): { supabaseUrl: string; serviceRoleKey: string } | null {
-  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+function parseRpcErrorPayload(payload: unknown): RpcErrorPayload {
+  return payload && typeof payload === "object" && !Array.isArray(payload)
+    ? (payload as RpcErrorPayload)
+    : {}
+}
 
-  return supabaseUrl && serviceRoleKey ? { supabaseUrl, serviceRoleKey } : null
+function errorPayloadMessage(payload: RpcErrorPayload): string {
+  if (typeof payload.error === "string") {
+    return payload.error
+  }
+
+  if (
+    payload.error &&
+    typeof payload.error === "object" &&
+    "message" in payload.error &&
+    typeof payload.error.message === "string"
+  ) {
+    return payload.error.message
+  }
+
+  return "ZBS dispatch RPC failed"
+}
+
+function errorPayloadDetails(payload: RpcErrorPayload): unknown {
+  if (payload.details !== undefined) {
+    return payload.details
+  }
+
+  if (payload.error && typeof payload.error === "object" && "details" in payload.error) {
+    return payload.error.details
+  }
+
+  return undefined
+}
+
+async function readJsonResponse(response: Response): Promise<unknown> {
+  const text = await response.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+async function callRpcProxyFromCron(
+  request: Request,
+  cronSecret: string,
+  { fn, args }: { fn: string; args: Record<string, unknown> }
+): Promise<unknown> {
+  const rpcUrl = new URL(`/api/rpc/${encodeURIComponent(fn)}`, request.url)
+  const body = JSON.stringify(args)
+  const response = await fetch(rpcUrl.toString(), {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${cronSecret}`,
+      "Content-Type": "application/json",
+      "Content-Length": String(Buffer.byteLength(body)),
+      Origin: rpcUrl.origin,
+      "x-qltbyt-internal-rpc": "zbs-dispatch",
+    },
+    body,
+  })
+  const payload = await readJsonResponse(response)
+
+  if (!response.ok) {
+    const errorPayload = parseRpcErrorPayload(payload)
+    throw new ZbsDispatchRpcError(
+      response.status,
+      errorPayloadMessage(errorPayload),
+      errorPayloadDetails(errorPayload)
+    )
+  }
+
+  return payload
 }
 
 /** Runs one guarded ZBS dispatch batch for cron/manual operations. */
@@ -56,19 +145,6 @@ export async function GET(request: Request): Promise<Response> {
     return jsonResponse({ error: "Unauthorized" }, 401)
   }
 
-  const supabaseEnv = readSupabaseEnv()
-  if (!supabaseEnv) {
-    console.error("Missing ZBS dispatch Supabase environment variables")
-    return jsonResponse(
-      { error: "Server configuration error: missing required environment variables" },
-      500
-    )
-  }
-
-  const supabase = createClient(supabaseEnv.supabaseUrl, supabaseEnv.serviceRoleKey, {
-    auth: { persistSession: false },
-  })
-
   try {
     const result = await dispatchPendingZbsNotifications({
       dispatchEnabled: readDispatchEnabled(),
@@ -76,18 +152,21 @@ export async function GET(request: Request): Promise<Response> {
       repairTemplateId: process.env.ZALO_ZBS_REPAIR_TEMPLATE_ID,
       appBaseUrl: readAppBaseUrl(),
       outboxIds: readOutboxIds(request),
-      rpcClient: async ({ fn, args }) => {
-        const { data, error } = await supabase.rpc(fn, args)
-        if (error) {
-          throw new Error(error.message || "ZBS dispatch RPC failed")
-        }
-        return data
-      },
+      rpcClient: (rpcRequest) => callRpcProxyFromCron(request, cronSecret, rpcRequest),
     })
 
     return jsonResponse({ success: true, result }, 200)
-  } catch {
+  } catch (error) {
     console.error("ZBS dispatch cron failed")
+    if (error instanceof ZbsDispatchRpcError) {
+      return jsonResponse(
+        {
+          error: "ZBS dispatch failed",
+          ...(error.details === undefined ? {} : { details: error.details }),
+        },
+        error.status
+      )
+    }
     return jsonResponse({ error: "ZBS dispatch failed" }, 500)
   }
 }

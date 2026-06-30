@@ -7,6 +7,7 @@ const supabaseMocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   rpc: vi.fn(),
 }))
+const fetchMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/zbs/live-dispatcher", () => ({
   dispatchPendingZbsNotifications: dispatcherMocks.dispatchPendingZbsNotifications,
@@ -33,11 +34,11 @@ describe("/api/cron/zbs-dispatch", () => {
     supabaseMocks.createClient.mockReset()
     supabaseMocks.rpc.mockReset()
     supabaseMocks.createClient.mockReturnValue({ rpc: supabaseMocks.rpc })
+    fetchMock.mockReset()
+    vi.stubGlobal("fetch", fetchMock)
     process.env = {
       ...ORIGINAL_ENV,
       CRON_SECRET: "cron-secret",
-      SUPABASE_URL: "https://example.supabase.co",
-      SUPABASE_SERVICE_ROLE_KEY: "service-role-secret",
       ZALO_ZBS_DISPATCH_ENABLED: "false",
       ZALO_ZBS_ACCESS_TOKEN: "zalo-access-token",
       ZALO_ZBS_REPAIR_TEMPLATE_ID: "template-123",
@@ -47,6 +48,7 @@ describe("/api/cron/zbs-dispatch", () => {
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV }
+    vi.unstubAllGlobals()
   })
 
   it("rejects requests without the cron bearer token", async () => {
@@ -60,7 +62,7 @@ describe("/api/cron/zbs-dispatch", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized" })
   })
 
-  it("invokes the dispatcher with disabled gate config and targeted outbox ids", async () => {
+  it("invokes the dispatcher through the internal RPC proxy with disabled gate config and targeted outbox ids", async () => {
     dispatcherMocks.dispatchPendingZbsNotifications.mockResolvedValue({
       dispatch_state: "disabled-dispatch",
       attempted: 0,
@@ -79,11 +81,7 @@ describe("/api/cron/zbs-dispatch", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(supabaseMocks.createClient).toHaveBeenCalledWith(
-      "https://example.supabase.co",
-      "service-role-secret",
-      { auth: { persistSession: false } }
-    )
+    expect(supabaseMocks.createClient).not.toHaveBeenCalled()
     expect(dispatcherMocks.dispatchPendingZbsNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
         dispatchEnabled: false,
@@ -104,6 +102,101 @@ describe("/api/cron/zbs-dispatch", () => {
         failed: 0,
         results: [],
       },
+    })
+  })
+
+  it("calls the RPC proxy with cron credentials when the dispatcher uses rpcClient", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ id: "outbox-1" }]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    )
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      const rows = await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_limit: 1 },
+      })
+      return {
+        dispatch_state: "live-dispatch",
+        attempted: Array.isArray(rows) ? rows.length : 0,
+        sent: 0,
+        retryable_failed: 0,
+        failed: 0,
+        results: [],
+      }
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer cron-secret",
+          "Content-Type": "application/json",
+          "Content-Length": String(Buffer.byteLength(JSON.stringify({ p_limit: 1 }))),
+          Origin: "https://example.test",
+          "x-qltbyt-internal-rpc": "zbs-dispatch",
+        }),
+        body: JSON.stringify({ p_limit: 1 }),
+      })
+    )
+    await expect(response.json()).resolves.toEqual({
+      success: true,
+      result: {
+        dispatch_state: "live-dispatch",
+        attempted: 1,
+        sent: 0,
+        retryable_failed: 0,
+        failed: 0,
+        results: [],
+      },
+    })
+  })
+
+  it("preserves structured RPC failure details in the cron response", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          error: {
+            message: "Validation failed",
+            details: { code: "bad_zbs_claim", field: "p_outbox_ids" },
+          },
+        }),
+        {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        }
+      )
+    )
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_outbox_ids: ["not-a-uuid"] },
+      })
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toEqual({
+      error: "ZBS dispatch failed",
+      details: { code: "bad_zbs_claim", field: "p_outbox_ids" },
     })
   })
 
