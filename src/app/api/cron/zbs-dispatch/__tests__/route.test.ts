@@ -29,6 +29,7 @@ describe("/api/cron/zbs-dispatch", () => {
     process.env = {
       ...ORIGINAL_ENV,
       CRON_SECRET: "cron-secret",
+      SUPABASE_JWT_SECRET: "test-jwt-secret",
       ZALO_ZBS_DISPATCH_ENABLED: "false",
       ZALO_ZBS_ACCESS_TOKEN: "zalo-access-token",
       ZALO_ZBS_REPAIR_TEMPLATE_ID: "template-123",
@@ -39,6 +40,7 @@ describe("/api/cron/zbs-dispatch", () => {
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV }
     vi.unstubAllGlobals()
+    vi.useRealTimers()
   })
 
   it("rejects requests without the cron bearer token", async () => {
@@ -135,7 +137,10 @@ describe("/api/cron/zbs-dispatch", () => {
           "Content-Length": String(Buffer.byteLength(JSON.stringify({ p_limit: 1 }))),
           Origin: "https://example.test",
           "x-qltbyt-internal-rpc": "zbs-dispatch",
+          "x-qltbyt-internal-rpc-signature": expect.any(String),
+          "x-qltbyt-internal-rpc-timestamp": expect.any(String),
         }),
+        signal: expect.any(AbortSignal),
         body: JSON.stringify({ p_limit: 1 }),
       })
     )
@@ -150,6 +155,45 @@ describe("/api/cron/zbs-dispatch", () => {
         results: [],
       },
     })
+  })
+
+  it("aborts hung internal RPC proxy calls", async () => {
+    vi.useFakeTimers()
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    fetchMock.mockImplementationOnce((_url: string, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new Error("internal rpc request aborted"))
+        })
+      })
+    })
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_limit: 1 },
+      })
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const responsePromise = mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+    await vi.advanceTimersByTimeAsync(10_000)
+    const response = await responsePromise
+
+    expect(response.status).toBe(500)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      })
+    )
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    consoleErrorSpy.mockRestore()
+    vi.useRealTimers()
   })
 
   it("preserves structured RPC failure details in the cron response", async () => {
@@ -254,7 +298,6 @@ describe("/api/cron/zbs-dispatch", () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith("ZBS dispatch cron failed", {
       error: {
         name: "Error",
-        message: dispatchError.message,
       },
     })
     await expect(response.json()).resolves.toEqual({ error: "Internal server error" })

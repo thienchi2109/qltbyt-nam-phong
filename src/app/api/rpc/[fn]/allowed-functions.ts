@@ -190,7 +190,7 @@ export const SERVICE_ROLE_RPC_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_mark_failed",
 ])
 
-/** Service-role ZBS dispatch RPCs callable by the cron route via CRON_SECRET only. */
+/** Service-role ZBS dispatch RPCs callable only through the signed internal cron path. */
 export const ZBS_CRON_RPC_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_claim_for_dispatch",
   "zbs_notification_outbox_mark_sent",

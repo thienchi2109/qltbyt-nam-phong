@@ -188,6 +188,7 @@ async function markSent(
     fn: ZBS_MARK_SENT_RPC,
     args: {
       p_id: row.id,
+      p_claimed_at: row.last_attempt_at ?? null,
       p_provider_message_id: success.providerMessageId,
       p_sent_at: success.sentAt,
       p_provider_response: success.providerResponse,
@@ -204,6 +205,7 @@ async function markFailed(
     fn: ZBS_MARK_FAILED_RPC,
     args: {
       p_id: row.id,
+      p_claimed_at: row.last_attempt_at ?? null,
       p_retryable: failure.retryable,
       p_error_code: failure.code,
       p_error_message: failure.message,
@@ -323,6 +325,15 @@ async function dispatchRow(
   }
 }
 
+function failedDispatchRowResult(row: ZbsNotificationOutboxRow): ZbsDispatchResult {
+  return {
+    outbox_id: row.id,
+    status: "failed",
+    error_code: "dispatch_row_error",
+    error_message: "Unexpected ZBS dispatch row failure",
+  }
+}
+
 async function dispatchRowsInChunks(
   rows: ZbsNotificationOutboxRow[],
   options: Parameters<typeof dispatchRow>[1]
@@ -331,7 +342,12 @@ async function dispatchRowsInChunks(
 
   for (let index = 0; index < rows.length; index += ZALO_ZBS_DISPATCH_CONCURRENCY) {
     const chunk = rows.slice(index, index + ZALO_ZBS_DISPATCH_CONCURRENCY)
-    results.push(...(await Promise.all(chunk.map((row) => dispatchRow(row, options)))))
+    const settledResults = await Promise.allSettled(chunk.map((row) => dispatchRow(row, options)))
+    results.push(
+      ...settledResults.map((result, resultIndex) =>
+        result.status === "fulfilled" ? result.value : failedDispatchRowResult(chunk[resultIndex])
+      )
+    )
   }
 
   return results

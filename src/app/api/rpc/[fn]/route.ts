@@ -6,6 +6,13 @@ import { toAppRoleClaim } from "@/auth/server-claims"
 import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
 import { sanitizeForLog } from "@/lib/log-sanitizer"
 import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
+import {
+  ZBS_INTERNAL_RPC_SIGNATURE_HEADER,
+  ZBS_INTERNAL_RPC_SOURCE,
+  ZBS_INTERNAL_RPC_SOURCE_HEADER,
+  ZBS_INTERNAL_RPC_TIMESTAMP_HEADER,
+  isValidZbsInternalRpcSignature,
+} from "@/lib/zbs/internal-rpc-signature"
 
 import {
   ALLOWED_FUNCTIONS,
@@ -122,13 +129,23 @@ function canInvokeServiceRoleRpc(claims: Pick<RpcSessionClaims, "appRole">): boo
   return claims.appRole === "global" || claims.appRole === "to_qltb"
 }
 
+function readInternalRpcSigningSecret() {
+  return process.env.ZBS_INTERNAL_RPC_SECRET ?? process.env.SUPABASE_JWT_SECRET
+}
+
 function isInternalZbsCronRpc(req: NextRequest, fn: string): boolean {
   const cronSecret = process.env.CRON_SECRET
   return (
     Boolean(cronSecret) &&
     ZBS_CRON_RPC_FUNCTIONS.has(fn) &&
-    req.headers.get("x-qltbyt-internal-rpc") === "zbs-dispatch" &&
-    req.headers.get("authorization") === `Bearer ${cronSecret}`
+    req.headers.get(ZBS_INTERNAL_RPC_SOURCE_HEADER) === ZBS_INTERNAL_RPC_SOURCE &&
+    req.headers.get("authorization") === `Bearer ${cronSecret}` &&
+    isValidZbsInternalRpcSignature({
+      secret: readInternalRpcSigningSecret(),
+      fn,
+      timestamp: req.headers.get(ZBS_INTERNAL_RPC_TIMESTAMP_HEADER),
+      signature: req.headers.get(ZBS_INTERNAL_RPC_SIGNATURE_HEADER),
+    })
   )
 }
 
@@ -158,6 +175,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     if (!ALLOWED_FUNCTIONS.has(fn)) {
       return NextResponse.json({ error: "Function not allowed" }, { status: 403 })
+    }
+
+    const isInternalZbsCron = isInternalZbsCronRpc(req, fn)
+    if (ZBS_CRON_RPC_FUNCTIONS.has(fn) && !isInternalZbsCron) {
+      return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
     }
 
     // SECURITY: Enforce body size limit BEFORE buffering/parsing to prevent DoS
@@ -192,7 +214,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
     }
 
-    const claims = isInternalZbsCronRpc(req, fn)
+    const claims = isInternalZbsCron
       ? getInternalZbsCronClaims()
       : await (async (): Promise<RpcSessionClaims | NextResponse> => {
           // Pull claims from NextAuth session securely (no client headers trusted)

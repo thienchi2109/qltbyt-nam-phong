@@ -10,6 +10,17 @@ DECLARE
   v_final_id uuid;
   v_stale_id uuid;
   v_claimed_count integer;
+  v_sent_claimed_at timestamptz;
+  v_retry_claimed_at timestamptz;
+  v_final_retry_claimed_at timestamptz;
+  v_final_claimed_at timestamptz;
+  v_stale_claimed_at timestamptz;
+  v_stale_reclaimed_at timestamptz;
+  v_target_rpcs regprocedure[] := ARRAY[
+    'public.zbs_notification_outbox_claim_for_dispatch(integer,timestamptz,uuid[])'::regprocedure,
+    'public.zbs_notification_outbox_mark_sent(uuid,timestamptz,text,timestamptz,jsonb)'::regprocedure,
+    'public.zbs_notification_outbox_mark_failed(uuid,timestamptz,boolean,text,text,jsonb)'::regprocedure
+  ];
 BEGIN
   SELECT id
     INTO v_don_vi_id
@@ -129,6 +140,35 @@ BEGIN
       NULL;
   END;
 
+  BEGIN
+    PERFORM public.zbs_notification_outbox_mark_sent(
+      v_sent_id,
+      now(),
+      'provider-msg-forbidden',
+      now(),
+      '{}'::jsonb
+    );
+    RAISE EXCEPTION 'mark_sent RPC did not reject non-service_role JWT';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
+
+  BEGIN
+    PERFORM public.zbs_notification_outbox_mark_failed(
+      v_retry_id,
+      now(),
+      true,
+      'http_503',
+      'temporary outage',
+      '{}'::jsonb
+    );
+    RAISE EXCEPTION 'mark_failed RPC did not reject non-service_role JWT';
+  EXCEPTION
+    WHEN insufficient_privilege THEN
+      NULL;
+  END;
+
   PERFORM set_config(
     'request.jwt.claims',
     '{"role":"service_role","app_role":"to_qltb","user_id":"verify-zbs-live-dispatch"}',
@@ -137,10 +177,25 @@ BEGIN
 
   SELECT count(*) INTO v_claimed_count
   FROM public.zbs_notification_outbox_claim_for_dispatch(
+    0,
+    now(),
+    ARRAY[v_sent_id]
+  );
+
+  IF v_claimed_count <> 0 THEN
+    RAISE EXCEPTION 'expected explicit p_limit=0 to claim no rows, got %', v_claimed_count;
+  END IF;
+
+  CREATE TEMP TABLE zbs_live_dispatch_claimed ON COMMIT DROP AS
+  SELECT *
+  FROM public.zbs_notification_outbox_claim_for_dispatch(
     10,
     now(),
     ARRAY[v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id]
   );
+
+  SELECT count(*) INTO v_claimed_count
+  FROM zbs_live_dispatch_claimed;
 
   IF v_claimed_count <> 5 THEN
     RAISE EXCEPTION 'expected 5 claimed rows including stale processing, got %', v_claimed_count;
@@ -166,8 +221,61 @@ BEGIN
     RAISE EXCEPTION 'stale processing row was not reclaimed with a fresh lease';
   END IF;
 
+  SELECT
+    (SELECT last_attempt_at FROM zbs_live_dispatch_claimed WHERE id = v_sent_id),
+    (SELECT last_attempt_at FROM zbs_live_dispatch_claimed WHERE id = v_retry_id),
+    (SELECT last_attempt_at FROM zbs_live_dispatch_claimed WHERE id = v_final_retry_id),
+    (SELECT last_attempt_at FROM zbs_live_dispatch_claimed WHERE id = v_final_id),
+    (SELECT last_attempt_at FROM zbs_live_dispatch_claimed WHERE id = v_stale_id)
+  INTO
+    v_sent_claimed_at,
+    v_retry_claimed_at,
+    v_final_retry_claimed_at,
+    v_final_claimed_at,
+    v_stale_claimed_at;
+
+  IF v_sent_claimed_at IS NULL
+    OR v_retry_claimed_at IS NULL
+    OR v_final_retry_claimed_at IS NULL
+    OR v_final_claimed_at IS NULL
+    OR v_stale_claimed_at IS NULL THEN
+    RAISE EXCEPTION 'claim RPC did not return lease timestamps';
+  END IF;
+
+  UPDATE public.zbs_notification_outbox
+  SET last_attempt_at = v_stale_claimed_at - interval '15 minutes'
+  WHERE id = v_stale_id;
+
+  SELECT last_attempt_at INTO v_stale_reclaimed_at
+  FROM public.zbs_notification_outbox_claim_for_dispatch(
+    1,
+    v_stale_claimed_at + interval '20 minutes',
+    ARRAY[v_stale_id]
+  )
+  LIMIT 1;
+
+  IF v_stale_reclaimed_at IS NULL OR v_stale_reclaimed_at = v_stale_claimed_at THEN
+    RAISE EXCEPTION 'stale processing row was not reclaimed with a new lease timestamp';
+  END IF;
+
+  BEGIN
+    PERFORM public.zbs_notification_outbox_mark_failed(
+      v_stale_id,
+      v_stale_claimed_at,
+      false,
+      'stale_lease',
+      'old dispatcher finished late',
+      '{}'::jsonb
+    );
+    RAISE EXCEPTION 'mark_failed accepted a stale processing lease';
+  EXCEPTION
+    WHEN no_data_found THEN
+      NULL;
+  END;
+
   PERFORM public.zbs_notification_outbox_mark_sent(
     v_sent_id,
+    v_sent_claimed_at,
     'provider-msg-1',
     now(),
     jsonb_build_object('error', 0, 'data', jsonb_build_object('msg_id', 'provider-msg-1'))
@@ -187,6 +295,7 @@ BEGIN
 
   PERFORM public.zbs_notification_outbox_mark_failed(
     v_retry_id,
+    v_retry_claimed_at,
     true,
     'http_503',
     'temporary outage',
@@ -207,6 +316,7 @@ BEGIN
 
   PERFORM public.zbs_notification_outbox_mark_failed(
     v_final_retry_id,
+    v_final_retry_claimed_at,
     true,
     'http_503',
     'too many attempts',
@@ -226,6 +336,7 @@ BEGIN
 
   PERFORM public.zbs_notification_outbox_mark_failed(
     v_final_id,
+    v_final_claimed_at,
     false,
     'zalo_-1121',
     'issue_summary data breaks max length',
@@ -244,14 +355,8 @@ BEGIN
 
   IF (
     SELECT count(*)
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname IN (
-        'zbs_notification_outbox_claim_for_dispatch',
-        'zbs_notification_outbox_mark_sent',
-        'zbs_notification_outbox_mark_failed'
-      )
+    FROM unnest(v_target_rpcs) AS target(fn)
+    JOIN pg_proc p ON p.oid = target.fn::oid
   ) <> 3 THEN
     RAISE EXCEPTION 'expected exactly three ZBS live dispatch RPCs';
   END IF;
@@ -259,14 +364,8 @@ BEGIN
   IF EXISTS (
     WITH target AS (
       SELECT p.oid, p.proacl, p.proowner
-      FROM pg_proc p
-      JOIN pg_namespace n ON n.oid = p.pronamespace
-      WHERE n.nspname = 'public'
-        AND p.proname IN (
-          'zbs_notification_outbox_claim_for_dispatch',
-          'zbs_notification_outbox_mark_sent',
-          'zbs_notification_outbox_mark_failed'
-        )
+      FROM unnest(v_target_rpcs) AS target(fn)
+      JOIN pg_proc p ON p.oid = target.fn::oid
     ),
     grants AS (
       SELECT
@@ -290,13 +389,7 @@ BEGIN
   IF EXISTS (
     SELECT 1
     FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.proname IN (
-        'zbs_notification_outbox_claim_for_dispatch',
-        'zbs_notification_outbox_mark_sent',
-        'zbs_notification_outbox_mark_failed'
-      )
+    JOIN unnest(v_target_rpcs) AS target(fn) ON p.oid = target.fn::oid
       AND (
         NOT has_function_privilege('service_role', p.oid, 'EXECUTE')
         OR has_function_privilege('anon', p.oid, 'EXECUTE')

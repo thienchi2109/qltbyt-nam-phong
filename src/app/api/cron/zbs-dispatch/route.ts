@@ -1,5 +1,11 @@
 import { dispatchPendingZbsNotifications } from "@/lib/zbs/live-dispatcher"
-import { sanitizeForLog } from "@/lib/log-sanitizer"
+import {
+  ZBS_INTERNAL_RPC_SIGNATURE_HEADER,
+  ZBS_INTERNAL_RPC_SOURCE,
+  ZBS_INTERNAL_RPC_SOURCE_HEADER,
+  ZBS_INTERNAL_RPC_TIMESTAMP_HEADER,
+  signZbsInternalRpc,
+} from "@/lib/zbs/internal-rpc-signature"
 
 /** Keep the ZBS dispatch endpoint uncached so each cron/manual call evaluates live state. */
 export const dynamic = "force-dynamic"
@@ -10,6 +16,8 @@ type RpcErrorPayload = {
   error?: unknown
   details?: unknown
 }
+
+const INTERNAL_RPC_FETCH_TIMEOUT_MS = 10_000
 
 class ZbsDispatchRpcError extends Error {
   readonly status: number
@@ -38,6 +46,10 @@ function readDispatchEnabled() {
 function readAppBaseUrl() {
   const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
   return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? vercelUrl
+}
+
+function readInternalRpcSigningSecret() {
+  return process.env.ZBS_INTERNAL_RPC_SECRET ?? process.env.SUPABASE_JWT_SECRET
 }
 
 function readOutboxIds(request: Request): string[] | undefined {
@@ -85,6 +97,21 @@ function errorPayloadDetails(payload: RpcErrorPayload): unknown {
   return undefined
 }
 
+function cronErrorLogMetadata(error: unknown): Record<string, unknown> {
+  if (error instanceof ZbsDispatchRpcError) {
+    return {
+      name: error.name,
+      status: error.status,
+    }
+  }
+
+  if (error instanceof Error) {
+    return { name: error.name }
+  }
+
+  return { name: typeof error }
+}
+
 async function readJsonResponse(response: Response): Promise<unknown> {
   const text = await response.text()
   if (!text) {
@@ -105,19 +132,36 @@ async function callRpcProxyFromCron(
 ): Promise<unknown> {
   const rpcUrl = new URL(`/api/rpc/${encodeURIComponent(fn)}`, request.url)
   const body = JSON.stringify(args)
-  const response = await fetch(rpcUrl.toString(), {
-    method: "POST",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${cronSecret}`,
-      "Content-Type": "application/json",
-      "Content-Length": String(Buffer.byteLength(body)),
-      Origin: rpcUrl.origin,
-      "x-qltbyt-internal-rpc": "zbs-dispatch",
-    },
-    body,
-  })
-  const payload = await readJsonResponse(response)
+  const signingSecret = readInternalRpcSigningSecret()
+  if (!signingSecret) {
+    throw new Error("Missing ZBS internal RPC signing secret")
+  }
+  const timestamp = String(Date.now())
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), INTERNAL_RPC_FETCH_TIMEOUT_MS)
+
+  let response: Response
+  let payload: unknown
+  try {
+    response = await fetch(rpcUrl.toString(), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+        "Content-Type": "application/json",
+        "Content-Length": String(Buffer.byteLength(body)),
+        Origin: rpcUrl.origin,
+        [ZBS_INTERNAL_RPC_SOURCE_HEADER]: ZBS_INTERNAL_RPC_SOURCE,
+        [ZBS_INTERNAL_RPC_TIMESTAMP_HEADER]: timestamp,
+        [ZBS_INTERNAL_RPC_SIGNATURE_HEADER]: signZbsInternalRpc(signingSecret, fn, timestamp),
+      },
+      body,
+      signal: controller.signal,
+    })
+    payload = await readJsonResponse(response)
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   if (!response.ok) {
     const errorPayload = parseRpcErrorPayload(payload)
@@ -159,7 +203,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return jsonResponse({ success: true, result }, 200)
   } catch (error) {
-    console.error("ZBS dispatch cron failed", { error: sanitizeForLog(error) })
+    console.error("ZBS dispatch cron failed", { error: cronErrorLogMetadata(error) })
     if (error instanceof ZbsDispatchRpcError) {
       if (error.status >= 500) {
         return internalServerErrorResponse(error.status)

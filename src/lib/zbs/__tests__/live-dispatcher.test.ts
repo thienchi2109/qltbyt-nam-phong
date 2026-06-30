@@ -19,6 +19,7 @@ const baseOutboxRow = {
   tracking_id: "repair_request:42:recipient-1",
   status: "pending",
   provider: "zalo_zbs",
+  last_attempt_at: "2026-06-30T08:00:00.000Z",
   next_attempt_at: "2026-06-30T00:00:00.000Z",
   template_data: {
     repair_request_id: 42,
@@ -119,6 +120,7 @@ describe("dispatchPendingZbsNotifications", () => {
       fn: ZBS_MARK_SENT_RPC,
       args: {
         p_id: "outbox-1",
+        p_claimed_at: "2026-06-30T08:00:00.000Z",
         p_provider_message_id: "zalo-message-1",
         p_sent_at: "2026-06-30T08:00:01.000Z",
         p_provider_response: {
@@ -269,6 +271,7 @@ describe("dispatchPendingZbsNotifications", () => {
       fn: ZBS_MARK_FAILED_RPC,
       args: {
         p_id: "outbox-1",
+        p_claimed_at: "2026-06-30T08:00:00.000Z",
         p_retryable: false,
         p_error_code: "invalid_provider_response",
         p_error_message: "Missing Zalo provider msg_id",
@@ -321,6 +324,7 @@ describe("dispatchPendingZbsNotifications", () => {
       fn: ZBS_MARK_FAILED_RPC,
       args: {
         p_id: "invalid-row",
+        p_claimed_at: "2026-06-30T08:00:00.000Z",
         p_retryable: false,
         p_error_code: "invalid_template_request",
         p_error_message: "Invalid ZBS recipient phone",
@@ -443,6 +447,52 @@ describe("dispatchPendingZbsNotifications", () => {
       results: [
         { outbox_id: "outbox-1", status: "sent" },
         { outbox_id: "outbox-2", status: "sent" },
+      ],
+    })
+  })
+
+  it("isolates unexpected row-level failures without aborting the remaining chunk", async () => {
+    const rejectedRow = { ...baseOutboxRow, id: "rejected-row", tracking_id: "rejected" }
+    const successRow = { ...baseOutboxRow, id: "success-row", tracking_id: "success" }
+    const rpcClient = vi.fn().mockImplementation(async ({ fn, args }) => {
+      if (fn === ZBS_CLAIM_DISPATCH_RPC) {
+        return [rejectedRow, successRow]
+      }
+      if (args.p_id === "rejected-row") {
+        throw new Error("provider token should not leak")
+      }
+      return [{ id: "updated" }]
+    })
+    const fetchImpl = vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: 0, data: { msg_id: "zalo-message" } }), {
+          status: 200,
+        })
+      )
+    )
+
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(result).toMatchObject({
+      attempted: 2,
+      sent: 1,
+      failed: 1,
+      results: [
+        {
+          outbox_id: "rejected-row",
+          status: "failed",
+          error_code: "dispatch_row_error",
+          error_message: "Unexpected ZBS dispatch row failure",
+        },
+        { outbox_id: "success-row", status: "sent" },
       ],
     })
   })

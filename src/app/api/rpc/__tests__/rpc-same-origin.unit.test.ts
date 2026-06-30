@@ -17,6 +17,7 @@ vi.mock("jsonwebtoken", () => ({
 }))
 
 import { POST } from "@/app/api/rpc/[fn]/route"
+import { signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
 
 function buildRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   const encodedBody = JSON.stringify(body)
@@ -30,6 +31,16 @@ function buildRequest(body: Record<string, unknown>, headers: Record<string, str
     },
     body: encodedBody,
   })
+}
+
+function signedInternalCronHeaders(fn: string) {
+  const timestamp = String(Date.now())
+  return {
+    authorization: "Bearer cron-secret",
+    "x-qltbyt-internal-rpc": "zbs-dispatch",
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc("test-secret", fn, timestamp),
+    "x-qltbyt-internal-rpc-timestamp": timestamp,
+  }
 }
 
 describe("RPC proxy same-origin guard", () => {
@@ -192,8 +203,7 @@ describe("RPC proxy same-origin guard", () => {
       buildRequest(
         { p_limit: 10 },
         {
-          authorization: "Bearer cron-secret",
-          "x-qltbyt-internal-rpc": "zbs-dispatch",
+          ...signedInternalCronHeaders("zbs_notification_outbox_claim_for_dispatch"),
           origin: "https://app.example.com",
         }
       ) as never,
