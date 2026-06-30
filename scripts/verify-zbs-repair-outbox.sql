@@ -23,6 +23,20 @@ begin
     raise exception 'missing public.zbs_notification_outbox';
   end if;
 
+  if exists (
+    select 1
+    from pg_trigger t
+    join pg_class c on c.oid = t.tgrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'yeu_cau_sua_chua'
+      and t.tgname = 'on_repair_request_created'
+      and t.tgenabled <> 'D'
+      and not t.tgisinternal
+  ) then
+    raise exception 'legacy repair request push trigger must be disabled before ZBS outbox dispatch';
+  end if;
+
   insert into public.don_vi (id, code, name, active)
   values
     (v_fac_a, 'ZBS-FAC-A-618', 'ZBS Facility A 618', true),
