@@ -139,6 +139,28 @@ describe("RPC proxy same-origin guard", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("rejects missing required session claims before JWT minting", async () => {
+    getServerSessionMock.mockResolvedValueOnce({
+      user: {
+        role: "to_qltb",
+        don_vi: 17,
+        dia_ban_id: 10,
+        khoa_phong: "ICU",
+      },
+    })
+
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
+    })
+
+    expect(res.status).toBe(400)
+    await expect(res.json()).resolves.toEqual({
+      error: "Invalid session claims",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("rejects service-role RPCs before JWT minting for non-maintenance roles", async () => {
     getServerSessionMock.mockResolvedValueOnce({
       user: {

@@ -52,7 +52,7 @@ function getSessionUser(session: unknown): RpcProxySessionUser | null {
 
 function sessionClaimValue(value: unknown): string | null {
   if (value == null) {
-    return ""
+    return null
   }
 
   if (typeof value === "string" || typeof value === "number") {
