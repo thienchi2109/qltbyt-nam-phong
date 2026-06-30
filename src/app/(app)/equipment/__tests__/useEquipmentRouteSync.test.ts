@@ -132,15 +132,24 @@ describe("useEquipmentRouteSync", () => {
           onFacilityParamHydrated: hydrateFacility,
           selectedFacilityId,
         }),
-      { initialProps: { selectedFacilityId: 101 } }
+      { initialProps: { selectedFacilityId: undefined } }
     )
+
+    await waitFor(() => {
+      expect(hydrateFacility).toHaveBeenCalledWith(101)
+    })
+    expect(hydrateSearch).not.toHaveBeenCalled()
+
+    hydrateFacility.mockClear()
+
+    rerender({ selectedFacilityId: 101 })
 
     await waitFor(() => {
       expect(hydrateSearch).toHaveBeenCalledWith("monitor")
     })
+    expect(hydrateFacility).not.toHaveBeenCalled()
 
     hydrateSearch.mockClear()
-    hydrateFacility.mockClear()
 
     rerender({ selectedFacilityId: 202 })
 

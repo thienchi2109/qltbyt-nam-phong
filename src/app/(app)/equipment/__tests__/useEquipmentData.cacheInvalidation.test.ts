@@ -1,6 +1,6 @@
 import * as React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { renderHook, waitFor } from "@testing-library/react"
+import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mockCallRpc = vi.hoisted(() => vi.fn())
@@ -19,31 +19,24 @@ vi.mock("@/hooks/use-usage-logs", () => ({
 import { useEquipmentData } from "../_hooks/useEquipmentData"
 import type { UseEquipmentDataParams } from "../_hooks/useEquipmentData"
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  })
+type QueryPredicate = (query: { readonly queryKey: readonly unknown[] }) => boolean
 
+function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { readonly children: React.ReactNode }) {
     return React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 }
 
-function createRegionalLeaderParams(
-  overrides?: Partial<UseEquipmentDataParams>
-): UseEquipmentDataParams {
+function createParams(overrides?: Partial<UseEquipmentDataParams>): UseEquipmentDataParams {
   return {
     isGlobal: false,
-    isRegionalLeader: true,
-    userRole: "regional_leader",
-    userDiaBanId: 10,
+    isRegionalLeader: false,
+    userRole: "user",
+    userDiaBanId: undefined,
     shouldFetchEquipment: true,
-    effectiveTenantKey: "regional-10",
-    selectedDonVi: null,
-    currentTenantId: null,
+    effectiveTenantKey: "5",
+    selectedDonVi: 5,
+    currentTenantId: 5,
     debouncedSearch: "",
     sortParam: "id.asc",
     pagination: { pageIndex: 0, pageSize: 20 },
@@ -53,15 +46,15 @@ function createRegionalLeaderParams(
     selectedStatuses: [],
     selectedClassifications: [],
     selectedFundingSources: [],
-    selectedFacilityId: null,
-    showSelector: true,
+    selectedFacilityId: undefined,
+    showSelector: false,
     facilities: [],
     isFacilitiesLoading: false,
     ...overrides,
   }
 }
 
-describe("useEquipmentData regional leader facility scope", () => {
+describe("useEquipmentData cache invalidation", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
@@ -78,35 +71,38 @@ describe("useEquipmentData regional leader facility scope", () => {
     })
   })
 
-  it("fetches all allowed facilities when selected facility is null", async () => {
-    renderHook(() => useEquipmentData(createRegionalLeaderParams()), {
-      wrapper: createWrapper(),
+  it("invalidates tenant-scoped filter bucket caches with equipment data caches", () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 0 },
+        mutations: { retry: false },
+      },
+    })
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
+    const { result } = renderHook(() => useEquipmentData(createParams()), {
+      wrapper: createWrapper(queryClient),
     })
 
-    await waitFor(() => {
-      expect(mockCallRpc).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fn: "equipment_list_enhanced",
-          args: expect.objectContaining({
-            p_don_vi: null,
-          }),
-        })
-      )
-    })
-  })
-
-  it("waits for facility context while selected facility is undefined", async () => {
-    const { result } = renderHook(
-      () => useEquipmentData(createRegionalLeaderParams({ selectedFacilityId: undefined })),
-      { wrapper: createWrapper() }
-    )
-
-    await waitFor(() => {
-      expect(result.current.shouldFetchData).toBe(false)
+    act(() => {
+      result.current.invalidateEquipmentForCurrentTenant()
     })
 
-    expect(mockCallRpc).not.toHaveBeenCalledWith(
-      expect.objectContaining({ fn: "equipment_list_enhanced" })
-    )
+    const filters = invalidateQueries.mock.calls.at(-1)?.[0] as
+      { readonly predicate?: QueryPredicate } | undefined
+    expect(filters?.predicate).toBeDefined()
+
+    const matchesFilterBuckets = filters?.predicate?.({
+      queryKey: [
+        "equipment_filter_buckets",
+        {
+          tenant: "5",
+          role: "user",
+          diaBan: undefined,
+          donVi: 5,
+        },
+      ],
+    })
+
+    expect(matchesFilterBuckets).toBe(true)
   })
 })
