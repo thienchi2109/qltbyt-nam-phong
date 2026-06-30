@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   ZBS_CLAIM_DISPATCH_RPC,
@@ -31,6 +31,10 @@ const baseOutboxRow = {
 } as const
 
 describe("dispatchPendingZbsNotifications", () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("does not claim rows or call Zalo when the dispatch gate is disabled", async () => {
     const rpcClient = vi.fn()
     const fetchImpl = vi.fn()
@@ -138,6 +142,35 @@ describe("dispatchPendingZbsNotifications", () => {
     })
   })
 
+  it("preserves an explicit empty outbox filter when claiming rows", async () => {
+    const rpcClient = vi.fn().mockResolvedValueOnce([])
+    const fetchImpl = vi.fn()
+
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      outboxIds: [],
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_CLAIM_DISPATCH_RPC,
+      args: {
+        p_limit: 25,
+        p_now: "2026-06-30T08:00:00.000Z",
+        p_outbox_ids: [],
+      },
+    })
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      attempted: 0,
+      results: [],
+    })
+  })
+
   it("persists retryable and final failures per outbox row without aborting the batch", async () => {
     const retryableRow = { ...baseOutboxRow, id: "retryable-row", tracking_id: "retryable" }
     const successRow = { ...baseOutboxRow, id: "success-row", tracking_id: "success" }
@@ -206,6 +239,154 @@ describe("dispatchPendingZbsNotifications", () => {
         { outbox_id: "retryable-row", status: "retryable_failed" },
         { outbox_id: "success-row", status: "sent" },
         { outbox_id: "final-row", status: "failed" },
+      ],
+    })
+  })
+
+  it("marks malformed successful provider responses as non-retryable provider failures", async () => {
+    const rpcClient = vi.fn().mockResolvedValueOnce([baseOutboxRow]).mockResolvedValueOnce(null)
+    const fetchImpl = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: 0,
+          message: "Success",
+          data: { accepted: true },
+        }),
+        { status: 200 }
+      )
+    )
+
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_MARK_FAILED_RPC,
+      args: {
+        p_id: "outbox-1",
+        p_retryable: false,
+        p_error_code: "invalid_provider_response",
+        p_error_message: "Missing Zalo provider msg_id",
+        p_provider_response: {
+          error: 0,
+          message: "Success",
+          data: { accepted: true },
+        },
+      },
+    })
+    expect(result).toMatchObject({
+      attempted: 1,
+      sent: 0,
+      retryable_failed: 0,
+      failed: 1,
+      results: [
+        {
+          outbox_id: "outbox-1",
+          status: "failed",
+          error_code: "invalid_provider_response",
+        },
+      ],
+    })
+  })
+
+  it("aborts hung provider requests and records a retryable network failure", async () => {
+    vi.useFakeTimers()
+    const rpcClient = vi.fn().mockResolvedValueOnce([baseOutboxRow]).mockResolvedValueOnce(null)
+    const fetchImpl = vi.fn((_url: string | URL | Request, init?: RequestInit) => {
+      return new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new Error("provider request aborted"))
+        })
+      })
+    })
+
+    const resultPromise = dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    await vi.advanceTimersByTimeAsync(15_000)
+    const result = await resultPromise
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://business.openapi.zalo.me/message/template",
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      })
+    )
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_MARK_FAILED_RPC,
+      args: expect.objectContaining({
+        p_id: "outbox-1",
+        p_retryable: true,
+        p_error_code: "network_error",
+        p_error_message: "provider request aborted",
+      }),
+    })
+    expect(result).toMatchObject({
+      attempted: 1,
+      retryable_failed: 1,
+      failed: 0,
+    })
+  })
+
+  it("starts independent provider sends in the same chunk without waiting for earlier sends", async () => {
+    const firstRow = { ...baseOutboxRow, id: "outbox-1", tracking_id: "first" }
+    const secondRow = { ...baseOutboxRow, id: "outbox-2", tracking_id: "second" }
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([firstRow, secondRow])
+      .mockResolvedValue([{ id: "updated" }])
+    let resolveFirstSend: (response: Response) => void = () => undefined
+    const fetchImpl = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveFirstSend = resolve
+          })
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 0, data: { msg_id: "zalo-message-2" } }), {
+          status: 200,
+        })
+      )
+
+    const resultPromise = dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessToken: "zalo-access-token",
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalled())
+    await Promise.resolve()
+    const callsBeforeFirstSendFinished = fetchImpl.mock.calls.length
+    resolveFirstSend(
+      new Response(JSON.stringify({ error: 0, data: { msg_id: "zalo-message-1" } }), {
+        status: 200,
+      })
+    )
+    const result = await resultPromise
+
+    expect(callsBeforeFirstSendFinished).toBe(2)
+    expect(result).toMatchObject({
+      attempted: 2,
+      sent: 2,
+      results: [
+        { outbox_id: "outbox-1", status: "sent" },
+        { outbox_id: "outbox-2", status: "sent" },
       ],
     })
   })

@@ -18,6 +18,8 @@ type JsonObject = Record<string, unknown>
 
 type ZbsRpcClient = (options: { fn: string; args: JsonObject }) => Promise<unknown>
 type ZbsFetch = typeof fetch
+const ZALO_ZBS_FETCH_TIMEOUT_MS = 15_000
+const ZALO_ZBS_DISPATCH_CONCURRENCY = 5
 
 export interface DispatchPendingZbsNotificationsOptions {
   dispatchEnabled: boolean
@@ -155,12 +157,13 @@ async function claimRows(
   options: Required<Pick<DispatchPendingZbsNotificationsOptions, "limit" | "now">> &
     Pick<DispatchPendingZbsNotificationsOptions, "outboxIds">
 ): Promise<ZbsNotificationOutboxRow[]> {
+  const outboxIds = options.outboxIds
   const rows = await rpcClient({
     fn: ZBS_CLAIM_DISPATCH_RPC,
     args: {
       p_limit: options.limit,
       p_now: options.now.toISOString(),
-      p_outbox_ids: options.outboxIds?.length ? options.outboxIds : null,
+      p_outbox_ids: outboxIds === undefined ? null : outboxIds,
     },
   })
 
@@ -205,6 +208,9 @@ async function sendZbsTemplateRequest(
   request: ZbsTemplateRequest,
   now: Date
 ): Promise<ZaloSuccess | ZaloFailure> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ZALO_ZBS_FETCH_TIMEOUT_MS)
+
   try {
     const response = await fetchImpl(request.endpoint, {
       method: request.method,
@@ -213,6 +219,7 @@ async function sendZbsTemplateRequest(
         access_token: request.headers.access_token,
       },
       body: JSON.stringify(request.body),
+      signal: controller.signal,
     })
 
     if (!response.ok) {
@@ -225,7 +232,16 @@ async function sendZbsTemplateRequest(
       return providerFailure
     }
 
-    return parseSuccess(responseBody, now)
+    try {
+      return parseSuccess(responseBody, now)
+    } catch (error) {
+      return {
+        code: "invalid_provider_response",
+        message: errorMessage(error),
+        retryable: false,
+        providerResponse: responseBody,
+      }
+    }
   } catch (error) {
     return {
       code: "network_error",
@@ -233,6 +249,8 @@ async function sendZbsTemplateRequest(
       retryable: true,
       providerResponse: {},
     }
+  } finally {
+    clearTimeout(timeoutId)
   }
 }
 
@@ -248,6 +266,53 @@ function summarizeResults(
     failed: results.filter((result) => result.status === "failed").length,
     results,
   }
+}
+
+async function dispatchRow(
+  row: ZbsNotificationOutboxRow,
+  options: Pick<
+    Required<DispatchPendingZbsNotificationsOptions>,
+    "accessToken" | "repairTemplateId" | "now" | "rpcClient" | "fetchImpl"
+  > &
+    Pick<DispatchPendingZbsNotificationsOptions, "appBaseUrl">
+): Promise<ZbsDispatchResult> {
+  const request = buildZbsTemplateRequest(row, {
+    appBaseUrl: options.appBaseUrl,
+    accessTokenHeader: options.accessToken,
+    repairTemplateId: options.repairTemplateId,
+  })
+  const sendResult = await sendZbsTemplateRequest(options.fetchImpl, request, options.now)
+
+  if ("providerMessageId" in sendResult) {
+    await markSent(options.rpcClient, row, sendResult)
+    return {
+      outbox_id: row.id,
+      status: "sent",
+      provider_message_id: sendResult.providerMessageId,
+    }
+  }
+
+  await markFailed(options.rpcClient, row, sendResult)
+  return {
+    outbox_id: row.id,
+    status: sendResult.retryable ? "retryable_failed" : "failed",
+    error_code: sendResult.code,
+    error_message: sendResult.message,
+  }
+}
+
+async function dispatchRowsInChunks(
+  rows: ZbsNotificationOutboxRow[],
+  options: Parameters<typeof dispatchRow>[1]
+): Promise<ZbsDispatchResult[]> {
+  const results: ZbsDispatchResult[] = []
+
+  for (let index = 0; index < rows.length; index += ZALO_ZBS_DISPATCH_CONCURRENCY) {
+    const chunk = rows.slice(index, index + ZALO_ZBS_DISPATCH_CONCURRENCY)
+    results.push(...(await Promise.all(chunk.map((row) => dispatchRow(row, options)))))
+  }
+
+  return results
 }
 
 /** Sends claimed ZBS repair-request notifications when the dispatch gate is enabled. */
@@ -268,34 +333,14 @@ export async function dispatchPendingZbsNotifications(
   }
 
   const rows = await claimRows(rpcClient, { limit, now, outboxIds: options.outboxIds })
-  const results: ZbsDispatchResult[] = []
-
-  for (const row of rows) {
-    const request = buildZbsTemplateRequest(row, {
-      appBaseUrl: options.appBaseUrl,
-      accessTokenHeader: options.accessToken,
-      repairTemplateId: options.repairTemplateId,
-    })
-    const sendResult = await sendZbsTemplateRequest(fetchImpl, request, now)
-
-    if ("providerMessageId" in sendResult) {
-      await markSent(rpcClient, row, sendResult)
-      results.push({
-        outbox_id: row.id,
-        status: "sent",
-        provider_message_id: sendResult.providerMessageId,
-      })
-      continue
-    }
-
-    await markFailed(rpcClient, row, sendResult)
-    results.push({
-      outbox_id: row.id,
-      status: sendResult.retryable ? "retryable_failed" : "failed",
-      error_code: sendResult.code,
-      error_message: sendResult.message,
-    })
-  }
+  const results = await dispatchRowsInChunks(rows, {
+    accessToken: options.accessToken,
+    repairTemplateId: options.repairTemplateId,
+    appBaseUrl: options.appBaseUrl,
+    now,
+    rpcClient,
+    fetchImpl,
+  })
 
   return summarizeResults("live-dispatch", results)
 }

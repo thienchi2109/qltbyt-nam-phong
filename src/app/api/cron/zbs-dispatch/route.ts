@@ -1,4 +1,5 @@
 import { dispatchPendingZbsNotifications } from "@/lib/zbs/live-dispatcher"
+import { sanitizeForLog } from "@/lib/log-sanitizer"
 
 /** Keep the ZBS dispatch endpoint uncached so each cron/manual call evaluates live state. */
 export const dynamic = "force-dynamic"
@@ -157,7 +158,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return jsonResponse({ success: true, result }, 200)
   } catch (error) {
-    console.error("ZBS dispatch cron failed")
+    console.error("ZBS dispatch cron failed", { error: sanitizeForLog(error) })
     if (error instanceof ZbsDispatchRpcError) {
       return jsonResponse(
         {

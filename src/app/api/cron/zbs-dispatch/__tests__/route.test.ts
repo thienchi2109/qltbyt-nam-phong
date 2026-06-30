@@ -3,17 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const dispatcherMocks = vi.hoisted(() => ({
   dispatchPendingZbsNotifications: vi.fn(),
 }))
-const supabaseMocks = vi.hoisted(() => ({
-  createClient: vi.fn(),
-  rpc: vi.fn(),
-}))
 const fetchMock = vi.hoisted(() => vi.fn())
 
 vi.mock("@/lib/zbs/live-dispatcher", () => ({
   dispatchPendingZbsNotifications: dispatcherMocks.dispatchPendingZbsNotifications,
-}))
-vi.mock("@supabase/supabase-js", () => ({
-  createClient: supabaseMocks.createClient,
 }))
 
 const ORIGINAL_ENV = { ...process.env }
@@ -31,9 +24,6 @@ describe("/api/cron/zbs-dispatch", () => {
   beforeEach(() => {
     vi.resetModules()
     dispatcherMocks.dispatchPendingZbsNotifications.mockReset()
-    supabaseMocks.createClient.mockReset()
-    supabaseMocks.rpc.mockReset()
-    supabaseMocks.createClient.mockReturnValue({ rpc: supabaseMocks.rpc })
     fetchMock.mockReset()
     vi.stubGlobal("fetch", fetchMock)
     process.env = {
@@ -81,7 +71,6 @@ describe("/api/cron/zbs-dispatch", () => {
     )
 
     expect(response.status).toBe(200)
-    expect(supabaseMocks.createClient).not.toHaveBeenCalled()
     expect(dispatcherMocks.dispatchPendingZbsNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
         dispatchEnabled: false,
@@ -201,9 +190,9 @@ describe("/api/cron/zbs-dispatch", () => {
   })
 
   it("does not leak dispatcher errors in the response", async () => {
-    dispatcherMocks.dispatchPendingZbsNotifications.mockRejectedValue(
-      new Error("zalo-access-token should not leak")
-    )
+    const dispatchError = new Error("zalo-access-token should not leak")
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    dispatcherMocks.dispatchPendingZbsNotifications.mockRejectedValue(dispatchError)
     const mod = await loadRoute()
     expect(mod?.GET).toBeTypeOf("function")
 
@@ -214,6 +203,13 @@ describe("/api/cron/zbs-dispatch", () => {
     )
 
     expect(response.status).toBe(500)
+    expect(consoleErrorSpy).toHaveBeenCalledWith("ZBS dispatch cron failed", {
+      error: {
+        name: "Error",
+        message: dispatchError.message,
+      },
+    })
     await expect(response.json()).resolves.toEqual({ error: "ZBS dispatch failed" })
+    consoleErrorSpy.mockRestore()
   })
 })
