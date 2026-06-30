@@ -42,6 +42,14 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected error"
 }
 
+function rpcClientErrorPayload(status: number, payload: unknown) {
+  if (status >= 500) {
+    return { error: "RPC upstream error" }
+  }
+
+  return { error: payload || "RPC error" }
+}
+
 /** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
@@ -183,7 +191,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
         status: res.status,
         error: sanitizedErrorMessage,
       })
-      return NextResponse.json({ error: payload || "RPC error" }, { status: res.status })
+      return NextResponse.json(rpcClientErrorPayload(res.status, payload), { status: res.status })
     }
     return NextResponse.json(payload)
   } catch (err: unknown) {

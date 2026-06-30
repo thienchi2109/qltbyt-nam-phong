@@ -262,13 +262,15 @@ export async function readPendingZbsOutboxRows(
   const rpcClient = options.rpcClient ?? callRpc
 
   try {
-    return await rpcClient({
+    const rows = await rpcClient({
       fn: ZBS_PENDING_DISPATCH_RPC,
       args: {
         p_limit: limit,
         p_now: now.toISOString(),
       },
     })
+
+    return Array.isArray(rows) ? rows : []
   } catch (error) {
     throw new Error(`Failed to read pending ZBS outbox rows: ${errorMessage(error)}`)
   }

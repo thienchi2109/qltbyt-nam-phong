@@ -228,4 +228,12 @@ describe("readPendingZbsOutboxRows", () => {
       "Failed to read pending ZBS outbox rows: permission denied"
     )
   })
+
+  it("preserves the array contract for malformed RPC responses", async () => {
+    const nullRpcClient = async () => null
+    const objectRpcClient = async () => ({ rows: [baseOutboxRow] })
+
+    await expect(readPendingZbsOutboxRows({ rpcClient: nullRpcClient })).resolves.toEqual([])
+    await expect(readPendingZbsOutboxRows({ rpcClient: objectRpcClient })).resolves.toEqual([])
+  })
 })
