@@ -1,5 +1,5 @@
-import { renderHook, waitFor, act } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderHook, waitFor, act } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
 
 type AuthState = {
   user: { role?: string; don_vi?: number | null; dia_ban_id?: number | null } | null
-  status: 'loading' | 'authenticated' | 'unauthenticated'
+  status: "loading" | "authenticated" | "unauthenticated"
   isGlobal: boolean
   isRegionalLeader: boolean
   tenantKey: string
@@ -179,14 +179,14 @@ import { useEquipmentPage } from "@/app/(app)/equipment/use-equipment-page"
 
 function createAuthState(overrides?: Partial<AuthState>): AuthState {
   return {
-    user: { role: 'global', don_vi: 42, dia_ban_id: 1 },
-    status: 'authenticated',
+    user: { role: "global", don_vi: 42, dia_ban_id: 1 },
+    status: "authenticated",
     isGlobal: true,
     isRegionalLeader: false,
-    tenantKey: '42',
+    tenantKey: "42",
     currentTenantId: 42,
     shouldFetchEquipment: true,
-    effectiveTenantKey: '42',
+    effectiveTenantKey: "42",
     selectedDonVi: 42,
     selectedFacilityId: 42,
     setSelectedFacilityId: mocks.setSelectedFacilityId,
@@ -200,12 +200,12 @@ function createAuthState(overrides?: Partial<AuthState>): AuthState {
 
 function createFiltersState(overrides?: Partial<FiltersState>): FiltersState {
   return {
-    searchTerm: '',
+    searchTerm: "",
     setSearchTerm: mocks.setSearchTerm,
-    debouncedSearch: '',
+    debouncedSearch: "",
     sorting: [],
     setSorting: mocks.setSorting,
-    sortParam: 'id.asc',
+    sortParam: "id.asc",
     columnFilters: [],
     setColumnFilters: mocks.setColumnFilters,
     resetFilters: mocks.resetFilters,
@@ -247,8 +247,8 @@ function createDataState(overrides?: Partial<DataState>): DataState {
     activeFacility: null,
     isFacilitiesLoading: false,
     tenantOptions: [
-      { id: 42, name: 'Đơn vị 42', code: '42' },
-      { id: 99, name: 'Đơn vị 99', code: '99' },
+      { id: 42, name: "Đơn vị 42", code: "42" },
+      { id: 99, name: "Đơn vị 99", code: "99" },
     ],
     isTenantsLoading: false,
     activeUsageLogs: undefined,
@@ -288,7 +288,7 @@ function createExportState(overrides?: Partial<ExportState>): ExportState {
   }
 }
 
-describe('useEquipmentPage tenant switching', () => {
+describe("useEquipmentPage tenant switching", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.auth = createAuthState()
@@ -298,15 +298,15 @@ describe('useEquipmentPage tenant switching', () => {
     state.exports = createExportState()
   })
 
-  it('does not reset filters when tenant changes because provider handles tenant-scoped state', async () => {
+  it("does not reset filters when tenant changes because provider handles tenant-scoped state", async () => {
     const { rerender } = renderHook(() => useEquipmentPage())
 
     act(() => {
       if (!state.auth || !state.data) {
-        throw new Error('Mock state not initialized')
+        throw new Error("Mock state not initialized")
       }
 
-      state.auth.effectiveTenantKey = '99'
+      state.auth.effectiveTenantKey = "99"
       state.auth.selectedDonVi = 99
       state.auth.selectedFacilityId = 99
       state.data.selectedFacilityId = 99
@@ -317,8 +317,8 @@ describe('useEquipmentPage tenant switching', () => {
     await waitFor(() => {
       expect(mocks.toast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Đã áp dụng bộ lọc đơn vị',
-          description: 'Hiển thị thiết bị thuộc Đơn vị 99',
+          title: "Đã áp dụng bộ lọc đơn vị",
+          description: "Hiển thị thiết bị thuộc Đơn vị 99",
         })
       )
     })
@@ -326,7 +326,7 @@ describe('useEquipmentPage tenant switching', () => {
     expect(mocks.resetFilters).not.toHaveBeenCalled()
   })
 
-  it('does not mark route sync data as ready when the equipment query is disabled', () => {
+  it("does not mark route sync data as ready when the equipment query is disabled", () => {
     state.data = createDataState({
       isLoading: false,
       shouldFetchData: false,
@@ -342,31 +342,56 @@ describe('useEquipmentPage tenant switching', () => {
     )
   })
 
-  it('resets pagination in the same action when filters change', () => {
+  it("resets pagination in the same action when filters change", () => {
     const { result } = renderHook(() => useEquipmentPage())
 
     act(() => {
-      result.current.setColumnFilters([{ id: 'tinh_trang_hien_tai', value: ['Chờ sửa chữa'] }])
+      result.current.setColumnFilters([{ id: "tinh_trang_hien_tai", value: ["Chờ sửa chữa"] }])
     })
 
     expect(mocks.setPagination).toHaveBeenCalledWith(expect.any(Function))
 
-    const resetUpdater = mocks.setPagination.mock.calls[0][0] as (
-      value: { pageIndex: number; pageSize: number }
-    ) => { pageIndex: number; pageSize: number }
+    const resetUpdater = mocks.setPagination.mock.calls[0][0] as (value: {
+      pageIndex: number
+      pageSize: number
+    }) => { pageIndex: number; pageSize: number }
     expect(resetUpdater({ pageIndex: 3, pageSize: 20 })).toEqual({
       pageIndex: 0,
       pageSize: 20,
     })
     expect(mocks.setColumnFilters).toHaveBeenCalledWith([
-      { id: 'tinh_trang_hien_tai', value: ['Chờ sửa chữa'] },
+      { id: "tinh_trang_hien_tai", value: ["Chờ sửa chữa"] },
     ])
   })
 
-  it('exposes department distribution from equipment data', () => {
+  it("resets pagination when route search params hydrate the search filter", () => {
+    renderHook(() => useEquipmentPage())
+
+    const routeSyncArgs = mocks.useEquipmentRouteSync.mock.calls[0][0] as {
+      onSearchParamHydrated: (value: string) => void
+    }
+
+    act(() => {
+      routeSyncArgs.onSearchParamHydrated("monitor")
+    })
+
+    expect(mocks.setPagination).toHaveBeenCalledWith(expect.any(Function))
+
+    const resetUpdater = mocks.setPagination.mock.calls[0][0] as (value: {
+      pageIndex: number
+      pageSize: number
+    }) => { pageIndex: number; pageSize: number }
+    expect(resetUpdater({ pageIndex: 3, pageSize: 20 })).toEqual({
+      pageIndex: 0,
+      pageSize: 20,
+    })
+    expect(mocks.setSearchTerm).toHaveBeenCalledWith("monitor")
+  })
+
+  it("exposes department distribution from equipment data", () => {
     const departmentDistribution = [
-      { department: 'Khoa Ngoai', label: 'Khoa Ngoai', count: 7 },
-      { department: null, label: 'Chưa cập nhật', count: 2 },
+      { department: "Khoa Ngoai", label: "Khoa Ngoai", count: 7 },
+      { department: null, label: "Chưa cập nhật", count: 2 },
     ]
     state.data = createDataState({ departmentDistribution })
 

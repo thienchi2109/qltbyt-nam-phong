@@ -93,12 +93,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     pagination,
   })
 
-  // Route sync hook - defined before renderActions which uses routeSync.router
-  const routeSync = useEquipmentRouteSync({
-    data: data.data,
-    isDataReady: data.shouldFetchData && !data.isLoading,
-  })
-
   // Render actions helper (needed for columns)
   // EquipmentActionsMenu now consumes dialog actions from context directly
   const renderActions = React.useCallback(
@@ -160,7 +154,17 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     [filters.setSearchTerm, resetPaginationForFilterChange]
   )
 
-  const setColumnFiltersAndReset = React.useCallback<React.Dispatch<React.SetStateAction<typeof filters.columnFilters>>>(
+  const routeSync = useEquipmentRouteSync({
+    data: data.data,
+    isDataReady: data.shouldFetchData && !data.isLoading,
+    onFacilityParamHydrated: auth.setSelectedFacilityId,
+    onSearchParamHydrated: setSearchTermAndReset,
+    selectedFacilityId: auth.selectedFacilityId,
+  })
+
+  const setColumnFiltersAndReset = React.useCallback<
+    React.Dispatch<React.SetStateAction<typeof filters.columnFilters>>
+  >(
     (value) => {
       resetPaginationForFilterChange()
       filters.setColumnFilters(value)
@@ -179,27 +183,30 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   }, [auth.isRegionalLeader, auth.selectedFacilityId, auth.selectedDonVi])
 
   // Memoize filter params to prevent unnecessary re-renders
-  const filterParams = React.useMemo(() => ({
-    debouncedSearch: filters.debouncedSearch,
-    sortParam: filters.sortParam,
-    effectiveSelectedDonVi,
-    selectedDepartments: filters.selectedDepartments,
-    selectedUsers: filters.selectedUsers,
-    selectedLocations: filters.selectedLocations,
-    selectedStatuses: filters.selectedStatuses,
-    selectedClassifications: filters.selectedClassifications,
-    selectedFundingSources: filters.selectedFundingSources,
-  }), [
-    filters.debouncedSearch,
-    filters.sortParam,
-    effectiveSelectedDonVi,
-    filters.selectedDepartments,
-    filters.selectedUsers,
-    filters.selectedLocations,
-    filters.selectedStatuses,
-    filters.selectedClassifications,
-    filters.selectedFundingSources,
-  ])
+  const filterParams = React.useMemo(
+    () => ({
+      debouncedSearch: filters.debouncedSearch,
+      sortParam: filters.sortParam,
+      effectiveSelectedDonVi,
+      selectedDepartments: filters.selectedDepartments,
+      selectedUsers: filters.selectedUsers,
+      selectedLocations: filters.selectedLocations,
+      selectedStatuses: filters.selectedStatuses,
+      selectedClassifications: filters.selectedClassifications,
+      selectedFundingSources: filters.selectedFundingSources,
+    }),
+    [
+      filters.debouncedSearch,
+      filters.sortParam,
+      effectiveSelectedDonVi,
+      filters.selectedDepartments,
+      filters.selectedUsers,
+      filters.selectedLocations,
+      filters.selectedStatuses,
+      filters.selectedClassifications,
+      filters.selectedFundingSources,
+    ]
+  )
 
   // Export hook - now with filter params for full data fetch
   const exports = useEquipmentExport({
@@ -227,9 +234,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     // Show toast for tenant change
     if (auth.selectedDonVi !== null) {
       const selectedTenant = data.tenantOptions.find((t) => t.id === auth.selectedDonVi)
-      const tenantName = selectedTenant
-        ? selectedTenant.name
-        : `Đơn vị ${auth.selectedDonVi}`
+      const tenantName = selectedTenant ? selectedTenant.name : `Đơn vị ${auth.selectedDonVi}`
       toast({
         variant: "default",
         title: "Đã áp dụng bộ lọc đơn vị",
@@ -258,7 +263,10 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   }, [table.table, table.setPreservePageState, onDataMutationSuccess])
 
   // Computed values
-  const hasFacilityFilter = data.showFacilityFilter && data.selectedFacilityId !== null && data.selectedFacilityId !== undefined
+  const hasFacilityFilter =
+    data.showFacilityFilter &&
+    data.selectedFacilityId !== null &&
+    data.selectedFacilityId !== undefined
 
   // Memoized return value for performance
   return React.useMemo<UseEquipmentPageReturn>(
@@ -312,7 +320,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       // Facility filter - now from context via auth/data hooks
       showFacilityFilter: data.showFacilityFilter,
       facilities: data.facilities,
-      selectedFacilityId: data.selectedFacilityId ?? null,  // Convert undefined to null for return type
+      selectedFacilityId: data.selectedFacilityId ?? null, // Convert undefined to null for return type
       setSelectedFacilityId: auth.setSelectedFacilityId,
       activeFacility: data.activeFacility,
       hasFacilityFilter,

@@ -58,6 +58,26 @@ export function getEquipmentSearchFacilityText(row: EquipmentAggregateSearchRow)
   return `${count.toLocaleString("vi-VN")} cơ sở`
 }
 
+/** Builds the equipment page deep-link for read-only detail inspection. */
+export function buildEquipmentSearchDetailHref(
+  query: string,
+  row: EquipmentAggregateSearchRow
+): string {
+  const params = new URLSearchParams()
+  const trimmedQuery = query.trim()
+
+  if (trimmedQuery) {
+    params.set("search", trimmedQuery)
+  }
+
+  if (row.groupId !== null) {
+    params.set(row.groupType === "facility" ? "facility" : "region", String(row.groupId))
+  }
+
+  const search = params.toString()
+  return search ? `/equipment?${search}` : "/equipment"
+}
+
 function formatQuotaNumber(value: number): string {
   return value.toLocaleString("vi-VN")
 }

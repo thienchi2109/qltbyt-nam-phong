@@ -56,9 +56,7 @@ describe("useEquipmentRouteSync", () => {
   it("creates pending preset action and cleans transient params for attention-status", async () => {
     nav.searchParams = new URLSearchParams(`action=${EQUIPMENT_ATTENTION_ACTION}&page=2&q=abc`)
 
-    const { result } = renderHook(() =>
-      useEquipmentRouteSync({ data: [], isDataReady: true })
-    )
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [], isDataReady: true }))
 
     await waitFor(() => {
       expect(result.current.pendingAction).toEqual({ type: "applyAttentionStatusPreset" })
@@ -70,15 +68,97 @@ describe("useEquipmentRouteSync", () => {
   it("keeps existing add action behavior", async () => {
     nav.searchParams = new URLSearchParams("action=add&tab=list")
 
-    const { result } = renderHook(() =>
-      useEquipmentRouteSync({ data: [], isDataReady: true })
-    )
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [], isDataReady: true }))
 
     await waitFor(() => {
       expect(result.current.pendingAction).toEqual({ type: "openAdd" })
     })
 
     expect(nav.replace).toHaveBeenCalledWith("/equipment?tab=list", { scroll: false })
+  })
+
+  it("hydrates search and facility query params for equipment deep-links", async () => {
+    const hydrateSearch = vi.fn()
+    const hydrateFacility = vi.fn()
+    nav.searchParams = new URLSearchParams("search=monitor&facility=101")
+
+    renderHook(() =>
+      useEquipmentRouteSync({
+        data: [],
+        isDataReady: true,
+        onSearchParamHydrated: hydrateSearch,
+        onFacilityParamHydrated: hydrateFacility,
+      })
+    )
+
+    await waitFor(() => {
+      expect(hydrateSearch).toHaveBeenCalledWith("monitor")
+      expect(hydrateFacility).toHaveBeenCalledWith(101)
+    })
+    expect(nav.replace).not.toHaveBeenCalled()
+  })
+
+  it("hydrates region query params to all-facility scope without overriding search", async () => {
+    const hydrateSearch = vi.fn()
+    const hydrateFacility = vi.fn()
+    nav.searchParams = new URLSearchParams("search=máy thở&region=10")
+
+    renderHook(() =>
+      useEquipmentRouteSync({
+        data: [],
+        isDataReady: true,
+        onSearchParamHydrated: hydrateSearch,
+        onFacilityParamHydrated: hydrateFacility,
+      })
+    )
+
+    await waitFor(() => {
+      expect(hydrateSearch).toHaveBeenCalledWith("máy thở")
+      expect(hydrateFacility).toHaveBeenCalledWith(null)
+    })
+  })
+
+  it("does not rehydrate facility params after a local facility selection change", async () => {
+    const hydrateSearch = vi.fn()
+    const hydrateFacility = vi.fn()
+    nav.searchParams = new URLSearchParams("search=monitor&facility=101")
+
+    const { rerender } = renderHook(
+      ({ selectedFacilityId }: { selectedFacilityId: number | null | undefined }) =>
+        useEquipmentRouteSync({
+          data: [],
+          isDataReady: true,
+          onSearchParamHydrated: hydrateSearch,
+          onFacilityParamHydrated: hydrateFacility,
+          selectedFacilityId,
+        }),
+      { initialProps: { selectedFacilityId: undefined } }
+    )
+
+    await waitFor(() => {
+      expect(hydrateFacility).toHaveBeenCalledWith(101)
+    })
+    expect(hydrateSearch).not.toHaveBeenCalled()
+    expect(hydrateFacility).toHaveBeenCalledTimes(1)
+
+    rerender({ selectedFacilityId: undefined })
+    expect(hydrateFacility).toHaveBeenCalledTimes(1)
+
+    hydrateFacility.mockClear()
+
+    rerender({ selectedFacilityId: 101 })
+
+    await waitFor(() => {
+      expect(hydrateSearch).toHaveBeenCalledWith("monitor")
+    })
+    expect(hydrateFacility).not.toHaveBeenCalled()
+
+    hydrateSearch.mockClear()
+
+    rerender({ selectedFacilityId: 202 })
+
+    expect(hydrateSearch).not.toHaveBeenCalled()
+    expect(hydrateFacility).not.toHaveBeenCalled()
   })
 
   it("keeps highlight action behavior and preserves non-transient params", async () => {
@@ -136,9 +216,7 @@ describe("useEquipmentRouteSync", () => {
     mockCallRpc.mockResolvedValueOnce(fetchedEquipment)
     nav.searchParams = new URLSearchParams("highlight=42")
 
-    const { result } = renderHook(() =>
-      useEquipmentRouteSync({ data: [], isDataReady: true })
-    )
+    const { result } = renderHook(() => useEquipmentRouteSync({ data: [], isDataReady: true }))
 
     await waitFor(() => {
       expect(result.current.pendingAction?.type).toBe("openDetail")
