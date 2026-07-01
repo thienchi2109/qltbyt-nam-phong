@@ -392,9 +392,17 @@ async function markRowsFailedForAccessTokenFailure(
     })
   )
 
-  return settledResults.map((result, index) =>
-    result.status === "fulfilled" ? result.value : failedDispatchRowResult(rows[index])
-  )
+  const markFailure = settledResults.find((result) => result.status === "rejected")
+  if (markFailure) {
+    throw new Error("Failed to persist ZBS token refresh failure state")
+  }
+
+  return settledResults.map((result) => {
+    if (result.status === "fulfilled") {
+      return result.value
+    }
+    throw new Error("Unexpected rejected ZBS token refresh failure result")
+  })
 }
 
 /** Sends claimed ZBS repair-request notifications when the dispatch gate is enabled. */

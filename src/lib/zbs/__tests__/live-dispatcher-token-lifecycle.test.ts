@@ -132,4 +132,39 @@ describe("dispatchPendingZbsNotifications token lifecycle", () => {
       ],
     })
   })
+
+  it("rejects when token-refresh failure state cannot be persisted", async () => {
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([baseOutboxRow])
+      .mockRejectedValueOnce(new Error("database unavailable"))
+    const fetchImpl = vi.fn()
+    const accessTokenProvider = vi.fn().mockRejectedValue(
+      new ZbsAccessTokenRefreshError({
+        code: "zalo_token_refresh_failed",
+        safeMessage: "Zalo access token refresh failed",
+        retryable: false,
+      })
+    )
+
+    await expect(
+      dispatchPendingZbsNotifications({
+        dispatchEnabled: true,
+        accessTokenProvider,
+        repairTemplateId: "template-123",
+        rpcClient,
+        fetchImpl,
+        now: new Date("2026-06-30T08:00:00.000Z"),
+      })
+    ).rejects.toThrow("Failed to persist ZBS token refresh failure state")
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(rpcClient).toHaveBeenCalledWith({
+      fn: ZBS_MARK_FAILED_RPC,
+      args: expect.objectContaining({
+        p_id: "outbox-1",
+        p_error_code: "zalo_token_refresh_failed",
+      }),
+    })
+  })
 })
