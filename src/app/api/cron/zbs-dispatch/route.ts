@@ -50,6 +50,15 @@ function readAppBaseUrl() {
   return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? vercelUrl
 }
 
+function readTrustedAppBaseUrl() {
+  const appBaseUrl = readAppBaseUrl()
+  if (!appBaseUrl) {
+    throw new Error("Missing trusted app base URL")
+  }
+
+  return appBaseUrl
+}
+
 function readInternalRpcSigningSecret() {
   return process.env.ZBS_INTERNAL_RPC_SECRET ?? process.env.SUPABASE_JWT_SECRET
 }
@@ -128,11 +137,10 @@ async function readJsonResponse(response: Response): Promise<unknown> {
 }
 
 async function callRpcProxyFromCron(
-  request: Request,
   cronSecret: string,
   { fn, args }: { fn: string; args: Record<string, unknown> }
 ): Promise<unknown> {
-  const rpcUrl = new URL(`/api/rpc/${encodeURIComponent(fn)}`, request.url)
+  const rpcUrl = new URL(`/api/rpc/${encodeURIComponent(fn)}`, readTrustedAppBaseUrl())
   const body = JSON.stringify(args)
   const signingSecret = readInternalRpcSigningSecret()
   if (!signingSecret) {
@@ -207,7 +215,7 @@ export async function GET(request: Request): Promise<Response> {
       repairTemplateId: process.env.ZALO_ZBS_REPAIR_TEMPLATE_ID,
       appBaseUrl: readAppBaseUrl(),
       outboxIds: readOutboxIds(request),
-      rpcClient: (rpcRequest) => callRpcProxyFromCron(request, cronSecret, rpcRequest),
+      rpcClient: (rpcRequest) => callRpcProxyFromCron(cronSecret, rpcRequest),
     })
 
     return jsonResponse({ success: true, result }, 200)

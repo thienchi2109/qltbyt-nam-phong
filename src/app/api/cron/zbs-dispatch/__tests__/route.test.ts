@@ -128,14 +128,14 @@ describe("/api/cron/zbs-dispatch", () => {
 
     expect(response.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
+      "https://app.example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
       expect.objectContaining({
         method: "POST",
         headers: expect.objectContaining({
           Authorization: "Bearer cron-secret",
           "Content-Type": "application/json",
           "Content-Length": String(Buffer.byteLength(JSON.stringify({ p_limit: 1 }))),
-          Origin: "https://example.test",
+          Origin: "https://app.example.test",
           "x-qltbyt-internal-rpc": "zbs-dispatch",
           "x-qltbyt-internal-rpc-body-sha256": expect.any(String),
           "x-qltbyt-internal-rpc-signature": expect.any(String),
@@ -187,7 +187,7 @@ describe("/api/cron/zbs-dispatch", () => {
 
     expect(response.status).toBe(500)
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
+      "https://app.example.test/api/rpc/zbs_notification_outbox_claim_for_dispatch",
       expect.objectContaining({
         signal: expect.any(AbortSignal),
       })

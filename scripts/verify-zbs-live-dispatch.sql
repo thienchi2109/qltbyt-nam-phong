@@ -9,6 +9,7 @@ DECLARE
   v_final_retry_id uuid;
   v_final_id uuid;
   v_stale_id uuid;
+  v_stale_final_id uuid;
   v_claimed_count integer;
   v_sent_claimed_at timestamptz;
   v_retry_claimed_at timestamptz;
@@ -103,6 +104,17 @@ BEGIN
         'template-test',
         jsonb_build_object('repair_request_id', -90005),
         'verify-zbs-live-dispatch:stale-processing'
+      ),
+      (
+        'repair_request_created',
+        'repair_request',
+        -90006,
+        v_don_vi_id,
+        v_recipient_id,
+        '84900000001',
+        'template-test',
+        jsonb_build_object('repair_request_id', -90006),
+        'verify-zbs-live-dispatch:stale-final-processing'
       )
     RETURNING id, tracking_id
   )
@@ -111,8 +123,9 @@ BEGIN
     (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:retry'),
     (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:final-retry'),
     (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:final'),
-    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:stale-processing')
-  INTO v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:stale-processing'),
+    (SELECT id FROM inserted WHERE tracking_id = 'verify-zbs-live-dispatch:stale-final-processing')
+  INTO v_sent_id, v_retry_id, v_final_retry_id, v_final_id, v_stale_id, v_stale_final_id
   FROM (SELECT 1) AS captured;
 
   UPDATE public.zbs_notification_outbox
@@ -125,6 +138,13 @@ BEGIN
     attempt_count = 1,
     last_attempt_at = now() - interval '15 minutes'
   WHERE id = v_stale_id;
+
+  UPDATE public.zbs_notification_outbox
+  SET
+    status = 'processing',
+    attempt_count = 3,
+    last_attempt_at = now() - interval '15 minutes'
+  WHERE id = v_stale_final_id;
 
   PERFORM set_config(
     'request.jwt.claims',
@@ -187,7 +207,7 @@ BEGIN
   END IF;
 
   CREATE TEMP TABLE zbs_live_dispatch_claimed ON COMMIT DROP AS
-  SELECT *
+  SELECT id, last_attempt_at
   FROM public.zbs_notification_outbox_claim_for_dispatch(
     10,
     now(),
@@ -219,6 +239,26 @@ BEGIN
       AND last_attempt_at > now() - interval '1 minute'
   ) THEN
     RAISE EXCEPTION 'stale processing row was not reclaimed with a fresh lease';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.zbs_notification_outbox_claim_for_dispatch(10, now(), ARRAY[v_stale_final_id])
+    WHERE id = v_stale_final_id
+  ) THEN
+    RAISE EXCEPTION 'stale final-attempt processing row was reclaimed past retry cap';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.zbs_notification_outbox
+    WHERE id = v_stale_final_id
+      AND status = 'failed'
+      AND attempt_count = 3
+      AND last_error_code = 'dispatch_lease_expired'
+      AND next_attempt_at IS NOT NULL
+  ) THEN
+    RAISE EXCEPTION 'stale final-attempt processing row was not finalized at retry cap';
   END IF;
 
   SELECT
