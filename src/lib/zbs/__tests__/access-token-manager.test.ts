@@ -250,6 +250,63 @@ describe("getValidZbsAccessToken", () => {
     })
   })
 
+  it("preserves the sanitized missing-token error when error recording fails", async () => {
+    const rpcClient = vi.fn().mockResolvedValueOnce([]).mockRejectedValueOnce(new Error("raw db"))
+    const fetchImpl = vi.fn()
+
+    await expect(
+      getValidZbsAccessToken({
+        appId: "app-id",
+        appSecret: "app-secret",
+        rpcClient,
+        fetchImpl,
+        now,
+      })
+    ).rejects.toMatchObject({
+      code: "zalo_token_refresh_missing",
+      safeMessage: "Missing Zalo ZBS refresh token",
+    })
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("normalizes refresh-state persistence failures after provider success", async () => {
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          access_token: "old-access-token",
+          access_token_expires_at: "2026-07-01T00:01:00.000Z",
+          refresh_token: "old-refresh-token",
+        },
+      ])
+      .mockRejectedValueOnce(new Error("raw persist failure"))
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          access_token: "new-access-token",
+          refresh_token: "new-refresh-token",
+          expires_in: 3600,
+        }),
+        { status: 200 }
+      )
+    )
+
+    await expect(
+      getValidZbsAccessToken({
+        appId: "app-id",
+        appSecret: "app-secret",
+        rpcClient,
+        fetchImpl,
+        now,
+      })
+    ).rejects.toMatchObject({
+      code: "zalo_token_refresh_persist_failed",
+      retryable: true,
+      safeMessage: "Zalo access token refresh state could not be persisted",
+    })
+  })
+
   it("times out a hung Zalo token refresh request", async () => {
     vi.useFakeTimers()
     const rpcClient = vi

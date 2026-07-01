@@ -96,7 +96,7 @@ export async function getValidZbsAccessToken(
       safeMessage: "Missing Zalo ZBS refresh token",
       retryable: false,
     })
-    await recordRefreshError(rpcClient, null, error, now)
+    await recordRefreshErrorSafely(rpcClient, null, error, now)
     throw error
   }
 
@@ -108,7 +108,7 @@ export async function getValidZbsAccessToken(
     fetchImpl,
   }).catch(async (error: unknown) => {
     const refreshError = normalizeRefreshError(error)
-    await recordRefreshError(rpcClient, refreshToken, refreshError, now).catch(() => undefined)
+    await recordRefreshErrorSafely(rpcClient, refreshToken, refreshError, now)
     throw refreshError
   })
 
@@ -122,18 +122,26 @@ export async function getValidZbsAccessToken(
     refreshResult.refreshExpiresInSeconds ?? DEFAULT_REFRESH_TOKEN_TTL_SECONDS
   )
 
-  await rpcClient({
-    fn: ZBS_TOKEN_STATE_PERSIST_SUCCESS_RPC,
-    args: {
-      p_provider: ZBS_TOKEN_PROVIDER,
-      p_previous_refresh_token: state?.refresh_token ? refreshToken : null,
-      p_access_token: refreshResult.accessToken,
-      p_access_token_expires_at: accessTokenExpiresAt.toISOString(),
-      p_refresh_token: newRefreshToken,
-      p_refresh_token_issued_at: now.toISOString(),
-      p_refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
-    },
-  })
+  try {
+    await rpcClient({
+      fn: ZBS_TOKEN_STATE_PERSIST_SUCCESS_RPC,
+      args: {
+        p_provider: ZBS_TOKEN_PROVIDER,
+        p_previous_refresh_token: state?.refresh_token ? refreshToken : null,
+        p_access_token: refreshResult.accessToken,
+        p_access_token_expires_at: accessTokenExpiresAt.toISOString(),
+        p_refresh_token: newRefreshToken,
+        p_refresh_token_issued_at: now.toISOString(),
+        p_refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
+      },
+    })
+  } catch {
+    throw new ZbsAccessTokenRefreshError({
+      code: "zalo_token_refresh_persist_failed",
+      safeMessage: "Zalo access token refresh state could not be persisted",
+      retryable: true,
+    })
+  }
 
   return refreshResult.accessToken
 }
@@ -246,6 +254,19 @@ async function recordRefreshError(
       p_error_at: errorAt.toISOString(),
     },
   })
+}
+
+async function recordRefreshErrorSafely(
+  rpcClient: ZbsRpcClient,
+  previousRefreshToken: string | null,
+  error: ZbsAccessTokenRefreshError,
+  errorAt: Date
+): Promise<void> {
+  try {
+    await recordRefreshError(rpcClient, previousRefreshToken, error, errorAt)
+  } catch {
+    // Preserve the sanitized token lifecycle error; dispatcher classification depends on it.
+  }
 }
 
 function normalizeRefreshError(error: unknown): ZbsAccessTokenRefreshError {

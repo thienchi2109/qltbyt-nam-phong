@@ -11,6 +11,14 @@ The system SHALL keep repair-request ZBS phone notification dispatch disabled un
 - **THEN** the system does not call the Zalo API
 - **AND** the system records or exposes configuration status so operators can complete setup.
 
+#### Scenario: Missing recipient configuration
+
+- **GIVEN** an approved ZBS repair-request template ID is configured
+- **AND** no active ZBS repair-request recipient configuration exists for the repair request tenant
+- **WHEN** a repair request is created successfully
+- **THEN** the system does not call the Zalo API
+- **AND** no cross-tenant recipient fallback is used.
+
 #### Scenario: Template data shape is explicit
 
 - **GIVEN** an approved ZBS template is configured

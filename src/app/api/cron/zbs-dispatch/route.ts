@@ -78,13 +78,13 @@ function readZbsAccessTokenProvider(
   const appSecret = process.env.ZALO_ZBS_APP_SECRET?.trim()
 
   if (!appId || !appSecret) {
-    return undefined
+    throw new ZbsDispatchConfigurationError("Missing ZBS OAuth app credentials")
   }
 
   return createZbsAccessTokenProvider({
     appId,
     appSecret,
-    initialRefreshToken: process.env.ZALO_ZBS_INITIAL_REFRESH_TOKEN,
+    initialRefreshToken: process.env.ZALO_ZBS_INITIAL_REFRESH_TOKEN?.trim() || undefined,
     rpcClient,
   })
 }
@@ -240,9 +240,11 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const rpcClient = (rpcRequest: { fn: string; args: Record<string, unknown> }) =>
       callRpcProxyFromCron(cronSecret, rpcRequest)
+    const dispatchEnabled = readDispatchEnabled()
+    const accessTokenProvider = dispatchEnabled ? readZbsAccessTokenProvider(rpcClient) : undefined
     const result = await dispatchPendingZbsNotifications({
-      dispatchEnabled: readDispatchEnabled(),
-      accessTokenProvider: readZbsAccessTokenProvider(rpcClient),
+      dispatchEnabled,
+      accessTokenProvider,
       repairTemplateId: process.env.ZALO_ZBS_REPAIR_TEMPLATE_ID,
       appBaseUrl: readAppBaseUrl(),
       outboxIds: readOutboxIds(request),
