@@ -4,7 +4,7 @@ import path from "node:path"
 import { describe, expect, it } from "vitest"
 
 describe("Vercel cron configuration for ZBS dispatch", () => {
-  it("schedules the ZBS dispatch route every five minutes", () => {
+  it("does not schedule ZBS dispatch through Vercel Cron on Hobby deployments", () => {
     const configPath = path.resolve(process.cwd(), "vercel.json")
     expect(fs.existsSync(configPath)).toBe(true)
 
@@ -12,9 +12,10 @@ describe("Vercel cron configuration for ZBS dispatch", () => {
       crons?: Array<{ path?: string; schedule?: string }>
     }
 
-    expect(config.crons).toContainEqual({
-      path: "/api/cron/zbs-dispatch",
-      schedule: "*/5 * * * *",
-    })
+    expect(config.crons ?? []).not.toContainEqual(
+      expect.objectContaining({
+        path: "/api/cron/zbs-dispatch",
+      })
+    )
   })
 })

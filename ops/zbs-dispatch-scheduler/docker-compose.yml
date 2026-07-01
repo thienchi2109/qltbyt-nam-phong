@@ -1,0 +1,22 @@
+services:
+  zbs-dispatch:
+    build:
+      context: .
+    image: qltbyt-zbs-dispatch-scheduler:local
+    container_name: qltbyt-zbs-dispatch-scheduler
+    env_file:
+      - .env
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+      - /var/run:rw,noexec,nosuid,size=4m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
