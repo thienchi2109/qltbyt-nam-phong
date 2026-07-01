@@ -19,6 +19,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_lease_tolerance constant interval := interval '1 millisecond';
   v_claims jsonb := coalesce(
     nullif(current_setting('request.jwt.claims', true), '')::jsonb,
     '{}'::jsonb
@@ -42,8 +43,8 @@ BEGIN
     AND provider = 'zalo_zbs'
     AND status = 'processing'
     AND p_claimed_at IS NOT NULL
-    AND last_attempt_at BETWEEN p_claimed_at - interval '1 millisecond'
-      AND p_claimed_at + interval '1 millisecond';
+    AND last_attempt_at BETWEEN p_claimed_at - v_lease_tolerance
+      AND p_claimed_at + v_lease_tolerance;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ZBS outbox row % is not claimable as sent for this lease', p_id
@@ -66,6 +67,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_lease_tolerance constant interval := interval '1 millisecond';
   v_now timestamptz := now();
   v_claims jsonb := coalesce(
     nullif(current_setting('request.jwt.claims', true), '')::jsonb,
@@ -96,8 +98,8 @@ BEGIN
     AND outbox.provider = 'zalo_zbs'
     AND outbox.status = 'processing'
     AND p_claimed_at IS NOT NULL
-    AND outbox.last_attempt_at BETWEEN p_claimed_at - interval '1 millisecond'
-      AND p_claimed_at + interval '1 millisecond';
+    AND outbox.last_attempt_at BETWEEN p_claimed_at - v_lease_tolerance
+      AND p_claimed_at + v_lease_tolerance;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'ZBS outbox row % is not claimable as failed for this lease', p_id

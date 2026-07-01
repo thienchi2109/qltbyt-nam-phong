@@ -33,5 +33,10 @@ describe("ZBS dispatch VM scheduler artifacts", () => {
     expect(script).toContain("--max-time 60")
     expect(script).toContain("Authorization: Bearer ${CRON_SECRET}")
     expect(script).not.toContain("set -x")
+
+    const dockerfile = readSchedulerFile("Dockerfile")
+    expect(dockerfile).toContain("adduser")
+    expect(dockerfile).toContain("USER zbs")
+    expect(dockerfile).toContain("COPY zbs-dispatch.cron /etc/crontabs/zbs")
   })
 })
