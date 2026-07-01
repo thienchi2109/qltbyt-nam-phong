@@ -285,6 +285,50 @@ describe("getValidZbsAccessToken", () => {
     await vi.advanceTimersByTimeAsync(5)
     await expectation
   })
+
+  it("times out a stalled Zalo token refresh response body", async () => {
+    vi.useFakeTimers()
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          access_token: "old-access-token",
+          access_token_expires_at: "2026-07-01T00:01:00.000Z",
+          refresh_token: "stored-refresh-token",
+        },
+      ])
+      .mockResolvedValueOnce([{ provider: "zalo_zbs" }])
+    const fetchImpl = vi.fn(
+      (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+        const response = new Response(null, { status: 200 })
+        vi.spyOn(response, "json").mockImplementation(
+          () =>
+            new Promise<unknown>((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () =>
+                reject(new DOMException("aborted", "AbortError"))
+              )
+            })
+        )
+        return Promise.resolve(response)
+      }
+    )
+
+    const tokenPromise = getValidZbsAccessToken({
+      appId: "app-id",
+      appSecret: "app-secret",
+      rpcClient,
+      fetchImpl,
+      now,
+      tokenRefreshTimeoutMs: 5,
+    })
+    const expectation = expect(tokenPromise).rejects.toMatchObject({
+      code: "zalo_token_refresh_network_error",
+      retryable: true,
+      safeMessage: "Zalo access token refresh failed",
+    })
+    await vi.advanceTimersByTimeAsync(5)
+    await expectation
+  })
 })
 
 async function getRejectedError(run: () => Promise<unknown>): Promise<Error> {

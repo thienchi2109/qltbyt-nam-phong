@@ -175,6 +175,7 @@ async function refreshAccessToken(options: {
   })
 
   let response: Response
+  let responseBody: JsonObject
   const abortController = new AbortController()
   const timeout = setTimeout(() => abortController.abort(), options.timeoutMs)
   try {
@@ -187,6 +188,7 @@ async function refreshAccessToken(options: {
       body,
       signal: abortController.signal,
     })
+    responseBody = await readProviderJson(response)
   } catch {
     throw new ZbsAccessTokenRefreshError({
       code: "zalo_token_refresh_network_error",
@@ -197,7 +199,6 @@ async function refreshAccessToken(options: {
     clearTimeout(timeout)
   }
 
-  const responseBody = await readProviderJson(response)
   if (!response.ok) {
     throw new ZbsAccessTokenRefreshError({
       code: `zalo_token_refresh_http_${response.status}`,
@@ -263,9 +264,16 @@ async function readProviderJson(response: Response): Promise<JsonObject> {
   try {
     const value = await response.json()
     return isRecord(value) ? value : {}
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) {
+      throw error
+    }
     return {}
   }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError"
 }
 
 function hasProviderError(response: JsonObject): boolean {
