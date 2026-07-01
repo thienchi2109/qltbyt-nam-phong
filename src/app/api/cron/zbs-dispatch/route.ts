@@ -33,6 +33,13 @@ class ZbsDispatchRpcError extends Error {
   }
 }
 
+class ZbsDispatchConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ZbsDispatchConfigurationError"
+  }
+}
+
 function jsonResponse(body: unknown, status: number): Response {
   return Response.json(body, { status })
 }
@@ -53,7 +60,7 @@ function readAppBaseUrl() {
 function readTrustedAppBaseUrl() {
   const appBaseUrl = readAppBaseUrl()
   if (!appBaseUrl) {
-    throw new Error("Missing trusted app base URL")
+    throw new ZbsDispatchConfigurationError("Missing trusted app base URL")
   }
 
   return appBaseUrl
@@ -109,6 +116,10 @@ function errorPayloadDetails(payload: RpcErrorPayload): unknown {
 }
 
 function cronErrorLogMetadata(error: unknown): Record<string, unknown> {
+  if (error instanceof ZbsDispatchConfigurationError) {
+    return { name: error.name, message: error.message }
+  }
+
   if (error instanceof ZbsDispatchRpcError) {
     return {
       name: error.name,
@@ -144,7 +155,7 @@ async function callRpcProxyFromCron(
   const body = JSON.stringify(args)
   const signingSecret = readInternalRpcSigningSecret()
   if (!signingSecret) {
-    throw new Error("Missing ZBS internal RPC signing secret")
+    throw new ZbsDispatchConfigurationError("Missing ZBS internal RPC signing secret")
   }
   const timestamp = String(Date.now())
   const bodySha256 = hashZbsInternalRpcBody(body)

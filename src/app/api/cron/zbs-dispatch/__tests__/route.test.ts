@@ -197,6 +197,37 @@ describe("/api/cron/zbs-dispatch", () => {
     vi.useRealTimers()
   })
 
+  it("logs route-owned configuration failure messages without leaking them in the response", async () => {
+    delete process.env.NEXT_PUBLIC_APP_URL
+    delete process.env.NEXTAUTH_URL
+    delete process.env.VERCEL_URL
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_limit: 1 },
+      })
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect(consoleErrorSpy).toHaveBeenCalledWith("ZBS dispatch cron failed", {
+      error: {
+        name: "ZbsDispatchConfigurationError",
+        message: "Missing trusted app base URL",
+      },
+    })
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    consoleErrorSpy.mockRestore()
+  })
+
   it("preserves structured RPC failure details in the cron response", async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
