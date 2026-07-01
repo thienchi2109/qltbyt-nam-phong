@@ -32,7 +32,9 @@ describe("/api/cron/zbs-dispatch", () => {
       SUPABASE_JWT_SECRET: "test-jwt-secret",
       ZBS_INTERNAL_RPC_SECRET: "test-internal-rpc-secret",
       ZALO_ZBS_DISPATCH_ENABLED: "false",
-      ZALO_ZBS_ACCESS_TOKEN: "zalo-access-token",
+      ZALO_ZBS_APP_ID: "zalo-app-id",
+      ZALO_ZBS_APP_SECRET: "zalo-app-secret",
+      ZALO_ZBS_INITIAL_REFRESH_TOKEN: "zalo-refresh-token",
       ZALO_ZBS_REPAIR_TEMPLATE_ID: "template-123",
       NEXT_PUBLIC_APP_URL: "https://app.example.test",
     }
@@ -77,7 +79,7 @@ describe("/api/cron/zbs-dispatch", () => {
     expect(dispatcherMocks.dispatchPendingZbsNotifications).toHaveBeenCalledWith(
       expect.objectContaining({
         dispatchEnabled: false,
-        accessToken: "zalo-access-token",
+        accessTokenProvider: expect.any(Function),
         repairTemplateId: "template-123",
         appBaseUrl: "https://app.example.test",
         outboxIds: ["outbox-1"],

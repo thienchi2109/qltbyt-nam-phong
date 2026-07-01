@@ -1,11 +1,13 @@
 # Change: ZBS phone notifications for repair requests
 
 ## Why
+
 Repair requests currently rely on users opening the application to notice new work. The hospital now has a Zalo Official Account and wants an automatic Zalo notification sent to a specific Zalo phone number when a repair request is created.
 
 The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bot group chat delivery. This change supersedes that rollout direction with ZBS Template Message delivery to individual recipients by phone number.
 
 ## What Changes
+
 - Add a ZBS Template Message notification path for newly created repair requests.
 - Use the official ZBS "Gửi tin Template qua SĐT" API as the primary outbound channel:
   - `POST https://business.openapi.zalo.me/message/template`
@@ -19,10 +21,16 @@ The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bo
 - Enqueue notifications only for active recipients whose `don_vi_id` matches the created repair request's `don_vi_id`.
 - Require an approved ZBS template before production dispatch is enabled.
 - Add a durable notification outbox/log so repair request creation does not depend on Zalo API availability.
+- Add a durable server-side Zalo token lifecycle for ZBS/OA API usage:
+  - use Vercel env only for bootstrap/static secret material such as app ID, app secret, and initial refresh token,
+  - refresh short-lived access tokens before live sends,
+  - persist rotated access/refresh token state server-side,
+  - avoid logging plaintext tokens.
 - Add a ZBS webhook endpoint for delivery events and quota/status diagnostics where useful.
 - Keep UID-based sending as a later enhancement only if the system later stores OA-scoped `user_id` values.
 
 ## Out of Scope
+
 - Zalo Bot group chat notifications and `chat_id` capture.
 - Free-form OA consultation messages.
 - Per-department recipient routing.
@@ -33,33 +41,40 @@ The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bo
 - Notifications for transfers, maintenance plans, or inventory events.
 
 ## Roadmap / Review Slices
+
 This change should be implemented in small reviewable slices:
 
 1. Zalo readiness only: confirm OA/App/ZBS linkage, phone-send permission, approved template, exact `template_data` fields, and a controlled test phone number.
 2. Tenant-scoped data contract only: add recipient configuration by `don_vi_id` and `event_type`, add the generic outbox/log schema, and update `repair_request_create` to enqueue one `repair_request_created` event per matching active recipient, without outbound Zalo calls.
 3. Dispatcher dry-run only: implement phone normalization, template-data mapping, request construction, and tests behind a dry-run/disabled dispatch gate.
-4. Live send path: call the ZBS phone endpoint behind the feature gate, persist `msg_id`/send metadata, classify errors, and retry safely.
-5. Delivery webhook: validate ZBS webhook signatures and update delivery status from `user_received_message` events.
-6. Rollout/ops: document env vars, token rotation, template setup, smoke testing, monitoring queries, and rollback by disabling dispatch.
+4. Token lifecycle: add server-only token state storage and a token manager that refreshes access tokens from refresh tokens before scheduled/live dispatch.
+5. Live send path: call the ZBS phone endpoint behind the feature gate using the managed access token, persist `msg_id`/send metadata, classify errors, and retry safely.
+6. Delivery webhook: validate ZBS webhook signatures and update delivery status from `user_received_message` events.
+7. Rollout/ops: document env vars, token bootstrap/rotation, template setup, smoke testing, monitoring queries, and rollback by disabling dispatch.
 
 ## Impact
+
 - Affected specs: `zalo-repair-zbs-notifications` (new capability)
 - Affected code in future implementation:
   - Supabase migration for tenant-scoped ZBS recipient configuration and a generic ZBS notification outbox/log table.
+  - Supabase migration for server-only ZBS/OA OAuth token state and service-role-only token RPC boundaries.
   - `repair_request_create` SQL flow to enqueue one pending `repair_request_created` ZBS notification event per active recipient phone in the same tenant as the created repair request.
-  - Server-side ZBS client/dispatcher for the phone API.
+  - Server-side ZBS token manager and client/dispatcher for the phone API.
   - Next.js route handler for ZBS webhook event validation and delivery-status updates.
-  - Environment configuration for Zalo App/OA credentials, template ID, ZBS access token handling, webhook secret material, and dispatch feature gate.
-  - Runbook for template approval, phone normalization, recipient setup, and live smoke testing.
+  - Environment configuration for Zalo App/OA credentials, initial refresh token, template ID, webhook secret material, and dispatch feature gate. `ZALO_ZBS_ACCESS_TOKEN` must not be the production source of truth.
+  - Runbook for template approval, phone normalization, recipient setup, token bootstrap/rotation/recovery, and live smoke testing.
 - Testing in future implementation:
   - SQL smoke coverage for tenant-scoped outbox enqueue behavior and idempotency.
-  - Unit tests for ZBS message template-data mapping, phone normalization, request construction, provider error handling, retry status transitions, and delivery webhook signature validation.
+  - Unit tests for ZBS message template-data mapping, phone normalization, request construction, access-token refresh lifecycle, provider error handling, retry status transitions, and delivery webhook signature validation.
   - Manual live smoke test to a controlled phone number before enabling production dispatch.
 
 ## Official Docs Reviewed
+
 - ZBS Template Message overview: `https://developers.zalo.me/docs/zbs-template-message/bat-dau/gioi-thieu-zbs-template-message`
 - ZBS API gửi tin qua SĐT: `https://developers.zalo.me/docs/zbs-template-message/gui-tin-template-qua-sdt/api-gui-tin-qua-sdt/api-gui-tin`
 - ZBS API gửi tin qua UID: `https://developers.zalo.me/docs/zbs-template-message/gui-tin-template-qua-uid/api-gui-tin-qua-uid`
 - ZBS webhook sự kiện người dùng nhận tin qua SĐT: `https://developers.zalo.me/docs/zbs-template-message/gui-tin-template-qua-sdt/webhook-gui-tin-qua-sdt/su-kien-nguoi-dung-nhan-tin-qua-sdt`
 - Template overview: `https://developers.zalo.me/docs/zbs-template-message/quan-ly-template/bat-dau/gioi-thieu-chung-ve-template`
 - OA webhook overview: `https://developers.zalo.me/docs/official-account/webhook/tong-quan`
+- Android SDK access token guide: `https://developers.zalo.me/docs/sdk/android-sdk/dang-nhap/lay-access-token`
+- Android SDK refresh token verification guide: `https://developers.zalo.me/docs/sdk/android-sdk/dang-nhap/xac-minh-lai-refresh-token`

@@ -1,5 +1,6 @@
 import { callRpc } from "@/lib/rpc-client"
 
+import { isZbsAccessTokenRefreshError } from "./access-token-manager"
 import {
   type ZbsNotificationOutboxRow,
   type ZbsTemplateRequest,
@@ -18,12 +19,14 @@ type JsonObject = Record<string, unknown>
 
 type ZbsRpcClient = (options: { fn: string; args: JsonObject }) => Promise<unknown>
 type ZbsFetch = typeof fetch
+type ZbsAccessTokenProvider = () => Promise<string>
 const ZALO_ZBS_FETCH_TIMEOUT_MS = 15_000
 const ZALO_ZBS_DISPATCH_CONCURRENCY = 5
 
 export interface DispatchPendingZbsNotificationsOptions {
   dispatchEnabled: boolean
   accessToken?: string
+  accessTokenProvider?: ZbsAccessTokenProvider
   repairTemplateId?: string
   appBaseUrl?: string
   outboxIds?: string[]
@@ -135,6 +138,24 @@ function classifyRequestBuildFailure(error: unknown): ZaloFailure {
     code: "invalid_template_request",
     message: errorMessage(error),
     retryable: false,
+    providerResponse: {},
+  }
+}
+
+function classifyAccessTokenFailure(error: unknown): ZaloFailure {
+  if (isZbsAccessTokenRefreshError(error)) {
+    return {
+      code: error.code,
+      message: error.safeMessage,
+      retryable: error.retryable,
+      providerResponse: {},
+    }
+  }
+
+  return {
+    code: "zalo_token_unavailable",
+    message: "Failed to load Zalo ZBS access token",
+    retryable: true,
     providerResponse: {},
   }
 }
@@ -353,6 +374,29 @@ async function dispatchRowsInChunks(
   return results
 }
 
+async function markRowsFailedForAccessTokenFailure(
+  rows: ZbsNotificationOutboxRow[],
+  rpcClient: ZbsRpcClient,
+  error: unknown
+): Promise<ZbsDispatchResult[]> {
+  const failure = classifyAccessTokenFailure(error)
+  const settledResults = await Promise.allSettled(
+    rows.map(async (row): Promise<ZbsDispatchResult> => {
+      await markFailed(rpcClient, row, failure)
+      return {
+        outbox_id: row.id,
+        status: failure.retryable ? "retryable_failed" : "failed",
+        error_code: failure.code,
+        error_message: failure.message,
+      }
+    })
+  )
+
+  return settledResults.map((result, index) =>
+    result.status === "fulfilled" ? result.value : failedDispatchRowResult(rows[index])
+  )
+}
+
 /** Sends claimed ZBS repair-request notifications when the dispatch gate is enabled. */
 export async function dispatchPendingZbsNotifications(
   options: DispatchPendingZbsNotificationsOptions
@@ -366,13 +410,32 @@ export async function dispatchPendingZbsNotifications(
     return summarizeResults("disabled-dispatch", [])
   }
 
-  if (!options.accessToken || !options.repairTemplateId) {
+  if ((!options.accessToken && !options.accessTokenProvider) || !options.repairTemplateId) {
     return summarizeResults("configuration-error", [])
   }
 
   const rows = await claimRows(rpcClient, { limit, now, outboxIds: options.outboxIds })
+  if (rows.length === 0) {
+    return summarizeResults("live-dispatch", [])
+  }
+
+  let accessToken = options.accessToken
+  if (!accessToken && options.accessTokenProvider) {
+    try {
+      accessToken = await options.accessTokenProvider()
+    } catch (error) {
+      const results = await markRowsFailedForAccessTokenFailure(rows, rpcClient, error)
+      return summarizeResults("live-dispatch", results)
+    }
+  }
+
+  if (!accessToken) {
+    const results = await markRowsFailedForAccessTokenFailure(rows, rpcClient, null)
+    return summarizeResults("live-dispatch", results)
+  }
+
   const results = await dispatchRowsInChunks(rows, {
-    accessToken: options.accessToken,
+    accessToken,
     repairTemplateId: options.repairTemplateId,
     appBaseUrl: options.appBaseUrl,
     now,

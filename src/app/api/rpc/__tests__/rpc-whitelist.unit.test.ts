@@ -69,6 +69,9 @@ describe("RPC proxy whitelist", () => {
     "zbs_notification_outbox_claim_for_dispatch",
     "zbs_notification_outbox_mark_sent",
     "zbs_notification_outbox_mark_failed",
+    "zbs_oauth_token_state_get",
+    "zbs_oauth_token_state_persist_success",
+    "zbs_oauth_token_state_record_error",
   ])('rejects cron-only ZBS dispatch RPC "%s" without the internal cron bearer', async (fn) => {
     const res = await invokeRpcProxy(fn)
 
@@ -80,6 +83,9 @@ describe("RPC proxy whitelist", () => {
     "zbs_notification_outbox_claim_for_dispatch",
     "zbs_notification_outbox_mark_sent",
     "zbs_notification_outbox_mark_failed",
+    "zbs_oauth_token_state_get",
+    "zbs_oauth_token_state_persist_success",
+    "zbs_oauth_token_state_record_error",
   ])('allows cron-only ZBS dispatch RPC "%s" through the internal cron gate', async (fn) => {
     vi.stubEnv("CRON_SECRET", "cron-secret")
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
@@ -123,6 +129,9 @@ describe("RPC proxy whitelist", () => {
     expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_claim_for_dispatch")).toBe(true)
     expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_sent")).toBe(true)
     expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_failed")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_oauth_token_state_get")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_oauth_token_state_persist_success")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_oauth_token_state_record_error")).toBe(true)
     expect([...SERVICE_ROLE_RPC_FUNCTIONS].every((fn) => ALLOWED_FUNCTIONS.has(fn))).toBe(true)
   })
 
