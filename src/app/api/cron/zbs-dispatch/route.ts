@@ -1,0 +1,249 @@
+import { dispatchPendingZbsNotifications } from "@/lib/zbs/live-dispatcher"
+import {
+  ZBS_INTERNAL_RPC_BODY_SHA256_HEADER,
+  ZBS_INTERNAL_RPC_SIGNATURE_HEADER,
+  ZBS_INTERNAL_RPC_SOURCE,
+  ZBS_INTERNAL_RPC_SOURCE_HEADER,
+  ZBS_INTERNAL_RPC_TIMESTAMP_HEADER,
+  hashZbsInternalRpcBody,
+  signZbsInternalRpc,
+} from "@/lib/zbs/internal-rpc-signature"
+
+/** Keep the ZBS dispatch endpoint uncached so each cron/manual call evaluates live state. */
+export const dynamic = "force-dynamic"
+/** Use Node.js runtime for internal RPC proxy calls and outbound Zalo fetches. */
+export const runtime = "nodejs"
+
+type RpcErrorPayload = {
+  error?: unknown
+  details?: unknown
+}
+
+const INTERNAL_RPC_FETCH_TIMEOUT_MS = 10_000
+
+class ZbsDispatchRpcError extends Error {
+  readonly status: number
+  readonly details?: unknown
+
+  constructor(status: number, message: string, details?: unknown) {
+    super(message)
+    this.name = "ZbsDispatchRpcError"
+    this.status = status
+    this.details = details
+  }
+}
+
+class ZbsDispatchConfigurationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ZbsDispatchConfigurationError"
+  }
+}
+
+function jsonResponse(body: unknown, status: number): Response {
+  return Response.json(body, { status })
+}
+
+function internalServerErrorResponse(status = 500): Response {
+  return jsonResponse({ error: "Internal server error" }, status)
+}
+
+function readDispatchEnabled() {
+  return process.env.ZALO_ZBS_DISPATCH_ENABLED === "true"
+}
+
+function readAppBaseUrl() {
+  const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined
+  return process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXTAUTH_URL ?? vercelUrl
+}
+
+function readTrustedAppBaseUrl() {
+  const appBaseUrl = readAppBaseUrl()
+  if (!appBaseUrl) {
+    throw new ZbsDispatchConfigurationError("Missing trusted app base URL")
+  }
+
+  return appBaseUrl
+}
+
+function readInternalRpcSigningSecret() {
+  return process.env.ZBS_INTERNAL_RPC_SECRET
+}
+
+function readOutboxIds(request: Request): string[] | undefined {
+  const { searchParams } = new URL(request.url)
+  const ids = searchParams
+    .getAll("outboxId")
+    .map((id) => id.trim())
+    .filter(Boolean)
+
+  return ids.length > 0 ? ids : undefined
+}
+
+function parseRpcErrorPayload(payload: unknown): RpcErrorPayload {
+  return payload && typeof payload === "object" && !Array.isArray(payload)
+    ? (payload as RpcErrorPayload)
+    : {}
+}
+
+function errorPayloadMessage(payload: RpcErrorPayload): string {
+  if (typeof payload.error === "string") {
+    return payload.error
+  }
+
+  if (
+    payload.error &&
+    typeof payload.error === "object" &&
+    "message" in payload.error &&
+    typeof payload.error.message === "string"
+  ) {
+    return payload.error.message
+  }
+
+  return "ZBS dispatch RPC failed"
+}
+
+function errorPayloadDetails(payload: RpcErrorPayload): unknown {
+  if (payload.details !== undefined) {
+    return payload.details
+  }
+
+  if (payload.error && typeof payload.error === "object" && "details" in payload.error) {
+    return payload.error.details
+  }
+
+  return undefined
+}
+
+function cronErrorLogMetadata(error: unknown): Record<string, unknown> {
+  if (error instanceof ZbsDispatchConfigurationError) {
+    return { name: error.name, message: error.message }
+  }
+
+  if (error instanceof ZbsDispatchRpcError) {
+    return {
+      name: error.name,
+      status: error.status,
+    }
+  }
+
+  if (error instanceof Error) {
+    return { name: error.name }
+  }
+
+  return { name: typeof error }
+}
+
+async function readJsonResponse(response: Response): Promise<unknown> {
+  const text = await response.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
+async function callRpcProxyFromCron(
+  cronSecret: string,
+  { fn, args }: { fn: string; args: Record<string, unknown> }
+): Promise<unknown> {
+  const rpcUrl = new URL(`/api/rpc/${encodeURIComponent(fn)}`, readTrustedAppBaseUrl())
+  const body = JSON.stringify(args)
+  const signingSecret = readInternalRpcSigningSecret()
+  if (!signingSecret) {
+    throw new ZbsDispatchConfigurationError("Missing ZBS internal RPC signing secret")
+  }
+  const timestamp = String(Date.now())
+  const bodySha256 = hashZbsInternalRpcBody(body)
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), INTERNAL_RPC_FETCH_TIMEOUT_MS)
+
+  let response: Response
+  let payload: unknown
+  try {
+    response = await fetch(rpcUrl.toString(), {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+        "Content-Type": "application/json",
+        Origin: rpcUrl.origin,
+        [ZBS_INTERNAL_RPC_SOURCE_HEADER]: ZBS_INTERNAL_RPC_SOURCE,
+        [ZBS_INTERNAL_RPC_TIMESTAMP_HEADER]: timestamp,
+        [ZBS_INTERNAL_RPC_BODY_SHA256_HEADER]: bodySha256,
+        [ZBS_INTERNAL_RPC_SIGNATURE_HEADER]: signZbsInternalRpc(
+          signingSecret,
+          fn,
+          timestamp,
+          bodySha256
+        ),
+      },
+      body,
+      signal: controller.signal,
+    })
+    payload = await readJsonResponse(response)
+  } finally {
+    clearTimeout(timeoutId)
+  }
+
+  if (!response.ok) {
+    const errorPayload = parseRpcErrorPayload(payload)
+    throw new ZbsDispatchRpcError(
+      response.status,
+      errorPayloadMessage(errorPayload),
+      errorPayloadDetails(errorPayload)
+    )
+  }
+
+  return payload
+}
+
+/** Runs one guarded ZBS dispatch batch for cron/manual operations. */
+export async function GET(request: Request): Promise<Response> {
+  const cronSecret = process.env.CRON_SECRET
+
+  if (!cronSecret) {
+    console.error("Missing ZBS dispatch cron secret")
+    return internalServerErrorResponse()
+  }
+
+  if (request.headers.get("Authorization") !== `Bearer ${cronSecret}`) {
+    console.error("Unauthorized ZBS dispatch cron attempt", {
+      userAgent: request.headers.get("user-agent"),
+    })
+    return jsonResponse({ error: "Unauthorized" }, 401)
+  }
+
+  try {
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: readDispatchEnabled(),
+      accessToken: process.env.ZALO_ZBS_ACCESS_TOKEN,
+      repairTemplateId: process.env.ZALO_ZBS_REPAIR_TEMPLATE_ID,
+      appBaseUrl: readAppBaseUrl(),
+      outboxIds: readOutboxIds(request),
+      rpcClient: (rpcRequest) => callRpcProxyFromCron(cronSecret, rpcRequest),
+    })
+
+    return jsonResponse({ success: true, result }, 200)
+  } catch (error) {
+    console.error("ZBS dispatch cron failed", { error: cronErrorLogMetadata(error) })
+    if (error instanceof ZbsDispatchRpcError) {
+      if (error.status >= 500) {
+        return internalServerErrorResponse(error.status)
+      }
+
+      return jsonResponse(
+        {
+          error: "ZBS dispatch failed",
+          ...(error.details === undefined ? {} : { details: error.details }),
+        },
+        error.status
+      )
+    }
+    return internalServerErrorResponse()
+  }
+}

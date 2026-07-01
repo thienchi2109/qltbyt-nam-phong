@@ -27,6 +27,7 @@ export interface ZbsNotificationOutboxRow {
   tracking_id: string
   status: string
   provider: string
+  last_attempt_at?: string | null
   next_attempt_at?: string | null
 }
 

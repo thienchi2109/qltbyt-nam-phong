@@ -6,8 +6,21 @@ import { toAppRoleClaim } from "@/auth/server-claims"
 import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
 import { sanitizeForLog } from "@/lib/log-sanitizer"
 import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
+import {
+  ZBS_INTERNAL_RPC_BODY_SHA256_HEADER,
+  ZBS_INTERNAL_RPC_SIGNATURE_HEADER,
+  ZBS_INTERNAL_RPC_SOURCE,
+  ZBS_INTERNAL_RPC_SOURCE_HEADER,
+  ZBS_INTERNAL_RPC_TIMESTAMP_HEADER,
+  hashZbsInternalRpcBody,
+  isValidZbsInternalRpcSignature,
+} from "@/lib/zbs/internal-rpc-signature"
 
-import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "./allowed-functions"
+import {
+  ALLOWED_FUNCTIONS,
+  SERVICE_ROLE_RPC_FUNCTIONS,
+  ZBS_CRON_RPC_FUNCTIONS,
+} from "./allowed-functions"
 
 /** Run the RPC proxy on Node.js so JWT signing uses the server crypto stack. */
 export const runtime = "nodejs"
@@ -118,6 +131,48 @@ function canInvokeServiceRoleRpc(claims: Pick<RpcSessionClaims, "appRole">): boo
   return claims.appRole === "global" || claims.appRole === "to_qltb"
 }
 
+function readInternalRpcSigningSecret() {
+  return process.env.ZBS_INTERNAL_RPC_SECRET
+}
+
+function hasInternalZbsCronRpcHeaders(req: NextRequest, fn: string): boolean {
+  const cronSecret = process.env.CRON_SECRET
+  return (
+    Boolean(cronSecret) &&
+    ZBS_CRON_RPC_FUNCTIONS.has(fn) &&
+    req.headers.get(ZBS_INTERNAL_RPC_SOURCE_HEADER) === ZBS_INTERNAL_RPC_SOURCE &&
+    req.headers.get("authorization") === `Bearer ${cronSecret}` &&
+    Boolean(req.headers.get(ZBS_INTERNAL_RPC_TIMESTAMP_HEADER)) &&
+    Boolean(req.headers.get(ZBS_INTERNAL_RPC_BODY_SHA256_HEADER)) &&
+    Boolean(req.headers.get(ZBS_INTERNAL_RPC_SIGNATURE_HEADER))
+  )
+}
+
+function isInternalZbsCronRpc(req: NextRequest, fn: string, rawBody: string): boolean {
+  return (
+    hasInternalZbsCronRpcHeaders(req, fn) &&
+    isValidZbsInternalRpcSignature({
+      secret: readInternalRpcSigningSecret(),
+      fn,
+      timestamp: req.headers.get(ZBS_INTERNAL_RPC_TIMESTAMP_HEADER),
+      bodySha256: hashZbsInternalRpcBody(rawBody),
+      bodySha256Header: req.headers.get(ZBS_INTERNAL_RPC_BODY_SHA256_HEADER),
+      signature: req.headers.get(ZBS_INTERNAL_RPC_SIGNATURE_HEADER),
+    })
+  )
+}
+
+function getInternalZbsCronClaims(): RpcSessionClaims {
+  return {
+    role: "to_qltb",
+    donVi: "0",
+    diaBan: "0",
+    khoaPhong: "zbs-dispatch",
+    userId: "zbs-dispatch-cron",
+    appRole: "to_qltb",
+  }
+}
+
 /** Proxies allowlisted Supabase RPC calls with JWT claims derived from the server session. */
 export async function POST(req: NextRequest, context: { params: Promise<{ fn: string }> }) {
   try {
@@ -133,6 +188,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     if (!ALLOWED_FUNCTIONS.has(fn)) {
       return NextResponse.json({ error: "Function not allowed" }, { status: 403 })
+    }
+
+    const isZbsCronRpc = ZBS_CRON_RPC_FUNCTIONS.has(fn)
+    if (isZbsCronRpc && !hasInternalZbsCronRpcHeaders(req, fn)) {
+      return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
     }
 
     // SECURITY: Enforce body size limit BEFORE buffering/parsing to prevent DoS
@@ -160,25 +220,39 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
     // 4. Decode buffer to text and parse JSON
     let rawBody: unknown = {}
+    let rawText = ""
     try {
-      const rawText = new TextDecoder().decode(buf)
+      rawText = new TextDecoder().decode(buf)
       rawBody = rawText ? JSON.parse(rawText) : {}
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
     }
 
-    // Pull claims from NextAuth session securely (no client headers trusted)
-    const session = await getServerSession(authOptions)
-    const sessionUser = getSessionUser(session)
-
-    // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
-    if (!sessionUser) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const isInternalZbsCron = isZbsCronRpc && isInternalZbsCronRpc(req, fn, rawText)
+    if (isZbsCronRpc && !isInternalZbsCron) {
+      return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
     }
 
-    const claims = getSessionClaims(sessionUser)
-    if (!claims) {
-      return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
+    const claims = isInternalZbsCron
+      ? getInternalZbsCronClaims()
+      : await (async (): Promise<RpcSessionClaims | NextResponse> => {
+          // Pull claims from NextAuth session securely (no client headers trusted)
+          const session = await getServerSession(authOptions)
+          const sessionUser = getSessionUser(session)
+
+          // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
+          if (!sessionUser) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+          }
+
+          const sessionClaims = getSessionClaims(sessionUser)
+          if (!sessionClaims) {
+            return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
+          }
+          return sessionClaims
+        })()
+    if (claims instanceof NextResponse) {
+      return claims
     }
     // (debug removed)
 

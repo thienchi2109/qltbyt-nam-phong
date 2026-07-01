@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}))
 const getServerSessionMock = vi.fn()
 const jwtSignMock = vi.fn()
 const fetchMock = vi.fn()
+const INTERNAL_RPC_SECRET = "test-internal-rpc-secret"
 
 vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -17,6 +18,7 @@ vi.mock("jsonwebtoken", () => ({
 }))
 
 import { POST } from "@/app/api/rpc/[fn]/route"
+import { hashZbsInternalRpcBody, signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
 
 function buildRequest(body: Record<string, unknown>, headers: Record<string, string> = {}) {
   const encodedBody = JSON.stringify(body)
@@ -32,11 +34,29 @@ function buildRequest(body: Record<string, unknown>, headers: Record<string, str
   })
 }
 
+function signedInternalCronHeaders(
+  fn: string,
+  body: Record<string, unknown>,
+  secret = INTERNAL_RPC_SECRET
+) {
+  const timestamp = String(Date.now())
+  const bodySha256 = hashZbsInternalRpcBody(JSON.stringify(body))
+  return {
+    authorization: "Bearer cron-secret",
+    "x-qltbyt-internal-rpc": "zbs-dispatch",
+    "x-qltbyt-internal-rpc-body-sha256": bodySha256,
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(secret, fn, timestamp, bodySha256),
+    "x-qltbyt-internal-rpc-timestamp": timestamp,
+  }
+}
+
 describe("RPC proxy same-origin guard", () => {
   beforeEach(() => {
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-secret")
+    vi.stubEnv("ZBS_INTERNAL_RPC_SECRET", INTERNAL_RPC_SECRET)
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
+    vi.stubEnv("CRON_SECRET", "cron-secret")
 
     getServerSessionMock.mockReset()
     jwtSignMock.mockReset()
@@ -179,6 +199,104 @@ describe("RPC proxy same-origin guard", () => {
     expect(res.status).toBe(403)
     await expect(res.json()).resolves.toEqual({
       error: "Service-role RPC not allowed",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("allows internal cron calls for ZBS service-role RPCs without a NextAuth session", async () => {
+    getServerSessionMock.mockResolvedValueOnce(null)
+    const body = { p_limit: 10 }
+
+    const res = await POST(
+      buildRequest(body, {
+        ...signedInternalCronHeaders("zbs_notification_outbox_claim_for_dispatch", body),
+        origin: "https://app.example.com",
+      }) as never,
+      { params: Promise.resolve({ fn: "zbs_notification_outbox_claim_for_dispatch" }) }
+    )
+
+    expect(res.status).toBe(200)
+    expect(getServerSessionMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).toHaveBeenCalledOnce()
+    expect(jwtSignMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        role: "service_role",
+        app_role: "to_qltb",
+        user_id: "zbs-dispatch-cron",
+      })
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.supabase.co/rest/v1/rpc/zbs_notification_outbox_claim_for_dispatch",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ p_limit: 10 }),
+      })
+    )
+  })
+
+  it("rejects internal cron ZBS RPCs signed with the Supabase JWT secret fallback", async () => {
+    delete process.env.ZBS_INTERNAL_RPC_SECRET
+    const body = { p_limit: 10 }
+
+    const res = await POST(
+      buildRequest(body, {
+        ...signedInternalCronHeaders(
+          "zbs_notification_outbox_claim_for_dispatch",
+          body,
+          "test-secret"
+        ),
+        origin: "https://app.example.com",
+      }) as never,
+      { params: Promise.resolve({ fn: "zbs_notification_outbox_claim_for_dispatch" }) }
+    )
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+    expect(getServerSessionMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("rejects internal cron ZBS RPCs when the signed body hash does not match the request", async () => {
+    const signedBody = { p_limit: 10 }
+
+    const res = await POST(
+      buildRequest(
+        { p_limit: 25 },
+        {
+          ...signedInternalCronHeaders("zbs_notification_outbox_claim_for_dispatch", signedBody),
+          origin: "https://app.example.com",
+        }
+      ) as never,
+      { params: Promise.resolve({ fn: "zbs_notification_outbox_claim_for_dispatch" }) }
+    )
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+    expect(getServerSessionMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("does not treat the cron bearer as a session bypass for non-ZBS RPCs", async () => {
+    getServerSessionMock.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      buildRequest(
+        { query: "SpO2" },
+        {
+          authorization: "Bearer cron-secret",
+          "x-qltbyt-internal-rpc": "zbs-dispatch",
+          origin: "https://app.example.com",
+        }
+      ) as never,
+      { params: Promise.resolve({ fn: "ai_equipment_lookup" }) }
+    )
+
+    expect(res.status).toBe(401)
+    await expect(res.json()).resolves.toEqual({
+      error: "Unauthorized",
     })
     expect(jwtSignMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()

@@ -1,16 +1,35 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 
 import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
+import { hashZbsInternalRpcBody, signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
 
-async function invokeRpcProxy(fn: string) {
-  const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST" })
+const INTERNAL_RPC_SECRET = "test-internal-rpc-secret"
+
+async function invokeRpcProxy(fn: string, headers: HeadersInit = {}) {
+  const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST", headers })
   return POST(req as never, { params: Promise.resolve({ fn }) })
 }
 
+function signedInternalCronHeaders(fn: string, secret = INTERNAL_RPC_SECRET) {
+  const timestamp = String(Date.now())
+  const bodySha256 = hashZbsInternalRpcBody("")
+  return {
+    authorization: "Bearer cron-secret",
+    "x-qltbyt-internal-rpc": "zbs-dispatch",
+    "x-qltbyt-internal-rpc-body-sha256": bodySha256,
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(secret, fn, timestamp, bodySha256),
+    "x-qltbyt-internal-rpc-timestamp": timestamp,
+  }
+}
+
 describe("RPC proxy whitelist", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it("rejects unknown RPC functions", async () => {
     const res = await invokeRpcProxy("unknown_rpc_fn")
     expect(res.status).toBe(403)
@@ -39,17 +58,71 @@ describe("RPC proxy whitelist", () => {
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it("allows ZBS pending-dispatch RPC through whitelist checks", async () => {
+  it("allows the ZBS pending dispatch read RPC through whitelist checks", async () => {
     const res = await invokeRpcProxy("zbs_notification_outbox_pending_for_dispatch")
 
     expect(res.status).toBe(411)
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it("keeps ZBS pending-dispatch RPC on the server-only DB role path", () => {
+  it.each([
+    "zbs_notification_outbox_claim_for_dispatch",
+    "zbs_notification_outbox_mark_sent",
+    "zbs_notification_outbox_mark_failed",
+  ])('rejects cron-only ZBS dispatch RPC "%s" without the internal cron bearer', async (fn) => {
+    const res = await invokeRpcProxy(fn)
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+  })
+
+  it.each([
+    "zbs_notification_outbox_claim_for_dispatch",
+    "zbs_notification_outbox_mark_sent",
+    "zbs_notification_outbox_mark_failed",
+  ])('allows cron-only ZBS dispatch RPC "%s" through the internal cron gate', async (fn) => {
+    vi.stubEnv("CRON_SECRET", "cron-secret")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    vi.stubEnv("ZBS_INTERNAL_RPC_SECRET", INTERNAL_RPC_SECRET)
+    const res = await invokeRpcProxy(fn, signedInternalCronHeaders(fn))
+
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
+  it("rejects cron-only ZBS dispatch RPCs signed with the Supabase JWT secret fallback", async () => {
+    vi.stubEnv("CRON_SECRET", "cron-secret")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    delete process.env.ZBS_INTERNAL_RPC_SECRET
+
+    const res = await invokeRpcProxy("zbs_notification_outbox_claim_for_dispatch", {
+      ...signedInternalCronHeaders("zbs_notification_outbox_claim_for_dispatch", "test-jwt-secret"),
+      "content-length": "0",
+    })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+  })
+
+  it("rejects the cron bearer and internal source header without a server signature", async () => {
+    vi.stubEnv("CRON_SECRET", "cron-secret")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    const res = await invokeRpcProxy("zbs_notification_outbox_claim_for_dispatch", {
+      authorization: "Bearer cron-secret",
+      "x-qltbyt-internal-rpc": "zbs-dispatch",
+    })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+  })
+
+  it("keeps ZBS dispatch RPCs on the server-only DB role path", () => {
     expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_pending_for_dispatch")).toBe(
       true
     )
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_claim_for_dispatch")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_sent")).toBe(true)
+    expect(SERVICE_ROLE_RPC_FUNCTIONS.has("zbs_notification_outbox_mark_failed")).toBe(true)
     expect([...SERVICE_ROLE_RPC_FUNCTIONS].every((fn) => ALLOWED_FUNCTIONS.has(fn))).toBe(true)
   })
 
