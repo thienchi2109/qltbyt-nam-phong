@@ -48,6 +48,9 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_claim_for_dispatch",
   "zbs_notification_outbox_mark_sent",
   "zbs_notification_outbox_mark_failed",
+  "zbs_oauth_token_state_get",
+  "zbs_oauth_token_state_persist_success",
+  "zbs_oauth_token_state_record_error",
   // Transfers
   "transfer_request_list",
   "transfer_request_page_data",
@@ -188,6 +191,9 @@ export const SERVICE_ROLE_RPC_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_claim_for_dispatch",
   "zbs_notification_outbox_mark_sent",
   "zbs_notification_outbox_mark_failed",
+  "zbs_oauth_token_state_get",
+  "zbs_oauth_token_state_persist_success",
+  "zbs_oauth_token_state_record_error",
 ])
 
 /** Service-role ZBS dispatch RPCs callable only through the signed internal cron path. */
@@ -195,4 +201,7 @@ export const ZBS_CRON_RPC_FUNCTIONS = new Set<string>([
   "zbs_notification_outbox_claim_for_dispatch",
   "zbs_notification_outbox_mark_sent",
   "zbs_notification_outbox_mark_failed",
+  "zbs_oauth_token_state_get",
+  "zbs_oauth_token_state_persist_success",
+  "zbs_oauth_token_state_record_error",
 ])
