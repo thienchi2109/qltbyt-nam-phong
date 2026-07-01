@@ -12,6 +12,7 @@ export const ZBS_INTERNAL_RPC_BODY_SHA256_HEADER = "x-qltbyt-internal-rpc-body-s
 export const ZBS_INTERNAL_RPC_SIGNATURE_HEADER = "x-qltbyt-internal-rpc-signature"
 
 const ZBS_INTERNAL_RPC_SIGNATURE_TOLERANCE_MS = 60_000
+const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/i
 
 /** Builds a stable SHA-256 digest for a ZBS internal cron RPC request body. */
 export function hashZbsInternalRpcBody(body: string): string {
@@ -58,6 +59,10 @@ export function isValidZbsInternalRpcSignature({
   }
 
   if (Math.abs(nowMs - timestampMs) > ZBS_INTERNAL_RPC_SIGNATURE_TOLERANCE_MS) {
+    return false
+  }
+
+  if (!SHA256_HEX_PATTERN.test(bodySha256Header) || !SHA256_HEX_PATTERN.test(signature)) {
     return false
   }
 
