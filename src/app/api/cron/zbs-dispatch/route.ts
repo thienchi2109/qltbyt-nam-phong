@@ -171,7 +171,6 @@ async function callRpcProxyFromCron(
         Accept: "application/json",
         Authorization: `Bearer ${cronSecret}`,
         "Content-Type": "application/json",
-        "Content-Length": String(Buffer.byteLength(body)),
         Origin: rpcUrl.origin,
         [ZBS_INTERNAL_RPC_SOURCE_HEADER]: ZBS_INTERNAL_RPC_SOURCE,
         [ZBS_INTERNAL_RPC_TIMESTAMP_HEADER]: timestamp,

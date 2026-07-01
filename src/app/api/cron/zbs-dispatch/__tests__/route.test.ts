@@ -135,7 +135,6 @@ describe("/api/cron/zbs-dispatch", () => {
         headers: expect.objectContaining({
           Authorization: "Bearer cron-secret",
           "Content-Type": "application/json",
-          "Content-Length": String(Buffer.byteLength(JSON.stringify({ p_limit: 1 }))),
           Origin: "https://app.example.test",
           "x-qltbyt-internal-rpc": "zbs-dispatch",
           "x-qltbyt-internal-rpc-body-sha256": expect.any(String),
@@ -146,6 +145,8 @@ describe("/api/cron/zbs-dispatch", () => {
         body: JSON.stringify({ p_limit: 1 }),
       })
     )
+    const fetchHeaders = fetchMock.mock.calls[0]?.[1]?.headers
+    expect(fetchHeaders).not.toHaveProperty("Content-Length")
     await expect(response.json()).resolves.toEqual({
       success: true,
       result: {
