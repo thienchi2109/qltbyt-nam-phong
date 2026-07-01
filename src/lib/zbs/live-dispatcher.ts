@@ -380,17 +380,24 @@ async function markRowsFailedForAccessTokenFailure(
   error: unknown
 ): Promise<ZbsDispatchResult[]> {
   const failure = classifyAccessTokenFailure(error)
-  const settledResults = await Promise.allSettled(
-    rows.map(async (row): Promise<ZbsDispatchResult> => {
-      await markFailed(rpcClient, row, failure)
-      return {
-        outbox_id: row.id,
-        status: failure.retryable ? "retryable_failed" : "failed",
-        error_code: failure.code,
-        error_message: failure.message,
-      }
-    })
-  )
+  const settledResults: PromiseSettledResult<ZbsDispatchResult>[] = []
+
+  for (let index = 0; index < rows.length; index += ZALO_ZBS_DISPATCH_CONCURRENCY) {
+    const chunk = rows.slice(index, index + ZALO_ZBS_DISPATCH_CONCURRENCY)
+    settledResults.push(
+      ...(await Promise.allSettled(
+        chunk.map(async (row): Promise<ZbsDispatchResult> => {
+          await markFailed(rpcClient, row, failure)
+          return {
+            outbox_id: row.id,
+            status: failure.retryable ? "retryable_failed" : "failed",
+            error_code: failure.code,
+            error_message: failure.message,
+          }
+        })
+      ))
+    )
+  }
 
   const markFailure = settledResults.find((result) => result.status === "rejected")
   if (markFailure) {

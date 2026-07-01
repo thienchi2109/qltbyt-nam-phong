@@ -167,4 +167,47 @@ describe("dispatchPendingZbsNotifications token lifecycle", () => {
       }),
     })
   })
+
+  it("limits token-refresh failure persistence concurrency", async () => {
+    const rows = Array.from({ length: 7 }, (_, index) => ({
+      ...baseOutboxRow,
+      id: `outbox-${index + 1}`,
+      tracking_id: `tracking-${index + 1}`,
+    }))
+    let inFlightMarkFailures = 0
+    let maxInFlightMarkFailures = 0
+    const rpcClient = vi.fn(async (options: { fn: string }): Promise<unknown> => {
+      if (options.fn !== ZBS_MARK_FAILED_RPC) {
+        return rows
+      }
+
+      inFlightMarkFailures += 1
+      maxInFlightMarkFailures = Math.max(maxInFlightMarkFailures, inFlightMarkFailures)
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      inFlightMarkFailures -= 1
+      return [{ id: "updated" }]
+    })
+    const fetchImpl = vi.fn()
+    const accessTokenProvider = vi.fn().mockRejectedValue(
+      new ZbsAccessTokenRefreshError({
+        code: "zalo_token_refresh_failed",
+        safeMessage: "Zalo access token refresh failed",
+        retryable: false,
+      })
+    )
+
+    const result = await dispatchPendingZbsNotifications({
+      dispatchEnabled: true,
+      accessTokenProvider,
+      repairTemplateId: "template-123",
+      rpcClient,
+      fetchImpl,
+      now: new Date("2026-06-30T08:00:00.000Z"),
+    })
+
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(result.attempted).toBe(7)
+    expect(rpcClient).toHaveBeenCalledTimes(8)
+    expect(maxInFlightMarkFailures).toBeLessThanOrEqual(5)
+  })
 })
