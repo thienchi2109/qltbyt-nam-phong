@@ -137,6 +137,7 @@ describe("/api/cron/zbs-dispatch", () => {
           "Content-Length": String(Buffer.byteLength(JSON.stringify({ p_limit: 1 }))),
           Origin: "https://example.test",
           "x-qltbyt-internal-rpc": "zbs-dispatch",
+          "x-qltbyt-internal-rpc-body-sha256": expect.any(String),
           "x-qltbyt-internal-rpc-signature": expect.any(String),
           "x-qltbyt-internal-rpc-timestamp": expect.any(String),
         }),

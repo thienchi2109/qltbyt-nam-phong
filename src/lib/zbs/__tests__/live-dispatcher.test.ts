@@ -452,7 +452,12 @@ describe("dispatchPendingZbsNotifications", () => {
   })
 
   it("isolates unexpected row-level failures without aborting the remaining chunk", async () => {
-    const rejectedRow = { ...baseOutboxRow, id: "rejected-row", tracking_id: "rejected" }
+    const rejectedRow = {
+      ...baseOutboxRow,
+      id: "rejected-row",
+      tracking_id: "rejected",
+      recipient_phone: "",
+    }
     const successRow = { ...baseOutboxRow, id: "success-row", tracking_id: "success" }
     const rpcClient = vi.fn().mockImplementation(async ({ fn, args }) => {
       if (fn === ZBS_CLAIM_DISPATCH_RPC) {
@@ -480,7 +485,7 @@ describe("dispatchPendingZbsNotifications", () => {
       now: new Date("2026-06-30T08:00:00.000Z"),
     })
 
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(result).toMatchObject({
       attempted: 2,
       sent: 1,

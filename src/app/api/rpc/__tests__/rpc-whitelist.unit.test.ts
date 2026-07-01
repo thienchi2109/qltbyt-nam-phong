@@ -4,7 +4,7 @@ vi.mock("server-only", () => ({}))
 
 import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
-import { signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
+import { hashZbsInternalRpcBody, signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
 
 async function invokeRpcProxy(fn: string, headers: HeadersInit = {}) {
   const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST", headers })
@@ -13,10 +13,17 @@ async function invokeRpcProxy(fn: string, headers: HeadersInit = {}) {
 
 function signedInternalCronHeaders(fn: string) {
   const timestamp = String(Date.now())
+  const bodySha256 = hashZbsInternalRpcBody("")
   return {
     authorization: "Bearer cron-secret",
     "x-qltbyt-internal-rpc": "zbs-dispatch",
-    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc("test-jwt-secret", fn, timestamp),
+    "x-qltbyt-internal-rpc-body-sha256": bodySha256,
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(
+      "test-jwt-secret",
+      fn,
+      timestamp,
+      bodySha256
+    ),
     "x-qltbyt-internal-rpc-timestamp": timestamp,
   }
 }

@@ -1,9 +1,11 @@
 import { dispatchPendingZbsNotifications } from "@/lib/zbs/live-dispatcher"
 import {
+  ZBS_INTERNAL_RPC_BODY_SHA256_HEADER,
   ZBS_INTERNAL_RPC_SIGNATURE_HEADER,
   ZBS_INTERNAL_RPC_SOURCE,
   ZBS_INTERNAL_RPC_SOURCE_HEADER,
   ZBS_INTERNAL_RPC_TIMESTAMP_HEADER,
+  hashZbsInternalRpcBody,
   signZbsInternalRpc,
 } from "@/lib/zbs/internal-rpc-signature"
 
@@ -137,6 +139,7 @@ async function callRpcProxyFromCron(
     throw new Error("Missing ZBS internal RPC signing secret")
   }
   const timestamp = String(Date.now())
+  const bodySha256 = hashZbsInternalRpcBody(body)
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), INTERNAL_RPC_FETCH_TIMEOUT_MS)
 
@@ -153,7 +156,13 @@ async function callRpcProxyFromCron(
         Origin: rpcUrl.origin,
         [ZBS_INTERNAL_RPC_SOURCE_HEADER]: ZBS_INTERNAL_RPC_SOURCE,
         [ZBS_INTERNAL_RPC_TIMESTAMP_HEADER]: timestamp,
-        [ZBS_INTERNAL_RPC_SIGNATURE_HEADER]: signZbsInternalRpc(signingSecret, fn, timestamp),
+        [ZBS_INTERNAL_RPC_BODY_SHA256_HEADER]: bodySha256,
+        [ZBS_INTERNAL_RPC_SIGNATURE_HEADER]: signZbsInternalRpc(
+          signingSecret,
+          fn,
+          timestamp,
+          bodySha256
+        ),
       },
       body,
       signal: controller.signal,
