@@ -1,7 +1,8 @@
 FROM alpine:3.22
 
-RUN apk add --no-cache ca-certificates curl supercronic tzdata util-linux
-RUN addgroup -S zbs && adduser -S -G zbs zbs
+RUN apk add --no-cache ca-certificates curl supercronic tzdata util-linux \
+  && addgroup -S zbs \
+  && adduser -S -G zbs zbs
 
 WORKDIR /app
 
