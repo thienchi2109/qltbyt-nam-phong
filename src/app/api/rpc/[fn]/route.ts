@@ -132,7 +132,7 @@ function canInvokeServiceRoleRpc(claims: Pick<RpcSessionClaims, "appRole">): boo
 }
 
 function readInternalRpcSigningSecret() {
-  return process.env.ZBS_INTERNAL_RPC_SECRET ?? process.env.SUPABASE_JWT_SECRET
+  return process.env.ZBS_INTERNAL_RPC_SECRET
 }
 
 function hasInternalZbsCronRpcHeaders(req: NextRequest, fn: string): boolean {

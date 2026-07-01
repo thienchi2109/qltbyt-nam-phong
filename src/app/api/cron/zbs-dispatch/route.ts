@@ -67,7 +67,7 @@ function readTrustedAppBaseUrl() {
 }
 
 function readInternalRpcSigningSecret() {
-  return process.env.ZBS_INTERNAL_RPC_SECRET ?? process.env.SUPABASE_JWT_SECRET
+  return process.env.ZBS_INTERNAL_RPC_SECRET
 }
 
 function readOutboxIds(request: Request): string[] | undefined {

@@ -30,6 +30,7 @@ describe("/api/cron/zbs-dispatch", () => {
       ...ORIGINAL_ENV,
       CRON_SECRET: "cron-secret",
       SUPABASE_JWT_SECRET: "test-jwt-secret",
+      ZBS_INTERNAL_RPC_SECRET: "test-internal-rpc-secret",
       ZALO_ZBS_DISPATCH_ENABLED: "false",
       ZALO_ZBS_ACCESS_TOKEN: "zalo-access-token",
       ZALO_ZBS_REPAIR_TEMPLATE_ID: "template-123",
@@ -156,6 +157,42 @@ describe("/api/cron/zbs-dispatch", () => {
         results: [],
       },
     })
+  })
+
+  it("fails closed when the dedicated internal RPC signing secret is missing", async () => {
+    delete process.env.ZBS_INTERNAL_RPC_SECRET
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify([{ id: "outbox-1" }]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    )
+    dispatcherMocks.dispatchPendingZbsNotifications.mockImplementationOnce(async (options) => {
+      await options.rpcClient({
+        fn: "zbs_notification_outbox_claim_for_dispatch",
+        args: { p_limit: 1 },
+      })
+    })
+    const mod = await loadRoute()
+    expect(mod?.GET).toBeTypeOf("function")
+
+    const response = await mod!.GET(
+      new Request("https://example.test/api/cron/zbs-dispatch", {
+        headers: { Authorization: "Bearer cron-secret" },
+      })
+    )
+
+    expect(response.status).toBe(500)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(consoleErrorSpy).toHaveBeenCalledWith("ZBS dispatch cron failed", {
+      error: {
+        name: "ZbsDispatchConfigurationError",
+        message: "Missing ZBS internal RPC signing secret",
+      },
+    })
+    await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    consoleErrorSpy.mockRestore()
   })
 
   it("aborts hung internal RPC proxy calls", async () => {

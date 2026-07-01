@@ -16,6 +16,7 @@ A comprehensive web application for managing medical equipment, built with moder
 ## 📋 Core Features
 
 ### Equipment Management
+
 - Complete equipment lifecycle tracking
 - QR code generation and scanning
 - Real-time status monitoring
@@ -23,6 +24,7 @@ A comprehensive web application for managing medical equipment, built with moder
 - Equipment history and audit trails
 
 ### Maintenance & Repairs
+
 - Scheduled maintenance planning
 - Repair request workflow
 - Approval processes
@@ -30,12 +32,14 @@ A comprehensive web application for managing medical equipment, built with moder
 - Completion tracking
 
 ### Multi-Tenant Architecture
+
 - Department-based data isolation
 - Role-based access control
 - Tenant switching capabilities
 - Secure data segregation
 
 ### User Management
+
 - Role-based permissions
 - Password management
 - Admin controls
@@ -46,6 +50,7 @@ A comprehensive web application for managing medical equipment, built with moder
 **This project uses NextAuth v4 for authentication** (NOT custom auth context).
 
 ### Key Components
+
 - **Provider**: NextAuth v4 with CredentialsProvider
 - **Session**: JWT strategy (3-hour expiry)
 - **Database**: Supabase RPC `authenticate_user_dual_mode`
@@ -53,6 +58,7 @@ A comprehensive web application for managing medical equipment, built with moder
 - **Multi-tenant**: JWT claims for role, department, tenant
 
 ### User Roles
+
 - `global` - Full system access across all tenants
 - `admin` - Administrative access (legacy compatibility)
 - `to_qltb` - Equipment management team
@@ -62,6 +68,7 @@ A comprehensive web application for managing medical equipment, built with moder
 ## 🛠️ Development Setup
 
 ### Equipment Page Behavior (Global/Admin)
+
 - To reduce initial DB load and avoid confusion, the equipment list does not fetch until you select a tenant filter.
 - A tip appears: "Vui lòng chọn đơn vị cụ thể ở bộ lọc để xem dữ liệu thiết bị".
 - Your last tenant selection is remembered via localStorage (key: `equipment_tenant_filter`).
@@ -69,11 +76,13 @@ A comprehensive web application for managing medical equipment, built with moder
 - Fetching is powered by TanStack Query with `enabled` gating and scoped caching.
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm (preferred package manager)
 - Supabase project
 
 ### Environment Variables
+
 Create a `.env.local` file in the root directory:
 
 ```env
@@ -82,6 +91,7 @@ NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 SUPABASE_JWT_SECRET=your_supabase_jwt_secret
+ZBS_INTERNAL_RPC_SECRET=your_dedicated_zbs_internal_rpc_secret
 
 # NextAuth Configuration
 AUTH_SECRET=your_nextauth_secret_key
@@ -173,12 +183,14 @@ public/
 ## 🗄️ Database Architecture
 
 ### Multi-Tenant Design
+
 - **Strategy**: No-RLS, RPC-only architecture
 - **Data Isolation**: Tenant-scoped SQL RPCs
 - **Security**: JWT-based access control
 - **Performance**: Optimized for Vietnamese healthcare workflows
 
 ### Key Tables
+
 - `nhan_vien` - User accounts and roles
 - `don_vi` - Organizational units (tenants)
 - `thiet_bi` - Equipment records
@@ -189,6 +201,7 @@ public/
 ## 🌐 Deployment
 
 ### Vercel
+
 1. Connect repository to Vercel
 2. Configure environment variables
 3. Deploy automatically on push
@@ -196,6 +209,7 @@ public/
 ## 📱 PWA Support
 
 The application includes Progressive Web App features:
+
 - Offline functionality
 - Install prompts
 - Service worker for caching

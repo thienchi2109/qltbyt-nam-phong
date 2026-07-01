@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}))
 const getServerSessionMock = vi.fn()
 const jwtSignMock = vi.fn()
 const fetchMock = vi.fn()
+const INTERNAL_RPC_SECRET = "test-internal-rpc-secret"
 
 vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -33,14 +34,18 @@ function buildRequest(body: Record<string, unknown>, headers: Record<string, str
   })
 }
 
-function signedInternalCronHeaders(fn: string, body: Record<string, unknown>) {
+function signedInternalCronHeaders(
+  fn: string,
+  body: Record<string, unknown>,
+  secret = INTERNAL_RPC_SECRET
+) {
   const timestamp = String(Date.now())
   const bodySha256 = hashZbsInternalRpcBody(JSON.stringify(body))
   return {
     authorization: "Bearer cron-secret",
     "x-qltbyt-internal-rpc": "zbs-dispatch",
     "x-qltbyt-internal-rpc-body-sha256": bodySha256,
-    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc("test-secret", fn, timestamp, bodySha256),
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(secret, fn, timestamp, bodySha256),
     "x-qltbyt-internal-rpc-timestamp": timestamp,
   }
 }
@@ -48,6 +53,7 @@ function signedInternalCronHeaders(fn: string, body: Record<string, unknown>) {
 describe("RPC proxy same-origin guard", () => {
   beforeEach(() => {
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-secret")
+    vi.stubEnv("ZBS_INTERNAL_RPC_SECRET", INTERNAL_RPC_SECRET)
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
     vi.stubEnv("CRON_SECRET", "cron-secret")
@@ -227,6 +233,29 @@ describe("RPC proxy same-origin guard", () => {
         body: JSON.stringify({ p_limit: 10 }),
       })
     )
+  })
+
+  it("rejects internal cron ZBS RPCs signed with the Supabase JWT secret fallback", async () => {
+    delete process.env.ZBS_INTERNAL_RPC_SECRET
+    const body = { p_limit: 10 }
+
+    const res = await POST(
+      buildRequest(body, {
+        ...signedInternalCronHeaders(
+          "zbs_notification_outbox_claim_for_dispatch",
+          body,
+          "test-secret"
+        ),
+        origin: "https://app.example.com",
+      }) as never,
+      { params: Promise.resolve({ fn: "zbs_notification_outbox_claim_for_dispatch" }) }
+    )
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
+    expect(getServerSessionMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("rejects internal cron ZBS RPCs when the signed body hash does not match the request", async () => {

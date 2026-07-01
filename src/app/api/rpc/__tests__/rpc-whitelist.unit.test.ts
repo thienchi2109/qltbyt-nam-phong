@@ -6,24 +6,21 @@ import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { hashZbsInternalRpcBody, signZbsInternalRpc } from "@/lib/zbs/internal-rpc-signature"
 
+const INTERNAL_RPC_SECRET = "test-internal-rpc-secret"
+
 async function invokeRpcProxy(fn: string, headers: HeadersInit = {}) {
   const req = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST", headers })
   return POST(req as never, { params: Promise.resolve({ fn }) })
 }
 
-function signedInternalCronHeaders(fn: string) {
+function signedInternalCronHeaders(fn: string, secret = INTERNAL_RPC_SECRET) {
   const timestamp = String(Date.now())
   const bodySha256 = hashZbsInternalRpcBody("")
   return {
     authorization: "Bearer cron-secret",
     "x-qltbyt-internal-rpc": "zbs-dispatch",
     "x-qltbyt-internal-rpc-body-sha256": bodySha256,
-    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(
-      "test-jwt-secret",
-      fn,
-      timestamp,
-      bodySha256
-    ),
+    "x-qltbyt-internal-rpc-signature": signZbsInternalRpc(secret, fn, timestamp, bodySha256),
     "x-qltbyt-internal-rpc-timestamp": timestamp,
   }
 }
@@ -86,10 +83,25 @@ describe("RPC proxy whitelist", () => {
   ])('allows cron-only ZBS dispatch RPC "%s" through the internal cron gate', async (fn) => {
     vi.stubEnv("CRON_SECRET", "cron-secret")
     vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    vi.stubEnv("ZBS_INTERNAL_RPC_SECRET", INTERNAL_RPC_SECRET)
     const res = await invokeRpcProxy(fn, signedInternalCronHeaders(fn))
 
     expect(res.status).toBe(411)
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
+  it("rejects cron-only ZBS dispatch RPCs signed with the Supabase JWT secret fallback", async () => {
+    vi.stubEnv("CRON_SECRET", "cron-secret")
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    delete process.env.ZBS_INTERNAL_RPC_SECRET
+
+    const res = await invokeRpcProxy("zbs_notification_outbox_claim_for_dispatch", {
+      ...signedInternalCronHeaders("zbs_notification_outbox_claim_for_dispatch", "test-jwt-secret"),
+      "content-length": "0",
+    })
+
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Cron-only RPC not allowed" })
   })
 
   it("rejects the cron bearer and internal source header without a server signature", async () => {
