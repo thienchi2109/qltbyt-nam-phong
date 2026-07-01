@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   ZBS_TOKEN_STATE_GET_RPC,
@@ -10,6 +10,10 @@ import {
 } from "../access-token-manager"
 
 const now = new Date("2026-07-01T00:00:00.000Z")
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 describe("getValidZbsAccessToken", () => {
   it("uses a still-valid stored access token without refreshing", async () => {
@@ -213,6 +217,73 @@ describe("getValidZbsAccessToken", () => {
         p_error_at: "2026-07-01T00:00:00.000Z",
       },
     })
+  })
+
+  it("preserves the sanitized refresh error when error recording fails", async () => {
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          access_token: "old-access-token",
+          access_token_expires_at: "2026-07-01T00:01:00.000Z",
+          refresh_token: "stored-refresh-token",
+        },
+      ])
+      .mockRejectedValueOnce(new Error("raw database failure"))
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: -201, message: "Refresh token invalid" }), {
+        status: 200,
+      })
+    )
+
+    await expect(
+      getValidZbsAccessToken({
+        appId: "app-id",
+        appSecret: "app-secret",
+        rpcClient,
+        fetchImpl,
+        now,
+      })
+    ).rejects.toMatchObject({
+      code: "zalo_token_refresh_failed",
+      safeMessage: "Zalo access token refresh failed",
+    })
+  })
+
+  it("times out a hung Zalo token refresh request", async () => {
+    vi.useFakeTimers()
+    const rpcClient = vi
+      .fn()
+      .mockResolvedValueOnce([
+        {
+          access_token: "old-access-token",
+          access_token_expires_at: "2026-07-01T00:01:00.000Z",
+          refresh_token: "stored-refresh-token",
+        },
+      ])
+      .mockResolvedValueOnce([{ provider: "zalo_zbs" }])
+    const fetchImpl = vi.fn(
+      (_url: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("aborted")))
+        })
+    )
+
+    const tokenPromise = getValidZbsAccessToken({
+      appId: "app-id",
+      appSecret: "app-secret",
+      rpcClient,
+      fetchImpl,
+      now,
+      tokenRefreshTimeoutMs: 5,
+    })
+    const expectation = expect(tokenPromise).rejects.toMatchObject({
+      code: "zalo_token_refresh_network_error",
+      retryable: true,
+      safeMessage: "Zalo access token refresh failed",
+    })
+    await vi.advanceTimersByTimeAsync(5)
+    await expectation
   })
 })
 

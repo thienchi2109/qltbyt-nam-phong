@@ -22,6 +22,7 @@ The existing draft `add-zalo-repair-request-group-notifications` targets Zalo Bo
 - Require an approved ZBS template before production dispatch is enabled.
 - Add a durable notification outbox/log so repair request creation does not depend on Zalo API availability.
 - Add a durable server-side Zalo token lifecycle for ZBS/OA API usage:
+  - **BREAKING**: `ZALO_ZBS_ACCESS_TOKEN` is no longer the production source of truth for dispatch,
   - use Vercel env only for bootstrap/static secret material such as app ID, app secret, and initial refresh token,
   - refresh short-lived access tokens before live sends,
   - persist rotated access/refresh token state server-side,

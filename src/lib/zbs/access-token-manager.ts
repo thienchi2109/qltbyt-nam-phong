@@ -15,6 +15,7 @@ type ZbsFetch = typeof fetch
 
 const ZBS_TOKEN_PROVIDER = "zalo_zbs"
 const NEAR_EXPIRY_WINDOW_MS = 10 * 60 * 1000
+const TOKEN_REFRESH_TIMEOUT_MS = 10 * 1000
 const DEFAULT_ACCESS_TOKEN_TTL_SECONDS = 25 * 60 * 60
 const DEFAULT_REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60
 
@@ -38,6 +39,7 @@ export interface ZbsAccessTokenManagerOptions {
   initialRefreshToken?: string
   now?: Date
   nearExpiryWindowMs?: number
+  tokenRefreshTimeoutMs?: number
   rpcClient?: ZbsRpcClient
   fetchImpl?: ZbsFetch
 }
@@ -102,10 +104,11 @@ export async function getValidZbsAccessToken(
     appId: options.appId,
     appSecret: options.appSecret,
     refreshToken,
+    timeoutMs: options.tokenRefreshTimeoutMs ?? TOKEN_REFRESH_TIMEOUT_MS,
     fetchImpl,
   }).catch(async (error: unknown) => {
     const refreshError = normalizeRefreshError(error)
-    await recordRefreshError(rpcClient, refreshToken, refreshError, now)
+    await recordRefreshError(rpcClient, refreshToken, refreshError, now).catch(() => undefined)
     throw refreshError
   })
 
@@ -152,6 +155,7 @@ async function refreshAccessToken(options: {
   appId?: string
   appSecret?: string
   refreshToken: string
+  timeoutMs: number
   fetchImpl: ZbsFetch
 }): Promise<Required<Pick<ZaloTokenRefreshResponse, "accessToken">> & ZaloTokenRefreshResponse> {
   const appId = stringValue(options.appId)
@@ -171,6 +175,8 @@ async function refreshAccessToken(options: {
   })
 
   let response: Response
+  const abortController = new AbortController()
+  const timeout = setTimeout(() => abortController.abort(), options.timeoutMs)
   try {
     response = await options.fetchImpl(ZALO_OA_ACCESS_TOKEN_ENDPOINT, {
       method: "POST",
@@ -179,6 +185,7 @@ async function refreshAccessToken(options: {
         secret_key: appSecret,
       },
       body,
+      signal: abortController.signal,
     })
   } catch {
     throw new ZbsAccessTokenRefreshError({
@@ -186,6 +193,8 @@ async function refreshAccessToken(options: {
       safeMessage: "Zalo access token refresh failed",
       retryable: true,
     })
+  } finally {
+    clearTimeout(timeout)
   }
 
   const responseBody = await readProviderJson(response)

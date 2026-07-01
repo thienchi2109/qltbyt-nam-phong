@@ -27,8 +27,6 @@
 - [ ] 2.4 Implement dispatcher request construction behind a dry-run or disabled-dispatch feature gate.
 - [ ] 2.5 Verify dry-run output without making outbound Zalo API calls.
 
-## 3. Live Send Path
-
 ## 3. Token Lifecycle
 
 - [ ] 3.1 Add failing unit tests for using a still-valid durable access token without refresh.
