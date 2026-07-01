@@ -4,14 +4,18 @@ set -eu
 LOCK_FILE="${LOCK_FILE:-/tmp/zbs-dispatch.lock}"
 ZBS_DISPATCH_URL="${ZBS_DISPATCH_URL:-https://www.cvmems.vn/api/cron/zbs-dispatch}"
 
+timestamp() {
+  date +"%Y-%m-%dT%H:%M:%S%z"
+}
+
 if [ -z "${CRON_SECRET:-}" ]; then
-  echo "$(date -Iseconds) zbs_dispatch skipped: CRON_SECRET is not configured"
+  echo "$(timestamp) zbs_dispatch skipped: CRON_SECRET is not configured"
   exit 64
 fi
 
 (
   flock -n 9 || {
-    echo "$(date -Iseconds) zbs_dispatch skipped: previous run still active"
+    echo "$(timestamp) zbs_dispatch skipped: previous run still active"
     exit 0
   }
 
@@ -26,9 +30,9 @@ fi
       "${ZBS_DISPATCH_URL}" 2>&1
   )" || {
     status=$?
-    echo "$(date -Iseconds) zbs_dispatch failed: curl_exit=${status} response=${response}"
+    echo "$(timestamp) zbs_dispatch failed: curl_exit=${status} response=${response}"
     exit "${status}"
   }
 
-  echo "$(date -Iseconds) zbs_dispatch ok: ${response}"
+  echo "$(timestamp) zbs_dispatch ok: ${response}"
 ) 9>"${LOCK_FILE}"
