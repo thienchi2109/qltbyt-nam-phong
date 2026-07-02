@@ -136,6 +136,35 @@ describe("RPC proxy same-origin guard", () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it("allows global sessions without a tenant claim to proxy dashboard RPCs", async () => {
+    getServerSessionMock.mockResolvedValueOnce({
+      user: {
+        id: "4",
+        role: "global",
+        don_vi: null,
+        dia_ban_id: 5,
+        khoa_phong: "CVMEMS",
+      },
+    })
+
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
+    })
+
+    expect(res.status).toBe(200)
+    expect(jwtSignMock).toHaveBeenCalledOnce()
+    expect(jwtSignMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        app_role: "global",
+        don_vi: null,
+        dia_ban: "5",
+        khoa_phong: "CVMEMS",
+        user_id: "4",
+      })
+    )
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
   it("rejects malformed session claim values before JWT minting", async () => {
     getServerSessionMock.mockResolvedValueOnce({
       user: {

@@ -5,6 +5,7 @@ import { authOptions } from "@/auth/config"
 import { toAppRoleClaim } from "@/auth/server-claims"
 import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
 import { sanitizeForLog } from "@/lib/log-sanitizer"
+import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
 import {
   ZBS_INTERNAL_RPC_BODY_SHA256_HEADER,
@@ -38,7 +39,7 @@ type RpcProxySessionUser = {
 
 type RpcSessionClaims = {
   role: string
-  donVi: string
+  donVi: string | null
   diaBan: string
   khoaPhong: string
   userId: string
@@ -82,7 +83,12 @@ function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionClaims | 
   const khoaPhong = sessionClaimValue(sessionUser.khoa_phong)
   const userId = sessionClaimValue(sessionUser.id)
 
-  if (role == null || donVi == null || diaBan == null || khoaPhong == null || userId == null) {
+  if (role == null || diaBan == null || khoaPhong == null || userId == null) {
+    return null
+  }
+
+  const appRole = toAppRoleClaim(role)
+  if (donVi == null && !isGlobalRole(appRole) && !isRegionalLeaderRole(appRole)) {
     return null
   }
 
@@ -92,7 +98,7 @@ function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionClaims | 
     diaBan,
     khoaPhong,
     userId,
-    appRole: toAppRoleClaim(role),
+    appRole,
   }
 }
 
@@ -108,7 +114,7 @@ function rpcClientErrorPayload(status: number, payload: unknown) {
   return { error: payload || "RPC error" }
 }
 
-function tenantClaimParameter(value: string): number | string | null {
+function tenantClaimParameter(value: string | null): number | string | null {
   if (!value) {
     return null
   }
