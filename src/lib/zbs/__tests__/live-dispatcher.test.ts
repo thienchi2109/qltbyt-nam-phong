@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { ZBS_REPAIR_ISSUE_SUMMARY } from "../dispatcher"
 import {
   ZBS_CLAIM_DISPATCH_RPC,
   ZBS_MARK_FAILED_RPC,
@@ -113,7 +114,7 @@ describe("dispatchPendingZbsNotifications", () => {
       tracking_id: "repair_request:42:recipient-1",
       template_data: {
         request_id: "42",
-        issue_summary: "Khong khoi dong duoc",
+        issue_summary: ZBS_REPAIR_ISSUE_SUMMARY,
       },
     })
     expect(rpcClient).toHaveBeenNthCalledWith(2, {

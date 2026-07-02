@@ -5,7 +5,7 @@ import {
   ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER,
   ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT,
   ZBS_PENDING_DISPATCH_RPC,
-  ZBS_ISSUE_SUMMARY_MAX_LENGTH,
+  ZBS_REPAIR_ISSUE_SUMMARY,
   buildZbsDryRunDispatches,
   buildZbsTemplateRequest,
   mapRepairRequestTemplateData,
@@ -64,12 +64,32 @@ describe("mapRepairRequestTemplateData", () => {
       equipment: "May tho ICU (TB-001)",
       department: "ICU",
       requester: "Nguyen Van A",
-      issue_summary: "Khong khoi dong duoc",
+      issue_summary: ZBS_REPAIR_ISSUE_SUMMARY,
       detail_url: "https://app.example.test/repair-requests?action=view&requestId=42",
     })
   })
 
-  it("uses documented fallbacks and caps issue_summary before request construction", () => {
+  it("uses a fixed provider-safe issue summary instead of long user-entered details", () => {
+    const longIssueDescription = [
+      "Máy thở báo lỗi áp lực đường thở liên tục, màn hình hiển thị cảnh báo kéo dài.",
+      "Khoa đã thử khởi động lại nhiều lần nhưng thiết bị vẫn không hoạt động ổn định.",
+      "Cần kiểm tra gấp vì nội dung này dài hơn giới hạn trường Zalo template.",
+    ].join(" ")
+
+    const templateData = mapRepairRequestTemplateData({
+      ...baseOutboxRow,
+      template_data: {
+        ...baseOutboxRow.template_data,
+        issue_description: longIssueDescription,
+      },
+    })
+
+    expect(templateData.issue_summary).toBe(ZBS_REPAIR_ISSUE_SUMMARY)
+    expect(templateData.issue_summary).not.toContain("Máy thở báo lỗi")
+    expect(new TextEncoder().encode(templateData.issue_summary).length).toBeLessThanOrEqual(32)
+  })
+
+  it("uses documented fallbacks and fixed issue_summary before request construction", () => {
     const longIssueSummary = "Loi ".repeat(80)
 
     const templateData = mapRepairRequestTemplateData({
@@ -92,8 +112,7 @@ describe("mapRepairRequestTemplateData", () => {
       requester: "Khong ro",
       detail_url: "/repair-requests?action=view&requestId=99",
     })
-    expect(templateData.issue_summary.length).toBeLessThanOrEqual(ZBS_ISSUE_SUMMARY_MAX_LENGTH)
-    expect(templateData.issue_summary).toMatch(/\.\.\.$/)
+    expect(templateData.issue_summary).toBe(ZBS_REPAIR_ISSUE_SUMMARY)
   })
 })
 
@@ -117,7 +136,7 @@ describe("buildZbsTemplateRequest", () => {
           equipment: "May tho ICU (TB-001)",
           department: "ICU",
           requester: "Nguyen Van A",
-          issue_summary: "Khong khoi dong duoc",
+          issue_summary: ZBS_REPAIR_ISSUE_SUMMARY,
           detail_url: "https://app.example.test/repair-requests?action=view&requestId=42",
         },
         tracking_id: "repair_request:42:recipient-1",

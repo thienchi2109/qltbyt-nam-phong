@@ -7,8 +7,8 @@ export const ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT = "https://business.openapi.zalo.m
 export const ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER = "<ZALO_ZBS_ACCESS_TOKEN>"
 /** Placeholder used until a pending outbox row carries the approved template id. */
 export const ZALO_ZBS_REPAIR_TEMPLATE_ID_PLACEHOLDER = "<ZALO_ZBS_REPAIR_TEMPLATE_ID>"
-/** Conservative cap for the approved `issue_summary` ZBS template field. */
-export const ZBS_ISSUE_SUMMARY_MAX_LENGTH = 120
+/** Fixed provider-safe text for the constrained `issue_summary` ZBS template field. */
+export const ZBS_REPAIR_ISSUE_SUMMARY = "Lỗi thiết bị"
 /** RPC boundary for reading pending ZBS outbox rows through the app proxy. */
 export const ZBS_PENDING_DISPATCH_RPC = "zbs_notification_outbox_pending_for_dispatch"
 
@@ -133,16 +133,6 @@ function firstPresent(...values: string[]): string {
   return values.find((value) => value.length > 0) ?? "Khong ro"
 }
 
-function truncateIssueSummary(value: string): string {
-  const summary = firstPresent(value, "Yeu cau sua chua thiet bi moi")
-
-  if (summary.length <= ZBS_ISSUE_SUMMARY_MAX_LENGTH) {
-    return summary
-  }
-
-  return `${summary.slice(0, ZBS_ISSUE_SUMMARY_MAX_LENGTH - 3).trimEnd()}...`
-}
-
 function equipmentLabel(templateData: JsonObject): string {
   const equipmentName = stringValue(templateData.equipment_name)
   const equipmentCode = stringValue(templateData.equipment_code)
@@ -182,7 +172,7 @@ export function mapRepairRequestTemplateData(
       stringValue(templateData.don_vi_thuc_hien)
     ),
     requester: firstPresent(stringValue(templateData.requester)),
-    issue_summary: truncateIssueSummary(stringValue(templateData.issue_description)),
+    issue_summary: ZBS_REPAIR_ISSUE_SUMMARY,
     detail_url: buildDetailUrl(row, options.appBaseUrl),
   }
 }
