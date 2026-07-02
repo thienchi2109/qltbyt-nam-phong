@@ -59,9 +59,9 @@
 
 ## 6. Runbook / Production Rollout
 
-- [ ] 6.1 Document required env vars and secret ownership, including app ID, app secret, initial refresh token, and removal of static access-token env dependency.
-- [ ] 6.2 Document template approval, recipient phone normalization, refresh-token bootstrap, and smoke-test steps.
-- [ ] 6.3 Document monitoring queries for pending, failed, sent, delivered notification rows, and token refresh state.
-- [ ] 6.4 Document rollback: disable dispatch feature gate while preserving outbox rows and token state.
-- [ ] 6.5 Run quality gates required by the touched files.
-- [ ] 6.6 Record rollout decision: enable production dispatch only after smoke test succeeds and monitoring path is confirmed.
+- [x] 6.1 Document required env vars and secret ownership, including app ID, app secret, initial refresh token, and removal of static access-token env dependency.
+- [x] 6.2 Document template approval, recipient phone normalization, refresh-token bootstrap, and smoke-test steps.
+- [x] 6.3 Document monitoring queries for pending, failed, sent, delivered notification rows, and token refresh state.
+- [x] 6.4 Document rollback: disable dispatch feature gate while preserving outbox rows and token state.
+- [x] 6.5 Run quality gates required by the touched files.
+- [x] 6.6 Record rollout decision: enable production dispatch only after smoke test succeeds and monitoring path is confirmed.
