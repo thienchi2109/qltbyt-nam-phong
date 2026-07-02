@@ -18,6 +18,7 @@ export interface ZaloSuccess {
 const DISPATCH_ROW_ERROR_MESSAGE = "Unexpected ZBS dispatch row failure"
 const SENSITIVE_ERROR_TEXT_PATTERN =
   /\b(token|secret|password|authorization|credential|api[_ -]?key|apikey)\b/i
+const MIN_REASONABLE_EPOCH_MILLISECONDS = 1_000_000_000_000
 
 /** Checks whether an unknown provider value is a non-array object. */
 export function isRecord(value: unknown): value is JsonObject {
@@ -78,7 +79,7 @@ export function getProviderMessageId(response: JsonObject): string {
 
 function parseProviderTimestamp(value: unknown, fallback: Date): string {
   if (typeof value === "number" && Number.isFinite(value)) {
-    const parsed = new Date(value)
+    const parsed = new Date(normalizeEpochTimestamp(value))
     return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
   }
 
@@ -88,12 +89,16 @@ function parseProviderTimestamp(value: unknown, fallback: Date): string {
   }
 
   if (/^\d+$/.test(text)) {
-    const parsed = new Date(Number(text))
+    const parsed = new Date(normalizeEpochTimestamp(Number(text)))
     return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
   }
 
   const parsed = new Date(text)
   return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
+}
+
+function normalizeEpochTimestamp(value: number): number {
+  return value < MIN_REASONABLE_EPOCH_MILLISECONDS ? value * 1000 : value
 }
 
 /** Normalizes Zalo sent timestamps to ISO strings before RPC persistence. */
