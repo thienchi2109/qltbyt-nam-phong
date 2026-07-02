@@ -50,7 +50,7 @@ export async function POST(request: Request): Promise<Response> {
   const env = readRequiredEnv()
   if (!env) {
     console.error("Missing ZBS delivery webhook environment variables")
-    return jsonResponse({ error: "Server configuration error" }, 500)
+    return jsonResponse({ error: "Internal server error" }, 500)
   }
 
   const rawBody = await request.text()
@@ -99,7 +99,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (error) {
     console.error("ZBS delivery webhook update failed")
-    return jsonResponse({ error: "Delivery webhook update failed" }, 500)
+    return jsonResponse({ error: "Internal server error" }, 500)
   }
 
   return jsonResponse({ success: true, result: data ?? [] }, 200)

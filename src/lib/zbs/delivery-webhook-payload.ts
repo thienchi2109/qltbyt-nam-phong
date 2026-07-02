@@ -28,6 +28,9 @@ function stringValue(value: unknown): string {
 
 function parseProviderTimestamp(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
+    if (value <= 0) {
+      return null
+    }
     const parsed = new Date(value < MIN_REASONABLE_EPOCH_MILLISECONDS ? value * 1000 : value)
     return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
   }

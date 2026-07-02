@@ -130,6 +130,10 @@ BEGIN
     jsonb_build_object('message_tracking_id', 'verify-zbs-delivery-webhook:sent', 'message_msg_id', 'new-provider-message')
   );
 
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'mark_delivered returned no rows for sent tracking id';
+  END IF;
+
   IF v_result.id IS DISTINCT FROM v_sent_id OR v_result.status <> 'delivered' THEN
     RAISE EXCEPTION 'mark_delivered returned unexpected row: %, %', v_result.id, v_result.status;
   END IF;

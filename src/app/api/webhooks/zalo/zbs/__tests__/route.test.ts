@@ -86,6 +86,22 @@ describe("/api/webhooks/zalo/zbs", () => {
     await expect(response.json()).resolves.toEqual({ error: "Unauthorized" })
   })
 
+  it("returns the standard 500 body when webhook environment is incomplete", async () => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
+    const mod = await loadRoute()
+
+    try {
+      const response = await mod.POST(signedRequest(deliveryPayload()))
+
+      expect(response.status).toBe(500)
+      expect(supabaseMocks.createClient).not.toHaveBeenCalled()
+      await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
+  })
+
   it("marks trusted user_received_message events as delivered by tracking id", async () => {
     supabaseMocks.rpc.mockResolvedValue({
       data: [{ id: "outbox-1", status: "delivered" }],
@@ -150,16 +166,19 @@ describe("/api/webhooks/zalo/zbs", () => {
 
   it("returns a sanitized 500 when the delivery RPC fails", async () => {
     const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined)
-    supabaseMocks.rpc.mockResolvedValue({
-      data: null,
-      error: { message: "service-role secret leaked in DB detail" },
-    })
-    const mod = await loadRoute()
+    try {
+      supabaseMocks.rpc.mockResolvedValue({
+        data: null,
+        error: { message: "service-role secret leaked in DB detail" },
+      })
+      const mod = await loadRoute()
 
-    const response = await mod.POST(signedRequest(deliveryPayload()))
+      const response = await mod.POST(signedRequest(deliveryPayload()))
 
-    expect(response.status).toBe(500)
-    await expect(response.json()).resolves.toEqual({ error: "Delivery webhook update failed" })
-    consoleErrorSpy.mockRestore()
+      expect(response.status).toBe(500)
+      await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+    } finally {
+      consoleErrorSpy.mockRestore()
+    }
   })
 })

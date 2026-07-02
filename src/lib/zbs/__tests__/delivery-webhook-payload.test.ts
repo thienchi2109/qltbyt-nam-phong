@@ -67,4 +67,27 @@ describe("ZBS delivery webhook payload parsing", () => {
       reason: expect.any(String),
     })
   })
+
+  it.each([0, -1])(
+    "falls back to webhook receipt time for invalid numeric delivery_time %s",
+    (deliveryTime) => {
+      const result = parseZbsDeliveryWebhookPayload(
+        {
+          event_name: "user_received_message",
+          message: {
+            delivery_time: deliveryTime,
+            tracking_id: "tracking-1",
+          },
+        },
+        new Date("2026-07-02T08:00:00.000Z")
+      )
+
+      expect(result).toMatchObject({
+        kind: "delivery",
+        delivery: {
+          deliveredAt: "2026-07-02T08:00:00.000Z",
+        },
+      })
+    }
+  )
 })
