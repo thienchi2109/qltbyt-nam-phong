@@ -2,17 +2,23 @@
 
 import * as React from "react"
 import { Loader2 } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 
-interface RepairRequestsCreateSheetActionsProps {
-  isSubmitting: boolean
-  onCancel: () => void
+interface RepairRequestsSheetActionsProps {
+  readonly isSubmitting: boolean
+  readonly onCancel: () => void
+  readonly submitLabel: string
+  readonly submittingLabel?: string
 }
 
-export function RepairRequestsCreateSheetActions({
+/** Renders shared submit and cancel actions for repair-request sheets. */
+export function RepairRequestsSheetActions({
   isSubmitting,
   onCancel,
-}: RepairRequestsCreateSheetActionsProps) {
+  submitLabel,
+  submittingLabel,
+}: RepairRequestsSheetActionsProps) {
   return (
     <div className="flex gap-3 pt-2">
       <Button
@@ -20,12 +26,13 @@ export function RepairRequestsCreateSheetActions({
         variant="outline"
         className="flex-1 touch-target"
         onClick={onCancel}
+        disabled={isSubmitting}
       >
         Hủy
       </Button>
       <Button type="submit" className="flex-1 touch-target" disabled={isSubmitting}>
         {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
-        {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+        {isSubmitting && submittingLabel ? submittingLabel : submitLabel}
       </Button>
     </div>
   )
