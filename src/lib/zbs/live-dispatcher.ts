@@ -7,6 +7,18 @@ import {
   ZALO_ZBS_PHONE_TEMPLATE_ENDPOINT,
   buildZbsTemplateRequest,
 } from "./dispatcher"
+import {
+  type JsonObject,
+  type ZaloFailure,
+  type ZaloSuccess,
+  errorMessage,
+  getProviderMessageId,
+  getProviderSentAt,
+  numberValue,
+  safeDispatchRowErrorMessage,
+  sanitizeProviderResponse,
+  stringValue,
+} from "./live-dispatcher-utils"
 
 /** Service-role RPC that atomically claims due ZBS outbox rows for live dispatch. */
 export const ZBS_CLAIM_DISPATCH_RPC = "zbs_notification_outbox_claim_for_dispatch"
@@ -14,8 +26,6 @@ export const ZBS_CLAIM_DISPATCH_RPC = "zbs_notification_outbox_claim_for_dispatc
 export const ZBS_MARK_SENT_RPC = "zbs_notification_outbox_mark_sent"
 /** Service-role RPC that persists retryable or final ZBS provider failures. */
 export const ZBS_MARK_FAILED_RPC = "zbs_notification_outbox_mark_failed"
-
-type JsonObject = Record<string, unknown>
 
 type ZbsRpcClient = (options: { fn: string; args: JsonObject }) => Promise<unknown>
 type ZbsFetch = typeof fetch
@@ -51,59 +61,6 @@ export interface ZbsDispatchRunResult {
   retryable_failed: number
   failed: number
   results: ZbsDispatchResult[]
-}
-
-interface ZaloFailure {
-  code: string
-  message: string
-  retryable: boolean
-  providerResponse?: JsonObject
-}
-
-interface ZaloSuccess {
-  providerMessageId: string
-  sentAt: string
-  providerResponse: JsonObject
-}
-
-function isRecord(value: unknown): value is JsonObject {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "unknown error"
-}
-
-function stringValue(value: unknown): string {
-  return typeof value === "string" ? value.trim() : ""
-}
-
-function numberValue(value: unknown): number | null {
-  return typeof value === "number" && Number.isFinite(value) ? value : null
-}
-
-function sanitizeProviderResponse(value: unknown): JsonObject {
-  if (!isRecord(value)) {
-    return {}
-  }
-
-  return value
-}
-
-function getProviderData(response: JsonObject): JsonObject {
-  return isRecord(response.data) ? response.data : response
-}
-
-function getProviderMessageId(response: JsonObject): string {
-  const data = getProviderData(response)
-  return stringValue(data.msg_id) || stringValue(response.msg_id)
-}
-
-function getProviderSentAt(response: JsonObject, fallback: Date): string {
-  const data = getProviderData(response)
-  const sentAt =
-    stringValue(data.sent_at) || stringValue(data.sent_time) || stringValue(response.sent_at)
-  return sentAt || fallback.toISOString()
 }
 
 function classifyHttpFailure(response: Response): ZaloFailure {
@@ -346,12 +303,12 @@ async function dispatchRow(
   }
 }
 
-function failedDispatchRowResult(row: ZbsNotificationOutboxRow): ZbsDispatchResult {
+function failedDispatchRowResult(row: ZbsNotificationOutboxRow, error: unknown): ZbsDispatchResult {
   return {
     outbox_id: row.id,
     status: "failed",
     error_code: "dispatch_row_error",
-    error_message: "Unexpected ZBS dispatch row failure",
+    error_message: safeDispatchRowErrorMessage(error),
   }
 }
 
@@ -366,7 +323,9 @@ async function dispatchRowsInChunks(
     const settledResults = await Promise.allSettled(chunk.map((row) => dispatchRow(row, options)))
     results.push(
       ...settledResults.map((result, resultIndex) =>
-        result.status === "fulfilled" ? result.value : failedDispatchRowResult(chunk[resultIndex])
+        result.status === "fulfilled"
+          ? result.value
+          : failedDispatchRowResult(chunk[resultIndex], result.reason)
       )
     )
   }
