@@ -90,4 +90,30 @@ describe("ZBS delivery webhook payload parsing", () => {
       })
     }
   )
+
+  it("preserves numeric delivery_time and timestamp in compact provider metadata", () => {
+    const result = parseZbsDeliveryWebhookPayload(
+      {
+        app_id: "2074138120372622546",
+        timestamp: 1782997200000,
+        event_name: "user_received_message",
+        message: {
+          delivery_time: 1602960467432,
+          tracking_id: "tracking-1",
+        },
+      },
+      new Date("2026-07-02T08:00:00.000Z")
+    )
+
+    expect(result).toMatchObject({
+      kind: "delivery",
+      delivery: {
+        deliveredAt: "2020-10-17T18:47:47.432Z",
+        providerMetadata: {
+          message_delivery_time: "1602960467432",
+          timestamp: "1782997200000",
+        },
+      },
+    })
+  })
 })

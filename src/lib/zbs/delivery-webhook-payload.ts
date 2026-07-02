@@ -26,6 +26,22 @@ function stringValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function metadataScalarValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value.trim()
+  }
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value)
+  }
+
+  if (typeof value === "boolean") {
+    return String(value)
+  }
+
+  return ""
+}
+
 function parseProviderTimestamp(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     if (value <= 0) {
@@ -59,13 +75,13 @@ function compactProviderMetadata(payload: JsonObject, message: JsonObject): Json
   const metadata: JsonObject = {
     app_id: stringValue(payload.app_id),
     event_name: stringValue(payload.event_name),
-    message_delivery_time: stringValue(message.delivery_time),
+    message_delivery_time: metadataScalarValue(message.delivery_time),
     message_msg_id: stringValue(message.msg_id),
     message_tracking_id: stringValue(message.tracking_id),
     recipient_id: stringValue(recipient.id),
     recipient_phone: stringValue(message.phone) || stringValue(recipient.phone),
     sender_id: stringValue(sender.id),
-    timestamp: stringValue(payload.timestamp),
+    timestamp: metadataScalarValue(payload.timestamp),
   }
 
   return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== ""))
