@@ -64,6 +64,7 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
     contentClassName,
     description,
     onOpenChange,
+    open,
     title,
   }: {
     bodyClassName?: string
@@ -71,32 +72,24 @@ vi.mock("@/components/shared/SideSheetShell", () => ({
     contentClassName?: string
     description?: React.ReactNode
     onOpenChange: (open: boolean) => void
+    open: boolean
     title: React.ReactNode
-  }) => (
-    <section
-      data-testid="edit-side-sheet"
-      data-body-class={bodyClassName}
-      data-content-class={contentClassName}
-    >
-      <h2>{title}</h2>
-      <p>{description}</p>
-      <button type="button" onClick={() => onOpenChange(false)}>
-        close edit sheet
-      </button>
-      {children}
-    </section>
-  ),
-}))
-
-vi.mock("@/components/ui/dialog", () => ({
-  Dialog: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="legacy-dialog-content">{children}</div>
-  ),
-  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
-  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  }) =>
+    open ? (
+      <section
+        data-testid="edit-side-sheet"
+        data-body-class={bodyClassName}
+        data-content-class={contentClassName}
+        data-open={open}
+      >
+        <h2>{title}</h2>
+        <p>{description}</p>
+        <button type="button" onClick={() => onOpenChange(false)}>
+          close edit sheet
+        </button>
+        {children}
+      </section>
+    ) : null,
 }))
 
 vi.mock("@/components/ui/button", () => ({
@@ -156,9 +149,9 @@ describe("RepairRequestsEditDialog side sheet", () => {
     render(<RepairRequestsEditDialog />)
 
     const sheet = screen.getByTestId("edit-side-sheet")
+    expect(sheet).toHaveAttribute("data-open", "true")
     expect(sheet).toHaveAttribute("data-content-class", "sm:max-w-lg")
     expect(sheet).toHaveAttribute("data-body-class", "mt-4 overflow-y-auto px-4 pb-4")
-    expect(screen.queryByTestId("legacy-dialog-content")).not.toBeInTheDocument()
     expect(screen.getByText("Sửa yêu cầu sửa chữa")).toBeInTheDocument()
     expect(screen.getByText(/Máy siêu âm/)).toBeInTheDocument()
 

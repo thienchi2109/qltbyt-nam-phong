@@ -55,6 +55,18 @@ interface RepairRequestRowActionsProps {
   readonly options: RepairRequestColumnOptions
 }
 
+type DaysStatus = NonNullable<ReturnType<typeof calculateDaysRemaining>>["status"]
+
+const daysStatusTextClassByStatus: Record<DaysStatus, string> = {
+  success: "text-emerald-600",
+  warning: "text-amber-600",
+  danger: "text-rose-600",
+}
+
+function getDaysStatusTextClass(status: DaysStatus) {
+  return daysStatusTextClassByStatus[status]
+}
+
 /**
  * Renders the actions dropdown menu for a repair request row.
  * Actions vary based on request status and user permissions.
@@ -260,7 +272,7 @@ export function useRepairRequestColumns(
           // Chỉ hiển thị progress bar cho yêu cầu chưa hoàn thành
           const isCompleted =
             request.trang_thai === "Hoàn thành" || request.trang_thai === "Không HT"
-          const daysInfo = !isCompleted ? calculateDaysRemaining(ngayMongMuon) : null
+          const daysInfo = isCompleted ? null : calculateDaysRemaining(ngayMongMuon)
 
           return (
             <div className="space-y-1.5 w-[180px]">
@@ -270,13 +282,7 @@ export function useRepairRequestColumns(
                 </span>
                 {daysInfo && (
                   <span
-                    className={`text-[10px] uppercase font-bold tracking-tight whitespace-nowrap ${
-                      daysInfo.status === "success"
-                        ? "text-emerald-600"
-                        : daysInfo.status === "warning"
-                          ? "text-amber-600"
-                          : "text-rose-600"
-                    }`}
+                    className={`text-[10px] uppercase font-bold tracking-tight whitespace-nowrap ${getDaysStatusTextClass(daysInfo.status)}`}
                   >
                     {daysInfo.text}
                   </span>

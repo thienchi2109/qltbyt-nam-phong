@@ -30,7 +30,12 @@ export function RepairRequestsSheetActions({
       >
         Hủy
       </Button>
-      <Button type="submit" className="flex-1 touch-target" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        className="flex-1 touch-target"
+        disabled={isSubmitting}
+        aria-busy={isSubmitting}
+      >
         {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" />}
         {isSubmitting && submittingLabel ? submittingLabel : submitLabel}
       </Button>

@@ -61,6 +61,7 @@ export function RepairRequestsFormFields({
   const repairItemsId = `${fieldIdPrefix}-repair-items`
   const repairUnitId = `${fieldIdPrefix}-repair-unit`
   const externalCompanyId = `${fieldIdPrefix}-external-company`
+  const desiredDateId = `${fieldIdPrefix}-desired-date`
 
   return (
     <>
@@ -87,10 +88,11 @@ export function RepairRequestsFormFields({
         />
       </div>
       <div className="space-y-2">
-        <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
+        <Label htmlFor={desiredDateId}>Ngày mong muốn hoàn thành (nếu có)</Label>
         <Popover>
           <PopoverTrigger asChild>
             <Button
+              id={desiredDateId}
               type="button"
               variant="outline"
               className={cn(

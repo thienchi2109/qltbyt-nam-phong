@@ -83,6 +83,16 @@ function RepairRequestsEditDialogContent({
     createEditFormState
   )
 
+  const isDesiredDateDisabled = React.useCallback(
+    (date: Date) => {
+      const requestTimestamp = Date.parse(requestToEdit.ngay_yeu_cau)
+      return Number.isFinite(requestTimestamp)
+        ? date.getTime() < startOfDay(requestTimestamp).getTime()
+        : false
+    },
+    [requestToEdit.ngay_yeu_cau]
+  )
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
 
@@ -119,12 +129,7 @@ function RepairRequestsEditDialogContent({
           desiredDate={formState.desiredDate}
           externalCompanyName={formState.externalCompanyName}
           fieldIdPrefix="edit-repair-request"
-          isDateDisabled={(date) => {
-            const requestTimestamp = Date.parse(requestToEdit.ngay_yeu_cau)
-            return Number.isFinite(requestTimestamp)
-              ? date.getTime() < startOfDay(requestTimestamp).getTime()
-              : false
-          }}
+          isDateDisabled={isDesiredDateDisabled}
           issueDescription={formState.issueDescription}
           onDesiredDateChange={(desiredDate) =>
             dispatchForm({
