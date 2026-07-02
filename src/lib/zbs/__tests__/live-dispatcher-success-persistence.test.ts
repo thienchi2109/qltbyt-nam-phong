@@ -4,7 +4,7 @@ import {
   ZBS_CLAIM_DISPATCH_RPC,
   ZBS_MARK_SENT_RPC,
   dispatchPendingZbsNotifications,
-} from "../live-dispatcher"
+} from "@/lib/zbs/live-dispatcher"
 
 const baseOutboxRow = {
   id: "outbox-1",

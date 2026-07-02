@@ -14,7 +14,6 @@ import {
   errorMessage,
   getProviderMessageId,
   getProviderSentAt,
-  isRecord,
   numberValue,
   safeDispatchRowErrorMessage,
   sanitizeProviderResponse,

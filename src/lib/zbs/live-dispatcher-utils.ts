@@ -77,24 +77,31 @@ export function getProviderMessageId(response: JsonObject): string {
   return stringValue(data.msg_id) || stringValue(response.msg_id)
 }
 
-function parseProviderTimestamp(value: unknown, fallback: Date): string {
+function parseProviderTimestamp(value: unknown): string | null {
   if (typeof value === "number" && Number.isFinite(value)) {
+    if (value <= 0) {
+      return null
+    }
     const parsed = new Date(normalizeEpochTimestamp(value))
-    return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
   }
 
   const text = stringValue(value)
   if (!text) {
-    return fallback.toISOString()
+    return null
   }
 
   if (/^\d+$/.test(text)) {
-    const parsed = new Date(normalizeEpochTimestamp(Number(text)))
-    return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
+    const epoch = Number(text)
+    if (epoch <= 0) {
+      return null
+    }
+    const parsed = new Date(normalizeEpochTimestamp(epoch))
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
   }
 
   const parsed = new Date(text)
-  return Number.isNaN(parsed.getTime()) ? fallback.toISOString() : parsed.toISOString()
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
 }
 
 function normalizeEpochTimestamp(value: number): number {
@@ -104,5 +111,14 @@ function normalizeEpochTimestamp(value: number): number {
 /** Normalizes Zalo sent timestamps to ISO strings before RPC persistence. */
 export function getProviderSentAt(response: JsonObject, fallback: Date): string {
   const data = getProviderData(response)
-  return parseProviderTimestamp(data.sent_at ?? data.sent_time ?? response.sent_at, fallback)
+  const candidates = [data.sent_at, data.sent_time, response.sent_at, response.sent_time]
+
+  for (const candidate of candidates) {
+    const parsed = parseProviderTimestamp(candidate)
+    if (parsed) {
+      return parsed
+    }
+  }
+
+  return fallback.toISOString()
 }
