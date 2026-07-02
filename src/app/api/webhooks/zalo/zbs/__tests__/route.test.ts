@@ -177,6 +177,9 @@ describe("/api/webhooks/zalo/zbs", () => {
 
       expect(response.status).toBe(500)
       await expect(response.json()).resolves.toEqual({ error: "Internal server error" })
+      expect(consoleErrorSpy).toHaveBeenCalledWith("ZBS delivery webhook update failed", {
+        message: "service-role secret leaked in DB detail",
+      })
     } finally {
       consoleErrorSpy.mockRestore()
     }

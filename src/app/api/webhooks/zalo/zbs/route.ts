@@ -98,7 +98,7 @@ export async function POST(request: Request): Promise<Response> {
   })
 
   if (error) {
-    console.error("ZBS delivery webhook update failed")
+    console.error("ZBS delivery webhook update failed", error)
     return jsonResponse({ error: "Internal server error" }, 500)
   }
 
