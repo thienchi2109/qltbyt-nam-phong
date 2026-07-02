@@ -113,7 +113,7 @@ describe("dispatchPendingZbsNotifications", () => {
       tracking_id: "repair_request:42:recipient-1",
       template_data: {
         request_id: "42",
-        issue_summary: "Khong khoi dong duoc",
+        issue_summary: "Lỗi thiết bị",
       },
     })
     expect(rpcClient).toHaveBeenNthCalledWith(2, {
