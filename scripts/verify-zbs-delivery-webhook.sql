@@ -25,6 +25,7 @@ BEGIN
   RETURNING id INTO v_recipient_id;
 
   INSERT INTO public.zbs_notification_outbox (
+    provider,
     event_type,
     source_type,
     source_id,
@@ -40,6 +41,7 @@ BEGIN
     sent_at
   )
   VALUES (
+    'zalo_zbs',
     'repair_request_created',
     'repair_request',
     -62101,
@@ -57,6 +59,7 @@ BEGIN
   RETURNING id INTO v_sent_id;
 
   INSERT INTO public.zbs_notification_outbox (
+    provider,
     event_type,
     source_type,
     source_id,
@@ -74,6 +77,7 @@ BEGIN
     delivery_webhook_received_at
   )
   VALUES (
+    'zalo_zbs',
     'repair_request_created',
     'repair_request',
     -62102,

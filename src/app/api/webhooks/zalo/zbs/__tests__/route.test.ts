@@ -14,6 +14,8 @@ vi.mock("@supabase/supabase-js", () => ({
 const ORIGINAL_ENV = { ...process.env }
 const APP_ID = "2074138120372622546"
 const SECRET = "zalo-webhook-secret"
+const WEBHOOK_NOW_MS = Date.parse("2026-07-02T09:00:00.000Z")
+const WEBHOOK_TIMESTAMP = String(WEBHOOK_NOW_MS)
 
 async function loadRoute() {
   const routeModulePath = ["..", "route"].join("/")
@@ -23,7 +25,7 @@ async function loadRoute() {
 function deliveryPayload(overrides: Record<string, unknown> = {}) {
   return {
     app_id: APP_ID,
-    timestamp: "1602560967477",
+    timestamp: WEBHOOK_TIMESTAMP,
     event_name: "user_received_message",
     sender: { id: "2893352839501541173" },
     recipient: { id: "1077170099018924429" },
@@ -60,6 +62,8 @@ function signedRequest(payload: unknown, signatureSecret = SECRET) {
 describe("/api/webhooks/zalo/zbs", () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(WEBHOOK_NOW_MS))
     supabaseMocks.createClient.mockReset()
     supabaseMocks.rpc.mockReset()
     process.env = {
@@ -73,6 +77,7 @@ describe("/api/webhooks/zalo/zbs", () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     process.env = { ...ORIGINAL_ENV }
   })
 
@@ -141,7 +146,7 @@ describe("/api/webhooks/zalo/zbs", () => {
     const response = await mod.POST(
       signedRequest({
         app_id: APP_ID,
-        timestamp: "1602560967477",
+        timestamp: WEBHOOK_TIMESTAMP,
         event_name: "user_feedback",
         message: { tracking_id: "tracking-1" },
       })

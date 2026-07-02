@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "crypto"
 
 const ZALO_DELIVERY_SIGNATURE_PREFIX = "mac="
 const SHA256_HEX_PATTERN = /^[0-9a-f]{64}$/i
+const ZALO_DELIVERY_SIGNATURE_TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000
 
 /** Builds the Zalo delivery webhook mac header from app id, raw body, timestamp, and secret. */
 export function buildZbsDeliveryWebhookSignature({
@@ -39,6 +40,15 @@ function timingSafeHexEqual(expected: string, actual: string): boolean {
   )
 }
 
+function isFreshSignatureTimestamp(timestamp: string): boolean {
+  const timestampMs = Number(timestamp)
+  if (!Number.isSafeInteger(timestampMs) || timestampMs <= 0) {
+    return false
+  }
+
+  return Math.abs(Date.now() - timestampMs) <= ZALO_DELIVERY_SIGNATURE_TIMESTAMP_TOLERANCE_MS
+}
+
 /** Validates the Zalo delivery webhook mac header without leaking timing differences. */
 export function isValidZbsDeliveryWebhookSignature({
   expectedAppId,
@@ -60,6 +70,10 @@ export function isValidZbsDeliveryWebhookSignature({
   }
 
   if (payloadAppId !== expectedAppId) {
+    return false
+  }
+
+  if (!isFreshSignatureTimestamp(timestamp)) {
     return false
   }
 

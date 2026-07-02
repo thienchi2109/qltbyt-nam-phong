@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   buildZbsDeliveryWebhookSignature,
@@ -7,7 +7,8 @@ import {
 
 const APP_ID = "2074138120372622546"
 const SECRET = "zalo-webhook-secret"
-const TIMESTAMP = "1602560967477"
+const NOW_MS = Date.parse("2026-07-02T09:00:00.000Z")
+const TIMESTAMP = String(NOW_MS)
 const RAW_BODY = JSON.stringify({
   app_id: APP_ID,
   timestamp: TIMESTAMP,
@@ -19,7 +20,29 @@ const RAW_BODY = JSON.stringify({
   },
 })
 
+function rawBodyWithTimestamp(timestamp: string): string {
+  return JSON.stringify({
+    app_id: APP_ID,
+    timestamp,
+    event_name: "user_received_message",
+    message: {
+      tracking_id: "tracking-1",
+      msg_id: "message-1",
+      delivery_time: "1602960467432",
+    },
+  })
+}
+
 describe("ZBS delivery webhook signature validation", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(NOW_MS))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it("accepts a valid mac header built from app id, raw body, timestamp, and secret", () => {
     const signatureHeader = buildZbsDeliveryWebhookSignature({
       appId: APP_ID,
@@ -111,6 +134,50 @@ describe("ZBS delivery webhook signature validation", () => {
         payloadAppId: APP_ID,
         rawBody: RAW_BODY,
         timestamp: TIMESTAMP,
+        secret: SECRET,
+        signatureHeader,
+      })
+    ).toBe(false)
+  })
+
+  it("rejects a replayed signed payload with a stale timestamp", () => {
+    const staleTimestamp = String(NOW_MS - 5 * 60 * 1000 - 1)
+    const rawBody = rawBodyWithTimestamp(staleTimestamp)
+    const signatureHeader = buildZbsDeliveryWebhookSignature({
+      appId: APP_ID,
+      rawBody,
+      timestamp: staleTimestamp,
+      secret: SECRET,
+    })
+
+    expect(
+      isValidZbsDeliveryWebhookSignature({
+        expectedAppId: APP_ID,
+        payloadAppId: APP_ID,
+        rawBody,
+        timestamp: staleTimestamp,
+        secret: SECRET,
+        signatureHeader,
+      })
+    ).toBe(false)
+  })
+
+  it("rejects a signed payload with a timestamp too far in the future", () => {
+    const futureTimestamp = String(NOW_MS + 5 * 60 * 1000 + 1)
+    const rawBody = rawBodyWithTimestamp(futureTimestamp)
+    const signatureHeader = buildZbsDeliveryWebhookSignature({
+      appId: APP_ID,
+      rawBody,
+      timestamp: futureTimestamp,
+      secret: SECRET,
+    })
+
+    expect(
+      isValidZbsDeliveryWebhookSignature({
+        expectedAppId: APP_ID,
+        payloadAppId: APP_ID,
+        rawBody,
+        timestamp: futureTimestamp,
         secret: SECRET,
         signatureHeader,
       })
