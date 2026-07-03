@@ -10,7 +10,6 @@ change applied migrations, or enable dispatch by itself.
 Related runbooks:
 
 - `docs/runbooks/zbs-token-refresh-lifecycle.md`
-- `docs/runbooks/zbs-delivery-webhook.md`
 - `docs/runbooks/zbs-vm-dispatch-scheduler.md`
 
 ## 1. Production Enablement Decision
@@ -21,8 +20,8 @@ Decision for this repository change:
 
 - Keep `ZALO_ZBS_DISPATCH_ENABLED=false` by default.
 - Enable production dispatch only after a human operator confirms template
-  approval, recipient setup, token refresh readiness, webhook callback setup,
-  one controlled smoke test, and monitoring access.
+  approval, recipient setup, token refresh readiness, one controlled smoke
+  test, and monitoring access.
 - Roll back by setting `ZALO_ZBS_DISPATCH_ENABLED=false`. Preserve
   `zbs_notification_outbox` and `zbs_oauth_token_state` rows for audit and
   later recovery.
@@ -57,7 +56,7 @@ Ownership:
 | Secret                           | Owner               | Notes                                                                 |
 | -------------------------------- | ------------------- | --------------------------------------------------------------------- |
 | `ZALO_ZBS_APP_ID`                | Zalo app owner      | Non-secret identifier, still keep in env.                             |
-| `ZALO_ZBS_APP_SECRET`            | Zalo app owner      | Used for OAuth and `X-ZEvent-Signature` verification.                 |
+| `ZALO_ZBS_APP_SECRET`            | Zalo app owner      | Used for Zalo OAuth/token refresh.                                    |
 | `ZALO_ZBS_INITIAL_REFRESH_TOKEN` | Zalo app owner      | Bootstrap only; runtime state is stored in `zbs_oauth_token_state`.   |
 | `ZALO_ZBS_REPAIR_TEMPLATE_ID`    | Zalo template owner | Must match approved repair-request template fields.                   |
 | `ZBS_INTERNAL_RPC_SECRET`        | App operator        | Signs internal cron-to-RPC proxy calls. Rotate with deploy.           |
@@ -139,27 +138,20 @@ where provider = 'zalo_zbs';
 
 5. Redeploy and run the smoke test again.
 
-## 5. Webhook Secret Handling
+## 5. Delivery Webhook Deprecation
 
-Production callback URL:
+ZBS delivery webhook is deprecated. A production smoke test confirmed that Zalo
+accepted the message and the recipient received it, but Zalo did not call the
+application delivery callback. Treat provider Success from the send API as the
+terminal delivery signal for operations.
 
-```text
-https://www.cvmems.vn/api/webhooks/zalo/zbs
-```
+Operator rule:
 
-The route validates `X-ZEvent-Signature` using `ZALO_ZBS_APP_SECRET` and rejects
-requests outside the replay window. Do not create a separate webhook secret
-unless the Zalo console is configured to sign with that separate value and the
-application code is changed in a later issue.
-
-Rotation path:
-
-1. Set `ZALO_ZBS_DISPATCH_ENABLED=false`.
-2. Rotate `ZALO_ZBS_APP_SECRET` in Zalo and Vercel as one maintenance action.
-3. Redeploy production.
-4. Send or replay a controlled delivery callback from Zalo tooling.
-5. Confirm invalid signatures are rejected and valid callbacks update only the
-   matching `tracking_id`.
+1. Do not configure or rely on a Zalo delivery callback for this rollout.
+2. Do not use `delivered_at` or `delivery_webhook_received_at` as production
+   success criteria.
+3. If Zalo later provides a reliable delivery event, reintroduce it through a
+   new issue, new endpoint, and fresh TDD coverage.
 
 ## 6. Smoke Test
 
@@ -202,7 +194,7 @@ curl -fsS \
   "https://www.cvmems.vn/api/cron/zbs-dispatch"
 ```
 
-7. Confirm the smoke row becomes `sent`, then `delivered` after Zalo callback.
+7. Confirm the smoke row becomes `sent` with provider Success.
 8. If anything fails, set `ZALO_ZBS_DISPATCH_ENABLED=false` before investigating.
 
 ## 7. Monitoring Queries
@@ -290,7 +282,7 @@ order by updated_at desc
 limit 50;
 ```
 
-Sent but not delivered:
+Sent rows with provider response:
 
 ```sql
 select
@@ -301,32 +293,13 @@ select
   tracking_id,
   provider_message_id,
   sent_at,
-  now() - sent_at as sent_age
+  now() - sent_at as sent_age,
+  provider_response->>'error' as provider_error,
+  provider_response->>'message' as provider_message
 from public.zbs_notification_outbox
 where provider = 'zalo_zbs'
   and status = 'sent'
 order by sent_at asc
-limit 50;
-```
-
-Delivered rows and webhook metadata:
-
-```sql
-select
-  id,
-  source_type,
-  source_id,
-  recipient_phone,
-  tracking_id,
-  provider_message_id,
-  sent_at,
-  delivered_at,
-  delivery_webhook_received_at,
-  provider_response->'delivery_webhook' as delivery_webhook
-from public.zbs_notification_outbox
-where provider = 'zalo_zbs'
-  and status = 'delivered'
-order by delivery_webhook_received_at desc nulls last, delivered_at desc
 limit 50;
 ```
 
@@ -361,8 +334,7 @@ Rollback expectations:
 
 - New repair requests may continue to enqueue outbox rows.
 - Dispatcher calls stop sending to Zalo while the gate is false.
-- Existing `pending`, `sent`, `delivered`, and `failed` rows stay available for
-  audit.
+- Existing `pending`, `sent`, and `failed` rows stay available for audit.
 - Do not delete outbox rows during rollback unless the incident owner approves a
   data cleanup issue.
 - Do not delete `zbs_oauth_token_state` unless token recovery explicitly
@@ -383,11 +355,10 @@ sudo docker compose down
 ## 9. Phase 5 Closeout Checklist
 
 - Required env vars and secret owners are documented.
-- Token rotation and webhook secret handling are documented.
+- Token rotation and delivery webhook deprecation are documented.
 - Template approval, recipient setup, and phone normalization are documented.
 - Smoke-test steps are documented.
-- Monitoring queries cover `pending`, `sent`, `failed`, retryable, and
-  `delivered` rows.
+- Monitoring queries cover `pending`, `sent`, `failed`, and retryable rows.
 - Rollback preserves outbox rows and disables dispatch through
   `ZALO_ZBS_DISPATCH_ENABLED=false`.
 - Production enablement decision is recorded above.
