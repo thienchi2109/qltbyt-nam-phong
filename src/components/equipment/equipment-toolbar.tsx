@@ -19,8 +19,6 @@ import {
   Settings,
   ScanLine,
   Tags,
-  UserRound,
-  WalletCards,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -34,6 +32,10 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
+import {
+  EquipmentOverflowFilters,
+  getEquipmentOverflowFilterCount,
+} from "./EquipmentOverflowFilters"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
@@ -115,13 +117,7 @@ export function EquipmentToolbar({
     const vals = filter.value as string[] | undefined
     return acc + (vals?.length || 0)
   }, 0)
-  const overflowFilterCount = columnFilters.reduce((acc, filter) => {
-    if (filter.id !== "nguoi_dang_truc_tiep_quan_ly" && filter.id !== "nguon_kinh_phi") {
-      return acc
-    }
-    const vals = filter.value as string[] | undefined
-    return acc + (vals?.length || 0)
-  }, 0)
+  const overflowFilterCount = getEquipmentOverflowFilterCount(columnFilters)
 
   const searchEndAddon = (
     <Button
@@ -231,21 +227,8 @@ export function EquipmentToolbar({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-64 space-y-2 p-2">
-          <FacetedMultiSelectFilter
-            column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
-            title="Người sử dụng"
-            options={users.map((d) => ({ label: d, value: d }))}
-            triggerVariant="command"
-            triggerIcon={<UserRound className="size-3.5" aria-hidden="true" />}
-          />
-          <FacetedMultiSelectFilter
-            column={table.getColumn("nguon_kinh_phi")}
-            title="Nguồn kinh phí"
-            options={fundingSources.map((f) => ({ label: f, value: f }))}
-            triggerVariant="command"
-            triggerIcon={<WalletCards className="size-3.5" aria-hidden="true" />}
-          />
+        <PopoverContent align="start" className="w-72 p-3">
+          <EquipmentOverflowFilters table={table} users={users} fundingSources={fundingSources} />
         </PopoverContent>
       </Popover>
       {isFiltered && (

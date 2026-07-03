@@ -157,6 +157,17 @@ export function FacetedMultiSelectFilter<TData, TValue>({
     []
   )
 
+  const triggerVariantClassName =
+    triggerVariant === "command"
+      ? "justify-between rounded-lg bg-slate-100/80 px-3 shadow-none hover:border-primary/30 hover:bg-slate-100"
+      : "justify-start shadow-sm"
+  const triggerSelectionClassName =
+    selectedValues.size > 0
+      ? triggerVariant === "command"
+        ? "border-primary/50 bg-primary/10 hover:bg-primary/15"
+        : "border-primary/50 bg-primary/5 hover:bg-primary/10"
+      : "hover:border-primary/30"
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -168,14 +179,8 @@ export function FacetedMultiSelectFilter<TData, TValue>({
           data-trigger-variant={triggerVariant}
           className={cn(
             "h-9 min-w-[132px] border-slate-200 transition-all",
-            triggerVariant === "command"
-              ? "justify-between rounded-lg bg-slate-100/80 px-3 shadow-none hover:border-primary/30 hover:bg-slate-100"
-              : "justify-start shadow-sm",
-            selectedValues?.size > 0
-              ? triggerVariant === "command"
-                ? "border-primary/50 bg-primary/10 hover:bg-primary/15"
-                : "border-primary/50 bg-primary/5 hover:bg-primary/10"
-              : "hover:border-primary/30"
+            triggerVariantClassName,
+            triggerSelectionClassName
           )}
         >
           <div className="flex min-w-0 items-center gap-2">
@@ -185,7 +190,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
               </span>
             ) : null}
             <span className="truncate font-medium">{title}</span>
-            {selectedValues?.size > 0 && (
+            {selectedValues.size > 0 && (
               <Badge
                 variant="secondary"
                 className="h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"

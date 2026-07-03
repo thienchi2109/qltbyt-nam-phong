@@ -180,11 +180,23 @@ vi.mock("@/hooks/use-toast", () => ({
 
 import { EquipmentToolbar } from "../equipment-toolbar"
 
-function createMockTable() {
+function createMockTable(initialFilterValues: Record<string, string[] | undefined> = {}) {
+  const columns = new Map<
+    string,
+    {
+      getFilterValue: ReturnType<typeof vi.fn>
+      setFilterValue: ReturnType<typeof vi.fn>
+    }
+  >()
   const table = {
-    getColumn: vi.fn().mockReturnValue({
-      getFilterValue: () => undefined,
-      setFilterValue: vi.fn(),
+    getColumn: vi.fn((id: string) => {
+      if (!columns.has(id)) {
+        columns.set(id, {
+          getFilterValue: vi.fn(() => initialFilterValues[id]),
+          setFilterValue: vi.fn(),
+        })
+      }
+      return columns.get(id)
     }),
     resetColumnFilters: vi.fn(),
     getHeaderGroups: () => [],
@@ -192,12 +204,15 @@ function createMockTable() {
     getAllColumns: () => [],
     getState: () => ({ columnFilters: [] }),
   }
-  return table as unknown as Table<Equipment>
+  return {
+    table: table as unknown as Table<Equipment>,
+    columns,
+  }
 }
 
 describe("EquipmentToolbar with shared filters", () => {
   const baseProps = {
-    table: createMockTable(),
+    table: createMockTable().table,
     searchTerm: "",
     onSearchChange: vi.fn(),
     columnFilters: [],
@@ -237,6 +252,20 @@ describe("EquipmentToolbar with shared filters", () => {
 
     expect(screen.getByText("Người sử dụng")).toBeInTheDocument()
     expect(screen.getByText("Nguồn kinh phí")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Người sử dụng User A/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Nguồn kinh phí Ngân sách/i })).toBeInTheDocument()
+  })
+
+  it("applies desktop overflow filter selections inline without nested filter popovers", () => {
+    const { table, columns } = createMockTable()
+    render(<EquipmentToolbar {...baseProps} table={table} />)
+
+    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Người sử dụng User A/i }))
+
+    expect(columns.get("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue).toHaveBeenCalledWith([
+      "User A",
+    ])
   })
 
   it("renders desktop filters as command tokens with progressive overflow", () => {
@@ -287,15 +316,10 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(onOpenFilterSheet).toHaveBeenCalled()
   })
 
-  it("shows compact clear command when filters are active", () => {
-    render(
-      <EquipmentToolbar
-        {...baseProps}
-        filterState={{ ...baseProps.filterState, isFiltered: true }}
-      />
-    )
+  it("hides compact clear command when filters are inactive", () => {
+    render(<EquipmentToolbar {...baseProps} />)
 
-    expect(screen.getByRole("button", { name: /^Xóa$/i })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Xóa$/i })).not.toBeInTheDocument()
   })
 
   it("shows a compact clear command when desktop filters are active", () => {
