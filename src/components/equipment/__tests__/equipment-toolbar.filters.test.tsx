@@ -252,8 +252,8 @@ describe("EquipmentToolbar with shared filters", () => {
 
     expect(screen.getByText("Người sử dụng")).toBeInTheDocument()
     expect(screen.getByText("Nguồn kinh phí")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /Người sử dụng User A/i })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /Nguồn kinh phí Ngân sách/i })).toBeInTheDocument()
+    expect(screen.getByRole("checkbox", { name: /Người sử dụng User A/i })).toBeInTheDocument()
+    expect(screen.getByRole("checkbox", { name: /Nguồn kinh phí Ngân sách/i })).toBeInTheDocument()
   })
 
   it("applies desktop overflow filter selections inline without nested filter popovers", () => {
@@ -261,7 +261,7 @@ describe("EquipmentToolbar with shared filters", () => {
     render(<EquipmentToolbar {...baseProps} table={table} />)
 
     fireEvent.click(screen.getByRole("button", { name: /Bộ lọc/i }))
-    fireEvent.click(screen.getByRole("button", { name: /Người sử dụng User A/i }))
+    fireEvent.click(screen.getByRole("checkbox", { name: /Người sử dụng User A/i }))
 
     expect(columns.get("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue).toHaveBeenCalledWith([
       "User A",

@@ -32,10 +32,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
-import {
-  EquipmentOverflowFilters,
-  getEquipmentOverflowFilterCount,
-} from "./EquipmentOverflowFilters"
+import { EquipmentOverflowFilters } from "./EquipmentOverflowFilters"
+import { getEquipmentOverflowFilterCount } from "./EquipmentOverflowFiltersUtils"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 

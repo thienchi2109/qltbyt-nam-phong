@@ -7,60 +7,22 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnFiltersState, Table } from "@tanstack/react-table"
-import type { LucideIcon } from "lucide-react"
-import { Check, UserRound, WalletCards } from "lucide-react"
+import type { Table } from "@tanstack/react-table"
+import { Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import type { Equipment } from "@/types/database"
-
-const EQUIPMENT_OVERFLOW_FILTERS = [
-  {
-    id: "nguoi_dang_truc_tiep_quan_ly",
-    title: "Người sử dụng",
-    Icon: UserRound,
-  },
-  {
-    id: "nguon_kinh_phi",
-    title: "Nguồn kinh phí",
-    Icon: WalletCards,
-  },
-] as const satisfies readonly {
-  id: string
-  title: string
-  Icon: LucideIcon
-}[]
-
-type EquipmentOverflowFilterId = (typeof EQUIPMENT_OVERFLOW_FILTERS)[number]["id"]
-
-const EQUIPMENT_OVERFLOW_FILTER_IDS = new Set<string>(
-  EQUIPMENT_OVERFLOW_FILTERS.map((filter) => filter.id)
-)
+import {
+  EQUIPMENT_OVERFLOW_FILTERS,
+  type EquipmentOverflowFilterId,
+  toStringArray,
+  toggleSelection,
+} from "./EquipmentOverflowFiltersUtils"
 
 type EquipmentOverflowFiltersProps = {
   table: Table<Equipment>
   users: string[]
   fundingSources: string[]
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is string => typeof item === "string")
-}
-
-function toggleSelection(currentValues: string[], optionValue: string): string[] {
-  if (currentValues.includes(optionValue)) {
-    return currentValues.filter((value) => value !== optionValue)
-  }
-  return [...currentValues, optionValue]
-}
-
-/** Counts selected values owned by the equipment overflow filter group. */
-export function getEquipmentOverflowFilterCount(columnFilters: ColumnFiltersState): number {
-  return columnFilters.reduce((count, filter) => {
-    if (!EQUIPMENT_OVERFLOW_FILTER_IDS.has(filter.id)) return count
-    return count + toStringArray(filter.value).length
-  }, 0)
 }
 
 /** Renders secondary equipment filters as inline controls inside a single popover. */
@@ -103,8 +65,9 @@ export function EquipmentOverflowFilters({
                     <button
                       key={option}
                       type="button"
+                      role="checkbox"
                       aria-label={`${title} ${option}`}
-                      aria-pressed={isSelected}
+                      aria-checked={isSelected}
                       onClick={() => {
                         const nextValues = toggleSelection(selectedValues, option)
                         column?.setFilterValue(nextValues.length ? nextValues : undefined)
