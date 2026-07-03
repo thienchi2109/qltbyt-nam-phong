@@ -1,27 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
 
 import type { EquipmentSelectItem, RepairUnit } from "../types"
-import { RepairRequestsCreateSheetActions } from "./RepairRequestsCreateSheetActions"
+import { RepairRequestsFormFields } from "./RepairRequestsFormFields"
 import { RepairRequestsEquipmentSearchField } from "./RepairRequestsEquipmentSearchField"
+import { RepairRequestsSheetActions } from "./RepairRequestsSheetActions"
 
 function getTodayStart(): Date {
   const today = new Date()
@@ -79,7 +63,7 @@ export function RepairRequestsCreateSheetForm({
 
   const isDateDisabled = React.useCallback(
     (date: Date) => date < minimumSelectableDate,
-    [minimumSelectableDate],
+    [minimumSelectableDate]
   )
 
   return (
@@ -92,87 +76,27 @@ export function RepairRequestsCreateSheetForm({
         onSearchChange={handleSearchChange}
         onSelectEquipment={handleSelectEquipment}
       />
-      <div className="space-y-2">
-        <Label htmlFor="issue">Mô tả sự cố</Label>
-        <Textarea
-          id="issue"
-          placeholder="Mô tả chi tiết vấn đề gặp phải…"
-          rows={4}
-          value={issueDescription}
-          onChange={(e) => onIssueDescriptionChange(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="repair-items">Các hạng mục yêu cầu sửa chữa (nếu có)</Label>
-        <Textarea
-          id="repair-items"
-          placeholder="VD: Thay màn hình, sửa nguồn…"
-          rows={3}
-          value={repairItems}
-          onChange={(e) => onRepairItemsChange(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Ngày mong muốn hoàn thành (nếu có)</Label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(
-                "w-full justify-start text-left font-normal touch-target",
-                !desiredDate && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon className="mr-2 size-4" />
-              {desiredDate ? format(desiredDate, "dd/MM/yyyy") : <span>Chọn ngày</span>}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={desiredDate}
-                  onSelect={onDesiredDateChange}
-                  initialFocus
-                  disabled={isDateDisabled}
-                />
-          </PopoverContent>
-        </Popover>
-      </div>
-
-      {canSetRepairUnit && (
-        <div className="space-y-2">
-          <Label htmlFor="repair-unit">Đơn vị thực hiện</Label>
-          <Select value={repairUnit} onValueChange={(value) => onRepairUnitChange(value as RepairUnit)}>
-            <SelectTrigger className="touch-target">
-              <SelectValue placeholder="Chọn đơn vị thực hiện" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="noi_bo">Nội bộ</SelectItem>
-              <SelectItem value="thue_ngoai">Thuê ngoài</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {canSetRepairUnit && repairUnit === "thue_ngoai" && (
-        <div className="space-y-2">
-          <Label htmlFor="external-company">Tên đơn vị được thuê</Label>
-          <Input
-            id="external-company"
-            placeholder="Nhập tên đơn vị được thuê sửa chữa…"
-            value={externalCompanyName}
-            onChange={(e) => onExternalCompanyNameChange(e.target.value)}
-            required
-            className="touch-target"
-          />
-        </div>
-      )}
-
-      <RepairRequestsCreateSheetActions
+      <RepairRequestsFormFields
+        canSetRepairUnit={canSetRepairUnit}
+        desiredDate={desiredDate}
+        externalCompanyName={externalCompanyName}
+        fieldIdPrefix="create-repair-request"
+        isDateDisabled={isDateDisabled}
+        issueDescription={issueDescription}
+        onDesiredDateChange={onDesiredDateChange}
+        onExternalCompanyNameChange={onExternalCompanyNameChange}
+        onIssueDescriptionChange={onIssueDescriptionChange}
+        onRepairItemsChange={onRepairItemsChange}
+        onRepairUnitChange={onRepairUnitChange}
+        repairItems={repairItems}
+        repairItemsLabel="Các hạng mục yêu cầu sửa chữa (nếu có)"
+        repairUnit={repairUnit}
+      />
+      <RepairRequestsSheetActions
         isSubmitting={isSubmitting}
         onCancel={onCancel}
+        submitLabel="Gửi yêu cầu"
+        submittingLabel="Đang gửi..."
       />
     </form>
   )

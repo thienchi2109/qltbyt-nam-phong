@@ -81,12 +81,37 @@ describe("RepairRequestRowActions", () => {
     expect(options.setEditingRequest).toHaveBeenCalledWith(request)
   })
 
+  it("labels the approve action as confirmation and shows an icon for every visible action", async () => {
+    const user = userEvent.setup()
+    const request = makeRepairRequest()
+    const options = makeColumnOptions()
+
+    render(<RepairRequestRowActions request={request} options={options} />)
+
+    await user.click(screen.getByRole("button", { name: "Mở menu" }))
+
+    const visibleActions = [
+      screen.getByRole("menuitem", { name: "Xem phiếu yêu cầu" }),
+      screen.getByRole("menuitem", { name: "Sửa" }),
+      screen.getByRole("menuitem", { name: "Xoá" }),
+      screen.getByRole("menuitem", { name: "Xác nhận" }),
+    ]
+
+    expect(screen.queryByRole("menuitem", { name: "Duyệt" })).not.toBeInTheDocument()
+    visibleActions.forEach((action) => {
+      expect(action.querySelector("svg")).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole("menuitem", { name: "Xác nhận" }))
+    expect(options.handleApproveRequest).toHaveBeenCalledWith(request)
+  })
+
   it("hides actions for read-only regional leaders", () => {
     render(
       <RepairRequestRowActions
         request={makeRepairRequest()}
         options={{ ...makeColumnOptions(), isRegionalLeader: true }}
-      />,
+      />
     )
 
     expect(screen.queryByRole("button", { name: "Mở menu" })).not.toBeInTheDocument()
