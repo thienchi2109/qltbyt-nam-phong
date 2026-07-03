@@ -43,5 +43,7 @@ describe("ZBS delivery webhook deprecation", () => {
       "DROP FUNCTION IF EXISTS public.zbs_notification_outbox_mark_delivered"
     )
     expect(migrationSql).toContain("zbs_notification_outbox_mark_delivered")
+    expect(migrationSql).toContain("Rollback")
+    expect(migrationSql).toContain("20260702090000_add_zbs_delivery_webhook_rpc.sql")
   })
 })
