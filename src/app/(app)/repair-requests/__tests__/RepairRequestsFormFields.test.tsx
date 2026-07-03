@@ -100,6 +100,7 @@ describe("RepairRequestsFormFields", () => {
     const props = renderForm()
 
     expect(screen.getByLabelText("Mô tả sự cố")).toBeInTheDocument()
+    expect(screen.getByLabelText("Mô tả sự cố")).toBeRequired()
     expect(screen.getByLabelText("Các hạng mục yêu cầu sửa chữa")).not.toBeRequired()
     expect(screen.getByLabelText("Ngày mong muốn hoàn thành (nếu có)")).toHaveAttribute(
       "id",
@@ -110,6 +111,16 @@ describe("RepairRequestsFormFields", () => {
     await user.click(screen.getByRole("button", { name: "chọn thuê ngoài" }))
 
     expect(props.onRepairUnitChange).toHaveBeenCalledWith("thue_ngoai" satisfies RepairUnit)
+  })
+
+  it("hides repair-unit fields when the user cannot set the repair unit", () => {
+    renderForm({
+      canSetRepairUnit: false,
+      repairUnit: "thue_ngoai",
+    })
+
+    expect(screen.queryByLabelText("Đơn vị thực hiện")).toBeNull()
+    expect(screen.queryByLabelText("Tên đơn vị được thuê")).toBeNull()
   })
 
   it("renders the external company input when repair unit is external", () => {
