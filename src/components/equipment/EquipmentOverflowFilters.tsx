@@ -41,7 +41,7 @@ export function EquipmentOverflowFilters({
       {EQUIPMENT_OVERFLOW_FILTERS.map(({ id, title, Icon }) => {
         const column = table.getColumn(id)
         const selectedValues = toStringArray(column?.getFilterValue())
-        const options = optionsByFilterId[id]
+        const options = optionsByFilterId[id] ?? []
 
         return (
           <section key={id} aria-label={title} className="space-y-1.5">

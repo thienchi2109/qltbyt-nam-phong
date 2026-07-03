@@ -159,7 +159,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
 
   const triggerVariantClassName =
     triggerVariant === "command"
-      ? "justify-between rounded-lg bg-slate-100/80 px-3 shadow-none hover:border-primary/30 hover:bg-slate-100"
+      ? "justify-between rounded-lg bg-muted/80 px-3 shadow-none hover:border-primary/30 hover:bg-muted"
       : "justify-start shadow-sm"
   const triggerSelectionClassName =
     selectedValues.size > 0
