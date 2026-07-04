@@ -5,11 +5,7 @@ import type { ColumnFiltersState } from "@tanstack/react-table"
 import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,24 +37,21 @@ const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
 
 const equipmentDisplayFormat = (ctx: DisplayContext) => {
   const entityLabel = ctx.entity.plural ?? ctx.entity.singular
-  const currentCount =
-    ctx.totalCount > 0 ? Math.max(0, ctx.endItem - ctx.startItem + 1) : 0
+  const currentCount = ctx.totalCount > 0 ? Math.max(0, ctx.endItem - ctx.startItem + 1) : 0
 
   return (
     <div className="space-y-1">
       <div className="block sm:hidden">
         <div>
-          <strong>{currentCount}</strong> / <strong>{ctx.totalCount}</strong>{" "}
-          {entityLabel}
+          <strong>{currentCount}</strong> / <strong>{ctx.totalCount}</strong> {entityLabel}
         </div>
         <div>
-          Trang <strong>{ctx.currentPage}</strong> /{" "}
-          <strong>{ctx.totalPages}</strong>
+          Trang <strong>{ctx.currentPage}</strong> / <strong>{ctx.totalPages}</strong>
         </div>
       </div>
       <div className="hidden sm:block">
-        Hiển thị <strong>{currentCount}</strong> trên{" "}
-        <strong>{ctx.totalCount}</strong> {entityLabel}.
+        Hiển thị <strong>{currentCount}</strong> trên <strong>{ctx.totalCount}</strong>{" "}
+        {entityLabel}.
       </div>
     </div>
   )
@@ -98,11 +91,7 @@ export function EquipmentPageClient() {
 // Do not memoize this boundary: TanStack Table keeps a stable table reference
 // while its internal row selection changes, so memoizing by pageState can leave
 // selection checkboxes visually stale until an unrelated parent render occurs.
-function EquipmentPageContent({
-  pageState
-}: {
-  pageState: ReturnType<typeof useEquipmentPage>
-}) {
+function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useEquipmentPage> }) {
   const {
     openAddDialog,
     openImportDialog,
@@ -180,16 +169,29 @@ function EquipmentPageContent({
     return role !== ROLES.USER && !isRegionalLeader
   }, [dialogUser?.role, user?.role, isRegionalLeader])
   const floatingBarSelectionCount =
-    (table as {
-      getFilteredSelectedRowModel?: () => { rows: unknown[] }
-    }).getFilteredSelectedRowModel?.().rows.length ?? 0
+    (
+      table as {
+        getFilteredSelectedRowModel?: () => { rows: unknown[] }
+      }
+    ).getFilteredSelectedRowModel?.().rows.length ?? 0
   const shouldReserveFloatingBarSpace =
-    canBulkSelect &&
-    !isCardView &&
-    floatingBarSelectionCount > 0
+    canBulkSelect && !isCardView && floatingBarSelectionCount > 0
+  const useCompactFilters = isMobile || useTabletFilters
+  const tenantControl = React.useMemo(() => {
+    if (!showFacilityFilter) return null
+
+    return (
+      <TenantSelector
+        className="w-full md:w-auto"
+        variant={useCompactFilters ? "default" : "command"}
+      />
+    )
+  }, [showFacilityFilter, useCompactFilters])
   const selectedDepartments = React.useMemo(() => {
     const value = columnFilters.find((filter) => filter.id === "khoa_phong_quan_ly")?.value
-    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
+    return Array.isArray(value)
+      ? value.filter((item): item is string => typeof item === "string")
+      : []
   }, [columnFilters])
   const handleSelectDepartmentSummary = React.useCallback(
     (department: string) => {
@@ -246,7 +248,7 @@ function EquipmentPageContent({
           table={table}
           title="Danh mục thiết bị"
           description="Quản lý danh sách các trang thiết bị y tế."
-          tenantControl={showFacilityFilter ? <TenantSelector className="w-full" /> : null}
+          tenantControl={tenantControl}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           columnFilters={columnFilters}
@@ -255,7 +257,7 @@ function EquipmentPageContent({
           users={users}
           classifications={classifications}
           fundingSources={fundingSources}
-          filterMode={isMobile || useTabletFilters ? "sheet" : "faceted"}
+          filterMode={useCompactFilters ? "sheet" : "faceted"}
           filterState={{ isFiltered, hasFacilityFilter }}
           actionState={{ canCreateEquipment, isExporting }}
           selectionActions={
@@ -317,7 +319,9 @@ function EquipmentPageContent({
                     type="button"
                     onClick={handleExportData}
                     className="text-sm font-medium text-primary underline-offset-4 hover:underline disabled:text-muted-foreground disabled:no-underline disabled:cursor-not-allowed"
-                    disabled={table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting}
+                    disabled={
+                      table.getFilteredRowModel().rows.length === 0 || isLoading || isExporting
+                    }
                   >
                     {isExporting ? "Đang tải..." : "Tải về file Excel"}
                   </button>
@@ -339,9 +343,7 @@ function EquipmentPageContent({
             <span className="sr-only">Them thiet bi</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="mb-2">
-            <DropdownMenuItem onSelect={openAddDialog}>
-              Thêm từng thiết bị
-            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={openAddDialog}>Thêm từng thiết bị</DropdownMenuItem>
             <DropdownMenuItem onSelect={openImportDialog}>
               Thêm hàng loạt bằng Excel
             </DropdownMenuItem>

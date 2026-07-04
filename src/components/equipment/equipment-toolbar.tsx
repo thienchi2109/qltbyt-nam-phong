@@ -14,11 +14,12 @@ import {
   Building2,
   Filter,
   FilterX,
-  ListFilter,
   PlusCircle,
   Settings,
   ScanLine,
   Tags,
+  UserRound,
+  WalletCards,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -29,11 +30,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
-import { EquipmentOverflowFilters } from "./EquipmentOverflowFilters"
-import { getEquipmentOverflowFilterCount } from "./EquipmentOverflowFiltersUtils"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
@@ -104,18 +102,16 @@ export function EquipmentToolbar({
   onExportData,
   onAddEquipment,
   onImportEquipment,
-  onClearFacilityFilter,
   onShowEquipmentDetails,
 }: EquipmentToolbarProps) {
   const qr = useQRScanner()
   const compactFilters = filterMode === "sheet"
-  const { isFiltered, hasFacilityFilter } = filterState
+  const { isFiltered } = filterState
   const { canCreateEquipment, isExporting = false } = actionState
   const activeFilterCount = columnFilters.reduce((acc, filter) => {
     const vals = filter.value as string[] | undefined
     return acc + (vals?.length || 0)
   }, 0)
-  const overflowFilterCount = getEquipmentOverflowFilterCount(columnFilters)
 
   const searchEndAddon = (
     <Button
@@ -177,9 +173,10 @@ export function EquipmentToolbar({
   const filterControls = (
     <div
       data-testid="equipment-command-filter-row"
-      data-layout="command-overflow"
+      data-layout="command-direct"
       className="flex min-w-0 flex-wrap items-center gap-2"
     >
+      {tenantControl ? <div className="min-w-0 shrink-0">{tenantControl}</div> : null}
       <FacetedMultiSelectFilter
         column={table.getColumn("tinh_trang_hien_tai")}
         title="Tình trạng"
@@ -201,34 +198,20 @@ export function EquipmentToolbar({
         triggerVariant="command"
         triggerIcon={<Tags className="size-3.5" aria-hidden="true" />}
       />
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 min-w-[112px] justify-between rounded-lg border-slate-200 bg-slate-100/80 px-3 shadow-none transition-all hover:border-primary/30 hover:bg-slate-100"
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
-                <ListFilter className="size-3.5" aria-hidden="true" />
-              </span>
-              <span className="truncate font-medium">Bộ lọc</span>
-            </span>
-            {overflowFilterCount > 0 && (
-              <Badge
-                variant="secondary"
-                className="ml-2 h-5 min-w-[20px] rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
-              >
-                {overflowFilterCount}
-              </Badge>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-72 p-3">
-          <EquipmentOverflowFilters table={table} users={users} fundingSources={fundingSources} />
-        </PopoverContent>
-      </Popover>
+      <FacetedMultiSelectFilter
+        column={table.getColumn("nguoi_dang_truc_tiep_quan_ly")}
+        title="Người sử dụng"
+        options={users.map((u) => ({ label: u, value: u }))}
+        triggerVariant="command"
+        triggerIcon={<UserRound className="size-3.5" aria-hidden="true" />}
+      />
+      <FacetedMultiSelectFilter
+        column={table.getColumn("nguon_kinh_phi")}
+        title="Nguồn kinh phí"
+        options={fundingSources.map((f) => ({ label: f, value: f }))}
+        triggerVariant="command"
+        triggerIcon={<WalletCards className="size-3.5" aria-hidden="true" />}
+      />
       {isFiltered && (
         <Button
           variant="ghost"
@@ -237,16 +220,6 @@ export function EquipmentToolbar({
         >
           <FilterX className="size-4" aria-hidden="true" />
           <span className="ml-1.5 text-sm font-medium">Xóa</span>
-        </Button>
-      )}
-      {hasFacilityFilter && (
-        <Button
-          variant="ghost"
-          onClick={onClearFacilityFilter}
-          className="h-9 rounded-lg px-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground lg:px-3"
-        >
-          <FilterX className="size-4" aria-hidden="true" />
-          <span className="ml-1.5 hidden text-sm font-medium sm:inline">Xóa lọc cơ sở</span>
         </Button>
       )}
     </div>
@@ -312,7 +285,7 @@ export function EquipmentToolbar({
       <ListFilterSearchCard
         title={title}
         description={description}
-        tenantControl={tenantControl}
+        tenantControl={compactFilters ? tenantControl : undefined}
         searchValue={searchTerm}
         onSearchChange={onSearchChange}
         searchPlaceholder="Tìm kiếm chung..."
