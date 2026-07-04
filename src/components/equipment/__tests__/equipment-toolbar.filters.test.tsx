@@ -364,18 +364,25 @@ describe("EquipmentToolbar with shared filters", () => {
   it("hides compact clear command when filters are inactive", () => {
     render(<EquipmentToolbar {...baseProps} />)
 
-    expect(screen.queryByRole("button", { name: /^Xóa$/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /^Xóa bộ lọc$/i })).not.toBeInTheDocument()
   })
 
-  it("shows a compact clear command when desktop filters are active", () => {
+  it("shows an inline split clear control when desktop filters are active", () => {
     render(
       <EquipmentToolbar
         {...baseProps}
+        columnFilters={[{ id: "tinh_trang_hien_tai", value: ["Hoạt động"] }]}
         filterState={{ ...baseProps.filterState, isFiltered: true }}
       />
     )
 
-    const clearButton = screen.getByRole("button", { name: /^Xóa$/i })
+    const row = screen.getByTestId("equipment-command-filter-row")
+    const clearControl = screen.getByTestId("equipment-clear-filters-control")
+    const clearButton = screen.getByRole("button", { name: /^Xóa bộ lọc$/i })
+
+    expect(row).toContainElement(clearControl)
+    expect(clearControl).toHaveTextContent("Bộ lọc")
+    expect(clearControl).toHaveTextContent("1")
     expect(clearButton).toBeInTheDocument()
 
     fireEvent.click(clearButton)
