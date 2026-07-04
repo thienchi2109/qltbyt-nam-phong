@@ -1,5 +1,5 @@
 -- supabase/tests/equipment_filter_buckets_smoke.sql
--- Purpose: smoke-test equipment_filter_buckets after the migration is applied.
+-- Purpose: smoke-test cascading equipment_filter_buckets after the migration is applied.
 -- Non-destructive: wrapped in transaction and rolled back.
 
 BEGIN;
@@ -10,6 +10,13 @@ DECLARE
   v_tenant bigint;
   v_other_tenant bigint;
   v_payload jsonb;
+  v_count integer;
+  v_distribution_count integer;
+  v_fallback_users text[] := ARRAY['Chưa có người sử dụng'];
+  v_fallback_locations text[] := ARRAY['Chưa có vị trí'];
+  v_fallback_statuses text[] := ARRAY['Chưa phân loại'];
+  v_fallback_classifications text[] := ARRAY['Chưa phân loại'];
+  v_fallback_funding_sources text[] := ARRAY['Chưa có'];
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Filter Buckets Tenant ' || v_suffix, true)
@@ -22,6 +29,9 @@ BEGIN
   INSERT INTO public.thiet_bi(
     ma_thiet_bi,
     ten_thiet_bi,
+    model,
+    serial,
+    so_luu_hanh,
     don_vi,
     khoa_phong_quan_ly,
     tinh_trang_hien_tai,
@@ -33,27 +43,108 @@ BEGIN
   )
   VALUES
     (
-      'SMK-BUCKET-ALLOW-' || v_suffix,
-      'Smoke Bucket Allowed ' || v_suffix,
+      'SMK-BUCKET-A-' || v_suffix,
+      'Smoke Cascade Alpha ' || v_suffix,
+      'Model Alpha ' || v_suffix,
+      'Serial Alpha ' || v_suffix,
+      'Reg Alpha ' || v_suffix,
       v_tenant,
-      'Khoa Bucket ' || v_suffix,
+      'Khoa ICU ' || v_suffix,
       'Hoat dong',
-      'User Bucket ' || v_suffix,
-      'Room Bucket ' || v_suffix,
-      'Class Bucket ' || v_suffix,
-      'Fund Bucket ' || v_suffix,
+      'User A ' || v_suffix,
+      'Room A ' || v_suffix,
+      'Class A ' || v_suffix,
+      'Fund A ' || v_suffix,
       false
     ),
     (
-      'SMK-BUCKET-OTHER-' || v_suffix,
-      'Smoke Bucket Other ' || v_suffix,
-      v_other_tenant,
-      'Khoa Other ' || v_suffix,
+      'SMK-BUCKET-B-' || v_suffix,
+      'Smoke Cascade Beta ' || v_suffix,
+      'Model Beta ' || v_suffix,
+      'Serial Beta ' || v_suffix,
+      'Reg Beta ' || v_suffix,
+      v_tenant,
+      'Khoa ICU ' || v_suffix,
+      'Bao tri',
+      'User B ' || v_suffix,
+      'Room B ' || v_suffix,
+      'Class B ' || v_suffix,
+      'Fund B ' || v_suffix,
+      false
+    ),
+    (
+      'SMK-BUCKET-C-' || v_suffix,
+      'Smoke Cascade Alpha Other Dept ' || v_suffix,
+      'Model Gamma ' || v_suffix,
+      'Serial Gamma ' || v_suffix,
+      'Reg Gamma ' || v_suffix,
+      v_tenant,
+      'Khoa Surgery ' || v_suffix,
       'Hoat dong',
-      'User Other ' || v_suffix,
-      'Room Other ' || v_suffix,
-      'Class Other ' || v_suffix,
-      'Fund Other ' || v_suffix,
+      'User C ' || v_suffix,
+      'Room C ' || v_suffix,
+      'Class C ' || v_suffix,
+      'Fund C ' || v_suffix,
+      false
+    ),
+    (
+      'SMK-BUCKET-D-' || v_suffix,
+      'Smoke Cascade Delta ' || v_suffix,
+      'Model Delta ' || v_suffix,
+      'Serial Delta ' || v_suffix,
+      'Reg Delta ' || v_suffix,
+      v_tenant,
+      'Khoa Surgery ' || v_suffix,
+      'Bao tri',
+      'User D ' || v_suffix,
+      'Room D ' || v_suffix,
+      'Class D ' || v_suffix,
+      'Fund D ' || v_suffix,
+      false
+    ),
+    (
+      'SMK-BUCKET-FALLBACK-' || v_suffix,
+      'Smoke Cascade Fallback Labels ' || v_suffix,
+      'Model Fallback ' || v_suffix,
+      'Serial Fallback ' || v_suffix,
+      'Reg Fallback ' || v_suffix,
+      v_tenant,
+      'Khoa ICU ' || v_suffix,
+      ' ',
+      ' ',
+      ' ',
+      ' ',
+      ' ',
+      false
+    ),
+    (
+      'SMK-BUCKET-DELETED-' || v_suffix,
+      'Smoke Cascade Deleted ' || v_suffix,
+      'Model Deleted ' || v_suffix,
+      'Serial Deleted ' || v_suffix,
+      'Reg Deleted ' || v_suffix,
+      v_tenant,
+      'Khoa Deleted ' || v_suffix,
+      'Hoat dong',
+      'User Deleted ' || v_suffix,
+      'Room Deleted ' || v_suffix,
+      'Class Deleted ' || v_suffix,
+      'Fund Deleted ' || v_suffix,
+      true
+    ),
+    (
+      'SMK-BUCKET-OTHER-' || v_suffix,
+      'Smoke Cascade Other Tenant ' || v_suffix,
+      'Model Other ' || v_suffix,
+      'Serial Other ' || v_suffix,
+      'Reg Other ' || v_suffix,
+      v_other_tenant,
+      'Khoa Other Tenant ' || v_suffix,
+      'Hoat dong',
+      'User Other Tenant ' || v_suffix,
+      'Room Other Tenant ' || v_suffix,
+      'Class Other Tenant ' || v_suffix,
+      'Fund Other Tenant ' || v_suffix,
       false
     );
 
@@ -67,36 +158,182 @@ BEGIN
     true
   );
 
-  v_payload := public.equipment_filter_buckets(v_tenant);
+  v_payload := public.equipment_filter_buckets(
+    p_don_vi => v_tenant,
+    p_tinh_trang_array => ARRAY['Hoat dong']
+  );
 
   IF jsonb_typeof(v_payload->'department') IS DISTINCT FROM 'array' THEN
     RAISE EXCEPTION 'equipment_filter_buckets.department must be an array: %', v_payload;
   END IF;
 
-  IF NOT EXISTS (
-    SELECT 1
-    FROM jsonb_array_elements(v_payload->'department') entry
-    WHERE entry->>'name' = 'Khoa Bucket ' || v_suffix
-      AND (entry->>'count')::integer = 1
-  ) THEN
-    RAISE EXCEPTION 'equipment_filter_buckets missing scoped department bucket: %', v_payload;
+  SELECT COUNT(*)
+  INTO v_count
+  FROM jsonb_array_elements(v_payload->'department') entry
+  WHERE entry->>'name' IN ('Khoa ICU ' || v_suffix, 'Khoa Surgery ' || v_suffix)
+    AND (entry->>'count')::integer = 1;
+
+  IF v_count <> 2 THEN
+    RAISE EXCEPTION 'status filter should narrow department buckets across full tenant scope: %', v_payload;
   END IF;
 
   IF EXISTS (
     SELECT 1
     FROM jsonb_array_elements(v_payload->'department') entry
-    WHERE entry->>'name' = 'Khoa Other ' || v_suffix
+    WHERE entry->>'name' IN ('Khoa Deleted ' || v_suffix, 'Khoa Other Tenant ' || v_suffix)
   ) THEN
-    RAISE EXCEPTION 'equipment_filter_buckets leaked cross-tenant department bucket: %', v_payload;
+    RAISE EXCEPTION 'equipment_filter_buckets leaked deleted or cross-tenant department bucket: %', v_payload;
   END IF;
 
   IF NOT EXISTS (
     SELECT 1
-    FROM jsonb_array_elements(v_payload->'fundingSource') entry
-    WHERE entry->>'name' = 'Fund Bucket ' || v_suffix
+    FROM jsonb_array_elements(v_payload->'status') entry
+    WHERE entry->>'name' = 'Hoat dong'
+      AND (entry->>'count')::integer = 2
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'status') entry
+    WHERE entry->>'name' = 'Bao tri'
+      AND (entry->>'count')::integer = 2
+  ) THEN
+    RAISE EXCEPTION 'status bucket should exclude its own selected status filter: %', v_payload;
+  END IF;
+
+  v_payload := public.equipment_filter_buckets(
+    p_don_vi => v_tenant,
+    p_khoa_phong_array => ARRAY['Khoa ICU ' || v_suffix],
+    p_tinh_trang_array => ARRAY['Hoat dong']
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'status') entry
+    WHERE entry->>'name' = 'Bao tri'
       AND (entry->>'count')::integer = 1
   ) THEN
-    RAISE EXCEPTION 'equipment_filter_buckets missing fundingSource bucket: %', v_payload;
+    RAISE EXCEPTION 'status bucket should keep same-department unselected statuses visible: %', v_payload;
+  END IF;
+
+  v_payload := public.equipment_filter_buckets(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'department') entry
+    WHERE entry->>'name' = 'Khoa ICU ' || v_suffix
+      AND (entry->>'count')::integer = 1
+  ) THEN
+    RAISE EXCEPTION 'selected fallback labels should cascade against normalized bucket names: %', v_payload;
+  END IF;
+
+  v_payload := public.equipment_list_enhanced(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
+  );
+
+  IF (v_payload->>'total')::integer <> 1
+     OR COALESCE(jsonb_array_length(v_payload->'data'), 0) <> 1 THEN
+    RAISE EXCEPTION 'equipment_list_enhanced should match selected fallback bucket labels: %', v_payload;
+  END IF;
+
+  SELECT COALESCE(SUM(distribution."count"), 0)::integer
+  INTO v_distribution_count
+  FROM public.equipment_department_distribution(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
+  ) distribution;
+
+  IF v_distribution_count <> 1 THEN
+    RAISE EXCEPTION 'equipment_department_distribution should match selected fallback bucket labels: count=%', v_distribution_count;
+  END IF;
+
+  v_payload := public.equipment_filter_buckets(
+    p_q => 'Smoke Cascade Alpha',
+    p_don_vi => v_tenant
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'status') entry
+    WHERE entry->>'name' = 'Hoat dong'
+      AND (entry->>'count')::integer = 2
+  ) OR EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'status') entry
+    WHERE entry->>'name' = 'Bao tri'
+  ) THEN
+    RAISE EXCEPTION 'search text should narrow every bucket to matching server rows: %', v_payload;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'user_id', '900002',
+      'don_vi', v_tenant,
+      'khoa_phong', 'Khoa ICU ' || v_suffix
+    )::text,
+    true
+  );
+
+  v_payload := public.equipment_filter_buckets(
+    p_don_vi => v_tenant,
+    p_khoa_phong_array => ARRAY['Khoa Surgery ' || v_suffix],
+    p_tinh_trang_array => ARRAY['Hoat dong']
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'department') entry
+    WHERE entry->>'name' = 'Khoa ICU ' || v_suffix
+      AND (entry->>'count')::integer = 1
+  ) THEN
+    RAISE EXCEPTION 'role=user department bucket must keep JWT department scope even when own filter is excluded: %', v_payload;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'department') entry
+    WHERE entry->>'name' = 'Khoa Surgery ' || v_suffix
+  ) THEN
+    RAISE EXCEPTION 'role=user department bucket leaked cross-department data: %', v_payload;
+  END IF;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'app_role', 'user',
+      'role', 'authenticated',
+      'user_id', '900003',
+      'don_vi', v_tenant,
+      'khoa_phong', ' '
+    )::text,
+    true
+  );
+
+  v_payload := public.equipment_filter_buckets(p_don_vi => v_tenant);
+
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_each(v_payload) bucket(key, value)
+    WHERE COALESCE(jsonb_array_length(value), 0) <> 0
+  ) THEN
+    RAISE EXCEPTION 'role=user with blank khoa_phong must fail closed to empty buckets: %', v_payload;
   END IF;
 
   RAISE NOTICE 'equipment_filter_buckets smoke: PASSED';
