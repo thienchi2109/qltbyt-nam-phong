@@ -232,11 +232,30 @@ describe("RepairRequestsMobileList accessibility", () => {
     expect(card).toHaveTextContent("TB-A11Y")
     expect(card).toHaveTextContent("Chờ xử lý")
     expect(card).toHaveTextContent("Người yêu cầu")
-    expect(card).toHaveTextContent("Khoa Khám bệnh")
+    expect(card).toHaveTextContent("Nguyễn Văn A")
     expect(card).toHaveTextContent("Ngày yêu cầu")
     expect(card).toHaveTextContent("Mô tả sự cố")
     expect(card).not.toHaveTextContent("Hạng mục sửa chữa")
     expect(card).not.toHaveTextContent("Thay toàn bộ cụm linh kiện phụ trợ")
+  })
+
+  it("falls back to department when requester name is missing", () => {
+    const request = {
+      ...makeRepairRequest(),
+      nguoi_yeu_cau: "",
+    }
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />
+    )
+
+    const card = screen.getByTestId(`repair-mobile-card-${request.id}`)
+    expect(card).toHaveTextContent("Khoa Khám bệnh")
   })
 
   it("keeps one 48px primary action and a compact secondary menu", () => {

@@ -189,6 +189,11 @@ export function RepairRequestsPageLayout({
           <div>
             <h1 className="text-xl md:text-2xl font-semibold">Yêu cầu sửa chữa</h1>
           </div>
+          {!isRegionalLeader && isCompactLayout && !isMobile ? (
+            <Button onClick={() => openCreateSheet()} className="h-11 shrink-0 rounded-lg">
+              <PlusCircle className="mr-2 size-4" /> Tạo yêu cầu
+            </Button>
+          ) : null}
         </div>
 
         {/* Summary */}
@@ -246,7 +251,7 @@ export function RepairRequestsPageLayout({
         ) : (
           <div className="grid grid-cols-1 gap-4">
             <Card
-              className="overflow-hidden rounded-b-none"
+              className={shouldFetchData ? "overflow-hidden rounded-b-none" : "overflow-hidden"}
               data-testid="repair-requests-desktop-card"
             >
               <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

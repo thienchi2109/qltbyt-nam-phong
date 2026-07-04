@@ -122,7 +122,7 @@ export function RepairRequestsMobileList({
   return (
     <div className="space-y-4">
       {requests.map((request) => {
-        const requester = request.thiet_bi?.khoa_phong_quan_ly || request.nguoi_yeu_cau || "N/A"
+        const requester = request.nguoi_yeu_cau || request.thiet_bi?.khoa_phong_quan_ly || "N/A"
 
         return (
           <div key={request.id} data-testid={`repair-mobile-card-${request.id}`}>

@@ -26,23 +26,23 @@ const toneStyles: Record<
   },
   success: {
     accent: "bg-emerald-500",
-    icon: "bg-emerald-100 text-emerald-700",
-    value: "text-emerald-700",
+    icon: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300",
+    value: "text-emerald-700 dark:text-emerald-300",
   },
   warning: {
     accent: "bg-orange-500",
-    icon: "bg-orange-100 text-orange-700",
-    value: "text-orange-700",
+    icon: "bg-orange-100 text-orange-700 dark:bg-orange-950/60 dark:text-orange-300",
+    value: "text-orange-700 dark:text-orange-300",
   },
   danger: {
     accent: "bg-red-500",
-    icon: "bg-red-100 text-red-700",
-    value: "text-red-700",
+    icon: "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300",
+    value: "text-red-700 dark:text-red-300",
   },
   muted: {
     accent: "bg-blue-500",
-    icon: "bg-blue-100 text-blue-700",
-    value: "text-blue-700",
+    icon: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300",
+    value: "text-blue-700 dark:text-blue-300",
   },
 }
 

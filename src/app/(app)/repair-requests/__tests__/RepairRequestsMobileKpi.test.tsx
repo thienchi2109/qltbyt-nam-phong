@@ -37,4 +37,21 @@ describe("RepairRequestsMobileKpi", () => {
     expect(screen.getByTestId("repair-mobile-kpi-total")).toHaveTextContent("0")
     expect(screen.getByTestId("repair-mobile-kpi-status-Chờ xử lý")).toHaveTextContent("0")
   })
+
+  it("keeps status values readable in dark theme", () => {
+    render(<RepairRequestsMobileKpi counts={counts} loading={false} />)
+
+    expect(
+      within(screen.getByTestId("repair-mobile-kpi-status-Chờ xử lý")).getByText("34")
+    ).toHaveClass("dark:text-orange-300")
+    expect(
+      within(screen.getByTestId("repair-mobile-kpi-status-Đã duyệt")).getByText("3")
+    ).toHaveClass("dark:text-blue-300")
+    expect(
+      within(screen.getByTestId("repair-mobile-kpi-status-Hoàn thành")).getByText("30")
+    ).toHaveClass("dark:text-emerald-300")
+    expect(
+      within(screen.getByTestId("repair-mobile-kpi-status-Không HT")).getByText("2")
+    ).toHaveClass("dark:text-red-300")
+  })
 })

@@ -19,7 +19,7 @@
   - `Tổng` is a full-width summary card.
   - `Chờ xử lý`, `Đã duyệt`, `Hoàn thành`, `Không HT` form a 2x2 grid below.
 - Keep mobile list cards clean:
-  - Show equipment name, equipment code, status, requester department, request date, short problem description, and one primary action.
+  - Show equipment name, equipment code, status, requester name with department fallback, request date, short problem description, and one primary action.
   - Move secondary actions into the existing menu/action zone.
   - Avoid nesting the list inside a large desktop-style card container on mobile.
 - Treat spacing as part of the design contract, not final polish:
@@ -94,7 +94,7 @@ describe("RepairRequestsMobileKpi", () => {
     expect(total).toHaveTextContent("Tổng")
     expect(total).toHaveTextContent("69")
     expect(total).toHaveClass("col-span-2")
-    expect(region.compareDocumentPosition(statusGrid)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(total.compareDocumentPosition(statusGrid)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 
     expect(within(statusGrid).getAllByTestId(/^repair-mobile-kpi-status-/)).toHaveLength(4)
     expect(screen.getByTestId("repair-mobile-kpi-status-Chờ xử lý")).toHaveTextContent("34")

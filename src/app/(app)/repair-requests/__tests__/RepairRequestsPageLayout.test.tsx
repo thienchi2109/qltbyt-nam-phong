@@ -190,10 +190,22 @@ describe("RepairRequestsPageLayout", () => {
     expect(screen.getByText("Tạo yêu cầu")).toBeInTheDocument()
   })
 
+  it("shows create button for tablet compact layout when user can create requests", () => {
+    render(
+      <RepairRequestsPageLayout
+        {...withAccessState({ isRegionalLeader: false })}
+        listState={{ ...defaultProps.listState, isMobile: false, isCompactLayout: true }}
+      />
+    )
+
+    expect(screen.getByRole("button", { name: "Tạo yêu cầu" })).toBeInTheDocument()
+  })
+
   it("shows tenant selection placeholder when shouldFetchData=false", () => {
     render(<RepairRequestsPageLayout {...withAccessState({ shouldFetchData: false })} />)
     expect(screen.getByText("Chọn cơ sở y tế")).toBeInTheDocument()
     expect(screen.getByText(/Vui lòng chọn một cơ sở y tế/)).toBeInTheDocument()
+    expect(screen.getByTestId("repair-requests-desktop-card")).not.toHaveClass("rounded-b-none")
   })
 
   it("shows table content when shouldFetchData=true", () => {
