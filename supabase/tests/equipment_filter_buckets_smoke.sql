@@ -97,6 +97,21 @@ BEGIN
       false
     ),
     (
+      'SMK-BUCKET-FALLBACK-' || v_suffix,
+      'Smoke Cascade Fallback Labels ' || v_suffix,
+      'Model Fallback ' || v_suffix,
+      'Serial Fallback ' || v_suffix,
+      'Reg Fallback ' || v_suffix,
+      v_tenant,
+      'Khoa ICU ' || v_suffix,
+      ' ',
+      ' ',
+      ' ',
+      ' ',
+      ' ',
+      false
+    ),
+    (
       'SMK-BUCKET-DELETED-' || v_suffix,
       'Smoke Cascade Deleted ' || v_suffix,
       'Model Deleted ' || v_suffix,
@@ -194,6 +209,24 @@ BEGIN
   END IF;
 
   v_payload := public.equipment_filter_buckets(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
+    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
+    p_tinh_trang_array => ARRAY['Chưa phân loại'],
+    p_phan_loai_array => ARRAY['Chưa phân loại'],
+    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+  );
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'department') entry
+    WHERE entry->>'name' = 'Khoa ICU ' || v_suffix
+      AND (entry->>'count')::integer = 1
+  ) THEN
+    RAISE EXCEPTION 'selected fallback labels should cascade against normalized bucket names: %', v_payload;
+  END IF;
+
+  v_payload := public.equipment_filter_buckets(
     p_q => 'Smoke Cascade Alpha',
     p_don_vi => v_tenant
   );
@@ -260,8 +293,11 @@ BEGIN
 
   v_payload := public.equipment_filter_buckets(p_don_vi => v_tenant);
 
-  IF COALESCE(jsonb_array_length(v_payload->'department'), 0) <> 0
-     OR COALESCE(jsonb_array_length(v_payload->'status'), 0) <> 0 THEN
+  IF EXISTS (
+    SELECT 1
+    FROM jsonb_each(v_payload) bucket(key, value)
+    WHERE COALESCE(jsonb_array_length(value), 0) <> 0
+  ) THEN
     RAISE EXCEPTION 'role=user with blank khoa_phong must fail closed to empty buckets: %', v_payload;
   END IF;
 
