@@ -298,9 +298,24 @@ describe("EquipmentToolbar with shared filters", () => {
     render(<EquipmentToolbar {...baseProps} />)
 
     const row = screen.getByTestId("equipment-command-filter-row")
-    expect(row).toHaveAttribute("data-layout", "command-direct")
-    expect(row.className).toContain("flex-wrap")
+    expect(row).toHaveAttribute("data-layout", "equipment-reference")
+    expect(row.className).toContain("grid")
     expect(row.className).toContain("min-w-0")
+  })
+
+  it("renders the desktop search and filters in the reference two-row layout", () => {
+    render(<EquipmentToolbar {...baseProps} />)
+
+    const layout = screen.getByTestId("equipment-reference-filter-layout")
+    const search = screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })
+
+    expect(layout).toContainElement(search)
+
+    for (const label of ["Tình trạng", "Khoa/Phòng", "Người sử dụng", "Phân loại"]) {
+      const cell = screen.getByTestId(`equipment-reference-filter-${label}`)
+      expect(cell).toHaveTextContent(label)
+      expect(cell).toContainElement(screen.getByRole("button", { name: new RegExp(label, "i") }))
+    }
   })
 
   it("places tenant control inside the desktop command filter row", () => {
