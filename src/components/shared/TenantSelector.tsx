@@ -51,9 +51,9 @@ export function TenantSelector({
   }
 
   const isCommandVariant = variant === "command"
-  const canClearFacility = !hideAllOption && typeof effectiveSelectionId === "number"
-  const commandTitle =
-    typeof effectiveSelectionId === "number" ? currentFacilityName : "Tất cả cơ sở"
+  const hasActiveSelection = effectiveSelectionId !== null && effectiveSelectionId !== undefined
+  const canClearFacility = !hideAllOption && hasActiveSelection
+  const commandTitle = hasActiveSelection ? currentFacilityName : "Tất cả cơ sở"
 
   if (isCommandVariant) {
     return (

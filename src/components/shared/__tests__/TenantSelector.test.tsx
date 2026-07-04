@@ -42,4 +42,28 @@ describe("TenantSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: "Xóa lọc cơ sở" }))
     expect(setSelectedFacilityId).toHaveBeenCalledWith(null)
   })
+
+  it("treats non-null facility ids as active command selections", () => {
+    const setSelectedFacilityId = vi.fn()
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: "facility-7" as unknown as number,
+      setSelectedFacilityId,
+      facilities: [
+        { id: "facility-7" as unknown as number, name: "Cơ sở ngoài hệ thống", count: 4 },
+      ],
+      showSelector: true,
+      isLoading: false,
+      shouldFetchData: true,
+    })
+
+    render(<TenantSelector variant="command" />)
+
+    const trigger = screen.getByText("Cơ sở").closest("button")
+    expect(trigger).not.toBeNull()
+    expect(trigger).toHaveTextContent("1")
+    expect(trigger).toHaveAttribute("title", "Cơ sở ngoài hệ thống")
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa lọc cơ sở" }))
+    expect(setSelectedFacilityId).toHaveBeenCalledWith(null)
+  })
 })

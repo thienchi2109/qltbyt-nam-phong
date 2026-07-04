@@ -325,6 +325,18 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
   })
 
+  it("renders tenant control once in compact filter mode", () => {
+    render(
+      <EquipmentToolbar
+        {...baseProps}
+        filterMode="sheet"
+        tenantControl={<button type="button">Cơ sở</button>}
+      />
+    )
+
+    expect(screen.getAllByRole("button", { name: "Cơ sở" })).toHaveLength(1)
+  })
+
   it("calls onOpenFilterSheet when mobile filter button is clicked", () => {
     const onOpenFilterSheet = vi.fn()
     render(
