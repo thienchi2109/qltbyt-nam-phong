@@ -240,9 +240,13 @@ export function EquipmentToolbar({
         </Button>
       )}
       {hasFacilityFilter && (
-        <Button variant="ghost" onClick={onClearFacilityFilter} className="h-8 px-2 lg:px-3">
-          <span className="hidden sm:inline">Xóa lọc cơ sở</span>
-          <FilterX className="size-4 sm:ml-2" />
+        <Button
+          variant="ghost"
+          onClick={onClearFacilityFilter}
+          className="h-9 rounded-lg px-2 text-muted-foreground hover:bg-slate-100 hover:text-foreground lg:px-3"
+        >
+          <FilterX className="size-4" aria-hidden="true" />
+          <span className="ml-1.5 hidden text-sm font-medium sm:inline">Xóa lọc cơ sở</span>
         </Button>
       )}
     </div>

@@ -337,6 +337,24 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(baseProps.table.resetColumnFilters).toHaveBeenCalled()
   })
 
+  it("renders facility clear command consistently with desktop clear controls", () => {
+    const onClearFacilityFilter = vi.fn()
+    render(
+      <EquipmentToolbar
+        {...baseProps}
+        filterState={{ ...baseProps.filterState, hasFacilityFilter: true }}
+        onClearFacilityFilter={onClearFacilityFilter}
+      />
+    )
+
+    const facilityClearButton = screen.getByRole("button", { name: /Xóa lọc cơ sở/i })
+    expect(facilityClearButton.className).toContain("h-9")
+    expect(facilityClearButton.className).toContain("rounded-lg")
+
+    fireEvent.click(facilityClearButton)
+    expect(onClearFacilityFilter).toHaveBeenCalled()
+  })
+
   it("hides add actions when create permission is disabled", () => {
     render(
       <EquipmentToolbar
