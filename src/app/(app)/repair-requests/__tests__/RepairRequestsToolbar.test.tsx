@@ -4,6 +4,25 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
+vi.mock("@/components/shared/TenantSelector", () => ({
+  TenantSelector: ({
+    className,
+    variant = "default",
+  }: {
+    className?: string
+    variant?: "default" | "command"
+  }) => (
+    <button
+      type="button"
+      data-testid="tenant-selector"
+      data-class-name={className}
+      data-trigger-variant={variant}
+    >
+      Cơ sở
+    </button>
+  ),
+}))
+
 import { RepairRequestsToolbar } from "../_components/RepairRequestsToolbar"
 
 const baseProps = {
@@ -36,18 +55,36 @@ describe("RepairRequestsToolbar", () => {
 
     expect(search).toBeInTheDocument()
     expect(tenant.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
-    expect(screen.getByRole("button", { name: "Trạng thái" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trạng thái" })).toHaveAttribute(
+      "data-trigger-variant",
+      "command"
+    )
     expect(screen.queryByRole("button", { name: "Cơ sở" })).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Từ ngày" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Đến ngày" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Từ ngày" })).toHaveAttribute(
+      "data-trigger-variant",
+      "command"
+    )
+    expect(screen.getByRole("button", { name: "Đến ngày" })).toHaveAttribute(
+      "data-trigger-variant",
+      "command"
+    )
     expect(screen.queryByRole("button", { name: "Bộ lọc" })).not.toBeInTheDocument()
   })
 
+  it("uses the Equipment-style command tenant selector on desktop layouts", () => {
+    render(<RepairRequestsToolbar {...baseProps} showFacilityFilter />)
+
+    const tenantSelector = screen.getByTestId("tenant-selector")
+    expect(tenantSelector).toHaveAttribute("data-trigger-variant", "command")
+    expect(tenantSelector).toHaveAttribute("data-class-name", "w-full md:w-auto")
+  })
+
   it("keeps the compact filter trigger for mobile layouts", () => {
-    render(<RepairRequestsToolbar {...baseProps} compactFilters />)
+    render(<RepairRequestsToolbar {...baseProps} compactFilters showFacilityFilter />)
 
     expect(screen.getByRole("button", { name: "Bộ lọc" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Trạng thái" })).not.toBeInTheDocument()
+    expect(screen.getByTestId("tenant-selector")).toHaveAttribute("data-trigger-variant", "default")
   })
 
   it("updates status filters from the inline status control", async () => {
@@ -94,13 +131,7 @@ describe("RepairRequestsToolbar", () => {
   })
 
   it("omits the Equipment-style tenant slot when no tenant control is provided", () => {
-    render(
-      <RepairRequestsToolbar
-        {...baseProps}
-        showFacilityFilter={false}
-        tenantControl={null}
-      />
-    )
+    render(<RepairRequestsToolbar {...baseProps} showFacilityFilter={false} tenantControl={null} />)
 
     expect(screen.queryByRole("button", { name: "Cơ sở" })).not.toBeInTheDocument()
   })

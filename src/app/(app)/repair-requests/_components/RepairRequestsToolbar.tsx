@@ -56,108 +56,149 @@ export function RepairRequestsToolbar({
   onRemoveFilter,
 }: RepairRequestsToolbarProps) {
   const dateRange = React.useMemo(
-    () => uiFilters.dateRange && (uiFilters.dateRange.from || uiFilters.dateRange.to)
-      ? {
-        from: parseFilterDate(uiFilters.dateRange.from),
-        to: parseFilterDate(uiFilters.dateRange.to),
-      }
-      : null,
+    () =>
+      uiFilters.dateRange && (uiFilters.dateRange.from || uiFilters.dateRange.to)
+        ? {
+            from: parseFilterDate(uiFilters.dateRange.from),
+            to: parseFilterDate(uiFilters.dateRange.to),
+          }
+        : null,
     [uiFilters.dateRange]
   )
 
-  const filterValue = React.useMemo<FilterModalValue>(() => ({
-    status: uiFilters.status,
-    facilityId: selectedFacilityId ?? null,
-    dateRange,
-  }), [dateRange, selectedFacilityId, uiFilters.status])
+  const filterValue = React.useMemo<FilterModalValue>(
+    () => ({
+      status: uiFilters.status,
+      facilityId: selectedFacilityId ?? null,
+      dateRange,
+    }),
+    [dateRange, selectedFacilityId, uiFilters.status]
+  )
 
-  const applyFilterChange = React.useCallback((patch: Partial<FilterModalValue>) => {
-    onFilterChange({
-      status: patch.status ?? filterValue.status,
-      facilityId: patch.facilityId === undefined ? filterValue.facilityId ?? null : patch.facilityId,
-      dateRange: patch.dateRange === undefined ? filterValue.dateRange ?? null : patch.dateRange,
-    })
-  }, [filterValue, onFilterChange])
+  const applyFilterChange = React.useCallback(
+    (patch: Partial<FilterModalValue>) => {
+      onFilterChange({
+        status: patch.status ?? filterValue.status,
+        facilityId:
+          patch.facilityId === undefined ? (filterValue.facilityId ?? null) : patch.facilityId,
+        dateRange:
+          patch.dateRange === undefined ? (filterValue.dateRange ?? null) : patch.dateRange,
+      })
+    },
+    [filterValue, onFilterChange]
+  )
 
-  const setDateRangePart = React.useCallback((key: "from" | "to", date: Date | null) => {
-    applyFilterChange({
-      dateRange: {
-        from: key === "from" ? date : filterValue.dateRange?.from ?? null,
-        to: key === "to" ? date : filterValue.dateRange?.to ?? null,
-      },
-    })
-  }, [applyFilterChange, filterValue.dateRange])
+  const setDateRangePart = React.useCallback(
+    (key: "from" | "to", date: Date | null) => {
+      applyFilterChange({
+        dateRange: {
+          from: key === "from" ? date : (filterValue.dateRange?.from ?? null),
+          to: key === "to" ? date : (filterValue.dateRange?.to ?? null),
+        },
+      })
+    },
+    [applyFilterChange, filterValue.dateRange]
+  )
 
-  const statusOptions = React.useMemo(() => REPAIR_REQUEST_STATUS_OPTIONS.map((status) => ({
-    label: status,
-    value: status,
-  })), [])
+  const statusOptions = React.useMemo(
+    () =>
+      REPAIR_REQUEST_STATUS_OPTIONS.map((status) => ({
+        label: status,
+        value: status,
+      })),
+    []
+  )
 
-  const filterControls = React.useMemo(() => (
-    <>
-      <FacetedMultiSelectFilter
-        title="Trạng thái"
-        options={statusOptions}
-        value={filterValue.status}
-        onChange={(values) => applyFilterChange({ status: values })}
+  const filterControls = React.useMemo(
+    () => (
+      <>
+        <FacetedMultiSelectFilter
+          title="Trạng thái"
+          options={statusOptions}
+          value={filterValue.status}
+          onChange={(values) => applyFilterChange({ status: values })}
+          triggerVariant="command"
+        />
+        <DateFilterButton
+          label="Từ ngày"
+          value={filterValue.dateRange?.from ?? null}
+          onChange={(date) => setDateRangePart("from", date)}
+        />
+        <DateFilterButton
+          label="Đến ngày"
+          value={filterValue.dateRange?.to ?? null}
+          onChange={(date) => setDateRangePart("to", date)}
+        />
+      </>
+    ),
+    [applyFilterChange, filterValue.dateRange, filterValue.status, setDateRangePart, statusOptions]
+  )
+
+  const mobileFilterControl = React.useMemo(
+    () => (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-9 touch-target-sm"
+        onClick={onOpenFilterModal}
+      >
+        Bộ lọc
+      </Button>
+    ),
+    [onOpenFilterModal]
+  )
+
+  const clearAction = React.useMemo(
+    () =>
+      isFiltered ? (
+        <Button
+          variant="ghost"
+          onClick={onClearFilters}
+          className="h-9 px-2 lg:px-3 touch-target-sm"
+          aria-label="Xóa bộ lọc"
+        >
+          <span className="hidden sm:inline">Xóa</span>
+          <FilterX className="size-4 sm:ml-2" />
+        </Button>
+      ) : null,
+    [isFiltered, onClearFilters]
+  )
+
+  const chips = React.useMemo(
+    () => (
+      <RepairRequestsFilterChips
+        value={{
+          status: uiFilters.status,
+          facilityName: selectedFacilityName,
+          dateRange: uiFilters.dateRange
+            ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null }
+            : null,
+        }}
+        showFacility={showFacilityFilter}
+        onRemove={onRemoveFilter}
       />
-      <DateFilterButton
-        label="Từ ngày"
-        value={filterValue.dateRange?.from ?? null}
-        onChange={(date) => setDateRangePart("from", date)}
-      />
-      <DateFilterButton
-        label="Đến ngày"
-        value={filterValue.dateRange?.to ?? null}
-        onChange={(date) => setDateRangePart("to", date)}
-      />
-    </>
-  ), [applyFilterChange, filterValue.dateRange, filterValue.status, setDateRangePart, statusOptions])
-
-  const mobileFilterControl = React.useMemo(() => (
-    <Button
-      variant="outline"
-      size="sm"
-      className="h-9 touch-target-sm"
-      onClick={onOpenFilterModal}
-    >
-      Bộ lọc
-    </Button>
-  ), [onOpenFilterModal])
-
-  const clearAction = React.useMemo(() => isFiltered ? (
-    <Button
-      variant="ghost"
-      onClick={onClearFilters}
-      className="h-9 px-2 lg:px-3 touch-target-sm"
-      aria-label="Xóa bộ lọc"
-    >
-      <span className="hidden sm:inline">Xóa</span>
-      <FilterX className="size-4 sm:ml-2" />
-    </Button>
-  ) : null, [isFiltered, onClearFilters])
-
-  const chips = React.useMemo(() => (
-    <RepairRequestsFilterChips
-      value={{
-        status: uiFilters.status,
-        facilityName: selectedFacilityName,
-        dateRange: uiFilters.dateRange
-          ? { from: uiFilters.dateRange.from ?? null, to: uiFilters.dateRange.to ?? null }
-          : null,
-      }}
-      showFacility={showFacilityFilter}
-      onRemove={onRemoveFilter}
-    />
-  ), [onRemoveFilter, selectedFacilityName, showFacilityFilter, uiFilters.dateRange, uiFilters.status])
+    ),
+    [
+      onRemoveFilter,
+      selectedFacilityName,
+      showFacilityFilter,
+      uiFilters.dateRange,
+      uiFilters.status,
+    ]
+  )
 
   const resolvedTenantControl = React.useMemo(() => {
     if (tenantControl !== undefined) {
       return tenantControl
     }
 
-    return showFacilityFilter ? <TenantSelector className="w-full" /> : null
-  }, [showFacilityFilter, tenantControl])
+    return showFacilityFilter ? (
+      <TenantSelector
+        className="w-full md:w-auto"
+        variant={compactFilters ? "default" : "command"}
+      />
+    ) : null
+  }, [compactFilters, showFacilityFilter, tenantControl])
 
   return (
     <ListFilterSearchCard
@@ -192,7 +233,11 @@ function DateFilterButton({ label, value, onChange }: DateFilterButtonProps) {
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-9 min-w-[116px] justify-start", !value && "text-muted-foreground")}
+          data-trigger-variant="command"
+          className={cn(
+            "h-9 min-w-[116px] justify-start rounded-lg border-slate-200 bg-muted/80 px-3 shadow-none transition-all hover:border-primary/30 hover:bg-muted",
+            value ? "border-primary/50 bg-primary/10 hover:bg-primary/15" : "text-muted-foreground"
+          )}
         >
           <CalendarIcon className="mr-2 size-4" />
           {value ? value.toLocaleDateString("vi-VN") : label}
