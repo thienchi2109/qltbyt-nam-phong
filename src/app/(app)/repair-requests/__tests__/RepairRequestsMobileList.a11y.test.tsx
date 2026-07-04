@@ -74,7 +74,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={setRequestToView}
         columnOptions={makeColumnOptions()}
-      />,
+      />
     )
 
     const card = screen.getByRole("button", { name: /Máy siêu âm/ })
@@ -99,7 +99,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={setRequestToView}
         columnOptions={columnOptions}
-      />,
+      />
     )
 
     await user.click(screen.getByRole("button", { name: "Mở menu" }))
@@ -121,7 +121,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={setRequestToView}
         columnOptions={columnOptions}
-      />,
+      />
     )
 
     await user.click(screen.getByRole("button", { name: "Duyệt" }))
@@ -144,7 +144,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={vi.fn()}
         columnOptions={columnOptions}
-      />,
+      />
     )
 
     await user.click(screen.getByRole("button", { name: "Hoàn thành" }))
@@ -165,7 +165,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={vi.fn()}
         columnOptions={columnOptions}
-      />,
+      />
     )
 
     expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
@@ -186,7 +186,7 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={vi.fn()}
         columnOptions={columnOptions}
-      />,
+      />
     )
 
     expect(screen.queryByRole("button", { name: "Duyệt" })).not.toBeInTheDocument()
@@ -203,12 +203,73 @@ describe("RepairRequestsMobileList accessibility", () => {
         isLoading={false}
         setRequestToView={vi.fn()}
         columnOptions={makeColumnOptions()}
-      />,
+      />
     )
 
     const activationButton = screen.getByRole("button", { name: /Máy siêu âm/ })
 
     expect(within(activationButton).queryByText("Người yêu cầu")).not.toBeInTheDocument()
     expect(screen.getByText("Người yêu cầu").closest("button")).not.toBe(activationButton)
+  })
+
+  it("renders a clean card with only decision-critical fields", () => {
+    const request = {
+      ...makeRepairRequest(),
+      hang_muc_sua_chua: "Thay toàn bộ cụm linh kiện phụ trợ",
+    }
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />
+    )
+
+    const card = screen.getByTestId(`repair-mobile-card-${request.id}`)
+    expect(card).toHaveTextContent("Máy siêu âm")
+    expect(card).toHaveTextContent("TB-A11Y")
+    expect(card).toHaveTextContent("Chờ xử lý")
+    expect(card).toHaveTextContent("Người yêu cầu")
+    expect(card).toHaveTextContent("Khoa Khám bệnh")
+    expect(card).toHaveTextContent("Ngày yêu cầu")
+    expect(card).toHaveTextContent("Mô tả sự cố")
+    expect(card).not.toHaveTextContent("Hạng mục sửa chữa")
+    expect(card).not.toHaveTextContent("Thay toàn bộ cụm linh kiện phụ trợ")
+  })
+
+  it("keeps one 48px primary action and a compact secondary menu", () => {
+    const request = makeRepairRequest()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />
+    )
+
+    const card = screen.getByTestId(`repair-mobile-card-${request.id}`)
+    expect(within(card).getByRole("button", { name: "Duyệt" })).toHaveClass("h-12")
+    expect(within(card).getByRole("button", { name: "Mở menu" })).toBeInTheDocument()
+  })
+
+  it("uses spacious card padding and action gaps on mobile", () => {
+    const request = makeRepairRequest()
+
+    render(
+      <RepairRequestsMobileList
+        requests={[request]}
+        isLoading={false}
+        setRequestToView={vi.fn()}
+        columnOptions={makeColumnOptions()}
+      />
+    )
+
+    const card = screen.getByTestId(`repair-mobile-card-${request.id}`)
+    expect(card.querySelector(".p-4.space-y-3")).toBeInTheDocument()
+    expect(card.querySelector(".gap-3.px-4.pb-4")).toBeInTheDocument()
   })
 })

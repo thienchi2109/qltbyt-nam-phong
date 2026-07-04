@@ -92,6 +92,27 @@ describe("RepairRequestsToolbar", () => {
     expect(screen.getByTestId("tenant-selector")).toHaveAttribute("data-trigger-variant", "default")
   })
 
+  it("places compact search and filter trigger in one row with chips below", () => {
+    render(
+      <RepairRequestsToolbar
+        {...baseProps}
+        compactFilters
+        isFiltered
+        uiFilters={{ status: ["Đã duyệt"], dateRange: null }}
+      />
+    )
+
+    const search = screen.getByRole("searchbox", { name: "Tìm thiết bị, mô tả..." })
+    const filter = screen.getByRole("button", { name: "Bộ lọc" })
+    const row = screen.getByTestId("repair-toolbar-compact-row")
+
+    expect(row).toContainElement(search)
+    expect(row).toContainElement(filter)
+    expect(row).toHaveClass("grid", "gap-3")
+    expect(screen.getByTestId("repair-toolbar-filter-chips")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Xóa trạng thái Đã duyệt" })).toBeInTheDocument()
+  })
+
   it("updates status filters from the inline status control", async () => {
     const user = userEvent.setup()
     const onFilterChange = vi.fn()

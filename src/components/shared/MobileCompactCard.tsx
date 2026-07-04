@@ -50,12 +50,9 @@ export function MobileCompactCard<
   disabled = false,
 }: MobileCompactCardProps<MetaProps, TopRightProps>) {
   const canActivate = Boolean(onActivate) && !disabled
-  const topRightContent = TopRightComponent && topRightProps ? (
-    <TopRightComponent {...topRightProps} />
-  ) : topRight
-  const metaContent = MetaComponent && metaProps ? (
-    <MetaComponent {...metaProps} />
-  ) : meta
+  const topRightContent =
+    TopRightComponent && topRightProps ? <TopRightComponent {...topRightProps} /> : topRight
+  const metaContent = MetaComponent && metaProps ? <MetaComponent {...metaProps} /> : meta
 
   return (
     <Card
@@ -63,7 +60,7 @@ export function MobileCompactCard<
         "relative overflow-hidden rounded-xl transition-all hover:shadow-md",
         disabled && "opacity-70",
         canActivate && "cursor-pointer",
-        className,
+        className
       )}
     >
       {canActivate && (
@@ -74,7 +71,7 @@ export function MobileCompactCard<
           onClick={onActivate}
         />
       )}
-      <div className="pointer-events-none relative z-10 p-3 space-y-2">
+      <div className="pointer-events-none relative z-10 p-4 space-y-3">
         {(eyebrow || topRightContent) && (
           <div className="flex items-center justify-between gap-3">
             <span className="min-w-0 truncate text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
@@ -89,31 +86,19 @@ export function MobileCompactCard<
         )}
 
         <div className="min-w-0">
-          <h3 className="text-[15px] font-semibold leading-tight text-foreground">
-            {title}
-          </h3>
+          <h3 className="text-[15px] font-semibold leading-tight text-foreground">{title}</h3>
           {subtitle && (
-            <div className="mt-0.5 truncate text-xs text-muted-foreground">
-              {subtitle}
-            </div>
+            <div className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</div>
           )}
         </div>
 
-        {metaContent && (
-          <div className="text-xs text-muted-foreground">
-            {metaContent}
-          </div>
-        )}
+        {metaContent && <div className="text-xs text-muted-foreground">{metaContent}</div>}
 
-        {children && (
-          <div className="space-y-2">
-            {children}
-          </div>
-        )}
+        {children && <div className="space-y-3">{children}</div>}
       </div>
 
       {(primaryAction || actions) && (
-        <div className="relative z-20 flex min-w-0 gap-2 px-3 pb-3 pt-0.5">
+        <div className="relative z-20 flex min-w-0 gap-3 px-4 pb-4 pt-1">
           {primaryAction}
           {actions}
         </div>

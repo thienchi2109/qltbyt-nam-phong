@@ -1,6 +1,6 @@
 import * as React from "react"
 import { format, parseISO } from "date-fns"
-import { vi } from 'date-fns/locale'
+import { vi } from "date-fns/locale"
 import { Loader2 } from "lucide-react"
 
 import { MobileCompactCard } from "@/components/shared/MobileCompactCard"
@@ -10,11 +10,7 @@ import { isEquipmentManagerRole } from "@/lib/rbac"
 
 import type { RepairRequestWithEquipment } from "../types"
 import { getStatusVariant } from "../utils"
-import { DaysRemainingBar } from "./DaysRemainingBar"
-import {
-  RepairRequestRowActions,
-  type RepairRequestColumnOptions,
-} from "./RepairRequestsColumns"
+import { RepairRequestRowActions, type RepairRequestColumnOptions } from "./RepairRequestsColumns"
 
 /**
  * Props for the MobileRequestList component.
@@ -30,17 +26,11 @@ export interface MobileRequestListProps {
   columnOptions: RepairRequestColumnOptions
 }
 
-function RepairRequestCardField({
-  label,
-  value,
-}: {
-  label: string
-  value: React.ReactNode
-}) {
+function RepairRequestCardField({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-2">
-      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
-      <span className="text-right text-xs font-medium">{value}</span>
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-x-4 gap-y-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="text-right text-sm font-medium leading-snug">{value}</span>
     </div>
   )
 }
@@ -55,20 +45,15 @@ function RepairRequestStatusBadge({ status }: { status: string }) {
 
 function getRepairRequestPrimaryAction(
   request: RepairRequestWithEquipment,
-  columnOptions: RepairRequestColumnOptions,
+  columnOptions: RepairRequestColumnOptions
 ) {
-  const {
-    handleApproveRequest,
-    handleCompletion,
-    onGenerateSheet,
-    user,
-    isRegionalLeader,
-  } = columnOptions
+  const { handleApproveRequest, handleCompletion, onGenerateSheet, user, isRegionalLeader } =
+    columnOptions
 
   if (!user || isRegionalLeader) return null
 
   const canManage = isEquipmentManagerRole(user.role)
-  const buttonClassName = "h-8 flex-1 rounded-lg text-xs font-semibold"
+  const buttonClassName = "h-12 flex-1 rounded-lg text-sm font-semibold"
 
   if (canManage && request.trang_thai === "Chờ xử lý") {
     return (
@@ -131,70 +116,51 @@ export function RepairRequestsMobileList({
   }
 
   if (!requests.length) {
-    return (
-      <div className="text-center py-6 text-muted-foreground text-sm">
-        Không có kết quả.
-      </div>
-    )
+    return <div className="text-center py-6 text-muted-foreground text-sm">Không có kết quả.</div>
   }
 
   return (
-    <div className="space-y-3">
-      {requests.map((request) => (
-        <MobileCompactCard
-          key={request.id}
-          title={request.thiet_bi?.ten_thiet_bi || "N/A"}
-          subtitle={request.thiet_bi?.ma_thiet_bi || "N/A"}
-          TopRightComponent={RepairRequestStatusBadge}
-          topRightProps={{ status: request.trang_thai }}
-          activationLabel={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || "N/A"}`}
-          onActivate={() => setRequestToView(request)}
-          primaryAction={getRepairRequestPrimaryAction(request, columnOptions)}
-          actions={
-            shouldShowRowActions
-              ? <RepairRequestRowActions request={request} options={columnOptions} />
-              : undefined
-          }
-        >
-          {request.nguoi_yeu_cau && (
-            <RepairRequestCardField label="Người yêu cầu" value={request.nguoi_yeu_cau} />
-          )}
+    <div className="space-y-4">
+      {requests.map((request) => {
+        const requester = request.thiet_bi?.khoa_phong_quan_ly || request.nguoi_yeu_cau || "N/A"
 
-          <RepairRequestCardField
-            label="Ngày yêu cầu"
-            value={format(parseISO(request.ngay_yeu_cau), "dd/MM/yyyy", { locale: vi })}
-          />
+        return (
+          <div key={request.id} data-testid={`repair-mobile-card-${request.id}`}>
+            <MobileCompactCard
+              title={request.thiet_bi?.ten_thiet_bi || "N/A"}
+              subtitle={request.thiet_bi?.ma_thiet_bi || "N/A"}
+              TopRightComponent={RepairRequestStatusBadge}
+              topRightProps={{ status: request.trang_thai }}
+              activationLabel={`Xem yêu cầu sửa chữa ${request.thiet_bi?.ten_thiet_bi || "N/A"}`}
+              onActivate={() => setRequestToView(request)}
+              primaryAction={getRepairRequestPrimaryAction(request, columnOptions)}
+              actions={
+                shouldShowRowActions ? (
+                  <RepairRequestRowActions request={request} options={columnOptions} />
+                ) : undefined
+              }
+              className="rounded-2xl border bg-card shadow-sm hover:shadow-sm"
+            >
+              <div className="space-y-3">
+                <div className="grid gap-y-3">
+                  <RepairRequestCardField label="Người yêu cầu" value={requester} />
+                  <RepairRequestCardField
+                    label="Ngày yêu cầu"
+                    value={format(parseISO(request.ngay_yeu_cau), "dd/MM/yyyy", { locale: vi })}
+                  />
+                </div>
 
-          {request.ngay_mong_muon_hoan_thanh && (
-            <div className="space-y-2">
-              <RepairRequestCardField
-                label="Ngày mong muốn HT"
-                value={format(parseISO(request.ngay_mong_muon_hoan_thanh), "dd/MM/yyyy", { locale: vi })}
-              />
-              <DaysRemainingBar
-                deadline={request.ngay_mong_muon_hoan_thanh}
-                status={request.trang_thai}
-              />
-            </div>
-          )}
-
-          <div className="space-y-1">
-            <span className="text-xs text-muted-foreground">Mô tả sự cố:</span>
-            <p className="line-clamp-2 text-left text-xs font-medium leading-relaxed">
-              {request.mo_ta_su_co}
-            </p>
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <span className="text-xs text-muted-foreground">Mô tả sự cố:</span>
+                  <p className="mt-1 line-clamp-3 text-left text-sm font-medium leading-relaxed">
+                    {request.mo_ta_su_co}
+                  </p>
+                </div>
+              </div>
+            </MobileCompactCard>
           </div>
-
-          {request.hang_muc_sua_chua && (
-            <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Hạng mục sửa chữa:</span>
-              <p className="line-clamp-2 text-left text-xs font-medium leading-relaxed">
-                {request.hang_muc_sua_chua}
-              </p>
-            </div>
-          )}
-        </MobileCompactCard>
-      ))}
+        )
+      })}
     </div>
   )
 }
