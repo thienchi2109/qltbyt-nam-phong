@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   openImportDialog: vi.fn(),
   openColumnsDialog: vi.fn(),
   openDetailDialog: vi.fn(),
+  tenantSelector: vi.fn(),
 }))
 
 vi.mock("../use-equipment-page", () => ({
@@ -58,7 +59,9 @@ vi.mock("../_components/EquipmentBulkDeleteBar", () => ({
 }))
 
 vi.mock("@/components/equipment/equipment-toolbar", () => ({
-  EquipmentToolbar: () => <section aria-label="equipment toolbar" />,
+  EquipmentToolbar: ({ tenantControl }: { tenantControl?: React.ReactNode }) => (
+    <section aria-label="equipment toolbar">{tenantControl}</section>
+  ),
 }))
 
 vi.mock("@/components/equipment/filter-bottom-sheet", () => ({
@@ -70,7 +73,10 @@ vi.mock("@/components/shared/DataTablePagination", () => ({
 }))
 
 vi.mock("@/components/shared/TenantSelector", () => ({
-  TenantSelector: () => null,
+  TenantSelector: (props: { variant?: "default" | "command"; className?: string }) => {
+    mocks.tenantSelector(props)
+    return <button type="button">Cơ sở</button>
+  },
 }))
 
 vi.mock("@/components/ui/popover", () => ({
@@ -206,6 +212,32 @@ describe("EquipmentPageClient department summary", () => {
     expect(within(summary).queryByText("Chưa cập nhật")).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment toolbar" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment table" })).toBeInTheDocument()
+  })
+
+  it("hides the department summary when compact filters are active", () => {
+    state.pageState = createPageState({ isMobile: true, isCardView: true })
+
+    render(<EquipmentPageClient />)
+
+    expect(
+      screen.queryByRole("region", { name: "Phân bố theo khoa/phòng" })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "equipment toolbar" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "equipment table" })).toBeInTheDocument()
+  })
+
+  it("uses the command tenant selector variant in compact filter mode", () => {
+    state.pageState = createPageState({
+      isMobile: true,
+      isCardView: true,
+      showFacilityFilter: true,
+    })
+
+    render(<EquipmentPageClient />)
+
+    expect(mocks.tenantSelector).toHaveBeenCalledWith(
+      expect.objectContaining({ className: "w-full md:w-auto", variant: "command" })
+    )
   })
 
   it("shows the remaining departments in a searchable popover list", async () => {

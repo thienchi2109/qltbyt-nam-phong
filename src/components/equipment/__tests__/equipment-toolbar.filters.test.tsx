@@ -8,7 +8,7 @@
 import * as React from "react"
 import { describe, it, expect, vi } from "vitest"
 import "@testing-library/jest-dom"
-import { render, screen, fireEvent } from "@testing-library/react"
+import { render, screen, fireEvent, within } from "@testing-library/react"
 import type { Table } from "@tanstack/react-table"
 import type { Equipment } from "@/types/database"
 
@@ -335,6 +335,11 @@ describe("EquipmentToolbar with shared filters", () => {
     render(<EquipmentToolbar {...baseProps} filterMode="sheet" />)
 
     expect(screen.getByText("Lọc")).toBeInTheDocument()
+    const compactActions = screen.getByTestId("equipment-compact-filter-actions")
+
+    expect(compactActions).toHaveClass("grid", "w-full", "grid-cols-2", "gap-2")
+    expect(within(compactActions).getByRole("button", { name: /Lọc/i })).toHaveClass("w-full")
+    expect(within(compactActions).getByRole("button", { name: /Tùy chọn/i })).toHaveClass("w-full")
     expect(screen.queryByText("Tình trạng")).not.toBeInTheDocument()
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
   })
