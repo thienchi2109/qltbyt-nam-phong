@@ -125,13 +125,13 @@ export function EquipmentToolbar({
 
   const mobileFilterControl = React.useMemo(
     () => (
-      <>
+      <div data-testid="equipment-compact-filter-actions" className="grid w-full grid-cols-2 gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenFilterSheet}
           className={cn(
-            "h-9 border-slate-200 shadow-sm transition-all",
+            "h-9 w-full justify-center border-slate-200 shadow-sm transition-all",
             isFiltered
               ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
               : "hover:border-primary/30"
@@ -151,7 +151,7 @@ export function EquipmentToolbar({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
+            <Button variant="outline" size="sm" className="h-9 w-full justify-center">
               <Settings className="size-4 mr-2" />
               Tùy chọn
             </Button>
@@ -164,7 +164,7 @@ export function EquipmentToolbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </>
+      </div>
     ),
     [
       activeFilterCount,

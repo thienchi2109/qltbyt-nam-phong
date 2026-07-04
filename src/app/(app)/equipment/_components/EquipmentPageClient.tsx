@@ -179,13 +179,8 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
   const tenantControl = React.useMemo(() => {
     if (!showFacilityFilter) return null
 
-    return (
-      <TenantSelector
-        className="w-full md:w-auto"
-        variant={useCompactFilters ? "default" : "command"}
-      />
-    )
-  }, [showFacilityFilter, useCompactFilters])
+    return <TenantSelector className="w-full md:w-auto" variant="command" />
+  }, [showFacilityFilter])
   const selectedDepartments = React.useMemo(() => {
     const value = columnFilters.find((filter) => filter.id === "khoa_phong_quan_ly")?.value
     return Array.isArray(value)
@@ -275,11 +270,13 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
           onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
         />
 
-        <EquipmentDepartmentSummary
-          items={departmentDistribution}
-          selectedDepartments={selectedDepartments}
-          onSelectDepartment={handleSelectDepartmentSummary}
-        />
+        {!useCompactFilters ? (
+          <EquipmentDepartmentSummary
+            items={departmentDistribution}
+            selectedDepartments={selectedDepartments}
+            onSelectDepartment={handleSelectDepartmentSummary}
+          />
+        ) : null}
 
         <Card>
           <CardContent className="space-y-4 px-4 pt-4 md:px-6">
