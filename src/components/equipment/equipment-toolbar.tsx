@@ -280,7 +280,6 @@ export function EquipmentToolbar({
             classifications={classifications}
             fundingSources={fundingSources}
             isFiltered={isFiltered}
-            activeFilterCount={activeFilterCount}
           />
         </EquipmentToolbarDesktopLayout>
       )}

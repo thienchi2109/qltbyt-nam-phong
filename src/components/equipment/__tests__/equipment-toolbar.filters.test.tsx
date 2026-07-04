@@ -367,7 +367,7 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(screen.queryByRole("button", { name: /^Xóa bộ lọc$/i })).not.toBeInTheDocument()
   })
 
-  it("shows an inline split clear control when desktop filters are active", () => {
+  it("shows a simple inline clear command when desktop filters are active", () => {
     render(
       <EquipmentToolbar
         {...baseProps}
@@ -377,12 +377,10 @@ describe("EquipmentToolbar with shared filters", () => {
     )
 
     const row = screen.getByTestId("equipment-command-filter-row")
-    const clearControl = screen.getByTestId("equipment-clear-filters-control")
-    const clearButton = screen.getByRole("button", { name: /^Xóa bộ lọc$/i })
+    const clearButton = screen.getByTestId("equipment-clear-filters-control")
 
-    expect(row).toContainElement(clearControl)
-    expect(clearControl).toHaveTextContent("Bộ lọc")
-    expect(clearControl).toHaveTextContent("1")
+    expect(row).toContainElement(clearButton)
+    expect(clearButton).toHaveTextContent("Xóa bộ lọc")
     expect(clearButton).toBeInTheDocument()
 
     fireEvent.click(clearButton)

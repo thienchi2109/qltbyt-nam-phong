@@ -5,7 +5,6 @@ import type { Table } from "@tanstack/react-table"
 import { Building2, Filter, Tags, UserRound, WalletCards, X } from "lucide-react"
 
 import type { Equipment } from "@/types/database"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { SearchInput } from "@/components/shared/SearchInput"
@@ -25,7 +24,6 @@ interface EquipmentToolbarDesktopFiltersProps {
   classifications: string[]
   fundingSources: string[]
   isFiltered: boolean
-  activeFilterCount: number
 }
 
 interface EquipmentToolbarDesktopLayoutProps {
@@ -60,7 +58,6 @@ export function EquipmentToolbarDesktopFilters({
   classifications,
   fundingSources,
   isFiltered,
-  activeFilterCount,
 }: EquipmentToolbarDesktopFiltersProps) {
   return (
     <div
@@ -117,33 +114,16 @@ export function EquipmentToolbarDesktopFilters({
         />
       </EquipmentFilterField>
       {isFiltered && (
-        <div
+        <Button
+          type="button"
+          variant="ghost"
           data-testid="equipment-clear-filters-control"
-          className="inline-flex h-9 min-w-[132px] self-end overflow-hidden rounded-lg border border-primary/50 bg-primary/10 shadow-none"
+          onClick={() => table.resetColumnFilters()}
+          className="h-9 self-end justify-start gap-1.5 px-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2 px-3">
-            <Filter className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="truncate text-sm font-medium">Bộ lọc</span>
-            {activeFilterCount > 0 ? (
-              <Badge
-                variant="secondary"
-                className="h-5 min-w-[20px] rounded-full bg-primary px-1.5 text-xs font-semibold text-white"
-              >
-                {activeFilterCount}
-              </Badge>
-            ) : null}
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Xóa bộ lọc"
-            onClick={() => table.resetColumnFilters()}
-            className="h-full w-8 rounded-none border-l border-slate-200 text-muted-foreground hover:bg-background hover:text-foreground"
-          >
-            <X className="size-3.5" aria-hidden="true" />
-          </Button>
-        </div>
+          <X className="size-4" aria-hidden="true" />
+          <span className="text-sm font-medium">Xóa bộ lọc</span>
+        </Button>
       )}
     </div>
   )
