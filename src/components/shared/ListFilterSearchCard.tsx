@@ -18,6 +18,7 @@ interface ListFilterSearchCardBaseProps {
   actions?: React.ReactNode
   chips?: React.ReactNode
   className?: string
+  tenantClassName?: string
   searchClassName?: string
 }
 
@@ -41,11 +42,10 @@ interface ListFilterSearchCardFilterOnlyProps {
   searchDisabled?: never
 }
 
-export type ListFilterSearchCardProps = ListFilterSearchCardBaseProps & (
-  | ListFilterSearchCardSearchProps
-  | ListFilterSearchCardFilterOnlyProps
-)
+export type ListFilterSearchCardProps = ListFilterSearchCardBaseProps &
+  (ListFilterSearchCardSearchProps | ListFilterSearchCardFilterOnlyProps)
 
+/** Renders a reusable search/filter toolbar with optional tenant, action, and chip slots. */
 export function ListFilterSearchCard({
   title,
   description,
@@ -65,47 +65,48 @@ export function ListFilterSearchCard({
   actions,
   chips,
   className,
+  tenantClassName,
   searchClassName,
 }: ListFilterSearchCardProps) {
   const visibleFilterControls = compactFilters ? mobileFilterControl : filterControls
-  const shouldRenderSearch = typeof searchPlaceholder === "string" && typeof onSearchChange === "function"
+  const shouldRenderSearch =
+    typeof searchPlaceholder === "string" && typeof onSearchChange === "function"
 
-  const header = !title && !description
-    ? null
-    : surface === "card"
-      ? (
-        <CardHeader className="gap-y-1 pb-3">
-          {title ? (
-            <CardTitle className="heading-responsive-h2">{title}</CardTitle>
-          ) : null}
-          {description ? (
-            <CardDescription className="body-responsive-sm">{description}</CardDescription>
-          ) : null}
-        </CardHeader>
-      )
-      : (
-        <div className="space-y-1 pb-3">
-          {title ? (
-            <div className="heading-responsive-h2 font-semibold">{title}</div>
-          ) : null}
-          {description ? (
-            <div className="body-responsive-sm text-muted-foreground">{description}</div>
-          ) : null}
-        </div>
-      )
+  const header =
+    !title && !description ? null : surface === "card" ? (
+      <CardHeader className="gap-y-1 pb-3">
+        {title ? <CardTitle className="heading-responsive-h2">{title}</CardTitle> : null}
+        {description ? (
+          <CardDescription className="body-responsive-sm">{description}</CardDescription>
+        ) : null}
+      </CardHeader>
+    ) : (
+      <div className="space-y-1 pb-3">
+        {title ? <div className="heading-responsive-h2 font-semibold">{title}</div> : null}
+        {description ? (
+          <div className="body-responsive-sm text-muted-foreground">{description}</div>
+        ) : null}
+      </div>
+    )
 
   const content = (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:flex-wrap md:items-end">
           {tenantControl ? (
-            <div className="w-full md:w-auto md:min-w-[220px] xl:min-w-[260px]">
+            <div
+              className={cn(
+                tenantClassName ?? "w-full md:w-auto md:min-w-[220px] xl:min-w-[260px]"
+              )}
+            >
               {tenantControl}
             </div>
           ) : null}
 
           {shouldRenderSearch ? (
-            <div className={cn("w-full md:min-w-[280px] md:max-w-[460px] md:flex-1", searchClassName)}>
+            <div
+              className={cn("w-full md:min-w-[280px] md:max-w-[460px] md:flex-1", searchClassName)}
+            >
               <SearchInput
                 ref={searchInputRef}
                 placeholder={searchPlaceholder}
@@ -127,14 +128,10 @@ export function ListFilterSearchCard({
           ) : null}
         </div>
 
-        {(selectionActions || actions) ? (
+        {selectionActions || actions ? (
           <div className="flex w-full flex-wrap items-center justify-between gap-2 xl:w-auto xl:justify-end">
-            {selectionActions ? (
-              <div className="min-w-0 shrink-0">{selectionActions}</div>
-            ) : null}
-            {actions ? (
-              <div className="flex items-center gap-2">{actions}</div>
-            ) : null}
+            {selectionActions ? <div className="min-w-0 shrink-0">{selectionActions}</div> : null}
+            {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
           </div>
         ) : null}
       </div>
@@ -155,9 +152,7 @@ export function ListFilterSearchCard({
   return (
     <Card className={className}>
       {header}
-      <CardContent className="px-4 pb-4 md:px-6">
-        {content}
-      </CardContent>
+      <CardContent className="px-4 pb-4 md:px-6">{content}</CardContent>
     </Card>
   )
 }

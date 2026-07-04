@@ -24,6 +24,23 @@ describe("ListFilterSearchCard", () => {
     expect(tenant.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
+  it("can override the tenant slot sizing for compact command tokens", () => {
+    render(
+      <ListFilterSearchCard
+        tenantControl={<button type="button">Cơ sở</button>}
+        tenantClassName="w-full md:w-auto"
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+      />
+    )
+
+    const tenantSlot = screen.getByRole("button", { name: "Cơ sở" }).parentElement
+
+    expect(tenantSlot).toHaveClass("w-full", "md:w-auto")
+    expect(tenantSlot).not.toHaveClass("xl:min-w-[260px]")
+  })
+
   it("renders mobile filter control instead of desktop filter controls in compact mode", () => {
     render(
       <ListFilterSearchCard
@@ -75,12 +92,12 @@ describe("ListFilterSearchCard", () => {
         searchValue=""
         onSearchChange={vi.fn()}
         searchPlaceholder="Tên hoặc mã thiết bị..."
-        filterControls={(
+        filterControls={
           <fieldset>
             <legend>Khoảng thời gian</legend>
             <button type="button">Từ ngày</button>
           </fieldset>
-        )}
+        }
       />
     )
 
@@ -114,7 +131,9 @@ describe("ListFilterSearchCard", () => {
       />
     )
 
-    expect(searchInputRef.current).toBe(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." }))
+    expect(searchInputRef.current).toBe(
+      screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })
+    )
   })
 
   it("can disable the shared search input", () => {

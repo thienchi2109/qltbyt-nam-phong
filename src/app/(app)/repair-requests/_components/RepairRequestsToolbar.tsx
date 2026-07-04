@@ -109,6 +109,22 @@ export function RepairRequestsToolbar({
     []
   )
 
+  const clearAction = React.useMemo(
+    () =>
+      isFiltered ? (
+        <Button
+          variant="ghost"
+          onClick={onClearFilters}
+          className="h-9 px-2 lg:px-3 touch-target-sm"
+          aria-label="Xóa bộ lọc"
+        >
+          <span className="hidden sm:inline">Xóa</span>
+          <FilterX className="size-4 sm:ml-2" />
+        </Button>
+      ) : null,
+    [isFiltered, onClearFilters]
+  )
+
   const filterControls = React.useMemo(
     () => (
       <>
@@ -129,9 +145,17 @@ export function RepairRequestsToolbar({
           value={filterValue.dateRange?.to ?? null}
           onChange={(date) => setDateRangePart("to", date)}
         />
+        {clearAction}
       </>
     ),
-    [applyFilterChange, filterValue.dateRange, filterValue.status, setDateRangePart, statusOptions]
+    [
+      applyFilterChange,
+      clearAction,
+      filterValue.dateRange,
+      filterValue.status,
+      setDateRangePart,
+      statusOptions,
+    ]
   )
 
   const mobileFilterControl = React.useMemo(
@@ -146,22 +170,6 @@ export function RepairRequestsToolbar({
       </Button>
     ),
     [onOpenFilterModal]
-  )
-
-  const clearAction = React.useMemo(
-    () =>
-      isFiltered ? (
-        <Button
-          variant="ghost"
-          onClick={onClearFilters}
-          className="h-9 px-2 lg:px-3 touch-target-sm"
-          aria-label="Xóa bộ lọc"
-        >
-          <span className="hidden sm:inline">Xóa</span>
-          <FilterX className="size-4 sm:ml-2" />
-        </Button>
-      ) : null,
-    [isFiltered, onClearFilters]
   )
 
   const chips = React.useMemo(
@@ -209,11 +217,11 @@ export function RepairRequestsToolbar({
       onSearchChange={onSearchChange}
       searchPlaceholder="Tìm thiết bị, mô tả..."
       showSearchIcon={false}
-      searchClassName="md:min-w-[220px] md:max-w-[320px] xl:min-w-[260px]"
+      tenantClassName="w-full md:w-auto"
+      searchClassName="md:min-w-[360px] md:max-w-none xl:min-w-[520px]"
       filterControls={filterControls}
       mobileFilterControl={mobileFilterControl}
       compactFilters={compactFilters}
-      actions={clearAction}
       chips={chips}
     />
   )

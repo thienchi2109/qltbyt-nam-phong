@@ -77,6 +77,11 @@ describe("RepairRequestsToolbar", () => {
     const tenantSelector = screen.getByTestId("tenant-selector")
     expect(tenantSelector).toHaveAttribute("data-trigger-variant", "command")
     expect(tenantSelector).toHaveAttribute("data-class-name", "w-full md:w-auto")
+    expect(tenantSelector.parentElement).toHaveClass("md:w-auto")
+    expect(tenantSelector.parentElement).not.toHaveClass("xl:min-w-[260px]")
+    expect(
+      screen.getByRole("searchbox", { name: "Tìm thiết bị, mô tả..." }).parentElement?.parentElement
+    ).toHaveClass("md:max-w-none", "xl:min-w-[520px]")
   })
 
   it("keeps the compact filter trigger for mobile layouts", () => {
@@ -128,6 +133,22 @@ describe("RepairRequestsToolbar", () => {
     expect(onSearchChange).toHaveBeenCalled()
     expect(onClearFilters).toHaveBeenCalledTimes(1)
     expect(onRemoveFilter).toHaveBeenCalledWith("status", "Chờ xử lý")
+  })
+
+  it("keeps the clear filter action grouped with desktop filter controls", () => {
+    render(
+      <RepairRequestsToolbar
+        {...baseProps}
+        isFiltered
+        uiFilters={{ status: ["Chờ xử lý"], dateRange: null }}
+      />
+    )
+
+    const endDate = screen.getByRole("button", { name: "Đến ngày" })
+    const clear = screen.getByRole("button", { name: "Xóa bộ lọc" })
+
+    expect(endDate.compareDocumentPosition(clear)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(clear.parentElement).toHaveClass("flex-wrap")
   })
 
   it("omits the Equipment-style tenant slot when no tenant control is provided", () => {
