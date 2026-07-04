@@ -11,6 +11,7 @@ DECLARE
   v_other_tenant bigint;
   v_payload jsonb;
   v_count integer;
+  v_distribution_count integer;
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Filter Buckets Tenant ' || v_suffix, true)
@@ -224,6 +225,35 @@ BEGIN
       AND (entry->>'count')::integer = 1
   ) THEN
     RAISE EXCEPTION 'selected fallback labels should cascade against normalized bucket names: %', v_payload;
+  END IF;
+
+  v_payload := public.equipment_list_enhanced(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
+    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
+    p_tinh_trang_array => ARRAY['Chưa phân loại'],
+    p_phan_loai_array => ARRAY['Chưa phân loại'],
+    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+  );
+
+  IF (v_payload->>'total')::integer <> 1
+     OR COALESCE(jsonb_array_length(v_payload->'data'), 0) <> 1 THEN
+    RAISE EXCEPTION 'equipment_list_enhanced should match selected fallback bucket labels: %', v_payload;
+  END IF;
+
+  SELECT COALESCE(SUM(distribution."count"), 0)::integer
+  INTO v_distribution_count
+  FROM public.equipment_department_distribution(
+    p_don_vi => v_tenant,
+    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
+    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
+    p_tinh_trang_array => ARRAY['Chưa phân loại'],
+    p_phan_loai_array => ARRAY['Chưa phân loại'],
+    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+  ) distribution;
+
+  IF v_distribution_count <> 1 THEN
+    RAISE EXCEPTION 'equipment_department_distribution should match selected fallback bucket labels: count=%', v_distribution_count;
   END IF;
 
   v_payload := public.equipment_filter_buckets(
