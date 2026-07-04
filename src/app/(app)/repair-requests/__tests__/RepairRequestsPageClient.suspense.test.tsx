@@ -1,6 +1,6 @@
 import * as React from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 
 const pendingSearchParams = new Promise<never>(() => {})
 
@@ -211,19 +211,11 @@ describe("RepairRequestsPage Suspense boundary", () => {
     expect(skeletons[1]).toHaveAttribute("data-classname", "h-4 w-48 mx-auto")
   })
 
-  it.each([
-    {
-      name: "status filter",
-      selectedFacilityId: undefined,
-      storedFilters: { status: ["Chờ xử lý"], dateRange: null },
-    },
-    {
-      name: "facility filter",
-      selectedFacilityId: 1,
-      storedFilters: { status: [], dateRange: null },
-    },
-  ])("marks the page filtered for an active $name", ({ selectedFacilityId, storedFilters }) => {
-    globalThis.localStorage.setItem("rr_filter_state", JSON.stringify(storedFilters))
+  it("marks the page filtered for an active status filter", () => {
+    globalThis.localStorage.setItem(
+      "rr_filter_state",
+      JSON.stringify({ status: ["Chờ xử lý"], dateRange: null })
+    )
 
     mocks.useSession.mockReturnValue({
       data: {
@@ -239,7 +231,7 @@ describe("RepairRequestsPage Suspense boundary", () => {
     })
 
     mocks.useTenantSelection.mockReturnValue({
-      selectedFacilityId,
+      selectedFacilityId: undefined,
       setSelectedFacilityId: vi.fn(),
       facilities: [{ id: 1, name: "Bệnh viện A" }],
       showSelector: true,
@@ -262,8 +254,64 @@ describe("RepairRequestsPage Suspense boundary", () => {
 
     expect(screen.getByTestId("repair-requests-page-layout")).toHaveAttribute(
       "data-is-filtered",
-      "true",
+      "true"
     )
+  })
+
+  it("does not mark tenant selection as a clearable filter", () => {
+    const setSelectedFacilityId = vi.fn()
+    globalThis.localStorage.setItem(
+      "rr_filter_state",
+      JSON.stringify({ status: [], dateRange: null })
+    )
+
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: {
+          id: 1,
+          role: "global",
+          don_vi: null,
+          dia_ban_id: null,
+          name: "Global Admin",
+        },
+      },
+      status: "authenticated",
+    })
+
+    mocks.useTenantSelection.mockReturnValue({
+      selectedFacilityId: 1,
+      setSelectedFacilityId,
+      facilities: [{ id: 1, name: "Bệnh viện A" }],
+      showSelector: true,
+      shouldFetchData: true,
+      isLoading: false,
+    })
+
+    mocks.useQueryClient.mockReturnValue({
+      invalidateQueries: vi.fn(),
+    })
+
+    mocks.useRouter.mockReturnValue({
+      push: vi.fn(),
+      replace: vi.fn(),
+    })
+
+    mocks.useSearchParams.mockReturnValue(new URLSearchParams())
+
+    render(<RepairRequestsPageClient />)
+
+    expect(screen.getByTestId("repair-requests-page-layout")).toHaveAttribute(
+      "data-is-filtered",
+      "false"
+    )
+
+    const layoutProps = mocks.layoutProps.mock.calls.at(-1)?.[0] as
+      { onClearFilters?: () => void } | undefined
+    act(() => {
+      layoutProps?.onClearFilters?.()
+    })
+
+    expect(setSelectedFacilityId).not.toHaveBeenCalled()
   })
 
   it("routes print action through the prefill choice dialog", () => {
@@ -305,7 +353,7 @@ describe("RepairRequestsPage Suspense boundary", () => {
     expect(mocks.columnOptions).toHaveBeenCalledWith(
       expect.objectContaining({
         onGenerateSheet: mocks.openPrintOptionsDialog,
-      }),
+      })
     )
   })
 })

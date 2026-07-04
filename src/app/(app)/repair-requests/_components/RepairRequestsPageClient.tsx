@@ -1,7 +1,12 @@
 "use client"
 
 import * as React from "react"
-import type { ColumnFiltersState, SortingState, VisibilityState, Updater } from "@tanstack/react-table"
+import type {
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  Updater,
+} from "@tanstack/react-table"
 import {
   getCoreRowModel,
   getFacetedRowModel,
@@ -75,19 +80,13 @@ function RepairRequestsPageClientInner() {
       createRepairRequestsPageState({
         uiFilters: getUiFilters(),
         columnVisibility: getColumnVisibility(),
-      }),
+      })
   )
 
-  const {
-    sorting,
-    columnFilters,
-    searchTerm,
-    uiFilters,
-    isFilterModalOpen,
-    columnVisibility,
-  } = pageState
+  const { sorting, columnFilters, searchTerm, uiFilters, isFilterModalOpen, columnVisibility } =
+    pageState
 
-  const debouncedSearch = useSearchDebounce(searchTerm);
+  const debouncedSearch = useSearchDebounce(searchTerm)
 
   const searchInputRef = React.useRef<HTMLInputElement | null>(null)
 
@@ -99,16 +98,19 @@ function RepairRequestsPageClientInner() {
     dispatchPageState({ type: "set-ui-filters", value })
   }, [])
 
-  const persistUiFiltersState = React.useCallback((value: UiFiltersPrefs) => {
-    setUiFiltersState(value)
-    setUiFilters(value)
-  }, [setUiFiltersState])
+  const persistUiFiltersState = React.useCallback(
+    (value: UiFiltersPrefs) => {
+      setUiFiltersState(value)
+      setUiFilters(value)
+    },
+    [setUiFiltersState]
+  )
 
   const setFilterModalOpen = React.useCallback((value: boolean) => {
     dispatchPageState({ type: "set-filter-modal-open", value })
   }, [])
 
-  const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? 'none';
+  const effectiveTenantKey = user?.don_vi ?? user?.current_don_vi ?? "none"
 
   const {
     selectedFacilityId,
@@ -140,47 +142,59 @@ function RepairRequestsPageClientInner() {
   })
 
   const selectedFacilityName = React.useMemo(() => {
-    if (selectedFacilityId === null || selectedFacilityId === undefined) return null;
-    const facility = facilityOptions.find(f => f.id === selectedFacilityId);
-    return facility?.name ?? null;
-  }, [selectedFacilityId, facilityOptions]);
+    if (selectedFacilityId === null || selectedFacilityId === undefined) return null
+    const facility = facilityOptions.find((f) => f.id === selectedFacilityId)
+    return facility?.name ?? null
+  }, [selectedFacilityId, facilityOptions])
 
-  const setEditingRequestAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
-    if (req) openEditDialog(req)
-  }, [openEditDialog])
+  const setEditingRequestAdapter = React.useCallback(
+    (req: RepairRequestWithEquipment | null) => {
+      if (req) openEditDialog(req)
+    },
+    [openEditDialog]
+  )
 
-  const setRequestToDeleteAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
-    if (req) openDeleteDialog(req)
-  }, [openDeleteDialog])
+  const setRequestToDeleteAdapter = React.useCallback(
+    (req: RepairRequestWithEquipment | null) => {
+      if (req) openDeleteDialog(req)
+    },
+    [openDeleteDialog]
+  )
 
-  const setRequestToViewAdapter = React.useCallback((req: RepairRequestWithEquipment | null) => {
-    if (req) openViewDialog(req)
-  }, [openViewDialog])
+  const setRequestToViewAdapter = React.useCallback(
+    (req: RepairRequestWithEquipment | null) => {
+      if (req) openViewDialog(req)
+    },
+    [openViewDialog]
+  )
 
-  const columnOptions = React.useMemo(() => ({
-    onGenerateSheet: openPrintOptionsDialog,
-    setEditingRequest: setEditingRequestAdapter,
-    setRequestToDelete: setRequestToDeleteAdapter,
-    handleApproveRequest: openApproveDialog,
-    handleCompletion: openCompleteDialog,
-    setRequestToView: setRequestToViewAdapter,
-    user,
-    isRegionalLeader
-  }), [
-    openPrintOptionsDialog,
-    setEditingRequestAdapter,
-    setRequestToDeleteAdapter,
-    openApproveDialog,
-    openCompleteDialog,
-    setRequestToViewAdapter,
-    user,
-    isRegionalLeader
-  ])
+  const columnOptions = React.useMemo(
+    () => ({
+      onGenerateSheet: openPrintOptionsDialog,
+      setEditingRequest: setEditingRequestAdapter,
+      setRequestToDelete: setRequestToDeleteAdapter,
+      handleApproveRequest: openApproveDialog,
+      handleCompletion: openCompleteDialog,
+      setRequestToView: setRequestToViewAdapter,
+      user,
+      isRegionalLeader,
+    }),
+    [
+      openPrintOptionsDialog,
+      setEditingRequestAdapter,
+      setRequestToDeleteAdapter,
+      openApproveDialog,
+      openCompleteDialog,
+      setRequestToViewAdapter,
+      user,
+      isRegionalLeader,
+    ]
+  )
 
   const columns = useRepairRequestColumns(columnOptions)
-  const tableData = requests;
+  const tableData = requests
 
-  const tableKey = `${selectedFacilityId ?? 'all'}`;
+  const tableKey = `${selectedFacilityId ?? "all"}`
 
   const pageCount = repairPagination.pageCount
 
@@ -214,55 +228,58 @@ function RepairRequestsPageClientInner() {
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-  });
+  })
 
-  const isFiltered = (
+  const isFiltered =
     table.getState().columnFilters.length > 0 ||
     debouncedSearch.length > 0 ||
     uiFilters.status.length > 0 ||
-    (selectedFacilityId !== null && selectedFacilityId !== undefined) ||
     Boolean(uiFilters.dateRange?.from || uiFilters.dateRange?.to)
-  );
 
   useRepairRequestShortcuts({
     searchInputRef,
     onCreate: openCreateSheet,
-    isRegionalLeader
+    isRegionalLeader,
   })
 
-
-
   const handleClearFilters = React.useCallback(() => {
-    table.resetColumnFilters();
-    persistUiFiltersState({ status: [], dateRange: null });
-    if (showFacilityFilter) setSelectedFacilityId(null);
-    setSearchTerm("");
-  }, [persistUiFiltersState, table, showFacilityFilter, setSelectedFacilityId, setSearchTerm]);
+    table.resetColumnFilters()
+    persistUiFiltersState({ status: [], dateRange: null })
+    setSearchTerm("")
+  }, [persistUiFiltersState, table, setSearchTerm])
 
-  const handleRemoveFilter = React.useCallback((key: "status" | "facilityName" | "dateRange", sub?: string) => {
-    if (key === 'status' && sub) {
-      const next = uiFilters.status.filter(s => s !== sub);
-      const updated = { ...uiFilters, status: next };
-      persistUiFiltersState(updated);
-    } else if (key === 'facilityName') {
-      setSelectedFacilityId(null);
-    } else if (key === 'dateRange') {
-      const updated = { ...uiFilters, dateRange: null };
-      persistUiFiltersState(updated);
-    }
-  }, [persistUiFiltersState, uiFilters, setSelectedFacilityId]);
+  const handleRemoveFilter = React.useCallback(
+    (key: "status" | "facilityName" | "dateRange", sub?: string) => {
+      if (key === "status" && sub) {
+        const next = uiFilters.status.filter((s) => s !== sub)
+        const updated = { ...uiFilters, status: next }
+        persistUiFiltersState(updated)
+      } else if (key === "facilityName") {
+        setSelectedFacilityId(null)
+      } else if (key === "dateRange") {
+        const updated = { ...uiFilters, dateRange: null }
+        persistUiFiltersState(updated)
+      }
+    },
+    [persistUiFiltersState, uiFilters, setSelectedFacilityId]
+  )
 
-  const handleFilterChange = React.useCallback((v: FilterModalValue) => {
-    if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
-    const updated: UiFiltersPrefs = {
-      status: v.status,
-      dateRange: v.dateRange ? {
-        from: v.dateRange.from ? format(v.dateRange.from, 'yyyy-MM-dd') : null,
-        to: v.dateRange.to ? format(v.dateRange.to, 'yyyy-MM-dd') : null,
-      } : null,
-    }
-    persistUiFiltersState(updated)
-  }, [persistUiFiltersState, showFacilityFilter, setSelectedFacilityId])
+  const handleFilterChange = React.useCallback(
+    (v: FilterModalValue) => {
+      if (showFacilityFilter) setSelectedFacilityId(v.facilityId ?? null)
+      const updated: UiFiltersPrefs = {
+        status: v.status,
+        dateRange: v.dateRange
+          ? {
+              from: v.dateRange.from ? format(v.dateRange.from, "yyyy-MM-dd") : null,
+              to: v.dateRange.to ? format(v.dateRange.to, "yyyy-MM-dd") : null,
+            }
+          : null,
+      }
+      persistUiFiltersState(updated)
+    },
+    [persistUiFiltersState, showFacilityFilter, setSelectedFacilityId]
+  )
 
   return (
     <ErrorBoundary>
@@ -292,7 +309,7 @@ function RepairRequestsPageClientInner() {
           uiFilters={uiFilters}
           onFilterChange={handleFilterChange}
           selectedFacilityId={selectedFacilityId ?? null}
-          facilityOptions={facilityOptions.map(f => ({ id: f.id, name: f.name }))}
+          facilityOptions={facilityOptions.map((f) => ({ id: f.id, name: f.name }))}
           onRemoveFilter={handleRemoveFilter}
           filterState={{ isFiltered, isFilterModalOpen }}
           table={table}
