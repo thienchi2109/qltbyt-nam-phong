@@ -66,4 +66,21 @@ describe("TenantSelector", () => {
     fireEvent.click(screen.getByRole("button", { name: "Xóa lọc cơ sở" }))
     expect(setSelectedFacilityId).toHaveBeenCalledWith(null)
   })
+
+  it("labels the command trigger as unselected when all facilities are hidden", () => {
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: null,
+      setSelectedFacilityId: vi.fn(),
+      facilities: [{ id: 7, name: "Bệnh viện Đa khoa thành phố", count: 12 }],
+      showSelector: true,
+      isLoading: false,
+      shouldFetchData: true,
+    })
+
+    render(<TenantSelector variant="command" hideAllOption />)
+
+    const trigger = screen.getByRole("button", { name: "Cơ sở: Chọn cơ sở..." })
+    expect(trigger).toHaveAttribute("title", "Chọn cơ sở...")
+    expect(screen.queryByRole("button", { name: "Xóa lọc cơ sở" })).not.toBeInTheDocument()
+  })
 })

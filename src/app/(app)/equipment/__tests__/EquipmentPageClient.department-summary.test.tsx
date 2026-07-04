@@ -95,18 +95,15 @@ vi.mock("@/components/ui/popover", () => ({
     open?: boolean
     setOpen?: (open: boolean) => void
   }) =>
-    React.isValidElement<{ onClick?: React.MouseEventHandler }>(children)
-      ? React.cloneElement(children, {
-          onClick: () => setOpen?.(!open),
-        })
-      : <>{children}</>,
-  PopoverContent: ({
-    children,
-    open,
-  }: {
-    children: React.ReactNode
-    open?: boolean
-  }) => (open ? <div>{children}</div> : null),
+    React.isValidElement<{ onClick?: React.MouseEventHandler }>(children) ? (
+      React.cloneElement(children, {
+        onClick: () => setOpen?.(!open),
+      })
+    ) : (
+      <>{children}</>
+    ),
+  PopoverContent: ({ children, open }: { children: React.ReactNode; open?: boolean }) =>
+    open ? <div>{children}</div> : null,
 }))
 
 import { EquipmentPageClient } from "../_components/EquipmentPageClient"
@@ -170,7 +167,6 @@ function createPageState(overrides?: Partial<EquipmentPageState>): EquipmentPage
     activeFacility: null,
     hasFacilityFilter: false,
     isFacilitiesLoading: false,
-    handleFacilityClear: vi.fn(),
     isFilterSheetOpen: false,
     setIsFilterSheetOpen: vi.fn(),
     handleDownloadTemplate: vi.fn(),
@@ -201,8 +197,12 @@ describe("EquipmentPageClient department summary", () => {
     const summary = screen.getByRole("region", { name: "Phân bố theo khoa/phòng" })
 
     expect(summary).toHaveTextContent("Khoa/phòng")
-    expect(within(summary).getByRole("button", { name: /Khoa Ngoại 7 thiết bị/ })).toBeInTheDocument()
-    expect(within(summary).getByRole("button", { name: "Xem thêm 2 khoa/phòng" })).toBeInTheDocument()
+    expect(
+      within(summary).getByRole("button", { name: /Khoa Ngoại 7 thiết bị/ })
+    ).toBeInTheDocument()
+    expect(
+      within(summary).getByRole("button", { name: "Xem thêm 2 khoa/phòng" })
+    ).toBeInTheDocument()
     expect(within(summary).queryByText("Chưa cập nhật")).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment toolbar" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment table" })).toBeInTheDocument()
@@ -226,12 +226,15 @@ describe("EquipmentPageClient department summary", () => {
 
     await user.click(screen.getByRole("button", { name: /Khoa Ngoại 7 thiết bị/ }))
 
-    const updater = mocks.setColumnFilters.mock.calls[0][0] as EquipmentPageState["setColumnFilters"]
+    const updater = mocks.setColumnFilters.mock
+      .calls[0][0] as EquipmentPageState["setColumnFilters"]
     expect(typeof updater).toBe("function")
     expect(
-      (updater as (current: EquipmentPageState["columnFilters"]) => EquipmentPageState["columnFilters"])([
-        { id: "tinh_trang_hien_tai", value: ["Hoạt động"] },
-      ])
+      (
+        updater as (
+          current: EquipmentPageState["columnFilters"]
+        ) => EquipmentPageState["columnFilters"]
+      )([{ id: "tinh_trang_hien_tai", value: ["Hoạt động"] }])
     ).toEqual([
       { id: "tinh_trang_hien_tai", value: ["Hoạt động"] },
       { id: "khoa_phong_quan_ly", value: ["Khoa Ngoại"] },

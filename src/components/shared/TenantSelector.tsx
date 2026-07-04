@@ -53,7 +53,7 @@ export function TenantSelector({
   const isCommandVariant = variant === "command"
   const hasActiveSelection = effectiveSelectionId !== null && effectiveSelectionId !== undefined
   const canClearFacility = !hideAllOption && hasActiveSelection
-  const commandTitle = hasActiveSelection ? currentFacilityName : "Tất cả cơ sở"
+  const commandTitle = currentFacilityName
 
   if (isCommandVariant) {
     return (

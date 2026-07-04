@@ -141,7 +141,6 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     // Facility filter - now from TenantSelectionContext
     showFacilityFilter,
     hasFacilityFilter,
-    handleFacilityClear,
 
     // Filter sheet
     isFilterSheetOpen,
@@ -273,7 +272,6 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
           onExportData={handleExportData}
           onAddEquipment={openAddDialog}
           onImportEquipment={openImportDialog}
-          onClearFacilityFilter={handleFacilityClear}
           onShowEquipmentDetails={(eq) => openDetailDialog(eq)}
         />
 

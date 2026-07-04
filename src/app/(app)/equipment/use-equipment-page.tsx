@@ -243,11 +243,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     }
   }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, data.tenantOptions, toast])
 
-  // Facility clear handler - simplified (sheet now managed by TenantSelector)
-  const handleFacilityClear = React.useCallback(() => {
-    auth.setSelectedFacilityId(null)
-  }, [auth.setSelectedFacilityId])
-
   // Mutation success handlers
   const onDataMutationSuccess = React.useCallback(() => {
     data.invalidateEquipmentForCurrentTenant()
@@ -325,7 +320,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       activeFacility: data.activeFacility,
       hasFacilityFilter,
       isFacilitiesLoading: data.isFacilitiesLoading,
-      handleFacilityClear,
 
       // Filter sheet
       isFilterSheetOpen,
@@ -362,7 +356,6 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       setSearchTermAndReset,
       setColumnFiltersAndReset,
       hasFacilityFilter,
-      handleFacilityClear,
       isFilterSheetOpen,
       exports,
       onDataMutationSuccess,

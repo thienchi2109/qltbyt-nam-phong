@@ -3,9 +3,10 @@ import { render, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
+import type { UseEquipmentPageReturn } from "../types"
 
 const state = vi.hoisted(() => ({
-  pageState: null as any,
+  pageState: null as Partial<UseEquipmentPageReturn> | null,
 }))
 
 const mocks = vi.hoisted(() => ({
@@ -21,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("../use-equipment-page", () => ({
-  useEquipmentPage: () => state.pageState,
+  useEquipmentPage: () => state.pageState as UseEquipmentPageReturn,
 }))
 
 vi.mock("../_hooks/useEquipmentContext", () => ({
@@ -58,7 +59,9 @@ vi.mock("../_components/EquipmentBulkDeleteBar", () => ({
 }))
 
 vi.mock("@/components/equipment/equipment-toolbar", () => ({
-  EquipmentToolbar: ({ selectionActions }: { selectionActions?: React.ReactNode }) => <>{selectionActions}</>,
+  EquipmentToolbar: ({ selectionActions }: { selectionActions?: React.ReactNode }) => (
+    <>{selectionActions}</>
+  ),
 }))
 
 vi.mock("@/components/equipment/filter-bottom-sheet", () => ({
@@ -86,6 +89,7 @@ function createPageState(overrides?: Record<string, unknown>) {
     isGlobal: false,
     isRegionalLeader: false,
     total: 0,
+    departmentDistribution: [],
     isLoading: false,
     isFetching: false,
     shouldFetchEquipment: true,
@@ -115,7 +119,6 @@ function createPageState(overrides?: Record<string, unknown>) {
     },
     showFacilityFilter: false,
     hasFacilityFilter: false,
-    handleFacilityClear: vi.fn(),
     isFilterSheetOpen: false,
     setIsFilterSheetOpen: vi.fn(),
     handleExportData: vi.fn(),

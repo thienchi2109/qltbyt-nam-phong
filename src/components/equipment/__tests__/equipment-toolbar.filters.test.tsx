@@ -236,7 +236,6 @@ describe("EquipmentToolbar with shared filters", () => {
     onExportData: vi.fn(),
     onAddEquipment: vi.fn(),
     onImportEquipment: vi.fn(),
-    onClearFacilityFilter: vi.fn(),
   }
 
   it("renders all desktop faceted filters as direct command tokens", () => {

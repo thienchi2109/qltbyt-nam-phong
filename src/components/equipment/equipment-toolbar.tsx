@@ -74,7 +74,6 @@ export interface EquipmentToolbarProps {
   onExportData: () => void
   onAddEquipment: () => void
   onImportEquipment: () => void
-  onClearFacilityFilter: () => void
   onShowEquipmentDetails?: (equipment: Equipment) => void
 }
 
