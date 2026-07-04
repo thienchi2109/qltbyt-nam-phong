@@ -12,6 +12,11 @@ DECLARE
   v_payload jsonb;
   v_count integer;
   v_distribution_count integer;
+  v_fallback_users text[] := ARRAY['Chưa có người sử dụng'];
+  v_fallback_locations text[] := ARRAY['Chưa có vị trí'];
+  v_fallback_statuses text[] := ARRAY['Chưa phân loại'];
+  v_fallback_classifications text[] := ARRAY['Chưa phân loại'];
+  v_fallback_funding_sources text[] := ARRAY['Chưa có'];
 BEGIN
   INSERT INTO public.don_vi(name, active)
   VALUES ('Smoke Filter Buckets Tenant ' || v_suffix, true)
@@ -211,11 +216,11 @@ BEGIN
 
   v_payload := public.equipment_filter_buckets(
     p_don_vi => v_tenant,
-    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
-    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
-    p_tinh_trang_array => ARRAY['Chưa phân loại'],
-    p_phan_loai_array => ARRAY['Chưa phân loại'],
-    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
   );
 
   IF NOT EXISTS (
@@ -229,11 +234,11 @@ BEGIN
 
   v_payload := public.equipment_list_enhanced(
     p_don_vi => v_tenant,
-    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
-    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
-    p_tinh_trang_array => ARRAY['Chưa phân loại'],
-    p_phan_loai_array => ARRAY['Chưa phân loại'],
-    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
   );
 
   IF (v_payload->>'total')::integer <> 1
@@ -245,11 +250,11 @@ BEGIN
   INTO v_distribution_count
   FROM public.equipment_department_distribution(
     p_don_vi => v_tenant,
-    p_nguoi_su_dung_array => ARRAY['Chưa có người sử dụng'],
-    p_vi_tri_lap_dat_array => ARRAY['Chưa có vị trí'],
-    p_tinh_trang_array => ARRAY['Chưa phân loại'],
-    p_phan_loai_array => ARRAY['Chưa phân loại'],
-    p_nguon_kinh_phi_array => ARRAY['Chưa có']
+    p_nguoi_su_dung_array => v_fallback_users,
+    p_vi_tri_lap_dat_array => v_fallback_locations,
+    p_tinh_trang_array => v_fallback_statuses,
+    p_phan_loai_array => v_fallback_classifications,
+    p_nguon_kinh_phi_array => v_fallback_funding_sources
   ) distribution;
 
   IF v_distribution_count <> 1 THEN
