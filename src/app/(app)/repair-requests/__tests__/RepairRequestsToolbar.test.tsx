@@ -89,7 +89,7 @@ describe("RepairRequestsToolbar", () => {
 
     expect(screen.getByRole("button", { name: "Bộ lọc" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Trạng thái" })).not.toBeInTheDocument()
-    expect(screen.getByTestId("tenant-selector")).toHaveAttribute("data-trigger-variant", "default")
+    expect(screen.getByTestId("tenant-selector")).toHaveAttribute("data-trigger-variant", "command")
   })
 
   it("places compact search and filter trigger in one row with chips below", () => {

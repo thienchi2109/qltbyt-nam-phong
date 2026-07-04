@@ -154,7 +154,7 @@ export function RepairRequestsPageLayout({
           : { from: null, to: null },
       }}
       onChange={onFilterChange}
-      showFacility={showFacilityFilter}
+      showFacility={showFacilityFilter && !isCompactLayout}
       facilities={facilityOptions.map((f) => ({ id: f.id, name: f.name }))}
       variant={isCompactLayout ? "sheet" : "dialog"}
     />

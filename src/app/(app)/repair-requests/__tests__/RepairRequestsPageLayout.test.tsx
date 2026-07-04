@@ -81,7 +81,19 @@ vi.mock("../_components/RepairRequestsToolbar", () => ({
 }))
 
 vi.mock("../_components/RepairRequestsFilterModal", () => ({
-  RepairRequestsFilterModal: () => null,
+  RepairRequestsFilterModal: ({
+    showFacility,
+    variant,
+  }: {
+    showFacility?: boolean
+    variant?: "dialog" | "sheet"
+  }) => (
+    <div
+      data-testid="repair-filter-modal"
+      data-show-facility={String(Boolean(showFacility))}
+      data-variant={variant}
+    />
+  ),
 }))
 
 vi.mock("../_components/RepairRequestsTable", () => ({
@@ -256,5 +268,21 @@ describe("RepairRequestsPageLayout", () => {
       "data-show-facility-filter",
       "true"
     )
+  })
+
+  it("keeps compact facility selection in the tenant selector instead of the filter sheet", () => {
+    render(
+      <RepairRequestsPageLayout
+        {...withAccessState({ showFacilityFilter: true })}
+        listState={{ ...defaultProps.listState, isCompactLayout: true }}
+      />
+    )
+
+    expect(screen.getByTestId("repair-toolbar")).toHaveAttribute(
+      "data-show-facility-filter",
+      "true"
+    )
+    expect(screen.getByTestId("repair-filter-modal")).toHaveAttribute("data-variant", "sheet")
+    expect(screen.getByTestId("repair-filter-modal")).toHaveAttribute("data-show-facility", "false")
   })
 })

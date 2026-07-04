@@ -169,12 +169,9 @@ export function RepairRequestsToolbar({
     }
 
     return showFacilityFilter ? (
-      <TenantSelector
-        className="w-full md:w-auto"
-        variant={compactFilters ? "default" : "command"}
-      />
+      <TenantSelector className="w-full md:w-auto" variant="command" />
     ) : null
-  }, [compactFilters, showFacilityFilter, tenantControl])
+  }, [showFacilityFilter, tenantControl])
 
   if (compactFilters) {
     return (
