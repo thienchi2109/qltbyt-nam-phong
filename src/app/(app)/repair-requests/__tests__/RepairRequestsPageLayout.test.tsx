@@ -4,35 +4,41 @@
  * Verifies header, summary bar, create button visibility,
  * tenant placeholder, and table rendering.
  */
-import { describe, it, expect, vi } from 'vitest'
-import * as React from 'react'
+import { describe, it, expect, vi } from "vitest"
+import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen } from '@testing-library/react'
-import type { Table } from '@tanstack/react-table'
-import type { RepairStatus } from '@/components/kpi'
-import { RepairRequestsPageLayout } from '../_components/RepairRequestsPageLayout'
-import type { RepairRequestWithEquipment } from '../types'
-import type { RepairRequestColumnOptions } from '../_components/RepairRequestsColumns'
+import { render, screen } from "@testing-library/react"
+import type { Table } from "@tanstack/react-table"
+import type { RepairStatus } from "@/components/kpi"
+import { RepairRequestsPageLayout } from "../_components/RepairRequestsPageLayout"
+import type { RepairRequestWithEquipment } from "../types"
+import type { RepairRequestColumnOptions } from "../_components/RepairRequestsColumns"
 
 // ── Mock child components ──────────────────────────────────────────────
-vi.mock('@/components/repair-request-alert', () => ({
+vi.mock("@/components/repair-request-alert", () => ({
   RepairRequestAlert: () => null,
 }))
 
-vi.mock('@/components/kpi', async () => {
-  const actual = await vi.importActual<typeof import('@/components/kpi')>('@/components/kpi')
+vi.mock("@/components/kpi", async () => {
+  const actual = await vi.importActual<typeof import("@/components/kpi")>("@/components/kpi")
 
   return {
     ...actual,
-    KpiStatusBar: ({ configs, counts, loading }: {
-      configs: Array<{ key: string; label: string }>;
-      counts: Record<string, number> | undefined;
-      loading: boolean;
+    KpiStatusBar: ({
+      configs,
+      counts,
+      loading,
+    }: {
+      configs: Array<{ key: string; label: string }>
+      counts: Record<string, number> | undefined
+      loading: boolean
     }) => {
       const total = counts ? Object.values(counts).reduce((s, v) => s + (v || 0), 0) : 0
       return (
         <div data-testid="kpi-status-bar">
-          <div data-testid="kpi-total" data-value={total}>Tổng: {total}</div>
+          <div data-testid="kpi-total" data-value={total}>
+            Tổng: {total}
+          </div>
           {configs.map((c: { key: string; label: string }) => (
             <div key={c.key} data-testid={`kpi-${c.key}`} data-value={counts?.[c.key] ?? 0}>
               {c.label}: {counts?.[c.key] ?? 0}
@@ -45,42 +51,56 @@ vi.mock('@/components/kpi', async () => {
   }
 })
 
-vi.mock('../_components/RepairRequestsCreateSheet', () => ({
+vi.mock("../_components/RepairRequestsCreateSheet", () => ({
   RepairRequestsCreateSheet: () => <div data-testid="create-sheet">create-sheet</div>,
 }))
 
-vi.mock('../_components/RepairRequestsToolbar', () => ({
+vi.mock("../_components/RepairRequestsMobileKpi", () => ({
+  RepairRequestsMobileKpi: ({
+    counts,
+    loading,
+  }: {
+    counts: Record<string, number> | undefined
+    loading: boolean
+  }) => {
+    const total = counts ? Object.values(counts).reduce((sum, value) => sum + value, 0) : 0
+    return (
+      <div data-testid="repair-mobile-kpi" data-loading={String(loading)} data-total={total}>
+        mobile-kpi
+      </div>
+    )
+  },
+}))
+
+vi.mock("../_components/RepairRequestsToolbar", () => ({
   RepairRequestsToolbar: ({ showFacilityFilter }: { showFacilityFilter: boolean }) => (
-    <div
-      data-testid="repair-toolbar"
-      data-show-facility-filter={String(showFacilityFilter)}
-    >
+    <div data-testid="repair-toolbar" data-show-facility-filter={String(showFacilityFilter)}>
       toolbar
     </div>
   ),
 }))
 
-vi.mock('../_components/RepairRequestsFilterModal', () => ({
+vi.mock("../_components/RepairRequestsFilterModal", () => ({
   RepairRequestsFilterModal: () => null,
 }))
 
-vi.mock('../_components/RepairRequestsTable', () => ({
+vi.mock("../_components/RepairRequestsTable", () => ({
   RepairRequestsTable: () => <div data-testid="repair-table">table</div>,
 }))
 
-vi.mock('../_components/RepairRequestsMobileList', () => ({
+vi.mock("../_components/RepairRequestsMobileList", () => ({
   RepairRequestsMobileList: () => <div data-testid="mobile-list">mobile</div>,
 }))
 
-vi.mock('../_components/RepairRequestsColumns', () => ({
+vi.mock("../_components/RepairRequestsColumns", () => ({
   renderActions: () => null,
 }))
 
-vi.mock('@/components/shared/DataTablePagination', () => ({
+vi.mock("@/components/shared/DataTablePagination", () => ({
   DataTablePagination: () => <div data-testid="pagination">pagination</div>,
 }))
 
-vi.mock('@/components/shared/TenantSelector', () => ({
+vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <div data-testid="tenant-selector">selector</div>,
 }))
 
@@ -92,14 +112,15 @@ const defaultProps = {
     showFacilityFilter: false,
     shouldFetchData: true,
   },
-  statusCounts: { 'Chờ xử lý': 3, 'Đã duyệt': 2, 'Hoàn thành': 5, 'Không HT': 0 } as Record<RepairStatus, number> | undefined,
+  statusCounts: { "Chờ xử lý": 3, "Đã duyệt": 2, "Hoàn thành": 5, "Không HT": 0 } as
+    Record<RepairStatus, number> | undefined,
   overdueSummary: undefined,
   summaryState: {
     statusCountsLoading: false,
     overdueLoading: false,
   },
   requests: [],
-  searchTerm: '',
+  searchTerm: "",
   onSearchChange: vi.fn(),
   searchInputRef: { current: null },
   onClearFilters: vi.fn(),
@@ -118,7 +139,7 @@ const defaultProps = {
     getState: () => ({ columnFilters: [] }),
     resetColumnFilters: vi.fn(),
   } as unknown as Table<RepairRequestWithEquipment>,
-  tableKey: 'all_0',
+  tableKey: "all_0",
   listState: {
     isMobile: false,
     isLoading: false,
@@ -143,57 +164,97 @@ const withAccessState = (overrides: Partial<typeof defaultProps.accessState>) =>
 })
 
 // ── Tests ──────────────────────────────────────────────────────────────
-describe('RepairRequestsPageLayout', () => {
+describe("RepairRequestsPageLayout", () => {
   it('renders header with title "Yêu cầu sửa chữa"', () => {
     render(<RepairRequestsPageLayout {...defaultProps} />)
-    expect(screen.getByText('Yêu cầu sửa chữa')).toBeInTheDocument()
+    expect(screen.getByText("Yêu cầu sửa chữa")).toBeInTheDocument()
   })
 
-  it('renders facility name subtitle when provided', () => {
+  it("does not duplicate facility name below the fixed global header", () => {
     render(<RepairRequestsPageLayout {...defaultProps} selectedFacilityName="Hospital A" />)
-    expect(screen.getByText('Hospital A')).toBeInTheDocument()
+    expect(screen.queryByText("Hospital A")).not.toBeInTheDocument()
   })
 
-  it('hides create button when isRegionalLeader=true', () => {
+  it("hides create button when isRegionalLeader=true", () => {
     render(<RepairRequestsPageLayout {...withAccessState({ isRegionalLeader: true })} />)
-    expect(screen.queryByText('Tạo yêu cầu')).not.toBeInTheDocument()
+    expect(screen.queryByText("Tạo yêu cầu")).not.toBeInTheDocument()
   })
 
-  it('shows create button when isRegionalLeader=false', () => {
+  it("shows create button when isRegionalLeader=false", () => {
     render(
       <RepairRequestsPageLayout
         {...withAccessState({ isRegionalLeader: false })}
         listState={{ ...defaultProps.listState, isMobile: false }}
       />
     )
-    expect(screen.getByText('Tạo yêu cầu')).toBeInTheDocument()
+    expect(screen.getByText("Tạo yêu cầu")).toBeInTheDocument()
   })
 
-  it('shows tenant selection placeholder when shouldFetchData=false', () => {
+  it("shows create button for tablet compact layout when user can create requests", () => {
+    render(
+      <RepairRequestsPageLayout
+        {...withAccessState({ isRegionalLeader: false })}
+        listState={{ ...defaultProps.listState, isMobile: false, isCompactLayout: true }}
+      />
+    )
+
+    expect(screen.getByRole("button", { name: "Tạo yêu cầu" })).toBeInTheDocument()
+  })
+
+  it("shows tenant selection placeholder when shouldFetchData=false", () => {
     render(<RepairRequestsPageLayout {...withAccessState({ shouldFetchData: false })} />)
-    expect(screen.getByText('Chọn cơ sở y tế')).toBeInTheDocument()
+    expect(screen.getByText("Chọn cơ sở y tế")).toBeInTheDocument()
     expect(screen.getByText(/Vui lòng chọn một cơ sở y tế/)).toBeInTheDocument()
+    expect(screen.getByTestId("repair-requests-desktop-card")).not.toHaveClass("rounded-b-none")
   })
 
-  it('shows table content when shouldFetchData=true', () => {
+  it("shows table content when shouldFetchData=true", () => {
     render(<RepairRequestsPageLayout {...withAccessState({ shouldFetchData: true })} />)
-    expect(screen.queryByText('Chọn cơ sở y tế')).not.toBeInTheDocument()
-    expect(screen.getByTestId('repair-table')).toBeInTheDocument()
-    expect(screen.getByTestId('pagination')).toBeInTheDocument()
+    expect(screen.queryByText("Chọn cơ sở y tế")).not.toBeInTheDocument()
+    expect(screen.getByTestId("repair-table")).toBeInTheDocument()
+    expect(screen.getByTestId("pagination")).toBeInTheDocument()
   })
 
-  it('renders KpiStatusBar with provided counts', () => {
-    const counts = { 'Chờ xử lý': 10, 'Đã duyệt': 5, 'Hoàn thành': 20, 'Không HT': 7 }
+  it("renders KpiStatusBar with provided counts", () => {
+    const counts = { "Chờ xử lý": 10, "Đã duyệt": 5, "Hoàn thành": 20, "Không HT": 7 }
     render(<RepairRequestsPageLayout {...defaultProps} statusCounts={counts} />)
-    expect(screen.getByTestId('kpi-total')).toHaveAttribute('data-value', '42')
+    expect(screen.getByTestId("kpi-total")).toHaveAttribute("data-value", "42")
   })
 
-  it('passes facility selector visibility to the toolbar like Equipment', () => {
+  it("renders the balanced mobile KPI with provided status counts", () => {
+    const counts = { "Chờ xử lý": 10, "Đã duyệt": 5, "Hoàn thành": 20, "Không HT": 7 }
+
+    render(
+      <RepairRequestsPageLayout
+        {...defaultProps}
+        statusCounts={counts}
+        listState={{ ...defaultProps.listState, isCompactLayout: true }}
+      />
+    )
+
+    expect(screen.getByTestId("repair-mobile-kpi")).toHaveAttribute("data-total", "42")
+    expect(screen.getByTestId("repair-mobile-kpi")).toHaveAttribute("data-loading", "false")
+  })
+
+  it("keeps mobile cards outside the desktop summary card shell", () => {
+    render(
+      <RepairRequestsPageLayout
+        {...defaultProps}
+        listState={{ ...defaultProps.listState, isMobile: true }}
+      />
+    )
+
+    const mobileList = screen.getByTestId("repair-mobile-list")
+    expect(mobileList).toContainElement(screen.getByTestId("mobile-list"))
+    expect(mobileList.closest("[data-testid='repair-requests-desktop-card']")).toBeNull()
+  })
+
+  it("passes facility selector visibility to the toolbar like Equipment", () => {
     render(<RepairRequestsPageLayout {...withAccessState({ showFacilityFilter: true })} />)
 
-    expect(screen.getByTestId('repair-toolbar')).toHaveAttribute(
-      'data-show-facility-filter',
-      'true'
+    expect(screen.getByTestId("repair-toolbar")).toHaveAttribute(
+      "data-show-facility-filter",
+      "true"
     )
   })
 })

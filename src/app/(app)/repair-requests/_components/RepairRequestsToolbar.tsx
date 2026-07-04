@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, FilterX } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { cn } from "@/lib/utils"
@@ -125,45 +126,12 @@ export function RepairRequestsToolbar({
     [isFiltered, onClearFilters]
   )
 
-  const filterControls = React.useMemo(
-    () => (
-      <>
-        <FacetedMultiSelectFilter
-          title="Trạng thái"
-          options={statusOptions}
-          value={filterValue.status}
-          onChange={(values) => applyFilterChange({ status: values })}
-          triggerVariant="command"
-        />
-        <DateFilterButton
-          label="Từ ngày"
-          value={filterValue.dateRange?.from ?? null}
-          onChange={(date) => setDateRangePart("from", date)}
-        />
-        <DateFilterButton
-          label="Đến ngày"
-          value={filterValue.dateRange?.to ?? null}
-          onChange={(date) => setDateRangePart("to", date)}
-        />
-        {clearAction}
-      </>
-    ),
-    [
-      applyFilterChange,
-      clearAction,
-      filterValue.dateRange,
-      filterValue.status,
-      setDateRangePart,
-      statusOptions,
-    ]
-  )
-
   const mobileFilterControl = React.useMemo(
     () => (
       <Button
         variant="outline"
         size="sm"
-        className="h-9 touch-target-sm"
+        className="h-12 shrink-0 rounded-lg px-4 font-medium touch-target"
         onClick={onOpenFilterModal}
       >
         Bộ lọc
@@ -207,6 +175,59 @@ export function RepairRequestsToolbar({
       />
     ) : null
   }, [compactFilters, showFacilityFilter, tenantControl])
+
+  if (compactFilters) {
+    return (
+      <div className="space-y-3" data-testid="repair-toolbar-compact">
+        {resolvedTenantControl ? (
+          <div className="w-full" data-testid="repair-toolbar-compact-tenant">
+            {resolvedTenantControl}
+          </div>
+        ) : null}
+
+        <div
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
+          data-testid="repair-toolbar-compact-row"
+        >
+          <SearchInput
+            ref={searchInputRef}
+            placeholder="Tìm thiết bị, mô tả..."
+            value={searchTerm}
+            onChange={onSearchChange}
+            showSearchIcon
+            className="h-12 rounded-lg bg-muted/70"
+            aria-label="Tìm thiết bị, mô tả..."
+          />
+          {mobileFilterControl}
+        </div>
+
+        <div data-testid="repair-toolbar-filter-chips">{chips}</div>
+      </div>
+    )
+  }
+
+  const filterControls = (
+    <>
+      <FacetedMultiSelectFilter
+        title="Trạng thái"
+        options={statusOptions}
+        value={filterValue.status}
+        onChange={(values) => applyFilterChange({ status: values })}
+        triggerVariant="command"
+      />
+      <DateFilterButton
+        label="Từ ngày"
+        value={filterValue.dateRange?.from ?? null}
+        onChange={(date) => setDateRangePart("from", date)}
+      />
+      <DateFilterButton
+        label="Đến ngày"
+        value={filterValue.dateRange?.to ?? null}
+        onChange={(date) => setDateRangePart("to", date)}
+      />
+      {clearAction}
+    </>
+  )
 
   return (
     <ListFilterSearchCard

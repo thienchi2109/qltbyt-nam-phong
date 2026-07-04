@@ -314,7 +314,7 @@ function RepairRequestsPageClientInner() {
           filterState={{ isFiltered, isFilterModalOpen }}
           table={table}
           tableKey={tableKey}
-          listState={{ isMobile, isLoading, isFetching }}
+          listState={{ isMobile, isCompactLayout: isSheetMobile, isLoading, isFetching }}
           totalRequests={totalRequests}
           repairPagination={repairPagination}
           columnOptions={columnOptions}
