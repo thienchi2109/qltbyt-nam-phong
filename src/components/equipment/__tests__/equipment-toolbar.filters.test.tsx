@@ -239,29 +239,30 @@ describe("EquipmentToolbar with shared filters", () => {
     onClearFacilityFilter: vi.fn(),
   }
 
-  it("keeps secondary faceted filters available through desktop overflow", () => {
+  it("renders all desktop faceted filters as direct command tokens", () => {
     render(<EquipmentToolbar {...baseProps} />)
 
-    expect(screen.getByText("Tình trạng")).toBeInTheDocument()
-    expect(screen.getByText("Khoa/Phòng")).toBeInTheDocument()
-    expect(screen.getByText("Phân loại")).toBeInTheDocument()
-    expect(screen.queryByText("Người sử dụng")).not.toBeInTheDocument()
-    expect(screen.queryByText("Nguồn kinh phí")).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc/i }))
-
-    expect(screen.getByText("Người sử dụng")).toBeInTheDocument()
-    expect(screen.getByText("Nguồn kinh phí")).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: /Người sử dụng User A/i })).toBeInTheDocument()
-    expect(screen.getByRole("checkbox", { name: /Nguồn kinh phí Ngân sách/i })).toBeInTheDocument()
+    for (const label of [
+      "Tình trạng",
+      "Khoa/Phòng",
+      "Phân loại",
+      "Người sử dụng",
+      "Nguồn kinh phí",
+    ]) {
+      expect(screen.getByRole("button", { name: new RegExp(label, "i") })).toHaveAttribute(
+        "data-trigger-variant",
+        "command"
+      )
+    }
+    expect(screen.queryByRole("button", { name: /Bộ lọc/i })).not.toBeInTheDocument()
   })
 
-  it("applies desktop overflow filter selections inline without nested filter popovers", () => {
+  it("keeps secondary direct filters wired to their column ids", () => {
     const { table, columns } = createMockTable()
     render(<EquipmentToolbar {...baseProps} table={table} />)
 
-    fireEvent.click(screen.getByRole("button", { name: /Bộ lọc/i }))
-    fireEvent.click(screen.getByRole("checkbox", { name: /Người sử dụng User A/i }))
+    fireEvent.click(screen.getByRole("button", { name: /Người sử dụng/i }))
+    fireEvent.click(screen.getByRole("button", { name: /User A/i }))
 
     expect(columns.get("nguoi_dang_truc_tiep_quan_ly")?.setFilterValue).toHaveBeenCalledWith([
       "User A",
@@ -283,19 +284,37 @@ describe("EquipmentToolbar with shared filters", () => {
       "data-trigger-variant",
       "command"
     )
-    expect(screen.getByRole("button", { name: /Bộ lọc/i })).toBeInTheDocument()
-
-    expect(screen.queryByRole("button", { name: /Người sử dụng/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /Nguồn kinh phí/i })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Người sử dụng/i })).toHaveAttribute(
+      "data-trigger-variant",
+      "command"
+    )
+    expect(screen.getByRole("button", { name: /Nguồn kinh phí/i })).toHaveAttribute(
+      "data-trigger-variant",
+      "command"
+    )
+    expect(screen.queryByRole("button", { name: /Bộ lọc/i })).not.toBeInTheDocument()
   })
 
   it("marks the command filter row as an overflow-safe responsive layout", () => {
     render(<EquipmentToolbar {...baseProps} />)
 
     const row = screen.getByTestId("equipment-command-filter-row")
-    expect(row).toHaveAttribute("data-layout", "command-overflow")
+    expect(row).toHaveAttribute("data-layout", "command-direct")
     expect(row.className).toContain("flex-wrap")
     expect(row.className).toContain("min-w-0")
+  })
+
+  it("places tenant control inside the desktop command filter row", () => {
+    render(<EquipmentToolbar {...baseProps} tenantControl={<button type="button">Cơ sở</button>} />)
+
+    const row = screen.getByTestId("equipment-command-filter-row")
+    const tenantControl = screen.getByRole("button", { name: "Cơ sở" })
+    const statusFilter = screen.getByRole("button", { name: /Tình trạng/i })
+
+    expect(row).toContainElement(tenantControl)
+    expect(tenantControl.compareDocumentPosition(statusFilter)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    )
   })
 
   it("renders mobile filter sheet trigger instead of faceted filters on mobile", () => {
@@ -304,6 +323,18 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(screen.getByText("Lọc")).toBeInTheDocument()
     expect(screen.queryByText("Tình trạng")).not.toBeInTheDocument()
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
+  })
+
+  it("renders tenant control once in compact filter mode", () => {
+    render(
+      <EquipmentToolbar
+        {...baseProps}
+        filterMode="sheet"
+        tenantControl={<button type="button">Cơ sở</button>}
+      />
+    )
+
+    expect(screen.getAllByRole("button", { name: "Cơ sở" })).toHaveLength(1)
   })
 
   it("calls onOpenFilterSheet when mobile filter button is clicked", () => {
@@ -337,22 +368,15 @@ describe("EquipmentToolbar with shared filters", () => {
     expect(baseProps.table.resetColumnFilters).toHaveBeenCalled()
   })
 
-  it("renders facility clear command consistently with desktop clear controls", () => {
-    const onClearFacilityFilter = vi.fn()
+  it("keeps facility clear out of the desktop toolbar as a separate action", () => {
     render(
       <EquipmentToolbar
         {...baseProps}
         filterState={{ ...baseProps.filterState, hasFacilityFilter: true }}
-        onClearFacilityFilter={onClearFacilityFilter}
       />
     )
 
-    const facilityClearButton = screen.getByRole("button", { name: /Xóa lọc cơ sở/i })
-    expect(facilityClearButton.className).toContain("h-9")
-    expect(facilityClearButton.className).toContain("rounded-lg")
-
-    fireEvent.click(facilityClearButton)
-    expect(onClearFacilityFilter).toHaveBeenCalled()
+    expect(screen.queryByRole("button", { name: /^Xóa lọc cơ sở$/i })).not.toBeInTheDocument()
   })
 
   it("hides add actions when create permission is disabled", () => {
