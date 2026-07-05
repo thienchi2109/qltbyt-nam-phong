@@ -6,7 +6,10 @@ const DEFAULT_BASE_REF = process.env.HEROUI_BOUNDARY_BASE || "main"
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"])
 const HEROUI_IMPORT_RE =
   /\b(?:from\s+["'](@heroui\/[^"']+)["']|import\s*\(\s*["'](@heroui\/[^"']+)["']\s*\)|export\s+.*?\s+from\s+["'](@heroui\/[^"']+)["']|require\s*\(\s*["'](@heroui\/[^"']+)["']\s*\)|import\s+["'](@heroui\/[^"']+)["'])/
-const ALLOWED_BOUNDARY_PREFIX = "src/components/equipment/heroui-pilot/"
+const ALLOWED_BOUNDARY_PREFIXES = [
+  "src/components/equipment/heroui-pilot/",
+  "src/components/shared/floating-actions/",
+]
 
 function normalizePath(filePath) {
   return filePath.split(path.sep).join("/")
@@ -18,7 +21,8 @@ function isScannableSourceFile(filePath) {
 }
 
 function isAllowedBoundaryFile(filePath) {
-  return normalizePath(filePath).startsWith(ALLOWED_BOUNDARY_PREFIX)
+  const normalizedPath = normalizePath(filePath)
+  return ALLOWED_BOUNDARY_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))
 }
 
 function getHeroUIImportPath(line) {
@@ -109,10 +113,12 @@ function scanFiles(filePaths) {
 }
 
 function formatViolations(violations) {
+  const allowedBoundaryList = ALLOWED_BOUNDARY_PREFIXES.join(", ")
+
   return violations
     .map(
       (violation) =>
-        `${violation.path}:${violation.line} imports ${violation.importPath} outside ${ALLOWED_BOUNDARY_PREFIX}`
+        `${violation.path}:${violation.line} imports ${violation.importPath} outside ${allowedBoundaryList}`
     )
     .join("\n")
 }
@@ -128,7 +134,7 @@ function main() {
   const violations = scanFiles(filePaths)
 
   if (violations.length === 0) {
-    console.log("No HeroUI imports found outside the approved Equipments pilot boundary.")
+    console.log("No HeroUI imports found outside approved HeroUI boundary folders.")
     return
   }
 
@@ -140,7 +146,7 @@ function main() {
 }
 
 module.exports = {
-  ALLOWED_BOUNDARY_PREFIX,
+  ALLOWED_BOUNDARY_PREFIXES,
   collectChangedSourceFiles,
   findHeroUIImportViolations,
   formatViolations,

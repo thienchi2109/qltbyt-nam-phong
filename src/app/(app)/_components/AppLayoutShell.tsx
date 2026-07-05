@@ -39,14 +39,11 @@ import { AppSidebarNav } from "@/components/app-sidebar-nav"
 import { getAppNavigationItems } from "@/components/app-navigation"
 import { useAppNotificationCounts } from "@/hooks/useAppNotificationCounts"
 import { signOutWithReason } from "@/lib/auth-signout"
+import { MobileFloatingActionsProvider } from "@/components/shared/floating-actions"
 import { appLayoutUiReducer, initialAppLayoutUiState } from "./AppLayoutShellState"
+import { AppMobileFloatingActions } from "./AppMobileFloatingActions"
 import { HeaderEquipmentSearchEntry } from "./HeaderEquipmentSearchEntry"
 
-const AssistantTriggerButton = dynamic(
-  () =>
-    import("@/components/assistant/AssistantTriggerButton").then((m) => m.AssistantTriggerButton),
-  { ssr: false }
-)
 const AssistantPanel = dynamic(
   () => import("@/components/assistant/AssistantPanel").then((m) => m.AssistantPanel),
   { ssr: false }
@@ -71,7 +68,9 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
   return (
     <TenantSelectionProvider>
       <EquipmentFilterProvider>
-        <AppLayoutShellContent user={user}>{children}</AppLayoutShellContent>
+        <MobileFloatingActionsProvider>
+          <AppLayoutShellContent user={user}>{children}</AppLayoutShellContent>
+        </MobileFloatingActionsProvider>
       </EquipmentFilterProvider>
     </TenantSelectionProvider>
   )
@@ -294,9 +293,9 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
           <MobileFooterNav notificationCounts={notificationCounts} />
 
-          <AssistantTriggerButton
-            isOpen={isAssistantOpen}
-            onToggle={() => dispatchUi({ type: "toggleAssistant" })}
+          <AppMobileFloatingActions
+            isAssistantOpen={isAssistantOpen}
+            onAssistantToggle={() => dispatchUi({ type: "toggleAssistant" })}
           />
           {isAssistantOpen ? (
             <AssistantPanel
