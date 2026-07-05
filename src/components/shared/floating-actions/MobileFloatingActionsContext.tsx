@@ -14,45 +14,60 @@ interface MobileFloatingActionsContextValue {
   setPageAction: React.Dispatch<React.SetStateAction<MobileFloatingActionDescriptor | null>>
 }
 
-const MobileFloatingActionsContext = React.createContext<MobileFloatingActionsContextValue | null>(
-  null
-)
+const MobileFloatingActionsStateContext =
+  React.createContext<MobileFloatingActionDescriptor | null>(null)
 
-const fallbackContextValue: MobileFloatingActionsContextValue = {
-  pageAction: null,
-  setPageAction: () => undefined,
+const MobileFloatingActionsSetterContext = React.createContext<
+  React.Dispatch<React.SetStateAction<MobileFloatingActionDescriptor | null>>
+>(() => undefined)
+
+function isSameMobileFloatingAction(
+  previousAction: MobileFloatingActionDescriptor | null,
+  nextAction: MobileFloatingActionDescriptor | null
+) {
+  return (
+    previousAction?.id === nextAction?.id &&
+    previousAction?.label === nextAction?.label &&
+    previousAction?.icon === nextAction?.icon &&
+    previousAction?.onSelect === nextAction?.onSelect
+  )
 }
 
 /** Provides the app-shell-local mobile page action registration state. */
 export function MobileFloatingActionsProvider({ children }: { children: React.ReactNode }) {
   const [pageAction, setPageAction] = React.useState<MobileFloatingActionDescriptor | null>(null)
 
-  const value = React.useMemo(
-    () => ({
-      pageAction,
-      setPageAction,
-    }),
-    [pageAction]
-  )
-
   return (
-    <MobileFloatingActionsContext.Provider value={value}>
-      {children}
-    </MobileFloatingActionsContext.Provider>
+    <MobileFloatingActionsSetterContext.Provider value={setPageAction}>
+      <MobileFloatingActionsStateContext.Provider value={pageAction}>
+        {children}
+      </MobileFloatingActionsStateContext.Provider>
+    </MobileFloatingActionsSetterContext.Provider>
   )
 }
 
 /** Reads the currently registered mobile page action for layout composition. */
 export function useMobileFloatingActions() {
-  return React.useContext(MobileFloatingActionsContext) ?? fallbackContextValue
+  const pageAction = React.use(MobileFloatingActionsStateContext)
+  const setPageAction = React.use(MobileFloatingActionsSetterContext)
+
+  return React.useMemo(
+    () => ({
+      pageAction,
+      setPageAction,
+    }),
+    [pageAction, setPageAction]
+  )
 }
 
 /** Registers or clears the current page's mobile floating action. */
 export function usePageFloatingAction(action: MobileFloatingActionDescriptor | null) {
-  const { setPageAction } = useMobileFloatingActions()
+  const setPageAction = React.use(MobileFloatingActionsSetterContext)
 
   React.useEffect(() => {
-    setPageAction(action)
+    setPageAction((currentAction) =>
+      isSameMobileFloatingAction(currentAction, action) ? currentAction : action
+    )
 
     return () => {
       setPageAction((currentAction) => {

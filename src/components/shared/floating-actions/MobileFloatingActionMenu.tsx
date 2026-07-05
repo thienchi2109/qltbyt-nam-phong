@@ -46,7 +46,7 @@ export function MobileFloatingActionMenu({
       >
         <MoreHorizontal aria-hidden="true" />
       </DropdownTrigger>
-      <DropdownPopover className="z-[998] min-w-56" placement="top end">
+      <DropdownPopover className="z-[1001] min-w-56" placement="top end">
         <DropdownMenu aria-label={ariaLabel}>
           {actions.map((action) => (
             <DropdownItem

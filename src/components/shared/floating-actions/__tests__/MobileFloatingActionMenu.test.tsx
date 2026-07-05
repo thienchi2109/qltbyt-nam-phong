@@ -70,6 +70,7 @@ describe("MobileFloatingActionMenu", () => {
     expect(trigger).toHaveClass("md:hidden")
     expect(trigger).toHaveClass("size-14")
     expect(trigger).toHaveClass("rounded-full")
+    expect(screen.getByTestId("heroui-popover")).toHaveClass("z-[1001]")
   })
 
   it("renders accessible assistant and page actions and calls their callbacks", async () => {

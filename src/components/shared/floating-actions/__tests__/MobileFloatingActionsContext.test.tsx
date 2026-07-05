@@ -30,6 +30,23 @@ function PageActionProbe({ label }: { label: string | null }) {
   return null
 }
 
+let inlineProbeRenderCount = 0
+const inlineProbeIcon = <PlusCircle />
+const inlineProbeSelect = () => undefined
+
+function InlinePageActionProbe() {
+  inlineProbeRenderCount += 1
+
+  usePageFloatingAction({
+    id: "inline-page-action",
+    label: "Tạo yêu cầu",
+    icon: inlineProbeIcon,
+    onSelect: inlineProbeSelect,
+  })
+
+  return null
+}
+
 function RegisteredActionLabel() {
   const { pageAction } = useMobileFloatingActions()
 
@@ -94,5 +111,19 @@ describe("MobileFloatingActionsContext", () => {
     await user.click(screen.getByRole("button", { name: "Rename action" }))
 
     expect(screen.getByTestId("registered-action")).toHaveTextContent("Tạo phiếu sửa chữa")
+  })
+
+  it("does not rerender the registering page from its own inline action registration", () => {
+    inlineProbeRenderCount = 0
+
+    render(
+      <MobileFloatingActionsProvider>
+        <InlinePageActionProbe />
+        <RegisteredActionLabel />
+      </MobileFloatingActionsProvider>
+    )
+
+    expect(screen.getByTestId("registered-action")).toHaveTextContent("Tạo yêu cầu")
+    expect(inlineProbeRenderCount).toBe(1)
   })
 })
