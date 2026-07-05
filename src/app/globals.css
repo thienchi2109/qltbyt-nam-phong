@@ -1,6 +1,5 @@
-﻿@tailwind base;
-@tailwind components;
-@tailwind utilities;
+﻿@import "tailwindcss";
+@config "../../tailwind.config.ts";
 
 @layer base {
   :root {
@@ -128,7 +127,7 @@
   }
 
   .touch-area-enhanced::before {
-    content: '';
+    content: "";
     @apply absolute inset-0 min-h-[44px] min-w-[44px];
     /* Center the touch area */
     top: 50%;
@@ -148,7 +147,7 @@
 
   /* Mobile footer navigation specific styles */
   .mobile-footer-nav-item {
-    @apply flex flex-col items-center justify-center gap-1 text-xs font-medium transition-all duration-200 touch-target;
+    @apply flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-1 text-xs font-medium transition-all duration-200;
     @apply hover:bg-muted/50 rounded-lg mx-1 py-2;
   }
 
@@ -359,7 +358,9 @@
   .page-transition-enter-active {
     opacity: 1;
     transform: translateX(0);
-    transition: opacity 300ms ease-out, transform 300ms ease-out;
+    transition:
+      opacity 300ms ease-out,
+      transform 300ms ease-out;
   }
 
   .page-transition-exit {
@@ -370,7 +371,9 @@
   .page-transition-exit-active {
     opacity: 0;
     transform: translateX(-20px);
-    transition: opacity 200ms ease-in, transform 200ms ease-in;
+    transition:
+      opacity 200ms ease-in,
+      transform 200ms ease-in;
   }
 
   /* Route-specific transitions */
@@ -382,7 +385,9 @@
   .route-slide-left-enter-active {
     opacity: 1;
     transform: translateX(0);
-    transition: opacity 250ms ease-out, transform 250ms ease-out;
+    transition:
+      opacity 250ms ease-out,
+      transform 250ms ease-out;
   }
 
   .route-slide-right-enter {
@@ -393,7 +398,9 @@
   .route-slide-right-enter-active {
     opacity: 1;
     transform: translateX(0);
-    transition: opacity 250ms ease-out, transform 250ms ease-out;
+    transition:
+      opacity 250ms ease-out,
+      transform 250ms ease-out;
   }
 
   .route-slide-up-enter {
@@ -404,7 +411,9 @@
   .route-slide-up-enter-active {
     opacity: 1;
     transform: translateY(0);
-    transition: opacity 300ms ease-out, transform 300ms ease-out;
+    transition:
+      opacity 300ms ease-out,
+      transform 300ms ease-out;
   }
 
   /* Modal and dialog transitions */
@@ -425,7 +434,9 @@
   .modal-content-enter-active {
     opacity: 1;
     transform: scale(1) translateY(0);
-    transition: opacity 200ms ease-out, transform 200ms ease-out;
+    transition:
+      opacity 200ms ease-out,
+      transform 200ms ease-out;
   }
 
   /* Loading state transitions */
@@ -460,12 +471,12 @@
       transform: translate(-50%, -50%) !important;
       transition: none !important;
     }
-    
+
     [data-radix-dialog-overlay] {
       animation: none !important;
       transition: opacity 0.1s ease-in-out !important;
     }
-    
+
     /* Disable problematic animations on dialog content only (was previously global and interfered with Select) */
     [data-radix-dialog-content].data-\[state\=open\]\:animate-in,
     [data-radix-dialog-content].data-\[state\=closed\]\:animate-out,
@@ -478,7 +489,7 @@
       animation: none !important;
       transform: translate(-50%, -50%) !important;
     }
-    
+
     /* Prevent touch-related crashes */
     [data-radix-dialog-content] {
       touch-action: manipulation;
@@ -490,7 +501,7 @@
 
 /* Sign-in page utility classes */
 .bg-teal-split {
-  background: linear-gradient(135deg, #004F4F 0%, #008080 100%);
+  background: linear-gradient(135deg, #004f4f 0%, #008080 100%);
 }
 
 .bg-cta-gradient {
@@ -504,8 +515,13 @@
 
 /* Custom animations for glassmorphism login page */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
 
 .animation-delay-2000 {
