@@ -88,6 +88,7 @@ describe("EquipmentToolbar HeroUI top controls", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
+    expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
     fireEvent.click(await screen.findByText("Hiện/ẩn cột"))
     fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
     fireEvent.click(await screen.findByText("Tải Excel mẫu"))
@@ -112,6 +113,7 @@ describe("EquipmentToolbar HeroUI top controls", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: /Thêm thiết bị/i }))
+    expect(await screen.findByRole("menu", { name: "Thêm thiết bị" })).toBeInTheDocument()
     fireEvent.click(await screen.findByText("Thêm thủ công"))
     fireEvent.click(screen.getByRole("button", { name: /Thêm thiết bị/i }))
     fireEvent.click(await screen.findByText("Nhập từ Excel"))

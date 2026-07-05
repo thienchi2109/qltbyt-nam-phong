@@ -100,7 +100,6 @@ export function EquipmentHeroDropdown({
   return (
     <Dropdown>
       <DropdownTrigger
-        aria-label={ariaLabel}
         className={cn(
           "inline-flex h-8 items-center justify-center gap-1 rounded-md border border-slate-200 bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
           triggerClassName
@@ -109,7 +108,7 @@ export function EquipmentHeroDropdown({
         {trigger}
       </DropdownTrigger>
       <DropdownPopover className={cn("min-w-56", popoverClassName)} placement={placement}>
-        <DropdownMenu className={menuClassName}>
+        <DropdownMenu aria-label={ariaLabel} className={menuClassName}>
           {items.map((item) => (
             <DropdownItem
               key={item.id}
