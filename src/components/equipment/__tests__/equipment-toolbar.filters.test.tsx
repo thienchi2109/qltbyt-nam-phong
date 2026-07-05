@@ -248,10 +248,9 @@ describe("EquipmentToolbar with shared filters", () => {
       "Người sử dụng",
       "Nguồn kinh phí",
     ]) {
-      expect(screen.getByRole("button", { name: new RegExp(label, "i") })).toHaveAttribute(
-        "data-trigger-variant",
-        "command"
-      )
+      const trigger = screen.getByRole("button", { name: new RegExp(label, "i") })
+      expect(trigger).toHaveAttribute("data-trigger-variant", "command")
+      expect(trigger).toHaveClass("hover:text-primary")
     }
     expect(screen.queryByRole("button", { name: /Bộ lọc/i })).not.toBeInTheDocument()
   })
