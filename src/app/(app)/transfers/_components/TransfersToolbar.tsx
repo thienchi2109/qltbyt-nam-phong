@@ -191,7 +191,6 @@ export function TransfersToolbar({
 
   return (
     <ListFilterSearchCard
-      title="Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình"
       tenantControl={tenantControl}
       surface="plain"
       searchValue={searchTerm}

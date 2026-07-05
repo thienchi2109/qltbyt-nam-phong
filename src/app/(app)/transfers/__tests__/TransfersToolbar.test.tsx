@@ -105,4 +105,12 @@ describe("TransfersToolbar", () => {
 
     expect(screen.queryByRole("button", { name: "Tạo yêu cầu mới" })).not.toBeInTheDocument()
   })
+
+  it("omits the redundant desktop title", () => {
+    renderToolbar({ compactFilters: false })
+
+    expect(
+      screen.queryByText("Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình")
+    ).not.toBeInTheDocument()
+  })
 })

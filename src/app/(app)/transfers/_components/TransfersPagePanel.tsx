@@ -130,116 +130,135 @@ export function TransfersPagePanel({
   const transferTypeCounts = getTransferTypeCounts(activeTab, transferCounts, totalCount)
   const compactFilters = filterVariant === "sheet"
 
-  return (
-    <Card>
-      <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-6">
-        <TransfersToolbar
-          showFacilityFilter={showFacilityFilter}
-          isRegionalLeader={isRegionalLeader}
-          activeFilterCount={activeFilterCount}
-          onOpenFilterModal={onOpenFilterModal}
-          onOpenAddDialog={onOpenAddDialog}
-          filterChipsValue={filterChipsValue}
-          onRemoveFilter={onRemoveFilter}
-          onClearAllFilters={onClearAllFilters}
-          searchTerm={searchTerm}
-          onSearchTermChange={onSearchTermChange}
-          filterValue={filterValue}
-          onFilterChange={onFilterChange}
-          compactFilters={compactFilters}
-        />
+  const toolbar = (
+    <TransfersToolbar
+      showFacilityFilter={showFacilityFilter}
+      isRegionalLeader={isRegionalLeader}
+      activeFilterCount={activeFilterCount}
+      onOpenFilterModal={onOpenFilterModal}
+      onOpenAddDialog={onOpenAddDialog}
+      filterChipsValue={filterChipsValue}
+      onRemoveFilter={onRemoveFilter}
+      onClearAllFilters={onClearAllFilters}
+      searchTerm={searchTerm}
+      onSearchTermChange={onSearchTermChange}
+      filterValue={filterValue}
+      onFilterChange={onFilterChange}
+      compactFilters={compactFilters}
+    />
+  )
 
-        <TransfersSearchParamsBoundary>
-          <TransferTypeTabs
-            activeTab={activeTab}
-            onTabChange={onTabChange}
-            counts={transferTypeCounts}
-          >
-            <div className="flex flex-col gap-3">
-              {viewMode === "kanban" ? (
-                shouldFetch ? (
-                  <TransfersKanbanView
-                    filters={filters}
-                    onViewTransfer={onViewTransfer}
-                    renderRowActions={renderRowActions}
-                    statusCounts={transferCounts?.columnCounts}
-                    initialData={isListFetching ? null : kanbanData}
-                    userRole={userRole}
-                  />
-                ) : (
-                  <TransfersTenantSelectionPlaceholder />
-                )
-              ) : shouldFetch ? (
-                <>
-                  <div className="space-y-3 pb-2 lg:hidden">
-                    {isListLoading ? (
-                      <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
-                        <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                          <Loader2 className="size-6 animate-spin" />
-                          Đang tải dữ liệu…
-                        </div>
-                      </div>
-                    ) : tableData.length > 0 ? (
-                      tableData.map((item) => (
-                        <TransferCard
-                          key={item.id}
-                          transfer={item}
-                          referenceDate={referenceDate}
-                          onClick={() => onViewTransfer(item)}
-                          actions={<RowActions item={item} />}
-                        />
-                      ))
-                    ) : (
-                      <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
-                        Không có dữ liệu phù hợp.
-                      </div>
-                    )}
+  const content = (
+    <TransfersSearchParamsBoundary>
+      <TransferTypeTabs activeTab={activeTab} onTabChange={onTabChange} counts={transferTypeCounts}>
+        <div className="flex flex-col gap-3">
+          {viewMode === "kanban" ? (
+            shouldFetch ? (
+              <TransfersKanbanView
+                filters={filters}
+                onViewTransfer={onViewTransfer}
+                renderRowActions={renderRowActions}
+                statusCounts={transferCounts?.columnCounts}
+                initialData={isListFetching ? null : kanbanData}
+                userRole={userRole}
+              />
+            ) : (
+              <TransfersTenantSelectionPlaceholder />
+            )
+          ) : shouldFetch ? (
+            <>
+              <div className="space-y-3 pb-2 lg:hidden">
+                {isListLoading ? (
+                  <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
+                    <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                      <Loader2 className="size-6 animate-spin" />
+                      Đang tải dữ liệu…
+                    </div>
                   </div>
-
-                  <div className="hidden lg:block">
-                    <TransfersTableView
-                      data={tableData}
-                      columns={columns}
-                      pagination={pagination}
-                      onPaginationChange={onPaginationChange}
-                      pageCount={pageCount}
-                      isLoading={isListLoading}
-                      onRowClick={onViewTransfer}
+                ) : tableData.length > 0 ? (
+                  tableData.map((item) => (
+                    <TransferCard
+                      key={item.id}
+                      transfer={item}
+                      referenceDate={referenceDate}
+                      onClick={() => onViewTransfer(item)}
+                      actions={<RowActions item={item} />}
                     />
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed py-12 text-center text-sm text-muted-foreground">
+                    Không có dữ liệu phù hợp.
                   </div>
-                </>
-              ) : (
-                <TransfersTenantSelectionPlaceholder />
-              )}
+                )}
+              </div>
 
-              {isListFetching && !isListLoading && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" /> Đang đồng bộ dữ liệu…
-                </div>
-              )}
+              <div className="hidden lg:block">
+                <TransfersTableView
+                  data={tableData}
+                  columns={columns}
+                  pagination={pagination}
+                  onPaginationChange={onPaginationChange}
+                  pageCount={pageCount}
+                  isLoading={isListLoading}
+                  onRowClick={onViewTransfer}
+                />
+              </div>
+            </>
+          ) : (
+            <TransfersTenantSelectionPlaceholder />
+          )}
+
+          {isListFetching && !isListLoading && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" /> Đang đồng bộ dữ liệu…
             </div>
-          </TransferTypeTabs>
-        </TransfersSearchParamsBoundary>
+          )}
+        </div>
+      </TransferTypeTabs>
+    </TransfersSearchParamsBoundary>
+  )
+
+  const paginationFooter =
+    viewMode === "table" && shouldFetch ? (
+      <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <DataTablePagination
+          table={table}
+          totalCount={totalCount}
+          entity={transferEntity}
+          paginationMode={{
+            mode: "controlled",
+            pagination,
+            onPaginationChange,
+          }}
+          displayFormat={transferDisplayFormat}
+          pageSizeOptions={[10, 20, 50, 100]}
+          responsive={{ showFirstLastAt: "sm", stackLayoutAt: "md" }}
+          isLoading={isListLoading}
+        />
+      </CardFooter>
+    ) : null
+
+  if (compactFilters) {
+    return (
+      <div className="space-y-4" data-testid="transfers-page-compact-content">
+        {toolbar}
+
+        <Card data-testid="transfers-page-card">
+          <CardContent className="px-4 pb-5 sm:px-6 sm:pb-6">{content}</CardContent>
+          {paginationFooter}
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <Card data-testid="transfers-page-card">
+      <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-6">
+        {toolbar}
+        {content}
       </CardContent>
 
-      {viewMode === "table" && shouldFetch && (
-        <CardFooter className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <DataTablePagination
-            table={table}
-            totalCount={totalCount}
-            entity={transferEntity}
-            paginationMode={{
-              mode: "controlled",
-              pagination,
-              onPaginationChange,
-            }}
-            displayFormat={transferDisplayFormat}
-            pageSizeOptions={[10, 20, 50, 100]}
-            responsive={{ showFirstLastAt: "sm", stackLayoutAt: "md" }}
-            isLoading={isListLoading}
-          />
-        </CardFooter>
-      )}
+      {paginationFooter}
     </Card>
   )
 }

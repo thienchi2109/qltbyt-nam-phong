@@ -374,6 +374,16 @@ describe("TransfersPagePanel grouped props", () => {
     expect(onOpenFilterModal).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the compact search and filter row outside the card container like Repair", () => {
+    renderPanel({ filterVariant: "sheet" })
+
+    const row = screen.getByTestId("transfers-toolbar-compact-row")
+    const card = screen.getByTestId("transfers-page-card")
+
+    expect(card).not.toContainElement(row)
+    expect(row.compareDocumentPosition(card)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it("keeps compact facility selection in the tenant slot instead of the filter sheet", () => {
     renderPanel({
       filterVariant: "sheet",
