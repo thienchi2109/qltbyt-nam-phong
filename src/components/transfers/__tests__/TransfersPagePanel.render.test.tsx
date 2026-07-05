@@ -13,7 +13,22 @@ import type {
   TransferType,
 } from "@/types/transfers-data-grid"
 vi.mock("@/components/shared/TenantSelector", () => ({
-  TenantSelector: () => <div data-testid="tenant-selector" />,
+  TenantSelector: ({
+    className,
+    variant = "default",
+  }: {
+    className?: string
+    variant?: "default" | "command"
+  }) => (
+    <button
+      type="button"
+      data-testid="tenant-selector"
+      data-class-name={className}
+      data-trigger-variant={variant}
+    >
+      Cơ sở
+    </button>
+  ),
 }))
 vi.mock("@/components/shared/ListFilterSearchCard", () => ({
   ListFilterSearchCard: (props: {
@@ -37,31 +52,34 @@ vi.mock("@/components/shared/ListFilterSearchCard", () => ({
         data-placeholder={props.searchPlaceholder}
         data-has-mobile-filter={props.mobileFilterControl ? "true" : "false"}
       >
-      <div data-testid="tenant-control-slot">{props.tenantControl}</div>
-      <input
-        aria-label="shared-transfer-search"
-        value={props.searchValue}
-        onChange={(event) => props.onSearchChange(event.target.value)}
-      />
-      <button type="button" onClick={() => props.onSearchChange("")}>
-        shared-clear-search
-      </button>
-      <div data-testid="visible-filter-slot">{visibleFilters}</div>
-      <div data-testid="actions-slot">{props.actions}</div>
-      <div data-testid="chips-slot">{props.chips}</div>
-    </div>
-  )},
+        <div data-testid="tenant-control-slot">{props.tenantControl}</div>
+        <input
+          aria-label="shared-transfer-search"
+          value={props.searchValue}
+          onChange={(event) => props.onSearchChange(event.target.value)}
+        />
+        <button type="button" onClick={() => props.onSearchChange("")}>
+          shared-clear-search
+        </button>
+        <div data-testid="visible-filter-slot">{visibleFilters}</div>
+        <div data-testid="actions-slot">{props.actions}</div>
+        <div data-testid="chips-slot">{props.chips}</div>
+      </div>
+    )
+  },
 }))
 vi.mock("@/components/shared/table-filters/FacetedMultiSelectFilter", () => ({
   FacetedMultiSelectFilter: (props: {
     title?: string
     value?: string[]
     onChange?: (values: string[]) => void
+    triggerVariant?: "outline" | "command"
   }) => (
     <button
       type="button"
       data-testid="transfer-status-filter"
       data-value={(props.value ?? []).join(",")}
+      data-trigger-variant={props.triggerVariant ?? "outline"}
       onClick={() => props.onChange?.(["da_duyet"])}
     >
       {props.title}
@@ -187,9 +205,7 @@ describe("TransfersPagePanel grouped props", () => {
   it("invokes onOpenAddDialog when create button is clicked (non-regional leader)", async () => {
     const onOpenAddDialog = vi.fn()
     renderPanel({ onOpenAddDialog })
-    await userEvent.setup().click(
-      screen.getByRole("button", { name: /Tạo yêu cầu mới/ }),
-    )
+    await userEvent.setup().click(screen.getByRole("button", { name: /Tạo yêu cầu mới/ }))
     expect(onOpenAddDialog).toHaveBeenCalledTimes(1)
   })
 
@@ -228,10 +244,7 @@ describe("TransfersPagePanel grouped props", () => {
       dataState: { shouldFetch: true, isLoading: false, isFetching: false },
       kanbanData: { columns: {}, totalCount: 0 } as PanelProps["kanbanData"],
     })
-    expect(screen.getByTestId("transfers-kanban-view")).toHaveAttribute(
-      "data-initial",
-      "data",
-    )
+    expect(screen.getByTestId("transfers-kanban-view")).toHaveAttribute("data-initial", "data")
   })
 
   it("renders table view + footer pagination in table mode when shouldFetch=true", () => {
@@ -242,6 +255,32 @@ describe("TransfersPagePanel grouped props", () => {
     })
     expect(screen.getByTestId("transfers-table-view")).toBeInTheDocument()
     expect(screen.getByTestId("data-table-pagination")).toBeInTheDocument()
+  })
+
+  it("keeps the Transfers panel content padded for compact and tablet layouts", () => {
+    renderPanel()
+
+    expect(screen.getByTestId("list-filter-search-card").parentElement).toHaveClass(
+      "px-4",
+      "pb-5",
+      "sm:px-6",
+      "sm:pb-6"
+    )
+  })
+
+  it("keeps mobile transfer cards in a breathable stack below the toolbar", () => {
+    const transfer = makeTransferItem({ id: 99, ma_yeu_cau: "LC-099" })
+    renderPanel({
+      viewMode: "table",
+      dataState: { shouldFetch: true, isLoading: false, isFetching: false },
+      tableData: [transfer],
+    })
+
+    expect(screen.getByTestId("transfer-card-99").parentElement).toHaveClass(
+      "space-y-3",
+      "pb-2",
+      "lg:hidden"
+    )
   })
 
   it("shows mobile loading indicator when dataState.isLoading=true", () => {
@@ -275,36 +314,43 @@ describe("TransfersPagePanel grouped props", () => {
 
     const card = screen.getByTestId("list-filter-search-card")
     expect(card).toHaveAttribute("data-surface", "plain")
-    expect(card).toHaveAttribute(
-      "data-placeholder",
-      "Tìm kiếm mã yêu cầu, thiết bị, lý do...",
-    )
+    expect(card).toHaveAttribute("data-placeholder", "Tìm kiếm mã yêu cầu, thiết bị, lý do...")
     expect(screen.getByTestId("tenant-control-slot")).toContainElement(
-      screen.getByTestId("tenant-selector"),
+      screen.getByTestId("tenant-selector")
     )
     const statusFilter = within(screen.getByTestId("visible-filter-slot")).getByTestId(
-      "transfer-status-filter",
+      "transfer-status-filter"
     )
     expect(statusFilter).toHaveAttribute("data-value", "cho_duyet")
+    expect(statusFilter).toHaveAttribute("data-trigger-variant", "command")
     fireEvent.click(statusFilter)
     expect(onFilterChange).toHaveBeenCalledWith({
       statuses: ["da_duyet"],
       dateRange: null,
     })
-    expect(within(screen.getByTestId("visible-filter-slot")).getByRole(
-      "button",
-      { name: /Từ ngày/ },
-    )).toBeInTheDocument()
-    expect(within(screen.getByTestId("visible-filter-slot")).queryByRole(
-      "button",
-      { name: /Bộ lọc/ },
-    )).toBeNull()
+    expect(
+      within(screen.getByTestId("visible-filter-slot")).getByRole("button", { name: /Từ ngày/ })
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId("visible-filter-slot")).queryByRole("button", { name: /Bộ lọc/ })
+    ).toBeNull()
     expect(screen.getByTestId("actions-slot")).toContainElement(
-      screen.getByRole("button", { name: /Tạo yêu cầu mới/ }),
+      screen.getByRole("button", { name: /Tạo yêu cầu mới/ })
     )
-    expect(screen.getByTestId("chips-slot")).toContainElement(
-      screen.getByTestId("filter-chips"),
-    )
+    expect(screen.getByTestId("chips-slot")).toContainElement(screen.getByTestId("filter-chips"))
+  })
+
+  it("uses the Equipment-style command tenant selector before Transfers search", () => {
+    renderPanel({
+      permissions: { showFacilityFilter: true, isRegionalLeader: false },
+    })
+
+    const tenantSelector = screen.getByTestId("tenant-selector")
+    const search = screen.getByLabelText("shared-transfer-search")
+
+    expect(tenantSelector).toHaveAttribute("data-trigger-variant", "command")
+    expect(tenantSelector).toHaveAttribute("data-class-name", "w-full md:w-auto")
+    expect(tenantSelector.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it("uses the shared card mobile filter slot when Transfers filters render as a sheet", async () => {
@@ -319,12 +365,33 @@ describe("TransfersPagePanel grouped props", () => {
     expect(card).toHaveAttribute("data-compact-filters", "true")
     expect(card).toHaveAttribute("data-has-mobile-filter", "true")
     expect(screen.getByTestId("visible-filter-slot")).toContainElement(
-      screen.getByRole("button", { name: /Bộ lọc/ }),
+      screen.getByRole("button", { name: /Bộ lọc/ })
     )
     const filterButton = screen.getByRole("button", { name: /Bộ lọc/ })
+    expect(filterButton).toHaveAttribute("aria-label", "Bộ lọc")
     expect(within(filterButton).getByText("3")).toBeInTheDocument()
     await userEvent.setup().click(filterButton)
     expect(onOpenFilterModal).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps compact facility selection in the tenant slot instead of the filter sheet", () => {
+    renderPanel({
+      filterVariant: "sheet",
+      permissions: { showFacilityFilter: true, isRegionalLeader: false },
+    })
+
+    expect(screen.getByTestId("tenant-control-slot")).toContainElement(
+      screen.getByTestId("tenant-selector")
+    )
+    expect(screen.getByTestId("visible-filter-slot")).toContainElement(
+      screen.getByRole("button", { name: /Bộ lọc/ })
+    )
+    expect(
+      within(screen.getByTestId("visible-filter-slot")).queryByTestId("tenant-selector")
+    ).toBeNull()
+    expect(
+      within(screen.getByTestId("visible-filter-slot")).queryByTestId("transfer-status-filter")
+    ).toBeNull()
   })
 
   it("keeps shared card search interactions wired to Transfers search state", async () => {
@@ -337,12 +404,9 @@ describe("TransfersPagePanel grouped props", () => {
     fireEvent.change(screen.getByLabelText("shared-transfer-search"), {
       target: { value: "YC-413" },
     })
-    await userEvent.setup().click(
-      screen.getByRole("button", { name: "shared-clear-search" }),
-    )
+    await userEvent.setup().click(screen.getByRole("button", { name: "shared-clear-search" }))
 
     expect(onSearchTermChange).toHaveBeenCalledWith("YC-413")
     expect(onSearchTermChange).toHaveBeenLastCalledWith("")
   })
-
 })

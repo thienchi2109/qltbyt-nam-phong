@@ -1,28 +1,18 @@
 "use client"
 
 import * as React from "react"
-import type {
-  ColumnDef,
-  PaginationState,
-  Table as ReactTable,
-} from "@tanstack/react-table"
-import { Filter, Loader2, PlusCircle } from "lucide-react"
+import type { ColumnDef, PaginationState, Table as ReactTable } from "@tanstack/react-table"
+import { Loader2 } from "lucide-react"
 
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
-import { TenantSelector } from "@/components/shared/TenantSelector"
-import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { TransferCard } from "@/components/transfers/TransferCard"
-import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
+import type { FilterChipsValue } from "@/components/transfers/FilterChips"
 import type { FilterModalValue } from "@/components/transfers/FilterModal"
 import { TransferTypeTabs } from "@/components/transfers/TransferTypeTabs"
 import { TransfersKanbanView } from "@/components/transfers/TransfersKanbanView"
 import { TransfersSearchParamsBoundary } from "@/components/transfers/TransfersSearchParamsBoundary"
 import { TransfersTableView } from "@/components/transfers/TransfersTableView"
 import { TransfersTenantSelectionPlaceholder } from "@/components/transfers/TransfersTenantSelectionPlaceholder"
-import { TransfersViewToggle } from "@/components/transfers/TransfersViewToggle"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import type {
@@ -30,12 +20,10 @@ import type {
   TransferKanbanResponse,
   TransferListFilters,
   TransferListItem,
-  TransferStatus,
   TransferType,
 } from "@/types/transfers-data-grid"
-import { TRANSFER_STATUS_LABELS } from "@/types/transfers-data-grid"
 
-import { TransfersDateFilterButton } from "./TransfersDateFilterButton"
+import { TransfersToolbar } from "./TransfersToolbar"
 import type { TransferUserRole } from "./TransfersTypes"
 
 type TransfersPagePanelPermissions = Readonly<{
@@ -78,7 +66,9 @@ type TransfersPagePanelProps = Readonly<{
   userRole?: TransferUserRole
   columns: ColumnDef<TransferListItem>[]
   pagination: PaginationState
-  onPaginationChange: (updater: PaginationState | ((old: PaginationState) => PaginationState)) => void
+  onPaginationChange: (
+    updater: PaginationState | ((old: PaginationState) => PaginationState)
+  ) => void
   pageCount: number
   table: ReactTable<TransferListItem>
   transferEntity: { singular: string }
@@ -88,7 +78,7 @@ type TransfersPagePanelProps = Readonly<{
 function getTransferTypeCounts(
   activeTab: TransferType,
   transferCounts: TransferCountsResponse | null | undefined,
-  totalCount: number,
+  totalCount: number
 ) {
   const activeCount = transferCounts?.totalCount ?? totalCount
 
@@ -99,6 +89,7 @@ function getTransferTypeCounts(
   }
 }
 
+/** Renders the Transfers page shell around toolbar, tabs, list, kanban, and pagination. */
 export function TransfersPagePanel({
   activeTab,
   onTabChange,
@@ -138,103 +129,24 @@ export function TransfersPagePanel({
   const { shouldFetch, isLoading: isListLoading, isFetching: isListFetching } = dataState
   const transferTypeCounts = getTransferTypeCounts(activeTab, transferCounts, totalCount)
   const compactFilters = filterVariant === "sheet"
-  const statusOptions = React.useMemo(
-    () =>
-      (Object.entries(TRANSFER_STATUS_LABELS) as [TransferStatus, string][]).map(
-        ([value, label]) => ({ value, label }),
-      ),
-    [],
-  )
-
-  const setDateRangePart = React.useCallback(
-    (key: "from" | "to", date: Date | null) => {
-      onFilterChange({
-        ...filterValue,
-        dateRange: {
-          from: key === "from" ? date : filterValue.dateRange?.from ?? null,
-          to: key === "to" ? date : filterValue.dateRange?.to ?? null,
-        },
-      })
-    },
-    [filterValue, onFilterChange],
-  )
-
-  const filterButton = (
-    <Button
-      variant="outline"
-      onClick={onOpenFilterModal}
-      className="h-11 gap-2 font-medium sm:h-9"
-    >
-      <Filter className="size-5 sm:size-4" />
-      <span className="hidden sm:inline">Bộ lọc</span>
-      {activeFilterCount > 0 && (
-        <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
-          {activeFilterCount}
-        </Badge>
-      )}
-    </Button>
-  )
-
-  const filterControls = (
-    <>
-      <FacetedMultiSelectFilter
-        title="Trạng thái"
-        options={statusOptions}
-        value={filterValue.statuses}
-        onChange={(statuses) =>
-          onFilterChange({ ...filterValue, statuses: statuses as TransferStatus[] })
-        }
-      />
-      <TransfersDateFilterButton
-        label="Từ ngày"
-        value={filterValue.dateRange?.from ?? null}
-        onChange={(date) => setDateRangePart("from", date)}
-      />
-      <TransfersDateFilterButton
-        label="Đến ngày"
-        value={filterValue.dateRange?.to ?? null}
-        onChange={(date) => setDateRangePart("to", date)}
-      />
-    </>
-  )
 
   return (
     <Card>
-      <CardContent className="space-y-4">
-        <ListFilterSearchCard
-          title="Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình"
-          tenantControl={showFacilityFilter ? <TenantSelector /> : undefined}
-          surface="plain"
-          searchValue={searchTerm}
-          onSearchChange={onSearchTermChange}
-          searchPlaceholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
-          showSearchIcon={true}
-          filterControls={filterControls}
-          mobileFilterControl={filterButton}
+      <CardContent className="space-y-4 px-4 pb-5 sm:px-6 sm:pb-6">
+        <TransfersToolbar
+          showFacilityFilter={showFacilityFilter}
+          isRegionalLeader={isRegionalLeader}
+          activeFilterCount={activeFilterCount}
+          onOpenFilterModal={onOpenFilterModal}
+          onOpenAddDialog={onOpenAddDialog}
+          filterChipsValue={filterChipsValue}
+          onRemoveFilter={onRemoveFilter}
+          onClearAllFilters={onClearAllFilters}
+          searchTerm={searchTerm}
+          onSearchTermChange={onSearchTermChange}
+          filterValue={filterValue}
+          onFilterChange={onFilterChange}
           compactFilters={compactFilters}
-          actions={(
-            <>
-              <div className="hidden sm:block">
-                <TransfersViewToggle />
-              </div>
-              {!isRegionalLeader && (
-                <Button
-                  onClick={onOpenAddDialog}
-                  className="h-11 gap-2 font-medium sm:h-9"
-                >
-                  <PlusCircle className="size-5 sm:size-4" />
-                  Tạo yêu cầu mới
-                </Button>
-              )}
-            </>
-          )}
-          chips={(
-            <FilterChips
-              value={filterChipsValue}
-              onRemove={onRemoveFilter}
-              onClearAll={onClearAllFilters}
-            />
-          )}
         />
 
         <TransfersSearchParamsBoundary>
@@ -259,7 +171,7 @@ export function TransfersPagePanel({
                 )
               ) : shouldFetch ? (
                 <>
-                  <div className="space-y-3 lg:hidden">
+                  <div className="space-y-3 pb-2 lg:hidden">
                     {isListLoading ? (
                       <div className="flex min-h-[200px] items-center justify-center rounded-lg border border-dashed">
                         <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
