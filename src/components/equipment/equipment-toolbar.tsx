@@ -25,6 +25,7 @@ import {
   EquipmentToolbarDesktopFilters,
   EquipmentToolbarDesktopLayout,
 } from "./equipment-toolbar-layout"
+import { EquipmentHeroButton, EquipmentHeroDropdown } from "./heroui-pilot"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
@@ -108,17 +109,17 @@ export function EquipmentToolbar({
 
   const searchEndAddon = React.useMemo(
     () => (
-      <Button
+      <EquipmentHeroButton
         type="button"
         variant="ghost"
-        size="icon"
-        onClick={qr.handleStartScanning}
+        size="sm"
+        isIconOnly
+        onPress={qr.handleStartScanning}
         className="size-8 hover:bg-primary/10"
-        title="Quét mã QR"
         aria-label="Quét mã QR"
       >
         <ScanLine className="size-4 text-muted-foreground hover:text-primary" />
-      </Button>
+      </EquipmentHeroButton>
     ),
     [qr.handleStartScanning]
   )
@@ -181,35 +182,63 @@ export function EquipmentToolbar({
     () => (
       <>
         {canCreateEquipment && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="hidden md:flex h-8 gap-1 touch-target-sm md:h-8">
+          <EquipmentHeroDropdown
+            ariaLabel="Thêm thiết bị"
+            trigger={
+              <>
                 <PlusCircle className="size-3.5" />
                 <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Thêm thiết bị</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={onAddEquipment}>Thêm thủ công</DropdownMenuItem>
-              <DropdownMenuItem onSelect={onImportEquipment}>Nhập từ Excel</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </>
+            }
+            triggerClassName="hidden h-8 gap-1 border-transparent bg-primary text-primary-foreground hover:bg-primary/90 md:inline-flex touch-target-sm md:h-8"
+            items={[
+              {
+                id: "manual",
+                label: "Thêm thủ công",
+                textValue: "Thêm thủ công",
+                onAction: onAddEquipment,
+              },
+              {
+                id: "excel",
+                label: "Nhập từ Excel",
+                textValue: "Nhập từ Excel",
+                onAction: onImportEquipment,
+              },
+            ]}
+          />
         )}
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="hidden lg:flex h-8 gap-1 touch-target-sm md:h-8">
+        <EquipmentHeroDropdown
+          ariaLabel="Tùy chọn"
+          trigger={
+            <>
               <Settings className="size-3.5" />
               Tùy chọn
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onSelect={onOpenColumnsDialog}>Hiện/ẩn cột</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onDownloadTemplate}>Tải Excel mẫu</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onExportData} disabled={isExporting}>
-              {isExporting ? "Đang tải..." : "Tải về dữ liệu"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </>
+          }
+          triggerClassName="hidden h-8 gap-1 lg:inline-flex touch-target-sm md:h-8"
+          items={[
+            {
+              id: "columns",
+              label: "Hiện/ẩn cột",
+              textValue: "Hiện/ẩn cột",
+              onAction: onOpenColumnsDialog,
+            },
+            {
+              id: "template",
+              label: "Tải Excel mẫu",
+              textValue: "Tải Excel mẫu",
+              onAction: onDownloadTemplate,
+            },
+            {
+              id: "export",
+              label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+              textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+              onAction: onExportData,
+              isDisabled: isExporting,
+            },
+          ]}
+        />
       </>
     ),
     [

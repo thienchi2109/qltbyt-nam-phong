@@ -5,10 +5,16 @@ import type { Table } from "@tanstack/react-table"
 import { Building2, Filter, Tags, UserRound, WalletCards, X } from "lucide-react"
 
 import type { Equipment } from "@/types/database"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SearchInput } from "@/components/shared/SearchInput"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
+import {
+  EquipmentHeroButton,
+  EquipmentHeroCard,
+  EquipmentHeroCardContent,
+  EquipmentHeroCardDescription,
+  EquipmentHeroCardHeader,
+  EquipmentHeroCardTitle,
+  EquipmentHeroSearchInput,
+} from "./heroui-pilot"
 
 interface EquipmentFilterFieldProps {
   label: string
@@ -114,16 +120,17 @@ export function EquipmentToolbarDesktopFilters({
         />
       </EquipmentFilterField>
       {isFiltered && (
-        <Button
+        <EquipmentHeroButton
           type="button"
           variant="ghost"
+          size="sm"
           data-testid="equipment-clear-filters-control"
-          onClick={() => table.resetColumnFilters()}
+          onPress={() => table.resetColumnFilters()}
           className="h-9 self-end justify-start gap-1.5 px-2 text-muted-foreground hover:bg-transparent hover:text-foreground"
         >
           <X className="size-4" aria-hidden="true" />
           <span className="text-sm font-medium">Xóa bộ lọc</span>
-        </Button>
+        </EquipmentHeroButton>
       )}
     </div>
   )
@@ -142,22 +149,27 @@ export function EquipmentToolbarDesktopLayout({
   children,
 }: EquipmentToolbarDesktopLayoutProps) {
   return (
-    <Card>
+    <EquipmentHeroCard data-testid="equipment-heroui-top-controls-shell">
       {title || description ? (
-        <CardHeader className="gap-y-1 pb-3">
-          {title ? <CardTitle className="heading-responsive-h2">{title}</CardTitle> : null}
-          {description ? (
-            <CardDescription className="body-responsive-sm">{description}</CardDescription>
+        <EquipmentHeroCardHeader className="gap-y-1 pb-3">
+          {title ? (
+            <EquipmentHeroCardTitle className="heading-responsive-h2">
+              {title}
+            </EquipmentHeroCardTitle>
           ) : null}
-        </CardHeader>
+          {description ? (
+            <EquipmentHeroCardDescription className="body-responsive-sm">
+              {description}
+            </EquipmentHeroCardDescription>
+          ) : null}
+        </EquipmentHeroCardHeader>
       ) : null}
-      <CardContent className="px-4 pb-4 md:px-6">
+      <EquipmentHeroCardContent className="px-4 pb-4 md:px-6">
         <div data-testid="equipment-reference-filter-layout" className="space-y-3">
-          <SearchInput
+          <EquipmentHeroSearchInput
             placeholder={searchPlaceholder}
             value={searchValue}
-            onChange={onSearchChange}
-            showSearchIcon={false}
+            onValueChange={onSearchChange}
             className="h-9 w-full"
             endAddon={searchEndAddon}
             aria-label={searchPlaceholder}
@@ -176,7 +188,7 @@ export function EquipmentToolbarDesktopLayout({
             ) : null}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </EquipmentHeroCardContent>
+    </EquipmentHeroCard>
   )
 }
