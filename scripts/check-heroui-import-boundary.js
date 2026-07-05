@@ -26,6 +26,25 @@ function getHeroUIImportPath(line) {
   return match?.slice(1).find(Boolean) || null
 }
 
+function isCommentOnlyLine(line) {
+  const trimmedLine = line.trimStart()
+
+  if (trimmedLine.startsWith("//")) {
+    return true
+  }
+
+  if (trimmedLine.startsWith("/*")) {
+    const commentEndIndex = trimmedLine.indexOf("*/", 2)
+    return commentEndIndex === -1 || trimmedLine.slice(commentEndIndex + 2).trim() === ""
+  }
+
+  if (trimmedLine.startsWith("*/")) {
+    return trimmedLine.slice(2).trim() === ""
+  }
+
+  return trimmedLine.startsWith("*")
+}
+
 function findHeroUIImportViolations(files) {
   return files.flatMap((file) => {
     if (!isScannableSourceFile(file.path) || isAllowedBoundaryFile(file.path)) {
@@ -35,6 +54,10 @@ function findHeroUIImportViolations(files) {
     return file.content
       .split("\n")
       .map((line, index) => {
+        if (isCommentOnlyLine(line)) {
+          return null
+        }
+
         const importPath = getHeroUIImportPath(line)
 
         if (!importPath) {
