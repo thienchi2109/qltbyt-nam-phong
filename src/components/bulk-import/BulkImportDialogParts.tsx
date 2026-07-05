@@ -1,18 +1,18 @@
 "use client"
 
-import * as React from 'react'
-import { Loader2, FileCheck, AlertTriangle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { toKeyedTexts } from '@/lib/list-key-utils'
+import * as React from "react"
+import { Loader2, FileCheck, AlertTriangle } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toKeyedTexts } from "@/lib/list-key-utils"
 
 /**
  * File input with label for bulk import dialogs
  */
 export interface BulkImportFileInputProps {
   id: string
-  fileInputRef: React.RefObject<HTMLInputElement>
+  fileInputRef: React.RefObject<HTMLInputElement | null>
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   disabled?: boolean
   accept?: string
@@ -25,9 +25,9 @@ export function BulkImportFileInput({
   fileInputRef,
   onFileChange,
   disabled = false,
-  accept = '.xlsx, .xls',
-  label = 'Chon file'
-}: BulkImportFileInputProps): JSX.Element {
+  accept = ".xlsx, .xls",
+  label = "Chon file",
+}: BulkImportFileInputProps): React.JSX.Element {
   return (
     <div className="grid w-full items-center gap-2">
       <Label htmlFor={id}>{label}</Label>
@@ -51,7 +51,9 @@ export interface BulkImportErrorAlertProps {
 }
 
 /** Renders a dismiss-free validation or parsing error alert. */
-export function BulkImportErrorAlert({ error }: BulkImportErrorAlertProps): JSX.Element | null {
+export function BulkImportErrorAlert({
+  error,
+}: BulkImportErrorAlertProps): React.JSX.Element | null {
   if (!error) return null
 
   return (
@@ -73,8 +75,8 @@ export interface BulkImportValidationErrorsProps {
 /** Renders row-level validation errors for parsed bulk import records. */
 export function BulkImportValidationErrors({
   errors,
-  maxHeight = '10rem'
-}: BulkImportValidationErrorsProps): JSX.Element | null {
+  maxHeight = "10rem",
+}: BulkImportValidationErrorsProps): React.JSX.Element | null {
   if (errors.length === 0) return null
 
   return (
@@ -83,10 +85,7 @@ export function BulkImportValidationErrors({
         <AlertTriangle className="size-4 flex-shrink-0" aria-hidden="true" />
         <span className="font-medium">Dữ liệu không hợp lệ:</span>
       </div>
-      <ul
-        className="list-disc list-inside space-y-1 ml-6 overflow-y-auto"
-        style={{ maxHeight }}
-      >
+      <ul className="list-disc list-inside space-y-1 ml-6 overflow-y-auto" style={{ maxHeight }}>
         {toKeyedTexts(errors).map(({ key, text }) => (
           <li key={key}>{text}</li>
         ))}
@@ -106,8 +105,8 @@ export interface BulkImportSuccessMessageProps {
 /** Renders the successful bulk import file parsing summary. */
 export function BulkImportSuccessMessage({
   fileName,
-  recordCount
-}: BulkImportSuccessMessageProps): JSX.Element {
+  recordCount,
+}: BulkImportSuccessMessageProps): React.JSX.Element {
   return (
     <output
       className="flex items-center gap-2 text-sm text-primary bg-primary/10 p-3 rounded-md"
@@ -115,7 +114,8 @@ export function BulkImportSuccessMessage({
     >
       <FileCheck className="size-4 flex-shrink-0" aria-hidden="true" />
       <span>
-        Đã đọc file <strong>{fileName}</strong>. Tìm thấy <strong>{recordCount}</strong> bản ghi hợp lệ.
+        Đã đọc file <strong>{fileName}</strong>. Tìm thấy <strong>{recordCount}</strong> bản ghi hợp
+        lệ.
       </span>
     </output>
   )
@@ -138,20 +138,16 @@ export function BulkImportSubmitButton({
   isSubmitting,
   disabled,
   recordCount,
-  labelSingular = 'bản ghi',
-  labelPlural = 'bản ghi',
-  onClick
-}: BulkImportSubmitButtonProps): JSX.Element {
+  labelSingular = "bản ghi",
+  labelPlural = "bản ghi",
+  onClick,
+}: BulkImportSubmitButtonProps): React.JSX.Element {
   const label = recordCount === 1 ? labelSingular : labelPlural
 
   return (
-    <Button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-    >
+    <Button type="button" onClick={onClick} disabled={disabled}>
       {isSubmitting && <Loader2 className="mr-2 size-4 animate-spin" aria-hidden="true" />}
-      {isSubmitting ? 'Đang nhập...' : `Nhập ${recordCount} ${label}`}
+      {isSubmitting ? "Đang nhập..." : `Nhập ${recordCount} ${label}`}
     </Button>
   )
 }

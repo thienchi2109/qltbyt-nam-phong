@@ -19,7 +19,7 @@ interface RepairRequestsToolbarProps {
   tenantControl?: React.ReactNode
   searchTerm: string
   onSearchChange: (value: string) => void
-  searchInputRef: React.RefObject<HTMLInputElement>
+  searchInputRef: React.RefObject<HTMLInputElement | null>
   isFiltered: boolean
   onClearFilters: () => void
   onOpenFilterModal: () => void

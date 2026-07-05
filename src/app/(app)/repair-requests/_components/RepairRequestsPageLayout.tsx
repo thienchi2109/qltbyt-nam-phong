@@ -44,7 +44,7 @@ interface RepairRequestsPageLayoutProps {
   // Search & Filters
   searchTerm: string
   onSearchChange: (value: string) => void
-  searchInputRef: React.RefObject<HTMLInputElement>
+  searchInputRef: React.RefObject<HTMLInputElement | null>
   onClearFilters: () => void
   onFilterModalOpenChange: (open: boolean) => void
   uiFilters: UiFiltersPrefs
