@@ -8,6 +8,7 @@
 "use client"
 
 import * as React from "react"
+import { X } from "lucide-react"
 import {
   Button,
   Card,
@@ -31,6 +32,8 @@ type EquipmentHeroSearchInputProps = Omit<
 > & {
   value: string
   onValueChange: (value: string) => void
+  onClear?: () => void
+  showClearButton?: boolean
   endAddon?: React.ReactNode
 }
 
@@ -65,23 +68,52 @@ export {
 export function EquipmentHeroSearchInput({
   value,
   onValueChange,
+  onClear,
+  showClearButton = true,
   endAddon,
   className,
   fullWidth = true,
   ...props
 }: EquipmentHeroSearchInputProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  const hasClearButton = showClearButton && value.length > 0
+  const paddingRight =
+    hasClearButton && endAddon ? "pr-16" : hasClearButton || endAddon ? "pr-9" : null
+
+  const handleClear = React.useCallback(() => {
+    onValueChange("")
+    onClear?.()
+    inputRef.current?.focus()
+  }, [onClear, onValueChange])
+
   return (
     <div className="relative w-full" data-testid="equipment-heroui-search-control">
       <Input
         {...props}
+        ref={inputRef}
         type="search"
         value={value}
         onChange={(event) => onValueChange(event.currentTarget.value)}
         fullWidth={fullWidth}
-        className={cn("h-9 w-full", endAddon ? "pr-10" : null, className)}
+        className={cn("h-9 w-full pl-3", paddingRight, className)}
       />
-      {endAddon ? (
-        <div className="absolute inset-y-0 right-1 flex items-center">{endAddon}</div>
+      {hasClearButton || endAddon ? (
+        <div className="absolute inset-y-0 right-1 flex items-center gap-1">
+          {hasClearButton ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              isIconOnly
+              onPress={handleClear}
+              className="size-8 text-muted-foreground hover:text-foreground"
+              aria-label="Xóa tìm kiếm"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </Button>
+          ) : null}
+          {endAddon}
+        </div>
       ) : null}
     </div>
   )

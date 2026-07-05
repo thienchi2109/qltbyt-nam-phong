@@ -109,17 +109,19 @@ export function EquipmentToolbar({
 
   const searchEndAddon = React.useMemo(
     () => (
-      <EquipmentHeroButton
-        type="button"
-        variant="ghost"
-        size="sm"
-        isIconOnly
-        onPress={qr.handleStartScanning}
-        className="size-8 hover:bg-primary/10"
-        aria-label="Quét mã QR"
-      >
-        <ScanLine className="size-4 text-muted-foreground hover:text-primary" />
-      </EquipmentHeroButton>
+      <span title="Quét mã QR" className="inline-flex">
+        <EquipmentHeroButton
+          type="button"
+          variant="ghost"
+          size="sm"
+          isIconOnly
+          onPress={qr.handleStartScanning}
+          className="size-8 hover:bg-primary/10"
+          aria-label="Quét mã QR"
+        >
+          <ScanLine className="size-4 text-muted-foreground hover:text-primary" />
+        </EquipmentHeroButton>
+      </span>
     ),
     [qr.handleStartScanning]
   )

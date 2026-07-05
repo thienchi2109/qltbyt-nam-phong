@@ -71,6 +71,25 @@ describe("EquipmentToolbar HeroUI top controls", () => {
     expect(shell).toContainElement(searchControl)
     expect(searchControl).toContainElement(search)
     expect(search).toHaveAttribute("type", "search")
+    expect(screen.getByTitle("Quét mã QR")).toContainElement(
+      screen.getByRole("button", { name: "Quét mã QR" })
+    )
+  })
+
+  it("keeps the desktop search clear affordance wired", () => {
+    const onSearchChange = vi.fn()
+
+    render(
+      <EquipmentToolbar
+        {...createBaseProps()}
+        searchTerm="máy thở"
+        onSearchChange={onSearchChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole("button", { name: "Xóa tìm kiếm" }))
+
+    expect(onSearchChange).toHaveBeenCalledWith("")
   })
 
   it("keeps desktop options actions wired through the HeroUI dropdown", async () => {
