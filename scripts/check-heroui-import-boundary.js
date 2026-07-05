@@ -5,7 +5,7 @@ const { collectChangedFiles, runGit } = require("./changed-files")
 const DEFAULT_BASE_REF = process.env.HEROUI_BOUNDARY_BASE || "main"
 const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"])
 const HEROUI_IMPORT_RE =
-  /\b(?:from\s+["'](@heroui\/[^"']+)["']|import\s*\(\s*["'](@heroui\/[^"']+)["']\s*\)|export\s+.*?\s+from\s+["'](@heroui\/[^"']+)["'])/
+  /\b(?:from\s+["'](@heroui\/[^"']+)["']|import\s*\(\s*["'](@heroui\/[^"']+)["']\s*\)|export\s+.*?\s+from\s+["'](@heroui\/[^"']+)["']|require\s*\(\s*["'](@heroui\/[^"']+)["']\s*\)|import\s+["'](@heroui\/[^"']+)["'])/
 const ALLOWED_BOUNDARY_PREFIX = "src/components/equipment/heroui-pilot/"
 
 function normalizePath(filePath) {
@@ -23,7 +23,7 @@ function isAllowedBoundaryFile(filePath) {
 
 function getHeroUIImportPath(line) {
   const match = HEROUI_IMPORT_RE.exec(line)
-  return match?.[1] || match?.[2] || match?.[3] || null
+  return match?.slice(1).find(Boolean) || null
 }
 
 function findHeroUIImportViolations(files) {
