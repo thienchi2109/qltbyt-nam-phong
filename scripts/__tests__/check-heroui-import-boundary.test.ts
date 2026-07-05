@@ -72,6 +72,22 @@ describe("check-heroui-import-boundary", () => {
     expect(violations).toEqual([])
   })
 
+  it("ignores HeroUI import examples inside multi-line block comments", () => {
+    const violations = findHeroUIImportViolations([
+      {
+        path: "src/components/equipment/equipment-toolbar.tsx",
+        content: [
+          "/*",
+          'import { Button } from "@heroui/react"',
+          'const Modal = require("@heroui/react")',
+          "*/",
+        ].join("\n"),
+      },
+    ])
+
+    expect(violations).toEqual([])
+  })
+
   it("flags HeroUI imports after a closed block comment", () => {
     const violations = findHeroUIImportViolations([
       {

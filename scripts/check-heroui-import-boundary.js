@@ -26,8 +26,18 @@ function getHeroUIImportPath(line) {
   return match?.slice(1).find(Boolean) || null
 }
 
-function isCommentOnlyLine(line) {
+function isCommentOnlyLine(line, state) {
   const trimmedLine = line.trimStart()
+
+  if (state.isInsideBlockComment) {
+    const commentEndIndex = trimmedLine.indexOf("*/")
+    if (commentEndIndex === -1) {
+      return true
+    }
+
+    state.isInsideBlockComment = false
+    return trimmedLine.slice(commentEndIndex + 2).trim() === ""
+  }
 
   if (trimmedLine.startsWith("//")) {
     return true
@@ -35,7 +45,12 @@ function isCommentOnlyLine(line) {
 
   if (trimmedLine.startsWith("/*")) {
     const commentEndIndex = trimmedLine.indexOf("*/", 2)
-    return commentEndIndex === -1 || trimmedLine.slice(commentEndIndex + 2).trim() === ""
+    if (commentEndIndex === -1) {
+      state.isInsideBlockComment = true
+      return true
+    }
+
+    return trimmedLine.slice(commentEndIndex + 2).trim() === ""
   }
 
   if (trimmedLine.startsWith("*/")) {
@@ -51,10 +66,12 @@ function findHeroUIImportViolations(files) {
       return []
     }
 
+    const commentState = { isInsideBlockComment: false }
+
     return file.content
       .split("\n")
       .map((line, index) => {
-        if (isCommentOnlyLine(line)) {
+        if (isCommentOnlyLine(line, commentState)) {
           return null
         }
 
