@@ -353,7 +353,7 @@ describe("TransfersPagePanel grouped props", () => {
     expect(tenantSelector.compareDocumentPosition(search)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
-  it("uses the shared card mobile filter slot when Transfers filters render as a sheet", async () => {
+  it("uses the Repair-style compact row when Transfers filters render as a sheet", async () => {
     const onOpenFilterModal = vi.fn()
     renderPanel({
       activeFilterCount: 3,
@@ -361,13 +361,13 @@ describe("TransfersPagePanel grouped props", () => {
       onOpenFilterModal,
     })
 
-    const card = screen.getByTestId("list-filter-search-card")
-    expect(card).toHaveAttribute("data-compact-filters", "true")
-    expect(card).toHaveAttribute("data-has-mobile-filter", "true")
-    expect(screen.getByTestId("visible-filter-slot")).toContainElement(
-      screen.getByRole("button", { name: /Bộ lọc/ })
+    const row = screen.getByTestId("transfers-toolbar-compact-row")
+    const filterButton = within(row).getByRole("button", { name: "Bộ lọc" })
+    expect(row).toContainElement(
+      screen.getByRole("searchbox", {
+        name: "Tìm kiếm mã yêu cầu, thiết bị, lý do...",
+      })
     )
-    const filterButton = screen.getByRole("button", { name: /Bộ lọc/ })
     expect(filterButton).toHaveAttribute("aria-label", "Bộ lọc")
     expect(within(filterButton).getByText("3")).toBeInTheDocument()
     await userEvent.setup().click(filterButton)
@@ -380,18 +380,13 @@ describe("TransfersPagePanel grouped props", () => {
       permissions: { showFacilityFilter: true, isRegionalLeader: false },
     })
 
-    expect(screen.getByTestId("tenant-control-slot")).toContainElement(
+    expect(screen.getByTestId("transfers-toolbar-compact-tenant")).toContainElement(
       screen.getByTestId("tenant-selector")
     )
-    expect(screen.getByTestId("visible-filter-slot")).toContainElement(
-      screen.getByRole("button", { name: /Bộ lọc/ })
-    )
-    expect(
-      within(screen.getByTestId("visible-filter-slot")).queryByTestId("tenant-selector")
-    ).toBeNull()
-    expect(
-      within(screen.getByTestId("visible-filter-slot")).queryByTestId("transfer-status-filter")
-    ).toBeNull()
+    const row = screen.getByTestId("transfers-toolbar-compact-row")
+    expect(row).toContainElement(screen.getByRole("button", { name: "Bộ lọc" }))
+    expect(within(row).queryByTestId("tenant-selector")).toBeNull()
+    expect(within(row).queryByTestId("transfer-status-filter")).toBeNull()
   })
 
   it("keeps shared card search interactions wired to Transfers search state", async () => {

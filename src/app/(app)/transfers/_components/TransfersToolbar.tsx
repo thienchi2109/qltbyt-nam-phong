@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Filter, PlusCircle } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
+import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
+import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
@@ -81,12 +83,12 @@ export function TransfersToolbar({
     () => (
       <Button
         variant="outline"
+        size="sm"
         onClick={onOpenFilterModal}
-        className="h-11 shrink-0 gap-2 rounded-lg px-4 font-medium sm:h-9"
+        className="h-12 shrink-0 rounded-lg px-4 font-medium touch-target sm:h-9"
         aria-label="Bộ lọc"
       >
-        <Filter className="size-5 sm:size-4" />
-        <span className="hidden sm:inline">Bộ lọc</span>
+        <span>Bộ lọc</span>
         {activeFilterCount > 0 && (
           <Badge variant="secondary" className="h-5 px-1.5 text-xs sm:ml-1">
             {activeFilterCount}
@@ -152,6 +154,41 @@ export function TransfersToolbar({
     [filterChipsValue, onClearAllFilters, onRemoveFilter]
   )
 
+  if (compactFilters) {
+    return (
+      <div className="space-y-3" data-testid="transfers-toolbar-compact">
+        {tenantControl ? (
+          <div className="w-full" data-testid="transfers-toolbar-compact-tenant">
+            {tenantControl}
+          </div>
+        ) : null}
+
+        <div
+          className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3"
+          data-testid="transfers-toolbar-compact-row"
+        >
+          <SearchInput
+            placeholder="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
+            value={searchTerm}
+            onChange={onSearchTermChange}
+            showSearchIcon
+            className="h-12 rounded-lg bg-muted/70"
+            aria-label="Tìm kiếm mã yêu cầu, thiết bị, lý do..."
+          />
+          {filterButton}
+        </div>
+
+        <div data-testid="transfers-toolbar-filter-chips">{chips}</div>
+
+        {!isRegionalLeader ? (
+          <FloatingActionButton onClick={onOpenAddDialog} aria-label="Tạo yêu cầu mới">
+            <PlusCircle />
+          </FloatingActionButton>
+        ) : null}
+      </div>
+    )
+  }
+
   return (
     <ListFilterSearchCard
       title="Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình"
@@ -164,8 +201,6 @@ export function TransfersToolbar({
       tenantClassName="w-full md:w-auto"
       searchClassName="md:min-w-[360px] md:max-w-none xl:min-w-[520px]"
       filterControls={filterControls}
-      mobileFilterControl={filterButton}
-      compactFilters={compactFilters}
       actions={actions}
       chips={chips}
     />
