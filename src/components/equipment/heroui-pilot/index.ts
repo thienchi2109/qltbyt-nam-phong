@@ -5,14 +5,4 @@
  * #684 should import only the controls it needs from this module.
  */
 
-export {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  Dropdown,
-  DropdownItem,
-  DropdownMenu,
-  DropdownTrigger,
-  Input,
-} from "@heroui/react"
+export * from "./controls"
