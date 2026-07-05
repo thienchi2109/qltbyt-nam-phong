@@ -78,7 +78,7 @@ export function EquipmentHeroSearchInput({
   const inputRef = React.useRef<HTMLInputElement>(null)
   const hasClearButton = showClearButton && value.length > 0
   const paddingRight =
-    hasClearButton && endAddon ? "pr-16" : hasClearButton || endAddon ? "pr-9" : null
+    hasClearButton && endAddon ? "pr-20" : hasClearButton || endAddon ? "pr-9" : null
 
   const handleClear = React.useCallback(() => {
     onValueChange("")

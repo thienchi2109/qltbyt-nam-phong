@@ -158,7 +158,7 @@ export function EquipmentToolbarDesktopLayout({
             </EquipmentHeroCardTitle>
           ) : null}
           {description ? (
-            <EquipmentHeroCardDescription className="body-responsive-sm">
+            <EquipmentHeroCardDescription className="body-responsive-sm text-muted-foreground">
               {description}
             </EquipmentHeroCardDescription>
           ) : null}

@@ -62,7 +62,13 @@ function createBaseProps() {
 
 describe("EquipmentToolbar HeroUI top controls", () => {
   it("renders the desktop shell and search through the Equipments HeroUI pilot", () => {
-    render(<EquipmentToolbar {...createBaseProps()} />)
+    render(
+      <EquipmentToolbar
+        {...createBaseProps()}
+        title="Danh mục thiết bị"
+        description="Quản lý danh sách các trang thiết bị y tế."
+      />
+    )
 
     const shell = screen.getByTestId("equipment-heroui-top-controls-shell")
     const searchControl = screen.getByTestId("equipment-heroui-search-control")
@@ -71,6 +77,9 @@ describe("EquipmentToolbar HeroUI top controls", () => {
     expect(shell).toContainElement(searchControl)
     expect(searchControl).toContainElement(search)
     expect(search).toHaveAttribute("type", "search")
+    expect(screen.getByText("Quản lý danh sách các trang thiết bị y tế.")).toHaveClass(
+      "text-muted-foreground"
+    )
     expect(screen.getByTitle("Quét mã QR")).toContainElement(
       screen.getByRole("button", { name: "Quét mã QR" })
     )
@@ -89,6 +98,7 @@ describe("EquipmentToolbar HeroUI top controls", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Xóa tìm kiếm" }))
 
+    expect(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })).toHaveClass("pr-20")
     expect(onSearchChange).toHaveBeenCalledWith("")
   })
 
