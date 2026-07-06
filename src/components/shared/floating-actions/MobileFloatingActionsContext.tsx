@@ -55,6 +55,16 @@ function createStableMobileFloatingActions(
   }))
 }
 
+function ownsCurrentMobileFloatingActions(
+  currentActions: readonly MobileFloatingActionDescriptor[],
+  registeredActionIds: readonly string[]
+) {
+  return (
+    currentActions.length === registeredActionIds.length &&
+    currentActions.every((currentAction, index) => currentAction.id === registeredActionIds[index])
+  )
+}
+
 /** Provides the app-shell-local mobile page action registration state. */
 export function MobileFloatingActionsProvider({ children }: { children: React.ReactNode }) {
   const [pageActions, setPageActions] = React.useState<readonly MobileFloatingActionDescriptor[]>(
@@ -112,13 +122,9 @@ export function usePageFloatingAction(action: MobileFloatingActionRegistration) 
           return currentActions
         }
 
-        const ownsCurrentActions =
-          currentActions.length === registeredActionIds.length &&
-          currentActions.every(
-            (currentAction, index) => currentAction.id === registeredActionIds[index]
-          )
-
-        return ownsCurrentActions ? [] : currentActions
+        return ownsCurrentMobileFloatingActions(currentActions, registeredActionIds)
+          ? []
+          : currentActions
       })
     }
   }, [setPageActions])
