@@ -16,8 +16,8 @@
 "use client"
 
 import * as React from "react"
+import { Input as HeroInput } from "@heroui/react/input"
 import { Search, X } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 export interface SearchInputProps extends Omit<React.ComponentProps<"input">, "onChange" | "type"> {
@@ -29,6 +29,7 @@ export interface SearchInputProps extends Omit<React.ComponentProps<"input">, "o
   endAddon?: React.ReactNode
 }
 
+/** Shared controlled search input with optional search icon, clear action, and end addon. */
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
   (
     {
@@ -97,7 +98,7 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         ) : null}
 
         {/* Input field */}
-        <Input
+        <HeroInput
           ref={inputRef}
           type="search"
           value={value}

@@ -14,6 +14,10 @@ describe("check-heroui-import-boundary", () => {
         content: 'import { Dropdown } from "@heroui/react"\n',
       },
       {
+        path: "src/components/shared/SearchInput.tsx",
+        content: 'import { Input } from "@heroui/react/input"\n',
+      },
+      {
         path: "src/components/equipment/equipment-toolbar.tsx",
         content: 'import { Button } from "@heroui/react"\n',
       },
