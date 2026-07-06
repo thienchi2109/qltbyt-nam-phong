@@ -1,4 +1,10 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode } from "react"
+import type {
+  ButtonHTMLAttributes,
+  HTMLAttributes,
+  InputHTMLAttributes,
+  MouseEvent as ReactMouseEvent,
+  ReactNode,
+} from "react"
 import "@testing-library/jest-dom"
 import { fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -33,7 +39,7 @@ vi.mock("@heroui/react/button", async () => {
         {
           ...props,
           "data-testid": "heroui-button",
-          onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+          onClick: (event: ReactMouseEvent<HTMLButtonElement>) => {
             onPress?.()
             onClick?.(event)
           },
