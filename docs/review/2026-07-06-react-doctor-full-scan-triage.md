@@ -16,7 +16,7 @@ Report link:
 https://react.doctor/share?p=nextn&s=47&e=27&w=221&f=119
 ```
 
-## Snapshot
+## Baseline Snapshot
 
 | Metric                 |    Value |
 | ---------------------- | -------: |
@@ -45,6 +45,46 @@ Severity breakdown:
 | Error    |    27 |     27 |    0 |
 | Warning  |   221 |    218 |    3 |
 
+## Remediation Update - 2026-07-06
+
+This report is the saved initial full-scan triage result:
+
+```text
+docs/review/2026-07-06-react-doctor-full-scan-triage.md
+```
+
+Completed fixes since the baseline scan:
+
+| Commit     | Scope                            | Result                                                                                                            | Verification                                                                                                           |
+| ---------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `cfe75fdc` | React correctness quick fixes    | Cleared `jsx-key` and `query-destructure-result`; reduced non-DB Bug errors by 5.                                 | Focused component tests, `typecheck`, React Doctor diff scan.                                                          |
+| `e3b3c6c7` | Dependency hygiene               | Removed the unused Morph MCP dependency from the package surface.                                                 | Import/reference search, package install consistency, React Doctor follow-up scan.                                     |
+| `c44930db` | Vitest update and test transform | Updated `vitest`/`@vitest/ui` to `4.1.10`; configured Vite 8/OXC JSX transform; cleared remaining low-supply hit. | Changed-file Prettier, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`, focused Vitest, React Doctor diff scan. |
+
+Current full-scan summary after those fixes:
+
+| Metric         |    Value | Delta vs baseline |
+| -------------- | -------: | ----------------: |
+| Score          | 49 / 100 |                +2 |
+| Total issues   |      241 |                -7 |
+| Errors         |       20 |                -7 |
+| Warnings       |      221 |                 0 |
+| Source issues  |      238 |                -7 |
+| Test issues    |        3 |                 0 |
+| Scan exit code |        1 |                 0 |
+
+Current category breakdown:
+
+| Category        | Count | Delta vs baseline |
+| --------------- | ----: | ----------------: |
+| Maintainability |   171 |                 0 |
+| Bugs            |    31 |                -5 |
+| Security        |    28 |                -2 |
+| Performance     |     9 |                 0 |
+| Accessibility   |     2 |                 0 |
+
+Current remaining error-level findings are all `supabase-table-missing-rls` and must stay on the separate Supabase MCP audit track.
+
 ## Priority Triage
 
 ### P0 - Verify Before Fixing
@@ -55,8 +95,8 @@ These are error-level findings or security findings where the correct action dep
 | ----------------------------------------------- | ----: | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Security / supabase-table-missing-rls / error` |    20 | `supabase/migrations/20241220_create_luan_chuyen_tables.sql`, `supabase/migrations/20241220_create_nhan_vien_table.sql` | Needs live Supabase MCP inspection before edits. Some old tables may be intentionally RPC-only or later protected by subsequent migrations. Do not bulk-enable policies from this report alone. |
 | `Security / low-supply-chain-score / error`     |     0 | None                                                                                                                    | Cleared by removing the unused runtime dependency and updating `vitest`/`@vitest/ui`.                                                                                                           |
-| `Bugs / jsx-key / error`                        |     3 | `EquipmentDetailDialog/index.tsx:63`, `export-report-dialog.tsx:59`, `toaster.tsx:20`                                   | Likely straightforward React correctness fixes: ensure `key` is passed outside spread props. Should be handled with focused tests or smoke checks.                                              |
-| `Bugs / query-destructure-result / error`       |     2 | `tenants-management.tsx:64`, `ReturnLocationDialog.tsx:84`                                                              | Check if full query object identity is passed/reused in render paths. Likely low-risk refactor to destructure only used fields.                                                                 |
+| `Bugs / jsx-key / error`                        |     0 | None                                                                                                                    | Fixed in `cfe75fdc`.                                                                                                                                                                            |
+| `Bugs / query-destructure-result / error`       |     0 | None                                                                                                                    | Fixed in `cfe75fdc`.                                                                                                                                                                            |
 
 ### P1 - User-Facing Correctness And Security Warnings
 
@@ -102,9 +142,9 @@ ROI ranking uses four criteria: likely issue-count reduction, low blast radius, 
 
 | Rank | Batch                                                                                                                                   | Issues | Risk        | Why this is high ROI                                                                                                                                | Verification                                                                       |
 | ---: | --------------------------------------------------------------------------------------------------------------------------------------- | -----: | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-|    1 | React correctness quick fixes: `jsx-key`, `query-destructure-result`                                                                    |      5 | Low         | Removes all non-DB error-level React findings. Fixes are local and should not require design changes.                                               | Focused component tests where present, `typecheck`, React Doctor diff scan.        |
+|    1 | React correctness quick fixes: `jsx-key`, `query-destructure-result` - completed                                                        |      0 | Low         | Completed in `cfe75fdc`; removed 5 non-DB Bug errors.                                                                                               | Focused component tests, `typecheck`, React Doctor diff scan.                      |
 |    2 | Module-scope hoists: `prefer-module-scope-pure-function`, `prefer-module-scope-static-value`, `rerender-lazy-ref-init`, `js-hoist-intl` |     28 | Low         | Mostly mechanical moves of pure helpers/static values. Good issue reduction with small runtime risk when values are truly local-state independent.  | `typecheck`, focused tests for touched components, React Doctor diff scan.         |
-|    3 | Dependency hygiene: `unused-dev-dependency`, verified `unused-dependency`, `low-supply-chain-score` for `vitest`                        |     10 | Low-Medium  | Can reduce package/security noise quickly. Must confirm dynamic/service-worker usage before removing runtime deps like `firebase`.                  | Import search, build/typecheck, dependency install sanity, React Doctor diff scan. |
+|    3 | Dependency hygiene: remaining `unused-dev-dependency` and verified `unused-dependency`                                                  |      8 | Low-Medium  | Low-supply findings are cleared; remaining package cleanup still needs import/runtime checks, especially for dynamic or service-worker usage.       | Import search, build/typecheck, dependency install sanity, React Doctor diff scan. |
 |    4 | Print/template HTML review: `dangerous-html-sink`                                                                                       |      6 | Medium      | Security ROI is high, count is modest. Requires source-by-source check to avoid breaking print/export flows.                                        | Targeted escaping/sanitization tests, manual print/export smoke checks.            |
 |    5 | Hook behavior cleanup: `exhaustive-deps`, `prefer-use-effect-event`, selected `no-event-handler`                                        |     24 | Medium      | Good correctness value, but render timing/subscription changes can regress UI behavior. Start with repeated patterns, not a sweeping rewrite.       | Focused page tests, interaction smoke tests, React Doctor diff scan.               |
 |    6 | Direct import/perf small fixes: `no-barrel-import`, `async-defer-await`, `js-flatmap-filter`                                            |      4 | Low         | Easy cleanup, but lower score impact than ranks 1-3. Bundle/runtime benefit is incremental.                                                         | `typecheck`, focused smoke check.                                                  |
@@ -114,20 +154,20 @@ ROI ranking uses four criteria: likely issue-count reduction, low blast radius, 
 
 ### Recommended First Three PRs
 
-1. **PR 1: React Doctor error cleanup outside DB**
+1. **PR 1: React Doctor error cleanup outside DB - completed**
    - Scope: `jsx-key` and `query-destructure-result`.
-   - Expected reduction: 5 errors.
-   - Reason: highest confidence improvement because it removes real React error findings without touching DB/security policy.
+   - Result: fixed in `cfe75fdc`; current full scan no longer reports either rule.
+   - Reason: removed real React error findings without touching DB/security policy.
 
 2. **PR 2: Mechanical render-cost cleanup**
    - Scope: module-scope pure functions/static values, lazy ref initialization, `Intl.NumberFormat` hoist.
    - Expected reduction: up to 28 warnings.
    - Reason: best warning-count reduction with low behavior risk if each hoist is verified as state-independent.
 
-3. **PR 3: Dependency/security noise cleanup**
-   - Scope: unused dev dependencies, validated unused runtime dependencies, `vitest` low-supply-chain/vulnerability axis.
-   - Expected reduction: up to 10 findings.
-   - Reason: reduces security/maintenance noise and package surface before tackling riskier app logic.
+3. **PR 3: Dependency/security noise cleanup - partially completed**
+   - Completed: removed Morph MCP dependency in `e3b3c6c7`; updated `vitest`/`@vitest/ui` in `c44930db`.
+   - Remaining scope: unused dev dependencies and verified unused runtime dependencies.
+   - Reason: low-supply-chain noise is cleared, but package-surface cleanup still needs per-package usage checks.
 
 ### Defer From Quick-Win Track
 
@@ -139,4 +179,5 @@ ROI ranking uses four criteria: likely issue-count reduction, low blast radius, 
 
 - The first scan included `.worktrees` and reported 295 issues with score 43. That result was treated as noisy.
 - After updating React Doctor usage and ignoring `.worktrees/**`, the scan reports 248 issues with score 47.
-- React Doctor exits non-zero for the verbose scan because error-level diagnostics remain.
+- After completing the first React correctness and low-supply-chain cleanup, the current full scan reports 241 issues with score 49.
+- React Doctor exits non-zero for the verbose scan because the remaining 20 error-level diagnostics are the Supabase RLS audit items.
