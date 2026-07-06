@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
@@ -70,6 +72,21 @@ describe("ListFilterSearchCard", () => {
 
     expect(screen.getByTestId("selection-actions")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Tùy chọn" })).toBeInTheDocument()
+  })
+
+  it("keeps optional addon and chip slots stable", () => {
+    render(
+      <ListFilterSearchCard
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+        searchEndAddon={<button type="button">Quét mã</button>}
+        chips={<div data-testid="active-filter-chips">Đang lọc</div>}
+      />
+    )
+
+    expect(screen.getByRole("button", { name: "Quét mã" })).toBeInTheDocument()
+    expect(screen.getByTestId("active-filter-chips")).toBeInTheDocument()
   })
 
   it("supports filter-only sections without rendering a search input", () => {
@@ -147,5 +164,15 @@ describe("ListFilterSearchCard", () => {
     )
 
     expect(screen.getByRole("searchbox", { name: "Chọn cơ sở để tìm kiếm..." })).toBeDisabled()
+  })
+
+  it("uses HeroUI instead of the shadcn card backing", () => {
+    const source = readFileSync(
+      join(process.cwd(), "src/components/shared/ListFilterSearchCard.tsx"),
+      "utf8"
+    )
+
+    expect(source).toContain("@heroui/react")
+    expect(source).not.toContain("@/components/ui/card")
   })
 })

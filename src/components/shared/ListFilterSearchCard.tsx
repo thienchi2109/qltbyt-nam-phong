@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
+import { Card as HeroCard } from "@heroui/react/card"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { cn } from "@/lib/utils"
 
@@ -74,12 +74,12 @@ export function ListFilterSearchCard({
 
   const header =
     !title && !description ? null : surface === "card" ? (
-      <CardHeader className="gap-y-1 pb-3">
-        {title ? <CardTitle className="heading-responsive-h2">{title}</CardTitle> : null}
+      <HeroCard.Header className="gap-y-1 pb-3">
+        {title ? <HeroCard.Title className="heading-responsive-h2">{title}</HeroCard.Title> : null}
         {description ? (
-          <CardDescription className="body-responsive-sm">{description}</CardDescription>
+          <HeroCard.Description className="body-responsive-sm">{description}</HeroCard.Description>
         ) : null}
-      </CardHeader>
+      </HeroCard.Header>
     ) : (
       <div className="space-y-1 pb-3">
         {title ? <div className="heading-responsive-h2 font-semibold">{title}</div> : null}
@@ -150,9 +150,9 @@ export function ListFilterSearchCard({
   }
 
   return (
-    <Card className={className}>
+    <HeroCard className={className}>
       {header}
-      <CardContent className="px-4 pb-4 md:px-6">{content}</CardContent>
-    </Card>
+      <HeroCard.Content className="px-4 pb-4 md:px-6">{content}</HeroCard.Content>
+    </HeroCard>
   )
 }
