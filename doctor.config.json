@@ -1,6 +1,7 @@
 {
   "ignore": {
     "files": [
+      ".worktrees/**",
       "src/app/(app)/repair-requests/_components/RepairRequestsPageClient.tsx",
       "public/firebase-messaging-sw.js",
       "scripts/device-quota/backfill-category-embeddings.ts",
