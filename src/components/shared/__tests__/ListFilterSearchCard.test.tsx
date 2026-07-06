@@ -72,6 +72,21 @@ describe("ListFilterSearchCard", () => {
     expect(screen.getByRole("button", { name: "Tùy chọn" })).toBeInTheDocument()
   })
 
+  it("keeps optional addon and chip slots stable", () => {
+    render(
+      <ListFilterSearchCard
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+        searchEndAddon={<button type="button">Quét mã</button>}
+        chips={<div data-testid="active-filter-chips">Đang lọc</div>}
+      />
+    )
+
+    expect(screen.getByRole("button", { name: "Quét mã" })).toBeInTheDocument()
+    expect(screen.getByTestId("active-filter-chips")).toBeInTheDocument()
+  })
+
   it("supports filter-only sections without rendering a search input", () => {
     render(
       <ListFilterSearchCard

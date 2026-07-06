@@ -10,7 +10,10 @@ const ALLOWED_BOUNDARY_PREFIXES = [
   "src/components/equipment/heroui-pilot/",
   "src/components/shared/floating-actions/",
 ]
-const ALLOWED_BOUNDARY_FILES = ["src/components/shared/SearchInput.tsx"]
+const ALLOWED_BOUNDARY_FILES = [
+  "src/components/shared/SearchInput.tsx",
+  "src/components/shared/ListFilterSearchCard.tsx",
+]
 
 function normalizePath(filePath) {
   return filePath.split(path.sep).join("/")
