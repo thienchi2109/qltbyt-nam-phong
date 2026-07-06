@@ -98,21 +98,26 @@ export function RealtimeProvider({ children }: RealtimeProviderProps) {
       const timeout = setTimeout(async () => {
         realtimeLog(`[Realtime] Invalidating and refetching queries for:`, queryKey)
 
-        // Invalidate and force refetch
-        await queryClient.invalidateQueries({
-          queryKey,
-          refetchType: "active", // Only refetch active queries
-        })
+        try {
+          // Invalidate and force refetch
+          await queryClient.invalidateQueries({
+            queryKey,
+            refetchType: "active", // Only refetch active queries
+          })
 
-        // Also trigger refetch for good measure
-        queryClient.refetchQueries({
-          queryKey,
-          type: "active",
-        })
+          // Also trigger refetch for good measure
+          await queryClient.refetchQueries({
+            queryKey,
+            type: "active",
+          })
 
-        invalidationTimeouts.delete(key)
-        setLastUpdate(new Date())
-        realtimeLog(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
+          invalidationTimeouts.delete(key)
+          setLastUpdate(new Date())
+          realtimeLog(`[Realtime] Cache invalidated and refetched successfully for:`, queryKey)
+        } catch (error) {
+          invalidationTimeouts.delete(key)
+          realtimeWarn(`[Realtime] Failed to invalidate and refetch queries for:`, queryKey, error)
+        }
       }, delay)
 
       invalidationTimeouts.set(key, timeout)
