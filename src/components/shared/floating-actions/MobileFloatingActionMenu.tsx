@@ -34,6 +34,12 @@ export function MobileFloatingActionMenu({
     return null
   }
 
+  const handleAction = (key: React.Key) => {
+    const targetAction = actions.find((action) => action.id === key)
+
+    targetAction?.onSelect()
+  }
+
   return (
     <Dropdown>
       <DropdownTrigger
@@ -47,14 +53,9 @@ export function MobileFloatingActionMenu({
         <MoreHorizontal aria-hidden="true" />
       </DropdownTrigger>
       <DropdownPopover className="z-[1001] min-w-56" placement="top end">
-        <DropdownMenu aria-label={ariaLabel}>
+        <DropdownMenu aria-label={ariaLabel} onAction={handleAction}>
           {actions.map((action) => (
-            <DropdownItem
-              key={action.id}
-              id={action.id}
-              onAction={action.onSelect}
-              textValue={action.label}
-            >
+            <DropdownItem key={action.id} id={action.id} textValue={action.label}>
               <span className="flex items-center gap-2">
                 <span className="flex size-5 items-center justify-center [&_svg]:size-4">
                   {action.icon}

@@ -31,16 +31,34 @@ vi.mock("@heroui/react", () => ({
   DropdownMenu: ({
     children,
     "aria-label": ariaLabel,
+    onAction,
   }: {
     children: React.ReactNode
     "aria-label"?: string
+    onAction?: (key: React.Key) => void
   }) => (
     <div aria-label={ariaLabel} role="menu">
-      {children}
+      {React.Children.map(children, (child) => {
+        if (!React.isValidElement<{ id?: string }>(child)) {
+          return child
+        }
+
+        return React.cloneElement(child, {
+          onSelectKey: onAction,
+        } as Partial<{ onSelectKey: (key: React.Key) => void }>)
+      })}
     </div>
   ),
-  DropdownItem: ({ children, onAction }: { children: React.ReactNode; onAction?: () => void }) => (
-    <button type="button" role="menuitem" onClick={onAction}>
+  DropdownItem: ({
+    children,
+    id,
+    onSelectKey,
+  }: {
+    children: React.ReactNode
+    id?: string
+    onSelectKey?: (key: React.Key) => void
+  }) => (
+    <button type="button" role="menuitem" onClick={() => id && onSelectKey?.(id)}>
       {children}
     </button>
   ),
