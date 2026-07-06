@@ -13,6 +13,7 @@ const ALLOWED_BOUNDARY_PREFIXES = [
 const ALLOWED_BOUNDARY_FILES = [
   "src/components/shared/SearchInput.tsx",
   "src/components/shared/ListFilterSearchCard.tsx",
+  "src/components/shared/table-filters/FacetedMultiSelectFilter.tsx",
 ]
 
 function normalizePath(filePath) {

@@ -13,13 +13,13 @@
 
 import * as React from "react"
 import type { Column } from "@tanstack/react-table"
+import { Badge as HeroBadge } from "@heroui/react/badge"
+import { Button as HeroButton } from "@heroui/react/button"
+import { Input as HeroInput } from "@heroui/react/input"
+import { Popover as HeroPopover } from "@heroui/react/popover"
 import { Check, Filter, Search } from "lucide-react"
 import { includesNormalizedSearch, normalizeSearchText } from "@/lib/search-normalize"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 const DEFAULT_SEARCH_DEBOUNCE_MS = 300
 const DEFAULT_SEARCH_PLACEHOLDER = "Tìm lựa chọn..."
@@ -169,9 +169,9 @@ export function FacetedMultiSelectFilter<TData, TValue>({
       : "hover:border-primary/30"
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <Button
+    <HeroPopover isOpen={open} onOpenChange={handleOpenChange}>
+      <HeroPopover.Trigger>
+        <HeroButton
           type="button"
           variant="outline"
           size="sm"
@@ -191,112 +191,115 @@ export function FacetedMultiSelectFilter<TData, TValue>({
             ) : null}
             <span className="truncate font-medium">{title}</span>
             {selectedValues.size > 0 && (
-              <Badge
+              <HeroBadge
                 variant="secondary"
+                size="sm"
                 className="h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
               >
                 {selectedValues.size}
-              </Badge>
+              </HeroBadge>
             )}
           </div>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
+        </HeroButton>
+      </HeroPopover.Trigger>
+      <HeroPopover.Content
         className={cn(
           "w-[min(420px,calc(100vw-2rem))] max-h-[440px] overflow-hidden rounded-xl border border-slate-200 p-0 shadow-lg",
           contentClassName
         )}
-        align="start"
+        placement="bottom start"
       >
-        {/* Header */}
-        <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-2">
-            <Filter className="size-4 text-primary" />
-            <span className="font-semibold text-sm text-slate-900">{title}</span>
-          </div>
-        </div>
-
-        {searchable ? (
-          <div className="border-b border-slate-100 p-2">
-            <div className="relative">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <Input
-                ref={searchInputRef}
-                type="search"
-                value={optionSearch}
-                onChange={(event) => setOptionSearch(event.target.value)}
-                onKeyDown={handleOptionSearchKeyDown}
-                aria-label={`Tìm lựa chọn ${title ?? "bộ lọc"}`}
-                placeholder={searchPlaceholder}
-                className="h-9 pl-9"
-              />
+        <HeroPopover.Dialog className="outline-none">
+          {/* Header */}
+          <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex items-center gap-2">
+              <Filter className="size-4 text-primary" />
+              <span className="font-semibold text-sm text-slate-900">{title}</span>
             </div>
           </div>
-        ) : null}
 
-        {/* Options List */}
-        <div className="max-h-[300px] overflow-y-auto py-1">
-          {visibleOptions.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-              {emptySearchMessage}
+          {searchable ? (
+            <div className="border-b border-slate-100 p-2">
+              <div className="relative">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  aria-hidden="true"
+                />
+                <HeroInput
+                  ref={searchInputRef}
+                  type="search"
+                  value={optionSearch}
+                  onChange={(event) => setOptionSearch(event.target.value)}
+                  onKeyDown={handleOptionSearchKeyDown}
+                  aria-label={`Tìm lựa chọn ${title ?? "bộ lọc"}`}
+                  placeholder={searchPlaceholder}
+                  className="h-9 pl-9"
+                />
+              </div>
             </div>
           ) : null}
-          {visibleOptions.map((option, index) => {
-            const isSelected = selectedValues.has(option.value)
-            return (
-              <button
-                ref={index === 0 ? firstOptionRef : undefined}
-                type="button"
-                key={option.value}
-                onClick={() => handleOptionToggle(option.value)}
-                aria-pressed={isSelected}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors",
-                  "hover:bg-slate-50 active:bg-slate-100",
-                  isSelected && "bg-primary/5 hover:bg-primary/10"
-                )}
-              >
-                <div
-                  className={cn(
-                    "flex items-center justify-center size-5 rounded border-2 transition-all shrink-0",
-                    isSelected
-                      ? "bg-primary border-primary"
-                      : "border-slate-300 hover:border-primary/50"
-                  )}
-                >
-                  {isSelected && <Check className="size-3.5 text-white" strokeWidth={3} />}
-                </div>
-                <span
-                  className={cn(
-                    "truncate text-left flex-1",
-                    isSelected ? "font-medium text-slate-900" : "text-slate-600"
-                  )}
-                >
-                  {option.label}
-                </span>
-              </button>
-            )
-          })}
-        </div>
 
-        {/* Footer — Clear button */}
-        {selectedValues.size > 0 && (
-          <div className="border-t border-slate-100 p-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClear}
-              className="w-full h-8 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            >
-              Xóa bộ lọc
-            </Button>
+          {/* Options List */}
+          <div className="max-h-[300px] overflow-y-auto py-1">
+            {visibleOptions.length === 0 ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                {emptySearchMessage}
+              </div>
+            ) : null}
+            {visibleOptions.map((option, index) => {
+              const isSelected = selectedValues.has(option.value)
+              return (
+                <button
+                  ref={index === 0 ? firstOptionRef : undefined}
+                  type="button"
+                  key={option.value}
+                  onClick={() => handleOptionToggle(option.value)}
+                  aria-pressed={isSelected}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors",
+                    "hover:bg-slate-50 active:bg-slate-100",
+                    isSelected && "bg-primary/5 hover:bg-primary/10"
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex items-center justify-center size-5 rounded border-2 transition-all shrink-0",
+                      isSelected
+                        ? "bg-primary border-primary"
+                        : "border-slate-300 hover:border-primary/50"
+                    )}
+                  >
+                    {isSelected && <Check className="size-3.5 text-white" strokeWidth={3} />}
+                  </div>
+                  <span
+                    className={cn(
+                      "truncate text-left flex-1",
+                      isSelected ? "font-medium text-slate-900" : "text-slate-600"
+                    )}
+                  >
+                    {option.label}
+                  </span>
+                </button>
+              )
+            })}
           </div>
-        )}
-      </PopoverContent>
-    </Popover>
+
+          {/* Footer — Clear button */}
+          {selectedValues.size > 0 && (
+            <div className="border-t border-slate-100 p-2">
+              <HeroButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                onPress={handleClear}
+                className="w-full h-8 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              >
+                Xóa bộ lọc
+              </HeroButton>
+            </div>
+          )}
+        </HeroPopover.Dialog>
+      </HeroPopover.Content>
+    </HeroPopover>
   )
 }

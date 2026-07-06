@@ -11,74 +11,7 @@ import {
   type ColumnFiltersState,
   type ColumnDef,
 } from "@tanstack/react-table"
-
-type PopoverStateProps = {
-  open?: boolean
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>
-}
-
-type PopoverTriggerProps = PopoverStateProps & {
-  asChild?: boolean
-  children: React.ReactNode
-  onClick?: (...args: unknown[]) => void
-} & Record<string, unknown>
-
-type PopoverContentProps = PopoverStateProps & {
-  children: React.ReactNode
-} & React.HTMLAttributes<HTMLDivElement>
-
-/**
- * Mock radix Popover so content renders inline (no portal / no jsdom issues).
- */
-vi.mock("@/components/ui/popover", () => {
-  const Trigger = ({ children, asChild, open, setOpen, ...rest }: PopoverTriggerProps) => {
-    const togglePopover = () => setOpen?.(!open)
-    if (asChild && React.isValidElement(children)) {
-      const childElement = children as React.ReactElement<{
-        onClick?: (...args: unknown[]) => void
-      }>
-      return React.cloneElement(childElement, {
-        ...rest,
-        onClick: (...args: unknown[]) => {
-          togglePopover()
-          childElement.props.onClick?.(...args)
-        },
-      })
-    }
-    return (
-      <button {...rest} onClick={togglePopover}>
-        {children}
-      </button>
-    )
-  }
-
-  return {
-    Popover: ({ children }: { children: React.ReactNode }) => {
-      const [open, setOpen] = React.useState(false)
-      return (
-        <div data-testid="popover">
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child as React.ReactElement<PopoverStateProps>, {
-                  open,
-                  setOpen,
-                })
-              : child
-          )}
-        </div>
-      )
-    },
-    PopoverTrigger: Trigger,
-    PopoverContent: ({ children, open, setOpen: _setOpen, ...rest }: PopoverContentProps) => {
-      if (!open) return null
-      return (
-        <dialog data-testid="popover-content" open {...rest}>
-          {children}
-        </dialog>
-      )
-    },
-  }
-})
+import "./FacetedMultiSelectFilter.test-utils"
 
 import { FacetedMultiSelectFilter } from "../FacetedMultiSelectFilter"
 

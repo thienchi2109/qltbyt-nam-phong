@@ -1,0 +1,96 @@
+import * as React from "react"
+import { vi } from "vitest"
+
+type PopoverStateProps = {
+  open?: boolean
+  setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+}
+
+type PopoverTriggerProps = PopoverStateProps & {
+  children: React.ReactNode
+  onClick?: (...args: unknown[]) => void
+} & Record<string, unknown>
+
+type PopoverContentProps = PopoverStateProps & {
+  children: React.ReactNode
+} & React.HTMLAttributes<HTMLDivElement>
+
+vi.mock("@heroui/react/input", () => ({
+  Input: React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+    (props, ref) => <input {...props} ref={ref} />
+  ),
+}))
+
+/**
+ * Mock HeroUI Popover so content renders inline (no portal / no jsdom issues).
+ */
+vi.mock("@heroui/react/popover", () => {
+  const Trigger = ({ children, open, setOpen, ...rest }: PopoverTriggerProps) => {
+    const togglePopover = () => setOpen?.(!open)
+    if (React.isValidElement(children)) {
+      const childElement = children as React.ReactElement<{
+        onClick?: (...args: unknown[]) => void
+      }>
+      return React.cloneElement(childElement, {
+        ...rest,
+        onClick: (...args: unknown[]) => {
+          togglePopover()
+          childElement.props.onClick?.(...args)
+        },
+      })
+    }
+    return (
+      <button {...rest} onClick={togglePopover}>
+        {children}
+      </button>
+    )
+  }
+
+  const Popover = Object.assign(
+    ({
+      children,
+      isOpen,
+      onOpenChange,
+    }: {
+      children: React.ReactNode
+      isOpen?: boolean
+      onOpenChange?: (open: boolean) => void
+    }) => {
+      const [open, setOpen] = React.useState(false)
+      const renderedOpen = isOpen ?? open
+      const setRenderedOpen = (nextOpen: boolean) => {
+        setOpen(nextOpen)
+        onOpenChange?.(nextOpen)
+      }
+
+      return (
+        <div data-testid="popover">
+          {React.Children.map(children, (child) =>
+            React.isValidElement(child)
+              ? React.cloneElement(child as React.ReactElement<PopoverStateProps>, {
+                  open: renderedOpen,
+                  setOpen: setRenderedOpen,
+                })
+              : child
+          )}
+        </div>
+      )
+    },
+    {
+      Trigger,
+      Content: ({ children, open, setOpen: _setOpen, ...rest }: PopoverContentProps) => {
+        if (!open) return null
+        return (
+          <dialog data-testid="popover-content" open {...rest}>
+            {children}
+          </dialog>
+        )
+      },
+      Dialog: ({ children, ...rest }: React.HTMLAttributes<HTMLDivElement>) => (
+        <div {...rest}>{children}</div>
+      ),
+    }
+  )
+
+  return { Popover }
+})
