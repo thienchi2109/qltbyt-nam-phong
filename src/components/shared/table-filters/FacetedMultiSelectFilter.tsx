@@ -15,11 +15,11 @@ import * as React from "react"
 import type { Column } from "@tanstack/react-table"
 import { Badge as HeroBadge } from "@heroui/react/badge"
 import { Button as HeroButton } from "@heroui/react/button"
-import { Input as HeroInput } from "@heroui/react/input"
 import { Popover as HeroPopover } from "@heroui/react/popover"
-import { Check, Filter, Search } from "lucide-react"
+import { Check, Filter } from "lucide-react"
 import { includesNormalizedSearch, normalizeSearchText } from "@/lib/search-normalize"
 import { cn } from "@/lib/utils"
+import { SearchInput } from "@/components/shared/SearchInput"
 
 const DEFAULT_SEARCH_DEBOUNCE_MS = 300
 const DEFAULT_SEARCH_PLACEHOLDER = "Tìm lựa chọn..."
@@ -220,22 +220,16 @@ export function FacetedMultiSelectFilter<TData, TValue>({
 
           {searchable ? (
             <div className="border-b border-slate-100 p-2">
-              <div className="relative">
-                <Search
-                  className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <HeroInput
-                  ref={searchInputRef}
-                  type="search"
-                  value={optionSearch}
-                  onChange={(event) => setOptionSearch(event.target.value)}
-                  onKeyDown={handleOptionSearchKeyDown}
-                  aria-label={`Tìm lựa chọn ${title ?? "bộ lọc"}`}
-                  placeholder={searchPlaceholder}
-                  className="h-9 border border-slate-300 bg-white pl-9 shadow-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                />
-              </div>
+              <SearchInput
+                ref={searchInputRef}
+                value={optionSearch}
+                onChange={setOptionSearch}
+                onKeyDown={handleOptionSearchKeyDown}
+                aria-label={`Tìm lựa chọn ${title ?? "bộ lọc"}`}
+                placeholder={searchPlaceholder}
+                showClearButton={false}
+                className="h-9"
+              />
             </div>
           ) : null}
 

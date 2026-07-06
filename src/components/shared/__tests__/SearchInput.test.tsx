@@ -103,6 +103,18 @@ describe("SearchInput", () => {
     expect(screen.queryByRole("button", { name: "Xóa tìm kiếm" })).not.toBeInTheDocument()
   })
 
+  it("keeps the outer search field visually separated from filter containers on focus", () => {
+    render(<SearchInput aria-label="Tìm kiếm" value="" onChange={vi.fn()} />)
+
+    const input = screen.getByRole("searchbox", { name: "Tìm kiếm" })
+
+    expect(input).toHaveClass("border-slate-300")
+    expect(input).toHaveClass("bg-white")
+    expect(input).toHaveClass("focus-visible:border-primary")
+    expect(input).toHaveClass("focus-visible:ring-2")
+    expect(input).toHaveClass("focus-visible:ring-primary/20")
+  })
+
   it("uses HeroUI instead of the shadcn input backing", () => {
     const source = readFileSync(
       join(process.cwd(), "src/components/shared/SearchInput.tsx"),
