@@ -38,14 +38,21 @@ function areSameMobileFloatingActions(
     previousActions.length === nextActions.length &&
     previousActions.every((previousAction, index) => {
       const nextAction = nextActions[index]
-      return (
-        previousAction.id === nextAction.id &&
-        previousAction.label === nextAction.label &&
-        previousAction.icon === nextAction.icon &&
-        previousAction.onSelect === nextAction.onSelect
-      )
+      return previousAction.id === nextAction.id && previousAction.label === nextAction.label
     })
   )
+}
+
+function createStableMobileFloatingActions(
+  actions: readonly MobileFloatingActionDescriptor[],
+  latestActionsRef: React.RefObject<readonly MobileFloatingActionDescriptor[]>
+) {
+  return actions.map((action, index) => ({
+    id: action.id,
+    label: action.label,
+    icon: action.icon,
+    onSelect: () => latestActionsRef.current[index]?.onSelect(),
+  }))
 }
 
 /** Provides the app-shell-local mobile page action registration state. */
@@ -81,27 +88,38 @@ export function useMobileFloatingActions() {
 /** Registers or clears the current page's mobile floating action. */
 export function usePageFloatingAction(action: MobileFloatingActionRegistration) {
   const setPageActions = React.use(MobileFloatingActionsSetterContext)
+  const latestActionsRef = React.useRef<readonly MobileFloatingActionDescriptor[]>([])
+  const registeredActionIdsRef = React.useRef<readonly string[]>([])
 
   React.useEffect(() => {
     const nextActions = normalizeMobileFloatingActions(action)
+    latestActionsRef.current = nextActions
+    registeredActionIdsRef.current = nextActions.map((nextAction) => nextAction.id)
 
     setPageActions((currentActions) =>
-      areSameMobileFloatingActions(currentActions, nextActions) ? currentActions : nextActions
+      areSameMobileFloatingActions(currentActions, nextActions)
+        ? currentActions
+        : createStableMobileFloatingActions(nextActions, latestActionsRef)
     )
+  }, [action, setPageActions])
 
+  React.useEffect(() => {
     return () => {
       setPageActions((currentActions) => {
-        if (nextActions.length === 0) {
+        const registeredActionIds = registeredActionIdsRef.current
+
+        if (registeredActionIds.length === 0) {
           return currentActions
         }
 
-        const nextActionIds = new Set(nextActions.map((nextAction) => nextAction.id))
         const ownsCurrentActions =
-          currentActions.length === nextActions.length &&
-          currentActions.every((currentAction) => nextActionIds.has(currentAction.id))
+          currentActions.length === registeredActionIds.length &&
+          currentActions.every(
+            (currentAction, index) => currentAction.id === registeredActionIds[index]
+          )
 
         return ownsCurrentActions ? [] : currentActions
       })
     }
-  }, [action, setPageActions])
+  }, [setPageActions])
 }

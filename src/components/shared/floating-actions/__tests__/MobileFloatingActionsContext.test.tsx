@@ -47,6 +47,24 @@ function InlinePageActionProbe() {
   return null
 }
 
+let inlineConsumerRenderCount = 0
+
+function InlineArrayConsumerProbe() {
+  inlineConsumerRenderCount += 1
+  useMobileFloatingActions()
+
+  usePageFloatingAction([
+    {
+      id: "inline-array-action",
+      label: "Tạo yêu cầu",
+      icon: <PlusCircle />,
+      onSelect: () => undefined,
+    },
+  ])
+
+  return null
+}
+
 function RegisteredActionLabel() {
   const { pageAction } = useMobileFloatingActions()
 
@@ -125,5 +143,19 @@ describe("MobileFloatingActionsContext", () => {
 
     expect(screen.getByTestId("registered-action")).toHaveTextContent("Tạo yêu cầu")
     expect(inlineProbeRenderCount).toBe(1)
+  })
+
+  it("does not loop when a context consumer registers an inline action array", () => {
+    inlineConsumerRenderCount = 0
+
+    render(
+      <MobileFloatingActionsProvider>
+        <InlineArrayConsumerProbe />
+        <RegisteredActionLabel />
+      </MobileFloatingActionsProvider>
+    )
+
+    expect(screen.getByTestId("registered-action")).toHaveTextContent("Tạo yêu cầu")
+    expect(inlineConsumerRenderCount).toBeLessThanOrEqual(2)
   })
 })
