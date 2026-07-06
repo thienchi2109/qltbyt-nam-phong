@@ -3,15 +3,23 @@ import { describe, expect, it } from "vitest"
 import { findHeroUIImportViolations } from "../check-heroui-import-boundary"
 
 describe("check-heroui-import-boundary", () => {
-  it("allows HeroUI imports only inside the Equipments pilot boundary", () => {
+  it("allows HeroUI imports only inside approved boundary folders", () => {
     const violations = findHeroUIImportViolations([
       {
         path: "src/components/equipment/heroui-pilot/controls.tsx",
         content: 'import { Button } from "@heroui/react"\n',
       },
       {
+        path: "src/components/shared/floating-actions/MobileFloatingActionMenu.tsx",
+        content: 'import { Dropdown } from "@heroui/react"\n',
+      },
+      {
         path: "src/components/equipment/equipment-toolbar.tsx",
         content: 'import { Button } from "@heroui/react"\n',
+      },
+      {
+        path: "src/app/(app)/repair-requests/_components/RepairRequestsPageLayout.tsx",
+        content: 'import { Dropdown } from "@heroui/react"\n',
       },
       {
         path: "src/components/ui/button.tsx",
@@ -34,6 +42,11 @@ describe("check-heroui-import-boundary", () => {
     expect(violations).toEqual([
       {
         path: "src/components/equipment/equipment-toolbar.tsx",
+        line: 1,
+        importPath: "@heroui/react",
+      },
+      {
+        path: "src/app/(app)/repair-requests/_components/RepairRequestsPageLayout.tsx",
         line: 1,
         importPath: "@heroui/react",
       },

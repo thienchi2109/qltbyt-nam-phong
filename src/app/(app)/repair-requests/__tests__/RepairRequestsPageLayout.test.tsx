@@ -13,6 +13,10 @@ import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestsPageLayout } from "../_components/RepairRequestsPageLayout"
 import type { RepairRequestWithEquipment } from "../types"
 import type { RepairRequestColumnOptions } from "../_components/RepairRequestsColumns"
+import {
+  MobileFloatingActionsProvider,
+  useMobileFloatingActions,
+} from "@/components/shared/floating-actions"
 
 // ── Mock child components ──────────────────────────────────────────────
 vi.mock("@/components/repair-request-alert", () => ({
@@ -175,6 +179,20 @@ const withAccessState = (overrides: Partial<typeof defaultProps.accessState>) =>
   },
 })
 
+function RegisteredFloatingActionProbe() {
+  const { pageAction } = useMobileFloatingActions()
+
+  if (!pageAction) {
+    return <div data-testid="registered-page-action">none</div>
+  }
+
+  return (
+    <button type="button" data-testid="registered-page-action" onClick={pageAction.onSelect}>
+      {pageAction.label}
+    </button>
+  )
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────
 describe("RepairRequestsPageLayout", () => {
   it('renders header with title "Yêu cầu sửa chữa"', () => {
@@ -259,6 +277,28 @@ describe("RepairRequestsPageLayout", () => {
     const mobileList = screen.getByTestId("repair-mobile-list")
     expect(mobileList).toContainElement(screen.getByTestId("mobile-list"))
     expect(mobileList.closest("[data-testid='repair-requests-desktop-card']")).toBeNull()
+  })
+
+  it("registers mobile create as a shared page floating action without rendering a local FAB", async () => {
+    const openCreateSheet = vi.fn()
+
+    render(
+      <MobileFloatingActionsProvider>
+        <RepairRequestsPageLayout
+          {...withAccessState({ isRegionalLeader: false })}
+          listState={{ ...defaultProps.listState, isMobile: true }}
+          openCreateSheet={openCreateSheet}
+        />
+        <RegisteredFloatingActionProbe />
+      </MobileFloatingActionsProvider>
+    )
+
+    expect(screen.getByTestId("registered-page-action")).toHaveTextContent("Tạo yêu cầu")
+    expect(screen.getAllByRole("button", { name: "Tạo yêu cầu" })).toHaveLength(1)
+
+    screen.getByTestId("registered-page-action").click()
+
+    expect(openCreateSheet).toHaveBeenCalledTimes(1)
   })
 
   it("passes facility selector visibility to the toolbar like Equipment", () => {

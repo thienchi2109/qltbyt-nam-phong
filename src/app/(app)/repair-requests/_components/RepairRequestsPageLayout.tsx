@@ -8,7 +8,7 @@ import { KpiStatusBar, REPAIR_STATUS_CONFIGS } from "@/components/kpi"
 import type { RepairStatus } from "@/components/kpi"
 import { RepairRequestAlert } from "@/components/repair-request-alert"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
+import { usePageFloatingAction } from "@/components/shared/floating-actions"
 import { RepairRequestsFilterModal, type FilterModalValue } from "./RepairRequestsFilterModal"
 import { RepairRequestsCreateSheet } from "./RepairRequestsCreateSheet"
 import { RepairRequestsToolbar } from "./RepairRequestsToolbar"
@@ -120,6 +120,20 @@ export function RepairRequestsPageLayout({
   const { isMobile, isLoading, isFetching } = listState
   const isCompactLayout = listState.isCompactLayout ?? isMobile
   const tableRows = table.getRowModel().rows.map((row) => row.original)
+  const mobileCreateAction = React.useMemo(
+    () =>
+      !isRegionalLeader && isMobile
+        ? {
+            id: "create-repair-request",
+            label: "Tạo yêu cầu",
+            icon: <PlusCircle />,
+            onSelect: openCreateSheet,
+          }
+        : null,
+    [isMobile, isRegionalLeader, openCreateSheet]
+  )
+
+  usePageFloatingAction(mobileCreateAction)
 
   const toolbar = (
     <RepairRequestsToolbar
@@ -209,13 +223,6 @@ export function RepairRequestsPageLayout({
 
         {/* Create Sheet */}
         {!isRegionalLeader ? <RepairRequestsCreateSheet /> : null}
-
-        {/* Mobile FAB for quick create */}
-        {!isRegionalLeader && isMobile ? (
-          <FloatingActionButton onClick={() => openCreateSheet()} aria-label="Tạo yêu cầu">
-            <PlusCircle />
-          </FloatingActionButton>
-        ) : null}
 
         {isCompactLayout ? (
           <div className="space-y-4" data-testid="repair-requests-mobile-content">
