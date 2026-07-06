@@ -170,38 +170,36 @@ export function FacetedMultiSelectFilter<TData, TValue>({
 
   return (
     <HeroPopover isOpen={open} onOpenChange={handleOpenChange}>
-      <HeroPopover.Trigger>
-        <HeroButton
-          type="button"
-          variant="outline"
-          size="sm"
-          aria-haspopup="dialog"
-          data-trigger-variant={triggerVariant}
-          className={cn(
-            "h-9 min-w-[132px] border-slate-200 transition-all",
-            triggerVariantClassName,
-            triggerSelectionClassName
+      <HeroButton
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-haspopup="dialog"
+        data-trigger-variant={triggerVariant}
+        className={cn(
+          "h-9 min-w-[132px] border-slate-200 transition-all",
+          triggerVariantClassName,
+          triggerSelectionClassName
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-2">
+          {triggerIcon ? (
+            <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
+              {triggerIcon}
+            </span>
+          ) : null}
+          <span className="truncate font-medium">{title}</span>
+          {selectedValues.size > 0 && (
+            <HeroBadge
+              variant="secondary"
+              size="sm"
+              className="h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
+            >
+              {selectedValues.size}
+            </HeroBadge>
           )}
-        >
-          <div className="flex min-w-0 items-center gap-2">
-            {triggerIcon ? (
-              <span className="flex size-5 shrink-0 items-center justify-center text-muted-foreground">
-                {triggerIcon}
-              </span>
-            ) : null}
-            <span className="truncate font-medium">{title}</span>
-            {selectedValues.size > 0 && (
-              <HeroBadge
-                variant="secondary"
-                size="sm"
-                className="h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
-              >
-                {selectedValues.size}
-              </HeroBadge>
-            )}
-          </div>
-        </HeroButton>
-      </HeroPopover.Trigger>
+        </div>
+      </HeroButton>
       <HeroPopover.Content
         className={cn(
           "w-[min(420px,calc(100vw-2rem))] max-h-[440px] overflow-hidden rounded-xl border border-slate-200 p-0 shadow-lg",

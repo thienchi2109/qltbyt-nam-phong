@@ -53,8 +53,15 @@ vi.mock("@heroui/react/input", async () => {
   const ReactRuntime = await import("react")
 
   return {
-    Input: ReactRuntime.forwardRef<HTMLInputElement, MockInputProps>((props, ref) =>
-      ReactRuntime.createElement("input", { ...props, ref, "data-testid": "heroui-input" })
+    Input: Object.assign(
+      ReactRuntime.forwardRef<HTMLInputElement, MockInputProps>(function MockHeroInput(props, ref) {
+        return ReactRuntime.createElement("input", {
+          ...props,
+          ref,
+          "data-testid": "heroui-input",
+        })
+      }),
+      { displayName: "MockHeroInput" }
     ),
   }
 })
@@ -79,13 +86,6 @@ vi.mock("@heroui/react/popover", async () => {
     className?: string
   } & Record<string, unknown>
 
-  const Trigger = ({ children, ...props }: PopoverChildProps) =>
-    ReactRuntime.createElement(
-      "div",
-      { ...props, "data-testid": "heroui-popover-trigger" },
-      children
-    )
-
   const Content = ({ children, ...props }: PopoverChildProps) =>
     ReactRuntime.createElement(
       "dialog",
@@ -108,6 +108,7 @@ vi.mock("@heroui/react/popover", async () => {
         setUncontrolledOpen(nextOpen)
         onOpenChange?.(nextOpen)
       }
+      let triggerConnected = false
 
       return ReactRuntime.createElement(
         "div",
@@ -115,9 +116,14 @@ vi.mock("@heroui/react/popover", async () => {
         ReactRuntime.Children.map(children, (child) => {
           if (!ReactRuntime.isValidElement(child)) return child
           if (child.type === Content && !open) return null
-          if (child.type === Trigger) {
+          if (!triggerConnected && child.type !== Content) {
+            triggerConnected = true
+            const childProps = child.props as { onClick?: () => void }
             return ReactRuntime.cloneElement(child, {
-              onClick: () => setOpen(!open),
+              onClick: () => {
+                setOpen(!open)
+                childProps.onClick?.()
+              },
             } as Partial<PopoverChildProps>)
           }
           return child
@@ -127,7 +133,6 @@ vi.mock("@heroui/react/popover", async () => {
     {
       Content,
       Dialog,
-      Trigger,
     }
   )
 
@@ -153,10 +158,8 @@ describe("FacetedMultiSelectFilter HeroUI backing", () => {
     )
 
     expect(screen.getByTestId("heroui-popover-root")).toBeInTheDocument()
-    expect(screen.getByTestId("heroui-popover-trigger")).toContainElement(
-      screen.getByRole("button", { name: /Khoa\/Phòng/i })
-    )
     expect(screen.getByTestId("heroui-button")).toHaveTextContent("Khoa/Phòng")
+    expect(screen.queryByTestId("heroui-popover-trigger")).not.toBeInTheDocument()
     expect(screen.getByTestId("heroui-badge")).toHaveTextContent("1")
 
     fireEvent.click(screen.getByRole("button", { name: /Khoa\/Phòng/i }))

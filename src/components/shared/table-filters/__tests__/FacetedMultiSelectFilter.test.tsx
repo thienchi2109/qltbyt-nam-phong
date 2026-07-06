@@ -103,6 +103,20 @@ describe("FacetedMultiSelectFilter", () => {
     expect(screen.getByRole("button", { name: "Radiology" })).toBeInTheDocument()
   })
 
+  it("focuses option search input when dropdown is opened", () => {
+    vi.useFakeTimers()
+    render(<Wrapper />)
+
+    fireEvent.click(screen.getByRole("button", { name: /Khoa\/Phòng/i }))
+    const optionSearch = screen.getByRole("searchbox", { name: "Tìm lựa chọn Khoa/Phòng" })
+
+    act(() => {
+      vi.runOnlyPendingTimers()
+    })
+
+    expect(optionSearch).toHaveFocus()
+  })
+
   it("debounces internal option search before filtering visible options", async () => {
     vi.useFakeTimers()
     render(<Wrapper />)
@@ -182,7 +196,7 @@ describe("FacetedMultiSelectFilter", () => {
     expect(screen.getByText("Không tìm thấy lựa chọn phù hợp")).toBeInTheDocument()
   })
 
-  it("keeps option search input visually separated from its container on focus", () => {
+  it("renders option search input with intended focus-visible classes", () => {
     render(<Wrapper />)
 
     fireEvent.click(screen.getByRole("button", { name: /Khoa\/Phòng/i }))

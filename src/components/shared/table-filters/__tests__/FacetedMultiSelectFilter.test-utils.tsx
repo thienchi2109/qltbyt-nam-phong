@@ -15,14 +15,19 @@ type PopoverContentProps = PopoverStateProps & {
   children: React.ReactNode
 } & React.HTMLAttributes<HTMLDivElement>
 
-vi.mock("@heroui/react/input", () => ({
-  Input: ({
+vi.mock("@heroui/react/input", () => {
+  function MockHeroInput({
     ref,
     ...props
   }: React.InputHTMLAttributes<HTMLInputElement> & {
     ref?: React.Ref<HTMLInputElement>
-  }) => <input {...props} ref={ref} />,
-}))
+  }) {
+    return <input {...props} ref={ref} />
+  }
+  MockHeroInput.displayName = "MockHeroInput"
+
+  return { Input: MockHeroInput }
+})
 
 /**
  * Mock HeroUI Popover so content renders inline (no portal / no jsdom issues).
@@ -66,16 +71,35 @@ vi.mock("@heroui/react/popover", () => {
         onOpenChange?.(nextOpen)
       }
 
+      let triggerConnected = false
+
       return (
         <div data-testid="popover">
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child as React.ReactElement<PopoverStateProps>, {
-                  open: renderedOpen,
-                  setOpen: setRenderedOpen,
-                })
-              : child
-          )}
+          {React.Children.map(children, (child) => {
+            if (!React.isValidElement(child)) return child
+
+            if (child.type === Popover.Content) {
+              return React.cloneElement(child as React.ReactElement<PopoverStateProps>, {
+                open: renderedOpen,
+                setOpen: setRenderedOpen,
+              })
+            }
+
+            if (!triggerConnected) {
+              triggerConnected = true
+              const triggerElement = child as React.ReactElement<{
+                onClick?: (...args: unknown[]) => void
+              }>
+              return React.cloneElement(triggerElement, {
+                onClick: (...args: unknown[]) => {
+                  setRenderedOpen(!renderedOpen)
+                  triggerElement.props.onClick?.(...args)
+                },
+              })
+            }
+
+            return child
+          })}
         </div>
       )
     },

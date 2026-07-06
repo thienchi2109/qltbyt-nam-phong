@@ -103,7 +103,7 @@ describe("SearchInput", () => {
     expect(screen.queryByRole("button", { name: "Xóa tìm kiếm" })).not.toBeInTheDocument()
   })
 
-  it("keeps the outer search field visually separated from filter containers on focus", () => {
+  it("renders with expected default input styling", () => {
     render(<SearchInput aria-label="Tìm kiếm" value="" onChange={vi.fn()} />)
 
     const input = screen.getByRole("searchbox", { name: "Tìm kiếm" })
