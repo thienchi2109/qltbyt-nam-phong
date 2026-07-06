@@ -94,13 +94,14 @@ React Doctor full JSON summaries for the four target rules:
 | Rule                                                            | Baseline | After compact batch | Delta |
 | --------------------------------------------------------------- | -------: | ------------------: | ----: |
 | `Maintainability / prefer-module-scope-pure-function / warning` |       19 |                  15 |    -4 |
-| `Maintainability / prefer-module-scope-static-value / warning`  |        6 |                   2 |    -4 |
+| `Maintainability / prefer-module-scope-static-value / warning`  |        6 |                   0 |    -6 |
 | `Performance / rerender-lazy-ref-init / warning`                |        2 |                   0 |    -2 |
 | `Performance / js-hoist-intl / warning`                         |        1 |                   0 |    -1 |
 
 Fixed scope:
 
 - Hoisted static nav/status/chart values in app layout, device quota status badges, and login template.
+- Hoisted form branding static size/alignment maps and replaced the local explicit `any` with a narrow session-user role type.
 - Converted both `useRef(new Map())` sites to lazy null-ref initialization.
 - Hoisted the static Vietnamese currency `Intl.NumberFormat`.
 - Hoisted the pure equipment distribution helper cluster.
@@ -112,7 +113,6 @@ Verification note:
 
 Skipped scope:
 
-- `src/components/form-branding-header.tsx` still has 2 static-value findings. It already contains an unrelated explicit `any`, so touching it would require a separate type-safety cleanup to keep the diff-aware `verify:no-explicit-any` gate green.
 - The remaining 15 pure-function findings are spread across page/demo/form/template modules and should be handled only when the relevant file is already in scope or with focused tests.
 
 ## Priority Triage
@@ -173,7 +173,7 @@ ROI ranking uses four criteria: likely issue-count reduction, low blast radius, 
 | Rank | Batch                                                                                                                                   | Issues | Risk        | Why this is high ROI                                                                                                                                | Verification                                                                       |
 | ---: | --------------------------------------------------------------------------------------------------------------------------------------- | -----: | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 |    1 | React correctness quick fixes: `jsx-key`, `query-destructure-result` - completed                                                        |      0 | Low         | Completed in `cfe75fdc`; removed 5 non-DB Bug errors.                                                                                               | Focused component tests, `typecheck`, React Doctor diff scan.                      |
-|    2 | Module-scope hoists: `prefer-module-scope-pure-function`, `prefer-module-scope-static-value`, `rerender-lazy-ref-init`, `js-hoist-intl` |     17 | Low         | Compact batch reduced 11 warnings. Remaining findings are intentionally deferred where they touch broader modules or require unrelated cleanup.     | `typecheck`, focused tests for touched components, React Doctor diff/full scan.    |
+|    2 | Module-scope hoists: `prefer-module-scope-pure-function`, `prefer-module-scope-static-value`, `rerender-lazy-ref-init`, `js-hoist-intl` |     15 | Low         | Compact batch reduced 13 warnings. Remaining findings are intentionally deferred where they touch broader modules or require unrelated cleanup.     | `typecheck`, focused tests for touched components, React Doctor diff/full scan.    |
 |    3 | Dependency hygiene: remaining `unused-dev-dependency` and verified `unused-dependency`                                                  |      8 | Low-Medium  | Low-supply findings are cleared; remaining package cleanup still needs import/runtime checks, especially for dynamic or service-worker usage.       | Import search, build/typecheck, dependency install sanity, React Doctor diff scan. |
 |    4 | Print/template HTML review: `dangerous-html-sink`                                                                                       |      6 | Medium      | Security ROI is high, count is modest. Requires source-by-source check to avoid breaking print/export flows.                                        | Targeted escaping/sanitization tests, manual print/export smoke checks.            |
 |    5 | Hook behavior cleanup: `exhaustive-deps`, `prefer-use-effect-event`, selected `no-event-handler`                                        |     24 | Medium      | Good correctness value, but render timing/subscription changes can regress UI behavior. Start with repeated patterns, not a sweeping rewrite.       | Focused page tests, interaction smoke tests, React Doctor diff scan.               |
@@ -191,7 +191,7 @@ ROI ranking uses four criteria: likely issue-count reduction, low blast radius, 
 
 2. **PR 2: Mechanical render-cost cleanup**
    - Scope: module-scope pure functions/static values, lazy ref initialization, `Intl.NumberFormat` hoist.
-   - Result: compact branch reduced target warnings from 28 to 17.
+   - Result: compact branch reduced target warnings from 28 to 15.
    - Reason: best warning-count reduction with low behavior risk if each hoist is verified as state-independent.
 
 3. **PR 3: Dependency/security noise cleanup - partially completed**
