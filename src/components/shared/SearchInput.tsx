@@ -104,7 +104,12 @@ export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          className={cn(paddingLeft, paddingRight, className)}
+          className={cn(
+            "border border-slate-300 bg-white shadow-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+            paddingLeft,
+            paddingRight,
+            className
+          )}
           {...props}
         />
 

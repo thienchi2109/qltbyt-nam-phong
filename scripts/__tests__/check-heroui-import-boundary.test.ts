@@ -22,6 +22,10 @@ describe("check-heroui-import-boundary", () => {
         content: 'import { Card } from "@heroui/react"\n',
       },
       {
+        path: "src/components/shared/table-filters/FacetedMultiSelectFilter.tsx",
+        content: 'import { Popover } from "@heroui/react/popover"\n',
+      },
+      {
         path: "src/components/equipment/equipment-toolbar.tsx",
         content: 'import { Button } from "@heroui/react"\n',
       },
