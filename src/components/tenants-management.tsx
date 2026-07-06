@@ -45,7 +45,9 @@ const VI_TENANT_COLLATOR = new Intl.Collator("vi", { sensitivity: "base", usage:
 const EMPTY_TENANT_ROWS: TenantHierarchyRow[] = []
 
 function sortTenantHierarchyUsersByName(list: TenantHierarchyUser[]): void {
-  list.sort((a, b) => VI_TENANT_COLLATOR.compare(a.full_name || a.username, b.full_name || b.username))
+  list.sort((a, b) =>
+    VI_TENANT_COLLATOR.compare(a.full_name || a.username, b.full_name || b.username)
+  )
 }
 
 /** Renders the global tenant administration view. */
@@ -61,7 +63,12 @@ export function TenantsManagement() {
   const [editing, setEditing] = React.useState<TenantRow | null>(null)
   const [expandedTenants, setExpandedTenants] = React.useState<Record<number, boolean>>({})
 
-  const query = useQuery<{ rows: TenantHierarchyRow[] }>({
+  const {
+    data: tenantHierarchyData,
+    isFetching: isTenantHierarchyFetching,
+    isLoading: isTenantHierarchyLoading,
+    refetch: refetchTenantHierarchy,
+  } = useQuery<{ rows: TenantHierarchyRow[] }>({
     queryKey: ["don_vi", { q: debouncedQ }],
     queryFn: async () => {
       const rows = await callRpc<RawTenantHierarchyRow[]>({
@@ -89,7 +96,7 @@ export function TenantsManagement() {
     enabled: status === "authenticated" && isGlobal,
   })
 
-  const rows = query.data?.rows ?? EMPTY_TENANT_ROWS
+  const rows = tenantHierarchyData?.rows ?? EMPTY_TENANT_ROWS
 
   const preparedTenants = React.useMemo<PreparedTenant[]>(() => {
     return rows.map((tenant) => {
@@ -200,7 +207,11 @@ export function TenantsManagement() {
                 onChange={(event) => setQ(event.target.value)}
                 className="h-10"
               />
-              <Button onClick={() => query.refetch()} disabled={query.isFetching} className="h-10 shrink-0 px-6">
+              <Button
+                onClick={() => refetchTenantHierarchy()}
+                disabled={isTenantHierarchyFetching}
+                className="h-10 shrink-0 px-6"
+              >
                 Tải lại
               </Button>
             </div>
@@ -211,7 +222,7 @@ export function TenantsManagement() {
             </div>
           </div>
 
-          {query.isLoading ? (
+          {isTenantHierarchyLoading ? (
             renderSkeleton
           ) : preparedTenants.length === 0 ? (
             <div className="flex min-h-[200px] flex-col items-center justify-center rounded-xl border border-dashed bg-muted/40">

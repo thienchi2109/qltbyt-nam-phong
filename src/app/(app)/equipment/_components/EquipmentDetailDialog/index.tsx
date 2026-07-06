@@ -60,7 +60,7 @@ export function EquipmentDetailDialog(props: EquipmentDetailDialogProps): React.
   const dialogStateKey =
     open && equipment ? `equipment-detail-${equipment.id}` : "equipment-detail-closed"
 
-  return <EquipmentDetailDialogState key={dialogStateKey} {...props} />
+  return <EquipmentDetailDialogState {...props} key={dialogStateKey} />
 }
 
 function EquipmentDetailDialogState({
@@ -88,7 +88,7 @@ function EquipmentDetailDialogState({
     if (!scrollContainer) return
     const activeTab = scrollContainer.querySelector('[data-state="active"]') as HTMLElement
     if (activeTab) {
-      activeTab.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+      activeTab.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
     }
   }, [currentTab])
 
@@ -161,8 +161,6 @@ function EquipmentDetailDialogState({
     },
     [isEditingDetails, editForm.formState.isDirty, onOpenChange]
   )
-
-
 
   // Merge equipment prop with saved values for display
   // After save, savedValues contains updated data while equipment prop is stale

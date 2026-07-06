@@ -48,6 +48,7 @@ function buildDefaultFileName(dateRange: ExportReportDateRange): string {
   return `BaoCao_TongHop_ThietBi_${fromDate}_${toDate}`
 }
 
+/** Renders the aggregate report export dialog and resets content state per filename. */
 export function ExportReportDialog(props: ExportReportDialogProps) {
   const { open, onOpenChange, ...contentProps } = props
   const defaultFileName = buildDefaultFileName(props.dateRange)
@@ -56,10 +57,10 @@ export function ExportReportDialog(props: ExportReportDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       {open ? (
         <ExportReportDialogContent
-          key={defaultFileName}
           {...contentProps}
           defaultFileName={defaultFileName}
           onOpenChange={onOpenChange}
+          key={defaultFileName}
         />
       ) : null}
     </Dialog>
@@ -102,12 +103,12 @@ function ExportReportDialogContent({
 
       toast({
         title: "Xuất báo cáo thành công",
-        description: `Đã tạo file ${fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`}`,
+        description: `Đã tạo file ${fileName.endsWith(".xlsx") ? fileName : `${fileName}.xlsx`}`,
       })
 
       onOpenChange(false)
     } catch (error: unknown) {
-      console.error('Export error:', error)
+      console.error("Export error:", error)
       toast({
         variant: "destructive",
         title: "Lỗi xuất báo cáo",
@@ -120,72 +121,70 @@ function ExportReportDialogContent({
 
   return (
     <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="size-5" />
-            Xuất báo cáo Excel
-          </DialogTitle>
-          <DialogDescription>
-            Xuất báo cáo tổng hợp thiết bị ra file Excel
-          </DialogDescription>
-        </DialogHeader>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <FileSpreadsheet className="size-5" />
+          Xuất báo cáo Excel
+        </DialogTitle>
+        <DialogDescription>Xuất báo cáo tổng hợp thiết bị ra file Excel</DialogDescription>
+      </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid gap-2">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Khoảng thời gian:</span>
-              <Badge variant="outline">
-                {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Khoa/Phòng:</span>
-              <Badge variant="outline">{department === "all" ? "Tất cả" : department}</Badge>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Số bản ghi:</span>
-              <Badge>{data.length} giao dịch</Badge>
-            </div>
+      <div className="space-y-4">
+        <div className="grid gap-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Khoảng thời gian:</span>
+            <Badge variant="outline">
+              {format(dateRange.from, "dd/MM/yyyy")} - {format(dateRange.to, "dd/MM/yyyy")}
+            </Badge>
           </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{summary.totalImported}</div>
-              <div className="text-sm text-muted-foreground">Thiết bị nhập</div>
-            </div>
-            <div className="text-center p-3 border rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{summary.totalExported}</div>
-              <div className="text-sm text-muted-foreground">Thiết bị xuất</div>
-            </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Khoa/Phòng:</span>
+            <Badge variant="outline">{department === "all" ? "Tất cả" : department}</Badge>
           </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <Label htmlFor="filename">Tên file</Label>
-            <Input
-              id="filename"
-              ref={fileNameInputRef}
-              defaultValue={defaultFileName}
-              onChange={(e) => setHasFileName(e.target.value.trim().length > 0)}
-              placeholder="Nhập tên file…"
-            />
-            <p className="text-xs text-muted-foreground">File sẽ được lưu với định dạng .xlsx</p>
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-medium">Số bản ghi:</span>
+            <Badge>{data.length} giao dịch</Badge>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
-            Hủy
-          </Button>
-          <Button onClick={handleExport} disabled={isExporting || !hasFileName}>
-            {isExporting && <Loader2 className="mr-2 size-4 animate-spin" />}
-            <Download className="mr-2 size-4" />
-            {isExporting ? "Đang xuất..." : "Xuất Excel"}
-          </Button>
-        </DialogFooter>
+        <Separator />
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 border rounded-lg">
+            <div className="text-2xl font-bold text-green-600">{summary.totalImported}</div>
+            <div className="text-sm text-muted-foreground">Thiết bị nhập</div>
+          </div>
+          <div className="text-center p-3 border rounded-lg">
+            <div className="text-2xl font-bold text-red-600">{summary.totalExported}</div>
+            <div className="text-sm text-muted-foreground">Thiết bị xuất</div>
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2">
+          <Label htmlFor="filename">Tên file</Label>
+          <Input
+            id="filename"
+            ref={fileNameInputRef}
+            defaultValue={defaultFileName}
+            onChange={(e) => setHasFileName(e.target.value.trim().length > 0)}
+            placeholder="Nhập tên file…"
+          />
+          <p className="text-xs text-muted-foreground">File sẽ được lưu với định dạng .xlsx</p>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
+          Hủy
+        </Button>
+        <Button onClick={handleExport} disabled={isExporting || !hasFileName}>
+          {isExporting && <Loader2 className="mr-2 size-4 animate-spin" />}
+          <Download className="mr-2 size-4" />
+          {isExporting ? "Đang xuất..." : "Xuất Excel"}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   )
 }
