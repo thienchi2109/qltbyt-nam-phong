@@ -10,6 +10,7 @@ const ALLOWED_BOUNDARY_PREFIXES = [
   "src/components/equipment/heroui-pilot/",
   "src/components/shared/floating-actions/",
 ]
+const ALLOWED_BOUNDARY_FILES = ["src/components/shared/SearchInput.tsx"]
 
 function normalizePath(filePath) {
   return filePath.split(path.sep).join("/")
@@ -22,7 +23,10 @@ function isScannableSourceFile(filePath) {
 
 function isAllowedBoundaryFile(filePath) {
   const normalizedPath = normalizePath(filePath)
-  return ALLOWED_BOUNDARY_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))
+  return (
+    ALLOWED_BOUNDARY_FILES.includes(normalizedPath) ||
+    ALLOWED_BOUNDARY_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix))
+  )
 }
 
 function getHeroUIImportPath(line) {
@@ -113,7 +117,7 @@ function scanFiles(filePaths) {
 }
 
 function formatViolations(violations) {
-  const allowedBoundaryList = ALLOWED_BOUNDARY_PREFIXES.join(", ")
+  const allowedBoundaryList = [...ALLOWED_BOUNDARY_PREFIXES, ...ALLOWED_BOUNDARY_FILES].join(", ")
 
   return violations
     .map(
@@ -146,6 +150,7 @@ function main() {
 }
 
 module.exports = {
+  ALLOWED_BOUNDARY_FILES,
   ALLOWED_BOUNDARY_PREFIXES,
   collectChangedSourceFiles,
   findHeroUIImportViolations,
