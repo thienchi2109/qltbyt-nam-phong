@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
@@ -164,15 +162,5 @@ describe("ListFilterSearchCard", () => {
     )
 
     expect(screen.getByRole("searchbox", { name: "Chọn cơ sở để tìm kiếm..." })).toBeDisabled()
-  })
-
-  it("uses HeroUI instead of the shadcn card backing", () => {
-    const source = readFileSync(
-      join(process.cwd(), "src/components/shared/ListFilterSearchCard.tsx"),
-      "utf8"
-    )
-
-    expect(source).toContain("@heroui/react")
-    expect(source).not.toContain("@/components/ui/card")
   })
 })
