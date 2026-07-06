@@ -12,17 +12,6 @@ import { render, screen, fireEvent, within } from "@testing-library/react"
 import type { Table } from "@tanstack/react-table"
 import type { Equipment } from "@/types/database"
 
-type DropdownStateProps = {
-  open?: boolean
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>
-}
-
-type DropdownChildProps = DropdownStateProps & Record<string, unknown>
-
-type DropdownWithChildrenProps = DropdownStateProps & {
-  children: React.ReactNode
-}
-
 type PopoverStateProps = {
   open?: boolean
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>
@@ -40,77 +29,6 @@ type PopoverWithChildrenProps = PopoverStateProps & {
 vi.mock("next/dynamic", () => ({
   default: () => () => null,
 }))
-
-/**
- * Mock radix DropdownMenu to render inline (no portal in jsdom)
- */
-vi.mock("@/components/ui/dropdown-menu", () => {
-  return {
-    DropdownMenu: ({ children }: { children: React.ReactNode }) => {
-      const [open, setOpen] = React.useState(false)
-      return (
-        <div data-testid="dropdown-menu">
-          {React.Children.map(children, (child) =>
-            React.isValidElement(child)
-              ? React.cloneElement(child as React.ReactElement<DropdownChildProps>, {
-                  open,
-                  setOpen,
-                })
-              : child
-          )}
-        </div>
-      )
-    },
-    DropdownMenuTrigger: ({
-      children,
-      asChild,
-      open,
-      setOpen,
-      ...rest
-    }: DropdownWithChildrenProps & { asChild?: boolean }) => {
-      const toggleDropdownMenu = () => setOpen?.(!open)
-      if (asChild && React.isValidElement(children)) {
-        const childElement = children as React.ReactElement<{
-          onClick?: (...args: unknown[]) => void
-        }>
-        return React.cloneElement(childElement, {
-          ...rest,
-          onClick: (...args: unknown[]) => {
-            toggleDropdownMenu()
-            childElement.props.onClick?.(...args)
-          },
-        })
-      }
-      return (
-        <button {...rest} onClick={toggleDropdownMenu}>
-          {children}
-        </button>
-      )
-    },
-    DropdownMenuContent: ({
-      children,
-      open,
-      setOpen: _setOpen,
-      ...rest
-    }: DropdownWithChildrenProps) => {
-      if (!open) return null
-      return (
-        <div data-testid="dropdown-content" {...rest}>
-          {children}
-        </div>
-      )
-    },
-    DropdownMenuItem: ({
-      children,
-      onSelect,
-      ...rest
-    }: { children: React.ReactNode; onSelect?: () => void } & Record<string, unknown>) => (
-      <button {...rest} onClick={onSelect}>
-        {children}
-      </button>
-    ),
-  }
-})
 
 /**
  * Mock radix Popover so overflow filter content renders inline in jsdom.
@@ -331,13 +249,22 @@ describe("EquipmentToolbar with shared filters", () => {
   })
 
   it("renders mobile filter sheet trigger instead of faceted filters on mobile", () => {
-    render(<EquipmentToolbar {...baseProps} filterMode="sheet" />)
+    render(
+      <EquipmentToolbar
+        {...baseProps}
+        filterMode="sheet"
+        columnFilters={[{ id: "tinh_trang_hien_tai", value: ["Hoạt động", "Hỏng"] }]}
+        filterState={{ ...baseProps.filterState, isFiltered: true }}
+      />
+    )
 
-    expect(screen.getByText("Lọc")).toBeInTheDocument()
     const compactActions = screen.getByTestId("equipment-compact-filter-actions")
+    const filterTrigger = within(compactActions).getByRole("button", { name: /Lọc\s*2/i })
 
     expect(compactActions).toHaveClass("grid", "w-full", "grid-cols-2", "gap-2")
-    expect(within(compactActions).getByRole("button", { name: /Lọc/i })).toHaveClass("w-full")
+    expect(filterTrigger).toHaveAttribute("data-testid", "equipment-heroui-compact-filter-trigger")
+    expect(filterTrigger).toHaveClass("w-full")
+    expect(filterTrigger).toHaveTextContent("2")
     expect(within(compactActions).getByRole("button", { name: /Tùy chọn/i })).toHaveClass("w-full")
     expect(screen.queryByText("Tình trạng")).not.toBeInTheDocument()
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
@@ -363,6 +290,38 @@ describe("EquipmentToolbar with shared filters", () => {
 
     fireEvent.click(screen.getByText("Lọc"))
     expect(onOpenFilterSheet).toHaveBeenCalled()
+  })
+
+  it("keeps compact options actions wired through the HeroUI dropdown", async () => {
+    const onOpenColumnsDialog = vi.fn()
+    const onDownloadTemplate = vi.fn()
+    const onExportData = vi.fn()
+
+    render(
+      <EquipmentToolbar
+        {...baseProps}
+        filterMode="sheet"
+        onOpenColumnsDialog={onOpenColumnsDialog}
+        onDownloadTemplate={onDownloadTemplate}
+        onExportData={onExportData}
+      />
+    )
+
+    const compactActions = screen.getByTestId("equipment-compact-filter-actions")
+    const openCompactOptions = () =>
+      fireEvent.click(within(compactActions).getByRole("button", { name: /Tùy chọn/i }))
+
+    openCompactOptions()
+    expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
+    fireEvent.click(await screen.findByText("Hiện/ẩn cột"))
+    openCompactOptions()
+    fireEvent.click(await screen.findByText("Tải Excel mẫu"))
+    openCompactOptions()
+    fireEvent.click(await screen.findByText("Tải về dữ liệu"))
+
+    expect(onOpenColumnsDialog).toHaveBeenCalledTimes(1)
+    expect(onDownloadTemplate).toHaveBeenCalledTimes(1)
+    expect(onExportData).toHaveBeenCalledTimes(1)
   })
 
   it("hides compact clear command when filters are inactive", () => {
