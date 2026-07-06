@@ -25,17 +25,28 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+const STATUS_BADGE_VARIANTS: Record<
+  "draft" | "active" | "inactive",
+  { variant: "outline" | "default"; label: string; className: string }
+> = {
+  draft: { variant: "outline", label: "Bản nháp", className: "border-gray-400 text-gray-700" },
+  active: {
+    variant: "default",
+    label: "Đang hiệu lực",
+    className: "bg-green-600 hover:bg-green-700",
+  },
+  inactive: {
+    variant: "outline",
+    label: "Hết hiệu lực",
+    className: "border-gray-400 text-gray-600",
+  },
+}
+
 /**
  * Helper: Status Badge
  */
-function StatusBadge({ status }: { status: 'draft' | 'active' | 'inactive' }) {
-  const variants = {
-    draft: { variant: "outline" as const, label: "Bản nháp", className: "border-gray-400 text-gray-700" },
-    active: { variant: "default" as const, label: "Đang hiệu lực", className: "bg-green-600 hover:bg-green-700" },
-    inactive: { variant: "outline" as const, label: "Hết hiệu lực", className: "border-gray-400 text-gray-600" },
-  }
-
-  const config = variants[status] || variants.draft
+function StatusBadge({ status }: { status: "draft" | "active" | "inactive" }) {
+  const config = STATUS_BADGE_VARIANTS[status] ?? STATUS_BADGE_VARIANTS.draft
 
   return (
     <Badge variant={config.variant} className={config.className}>
@@ -55,17 +66,12 @@ function StatusBadge({ status }: { status: 'draft' | 'active' | 'inactive' }) {
 export function DeviceQuotaChiTietToolbar() {
   const { push } = useRouter()
   const { toast } = useToast()
-  const {
-    decision,
-    isDecisionLoading,
-    leafCategories,
-    isCategoriesLoading,
-    openImportDialog,
-  } = useDeviceQuotaChiTietContext()
+  const { decision, isDecisionLoading, leafCategories, isCategoriesLoading, openImportDialog } =
+    useDeviceQuotaChiTietContext()
 
   const [isDownloading, setIsDownloading] = React.useState(false)
 
-  const canEdit = decision?.trang_thai === 'draft' || decision?.trang_thai === 'active'
+  const canEdit = decision?.trang_thai === "draft" || decision?.trang_thai === "active"
 
   // Handle download template
   const handleDownloadTemplate = React.useCallback(async () => {
@@ -85,9 +91,9 @@ export function DeviceQuotaChiTietToolbar() {
 
       // Trigger download
       const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
+      const link = document.createElement("a")
       link.href = url
-      link.download = `Mau_Dinh_Muc_${decision?.so_quyet_dinh || 'Template'}_${new Date().getTime()}.xlsx`
+      link.download = `Mau_Dinh_Muc_${decision?.so_quyet_dinh || "Template"}_${new Date().getTime()}.xlsx`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -98,7 +104,7 @@ export function DeviceQuotaChiTietToolbar() {
         description: "Đã tải xuống file mẫu định mức.",
       })
     } catch (error: unknown) {
-      const errorMessage = getUnknownErrorMessage(error, 'Lỗi không xác định')
+      const errorMessage = getUnknownErrorMessage(error, "Lỗi không xác định")
       toast({
         variant: "destructive",
         title: "Lỗi tải xuống",
@@ -118,7 +124,7 @@ export function DeviceQuotaChiTietToolbar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => push('/device-quota/decisions')}
+            onClick={() => push("/device-quota/decisions")}
             aria-label="Quay lại danh sách quyết định"
             className="size-9"
           >
@@ -130,17 +136,15 @@ export function DeviceQuotaChiTietToolbar() {
             </h2>
             {decision && (
               <p className="text-sm text-muted-foreground">
-                Ngày ban hành: {formatDate(decision.ngay_ban_hanh)} |
-                Hiệu lực: {formatDate(decision.ngay_hieu_luc)}
+                Ngày ban hành: {formatDate(decision.ngay_ban_hanh)} | Hiệu lực:{" "}
+                {formatDate(decision.ngay_hieu_luc)}
               </p>
             )}
           </div>
         </div>
 
         {/* Right: Status badge */}
-        <div>
-          {decision && <StatusBadge status={decision.trang_thai} />}
-        </div>
+        <div>{decision && <StatusBadge status={decision.trang_thai} />}</div>
       </div>
 
       {/* Action Buttons (draft and active) */}
@@ -168,7 +172,12 @@ export function DeviceQuotaChiTietToolbar() {
               variant="outline"
               size="sm"
               onClick={handleDownloadTemplate}
-              disabled={isDownloading || isCategoriesLoading || !leafCategories || leafCategories.length === 0}
+              disabled={
+                isDownloading ||
+                isCategoriesLoading ||
+                !leafCategories ||
+                leafCategories.length === 0
+              }
               className="h-9 w-full sm:w-auto"
               aria-label="Tải xuống file mẫu Excel định mức"
             >

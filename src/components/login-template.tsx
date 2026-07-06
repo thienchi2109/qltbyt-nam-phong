@@ -8,39 +8,36 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Info, User, Lock } from "lucide-react"
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend as RechartsLegend } from "recharts"
 
+const LOGIN_TEMPLATE_CHART_DATA = [
+  { name: "Hoạt động", value: 120, color: "#0079FF" },
+  { name: "Chờ sửa chữa", value: 15, color: "#FFC107" },
+  { name: "Đang bảo trì", value: 8, color: "#FD7E14" },
+  { name: "Đã thanh lý", value: 5, color: "#6C757D" },
+]
+
+/** Renders the demo login template used for branded form previews. */
 export function LoginTemplate() {
-  const chartData = [
-    { name: 'Hoạt động', value: 120, color: '#0079FF' },
-    { name: 'Chờ sửa chữa', value: 15, color: '#FFC107' },
-    { name: 'Đang bảo trì', value: 8, color: '#FD7E14' },
-    { name: 'Đã thanh lý', value: 5, color: '#6C757D' }
-  ]
-
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    alert('Đây là template demo. Để đăng nhập thực tế, vui lòng sử dụng trang chính của ứng dụng.')
+    alert("Đây là template demo. Để đăng nhập thực tế, vui lòng sử dụng trang chính của ứng dụng.")
   }
 
   return (
     <div className="min-h-screen bg-sky-50">
       <div className="flex flex-col md:flex-row min-h-screen">
-        
         {/* Left Column: Infographic/Overview */}
         <div className="w-full md:w-1/2 lg:w-3/5 bg-white p-8 lg:p-12 flex flex-col justify-center">
           <div className="max-w-2xl mx-auto">
-            <FormBrandingHeader 
-              align="left" 
-              size="lg" 
-              className="mb-6" 
-            />
-            
+            <FormBrandingHeader align="left" size="lg" className="mb-6" />
+
             <h1 className="text-3xl md:text-4xl font-semibold text-[#004AAD] mb-4">
               Hệ Thống Quản Lý Thiết Bị Y Tế Toàn Diện
             </h1>
             <p className="text-gray-600 mb-8">
-              Nền tảng thông minh giúp tối ưu hóa hiệu suất, đảm bảo an toàn và kéo dài tuổi thọ cho các tài sản y tế quan trọng.
+              Nền tảng thông minh giúp tối ưu hóa hiệu suất, đảm bảo an toàn và kéo dài tuổi thọ cho
+              các tài sản y tế quan trọng.
             </p>
 
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
@@ -48,33 +45,38 @@ export function LoginTemplate() {
                 {
                   icon: "📊",
                   title: "Tổng quan Dashboard",
-                  description: "Số liệu, biểu đồ và các cảnh báo quan trọng được tổng hợp tại một nơi."
+                  description:
+                    "Số liệu, biểu đồ và các cảnh báo quan trọng được tổng hợp tại một nơi.",
                 },
                 {
                   icon: "🔬",
                   title: "Quản lý Thiết bị",
-                  description: "Danh mục chi tiết, tìm kiếm và lọc thông minh, quản lý toàn bộ vòng đời thiết bị."
+                  description:
+                    "Danh mục chi tiết, tìm kiếm và lọc thông minh, quản lý toàn bộ vòng đời thiết bị.",
                 },
                 {
                   icon: "🔧",
                   title: "Quản lý Sửa chữa",
-                  description: "Tạo, theo dõi và quản lý các yêu cầu sửa chữa một cách hiệu quả."
+                  description: "Tạo, theo dõi và quản lý các yêu cầu sửa chữa một cách hiệu quả.",
                 },
                 {
                   icon: "📅",
                   title: "Kế hoạch Bảo trì",
-                  description: "Chủ động lập lịch và giám sát công việc bảo trì, hiệu chuẩn, kiểm định."
+                  description:
+                    "Chủ động lập lịch và giám sát công việc bảo trì, hiệu chuẩn, kiểm định.",
                 },
                 {
                   icon: "📈",
                   title: "Báo cáo Trực quan",
-                  description: "Cung cấp biểu đồ và số liệu chi tiết giúp ra quyết định nhanh chóng."
+                  description:
+                    "Cung cấp biểu đồ và số liệu chi tiết giúp ra quyết định nhanh chóng.",
                 },
                 {
                   icon: "📱",
                   title: "Quét mã QR",
-                  description: "Truy xuất tức thì thông tin và lịch sử thiết bị chỉ với một lần quét."
-                }
+                  description:
+                    "Truy xuất tức thì thông tin và lịch sử thiết bị chỉ với một lần quét.",
+                },
               ].map((feature, index) => (
                 <Card key={feature.title} className="bg-blue-50 border-blue-100">
                   <CardContent className="p-4">
@@ -91,7 +93,7 @@ export function LoginTemplate() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={chartData}
+                      data={LOGIN_TEMPLATE_CHART_DATA}
                       cx="50%"
                       cy="50%"
                       innerRadius={60}
@@ -99,15 +101,11 @@ export function LoginTemplate() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {chartData.map((entry) => (
+                      {LOGIN_TEMPLATE_CHART_DATA.map((entry) => (
                         <Cell key={entry.name} fill={entry.color} />
                       ))}
                     </Pie>
-                    <RechartsLegend 
-                      verticalAlign="bottom" 
-                      height={36}
-                      iconType="circle"
-                    />
+                    <RechartsLegend verticalAlign="bottom" height={36} iconType="circle" />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -121,23 +119,22 @@ export function LoginTemplate() {
             <Card className="shadow-2xl overflow-hidden">
               <CardHeader className="bg-[#4a7c82] text-center text-white">
                 <div className="mb-4">
-                  <FormBrandingHeader 
-                    align="center" 
-                    size="md" 
-                    className="text-white [&_*]:text-white" 
+                  <FormBrandingHeader
+                    align="center"
+                    size="md"
+                    className="text-white [&_*]:text-white"
                   />
                 </div>
                 <CardTitle className="text-2xl font-bold">QUẢN LÝ THIẾT BỊ Y TẾ</CardTitle>
-                <CardDescription className="text-white/80">
-                  Đăng nhập vào hệ thống
-                </CardDescription>
+                <CardDescription className="text-white/80">Đăng nhập vào hệ thống</CardDescription>
               </CardHeader>
-              
+
               <CardContent className="p-8">
                 <Alert className="mb-6 border-yellow-200 bg-yellow-50">
                   <Info className="size-4" />
                   <AlertDescription>
-                    <strong>Chú ý:</strong> Đây là template demo. Để đăng nhập thực tế, vui lòng sử dụng trang chính của ứng dụng.
+                    <strong>Chú ý:</strong> Đây là template demo. Để đăng nhập thực tế, vui lòng sử
+                    dụng trang chính của ứng dụng.
                   </AlertDescription>
                 </Alert>
 
@@ -158,7 +155,7 @@ export function LoginTemplate() {
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <Label htmlFor="password" className="text-sm font-medium text-gray-600">
                       Mật khẩu
@@ -175,24 +172,25 @@ export function LoginTemplate() {
                       />
                     </div>
                   </div>
-                  
-                  <Button 
-                    type="submit" 
+
+                  <Button
+                    type="submit"
                     className="w-full bg-[#5d9a9f] hover:bg-[#4a7c82] py-3 font-bold transition-colors duration-300"
                   >
                     Đăng nhập (Demo)
                   </Button>
                 </form>
-                
+
                 <div className="text-center mt-6">
                   <span className="text-sm text-gray-500">English</span>
                 </div>
               </CardContent>
             </Card>
-            
+
             <div className="text-center mt-6">
               <p className="text-sm text-gray-500">
-                Cần hỗ trợ? <span className="font-medium text-[#0079FF]">Liên hệ quản trị viên</span>
+                Cần hỗ trợ?{" "}
+                <span className="font-medium text-[#0079FF]">Liên hệ quản trị viên</span>
               </p>
             </div>
           </div>
