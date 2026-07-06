@@ -182,6 +182,19 @@ describe("FacetedMultiSelectFilter", () => {
     expect(screen.getByText("Không tìm thấy lựa chọn phù hợp")).toBeInTheDocument()
   })
 
+  it("keeps option search input visually separated from its container on focus", () => {
+    render(<Wrapper />)
+
+    fireEvent.click(screen.getByRole("button", { name: /Khoa\/Phòng/i }))
+    const optionSearch = screen.getByRole("searchbox", { name: "Tìm lựa chọn Khoa/Phòng" })
+
+    expect(optionSearch).toHaveClass("border-slate-300")
+    expect(optionSearch).toHaveClass("bg-white")
+    expect(optionSearch).toHaveClass("focus-visible:border-primary")
+    expect(optionSearch).toHaveClass("focus-visible:ring-2")
+    expect(optionSearch).toHaveClass("focus-visible:ring-primary/20")
+  })
+
   it("moves focus from option search to first visible option on ArrowDown", async () => {
     vi.useFakeTimers()
     render(<Wrapper />)

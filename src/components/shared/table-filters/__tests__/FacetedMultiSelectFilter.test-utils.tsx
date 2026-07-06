@@ -16,9 +16,12 @@ type PopoverContentProps = PopoverStateProps & {
 } & React.HTMLAttributes<HTMLDivElement>
 
 vi.mock("@heroui/react/input", () => ({
-  Input: React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    (props, ref) => <input {...props} ref={ref} />
-  ),
+  Input: ({
+    ref,
+    ...props
+  }: React.InputHTMLAttributes<HTMLInputElement> & {
+    ref?: React.Ref<HTMLInputElement>
+  }) => <input {...props} ref={ref} />,
 }))
 
 /**

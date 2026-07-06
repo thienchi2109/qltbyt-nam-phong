@@ -233,7 +233,7 @@ export function FacetedMultiSelectFilter<TData, TValue>({
                   onKeyDown={handleOptionSearchKeyDown}
                   aria-label={`Tìm lựa chọn ${title ?? "bộ lọc"}`}
                   placeholder={searchPlaceholder}
-                  className="h-9 pl-9"
+                  className="h-9 border border-slate-300 bg-white pl-9 shadow-sm focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
                 />
               </div>
             </div>
