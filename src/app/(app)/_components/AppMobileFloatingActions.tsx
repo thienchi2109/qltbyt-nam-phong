@@ -20,7 +20,7 @@ export function AppMobileFloatingActions({
   isAssistantOpen,
   onAssistantToggle,
 }: AppMobileFloatingActionsProps) {
-  const { pageAction } = useMobileFloatingActions()
+  const { pageActions } = useMobileFloatingActions()
 
   const assistantAction = React.useMemo<MobileFloatingActionDescriptor>(
     () => ({
@@ -32,9 +32,9 @@ export function AppMobileFloatingActions({
     [isAssistantOpen, onAssistantToggle]
   )
 
-  if (!pageAction) {
+  if (pageActions.length === 0) {
     return <AssistantTriggerButton isOpen={isAssistantOpen} onToggle={onAssistantToggle} />
   }
 
-  return <MobileFloatingActionMenu actions={[assistantAction, pageAction]} />
+  return <MobileFloatingActionMenu actions={[assistantAction, ...pageActions]} />
 }

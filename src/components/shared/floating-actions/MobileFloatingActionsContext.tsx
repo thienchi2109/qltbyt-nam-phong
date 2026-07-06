@@ -9,37 +9,71 @@ export interface MobileFloatingActionDescriptor {
   onSelect: () => void
 }
 
+type MobileFloatingActionRegistration =
+  MobileFloatingActionDescriptor | readonly MobileFloatingActionDescriptor[] | null
+
 interface MobileFloatingActionsContextValue {
-  pageAction: MobileFloatingActionDescriptor | null
-  setPageAction: React.Dispatch<React.SetStateAction<MobileFloatingActionDescriptor | null>>
+  pageActions: readonly MobileFloatingActionDescriptor[]
+  setPageActions: React.Dispatch<React.SetStateAction<readonly MobileFloatingActionDescriptor[]>>
 }
 
-const MobileFloatingActionsStateContext =
-  React.createContext<MobileFloatingActionDescriptor | null>(null)
+const MobileFloatingActionsStateContext = React.createContext<
+  readonly MobileFloatingActionDescriptor[]
+>([])
 
 const MobileFloatingActionsSetterContext = React.createContext<
-  React.Dispatch<React.SetStateAction<MobileFloatingActionDescriptor | null>>
+  React.Dispatch<React.SetStateAction<readonly MobileFloatingActionDescriptor[]>>
 >(() => undefined)
 
-function isSameMobileFloatingAction(
-  previousAction: MobileFloatingActionDescriptor | null,
-  nextAction: MobileFloatingActionDescriptor | null
+function normalizeMobileFloatingActions(action: MobileFloatingActionRegistration) {
+  if (!action) return []
+  return Array.isArray(action) ? action : [action]
+}
+
+function areSameMobileFloatingActions(
+  previousActions: readonly MobileFloatingActionDescriptor[],
+  nextActions: readonly MobileFloatingActionDescriptor[]
 ) {
   return (
-    previousAction?.id === nextAction?.id &&
-    previousAction?.label === nextAction?.label &&
-    previousAction?.icon === nextAction?.icon &&
-    previousAction?.onSelect === nextAction?.onSelect
+    previousActions.length === nextActions.length &&
+    previousActions.every((previousAction, index) => {
+      const nextAction = nextActions[index]
+      return previousAction.id === nextAction.id && previousAction.label === nextAction.label
+    })
+  )
+}
+
+function createStableMobileFloatingActions(
+  actions: readonly MobileFloatingActionDescriptor[],
+  latestActionsRef: React.RefObject<readonly MobileFloatingActionDescriptor[]>
+) {
+  return actions.map((action, index) => ({
+    id: action.id,
+    label: action.label,
+    icon: action.icon,
+    onSelect: () => latestActionsRef.current[index]?.onSelect(),
+  }))
+}
+
+function ownsCurrentMobileFloatingActions(
+  currentActions: readonly MobileFloatingActionDescriptor[],
+  registeredActionIds: readonly string[]
+) {
+  return (
+    currentActions.length === registeredActionIds.length &&
+    currentActions.every((currentAction, index) => currentAction.id === registeredActionIds[index])
   )
 }
 
 /** Provides the app-shell-local mobile page action registration state. */
 export function MobileFloatingActionsProvider({ children }: { children: React.ReactNode }) {
-  const [pageAction, setPageAction] = React.useState<MobileFloatingActionDescriptor | null>(null)
+  const [pageActions, setPageActions] = React.useState<readonly MobileFloatingActionDescriptor[]>(
+    []
+  )
 
   return (
-    <MobileFloatingActionsSetterContext.Provider value={setPageAction}>
-      <MobileFloatingActionsStateContext.Provider value={pageAction}>
+    <MobileFloatingActionsSetterContext.Provider value={setPageActions}>
+      <MobileFloatingActionsStateContext.Provider value={pageActions}>
         {children}
       </MobileFloatingActionsStateContext.Provider>
     </MobileFloatingActionsSetterContext.Provider>
@@ -48,35 +82,50 @@ export function MobileFloatingActionsProvider({ children }: { children: React.Re
 
 /** Reads the currently registered mobile page action for layout composition. */
 export function useMobileFloatingActions() {
-  const pageAction = React.use(MobileFloatingActionsStateContext)
-  const setPageAction = React.use(MobileFloatingActionsSetterContext)
+  const pageActions = React.use(MobileFloatingActionsStateContext)
+  const setPageActions = React.use(MobileFloatingActionsSetterContext)
 
   return React.useMemo(
     () => ({
-      pageAction,
-      setPageAction,
+      pageAction: pageActions[0] ?? null,
+      pageActions,
+      setPageActions,
     }),
-    [pageAction, setPageAction]
+    [pageActions, setPageActions]
   )
 }
 
 /** Registers or clears the current page's mobile floating action. */
-export function usePageFloatingAction(action: MobileFloatingActionDescriptor | null) {
-  const setPageAction = React.use(MobileFloatingActionsSetterContext)
+export function usePageFloatingAction(action: MobileFloatingActionRegistration) {
+  const setPageActions = React.use(MobileFloatingActionsSetterContext)
+  const latestActionsRef = React.useRef<readonly MobileFloatingActionDescriptor[]>([])
+  const registeredActionIdsRef = React.useRef<readonly string[]>([])
 
   React.useEffect(() => {
-    setPageAction((currentAction) =>
-      isSameMobileFloatingAction(currentAction, action) ? currentAction : action
-    )
+    const nextActions = normalizeMobileFloatingActions(action)
+    latestActionsRef.current = nextActions
+    registeredActionIdsRef.current = nextActions.map((nextAction) => nextAction.id)
 
+    setPageActions((currentActions) =>
+      areSameMobileFloatingActions(currentActions, nextActions)
+        ? currentActions
+        : createStableMobileFloatingActions(nextActions, latestActionsRef)
+    )
+  }, [action, setPageActions])
+
+  React.useEffect(() => {
     return () => {
-      setPageAction((currentAction) => {
-        if (!action || currentAction?.id !== action.id) {
-          return currentAction
+      setPageActions((currentActions) => {
+        const registeredActionIds = registeredActionIdsRef.current
+
+        if (registeredActionIds.length === 0) {
+          return currentActions
         }
 
-        return null
+        return ownsCurrentMobileFloatingActions(currentActions, registeredActionIds)
+          ? []
+          : currentActions
       })
     }
-  }, [action, setPageAction])
+  }, [setPageActions])
 }
