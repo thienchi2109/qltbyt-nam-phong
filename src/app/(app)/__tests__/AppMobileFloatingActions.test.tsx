@@ -54,6 +54,36 @@ function RegisteredPageAction({ onSelect }: { onSelect: () => void }) {
   return null
 }
 
+function RegisteredPageActions({
+  onManualAdd,
+  onExcelImport,
+}: {
+  onManualAdd: () => void
+  onExcelImport: () => void
+}) {
+  const actions = React.useMemo(
+    () => [
+      {
+        id: "create-equipment-manual",
+        label: "Thêm thủ công",
+        icon: <PlusCircle />,
+        onSelect: onManualAdd,
+      },
+      {
+        id: "import-equipment-excel",
+        label: "Thêm bằng Excel",
+        icon: <PlusCircle />,
+        onSelect: onExcelImport,
+      },
+    ],
+    [onExcelImport, onManualAdd]
+  )
+
+  usePageFloatingAction(actions)
+
+  return null
+}
+
 describe("AppMobileFloatingActions", () => {
   it("keeps the standalone assistant trigger when no page action is registered", () => {
     render(
@@ -86,5 +116,27 @@ describe("AppMobileFloatingActions", () => {
 
     expect(toggleAssistant).toHaveBeenCalledTimes(1)
     expect(openCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it("combines assistant and multiple registered page actions into one mobile floating menu", async () => {
+    const user = userEvent.setup()
+    const toggleAssistant = vi.fn()
+    const openManualAdd = vi.fn()
+    const openExcelImport = vi.fn()
+
+    render(
+      <MobileFloatingActionsProvider>
+        <RegisteredPageActions onManualAdd={openManualAdd} onExcelImport={openExcelImport} />
+        <AppMobileFloatingActions isAssistantOpen={false} onAssistantToggle={toggleAssistant} />
+      </MobileFloatingActionsProvider>
+    )
+
+    await user.click(screen.getByRole("button", { name: "Trợ lý AI" }))
+    await user.click(screen.getByRole("button", { name: "Thêm thủ công" }))
+    await user.click(screen.getByRole("button", { name: "Thêm bằng Excel" }))
+
+    expect(toggleAssistant).toHaveBeenCalledTimes(1)
+    expect(openManualAdd).toHaveBeenCalledTimes(1)
+    expect(openExcelImport).toHaveBeenCalledTimes(1)
   })
 })

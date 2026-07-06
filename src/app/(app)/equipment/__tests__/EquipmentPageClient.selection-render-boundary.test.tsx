@@ -4,6 +4,7 @@ import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { MobileFloatingActionDescriptor } from "@/components/shared/floating-actions"
 import type { useEquipmentPage } from "../use-equipment-page"
 
 type EquipmentPageState = ReturnType<typeof useEquipmentPage>
@@ -27,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   openColumnsDialog: vi.fn(),
   openDetailDialog: vi.fn(),
   openEditDialog: vi.fn(),
+  usePageFloatingAction: vi.fn(),
 }))
 
 vi.mock("../use-equipment-page", () => ({
@@ -84,6 +86,10 @@ vi.mock("@/components/shared/DataTablePagination", () => ({
 
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => null,
+}))
+
+vi.mock("@/components/shared/floating-actions", () => ({
+  usePageFloatingAction: mocks.usePageFloatingAction,
 }))
 
 import { EquipmentPageClient } from "../_components/EquipmentPageClient"
@@ -188,14 +194,29 @@ describe("EquipmentPageClient selection render boundary", () => {
     expect(screen.getByLabelText("selected count")).toHaveTextContent("1")
   })
 
-  it("renders the mobile create FAB with the shared floating action contract", () => {
+  it("registers the mobile create action with the app floating actions foundation", async () => {
     state.pageState = createPageState(createTable())
+    state.pageState.isMobile = true
 
     render(<EquipmentPageClient />)
 
-    const button = screen.getByRole("button", { name: "Thêm thiết bị" })
-    expect(button.className).toContain("bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)]")
-    expect(button.className).toContain("size-14")
-    expect(button.className).toContain("shadow-[0_18px_34px_rgba(15,23,42,0.24)]")
+    expect(mocks.usePageFloatingAction).toHaveBeenCalled()
+    const registeredActions = mocks.usePageFloatingAction.mock
+      .calls[0][0] as MobileFloatingActionDescriptor[]
+
+    expect(registeredActions).toHaveLength(2)
+    expect(registeredActions[0]).toMatchObject({
+      id: "create-equipment-manual",
+      label: "Thêm thủ công",
+    })
+    expect(registeredActions[1]).toMatchObject({
+      id: "import-equipment-excel",
+      label: "Thêm bằng Excel",
+    })
+    registeredActions[0].onSelect()
+    registeredActions[1].onSelect()
+
+    expect(mocks.openAddDialog).toHaveBeenCalledTimes(1)
+    expect(mocks.openImportDialog).toHaveBeenCalledTimes(1)
   })
 })

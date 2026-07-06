@@ -2,22 +2,13 @@
 
 import * as React from "react"
 import type { ColumnFiltersState } from "@tanstack/react-table"
-import { Plus } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FilterBottomSheet } from "@/components/equipment/filter-bottom-sheet"
 import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
-import { floatingActionButtonClassName } from "@/components/shared/FloatingActionButton"
 import { EquipmentToolbar } from "@/components/equipment/equipment-toolbar"
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { applyAttentionStatusPresetFilters } from "@/lib/equipment-attention-preset"
@@ -31,6 +22,7 @@ import { EquipmentDialogProvider } from "./EquipmentDialogContext"
 import { EquipmentColumnsDialog } from "./EquipmentColumnsDialog"
 import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
 import { EquipmentDepartmentSummary } from "./EquipmentDepartmentSummary"
+import { EquipmentMobileFloatingActions } from "./EquipmentMobileFloatingActions"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
 
 const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
@@ -231,6 +223,13 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
 
   return (
     <>
+      <EquipmentMobileFloatingActions
+        canCreateEquipment={canCreateEquipment}
+        isMobile={isMobile}
+        onAddEquipment={openAddDialog}
+        onImportEquipment={openImportDialog}
+      />
+
       <EquipmentDialogs
         onGenerateProfileSheet={handleGenerateProfileSheet}
         onGenerateDeviceLabel={handleGenerateDeviceLabel}
@@ -326,25 +325,6 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
           </CardFooter>
         </Card>
       </div>
-
-      {/* Floating Add Button - Mobile only */}
-      {canCreateEquipment ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            className={floatingActionButtonClassName()}
-            aria-label="Thêm thiết bị"
-          >
-            <Plus />
-            <span className="sr-only">Them thiet bi</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="mb-2">
-            <DropdownMenuItem onSelect={openAddDialog}>Thêm từng thiết bị</DropdownMenuItem>
-            <DropdownMenuItem onSelect={openImportDialog}>
-              Thêm hàng loạt bằng Excel
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
 
       <FilterBottomSheet
         open={isFilterSheetOpen}
