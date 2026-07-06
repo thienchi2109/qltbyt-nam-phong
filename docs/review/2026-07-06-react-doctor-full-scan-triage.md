@@ -96,34 +96,44 @@ These are useful cleanup but should not block product work unless touching nearb
 | ------------------------------------------------------ | ----: | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
 | `Accessibility / dialog-has-accessible-name / warning` |     2 | `RepairRequestsDetailView.test.tsx:114`, `repairRequestSheetAdapter.test.tsx:26` | Test fixture warnings only. Fix when editing those tests or if CI starts enforcing accessibility warnings. |
 
-## Suggested Work Batches
+## Quick Win / High ROI Plan
 
-1. **React correctness quick fixes**
-   - `jsx-key`
-   - `query-destructure-result`
-   - Verification: focused component tests plus `typecheck` and React Doctor diff scan.
+ROI ranking uses four criteria: likely issue-count reduction, low blast radius, simple verification, and low chance of business-logic or DB-policy regression. This intentionally does not start with the highest-severity SQL findings because those need live Supabase MCP inspection before any migration work.
 
-2. **Security review**
-   - `low-supply-chain-score`
-   - `dangerous-html-sink`
-   - Verification: dependency/advisory review, targeted tests for print/template escaping where applicable.
+| Rank | Batch                                                                                                                                   | Issues | Risk        | Why this is high ROI                                                                                                                                | Verification                                                                       |
+| ---: | --------------------------------------------------------------------------------------------------------------------------------------- | -----: | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+|    1 | React correctness quick fixes: `jsx-key`, `query-destructure-result`                                                                    |      5 | Low         | Removes all non-DB error-level React findings. Fixes are local and should not require design changes.                                               | Focused component tests where present, `typecheck`, React Doctor diff scan.        |
+|    2 | Module-scope hoists: `prefer-module-scope-pure-function`, `prefer-module-scope-static-value`, `rerender-lazy-ref-init`, `js-hoist-intl` |     28 | Low         | Mostly mechanical moves of pure helpers/static values. Good issue reduction with small runtime risk when values are truly local-state independent.  | `typecheck`, focused tests for touched components, React Doctor diff scan.         |
+|    3 | Dependency hygiene: `unused-dev-dependency`, verified `unused-dependency`, `low-supply-chain-score` for `vitest`                        |     10 | Low-Medium  | Can reduce package/security noise quickly. Must confirm dynamic/service-worker usage before removing runtime deps like `firebase`.                  | Import search, build/typecheck, dependency install sanity, React Doctor diff scan. |
+|    4 | Print/template HTML review: `dangerous-html-sink`                                                                                       |      6 | Medium      | Security ROI is high, count is modest. Requires source-by-source check to avoid breaking print/export flows.                                        | Targeted escaping/sanitization tests, manual print/export smoke checks.            |
+|    5 | Hook behavior cleanup: `exhaustive-deps`, `prefer-use-effect-event`, selected `no-event-handler`                                        |     24 | Medium      | Good correctness value, but render timing/subscription changes can regress UI behavior. Start with repeated patterns, not a sweeping rewrite.       | Focused page tests, interaction smoke tests, React Doctor diff scan.               |
+|    6 | Direct import/perf small fixes: `no-barrel-import`, `async-defer-await`, `js-flatmap-filter`                                            |      4 | Low         | Easy cleanup, but lower score impact than ranks 1-3. Bundle/runtime benefit is incremental.                                                         | `typecheck`, focused smoke check.                                                  |
+|    7 | Component split cleanup: `no-giant-component`, selected `no-multi-comp`                                                                 |     22 | Medium      | High count, but lower immediate product value and higher churn. Do this only when those files are already in scope or as a dedicated cleanup issue. | Existing tests plus visual/manual smoke checks.                                    |
+|    8 | Supabase RLS audit: `supabase-table-missing-rls`                                                                                        |     20 | High        | High severity but not a quick win. Correct fix depends on live grants/RLS/policies and historical migrations.                                       | Supabase MCP live inspection, migration safety review, security advisors.          |
+|    9 | React 19 API migration: `no-react19-deprecated-apis`                                                                                    |     89 | Medium-High | Biggest count drop, but broad churn across 88 source locations. Defer unless the team explicitly wants a React 19 API migration batch.              | Broad test suite, React Doctor full scan, careful review of `ref` behavior.        |
 
-3. **Supabase RLS audit**
-   - `supabase-table-missing-rls`
-   - Verification: Supabase MCP live table/policy/grant inspection before migrations. Preserve repo-specific SECURITY DEFINER, grant/revoke, and JWT-claim guard patterns.
+### Recommended First Three PRs
 
-4. **Hook behavior cleanup**
-   - `exhaustive-deps`
-   - `prefer-use-effect-event`
-   - `no-derived-state`
-   - `no-event-handler`
-   - Verification: focused tests around affected pages because these can alter render timing and subscriptions.
+1. **PR 1: React Doctor error cleanup outside DB**
+   - Scope: `jsx-key` and `query-destructure-result`.
+   - Expected reduction: 5 errors.
+   - Reason: highest confidence improvement because it removes real React error findings without touching DB/security policy.
 
-5. **Low-risk maintainability/performance cleanup**
-   - module-scope hoists
-   - direct imports
-   - lazy ref initialization
-   - unused exports/dependencies after independent confirmation.
+2. **PR 2: Mechanical render-cost cleanup**
+   - Scope: module-scope pure functions/static values, lazy ref initialization, `Intl.NumberFormat` hoist.
+   - Expected reduction: up to 28 warnings.
+   - Reason: best warning-count reduction with low behavior risk if each hoist is verified as state-independent.
+
+3. **PR 3: Dependency/security noise cleanup**
+   - Scope: unused dev dependencies, validated unused runtime dependencies, `vitest` low-supply-chain/vulnerability axis.
+   - Expected reduction: up to 10 findings.
+   - Reason: reduces security/maintenance noise and package surface before tackling riskier app logic.
+
+### Defer From Quick-Win Track
+
+- **Supabase RLS findings:** high severity, but they require live DB truth. Treat as a separate security audit, not a quick cleanup.
+- **React 19 API migration:** largest issue count, but too broad for quick win. Do only with an explicit migration plan.
+- **Large component splitting:** useful but churn-heavy. Bundle with feature work or create targeted cleanup issues per module.
 
 ## Notes
 
