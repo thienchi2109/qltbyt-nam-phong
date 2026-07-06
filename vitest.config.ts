@@ -1,25 +1,31 @@
-import { defineConfig } from 'vitest/config'
-import path from 'path'
+import { defineConfig } from "vitest/config"
+import path from "path"
 
 export default defineConfig({
+  oxc: {
+    jsx: {
+      runtime: "automatic",
+      importSource: "react",
+    },
+  },
   test: {
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    setupFiles: ['./vitest.setup.ts'],
-    include: ['**/*.{test,spec}.{ts,tsx}'],
-    exclude: ['**/node_modules/**', '**/dist/**', '**/build/**', '**/.worktrees/**'],
+    setupFiles: ["./vitest.setup.ts"],
+    include: ["**/*.{test,spec}.{ts,tsx}"],
+    exclude: ["**/node_modules/**", "**/dist/**", "**/build/**", "**/.worktrees/**"],
     typecheck: {
-      tsconfig: './tsconfig.test.json',
+      tsconfig: "./tsconfig.test.json",
     },
     coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      exclude: ['node_modules/', 'vitest.config.ts', 'vitest.setup.ts']
-    }
+      provider: "v8",
+      reporter: ["text", "html"],
+      exclude: ["node_modules/", "vitest.config.ts", "vitest.setup.ts"],
+    },
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
-    }
-  }
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
 })
