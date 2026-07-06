@@ -2,14 +2,11 @@ import type { ComponentType } from "react"
 import { ClipboardList, Eye, History, Settings, Wrench } from "lucide-react"
 
 export type QRActionKey =
-  | "usage-log"
-  | "view-details"
-  | "view-history"
-  | "create-repair"
-  | "update-status"
+  "usage-log" | "view-details" | "view-history" | "create-repair" | "update-status"
 
 export type QRErrorType = "not_found" | "access_denied" | "network" | "server_error" | null
 
+/** QR action sheet options shown after scanning a device code. */
 export const QR_ACTION_ITEMS = [
   {
     action: "usage-log",
@@ -72,6 +69,12 @@ export const QR_ACTION_ITEMS = [
   descriptionClassName: string
 }>
 
+const VIETNAMESE_CURRENCY_FORMATTER = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+})
+
+/** Returns the status badge color classes for a device status label. */
 export function getStatusColor(status: string | null) {
   switch (status) {
     case "Hoạt động":
@@ -91,9 +94,7 @@ export function getStatusColor(status: string | null) {
   }
 }
 
+/** Formats a numeric amount as Vietnamese dong. */
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(amount)
+  return VIETNAMESE_CURRENCY_FORMATTER.format(amount)
 }

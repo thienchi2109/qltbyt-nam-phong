@@ -48,18 +48,29 @@ function formatDate(dateStr: string | null | undefined): string {
   }
 }
 
+const STATUS_BADGE_VARIANTS: Record<
+  Decision["trang_thai"],
+  { variant: "outline" | "default"; label: string; className: string }
+> = {
+  draft: { variant: "outline", label: "Nháp", className: "border-gray-400 text-gray-700" },
+  active: {
+    variant: "default",
+    label: "Đang áp dụng",
+    className: "bg-green-600 hover:bg-green-700",
+  },
+  inactive: {
+    variant: "outline",
+    label: "Không áp dụng",
+    className: "border-gray-400 text-gray-600",
+  },
+}
+
 // ============================================
 // Helper: Status Badge
 // ============================================
 
 function StatusBadge({ status }: { status: Decision["trang_thai"] }) {
-  const variants = {
-    draft: { variant: "outline" as const, label: "Nháp", className: "border-gray-400 text-gray-700" },
-    active: { variant: "default" as const, label: "Đang áp dụng", className: "bg-green-600 hover:bg-green-700" },
-    inactive: { variant: "outline" as const, label: "Không áp dụng", className: "border-gray-400 text-gray-600" },
-  }
-
-  const config = variants[status] || variants.draft
+  const config = STATUS_BADGE_VARIANTS[status] ?? STATUS_BADGE_VARIANTS.draft
 
   return (
     <Badge variant={config.variant} className={config.className}>
@@ -77,11 +88,21 @@ function TableLoadingSkeleton() {
     <>
       {Array.from({ length: 5 }).map((_, idx) => (
         <TableRow key={idx}>
-          <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-          <TableCell><Skeleton className="h-6 w-28" /></TableCell>
-          <TableCell><Skeleton className="size-8 rounded" /></TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-32" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-4 w-24" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="h-6 w-28" />
+          </TableCell>
+          <TableCell>
+            <Skeleton className="size-8 rounded" />
+          </TableCell>
         </TableRow>
       ))}
     </>
@@ -117,7 +138,13 @@ interface MobileDecisionCardProps {
   onDelete: () => void
 }
 
-function MobileDecisionCard({ decision, onView, onEdit, onActivate, onDelete }: MobileDecisionCardProps) {
+function MobileDecisionCard({
+  decision,
+  onView,
+  onEdit,
+  onActivate,
+  onDelete,
+}: MobileDecisionCardProps) {
   return (
     <div className="border rounded-lg p-4 space-y-3 bg-card hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between">
@@ -201,7 +228,10 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
               Kích hoạt
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="mr-2 size-4" />
               Xóa
             </DropdownMenuItem>
@@ -219,22 +249,20 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
 /** Renders quota decisions with row-level view, activate, and delete actions. */
 export function DeviceQuotaDecisionsTable() {
   const { push } = useRouter()
-  const {
-    decisions,
-    isLoading,
-    openEditDialog,
-    activateMutation,
-    deleteMutation,
-  } = useDeviceQuotaDecisionsContext()
+  const { decisions, isLoading, openEditDialog, activateMutation, deleteMutation } =
+    useDeviceQuotaDecisionsContext()
 
   // Confirmation dialogs state
   const [activateDialog, setActivateDialog] = React.useState<Decision | null>(null)
   const [deleteDialog, setDeleteDialog] = React.useState<Decision | null>(null)
 
   // Navigate to decision detail page
-  const handleViewDetails = React.useCallback((decisionId: number) => {
-    push(`/device-quota/decisions/${decisionId}`)
-  }, [push])
+  const handleViewDetails = React.useCallback(
+    (decisionId: number) => {
+      push(`/device-quota/decisions/${decisionId}`)
+    },
+    [push]
+  )
 
   const handleActivateConfirm = React.useCallback(() => {
     if (!activateDialog) return
@@ -330,15 +358,20 @@ export function DeviceQuotaDecisionsTable() {
       </div>
 
       {/* Activate Confirmation Dialog */}
-      <AlertDialog open={!!activateDialog} onOpenChange={(open) => !open && setActivateDialog(null)}>
+      <AlertDialog
+        open={!!activateDialog}
+        onOpenChange={(open) => !open && setActivateDialog(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Kích hoạt quyết định</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn kích hoạt quyết định <strong>{activateDialog?.so_quyet_dinh}</strong>?
+              Bạn có chắc chắn muốn kích hoạt quyết định{" "}
+              <strong>{activateDialog?.so_quyet_dinh}</strong>?
               <br />
               <br />
-              Khi kích hoạt, quyết định cũ sẽ tự động ngưng áp dụng và quyết định này sẽ có hiệu lực.
+              Khi kích hoạt, quyết định cũ sẽ tự động ngưng áp dụng và quyết định này sẽ có hiệu
+              lực.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -347,9 +380,7 @@ export function DeviceQuotaDecisionsTable() {
               onClick={handleActivateConfirm}
               disabled={activateMutation.isPending}
             >
-              {activateMutation.isPending && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
+              {activateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
               Kích hoạt
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -375,9 +406,7 @@ export function DeviceQuotaDecisionsTable() {
               disabled={deleteMutation.isPending}
               className="bg-destructive hover:bg-destructive/90"
             >
-              {deleteMutation.isPending && (
-                <Loader2 className="size-4 animate-spin" />
-              )}
+              {deleteMutation.isPending && <Loader2 className="size-4 animate-spin" />}
               Xóa
             </AlertDialogAction>
           </AlertDialogFooter>

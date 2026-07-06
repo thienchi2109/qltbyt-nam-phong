@@ -8,10 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import { DynamicPieChart } from "@/components/dynamic-chart"
 import { buildStatusDonutData } from "@/components/equipment-distribution-summary.utils"
-import { 
-  useEquipmentDistribution, 
+import {
+  useEquipmentDistribution,
   STATUS_COLORS,
-  STATUS_LABELS
+  STATUS_LABELS,
 } from "@/hooks/use-equipment-distribution"
 
 interface EquipmentDistributionSummaryProps {
@@ -37,33 +37,87 @@ const STATUS_DISPLAY_ORDER = [
   "cho_hieu_chuan",
 ] as const
 
+function getStatusIcon(statusKey: string) {
+  const iconClassName = "size-5 text-white"
+
+  switch (statusKey) {
+    case "hoat_dong":
+      return <CheckCircle className={iconClassName} />
+    case "cho_sua_chua":
+      return <XCircle className={iconClassName} />
+    case "cho_bao_tri":
+      return <Clock className={iconClassName} />
+    case "cho_hieu_chuan":
+      return <AlertCircle className={iconClassName} />
+    case "ngung_su_dung":
+      return <Pause className={iconClassName} />
+    default:
+      return <Activity className={iconClassName} />
+  }
+}
+
+function getHealthScoreColor(score: number) {
+  if (score >= 80) return "text-green-600"
+  if (score >= 60) return "text-yellow-600"
+  return "text-red-600"
+}
+
+function getHealthScoreBadge(score: number) {
+  if (score >= 80) return "default"
+  if (score >= 60) return "secondary"
+  return "destructive"
+}
+
+function getStatusProgressStyle(
+  color: string
+): React.CSSProperties & Record<"--status-progress-color", string> {
+  return {
+    "--status-progress-color": color,
+    accentColor: color,
+  }
+}
+
 /** Renders equipment distribution totals and status breakdowns. */
-export function EquipmentDistributionSummary({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: EquipmentDistributionSummaryProps) {
-  const { data, isLoading, error } = useEquipmentDistribution(undefined, undefined, tenantFilter, selectedDonVi, effectiveTenantKey)
+export function EquipmentDistributionSummary({
+  className,
+  tenantFilter,
+  selectedDonVi,
+  effectiveTenantKey,
+}: EquipmentDistributionSummaryProps) {
+  const { data, isLoading, error } = useEquipmentDistribution(
+    undefined,
+    undefined,
+    tenantFilter,
+    selectedDonVi,
+    effectiveTenantKey
+  )
 
   // Calculate overall statistics
   const overallStats = React.useMemo(() => {
     if (!data) return null
 
     const totalEquipment = data.totalEquipment
-    
+
     // Sum up all status counts from departments data
-    const statusCounts = data.byDepartment.reduce((acc, dept) => {
-      acc.hoat_dong += dept.hoat_dong
-      acc.cho_sua_chua += dept.cho_sua_chua
-      acc.cho_bao_tri += dept.cho_bao_tri
-      acc.cho_hieu_chuan += dept.cho_hieu_chuan
-      acc.ngung_su_dung += dept.ngung_su_dung
-      acc.chua_co_nhu_cau += dept.chua_co_nhu_cau
-      return acc
-    }, {
-      hoat_dong: 0,
-      cho_sua_chua: 0,
-      cho_bao_tri: 0,
-      cho_hieu_chuan: 0,
-      ngung_su_dung: 0,
-      chua_co_nhu_cau: 0
-    })
+    const statusCounts = data.byDepartment.reduce(
+      (acc, dept) => {
+        acc.hoat_dong += dept.hoat_dong
+        acc.cho_sua_chua += dept.cho_sua_chua
+        acc.cho_bao_tri += dept.cho_bao_tri
+        acc.cho_hieu_chuan += dept.cho_hieu_chuan
+        acc.ngung_su_dung += dept.ngung_su_dung
+        acc.chua_co_nhu_cau += dept.chua_co_nhu_cau
+        return acc
+      },
+      {
+        hoat_dong: 0,
+        cho_sua_chua: 0,
+        cho_bao_tri: 0,
+        cho_hieu_chuan: 0,
+        ngung_su_dung: 0,
+        chua_co_nhu_cau: 0,
+      }
+    )
 
     // Calculate percentages
     const statusPercentages = Object.entries(statusCounts).map(([key, count]) => ({
@@ -71,11 +125,12 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
       count,
       percentage: totalEquipment > 0 ? Math.round((count / totalEquipment) * 100) : 0,
       label: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-      color: STATUS_COLORS[key as keyof typeof STATUS_COLORS]
+      color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
     }))
 
     // Health score calculation (active equipment percentage)
-    const healthScore = totalEquipment > 0 ? Math.round((statusCounts.hoat_dong / totalEquipment) * 100) : 0
+    const healthScore =
+      totalEquipment > 0 ? Math.round((statusCounts.hoat_dong / totalEquipment) * 100) : 0
 
     return {
       totalEquipment,
@@ -83,7 +138,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
       statusPercentages,
       healthScore,
       departmentCount: data.departments.length,
-      locationCount: data.locations.length
+      locationCount: data.locations.length,
     }
   }, [data])
 
@@ -109,44 +164,6 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
   if (error || !overallStats) {
     return null
   }
-
-  const getStatusIcon = (statusKey: string) => {
-    const iconClassName = "size-5 text-white"
-
-    switch (statusKey) {
-      case 'hoat_dong':
-        return <CheckCircle className={iconClassName} />
-      case 'cho_sua_chua':
-        return <XCircle className={iconClassName} />
-      case 'cho_bao_tri':
-        return <Clock className={iconClassName} />
-      case 'cho_hieu_chuan':
-        return <AlertCircle className={iconClassName} />
-      case 'ngung_su_dung':
-        return <Pause className={iconClassName} />
-      default:
-        return <Activity className={iconClassName} />
-    }
-  }
-
-  const getHealthScoreColor = (score: number) => {
-    if (score >= 80) return "text-green-600"
-    if (score >= 60) return "text-yellow-600"
-    return "text-red-600"
-  }
-
-  const getHealthScoreBadge = (score: number) => {
-    if (score >= 80) return "default"
-    if (score >= 60) return "secondary"
-    return "destructive"
-  }
-
-  const getStatusProgressStyle = (
-    color: string
-  ): React.CSSProperties & Record<"--status-progress-color", string> => ({
-    "--status-progress-color": color,
-    accentColor: color,
-  })
 
   const donutData = buildStatusDonutData(overallStats.statusPercentages)
   const hasDonutData = donutData.length > 0
@@ -175,8 +192,11 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
             <div className="flex items-center gap-2 mt-1">
               <Progress value={overallStats.healthScore} className="flex-1" />
               <Badge variant={getHealthScoreBadge(overallStats.healthScore)}>
-                {overallStats.healthScore >= 80 ? 'Tốt' : 
-                 overallStats.healthScore >= 60 ? 'Trung bình' : 'Cần chú ý'}
+                {overallStats.healthScore >= 80
+                  ? "Tốt"
+                  : overallStats.healthScore >= 60
+                    ? "Trung bình"
+                    : "Cần chú ý"}
               </Badge>
             </div>
           </CardContent>
@@ -189,9 +209,7 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
             <CheckCircle className="size-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {overallStats.totalEquipment}
-            </div>
+            <div className="text-2xl font-bold text-blue-600">{overallStats.totalEquipment}</div>
             <p className="text-xs text-muted-foreground">
               {overallStats.statusCounts.hoat_dong} đang hoạt động
             </p>
@@ -206,13 +224,11 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {overallStats.departmentCount > 0 
+              {overallStats.departmentCount > 0
                 ? Math.round(overallStats.totalEquipment / overallStats.departmentCount)
                 : 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              TB trung bình/khoa
-            </p>
+            <p className="text-xs text-muted-foreground">TB trung bình/khoa</p>
           </CardContent>
         </Card>
 
@@ -224,13 +240,11 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {overallStats.locationCount > 0 
+              {overallStats.locationCount > 0
                 ? Math.round(overallStats.totalEquipment / overallStats.locationCount)
                 : 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              TB trung bình/vị trí
-            </p>
+            <p className="text-xs text-muted-foreground">TB trung bình/vị trí</p>
           </CardContent>
         </Card>
       </div>
@@ -262,7 +276,10 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                   />
                   <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <div data-testid="status-donut-total" className="text-3xl font-bold tracking-normal">
+                      <div
+                        data-testid="status-donut-total"
+                        className="text-3xl font-bold tracking-normal"
+                      >
                         {overallStats.totalEquipment}
                       </div>
                       <div className="text-xs text-muted-foreground">thiết bị</div>
@@ -275,7 +292,10 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                 </div>
               )}
               {hasDonutData && (
-                <div data-testid="status-donut-legend" className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
+                <div
+                  data-testid="status-donut-legend"
+                  className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2"
+                >
                   {donutData.map((item) => (
                     <div
                       key={item.key}
@@ -315,11 +335,13 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
                       <div className="min-w-0">
                         <div className="truncate text-sm font-medium">{status.label}</div>
                         <div className="text-xs text-muted-foreground">
-                          <span className="text-lg font-bold text-foreground">{status.count}</span> thiết bị
+                          <span className="text-lg font-bold text-foreground">{status.count}</span>{" "}
+                          thiết bị
                         </div>
                       </div>
                       <div className="shrink-0 text-right text-sm text-muted-foreground">
-                        <span className="font-medium text-foreground">{status.percentage}%</span> tổng số
+                        <span className="font-medium text-foreground">{status.percentage}%</span>{" "}
+                        tổng số
                       </div>
                     </div>
                     <progress
@@ -338,4 +360,4 @@ export function EquipmentDistributionSummary({ className, tenantFilter, selected
       </Card>
     </div>
   )
-} 
+}

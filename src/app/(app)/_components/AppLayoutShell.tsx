@@ -61,6 +61,17 @@ type AppLayoutShellProps = {
   user: AppLayoutUser
 }
 
+const TOUR_ATTRIBUTES: Record<string, string> = {
+  "/dashboard": "sidebar-nav-dashboard",
+  "/equipment": "sidebar-nav-equipment",
+  "/repair-requests": "sidebar-nav-repairs",
+  "/maintenance": "sidebar-nav-maintenance",
+  "/transfers": "sidebar-nav-transfers",
+  "/device-quota": "sidebar-nav-device-quota",
+  "/reports": "sidebar-nav-reports",
+  "/qr-scanner": "sidebar-nav-qr",
+}
+
 /**
  * Wraps authenticated app pages with shared navigation, header actions, and mobile footer state.
  */
@@ -88,17 +99,6 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
     enabled: status === "authenticated" && shouldFetchData,
     facilityId: selectedFacilityId,
   })
-
-  const tourAttributes: Record<string, string> = {
-    "/dashboard": "sidebar-nav-dashboard",
-    "/equipment": "sidebar-nav-equipment",
-    "/repair-requests": "sidebar-nav-repairs",
-    "/maintenance": "sidebar-nav-maintenance",
-    "/transfers": "sidebar-nav-transfers",
-    "/device-quota": "sidebar-nav-device-quota",
-    "/reports": "sidebar-nav-reports",
-    "/qr-scanner": "sidebar-nav-qr",
-  }
 
   const navItems = React.useMemo(() => {
     return getAppNavigationItems(user.role)
@@ -186,7 +186,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
                 pathname={pathname}
                 isSidebarOpen={isSidebarOpen}
                 notificationCounts={notificationCounts}
-                tourAttributes={tourAttributes}
+                tourAttributes={TOUR_ATTRIBUTES}
                 className={cn("px-3", !isSidebarOpen && "justify-items-center px-0")}
               />
             </div>
