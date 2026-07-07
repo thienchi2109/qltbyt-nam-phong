@@ -92,4 +92,34 @@ describe("useRepairRequestUIHandlers", () => {
     expect(documentMock.write).toHaveBeenCalledWith("<html><body>print</body></html>")
     expect(didPrint).toBe(true)
   })
+
+  it("isolates the generated print window from the app window before writing the sheet", () => {
+    mockBuildRepairRequestSheetHtml.mockReturnValue("<html><body>print</body></html>")
+
+    const printWindow = {
+      document: {
+        close: vi.fn(),
+        open: vi.fn(),
+        write: vi.fn(),
+      },
+      opener: window,
+    }
+    vi.spyOn(window, "open").mockReturnValue(printWindow as unknown as Window)
+
+    const { result } = renderHook(() =>
+      useRepairRequestUIHandlers({
+        branding: null,
+        toast: mocks.toast,
+      })
+    )
+
+    const didPrint = result.current.handleGenerateRequestSheet(
+      { id: 8 } as RepairRequestWithEquipment,
+      { prefillRequesterName: true }
+    )
+
+    expect(didPrint).toBe(true)
+    expect(printWindow.opener).toBeNull()
+    expect(printWindow.document.write).toHaveBeenCalledWith("<html><body>print</body></html>")
+  })
 })
