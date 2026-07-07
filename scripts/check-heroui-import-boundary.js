@@ -14,6 +14,7 @@ const ALLOWED_BOUNDARY_FILES = [
   "src/components/shared/SearchInput.tsx",
   "src/components/shared/ListFilterSearchCard.tsx",
   "src/components/shared/table-filters/FacetedMultiSelectFilter.tsx",
+  "src/components/equipment/filter-bottom-sheet.tsx",
 ]
 
 function normalizePath(filePath) {

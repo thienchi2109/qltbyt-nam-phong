@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   openColumnsDialog: vi.fn(),
   openDetailDialog: vi.fn(),
   tenantSelector: vi.fn(),
+  equipmentToolbar: vi.fn(),
 }))
 
 vi.mock("../use-equipment-page", () => ({
@@ -59,9 +60,10 @@ vi.mock("../_components/EquipmentBulkDeleteBar", () => ({
 }))
 
 vi.mock("@/components/equipment/equipment-toolbar", () => ({
-  EquipmentToolbar: ({ tenantControl }: { tenantControl?: React.ReactNode }) => (
-    <section aria-label="equipment toolbar">{tenantControl}</section>
-  ),
+  EquipmentToolbar: (props: { tenantControl?: React.ReactNode; description?: React.ReactNode }) => {
+    mocks.equipmentToolbar(props)
+    return <section aria-label="equipment toolbar">{props.tenantControl}</section>
+  },
 }))
 
 vi.mock("@/components/equipment/filter-bottom-sheet", () => ({
@@ -212,6 +214,26 @@ describe("EquipmentPageClient department summary", () => {
     expect(within(summary).queryByText("Chưa cập nhật")).not.toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment toolbar" })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "equipment table" })).toBeInTheDocument()
+  })
+
+  it("does not pass the equipment subtitle into desktop or compact toolbar layouts", () => {
+    render(<EquipmentPageClient />)
+
+    expect(mocks.equipmentToolbar).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        description: "Quản lý danh sách các trang thiết bị y tế.",
+      })
+    )
+
+    vi.clearAllMocks()
+    state.pageState = createPageState({ isMobile: true, isCardView: true })
+    render(<EquipmentPageClient />)
+
+    expect(mocks.equipmentToolbar).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        description: "Quản lý danh sách các trang thiết bị y tế.",
+      })
+    )
   })
 
   it("hides the department summary when compact filters are active", () => {

@@ -11,6 +11,7 @@ import { isEquipmentManagerRole } from "@/lib/rbac"
 import { useEquipmentAuth } from "./_hooks/useEquipmentAuth"
 import { useEquipmentFilters } from "./_hooks/useEquipmentFilters"
 import { useEquipmentData } from "./_hooks/useEquipmentData"
+import { useEquipmentFilterSheetCascade } from "./_hooks/useEquipmentFilterSheetCascade"
 import { useEquipmentTable } from "./_hooks/useEquipmentTable"
 import { useEquipmentExport } from "./_hooks/useEquipmentExport"
 import { useEquipmentRouteSync } from "./_hooks/useEquipmentRouteSync"
@@ -219,8 +220,22 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // NOTE: Legacy dialog state removed - now managed by EquipmentDialogContext
   // Route sync pending actions are exposed for handling in page.tsx with context
 
-  // Filter sheet state (not a dialog - stays here)
-  const [isFilterSheetOpen, setIsFilterSheetOpen] = React.useState(false)
+  const handleClearAllColumnFilters = React.useCallback(() => {
+    setColumnFiltersAndReset([])
+  }, [setColumnFiltersAndReset])
+
+  const filterSheet = useEquipmentFilterSheetCascade({
+    shouldFetchData: data.shouldFetchData,
+    committedColumnFilters: filters.columnFilters,
+    committedFilterData: data.filterData,
+    effectiveTenantKey: auth.effectiveTenantKey,
+    userRole: auth.user?.role || "user",
+    userDiaBanId: auth.user?.dia_ban_id,
+    effectiveSelectedDonVi,
+    debouncedSearch: filters.debouncedSearch,
+    onApply: setColumnFiltersAndReset,
+    onClearAll: handleClearAllColumnFilters,
+  })
 
   // Tenant change effect: keep tenant-scoped filter state and show toast
   // Track by effectiveTenantKey which now uses context's selectedFacilityId
@@ -310,7 +325,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       statuses: data.statuses,
       classifications: data.classifications,
       fundingSources: data.fundingSources,
-      filterData: data.filterData,
+      filterData: filterSheet.filterData,
 
       // Facility filter - now from context via auth/data hooks
       showFacilityFilter: data.showFacilityFilter,
@@ -322,8 +337,11 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       isFacilitiesLoading: data.isFacilitiesLoading,
 
       // Filter sheet
-      isFilterSheetOpen,
-      setIsFilterSheetOpen,
+      isFilterSheetOpen: filterSheet.isFilterSheetOpen,
+      setIsFilterSheetOpen: filterSheet.setIsFilterSheetOpen,
+      onFilterSheetDraftChange: filterSheet.onDraftFiltersChange,
+      onApplyFilterSheetFilters: filterSheet.onApply,
+      onClearFilterSheetFilters: filterSheet.onClearAll,
 
       // Handlers
       handleDownloadTemplate: exports.handleDownloadTemplate,
@@ -356,7 +374,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       setSearchTermAndReset,
       setColumnFiltersAndReset,
       hasFacilityFilter,
-      isFilterSheetOpen,
+      filterSheet,
       exports,
       onDataMutationSuccess,
       onDataMutationSuccessWithStatePreservation,

@@ -137,6 +137,9 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     // Filter sheet
     isFilterSheetOpen,
     setIsFilterSheetOpen,
+    onFilterSheetDraftChange,
+    onApplyFilterSheetFilters,
+    onClearFilterSheetFilters,
 
     // Handlers
     handleExportData,
@@ -240,7 +243,6 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
         <EquipmentToolbar
           table={table}
           title="Danh mục thiết bị"
-          description="Quản lý danh sách các trang thiết bị y tế."
           tenantControl={tenantControl}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
@@ -331,8 +333,9 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
         onOpenChange={setIsFilterSheetOpen}
         data={filterData}
         columnFilters={columnFilters}
-        onApply={setColumnFilters}
-        onClearAll={() => setColumnFilters([])}
+        onDraftFiltersChange={onFilterSheetDraftChange}
+        onApply={onApplyFilterSheetFilters}
+        onClearAll={onClearFilterSheetFilters}
       />
     </>
   )
