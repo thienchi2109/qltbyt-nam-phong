@@ -4,6 +4,8 @@ import {
   collectChangedPrettierFiles,
   isPrettierSupportedFile,
   main,
+  PRETTIER_CHECK_CHUNK_SIZE,
+  runPrettierCheck,
 } from "../check-prettier-in-diff"
 
 describe("check-prettier-in-diff", () => {
@@ -66,5 +68,27 @@ describe("check-prettier-in-diff", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "Prettier check failed: Cannot find module 'prettier/bin/prettier.cjs'"
     )
+  })
+
+  it("checks changed files in bounded chunks", () => {
+    const execFileSyncImpl = vi.fn()
+    const filePaths = Array.from(
+      { length: PRETTIER_CHECK_CHUNK_SIZE + 1 },
+      (_, index) => `src/file-${index}.ts`
+    )
+
+    runPrettierCheck(filePaths, {
+      execFileSyncImpl,
+      prettierBin: "/tmp/prettier.cjs",
+    })
+
+    expect(execFileSyncImpl).toHaveBeenCalledTimes(2)
+    expect(execFileSyncImpl.mock.calls[0][1]).toHaveLength(PRETTIER_CHECK_CHUNK_SIZE + 3)
+    expect(execFileSyncImpl.mock.calls[1][1]).toEqual([
+      "/tmp/prettier.cjs",
+      "--check",
+      "--ignore-unknown",
+      `src/file-${PRETTIER_CHECK_CHUNK_SIZE}.ts`,
+    ])
   })
 })

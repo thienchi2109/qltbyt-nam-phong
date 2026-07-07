@@ -6,6 +6,7 @@ const path = require("node:path")
 const { collectChangedFiles, getCommittedChangedFiles, runGit } = require("./changed-files")
 
 const DEFAULT_BASE_REF = process.env.PRETTIER_BASE || "main"
+const PRETTIER_CHECK_CHUNK_SIZE = 100
 const PRETTIER_EXTENSIONS = new Set([
   ".js",
   ".jsx",
@@ -38,13 +39,22 @@ function collectChangedPrettierFiles(
   })
 }
 
-function runPrettierCheck(filePaths) {
-  const prettierBin = require.resolve("prettier/bin/prettier.cjs")
+function runPrettierCheck(
+  filePaths,
+  {
+    chunkSize = PRETTIER_CHECK_CHUNK_SIZE,
+    execFileSyncImpl = execFileSync,
+    prettierBin = require.resolve("prettier/bin/prettier.cjs"),
+  } = {}
+) {
+  for (let index = 0; index < filePaths.length; index += chunkSize) {
+    const chunk = filePaths.slice(index, index + chunkSize)
 
-  execFileSync(process.execPath, [prettierBin, "--check", "--ignore-unknown", ...filePaths], {
-    cwd: process.cwd(),
-    stdio: "inherit",
-  })
+    execFileSyncImpl(process.execPath, [prettierBin, "--check", "--ignore-unknown", ...chunk], {
+      cwd: process.cwd(),
+      stdio: "inherit",
+    })
+  }
 }
 
 function main(
@@ -87,6 +97,7 @@ module.exports = {
   getCommittedChangedFiles,
   isPrettierSupportedFile,
   main,
+  PRETTIER_CHECK_CHUNK_SIZE,
   runGit,
   runPrettierCheck,
 }

@@ -7,17 +7,17 @@ import * as React from "react"
  * its close/focus lifecycle.
  */
 export function useDeferredDropdownAction() {
-  const timeoutIdsRef = React.useRef<number[]>([])
+  const timeoutIdsRef = React.useRef<ReturnType<typeof setTimeout>[]>([])
 
   React.useEffect(() => {
     return () => {
-      timeoutIdsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+      timeoutIdsRef.current.forEach((timeoutId) => clearTimeout(timeoutId))
       timeoutIdsRef.current = []
     }
   }, [])
 
   return React.useCallback((action: () => void) => {
-    const timeoutId = window.setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       timeoutIdsRef.current = timeoutIdsRef.current.filter((id) => id !== timeoutId)
       action()
     }, 0)
