@@ -12,20 +12,12 @@ import type { Table, ColumnFiltersState } from "@tanstack/react-table"
 import dynamic from "next/dynamic"
 import { Filter, PlusCircle, Settings, ScanLine } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import {
   EquipmentToolbarDesktopFilters,
   EquipmentToolbarDesktopLayout,
 } from "./equipment-toolbar-layout"
-import { EquipmentHeroButton, EquipmentHeroDropdown } from "./heroui-pilot"
+import { EquipmentHeroButton, EquipmentHeroDropdown } from "./heroui-pilot/controls"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
@@ -126,13 +118,40 @@ export function EquipmentToolbar({
     [qr.handleStartScanning]
   )
 
+  const optionsMenuItems = React.useMemo(
+    () => [
+      {
+        id: "columns",
+        label: "Hiện/ẩn cột",
+        textValue: "Hiện/ẩn cột",
+        onAction: onOpenColumnsDialog,
+      },
+      {
+        id: "template",
+        label: "Tải Excel mẫu",
+        textValue: "Tải Excel mẫu",
+        onAction: onDownloadTemplate,
+      },
+      {
+        id: "export",
+        label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+        textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+        onAction: onExportData,
+        isDisabled: isExporting,
+      },
+    ],
+    [isExporting, onDownloadTemplate, onExportData, onOpenColumnsDialog]
+  )
+
   const mobileFilterControl = React.useMemo(
     () => (
       <div data-testid="equipment-compact-filter-actions" className="grid w-full grid-cols-2 gap-2">
-        <Button
-          variant="outline"
+        <EquipmentHeroButton
+          type="button"
+          variant="ghost"
           size="sm"
-          onClick={onOpenFilterSheet}
+          onPress={onOpenFilterSheet}
+          data-testid="equipment-heroui-compact-filter-trigger"
           className={cn(
             "h-9 w-full justify-center border-slate-200 shadow-sm transition-all",
             isFiltered
@@ -143,41 +162,27 @@ export function EquipmentToolbar({
           <Filter className="size-4 mr-2" />
           <span className="font-medium">Lọc</span>
           {isFiltered && (
-            <Badge
-              variant="secondary"
-              className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold"
-            >
+            <span className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold">
               {activeFilterCount}
-            </Badge>
+            </span>
           )}
-        </Button>
+        </EquipmentHeroButton>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9 w-full justify-center">
-              <Settings className="size-4 mr-2" />
+        <EquipmentHeroDropdown
+          ariaLabel="Tùy chọn"
+          placement="bottom start"
+          trigger={
+            <>
+              <Settings className="size-4" />
               Tùy chọn
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuItem onSelect={onOpenColumnsDialog}>Hiện/ẩn cột</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onDownloadTemplate}>Tải Excel mẫu</DropdownMenuItem>
-            <DropdownMenuItem onSelect={onExportData} disabled={isExporting}>
-              {isExporting ? "Đang tải..." : "Tải về dữ liệu"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            </>
+          }
+          triggerClassName="h-9 w-full justify-center gap-2"
+          items={optionsMenuItems}
+        />
       </div>
     ),
-    [
-      activeFilterCount,
-      isExporting,
-      isFiltered,
-      onDownloadTemplate,
-      onExportData,
-      onOpenColumnsDialog,
-      onOpenFilterSheet,
-    ]
+    [activeFilterCount, isFiltered, onOpenFilterSheet, optionsMenuItems]
   )
 
   const actions = React.useMemo(
@@ -219,39 +224,11 @@ export function EquipmentToolbar({
             </>
           }
           triggerClassName="hidden h-8 gap-1 lg:inline-flex touch-target-sm md:h-8"
-          items={[
-            {
-              id: "columns",
-              label: "Hiện/ẩn cột",
-              textValue: "Hiện/ẩn cột",
-              onAction: onOpenColumnsDialog,
-            },
-            {
-              id: "template",
-              label: "Tải Excel mẫu",
-              textValue: "Tải Excel mẫu",
-              onAction: onDownloadTemplate,
-            },
-            {
-              id: "export",
-              label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              onAction: onExportData,
-              isDisabled: isExporting,
-            },
-          ]}
+          items={optionsMenuItems}
         />
       </>
     ),
-    [
-      canCreateEquipment,
-      isExporting,
-      onAddEquipment,
-      onDownloadTemplate,
-      onExportData,
-      onImportEquipment,
-      onOpenColumnsDialog,
-    ]
+    [canCreateEquipment, onAddEquipment, onImportEquipment, optionsMenuItems]
   )
 
   return (
