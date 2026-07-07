@@ -185,7 +185,30 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 
 ### Retrieval Rule
 
-At the start of any non-trivial task, search `agentmemory` before re-deriving prior decisions. If memory conflicts with the current codebase or live system state, trust the current code/live state and save a concise stale-memory correction to `agentmemory`.
+At the start of any non-trivial task, search `agentmemory` before re-deriving prior decisions.
+
+Use short, high-signal queries. `agentmemory` recall is sensitive to long/noisy queries: extra unrelated terms can hide a saved note even when the note exists. Prefer 2-6 strong terms per query:
+
+- Issue/PR IDs: `#717 row actions`, `PR #723 merge`
+- File/symbol paths: `scripts/check-prettier-in-diff.js`, `useDeferredDropdownAction`
+- Decision terms: `overlay roadmap`, `preventDefault Radix`, `diff-only Prettier`
+
+Do not start with a broad mixed query like `overlay focus unification HeroUI Radix native dialog shared toolbar umbrella issue #717 roadmap Equipments Repair Requests`. Split it into focused retries:
+
+1. `#716 #720 overlay roadmap`
+2. `issue 717 row actions Radix dropdown freeze`
+3. `RepairRequestsColumns useDeferredDropdownAction`
+
+Recommended retrieval flow:
+
+1. Run `memory_recall` with a short issue/file/symbol query.
+2. If it misses, run `memory_smart_search` with a different short query.
+3. If you know a memory ID, query the exact ID.
+4. If both tools miss but memory should exist, retry with fewer terms before concluding it is absent.
+5. Use `memory_sessions` only when session provenance matters. Empty sessions or audit results do not prove that no memory exists.
+6. Use `memory_export` only as a last-resort diagnostic, and extract the specific matching IDs/notes rather than reasoning over the full export in context.
+
+When saving memories, include likely future lookup terms in `concepts`: repo name, issue/PR IDs, module names, key file paths, and the decision keyword. If memory conflicts with the current codebase or live system state, trust the current code/live state and save a concise stale-memory correction to `agentmemory`.
 
 ## ⚠️ Role Normalization (`admin` = `global`)
 
@@ -393,7 +416,7 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 1. START OF SESSION
-   agentmemory: memory_recall / memory_smart_search with task-relevant keywords
+   agentmemory: memory_recall / memory_smart_search with 2-6 high-signal keywords
    → Retrieve prior decisions, known gotchas, architectural constraints
 
 2. TOKEN-EFFICIENT CODEBASE READING
@@ -419,8 +442,8 @@ These tools complement each other. Use them together while prioritizing token-ef
 
 ```
 # Step 1 — Recall prior context (agentmemory)
-agentmemory memory_recall("repairRequest repair request sheet")
-agentmemory memory_smart_search("repair request sheet flow", limit=5)
+agentmemory memory_recall("repair request sheet")
+agentmemory memory_smart_search("RepairRequestsPrintOptionsDialog", limit=5)
 
 # Step 2 — Read codebase cheaply first (Code Review Graph)
 code-review-graph get_minimal_context_tool("repair request sheet flow")
