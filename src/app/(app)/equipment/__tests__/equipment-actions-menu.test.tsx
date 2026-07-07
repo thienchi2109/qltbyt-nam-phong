@@ -1,7 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as React from "react"
 import "@testing-library/jest-dom"
+import type { Equipment } from "@/types/database"
 
 const state = vi.hoisted(() => ({
   role: "user",
@@ -38,36 +40,6 @@ vi.mock("@/app/(app)/equipment/_hooks/useEquipmentContext", () => ({
   }),
 }))
 
-vi.mock("@/components/ui/button", () => ({
-  Button: ({ children, onClick, ...props }: any) => (
-    <button type="button" onClick={onClick} {...props}>
-      {children}
-    </button>
-  ),
-  buttonVariants: () => "",
-}))
-
-vi.mock("@/components/ui/dropdown-menu", () => ({
-  DropdownMenu: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuContent: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuLabel: ({ children }: any) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onSelect, disabled, title, ...props }: any) => (
-    <button
-      type="button"
-      disabled={disabled}
-      title={title}
-      onClick={(e) => {
-        e.preventDefault = vi.fn()
-        onSelect?.(e)
-      }}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
-}))
-
 import { EquipmentActionsMenu } from "../../../../components/equipment/equipment-actions-menu"
 
 function setRole(role: string) {
@@ -79,7 +51,7 @@ function setRole(role: string) {
 function renderMenu() {
   return render(
     <EquipmentActionsMenu
-      equipment={{ id: 101, ten_thiet_bi: "TB Test" } as any}
+      equipment={{ id: 101, ten_thiet_bi: "TB Test" } as unknown as Equipment}
       activeUsageLogs={[]}
       isLoadingActiveUsage={false}
     />
@@ -92,56 +64,108 @@ describe("EquipmentActionsMenu delete action", () => {
     state.role = "user"
     state.isGlobal = false
     state.isRegionalLeader = false
+    document.body.style.pointerEvents = ""
   })
 
-  it("shows Xóa Thiết bị for global role", () => {
+  it("shows Xóa Thiết bị for global role", async () => {
+    const user = userEvent.setup()
     setRole("global")
     renderMenu()
 
-    expect(screen.getByText("Xóa Thiết bị")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.getByRole("menuitem", { name: "Xóa Thiết bị" })).toBeInTheDocument()
   })
 
-  it("shows Xóa Thiết bị for to_qltb role", () => {
+  it("shows Xóa Thiết bị for to_qltb role", async () => {
+    const user = userEvent.setup()
     setRole("to_qltb")
     renderMenu()
 
-    expect(screen.getByText("Xóa Thiết bị")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.getByRole("menuitem", { name: "Xóa Thiết bị" })).toBeInTheDocument()
   })
 
-  it("hides Xóa Thiết bị for regional_leader role", () => {
+  it("hides Xóa Thiết bị for regional_leader role", async () => {
+    const user = userEvent.setup()
     setRole("regional_leader")
     renderMenu()
 
-    expect(screen.queryByText("Xóa Thiết bị")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" })).not.toBeInTheDocument()
   })
 
-  it("hides Xóa Thiết bị for user role", () => {
+  it("hides Xóa Thiết bị for user role", async () => {
+    const user = userEvent.setup()
     setRole("user")
     renderMenu()
 
-    expect(screen.queryByText("Xóa Thiết bị")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" })).not.toBeInTheDocument()
   })
 
-  it("calls openDeleteDialog when selecting delete action", () => {
+  it("calls openDeleteDialog when selecting delete action", async () => {
+    const user = userEvent.setup()
     setRole("to_qltb")
     renderMenu()
 
-    fireEvent.click(screen.getByText("Xóa Thiết bị"))
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xóa Thiết bị" }))
 
-    expect(mocks.openDeleteDialog).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 101 }),
-      "actions_menu"
+    await waitFor(() =>
+      expect(mocks.openDeleteDialog).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 101 }),
+        "actions_menu"
+      )
     )
   })
 
-  it("does not render local delete confirmation dialog content", () => {
+  it("opens delete dialog only after the row action menu has closed", async () => {
+    const user = userEvent.setup()
+    const callbackMenuState: boolean[] = []
+    setRole("to_qltb")
+    mocks.openDeleteDialog.mockImplementation(() => {
+      callbackMenuState.push(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" }) !== null)
+    })
+    renderMenu()
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xóa Thiết bị" }))
+
+    await waitFor(() => expect(mocks.openDeleteDialog).toHaveBeenCalledTimes(1))
+    expect(callbackMenuState).toEqual([false])
+    expect(document.body.style.pointerEvents).not.toBe("none")
+  })
+
+  it("does not render local delete confirmation dialog content", async () => {
+    const user = userEvent.setup()
     setRole("to_qltb")
     renderMenu()
 
-    fireEvent.click(screen.getByText("Xóa Thiết bị"))
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xóa Thiết bị" }))
 
     expect(
       screen.queryByText("Bạn có chắc chắn muốn xóa thiết bị này không?")
     ).not.toBeInTheDocument()
+  })
+
+  it("opens details only after the row action menu has closed", async () => {
+    const user = userEvent.setup()
+    const callbackMenuState: boolean[] = []
+    mocks.openDetailDialog.mockImplementation(() => {
+      callbackMenuState.push(screen.queryByRole("menuitem", { name: "Xem chi tiết" }) !== null)
+    })
+    renderMenu()
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xem chi tiết" }))
+
+    await waitFor(() => expect(mocks.openDetailDialog).toHaveBeenCalledTimes(1))
+    expect(callbackMenuState).toEqual([false])
+    expect(document.body.style.pointerEvents).not.toBe("none")
   })
 })
