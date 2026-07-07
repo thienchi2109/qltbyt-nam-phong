@@ -6,7 +6,7 @@ import { Building2, Filter, Tags, UserRound, WalletCards, X } from "lucide-react
 
 import type { Equipment } from "@/types/database"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
-import { EquipmentHeroButton } from "./heroui-pilot/controls"
+import { EquipmentHeroButton } from "@/components/equipment/heroui-pilot/controls"
 
 interface EquipmentFilterFieldProps {
   label: string
