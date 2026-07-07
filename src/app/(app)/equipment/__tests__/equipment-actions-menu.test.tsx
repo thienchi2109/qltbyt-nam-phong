@@ -117,6 +117,23 @@ describe("EquipmentActionsMenu delete action", () => {
     )
   })
 
+  it("opens delete dialog only after the row action menu has closed", async () => {
+    const user = userEvent.setup()
+    const callbackMenuState: boolean[] = []
+    setRole("to_qltb")
+    mocks.openDeleteDialog.mockImplementation(() => {
+      callbackMenuState.push(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" }) !== null)
+    })
+    renderMenu()
+
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+    await user.click(screen.getByRole("menuitem", { name: "Xóa Thiết bị" }))
+
+    await waitFor(() => expect(mocks.openDeleteDialog).toHaveBeenCalledTimes(1))
+    expect(callbackMenuState).toEqual([false])
+    expect(document.body.style.pointerEvents).not.toBe("none")
+  })
+
   it("does not render local delete confirmation dialog content", async () => {
     const user = userEvent.setup()
     setRole("to_qltb")

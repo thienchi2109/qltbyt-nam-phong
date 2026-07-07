@@ -47,38 +47,50 @@ function runPrettierCheck(filePaths) {
   })
 }
 
-function main() {
+function main(
+  baseRef = process.argv[2] || DEFAULT_BASE_REF,
+  {
+    collectChangedPrettierFilesImpl = collectChangedPrettierFiles,
+    runPrettierCheckImpl = runPrettierCheck,
+    consoleError = console.error,
+    consoleLog = console.log,
+  } = {}
+) {
   let filePaths
 
   try {
-    filePaths = collectChangedPrettierFiles(process.argv[2] || DEFAULT_BASE_REF)
+    filePaths = collectChangedPrettierFilesImpl(baseRef)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`Unable to determine changed files for Prettier: ${message}`)
-    process.exitCode = 1
-    return
+    consoleError(`Unable to determine changed files for Prettier: ${message}`)
+    return 1
   }
 
   if (filePaths.length === 0) {
-    console.log("No changed Prettier-supported files to check.")
-    return
+    consoleLog("No changed Prettier-supported files to check.")
+    return 0
   }
 
   try {
-    runPrettierCheck(filePaths)
-  } catch {
-    process.exitCode = 1
+    runPrettierCheckImpl(filePaths)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    consoleError(`Prettier check failed: ${message}`)
+    return 1
   }
+
+  return 0
 }
 
 module.exports = {
   collectChangedPrettierFiles,
   getCommittedChangedFiles,
   isPrettierSupportedFile,
+  main,
   runGit,
   runPrettierCheck,
 }
 
 if (require.main === module) {
-  main()
+  process.exitCode = main()
 }
