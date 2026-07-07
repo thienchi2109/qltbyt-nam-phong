@@ -25,7 +25,7 @@ const PRETTIER_EXTENSIONS = new Set([
 ])
 
 function isPrettierSupportedFile(filePath) {
-  return PRETTIER_EXTENSIONS.has(path.extname(filePath))
+  return PRETTIER_EXTENSIONS.has(path.extname(filePath).toLowerCase())
 }
 
 function collectChangedPrettierFiles(
@@ -50,10 +50,14 @@ function runPrettierCheck(
   for (let index = 0; index < filePaths.length; index += chunkSize) {
     const chunk = filePaths.slice(index, index + chunkSize)
 
-    execFileSyncImpl(process.execPath, [prettierBin, "--check", "--ignore-unknown", ...chunk], {
-      cwd: process.cwd(),
-      stdio: "inherit",
-    })
+    execFileSyncImpl(
+      process.execPath,
+      [prettierBin, "--check", "--ignore-unknown", "--", ...chunk],
+      {
+        cwd: process.cwd(),
+        stdio: "inherit",
+      }
+    )
   }
 }
 

@@ -87,18 +87,24 @@ describe("EquipmentActionsMenu delete action", () => {
     expect(screen.getByRole("menuitem", { name: "Xóa Thiết bị" })).toBeInTheDocument()
   })
 
-  it("hides Xóa Thiết bị for regional_leader role", () => {
+  it("hides Xóa Thiết bị for regional_leader role", async () => {
+    const user = userEvent.setup()
     setRole("regional_leader")
     renderMenu()
 
-    expect(screen.queryByText("Xóa Thiết bị")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" })).not.toBeInTheDocument()
   })
 
-  it("hides Xóa Thiết bị for user role", () => {
+  it("hides Xóa Thiết bị for user role", async () => {
+    const user = userEvent.setup()
     setRole("user")
     renderMenu()
 
-    expect(screen.queryByText("Xóa Thiết bị")).not.toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Open menu" }))
+
+    expect(screen.queryByRole("menuitem", { name: "Xóa Thiết bị" })).not.toBeInTheDocument()
   })
 
   it("calls openDeleteDialog when selecting delete action", async () => {

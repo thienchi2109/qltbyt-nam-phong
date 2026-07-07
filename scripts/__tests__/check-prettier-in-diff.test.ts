@@ -46,6 +46,7 @@ describe("check-prettier-in-diff", () => {
 
   it("matches the file extensions formatted by the Lefthook Prettier command", () => {
     expect(isPrettierSupportedFile("src/component.tsx")).toBe(true)
+    expect(isPrettierSupportedFile("src/component.TSX")).toBe(true)
     expect(isPrettierSupportedFile("package.json")).toBe(true)
     expect(isPrettierSupportedFile("docs/spec.md")).toBe(true)
     expect(isPrettierSupportedFile("supabase/migration.sql")).toBe(false)
@@ -83,11 +84,12 @@ describe("check-prettier-in-diff", () => {
     })
 
     expect(execFileSyncImpl).toHaveBeenCalledTimes(2)
-    expect(execFileSyncImpl.mock.calls[0][1]).toHaveLength(PRETTIER_CHECK_CHUNK_SIZE + 3)
+    expect(execFileSyncImpl.mock.calls[0][1]).toHaveLength(PRETTIER_CHECK_CHUNK_SIZE + 4)
     expect(execFileSyncImpl.mock.calls[1][1]).toEqual([
       "/tmp/prettier.cjs",
       "--check",
       "--ignore-unknown",
+      "--",
       `src/file-${PRETTIER_CHECK_CHUNK_SIZE}.ts`,
     ])
   })
