@@ -137,6 +137,9 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     // Filter sheet
     isFilterSheetOpen,
     setIsFilterSheetOpen,
+    onFilterSheetDraftChange,
+    onApplyFilterSheetFilters,
+    onClearFilterSheetFilters,
 
     // Handlers
     handleExportData,
@@ -331,8 +334,9 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
         onOpenChange={setIsFilterSheetOpen}
         data={filterData}
         columnFilters={columnFilters}
-        onApply={setColumnFilters}
-        onClearAll={() => setColumnFilters([])}
+        onDraftFiltersChange={onFilterSheetDraftChange}
+        onApply={onApplyFilterSheetFilters}
+        onClearAll={onClearFilterSheetFilters}
       />
     </>
   )

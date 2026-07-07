@@ -167,6 +167,9 @@ export interface UseEquipmentPageReturn {
   // Filter sheet
   isFilterSheetOpen: boolean
   setIsFilterSheetOpen: React.Dispatch<React.SetStateAction<boolean>>
+  onFilterSheetDraftChange: (next: ColumnFiltersState) => void
+  onApplyFilterSheetFilters: (next: ColumnFiltersState) => void
+  onClearFilterSheetFilters: () => void
 
   // Handlers
   handleDownloadTemplate: () => Promise<void>

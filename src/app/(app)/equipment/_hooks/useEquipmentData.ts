@@ -4,6 +4,7 @@ import * as React from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
+import { useEquipmentFilterBuckets } from "./useEquipmentFilterBuckets"
 import type { Equipment } from "../types"
 import type {
   EquipmentDepartmentDistributionItem,
@@ -74,26 +75,6 @@ export interface UseEquipmentDataReturn {
 
   // Cache invalidation
   invalidateEquipmentForCurrentTenant: () => void
-}
-
-type FilterBucketItem = { name: string; count: number }
-
-type EquipmentFilterBucketsResponse = Partial<{
-  department: FilterBucketItem[]
-  user: FilterBucketItem[]
-  location: FilterBucketItem[]
-  status: FilterBucketItem[]
-  classification: FilterBucketItem[]
-  fundingSource: FilterBucketItem[]
-}>
-
-const EMPTY_FILTER_BUCKET: FilterBucketItem[] = []
-
-function normalizeBucket(
-  data: EquipmentFilterBucketsResponse | undefined,
-  key: keyof EquipmentFilterBucketsResponse
-) {
-  return data?.[key] ?? EMPTY_FILTER_BUCKET
 }
 
 /** Loads equipment table data, filter buckets, and department distribution for the current scope. */
@@ -289,107 +270,21 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
 
   const isFetching = isEqFetching
 
-  // Filter buckets are bundled into one RPC to avoid six parallel cold-start calls.
-  const { data: filterBucketsData } = useQuery<EquipmentFilterBucketsResponse>({
-    queryKey: [
-      "equipment_filter_buckets",
-      {
-        tenant: effectiveTenantKey,
-        role: userRole,
-        diaBan: userDiaBanId,
-        donVi: effectiveSelectedDonVi,
-        q: debouncedSearch || null,
-        khoa_phong_array: selectedDepartments,
-        nguoi_su_dung_array: selectedUsers,
-        vi_tri_lap_dat_array: selectedLocations,
-        tinh_trang_array: selectedStatuses,
-        phan_loai_array: selectedClassifications,
-        nguon_kinh_phi_array: selectedFundingSources,
-      },
-    ],
-    queryFn: async ({ signal }) => {
-      const result = await callRpc<EquipmentFilterBucketsResponse>({
-        fn: "equipment_filter_buckets",
-        args: {
-          p_q: debouncedSearch || null,
-          p_don_vi: effectiveSelectedDonVi,
-          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
-        },
-        signal,
-      })
-      return result ?? {}
-    },
-    enabled: shouldFetchData,
-    staleTime: 300_000,
-    gcTime: 10 * 60_000,
-    refetchOnWindowFocus: false,
-  })
-
-  const departmentsData = normalizeBucket(filterBucketsData, "department")
-  const usersData = normalizeBucket(filterBucketsData, "user")
-  const locationsData = normalizeBucket(filterBucketsData, "location")
-  const classificationsData = normalizeBucket(filterBucketsData, "classification")
-  const statusesData = normalizeBucket(filterBucketsData, "status")
-  const fundingSourcesData = normalizeBucket(filterBucketsData, "fundingSource")
-
-  const departments = React.useMemo(
-    () => departmentsData.map((x) => x.name).filter(Boolean),
-    [departmentsData]
-  )
-  const users = React.useMemo(() => usersData.map((x) => x.name).filter(Boolean), [usersData])
-  const locations = React.useMemo(
-    () => locationsData.map((x) => x.name).filter(Boolean),
-    [locationsData]
-  )
-  const classifications = React.useMemo(
-    () => classificationsData.map((x) => x.name).filter(Boolean),
-    [classificationsData]
-  )
-  const statuses = React.useMemo(
-    () => statusesData.map((x) => x.name).filter(Boolean),
-    [statusesData]
-  )
-  const fundingSources = React.useMemo(
-    () => fundingSourcesData.map((x) => x.name).filter(Boolean),
-    [fundingSourcesData]
-  )
-
-  // Filter data for bottom sheet
-  const filterData: FilterBottomSheetData = React.useMemo(
-    () => ({
-      status: (statusesData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      department: (departmentsData || []).map((x) => ({
-        id: x.name,
-        label: x.name,
-        count: x.count,
-      })),
-      location: (locationsData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      user: (usersData || []).map((x) => ({ id: x.name, label: x.name, count: x.count })),
-      classification: (classificationsData || []).map((x) => ({
-        id: x.name,
-        label: x.name,
-        count: x.count,
-      })),
-      fundingSource: (fundingSourcesData || []).map((x) => ({
-        id: x.name,
-        label: x.name,
-        count: x.count,
-      })),
-    }),
-    [
-      statusesData,
-      departmentsData,
-      locationsData,
-      usersData,
-      classificationsData,
-      fundingSourcesData,
-    ]
-  )
+  const { departments, users, locations, statuses, classifications, fundingSources, filterData } =
+    useEquipmentFilterBuckets({
+      shouldFetchData,
+      effectiveTenantKey,
+      userRole,
+      userDiaBanId,
+      effectiveSelectedDonVi,
+      debouncedSearch,
+      selectedDepartments,
+      selectedUsers,
+      selectedLocations,
+      selectedStatuses,
+      selectedClassifications,
+      selectedFundingSources,
+    })
 
   // Cache invalidation - check all cache isolation fields
   const invalidateEquipmentForCurrentTenant = React.useCallback(() => {

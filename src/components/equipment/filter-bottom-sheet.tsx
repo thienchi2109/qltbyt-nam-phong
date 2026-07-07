@@ -3,9 +3,9 @@
 import * as React from "react"
 import { X, Check } from "lucide-react"
 import type { ColumnFiltersState } from "@tanstack/react-table"
+import { Badge as HeroBadge } from "@heroui/react/badge"
+import { Button as HeroButton } from "@heroui/react/button"
 
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { MobileBottomSheet } from "@/components/shared/mobile-bottom-sheet"
 
@@ -25,6 +25,7 @@ interface FilterBottomSheetProps {
   onOpenChange: (open: boolean) => void
   data: EquipmentFilterData
   columnFilters: ColumnFiltersState
+  onDraftFiltersChange?: (next: ColumnFiltersState) => void
   onApply: (next: ColumnFiltersState) => void
   onClearAll: () => void
 }
@@ -39,12 +40,23 @@ function getLocalFilters(columnFilters: ColumnFiltersState): Record<string, stri
   return initial
 }
 
+function toColumnFilters(localFilters: Record<string, string[]>): ColumnFiltersState {
+  const next: ColumnFiltersState = []
+  for (const [id, value] of Object.entries(localFilters)) {
+    if (value.length > 0) {
+      next.push({ id, value })
+    }
+  }
+  return next
+}
+
 /** Renders the mobile equipment filter sheet with an apply-only local draft. */
 export function FilterBottomSheet({
   open,
   onOpenChange,
   data,
   columnFilters,
+  onDraftFiltersChange,
   onApply,
   onClearAll,
 }: FilterBottomSheetProps) {
@@ -78,7 +90,9 @@ export function FilterBottomSheet({
       const next = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value]
-      return { ...prev, [category]: next }
+      const nextFilters = { ...prev, [category]: next }
+      onDraftFiltersChange?.(toColumnFilters(nextFilters))
+      return nextFilters
     })
   }
 
@@ -91,13 +105,7 @@ export function FilterBottomSheet({
   }, [localFilters])
 
   const handleApply = () => {
-    const next: ColumnFiltersState = []
-    for (const [id, value] of Object.entries(localFilters)) {
-      if (value.length > 0) {
-        next.push({ id, value })
-      }
-    }
-    onApply(next)
+    onApply(toColumnFilters(localFilters))
     handleOpenChange(false)
   }
 
@@ -119,39 +127,41 @@ export function FilterBottomSheet({
     <MobileBottomSheet open={open} onOpenChange={handleOpenChange} ariaLabel="Bộ lọc thiết bị">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <h2 className="text-lg font-semibold text-foreground">
-          Bộ lọc thiết bị
-        </h2>
-        <Button
+        <h2 className="text-lg font-semibold text-foreground">Bộ lọc thiết bị</h2>
+        <HeroButton
           variant="ghost"
-          size="icon"
-          onClick={() => handleOpenChange(false)}
+          size="sm"
+          isIconOnly
+          onPress={() => handleOpenChange(false)}
           className="size-10 rounded-full"
           aria-label="Đóng bộ lọc"
         >
           <X className="size-5" />
-        </Button>
+        </HeroButton>
       </div>
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-6" style={{
-        maxHeight: 'calc(100vh - 20rem)',
-        WebkitOverflowScrolling: 'touch'
-      }}>
+      <div
+        className="flex-1 overflow-y-auto overscroll-contain px-6 py-4 space-y-6"
+        style={{
+          maxHeight: "calc(100vh - 20rem)",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {filterSections.map((section) =>
           section.options.length > 0 ? (
             <div key={section.key}>
-              <h3 className="text-sm font-semibold text-foreground mb-3">
-                {section.label}
-              </h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{section.label}</h3>
               <div className="space-y-2">
                 {section.options.map((option) => {
                   const selected = isSelected(section.key, option.id)
                   return (
-                    <button
+                    <HeroButton
                       key={option.id}
                       type="button"
-                      onClick={() => toggleFilter(section.key, option.id)}
+                      variant="outline"
+                      onPress={() => toggleFilter(section.key, option.id)}
+                      aria-pressed={selected}
                       className={cn(
                         "w-full flex items-center justify-between p-3.5 rounded-xl border-2 transition-all touch-target-sm",
                         selected
@@ -169,7 +179,10 @@ export function FilterBottomSheet({
                           )}
                         >
                           {selected && (
-                            <Check className="size-3.5 text-[hsl(var(--primary-foreground))]" strokeWidth={3} />
+                            <Check
+                              className="size-3.5 text-[hsl(var(--primary-foreground))]"
+                              strokeWidth={3}
+                            />
                           )}
                         </div>
                         <span
@@ -181,13 +194,14 @@ export function FilterBottomSheet({
                           {option.label}
                         </span>
                       </div>
-                      <Badge
+                      <HeroBadge
                         variant="secondary"
+                        size="sm"
                         className="text-xs font-semibold shrink-0"
                       >
                         {option.count}
-                      </Badge>
-                    </button>
+                      </HeroBadge>
+                    </HeroButton>
                   )
                 })}
               </div>
@@ -199,19 +213,19 @@ export function FilterBottomSheet({
       {/* Footer - Extra padding to clear bottom navigation */}
       <div className="shrink-0 px-6 pt-4 pb-24 border-t border-border bg-muted/30">
         <div className="grid grid-cols-2 gap-3">
-          <Button
+          <HeroButton
             variant="outline"
-            onClick={handleClearAll}
+            onPress={handleClearAll}
             className="h-12 text-sm font-semibold rounded-xl"
           >
             Xóa tất cả
-          </Button>
-          <Button
-            onClick={handleApply}
+          </HeroButton>
+          <HeroButton
+            onPress={handleApply}
             className="h-12 text-sm font-semibold rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
           >
             Áp dụng {activeCount > 0 && `(${activeCount})`}
-          </Button>
+          </HeroButton>
         </div>
       </div>
     </MobileBottomSheet>
