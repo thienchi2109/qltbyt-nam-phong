@@ -13,10 +13,7 @@ import dynamic from "next/dynamic"
 import { Filter, PlusCircle, Settings, ScanLine } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
-import {
-  EquipmentToolbarDesktopFilters,
-  EquipmentToolbarDesktopLayout,
-} from "./equipment-toolbar-layout"
+import { EquipmentToolbarDesktopFilters } from "./equipment-toolbar-layout"
 import { EquipmentHeroButton, EquipmentHeroDropdown } from "./heroui-pilot/controls"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
@@ -269,27 +266,31 @@ export function EquipmentToolbar({
           actions={actions}
         />
       ) : (
-        <EquipmentToolbarDesktopLayout
-          title={title}
-          description={description}
-          searchValue={searchTerm}
-          onSearchChange={onSearchChange}
-          searchPlaceholder={searchPlaceholder}
-          searchEndAddon={searchEndAddon}
-          selectionActions={selectionActions}
-          actions={actions}
-        >
-          <EquipmentToolbarDesktopFilters
-            table={table}
-            tenantControl={tenantControl}
-            statuses={statuses}
-            departments={departments}
-            users={users}
-            classifications={classifications}
-            fundingSources={fundingSources}
-            isFiltered={isFiltered}
+        <div data-testid="equipment-reference-filter-layout">
+          <ListFilterSearchCard
+            title={title}
+            description={description}
+            searchValue={searchTerm}
+            onSearchChange={onSearchChange}
+            searchPlaceholder={searchPlaceholder}
+            searchEndAddon={searchEndAddon}
+            showSearchIcon={false}
+            filterControls={
+              <EquipmentToolbarDesktopFilters
+                table={table}
+                tenantControl={tenantControl}
+                statuses={statuses}
+                departments={departments}
+                users={users}
+                classifications={classifications}
+                fundingSources={fundingSources}
+                isFiltered={isFiltered}
+              />
+            }
+            selectionActions={selectionActions}
+            actions={actions}
           />
-        </EquipmentToolbarDesktopLayout>
+        </div>
       )}
     </>
   )

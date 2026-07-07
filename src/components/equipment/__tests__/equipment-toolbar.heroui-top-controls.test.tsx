@@ -61,7 +61,7 @@ function createBaseProps() {
 }
 
 describe("EquipmentToolbar HeroUI top controls", () => {
-  it("renders the desktop shell and search through the Equipments HeroUI pilot", () => {
+  it("renders desktop search through the shared SearchInput contract", () => {
     render(
       <EquipmentToolbar
         {...createBaseProps()}
@@ -70,15 +70,13 @@ describe("EquipmentToolbar HeroUI top controls", () => {
       />
     )
 
-    const shell = screen.getByTestId("equipment-heroui-top-controls-shell")
-    const searchControl = screen.getByTestId("equipment-heroui-search-control")
     const search = screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })
 
-    expect(shell).toContainElement(searchControl)
-    expect(searchControl).toContainElement(search)
+    expect(screen.queryByTestId("equipment-heroui-search-control")).not.toBeInTheDocument()
     expect(search).toHaveAttribute("type", "search")
+    expect(search).toHaveClass("border", "border-slate-300", "bg-white", "shadow-sm")
     expect(screen.getByText("Quản lý danh sách các trang thiết bị y tế.")).toHaveClass(
-      "text-muted-foreground"
+      "body-responsive-sm"
     )
     expect(screen.getByTitle("Quét mã QR")).toContainElement(
       screen.getByRole("button", { name: "Quét mã QR" })
@@ -98,7 +96,7 @@ describe("EquipmentToolbar HeroUI top controls", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Xóa tìm kiếm" }))
 
-    expect(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })).toHaveClass("pr-20")
+    expect(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })).toHaveClass("pr-16")
     expect(onSearchChange).toHaveBeenCalledWith("")
   })
 
