@@ -22,6 +22,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useDeferredDropdownAction } from "@/components/ui/use-deferred-dropdown-action"
 import { useEquipmentContext } from "@/app/(app)/equipment/_hooks/useEquipmentContext"
 import { buildRepairRequestCreateIntentHref } from "@/lib/repair-request-deep-link"
 import { isEquipmentManagerRole } from "@/lib/rbac"
@@ -49,6 +50,7 @@ export function EquipmentActionsMenu({
     openEndUsageDialog,
     openDeleteDialog,
   } = useEquipmentContext()
+  const deferDropdownAction = useDeferredDropdownAction()
 
   const userId = React.useMemo(() => {
     const uid = user?.id
@@ -56,36 +58,34 @@ export function EquipmentActionsMenu({
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
 
-  const canDeleteEquipment = React.useMemo(
-    () => isEquipmentManagerRole(user?.role),
-    [user?.role]
-  )
+  const canDeleteEquipment = React.useMemo(() => isEquipmentManagerRole(user?.role), [user?.role])
 
   const activeUsageLog = activeUsageLogs?.find(
     (log) => log.thiet_bi_id === equipment.id && log.trang_thai === "dang_su_dung"
   )
 
   const isCurrentUserUsing =
-    !!activeUsageLog &&
-    userId != null &&
-    activeUsageLog.nguoi_su_dung_id === userId
-  const startUsageDisabled =
-    isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader
+    !!activeUsageLog && userId != null && activeUsageLog.nguoi_su_dung_id === userId
+  const startUsageDisabled = isLoadingActiveUsage || !user || !!activeUsageLog || isRegionalLeader
 
   const handleShowDetails = React.useCallback(() => {
-    openDetailDialog(equipment)
-  }, [openDetailDialog, equipment])
+    deferDropdownAction(() => openDetailDialog(equipment))
+  }, [deferDropdownAction, openDetailDialog, equipment])
 
   const handleStartUsage = React.useCallback(() => {
     if (startUsageDisabled) return
-    openStartUsageDialog(equipment)
-  }, [openStartUsageDialog, equipment, startUsageDisabled])
+    deferDropdownAction(() => openStartUsageDialog(equipment))
+  }, [deferDropdownAction, openStartUsageDialog, equipment, startUsageDisabled])
 
   const handleEndUsage = React.useCallback(() => {
     if (activeUsageLog) {
-      openEndUsageDialog(activeUsageLog)
+      deferDropdownAction(() => openEndUsageDialog(activeUsageLog))
     }
-  }, [openEndUsageDialog, activeUsageLog])
+  }, [deferDropdownAction, openEndUsageDialog, activeUsageLog])
+
+  const handleDeleteEquipment = React.useCallback(() => {
+    deferDropdownAction(() => openDeleteDialog(equipment, "actions_menu"))
+  }, [deferDropdownAction, openDeleteDialog, equipment])
 
   const handleCreateRepairRequest = React.useCallback(() => {
     if (isGlobal || isRegionalLeader) return
@@ -106,9 +106,7 @@ export function EquipmentActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-        <DropdownMenuItem onSelect={handleShowDetails}>
-          Xem chi tiết
-        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={handleShowDetails}>Xem chi tiết</DropdownMenuItem>
         {!isCurrentUserUsing && (
           <DropdownMenuItem
             disabled={startUsageDisabled}
@@ -119,9 +117,7 @@ export function EquipmentActionsMenu({
           </DropdownMenuItem>
         )}
         {isCurrentUserUsing && (
-          <DropdownMenuItem onSelect={handleEndUsage}>
-            Kết thúc sử dụng
-          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={handleEndUsage}>Kết thúc sử dụng</DropdownMenuItem>
         )}
         {!isGlobal && !isRegionalLeader && (
           <DropdownMenuItem onSelect={handleCreateRepairRequest}>
@@ -130,10 +126,7 @@ export function EquipmentActionsMenu({
         )}
         {canDeleteEquipment && (
           <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault()
-              openDeleteDialog(equipment, "actions_menu")
-            }}
+            onSelect={handleDeleteEquipment}
             className="text-destructive focus:text-destructive"
           >
             Xóa Thiết bị

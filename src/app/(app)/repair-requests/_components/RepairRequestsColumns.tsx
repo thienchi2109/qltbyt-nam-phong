@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useDeferredDropdownAction } from "@/components/ui/use-deferred-dropdown-action"
 import {
   ArrowUpDown,
   BadgeCheck,
@@ -72,6 +73,7 @@ function getDaysStatusTextClass(status: DaysStatus) {
  * Actions vary based on request status and user permissions.
  */
 export function RepairRequestRowActions({ request, options }: RepairRequestRowActionsProps) {
+  const deferDropdownAction = useDeferredDropdownAction()
   const {
     onGenerateSheet,
     setEditingRequest,
@@ -97,7 +99,7 @@ export function RepairRequestRowActions({ request, options }: RepairRequestRowAc
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => onGenerateSheet(request)}>
+        <DropdownMenuItem onSelect={() => deferDropdownAction(() => onGenerateSheet(request))}>
           <FileText className="mr-2 size-4" />
           Xem phiếu yêu cầu
         </DropdownMenuItem>
@@ -105,12 +107,14 @@ export function RepairRequestRowActions({ request, options }: RepairRequestRowAc
         {request.trang_thai === "Chờ xử lý" && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => setEditingRequest(request)}>
+            <DropdownMenuItem
+              onSelect={() => deferDropdownAction(() => setEditingRequest(request))}
+            >
               <Edit className="mr-2 size-4" />
               Sửa
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={() => setRequestToDelete(request)}
+              onSelect={() => deferDropdownAction(() => setRequestToDelete(request))}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 size-4" />
@@ -123,18 +127,26 @@ export function RepairRequestRowActions({ request, options }: RepairRequestRowAc
           <>
             <DropdownMenuSeparator />
             {request.trang_thai === "Chờ xử lý" && (
-              <DropdownMenuItem onClick={() => handleApproveRequest(request)}>
+              <DropdownMenuItem
+                onSelect={() => deferDropdownAction(() => handleApproveRequest(request))}
+              >
                 <BadgeCheck className="mr-2 size-4" />
                 Xác nhận
               </DropdownMenuItem>
             )}
             {request.trang_thai === "Đã duyệt" && (
               <>
-                <DropdownMenuItem onClick={() => handleCompletion(request, "Hoàn thành")}>
+                <DropdownMenuItem
+                  onSelect={() =>
+                    deferDropdownAction(() => handleCompletion(request, "Hoàn thành"))
+                  }
+                >
                   <CircleCheck className="mr-2 size-4" />
                   Hoàn thành
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleCompletion(request, "Không HT")}>
+                <DropdownMenuItem
+                  onSelect={() => deferDropdownAction(() => handleCompletion(request, "Không HT"))}
+                >
                   <CircleX className="mr-2 size-4" />
                   Không hoàn thành
                 </DropdownMenuItem>

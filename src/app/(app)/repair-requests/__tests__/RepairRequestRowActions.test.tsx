@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -65,20 +65,42 @@ function makeColumnOptions(): RepairRequestColumnOptions {
 }
 
 describe("RepairRequestRowActions", () => {
-  it("calls the row-specific action callbacks for the selected request", async () => {
+  it("opens the print-options flow only after the row action menu has closed", async () => {
     const user = userEvent.setup()
     const request = makeRepairRequest()
     const options = makeColumnOptions()
+    const callbackMenuState: boolean[] = []
+    vi.mocked(options.onGenerateSheet).mockImplementation(() => {
+      callbackMenuState.push(screen.queryByRole("menuitem", { name: "Xem phiếu yêu cầu" }) !== null)
+    })
 
     render(<RepairRequestRowActions request={request} options={options} />)
 
     await user.click(screen.getByRole("button", { name: "Mở menu" }))
     await user.click(screen.getByRole("menuitem", { name: "Xem phiếu yêu cầu" }))
-    expect(options.onGenerateSheet).toHaveBeenCalledWith(request)
+
+    await waitFor(() => expect(options.onGenerateSheet).toHaveBeenCalledWith(request))
+    expect(callbackMenuState).toEqual([false])
+    expect(document.body.style.pointerEvents).not.toBe("none")
+  })
+
+  it("opens the edit dialog only after the row action menu has closed", async () => {
+    const user = userEvent.setup()
+    const request = makeRepairRequest()
+    const options = makeColumnOptions()
+    const callbackMenuState: boolean[] = []
+    vi.mocked(options.setEditingRequest).mockImplementation(() => {
+      callbackMenuState.push(screen.queryByRole("menuitem", { name: "Sửa" }) !== null)
+    })
+
+    render(<RepairRequestRowActions request={request} options={options} />)
 
     await user.click(screen.getByRole("button", { name: "Mở menu" }))
     await user.click(screen.getByRole("menuitem", { name: "Sửa" }))
-    expect(options.setEditingRequest).toHaveBeenCalledWith(request)
+
+    await waitFor(() => expect(options.setEditingRequest).toHaveBeenCalledWith(request))
+    expect(callbackMenuState).toEqual([false])
+    expect(document.body.style.pointerEvents).not.toBe("none")
   })
 
   it("labels the approve action as confirmation and shows an icon for every visible action", async () => {
@@ -103,7 +125,7 @@ describe("RepairRequestRowActions", () => {
     })
 
     await user.click(screen.getByRole("menuitem", { name: "Xác nhận" }))
-    expect(options.handleApproveRequest).toHaveBeenCalledWith(request)
+    await waitFor(() => expect(options.handleApproveRequest).toHaveBeenCalledWith(request))
   })
 
   it("hides actions for read-only regional leaders", () => {
