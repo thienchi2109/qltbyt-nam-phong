@@ -6,15 +6,7 @@ import { Building2, Filter, Tags, UserRound, WalletCards, X } from "lucide-react
 
 import type { Equipment } from "@/types/database"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
-import {
-  EquipmentHeroButton,
-  EquipmentHeroCard,
-  EquipmentHeroCardContent,
-  EquipmentHeroCardDescription,
-  EquipmentHeroCardHeader,
-  EquipmentHeroCardTitle,
-  EquipmentHeroSearchInput,
-} from "./heroui-pilot"
+import { EquipmentHeroButton } from "@/components/equipment/heroui-pilot/controls"
 
 interface EquipmentFilterFieldProps {
   label: string
@@ -30,18 +22,6 @@ interface EquipmentToolbarDesktopFiltersProps {
   classifications: string[]
   fundingSources: string[]
   isFiltered: boolean
-}
-
-interface EquipmentToolbarDesktopLayoutProps {
-  title?: React.ReactNode
-  description?: React.ReactNode
-  searchValue: string
-  onSearchChange: (value: string) => void
-  searchPlaceholder: string
-  searchEndAddon?: React.ReactNode
-  selectionActions?: React.ReactNode
-  actions?: React.ReactNode
-  children: React.ReactNode
 }
 
 /** Wraps an equipment toolbar filter with its desktop row label. */
@@ -133,62 +113,5 @@ export function EquipmentToolbarDesktopFilters({
         </EquipmentHeroButton>
       )}
     </div>
-  )
-}
-
-/** Renders the desktop equipment toolbar as separate search and filter rows. */
-export function EquipmentToolbarDesktopLayout({
-  title,
-  description,
-  searchValue,
-  onSearchChange,
-  searchPlaceholder,
-  searchEndAddon,
-  selectionActions,
-  actions,
-  children,
-}: EquipmentToolbarDesktopLayoutProps) {
-  return (
-    <EquipmentHeroCard data-testid="equipment-heroui-top-controls-shell">
-      {title || description ? (
-        <EquipmentHeroCardHeader className="gap-y-1 pb-3">
-          {title ? (
-            <EquipmentHeroCardTitle className="heading-responsive-h2">
-              {title}
-            </EquipmentHeroCardTitle>
-          ) : null}
-          {description ? (
-            <EquipmentHeroCardDescription className="body-responsive-sm text-muted-foreground">
-              {description}
-            </EquipmentHeroCardDescription>
-          ) : null}
-        </EquipmentHeroCardHeader>
-      ) : null}
-      <EquipmentHeroCardContent className="px-4 pb-4 md:px-6">
-        <div data-testid="equipment-reference-filter-layout" className="space-y-3">
-          <EquipmentHeroSearchInput
-            placeholder={searchPlaceholder}
-            value={searchValue}
-            onValueChange={onSearchChange}
-            className="h-9 w-full"
-            endAddon={searchEndAddon}
-            aria-label={searchPlaceholder}
-          />
-
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-            <div className="min-w-0 flex-1">{children}</div>
-
-            {selectionActions || actions ? (
-              <div className="flex w-full flex-wrap items-center justify-between gap-2 xl:w-auto xl:justify-end">
-                {selectionActions ? (
-                  <div className="min-w-0 shrink-0">{selectionActions}</div>
-                ) : null}
-                {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-      </EquipmentHeroCardContent>
-    </EquipmentHeroCard>
   )
 }
