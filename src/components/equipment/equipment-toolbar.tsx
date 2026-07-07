@@ -118,6 +118,31 @@ export function EquipmentToolbar({
     [qr.handleStartScanning]
   )
 
+  const optionsMenuItems = React.useMemo(
+    () => [
+      {
+        id: "columns",
+        label: "Hiện/ẩn cột",
+        textValue: "Hiện/ẩn cột",
+        onAction: onOpenColumnsDialog,
+      },
+      {
+        id: "template",
+        label: "Tải Excel mẫu",
+        textValue: "Tải Excel mẫu",
+        onAction: onDownloadTemplate,
+      },
+      {
+        id: "export",
+        label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+        textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
+        onAction: onExportData,
+        isDisabled: isExporting,
+      },
+    ],
+    [isExporting, onDownloadTemplate, onExportData, onOpenColumnsDialog]
+  )
+
   const mobileFilterControl = React.useMemo(
     () => (
       <div data-testid="equipment-compact-filter-actions" className="grid w-full grid-cols-2 gap-2">
@@ -153,39 +178,11 @@ export function EquipmentToolbar({
             </>
           }
           triggerClassName="h-9 w-full justify-center gap-2"
-          items={[
-            {
-              id: "columns",
-              label: "Hiện/ẩn cột",
-              textValue: "Hiện/ẩn cột",
-              onAction: onOpenColumnsDialog,
-            },
-            {
-              id: "template",
-              label: "Tải Excel mẫu",
-              textValue: "Tải Excel mẫu",
-              onAction: onDownloadTemplate,
-            },
-            {
-              id: "export",
-              label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              onAction: onExportData,
-              isDisabled: isExporting,
-            },
-          ]}
+          items={optionsMenuItems}
         />
       </div>
     ),
-    [
-      activeFilterCount,
-      isExporting,
-      isFiltered,
-      onDownloadTemplate,
-      onExportData,
-      onOpenColumnsDialog,
-      onOpenFilterSheet,
-    ]
+    [activeFilterCount, isFiltered, onOpenFilterSheet, optionsMenuItems]
   )
 
   const actions = React.useMemo(
@@ -227,39 +224,11 @@ export function EquipmentToolbar({
             </>
           }
           triggerClassName="hidden h-8 gap-1 lg:inline-flex touch-target-sm md:h-8"
-          items={[
-            {
-              id: "columns",
-              label: "Hiện/ẩn cột",
-              textValue: "Hiện/ẩn cột",
-              onAction: onOpenColumnsDialog,
-            },
-            {
-              id: "template",
-              label: "Tải Excel mẫu",
-              textValue: "Tải Excel mẫu",
-              onAction: onDownloadTemplate,
-            },
-            {
-              id: "export",
-              label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              textValue: isExporting ? "Đang tải..." : "Tải về dữ liệu",
-              onAction: onExportData,
-              isDisabled: isExporting,
-            },
-          ]}
+          items={optionsMenuItems}
         />
       </>
     ),
-    [
-      canCreateEquipment,
-      isExporting,
-      onAddEquipment,
-      onDownloadTemplate,
-      onExportData,
-      onImportEquipment,
-      onOpenColumnsDialog,
-    ]
+    [canCreateEquipment, onAddEquipment, onImportEquipment, optionsMenuItems]
   )
 
   return (

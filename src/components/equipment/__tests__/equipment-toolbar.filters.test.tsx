@@ -6,7 +6,7 @@
  */
 
 import * as React from "react"
-import { describe, it, expect, vi } from "vitest"
+import { beforeAll, describe, it, expect, vi } from "vitest"
 import "@testing-library/jest-dom"
 import { render, screen, fireEvent, within } from "@testing-library/react"
 import type { Table } from "@tanstack/react-table"
@@ -22,6 +22,43 @@ type PopoverChildProps = PopoverStateProps & Record<string, unknown>
 type PopoverWithChildrenProps = PopoverStateProps & {
   children: React.ReactNode
 }
+
+class ResizeObserverMock {
+  observe = vi.fn()
+  unobserve = vi.fn()
+  disconnect = vi.fn()
+}
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string): MediaQueryList => {
+      return {
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(() => false),
+      }
+    }),
+  })
+
+  Object.defineProperty(window, "ResizeObserver", {
+    writable: true,
+    configurable: true,
+    value: ResizeObserverMock,
+  })
+
+  Object.defineProperty(globalThis, "ResizeObserver", {
+    writable: true,
+    configurable: true,
+    value: ResizeObserverMock,
+  })
+})
 
 /**
  * Mock dynamic imports (QR scanner components) to avoid SSR issues in tests
