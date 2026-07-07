@@ -95,4 +95,16 @@ describe("FilterBottomSheet (regression)", () => {
     ])
     expect(onApply).not.toHaveBeenCalled()
   })
+
+  it("renders compact full-width footer actions for mobile reachability", () => {
+    render(<FilterBottomSheet {...defaultProps} />)
+
+    const clearButton = screen.getByRole("button", { name: "Xóa tất cả" })
+    const applyButton = screen.getByRole("button", { name: "Áp dụng" })
+    const footer = clearButton.closest("[data-testid='filter-bottom-sheet-footer']")
+
+    expect(footer).toHaveClass("pb-12")
+    expect(clearButton).toHaveClass("w-full", "min-w-0")
+    expect(applyButton).toHaveClass("w-full", "min-w-0")
+  })
 })

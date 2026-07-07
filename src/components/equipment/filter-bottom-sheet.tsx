@@ -208,18 +208,21 @@ export function FilterBottomSheet({
       </div>
 
       {/* Footer - Extra padding to clear bottom navigation */}
-      <div className="shrink-0 px-6 pt-4 pb-24 border-t border-border bg-muted/30">
+      <div
+        data-testid="filter-bottom-sheet-footer"
+        className="shrink-0 px-6 pt-3 pb-12 border-t border-border bg-muted/30"
+      >
         <div className="grid grid-cols-2 gap-3">
           <HeroButton
             variant="outline"
             onPress={handleClearAll}
-            className="h-12 text-sm font-semibold rounded-xl"
+            className="h-12 w-full min-w-0 text-sm font-semibold rounded-xl"
           >
             Xóa tất cả
           </HeroButton>
           <HeroButton
             onPress={handleApply}
-            className="h-12 text-sm font-semibold rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
+            className="h-12 w-full min-w-0 text-sm font-semibold rounded-xl bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] hover:bg-[hsl(var(--primary))]/90"
           >
             Áp dụng {activeCount > 0 && `(${activeCount})`}
           </HeroButton>
