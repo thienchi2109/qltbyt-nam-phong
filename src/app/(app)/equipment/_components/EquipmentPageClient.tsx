@@ -243,7 +243,6 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
         <EquipmentToolbar
           table={table}
           title="Danh mục thiết bị"
-          description="Quản lý danh sách các trang thiết bị y tế."
           tenantControl={tenantControl}
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
