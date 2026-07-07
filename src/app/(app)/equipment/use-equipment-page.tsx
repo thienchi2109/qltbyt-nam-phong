@@ -220,6 +220,10 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // NOTE: Legacy dialog state removed - now managed by EquipmentDialogContext
   // Route sync pending actions are exposed for handling in page.tsx with context
 
+  const handleClearAllColumnFilters = React.useCallback(() => {
+    setColumnFiltersAndReset([])
+  }, [setColumnFiltersAndReset])
+
   const filterSheet = useEquipmentFilterSheetCascade({
     shouldFetchData: data.shouldFetchData,
     committedColumnFilters: filters.columnFilters,
@@ -230,7 +234,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     effectiveSelectedDonVi,
     debouncedSearch: filters.debouncedSearch,
     onApply: setColumnFiltersAndReset,
-    onClearAll: () => setColumnFiltersAndReset([]),
+    onClearAll: handleClearAllColumnFilters,
   })
 
   // Tenant change effect: keep tenant-scoped filter state and show toast

@@ -85,15 +85,12 @@ export function FilterBottomSheet({
   )
 
   const toggleFilter = (category: string, value: string) => {
-    setLocalFilters((prev) => {
-      const current = prev[category] || []
-      const next = current.includes(value)
-        ? current.filter((v) => v !== value)
-        : [...current, value]
-      const nextFilters = { ...prev, [category]: next }
-      onDraftFiltersChange?.(toColumnFilters(nextFilters))
-      return nextFilters
-    })
+    const current = localFilters[category] || []
+    const next = current.includes(value) ? current.filter((v) => v !== value) : [...current, value]
+    const nextFilters = { ...localFilters, [category]: next }
+
+    setLocalFilters(nextFilters)
+    onDraftFiltersChange?.(toColumnFilters(nextFilters))
   }
 
   const isSelected = (category: string, value: string) => {

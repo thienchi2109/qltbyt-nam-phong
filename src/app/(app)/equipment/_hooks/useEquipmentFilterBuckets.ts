@@ -66,7 +66,7 @@ const EMPTY_FILTER_DATA: FilterBottomSheetData = {
 function normalizeBucket(
   data: EquipmentFilterBucketsResponse | undefined,
   key: keyof EquipmentFilterBucketsResponse
-) {
+): FilterBucketItem[] {
   return data?.[key] ?? EMPTY_FILTER_BUCKET
 }
 

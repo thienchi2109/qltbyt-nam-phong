@@ -89,6 +89,7 @@ describe("FilterBottomSheet (regression)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Đang sử dụng/ }))
 
+    expect(onDraftFiltersChange).toHaveBeenCalledTimes(1)
     expect(onDraftFiltersChange).toHaveBeenCalledWith([
       { id: "tinh_trang_hien_tai", value: ["active"] },
     ])
