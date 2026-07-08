@@ -1,9 +1,11 @@
 import * as React from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { MobileBottomSheet } from "../mobile-bottom-sheet"
+
+const originalShowModal = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal")
 
 describe("MobileBottomSheet", () => {
   const defaultProps = {
@@ -11,6 +13,14 @@ describe("MobileBottomSheet", () => {
     onOpenChange: vi.fn(),
     ariaLabel: "Test bottom sheet",
   }
+
+  afterEach(() => {
+    if (originalShowModal) {
+      Object.defineProperty(HTMLDialogElement.prototype, "showModal", originalShowModal)
+    } else {
+      Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal")
+    }
+  })
 
   it("opens without rendering a native dialog element", () => {
     render(
