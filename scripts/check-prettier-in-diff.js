@@ -47,17 +47,31 @@ function runPrettierCheck(
     prettierBin = require.resolve("prettier/bin/prettier.cjs"),
   } = {}
 ) {
+  const failures = []
+
   for (let index = 0; index < filePaths.length; index += chunkSize) {
     const chunk = filePaths.slice(index, index + chunkSize)
 
-    execFileSyncImpl(
-      process.execPath,
-      [prettierBin, "--check", "--ignore-unknown", "--", ...chunk],
-      {
-        cwd: process.cwd(),
-        stdio: "inherit",
-      }
-    )
+    try {
+      execFileSyncImpl(
+        process.execPath,
+        [prettierBin, "--check", "--ignore-unknown", "--", ...chunk],
+        {
+          cwd: process.cwd(),
+          stdio: "inherit",
+        }
+      )
+    } catch (error) {
+      failures.push(error)
+    }
+  }
+
+  if (failures.length === 1) {
+    throw failures[0]
+  }
+
+  if (failures.length > 1) {
+    throw new Error(`${failures.length} Prettier chunks failed`)
   }
 }
 

@@ -93,4 +93,27 @@ describe("check-prettier-in-diff", () => {
       `src/file-${PRETTIER_CHECK_CHUNK_SIZE}.ts`,
     ])
   })
+
+  it("continues checking later chunks after an earlier chunk fails", () => {
+    const execFileSyncImpl = vi
+      .fn()
+      .mockImplementationOnce(() => {
+        throw new Error("prettier failed")
+      })
+      .mockImplementationOnce(() => undefined)
+    const filePaths = Array.from(
+      { length: PRETTIER_CHECK_CHUNK_SIZE + 1 },
+      (_, index) => `src/file-${index}.ts`
+    )
+
+    expect(() =>
+      runPrettierCheck(filePaths, {
+        execFileSyncImpl,
+        prettierBin: "/tmp/prettier.cjs",
+      })
+    ).toThrow("prettier failed")
+
+    expect(execFileSyncImpl).toHaveBeenCalledTimes(2)
+    expect(execFileSyncImpl.mock.calls[1][1]).toContain(`src/file-${PRETTIER_CHECK_CHUNK_SIZE}.ts`)
+  })
 })
