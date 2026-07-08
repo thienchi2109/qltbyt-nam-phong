@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useOverlayActionTransition } from "@/components/ui/use-deferred-dropdown-action"
 import { CalendarDays, MoreHorizontal, PlusCircle } from "lucide-react"
 import { getPlanStatusTone, resolveStatusBadgeVariant } from "./maintenance-mobile-status"
 
@@ -46,6 +47,7 @@ interface MaintenanceMobilePlanCardsProps {
   actions: MaintenanceMobilePlanCardsActions
 }
 
+/** Renders maintenance plan cards and row actions for the mobile plans view. */
 export function MaintenanceMobilePlanCards({
   plans,
   planState,
@@ -63,6 +65,7 @@ export function MaintenanceMobilePlanCards({
     onOpenRejectDialog,
     onOpenDeleteDialog,
   } = actions
+  const runOverlayAction = useOverlayActionTransition()
 
   if (isLoadingPlans) {
     return (
@@ -121,7 +124,9 @@ export function MaintenanceMobilePlanCards({
             <div className={`px-4 py-3 ${statusTone.header}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-semibold leading-tight line-clamp-2">{plan.ten_ke_hoach}</h3>
+                  <h3 className="text-base font-semibold leading-tight line-clamp-2">
+                    {plan.ten_ke_hoach}
+                  </h3>
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-1">
                     Năm {plan.nam} • {plan.khoa_phong || "Tổng thể"}
                   </p>
@@ -134,16 +139,22 @@ export function MaintenanceMobilePlanCards({
             <CardContent className="space-y-3 px-4 py-3 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">Loại công việc</span>
-                <Badge variant="outline" className="shrink-0">{plan.loai_cong_viec}</Badge>
+                <Badge variant="outline" className="shrink-0">
+                  {plan.loai_cong_viec}
+                </Badge>
               </div>
               <div className="flex items-start justify-between gap-3">
                 <span className="text-muted-foreground">Người lập</span>
-                <span className="max-w-[55%] text-right font-medium">{plan.nguoi_lap_ke_hoach || "Chưa cập nhật"}</span>
+                <span className="max-w-[55%] text-right font-medium">
+                  {plan.nguoi_lap_ke_hoach || "Chưa cập nhật"}
+                </span>
               </div>
               {showFacilityFilter && (
                 <div className="flex items-start justify-between gap-3">
                   <span className="text-muted-foreground">Cơ sở</span>
-                  <span className="max-w-[55%] text-right font-medium">{plan.facility_name || "Tất cả"}</span>
+                  <span className="max-w-[55%] text-right font-medium">
+                    {plan.facility_name || "Tất cả"}
+                  </span>
                 </div>
               )}
               <div className="flex items-start justify-between gap-3">
@@ -177,15 +188,30 @@ export function MaintenanceMobilePlanCards({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                    <DropdownMenuItem onSelect={() => onSelectPlan(plan)}>Xem chi tiết công việc</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={() => runOverlayAction(() => onSelectPlan(plan))}>
+                      Xem chi tiết công việc
+                    </DropdownMenuItem>
                     {plan.trang_thai === "Bản nháp" && canManagePlans && (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => onEditPlan(plan)}>Sửa kế hoạch</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => onOpenApproveDialog(plan)}>Duyệt kế hoạch</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => onOpenRejectDialog(plan)}>Không duyệt</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => runOverlayAction(() => onEditPlan(plan))}>
+                          Sửa kế hoạch
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => runOverlayAction(() => onOpenApproveDialog(plan))}
+                        >
+                          Duyệt kế hoạch
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={() => runOverlayAction(() => onOpenRejectDialog(plan))}
+                        >
+                          Không duyệt
+                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onSelect={() => onOpenDeleteDialog(plan)} className="text-destructive">
+                        <DropdownMenuItem
+                          onSelect={() => runOverlayAction(() => onOpenDeleteDialog(plan))}
+                          className="text-destructive"
+                        >
                           Xóa kế hoạch
                         </DropdownMenuItem>
                       </>

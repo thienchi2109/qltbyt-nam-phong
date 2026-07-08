@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useOverlayActionTransition } from "@/components/ui/use-deferred-dropdown-action"
 import { useDeviceQuotaDecisionsContext } from "../_hooks/useDeviceQuotaDecisionsContext"
 import type { Decision } from "./DeviceQuotaDecisionsContext"
 
@@ -200,6 +201,7 @@ interface ActionsDropdownProps {
 
 function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: ActionsDropdownProps) {
   const isDraft = decision.trang_thai === "draft"
+  const runOverlayAction = useOverlayActionTransition()
 
   return (
     <DropdownMenu>
@@ -210,7 +212,7 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onView}>
+        <DropdownMenuItem onClick={() => runOverlayAction(onView)}>
           <Eye className="mr-2 size-4" />
           Xem chi tiết
         </DropdownMenuItem>
@@ -218,18 +220,18 @@ function ActionsDropdown({ decision, onView, onEdit, onActivate, onDelete }: Act
         {isDraft && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onEdit}>
+            <DropdownMenuItem onClick={() => runOverlayAction(onEdit)}>
               <Edit className="mr-2 size-4" />
               Chỉnh sửa
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onActivate}>
+            <DropdownMenuItem onClick={() => runOverlayAction(onActivate)}>
               <CheckCircle className="mr-2 size-4" />
               Kích hoạt
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={onDelete}
+              onClick={() => runOverlayAction(onDelete)}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 size-4" />
