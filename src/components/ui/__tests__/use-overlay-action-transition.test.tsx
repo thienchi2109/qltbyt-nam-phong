@@ -32,8 +32,11 @@ describe("useOverlayActionTransition", () => {
             <button
               type="button"
               onClick={() => {
-                document.body.style.pointerEvents = "auto"
-                runOverlayAction(() => onAction(document.body.style.pointerEvents))
+                document.body.style.pointerEvents = "none"
+                runOverlayAction(() => {
+                  document.body.style.pointerEvents = ""
+                  onAction(document.body.style.pointerEvents)
+                })
                 setSourceMenuOpen(false)
               }}
             >
@@ -51,12 +54,13 @@ describe("useOverlayActionTransition", () => {
 
     expect(screen.getByTestId("source-state")).toHaveTextContent("closed")
     expect(onAction).not.toHaveBeenCalled()
+    expect(document.body.style.pointerEvents).toBe("none")
 
     act(() => {
       vi.advanceTimersByTime(0)
     })
 
-    expect(onAction).toHaveBeenCalledWith("auto")
+    expect(onAction).toHaveBeenCalledWith("")
     expect(document.body.style.pointerEvents).not.toBe("none")
   })
 
