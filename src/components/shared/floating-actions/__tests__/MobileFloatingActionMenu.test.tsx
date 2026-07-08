@@ -1,6 +1,6 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { PlusCircle, Sparkles } from "lucide-react"
 import { describe, expect, it, vi } from "vitest"
@@ -8,57 +8,130 @@ import { describe, expect, it, vi } from "vitest"
 import { MobileFloatingActionMenu } from "../MobileFloatingActionMenu"
 
 vi.mock("@heroui/react", () => ({
-  Dropdown: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="heroui-dropdown">{children}</div>
-  ),
+  Dropdown: ({ children }: { children: React.ReactNode }) => {
+    const [isOpen, setOpen] = React.useState(true)
+
+    return (
+      <div data-testid="heroui-dropdown">
+        {React.Children.map(children, (child) => {
+          if (!React.isValidElement(child)) {
+            return child
+          }
+
+          return React.cloneElement(child, {
+            isOpen,
+            setOpen,
+          } as Partial<{
+            isOpen: boolean
+            setOpen: React.Dispatch<React.SetStateAction<boolean>>
+          }>)
+        })}
+      </div>
+    )
+  },
   DropdownTrigger: ({
     children,
     className,
+    isOpen: _isOpen,
+    setOpen,
     ...props
   }: {
     children: React.ReactNode
     className?: string
+    isOpen?: boolean
+    setOpen?: React.Dispatch<React.SetStateAction<boolean>>
   } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" className={className} {...props}>
+    <button type="button" className={className} onClick={() => setOpen?.(true)} {...props}>
       {children}
     </button>
   ),
-  DropdownPopover: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  DropdownPopover: ({
+    children,
+    className,
+    isOpen,
+    setOpen,
+  }: {
+    children: React.ReactNode
+    className?: string
+    isOpen?: boolean
+    setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+  }) => (
     <div className={className} data-testid="heroui-popover">
-      {children}
+      {React.Children.map(children, (child) => {
+        if (!React.isValidElement(child)) {
+          return child
+        }
+
+        return React.cloneElement(child, {
+          isOpen,
+          setOpen,
+        } as Partial<{
+          isOpen: boolean
+          setOpen: React.Dispatch<React.SetStateAction<boolean>>
+        }>)
+      })}
     </div>
   ),
   DropdownMenu: ({
     children,
     "aria-label": ariaLabel,
+    isOpen,
     onAction,
+    setOpen,
   }: {
     children: React.ReactNode
     "aria-label"?: string
+    isOpen?: boolean
     onAction?: (key: React.Key) => void
-  }) => (
-    <div aria-label={ariaLabel} role="menu">
-      {React.Children.map(children, (child) => {
-        if (!React.isValidElement<{ id?: string }>(child)) {
-          return child
-        }
+    setOpen?: React.Dispatch<React.SetStateAction<boolean>>
+  }) => {
+    if (!isOpen) {
+      return null
+    }
 
-        return React.cloneElement(child, {
-          onSelectKey: onAction,
-        } as Partial<{ onSelectKey: (key: React.Key) => void }>)
-      })}
-    </div>
-  ),
+    return (
+      <div aria-label={ariaLabel} role="menu">
+        {React.Children.map(children, (child) => {
+          if (!React.isValidElement<{ id?: string }>(child)) {
+            return child
+          }
+
+          return React.cloneElement(child, {
+            onSelectKey: onAction,
+            closeSourceMenu: () => setOpen?.(false),
+          } as Partial<{
+            closeSourceMenu: () => void
+            onSelectKey: (key: React.Key) => void
+          }>)
+        })}
+      </div>
+    )
+  },
   DropdownItem: ({
     children,
+    closeSourceMenu,
     id,
     onSelectKey,
   }: {
     children: React.ReactNode
+    closeSourceMenu?: () => void
     id?: string
     onSelectKey?: (key: React.Key) => void
   }) => (
-    <button type="button" role="menuitem" onClick={() => id && onSelectKey?.(id)}>
+    <button
+      type="button"
+      role="menuitem"
+      onClick={() => {
+        if (!id) {
+          return
+        }
+
+        document.body.style.pointerEvents = "none"
+        onSelectKey?.(id)
+        closeSourceMenu?.()
+        document.body.style.pointerEvents = ""
+      }}
+    >
       {children}
     </button>
   ),
@@ -116,9 +189,48 @@ describe("MobileFloatingActionMenu", () => {
     )
 
     await user.click(screen.getByRole("menuitem", { name: "Trợ lý AI" }))
+    await user.click(screen.getByRole("button", { name: "Mở tác vụ nhanh" }))
     await user.click(screen.getByRole("menuitem", { name: "Tạo yêu cầu" }))
 
     expect(openAssistant).toHaveBeenCalledTimes(1)
     expect(openCreate).toHaveBeenCalledTimes(1)
+  })
+
+  it("defers selected actions until after the HeroUI source menu closes", async () => {
+    vi.useFakeTimers()
+    document.body.style.pointerEvents = ""
+
+    const openAssistant = vi.fn(() => document.body.style.pointerEvents)
+
+    try {
+      render(
+        <MobileFloatingActionMenu
+          actions={[
+            {
+              id: "assistant",
+              label: "Trợ lý AI",
+              icon: <Sparkles />,
+              onSelect: openAssistant,
+            },
+          ]}
+        />
+      )
+
+      fireEvent.click(screen.getByRole("menuitem", { name: "Trợ lý AI" }))
+
+      expect(screen.queryByRole("menu", { name: "Tác vụ nhanh" })).not.toBeInTheDocument()
+      expect(openAssistant).not.toHaveBeenCalled()
+      expect(document.body.style.pointerEvents).not.toBe("none")
+
+      act(() => {
+        vi.advanceTimersByTime(0)
+      })
+
+      expect(openAssistant).toHaveReturnedWith("")
+    } finally {
+      vi.runOnlyPendingTimers()
+      vi.useRealTimers()
+      document.body.style.pointerEvents = ""
+    }
   })
 })

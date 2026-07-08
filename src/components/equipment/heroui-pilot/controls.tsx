@@ -17,6 +17,7 @@ import {
   DropdownTrigger,
 } from "@heroui/react"
 
+import { useOverlayActionTransition } from "@/components/ui/use-deferred-dropdown-action"
 import { cn } from "@/lib/utils"
 
 export interface EquipmentHeroDropdownItem {
@@ -49,6 +50,8 @@ export function EquipmentHeroDropdown({
   menuClassName,
   placement = "bottom end",
 }: EquipmentHeroDropdownProps) {
+  const runOverlayAction = useOverlayActionTransition()
+
   return (
     <Dropdown>
       <DropdownTrigger
@@ -66,7 +69,7 @@ export function EquipmentHeroDropdown({
               key={item.id}
               id={item.id}
               isDisabled={item.isDisabled}
-              onAction={item.onAction}
+              onAction={() => runOverlayAction(item.onAction)}
               textValue={item.textValue}
             >
               {item.label}
