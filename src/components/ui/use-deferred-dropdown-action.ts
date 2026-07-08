@@ -3,10 +3,10 @@
 import * as React from "react"
 
 /**
- * Defers opening a follow-up overlay until the source dropdown has finished
- * its close/focus lifecycle.
+ * Defers a follow-up overlay action until the source menu/dropdown has
+ * finished its close/focus lifecycle.
  */
-export function useDeferredDropdownAction() {
+export function useOverlayActionTransition() {
   const timeoutIdsRef = React.useRef<ReturnType<typeof setTimeout>[]>([])
 
   React.useEffect(() => {
@@ -25,3 +25,8 @@ export function useDeferredDropdownAction() {
     timeoutIdsRef.current.push(timeoutId)
   }, [])
 }
+
+/**
+ * Compatibility export for dropdown callers that still use the original name.
+ */
+export const useDeferredDropdownAction = useOverlayActionTransition
