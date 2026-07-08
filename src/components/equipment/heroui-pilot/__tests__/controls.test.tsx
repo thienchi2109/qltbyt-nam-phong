@@ -1,4 +1,5 @@
 import * as React from "react"
+import { use } from "react"
 import "@testing-library/jest-dom"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
@@ -14,7 +15,7 @@ vi.mock("@heroui/react", () => {
   const DropdownContext = React.createContext<DropdownState | null>(null)
 
   function useDropdownState() {
-    const state = React.useContext(DropdownContext)
+    const state = use(DropdownContext)
 
     if (!state) {
       throw new Error("HeroUI dropdown mock used outside Dropdown")

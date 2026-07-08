@@ -1,6 +1,6 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { act, fireEvent, render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { PlusCircle, Sparkles } from "lucide-react"
 import { describe, expect, it, vi } from "vitest"
@@ -127,9 +127,11 @@ vi.mock("@heroui/react", () => ({
         }
 
         document.body.style.pointerEvents = "none"
+        setTimeout(() => {
+          closeSourceMenu?.()
+          document.body.style.pointerEvents = ""
+        }, 0)
         onSelectKey?.(id)
-        closeSourceMenu?.()
-        document.body.style.pointerEvents = ""
       }}
     >
       {children}
@@ -189,11 +191,12 @@ describe("MobileFloatingActionMenu", () => {
     )
 
     await user.click(screen.getByRole("menuitem", { name: "Trợ lý AI" }))
+    await waitFor(() => expect(openAssistant).toHaveBeenCalledTimes(1))
+
     await user.click(screen.getByRole("button", { name: "Mở tác vụ nhanh" }))
     await user.click(screen.getByRole("menuitem", { name: "Tạo yêu cầu" }))
 
-    expect(openAssistant).toHaveBeenCalledTimes(1)
-    expect(openCreate).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(openCreate).toHaveBeenCalledTimes(1))
   })
 
   it("defers selected actions until after the HeroUI source menu closes", async () => {
@@ -218,14 +221,16 @@ describe("MobileFloatingActionMenu", () => {
 
       fireEvent.click(screen.getByRole("menuitem", { name: "Trợ lý AI" }))
 
-      expect(screen.queryByRole("menu", { name: "Tác vụ nhanh" })).not.toBeInTheDocument()
+      expect(screen.getByRole("menu", { name: "Tác vụ nhanh" })).toBeInTheDocument()
       expect(openAssistant).not.toHaveBeenCalled()
-      expect(document.body.style.pointerEvents).not.toBe("none")
+      expect(document.body.style.pointerEvents).toBe("none")
 
       act(() => {
         vi.advanceTimersByTime(0)
       })
 
+      expect(screen.queryByRole("menu", { name: "Tác vụ nhanh" })).not.toBeInTheDocument()
+      expect(document.body.style.pointerEvents).not.toBe("none")
       expect(openAssistant).toHaveReturnedWith("")
     } finally {
       vi.runOnlyPendingTimers()
