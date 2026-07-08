@@ -7,8 +7,10 @@ import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/** Root controller for shared Radix-backed sheet overlays. */
 const Sheet = SheetPrimitive.Root
 
+/** Trigger element for opening a shared sheet overlay. */
 const SheetTrigger = SheetPrimitive.Trigger
 
 const SheetClose = SheetPrimitive.Close
@@ -50,58 +52,60 @@ const sheetVariants = cva(
 )
 
 interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
-    VariantProps<typeof sheetVariants> {}
+  extends
+    React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content>,
+    VariantProps<typeof sheetVariants> {
+  overlayProps?: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay> & {
+    [key: `data-${string}`]: string | undefined
+  }
+  hideCloseButton?: boolean
+}
 
+/** Positioned sheet panel with overlay and optional built-in close control. */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
-  <SheetPortal>
-    <SheetOverlay />
-    <SheetPrimitive.Content
-      ref={ref}
-      className={cn(sheetVariants({ side }), className)}
-      {...props}
-    >
-      {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
-        <X className="size-4" />
-        <span className="sr-only">Close</span>
-      </SheetPrimitive.Close>
-    </SheetPrimitive.Content>
-  </SheetPortal>
-))
+>(
+  (
+    { side = "right", className, children, overlayProps, hideCloseButton = false, ...props },
+    ref
+  ) => (
+    <SheetPortal>
+      <SheetOverlay {...overlayProps} />
+      <SheetPrimitive.Content
+        ref={ref}
+        className={cn(sheetVariants({ side }), className)}
+        {...props}
+      >
+        {children}
+        {hideCloseButton ? null : (
+          <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+            <X className="size-4" />
+            <span className="sr-only">Close</span>
+          </SheetPrimitive.Close>
+        )}
+      </SheetPrimitive.Content>
+    </SheetPortal>
+  )
+)
 SheetContent.displayName = SheetPrimitive.Content.displayName
 
-const SheetHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col gap-y-2 text-center sm:text-left",
-      className
-    )}
-    {...props}
-  />
+/** Header layout for shared sheet title and description content. */
+const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col gap-y-2 text-center sm:text-left", className)} {...props} />
 )
 SheetHeader.displayName = "SheetHeader"
 
-const SheetFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+/** Footer layout for shared sheet action rows. */
+const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-x-2",
-      className
-    )}
+    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:gap-x-2", className)}
     {...props}
   />
 )
 SheetFooter.displayName = "SheetFooter"
 
+/** Accessible title element for shared sheet overlays. */
 const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
@@ -114,6 +118,7 @@ const SheetTitle = React.forwardRef<
 ))
 SheetTitle.displayName = SheetPrimitive.Title.displayName
 
+/** Accessible description element for shared sheet overlays. */
 const SheetDescription = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Description>
@@ -126,11 +131,4 @@ const SheetDescription = React.forwardRef<
 ))
 SheetDescription.displayName = SheetPrimitive.Description.displayName
 
-export {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription
-}
+export { Sheet, SheetTrigger, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription }
