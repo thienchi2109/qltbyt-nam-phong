@@ -4,13 +4,7 @@ import * as React from "react"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useOverlayActionTransition } from "@/components/ui/use-deferred-dropdown-action"
 import { Check, Edit, MoreHorizontal, Trash2, X } from "lucide-react"
 
 interface MaintenancePageLegacyMobileCardsProps {
@@ -46,6 +41,7 @@ function getStatusVariant(status: MaintenancePlan["trang_thai"]) {
   }
 }
 
+/** Renders the legacy mobile maintenance plan cards and action menu. */
 export function MaintenancePageLegacyMobileCards({
   isLoading,
   plans,
@@ -56,6 +52,8 @@ export function MaintenancePageLegacyMobileCards({
   onOpenDeleteDialog,
   onEditPlan,
 }: MaintenancePageLegacyMobileCardsProps) {
+  const runOverlayAction = useOverlayActionTransition()
+
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -111,27 +109,31 @@ export function MaintenancePageLegacyMobileCards({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Hành động</DropdownMenuLabel>
-                <DropdownMenuItem onSelect={() => onSelectPlan(plan)}>
+                <DropdownMenuItem onSelect={() => runOverlayAction(() => onSelectPlan(plan))}>
                   Xem chi tiết công việc
                 </DropdownMenuItem>
                 {plan.trang_thai === "Bản nháp" && canManagePlans && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onSelect={() => onOpenApproveDialog(plan)}>
+                    <DropdownMenuItem
+                      onSelect={() => runOverlayAction(() => onOpenApproveDialog(plan))}
+                    >
                       <Check className="mr-2 size-4" />
                       Duyệt
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => onOpenRejectDialog(plan)}>
+                    <DropdownMenuItem
+                      onSelect={() => runOverlayAction(() => onOpenRejectDialog(plan))}
+                    >
                       <X className="mr-2 size-4" />
                       Không duyệt
                     </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={() => onEditPlan(plan)}>
+                    <DropdownMenuItem onSelect={() => runOverlayAction(() => onEditPlan(plan))}>
                       <Edit className="mr-2 size-4" />
                       Sửa
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onSelect={() => onOpenDeleteDialog(plan)}
+                      onSelect={() => runOverlayAction(() => onOpenDeleteDialog(plan))}
                       className="text-destructive"
                     >
                       <Trash2 className="mr-2 size-4" />
