@@ -1,5 +1,6 @@
 import * as React from "react"
 import { render, screen, fireEvent } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { FilterBottomSheet, type EquipmentFilterData } from "../../equipment/filter-bottom-sheet"
@@ -11,6 +12,37 @@ const emptyFilterData: EquipmentFilterData = {
   user: [],
   classification: [],
   fundingSource: [],
+}
+
+function ControlledFilterBottomSheet({
+  onApply = vi.fn(),
+  onClearAll = vi.fn(),
+  onOutsideAction = vi.fn(),
+}: {
+  onApply?: React.ComponentProps<typeof FilterBottomSheet>["onApply"]
+  onClearAll?: React.ComponentProps<typeof FilterBottomSheet>["onClearAll"]
+  onOutsideAction?: () => void
+}) {
+  const [open, setOpen] = React.useState(false)
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Mở bộ lọc
+      </button>
+      <button type="button" onClick={onOutsideAction}>
+        Tác vụ ngoài trang
+      </button>
+      <FilterBottomSheet
+        open={open}
+        onOpenChange={setOpen}
+        data={emptyFilterData}
+        columnFilters={[]}
+        onApply={onApply}
+        onClearAll={onClearAll}
+      />
+    </>
+  )
 }
 
 describe("FilterBottomSheet (regression)", () => {
@@ -39,12 +71,13 @@ describe("FilterBottomSheet (regression)", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it("calls onOpenChange(false) on backdrop click", () => {
+  it("calls onOpenChange(false) on backdrop click", async () => {
+    const user = userEvent.setup()
     const onOpenChange = vi.fn()
     render(<FilterBottomSheet {...defaultProps} onOpenChange={onOpenChange} />)
 
     const backdrop = screen.getByTestId("mobile-bottom-sheet-backdrop")
-    fireEvent.click(backdrop)
+    await user.click(backdrop)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -106,5 +139,47 @@ describe("FilterBottomSheet (regression)", () => {
     expect(footer).toHaveClass("pb-12")
     expect(clearButton).toHaveClass("w-full", "min-w-0")
     expect(applyButton).toHaveClass("w-full", "min-w-0")
+  })
+
+  it("supports apply, clear, Escape close, and page interaction after close", async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    const onClearAll = vi.fn()
+    const onOutsideAction = vi.fn()
+
+    render(
+      <ControlledFilterBottomSheet
+        onApply={onApply}
+        onClearAll={onClearAll}
+        onOutsideAction={onOutsideAction}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Mở bộ lọc" }))
+    await user.click(screen.getByRole("button", { name: /Đang sử dụng/ }))
+    await user.click(screen.getByRole("button", { name: /Áp dụng/ }))
+
+    expect(onApply).toHaveBeenCalledWith([{ id: "tinh_trang_hien_tai", value: ["active"] }])
+    expect(screen.queryByRole("dialog", { name: "Bộ lọc thiết bị" })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Tác vụ ngoài trang" }))
+    expect(onOutsideAction).toHaveBeenCalledTimes(1)
+
+    await user.click(screen.getByRole("button", { name: "Mở bộ lọc" }))
+    await user.click(screen.getByRole("button", { name: "Xóa tất cả" }))
+
+    expect(onClearAll).toHaveBeenCalledTimes(1)
+    expect(screen.queryByRole("dialog", { name: "Bộ lọc thiết bị" })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Tác vụ ngoài trang" }))
+    expect(onOutsideAction).toHaveBeenCalledTimes(2)
+
+    await user.click(screen.getByRole("button", { name: "Mở bộ lọc" }))
+    await user.keyboard("{Escape}")
+
+    expect(screen.queryByRole("dialog", { name: "Bộ lọc thiết bị" })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Tác vụ ngoài trang" }))
+    expect(onOutsideAction).toHaveBeenCalledTimes(3)
   })
 })

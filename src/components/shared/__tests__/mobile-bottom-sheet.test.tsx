@@ -1,45 +1,44 @@
 import * as React from "react"
-import { render, screen, fireEvent } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { render, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
 
 import { MobileBottomSheet } from "../mobile-bottom-sheet"
 
 describe("MobileBottomSheet", () => {
-  let showModal: ReturnType<typeof vi.fn>
-  let close: ReturnType<typeof vi.fn>
-
   const defaultProps = {
     open: true,
     onOpenChange: vi.fn(),
     ariaLabel: "Test bottom sheet",
   }
 
-  beforeEach(() => {
-    showModal = vi.fn(function (this: HTMLDialogElement) {
-      this.setAttribute("open", "")
-    })
-    close = vi.fn(function (this: HTMLDialogElement) {
-      this.removeAttribute("open")
-    })
-    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
-      configurable: true,
-      value: showModal,
-    })
-    Object.defineProperty(HTMLDialogElement.prototype, "close", {
-      configurable: true,
-      value: close,
-    })
-  })
-
-  it("opens the native dialog modally when open", () => {
+  it("opens without rendering a native dialog element", () => {
     render(
       <MobileBottomSheet {...defaultProps}>
         <p>Sheet content</p>
       </MobileBottomSheet>
     )
 
-    expect(showModal).toHaveBeenCalledTimes(1)
-    expect(close).not.toHaveBeenCalled()
+    expect(document.querySelector("dialog")).not.toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Test bottom sheet" })).toBeInTheDocument()
+  })
+
+  it("does not call native showModal when opened", () => {
+    const showModal = vi.fn(() => {
+      throw new Error("native dialog API should not be used")
+    })
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value: showModal,
+    })
+
+    render(
+      <MobileBottomSheet {...defaultProps}>
+        <p>Sheet content</p>
+      </MobileBottomSheet>
+    )
+
+    expect(showModal).not.toHaveBeenCalled()
   })
 
   it("renders children when open", () => {
@@ -62,7 +61,8 @@ describe("MobileBottomSheet", () => {
     expect(screen.queryByText("Sheet content")).not.toBeInTheDocument()
   })
 
-  it("calls onOpenChange(false) when the native dialog is cancelled", () => {
+  it("calls onOpenChange(false) when Escape is pressed", async () => {
+    const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
     render(
@@ -71,11 +71,13 @@ describe("MobileBottomSheet", () => {
       </MobileBottomSheet>
     )
 
-    fireEvent(screen.getByRole("dialog"), new Event("cancel", { cancelable: true }))
+    await user.keyboard("{Escape}")
+
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it("calls onOpenChange(false) on backdrop click", () => {
+  it("calls onOpenChange(false) on backdrop click", async () => {
+    const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
     render(
@@ -85,7 +87,7 @@ describe("MobileBottomSheet", () => {
     )
 
     const backdrop = screen.getByTestId("mobile-bottom-sheet-backdrop")
-    fireEvent.click(backdrop)
+    await user.click(backdrop)
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
@@ -111,7 +113,7 @@ describe("MobileBottomSheet", () => {
     expect(dialog).toHaveAttribute("aria-label", "Filter sheet")
   })
 
-  it("locks the dialog container to the viewport so the backdrop and panel cannot shrink", () => {
+  it("keeps the bottom sheet panel locked to the viewport width", () => {
     render(
       <MobileBottomSheet {...defaultProps}>
         <p>Content</p>
@@ -119,7 +121,7 @@ describe("MobileBottomSheet", () => {
     )
 
     const dialog = screen.getByRole("dialog")
-    expect(dialog).toHaveClass("fixed", "inset-0", "w-screen", "h-screen", "max-w-none")
+    expect(dialog).toHaveClass("fixed", "inset-x-0", "bottom-0", "w-full", "max-w-none")
   })
 
   it("applies custom className to the sheet panel", () => {
@@ -130,8 +132,32 @@ describe("MobileBottomSheet", () => {
     )
 
     const dialog = screen.getByRole("dialog")
-    // The className should be on the inner panel, not the outer container
-    const panel = dialog.querySelector(".custom-class")
-    expect(panel).toBeInTheDocument()
+    expect(dialog).toHaveClass("custom-class")
+  })
+
+  it("restores focus to the opener when the sheet closes", async () => {
+    const user = userEvent.setup()
+
+    function ControlledSheet() {
+      const [open, setOpen] = React.useState(false)
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open filters
+          </button>
+          <MobileBottomSheet open={open} onOpenChange={setOpen} ariaLabel="Test bottom sheet">
+            <button type="button">Inside</button>
+          </MobileBottomSheet>
+        </>
+      )
+    }
+
+    render(<ControlledSheet />)
+
+    const opener = screen.getByRole("button", { name: "Open filters" })
+    await user.click(opener)
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => expect(opener).toHaveFocus())
   })
 })
