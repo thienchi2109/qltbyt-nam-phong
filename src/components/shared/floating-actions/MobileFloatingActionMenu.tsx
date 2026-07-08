@@ -14,6 +14,7 @@ import {
   floatingActionButtonClassName,
   type FloatingActionButtonProps,
 } from "@/components/shared/FloatingActionButton"
+import { useOverlayActionTransition } from "@/components/ui/use-deferred-dropdown-action"
 import type { MobileFloatingActionDescriptor } from "./MobileFloatingActionsContext"
 
 interface MobileFloatingActionMenuProps {
@@ -30,14 +31,22 @@ export function MobileFloatingActionMenu({
   triggerLabel = "Mở tác vụ nhanh",
   className,
 }: MobileFloatingActionMenuProps) {
+  const runOverlayAction = useOverlayActionTransition()
+  const handleAction = React.useCallback(
+    (key: React.Key) => {
+      const targetAction = actions.find((action) => action.id === key)
+
+      if (!targetAction) {
+        return
+      }
+
+      runOverlayAction(targetAction.onSelect)
+    },
+    [actions, runOverlayAction]
+  )
+
   if (actions.length === 0) {
     return null
-  }
-
-  const handleAction = (key: React.Key) => {
-    const targetAction = actions.find((action) => action.id === key)
-
-    targetAction?.onSelect()
   }
 
   return (
