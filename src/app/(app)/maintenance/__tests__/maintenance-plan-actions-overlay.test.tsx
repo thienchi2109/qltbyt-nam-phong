@@ -5,10 +5,13 @@ import { render, renderHook, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import {
+  usePlanColumns,
+  type PlanColumnOptions,
+} from "@/app/(app)/maintenance/_components/maintenance-columns"
+import { MaintenanceMobilePlanCards } from "@/app/(app)/maintenance/_components/maintenance-mobile-plan-cards"
+import { MaintenancePageLegacyMobileCards } from "@/app/(app)/maintenance/_components/maintenance-page-legacy-mobile-cards"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
-import { usePlanColumns, type PlanColumnOptions } from "../_components/maintenance-columns"
-import { MaintenanceMobilePlanCards } from "../_components/maintenance-mobile-plan-cards"
-import { MaintenancePageLegacyMobileCards } from "../_components/maintenance-page-legacy-mobile-cards"
 
 function makePlan(overrides: Partial<MaintenancePlan> = {}): MaintenancePlan {
   return {
