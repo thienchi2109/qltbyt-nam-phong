@@ -123,6 +123,16 @@ describe("MobileBottomSheet", () => {
     expect(dialog).toHaveAttribute("aria-label", "Filter sheet")
   })
 
+  it("renders a hidden title for the Radix dialog content contract", () => {
+    render(
+      <MobileBottomSheet {...defaultProps} ariaLabel="Filter sheet">
+        <p>Content</p>
+      </MobileBottomSheet>
+    )
+
+    expect(screen.getByText("Filter sheet")).toHaveClass("sr-only")
+  })
+
   it("keeps the bottom sheet panel locked to the viewport width", () => {
     render(
       <MobileBottomSheet {...defaultProps}>

@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 
 interface MobileBottomSheetProps {
   open: boolean
@@ -83,6 +83,8 @@ export function MobileBottomSheet({
         )}
         style={{ maxHeight: "calc(100vh - 4rem)" }}
       >
+        <SheetTitle className="sr-only">{ariaLabel}</SheetTitle>
+
         {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 shrink-0">
           <div
