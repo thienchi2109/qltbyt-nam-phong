@@ -8,7 +8,7 @@
 import * as React from "react"
 import { beforeAll, describe, it, expect, vi } from "vitest"
 import "@testing-library/jest-dom"
-import { render, screen, fireEvent, within } from "@testing-library/react"
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react"
 import type { Table } from "@tanstack/react-table"
 import type { Equipment } from "@/types/database"
 
@@ -345,20 +345,20 @@ describe("EquipmentToolbar with shared filters", () => {
     )
 
     const compactActions = screen.getByTestId("equipment-compact-filter-actions")
-    const openCompactOptions = () =>
+    const chooseCompactOption = async (name: string, assertion: () => void) => {
       fireEvent.click(within(compactActions).getByRole("button", { name: /Tùy chọn/i }))
+      expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
+      fireEvent.click(await screen.findByText(name))
+      await waitFor(assertion)
+    }
 
-    openCompactOptions()
-    expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
-    fireEvent.click(await screen.findByText("Hiện/ẩn cột"))
-    openCompactOptions()
-    fireEvent.click(await screen.findByText("Tải Excel mẫu"))
-    openCompactOptions()
-    fireEvent.click(await screen.findByText("Tải về dữ liệu"))
-
-    expect(onOpenColumnsDialog).toHaveBeenCalledTimes(1)
-    expect(onDownloadTemplate).toHaveBeenCalledTimes(1)
-    expect(onExportData).toHaveBeenCalledTimes(1)
+    await chooseCompactOption("Hiện/ẩn cột", () =>
+      expect(onOpenColumnsDialog).toHaveBeenCalledTimes(1)
+    )
+    await chooseCompactOption("Tải Excel mẫu", () =>
+      expect(onDownloadTemplate).toHaveBeenCalledTimes(1)
+    )
+    await chooseCompactOption("Tải về dữ liệu", () => expect(onExportData).toHaveBeenCalledTimes(1))
   })
 
   it("hides compact clear command when filters are inactive", () => {
