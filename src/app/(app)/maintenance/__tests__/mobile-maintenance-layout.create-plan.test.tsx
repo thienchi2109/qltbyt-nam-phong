@@ -1,7 +1,11 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+
+import { AppMobileFloatingActions } from "@/app/(app)/_components/AppMobileFloatingActions"
+import { MobileFloatingActionsProvider } from "@/components/shared/floating-actions"
 
 const mocks = vi.hoisted(() => ({
   context: {
@@ -50,6 +54,33 @@ vi.mock("@/components/kpi", () => ({
   KpiStatusBar: () => <div data-testid="maintenance-kpi-bar" />,
 }))
 
+vi.mock("@/components/assistant/AssistantTriggerButton", () => ({
+  AssistantTriggerButton: ({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+    <button
+      type="button"
+      aria-label={isOpen ? "Đóng trợ lý" : "Trợ lý AI"}
+      data-testid="assistant-trigger-button"
+      onClick={onToggle}
+    />
+  ),
+}))
+
+vi.mock("@/components/shared/floating-actions/MobileFloatingActionMenu", () => ({
+  MobileFloatingActionMenu: ({
+    actions,
+  }: {
+    actions: Array<{ id: string; label: string; onSelect: () => void }>
+  }) => (
+    <div data-testid="mobile-floating-action-menu">
+      {actions.map((action) => (
+        <button type="button" key={action.id} onClick={action.onSelect}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  ),
+}))
+
 vi.mock("../_hooks/useMaintenanceContext", () => ({
   useMaintenanceContext: () => mocks.context,
 }))
@@ -70,7 +101,7 @@ vi.mock("../_components/maintenance-mobile-tasks-panel", () => ({
 
 import { MobileMaintenanceLayout } from "../_components/mobile-maintenance-layout"
 
-function renderMobileLayout({
+function createMobileLayout({
   planSearchTerm = "",
   totalPages = 1,
   totalCount = 0,
@@ -81,7 +112,7 @@ function renderMobileLayout({
   totalCount?: number
   currentPage?: number
 } = {}) {
-  return render(
+  return (
     <MobileMaintenanceLayout
       countsState={{
         statusCounts: { "Bản nháp": 1 },
@@ -104,8 +135,28 @@ function renderMobileLayout({
       filterState={{ showFacilityFilter: false }}
       expandedTaskIds={{}}
       toggleTaskExpansion={vi.fn()}
-    />,
+    />
   )
+}
+
+function renderMobileLayout(options: Parameters<typeof createMobileLayout>[0] = {}) {
+  return render(createMobileLayout(options))
+}
+
+function renderMobileLayoutWithMobileActions(
+  options: Parameters<typeof createMobileLayout>[0] = {}
+) {
+  const onAssistantToggle = vi.fn()
+
+  return {
+    onAssistantToggle,
+    ...render(
+      <MobileFloatingActionsProvider>
+        {createMobileLayout(options)}
+        <AppMobileFloatingActions isAssistantOpen={false} onAssistantToggle={onAssistantToggle} />
+      </MobileFloatingActionsProvider>
+    ),
+  }
 }
 
 describe("MobileMaintenanceLayout create-plan entry points", () => {
@@ -124,20 +175,31 @@ describe("MobileMaintenanceLayout create-plan entry points", () => {
   it.each(["global", "admin"])("hides create-plan controls for %s users", (role) => {
     mocks.context.user.role = role
 
-    renderMobileLayout()
+    renderMobileLayoutWithMobileActions()
 
+    expect(screen.getByTestId("assistant-trigger-button")).toBeInTheDocument()
+    expect(screen.queryByTestId("mobile-floating-action-menu")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Tạo kế hoạch mới" })).not.toBeInTheDocument()
     expect(mocks.lastPlanCardsProps?.access?.canCreatePlans).toBe(false)
   })
 
-  it("keeps create-plan controls available for non-global maintenance managers", () => {
+  it("registers create-plan controls in the shared mobile floating menu", async () => {
+    const user = userEvent.setup()
     mocks.context.user.role = "to_qltb"
     mocks.context.canCreatePlans = true
 
-    renderMobileLayout()
+    renderMobileLayoutWithMobileActions()
 
+    expect(screen.queryByTestId("assistant-trigger-button")).not.toBeInTheDocument()
+    expect(screen.getByTestId("mobile-floating-action-menu")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trợ lý AI" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Tạo kế hoạch mới" })).toBeInTheDocument()
     expect(mocks.lastPlanCardsProps?.access?.canCreatePlans).toBe(true)
+
+    await user.click(screen.getByRole("button", { name: "Tạo kế hoạch mới" }))
+
+    expect(mocks.context.setIsAddPlanDialogOpen).toHaveBeenCalledWith(true)
+    expect(mocks.context.setIsAddPlanDialogOpen).toHaveBeenCalledTimes(1)
   })
 
   it("passes grouped task state to the mobile tasks panel", () => {
