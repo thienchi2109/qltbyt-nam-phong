@@ -3,10 +3,10 @@
 import * as React from "react"
 import { PlusCircle } from "lucide-react"
 
-import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { SearchInput } from "@/components/shared/SearchInput"
 import { TenantSelector } from "@/components/shared/TenantSelector"
+import { usePageFloatingAction } from "@/components/shared/floating-actions"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { FilterChips, type FilterChipsValue } from "@/components/transfers/FilterChips"
 import type { FilterModalValue } from "@/components/transfers/FilterModal"
@@ -126,6 +126,21 @@ export function TransfersToolbar({
     [filterValue, onFilterChange, setDateRangePart, statusOptions]
   )
 
+  const mobileCreateAction = React.useMemo(
+    () =>
+      compactFilters && !isRegionalLeader
+        ? {
+            id: "create-transfer-request",
+            label: "Tạo yêu cầu mới",
+            icon: <PlusCircle />,
+            onSelect: onOpenAddDialog,
+          }
+        : null,
+    [compactFilters, isRegionalLeader, onOpenAddDialog]
+  )
+
+  usePageFloatingAction(mobileCreateAction)
+
   const actions = React.useMemo(
     () => (
       <>
@@ -179,12 +194,6 @@ export function TransfersToolbar({
         </div>
 
         <div data-testid="transfers-toolbar-filter-chips">{chips}</div>
-
-        {!isRegionalLeader ? (
-          <FloatingActionButton onClick={onOpenAddDialog} aria-label="Tạo yêu cầu mới">
-            <PlusCircle />
-          </FloatingActionButton>
-        ) : null}
       </div>
     )
   }
