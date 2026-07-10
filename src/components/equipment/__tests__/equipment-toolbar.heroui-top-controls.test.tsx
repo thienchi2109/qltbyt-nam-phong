@@ -1,7 +1,7 @@
 import * as React from "react"
 import { describe, expect, it, vi } from "vitest"
 import "@testing-library/jest-dom"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import type { Table } from "@tanstack/react-table"
 
 import type { Equipment } from "@/types/database"
@@ -114,17 +114,20 @@ describe("EquipmentToolbar HeroUI top controls", () => {
       />
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
-    expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
-    fireEvent.click(await screen.findByText("Hiện/ẩn cột"))
-    fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
-    fireEvent.click(await screen.findByText("Tải Excel mẫu"))
-    fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
-    fireEvent.click(await screen.findByText("Tải về dữ liệu"))
+    const chooseDesktopOption = async (name: string, assertion: () => void) => {
+      fireEvent.click(screen.getByRole("button", { name: /Tùy chọn/i }))
+      expect(await screen.findByRole("menu", { name: "Tùy chọn" })).toBeInTheDocument()
+      fireEvent.click(await screen.findByText(name))
+      await waitFor(assertion)
+    }
 
-    expect(onOpenColumnsDialog).toHaveBeenCalledTimes(1)
-    expect(onDownloadTemplate).toHaveBeenCalledTimes(1)
-    expect(onExportData).toHaveBeenCalledTimes(1)
+    await chooseDesktopOption("Hiện/ẩn cột", () =>
+      expect(onOpenColumnsDialog).toHaveBeenCalledTimes(1)
+    )
+    await chooseDesktopOption("Tải Excel mẫu", () =>
+      expect(onDownloadTemplate).toHaveBeenCalledTimes(1)
+    )
+    await chooseDesktopOption("Tải về dữ liệu", () => expect(onExportData).toHaveBeenCalledTimes(1))
   })
 
   it("keeps desktop add actions wired through the HeroUI dropdown", async () => {
@@ -139,13 +142,18 @@ describe("EquipmentToolbar HeroUI top controls", () => {
       />
     )
 
-    fireEvent.click(screen.getByRole("button", { name: /Thêm thiết bị/i }))
-    expect(await screen.findByRole("menu", { name: "Thêm thiết bị" })).toBeInTheDocument()
-    fireEvent.click(await screen.findByText("Thêm thủ công"))
-    fireEvent.click(screen.getByRole("button", { name: /Thêm thiết bị/i }))
-    fireEvent.click(await screen.findByText("Nhập từ Excel"))
+    const chooseDesktopAddAction = async (name: string, assertion: () => void) => {
+      fireEvent.click(screen.getByRole("button", { name: /Thêm thiết bị/i }))
+      expect(await screen.findByRole("menu", { name: "Thêm thiết bị" })).toBeInTheDocument()
+      fireEvent.click(await screen.findByText(name))
+      await waitFor(assertion)
+    }
 
-    expect(onAddEquipment).toHaveBeenCalledTimes(1)
-    expect(onImportEquipment).toHaveBeenCalledTimes(1)
+    await chooseDesktopAddAction("Thêm thủ công", () =>
+      expect(onAddEquipment).toHaveBeenCalledTimes(1)
+    )
+    await chooseDesktopAddAction("Nhập từ Excel", () =>
+      expect(onImportEquipment).toHaveBeenCalledTimes(1)
+    )
   })
 })
