@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
+import { AppMobileFloatingActions } from "../../_components/AppMobileFloatingActions"
+import { MobileFloatingActionsProvider } from "@/components/shared/floating-actions"
 import { TransfersToolbar } from "../_components/TransfersToolbar"
 
 vi.mock("@/components/shared/TenantSelector", () => ({
@@ -30,6 +32,33 @@ vi.mock("@/components/transfers/FilterChips", () => ({
 
 vi.mock("@/components/transfers/TransfersViewToggle", () => ({
   TransfersViewToggle: () => <div data-testid="view-toggle" />,
+}))
+
+vi.mock("@/components/assistant/AssistantTriggerButton", () => ({
+  AssistantTriggerButton: ({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+    <button
+      type="button"
+      aria-label={isOpen ? "Đóng trợ lý" : "Trợ lý AI"}
+      data-testid="assistant-trigger-button"
+      onClick={onToggle}
+    />
+  ),
+}))
+
+vi.mock("@/components/shared/floating-actions/MobileFloatingActionMenu", () => ({
+  MobileFloatingActionMenu: ({
+    actions,
+  }: {
+    actions: Array<{ id: string; label: string; onSelect: () => void }>
+  }) => (
+    <div data-testid="mobile-floating-action-menu">
+      {actions.map((action) => (
+        <button type="button" key={action.id} onClick={action.onSelect}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  ),
 }))
 
 type TransfersToolbarProps = React.ComponentProps<typeof TransfersToolbar>
@@ -61,6 +90,22 @@ function renderToolbar(overrides: Partial<TransfersToolbarProps> = {}) {
   }
 }
 
+function renderToolbarWithMobileActions(overrides: Partial<TransfersToolbarProps> = {}) {
+  const props = buildProps(overrides)
+  const onAssistantToggle = vi.fn()
+
+  return {
+    props,
+    onAssistantToggle,
+    ...render(
+      <MobileFloatingActionsProvider>
+        <TransfersToolbar {...props} />
+        <AppMobileFloatingActions isAssistantOpen={false} onAssistantToggle={onAssistantToggle} />
+      </MobileFloatingActionsProvider>
+    ),
+  }
+}
+
 describe("TransfersToolbar", () => {
   it("matches the Repair compact toolbar without the desktop title above the grid", () => {
     renderToolbar()
@@ -87,22 +132,23 @@ describe("TransfersToolbar", () => {
     )
   })
 
-  it("uses the shared mobile FAB contract for creating a transfer in compact mode", async () => {
+  it("registers the compact create action in the shared mobile floating menu", async () => {
     const onOpenAddDialog = vi.fn()
-    renderToolbar({ onOpenAddDialog })
+    renderToolbarWithMobileActions({ onOpenAddDialog })
 
-    const createButton = screen.getByRole("button", { name: "Tạo yêu cầu mới" })
-    expect(createButton.className).toContain("fixed")
-    expect(createButton.className).toContain("rounded-full")
-    expect(createButton.className).toContain("md:hidden")
+    expect(screen.getByTestId("mobile-floating-action-menu")).toBeInTheDocument()
+    expect(screen.queryByTestId("assistant-trigger-button")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Trợ lý AI" })).toBeInTheDocument()
 
-    await userEvent.setup().click(createButton)
+    await userEvent.setup().click(screen.getByRole("button", { name: "Tạo yêu cầu mới" }))
     expect(onOpenAddDialog).toHaveBeenCalledTimes(1)
   })
 
-  it("hides the compact create FAB for regional leaders", () => {
-    renderToolbar({ isRegionalLeader: true })
+  it("does not register the compact create action for regional leaders", () => {
+    renderToolbarWithMobileActions({ isRegionalLeader: true })
 
+    expect(screen.getByTestId("assistant-trigger-button")).toBeInTheDocument()
+    expect(screen.queryByTestId("mobile-floating-action-menu")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Tạo yêu cầu mới" })).not.toBeInTheDocument()
   })
 
@@ -112,5 +158,13 @@ describe("TransfersToolbar", () => {
     expect(
       screen.queryByText("Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình")
     ).not.toBeInTheDocument()
+  })
+
+  it("keeps the desktop create button wired outside compact mode", async () => {
+    const onOpenAddDialog = vi.fn()
+    renderToolbar({ compactFilters: false, onOpenAddDialog })
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Tạo yêu cầu mới" }))
+    expect(onOpenAddDialog).toHaveBeenCalledTimes(1)
   })
 })
