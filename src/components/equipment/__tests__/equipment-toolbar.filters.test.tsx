@@ -297,12 +297,24 @@ describe("EquipmentToolbar with shared filters", () => {
 
     const compactActions = screen.getByTestId("equipment-compact-filter-actions")
     const filterTrigger = within(compactActions).getByRole("button", { name: /Lọc\s*2/i })
+    const optionsTrigger = within(compactActions).getByRole("button", { name: /Tùy chọn/i })
+    const compactControlSurfaceClasses = [
+      "h-9",
+      "w-full",
+      "justify-center",
+      "gap-2",
+      "border",
+      "shadow-sm",
+      "transition-all",
+    ]
 
     expect(compactActions).toHaveClass("grid", "w-full", "grid-cols-2", "gap-2")
     expect(filterTrigger).toHaveAttribute("data-testid", "equipment-heroui-compact-filter-trigger")
-    expect(filterTrigger).toHaveClass("w-full")
+    expect(filterTrigger).toHaveClass(...compactControlSurfaceClasses)
+    expect(filterTrigger).toHaveClass("border-primary/50", "bg-primary/5", "hover:bg-primary/10")
     expect(filterTrigger).toHaveTextContent("2")
-    expect(within(compactActions).getByRole("button", { name: /Tùy chọn/i })).toHaveClass("w-full")
+    expect(optionsTrigger).toHaveClass(...compactControlSurfaceClasses)
+    expect(optionsTrigger).toHaveClass("border-slate-200", "hover:border-primary/30")
     expect(screen.queryByText("Tình trạng")).not.toBeInTheDocument()
     expect(screen.queryByText("Khoa/Phòng")).not.toBeInTheDocument()
   })
