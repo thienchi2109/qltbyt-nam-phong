@@ -12,8 +12,8 @@ import {
 } from "lucide-react"
 import { KpiStatusBar } from "@/components/kpi"
 import { MAINTENANCE_STATUS_CONFIGS } from "@/components/kpi/configs/maintenance"
-import { FloatingActionButton } from "@/components/shared/FloatingActionButton"
 import { TenantSelector } from "@/components/shared/TenantSelector"
+import { usePageFloatingAction } from "@/components/shared/floating-actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
@@ -56,6 +56,7 @@ export interface MobileMaintenanceLayoutProps {
   toggleTaskExpansion: (taskId: number) => void
 }
 
+/** Renders the compact Maintenance mobile layout and registers its create-plan action. */
 export function MobileMaintenanceLayout({
   countsState,
   plansState,
@@ -76,6 +77,20 @@ export function MobileMaintenanceLayout({
     () => ({ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }),
     []
   )
+  const mobileCreatePlanAction = React.useMemo(
+    () =>
+      ctx.canCreatePlans
+        ? {
+            id: "create-maintenance-plan",
+            label: "Tạo kế hoạch mới",
+            icon: <PlusCircle />,
+            onSelect: () => ctx.setIsAddPlanDialogOpen(true),
+          }
+        : null,
+    [ctx.canCreatePlans, ctx.setIsAddPlanDialogOpen]
+  )
+
+  usePageFloatingAction(mobileCreatePlanAction)
 
   return (
     <div className="relative flex min-h-screen flex-col bg-muted/20">
@@ -199,20 +214,16 @@ export function MobileMaintenanceLayout({
         </div>
       </main>
 
-      {ctx.canCreatePlans && (
-        <FloatingActionButton
-          onClick={() => ctx.setIsAddPlanDialogOpen(true)}
-          aria-label="Tạo kế hoạch mới"
-        >
-          <PlusCircle />
-        </FloatingActionButton>
-      )}
-
       {planTabActive && (
-        <div className="fixed bottom-0 left-0 right-0 border-t border-border/60 bg-background/95 shadow-lg backdrop-blur" style={safeAreaFooterStyle}>
+        <div
+          className="fixed bottom-0 left-0 right-0 border-t border-border/60 bg-background/95 shadow-lg backdrop-blur"
+          style={safeAreaFooterStyle}
+        >
           <div className="px-4">
             <div className="flex items-center justify-between py-2 text-xs text-muted-foreground">
-              <span>Trang {currentPage}/{Math.max(totalPages, 1)}</span>
+              <span>
+                Trang {currentPage}/{Math.max(totalPages, 1)}
+              </span>
               <span>{totalCount} kế hoạch</span>
             </div>
             <div className="grid grid-cols-4 gap-2 pb-2">
@@ -256,7 +267,6 @@ export function MobileMaintenanceLayout({
           </div>
         </div>
       )}
-
     </div>
   )
 }
