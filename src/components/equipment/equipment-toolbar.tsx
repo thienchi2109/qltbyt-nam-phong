@@ -28,6 +28,10 @@ const QRActionSheet = dynamic(
   { ssr: false, loading: () => null }
 )
 
+const EQUIPMENT_COMPACT_CONTROL_SURFACE_CLASS =
+  "h-9 w-full justify-center gap-2 border border-slate-200 shadow-sm transition-all"
+const EQUIPMENT_COMPACT_CONTROL_IDLE_CLASS = "hover:border-primary/30"
+
 export interface EquipmentToolbarProps {
   table: Table<Equipment>
   title?: React.ReactNode
@@ -150,13 +154,13 @@ export function EquipmentToolbar({
           onPress={onOpenFilterSheet}
           data-testid="equipment-heroui-compact-filter-trigger"
           className={cn(
-            "h-9 w-full justify-center border-slate-200 shadow-sm transition-all",
+            EQUIPMENT_COMPACT_CONTROL_SURFACE_CLASS,
             isFiltered
               ? "border-primary/50 bg-primary/5 hover:bg-primary/10"
-              : "hover:border-primary/30"
+              : EQUIPMENT_COMPACT_CONTROL_IDLE_CLASS
           )}
         >
-          <Filter className="size-4 mr-2" />
+          <Filter className="size-4" />
           <span className="font-medium">Lọc</span>
           {isFiltered && (
             <span className="ml-2 h-5 min-w-[20px] rounded-full bg-primary text-white px-1.5 text-xs font-semibold">
@@ -174,7 +178,10 @@ export function EquipmentToolbar({
               Tùy chọn
             </>
           }
-          triggerClassName="h-9 w-full justify-center gap-2"
+          triggerClassName={cn(
+            EQUIPMENT_COMPACT_CONTROL_SURFACE_CLASS,
+            EQUIPMENT_COMPACT_CONTROL_IDLE_CLASS
+          )}
           items={optionsMenuItems}
         />
       </div>
