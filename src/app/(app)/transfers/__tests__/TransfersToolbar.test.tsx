@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import { AppMobileFloatingActions } from "../../_components/AppMobileFloatingActions"
+import { AppMobileFloatingActions } from "@/app/(app)/_components/AppMobileFloatingActions"
 import { MobileFloatingActionsProvider } from "@/components/shared/floating-actions"
 import { TransfersToolbar } from "../_components/TransfersToolbar"
 
