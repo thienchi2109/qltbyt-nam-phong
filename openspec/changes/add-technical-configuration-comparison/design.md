@@ -1,0 +1,324 @@
+## Context
+
+Nguồn CSV tại `/root/docs` thể hiện yêu cầu kỹ thuật dưới dạng văn bản dài, thường được nhóm thành "Yêu cầu chung", "Cấu hình cung cấp", "Yêu cầu kỹ thuật" và "Yêu cầu khác". Các cột sản phẩm tham chiếu có cấu trúc không đồng nhất và thường chứa model, hãng sản xuất, mô tả đáp ứng, ghi chú và dẫn chiếu tài liệu trong cùng một ô.
+
+Do đó, việc ép mọi loại thiết bị vào schema thông số như `giá trị tối thiểu`, `giá trị tối đa`, `đơn vị` hoặc `toán tử` sẽ làm mất thông tin và tạo chi phí cấu hình lớn. Module mới dùng dữ liệu text-first, chỉ cố định cấu trúc cần thiết cho điều hướng, so sánh, bằng chứng và đánh giá.
+
+Module phục vụ nhà tư vấn cấu hình có cái nhìn tổng quát giữa nhiều phương án. Nó không quản lý phát hành hồ sơ mời thầu, tiếp nhận hồ sơ dự thầu, tính hợp lệ pháp lý, lựa chọn trúng thầu hoặc phê duyệt mua sắm.
+
+## Goals / Non-Goals
+
+### Goals
+
+- Tạo cấu hình cơ sở linh hoạt cho một loại thiết bị trong một hồ sơ độc lập.
+- Bảo toàn cấu hình cơ sở đã được người dùng khóa làm căn cứ so sánh.
+- Nhập và theo dõi nhiều phương án/model của nhiều nhà cung cấp mà không làm UI phức tạp.
+- Cho phép quét nhanh ma trận và đánh giá sâu từng tiêu chí theo từng phương án.
+- Gắn kết luận thủ công với tài liệu URL và đoạn trích cụ thể.
+- Dùng template Excel chuẩn để giảm nhập liệu nhưng vẫn giữ hợp đồng dữ liệu ổn định.
+- Giữ đường mở rộng rõ ràng cho AI mà không đưa chi phí hoặc độ phức tạp AI vào MVP.
+
+### Non-Goals
+
+- Không liên kết cấu hình cơ sở với bản ghi `thiet_bi`.
+- Không triển khai quy trình đấu thầu hoặc quyết định lựa chọn nhà cung cấp.
+- Không lưu file, đồng bộ cloud drive hoặc kiểm tra quyền truy cập của file từ xa.
+- Không hỗ trợ cây tiêu chí lồng nhau tùy ý; MVP chỉ có hai cấp nhóm và tiêu chí.
+- Không diễn giải số liệu kỹ thuật ở backend để tính toán theo đơn vị/toán tử.
+- Không khóa hoặc quản lý phiên bản phương án nhà cung cấp.
+- Không triển khai AI, embeddings, LLM, background job, cache hoặc quota trong MVP.
+
+## Terminology
+
+- **Hồ sơ phân tích**: hồ sơ làm việc độc lập cho đúng một loại thiết bị.
+- **Cấu hình cơ sở**: tập yêu cầu chung dùng làm căn cứ so sánh.
+- **Phiên bản cơ sở**: một bản nháp hoặc bản đã khóa của cấu hình cơ sở.
+- **Nhà cung cấp**: tổ chức cung cấp một hoặc nhiều phương án cấu hình. UI có thể dùng nhãn nghiệp vụ "Nhà thầu" nếu sản phẩm sau này cần, nhưng entity không mang semantics của quy trình đấu thầu.
+- **Phương án cấu hình**: một model hoặc phương án cụ thể thuộc nhà cung cấp; đây là đơn vị được đưa vào ma trận và đánh giá.
+- **Sản phẩm tham chiếu**: sản phẩm được dùng khi xây dựng cấu hình cơ sở, không phải phương án do nhà cung cấp khai báo.
+- **Tài liệu URL**: metadata gồm tên và URL trỏ tới tài liệu trên cloud drive.
+- **Trích dẫn tiêu chí**: liên kết giữa tài liệu URL và một tiêu chí, kèm trang/mục và đoạn trích.
+
+## Decisions
+
+### 1. Hồ sơ độc lập và một loại thiết bị
+
+Mỗi hồ sơ phân tích chứa đúng một cấu hình cơ sở cho một loại thiết bị. "Một cấu hình cơ sở" là một lineage duy nhất có thể có nhiều phiên bản nối tiếp; hệ thống không cho tạo hai lineage cấu hình song song trong cùng hồ sơ. Hồ sơ có ID ổn định, tên thiết bị, tên hồ sơ, mô tả tùy chọn và metadata tạo/cập nhật.
+
+Không thêm foreign key tới `thiet_bi`. Việc độc lập giúp cấu hình được xây dựng trước khi tồn tại thiết bị thực tế và tránh trộn dữ liệu tư vấn với dữ liệu quản lý tài sản.
+
+### 2. Cấu hình cơ sở text-first với hai cấp
+
+Mỗi phiên bản cơ sở gồm các nhóm có thứ tự. Mỗi nhóm gồm các tiêu chí có:
+
+- ID ổn định trong phiên bản
+- mã hiển thị ổn định do hệ thống sinh hoặc nhận từ template
+- tiêu đề ngắn tùy chọn
+- nội dung yêu cầu nhiều dòng
+- thứ tự hiển thị
+
+Không có các cột kỹ thuật bắt buộc như min/max/unit/operator. Người dùng có thể thêm, sửa, xóa, sắp xếp nhóm và tiêu chí khi phiên bản còn là bản nháp. Nhập nhanh nhiều dòng tạo nhiều tiêu chí trong nhóm đã chọn và luôn có bước xem lại trước khi lưu.
+
+Hai cấp là giới hạn có chủ đích: đủ biểu diễn các CSV khảo sát, giữ ma trận dễ đọc và giúp template Excel ổn định.
+
+### 3. Phiên bản cơ sở và khóa bất biến
+
+Một hồ sơ có thể có nhiều phiên bản cơ sở. Phiên bản mới được tạo dưới dạng bản nháp, có thể bắt đầu trống hoặc sao chép từ phiên bản đã khóa.
+
+Hành động khóa:
+
+- yêu cầu xác nhận rõ ràng
+- yêu cầu có ít nhất một nhóm, ít nhất một tiêu chí có nội dung, mã tiêu chí không trùng và không còn lỗi import chưa xử lý
+- ghi người khóa và thời điểm khóa
+- chuyển toàn bộ phiên bản, nhóm, tiêu chí, sản phẩm tham chiếu, document metadata/URL và trích dẫn cơ sở sang trạng thái bất biến
+- được backend và database enforcement bảo vệ, không chỉ ẩn nút ở UI
+
+Không người dùng nào, kể cả `admin/global`, được sửa hoặc xóa nội dung của phiên bản đã khóa. Mọi thay đổi phải tạo bản nháp mới.
+
+Đánh giá và bộ phản hồi của phương án luôn liên kết với đúng phiên bản cơ sở. Khi một phiên bản mới được khóa, dữ liệu theo phiên bản cũ không tự migrate và kết quả cũ vẫn có thể tra cứu.
+
+### 4. Sản phẩm tham chiếu tách khỏi phương án nhà cung cấp
+
+Phiên bản cơ sở có thể có không, một hoặc nhiều sản phẩm tham chiếu. Mỗi sản phẩm có tên/model, hãng sản xuất hoặc nhà sản xuất, mô tả và ghi chú tùy chọn.
+
+Sản phẩm tham chiếu chỉ hỗ trợ xây dựng yêu cầu. Nó không xuất hiện như một nhà cung cấp, không được xếp hạng và không làm thay đổi kết luận thủ công của phương án nhà cung cấp.
+
+### 5. Nhà cung cấp và nhiều phương án cấu hình
+
+Một hồ sơ có thể có nhiều nhà cung cấp mà không đặt giới hạn nghiệp vụ. Mỗi nhà cung cấp có thể có nhiều phương án. Mỗi phương án có nhãn hiển thị rõ theo dạng:
+
+`Nhà cung cấp · Model hoặc tên phương án`
+
+Entity nhà cung cấp giữ thông tin tổ chức dùng chung. Entity phương án giữ model, hãng sản xuất, tên phương án và ghi chú. Phản hồi theo tiêu chí được lưu theo cặp `phương án + phiên bản cơ sở + tiêu chí`.
+
+Cấu trúc này cho phép một phương án được nhập lại theo phiên bản cơ sở mới mà không gọi đó là phiên bản hồ sơ nhà cung cấp. Phương án và phản hồi là dữ liệu làm việc, được sửa trực tiếp và không có hành động khóa.
+
+### 6. Template Excel chuẩn
+
+MVP chỉ chấp nhận template do hệ thống tạo.
+
+Template cấu hình cơ sở chứa cấu trúc tối thiểu:
+
+- thứ tự nhóm
+- tên nhóm
+- thứ tự tiêu chí
+- mã tiêu chí
+- tiêu đề tùy chọn
+- nội dung yêu cầu nhiều dòng
+
+Template phương án được xuất từ một phiên bản cơ sở đã chọn và chứa:
+
+- ID/mã tiêu chí dùng để ánh xạ
+- nhóm và nội dung yêu cầu ở dạng chỉ đọc/tham khảo
+- nội dung phản hồi của phương án
+- thông tin bổ sung tùy chọn
+
+Import phải có bước parse và preview. Hệ thống báo lỗi theo dòng, không ghi một phần khi file có lỗi cấu trúc, tiêu chí lạ hoặc tiêu chí trùng. Tài liệu URL và trích dẫn được quản lý trong UI để tránh lặp URL trên nhiều dòng Excel.
+
+Triển khai nên dùng `exceljs`, phù hợp với pattern hiện tại của repo, và tách parser/validator khỏi UI để kiểm thử độc lập.
+
+### 7. Tài liệu URL và trích dẫn theo tiêu chí
+
+Mỗi phiên bản cơ sở và mỗi phương án có danh sách tài liệu URL riêng. Metadata tối thiểu:
+
+- ID
+- tên tài liệu
+- URL hợp lệ
+- ghi chú tùy chọn
+- người tạo và thời điểm tạo/cập nhật
+
+Một tài liệu có thể được liên kết với nhiều tiêu chí. Mỗi liên kết có trang/mục tùy chọn và đoạn trích nhiều dòng. Trong tương lai, chỉ các đoạn trích liên kết trực tiếp với tiêu chí mới được đưa vào payload AI của tiêu chí đó.
+
+Pattern Equipment được tái sử dụng ở mức shared component/validation:
+
+- form tên tài liệu và URL
+- `new URL(...)` validation
+- danh sách liên kết mở tab mới với `noopener noreferrer`
+- trạng thái loading, empty, add và delete
+
+Không tái sử dụng bảng `file_dinh_kem` vì bảng đó gắn với `thiet_bi`. Khi triển khai, cần trích phần trình bày và validation dùng chung thay vì sao chép `EquipmentDetailFilesTab`.
+
+### 8. Hai bề mặt làm việc bổ trợ nhau
+
+#### Ma trận so sánh
+
+Ma trận ưu tiên quét nhanh:
+
+- cột yêu cầu cơ sở sticky
+- nhóm cấu hình sticky
+- mỗi phương án là một cột, nhãn rõ nhà cung cấp và model
+- cuộn ngang, chọn cột, ghim cột và chế độ tập trung để hỗ trợ nhiều phương án
+- hiển thị phản hồi rút gọn và trạng thái đánh giá
+- mở panel chi tiết thay vì nhồi tài liệu và đánh giá vào ô nhỏ
+
+Ma trận không thay thế workflow đánh giá chi tiết.
+
+#### Đánh giá từng phương án
+
+Mặc định người dùng đánh giá một phương án đang chọn:
+
+- bên trái là toàn bộ tiêu chí, nhóm và trạng thái
+- bên phải là nội dung yêu cầu, phản hồi phương án, thông tin bổ sung, trích dẫn tài liệu, ghi chú và hai trục đánh giá
+- chuyển tiêu chí không làm mất thay đổi chưa lưu
+- mọi thay đổi chỉ được ghi khi bấm `Lưu` hoặc `Lưu & tiếp tục`
+
+`Lưu` giữ nguyên tiêu chí đang xem. `Lưu & tiếp tục` lưu thành công rồi chuyển tới tiêu chí kế tiếp theo thứ tự hiện tại.
+
+### 9. Đánh giá thủ công hai trục
+
+Trục mức đáp ứng kỹ thuật:
+
+- `Vượt yêu cầu`
+- `Đạt`
+- `Không đạt`
+- `Chưa rõ`
+- `Không áp dụng`
+
+Trục mức đầy đủ bằng chứng:
+
+- `Đầy đủ`
+- `Một phần`
+- `Thiếu`
+- `Không yêu cầu`
+
+Hai giá trị được lưu riêng. Trạng thái tổng hợp không có input chỉnh sửa trực tiếp và được suy ra theo thứ tự ưu tiên:
+
+| Mức đáp ứng kỹ thuật | Mức đầy đủ bằng chứng     | Trạng thái tổng hợp |
+| -------------------- | ------------------------- | ------------------- |
+| Chưa chọn            | Bất kỳ                    | Chưa đánh giá       |
+| Không áp dụng        | Bất kỳ                    | Không áp dụng       |
+| Không đạt            | Bất kỳ                    | Không đạt           |
+| Chưa rõ              | Bất kỳ                    | Chưa rõ             |
+| Vượt yêu cầu         | Một phần hoặc Thiếu       | Chưa đủ bằng chứng  |
+| Đạt                  | Một phần hoặc Thiếu       | Chưa đủ bằng chứng  |
+| Vượt yêu cầu         | Đầy đủ hoặc Không yêu cầu | Vượt yêu cầu        |
+| Đạt                  | Đầy đủ hoặc Không yêu cầu | Đạt                 |
+
+Backend và frontend phải dùng cùng một hàm/quy tắc chuẩn để tránh kết quả khác nhau.
+
+Đánh giá thủ công là nguồn kết luận chính trong MVP. Thay đổi phản hồi nhà cung cấp không tự động xóa hoặc sửa kết luận của người dùng.
+
+### 10. Thông tin bổ sung không ảnh hưởng tuân thủ
+
+Mỗi phản hồi tiêu chí có trường "Thông tin bổ sung" riêng. Trường này:
+
+- hiển thị trong panel và ma trận khi mở rộng
+- được giữ lại để phân tích thủ công và AI tương lai
+- không tham gia quy tắc suy ra trạng thái tổng hợp
+- không biến một tiêu chí không đạt thành đạt
+
+### 11. Xếp hạng tham khảo
+
+Xếp hạng là hành động tùy chọn và được tính từ trạng thái tổng hợp thủ công của các phương án trong cùng hồ sơ và cùng phiên bản cơ sở.
+
+Thứ tự quy tắc:
+
+1. Ít tiêu chí `Không đạt` hơn.
+2. Nếu bằng nhau, ít tiêu chí `Chưa đủ bằng chứng` hơn.
+3. Nếu vẫn bằng nhau, nhiều tiêu chí `Vượt yêu cầu` hơn.
+
+Chỉ phương án đã có đủ cả hai trục đánh giá cho toàn bộ tiêu chí áp dụng mới đủ điều kiện xếp hạng. Phương án chưa hoàn tất vẫn hiển thị trong tổng quan nhưng được ghi rõ "Chưa đủ dữ liệu để xếp hạng".
+
+Các phương án có cùng bộ giá trị được đồng hạng. UI luôn ghi rõ "Xếp hạng tham khảo, không phải quyết định lựa chọn nhà cung cấp". Không tạo xếp hạng chéo giữa hồ sơ, giữa phiên bản cơ sở hoặc với sản phẩm tham chiếu.
+
+Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự sửa, xóa hoặc đánh dấu lỗi thời kết luận thủ công. Xếp hạng dùng các kết luận thủ công đang được lưu; người dùng chịu trách nhiệm rà soát lại khi dữ liệu nguồn thay đổi. Cơ chế `Đã lỗi thời` chỉ dành cho kết quả AI trong change tương lai.
+
+### 12. Quyền truy cập và audit tối thiểu
+
+Chỉ `admin/global` được thấy route, đọc hoặc thay đổi dữ liệu module.
+
+- Bên ngoài RPC proxy phải dùng `isGlobalRole()` để bao gồm cả session role `admin`.
+- RPC/database policy phải kiểm tra JWT claim và từ chối fail-closed.
+- Không dựa vào việc ẩn navigation để bảo vệ dữ liệu.
+- Các bảng ghi `created_at`, `created_by`, `updated_at`, `updated_by`; phiên bản khóa ghi thêm `locked_at`, `locked_by`.
+- MVP không cần timeline audit đầy đủ, nhưng metadata phải đủ xác định ai tạo, sửa và khóa dữ liệu gần nhất.
+
+Các mutation có revision hoặc `updated_at` guard để không ghi đè âm thầm khi hai tab/người dùng cùng sửa. Khi có conflict, UI giữ dữ liệu chưa lưu và yêu cầu tải lại trước khi ghi tiếp.
+
+### 13. Ranh giới mở rộng AI
+
+AI là hướng scale sau MVP, không bị loại bỏ khỏi sản phẩm. MVP chuẩn bị dữ liệu bằng:
+
+- ID ổn định cho hồ sơ, phiên bản cơ sở, nhóm, tiêu chí, phương án, phản hồi, tài liệu và trích dẫn
+- quan hệ rõ giữa một tiêu chí cơ sở và phản hồi của từng phương án
+- đoạn trích bằng chứng có phạm vi tiêu chí
+- đánh giá thủ công tách riêng khỏi kết quả máy
+- metadata cập nhật để tạo input fingerprint trong tương lai
+
+Hướng AI đã thống nhất để change sau kế thừa:
+
+- dùng đúng model/version cố định trong code như AI Assistant hiện tại
+- phân tích theo nhóm và tiêu chí, ưu tiên phương án người dùng đang xem
+- hỗ trợ bước tổng hợp so sánh nhiều phương án từ kết quả theo phương án, không trộn xếp hạng giữa hồ sơ hoặc phiên bản
+- cache trong database theo tiêu chí và input fingerprint, không dùng `localStorage`, Redis hoặc TTL theo thời gian
+- chỉ giữ kết quả mới nhất; thay đổi input chỉ đánh dấu kết quả AI là `Đã lỗi thời`
+- chỉ truyền các đoạn trích tài liệu liên kết trực tiếp với tiêu chí
+- cho phép AI trả `Cần chuyên gia xem xét` và nêu dữ liệu thiếu hoặc điểm mơ hồ
+- kết quả AI chỉ mang tính khuyến nghị, không sửa đánh giá thủ công
+- dùng quota toàn cục; không tự retry
+- job do tab hiện tại điều phối, hiển thị tiến độ; đóng tab, chuyển trang hoặc mất kết nối thì hủy ngay toàn bộ phần chưa hoàn thành, nhưng giữ cache của các tiêu chí đã hoàn thành
+- lỗi một phần làm dừng toàn bộ job hiện tại
+
+Các quyết định trên là compatibility notes, không phải acceptance criteria của MVP. AI phải được đề xuất, threat-model và kiểm soát chi phí trong một OpenSpec change riêng trước khi triển khai.
+
+## UX Structure
+
+### Danh sách hồ sơ
+
+- Bảng danh sách gọn, ưu tiên tên thiết bị, phiên bản cơ sở hiện hành, số nhà cung cấp/phương án, tiến độ đánh giá và thời điểm cập nhật.
+- Hành động chính: tạo hồ sơ, mở hồ sơ.
+- Không dùng landing page hoặc dashboard marketing.
+
+### Chi tiết hồ sơ
+
+Ba vùng công việc chính:
+
+1. `Cấu hình cơ sở`: soạn thảo, import, sản phẩm tham chiếu và khóa phiên bản.
+2. `Phương án`: quản lý nhà cung cấp, phương án, phản hồi và tài liệu.
+3. `So sánh & đánh giá`: ma trận tổng quan và workflow đánh giá từng phương án.
+
+Quan hệ nhà cung cấp và phương án được thể hiện bằng nhóm nhẹ, không dùng cây lồng nhiều tầng. Mọi selector và tiêu đề dùng nhãn `Nhà cung cấp · Model/tên phương án`.
+
+### Stitch references
+
+- Project: `15308531586654760571`
+- Design system: `assets/5915840001267045529`
+- Builder reference: `6a623d7a26be4cfcad4faf9f31a1daf7`
+- Bulk text entry reference: `c6c13d5795e4431a84504e87f46f33c7`
+- Dossier list reference: `52a2a8c662904f62b43285a4294d2b8c`
+
+Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ chỉ là tài liệu tham khảo layout. Khi triển khai phải áp dụng scope MVP và thuật ngữ của change này.
+
+## Error Handling
+
+- URL sai định dạng: không lưu và hiển thị lỗi ngay cạnh trường.
+- Template không đúng phiên bản hoặc thiếu metadata: từ chối import và hướng dẫn tải template mới.
+- Dòng Excel lỗi: hiển thị số dòng, trường và lý do; không ghi một phần.
+- Mã/ID tiêu chí không tồn tại trong phiên bản cơ sở đã chọn: từ chối dòng.
+- Phiên bản đã khóa: mọi mutation nội dung bị backend từ chối, kể cả request gọi trực tiếp.
+- Thiếu quyền: trả `403`/lỗi quyền thống nhất và không để lộ dữ liệu.
+- Conflict cập nhật: không ghi đè; giữ form chưa lưu để người dùng đối chiếu.
+- Xóa tài liệu đang được liên kết trong dữ liệu còn chỉnh sửa: yêu cầu xác nhận và nêu số liên kết bị ảnh hưởng.
+- Xóa hoặc sửa document metadata/URL thuộc phiên bản cơ sở đã khóa: từ chối trước khi áp dụng flow xác nhận xóa.
+
+## Risks / Trade-offs
+
+- **Text-first khó tự động tính toán:** đây là chủ đích vì dữ liệu không dùng cho phép tính backend. Giảm rủi ro bằng nhóm, mã tiêu chí, thứ tự và đánh giá có cấu trúc.
+- **Ma trận nhiều phương án có thể quá rộng:** giảm bằng chọn cột, ghim cột, cuộn ngang và chế độ tập trung.
+- **Phương án nhà cung cấp không khóa:** phù hợp dữ liệu tư vấn đang làm việc nhưng không tạo hồ sơ pháp lý bất biến. UI phải ghi rõ thời điểm cập nhật gần nhất.
+- **Trích shared attachment UI có thể ảnh hưởng Equipment:** giữ public behavior hiện tại và bổ sung regression tests cho Equipment trước khi thay consumer.
+- **AI compatibility có thể bị hiểu là AI đã sẵn sàng:** UI MVP không hiển thị affordance AI; design ghi rõ cần change riêng.
+
+## Migration Plan
+
+1. Thêm schema và quyền mới mà không sửa bảng Equipment.
+2. Thêm shared URL attachment primitives và chuyển Equipment sang primitive đó với regression coverage.
+3. Xây module mới sau feature boundary `admin/global`.
+4. Không backfill dữ liệu; hồ sơ được tạo mới hoàn toàn.
+5. Chỉ apply migration lên live Supabase sau khi người dùng cấp quyền rõ ràng cho thao tác live DB cụ thể.
+
+Rollback có thể gỡ route/navigation và migration mới mà không tác động dữ liệu Equipment. Việc xóa dữ liệu đã tạo trong module phải là quyết định migration riêng, không thực hiện tự động khi rollback UI.
+
+## Open Questions
+
+Không còn câu hỏi chặn proposal. Các chi tiết trình bày nhỏ sẽ được quyết định trong implementation plan theo design system hiện có và ưu tiên workflow thủ công.
