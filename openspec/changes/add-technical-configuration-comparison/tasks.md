@@ -57,7 +57,7 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P1.1 Thêm schema/RPC tối thiểu cho hồ sơ độc lập và một configuration lineage.
 - [x] P1.2 Thêm deny-by-default authorization cho `global`, raw `admin` và role bị từ chối.
 - [x] P1.3 Thêm revision guard cho update/archive ngay từ foundation.
-- [ ] P1.4 Chạy DB phase gate, migration verification và advisors sau live apply được phê duyệt.
+- [x] P1.4 Chạy DB phase gate, migration verification và advisors sau live apply được phê duyệt.
 - [x] P1.5 Thêm TypeScript contracts, RPC allowlist và focused tests.
 
 ## Phase P2 - Baseline Draft Data Contracts

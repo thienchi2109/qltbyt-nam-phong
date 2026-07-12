@@ -2,7 +2,7 @@
 
 > **Execution:** implement in the current session without subagents. Preserve RED-GREEN evidence for every production change.
 
-**Goal:** Add the backend-only dossier foundation for TC-01, TC-02, TC-19 and TC-20 without applying a live database migration.
+**Goal:** Add the backend-only dossier foundation for TC-01, TC-02, TC-19 and TC-20, deferring live apply until explicit approval and then completing post-apply verification.
 
 **Architecture:** One deny-by-default UUID dossier table is the configuration lineage root. Five `SECURITY DEFINER` RPCs provide bounded reads and revision-guarded writes; internal helpers centralize global-role authorization and the reusable archived-dossier guard. The RPC proxy receives only the five P1 names, and TypeScript types document snake_case wire contracts separately from future adapter/domain mapping.
 
@@ -108,3 +108,11 @@ node scripts/npm-run.js run test:run -- \
 - [x] Confirm `src/types/database.ts` remains unchanged because live types were not generated.
 - [x] Self-review migration ordering, grants, RLS, claim guards, selected columns, pagination, locking and absence of N+1 paths.
 - [x] Commit, push, open a PR linked to issue `#742`, and leave live apply explicitly pending user permission.
+
+### Task 7: Complete the approved live DB phase gate
+
+- [x] Apply `technical_configuration_dossier_foundation` through Supabase MCP after explicit user approval; registry version `20260712130332`.
+- [x] Verify live columns, indexes, RLS policy, table privileges, function signatures, `SECURITY DEFINER`, `search_path` and RPC grants.
+- [x] Verify global read behavior plus missing/invalid claims, pagination validation, not-found handling, direct-table denial and `service_role` RPC denial.
+- [x] Run create/update/archive, stale-revision and archived-dossier mutation tests inside a transaction; roll back and confirm zero test rows remain.
+- [x] Run security and performance advisors; no P1-specific deployment blocker remains.
