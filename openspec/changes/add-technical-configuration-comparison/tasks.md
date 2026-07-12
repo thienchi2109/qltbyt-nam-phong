@@ -44,13 +44,13 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P0 - Discovery And Contract Freeze
 
-- [ ] P0.1 Tạo issue discovery và phase-specific plan.
-- [ ] P0.2 Rà live DB read-only, RPC/auth, attachment, Excel, route và migration patterns.
-- [ ] P0.3 Chốt schema/RPC/type/error/state/concurrency contracts và migration split.
-- [ ] P0.4 Chốt bốn nhóm gợi ý dạng dữ liệu chỉnh sửa được, fixed criterion columns và quy tắc không có arbitrary content columns.
-- [ ] P0.5 Chốt requirement traceability, authorization matrix và test matrix cho toàn roadmap.
-- [ ] P0.6 Ghi feature baseline SHA dùng để audit toàn bộ rollout ở P13.
-- [ ] P0.7 Review contract, cập nhật OpenSpec nếu cần và đóng issue không sửa production code.
+- [x] P0.1 Tạo issue discovery và phase-specific plan.
+- [x] P0.2 Rà live DB read-only, RPC/auth, attachment, Excel, route và migration patterns.
+- [x] P0.3 Chốt schema/RPC/type/error/state/concurrency contracts và migration split.
+- [x] P0.4 Chốt bốn nhóm gợi ý dạng dữ liệu chỉnh sửa được, fixed criterion columns và quy tắc không có arbitrary content columns.
+- [x] P0.5 Chốt requirement traceability, authorization matrix và test matrix cho toàn roadmap.
+- [x] P0.6 Ghi feature baseline SHA dùng để audit toàn bộ rollout ở P13.
+- [x] P0.7 Review contract, cập nhật OpenSpec nếu cần và đóng issue không sửa production code.
 
 ## Phase P1 - Dossier Foundation And Authorization
 
