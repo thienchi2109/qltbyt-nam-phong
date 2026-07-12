@@ -28,29 +28,37 @@ export function buildEquipmentDataQueryParams(params: EquipmentDataQueryParamsIn
     selectedFundingSources,
   } = params
 
+  const q = debouncedSearch || null
+  const departmentFilters = selectedDepartments.length > 0 ? selectedDepartments : null
+  const userFilters = selectedUsers.length > 0 ? selectedUsers : null
+  const locationFilters = selectedLocations.length > 0 ? selectedLocations : null
+  const statusFilters = selectedStatuses.length > 0 ? selectedStatuses : null
+  const classificationFilters = selectedClassifications.length > 0 ? selectedClassifications : null
+  const fundingSourceFilters = selectedFundingSources.length > 0 ? selectedFundingSources : null
+
   return {
     queryKeyParams: {
       tenant: effectiveTenantKey,
       role: userRole,
       diaBan: userDiaBanId,
       donVi: effectiveSelectedDonVi,
-      q: debouncedSearch || null,
-      khoa_phong_array: selectedDepartments,
-      nguoi_su_dung_array: selectedUsers,
-      vi_tri_lap_dat_array: selectedLocations,
-      tinh_trang_array: selectedStatuses,
-      phan_loai_array: selectedClassifications,
-      nguon_kinh_phi_array: selectedFundingSources,
+      q,
+      khoa_phong_array: departmentFilters,
+      nguoi_su_dung_array: userFilters,
+      vi_tri_lap_dat_array: locationFilters,
+      tinh_trang_array: statusFilters,
+      phan_loai_array: classificationFilters,
+      nguon_kinh_phi_array: fundingSourceFilters,
     },
     rpcArgs: {
-      p_q: debouncedSearch || null,
+      p_q: q,
       p_don_vi: effectiveSelectedDonVi,
-      p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-      p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-      p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-      p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-      p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-      p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+      p_khoa_phong_array: departmentFilters,
+      p_nguoi_su_dung_array: userFilters,
+      p_vi_tri_lap_dat_array: locationFilters,
+      p_tinh_trang_array: statusFilters,
+      p_phan_loai_array: classificationFilters,
+      p_nguon_kinh_phi_array: fundingSourceFilters,
     },
   }
 }
