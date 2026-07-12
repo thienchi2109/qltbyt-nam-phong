@@ -22,7 +22,7 @@
 
 - [x] Record the approved dossier columns, required trimmed fields and five exact RPC signatures.
 - [x] Run `openspec validate add-technical-configuration-comparison --strict`.
-- [ ] Commit the contract backfill with the implementation after RED-GREEN verification.
+- [x] Commit the contract backfill with the implementation after RED-GREEN verification.
 
 ### Task 2: Add failing RPC whitelist coverage
 
@@ -107,4 +107,4 @@ node scripts/npm-run.js run test:run -- \
 
 - [x] Confirm `src/types/database.ts` remains unchanged because live types were not generated.
 - [x] Self-review migration ordering, grants, RLS, claim guards, selected columns, pagination, locking and absence of N+1 paths.
-- [ ] Commit, push, open a PR linked to issue `#742`, and leave live apply explicitly pending user permission.
+- [x] Commit, push, open a PR linked to issue `#742`, and leave live apply explicitly pending user permission.
