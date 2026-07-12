@@ -91,7 +91,7 @@ P2 + P3A        -> P3B
 P3B             -> P3C, P4
 P3B + P4        -> P5
 P3A + P4        -> P7A
-P4 + P6         -> P7B
+P4 + P6 + P7A   -> P7B
 P4              -> P8A
 P3A + P8A       -> P8B
 P5 + P8B        -> P9A
@@ -116,12 +116,12 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | ----- | ----------------------------------------------- | ---------------------------------------------------------------------- |
 | TC-01 | Independent technical configuration dossier     | P0, P1                                                                 |
 | TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                              |
-| TC-03 | Flexible two-level baseline authoring           | P2, P3B, P3C                                                           |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                       |
 | TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A, P7B, P8B, P9B, P12A                                |
-| TC-05 | Standard baseline Excel template                | P5                                                                     |
+| TC-05 | Standard baseline Excel template                | P0, P5                                                                 |
 | TC-06 | Immutable locked baseline versions              | P4, P7A, P7B                                                           |
 | TC-07 | Historical baseline linkage                     | P4, P8A                                                                |
-| TC-08 | Optional reference products                     | P7A                                                                    |
+| TC-08 | Optional reference products                     | P0, P7A                                                                |
 | TC-09 | Multiple supplier configuration options         | P8A, P8B                                                               |
 | TC-10 | Standard supplier option Excel template         | P9A                                                                    |
 | TC-11 | URL-only document profiles                      | P6, P7B, P9B                                                           |
@@ -167,6 +167,8 @@ Every leaf phase that creates or changes tables, RPCs, policies, grants, trigger
 - No source file may exceed 450 lines; extraction starts near 350 lines.
 - No autosave. Mutations originate only from explicit save actions.
 - Long Vietnamese technical text must wrap without resizing stable controls or overlapping adjacent content.
+- Baseline/reference/option comparison surfaces keep groups and criteria on rows; only compared entities become dynamic columns.
+- The UI must not expose a schema builder or arbitrary content-column controls.
 - The Stitch project is design guidance, not generated production code:
   - project `15308531586654760571`
   - design system `assets/5915840001267045529`
@@ -192,7 +194,8 @@ Use `ctx_batch_execute` for the chain. Add focused browser verification for user
 ## Phase P0 - Discovery And Contract Freeze
 
 **Depends on:** none  
-**Requirements:** TC-01, TC-02, TC-19, TC-20  
+**Requirements:** TC-01, TC-02, TC-03, TC-05, TC-08, TC-19, TC-20
+
 **Issue scope:** documentation and read-only discovery only  
 **Production code:** prohibited
 
@@ -219,6 +222,7 @@ A reviewed contract pack removes schema, authorization and API ambiguity before 
 - [ ] Define RPC names and request/response/error contracts for all planned leaf phases.
 - [ ] Define the single-lineage invariant and baseline state machine.
 - [ ] Define criterion code generation and uniqueness scope.
+- [ ] Define the four suggested groups as editable seed records, not enums, and freeze the decision to exclude arbitrary content columns.
 - [ ] Define optimistic concurrency token behavior and conflict response.
 - [ ] Define document ownership without coupling to `thiet_bi`.
 - [ ] Define standard Excel metadata/version rules.
@@ -293,7 +297,9 @@ Backend can securely create/list/get one-device dossiers, but no baseline editor
 
 - [ ] Add baseline version draft, group and criterion tables.
 - [ ] Enforce exactly two hierarchy levels.
-- [ ] Add stable criterion IDs, display codes, optional titles, multiline requirement text and sort order.
+- [ ] Seed `Yêu cầu chung`, `Yêu cầu cấu hình cung cấp`, `Yêu cầu kỹ thuật` and `Yêu cầu khác` for a blank draft as normal editable group records.
+- [ ] Add stable criterion IDs, display codes, optional titles, multiline requirement text and sort order through fixed structural fields.
+- [ ] Do not add field-definition tables, JSON custom-column payloads or validation that locks group names.
 - [ ] Add transactional create/update/delete/reorder RPCs for draft content.
 - [ ] Add bulk-add preview contract without persistence.
 - [ ] Add revision/`updated_at` guards to every editable aggregate mutation.
@@ -303,7 +309,7 @@ Backend can securely create/list/get one-device dossiers, but no baseline editor
 
 ### TDD and verification
 
-- Unit/contract tests for ordering and multiline Unicode.
+- Unit/contract tests for suggested-group creation, group rename/add/delete/reorder, ordering and multiline Unicode.
 - SQL tests for duplicate criterion codes and stale revision rejection.
 - Transaction rollback proof for a failed multi-row reorder.
 - Query review for list/get paths and required indexes.
@@ -370,8 +376,10 @@ Admin/global can create and open a dossier shell. No baseline editor, supplier w
 
 ### Tasks
 
-- [ ] Add group/criterion editor with stable dimensions and long-text handling.
+- [ ] Add a vertical group/criterion editor with stable dimensions and long-text handling.
+- [ ] Render the four suggested groups as normal editable data and support additional groups without a business-count limit.
 - [ ] Add group/criterion create, edit, delete and reorder controls.
+- [ ] Do not add schema-builder or custom content-column controls.
 - [ ] Add explicit `Lưu`; do not autosave.
 - [ ] Preserve unsaved data on validation, persistence and conflict errors.
 - [ ] Warn before leaving the baseline tab or dossier with unsaved changes.
@@ -382,7 +390,7 @@ Admin/global can create and open a dossier shell. No baseline editor, supplier w
 
 - Failing editor tests before components.
 - Focused tests for save, failed save, reorder, dirty navigation and conflict preservation.
-- Browser verification with long Vietnamese multiline requirements.
+- Browser verification with long Vietnamese multiline requirements, edited suggested groups and additional groups.
 - React Doctor after focused tests pass.
 
 ### Exit gate
@@ -480,9 +488,10 @@ Baseline versions can be locked irreversibly and revised only through a new draf
 ### Tasks
 
 - [ ] Define template metadata, schema version and sheet contract from P0.
-- [ ] Generate group/criterion template with wrapped multiline cells.
+- [ ] Generate the fixed group/criterion column contract with wrapped multiline cells and four suggested group rows.
 - [ ] Parse only system templates and preserve Vietnamese Unicode.
-- [ ] Validate metadata, group/criterion ordering, duplicate codes and required text.
+- [ ] Allow group rows to be added, renamed, removed and reordered without adding columns.
+- [ ] Validate metadata, fixed columns, group/criterion ordering, duplicate codes and required text.
 - [ ] Present row-level preview and actionable errors before mutation.
 - [ ] Import atomically into an editable draft only.
 - [ ] Require the expected target-draft revision and preserve preview/input on conflict.
@@ -492,7 +501,7 @@ Baseline versions can be locked irreversibly and revised only through a new draf
 ### TDD and verification
 
 - Red/green round-trip tests with representative CSV-derived content.
-- Malformed workbook, wrong version, duplicate ID and multiline tests.
+- Malformed workbook, wrong version, unexpected content-column, custom group, duplicate ID and multiline tests.
 - Stale target-revision and preview-preservation tests.
 - UI tests proving no persistence before preview confirmation.
 - Semantic dedup check against existing Excel helpers.
@@ -541,12 +550,13 @@ Equipment uses tested shared URL primitives with no behavior or storage change. 
 
 **Depends on:** P3A, P4  
 **Requirements:** TC-02, TC-04, TC-06, TC-08, TC-20  
-**Deploy boundary:** optional reference-product context only; no documents
+**Deploy boundary:** optional reference-product criterion comparison; documents remain deferred
 
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_reference_products.sql`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProducts.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/reference-products.test.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
@@ -554,8 +564,12 @@ Equipment uses tested shared URL primitives with no behavior or storage change. 
 
 - [ ] Add zero-to-many reference products scoped to an exact baseline version.
 - [ ] Add model, manufacturer, description and notes without creating supplier records.
+- [ ] Add one multiline comparison response per `reference product + baseline criterion`.
+- [ ] Render groups/criteria as rows, the baseline requirement as a sticky column and selected reference products as dynamic columns.
+- [ ] Add column selection, horizontal scrolling and a full-text detail panel for large reference sets.
+- [ ] Do not add custom content columns or permanent evidence columns.
 - [ ] Add explicit save and dirty-state handling for draft CRUD.
-- [ ] Require the expected baseline revision and preserve unsaved product edits on conflict.
+- [ ] Require the expected baseline revision and preserve unsaved product/criterion-response edits on conflict.
 - [ ] Reject every mutation after baseline lock.
 - [ ] Exclude reference products from option counts, assessments and ranking contracts.
 - [ ] Add the reference-products surface to the baseline workspace.
@@ -564,19 +578,19 @@ Equipment uses tested shared URL primitives with no behavior or storage change. 
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- SQL tests for baseline ownership and locked immutability.
+- SQL tests for baseline ownership, criterion-response ownership/cascade and locked immutability.
 - Stale-revision tests for create/update/delete.
-- React tests for optional/multiple products, dirty state, conflict preservation and locked read-only rendering.
+- React tests for optional/multiple products, long criterion text, many dynamic columns, dirty state, conflict preservation and locked read-only rendering.
 
 ### Exit gate
 
-Reference products are optional baseline context and cannot enter supplier comparison or ranking.
+Reference products can be compared criterion-by-criterion while authoring the baseline, but cannot enter supplier assessment or ranking.
 
 ## Phase P7B - Baseline Documents And Citations
 
-**Depends on:** P4, P6  
+**Depends on:** P4, P6, P7A
 **Requirements:** TC-02, TC-04, TC-06, TC-11, TC-12, TC-20  
-**Deploy boundary:** baseline URL evidence and criterion citations
+**Deploy boundary:** baseline/reference-product URL evidence and criterion citations
 
 ### Planned files
 
@@ -585,17 +599,19 @@ Reference products are optional baseline context and cannot enter supplier compa
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
 - Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/baseline-evidence.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
 ### Tasks
 
-- [ ] Add baseline document URL metadata.
-- [ ] Add criterion citation with document ID, page/section and excerpt.
+- [ ] Add document URL metadata owned by the baseline or one reference product.
+- [ ] Add criterion citation with document ID, page/section and excerpt while preserving owner scope.
 - [ ] Reuse one document across multiple criteria without URL duplication.
 - [ ] Use P6 primitives for URL list/form behavior.
+- [ ] Show reference evidence through indicators and the detail panel without adding permanent evidence columns.
 - [ ] Add explicit save and dirty-state handling for document/citation edits.
 - [ ] Require the expected baseline revision and preserve unsaved edits on conflict.
-- [ ] Extend lock enforcement to document metadata and citations.
+- [ ] Extend lock enforcement to baseline/reference-product document metadata and citations.
 - [ ] For editable data, show affected-link count before confirmed document deletion.
 - [ ] For locked data, reject edit/delete before any confirmation flow.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
@@ -603,13 +619,13 @@ Reference products are optional baseline context and cannot enter supplier compa
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- SQL tests for ownership, reuse, affected-link count, stale revision and locked immutability.
+- SQL tests for baseline/reference-product owner scope, reuse, affected-link count, stale revision and locked immutability.
 - React tests for URL validation, dirty state, conflict preservation, deletion confirmation, citation editing and locked read-only state.
 - Browser check with long Vietnamese excerpts.
 
 ### Exit gate
 
-A locked baseline preserves criterion-level URL evidence as immutable context.
+A locked baseline preserves its own and each reference product's criterion-level URL evidence as immutable context.
 
 ## Phase P8A - Supplier And Option Data Contracts
 
@@ -803,11 +819,11 @@ The backend can return bounded comparison data without exposing a new matrix UI.
 
 ### Tasks
 
-- [ ] Add sticky baseline column and sticky group context.
+- [ ] Render groups/criteria as ordered rows and add a sticky baseline column.
 - [ ] Add stable option columns labeled `Supplier · Model/option`.
 - [ ] Add horizontal scrolling without layout shifts.
 - [ ] Add column selector, pinning and focus mode.
-- [ ] Add concise cell rendering and detail panel for full content/evidence.
+- [ ] Add concise cell rendering and detail panel for full content/evidence without arbitrary content or permanent evidence columns.
 - [ ] Show supplementary information without treating it as compliance.
 - [ ] Preserve usable behavior with many options through bounded selection/loading.
 - [ ] Keep matrix state/data hooks outside the workspace shell.
@@ -1013,6 +1029,8 @@ No release-blocking database authorization, integrity or performance gap remains
 - [ ] Test concurrent edits and conflict recovery across two tabs.
 - [ ] Verify dirty criterion/tab/dossier navigation.
 - [ ] Verify long Vietnamese text, many options and narrow viewport.
+- [ ] Verify suggested groups remain editable, additional groups render correctly and no custom content-column controls exist.
+- [ ] Verify many reference-product columns remain selectable and all criterion content/evidence is reachable.
 - [ ] Verify keyboard/focus/accessibility across workspace, matrix and evaluation.
 - [ ] Verify stable dimensions and absence of overlap/layout shifts.
 - [ ] Verify Equipment attachment regressions after shared extraction.

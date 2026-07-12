@@ -38,13 +38,32 @@ Hệ thống SHALL chỉ cho phép người dùng có semantics `admin/global` t
 
 ### Requirement: Flexible two-level baseline authoring
 
-Hệ thống SHALL cho phép cấu hình cơ sở được tổ chức theo hai cấp `Nhóm cấu hình -> Tiêu chí`, trong đó nội dung kỹ thuật được lưu dưới dạng text nhiều dòng và không yêu cầu schema số học cố định.
+Hệ thống SHALL cho phép cấu hình cơ sở được tổ chức theo hai cấp `Nhóm cấu hình -> Tiêu chí`, trong đó nội dung kỹ thuật được lưu dưới dạng text nhiều dòng, không yêu cầu schema số học và không cho tạo cột nội dung tùy ý.
+
+#### Scenario: Start with four suggested groups
+
+- **WHEN** người dùng tạo một bản nháp cấu hình cơ sở trống
+- **THEN** hệ thống khởi tạo `Yêu cầu chung`, `Yêu cầu cấu hình cung cấp`, `Yêu cầu kỹ thuật` và `Yêu cầu khác` theo thứ tự
+- **AND** lưu chúng như group records thông thường, không phải enum hoặc danh mục khóa cứng
 
 #### Scenario: Author arbitrary technical text
 
 - **WHEN** người dùng thêm một tiêu chí vào bản nháp
 - **THEN** người dùng có thể nhập tiêu đề tùy chọn và nội dung yêu cầu nhiều dòng
 - **AND** hệ thống không bắt buộc min, max, unit hoặc operator
+
+#### Scenario: Adapt groups to a device type
+
+- **WHEN** bốn nhóm gợi ý không phù hợp với loại thiết bị đang phân tích
+- **THEN** người dùng có thể thêm, đổi tên, xóa hoặc sắp xếp nhóm trong bản nháp
+- **AND** hệ thống không giới hạn số nhóm hoặc tiêu chí theo quy tắc nghiệp vụ
+
+#### Scenario: Keep content columns stable
+
+- **WHEN** người dùng soạn thủ công hoặc import cấu hình cơ sở
+- **THEN** hệ thống dùng tập trường cấu trúc đã định nghĩa cho nhóm và tiêu chí
+- **AND** không cung cấp schema builder hoặc tạo thêm arbitrary content columns
+- **AND** hướng dẫn biểu diễn nội dung bổ sung bằng tiêu chí riêng hoặc text nhiều dòng
 
 #### Scenario: Organize and reorder requirements
 
@@ -92,9 +111,15 @@ Hệ thống SHALL cho phép import cấu hình cơ sở chỉ từ template Exc
 
 #### Scenario: Import a valid baseline template
 
-- **WHEN** người dùng chọn template hợp lệ có nhóm, tiêu chí, mã, thứ tự và nội dung text
+- **WHEN** người dùng chọn template hợp lệ có nhóm, tiêu chí, mã, thứ tự và nội dung text trong tập cột chuẩn
 - **THEN** hệ thống parse dữ liệu và hiển thị preview trước khi ghi
 - **AND** giữ nguyên Unicode tiếng Việt và text nhiều dòng
+
+#### Scenario: Use editable suggested groups in the template
+
+- **WHEN** người dùng tải template cấu hình cơ sở mới
+- **THEN** template có sẵn bốn nhóm gợi ý
+- **AND** người dùng có thể thêm, đổi tên, xóa hoặc sắp xếp nhóm bằng các dòng hợp lệ mà không thêm cột mới
 
 #### Scenario: Reject an unsupported spreadsheet
 
@@ -160,13 +185,25 @@ Hệ thống SHALL liên kết phản hồi và đánh giá với đúng phiên 
 
 ### Requirement: Optional reference products
 
-Hệ thống SHALL cho phép khai báo nhiều sản phẩm tham chiếu tùy chọn trong phiên bản cơ sở và SHALL giữ chúng tách biệt với phương án nhà cung cấp.
+Hệ thống SHALL cho phép khai báo nhiều sản phẩm tham chiếu tùy chọn trong phiên bản cơ sở, nhập nội dung đối chiếu và trích dẫn theo từng tiêu chí, đồng thời SHALL giữ chúng tách biệt với phương án nhà cung cấp.
 
 #### Scenario: Add reference products
 
 - **WHEN** người dùng thêm model, hãng hoặc mô tả sản phẩm tham chiếu
 - **THEN** hệ thống hiển thị thông tin đó trong bối cảnh xây dựng cấu hình cơ sở
 - **AND** không tạo nhà cung cấp hoặc phương án từ sản phẩm tham chiếu
+
+#### Scenario: Compare reference products while authoring the baseline
+
+- **WHEN** người dùng nhập nội dung của nhiều sản phẩm tham chiếu cho các tiêu chí cơ sở
+- **THEN** UI hiển thị nhóm/tiêu chí theo hàng, yêu cầu cơ sở ở cột sticky và mỗi sản phẩm được chọn ở một cột động
+- **AND** không đặt giới hạn nghiệp vụ cho số sản phẩm chỉ vì chiều rộng viewport
+
+#### Scenario: Record criterion-level reference evidence
+
+- **WHEN** người dùng liên kết tài liệu và đoạn trích của sản phẩm tham chiếu với một tiêu chí
+- **THEN** hệ thống lưu bằng chứng theo đúng `sản phẩm tham chiếu + tiêu chí`
+- **AND** hiển thị bằng chứng trong panel chi tiết thay vì thêm cột tài liệu cố định
 
 #### Scenario: Rank supplier options
 
@@ -229,7 +266,7 @@ Hệ thống SHALL quản lý tài liệu tham khảo dưới dạng metadata UR
 
 #### Scenario: Add a valid document URL
 
-- **WHEN** người dùng nhập tên tài liệu và URL hợp lệ cho cấu hình cơ sở hoặc phương án
+- **WHEN** người dùng nhập tên tài liệu và URL hợp lệ cho cấu hình cơ sở, sản phẩm tham chiếu hoặc phương án
 - **THEN** hệ thống lưu metadata liên kết
 - **AND** cho phép mở URL trong tab mới với thuộc tính bảo vệ phù hợp
 
@@ -251,8 +288,8 @@ Hệ thống SHALL cho phép liên kết một tài liệu URL với từng tiê
 
 #### Scenario: Link evidence to a criterion
 
-- **WHEN** người dùng chọn tài liệu trong hồ sơ phương án và nhập trang/mục hoặc đoạn trích
-- **THEN** hệ thống lưu liên kết với đúng tiêu chí và phương án
+- **WHEN** người dùng chọn tài liệu của cấu hình cơ sở, sản phẩm tham chiếu hoặc phương án và nhập trang/mục hoặc đoạn trích
+- **THEN** hệ thống lưu liên kết với đúng tiêu chí và đúng owner của tài liệu
 - **AND** hiển thị trích dẫn trong panel đánh giá tiêu chí đó
 
 #### Scenario: Reuse one document for multiple criteria
@@ -269,7 +306,13 @@ Hệ thống SHALL cung cấp ma trận so sánh cấu hình cơ sở với các
 
 - **WHEN** người dùng chọn các phương án trong cùng hồ sơ và phiên bản cơ sở
 - **THEN** ma trận hiển thị yêu cầu cơ sở và phản hồi của từng phương án theo cùng thứ tự nhóm/tiêu chí
-- **AND** giữ cột yêu cầu và group context khi cuộn
+- **AND** nhóm/tiêu chí là hàng, cột yêu cầu là sticky và mỗi phương án là một cột động
+
+#### Scenario: Do not introduce arbitrary matrix dimensions
+
+- **WHEN** ma trận được tạo từ cấu hình cơ sở
+- **THEN** hệ thống không biến bốn nhóm hoặc trường nội dung tùy ý thành cột ngang
+- **AND** tài liệu, text đầy đủ và đánh giá chi tiết được mở từ panel
 
 #### Scenario: Work with many options
 
