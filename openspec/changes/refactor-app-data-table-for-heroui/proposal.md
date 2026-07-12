@@ -1,5 +1,14 @@
 # Refactor App Data Tables for HeroUI
 
+> **Status: Deferred on 2026-07-12.** Current production usage includes 51 files
+> importing TanStack Table directly and 8 `useReactTable` owners with mixed
+> server pagination, sorting, filtering, selection, bulk actions, and overlay
+> workflows. Do not implement this change until a separate table-specific
+> reactivation decision selects one bounded route, defines TanStack/HeroUI state
+> ownership, adds route behavior tests, and documents rollback. Success of
+> lower-risk primitive changes does not reactivate this proposal. The next
+> approved HeroUI change is `migrate-skeleton-backing-to-heroui`.
+
 ## Why
 
 The app currently has multiple table implementations: several pages use TanStack Table directly, several pages render shadcn-style `@/components/ui/table` manually, and shared pagination/filter helpers sit outside a single table ownership boundary. This makes the ongoing shadcn-to-HeroUI rollout harder because each table would need an independent migration and future table-library upgrades would repeat the same work.
