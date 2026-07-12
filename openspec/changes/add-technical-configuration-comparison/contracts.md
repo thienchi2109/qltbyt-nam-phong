@@ -56,6 +56,46 @@ All tables include UUID primary keys and the audit columns required by `design.m
 - Archive is one-way in MVP; no restore RPC exists.
 - `technical_configuration_dossiers_archive` increments dossier revision atomically.
 
+P1 creates `technical_configuration_dossiers` with:
+
+- `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`
+- required trimmed non-empty `device_type_name TEXT`
+- required trimmed non-empty `name TEXT`
+- optional `description TEXT`
+- `revision BIGINT NOT NULL DEFAULT 1`
+- nullable `archived_at TIMESTAMPTZ` and `archived_by BIGINT`
+- `created_at`, `created_by`, `updated_at` and `updated_by` audit columns
+
+P1 RPC signatures are frozen as:
+
+```text
+technical_configuration_dossiers_list(
+  p_page INTEGER DEFAULT 1,
+  p_page_size INTEGER DEFAULT 20,
+  p_include_archived BOOLEAN DEFAULT false
+)
+technical_configuration_dossiers_get(p_id UUID)
+technical_configuration_dossiers_create(
+  p_device_type_name TEXT,
+  p_name TEXT,
+  p_description TEXT,
+  p_expected_revision BIGINT
+)
+technical_configuration_dossiers_update(
+  p_id UUID,
+  p_device_type_name TEXT,
+  p_name TEXT,
+  p_description TEXT,
+  p_expected_revision BIGINT
+)
+technical_configuration_dossiers_archive(
+  p_id UUID,
+  p_expected_revision BIGINT
+)
+```
+
+Create requires `p_expected_revision=0` and returns revision `1`. Update and archive require the current dossier revision and increment it atomically. P1 adds no hard-delete or restore RPC.
+
 ### Baseline Version
 
 - States: `draft`, `locked`.
@@ -113,7 +153,7 @@ Outside the RPC proxy, raw `admin` handling uses `isGlobalRole()`. SQL tests may
 ### Common SQL Guards
 
 - `_technical_configuration_require_global_user()` validates role and non-empty user ID claims, normalizes `admin` to global semantics and returns the actor ID.
-- `_technical_configuration_require_editable_dossier(p_dossier_id uuid)` calls the role guard, verifies existence and raises `archived_dossier` when archived.
+- `_technical_configuration_require_editable_dossier(p_dossier_id uuid, p_expected_revision bigint)` calls the role guard, locks the dossier, verifies existence, archive state and revision, then returns the actor ID.
 - P4 owns `_technical_configuration_require_editable_baseline_version(p_baseline_version_id uuid)`, which calls the dossier guard and raises `locked_version` when needed.
 
 Every descendant mutation leaf must call the most specific applicable guard. A leaf may not duplicate or weaken these checks.
@@ -180,7 +220,7 @@ RPCs raise the SQLSTATE and machine message below. The proxy's `{ error: payload
 | `PT409`  | `archived_dossier`     | P1           | Mutation targets an archived dossier or descendant                  |
 | `PT409`  | `locked_version`       | P4           | Mutation targets locked baseline-owned data                         |
 | `PT409`  | `draft_already_exists` | P2           | Dossier already has an editable draft                               |
-| `PT422`  | `validation_error`     | P2           | Field, relationship, order, code or request-bound validation failed |
+| `PT422`  | `validation_error`     | P1           | Field, relationship, order, code or request-bound validation failed |
 | `PT422`  | `template_mismatch`    | P5           | Workbook kind/version/metadata/shape does not match the contract    |
 
 Errors must not include dossier data when authorization or ownership fails.
