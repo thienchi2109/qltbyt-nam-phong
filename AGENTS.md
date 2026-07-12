@@ -245,6 +245,16 @@ const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 
 **All database operations MUST go through Supabase MCP (project `cdthersvldpnlbvpufrr`). Agents MUST NOT invoke the Supabase CLI for DB-touching operations.** The CLI binary may be installed locally for human developers; that is not permission for agents to use it.
 
+### Live Database Write Authorization (STRICT)
+
+**Agents are strictly forbidden from performing any write operation against the live database through Supabase MCP unless the user has given clear, explicit permission for that specific operation.**
+
+- Read-only live database inspection is allowed, including schema, migration, privilege, policy, function, log, advisor, and data queries that cannot modify state.
+- A write operation includes, but is not limited to: applying migrations; executing `INSERT`, `UPDATE`, `DELETE`, `MERGE`, DDL, DCL, or state-changing function calls; changing grants, policies, functions, triggers, schemas, extensions, or migration metadata; deploying or deleting Edge Functions; and any MCP action that can mutate live Supabase state.
+- Before any write, stop and ask for confirmation in clear terms, for example: **"Việc này cần ghi vào live DB qua Supabase MCP. Anh có cho phép tôi thực hiện không?"**
+- Permission must be affirmative and explicit. Silence, no response, ambiguity, or permission for an earlier/different write does not authorize the operation.
+- If permission is denied or not received, stop before the write. Never infer approval from the task context, prior approvals, urgency, or the fact that a migration/file has already been prepared.
+
 **Forbidden for agents** (do NOT run, even via `npx`, `npm run`, scripts, or shell pipelines):
 
 - `supabase db push` / `supabase db pull` / `supabase db reset` / `supabase db diff` / `supabase db dump`
