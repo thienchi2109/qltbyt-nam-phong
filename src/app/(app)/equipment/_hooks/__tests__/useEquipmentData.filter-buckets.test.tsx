@@ -210,7 +210,11 @@ describe("useEquipmentData filter bucket query", () => {
       wrapper: createWrapper(queryClient),
     })
 
-    await waitFor(() => expect(getBucketCalls()).toHaveLength(1))
+    await waitFor(() => {
+      expect(getRpcCall("equipment_list_enhanced")).toBeDefined()
+      expect(getRpcCall("equipment_department_distribution")).toBeDefined()
+      expect(getRpcCall("equipment_filter_buckets")).toBeDefined()
+    })
 
     const sharedKeyParams = {
       tenant: "tenant-42",
