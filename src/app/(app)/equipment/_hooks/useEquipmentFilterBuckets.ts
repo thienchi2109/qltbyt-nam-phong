@@ -6,6 +6,7 @@ import type { ColumnFiltersState } from "@tanstack/react-table"
 
 import { callRpc } from "@/lib/rpc-client"
 import type { FilterBottomSheetData } from "../types"
+import { buildEquipmentDataQueryParams } from "./EquipmentDataQueryParams"
 
 export interface UseEquipmentFilterBucketsParams {
   shouldFetchData: boolean
@@ -109,35 +110,32 @@ export function useEquipmentFilterBuckets(
     selectedFundingSources,
   } = params
 
+  const { queryKeyParams, rpcArgs } = buildEquipmentDataQueryParams({
+    effectiveTenantKey,
+    userRole,
+    userDiaBanId,
+    effectiveSelectedDonVi,
+    debouncedSearch,
+    selectedDepartments,
+    selectedUsers,
+    selectedLocations,
+    selectedStatuses,
+    selectedClassifications,
+    selectedFundingSources,
+  })
+
   const { data: filterBucketsData } = useQuery<EquipmentFilterBucketsResponse>({
     queryKey: [
       "equipment_filter_buckets",
       {
-        tenant: effectiveTenantKey,
-        role: userRole,
-        diaBan: userDiaBanId,
-        donVi: effectiveSelectedDonVi,
-        q: debouncedSearch || null,
-        khoa_phong_array: selectedDepartments,
-        nguoi_su_dung_array: selectedUsers,
-        vi_tri_lap_dat_array: selectedLocations,
-        tinh_trang_array: selectedStatuses,
-        phan_loai_array: selectedClassifications,
-        nguon_kinh_phi_array: selectedFundingSources,
+        ...queryKeyParams,
       },
     ],
     queryFn: async ({ signal }) => {
       const result = await callRpc<EquipmentFilterBucketsResponse>({
         fn: "equipment_filter_buckets",
         args: {
-          p_q: debouncedSearch || null,
-          p_don_vi: effectiveSelectedDonVi,
-          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+          ...rpcArgs,
         },
         signal,
       })

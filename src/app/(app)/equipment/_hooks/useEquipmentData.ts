@@ -4,6 +4,7 @@ import * as React from "react"
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
+import { buildEquipmentDataQueryParams } from "./EquipmentDataQueryParams"
 import { useEquipmentFilterBuckets } from "./useEquipmentFilterBuckets"
 import type { Equipment } from "../types"
 import type {
@@ -126,6 +127,20 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     return selectedDonVi
   }, [isRegionalLeader, selectedFacilityId, selectedDonVi])
 
+  const { queryKeyParams, rpcArgs } = buildEquipmentDataQueryParams({
+    effectiveTenantKey,
+    userRole,
+    userDiaBanId,
+    effectiveSelectedDonVi,
+    debouncedSearch,
+    selectedDepartments,
+    selectedUsers,
+    selectedLocations,
+    selectedStatuses,
+    selectedClassifications,
+    selectedFundingSources,
+  })
+
   // Active usage logs
   const { data: activeUsageLogs, isLoading: isLoadingActiveUsage } = useActiveUsageLogs({
     tenantId: currentTenantId,
@@ -164,19 +179,9 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     queryKey: [
       "equipment_list_enhanced",
       {
-        tenant: effectiveTenantKey,
-        role: userRole, // Cache isolation by role
-        diaBan: userDiaBanId, // Cache isolation by region
-        donVi: effectiveSelectedDonVi,
+        ...queryKeyParams,
         page: pagination.pageIndex,
         size: pagination.pageSize,
-        q: debouncedSearch || null,
-        khoa_phong_array: selectedDepartments,
-        nguoi_su_dung_array: selectedUsers,
-        vi_tri_lap_dat_array: selectedLocations,
-        tinh_trang_array: selectedStatuses,
-        phan_loai_array: selectedClassifications,
-        nguon_kinh_phi_array: selectedFundingSources,
         sort: sortParam,
       },
     ],
@@ -185,17 +190,10 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       const result = await callRpc<EquipmentListResponse>({
         fn: "equipment_list_enhanced",
         args: {
-          p_q: debouncedSearch || null,
+          ...rpcArgs,
           p_sort: sortParam,
           p_page: effectivePage,
           p_page_size: effectivePageSize,
-          p_don_vi: effectiveSelectedDonVi,
-          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
         },
         signal,
       })
@@ -215,31 +213,14 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     queryKey: [
       "equipment_department_distribution",
       {
-        tenant: effectiveTenantKey,
-        role: userRole,
-        diaBan: userDiaBanId,
-        donVi: effectiveSelectedDonVi,
-        q: debouncedSearch || null,
-        khoa_phong_array: selectedDepartments,
-        nguoi_su_dung_array: selectedUsers,
-        vi_tri_lap_dat_array: selectedLocations,
-        tinh_trang_array: selectedStatuses,
-        phan_loai_array: selectedClassifications,
-        nguon_kinh_phi_array: selectedFundingSources,
+        ...queryKeyParams,
       },
     ],
     queryFn: async ({ signal }) => {
       const result = await callRpc<EquipmentDepartmentDistributionItem[]>({
         fn: "equipment_department_distribution",
         args: {
-          p_q: debouncedSearch || null,
-          p_don_vi: effectiveSelectedDonVi,
-          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+          ...rpcArgs,
         },
         signal,
       })
