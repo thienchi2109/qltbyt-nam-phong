@@ -85,6 +85,12 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "get_maintenance_report_data",
   "maintenance_plan_status_counts",
   "dashboard_kpi_summary",
+  // Technical configuration comparison
+  "technical_configuration_dossiers_list",
+  "technical_configuration_dossiers_get",
+  "technical_configuration_dossiers_create",
+  "technical_configuration_dossiers_update",
+  "technical_configuration_dossiers_archive",
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

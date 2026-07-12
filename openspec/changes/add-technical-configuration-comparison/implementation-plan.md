@@ -266,6 +266,7 @@ P1 may start only after table/RPC contracts, migration split and authorization m
 - Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
 - Create: `src/app/(app)/technical-configurations/types.ts`
 - Create: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-dossier-migration.test.ts`
 - Modify after generation only when required: `src/types/database.ts`
 
 ### Tasks

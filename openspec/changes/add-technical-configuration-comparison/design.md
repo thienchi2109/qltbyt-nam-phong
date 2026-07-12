@@ -44,7 +44,7 @@ Module phục vụ nhà tư vấn cấu hình có cái nhìn tổng quát giữa
 
 ### 1. Hồ sơ độc lập và một loại thiết bị
 
-Mỗi hồ sơ phân tích chứa đúng một cấu hình cơ sở cho một loại thiết bị. Bản thân hồ sơ là root của lineage cấu hình; không tạo bảng lineage riêng. Một hồ sơ có thể có nhiều phiên bản nối tiếp nhưng hệ thống không cho tạo hai lineage cấu hình song song trong cùng hồ sơ. Hồ sơ có ID ổn định, tên thiết bị, tên hồ sơ, mô tả tùy chọn và metadata tạo/cập nhật.
+Mỗi hồ sơ phân tích chứa đúng một cấu hình cơ sở cho một loại thiết bị. Bản thân hồ sơ là root của lineage cấu hình; không tạo bảng lineage riêng. Một hồ sơ có thể có nhiều phiên bản nối tiếp nhưng hệ thống không cho tạo hai lineage cấu hình song song trong cùng hồ sơ. Hồ sơ có `id` UUID ổn định, `device_type_name` và `name` bắt buộc sau khi trim, `description` tùy chọn, `revision BIGINT`, metadata archive một chiều và các trường audit tạo/cập nhật.
 
 Không thêm foreign key tới `thiet_bi`. Việc độc lập giúp cấu hình được xây dựng trước khi tồn tại thiết bị thực tế và tránh trộn dữ liệu tư vấn với dữ liệu quản lý tài sản.
 
