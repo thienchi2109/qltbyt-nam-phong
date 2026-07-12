@@ -40,7 +40,7 @@ const baseParams: UseEquipmentFilterBucketsParams = {
   shouldFetchData: true,
   effectiveTenantKey: "tenant-42",
   userRole: "to_qltb",
-  userDiaBanId: null,
+  userDiaBanId: 7,
   effectiveSelectedDonVi: 42,
   debouncedSearch: "monitor",
   selectedDepartments: ["ICU"],
@@ -133,10 +133,75 @@ describe("useEquipmentFilterBuckets", () => {
       Record<string, unknown> | undefined
 
     expect(latestBucketKeyParams).toMatchObject({
+      tenant: "tenant-42",
+      role: "to_qltb",
+      diaBan: 7,
+      donVi: 42,
       q: "monitor",
+      khoa_phong_array: ["ICU"],
+      nguoi_su_dung_array: ["Dr A"],
+      vi_tri_lap_dat_array: ["Room 1"],
       tinh_trang_array: ["Bao tri"],
+      phan_loai_array: ["Class A"],
+      nguon_kinh_phi_array: ["Fund A"],
     })
     expect(latestBucketKeyParams).not.toHaveProperty("page")
     expect(latestBucketKeyParams).not.toHaveProperty("size")
+    expect(latestBucketKeyParams).not.toHaveProperty("sort")
+  })
+
+  it("normalizes empty filters in the bucket query key and RPC args", async () => {
+    const queryClient = createQueryClient()
+
+    renderHook(
+      () =>
+        useEquipmentFilterBuckets({
+          ...baseParams,
+          debouncedSearch: "",
+          selectedDepartments: [],
+          selectedUsers: [],
+          selectedLocations: [],
+          selectedStatuses: [],
+          selectedClassifications: [],
+          selectedFundingSources: [],
+        }),
+      {
+        wrapper: createWrapper(queryClient),
+      }
+    )
+
+    await waitFor(() => expect(getBucketCalls()).toHaveLength(1))
+
+    const bucketKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_filter_buckets"] })
+      .at(-1)?.queryKey[1]
+
+    expect(bucketKeyParams).toEqual({
+      tenant: "tenant-42",
+      role: "to_qltb",
+      diaBan: 7,
+      donVi: 42,
+      q: null,
+      khoa_phong_array: null,
+      nguoi_su_dung_array: null,
+      vi_tri_lap_dat_array: null,
+      tinh_trang_array: null,
+      phan_loai_array: null,
+      nguon_kinh_phi_array: null,
+    })
+    expect(bucketKeyParams).not.toHaveProperty("page")
+    expect(bucketKeyParams).not.toHaveProperty("size")
+    expect(bucketKeyParams).not.toHaveProperty("sort")
+    expect(getBucketCalls()[0]?.args).toMatchObject({
+      p_q: null,
+      p_don_vi: 42,
+      p_khoa_phong_array: null,
+      p_nguoi_su_dung_array: null,
+      p_vi_tri_lap_dat_array: null,
+      p_tinh_trang_array: null,
+      p_phan_loai_array: null,
+      p_nguon_kinh_phi_array: null,
+    })
   })
 })

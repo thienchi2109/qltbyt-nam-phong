@@ -45,7 +45,7 @@ const baseParams: UseEquipmentDataParams = {
   isGlobal: false,
   isRegionalLeader: false,
   userRole: "to_qltb",
-  userDiaBanId: null,
+  userDiaBanId: 7,
   shouldFetchEquipment: true,
   effectiveTenantKey: "tenant-42",
   selectedDonVi: 42,
@@ -69,6 +69,10 @@ function getBucketCalls() {
   return callRpcMock.mock.calls
     .map(([options]) => options)
     .filter((options) => options.fn === "equipment_filter_buckets")
+}
+
+function getRpcCall(fn: string) {
+  return callRpcMock.mock.calls.map(([options]) => options).find((options) => options.fn === fn)
 }
 
 describe("useEquipmentData filter bucket query", () => {
@@ -122,7 +126,7 @@ describe("useEquipmentData filter bucket query", () => {
     })
   })
 
-  it("keys bucket data by active filters but not pagination", async () => {
+  it("keys list, distribution, and bucket data by their current cache scopes", async () => {
     const queryClient = createQueryClient()
     const { rerender } = renderHook((params: UseEquipmentDataParams) => useEquipmentData(params), {
       initialProps: baseParams,
@@ -131,19 +135,40 @@ describe("useEquipmentData filter bucket query", () => {
 
     await waitFor(() => expect(getBucketCalls()).toHaveLength(1))
 
-    const initialBucketQueries = queryClient
-      .getQueryCache()
-      .findAll({ queryKey: ["equipment_filter_buckets"] })
-    const initialBucketKeyParams = initialBucketQueries[0]?.queryKey[1] as
-      Record<string, unknown> | undefined
-
-    expect(initialBucketKeyParams).toMatchObject({
+    const sharedKeyParams = {
+      tenant: "tenant-42",
+      role: "to_qltb",
+      diaBan: 7,
+      donVi: 42,
       q: "monitor",
       khoa_phong_array: ["ICU"],
+      nguoi_su_dung_array: ["Dr A"],
+      vi_tri_lap_dat_array: ["Room 1"],
       tinh_trang_array: ["Hoat dong"],
+      phan_loai_array: ["Class A"],
+      nguon_kinh_phi_array: ["Fund A"],
+    }
+    const listKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_list_enhanced"] })
+      .at(-1)?.queryKey[1]
+    const distributionKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_department_distribution"] })
+      .at(-1)?.queryKey[1]
+    const bucketKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_filter_buckets"] })
+      .at(-1)?.queryKey[1]
+
+    expect(listKeyParams).toEqual({
+      ...sharedKeyParams,
+      page: 0,
+      size: 20,
+      sort: "id.asc",
     })
-    expect(initialBucketKeyParams).not.toHaveProperty("page")
-    expect(initialBucketKeyParams).not.toHaveProperty("size")
+    expect(distributionKeyParams).toEqual(sharedKeyParams)
+    expect(bucketKeyParams).toEqual(sharedKeyParams)
 
     rerender({
       ...baseParams,
@@ -166,5 +191,79 @@ describe("useEquipmentData filter bucket query", () => {
     })
 
     await waitFor(() => expect(getBucketCalls()).toHaveLength(2))
+  })
+
+  it("normalizes empty filters across list, distribution, and bucket query scopes", async () => {
+    const queryClient = createQueryClient()
+    const emptyFilterParams: UseEquipmentDataParams = {
+      ...baseParams,
+      debouncedSearch: "",
+      selectedDepartments: [],
+      selectedUsers: [],
+      selectedLocations: [],
+      selectedStatuses: [],
+      selectedClassifications: [],
+      selectedFundingSources: [],
+    }
+
+    renderHook(() => useEquipmentData(emptyFilterParams), {
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => {
+      expect(getRpcCall("equipment_list_enhanced")).toBeDefined()
+      expect(getRpcCall("equipment_department_distribution")).toBeDefined()
+      expect(getRpcCall("equipment_filter_buckets")).toBeDefined()
+    })
+
+    const sharedKeyParams = {
+      tenant: "tenant-42",
+      role: "to_qltb",
+      diaBan: 7,
+      donVi: 42,
+      q: null,
+      khoa_phong_array: null,
+      nguoi_su_dung_array: null,
+      vi_tri_lap_dat_array: null,
+      tinh_trang_array: null,
+      phan_loai_array: null,
+      nguon_kinh_phi_array: null,
+    }
+    const listKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_list_enhanced"] })
+      .at(-1)?.queryKey[1]
+    const distributionKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_department_distribution"] })
+      .at(-1)?.queryKey[1]
+    const bucketKeyParams = queryClient
+      .getQueryCache()
+      .findAll({ queryKey: ["equipment_filter_buckets"] })
+      .at(-1)?.queryKey[1]
+
+    expect(listKeyParams).toEqual({
+      ...sharedKeyParams,
+      page: 0,
+      size: 20,
+      sort: "id.asc",
+    })
+    expect(distributionKeyParams).toEqual(sharedKeyParams)
+    expect(bucketKeyParams).toEqual(sharedKeyParams)
+
+    const emptyRpcFilters = {
+      p_q: null,
+      p_don_vi: 42,
+      p_khoa_phong_array: null,
+      p_nguoi_su_dung_array: null,
+      p_vi_tri_lap_dat_array: null,
+      p_tinh_trang_array: null,
+      p_phan_loai_array: null,
+      p_nguon_kinh_phi_array: null,
+    }
+
+    expect(getRpcCall("equipment_list_enhanced")?.args).toMatchObject(emptyRpcFilters)
+    expect(getRpcCall("equipment_department_distribution")?.args).toMatchObject(emptyRpcFilters)
+    expect(getRpcCall("equipment_filter_buckets")?.args).toMatchObject(emptyRpcFilters)
   })
 })
