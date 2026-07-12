@@ -1,3 +1,5 @@
+import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+
 /** Whitelist RPCs allowed through the Next.js RPC proxy. */
 export const ALLOWED_FUNCTIONS = new Set<string>([
   "equipment_list",
@@ -91,17 +93,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "technical_configuration_dossiers_create",
   "technical_configuration_dossiers_update",
   "technical_configuration_dossiers_archive",
-  "technical_configuration_baseline_draft_create",
-  "technical_configuration_baseline_draft_get",
-  "technical_configuration_baseline_group_create",
-  "technical_configuration_baseline_group_update",
-  "technical_configuration_baseline_group_delete",
-  "technical_configuration_baseline_groups_reorder",
-  "technical_configuration_baseline_criterion_create",
-  "technical_configuration_baseline_criterion_update",
-  "technical_configuration_baseline_criterion_delete",
-  "technical_configuration_baseline_criteria_reorder",
-  "technical_configuration_baseline_bulk_preview",
+  ...BASELINE_RPC_FUNCTION_NAMES,
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

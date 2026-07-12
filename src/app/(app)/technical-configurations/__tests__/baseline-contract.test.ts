@@ -1,31 +1,33 @@
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { callRpc } from "@/lib/rpc-client"
+import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
 
-import {
-  BASELINE_RPC_FUNCTIONS,
-  technicalConfigurationBaselineRpc,
-} from "../_hooks/useTechnicalConfigurationBaseline"
+import { technicalConfigurationBaselineRpc } from "../_hooks/useTechnicalConfigurationBaseline"
 
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: vi.fn(),
 }))
 
 describe("technical configuration baseline RPC contract", () => {
-  it("freezes the eleven P2 RPC names", () => {
-    expect(BASELINE_RPC_FUNCTIONS).toEqual([
-      "technical_configuration_baseline_draft_create",
-      "technical_configuration_baseline_draft_get",
-      "technical_configuration_baseline_group_create",
-      "technical_configuration_baseline_group_update",
-      "technical_configuration_baseline_group_delete",
-      "technical_configuration_baseline_groups_reorder",
-      "technical_configuration_baseline_criterion_create",
-      "technical_configuration_baseline_criterion_update",
-      "technical_configuration_baseline_criterion_delete",
-      "technical_configuration_baseline_criteria_reorder",
-      "technical_configuration_baseline_bulk_preview",
-    ])
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("freezes the eleven named P2 RPC mappings", () => {
+    expect(BASELINE_RPC_FUNCTIONS).toEqual({
+      createDraft: "technical_configuration_baseline_draft_create",
+      getDraft: "technical_configuration_baseline_draft_get",
+      createGroup: "technical_configuration_baseline_group_create",
+      updateGroup: "technical_configuration_baseline_group_update",
+      deleteGroup: "technical_configuration_baseline_group_delete",
+      reorderGroups: "technical_configuration_baseline_groups_reorder",
+      createCriterion: "technical_configuration_baseline_criterion_create",
+      updateCriterion: "technical_configuration_baseline_criterion_update",
+      deleteCriterion: "technical_configuration_baseline_criterion_delete",
+      reorderCriteria: "technical_configuration_baseline_criteria_reorder",
+      previewBulk: "technical_configuration_baseline_bulk_preview",
+    })
   })
 
   it("passes snake_case draft and descendant revision arguments to callRpc", async () => {

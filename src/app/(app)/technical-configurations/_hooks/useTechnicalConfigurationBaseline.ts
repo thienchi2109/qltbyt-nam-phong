@@ -1,4 +1,5 @@
 import { callRpc } from "@/lib/rpc-client"
+import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
 
 import type {
   TechnicalConfigurationBaselineBulkPreviewRpcArgs,
@@ -20,86 +21,71 @@ import type {
   TechnicalConfigurationBaselineGroupWireResponse,
 } from "../baseline-types"
 
-/** RPC function names owned by the P2 baseline draft contract. */
-export const BASELINE_RPC_FUNCTIONS = [
-  "technical_configuration_baseline_draft_create",
-  "technical_configuration_baseline_draft_get",
-  "technical_configuration_baseline_group_create",
-  "technical_configuration_baseline_group_update",
-  "technical_configuration_baseline_group_delete",
-  "technical_configuration_baseline_groups_reorder",
-  "technical_configuration_baseline_criterion_create",
-  "technical_configuration_baseline_criterion_update",
-  "technical_configuration_baseline_criterion_delete",
-  "technical_configuration_baseline_criteria_reorder",
-  "technical_configuration_baseline_bulk_preview",
-] as const
-
 /** Typed client wrappers for the P2 baseline draft RPCs. */
 export const technicalConfigurationBaselineRpc = {
   createDraft(args: TechnicalConfigurationBaselineDraftCreateRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[0],
+      fn: BASELINE_RPC_FUNCTIONS.createDraft,
       args: { ...args },
     })
   },
   getDraft(args: TechnicalConfigurationBaselineDraftGetRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[1],
+      fn: BASELINE_RPC_FUNCTIONS.getDraft,
       args: { ...args },
     })
   },
   createGroup(args: TechnicalConfigurationBaselineGroupCreateRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineGroupWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[2],
+      fn: BASELINE_RPC_FUNCTIONS.createGroup,
       args: { ...args },
     })
   },
   updateGroup(args: TechnicalConfigurationBaselineGroupUpdateRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineGroupWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[3],
+      fn: BASELINE_RPC_FUNCTIONS.updateGroup,
       args: { ...args },
     })
   },
   deleteGroup(args: TechnicalConfigurationBaselineGroupDeleteRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDeleteWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[4],
+      fn: BASELINE_RPC_FUNCTIONS.deleteGroup,
       args: { ...args },
     })
   },
   reorderGroups(args: TechnicalConfigurationBaselineGroupsReorderRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[5],
+      fn: BASELINE_RPC_FUNCTIONS.reorderGroups,
       args: { ...args },
     })
   },
   createCriterion(args: TechnicalConfigurationBaselineCriterionCreateRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineCriterionWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[6],
+      fn: BASELINE_RPC_FUNCTIONS.createCriterion,
       args: { ...args },
     })
   },
   updateCriterion(args: TechnicalConfigurationBaselineCriterionUpdateRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineCriterionWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[7],
+      fn: BASELINE_RPC_FUNCTIONS.updateCriterion,
       args: { ...args },
     })
   },
   deleteCriterion(args: TechnicalConfigurationBaselineCriterionDeleteRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDeleteWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[8],
+      fn: BASELINE_RPC_FUNCTIONS.deleteCriterion,
       args: { ...args },
     })
   },
   reorderCriteria(args: TechnicalConfigurationBaselineCriteriaReorderRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[9],
+      fn: BASELINE_RPC_FUNCTIONS.reorderCriteria,
       args: { ...args },
     })
   },
   previewBulk(args: TechnicalConfigurationBaselineBulkPreviewRpcArgs) {
     return callRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS[10],
+      fn: BASELINE_RPC_FUNCTIONS.previewBulk,
       args: { ...args },
     })
   },
