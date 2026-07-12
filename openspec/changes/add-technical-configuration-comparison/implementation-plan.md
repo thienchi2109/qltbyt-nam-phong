@@ -2,7 +2,7 @@
 
 > **Status:** Approved feature design; implementation has not started.
 >
-> **Source of truth:** [proposal.md](./proposal.md), [design.md](./design.md), [spec delta](./specs/technical-configuration-comparison/spec.md), and the concise [tasks.md](./tasks.md).
+> **Source of truth:** [proposal.md](./proposal.md), [design.md](./design.md), [contract pack](./contracts.md), [test matrix](./test-matrix.md), [spec delta](./specs/technical-configuration-comparison/spec.md), and the concise [tasks.md](./tasks.md).
 
 ## Purpose
 
@@ -106,7 +106,7 @@ P12C            -> P13A, P13B
 P13A + P13B + P7A + P9A -> P13C
 ```
 
-`P6` is technically independent after `P0`, but the default delivery order places it after `P5` to avoid parallel branches touching Equipment and the new module at the same time.
+`P6` is technically independent after `P0`, but the default delivery order places it after `P5` and requires it to land before the first document UI in `P7B`. It does not block dossier, baseline, reference-product or supplier work that has no document UI.
 
 ## Requirement Traceability
 
@@ -147,6 +147,9 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 - List RPCs use bounded pagination and select only required columns.
 - Multi-table writes are transactional.
 - Filter/sort/join indexes are reviewed with representative query plans before addition.
+- The dossier is the aggregate/lineage root; no separate lineage table is introduced.
+- Every child mutation calls the common editable-dossier guard so archived dossiers remain readable but immutable.
+- Editable aggregates use `revision BIGINT`; every mutation requires `expectedRevision`.
 
 ### Mandatory DB phase gate
 
@@ -166,6 +169,7 @@ Every leaf phase that creates or changes tables, RPCs, policies, grants, trigger
 - Shared types/helpers live outside page components when reused.
 - No source file may exceed 450 lines; extraction starts near 350 lines.
 - No autosave. Mutations originate only from explicit save actions.
+- P3A owns a module-local typed RPC adapter that preserves HTTP status and PostgREST `code`, `message`, `details`, `hint`; the shared `callRpc()` contract is not changed globally.
 - Long Vietnamese technical text must wrap without resizing stable controls or overlapping adjacent content.
 - Baseline/reference/option comparison surfaces keep groups and criteria on rows; only compared entities become dynamic columns.
 - The UI must not expose a schema builder or arbitrary content-column controls.
@@ -203,6 +207,12 @@ Use `ctx_batch_execute` for the chain. Add focused browser verification for user
 
 A reviewed contract pack removes schema, authorization and API ambiguity before migrations or UI work begin.
 
+### Outputs
+
+- `contracts.md`: feature baseline, entity/RPC ownership, state, error, Excel and performance contracts.
+- `test-matrix.md`: scenario-to-leaf/layer ownership and P0 exit checks.
+- Updated `design.md`, `implementation-plan.md` and spec scenarios reflecting approved decisions.
+
 ### Inspect
 
 - `openspec/changes/add-technical-configuration-comparison/`
@@ -222,6 +232,9 @@ A reviewed contract pack removes schema, authorization and API ambiguity before 
 - [ ] Define RPC names and request/response/error contracts for all planned leaf phases.
 - [ ] Define the single-lineage invariant and baseline state machine.
 - [ ] Define criterion code generation and uniqueness scope.
+- [ ] Define archive read/mutation behavior and one-editable-draft enforcement.
+- [ ] Define complete locked-baseline copy ownership and extension points.
+- [ ] Define dossier-scoped supplier normalization/uniqueness.
 - [ ] Define the four suggested groups as editable seed records, not enums, and freeze the decision to exclude arbitrary content columns.
 - [ ] Define optimistic concurrency token behavior and conflict response.
 - [ ] Define document ownership without coupling to `thiet_bi`.
@@ -234,7 +247,7 @@ A reviewed contract pack removes schema, authorization and API ambiguity before 
 ### Verification
 
 - `openspec validate add-technical-configuration-comparison --strict`
-- Independent architecture/spec review.
+- Self-review of architecture/spec contracts; no subagent review.
 - No production file or migration diff.
 
 ### Exit gate
@@ -258,8 +271,9 @@ P1 may start only after table/RPC contracts, migration split and authorization m
 ### Tasks
 
 - [ ] Write failing whitelist/authorization contract tests.
-- [ ] Create dossier table(s) with one configuration-lineage invariant and audit metadata.
+- [ ] Create the dossier as the single configuration-lineage root with audit metadata; do not add a lineage table.
 - [ ] Add minimal list/get/create/update/archive RPCs with bounded pagination.
+- [ ] Hide archived dossiers by default, keep get/read available, provide no restore RPC and reject every descendant mutation through the common archive guard.
 - [ ] Enforce `admin/global` in RPC/database policy and deny every other role.
 - [ ] Add revision guards to update/archive so foundation mutations cannot overwrite stale data.
 - [ ] Ensure raw session `admin` receives global semantics outside RPC proxy through `isGlobalRole()`.
@@ -295,10 +309,11 @@ Backend can securely create/list/get one-device dossiers, but no baseline editor
 
 ### Tasks
 
-- [ ] Add baseline version draft, group and criterion tables.
+- [ ] Add baseline version draft, group and criterion tables with a partial unique rule allowing at most one draft per dossier.
 - [ ] Enforce exactly two hierarchy levels.
 - [ ] Seed `Yêu cầu chung`, `Yêu cầu cấu hình cung cấp`, `Yêu cầu kỹ thuật` and `Yêu cầu khác` for a blank draft as normal editable group records.
-- [ ] Add stable criterion IDs, display codes, optional titles, multiline requirement text and sort order through fixed structural fields.
+- [ ] Add stable criterion IDs, system-generated `TC-0001` display codes, optional titles, multiline requirement text and sort order through fixed structural fields.
+- [ ] Keep criterion codes read-only, stable under reorder/copy and non-reusing through a per-version next-number counter.
 - [ ] Do not add field-definition tables, JSON custom-column payloads or validation that locks group names.
 - [ ] Add transactional create/update/delete/reorder RPCs for draft content.
 - [ ] Add bulk-add preview contract without persistence.
@@ -331,7 +346,9 @@ Draft baseline aggregates are safely editable through stable contracts; no user-
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierTable.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierForm.tsx`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-rpc.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-shell.test.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/technical-configuration-rpc.test.ts`
 - Modify: `src/components/app-navigation.tsx`
 - Modify: `src/components/app-sidebar-nav.tsx`
 - Modify: `src/components/__tests__/app-navigation.test.ts`
@@ -345,12 +362,14 @@ Draft baseline aggregates are safely editable through stable contracts; no user-
 - [ ] Keep unavailable work areas disabled or empty until their leaf phases land.
 - [ ] Keep `TechnicalConfigurationsClient.tsx` and the shell as orchestration only.
 - [ ] Add loading, empty, unauthorized and create-error states.
+- [ ] Add a module-local typed RPC adapter that preserves HTTP status and PostgREST error metadata without modifying shared `callRpc()`.
 - [ ] Apply Stitch list/workspace direction without AI or bidding semantics.
 - [ ] Track shell line count in every later integration phase and extract tab-specific composition before 350 lines.
 
 ### TDD and verification
 
 - Visibility tests for `global`, raw `admin` and denied roles.
+- Typed RPC adapter tests for status/code/message/details/hint preservation.
 - Dossier list/create/open tests.
 - Workspace-tab shell tests.
 - Browser verification at desktop and narrow viewport.
@@ -453,6 +472,8 @@ Manual baseline authoring supports optional bulk text entry without changing per
 - [ ] Add explicit lock confirmation and visibly render lock actor/time in the locked workspace.
 - [ ] Require the expected draft revision for lock and copy operations; preserve user state on conflict.
 - [ ] Add create-new-draft from blank or locked version copy.
+- [ ] Copy new IDs, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
+- [ ] Define the copy RPC as an extension contract so P7A/P7B add reference products, responses, documents and citations in their own migrations.
 - [ ] Add version selector/history without unlocking old versions.
 - [ ] Ensure supplier/evaluation contracts later can bind to an exact baseline version.
 - [ ] Remove edit affordances in locked views while retaining backend enforcement.
@@ -488,10 +509,12 @@ Baseline versions can be locked irreversibly and revised only through a new draf
 ### Tasks
 
 - [ ] Define template metadata, schema version and sheet contract from P0.
-- [ ] Generate the fixed group/criterion column contract with wrapped multiline cells and four suggested group rows.
+- [ ] Generate one visible row-oriented sheet with `GROUP`/`CRITERION` rows, fixed columns, wrapped multiline cells and four suggested group rows.
+- [ ] Add one hidden `_meta` sheet with template kind/version, target IDs, revision and generation metadata.
 - [ ] Parse only system templates and preserve Vietnamese Unicode.
 - [ ] Allow group rows to be added, renamed, removed and reordered without adding columns.
-- [ ] Validate metadata, fixed columns, group/criterion ordering, duplicate codes and required text.
+- [ ] Treat existing criterion codes as read-only, require blank codes for new rows and generate them during preview/apply.
+- [ ] Validate metadata, fixed columns, group/criterion ordering, changed/duplicate codes and required text.
 - [ ] Present row-level preview and actionable errors before mutation.
 - [ ] Import atomically into an editable draft only.
 - [ ] Require the expected target-draft revision and preserve preview/input on conflict.
@@ -512,7 +535,7 @@ Users can create the same draft baseline manually or through one versioned syste
 
 ## Phase P6 - Shared URL Document Primitives
 
-**Depends on:** P0; scheduled after P5  
+**Depends on:** P0; scheduled after P5 and before P7B
 **Requirements:** TC-11  
 **Deploy boundary:** refactor with no new technical-configuration persistence
 
@@ -571,6 +594,7 @@ Equipment uses tested shared URL primitives with no behavior or storage change. 
 - [ ] Add explicit save and dirty-state handling for draft CRUD.
 - [ ] Require the expected baseline revision and preserve unsaved product/criterion-response edits on conflict.
 - [ ] Reject every mutation after baseline lock.
+- [ ] Extend locked-baseline copy to clone reference products/responses with new IDs and remapped criterion links.
 - [ ] Exclude reference products from option counts, assessments and ranking contracts.
 - [ ] Add the reference-products surface to the baseline workspace.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
@@ -612,6 +636,7 @@ Reference products can be compared criterion-by-criterion while authoring the ba
 - [ ] Add explicit save and dirty-state handling for document/citation edits.
 - [ ] Require the expected baseline revision and preserve unsaved edits on conflict.
 - [ ] Extend lock enforcement to baseline/reference-product document metadata and citations.
+- [ ] Extend locked-baseline copy to clone baseline/reference documents and citations with new IDs and remapped owner/criterion links.
 - [ ] For editable data, show affected-link count before confirmed document deletion.
 - [ ] For locked data, reject edit/delete before any confirmation flow.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
@@ -642,12 +667,14 @@ A locked baseline preserves its own and each reference product's criterion-level
 
 ### Tasks
 
-- [ ] Add supplier and option entities with multiple options per supplier.
+- [ ] Add dossier-scoped supplier and option entities with multiple options per supplier.
+- [ ] Normalize supplier names by trim, whitespace collapse and lowercase; enforce normalized uniqueness per dossier.
 - [ ] Add option response dataset bound to exact baseline version and criterion.
 - [ ] Add model/manufacturer/option name and display-label contract.
 - [ ] Add separate supplementary information field.
 - [ ] Add optimistic concurrency for option metadata and responses.
 - [ ] Keep options directly editable with no lock/version lifecycle.
+- [ ] Reject supplier, option and response mutations when the owning dossier is archived.
 - [ ] Keep old baseline response datasets separate when a new baseline is selected.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
 
@@ -787,7 +814,8 @@ Supplier options have criterion-level URL evidence without changing Excel or ass
 - [ ] Define one bounded query for baseline rows and selected option responses.
 - [ ] Select only fields needed by matrix and detail panel.
 - [ ] Avoid N+1 for supplier labels, responses, supplementary information and citations.
-- [ ] Add pagination/bounded selection behavior for large option/criterion sets.
+- [ ] Allow unlimited total options while enforcing at most 8 selected option IDs and 100 criteria per request.
+- [ ] Add criterion pagination for baseline versions larger than 100 criteria.
 - [ ] Review indexes and representative query plans.
 - [ ] Keep supplementary information structurally separate from compliance.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply security/performance advisors.
@@ -795,8 +823,8 @@ Supplier options have criterion-level URL evidence without changing Excel or ass
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- Response-shape, bounds and query-count tests.
-- Representative `EXPLAIN` review.
+- Response-shape, option-nine boundary, 100-criterion bound and query-count tests.
+- Representative `EXPLAIN` review with 500 criteria, 50 total options and 8 selected options.
 - Performance advisor after an explicitly approved live apply.
 
 ### Exit gate
@@ -863,6 +891,7 @@ Users can scan and inspect baseline versus selected options, but cannot yet save
 - [ ] Preserve manual conclusions when supplier source data changes.
 - [ ] Keep manual records separate from any future machine result.
 - [ ] Add no AI result table, cache, job or quota field.
+- [ ] Reject assessment mutations when the owning dossier is archived.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
 
 ### TDD and verification
