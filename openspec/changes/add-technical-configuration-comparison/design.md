@@ -48,7 +48,7 @@ Mỗi hồ sơ phân tích chứa đúng một cấu hình cơ sở cho một lo
 
 Không thêm foreign key tới `thiet_bi`. Việc độc lập giúp cấu hình được xây dựng trước khi tồn tại thiết bị thực tế và tránh trộn dữ liệu tư vấn với dữ liệu quản lý tài sản.
 
-Archive là thao tác một chiều trong MVP. Hồ sơ đã archive bị ẩn khỏi list mặc định nhưng vẫn đọc được qua get hoặc list có cờ gồm dữ liệu archive. Mọi mutation trên hồ sơ và toàn bộ aggregate con phải gọi cùng archive guard và bị từ chối; không có RPC hoặc UI restore.
+Archive là thao tác một chiều trong MVP. Hồ sơ active được phép chuyển sang archived qua contract `technical_configuration_dossiers_archive`. Sau khi hồ sơ đã archive, mọi mutation nhắm tới chính hồ sơ đó hoặc bất kỳ entity nào trong toàn bộ aggregate con phải gọi cùng archive guard và bị từ chối. Hồ sơ đã archive bị ẩn khỏi list mặc định nhưng vẫn đọc được qua get hoặc list có cờ gồm dữ liệu archive; không có RPC hoặc UI restore.
 
 ### 2. Cấu hình cơ sở text-first với hai cấp
 
@@ -73,7 +73,7 @@ Không có các cột kỹ thuật bắt buộc như min/max/unit/operator và k
 
 Hai cấp và tập trường cấu trúc tối thiểu là giới hạn có chủ đích: đủ biểu diễn các CSV khảo sát, giữ ánh xạ tiêu chí ổn định, tránh tạo chiều dữ liệu thứ ba và giúp template Excel cùng ma trận dễ đọc.
 
-Mã tiêu chí có dạng `TC-0001`, `TC-0002` và duy nhất trong một phiên bản cơ sở. Người dùng không nhập hoặc sửa mã. Phiên bản giữ bộ đếm kế tiếp để thao tác tạo đồng thời vẫn an toàn và không tự tái sử dụng số của tiêu chí đã xóa. Reorder không đổi mã. Khi sao chép phiên bản, mã và bộ đếm kế tiếp được giữ nguyên; dòng Excel mới để trống mã và chỉ nhận mã trong preview/apply.
+Mã tiêu chí có dạng `TC-` theo sau bởi ít nhất bốn chữ số được zero-pad, bắt đầu từ `TC-0001` và tiếp tục vượt quá bốn chữ số khi bộ đếm lớn hơn 9999. Mã duy nhất trong một phiên bản cơ sở. Người dùng không nhập hoặc sửa mã. Phiên bản giữ bộ đếm kế tiếp để thao tác tạo đồng thời vẫn an toàn và không tự tái sử dụng số của tiêu chí đã xóa. Reorder không đổi mã. Khi sao chép phiên bản, mã và bộ đếm kế tiếp được giữ nguyên; dòng Excel mới để trống mã và chỉ nhận mã trong preview/apply.
 
 ### 3. Phiên bản cơ sở và khóa bất biến
 
@@ -115,7 +115,7 @@ Cấu trúc này cho phép một phương án được nhập lại theo phiên 
 
 MVP chỉ chấp nhận template do hệ thống tạo.
 
-Template cấu hình cơ sở có đúng một sheet dữ liệu hiển thị theo mô hình dòng và một sheet `_meta` ẩn. Sheet dữ liệu dùng `row_type` là `GROUP` hoặc `CRITERION` và tập cột cố định:
+Template cấu hình cơ sở có đúng một sheet hiển thị tên `Baseline` và đúng một sheet ẩn tên `_meta`; không có thêm sheet hiển thị hoặc sheet ẩn nào khác. Sheet `Baseline` dùng `row_type` là `GROUP` hoặc `CRITERION` và tập cột cố định:
 
 - loại dòng
 - thứ tự nhóm
@@ -125,7 +125,7 @@ Template cấu hình cơ sở có đúng một sheet dữ liệu hiển thị th
 - tiêu đề tùy chọn
 - nội dung yêu cầu nhiều dòng
 
-Sheet `_meta` chứa loại template, version schema, hồ sơ/phiên bản đích, revision và thời điểm sinh. Template mới điền sẵn bốn nhóm gợi ý nhưng cho phép người dùng thêm, đổi tên, xóa hoặc sắp xếp nhóm bằng các dòng dữ liệu hợp lệ. Mã của tiêu chí đã tồn tại là read-only và parser từ chối mã bị sửa; dòng tiêu chí mới phải để trống mã để preview/apply sinh mã. Template không hỗ trợ thêm sheet hiển thị hoặc cột nội dung tùy ý; cấu trúc ngoài contract của phiên bản template bị từ chối.
+Sheet `_meta` chứa đúng các metadata key `template_kind`, `template_version`, `dossier_id`, `baseline_version_id`, `baseline_revision` và `generated_at`. Template mới điền sẵn bốn nhóm gợi ý nhưng cho phép người dùng thêm, đổi tên, xóa hoặc sắp xếp nhóm bằng các dòng dữ liệu hợp lệ. Mã của tiêu chí đã tồn tại là read-only và parser từ chối mã bị sửa; dòng tiêu chí mới phải để trống mã để preview/apply sinh mã. Template không hỗ trợ thêm sheet hoặc cột nội dung tùy ý; cấu trúc ngoài contract của phiên bản template bị từ chối.
 
 Template phương án được xuất từ một phiên bản cơ sở đã chọn và chứa:
 
@@ -259,7 +259,7 @@ Chỉ `admin/global` được thấy route, đọc hoặc thay đổi dữ liệ
 - Các bảng ghi `created_at`, `created_by`, `updated_at`, `updated_by`; phiên bản khóa ghi thêm `locked_at`, `locked_by`.
 - MVP không cần timeline audit đầy đủ, nhưng metadata phải đủ xác định ai tạo, sửa và khóa dữ liệu gần nhất.
 
-Các mutation có revision hoặc `updated_at` guard để không ghi đè âm thầm khi hai tab/người dùng cùng sửa. Khi có conflict, UI giữ dữ liệu chưa lưu và yêu cầu tải lại trước khi ghi tiếp.
+Mọi mutation phải gửi `p_expected_revision` và kiểm tra `revision BIGINT` của aggregate sở hữu để không ghi đè âm thầm khi hai tab/người dùng cùng sửa. Khi có conflict, UI giữ dữ liệu chưa lưu và yêu cầu tải lại trước khi ghi tiếp.
 
 ### 13. Ranh giới mở rộng AI
 

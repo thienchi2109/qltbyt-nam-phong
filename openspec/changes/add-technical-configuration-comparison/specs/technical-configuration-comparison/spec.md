@@ -197,9 +197,9 @@ Hệ thống SHALL quản lý phiên bản cơ sở theo trạng thái `Bản nh
 #### Scenario: Copy the complete locked baseline aggregate
 
 - **WHEN** người dùng tạo bản nháp bằng cách sao chép một phiên bản đã khóa
-- **THEN** hệ thống tạo ID mới, giữ mã tiêu chí và liên kết `source_criterion_id`
+- **THEN** hệ thống tạo ID mới, đặt `source_baseline_version_id` trên phiên bản mới, giữ mã tiêu chí và liên kết `source_criterion_id`
 - **AND** sao chép nhóm, tiêu chí, sản phẩm tham chiếu/phản hồi, tài liệu và trích dẫn thuộc baseline
-- **AND** không sao chép nhà cung cấp, phương án, phản hồi phương án hoặc đánh giá thủ công
+- **AND** không sao chép nhà cung cấp, phương án, bộ so sánh, phản hồi phương án, tài liệu/trích dẫn phương án hoặc đánh giá thủ công
 
 ### Requirement: Historical baseline linkage
 
@@ -523,7 +523,7 @@ Hệ thống SHALL ngăn ghi đè âm thầm khi dữ liệu làm việc đã th
 
 #### Scenario: Save current revision
 
-- **WHEN** revision hoặc `updated_at` của form vẫn khớp dữ liệu hiện tại
+- **WHEN** form gửi `p_expected_revision` khớp `revision BIGINT` hiện tại của aggregate sở hữu
 - **THEN** mutation được phép lưu và trả revision mới
 
 #### Scenario: Save a stale revision

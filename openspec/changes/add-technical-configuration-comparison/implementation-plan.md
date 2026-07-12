@@ -317,7 +317,7 @@ Backend can securely create/list/get one-device dossiers, but no baseline editor
 - [ ] Do not add field-definition tables, JSON custom-column payloads or validation that locks group names.
 - [ ] Add transactional create/update/delete/reorder RPCs for draft content.
 - [ ] Add bulk-add preview contract without persistence.
-- [ ] Add revision/`updated_at` guards to every editable aggregate mutation.
+- [ ] Require `p_expected_revision` and validate the owning aggregate's `revision BIGINT` for every editable aggregate mutation.
 - [ ] Return structured validation errors for duplicate code, invalid order and stale revision.
 - [ ] Keep product references, documents, suppliers, evaluations and locking out of this phase.
 - [ ] Complete the mandatory DB phase gate for draft tables/RPCs, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
@@ -472,7 +472,7 @@ Manual baseline authoring supports optional bulk text entry without changing per
 - [ ] Add explicit lock confirmation and visibly render lock actor/time in the locked workspace.
 - [ ] Require the expected draft revision for lock and copy operations; preserve user state on conflict.
 - [ ] Add create-new-draft from blank or locked version copy.
-- [ ] Copy new IDs, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
+- [ ] Copy new IDs, set `source_baseline_version_id` on every newly copied baseline version, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
 - [ ] Define the copy RPC as an extension contract so P7A/P7B add reference products, responses, documents and citations in their own migrations.
 - [ ] Add version selector/history without unlocking old versions.
 - [ ] Ensure supplier/evaluation contracts later can bind to an exact baseline version.
@@ -483,7 +483,7 @@ Manual baseline authoring supports optional bulk text entry without changing per
 
 - Write direct mutation tests proving admin/global cannot edit locked content.
 - Run phase-local authorization tests for `global`, raw `admin`, missing claims and denied roles.
-- Test copy fidelity and independent new draft IDs.
+- Test copy fidelity, independent new draft IDs and `source_baseline_version_id` lineage.
 - Test rejected lock for empty/duplicate/error state.
 - Test stale-revision rejection for lock and copy.
 - Test historical read after a newer version is locked.

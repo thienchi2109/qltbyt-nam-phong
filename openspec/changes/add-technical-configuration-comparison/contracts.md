@@ -161,7 +161,7 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
 
 - List request: `p_page >= 1`, `1 <= p_page_size <= 100`, optional leaf-specific filters.
 - Dossier list defaults `p_include_archived=false`.
-- List response: `{ data, total, page, pageSize }`.
+- List response wire shape: `{ data, total, page, page_size }`.
 - Get/create/update/archive/copy/upsert response: `{ data }`.
 - Delete response: `{ data: { id, revision } }`.
 - Preview response: `{ data, errors }`; preview does not persist.
@@ -191,7 +191,7 @@ Errors must not include dossier data when authorization or ownership fails.
 
 - Exactly one visible data sheet named `Baseline`.
 - Exactly one hidden metadata sheet named `_meta`.
-- No additional visible sheet or content column.
+- No additional visible or hidden sheet or content column.
 
 Visible columns, in order:
 
