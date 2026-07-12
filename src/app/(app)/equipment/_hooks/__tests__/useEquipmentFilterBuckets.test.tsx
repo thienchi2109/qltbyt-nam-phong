@@ -40,7 +40,7 @@ const baseParams: UseEquipmentFilterBucketsParams = {
   shouldFetchData: true,
   effectiveTenantKey: "tenant-42",
   userRole: "to_qltb",
-  userDiaBanId: null,
+  userDiaBanId: 7,
   effectiveSelectedDonVi: 42,
   debouncedSearch: "monitor",
   selectedDepartments: ["ICU"],
@@ -133,10 +133,20 @@ describe("useEquipmentFilterBuckets", () => {
       Record<string, unknown> | undefined
 
     expect(latestBucketKeyParams).toMatchObject({
+      tenant: "tenant-42",
+      role: "to_qltb",
+      diaBan: 7,
+      donVi: 42,
       q: "monitor",
+      khoa_phong_array: ["ICU"],
+      nguoi_su_dung_array: ["Dr A"],
+      vi_tri_lap_dat_array: ["Room 1"],
       tinh_trang_array: ["Bao tri"],
+      phan_loai_array: ["Class A"],
+      nguon_kinh_phi_array: ["Fund A"],
     })
     expect(latestBucketKeyParams).not.toHaveProperty("page")
     expect(latestBucketKeyParams).not.toHaveProperty("size")
+    expect(latestBucketKeyParams).not.toHaveProperty("sort")
   })
 })
