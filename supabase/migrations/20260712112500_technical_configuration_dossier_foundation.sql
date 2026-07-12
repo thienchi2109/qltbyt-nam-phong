@@ -144,7 +144,7 @@ BEGIN
     RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422';
   END IF;
 
-  WITH filtered AS MATERIALIZED (
+  WITH paged AS (
     SELECT
       d.id,
       d.device_type_name,
@@ -159,22 +159,7 @@ BEGIN
       d.updated_by
     FROM public.technical_configuration_dossiers d
     WHERE p_include_archived OR d.archived_at IS NULL
-  ),
-  paged AS (
-    SELECT
-      f.id,
-      f.device_type_name,
-      f.name,
-      f.description,
-      f.revision,
-      f.archived_at,
-      f.archived_by,
-      f.created_at,
-      f.created_by,
-      f.updated_at,
-      f.updated_by
-    FROM filtered f
-    ORDER BY f.updated_at DESC, f.id
+    ORDER BY d.updated_at DESC, d.id
     LIMIT p_page_size
     OFFSET (p_page - 1)::BIGINT * p_page_size
   )
@@ -203,7 +188,11 @@ BEGIN
       '[]'::JSONB
     ),
     'total',
-    (SELECT count(*) FROM filtered),
+    (
+      SELECT count(*)
+      FROM public.technical_configuration_dossiers d
+      WHERE p_include_archived OR d.archived_at IS NULL
+    ),
     'page',
     p_page,
     'page_size',
@@ -421,19 +410,19 @@ REVOKE ALL ON FUNCTION public._technical_configuration_require_editable_dossier(
   FROM PUBLIC, anon, authenticated;
 
 REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_get(UUID) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_get(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_get(UUID) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) TO authenticated;
 
 COMMENT ON TABLE public.technical_configuration_dossiers IS
   'Independent technical configuration dossier and single configuration lineage root.';

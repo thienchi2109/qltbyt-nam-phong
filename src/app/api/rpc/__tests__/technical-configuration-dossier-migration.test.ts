@@ -95,9 +95,12 @@ describe("technical configuration dossier foundation migration", () => {
         `REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC, anon, authenticated;`
       )
       expect(migrationSource).toContain(
-        `GRANT EXECUTE ON FUNCTION public.${signature} TO authenticated, service_role;`
+        `GRANT EXECUTE ON FUNCTION public.${signature} TO authenticated;`
       )
     }
+    expect(migrationSource).not.toMatch(
+      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_[^(]+\([^;]+ TO authenticated, service_role;/
+    )
 
     expect(migrationSource).not.toMatch(
       /GRANT\s+(SELECT|INSERT|UPDATE|DELETE|ALL)[^;]*technical_configuration_dossiers[^;]*authenticated/i
@@ -153,9 +156,13 @@ describe("technical configuration dossier foundation migration", () => {
     expect(listBlock).toContain("p_page_size < 1")
     expect(listBlock).toContain("p_page_size > 100")
     expect(listBlock).toContain("p_include_archived OR d.archived_at IS NULL")
-    expect(listBlock).toContain("ORDER BY f.updated_at DESC, f.id")
+    expect(listBlock).not.toContain("filtered AS MATERIALIZED")
+    expect(listBlock).toContain("ORDER BY d.updated_at DESC, d.id")
     expect(listBlock).toContain("LIMIT p_page_size")
     expect(listBlock).toContain("OFFSET (p_page - 1)::BIGINT * p_page_size")
+    expect(listBlock).toMatch(
+      /'total',\s+\(\s*SELECT count\(\*\)\s+FROM public\.technical_configuration_dossiers d\s+WHERE p_include_archived OR d\.archived_at IS NULL\s*\)/
+    )
     expect(listBlock).toMatch(/'page_size',\s+p_page_size/)
     expect(listBlock).toContain("'total'")
     expect(listBlock).toContain("'data'")
