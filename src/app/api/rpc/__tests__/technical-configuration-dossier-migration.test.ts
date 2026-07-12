@@ -92,15 +92,21 @@ describe("technical configuration dossier foundation migration", () => {
 
     for (const signature of PUBLIC_RPC_SIGNATURES) {
       expect(migrationSource).toContain(
-        `REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC, anon, authenticated;`
+        `REVOKE ALL ON FUNCTION public.${signature} FROM PUBLIC, anon, authenticated, service_role;`
       )
       expect(migrationSource).toContain(
         `GRANT EXECUTE ON FUNCTION public.${signature} TO authenticated;`
       )
     }
-    expect(migrationSource).not.toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_[^(]+\([^;]+ TO authenticated, service_role;/
-    )
+
+    const dossierRpcGrantStatements =
+      migrationSource.match(
+        /GRANT\s+EXECUTE\s+ON\s+FUNCTION\s+public\.technical_configuration_dossiers_[\s\S]*?;/gi
+      ) ?? []
+    expect(dossierRpcGrantStatements).toHaveLength(PUBLIC_RPC_SIGNATURES.length)
+    for (const grantStatement of dossierRpcGrantStatements) {
+      expect(grantStatement).not.toMatch(/\bservice_role\b/i)
+    }
 
     expect(migrationSource).not.toMatch(
       /GRANT\s+(SELECT|INSERT|UPDATE|DELETE|ALL)[^;]*technical_configuration_dossiers[^;]*authenticated/i

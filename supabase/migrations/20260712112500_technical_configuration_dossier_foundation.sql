@@ -409,19 +409,19 @@ REVOKE ALL ON FUNCTION public._technical_configuration_require_global_user()
 REVOKE ALL ON FUNCTION public._technical_configuration_require_editable_dossier(UUID, BIGINT)
   FROM PUBLIC, anon, authenticated;
 
-REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_get(UUID) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_get(UUID) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_get(UUID) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_create(TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_update(UUID, TEXT, TEXT, TEXT, BIGINT) TO authenticated;
 
-REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_archive(UUID, BIGINT) TO authenticated;
 
 COMMENT ON TABLE public.technical_configuration_dossiers IS
