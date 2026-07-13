@@ -89,6 +89,48 @@ describe("mapRepairRequestTemplateData", () => {
     expect(new TextEncoder().encode(templateData.issue_summary).length).toBeLessThanOrEqual(32)
   })
 
+  it("normalizes and truncates requester to the provider character limit", () => {
+    const templateData = mapRepairRequestTemplateData({
+      ...baseOutboxRow,
+      template_data: {
+        ...baseOutboxRow.template_data,
+        requester: "Khoa Hồi Sức Tích Cực - Chống Độc",
+      },
+    })
+
+    expect(templateData.requester).toBe("Khoa Hồi Sức Tích Cực - Chố...")
+    expect([...templateData.requester]).toHaveLength(30)
+  })
+
+  it.each([
+    {
+      name: "keeps an exact 30-character requester unchanged",
+      requester: "Đ".repeat(30),
+      expected: "Đ".repeat(30),
+    },
+    {
+      name: "normalizes a short requester to NFC",
+      requester: "  Khoa Hồi Sức  ",
+      expected: "Khoa Hồi Sức",
+    },
+    {
+      name: "does not split a four-byte Unicode code point",
+      requester: "12345678901234567890123456😀abcdef",
+      expected: "12345678901234567890123456😀...",
+    },
+  ])("$name", ({ requester, expected }) => {
+    const templateData = mapRepairRequestTemplateData({
+      ...baseOutboxRow,
+      template_data: {
+        ...baseOutboxRow.template_data,
+        requester,
+      },
+    })
+
+    expect(templateData.requester).toBe(expected)
+    expect([...templateData.requester].length).toBeLessThanOrEqual(30)
+  })
+
   it("uses documented fallbacks and fixed issue_summary before request construction", () => {
     const longIssueSummary = "Loi ".repeat(80)
 
