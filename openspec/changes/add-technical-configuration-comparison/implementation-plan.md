@@ -334,6 +334,14 @@ Backend can securely create/list/get one-device dossiers, but no baseline editor
 
 Draft baseline aggregates are safely editable through stable contracts; no user-visible editor is required yet.
 
+### Approved live DB phase gate
+
+- Applied migration registry versions `20260713010933`, `20260713011058`, `20260713011206` and `20260713011301` through Supabase MCP after explicit approval.
+- Verified three P2 tables, RLS with deny policies, denied direct `anon`/`authenticated` table access, function signatures, `SECURITY DEFINER`, fixed `search_path` and grants for all 11 authenticated RPCs.
+- Passed the rollback-only 11-RPC workflow smoke; no verification rows remain in the P2 tables.
+- Reviewed security/performance advisors and Postgres logs; no P2 deployment blocker remains.
+- Deferred the non-blocking `source_criterion_id` index improvement to issue `#746`.
+
 ## Phase P3A - Route, Workspace Shell And Dossier List
 
 **Depends on:** P1  
