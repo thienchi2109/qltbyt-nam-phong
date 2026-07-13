@@ -21,6 +21,8 @@ export interface SideSheetShellProps {
   readonly children: React.ReactNode
   readonly footer?: React.ReactNode
   readonly side?: SheetSide
+  readonly closeLabel?: string
+  readonly hideCloseButton?: boolean
   readonly contentClassName?: string
   readonly headerClassName?: string
   readonly bodyClassName?: string
@@ -38,6 +40,8 @@ export function SideSheetShell({
   children,
   footer,
   side = "right",
+  closeLabel,
+  hideCloseButton,
   contentClassName,
   headerClassName,
   bodyClassName,
@@ -47,7 +51,12 @@ export function SideSheetShell({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side={side} className={cn("w-full p-0", contentClassName)}>
+      <SheetContent
+        side={side}
+        closeLabel={closeLabel}
+        hideCloseButton={hideCloseButton}
+        className={cn("w-full p-0", contentClassName)}
+      >
         <div className="flex h-full flex-col">
           {hasHeader ? (
             <SheetHeader className={cn("border-b p-4", headerClassName)}>
