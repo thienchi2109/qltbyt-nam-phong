@@ -9,8 +9,14 @@ import type {
   TechnicalConfigurationBaselineEditorProgress,
   TechnicalConfigurationBaselineEditorRpc,
 } from "./technical-configuration-baseline-save"
+import { cloneTechnicalConfigurationBaselineDraft } from "./technical-configuration-baseline-editor-state"
+import {
+  toTechnicalConfigurationBaselineWireCriterion,
+  toTechnicalConfigurationBaselineWireGroup,
+} from "./technical-configuration-baseline-save-mappers"
 
 type RunStep = <T>(request: () => Promise<T>, apply: (response: T) => void) => Promise<void>
+type EditorGroup = TechnicalConfigurationBaselineEditorProgress["editorDraft"]["groups"][number]
 
 /** Runs ordered P2 mutations while applying each successful revision to resumable progress. */
 export async function runTechnicalConfigurationBaselineSaveSteps(
@@ -99,7 +105,7 @@ async function createNewGroups(
       (response) => {
         group.id = response.data.id
         group.name = response.data.name
-        progress.baseDraft.groups.push(toWireGroup(response.data))
+        progress.baseDraft.groups.push(toTechnicalConfigurationBaselineWireGroup(response.data))
         updateRevision(progress, response.data.revision)
       }
     )
@@ -139,58 +145,74 @@ async function createAndUpdateCriteria(
 ): Promise<void> {
   for (const group of progress.editorDraft.groups) {
     if (!group.id) continue
+    await createNewCriteria(group, progress, rpc, run)
+    await updateExistingCriteria(group, progress, rpc, run)
+  }
+}
 
-    for (const criterion of group.criteria) {
-      if (criterion.id) continue
+async function createNewCriteria(
+  group: EditorGroup,
+  progress: TechnicalConfigurationBaselineEditorProgress,
+  rpc: TechnicalConfigurationBaselineEditorRpc,
+  run: RunStep
+): Promise<void> {
+  for (const criterion of group.criteria) {
+    if (criterion.id) continue
 
-      await run(
-        () =>
-          rpc.createCriterion({
-            p_group_id: group.id as string,
-            p_title: criterion.title.trim() || null,
-            p_requirement_text: criterion.requirementText,
-            p_expected_revision: progress.baseDraft.revision,
-          }),
-        (response) => {
-          criterion.id = response.data.id
-          criterion.criterionCode = response.data.criterion_code
-          criterion.title = response.data.title ?? ""
-          criterion.requirementText = response.data.requirement_text
-          findWireGroup(progress.baseDraft, group.id as string).criteria.push(
-            toWireCriterion(response.data)
-          )
-          updateNextCriterionNumber(progress.baseDraft, response.data.criterion_code)
-          updateRevision(progress, response.data.revision)
-        }
-      )
-    }
-
-    for (const criterion of group.criteria) {
-      if (!criterion.id) continue
-      const wireCriterion = findWireCriterion(progress.baseDraft, criterion.id)
-      if (
-        (wireCriterion.title ?? "") === criterion.title &&
-        wireCriterion.requirement_text === criterion.requirementText
-      ) {
-        continue
+    await run(
+      () =>
+        rpc.createCriterion({
+          p_group_id: group.id as string,
+          p_title: criterion.title.trim() || null,
+          p_requirement_text: criterion.requirementText,
+          p_expected_revision: progress.baseDraft.revision,
+        }),
+      (response) => {
+        criterion.id = response.data.id
+        criterion.criterionCode = response.data.criterion_code
+        criterion.title = response.data.title ?? ""
+        criterion.requirementText = response.data.requirement_text
+        findWireGroup(progress.baseDraft, group.id as string).criteria.push(
+          toTechnicalConfigurationBaselineWireCriterion(response.data)
+        )
+        updateNextCriterionNumber(progress.baseDraft, response.data.criterion_code)
+        updateRevision(progress, response.data.revision)
       }
+    )
+  }
+}
 
-      await run(
-        () =>
-          rpc.updateCriterion({
-            p_criterion_id: criterion.id as string,
-            p_title: criterion.title.trim() || null,
-            p_requirement_text: criterion.requirementText,
-            p_expected_revision: progress.baseDraft.revision,
-          }),
-        (response) => {
-          replaceWireCriterion(progress.baseDraft, response.data)
-          criterion.title = response.data.title ?? ""
-          criterion.requirementText = response.data.requirement_text
-          updateRevision(progress, response.data.revision)
-        }
-      )
+async function updateExistingCriteria(
+  group: EditorGroup,
+  progress: TechnicalConfigurationBaselineEditorProgress,
+  rpc: TechnicalConfigurationBaselineEditorRpc,
+  run: RunStep
+): Promise<void> {
+  for (const criterion of group.criteria) {
+    if (!criterion.id) continue
+    const wireCriterion = findWireCriterion(progress.baseDraft, criterion.id)
+    if (
+      (wireCriterion.title ?? "") === criterion.title &&
+      wireCriterion.requirement_text === criterion.requirementText
+    ) {
+      continue
     }
+
+    await run(
+      () =>
+        rpc.updateCriterion({
+          p_criterion_id: criterion.id as string,
+          p_title: criterion.title.trim() || null,
+          p_requirement_text: criterion.requirementText,
+          p_expected_revision: progress.baseDraft.revision,
+        }),
+      (response) => {
+        replaceWireCriterion(progress.baseDraft, response.data)
+        criterion.title = response.data.title ?? ""
+        criterion.requirementText = response.data.requirement_text
+        updateRevision(progress, response.data.revision)
+      }
+    )
   }
 }
 
@@ -216,7 +238,7 @@ async function reorderGroups(
         p_expected_revision: progress.baseDraft.revision,
       }),
     (response) => {
-      progress.baseDraft = cloneWireDraft(response.data)
+      progress.baseDraft = cloneTechnicalConfigurationBaselineDraft(response.data)
       updateRevision(progress, response.data.revision)
     }
   )
@@ -243,22 +265,10 @@ async function reorderCriteria(
           p_expected_revision: progress.baseDraft.revision,
         }),
       (response) => {
-        progress.baseDraft = cloneWireDraft(response.data)
+        progress.baseDraft = cloneTechnicalConfigurationBaselineDraft(response.data)
         updateRevision(progress, response.data.revision)
       }
     )
-  }
-}
-
-function cloneWireDraft(
-  draft: TechnicalConfigurationBaselineDraftWire
-): TechnicalConfigurationBaselineDraftWire {
-  return {
-    ...draft,
-    groups: draft.groups.map((group) => ({
-      ...group,
-      criteria: group.criteria.map((criterion) => ({ ...criterion })),
-    })),
   }
 }
 
@@ -268,30 +278,6 @@ function updateRevision(
 ): void {
   progress.baseDraft.revision = revision
   progress.editorDraft.revision = revision
-}
-
-function toWireGroup(
-  group: TechnicalConfigurationBaselineGroupMutationWire
-): TechnicalConfigurationBaselineGroupWire {
-  return {
-    id: group.id,
-    baseline_version_id: group.baseline_version_id,
-    name: group.name,
-    sort_order: group.sort_order,
-    created_at: group.created_at,
-    created_by: group.created_by,
-    updated_at: group.updated_at,
-    updated_by: group.updated_by,
-    criteria: [],
-  }
-}
-
-function toWireCriterion(
-  criterion: TechnicalConfigurationBaselineCriterionMutationWire
-): TechnicalConfigurationBaselineCriterionWire {
-  const { revision: _revision, ...wireCriterion } = criterion
-  void _revision
-  return wireCriterion
 }
 
 function findWireGroup(
@@ -319,7 +305,9 @@ function replaceWireGroup(
   group: TechnicalConfigurationBaselineGroupMutationWire
 ): void {
   draft.groups = draft.groups.map((item) =>
-    item.id === group.id ? { ...toWireGroup(group), criteria: item.criteria } : item
+    item.id === group.id
+      ? { ...toTechnicalConfigurationBaselineWireGroup(group), criteria: item.criteria }
+      : item
   )
 }
 
@@ -329,7 +317,7 @@ function replaceWireCriterion(
 ): void {
   for (const group of draft.groups) {
     group.criteria = group.criteria.map((item) =>
-      item.id === criterion.id ? toWireCriterion(criterion) : item
+      item.id === criterion.id ? toTechnicalConfigurationBaselineWireCriterion(criterion) : item
     )
   }
 }

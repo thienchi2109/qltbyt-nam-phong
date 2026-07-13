@@ -6,14 +6,18 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 import {
-  createTechnicalConfigurationBaselineEditorCriterion,
+  appendTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorGroup,
+  moveTechnicalConfigurationBaselineEditorCriterion,
   moveTechnicalConfigurationBaselineEditorItem,
-} from "../technical-configuration-baseline-editor"
+  removeTechnicalConfigurationBaselineEditorCriterion,
+  setTechnicalConfigurationBaselineEditorCriterionText,
+  setTechnicalConfigurationBaselineEditorGroupName,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
   TechnicalConfigurationBaselineEditorValidation,
-} from "../technical-configuration-baseline-editor"
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 
 type TechnicalConfigurationBaselineEditorProps = {
@@ -40,23 +44,6 @@ export function TechnicalConfigurationBaselineEditor({
 }: Readonly<TechnicalConfigurationBaselineEditorProps>) {
   const updateGroups = (groups: TechnicalConfigurationBaselineEditorDraft["groups"]) => {
     onChange({ ...draft, groups })
-  }
-
-  const updateGroup = (
-    groupKey: string,
-    update: (group: TechnicalConfigurationBaselineEditorDraft["groups"][number]) => void
-  ) => {
-    updateGroups(
-      draft.groups.map((group) => {
-        if (group.key !== groupKey) return group
-        const nextGroup = {
-          ...group,
-          criteria: group.criteria.map((criterion) => ({ ...criterion })),
-        }
-        update(nextGroup)
-        return nextGroup
-      })
-    )
   }
 
   return (
@@ -115,9 +102,13 @@ export function TechnicalConfigurationBaselineEditor({
                   disabled={isSaving}
                   aria-invalid={Boolean(validation.groupErrors[group.key])}
                   onChange={(event) =>
-                    updateGroup(group.key, (nextGroup) => {
-                      nextGroup.name = event.target.value
-                    })
+                    onChange(
+                      setTechnicalConfigurationBaselineEditorGroupName(
+                        draft,
+                        group.key,
+                        event.target.value
+                      )
+                    )
                   }
                 />
                 {validation.groupErrors[group.key] ? (
@@ -188,12 +179,15 @@ export function TechnicalConfigurationBaselineEditor({
                       value={criterion.title}
                       disabled={isSaving}
                       onChange={(event) =>
-                        updateGroup(group.key, (nextGroup) => {
-                          const nextCriterion = nextGroup.criteria.find(
-                            (item) => item.key === criterion.key
+                        onChange(
+                          setTechnicalConfigurationBaselineEditorCriterionText(
+                            draft,
+                            group.key,
+                            criterion.key,
+                            "title",
+                            event.target.value
                           )
-                          if (nextCriterion) nextCriterion.title = event.target.value
-                        })
+                        )
                       }
                     />
                     <label className="sr-only" htmlFor={`baseline-requirement-${criterion.key}`}>
@@ -207,12 +201,15 @@ export function TechnicalConfigurationBaselineEditor({
                       disabled={isSaving}
                       aria-invalid={Boolean(validation.criterionErrors[criterion.key])}
                       onChange={(event) =>
-                        updateGroup(group.key, (nextGroup) => {
-                          const nextCriterion = nextGroup.criteria.find(
-                            (item) => item.key === criterion.key
+                        onChange(
+                          setTechnicalConfigurationBaselineEditorCriterionText(
+                            draft,
+                            group.key,
+                            criterion.key,
+                            "requirementText",
+                            event.target.value
                           )
-                          if (nextCriterion) nextCriterion.requirementText = event.target.value
-                        })
+                        )
                       }
                     />
                     {validation.criterionErrors[criterion.key] ? (
@@ -227,15 +224,14 @@ export function TechnicalConfigurationBaselineEditor({
                       title="Di chuyển lên"
                       disabled={isSaving || criterionIndex === 0}
                       onClick={() =>
-                        updateGroup(group.key, (nextGroup) => {
-                          nextGroup.criteria = [
-                            ...moveTechnicalConfigurationBaselineEditorItem(
-                              nextGroup.criteria,
-                              criterionIndex,
-                              -1
-                            ),
-                          ]
-                        })
+                        onChange(
+                          moveTechnicalConfigurationBaselineEditorCriterion(
+                            draft,
+                            group.key,
+                            criterionIndex,
+                            -1
+                          )
+                        )
                       }
                     >
                       <ArrowUp className="size-4" />
@@ -245,15 +241,14 @@ export function TechnicalConfigurationBaselineEditor({
                       title="Di chuyển xuống"
                       disabled={isSaving || criterionIndex === group.criteria.length - 1}
                       onClick={() =>
-                        updateGroup(group.key, (nextGroup) => {
-                          nextGroup.criteria = [
-                            ...moveTechnicalConfigurationBaselineEditorItem(
-                              nextGroup.criteria,
-                              criterionIndex,
-                              1
-                            ),
-                          ]
-                        })
+                        onChange(
+                          moveTechnicalConfigurationBaselineEditorCriterion(
+                            draft,
+                            group.key,
+                            criterionIndex,
+                            1
+                          )
+                        )
                       }
                     >
                       <ArrowDown className="size-4" />
@@ -264,11 +259,13 @@ export function TechnicalConfigurationBaselineEditor({
                       disabled={isSaving}
                       destructive
                       onClick={() =>
-                        updateGroup(group.key, (nextGroup) => {
-                          nextGroup.criteria = nextGroup.criteria.filter(
-                            (item) => item.key !== criterion.key
+                        onChange(
+                          removeTechnicalConfigurationBaselineEditorCriterion(
+                            draft,
+                            group.key,
+                            criterion.key
                           )
-                        })
+                        )
                       }
                     >
                       <Trash2 className="size-4" />
@@ -284,9 +281,7 @@ export function TechnicalConfigurationBaselineEditor({
                 disabled={isSaving}
                 aria-label={`Thêm tiêu chí vào nhóm ${groupIndex + 1}`}
                 onClick={() =>
-                  updateGroup(group.key, (nextGroup) => {
-                    nextGroup.criteria.push(createTechnicalConfigurationBaselineEditorCriterion())
-                  })
+                  onChange(appendTechnicalConfigurationBaselineEditorCriterion(draft, group.key))
                 }
               >
                 <Plus className="size-4" aria-hidden="true" />

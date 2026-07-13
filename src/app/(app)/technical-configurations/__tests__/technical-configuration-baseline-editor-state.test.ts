@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest"
 
-import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
+import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
+  appendTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorGroup,
+  moveTechnicalConfigurationBaselineEditorCriterion,
   moveTechnicalConfigurationBaselineEditorItem,
+  removeTechnicalConfigurationBaselineEditorCriterion,
+  setTechnicalConfigurationBaselineEditorCriterionText,
+  setTechnicalConfigurationBaselineEditorGroupName,
   toTechnicalConfigurationBaselineEditorDraft,
   validateTechnicalConfigurationBaselineEditorDraft,
-} from "../technical-configuration-baseline-editor"
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
 const draft: TechnicalConfigurationBaselineDraftWire = {
   id: "draft-1",
@@ -107,6 +112,37 @@ describe("technical configuration baseline editor state", () => {
     ])
     expect(moveTechnicalConfigurationBaselineEditorItem(rows, 0, -1)).toBe(rows)
     expect(moveTechnicalConfigurationBaselineEditorItem(rows, 2, 1)).toBe(rows)
+  })
+
+  it("applies group and criterion actions without mutating prior editor state", () => {
+    const editorDraft = toTechnicalConfigurationBaselineEditorDraft(draft)
+    const renamed = setTechnicalConfigurationBaselineEditorGroupName(
+      editorDraft,
+      "group-1",
+      "Yêu cầu cập nhật"
+    )
+    const appended = appendTechnicalConfigurationBaselineEditorCriterion(renamed, "group-1")
+    const newCriterion = appended.groups[0].criteria[1]
+    const edited = setTechnicalConfigurationBaselineEditorCriterionText(
+      appended,
+      "group-1",
+      newCriterion.key,
+      "requirementText",
+      "Giá trị mới"
+    )
+    const moved = moveTechnicalConfigurationBaselineEditorCriterion(edited, "group-1", 1, -1)
+    const removed = removeTechnicalConfigurationBaselineEditorCriterion(
+      moved,
+      "group-1",
+      newCriterion.key
+    )
+
+    expect(editorDraft.groups[0].name).toBe("Yêu cầu chung")
+    expect(editorDraft.groups[0].criteria).toHaveLength(1)
+    expect(renamed.groups[0].name).toBe("Yêu cầu cập nhật")
+    expect(edited.groups[0].criteria[1].requirementText).toBe("Giá trị mới")
+    expect(moved.groups[0].criteria[0].key).toBe(newCriterion.key)
+    expect(removed.groups[0].criteria).toEqual(editorDraft.groups[0].criteria)
   })
 
   it("reports blank group names and requirement text before persistence", () => {

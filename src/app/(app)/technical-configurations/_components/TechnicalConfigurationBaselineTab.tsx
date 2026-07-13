@@ -1,10 +1,10 @@
 import { AlertCircle, FileLock2, ListPlus, RefreshCw } from "lucide-react"
 
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
-import type { TechnicalConfigurationDossierWire } from "../types"
-import { useTechnicalConfigurationBaselineEditor } from "../_hooks/useTechnicalConfigurationBaselineEditor"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
 
 type TechnicalConfigurationBaselineTabProps = {
@@ -93,15 +93,16 @@ export function TechnicalConfigurationBaselineTab({
               type="button"
               variant="outline"
               size="sm"
+              disabled={baseline.isReloading}
               onClick={() => {
                 const confirmed = window.confirm(
                   "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
                 )
-                if (confirmed) void baseline.onReloadFromServer()
+                if (confirmed) baseline.onReloadFromServer()
               }}
             >
-              <RefreshCw className="size-4" />
-              Tải lại từ máy chủ
+              <RefreshCw className={baseline.isReloading ? "size-4 animate-spin" : "size-4"} />
+              {baseline.isReloading ? "Đang tải lại..." : "Tải lại từ máy chủ"}
             </Button>
           </AlertDescription>
         </Alert>
@@ -110,7 +111,7 @@ export function TechnicalConfigurationBaselineTab({
       {baseline.saveError ? (
         <Alert variant="destructive">
           <AlertCircle className="size-4" />
-          <AlertTitle>Lưu không thành công</AlertTitle>
+          <AlertTitle>Thao tác không thành công</AlertTitle>
           <AlertDescription>{baseline.saveError}</AlertDescription>
         </Alert>
       ) : null}

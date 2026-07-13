@@ -2,22 +2,19 @@ import type {
   TechnicalConfigurationBaselineCriteriaReorderRpcArgs,
   TechnicalConfigurationBaselineCriterionCreateRpcArgs,
   TechnicalConfigurationBaselineCriterionDeleteRpcArgs,
-  TechnicalConfigurationBaselineCriterionMutationWire,
   TechnicalConfigurationBaselineCriterionUpdateRpcArgs,
-  TechnicalConfigurationBaselineCriterionWire,
   TechnicalConfigurationBaselineCriterionWireResponse,
   TechnicalConfigurationBaselineDeleteWireResponse,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineDraftWireResponse,
   TechnicalConfigurationBaselineGroupCreateRpcArgs,
   TechnicalConfigurationBaselineGroupDeleteRpcArgs,
-  TechnicalConfigurationBaselineGroupMutationWire,
   TechnicalConfigurationBaselineGroupsReorderRpcArgs,
   TechnicalConfigurationBaselineGroupUpdateRpcArgs,
-  TechnicalConfigurationBaselineGroupWire,
   TechnicalConfigurationBaselineGroupWireResponse,
 } from "./baseline-types"
 import {
+  cloneTechnicalConfigurationBaselineDraft,
   cloneTechnicalConfigurationBaselineEditorDraft,
   validateTechnicalConfigurationBaselineEditorDraft,
 } from "./technical-configuration-baseline-editor-state"
@@ -130,19 +127,7 @@ function cloneProgress(
   progress: TechnicalConfigurationBaselineEditorProgress
 ): TechnicalConfigurationBaselineEditorProgress {
   return {
-    baseDraft: cloneWireDraft(progress.baseDraft),
+    baseDraft: cloneTechnicalConfigurationBaselineDraft(progress.baseDraft),
     editorDraft: cloneTechnicalConfigurationBaselineEditorDraft(progress.editorDraft),
-  }
-}
-
-function cloneWireDraft(
-  draft: TechnicalConfigurationBaselineDraftWire
-): TechnicalConfigurationBaselineDraftWire {
-  return {
-    ...draft,
-    groups: draft.groups.map((group) => ({
-      ...group,
-      criteria: group.criteria.map((criterion) => ({ ...criterion })),
-    })),
   }
 }

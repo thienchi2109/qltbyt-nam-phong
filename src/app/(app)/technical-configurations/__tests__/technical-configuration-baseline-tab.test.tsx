@@ -1,18 +1,18 @@
 import * as React from "react"
+import { QueryClient } from "@tanstack/react-query"
 import "@testing-library/jest-dom"
 import { act, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
-
+import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
 import type {
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
-} from "../baseline-types"
-import { TechnicalConfigurationRpcError } from "../technical-configuration-rpc"
-import { TechnicalConfigurationBaselineTab } from "../_components/TechnicalConfigurationBaselineTab"
-import type { TechnicalConfigurationDossierWire } from "../types"
+} from "@/app/(app)/technical-configurations/baseline-types"
+import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 
 const timestamp = "2026-07-13T00:00:00.000Z"
 
@@ -30,7 +30,7 @@ const rpc = vi.hoisted(() => ({
   previewBulk: vi.fn(),
 }))
 
-vi.mock("../_hooks/useTechnicalConfigurationBaseline", () => ({
+vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
   useTechnicalConfigurationBaseline: () => rpc,
 }))
 
@@ -119,13 +119,13 @@ function groupMutation(
   }
 }
 
-function renderTab(onDirtyChange = vi.fn()) {
+function renderTab(onDirtyChange = vi.fn(), queryClient = createTestQueryClient()) {
   return {
     onDirtyChange,
     ...render(
       <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />,
       {
-        wrapper: createReactQueryWrapper(createTestQueryClient()),
+        wrapper: createReactQueryWrapper(queryClient),
       }
     ),
   }
@@ -133,10 +133,12 @@ function renderTab(onDirtyChange = vi.fn()) {
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((resolver) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolver, rejecter) => {
     resolve = resolver
+    reject = rejecter
   })
-  return { promise, resolve }
+  return { promise, reject, resolve }
 }
 
 describe("technical configuration baseline tab", () => {
@@ -270,6 +272,87 @@ describe("technical configuration baseline tab", () => {
     await waitFor(() => {
       expect(screen.queryByDisplayValue("Yêu cầu chung")).not.toBeInTheDocument()
     })
+  })
+
+  it("disables conflict reload while pending and surfaces reload failures", async () => {
+    const user = userEvent.setup()
+    rpc.updateGroup.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, {
+        code: "PT409",
+        message: "stale_revision",
+      })
+    )
+    renderTab()
+
+    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(nameInput)
+    await user.type(nameInput, "Tên đang xung đột")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+
+    const pending = deferred<{ data: TechnicalConfigurationBaselineDraftWire }>()
+    rpc.getDraft.mockReturnValueOnce(pending.promise)
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true)
+
+    await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+
+    const pendingButton = screen.getByRole("button", { name: "Đang tải lại..." })
+    expect(pendingButton).toBeDisabled()
+    await user.click(pendingButton)
+    expect(rpc.getDraft).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      pending.reject(new Error("network_down"))
+      await pending.promise.catch(() => undefined)
+    })
+
+    expect(await screen.findByText("Không thể tải lại cấu hình cơ sở.")).toBeInTheDocument()
+    expect(screen.getByText("Xung đột dữ liệu")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Tải lại từ máy chủ" })).toBeEnabled()
+  })
+
+  it("keeps accepted partial-save progress in the query cache across remounts", async () => {
+    const user = userEvent.setup()
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, gcTime: 60_000 },
+        mutations: { retry: false },
+      },
+    })
+    const setQueryData = vi.spyOn(queryClient, "setQueryData")
+    rpc.updateGroup.mockResolvedValue({ data: groupMutation(5, "Tên nhóm đã được lưu") })
+    rpc.createCriterion.mockRejectedValue(new Error("network_down"))
+    const view = renderTab(vi.fn(), queryClient)
+
+    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(nameInput)
+    await user.type(nameInput, "Tên nhóm đã được lưu")
+    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
+    await user.type(screen.getByLabelText("Nội dung yêu cầu 1.2"), "Giá trị chưa lưu")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+
+    expect(await screen.findByText("Không thể lưu cấu hình cơ sở.")).toBeInTheDocument()
+    expect(rpc.updateGroup).toHaveBeenCalledTimes(1)
+    expect(rpc.createCriterion).toHaveBeenCalledTimes(1)
+    expect(setQueryData).toHaveBeenLastCalledWith(
+      ["technical-configurations", "baseline-draft", dossier.id],
+      {
+        data: expect.objectContaining({
+          revision: 5,
+        }),
+      }
+    )
+    const cachedDraft = queryClient.getQueryData<{ data: TechnicalConfigurationBaselineDraftWire }>(
+      ["technical-configurations", "baseline-draft", dossier.id]
+    )
+    expect(cachedDraft?.data.revision).toBe(5)
+    expect(cachedDraft?.data.groups[0].name).toBe("Tên nhóm đã được lưu")
+
+    view.unmount()
+    renderTab(vi.fn(), queryClient)
+
+    expect(await screen.findByDisplayValue("Tên nhóm đã được lưu")).toBeInTheDocument()
+    expect(rpc.getDraft).toHaveBeenCalledTimes(1)
   })
 
   it("creates a missing draft only from an explicit action and renders locked data as a placeholder", async () => {

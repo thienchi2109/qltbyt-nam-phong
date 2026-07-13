@@ -7,31 +7,33 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import type { TechnicalConfigurationDossierWire } from "../types"
+import { TechnicalConfigurationWorkspaceShell } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 const baselineTabMock = vi.hoisted(() => ({
   dirty: true,
 }))
 
-vi.mock("../_components/TechnicalConfigurationBaselineTab", async () => {
-  const ReactModule = await import("react")
+vi.mock(
+  "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab",
+  async () => {
+    const ReactModule = await import("react")
 
-  return {
-    TechnicalConfigurationBaselineTab: ({
-      onDirtyChange,
-    }: {
-      onDirtyChange: (dirty: boolean) => void
-    }) => {
-      ReactModule.useEffect(() => {
-        onDirtyChange(baselineTabMock.dirty)
-        return () => onDirtyChange(false)
-      }, [onDirtyChange])
-      return <div>Baseline editor</div>
-    },
+    return {
+      TechnicalConfigurationBaselineTab: ({
+        onDirtyChange,
+      }: {
+        onDirtyChange: (dirty: boolean) => void
+      }) => {
+        ReactModule.useEffect(() => {
+          onDirtyChange(baselineTabMock.dirty)
+          return () => onDirtyChange(false)
+        }, [onDirtyChange])
+        return <div>Baseline editor</div>
+      },
+    }
   }
-})
-
-import { TechnicalConfigurationWorkspaceShell } from "../_components/TechnicalConfigurationWorkspaceShell"
+)
 
 const dossier: TechnicalConfigurationDossierWire = {
   id: "dossier-1",

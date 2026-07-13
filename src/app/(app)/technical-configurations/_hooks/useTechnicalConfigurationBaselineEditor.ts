@@ -1,25 +1,47 @@
 import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
-import type { TechnicalConfigurationDossierWire } from "../types"
+import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   BaselineEditorSaveFailure,
   BaselineEditorValidationFailure,
   isTechnicalConfigurationBaselineEditorDirty,
   saveTechnicalConfigurationBaselineEditorDraft,
   toTechnicalConfigurationBaselineEditorDraft,
-} from "../technical-configuration-baseline-editor"
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
   TechnicalConfigurationBaselineEditorValidation,
-} from "../technical-configuration-baseline-editor"
-import { TechnicalConfigurationRpcError } from "../technical-configuration-rpc"
-import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
 
 const EMPTY_VALIDATION: TechnicalConfigurationBaselineEditorValidation = {
   groupErrors: {},
   criterionErrors: {},
+}
+
+export interface UseTechnicalConfigurationBaselineEditorResult {
+  baseDraft: TechnicalConfigurationBaselineDraftWire | null
+  editorDraft: TechnicalConfigurationBaselineEditorDraft | null
+  validation: TechnicalConfigurationBaselineEditorValidation
+  isDirty: boolean
+  isConflict: boolean
+  saveStatus: "idle" | "saved"
+  saveError: string | null
+  isSaving: boolean
+  isReloading: boolean
+  isCreating: boolean
+  createError: string | null
+  queryError: string | null
+  isLoading: boolean
+  isMissing: boolean
+  onEditorChange: (draft: TechnicalConfigurationBaselineEditorDraft) => void
+  onSave: () => void
+  onCreate: () => void
+  onRetryQuery: () => Promise<void>
+  onReloadFromServer: () => void
 }
 
 function baselineQueryKey(dossierId: string) {
@@ -45,7 +67,7 @@ export function useTechnicalConfigurationBaselineEditor({
 }: {
   dossier: TechnicalConfigurationDossierWire
   onDirtyChange: (dirty: boolean) => void
-}) {
+}): UseTechnicalConfigurationBaselineEditorResult {
   const queryClient = useQueryClient()
   const rpc = useTechnicalConfigurationBaseline()
   const queryKey = baselineQueryKey(dossier.id)
@@ -147,9 +169,30 @@ export function useTechnicalConfigurationBaselineEditor({
         setEditorDraft(error.progress.editorDraft)
         setIsConflict(error.isConflict)
         setSaveError(error.isConflict ? null : "Không thể lưu cấu hình cơ sở.")
+        queryClient.setQueryData(queryKey, { data: error.progress.baseDraft })
         return
       }
       setSaveError("Không thể lưu cấu hình cơ sở.")
+    },
+  })
+
+  const reloadMutation = useMutation({
+    mutationFn: () => rpc.getDraft({ p_dossier_id: dossier.id }),
+    onMutate: () => {
+      setSaveError(null)
+      setSaveStatus("idle")
+    },
+    onSuccess: (response) => {
+      setBaseDraft(response.data)
+      setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(response.data))
+      setValidation(EMPTY_VALIDATION)
+      setSaveError(null)
+      setIsConflict(false)
+      setSaveStatus("idle")
+      queryClient.setQueryData(queryKey, response)
+    },
+    onError: () => {
+      setSaveError("Không thể tải lại cấu hình cơ sở.")
     },
   })
 
@@ -163,16 +206,9 @@ export function useTechnicalConfigurationBaselineEditor({
     []
   )
 
-  const reloadFromServer = React.useCallback(async () => {
-    const response = await rpc.getDraft({ p_dossier_id: dossier.id })
-    setBaseDraft(response.data)
-    setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(response.data))
-    setValidation(EMPTY_VALIDATION)
-    setSaveError(null)
-    setIsConflict(false)
-    setSaveStatus("idle")
-    queryClient.setQueryData(queryKey, response)
-  }, [dossier.id, queryClient, queryKey, rpc])
+  const retryQuery = React.useCallback(async (): Promise<void> => {
+    await draftQuery.refetch()
+  }, [draftQuery])
 
   return {
     baseDraft,
@@ -183,6 +219,7 @@ export function useTechnicalConfigurationBaselineEditor({
     saveStatus,
     saveError,
     isSaving: saveMutation.isPending,
+    isReloading: reloadMutation.isPending,
     isCreating: createDraftMutation.isPending,
     createError: createDraftMutation.isError
       ? getErrorMessage(createDraftMutation.error, "Không thể khởi tạo bản nháp.")
@@ -195,7 +232,7 @@ export function useTechnicalConfigurationBaselineEditor({
     onEditorChange: handleEditorChange,
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
-    onRetryQuery: () => void draftQuery.refetch(),
-    onReloadFromServer: reloadFromServer,
+    onRetryQuery: retryQuery,
+    onReloadFromServer: () => reloadMutation.mutate(),
   }
 }

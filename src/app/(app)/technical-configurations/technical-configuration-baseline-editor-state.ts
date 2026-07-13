@@ -72,6 +72,72 @@ export function createTechnicalConfigurationBaselineEditorCriterion(
   }
 }
 
+/** Replaces one group name without mutating the editable tree. */
+export function setTechnicalConfigurationBaselineEditorGroupName(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  name: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    name,
+  }))
+}
+
+/** Replaces one editable criterion text field without mutating the tree. */
+export function setTechnicalConfigurationBaselineEditorCriterionText(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  criterionKey: string,
+  field: "title" | "requirementText",
+  value: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    criteria: group.criteria.map((criterion) =>
+      criterion.key === criterionKey ? { ...criterion, [field]: value } : criterion
+    ),
+  }))
+}
+
+/** Moves one criterion within its group without mutating the editable tree. */
+export function moveTechnicalConfigurationBaselineEditorCriterion(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  criterionIndex: number,
+  offset: -1 | 1
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    criteria: [
+      ...moveTechnicalConfigurationBaselineEditorItem(group.criteria, criterionIndex, offset),
+    ],
+  }))
+}
+
+/** Removes one criterion without mutating the editable tree. */
+export function removeTechnicalConfigurationBaselineEditorCriterion(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  criterionKey: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    criteria: group.criteria.filter((criterion) => criterion.key !== criterionKey),
+  }))
+}
+
+/** Appends one unsaved criterion without mutating the editable tree. */
+export function appendTechnicalConfigurationBaselineEditorCriterion(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    criteria: [...group.criteria, createTechnicalConfigurationBaselineEditorCriterion()],
+  }))
+}
+
 /** Moves one editor row by a single position without mutating the input array. */
 export function moveTechnicalConfigurationBaselineEditorItem<T>(
   items: readonly T[],
@@ -111,10 +177,25 @@ export function validateTechnicalConfigurationBaselineEditorDraft(
   return { groupErrors, criterionErrors }
 }
 
+/** Clones the persisted draft tree used by resumable save progress. */
+export function cloneTechnicalConfigurationBaselineDraft(
+  draft: TechnicalConfigurationBaselineDraftWire
+): TechnicalConfigurationBaselineDraftWire {
+  return cloneTechnicalConfigurationBaselineTree(draft)
+}
+
 /** Clones the editable tree so failed-save progress never aliases caller state. */
 export function cloneTechnicalConfigurationBaselineEditorDraft(
   draft: TechnicalConfigurationBaselineEditorDraft
 ): TechnicalConfigurationBaselineEditorDraft {
+  return cloneTechnicalConfigurationBaselineTree(draft)
+}
+
+function cloneTechnicalConfigurationBaselineTree<
+  TCriterion extends object,
+  TGroup extends { criteria: TCriterion[] },
+  TDraft extends { groups: TGroup[] },
+>(draft: TDraft): TDraft {
   return {
     ...draft,
     groups: draft.groups.map((group) => ({
@@ -151,4 +232,17 @@ export function isTechnicalConfigurationBaselineEditorDirty(
 
 function createEditorKey(prefix: string): string {
   return `${prefix}-${globalThis.crypto.randomUUID()}`
+}
+
+function updateTechnicalConfigurationBaselineEditorGroup(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  update: (
+    group: TechnicalConfigurationBaselineEditorGroup
+  ) => TechnicalConfigurationBaselineEditorGroup
+): TechnicalConfigurationBaselineEditorDraft {
+  return {
+    ...draft,
+    groups: draft.groups.map((group) => (group.key === groupKey ? update(group) : group)),
+  }
 }
