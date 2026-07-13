@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { parseTechnicalConfigurationBulkEntry } from "@/app/(app)/technical-configurations/bulk-entry-utils"
+import {
+  hasTechnicalConfigurationBulkEntryInput,
+  parseTechnicalConfigurationBulkEntry,
+} from "@/app/(app)/technical-configurations/bulk-entry-utils"
 
 describe("technical configuration bulk entry parser", () => {
   it("parses LF and CRLF rows while trimming text and preserving Vietnamese Unicode", () => {
@@ -84,5 +87,14 @@ describe("technical configuration bulk entry parser", () => {
       rows: [],
       canAccept: false,
     })
+  })
+
+  it.each([
+    ["", false],
+    ["   \n\t", false],
+    ["\u200B\u2060", false],
+    ["Yêu cầu kỹ thuật", true],
+  ])("classifies parser-meaningful input %#", (input, expected) => {
+    expect(hasTechnicalConfigurationBulkEntryInput(input)).toBe(expected)
   })
 })

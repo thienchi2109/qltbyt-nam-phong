@@ -1,224 +1,110 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import { TechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import { TechnicalConfigurationBulkEntryWorkbench } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBulkEntryWorkbench"
+import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
+import { parseTechnicalConfigurationBulkEntry } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 
-const initialDraft: TechnicalConfigurationBaselineEditorDraft = {
-  id: "draft-1",
-  dossierId: "dossier-1",
-  status: "draft",
-  revision: 4,
-  groups: [
-    {
-      key: "group-1",
-      id: "group-1",
-      name: "Yêu cầu chung",
-      criteria: [
-        {
-          key: "criterion-1",
-          id: "criterion-1",
-          criterionCode: "TC-0001",
-          title: "",
-          requirementText: "Tiêu chí hiện có",
-        },
-      ],
-    },
-    {
-      key: "group-2",
-      id: "group-2",
-      name: "Yêu cầu kỹ thuật",
-      criteria: [],
-    },
-  ],
-}
+function renderWorkbench({ disabled = false }: { disabled?: boolean } = {}) {
+  const onCancel = vi.fn()
+  const onAccept = vi.fn()
 
-function renderEditor() {
-  const onChange = vi.fn()
-  const onSave = vi.fn()
-
-  function EditorHarness({ isSaving }: Readonly<{ isSaving: boolean }>) {
-    const [draft, setDraft] = React.useState(initialDraft)
+  function WorkbenchHarness() {
+    const [session, setSession] = React.useState<TechnicalConfigurationBulkEntrySession>({
+      input: "",
+      preview: null,
+    })
 
     return (
-      <TechnicalConfigurationBaselineEditor
-        draft={draft}
-        validation={{ groupErrors: {}, criterionErrors: {} }}
-        isDirty={draft !== initialDraft}
-        isSaving={isSaving}
-        isConflict={false}
-        saveStatus="idle"
-        onChange={(nextDraft) => {
-          onChange(nextDraft)
-          setDraft(nextDraft)
-        }}
-        onSave={onSave}
+      <TechnicalConfigurationBulkEntryWorkbench
+        groupName="Yêu cầu kỹ thuật"
+        existingCriterionCount={67}
+        session={session}
+        disabled={disabled}
+        onInputChange={(input) => setSession({ input, preview: null })}
+        onPreview={() =>
+          setSession((current) => ({
+            ...current,
+            preview: parseTechnicalConfigurationBulkEntry(current.input),
+          }))
+        }
+        onCancel={onCancel}
+        onAccept={onAccept}
       />
     )
   }
 
-  const rendered = render(<EditorHarness isSaving={false} />)
-  return {
-    onChange,
-    onSave,
-    setSaving: (isSaving: boolean) => rendered.rerender(<EditorHarness isSaving={isSaving} />),
-    ...rendered,
-  }
+  return { onCancel, onAccept, ...render(<WorkbenchHarness />) }
 }
 
-describe("technical configuration bulk text entry", () => {
-  it("previews row validation and blocks accept while an internal blank row is invalid", async () => {
+describe("TechnicalConfigurationBulkEntryWorkbench", () => {
+  it("renders inline, focuses input, and previews row validation", async () => {
     const user = userEvent.setup()
-    const { onChange, onSave } = renderEditor()
+    renderWorkbench()
 
-    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    expect(screen.getByText("67 tiêu chí hiện có trong bản nháp")).toBeInTheDocument()
+    const input = screen.getByLabelText("Nội dung nhập nhanh")
+    expect(input).toHaveFocus()
 
-    expect(within(dialog).getByText("Yêu cầu kỹ thuật")).toBeInTheDocument()
-    await user.type(
-      within(dialog).getByLabelText("Nội dung nhập nhanh"),
-      "Nguồn điện ổn định\n\nÁp lực vận hành ≥ 3 bar"
-    )
-    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
+    await user.type(input, "Nguồn điện ổn định\n\nÁp lực vận hành ≥ 3 bar")
+    await user.click(screen.getByRole("button", { name: "Xem trước" }))
 
-    expect(within(dialog).getByText("Dòng 1")).toBeInTheDocument()
-    expect(within(dialog).getByText("Dòng 2")).toBeInTheDocument()
-    expect(within(dialog).getByText("Dòng 3")).toBeInTheDocument()
-    expect(within(dialog).getByText("Nguồn điện ổn định")).toBeInTheDocument()
-    expect(within(dialog).getByText("Áp lực vận hành ≥ 3 bar")).toBeInTheDocument()
-    expect(within(dialog).getByText("Nội dung yêu cầu là bắt buộc.")).toBeInTheDocument()
-    expect(within(dialog).getByRole("status")).toHaveTextContent("3 dòng, 1 dòng có lỗi.")
-    expect(
-      within(dialog).getByRole("region", { name: "Danh sách xem trước tiêu chí" })
-    ).toHaveAttribute("tabindex", "0")
-    const acceptButton = within(dialog).getByRole("button", { name: "Thêm vào nhóm" })
-    expect(acceptButton).toBeDisabled()
-    expect(acceptButton).toHaveAttribute("aria-describedby", "bulk-entry-preview-status-2")
-    const footer = within(dialog).getByRole("button", { name: "Hủy" }).parentElement
-    expect(footer).toHaveClass("flex-col", "gap-2")
-    expect(footer).not.toHaveClass("flex-col-reverse")
-    expect(onChange).not.toHaveBeenCalled()
-    expect(onSave).not.toHaveBeenCalled()
+    const preview = screen.getByRole("region", { name: "Xem trước tiêu chí" })
+    expect(preview).toHaveAttribute("tabindex", "0")
+    expect(within(preview).getByText("Dòng")).toBeInTheDocument()
+    expect(within(preview).getByText("Nội dung yêu cầu")).toBeInTheDocument()
+    expect(within(preview).getByText("Trạng thái")).toBeInTheDocument()
+    expect(within(preview).getByText("Dòng 2")).toBeInTheDocument()
+    expect(within(preview).getByText("Nội dung yêu cầu là bắt buộc.")).toBeInTheDocument()
+    expect(screen.getByRole("status")).toHaveTextContent("3 dòng, 1 dòng có lỗi.")
+    expect(screen.getByRole("button", { name: "Thêm vào bản nháp" })).toBeDisabled()
   })
 
-  it("keeps preview disabled for input containing only zero-width separators", async () => {
+  it("invalidates stale preview after input changes", async () => {
     const user = userEvent.setup()
-    const { onChange, onSave } = renderEditor()
+    renderWorkbench()
 
-    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    await user.type(within(dialog).getByLabelText("Nội dung nhập nhanh"), "\u200B\u2060")
-
-    expect(within(dialog).getByRole("button", { name: "Xem trước" })).toBeDisabled()
-    expect(onChange).not.toHaveBeenCalled()
-    expect(onSave).not.toHaveBeenCalled()
-  })
-
-  it("cancels without changing the draft", async () => {
-    const user = userEvent.setup()
-    const { onChange, onSave } = renderEditor()
-
-    const trigger = screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 1" })
-    await user.click(trigger)
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    await user.type(within(dialog).getByLabelText("Nội dung nhập nhanh"), "Tiêu chí mới")
-    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
-    await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
-
-    expect(screen.queryByRole("dialog", { name: "Nhập nhanh tiêu chí" })).not.toBeInTheDocument()
-    expect(screen.queryByDisplayValue("Tiêu chí mới")).not.toBeInTheDocument()
-    expect(screen.queryByText("Có thay đổi chưa lưu")).not.toBeInTheDocument()
-    expect(onChange).not.toHaveBeenCalled()
-    expect(onSave).not.toHaveBeenCalled()
-    await waitFor(() => expect(trigger).toHaveFocus())
-
-    await user.click(trigger)
-    const reopenedDialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    expect(within(reopenedDialog).getByLabelText("Nội dung nhập nhanh")).toHaveValue("")
-    expect(
-      within(reopenedDialog).queryByRole("region", {
-        name: "Danh sách xem trước tiêu chí",
-      })
-    ).not.toBeInTheDocument()
-    expect(within(reopenedDialog).getByRole("button", { name: "Thêm vào nhóm" })).toBeDisabled()
-  })
-
-  it("invalidates a stale preview when pasted input changes", async () => {
-    const user = userEvent.setup()
-    const { onChange, onSave } = renderEditor()
-
-    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    const input = within(dialog).getByLabelText("Nội dung nhập nhanh")
+    const input = screen.getByLabelText("Nội dung nhập nhanh")
     await user.type(input, "Nguồn điện ổn định")
-    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
+    await user.click(screen.getByRole("button", { name: "Xem trước" }))
+    expect(screen.getByRole("button", { name: "Thêm vào bản nháp" })).toBeEnabled()
 
-    expect(within(dialog).getByRole("button", { name: "Thêm vào nhóm" })).toBeEnabled()
     await user.type(input, "\nÁp lực vận hành ≥ 3 bar")
-
-    expect(
-      within(dialog).queryByRole("region", {
-        name: "Danh sách xem trước tiêu chí",
-      })
-    ).not.toBeInTheDocument()
-    expect(within(dialog).getByRole("button", { name: "Thêm vào nhóm" })).toBeDisabled()
-    expect(onChange).not.toHaveBeenCalled()
-    expect(onSave).not.toHaveBeenCalled()
+    expect(screen.queryByRole("region", { name: "Xem trước tiêu chí" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Thêm vào bản nháp" })).toBeDisabled()
   })
 
-  it("blocks editing and accept while an explicit save is pending", async () => {
+  it("uses explicit cancel and does not treat Escape as cancellation", async () => {
     const user = userEvent.setup()
-    const { onChange, onSave, setSaving } = renderEditor()
+    const { onCancel } = renderWorkbench()
 
-    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    const input = within(dialog).getByLabelText("Nội dung nhập nhanh")
-    const previewButton = within(dialog).getByRole("button", { name: "Xem trước" })
-    const acceptButton = within(dialog).getByRole("button", { name: "Thêm vào nhóm" })
+    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Tiêu chí mới")
+    await user.keyboard("{Escape}")
+    expect(onCancel).not.toHaveBeenCalled()
+    expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("Tiêu chí mới")
 
-    await user.type(input, "Nguồn điện ổn định")
-    await user.click(previewButton)
-    expect(acceptButton).toBeEnabled()
-
-    setSaving(true)
-
-    expect(input).toBeDisabled()
-    expect(previewButton).toBeDisabled()
-    expect(acceptButton).toBeDisabled()
-    await user.click(acceptButton)
-    expect(onChange).not.toHaveBeenCalled()
-    expect(onSave).not.toHaveBeenCalled()
-
-    setSaving(false)
-    expect(input).toBeEnabled()
-    expect(acceptButton).toBeEnabled()
+    await user.click(screen.getByRole("button", { name: "Hủy nhập" }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
   })
 
-  it("accepts into the selected local group and persists only from explicit save", async () => {
+  it("accepts only a valid preview and blocks every command while saving", async () => {
     const user = userEvent.setup()
-    const { onChange, onSave } = renderEditor()
+    const active = renderWorkbench()
 
-    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
-    await user.type(
-      within(dialog).getByLabelText("Nội dung nhập nhanh"),
-      "  Nguồn điện ổn định  \nÁp lực vận hành ≥ 3 bar"
-    )
-    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
-    await user.click(within(dialog).getByRole("button", { name: "Thêm vào nhóm" }))
+    await user.type(active.getByLabelText("Nội dung nhập nhanh"), "Nguồn điện ổn định")
+    await user.click(active.getByRole("button", { name: "Xem trước" }))
+    await user.click(active.getByRole("button", { name: "Thêm vào bản nháp" }))
+    expect(active.onAccept).toHaveBeenCalledTimes(1)
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveValue("Tiêu chí hiện có")
-    expect(screen.queryByLabelText("Nội dung yêu cầu 1.2")).not.toBeInTheDocument()
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.1")).toHaveValue("Nguồn điện ổn định")
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.2")).toHaveValue("Áp lực vận hành ≥ 3 bar")
-    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument()
-    expect(onChange).toHaveBeenCalledTimes(1)
-    expect(onSave).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole("button", { name: "Lưu" }))
-    expect(onSave).toHaveBeenCalledTimes(1)
+    active.unmount()
+    const pending = renderWorkbench({ disabled: true })
+    expect(pending.getByLabelText("Nội dung nhập nhanh")).toBeDisabled()
+    expect(pending.getByRole("button", { name: "Hủy nhập" })).toBeDisabled()
+    expect(pending.getByRole("button", { name: "Xem trước" })).toBeDisabled()
+    expect(pending.getByRole("button", { name: "Thêm vào bản nháp" })).toBeDisabled()
   })
 })

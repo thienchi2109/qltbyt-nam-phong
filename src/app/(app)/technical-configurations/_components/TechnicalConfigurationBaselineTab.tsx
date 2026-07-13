@@ -1,129 +1,135 @@
-import { AlertCircle, FileLock2, ListPlus, RefreshCw } from "lucide-react"
+import * as React from "react"
 
-import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
+import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
+import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
+import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
+import {
+  TechnicalConfigurationBaselineLoadingState,
+  TechnicalConfigurationBaselineLockedState,
+  TechnicalConfigurationBaselineMissingState,
+  TechnicalConfigurationBaselineQueryError,
+} from "./TechnicalConfigurationBaselineTabStates"
 
 type TechnicalConfigurationBaselineTabProps = {
   dossier: TechnicalConfigurationDossierWire
   onDirtyChange: (dirty: boolean) => void
 }
 
-/** Composes P3B baseline loading, empty, conflict, and editor states. */
+/** Composes baseline data state with transient spreadsheet interaction state. */
 export function TechnicalConfigurationBaselineTab({
   dossier,
   onDirtyChange,
 }: Readonly<TechnicalConfigurationBaselineTabProps>) {
-  const baseline = useTechnicalConfigurationBaselineEditor({ dossier, onDirtyChange })
+  const bulkSessions = useTechnicalConfigurationBulkEntrySessions()
+  const baseline = useTechnicalConfigurationBaselineEditor({
+    dossier,
+    isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput,
+  })
+  const draft = baseline.editorDraft
+  const inlineEditor = useTechnicalConfigurationInlineEditor({
+    draft,
+    saveStatus: baseline.saveStatus,
+    bulkSessions,
+    onEditorChange: baseline.onEditorChange,
+  })
+  const isUnsafeToLeave = baseline.isDirty || bulkSessions.hasPendingInput
 
-  if (baseline.isLoading) {
-    return (
-      <section className="border-y py-12 text-center" aria-live="polite">
-        <RefreshCw className="mx-auto size-8 animate-spin text-muted-foreground" />
-        <p className="mt-3 text-sm text-muted-foreground">Đang tải cấu hình cơ sở...</p>
-      </section>
+  React.useEffect(() => {
+    onDirtyChange(isUnsafeToLeave)
+    return () => onDirtyChange(false)
+  }, [isUnsafeToLeave, onDirtyChange])
+
+  React.useEffect(() => {
+    if (!isUnsafeToLeave) return
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [isUnsafeToLeave])
+
+  const handleReloadFromServer = () => {
+    if (bulkSessions.hasPendingInput) return
+    const confirmed = window.confirm(
+      "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
     )
+    if (!confirmed) return
+    bulkSessions.clearAll()
+    inlineEditor.prepareForReload()
+    baseline.onReloadFromServer()
   }
-
+  if (baseline.isLoading) {
+    return <TechnicalConfigurationBaselineLoadingState />
+  }
   if (baseline.queryError) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="size-4" />
-        <AlertTitle>Không thể tải cấu hình cơ sở</AlertTitle>
-        <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <span>{baseline.queryError}</span>
-          <Button type="button" variant="outline" size="sm" onClick={baseline.onRetryQuery}>
-            <RefreshCw className="size-4" />
-            Thử lại
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <TechnicalConfigurationBaselineQueryError
+        message={baseline.queryError}
+        onRetry={baseline.onRetryQuery}
+      />
     )
   }
-
   if (baseline.isMissing) {
     return (
-      <section className="border-y py-12 text-center">
-        <ListPlus className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
-        <h2 className="mt-4 text-base font-semibold">Chưa có bản nháp cấu hình</h2>
-        {baseline.createError ? (
-          <p className="mx-auto mt-2 max-w-xl text-sm text-destructive">{baseline.createError}</p>
-        ) : null}
-        <Button
-          type="button"
-          className="mt-5"
-          disabled={baseline.isCreating}
-          onClick={baseline.onCreate}
-        >
-          <ListPlus className="size-4" aria-hidden="true" />
-          {baseline.isCreating ? "Đang khởi tạo..." : "Khởi tạo cấu hình cơ sở"}
-        </Button>
-      </section>
+      <TechnicalConfigurationBaselineMissingState
+        error={baseline.createError}
+        isCreating={baseline.isCreating}
+        onCreate={baseline.onCreate}
+      />
     )
   }
-
-  if (baseline.editorDraft?.status === "locked") {
-    return (
-      <section className="border-y py-12 text-center">
-        <FileLock2 className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
-        <h2 className="mt-4 text-base font-semibold">Phiên bản đã khóa</h2>
-        <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-          Nội dung đã khóa được giữ ở chế độ chỉ đọc.
-        </p>
-      </section>
-    )
+  if (draft?.status === "locked") {
+    return <TechnicalConfigurationBaselineLockedState />
   }
 
-  if (!baseline.editorDraft) return null
+  if (!draft) return null
 
   return (
     <div className="space-y-4">
-      {baseline.isConflict ? (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" />
-          <AlertTitle>Xung đột dữ liệu</AlertTitle>
-          <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>
-              Dữ liệu trên máy chủ đã thay đổi. Nội dung chưa lưu vẫn được giữ trong form.
-            </span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={baseline.isReloading}
-              onClick={() => {
-                const confirmed = window.confirm(
-                  "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
-                )
-                if (confirmed) baseline.onReloadFromServer()
-              }}
-            >
-              <RefreshCw className={baseline.isReloading ? "size-4 animate-spin" : "size-4"} />
-              {baseline.isReloading ? "Đang tải lại..." : "Tải lại từ máy chủ"}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {baseline.saveError ? (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" />
-          <AlertTitle>Thao tác không thành công</AlertTitle>
-          <AlertDescription>{baseline.saveError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <TechnicalConfigurationBaselineAlerts
+        isConflict={baseline.isConflict}
+        isReloading={baseline.isReloading}
+        hasPendingBulkInput={bulkSessions.hasPendingInput}
+        saveError={baseline.saveError}
+        onReload={handleReloadFromServer}
+      />
 
       <TechnicalConfigurationBaselineEditor
-        draft={baseline.editorDraft}
+        draft={draft}
         validation={baseline.validation}
-        isDirty={baseline.isDirty}
-        isSaving={baseline.isSaving}
-        isConflict={baseline.isConflict}
-        saveStatus={baseline.saveStatus}
-        onChange={baseline.onEditorChange}
+        status={{
+          dirty: baseline.isDirty,
+          saving: baseline.isSaving,
+          editingDisabled: baseline.isSaving || baseline.isReloading,
+          conflict: baseline.isConflict,
+          saveStatus: baseline.saveStatus,
+          hasPendingBulkInput: bulkSessions.hasPendingInput,
+        }}
+        activeValue={inlineEditor.activeValue}
+        entryMode={inlineEditor.entryMode}
+        bulkSession={inlineEditor.bulkSession}
+        focusTarget={inlineEditor.focusTarget}
+        recentlyAcceptedCriterionKeys={bulkSessions.recentlyAcceptedCriterionKeys}
+        onNavigate={inlineEditor.navigate}
+        onModeChange={inlineEditor.changeMode}
+        onAddGroup={inlineEditor.addGroup}
+        onGroupNameChange={inlineEditor.setGroupName}
+        onMoveGroup={inlineEditor.moveGroup}
+        onDeleteGroup={inlineEditor.deleteGroup}
+        onCriterionTextChange={inlineEditor.setCriterionText}
+        onMoveCriterion={inlineEditor.moveCriterion}
+        onDeleteCriterion={inlineEditor.deleteCriterion}
+        onAddCriterion={inlineEditor.addCriterion}
+        onBulkInputChange={inlineEditor.setBulkInput}
+        onBulkPreview={inlineEditor.previewBulk}
+        onBulkCancel={inlineEditor.cancelBulk}
+        onBulkAccept={inlineEditor.acceptBulk}
+        onOverviewCriterionActivate={inlineEditor.activateOverviewCriterion}
         onSave={baseline.onSave}
       />
     </div>
