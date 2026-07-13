@@ -21,7 +21,7 @@ export interface AppNavItem {
   icon: LucideIcon
   label: string
   mobileLabel?: string
-  mobileSection: "main" | "more"
+  mobileSection?: "main" | "more"
   badgeKey?: AppNotificationBadgeKey
   requiresGlobal?: boolean
   requiresDeviceQuotaAccess?: boolean
@@ -73,7 +73,6 @@ const APP_NAV_ITEMS: AppNavItem[] = [
     href: "/technical-configurations",
     icon: ListChecks,
     label: "Cấu hình kỹ thuật",
-    mobileSection: "more",
     requiresGlobal: true,
   },
   { href: "/users", icon: Users, label: "Người dùng", mobileSection: "more", requiresGlobal: true },
