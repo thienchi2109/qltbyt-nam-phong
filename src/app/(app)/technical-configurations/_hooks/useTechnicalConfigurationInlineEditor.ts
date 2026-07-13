@@ -51,6 +51,7 @@ export function useTechnicalConfigurationInlineEditor({
     entryMode: "row",
     focusTarget: null,
   })
+  const previousGroupKeysRef = React.useRef<readonly string[]>([])
   const focusTokenRef = React.useRef(0)
   const { activeValue, entryMode, focusTarget } = viewState
 
@@ -61,11 +62,17 @@ export function useTechnicalConfigurationInlineEditor({
 
   React.useEffect(() => {
     const groupKeys = draft?.groups.map((group) => group.key) ?? []
+    const previousGroupKeys = previousGroupKeysRef.current
+    previousGroupKeysRef.current = groupKeys
     bulkSessions.syncGroupKeys(groupKeys)
     setViewState((current) => {
       if (current.activeValue === ALL_GROUPS_VALUE) return current
       if (groupKeys.includes(current.activeValue)) return current
-      return { ...current, activeValue: groupKeys[0] ?? "" }
+      const previousIndex = previousGroupKeys.indexOf(current.activeValue)
+      return {
+        ...current,
+        activeValue: groupKeys[previousIndex] ?? groupKeys[0] ?? "",
+      }
     })
   }, [draft?.groups, bulkSessions.syncGroupKeys])
 

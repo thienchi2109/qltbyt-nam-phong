@@ -117,6 +117,26 @@ describe("technical configuration baseline tab", () => {
     expect(await screen.findByText("Đã lưu")).toBeInTheDocument()
   })
 
+  it("preserves the selected new group when save replaces its client key with a server id", async () => {
+    const user = userEvent.setup()
+    rpc.createGroup.mockResolvedValue({
+      data: {
+        ...groupMutation(5, "Nhóm mới"),
+        id: "group-5",
+        sort_order: 5,
+      },
+    })
+    renderTab()
+
+    await user.click(await screen.findByRole("button", { name: "Thêm nhóm" }))
+    await user.type(screen.getByLabelText("Tên nhóm 5"), "Nhóm mới")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+
+    expect(await screen.findByText("Đã lưu")).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Nhóm mới/ })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByDisplayValue("Nhóm mới")).toBeInTheDocument()
+  })
+
   it("preserves accepted-row highlights across unrelated criterion actions", async () => {
     const user = userEvent.setup()
     const { container } = renderTab()
