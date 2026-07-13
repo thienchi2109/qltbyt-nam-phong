@@ -1,4 +1,5 @@
 import type { TechnicalConfigurationBaselineDraftWire } from "./baseline-types"
+import { normalizeTechnicalConfigurationBulkEntryText } from "./bulk-entry-utils"
 
 export interface TechnicalConfigurationBaselineEditorCriterion {
   key: string
@@ -135,6 +136,24 @@ export function appendTechnicalConfigurationBaselineEditorCriterion(
   return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
     ...group,
     criteria: [...group.criteria, createTechnicalConfigurationBaselineEditorCriterion()],
+  }))
+}
+
+/** Appends normalized unsaved criteria to one selected group without persistence. */
+export function appendTechnicalConfigurationBaselineEditorCriteria(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  requirementTexts: readonly string[]
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateTechnicalConfigurationBaselineEditorGroup(draft, groupKey, (group) => ({
+    ...group,
+    criteria: [
+      ...group.criteria,
+      ...requirementTexts.map((requirementText) => ({
+        ...createTechnicalConfigurationBaselineEditorCriterion(),
+        requirementText: normalizeTechnicalConfigurationBulkEntryText(requirementText),
+      })),
+    ],
   }))
 }
 

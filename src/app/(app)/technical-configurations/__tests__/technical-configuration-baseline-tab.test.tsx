@@ -1,12 +1,13 @@
 import * as React from "react"
 import { QueryClient } from "@tanstack/react-query"
 import "@testing-library/jest-dom"
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
 import type {
+  TechnicalConfigurationBaselineCriterionMutationWire,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
 } from "@/app/(app)/technical-configurations/baseline-types"
@@ -119,6 +120,31 @@ function groupMutation(
   }
 }
 
+function criterionMutation(
+  id: string,
+  criterionCode: string,
+  groupId: string,
+  requirementText: string,
+  sortOrder: number,
+  revision: number
+): TechnicalConfigurationBaselineCriterionMutationWire {
+  return {
+    id,
+    baseline_version_id: "draft-1",
+    group_id: groupId,
+    criterion_code: criterionCode,
+    title: null,
+    requirement_text: requirementText,
+    sort_order: sortOrder,
+    source_criterion_id: null,
+    created_at: timestamp,
+    created_by: 1,
+    updated_at: timestamp,
+    updated_by: 1,
+    revision,
+  }
+}
+
 function renderTab(onDirtyChange = vi.fn(), queryClient = createTestQueryClient()) {
   return {
     onDirtyChange,
@@ -169,6 +195,66 @@ describe("technical configuration baseline tab", () => {
     expect(rpc.updateCriterion).not.toHaveBeenCalled()
     expect(rpc.createCriterion).not.toHaveBeenCalled()
     expect(rpc.reorderGroups).not.toHaveBeenCalled()
+  })
+
+  it("keeps bulk preview and accept local until explicit save", async () => {
+    const user = userEvent.setup()
+    rpc.createCriterion
+      .mockResolvedValueOnce({
+        data: criterionMutation("criterion-2", "TC-0002", "group-2", "Nguồn điện ổn định", 1, 5),
+      })
+      .mockResolvedValueOnce({
+        data: criterionMutation(
+          "criterion-3",
+          "TC-0003",
+          "group-2",
+          "Áp lực vận hành ≥ 3 bar",
+          2,
+          6
+        ),
+      })
+    renderTab()
+
+    await user.click(await screen.findByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
+    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
+    await user.type(
+      within(dialog).getByLabelText("Nội dung nhập nhanh"),
+      "Nguồn điện ổn định\nÁp lực vận hành ≥ 3 bar"
+    )
+    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
+    await user.click(within(dialog).getByRole("button", { name: "Thêm vào nhóm" }))
+
+    for (const mutation of [
+      rpc.createGroup,
+      rpc.updateGroup,
+      rpc.deleteGroup,
+      rpc.reorderGroups,
+      rpc.createCriterion,
+      rpc.updateCriterion,
+      rpc.deleteCriterion,
+      rpc.reorderCriteria,
+      rpc.previewBulk,
+    ]) {
+      expect(mutation).not.toHaveBeenCalled()
+    }
+
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+
+    await waitFor(() => expect(rpc.createCriterion).toHaveBeenCalledTimes(2))
+    expect(rpc.createCriterion).toHaveBeenNthCalledWith(1, {
+      p_group_id: "group-2",
+      p_title: null,
+      p_requirement_text: "Nguồn điện ổn định",
+      p_expected_revision: 4,
+    })
+    expect(rpc.createCriterion).toHaveBeenNthCalledWith(2, {
+      p_group_id: "group-2",
+      p_title: null,
+      p_requirement_text: "Áp lực vận hành ≥ 3 bar",
+      p_expected_revision: 5,
+    })
+    expect(rpc.previewBulk).not.toHaveBeenCalled()
+    expect(await screen.findByText("Đã lưu")).toBeInTheDocument()
   })
 
   it("saves only from explicit Lưu and shows the exact pending label", async () => {

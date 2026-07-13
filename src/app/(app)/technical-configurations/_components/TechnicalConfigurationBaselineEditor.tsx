@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
 import {
+  appendTechnicalConfigurationBaselineEditorCriteria,
   appendTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorGroup,
   moveTechnicalConfigurationBaselineEditorCriterion,
@@ -19,6 +20,7 @@ import type {
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
+import { TechnicalConfigurationBulkEntryDialog } from "./TechnicalConfigurationBulkEntryDialog"
 
 type TechnicalConfigurationBaselineEditorProps = {
   draft: TechnicalConfigurationBaselineEditorDraft
@@ -274,19 +276,35 @@ export function TechnicalConfigurationBaselineEditor({
                 </div>
               ))}
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isSaving}
-                aria-label={`Thêm tiêu chí vào nhóm ${groupIndex + 1}`}
-                onClick={() =>
-                  onChange(appendTechnicalConfigurationBaselineEditorCriterion(draft, group.key))
-                }
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                Thêm tiêu chí
-              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <TechnicalConfigurationBulkEntryDialog
+                  groupIndex={groupIndex + 1}
+                  groupName={group.name.trim() || `Nhóm ${groupIndex + 1}`}
+                  disabled={isSaving}
+                  onAccept={(requirementTexts) =>
+                    onChange(
+                      appendTechnicalConfigurationBaselineEditorCriteria(
+                        draft,
+                        group.key,
+                        requirementTexts
+                      )
+                    )
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isSaving}
+                  aria-label={`Thêm tiêu chí vào nhóm ${groupIndex + 1}`}
+                  onClick={() =>
+                    onChange(appendTechnicalConfigurationBaselineEditorCriterion(draft, group.key))
+                  }
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  Thêm tiêu chí
+                </Button>
+              </div>
             </div>
           </section>
         ))}
