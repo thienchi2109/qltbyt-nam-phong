@@ -113,5 +113,43 @@ describe("technical configuration focus transitions", () => {
 
     const firstGroupTab = await screen.findByRole("tab", { name: /Tên mới từ máy chủ/ })
     await waitFor(() => expect(firstGroupTab).toHaveFocus())
+
+    const reloadedNameInput = screen.getByDisplayValue("Tên mới từ máy chủ")
+    await user.click(reloadedNameInput)
+    await user.type(reloadedNameInput, " đã sửa")
+    expect(reloadedNameInput).toHaveFocus()
+    expect(reloadedNameInput).toHaveValue("Tên mới từ máy chủ đã sửa")
+  })
+
+  it("reapplies focus when the same criterion receives a newer focus token", async () => {
+    const user = userEvent.setup()
+    renderTab()
+
+    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Yêu cầu mới")
+    await user.click(screen.getByRole("button", { name: "Xem trước" }))
+    await user.click(screen.getByRole("button", { name: "Thêm vào bản nháp" }))
+
+    expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 1.1" }))
+
+    await waitFor(() => expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveFocus())
+  })
+
+  it("keeps focus on the activated group tab when bulk mode is preserved from overview", async () => {
+    const user = userEvent.setup()
+    renderTab()
+
+    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+    await user.click(screen.getByRole("tab", { name: "Xem tất cả nhóm" }))
+
+    const targetGroupTab = screen.getByRole("tab", { name: /Yêu cầu cấu hình cung cấp/ })
+    await user.click(targetGroupTab)
+
+    expect(screen.getByRole("tab", { name: "Nhập nhiều dòng" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    expect(targetGroupTab).toHaveFocus()
   })
 })

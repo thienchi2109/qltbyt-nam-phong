@@ -29,6 +29,7 @@ export type TechnicalConfigurationFocusTarget =
   | { kind: "group-name"; key: string; token: number }
   | { kind: "group-tab"; key: string; token: number }
   | { kind: "mode-tab"; mode: TechnicalConfigurationEntryMode; token: number }
+  | { kind: "bulk-input"; token: number }
   | { kind: "add-group"; token: number }
   | { kind: "add-criterion"; token: number }
   | null
@@ -289,6 +290,7 @@ export function TechnicalConfigurationBaselineEditor({
                 criterionErrors={validation.criterionErrors}
                 disabled={isEditingDisabled}
                 focusCriterionKey={focusTarget?.kind === "criterion" ? focusTarget.key : null}
+                focusCriterionToken={focusTarget?.kind === "criterion" ? focusTarget.token : null}
                 focusAddCriterionToken={
                   focusTarget?.kind === "add-criterion" ? focusTarget.token : null
                 }
@@ -311,6 +313,7 @@ export function TechnicalConfigurationBaselineEditor({
                 existingCriterionCount={selectedGroup.criteria.length}
                 session={bulkSession}
                 disabled={isEditingDisabled}
+                focusInputToken={focusTarget?.kind === "bulk-input" ? focusTarget.token : null}
                 onInputChange={onBulkInputChange}
                 onPreview={onBulkPreview}
                 onCancel={onBulkCancel}

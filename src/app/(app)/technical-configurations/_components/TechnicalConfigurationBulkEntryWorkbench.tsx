@@ -13,6 +13,7 @@ type TechnicalConfigurationBulkEntryWorkbenchProps = Readonly<{
   existingCriterionCount: number
   session: TechnicalConfigurationBulkEntrySession
   disabled: boolean
+  focusInputToken: number | null
   onInputChange: (input: string) => void
   onPreview: () => void
   onCancel: () => void
@@ -25,6 +26,7 @@ export function TechnicalConfigurationBulkEntryWorkbench({
   existingCriterionCount,
   session,
   disabled,
+  focusInputToken,
   onInputChange,
   onPreview,
   onCancel,
@@ -40,8 +42,9 @@ export function TechnicalConfigurationBulkEntryWorkbench({
   const previewStatusId = "technical-configuration-bulk-preview-status"
 
   React.useEffect(() => {
+    if (focusInputToken === null) return
     inputRef.current?.focus()
-  }, [])
+  }, [focusInputToken])
 
   return (
     <section aria-label={`Nhập nhiều dòng cho ${groupName}`} className="space-y-5 py-5">

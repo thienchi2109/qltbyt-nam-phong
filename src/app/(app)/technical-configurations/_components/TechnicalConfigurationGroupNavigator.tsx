@@ -42,6 +42,8 @@ export function TechnicalConfigurationGroupNavigator({
   onValueChange,
 }: TechnicalConfigurationGroupNavigatorProps) {
   const tabRefs = React.useRef(new Map<string, HTMLButtonElement>())
+  const focusGroupKey = focusGroupRequest?.groupKey
+  const focusGroupToken = focusGroupRequest?.token
   const items = React.useMemo(
     () => [
       ...groups.map((group, groupIndex) => ({
@@ -61,9 +63,9 @@ export function TechnicalConfigurationGroupNavigator({
   )
 
   React.useEffect(() => {
-    if (!focusGroupRequest) return
-    tabRefs.current.get(focusGroupRequest.groupKey)?.focus()
-  }, [focusGroupRequest])
+    if (!focusGroupKey) return
+    tabRefs.current.get(focusGroupKey)?.focus()
+  }, [focusGroupKey, focusGroupToken])
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     let targetIndex = index

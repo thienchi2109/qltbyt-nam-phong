@@ -19,6 +19,7 @@ type TechnicalConfigurationCriteriaSpreadsheetProps = Readonly<{
   criterionErrors: Record<string, string>
   disabled: boolean
   focusCriterionKey: string | null
+  focusCriterionToken: number | null
   focusAddCriterionToken: number | null
   recentlyAcceptedCriterionKeys: ReadonlySet<string>
   onCriterionTextChange: (criterionKey: string, field: CriterionTextField, value: string) => void
@@ -36,6 +37,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   criterionErrors,
   disabled,
   focusCriterionKey,
+  focusCriterionToken,
   focusAddCriterionToken,
   recentlyAcceptedCriterionKeys,
   onCriterionTextChange,
@@ -54,7 +56,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
       target?.scrollIntoView?.({ block: "nearest" })
     }, 0)
     return () => window.clearTimeout(timeoutId)
-  }, [focusCriterionKey])
+  }, [focusCriterionKey, focusCriterionToken])
 
   React.useEffect(() => {
     if (focusAddCriterionToken === null) return

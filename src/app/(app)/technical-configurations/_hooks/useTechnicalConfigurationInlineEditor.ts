@@ -160,7 +160,7 @@ export function useTechnicalConfigurationInlineEditor({
         ? targetCriterion
           ? { kind: "criterion", key: targetCriterion.key, token: nextFocusToken() }
           : { kind: "add-criterion", token: nextFocusToken() }
-        : null
+        : { kind: "bulk-input", token: nextFocusToken() }
     setViewState((current) => ({
       ...current,
       entryMode: mode,

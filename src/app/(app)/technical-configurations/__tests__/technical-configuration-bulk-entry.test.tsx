@@ -24,6 +24,7 @@ function renderWorkbench({ disabled = false }: { disabled?: boolean } = {}) {
         existingCriterionCount={67}
         session={session}
         disabled={disabled}
+        focusInputToken={1}
         onInputChange={(input) => setSession({ input, preview: null })}
         onPreview={() =>
           setSession((current) => ({
