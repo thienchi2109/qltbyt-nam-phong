@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { formatVietnamDateTime } from "@/lib/vietnam-date-format"
 
-import type { TechnicalConfigurationDossierWire } from "../types"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 type TechnicalConfigurationDossierTableProps = {
   dossiers: TechnicalConfigurationDossierWire[]

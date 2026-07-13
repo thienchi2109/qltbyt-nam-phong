@@ -77,6 +77,12 @@ async function callTechnicalConfigurationRpc<TResponse>(
     throw new TechnicalConfigurationRpcError(response.status, getErrorPayload(payload))
   }
 
+  if (payload === null) {
+    throw new TechnicalConfigurationRpcError(response.status, {
+      message: "RPC returned an invalid JSON response",
+    })
+  }
+
   return payload as TResponse
 }
 
