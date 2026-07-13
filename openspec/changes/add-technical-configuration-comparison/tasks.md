@@ -71,11 +71,11 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P3A - Route, Workspace Shell And Dossier List
 
-- [ ] P3A.1 Thêm route và navigation boundary chỉ cho `admin/global`.
-- [ ] P3A.2 Thêm dossier list/create/open workflow.
-- [ ] P3A.3 Thêm workspace/tab shell làm integration surface cho các phase sau.
-- [ ] P3A.4 Giữ shell mỏng và theo dõi extraction threshold.
-- [ ] P3A.5 Viết role visibility, list/create và browser tests.
+- [x] P3A.1 Thêm route và navigation boundary chỉ cho `admin/global`.
+- [x] P3A.2 Thêm dossier list/create/open workflow.
+- [x] P3A.3 Thêm workspace/tab shell làm integration surface cho các phase sau.
+- [x] P3A.4 Giữ shell mỏng và theo dõi extraction threshold.
+- [x] P3A.5 Viết role visibility, list/create và browser tests.
 
 ## Phase P3B - Manual Baseline Editor And Save Conflicts
 
