@@ -9,10 +9,14 @@ export const ZALO_ZBS_ACCESS_TOKEN_HEADER_PLACEHOLDER = "<ZALO_ZBS_ACCESS_TOKEN>
 export const ZALO_ZBS_REPAIR_TEMPLATE_ID_PLACEHOLDER = "<ZALO_ZBS_REPAIR_TEMPLATE_ID>"
 /** Fixed provider-safe text for the constrained `issue_summary` ZBS template field. */
 export const ZBS_REPAIR_ISSUE_SUMMARY = "Lỗi thiết bị"
+/** Maximum character length accepted by the approved `requester` template field. */
+const ZBS_REQUESTER_MAX_CHARACTERS = 30
 /** RPC boundary for reading pending ZBS outbox rows through the app proxy. */
 export const ZBS_PENDING_DISPATCH_RPC = "zbs_notification_outbox_pending_for_dispatch"
 
 type JsonObject = Record<string, unknown>
+
+const ZBS_TRUNCATION_SUFFIX = "..."
 
 export interface ZbsNotificationOutboxRow {
   id: string
@@ -133,6 +137,21 @@ function firstPresent(...values: string[]): string {
   return values.find((value) => value.length > 0) ?? "Khong ro"
 }
 
+function providerSafeRequester(value: unknown): string {
+  const requester = firstPresent(stringValue(value)).normalize("NFC")
+  const characters = [...requester]
+
+  if (characters.length <= ZBS_REQUESTER_MAX_CHARACTERS) {
+    return requester
+  }
+
+  const suffixLength = [...ZBS_TRUNCATION_SUFFIX].length
+  const contentLimit = ZBS_REQUESTER_MAX_CHARACTERS - suffixLength
+  const truncated = characters.slice(0, contentLimit).join("")
+
+  return `${truncated}${ZBS_TRUNCATION_SUFFIX}`
+}
+
 function equipmentLabel(templateData: JsonObject): string {
   const equipmentName = stringValue(templateData.equipment_name)
   const equipmentCode = stringValue(templateData.equipment_code)
@@ -171,7 +190,7 @@ export function mapRepairRequestTemplateData(
       stringValue(templateData.ten_don_vi_thue),
       stringValue(templateData.don_vi_thuc_hien)
     ),
-    requester: firstPresent(stringValue(templateData.requester)),
+    requester: providerSafeRequester(templateData.requester),
     issue_summary: ZBS_REPAIR_ISSUE_SUMMARY,
     detail_url: buildDetailUrl(row, options.appBaseUrl),
   }
