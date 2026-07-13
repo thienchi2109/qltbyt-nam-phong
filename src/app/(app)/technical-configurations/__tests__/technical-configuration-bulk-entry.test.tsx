@@ -40,7 +40,7 @@ function renderEditor() {
   const onChange = vi.fn()
   const onSave = vi.fn()
 
-  function EditorHarness() {
+  function EditorHarness({ isSaving }: Readonly<{ isSaving: boolean }>) {
     const [draft, setDraft] = React.useState(initialDraft)
 
     return (
@@ -48,7 +48,7 @@ function renderEditor() {
         draft={draft}
         validation={{ groupErrors: {}, criterionErrors: {} }}
         isDirty={draft !== initialDraft}
-        isSaving={false}
+        isSaving={isSaving}
         isConflict={false}
         saveStatus="idle"
         onChange={(nextDraft) => {
@@ -60,7 +60,13 @@ function renderEditor() {
     )
   }
 
-  return { onChange, onSave, ...render(<EditorHarness />) }
+  const rendered = render(<EditorHarness isSaving={false} />)
+  return {
+    onChange,
+    onSave,
+    setSaving: (isSaving: boolean) => rendered.rerender(<EditorHarness isSaving={isSaving} />),
+    ...rendered,
+  }
 }
 
 describe("technical configuration bulk text entry", () => {
@@ -148,6 +154,34 @@ describe("technical configuration bulk text entry", () => {
     expect(within(dialog).getByRole("button", { name: "Thêm vào nhóm" })).toBeDisabled()
     expect(onChange).not.toHaveBeenCalled()
     expect(onSave).not.toHaveBeenCalled()
+  })
+
+  it("blocks editing and accept while an explicit save is pending", async () => {
+    const user = userEvent.setup()
+    const { onChange, onSave, setSaving } = renderEditor()
+
+    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
+    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
+    const input = within(dialog).getByLabelText("Nội dung nhập nhanh")
+    const previewButton = within(dialog).getByRole("button", { name: "Xem trước" })
+    const acceptButton = within(dialog).getByRole("button", { name: "Thêm vào nhóm" })
+
+    await user.type(input, "Nguồn điện ổn định")
+    await user.click(previewButton)
+    expect(acceptButton).toBeEnabled()
+
+    setSaving(true)
+
+    expect(input).toBeDisabled()
+    expect(previewButton).toBeDisabled()
+    expect(acceptButton).toBeDisabled()
+    await user.click(acceptButton)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+
+    setSaving(false)
+    expect(input).toBeEnabled()
+    expect(acceptButton).toBeEnabled()
   })
 
   it("accepts into the selected local group and persists only from explicit save", async () => {

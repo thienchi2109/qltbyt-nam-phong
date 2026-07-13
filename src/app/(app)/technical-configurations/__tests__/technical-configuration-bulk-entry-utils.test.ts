@@ -64,7 +64,7 @@ describe("technical configuration bulk entry parser", () => {
     })
   })
 
-  it("treats zero-width edge characters as blank content", () => {
+  it("strips zero-width characters from content edges", () => {
     expect(
       parseTechnicalConfigurationBulkEntry("\u200B\u2060\nYêu cầu hợp lệ\u200B\n\u2060\u200B")
     ).toEqual({
@@ -77,7 +77,9 @@ describe("technical configuration bulk entry parser", () => {
       ],
       canAccept: true,
     })
+  })
 
+  it("treats all-zero-width input as empty", () => {
     expect(parseTechnicalConfigurationBulkEntry("\u200B\u2060")).toEqual({
       rows: [],
       canAccept: false,

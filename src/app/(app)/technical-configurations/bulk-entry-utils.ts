@@ -13,7 +13,7 @@ const REQUIRED_TEXT_ERROR = "Nội dung yêu cầu là bắt buộc."
 
 /** Removes whitespace and invisible separators only from text edges. */
 export function normalizeTechnicalConfigurationBulkEntryText(input: string): string {
-  return input.replace(/^[\s\u200B\u2060]+|[\s\u200B\u2060]+$/g, "")
+  return input.replace(/^[\s\u200B\u2060]+/, "").replace(/[\s\u200B\u2060]+$/, "")
 }
 
 /** Parses pasted criteria while preserving internal blank rows for validation. */

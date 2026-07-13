@@ -36,11 +36,12 @@ export function TechnicalConfigurationBulkEntryDialog({
   const [preview, setPreview] = React.useState<TechnicalConfigurationBulkEntryPreview | null>(null)
   const previewStatusId = `bulk-entry-preview-status-${groupIndex}`
   const previewErrorCount = preview?.rows.filter((row) => row.error !== null).length ?? 0
-  const previewStatus = preview
-    ? `${preview.rows.length} dòng, ${
-        previewErrorCount > 0 ? `${previewErrorCount} dòng có lỗi.` : "không có lỗi."
-      }`
-    : ""
+  let previewStatus = ""
+  if (preview) {
+    const errorSummary =
+      previewErrorCount > 0 ? `${previewErrorCount} dòng có lỗi.` : "không có lỗi."
+    previewStatus = `${preview.rows.length} dòng, ${errorSummary}`
+  }
 
   const reset = React.useCallback(() => {
     setInput("")
@@ -56,7 +57,7 @@ export function TechnicalConfigurationBulkEntryDialog({
   )
 
   const handleAccept = () => {
-    if (!preview?.canAccept) return
+    if (disabled || !preview?.canAccept) return
 
     onAccept(preview.rows.map((row) => row.requirementText))
     handleOpenChange(false)
@@ -96,6 +97,7 @@ export function TechnicalConfigurationBulkEntryDialog({
               aria-label="Nội dung nhập nhanh"
               className="min-h-32 resize-y whitespace-pre-wrap"
               value={input}
+              disabled={disabled}
               placeholder={"Nguồn điện ổn định\nÁp lực vận hành ≥ 3 bar"}
               onChange={(event) => {
                 setInput(event.target.value)
@@ -122,8 +124,7 @@ export function TechnicalConfigurationBulkEntryDialog({
               </div>
 
               {preview.rows.length > 0 ? (
-                <div
-                  role="region"
+                <section
                   aria-label="Danh sách xem trước tiêu chí"
                   tabIndex={0}
                   className="h-52 overflow-y-auto rounded-md border"
@@ -160,7 +161,7 @@ export function TechnicalConfigurationBulkEntryDialog({
                       </li>
                     ))}
                   </ul>
-                </div>
+                </section>
               ) : (
                 <div className="flex min-h-28 items-center justify-center gap-2 border-y text-sm text-muted-foreground">
                   <ListChecks className="size-4" aria-hidden="true" />
@@ -178,7 +179,7 @@ export function TechnicalConfigurationBulkEntryDialog({
           <Button
             type="button"
             variant="secondary"
-            disabled={!input.trim()}
+            disabled={disabled || !input.trim()}
             onClick={() => setPreview(parseTechnicalConfigurationBulkEntry(input))}
           >
             Xem trước
@@ -186,7 +187,7 @@ export function TechnicalConfigurationBulkEntryDialog({
           <Button
             type="button"
             aria-describedby={previewStatusId}
-            disabled={!preview?.canAccept}
+            disabled={disabled || !preview?.canAccept}
             onClick={handleAccept}
           >
             Thêm vào nhóm
