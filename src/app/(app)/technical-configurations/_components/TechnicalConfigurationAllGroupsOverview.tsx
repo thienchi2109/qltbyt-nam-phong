@@ -125,9 +125,6 @@ export function TechnicalConfigurationAllGroupsOverview({
                     </div>
                     <div className="divide-y">
                       {criteria.map((criterion) => {
-                        const criterionIndex = group.criteria.findIndex(
-                          (item) => item.key === criterion.key
-                        )
                         const error = validation.criterionErrors[criterion.key]
 
                         return (
@@ -135,7 +132,6 @@ export function TechnicalConfigurationAllGroupsOverview({
                             key={criterion.key}
                             type="button"
                             className="grid w-full grid-cols-[7rem_minmax(12rem,0.8fr)_minmax(24rem,2fr)_10rem] text-left hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                            aria-label={`Mở tiêu chí ${groupIndex + 1}.${criterionIndex + 1} để chỉnh sửa`}
                             onClick={() => onCriterionActivate(group.key, criterion.key)}
                           >
                             <span className="px-3 py-3">

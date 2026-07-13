@@ -87,6 +87,27 @@ describe("technical configuration group navigation", () => {
     await waitFor(() => expect(onValueChange).toHaveBeenLastCalledWith(ALL_GROUPS_VALUE))
   })
 
+  it("keeps the overview tab keyboard-reachable when the draft has no groups", async () => {
+    const user = userEvent.setup()
+    const onValueChange = vi.fn()
+
+    render(
+      <TechnicalConfigurationGroupNavigator
+        groups={[]}
+        activeValue=""
+        validation={{ groupErrors: {}, criterionErrors: {} }}
+        focusGroupRequest={null}
+        onValueChange={onValueChange}
+      />
+    )
+
+    const overviewTab = screen.getByRole("tab", { name: "Xem tất cả nhóm" })
+    expect(overviewTab).toHaveAttribute("tabindex", "0")
+    overviewTab.focus()
+    await user.keyboard("{Enter}")
+    expect(onValueChange).toHaveBeenCalledWith(ALL_GROUPS_VALUE)
+  })
+
   it("reuses group tab metadata when only active navigation state changes", () => {
     let groupNameReads = 0
     const trackedGroup = { ...draft.groups[0] }
@@ -139,6 +160,11 @@ describe("technical configuration group navigation", () => {
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText("Mới")).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", {
+        name: /TC-0001.*Điện.*Nguồn điện ổn định.*Hợp lệ/,
+      })
+    ).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "Có lỗi" }))
     expect(screen.getByText("Nội dung yêu cầu là bắt buộc.")).toBeInTheDocument()
@@ -150,7 +176,11 @@ describe("technical configuration group navigation", () => {
     expect(screen.getByText("Mới")).toBeInTheDocument()
     expect(screen.queryByText("TC-0002")).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: "Mở tiêu chí 1.2 để chỉnh sửa" }))
+    await user.click(
+      screen.getByRole("button", {
+        name: /Mới.*Không có tiêu đề.*Chưa nhập nội dung.*Nội dung yêu cầu là bắt buộc/,
+      })
+    )
     expect(onCriterionActivate).toHaveBeenCalledWith("group-1", "criterion-new")
   })
 

@@ -72,6 +72,7 @@ export function useTechnicalConfigurationInlineEditor({
       return {
         ...current,
         activeValue: groupKeys[previousIndex] ?? groupKeys[0] ?? "",
+        focusTarget: current.activeValue ? null : current.focusTarget,
       }
     })
   }, [draft?.groups, bulkSessions.syncGroupKeys])

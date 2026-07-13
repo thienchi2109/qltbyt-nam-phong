@@ -123,6 +123,25 @@ describe("technical configuration inline workflow", () => {
     }
   })
 
+  it("associates a visible group-name error with its input", async () => {
+    const originalValidation = baseline.validation
+    baseline.validation = {
+      groupErrors: { "group-1": "Tên nhóm là bắt buộc." },
+      criterionErrors: {},
+    }
+
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+      const groupInput = await screen.findByLabelText("Tên nhóm 1")
+      const groupError = screen.getByText("Tên nhóm là bắt buộc.")
+      expect(groupError).toHaveAttribute("id")
+      expect(groupInput).toHaveAttribute("aria-describedby", groupError.id)
+    } finally {
+      baseline.validation = originalValidation
+    }
+  })
+
   it("preserves group buffers and treats clean-draft bulk input as unsafe", async () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
@@ -147,6 +166,45 @@ describe("technical configuration inline workflow", () => {
     expect(baseline.onSave).not.toHaveBeenCalled()
   })
 
+  it("keeps pending-buffer delete and reload controls focusable while blocking actions", async () => {
+    const user = userEvent.setup()
+    const originalConflict = baseline.isConflict
+    const confirmSpy = vi.spyOn(window, "confirm")
+    baseline.isConflict = true
+
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+      await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
+
+      const pendingExplanation = screen.getByText(
+        "Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu."
+      )
+      const deleteButton = screen.getByRole("button", { name: "Xóa nhóm 1" })
+      expect(deleteButton).not.toBeDisabled()
+      expect(deleteButton).toHaveAttribute("aria-disabled", "true")
+      expect(deleteButton).toHaveAttribute("aria-describedby", pendingExplanation.id)
+      deleteButton.focus()
+      expect(deleteButton).toHaveFocus()
+      await user.click(deleteButton)
+      expect(baseline.onEditorChange).not.toHaveBeenCalled()
+
+      const reloadButton = screen.getByRole("button", { name: "Tải lại từ máy chủ" })
+      expect(reloadButton).not.toBeDisabled()
+      expect(reloadButton).toHaveAttribute("aria-disabled", "true")
+      expect(reloadButton).toHaveAttribute("aria-describedby", pendingExplanation.id)
+      reloadButton.focus()
+      expect(reloadButton).toHaveFocus()
+      await user.click(reloadButton)
+      expect(confirmSpy).not.toHaveBeenCalled()
+      expect(baseline.onReloadFromServer).not.toHaveBeenCalled()
+    } finally {
+      baseline.isConflict = originalConflict
+      confirmSpy.mockRestore()
+    }
+  })
+
   it("opens an overview criterion in row mode and focuses its requirement cell", async () => {
     const user = userEvent.setup()
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
@@ -166,7 +224,11 @@ describe("technical configuration inline workflow", () => {
       expect(screen.getByRole("heading", { name: "Xem tất cả nhóm" })).toHaveFocus()
     )
 
-    await user.click(screen.getByRole("button", { name: "Mở tiêu chí 2.1 để chỉnh sửa" }))
+    await user.click(
+      screen.getByRole("button", {
+        name: /Mới.*Áp lực.*Áp lực tối thiểu 3 bar.*Chưa lưu/,
+      })
+    )
     expect(screen.getByRole("tab", { name: "Chỉnh từng dòng" })).toHaveAttribute(
       "aria-selected",
       "true"

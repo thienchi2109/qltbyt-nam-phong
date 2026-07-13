@@ -118,6 +118,9 @@ export function TechnicalConfigurationBaselineEditor({
   } = status
   const selectedGroupIndex = draft.groups.findIndex((group) => group.key === activeValue)
   const selectedGroup = selectedGroupIndex >= 0 ? draft.groups[selectedGroupIndex] : null
+  const selectedGroupError = selectedGroup ? validation.groupErrors[selectedGroup.key] : undefined
+  const selectedGroupErrorId =
+    selectedGroup && selectedGroupError ? `baseline-group-${selectedGroup.key}-error` : undefined
   const selectedGroupHasPendingInput = hasTechnicalConfigurationBulkEntryInput(bulkSession.input)
   const addGroupRef = React.useRef<HTMLButtonElement>(null)
   const groupNameRef = React.useRef<HTMLInputElement>(null)
@@ -226,12 +229,13 @@ export function TechnicalConfigurationBaselineEditor({
                     aria-label={`Tên nhóm ${selectedGroupIndex + 1}`}
                     value={selectedGroup.name}
                     disabled={isEditingDisabled}
-                    aria-invalid={Boolean(validation.groupErrors[selectedGroup.key])}
+                    aria-invalid={Boolean(selectedGroupError)}
+                    aria-describedby={selectedGroupErrorId}
                     onChange={(event) => onGroupNameChange(selectedGroup.key, event.target.value)}
                   />
-                  {validation.groupErrors[selectedGroup.key] ? (
-                    <p className="mt-1 text-sm text-destructive">
-                      {validation.groupErrors[selectedGroup.key]}
+                  {selectedGroupError ? (
+                    <p id={selectedGroupErrorId} className="mt-1 text-sm text-destructive">
+                      {selectedGroupError}
                     </p>
                   ) : null}
                 </div>

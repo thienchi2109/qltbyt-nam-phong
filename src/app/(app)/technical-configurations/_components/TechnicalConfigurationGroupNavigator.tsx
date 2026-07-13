@@ -104,7 +104,7 @@ export function TechnicalConfigurationGroupNavigator({
             role="tab"
             aria-selected={activeValue === item.value}
             aria-controls={GROUP_WORKSPACE_PANEL_ID}
-            tabIndex={activeValue === item.value ? 0 : -1}
+            tabIndex={activeValue === item.value || (!activeValue && index === 0) ? 0 : -1}
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap border-b-2 border-transparent px-4 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring aria-selected:border-primary aria-selected:text-foreground"
             onClick={() => onValueChange(item.value)}
             onKeyDown={(event) => handleKeyDown(event, index)}
