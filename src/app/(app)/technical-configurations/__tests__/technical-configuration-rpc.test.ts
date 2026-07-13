@@ -165,4 +165,21 @@ describe("technical configuration RPC adapter", () => {
       message: "RPC returned an invalid JSON response",
     })
   })
+
+  it("preserves AbortError while reading a cancelled response body", async () => {
+    expect(rpc.listTechnicalConfigurationDossiers).toEqual(expect.any(Function))
+    if (!rpc.listTechnicalConfigurationDossiers) return
+
+    const abortError = new DOMException("The operation was aborted", "AbortError")
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockRejectedValue(abortError),
+      })
+    )
+
+    await expect(rpc.listTechnicalConfigurationDossiers()).rejects.toBe(abortError)
+  })
 })

@@ -71,7 +71,13 @@ async function callTechnicalConfigurationRpc<TResponse>(
     signal: options.signal,
   })
 
-  const payload: unknown = await response.json().catch(() => null)
+  const payload: unknown = await response.json().catch((error: unknown) => {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw error
+    }
+
+    return null
+  })
 
   if (!response.ok) {
     throw new TechnicalConfigurationRpcError(response.status, getErrorPayload(payload))
