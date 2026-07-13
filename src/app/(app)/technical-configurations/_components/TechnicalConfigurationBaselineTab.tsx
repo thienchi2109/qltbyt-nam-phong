@@ -3,6 +3,7 @@ import * as React from "react"
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
+import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
@@ -30,8 +31,13 @@ export function TechnicalConfigurationBaselineTab({
     isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput,
   })
   const draft = baseline.editorDraft
+  const summaryValidation = React.useMemo(
+    () => (draft ? validateTechnicalConfigurationBaselineEditorDraft(draft) : baseline.validation),
+    [baseline.validation, draft]
+  )
   const inlineEditor = useTechnicalConfigurationInlineEditor({
     draft,
+    validation: summaryValidation,
     saveStatus: baseline.saveStatus,
     bulkSessions,
     onEditorChange: baseline.onEditorChange,
@@ -53,15 +59,19 @@ export function TechnicalConfigurationBaselineTab({
     return () => window.removeEventListener("beforeunload", handleBeforeUnload)
   }, [isUnsafeToLeave])
 
-  const handleReloadFromServer = () => {
+  const handleReloadFromServer = async () => {
     if (bulkSessions.hasPendingInput) return
     const confirmed = window.confirm(
       "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
     )
     if (!confirmed) return
     bulkSessions.clearAll()
-    inlineEditor.prepareForReload()
-    baseline.onReloadFromServer()
+    try {
+      const reloadedDraft = await baseline.onReloadFromServer()
+      inlineEditor.prepareForReload(reloadedDraft.groups[0]?.key ?? "")
+    } catch {
+      return
+    }
   }
   if (baseline.isLoading) {
     return <TechnicalConfigurationBaselineLoadingState />
@@ -102,6 +112,7 @@ export function TechnicalConfigurationBaselineTab({
       <TechnicalConfigurationBaselineEditor
         draft={draft}
         validation={baseline.validation}
+        summaryValidation={summaryValidation}
         status={{
           dirty: baseline.isDirty,
           saving: baseline.isSaving,

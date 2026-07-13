@@ -10,7 +10,10 @@ import {
   setTechnicalConfigurationBaselineEditorCriterionText,
   setTechnicalConfigurationBaselineEditorGroupName,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type {
+  TechnicalConfigurationBaselineEditorDraft,
+  TechnicalConfigurationBaselineEditorValidation,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { parseTechnicalConfigurationBulkEntry } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 import type {
   TechnicalConfigurationEntryMode,
@@ -29,6 +32,7 @@ type TechnicalConfigurationEditorViewState = {
 
 type UseTechnicalConfigurationInlineEditorOptions = {
   draft: TechnicalConfigurationBaselineEditorDraft | null
+  validation: TechnicalConfigurationBaselineEditorValidation
   saveStatus: "idle" | "saved"
   bulkSessions: BulkSessions
   onEditorChange: (draft: TechnicalConfigurationBaselineEditorDraft) => void
@@ -37,6 +41,7 @@ type UseTechnicalConfigurationInlineEditorOptions = {
 /** Owns local group, mode, focus, and inline bulk-entry transitions. */
 export function useTechnicalConfigurationInlineEditor({
   draft,
+  validation,
   saveStatus,
   bulkSessions,
   onEditorChange,
@@ -109,7 +114,6 @@ export function useTechnicalConfigurationInlineEditor({
     const nextDraft = appendTechnicalConfigurationBaselineEditorCriterion(draft, groupKey)
     const criterion = nextDraft.groups.find((group) => group.key === groupKey)?.criteria.at(-1)
     updateDraft(nextDraft)
-    bulkSessions.clearRecentHighlights()
     const nextFocusTarget: TechnicalConfigurationFocusTarget = criterion
       ? { kind: "criterion", key: criterion.key, token: nextFocusToken() }
       : null
@@ -129,7 +133,11 @@ export function useTechnicalConfigurationInlineEditor({
     const nextCriterion =
       nextGroup?.criteria[Math.min(criterionIndex, nextGroup.criteria.length - 1)]
     updateDraft(nextDraft)
-    bulkSessions.clearRecentHighlights()
+    if (bulkSessions.recentlyAcceptedCriterionKeys.has(criterionKey)) {
+      bulkSessions.setRecentlyAccepted(
+        [...bulkSessions.recentlyAcceptedCriterionKeys].filter((key) => key !== criterionKey)
+      )
+    }
     const nextFocusTarget: TechnicalConfigurationFocusTarget = nextCriterion
       ? { kind: "criterion", key: nextCriterion.key, token: nextFocusToken() }
       : { kind: "add-criterion", token: nextFocusToken() }
@@ -143,7 +151,21 @@ export function useTechnicalConfigurationInlineEditor({
 
   const changeMode = (mode: TechnicalConfigurationEntryMode) => {
     if (mode !== entryMode) bulkSessions.clearRecentHighlights()
-    setViewState((current) => ({ ...current, entryMode: mode, focusTarget: null }))
+    const selectedGroup = draft?.groups.find((group) => group.key === activeValue)
+    const targetCriterion =
+      selectedGroup?.criteria.find((criterion) => validation.criterionErrors[criterion.key]) ??
+      selectedGroup?.criteria[0]
+    const nextFocusTarget: TechnicalConfigurationFocusTarget =
+      mode === "row"
+        ? targetCriterion
+          ? { kind: "criterion", key: targetCriterion.key, token: nextFocusToken() }
+          : { kind: "add-criterion", token: nextFocusToken() }
+        : null
+    setViewState((current) => ({
+      ...current,
+      entryMode: mode,
+      focusTarget: nextFocusTarget,
+    }))
   }
 
   const acceptBulk = () => {
@@ -201,11 +223,13 @@ export function useTechnicalConfigurationInlineEditor({
     changeMode,
     acceptBulk,
     cancelBulk,
-    prepareForReload: () =>
+    prepareForReload: (firstGroupKey: string) =>
       setViewState({
-        activeValue: draft?.groups[0]?.key ?? "",
+        activeValue: firstGroupKey,
         entryMode: "row",
-        focusTarget: null,
+        focusTarget: firstGroupKey
+          ? { kind: "group-tab", key: firstGroupKey, token: nextFocusToken() }
+          : { kind: "add-group", token: nextFocusToken() },
       }),
     setGroupName: (groupKey: string, name: string) => {
       if (draft)

@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom"
-import { screen } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 import {
   createDraft,
   getBaselineRpcMock,
@@ -47,5 +48,70 @@ describe("technical configuration focus transitions", () => {
 
     await user.click(await screen.findByRole("button", { name: "Xóa nhóm 1" }))
     expect(screen.getByRole("button", { name: "Thêm nhóm" })).toHaveFocus()
+  })
+
+  it("focuses the first invalid requirement when manually returning to row mode", async () => {
+    const user = userEvent.setup()
+    const draft = createDraft()
+    rpc.getDraft.mockResolvedValueOnce({
+      data: {
+        ...draft,
+        groups: draft.groups.map((group, index) =>
+          index === 0
+            ? {
+                ...group,
+                criteria: [
+                  ...group.criteria,
+                  {
+                    ...group.criteria[0],
+                    id: "criterion-2",
+                    criterion_code: "TC-0002",
+                    requirement_text: " ",
+                    sort_order: 2,
+                  },
+                ],
+              }
+            : group
+        ),
+      },
+    })
+    renderTab()
+
+    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+    await user.click(screen.getByRole("tab", { name: "Chỉnh từng dòng" }))
+
+    expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
+  })
+
+  it("focuses the first server group after a successful conflict reload", async () => {
+    const user = userEvent.setup()
+    rpc.updateGroup.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, {
+        code: "PT409",
+        message: "stale_revision",
+      })
+    )
+    renderTab()
+
+    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(nameInput)
+    await user.type(nameInput, "Tên đang xung đột")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+
+    const currentDraft = createDraft()
+    const reloadedDraft = createDraft({
+      revision: 8,
+      groups: currentDraft.groups.map((group, index) =>
+        index === 0 ? { ...group, name: "Tên mới từ máy chủ" } : group
+      ),
+    })
+    rpc.getDraft.mockResolvedValueOnce({ data: reloadedDraft })
+    vi.spyOn(window, "confirm").mockReturnValueOnce(true)
+
+    await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+
+    const firstGroupTab = await screen.findByRole("tab", { name: /Tên mới từ máy chủ/ })
+    await waitFor(() => expect(firstGroupTab).toHaveFocus())
   })
 })

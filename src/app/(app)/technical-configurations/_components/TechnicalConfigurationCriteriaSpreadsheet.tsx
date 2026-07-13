@@ -48,14 +48,18 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
 
   React.useEffect(() => {
     if (!focusCriterionKey) return
-    const target = requirementRefs.current.get(focusCriterionKey)
-    target?.focus()
-    target?.scrollIntoView?.({ block: "nearest" })
+    const timeoutId = window.setTimeout(() => {
+      const target = requirementRefs.current.get(focusCriterionKey)
+      target?.focus()
+      target?.scrollIntoView?.({ block: "nearest" })
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
   }, [focusCriterionKey])
 
   React.useEffect(() => {
     if (focusAddCriterionToken === null) return
-    addCriterionRef.current?.focus()
+    const timeoutId = window.setTimeout(() => addCriterionRef.current?.focus(), 0)
+    return () => window.clearTimeout(timeoutId)
   }, [focusAddCriterionToken])
 
   return (

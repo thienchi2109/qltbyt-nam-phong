@@ -47,6 +47,7 @@ type TechnicalConfigurationBaselineEditorStatus = {
 type TechnicalConfigurationBaselineEditorProps = Readonly<{
   draft: TechnicalConfigurationBaselineEditorDraft
   validation: TechnicalConfigurationBaselineEditorValidation
+  summaryValidation: TechnicalConfigurationBaselineEditorValidation
   status: TechnicalConfigurationBaselineEditorStatus
   activeValue: string
   entryMode: TechnicalConfigurationEntryMode
@@ -82,6 +83,7 @@ const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
 export function TechnicalConfigurationBaselineEditor({
   draft,
   validation,
+  summaryValidation,
   status,
   activeValue,
   entryMode,
@@ -181,7 +183,7 @@ export function TechnicalConfigurationBaselineEditor({
       <TechnicalConfigurationGroupNavigator
         groups={draft.groups}
         activeValue={activeValue}
-        validation={validation}
+        validation={summaryValidation}
         focusGroupRequest={
           focusTarget?.kind === "group-tab"
             ? { groupKey: focusTarget.key, token: focusTarget.token }
@@ -198,7 +200,7 @@ export function TechnicalConfigurationBaselineEditor({
         {activeValue === ALL_GROUPS_VALUE ? (
           <TechnicalConfigurationAllGroupsOverview
             draft={draft}
-            validation={validation}
+            validation={summaryValidation}
             onCriterionActivate={onOverviewCriterionActivate}
           />
         ) : selectedGroup ? (

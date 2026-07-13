@@ -89,7 +89,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     rpc.getDraft.mockResolvedValue({ data: draft })
   })
 
-  it("derives field validation from the current local draft before save", async () => {
+  it("shows field validation only after an explicit save attempt", async () => {
     const { result } = renderHook(
       () =>
         useTechnicalConfigurationBaselineEditor({
@@ -117,12 +117,23 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     })
 
     expect(result.current.validation).toEqual({
-      groupErrors: {
-        "group-1": "Tên nhóm là bắt buộc.",
-      },
-      criterionErrors: {
-        "criterion-1": "Nội dung yêu cầu là bắt buộc.",
-      },
+      groupErrors: {},
+      criterionErrors: {},
     })
+
+    act(() => {
+      result.current.onSave()
+    })
+
+    await waitFor(() =>
+      expect(result.current.validation).toEqual({
+        groupErrors: {
+          "group-1": "Tên nhóm là bắt buộc.",
+        },
+        criterionErrors: {
+          "criterion-1": "Nội dung yêu cầu là bắt buộc.",
+        },
+      })
+    )
   })
 })

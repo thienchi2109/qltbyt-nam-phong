@@ -117,6 +117,24 @@ describe("technical configuration baseline tab", () => {
     expect(await screen.findByText("Đã lưu")).toBeInTheDocument()
   })
 
+  it("preserves accepted-row highlights across unrelated criterion actions", async () => {
+    const user = userEvent.setup()
+    const { container } = renderTab()
+
+    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Yêu cầu mới 1\nYêu cầu mới 2")
+    await user.click(screen.getByRole("button", { name: "Xem trước" }))
+    await user.click(screen.getByRole("button", { name: "Thêm vào bản nháp" }))
+
+    expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
+
+    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
+    expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
+
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 1.1" }))
+    expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
+  })
+
   it("saves only from explicit Lưu and shows the exact pending label", async () => {
     const user = userEvent.setup()
     const pending = deferred<{ data: TechnicalConfigurationBaselineGroupMutationWire }>()

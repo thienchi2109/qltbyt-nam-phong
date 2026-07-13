@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { fireEvent, render, screen } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -105,7 +105,7 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
     expect(onAddCriterion).toHaveBeenCalledTimes(1)
   })
 
-  it("focuses the requested requirement cell", () => {
+  it("focuses the requested requirement cell", async () => {
     render(
       <TechnicalConfigurationCriteriaSpreadsheet
         group={group}
@@ -122,6 +122,6 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
       />
     )
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.2")).toHaveFocus()
+    await waitFor(() => expect(screen.getByLabelText("Nội dung yêu cầu 2.2")).toHaveFocus())
   })
 })

@@ -90,6 +90,39 @@ describe("technical configuration inline workflow", () => {
     vi.clearAllMocks()
   })
 
+  it("uses current-draft validation for summaries without exposing field errors before save", async () => {
+    const originalDraft = baseline.editorDraft
+    baseline.editorDraft = {
+      ...originalDraft,
+      groups: originalDraft.groups.map((group, index) =>
+        index === 0
+          ? {
+              ...group,
+              name: " ",
+              criteria: group.criteria.map((criterion) => ({
+                ...criterion,
+                requirementText: " ",
+              })),
+            }
+          : group
+      ),
+    }
+
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+      expect(await screen.findByRole("tab", { name: /Nhóm 1.*2 lỗi/ })).toBeInTheDocument()
+      expect(screen.getByLabelText("Tên nhóm 1")).not.toHaveAttribute("aria-invalid", "true")
+      expect(screen.queryByText("Tên nhóm là bắt buộc.")).not.toBeInTheDocument()
+      expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).not.toHaveAttribute(
+        "aria-invalid",
+        "true"
+      )
+    } finally {
+      baseline.editorDraft = originalDraft
+    }
+  })
+
   it("preserves group buffers and treats clean-draft bulk input as unsafe", async () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
