@@ -1,12 +1,35 @@
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen, within } from "@testing-library/react"
-import { ArrowLeftRight, HardHat, Home, Wrench } from "lucide-react"
+import { ArrowLeftRight, HardHat, Home, ListChecks, Wrench } from "lucide-react"
 import { describe, expect, it } from "vitest"
 
 import { AppSidebarNav } from "../app-sidebar-nav"
 
 describe("AppSidebarNav", () => {
+  it("renders technical configurations as one direct sidebar link", () => {
+    render(
+      <AppSidebarNav
+        items={[
+          {
+            href: "/technical-configurations",
+            icon: ListChecks,
+            label: "Cấu hình kỹ thuật",
+            mobileSection: "more",
+          },
+        ]}
+        pathname="/technical-configurations"
+        isSidebarOpen
+        notificationCounts={{ repair: 0, transfer: 0, maintenance: 0 }}
+      />
+    )
+
+    const link = screen.getByRole("link", { name: "Cấu hình kỹ thuật" })
+    expect(link).toHaveAttribute("href", "/technical-configurations")
+    expect(link).toHaveAttribute("aria-current", "page")
+    expect(link).not.toHaveAttribute("aria-haspopup")
+  })
+
   it("renders per-type badges on matching navigation items only", () => {
     render(
       <AppSidebarNav

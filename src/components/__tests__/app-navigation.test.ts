@@ -18,6 +18,15 @@ function getMoreHrefs(role: string): string[] {
 }
 
 describe("app-navigation role filtering", () => {
+  it("shows technical configurations only to global-equivalent roles", () => {
+    expect(getHrefs("global")).toContain("/technical-configurations")
+    expect(getHrefs("admin")).toContain("/technical-configurations")
+
+    for (const role of ["regional_leader", "to_qltb", ...restrictedRoles]) {
+      expect(getHrefs(role)).not.toContain("/technical-configurations")
+    }
+  })
+
   it("hides device quota from restricted roles in the main navigation", () => {
     for (const role of restrictedRoles) {
       expect(getHrefs(role)).not.toContain("/device-quota")

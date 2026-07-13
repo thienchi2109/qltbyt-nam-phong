@@ -5,6 +5,7 @@ import {
   Calculator,
   HardHat,
   Home,
+  ListChecks,
   Package,
   QrCode,
   Users,
@@ -68,6 +69,13 @@ const APP_NAV_ITEMS: AppNavItem[] = [
   },
   { href: "/reports", icon: BarChart3, label: "Báo cáo", mobileSection: "more" },
   { href: "/qr-scanner", icon: QrCode, label: "Quét QR", mobileSection: "more" },
+  {
+    href: "/technical-configurations",
+    icon: ListChecks,
+    label: "Cấu hình kỹ thuật",
+    mobileSection: "more",
+    requiresGlobal: true,
+  },
   { href: "/users", icon: Users, label: "Người dùng", mobileSection: "more", requiresGlobal: true },
   {
     href: "/activity-logs",
