@@ -1,171 +1,25 @@
-import * as React from "react"
-import { QueryClient } from "@tanstack/react-query"
 import "@testing-library/jest-dom"
-import { act, render, screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
 import type {
-  TechnicalConfigurationBaselineCriterionMutationWire,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
 } from "@/app/(app)/technical-configurations/baseline-types"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
-import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
-import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
+import {
+  createDraft,
+  createPersistentQueryClient,
+  criterionMutation,
+  deferred,
+  dossier,
+  getBaselineRpcMock,
+  groupMutation,
+  renderTab,
+} from "./technical-configuration-baseline-tab-fixtures"
 
-const timestamp = "2026-07-13T00:00:00.000Z"
-
-const rpc = vi.hoisted(() => ({
-  createDraft: vi.fn(),
-  getDraft: vi.fn(),
-  createGroup: vi.fn(),
-  updateGroup: vi.fn(),
-  deleteGroup: vi.fn(),
-  reorderGroups: vi.fn(),
-  createCriterion: vi.fn(),
-  updateCriterion: vi.fn(),
-  deleteCriterion: vi.fn(),
-  reorderCriteria: vi.fn(),
-  previewBulk: vi.fn(),
-}))
-
-vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
-  useTechnicalConfigurationBaseline: () => rpc,
-}))
-
-const dossier: TechnicalConfigurationDossierWire = {
-  id: "dossier-1",
-  device_type_name: "Máy lọc thận",
-  name: "Cấu hình máy lọc thận",
-  description: null,
-  revision: 3,
-  archived_at: null,
-  archived_by: null,
-  created_at: timestamp,
-  created_by: 1,
-  updated_at: timestamp,
-  updated_by: 1,
-}
-
-function createDraft(
-  overrides: Partial<TechnicalConfigurationBaselineDraftWire> = {}
-): TechnicalConfigurationBaselineDraftWire {
-  const groupNames = [
-    "Yêu cầu chung",
-    "Yêu cầu cấu hình cung cấp",
-    "Yêu cầu kỹ thuật",
-    "Yêu cầu khác",
-  ]
-
-  return {
-    id: "draft-1",
-    dossier_id: dossier.id,
-    version_number: 1,
-    status: "draft",
-    next_criterion_number: 2,
-    revision: 4,
-    created_at: timestamp,
-    created_by: 1,
-    updated_at: timestamp,
-    updated_by: 1,
-    groups: groupNames.map((name, index) => ({
-      id: `group-${index + 1}`,
-      baseline_version_id: "draft-1",
-      name,
-      sort_order: index + 1,
-      created_at: timestamp,
-      created_by: 1,
-      updated_at: timestamp,
-      updated_by: 1,
-      criteria:
-        index === 0
-          ? [
-              {
-                id: "criterion-1",
-                baseline_version_id: "draft-1",
-                group_id: "group-1",
-                criterion_code: "TC-0001",
-                title: "Nguồn điện",
-                requirement_text: "Dòng 1\nDòng 2",
-                sort_order: 1,
-                source_criterion_id: null,
-                created_at: timestamp,
-                created_by: 1,
-                updated_at: timestamp,
-                updated_by: 1,
-              },
-            ]
-          : [],
-    })),
-    ...overrides,
-  }
-}
-
-function groupMutation(
-  revision: number,
-  name: string
-): TechnicalConfigurationBaselineGroupMutationWire {
-  return {
-    id: "group-1",
-    baseline_version_id: "draft-1",
-    name,
-    sort_order: 1,
-    created_at: timestamp,
-    created_by: 1,
-    updated_at: timestamp,
-    updated_by: 1,
-    revision,
-  }
-}
-
-function criterionMutation(
-  id: string,
-  criterionCode: string,
-  groupId: string,
-  requirementText: string,
-  sortOrder: number,
-  revision: number
-): TechnicalConfigurationBaselineCriterionMutationWire {
-  return {
-    id,
-    baseline_version_id: "draft-1",
-    group_id: groupId,
-    criterion_code: criterionCode,
-    title: null,
-    requirement_text: requirementText,
-    sort_order: sortOrder,
-    source_criterion_id: null,
-    created_at: timestamp,
-    created_by: 1,
-    updated_at: timestamp,
-    updated_by: 1,
-    revision,
-  }
-}
-
-function renderTab(onDirtyChange = vi.fn(), queryClient = createTestQueryClient()) {
-  return {
-    onDirtyChange,
-    ...render(
-      <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />,
-      {
-        wrapper: createReactQueryWrapper(queryClient),
-      }
-    ),
-  }
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((resolver, rejecter) => {
-    resolve = resolver
-    reject = rejecter
-  })
-  return { promise, reject, resolve }
-}
+const rpc = getBaselineRpcMock()
 
 describe("technical configuration baseline tab", () => {
   beforeEach(() => {
@@ -178,15 +32,17 @@ describe("technical configuration baseline tab", () => {
     renderTab()
 
     expect(await screen.findByDisplayValue("Yêu cầu chung")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("Yêu cầu cấu hình cung cấp")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("Yêu cầu kỹ thuật")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("Yêu cầu khác")).toBeInTheDocument()
+    expect(screen.queryByDisplayValue("Yêu cầu cấu hình cung cấp")).not.toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: /Yêu cầu kỹ thuật.*0 tiêu chí/ })).toBeInTheDocument()
+    expect(screen.getByRole("tab", { name: "Xem tất cả nhóm" })).toBeInTheDocument()
 
     const requirement = screen.getByLabelText("Nội dung yêu cầu 1.1")
     await user.clear(requirement)
     await user.type(requirement, "Nguồn điện ổn định\n220V - 50Hz")
     await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
+    await user.click(screen.getByRole("tab", { name: /Yêu cầu khác.*0 tiêu chí/ }))
     await user.click(screen.getByRole("button", { name: "Di chuyển nhóm 4 lên" }))
+    await user.click(screen.getByRole("tab", { name: /Yêu cầu chung.*2 tiêu chí/ }))
 
     expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveValue(
       "Nguồn điện ổn định\n220V - 50Hz"
@@ -195,6 +51,9 @@ describe("technical configuration baseline tab", () => {
     expect(rpc.updateCriterion).not.toHaveBeenCalled()
     expect(rpc.createCriterion).not.toHaveBeenCalled()
     expect(rpc.reorderGroups).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole("button", { name: "Thêm nhóm" }))
+    expect(screen.getByLabelText("Tên nhóm 5")).toHaveFocus()
   })
 
   it("keeps bulk preview and accept local until explicit save", async () => {
@@ -215,14 +74,15 @@ describe("technical configuration baseline tab", () => {
       })
     renderTab()
 
-    await user.click(await screen.findByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
-    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
+    await user.click(await screen.findByRole("tab", { name: /Yêu cầu cấu hình cung cấp/ }))
+    await user.click(screen.getByRole("tab", { name: "Nhập nhiều dòng" }))
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     await user.type(
-      within(dialog).getByLabelText("Nội dung nhập nhanh"),
+      screen.getByLabelText("Nội dung nhập nhanh"),
       "Nguồn điện ổn định\nÁp lực vận hành ≥ 3 bar"
     )
-    await user.click(within(dialog).getByRole("button", { name: "Xem trước" }))
-    await user.click(within(dialog).getByRole("button", { name: "Thêm vào nhóm" }))
+    await user.click(screen.getByRole("button", { name: "Xem trước" }))
+    await user.click(screen.getByRole("button", { name: "Thêm vào bản nháp" }))
 
     for (const mutation of [
       rpc.createGroup,
@@ -384,6 +244,7 @@ describe("technical configuration baseline tab", () => {
 
     const pendingButton = screen.getByRole("button", { name: "Đang tải lại..." })
     expect(pendingButton).toBeDisabled()
+    expect(await screen.findByDisplayValue("Tên đang xung đột")).toBeDisabled()
     await user.click(pendingButton)
     expect(rpc.getDraft).toHaveBeenCalledTimes(2)
 
@@ -399,12 +260,7 @@ describe("technical configuration baseline tab", () => {
 
   it("keeps accepted partial-save progress in the query cache across remounts", async () => {
     const user = userEvent.setup()
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: { retry: false, gcTime: 60_000 },
-        mutations: { retry: false },
-      },
-    })
+    const queryClient = createPersistentQueryClient()
     const setQueryData = vi.spyOn(queryClient, "setQueryData")
     rpc.updateGroup.mockResolvedValue({ data: groupMutation(5, "Tên nhóm đã được lưu") })
     rpc.createCriterion.mockRejectedValue(new Error("network_down"))

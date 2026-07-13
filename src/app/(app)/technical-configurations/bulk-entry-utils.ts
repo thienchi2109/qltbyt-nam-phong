@@ -16,6 +16,11 @@ export function normalizeTechnicalConfigurationBulkEntryText(input: string): str
   return input.replace(/^[\s\u200B\u2060]+/, "").replace(/[\s\u200B\u2060]+$/, "")
 }
 
+/** Returns whether input contains at least one parser-meaningful character. */
+export function hasTechnicalConfigurationBulkEntryInput(input: string): boolean {
+  return normalizeTechnicalConfigurationBulkEntryText(input).length > 0
+}
+
 /** Parses pasted criteria while preserving internal blank rows for validation. */
 export function parseTechnicalConfigurationBulkEntry(
   input: string

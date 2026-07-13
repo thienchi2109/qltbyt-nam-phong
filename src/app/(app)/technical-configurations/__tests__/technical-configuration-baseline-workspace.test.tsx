@@ -72,8 +72,16 @@ describe("technical configuration baseline workspace integration", () => {
       "TechnicalConfigurationsClient.tsx",
       "_components/TechnicalConfigurationWorkspaceShell.tsx",
       "_components/TechnicalConfigurationBaselineTab.tsx",
+      "_components/TechnicalConfigurationBaselineAlerts.tsx",
+      "_components/TechnicalConfigurationBaselineTabStates.tsx",
       "_components/TechnicalConfigurationBaselineEditor.tsx",
+      "_components/TechnicalConfigurationCriteriaSpreadsheet.tsx",
+      "_components/TechnicalConfigurationBulkEntryWorkbench.tsx",
+      "_components/TechnicalConfigurationAllGroupsOverview.tsx",
+      "_components/TechnicalConfigurationGroupNavigator.tsx",
       "_hooks/useTechnicalConfigurationBaselineEditor.ts",
+      "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
+      "_hooks/useTechnicalConfigurationInlineEditor.ts",
     ]
 
     for (const file of files) {
