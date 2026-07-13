@@ -144,4 +144,25 @@ describe("technical configuration RPC adapter", () => {
       hint: "Use an authorized session",
     })
   })
+
+  it("rejects a successful response whose JSON payload cannot be parsed", async () => {
+    expect(rpc.listTechnicalConfigurationDossiers).toEqual(expect.any(Function))
+    if (!rpc.listTechnicalConfigurationDossiers) return
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("not-json", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      )
+    )
+
+    await expect(rpc.listTechnicalConfigurationDossiers()).rejects.toMatchObject({
+      name: "TechnicalConfigurationRpcError",
+      status: 200,
+      message: "RPC returned an invalid JSON response",
+    })
+  })
 })

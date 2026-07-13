@@ -63,6 +63,7 @@ export function TechnicalConfigurationsClient({
   const createDossierMutation = useMutation({
     mutationFn: createTechnicalConfigurationDossier,
     onSuccess: async (response) => {
+      setOpenDossierError(null)
       setSelectedDossier(response.data)
       setIsCreateOpen(false)
       await queryClient.invalidateQueries({ queryKey: DOSSIER_QUERY_ROOT })

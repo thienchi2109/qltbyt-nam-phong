@@ -1,9 +1,8 @@
 import { ArrowLeft, ClipboardList, GitCompareArrows, ListChecks, PackageSearch } from "lucide-react"
 
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-import type { TechnicalConfigurationDossierWire } from "../types"
 
 type TechnicalConfigurationWorkspaceShellProps = {
   dossier: TechnicalConfigurationDossierWire

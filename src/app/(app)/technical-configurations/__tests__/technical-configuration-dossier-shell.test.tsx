@@ -224,6 +224,26 @@ describe("technical configuration dossier shell", () => {
     ).toEqual({ data: dossier })
   })
 
+  it("does not restore an earlier open error after create and back", async () => {
+    const user = userEvent.setup()
+    const createdDossier = { ...dossier, id: "dossier-created", name: "Hồ sơ mới" }
+    mocks.listDossiers.mockResolvedValue({ ...emptyList, data: [dossier], total: 1 })
+    mocks.getDossier.mockRejectedValue(new Error("Hồ sơ cũ không thể mở"))
+    mocks.createDossier.mockResolvedValue({ data: createdDossier })
+
+    renderClient("global")
+
+    await user.click(await screen.findByRole("button", { name: `Mở ${dossier.name}` }))
+    expect(await screen.findByText("Hồ sơ cũ không thể mở")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Tạo hồ sơ" }))
+    await user.type(screen.getByLabelText("Loại thiết bị"), createdDossier.device_type_name)
+    await user.type(screen.getByLabelText("Tên hồ sơ"), createdDossier.name)
+    await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }))
+    await user.click(await screen.findByRole("button", { name: "Danh sách hồ sơ" }))
+
+    expect(screen.queryByText("Hồ sơ cũ không thể mở")).not.toBeInTheDocument()
+  })
+
   it("blocks a second dossier open while the first request is pending", async () => {
     const user = userEvent.setup()
     const secondDossier = {
