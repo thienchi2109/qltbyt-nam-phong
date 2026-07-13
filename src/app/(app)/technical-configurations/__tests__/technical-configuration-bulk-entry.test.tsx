@@ -104,6 +104,19 @@ describe("technical configuration bulk text entry", () => {
     expect(onSave).not.toHaveBeenCalled()
   })
 
+  it("keeps preview disabled for input containing only zero-width separators", async () => {
+    const user = userEvent.setup()
+    const { onChange, onSave } = renderEditor()
+
+    await user.click(screen.getByRole("button", { name: "Nhập nhanh tiêu chí vào nhóm 2" }))
+    const dialog = screen.getByRole("dialog", { name: "Nhập nhanh tiêu chí" })
+    await user.type(within(dialog).getByLabelText("Nội dung nhập nhanh"), "\u200B\u2060")
+
+    expect(within(dialog).getByRole("button", { name: "Xem trước" })).toBeDisabled()
+    expect(onChange).not.toHaveBeenCalled()
+    expect(onSave).not.toHaveBeenCalled()
+  })
+
   it("cancels without changing the draft", async () => {
     const user = userEvent.setup()
     const { onChange, onSave } = renderEditor()

@@ -4,7 +4,10 @@ import * as React from "react"
 import { AlertCircle, CheckCircle2, ClipboardPaste, ListChecks } from "lucide-react"
 
 import type { TechnicalConfigurationBulkEntryPreview } from "@/app/(app)/technical-configurations/bulk-entry-utils"
-import { parseTechnicalConfigurationBulkEntry } from "@/app/(app)/technical-configurations/bulk-entry-utils"
+import {
+  normalizeTechnicalConfigurationBulkEntryText,
+  parseTechnicalConfigurationBulkEntry,
+} from "@/app/(app)/technical-configurations/bulk-entry-utils"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -179,7 +182,7 @@ export function TechnicalConfigurationBulkEntryDialog({
           <Button
             type="button"
             variant="secondary"
-            disabled={disabled || !input.trim()}
+            disabled={disabled || !normalizeTechnicalConfigurationBulkEntryText(input)}
             onClick={() => setPreview(parseTechnicalConfigurationBulkEntry(input))}
           >
             Xem trước
