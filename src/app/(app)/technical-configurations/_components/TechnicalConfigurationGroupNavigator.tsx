@@ -8,15 +8,11 @@ import type {
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
-/** Sentinel value for the read-only all-groups overview tab. */
-export const ALL_GROUPS_VALUE = "__all-groups__"
-/** Shared panel ID referenced by the group navigation tabs. */
-export const GROUP_WORKSPACE_PANEL_ID = "technical-configuration-group-workspace"
-
-/** Builds the stable DOM ID for a group navigation tab. */
-export function getTechnicalConfigurationGroupTabId(value: string) {
-  return `technical-configuration-group-tab-${value}`
-}
+import {
+  ALL_GROUPS_VALUE,
+  getTechnicalConfigurationGroupTabId,
+  GROUP_WORKSPACE_PANEL_ID,
+} from "./TechnicalConfigurationGroupNavigation"
 
 type TechnicalConfigurationGroupNavigatorProps = Readonly<{
   groups: TechnicalConfigurationBaselineEditorGroup[]
@@ -46,20 +42,23 @@ export function TechnicalConfigurationGroupNavigator({
   onValueChange,
 }: TechnicalConfigurationGroupNavigatorProps) {
   const tabRefs = React.useRef(new Map<string, HTMLButtonElement>())
-  const items = [
-    ...groups.map((group, groupIndex) => ({
-      value: group.key,
-      label: group.name.trim() || `Nhóm ${groupIndex + 1}`,
-      criterionCount: group.criteria.length,
-      errorCount: getGroupErrorCount(group, validation),
-    })),
-    {
-      value: ALL_GROUPS_VALUE,
-      label: "Xem tất cả nhóm",
-      criterionCount: null,
-      errorCount: 0,
-    },
-  ]
+  const items = React.useMemo(
+    () => [
+      ...groups.map((group, groupIndex) => ({
+        value: group.key,
+        label: group.name.trim() || `Nhóm ${groupIndex + 1}`,
+        criterionCount: group.criteria.length,
+        errorCount: getGroupErrorCount(group, validation),
+      })),
+      {
+        value: ALL_GROUPS_VALUE,
+        label: "Xem tất cả nhóm",
+        criterionCount: null,
+        errorCount: 0,
+      },
+    ],
+    [groups, validation]
+  )
 
   React.useEffect(() => {
     if (!focusGroupRequest) return

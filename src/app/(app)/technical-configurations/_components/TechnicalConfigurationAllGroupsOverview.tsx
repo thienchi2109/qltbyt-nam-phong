@@ -38,8 +38,10 @@ export function TechnicalConfigurationAllGroupsOverview({
     return () => window.clearTimeout(timeoutId)
   }, [])
 
-  const visibleGroups = draft.groups
-    .map((group, groupIndex) => {
+  const visibleGroups = React.useMemo(() => {
+    const groups = []
+
+    for (const [groupIndex, group] of draft.groups.entries()) {
       const hasGroupError = Boolean(validation.groupErrors[group.key])
       let criteria = group.criteria
       if (filter === "errors" && !hasGroupError) {
@@ -47,11 +49,13 @@ export function TechnicalConfigurationAllGroupsOverview({
       } else if (filter === "new") {
         criteria = group.criteria.filter((criterion) => criterion.id === null)
       }
-      return { group, groupIndex, criteria, hasGroupError }
-    })
-    .filter(
-      ({ criteria, hasGroupError }) => criteria.length > 0 || (filter === "errors" && hasGroupError)
-    )
+      if (criteria.length > 0 || (filter === "errors" && hasGroupError)) {
+        groups.push({ group, groupIndex, criteria, hasGroupError })
+      }
+    }
+
+    return groups
+  }, [draft.groups, filter, validation.criterionErrors, validation.groupErrors])
 
   return (
     <section aria-label="Tổng quan tất cả nhóm" className="space-y-5 py-5">

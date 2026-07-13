@@ -20,8 +20,8 @@ import {
   ALL_GROUPS_VALUE,
   getTechnicalConfigurationGroupTabId,
   GROUP_WORKSPACE_PANEL_ID,
-  TechnicalConfigurationGroupNavigator,
-} from "./TechnicalConfigurationGroupNavigator"
+} from "./TechnicalConfigurationGroupNavigation"
+import { TechnicalConfigurationGroupNavigator } from "./TechnicalConfigurationGroupNavigator"
 
 export type TechnicalConfigurationEntryMode = "row" | "bulk"
 export type TechnicalConfigurationFocusTarget =

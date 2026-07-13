@@ -16,7 +16,7 @@ import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import { ALL_GROUPS_VALUE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigator"
+import { ALL_GROUPS_VALUE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigation"
 import type { useTechnicalConfigurationBulkEntrySessions } from "./useTechnicalConfigurationBulkEntrySessions"
 
 type BulkSessions = ReturnType<typeof useTechnicalConfigurationBulkEntrySessions>

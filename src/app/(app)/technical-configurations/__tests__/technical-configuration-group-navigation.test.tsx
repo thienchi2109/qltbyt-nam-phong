@@ -4,10 +4,8 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationAllGroupsOverview } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationAllGroupsOverview"
-import {
-  ALL_GROUPS_VALUE,
-  TechnicalConfigurationGroupNavigator,
-} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigator"
+import { ALL_GROUPS_VALUE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigation"
+import { TechnicalConfigurationGroupNavigator } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigator"
 import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
 const draft: TechnicalConfigurationBaselineEditorDraft = {
@@ -89,6 +87,42 @@ describe("technical configuration group navigation", () => {
     await waitFor(() => expect(onValueChange).toHaveBeenLastCalledWith(ALL_GROUPS_VALUE))
   })
 
+  it("reuses group tab metadata when only active navigation state changes", () => {
+    let groupNameReads = 0
+    const trackedGroup = { ...draft.groups[0] }
+    Object.defineProperty(trackedGroup, "name", {
+      enumerable: true,
+      get() {
+        groupNameReads += 1
+        return "Yêu cầu chung"
+      },
+    })
+    const groups = [trackedGroup, draft.groups[1]]
+    const onValueChange = vi.fn()
+    const { rerender } = render(
+      <TechnicalConfigurationGroupNavigator
+        groups={groups}
+        activeValue="group-1"
+        validation={validation}
+        focusGroupRequest={null}
+        onValueChange={onValueChange}
+      />
+    )
+    const initialReads = groupNameReads
+
+    rerender(
+      <TechnicalConfigurationGroupNavigator
+        groups={groups}
+        activeValue="group-2"
+        validation={validation}
+        focusGroupRequest={{ groupKey: "group-2", token: 1 }}
+        onValueChange={onValueChange}
+      />
+    )
+
+    expect(groupNameReads).toBe(initialReads)
+  })
+
   it("filters the read-only overview and reports criterion activation", async () => {
     const user = userEvent.setup()
     const onCriterionActivate = vi.fn()
@@ -118,5 +152,36 @@ describe("technical configuration group navigation", () => {
 
     await user.click(screen.getByRole("button", { name: "Mở tiêu chí 1.2 để chỉnh sửa" }))
     expect(onCriterionActivate).toHaveBeenCalledWith("group-1", "criterion-new")
+  })
+
+  it("reuses the overview projection when only the activation callback changes", () => {
+    let projectionReads = 0
+    const trackedDraft = {
+      ...draft,
+      groups: new Proxy(draft.groups, {
+        get(target, property, receiver) {
+          if (property === "map") projectionReads += 1
+          return Reflect.get(target, property, receiver)
+        },
+      }),
+    }
+    const { rerender } = render(
+      <TechnicalConfigurationAllGroupsOverview
+        draft={trackedDraft}
+        validation={validation}
+        onCriterionActivate={vi.fn()}
+      />
+    )
+    const initialReads = projectionReads
+
+    rerender(
+      <TechnicalConfigurationAllGroupsOverview
+        draft={trackedDraft}
+        validation={validation}
+        onCriterionActivate={vi.fn()}
+      />
+    )
+
+    expect(projectionReads).toBe(initialReads)
   })
 })
