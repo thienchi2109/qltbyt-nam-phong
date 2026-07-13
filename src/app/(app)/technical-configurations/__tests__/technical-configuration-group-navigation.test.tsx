@@ -69,6 +69,7 @@ describe("technical configuration group navigation", () => {
         groups={draft.groups}
         activeValue="group-1"
         validation={validation}
+        focusGroupRequest={null}
         onValueChange={onValueChange}
       />
     )

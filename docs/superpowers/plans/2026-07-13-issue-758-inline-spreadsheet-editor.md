@@ -14,6 +14,24 @@
 
 ---
 
+## Pre-implementation prerequisites
+
+Before Task 1:
+
+1. Invoke `next-best-practices`.
+2. Invoke `react-best-practices`.
+3. Invoke the `code-deduplication` skill and search unchanged code for existing:
+   - transient per-key editor session hooks;
+   - horizontal entity navigators with counts/errors;
+   - controlled spreadsheet row editors;
+   - read-only grouped overview/filter components;
+   - focusable `aria-disabled` destructive controls.
+
+Reuse an existing equivalent when semantics match. Document why a new local
+component remains appropriate when no equivalent exists.
+
+---
+
 ## Chunk 1: Transient State And Unsafe-Leave Contracts
 
 ### Task 1: Centralize meaningful bulk-input detection
@@ -621,7 +639,7 @@ git add \
 git commit -m "test(technical-configurations): lock inline editor boundaries"
 ```
 
-### Task 9: Semantic deduplication, quality gates, browser verification, and stacked PR
+### Task 9: Quality gates, browser verification, and stacked PR
 
 **Files:**
 
@@ -629,20 +647,7 @@ git commit -m "test(technical-configurations): lock inline editor boundaries"
 - Keep: `docs/superpowers/specs/2026-07-13-issue-758-inline-spreadsheet-editor-design.md`
 - Keep: `docs/superpowers/plans/2026-07-13-issue-758-inline-spreadsheet-editor.md`
 
-- [ ] **Step 1: Run semantic duplicate search**
-
-Invoke the `code-deduplication` skill. Search unchanged code for existing:
-
-- transient per-key editor session hooks;
-- horizontal entity navigators with counts/errors;
-- controlled spreadsheet row editors;
-- read-only grouped overview/filter components;
-- focusable `aria-disabled` destructive controls.
-
-Reuse an existing equivalent when semantics match. Document why a new local
-component remains appropriate when no equivalent exists.
-
-- [ ] **Step 2: Run all required verification in one context-mode batch**
+- [ ] **Step 1: Run all required verification in one context-mode batch**
 
 Run in repository order:
 
@@ -675,7 +680,7 @@ Expected:
 - React Doctor 100/100 or no new actionable diagnostics;
 - OpenSpec strict validation passes.
 
-- [ ] **Step 3: Start the dev server and run browser verification**
+- [ ] **Step 2: Start the dev server and run browser verification**
 
 Start the repository dev server on an available port. Use Vercel
 `agent-browser`/`agent-browser-verify` at:
@@ -706,19 +711,19 @@ Also verify:
   unavailable;
 - disabled-save explanation and validation text do not overlap.
 
-- [ ] **Step 4: Run change-impact review**
+- [ ] **Step 3: Run change-impact review**
 
 Run Code Review Graph `detect_changes_tool` against
 `feat/issue-756-technical-config-p3c-bulk-entry`, then GitNexus
 `detect_changes`/`impact` on the highest-risk changed symbols. Resolve genuine
 missing tests or regressions.
 
-- [ ] **Step 5: Update OpenSpec task tracking**
+- [ ] **Step 4: Update OpenSpec task tracking**
 
 Mark only the #758/P3C UX refinement tasks that are genuinely complete. Do not
 mark P4 or later phases.
 
-- [ ] **Step 6: Commit verification/docs changes**
+- [ ] **Step 5: Commit verification/docs changes**
 
 ```bash
 git add \
@@ -728,7 +733,7 @@ git add \
 git commit -m "docs(technical-configurations): finalize issue 758 workflow"
 ```
 
-- [ ] **Step 7: Push and open/update the stacked PR**
+- [ ] **Step 6: Push and open/update the stacked PR**
 
 ```bash
 git pull --rebase

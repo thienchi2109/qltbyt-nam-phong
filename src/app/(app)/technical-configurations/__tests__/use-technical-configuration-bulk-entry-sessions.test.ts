@@ -10,6 +10,12 @@ const preview: TechnicalConfigurationBulkEntryPreview = {
 }
 
 describe("useTechnicalConfigurationBulkEntrySessions", () => {
+  it("returns an immutable fallback for missing group sessions", () => {
+    const { result } = renderHook(() => useTechnicalConfigurationBulkEntrySessions())
+
+    expect(Object.isFrozen(result.current.getSession("missing-group"))).toBe(true)
+  })
+
   it("keeps independent group buffers and invalidates only the edited preview", () => {
     const { result } = renderHook(() => useTechnicalConfigurationBulkEntrySessions())
 
@@ -34,18 +40,25 @@ describe("useTechnicalConfigurationBulkEntrySessions", () => {
     })
   })
 
-  it("clears one session and removes orphaned group sessions", () => {
+  it("preserves allowed sessions and removes orphaned group sessions", () => {
     const { result } = renderHook(() => useTechnicalConfigurationBulkEntrySessions())
 
     act(() => {
       result.current.setInput("group-1", "Yêu cầu 1")
       result.current.setInput("group-2", "Yêu cầu 2")
-      result.current.clearSession("group-1")
       result.current.syncGroupKeys(["group-1"])
     })
 
-    expect(result.current.getSession("group-1")).toEqual({ input: "", preview: null })
+    expect(result.current.getSession("group-1")).toEqual({
+      input: "Yêu cầu 1",
+      preview: null,
+    })
     expect(result.current.getSession("group-2")).toEqual({ input: "", preview: null })
+
+    act(() => {
+      result.current.clearSession("group-1")
+    })
+    expect(result.current.getSession("group-1")).toEqual({ input: "", preview: null })
   })
 
   it("reports pending input only for parser-meaningful buffers", () => {
@@ -58,6 +71,7 @@ describe("useTechnicalConfigurationBulkEntrySessions", () => {
 
     act(() => {
       result.current.setInput("group-1", "Yêu cầu hợp lệ")
+      result.current.setRecentlyAccepted(["criterion-1"])
     })
     expect(result.current.hasPendingInput).toBe(true)
 
@@ -65,6 +79,7 @@ describe("useTechnicalConfigurationBulkEntrySessions", () => {
       result.current.clearAll()
     })
     expect(result.current.hasPendingInput).toBe(false)
+    expect(result.current.recentlyAcceptedCriterionKeys.size).toBe(0)
   })
 
   it("replaces and clears recently accepted criterion keys", () => {

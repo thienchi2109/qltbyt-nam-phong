@@ -590,6 +590,11 @@ semantics.
 
 ## Verification
 
+Before any TypeScript/React implementation, invoke `next-best-practices`,
+then `react-best-practices`. Invoke `code-deduplication` before creating the
+transient-state hook or reusable components, and repeat the search if the
+implementation scope expands.
+
 For the TypeScript/React diff, run in repository order:
 
 1. `node scripts/npm-run.js run format:check`
@@ -612,9 +617,8 @@ For the TypeScript/React diff, run in repository order:
      unavailable;
    - disabled-save explanation and validation text do not overlap controls.
 
-Use the `code-deduplication` skill before commit because the change introduces
-new reusable components and a transient-state hook. Use React Doctor through
-the repository script so Node 22 remains isolated.
+Record the pre-implementation reuse decision before commit. Use React Doctor
+through the repository script so Node 22 remains isolated.
 
 ## Implementation order
 

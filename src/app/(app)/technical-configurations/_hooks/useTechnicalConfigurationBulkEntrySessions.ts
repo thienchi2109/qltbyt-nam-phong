@@ -6,17 +6,33 @@ import {
 } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 
 export interface TechnicalConfigurationBulkEntrySession {
-  input: string
-  preview: TechnicalConfigurationBulkEntryPreview | null
+  readonly input: string
+  readonly preview: TechnicalConfigurationBulkEntryPreview | null
 }
 
-const EMPTY_SESSION: TechnicalConfigurationBulkEntrySession = {
+export interface TechnicalConfigurationBulkEntrySessionsApi {
+  readonly getSession: (groupKey: string) => TechnicalConfigurationBulkEntrySession
+  readonly setInput: (groupKey: string, input: string) => void
+  readonly setPreview: (
+    groupKey: string,
+    preview: TechnicalConfigurationBulkEntryPreview | null
+  ) => void
+  readonly clearSession: (groupKey: string) => void
+  readonly syncGroupKeys: (groupKeys: readonly string[]) => void
+  readonly setRecentlyAccepted: (criterionKeys: readonly string[]) => void
+  readonly clearRecentHighlights: () => void
+  readonly clearAll: () => void
+  readonly hasPendingInput: boolean
+  readonly recentlyAcceptedCriterionKeys: ReadonlySet<string>
+}
+
+const EMPTY_SESSION: TechnicalConfigurationBulkEntrySession = Object.freeze({
   input: "",
   preview: null,
-}
+})
 
 /** Manages transient bulk-entry buffers and accepted-row highlights per group. */
-export function useTechnicalConfigurationBulkEntrySessions() {
+export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigurationBulkEntrySessionsApi {
   const [sessionsByGroup, setSessionsByGroup] = React.useState<
     Record<string, TechnicalConfigurationBulkEntrySession>
   >({})

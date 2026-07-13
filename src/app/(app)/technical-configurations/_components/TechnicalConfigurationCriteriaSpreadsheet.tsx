@@ -82,6 +82,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
               {group.criteria.map((criterion, criterionIndex) => {
                 const criterionNumber = `${groupIndex}.${criterionIndex + 1}`
                 const error = criterionErrors[criterion.key]
+                const errorId = error ? `baseline-requirement-error-${criterion.key}` : undefined
                 const isRecent = recentlyAcceptedCriterionKeys.has(criterion.key)
 
                 return (
@@ -131,6 +132,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                         value={criterion.requirementText}
                         disabled={disabled}
                         aria-invalid={Boolean(error)}
+                        aria-describedby={errorId}
                         onChange={(event) =>
                           onCriterionTextChange(
                             criterion.key,
@@ -139,7 +141,11 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                           )
                         }
                       />
-                      {error ? <p className="mt-1 text-sm text-destructive">{error}</p> : null}
+                      {error ? (
+                        <p id={errorId} className="mt-1 text-sm text-destructive">
+                          {error}
+                        </p>
+                      ) : null}
                     </div>
                     <div className="px-3 py-3">
                       {error ? (

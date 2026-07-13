@@ -52,7 +52,10 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
     expect(screen.getByText("Trạng thái")).toBeInTheDocument()
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText("Mới")).toBeInTheDocument()
-    expect(screen.getByText("Nội dung yêu cầu là bắt buộc.")).toBeInTheDocument()
+    const requirement = screen.getByLabelText("Nội dung yêu cầu 2.2")
+    const error = screen.getByText("Nội dung yêu cầu là bắt buộc.")
+    expect(error).toHaveAttribute("id", "baseline-requirement-error-criterion-new")
+    expect(requirement).toHaveAttribute("aria-describedby", error.id)
     expect(screen.getByTestId("criterion-row-criterion-new")).toHaveAttribute(
       "data-recently-accepted",
       "true"
