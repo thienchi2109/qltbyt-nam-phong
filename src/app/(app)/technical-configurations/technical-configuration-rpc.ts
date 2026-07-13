@@ -57,7 +57,8 @@ function getErrorPayload(payload: unknown): TechnicalConfigurationRpcErrorPayloa
   }
 }
 
-async function callTechnicalConfigurationRpc<TResponse>(
+/** Calls one technical-configuration RPC while preserving HTTP and PostgREST error metadata. */
+export async function callTechnicalConfigurationRpc<TResponse>(
   fn: string,
   args: object,
   options: TechnicalConfigurationRpcRequestOptions = {}

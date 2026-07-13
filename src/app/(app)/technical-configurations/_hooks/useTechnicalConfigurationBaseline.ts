@@ -1,6 +1,6 @@
-import { callRpc } from "@/lib/rpc-client"
 import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
 
+import { callTechnicalConfigurationRpc } from "../technical-configuration-rpc"
 import type {
   TechnicalConfigurationBaselineBulkPreviewRpcArgs,
   TechnicalConfigurationBaselineBulkPreviewWireResponse,
@@ -24,70 +24,70 @@ import type {
 /** Typed client wrappers for the P2 baseline draft RPCs. */
 export const technicalConfigurationBaselineRpc = {
   createDraft(args: TechnicalConfigurationBaselineDraftCreateRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.createDraft,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
+      BASELINE_RPC_FUNCTIONS.createDraft,
+      { ...args }
+    )
   },
   getDraft(args: TechnicalConfigurationBaselineDraftGetRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.getDraft,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
+      BASELINE_RPC_FUNCTIONS.getDraft,
+      { ...args }
+    )
   },
   createGroup(args: TechnicalConfigurationBaselineGroupCreateRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineGroupWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.createGroup,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineGroupWireResponse>(
+      BASELINE_RPC_FUNCTIONS.createGroup,
+      { ...args }
+    )
   },
   updateGroup(args: TechnicalConfigurationBaselineGroupUpdateRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineGroupWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.updateGroup,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineGroupWireResponse>(
+      BASELINE_RPC_FUNCTIONS.updateGroup,
+      { ...args }
+    )
   },
   deleteGroup(args: TechnicalConfigurationBaselineGroupDeleteRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDeleteWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.deleteGroup,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDeleteWireResponse>(
+      BASELINE_RPC_FUNCTIONS.deleteGroup,
+      { ...args }
+    )
   },
   reorderGroups(args: TechnicalConfigurationBaselineGroupsReorderRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.reorderGroups,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
+      BASELINE_RPC_FUNCTIONS.reorderGroups,
+      { ...args }
+    )
   },
   createCriterion(args: TechnicalConfigurationBaselineCriterionCreateRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineCriterionWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.createCriterion,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineCriterionWireResponse>(
+      BASELINE_RPC_FUNCTIONS.createCriterion,
+      { ...args }
+    )
   },
   updateCriterion(args: TechnicalConfigurationBaselineCriterionUpdateRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineCriterionWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.updateCriterion,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineCriterionWireResponse>(
+      BASELINE_RPC_FUNCTIONS.updateCriterion,
+      { ...args }
+    )
   },
   deleteCriterion(args: TechnicalConfigurationBaselineCriterionDeleteRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDeleteWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.deleteCriterion,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDeleteWireResponse>(
+      BASELINE_RPC_FUNCTIONS.deleteCriterion,
+      { ...args }
+    )
   },
   reorderCriteria(args: TechnicalConfigurationBaselineCriteriaReorderRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineDraftWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.reorderCriteria,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
+      BASELINE_RPC_FUNCTIONS.reorderCriteria,
+      { ...args }
+    )
   },
   previewBulk(args: TechnicalConfigurationBaselineBulkPreviewRpcArgs) {
-    return callRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>({
-      fn: BASELINE_RPC_FUNCTIONS.previewBulk,
-      args: { ...args },
-    })
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>(
+      BASELINE_RPC_FUNCTIONS.previewBulk,
+      { ...args }
+    )
   },
 }
 

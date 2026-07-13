@@ -1,8 +1,11 @@
+import * as React from "react"
 import { ArrowLeft, ClipboardList, GitCompareArrows, ListChecks, PackageSearch } from "lucide-react"
 
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
 
 type TechnicalConfigurationWorkspaceShellProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -14,10 +17,22 @@ export function TechnicalConfigurationWorkspaceShell({
   dossier,
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
+  const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
+
+  const handleBack = React.useCallback(() => {
+    if (
+      isBaselineDirty &&
+      !window.confirm("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")
+    ) {
+      return
+    }
+    onBack()
+  }, [isBaselineDirty, onBack])
+
   return (
     <div className="w-full">
       <header className="border-b pb-5">
-        <Button type="button" variant="ghost" className="-ml-3" onClick={onBack}>
+        <Button type="button" variant="ghost" className="-ml-3" onClick={handleBack}>
           <ArrowLeft className="size-4" aria-hidden="true" />
           Danh sách hồ sơ
         </Button>
@@ -53,13 +68,7 @@ export function TechnicalConfigurationWorkspaceShell({
         </TabsList>
 
         <TabsContent value="baseline" className="mt-6">
-          <section className="border-y py-12 text-center">
-            <ListChecks className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
-            <h2 className="mt-4 text-base font-semibold">Không gian cấu hình cơ sở</h2>
-            <p className="mx-auto mt-1 max-w-xl text-sm text-muted-foreground">
-              Trình soạn cấu hình cơ sở sẽ được tích hợp ở phase tiếp theo.
-            </p>
-          </section>
+          <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={setIsBaselineDirty} />
         </TabsContent>
       </Tabs>
     </div>
