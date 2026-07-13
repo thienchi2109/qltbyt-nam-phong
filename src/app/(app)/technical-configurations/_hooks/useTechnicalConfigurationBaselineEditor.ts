@@ -8,6 +8,7 @@ import {
   isTechnicalConfigurationBaselineEditorDirty,
   saveTechnicalConfigurationBaselineEditorDraft,
   toTechnicalConfigurationBaselineEditorDraft,
+  validateTechnicalConfigurationBaselineEditorDraft,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
@@ -76,8 +77,6 @@ export function useTechnicalConfigurationBaselineEditor({
   )
   const [editorDraft, setEditorDraft] =
     React.useState<TechnicalConfigurationBaselineEditorDraft | null>(null)
-  const [validation, setValidation] =
-    React.useState<TechnicalConfigurationBaselineEditorValidation>(EMPTY_VALIDATION)
   const [saveError, setSaveError] = React.useState<string | null>(null)
   const [isConflict, setIsConflict] = React.useState(false)
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
@@ -100,6 +99,13 @@ export function useTechnicalConfigurationBaselineEditor({
   const isDirty = React.useMemo(
     () => isTechnicalConfigurationBaselineEditorDirty(baseDraft, editorDraft),
     [baseDraft, editorDraft]
+  )
+  const validation = React.useMemo(
+    () =>
+      editorDraft
+        ? validateTechnicalConfigurationBaselineEditorDraft(editorDraft)
+        : EMPTY_VALIDATION,
+    [editorDraft]
   )
 
   React.useEffect(() => {
@@ -136,7 +142,6 @@ export function useTechnicalConfigurationBaselineEditor({
     onSuccess: (progress) => {
       setBaseDraft(progress.baseDraft)
       setEditorDraft(progress.editorDraft)
-      setValidation(EMPTY_VALIDATION)
       setSaveError(null)
       setIsConflict(false)
       setSaveStatus("saved")
@@ -145,7 +150,6 @@ export function useTechnicalConfigurationBaselineEditor({
     onError: (error) => {
       setSaveStatus("idle")
       if (error instanceof BaselineEditorValidationFailure) {
-        setValidation(error.validation)
         setSaveError(null)
         return
       }
@@ -170,7 +174,6 @@ export function useTechnicalConfigurationBaselineEditor({
     onSuccess: (response) => {
       setBaseDraft(response.data)
       setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(response.data))
-      setValidation(EMPTY_VALIDATION)
       setSaveError(null)
       setIsConflict(false)
       setSaveStatus("idle")
@@ -184,7 +187,6 @@ export function useTechnicalConfigurationBaselineEditor({
   const handleEditorChange = React.useCallback(
     (draft: TechnicalConfigurationBaselineEditorDraft) => {
       setEditorDraft(draft)
-      setValidation(EMPTY_VALIDATION)
       setSaveError(null)
       setSaveStatus("idle")
     },
