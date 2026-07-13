@@ -56,6 +56,7 @@ describe("TechnicalConfigurationBulkEntryWorkbench", () => {
 
     const preview = screen.getByRole("region", { name: "Xem trước tiêu chí" })
     expect(preview).toHaveAttribute("tabindex", "0")
+    expect(preview).toHaveClass("max-h-72", "overflow-auto")
     expect(within(preview).getByText("Dòng")).toBeInTheDocument()
     expect(within(preview).getByText("Nội dung yêu cầu")).toBeInTheDocument()
     expect(within(preview).getByText("Trạng thái")).toBeInTheDocument()

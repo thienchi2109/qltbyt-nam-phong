@@ -90,14 +90,19 @@ export function TechnicalConfigurationBulkEntryWorkbench({
       </p>
 
       {session.preview ? (
-        <section aria-label="Xem trước tiêu chí" tabIndex={0} className="space-y-2">
+        <section className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold">Xem trước</h3>
             <span className="text-xs text-muted-foreground">
               {session.preview.rows.length} dòng
             </span>
           </div>
-          <div className="max-h-72 overflow-auto border-y">
+          <div
+            role="region"
+            aria-label="Xem trước tiêu chí"
+            tabIndex={0}
+            className="max-h-72 overflow-auto border-y"
+          >
             <div className="min-w-[640px]">
               <div className="sticky top-0 grid grid-cols-[6rem_minmax(24rem,1fr)_11rem] border-b bg-muted/95 text-xs font-semibold text-muted-foreground">
                 <span className="px-3 py-2">Dòng</span>
