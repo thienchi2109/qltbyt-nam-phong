@@ -58,6 +58,7 @@ interface SheetContentProps
   overlayProps?: React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay> & {
     [key: `data-${string}`]: string | undefined
   }
+  closeLabel?: string
   hideCloseButton?: boolean
 }
 
@@ -67,7 +68,15 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(
   (
-    { side = "right", className, children, overlayProps, hideCloseButton = false, ...props },
+    {
+      side = "right",
+      className,
+      children,
+      overlayProps,
+      closeLabel = "Close",
+      hideCloseButton = false,
+      ...props
+    },
     ref
   ) => (
     <SheetPortal>
@@ -81,7 +90,7 @@ const SheetContent = React.forwardRef<
         {hideCloseButton ? null : (
           <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
             <X className="size-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{closeLabel}</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>

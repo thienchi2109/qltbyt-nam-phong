@@ -15,7 +15,7 @@ export function TechnicalConfigurationWorkspaceShell({
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="w-full">
       <header className="border-b pb-5">
         <Button type="button" variant="ghost" className="-ml-3" onClick={onBack}>
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -62,6 +62,6 @@ export function TechnicalConfigurationWorkspaceShell({
           </section>
         </TabsContent>
       </Tabs>
-    </main>
+    </div>
   )
 }

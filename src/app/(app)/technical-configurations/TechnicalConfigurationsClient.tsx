@@ -147,7 +147,7 @@ export function TechnicalConfigurationsClient({
     : null
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="w-full">
       <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -225,6 +225,6 @@ export function TechnicalConfigurationsClient({
         onOpenChange={handleCreateOpenChange}
         onSubmit={handleCreate}
       />
-    </main>
+    </div>
   )
 }
