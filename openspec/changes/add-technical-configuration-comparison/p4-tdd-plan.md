@@ -81,4 +81,4 @@
 - [x] Run Supabase security and performance advisors after apply.
 - [x] Mark only P4 tasks complete in `tasks.md`.
 - [x] Spawn one review subagent, wait for completion, triage findings, and rerun affected gates.
-- [ ] Commit, pull with rebase, push the branch, and open a PR into `main`.
+- [x] Commit, pull with rebase, push the branch, and open a PR into `main`.
