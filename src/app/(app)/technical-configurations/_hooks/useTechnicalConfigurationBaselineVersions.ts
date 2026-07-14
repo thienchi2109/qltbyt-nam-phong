@@ -14,14 +14,11 @@ import {
   toTechnicalConfigurationBaselineVersionPages,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import type { TechnicalConfigurationBaselineVersionPages } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
+import { technicalConfigurationBaselineVersionsQueryKey } from "@/app/(app)/technical-configurations/technical-configuration-query-keys"
 
 type ListVersions = (
   args: TechnicalConfigurationBaselineVersionsListRpcArgs
 ) => Promise<TechnicalConfigurationBaselineVersionsListWireResponse>
-
-function baselineVersionsQueryKey(dossierId: string) {
-  return ["technical-configurations", "baseline-versions", dossierId] as const
-}
 
 /** Owns paginated baseline history retrieval and cache updates. */
 export function useTechnicalConfigurationBaselineVersions({
@@ -32,12 +29,15 @@ export function useTechnicalConfigurationBaselineVersions({
   listVersions: ListVersions
 }) {
   const queryClient = useQueryClient()
-  const queryKey = React.useMemo(() => baselineVersionsQueryKey(dossierId), [dossierId])
+  const queryKey = React.useMemo(
+    () => technicalConfigurationBaselineVersionsQueryKey(dossierId),
+    [dossierId]
+  )
   const versionsQuery = useInfiniteQuery<
     TechnicalConfigurationBaselineVersionsListWireResponse,
     Error,
     TechnicalConfigurationBaselineVersionPages,
-    ReturnType<typeof baselineVersionsQueryKey>,
+    ReturnType<typeof technicalConfigurationBaselineVersionsQueryKey>,
     number
   >({
     queryKey,

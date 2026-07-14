@@ -95,7 +95,7 @@ export function TechnicalConfigurationBaselineTab({
       />
     )
   }
-  if (draft?.status === "locked") {
+  if (baseline.selectedVersion?.status === "locked") {
     return <TechnicalConfigurationBaselineLockedState />
   }
 

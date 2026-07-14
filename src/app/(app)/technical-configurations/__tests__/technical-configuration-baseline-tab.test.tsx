@@ -7,8 +7,11 @@ import type {
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
 } from "@/app/(app)/technical-configurations/baseline-types"
+import type { TechnicalConfigurationBaselineVersionPages } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
+import { technicalConfigurationBaselineVersionsQueryKey } from "@/app/(app)/technical-configurations/technical-configuration-query-keys"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 import {
+  baselineVersionsResponse,
   createDraft,
   createPersistentQueryClient,
   criterionMutation,
@@ -24,7 +27,7 @@ const rpc = getBaselineRpcMock()
 describe("technical configuration baseline tab", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    rpc.getDraft.mockResolvedValue({ data: createDraft() })
+    rpc.listVersions.mockResolvedValue(baselineVersionsResponse([createDraft()]))
   })
 
   it("renders server groups and stages multiline, add, and reorder changes without autosave", async () => {
@@ -247,7 +250,7 @@ describe("technical configuration baseline tab", () => {
         index === 0 ? { ...group, name: "Tên mới từ máy chủ" } : group
       ),
     })
-    rpc.getDraft.mockResolvedValueOnce({ data: reloadedDraft })
+    rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([reloadedDraft]))
     vi.spyOn(window, "confirm").mockReturnValueOnce(true)
 
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
@@ -274,8 +277,8 @@ describe("technical configuration baseline tab", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }))
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
 
-    const pending = deferred<{ data: TechnicalConfigurationBaselineDraftWire }>()
-    rpc.getDraft.mockReturnValueOnce(pending.promise)
+    const pending = deferred<ReturnType<typeof baselineVersionsResponse>>()
+    rpc.listVersions.mockReturnValueOnce(pending.promise)
     vi.spyOn(window, "confirm").mockReturnValueOnce(true)
 
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
@@ -284,7 +287,7 @@ describe("technical configuration baseline tab", () => {
     expect(pendingButton).toBeDisabled()
     expect(await screen.findByDisplayValue("Tên đang xung đột")).toBeDisabled()
     await user.click(pendingButton)
-    expect(rpc.getDraft).toHaveBeenCalledTimes(2)
+    expect(rpc.listVersions).toHaveBeenCalledTimes(2)
 
     await act(async () => {
       pending.reject(new Error("network_down"))
@@ -315,34 +318,25 @@ describe("technical configuration baseline tab", () => {
     expect(rpc.updateGroup).toHaveBeenCalledTimes(1)
     expect(rpc.createCriterion).toHaveBeenCalledTimes(1)
     expect(setQueryData).toHaveBeenLastCalledWith(
-      ["technical-configurations", "baseline-draft", dossier.id],
-      {
-        data: expect.objectContaining({
-          revision: 5,
-        }),
-      }
+      technicalConfigurationBaselineVersionsQueryKey(dossier.id),
+      expect.any(Function)
     )
-    const cachedDraft = queryClient.getQueryData<{ data: TechnicalConfigurationBaselineDraftWire }>(
-      ["technical-configurations", "baseline-draft", dossier.id]
+    const cachedVersions = queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(
+      technicalConfigurationBaselineVersionsQueryKey(dossier.id)
     )
-    expect(cachedDraft?.data.revision).toBe(5)
-    expect(cachedDraft?.data.groups[0].name).toBe("Tên nhóm đã được lưu")
+    expect(cachedVersions?.pages[0].data[0].revision).toBe(5)
+    expect(cachedVersions?.pages[0].data[0].groups[0].name).toBe("Tên nhóm đã được lưu")
 
     view.unmount()
     renderTab(vi.fn(), queryClient)
 
     expect(await screen.findByDisplayValue("Tên nhóm đã được lưu")).toBeInTheDocument()
-    expect(rpc.getDraft).toHaveBeenCalledTimes(1)
+    expect(rpc.listVersions).toHaveBeenCalledTimes(1)
   })
 
   it("creates a missing draft only from an explicit action and renders locked data as a placeholder", async () => {
     const user = userEvent.setup()
-    rpc.getDraft.mockRejectedValueOnce(
-      new TechnicalConfigurationRpcError(404, {
-        code: "PT404",
-        message: "not_found",
-      })
-    )
+    rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([]))
     rpc.createDraft.mockResolvedValue({
       data: { ...createDraft(), dossier_revision: 4 },
     })
@@ -359,9 +353,9 @@ describe("technical configuration baseline tab", () => {
     expect(await screen.findByDisplayValue("Yêu cầu chung")).toBeInTheDocument()
 
     view.unmount()
-    rpc.getDraft.mockResolvedValueOnce({
-      data: createDraft({ status: "locked" }),
-    })
+    rpc.listVersions.mockResolvedValueOnce(
+      baselineVersionsResponse([createDraft({ status: "locked" })])
+    )
     renderTab()
 
     expect(await screen.findByText("Phiên bản đã khóa")).toBeInTheDocument()

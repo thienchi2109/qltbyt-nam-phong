@@ -233,6 +233,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     await act(async () => {
       await result.current.onLoadMoreVersions()
     })
+    await waitFor(() => expect(result.current.versions).toHaveLength(2))
     act(() => {
       result.current.onSelectVersion(oldest.id)
     })
