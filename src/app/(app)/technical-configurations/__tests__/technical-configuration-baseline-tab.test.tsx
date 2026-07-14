@@ -395,8 +395,16 @@ describe("technical configuration baseline tab", () => {
     )
     renderTab()
 
-    expect(await screen.findByText("Phiên bản đã khóa")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Lịch sử phiên bản cấu hình cơ sở" })
+    ).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
+    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByText("TC-0001")).toBeInTheDocument()
+    expect(screen.getByText(/Dòng 1/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue("Yêu cầu chung")).not.toBeInTheDocument()
   })
 
   it("registers beforeunload protection only while the form is dirty", async () => {

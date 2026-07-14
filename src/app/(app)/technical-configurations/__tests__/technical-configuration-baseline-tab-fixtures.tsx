@@ -57,6 +57,7 @@ export const dossier: TechnicalConfigurationDossierWire = {
 export function createDraft(
   overrides: Partial<TechnicalConfigurationBaselineDraftWire> = {}
 ): TechnicalConfigurationBaselineDraftWire {
+  const versionId = overrides.id ?? "draft-1"
   const groupNames = [
     "Yêu cầu chung",
     "Yêu cầu cấu hình cung cấp",
@@ -65,19 +66,23 @@ export function createDraft(
   ]
 
   return {
-    id: "draft-1",
+    id: versionId,
     dossier_id: dossier.id,
     version_number: 1,
     status: "draft",
+    source_baseline_version_id: null,
+    source_version_number: null,
     next_criterion_number: 2,
     revision: 4,
+    locked_at: null,
+    locked_by: null,
     created_at: timestamp,
     created_by: 1,
     updated_at: timestamp,
     updated_by: 1,
     groups: groupNames.map((name, index) => ({
       id: `group-${index + 1}`,
-      baseline_version_id: "draft-1",
+      baseline_version_id: versionId,
       name,
       sort_order: index + 1,
       created_at: timestamp,
@@ -89,7 +94,7 @@ export function createDraft(
           ? [
               {
                 id: "criterion-1",
-                baseline_version_id: "draft-1",
+                baseline_version_id: versionId,
                 group_id: "group-1",
                 criterion_code: "TC-0001",
                 title: "Nguồn điện",

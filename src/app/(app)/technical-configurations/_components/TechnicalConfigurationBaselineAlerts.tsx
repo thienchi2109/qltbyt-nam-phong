@@ -27,7 +27,8 @@ export function TechnicalConfigurationBaselineAlerts({
           <AlertTitle>Xung đột dữ liệu</AlertTitle>
           <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Dữ liệu trên máy chủ đã thay đổi. Nội dung chưa lưu vẫn được giữ trong form.
+              Dữ liệu trên máy chủ đã thay đổi. Nội dung đang xem và các thay đổi chưa lưu vẫn được
+              giữ.
             </span>
             <Button
               type="button"

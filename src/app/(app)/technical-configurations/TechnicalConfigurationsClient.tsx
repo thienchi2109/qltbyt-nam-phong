@@ -16,13 +16,16 @@ import {
   getTechnicalConfigurationDossier,
   listTechnicalConfigurationDossiers,
 } from "./technical-configuration-rpc"
+import {
+  TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+  technicalConfigurationDossierDetailQueryKey,
+} from "./technical-configuration-query-keys"
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
   TechnicalConfigurationDossierWire,
 } from "./types"
 
 const DOSSIER_PAGE_SIZE = 20
-const DOSSIER_QUERY_ROOT = ["technical-configurations", "dossiers"] as const
 
 type TechnicalConfigurationsClientProps = {
   role?: string | null
@@ -46,7 +49,10 @@ export function TechnicalConfigurationsClient({
     React.useState<TechnicalConfigurationDossierWire | null>(null)
 
   const dossierListQuery = useQuery({
-    queryKey: [...DOSSIER_QUERY_ROOT, { page, pageSize: DOSSIER_PAGE_SIZE }],
+    queryKey: [
+      ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+      { page, pageSize: DOSSIER_PAGE_SIZE },
+    ],
     queryFn: ({ signal }) =>
       listTechnicalConfigurationDossiers(
         {
@@ -66,7 +72,9 @@ export function TechnicalConfigurationsClient({
       setOpenDossierError(null)
       setSelectedDossier(response.data)
       setIsCreateOpen(false)
-      await queryClient.invalidateQueries({ queryKey: DOSSIER_QUERY_ROOT })
+      await queryClient.invalidateQueries({
+        queryKey: TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+      })
     },
   })
 
@@ -102,7 +110,7 @@ export function TechnicalConfigurationsClient({
 
       try {
         const response = await queryClient.fetchQuery({
-          queryKey: [...DOSSIER_QUERY_ROOT, "detail", id],
+          queryKey: technicalConfigurationDossierDetailQueryKey(id),
           queryFn: () => getTechnicalConfigurationDossier(id),
           staleTime: 30_000,
         })

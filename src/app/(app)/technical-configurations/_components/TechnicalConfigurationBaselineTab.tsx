@@ -8,12 +8,14 @@ import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-co
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
+import { TechnicalConfigurationLockDialog } from "./TechnicalConfigurationLockDialog"
 import {
   TechnicalConfigurationBaselineLoadingState,
   TechnicalConfigurationBaselineLockedState,
   TechnicalConfigurationBaselineMissingState,
   TechnicalConfigurationBaselineQueryError,
 } from "./TechnicalConfigurationBaselineTabStates"
+import { TechnicalConfigurationVersionBar } from "./TechnicalConfigurationVersionBar"
 
 type TechnicalConfigurationBaselineTabProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -25,16 +27,40 @@ export function TechnicalConfigurationBaselineTab({
   dossier,
   onDirtyChange,
 }: Readonly<TechnicalConfigurationBaselineTabProps>) {
+  const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
   const bulkSessions = useTechnicalConfigurationBulkEntrySessions()
   const baseline = useTechnicalConfigurationBaselineEditor({
     dossier,
     isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput,
   })
   const draft = baseline.editorDraft
+  const selectedVersion = baseline.selectedVersion
   const summaryValidation = React.useMemo(
     () => (draft ? validateTechnicalConfigurationBaselineEditorDraft(draft) : baseline.validation),
     [baseline.validation, draft]
   )
+  const lockBlockedReason = React.useMemo(() => {
+    if (!draft || selectedVersion?.status !== "draft") return null
+    if (baseline.isDirty) return "Lưu thay đổi trước khi khóa phiên bản."
+    if (bulkSessions.hasPendingInput) return "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi khóa."
+    if (
+      Object.keys(summaryValidation.groupErrors).length > 0 ||
+      Object.keys(summaryValidation.criterionErrors).length > 0
+    ) {
+      return "Sửa các lỗi nội dung trước khi khóa phiên bản."
+    }
+    if (draft.groups.length < 1) return "Cần ít nhất một nhóm trước khi khóa phiên bản."
+    if (!draft.groups.some((group) => group.criteria.length > 0)) {
+      return "Cần ít nhất một tiêu chí có nội dung trước khi khóa phiên bản."
+    }
+    return null
+  }, [
+    baseline.isDirty,
+    bulkSessions.hasPendingInput,
+    draft,
+    selectedVersion?.status,
+    summaryValidation,
+  ])
   const inlineEditor = useTechnicalConfigurationInlineEditor({
     draft,
     validation: summaryValidation,
@@ -61,6 +87,14 @@ export function TechnicalConfigurationBaselineTab({
 
   const handleReloadFromServer = async () => {
     if (bulkSessions.hasPendingInput) return
+    if (selectedVersion?.status === "locked") {
+      try {
+        await baseline.onRefreshVersions()
+      } catch {
+        return
+      }
+      return
+    }
     const confirmed = window.confirm(
       "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
     )
@@ -75,6 +109,40 @@ export function TechnicalConfigurationBaselineTab({
       return
     }
   }
+
+  const handleSelectVersion = (versionId: string) => {
+    const nextVersion = baseline.versions.find((version) => version.id === versionId)
+    if (!nextVersion || nextVersion.id === selectedVersion?.id) return
+    if (
+      isUnsafeToLeave &&
+      !window.confirm("Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?")
+    ) {
+      return
+    }
+
+    bulkSessions.clearAll()
+    baseline.onSelectVersion(versionId)
+    inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
+  }
+
+  const handleConfirmLock = async () => {
+    try {
+      await baseline.onLock()
+    } catch {
+      return
+    } finally {
+      setIsLockDialogOpen(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    try {
+      await baseline.onCopy()
+    } catch {
+      return
+    }
+  }
+
   if (baseline.isLoading) {
     return <TechnicalConfigurationBaselineLoadingState />
   }
@@ -95,56 +163,84 @@ export function TechnicalConfigurationBaselineTab({
       />
     )
   }
-  if (baseline.selectedVersion?.status === "locked") {
-    return <TechnicalConfigurationBaselineLockedState />
-  }
-
-  if (!draft) return null
+  if (!selectedVersion) return null
 
   return (
     <div className="space-y-4">
+      <TechnicalConfigurationVersionBar
+        versions={baseline.versions}
+        selectedVersion={selectedVersion}
+        hasDraft={baseline.hasDraft}
+        lockBlockedReason={lockBlockedReason}
+        isCreating={baseline.isCreating}
+        isLocking={baseline.isLocking}
+        isCopying={baseline.isCopying}
+        isLoadingMoreVersions={baseline.isLoadingMoreVersions}
+        isNavigationDisabled={baseline.isLifecycleBusy}
+        hasMoreVersions={baseline.hasMoreVersions}
+        onSelectVersion={handleSelectVersion}
+        onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
+        onRequestLock={() => setIsLockDialogOpen(true)}
+        onCreateBlank={baseline.onCreate}
+        onCopy={() => void handleCopy()}
+      />
+
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}
         isReloading={baseline.isReloading}
         hasPendingBulkInput={bulkSessions.hasPendingInput}
-        saveError={baseline.saveError}
+        saveError={baseline.createError ?? baseline.saveError ?? baseline.lifecycleError}
         onReload={handleReloadFromServer}
       />
 
-      <TechnicalConfigurationBaselineEditor
-        draft={draft}
-        validation={baseline.validation}
-        summaryValidation={summaryValidation}
-        status={{
-          dirty: baseline.isDirty,
-          saving: baseline.isSaving,
-          editingDisabled: baseline.isSaving || baseline.isReloading,
-          conflict: baseline.isConflict,
-          saveStatus: baseline.saveStatus,
-          hasPendingBulkInput: bulkSessions.hasPendingInput,
-        }}
-        activeValue={inlineEditor.activeValue}
-        entryMode={inlineEditor.entryMode}
-        bulkSession={inlineEditor.bulkSession}
-        focusTarget={inlineEditor.focusTarget}
-        recentlyAcceptedCriterionKeys={bulkSessions.recentlyAcceptedCriterionKeys}
-        onNavigate={inlineEditor.navigate}
-        onModeChange={inlineEditor.changeMode}
-        onAddGroup={inlineEditor.addGroup}
-        onGroupNameChange={inlineEditor.setGroupName}
-        onMoveGroup={inlineEditor.moveGroup}
-        onDeleteGroup={inlineEditor.deleteGroup}
-        onCriterionTextChange={inlineEditor.setCriterionText}
-        onMoveCriterion={inlineEditor.moveCriterion}
-        onDeleteCriterion={inlineEditor.deleteCriterion}
-        onAddCriterion={inlineEditor.addCriterion}
-        onBulkInputChange={inlineEditor.setBulkInput}
-        onBulkPreview={inlineEditor.previewBulk}
-        onBulkCancel={inlineEditor.cancelBulk}
-        onBulkAccept={inlineEditor.acceptBulk}
-        onOverviewCriterionActivate={inlineEditor.activateOverviewCriterion}
-        onSave={baseline.onSave}
-      />
+      {selectedVersion.status === "locked" ? (
+        <TechnicalConfigurationBaselineLockedState version={selectedVersion} />
+      ) : draft ? (
+        <TechnicalConfigurationBaselineEditor
+          draft={draft}
+          validation={baseline.validation}
+          summaryValidation={summaryValidation}
+          status={{
+            dirty: baseline.isDirty,
+            saving: baseline.isSaving,
+            editingDisabled: baseline.isSaving || baseline.isReloading,
+            conflict: baseline.isConflict,
+            saveStatus: baseline.saveStatus,
+            hasPendingBulkInput: bulkSessions.hasPendingInput,
+          }}
+          activeValue={inlineEditor.activeValue}
+          entryMode={inlineEditor.entryMode}
+          bulkSession={inlineEditor.bulkSession}
+          focusTarget={inlineEditor.focusTarget}
+          recentlyAcceptedCriterionKeys={bulkSessions.recentlyAcceptedCriterionKeys}
+          onNavigate={inlineEditor.navigate}
+          onModeChange={inlineEditor.changeMode}
+          onAddGroup={inlineEditor.addGroup}
+          onGroupNameChange={inlineEditor.setGroupName}
+          onMoveGroup={inlineEditor.moveGroup}
+          onDeleteGroup={inlineEditor.deleteGroup}
+          onCriterionTextChange={inlineEditor.setCriterionText}
+          onMoveCriterion={inlineEditor.moveCriterion}
+          onDeleteCriterion={inlineEditor.deleteCriterion}
+          onAddCriterion={inlineEditor.addCriterion}
+          onBulkInputChange={inlineEditor.setBulkInput}
+          onBulkPreview={inlineEditor.previewBulk}
+          onBulkCancel={inlineEditor.cancelBulk}
+          onBulkAccept={inlineEditor.acceptBulk}
+          onOverviewCriterionActivate={inlineEditor.activateOverviewCriterion}
+          onSave={baseline.onSave}
+        />
+      ) : null}
+
+      {selectedVersion.status === "draft" ? (
+        <TechnicalConfigurationLockDialog
+          version={selectedVersion}
+          open={isLockDialogOpen}
+          isPending={baseline.isLocking}
+          onOpenChange={setIsLockDialogOpen}
+          onConfirm={() => void handleConfirmLock()}
+        />
+      ) : null}
     </div>
   )
 }
