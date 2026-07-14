@@ -204,13 +204,13 @@ node scripts/npm-run.js run react-doctor
 git diff --check
 ```
 
-- [ ] **Step 2: Reply to each inline thread**
+- [x] **Step 2: Reply to each inline thread**
 
 For valid findings, state the regression test and fix. For rejected findings, state the verified technical reason. Reply in the original inline thread.
 
-- [ ] **Step 3: Resolve addressed review threads**
+- [x] **Step 3: Resolve addressed review threads**
 
-- [ ] **Step 4: Commit and push the stabilization snapshot to PR #760**
+- [x] **Step 4: Commit and push the stabilization snapshot to PR #760**
 
 ## Chunk 2: Sequential PR Decomposition
 
