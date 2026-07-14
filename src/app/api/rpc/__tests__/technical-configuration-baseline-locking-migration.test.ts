@@ -50,13 +50,35 @@ function getBaselineMigrationSource(): string {
 }
 
 function getFunctionBlock(migrationSource: string, functionName: string): string {
-  const start = migrationSource.indexOf(`CREATE OR REPLACE FUNCTION public.${functionName}`)
+  const start = migrationSource.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${functionName}`)
   expect(start).toBeGreaterThanOrEqual(0)
 
   const end = migrationSource.indexOf("\n$$;", start)
   expect(end).toBeGreaterThan(start)
   return migrationSource.slice(start, end + 4)
 }
+
+describe("technical configuration migration test helpers", () => {
+  it("reads the final applied function definition from concatenated migrations", () => {
+    const migrationSource = `
+CREATE OR REPLACE FUNCTION public.example()
+RETURNS TEXT
+AS $$
+  SELECT 'stale';
+$$;
+CREATE OR REPLACE FUNCTION public.example()
+RETURNS TEXT
+AS $$
+  SELECT 'current';
+$$;
+`
+
+    const block = getFunctionBlock(migrationSource, "example")
+
+    expect(block).toContain("SELECT 'current';")
+    expect(block).not.toContain("SELECT 'stale';")
+  })
+})
 
 describe("technical configuration baseline P4 locking migration", () => {
   const migrationSource = getLockingMigrationSource()
