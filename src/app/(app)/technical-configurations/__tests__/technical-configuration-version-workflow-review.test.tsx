@@ -265,6 +265,41 @@ describe("technical configuration version workflow review regressions", () => {
     ).toBeInTheDocument()
   })
 
+  it("uses the preserved draft snapshot for a same-id selector option", () => {
+    const selectedVersion = createDraft({ id: "version-1", version_number: 1 })
+    const serverVersion = createLockedVersion({ id: selectedVersion.id, version_number: 1 })
+
+    render(
+      <TechnicalConfigurationVersionBar
+        versions={[serverVersion]}
+        selectedVersion={selectedVersion}
+        lockBlockedReason={null}
+        status={{
+          hasDraft: true,
+          isCreating: false,
+          isLocking: false,
+          isCopying: false,
+          isLoadingMoreVersions: false,
+          isNavigationDisabled: false,
+          hasMoreVersions: false,
+        }}
+        onSelectVersion={vi.fn()}
+        onLoadMoreVersions={vi.fn()}
+        onRequestLock={vi.fn()}
+        onCreateBlank={vi.fn()}
+        onCopy={vi.fn()}
+      />
+    )
+
+    const selector = screen.getByRole("combobox", { name: "Lịch sử phiên bản" })
+    expect(
+      within(selector).getByRole("option", { name: "Phiên bản 1 · Bản nháp" })
+    ).toBeInTheDocument()
+    expect(
+      within(selector).queryByRole("option", { name: "Phiên bản 1 · Đã khóa" })
+    ).not.toBeInTheDocument()
+  })
+
   it("clears the creation alert after adopting a concurrently created draft", async () => {
     const user = userEvent.setup()
     const existingDraft = createDraft()

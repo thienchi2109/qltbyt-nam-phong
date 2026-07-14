@@ -53,11 +53,10 @@ export function TechnicalConfigurationVersionBar({
     selectedVersion.status === "locked" &&
     Boolean(selectedVersion.locked_at || selectedVersion.locked_by)
   const hasLineage = Boolean(selectedVersion.source_version_number)
-  const selectableVersions = versions.some((version) => version.id === selectedVersion.id)
-    ? versions
-    : [...versions, selectedVersion].toSorted(
-        (left, right) => right.version_number - left.version_number
-      )
+  const selectableVersions = [
+    selectedVersion,
+    ...versions.filter((version) => version.id !== selectedVersion.id),
+  ].toSorted((left, right) => right.version_number - left.version_number)
 
   return (
     <section className="border-y py-4" aria-label="Lịch sử phiên bản cấu hình cơ sở">

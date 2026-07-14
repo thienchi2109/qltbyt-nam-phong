@@ -87,14 +87,12 @@ export function useTechnicalConfigurationBaselineEditor({
   )
   React.useEffect(() => {
     if (!versionsQuery.data || isDraftReplacementBlocked) return
-
     const nextVersion = selectTechnicalConfigurationBaselineVersion(
       versions,
       selectedVersionId,
       baseDraft,
       Boolean(versionsQuery.hasNextPage)
     )
-
     if (
       baseDraft?.id === nextVersion?.id &&
       baseDraft?.revision === nextVersion?.revision &&
@@ -102,7 +100,6 @@ export function useTechnicalConfigurationBaselineEditor({
     ) {
       return
     }
-
     adoptVersion(nextVersion)
   }, [
     adoptVersion,
@@ -232,7 +229,10 @@ export function useTechnicalConfigurationBaselineEditor({
       const stale = isTechnicalConfigurationBaselineConflict(error)
       setIsConflict(stale)
       setLifecycleError(stale ? null : "Không thể sao chép phiên bản cấu hình.")
-      if (stale) adoptVersion(await refreshVersions())
+      if (stale) {
+        await refreshDossierRevision()
+        adoptVersion(await refreshVersions())
+      }
     },
   })
   const reloadMutation = useMutation({
