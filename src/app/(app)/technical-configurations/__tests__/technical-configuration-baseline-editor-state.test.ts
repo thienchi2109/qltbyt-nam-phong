@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
+  appendTechnicalConfigurationBaselineEditorCriteria,
   appendTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorCriterion,
   createTechnicalConfigurationBaselineEditorGroup,
@@ -143,6 +144,42 @@ describe("technical configuration baseline editor state", () => {
     expect(edited.groups[0].criteria[1].requirementText).toBe("Giá trị mới")
     expect(moved.groups[0].criteria[0].key).toBe(newCriterion.key)
     expect(removed.groups[0].criteria).toEqual(editorDraft.groups[0].criteria)
+  })
+
+  it("appends normalized bulk criteria to only the selected group without mutation", () => {
+    const originalDraft = toTechnicalConfigurationBaselineEditorDraft(draft)
+    const selectedGroup = createTechnicalConfigurationBaselineEditorGroup("group-2")
+    selectedGroup.name = "Yêu cầu kỹ thuật"
+    const editorDraft = {
+      ...originalDraft,
+      groups: [...originalDraft.groups, selectedGroup],
+    }
+    const nextDraft = appendTechnicalConfigurationBaselineEditorCriteria(editorDraft, "group-2", [
+      "  Nguồn điện ổn định\u200B  ",
+      "Áp lực vận hành ≥ 3 bar",
+    ])
+
+    expect(nextDraft.groups[0]).toEqual(editorDraft.groups[0])
+    expect(editorDraft.groups[1].criteria).toHaveLength(0)
+    expect(nextDraft.groups[1].criteria).toEqual([
+      {
+        key: expect.stringMatching(/^criterion-/),
+        id: null,
+        criterionCode: null,
+        title: "",
+        requirementText: "Nguồn điện ổn định",
+      },
+      {
+        key: expect.stringMatching(/^criterion-/),
+        id: null,
+        criterionCode: null,
+        title: "",
+        requirementText: "Áp lực vận hành ≥ 3 bar",
+      },
+    ])
+    const newKeys = nextDraft.groups[1].criteria.map((criterion) => criterion.key)
+    expect(new Set(newKeys).size).toBe(2)
+    expect(newKeys).not.toContain("criterion-1")
   })
 
   it("reports blank group names and requirement text before persistence", () => {

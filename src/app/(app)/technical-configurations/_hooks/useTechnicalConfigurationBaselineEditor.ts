@@ -41,7 +41,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onSave: () => void
   onCreate: () => void
   onRetryQuery: () => Promise<void>
-  onReloadFromServer: () => void
+  onReloadFromServer: () => Promise<TechnicalConfigurationBaselineEditorDraft>
 }
 
 function baselineQueryKey(dossierId: string) {
@@ -63,10 +63,10 @@ function getErrorMessage(error: unknown, fallback: string): string {
 /** Owns P3B baseline query, explicit-save, dirty, and conflict state. */
 export function useTechnicalConfigurationBaselineEditor({
   dossier,
-  onDirtyChange,
+  isExternalDraftReplacementBlocked = false,
 }: {
   dossier: TechnicalConfigurationDossierWire
-  onDirtyChange: (dirty: boolean) => void
+  isExternalDraftReplacementBlocked?: boolean
 }): UseTechnicalConfigurationBaselineEditorResult {
   const queryClient = useQueryClient()
   const rpc = useTechnicalConfigurationBaseline()
@@ -103,25 +103,10 @@ export function useTechnicalConfigurationBaselineEditor({
   )
 
   React.useEffect(() => {
-    if (!draftQuery.data?.data || isDirty) return
+    if (!draftQuery.data?.data || isDirty || isExternalDraftReplacementBlocked) return
     setBaseDraft(draftQuery.data.data)
     setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(draftQuery.data.data))
-  }, [draftQuery.data, isDirty])
-
-  React.useEffect(() => {
-    onDirtyChange(isDirty)
-    return () => onDirtyChange(false)
-  }, [isDirty, onDirtyChange])
-
-  React.useEffect(() => {
-    if (!isDirty) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ""
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [isDirty])
+  }, [draftQuery.data, isDirty, isExternalDraftReplacementBlocked])
 
   const createDraftMutation = useMutation({
     mutationFn: () =>
@@ -233,6 +218,9 @@ export function useTechnicalConfigurationBaselineEditor({
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
     onRetryQuery: retryQuery,
-    onReloadFromServer: () => reloadMutation.mutate(),
+    onReloadFromServer: async () => {
+      const response = await reloadMutation.mutateAsync()
+      return toTechnicalConfigurationBaselineEditorDraft(response.data)
+    },
   }
 }

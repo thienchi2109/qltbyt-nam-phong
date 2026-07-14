@@ -27,6 +27,21 @@ describe("app-navigation role filtering", () => {
     }
   })
 
+  it("keeps technical configurations out of mobile footer navigation", () => {
+    const technicalConfigurations = getAppNavigationItems("admin").find(
+      (item) => item.href === "/technical-configurations"
+    )
+
+    expect(technicalConfigurations).toBeDefined()
+    expect(technicalConfigurations).not.toHaveProperty("mobileSection")
+    expect(getMobileFooterMainNavItems("admin")).not.toContainEqual(
+      expect.objectContaining({ href: "/technical-configurations" })
+    )
+    expect(getMobileFooterMoreNavItems("admin")).not.toContainEqual(
+      expect.objectContaining({ href: "/technical-configurations" })
+    )
+  })
+
   it("hides device quota from restricted roles in the main navigation", () => {
     for (const role of restrictedRoles) {
       expect(getHrefs(role)).not.toContain("/device-quota")
