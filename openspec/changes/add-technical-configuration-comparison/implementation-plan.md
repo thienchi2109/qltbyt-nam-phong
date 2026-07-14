@@ -85,16 +85,18 @@ Do not reload the full feature history or all 24 leaf phases unless a cross-phas
 ## Dependency Graph
 
 ```text
-P0              -> P1, P6
+P0              -> P1, P5A, P6
 P1              -> P2, P3A
 P2 + P3A        -> P3B
 P3B             -> P3C, P4
-P3B + P4        -> P5
+P3B + P4 + P5A  -> P5B
+P4 + P5B        -> P5C
+P5B + P5C       -> P5D
 P3A + P4        -> P7A
 P4 + P6 + P7A   -> P7B
 P4              -> P8A
 P3A + P8A       -> P8B
-P5 + P8B        -> P9A
+P5A + P8B       -> P9A
 P6 + P7B + P8B  -> P9B
 P7B + P9B       -> P10A
 P3A + P10A      -> P10B
@@ -106,34 +108,34 @@ P12C            -> P13A, P13B
 P13A + P13B + P7A + P9A -> P13C
 ```
 
-`P6` is technically independent after `P0`, but the default delivery order places it after `P5` and requires it to land before the first document UI in `P7B`. It does not block dossier, baseline, reference-product or supplier work that has no document UI.
+`P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6` is also technically independent after `P0`, but the default delivery order places it after `P5D` and requires it to land before the first document UI in `P7B`. Neither phase blocks reference-product or supplier work that has no document UI.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                         |
-| ----- | ----------------------------------------------- | ---------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                 |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                              |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                       |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A, P7B, P8B, P9B, P12A                                |
-| TC-05 | Standard baseline Excel template                | P0, P5                                                                 |
-| TC-06 | Immutable locked baseline versions              | P4, P7A, P7B                                                           |
-| TC-07 | Historical baseline linkage                     | P4, P8A                                                                |
-| TC-08 | Optional reference products                     | P0, P7A                                                                |
-| TC-09 | Multiple supplier configuration options         | P8A, P8B                                                               |
-| TC-10 | Standard supplier option Excel template         | P9A                                                                    |
-| TC-11 | URL-only document profiles                      | P6, P7B, P9B                                                           |
-| TC-12 | Criterion-level document citations              | P7B, P9B                                                               |
-| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                             |
-| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                             |
-| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                              |
-| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                        |
-| TC-17 | Non-scoring supplementary information           | P8A, P8B, P10A, P10B, P12A                                             |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                   |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                      |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5, P7A, P7B, P8A, P8B, P9A, P9B, P11, P12A, P13B |
+| ID    | Requirement                                     | Primary phases                                                               |
+| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                       |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                    |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                             |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A, P7B, P8B, P9B, P12A                                      |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                       |
+| TC-06 | Immutable locked baseline versions              | P4, P7A, P7B                                                                 |
+| TC-07 | Historical baseline linkage                     | P4, P8A                                                                      |
+| TC-08 | Optional reference products                     | P0, P7A                                                                      |
+| TC-09 | Multiple supplier configuration options         | P8A, P8B                                                                     |
+| TC-10 | Standard supplier option Excel template         | P9A                                                                          |
+| TC-11 | URL-only document profiles                      | P6, P7B, P9B                                                                 |
+| TC-12 | Criterion-level document citations              | P7B, P9B                                                                     |
+| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                   |
+| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                   |
+| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                    |
+| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                              |
+| TC-17 | Non-scoring supplementary information           | P8A, P8B, P10A, P10B, P12A                                                   |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                         |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                            |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A, P7B, P8A, P8B, P9A, P9B, P11, P12A, P13B |
 
 ## Shared Technical Constraints
 
@@ -189,11 +191,9 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- <focused-test-paths>
-node scripts/npm-run.js run react-doctor
 ```
 
-Use `ctx_batch_execute` for the chain. Add focused browser verification for user-facing phases. `react-doctor` is required only when React files change.
+Run the exact focused test command listed in the active leaf TDD plan after `typecheck`. Then run `node scripts/npm-run.js run react-doctor` when React files change. Use `ctx_batch_execute` for the chain and add focused browser verification for user-facing phases.
 
 ## Phase P0 - Discovery And Contract Freeze
 
@@ -501,50 +501,170 @@ Manual baseline authoring supports optional bulk text entry without changing per
 
 Baseline versions can be locked irreversibly and revised only through a new draft.
 
-## Phase P5 - Baseline Excel Template And Import
+## Phase P5A - Shared Equipment Excel Primitives
 
-**Depends on:** P3B, P4  
-**Requirements:** TC-05, TC-20  
-**Deploy boundary:** optional productivity workflow; manual authoring remains complete
+**Detailed TDD plan:** [`p5-tdd-plan.md`](./p5-tdd-plan.md)<br>
+**Depends on:** P0; scheduled after P4<br>
+**Requirements:** TC-05<br>
+**Deploy boundary:** shared refactor only; Equipment import/export behavior remains unchanged
 
 ### Planned files
 
-- Create: `src/lib/technical-configuration-baseline-excel.ts`
-- Create: `src/lib/__tests__/technical-configuration-baseline-excel.test.ts`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineImportDialog.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/baseline-import-dialog.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor.tsx`
+- Create: `src/lib/excel-workbook.ts`
+- Create: `src/lib/__tests__/excel-workbook.test.ts`
+- Modify: `src/lib/excel-utils.ts`
+- Modify: `src/components/bulk-import/useBulkImportState.ts`
+- Modify: `src/components/bulk-import/bulk-import-types.ts`
+- Create: `src/components/bulk-import/__tests__/useBulkImportState.test.tsx`
+- Modify: `src/app/(app)/equipment/_hooks/useEquipmentExport.ts`
+- Test/modify as needed: Equipment import/export and Excel template regression tests
 
 ### Tasks
 
-- [ ] Define template metadata, schema version and sheet contract from P0.
-- [ ] Generate one visible row-oriented sheet with `GROUP`/`CRITERION` rows, fixed columns, wrapped multiline cells and four suggested group rows.
-- [ ] Add one hidden `_meta` sheet with template kind/version, target IDs, revision and generation metadata.
-- [ ] Parse only system templates and preserve Vietnamese Unicode.
-- [ ] Allow group rows to be added, renamed, removed and reordered without adding columns.
-- [ ] Treat existing criterion codes as read-only, require blank codes for new rows and generate them during preview/apply.
-- [ ] Validate metadata, fixed columns, group/criterion ordering, changed/duplicate codes and required text.
-- [ ] Present row-level preview and actionable errors before mutation.
-- [ ] Import atomically into an editable draft only.
-- [ ] Require the expected target-draft revision and preserve preview/input on conflict.
-- [ ] Reject locked target versions and arbitrary spreadsheets.
-- [ ] Keep document URLs and citations outside the template.
+- [ ] Freeze the current Equipment template download, data export, workbook parsing, validation and submit behavior with focused tests.
+- [ ] Extract generic workbook creation/loading, worksheet conversion and Blob download primitives from the oversized `excel-utils.ts`.
+- [ ] Preserve existing exports so Equipment and current bulk-import consumers do not require a flag-driven rewrite.
+- [ ] Add an optional custom workbook parser seam to `useBulkImportState`; keep the current first-sheet/header-map flow as the default.
+- [ ] Keep `BulkImportFileInput`, parse/error presentation and submit-state components as the shared dialog primitives.
+- [ ] Replace the manual `URL.createObjectURL` template-download block in Equipment with the shared Blob download primitive.
+- [ ] Do not add baseline-specific metadata, columns, validation or RPC behavior to shared Excel modules.
 
 ### TDD and verification
 
-- Red/green round-trip tests with representative CSV-derived content.
-- Malformed workbook, wrong version, unexpected content-column, custom group, duplicate ID and multiline tests.
-- Stale target-revision and preview-preservation tests.
-- UI tests proving no persistence before preview confirmation.
-- Semantic dedup check against existing Excel helpers.
+- Existing Equipment template, export hook and import dialog tests must remain GREEN.
+- Shared workbook tests cover dynamic ExcelJS loading, worksheet conversion, Blob download cleanup and custom parser delegation.
+- Existing DeviceQuota consumers prove the default `useBulkImportState` path remains backward-compatible.
+- Run `@code-deduplication` before commit and document the reuse decision.
 
 ### Exit gate
 
-Users can create the same draft baseline manually or through one versioned system template.
+Equipment and existing bulk-import consumers use the same tested behavior, while P5B-P5D can reuse workbook, download and custom-parser seams without adding technical-configuration behavior.
+
+## Phase P5B - Baseline Workbook Codec
+
+**Depends on:** P3B, P4, P5A<br>
+**Requirements:** TC-05<br>
+**Deploy boundary:** domain codec only; no database mutation or user-facing import workflow
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-baseline-excel-contract.ts`
+- Create: `src/lib/technical-configuration-baseline-excel-export.ts`
+- Create: `src/lib/technical-configuration-baseline-excel-parse.ts`
+- Create: `src/lib/__tests__/technical-configuration-baseline-excel.test.ts`
+- Reuse: `src/lib/excel-workbook.ts`
+
+### Tasks
+
+- [ ] Define template metadata, schema version, fixed columns and canonical row types from P0.
+- [ ] Generate one visible `Baseline` sheet with `GROUP`/`CRITERION` rows and one hidden `_meta` sheet.
+- [ ] Seed four suggested group rows while allowing groups to be added, renamed, removed and reordered through valid rows.
+- [ ] Parse the whole workbook through the P5A custom-parser seam and preserve Vietnamese Unicode and multiline text.
+- [ ] Reject unexpected sheets, metadata keys, columns, row types, ordering and required-text violations.
+- [ ] Treat existing criterion codes as read-only and require blank codes for new criteria.
+- [ ] Produce canonical rows and client-side structural errors without allocating authoritative codes or persisting data.
+- [ ] Keep document URLs, citations and supplier-option fields outside the baseline workbook contract.
+
+### TDD and verification
+
+- Red/green round-trip tests use representative CSV-derived content.
+- Cover custom groups, renamed/reordered groups, exact metadata, fixed column order and no-extra-sheet behavior.
+- Cover malformed workbook, wrong version, unexpected content column, changed/duplicate code, Unicode and multiline content.
+- Semantic dedup review proves only baseline domain logic is new.
+
+### Exit gate
+
+The baseline workbook can be generated and parsed deterministically through shared Excel primitives, but no import RPC or UI consumer is active.
+
+## Phase P5C - Atomic Baseline Import Contract
+
+**Depends on:** P4, P5B<br>
+**Requirements:** TC-02, TC-05, TC-20<br>
+**Deploy boundary:** additive preview/apply backend; no user-facing import action
+
+### Planned files
+
+- Create: a migration under `supabase/migrations/` with suffix `_technical_configuration_baseline_import.sql`; choose its numeric timestamp at P5C execution time after checking every local migration that touches the same functions, tables, grants or policies
+- Create: `src/app/api/rpc/__tests__/technical-configuration-baseline-import-migration.test.ts`
+- Create: `supabase/tests/technical_configuration_baseline_import_phase_gate.sql`
+- Modify: `src/lib/technical-configuration-baseline-rpcs.ts`
+- Modify: `src/app/(app)/technical-configurations/baseline-types.ts`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/baseline-contract.test.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+
+### Tasks
+
+- [ ] Add `technical_configuration_baseline_import_preview` and `technical_configuration_baseline_import_apply`.
+- [ ] Define one internal server-side validator/normalizer used by both RPCs so preview and apply cannot drift.
+- [ ] Reuse the current JWT/editable-version helpers, lock order, criterion numbering semantics and response snapshot contract.
+- [ ] Validate template metadata against the target dossier/version and reject arbitrary or wrong-version payloads.
+- [ ] Return authoritative row-level preview errors and provisional codes without mutation.
+- [ ] Apply only to an editable draft with matching `p_expected_revision`.
+- [ ] Revalidate under dossier/baseline row locks, preserve existing criterion IDs/codes/source links and allocate new codes transactionally.
+- [ ] Reconcile the complete group/criterion tree, increment the owning revision once and roll back the entire mutation on any error.
+- [ ] Keep grants fail-closed and allowlist only the two P5C RPCs for `authenticated`.
+
+### TDD and verification
+
+- Migration tests freeze signatures, `SECURITY DEFINER`, `search_path`, grants and response shapes.
+- Phase-local SQL tests cover global/raw-admin access, missing claims, denied roles, archived dossier and locked target.
+- Preview/apply parity tests prove the shared validator returns the same canonical result.
+- Trust-boundary tests prove both RPCs reject wrong template kind/version, mismatched dossier/version/revision metadata, malformed payloads and tampered canonical rows.
+- Success tests prove complete-tree create/update/delete/reorder reconciliation, preserved existing criterion identity, exactly one revision increment and exact `next_criterion_number` advancement for new rows only.
+- Atomicity tests inject row, duplicate, relationship and stale-revision failures and prove zero partial writes.
+- Apply to live Supabase only after explicit user approval; then run role/claim verification and security/performance advisors.
+
+### Exit gate
+
+The backend can authoritatively preview and atomically apply one complete baseline workbook to an editable draft, but no UI invokes the RPCs.
+
+## Phase P5D - Baseline Import Workflow UI
+
+**Depends on:** P5B, P5C<br>
+**Requirements:** TC-05, TC-20<br>
+**Deploy boundary:** activates the optional baseline Excel workflow; manual authoring remains complete
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImport.ts`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineImportDialog.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineImportPreview.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/baseline-import-dialog.test.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/use-technical-configuration-baseline-import.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationVersionBar.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineAlerts.tsx`
+
+### Tasks
+
+- [ ] Add template download/import actions only when the selected version is an editable draft.
+- [ ] Wire template download through the P5B generator and P5A shared Blob helper; do not add parallel workbook or object-URL logic.
+- [ ] Use the P5A `useBulkImportState` custom parser and shared bulk-import dialog parts.
+- [ ] Send P5B canonical rows to the P5C preview RPC and render authoritative provisional codes and row-level errors.
+- [ ] Require explicit preview confirmation before calling the atomic apply RPC.
+- [ ] Never persist through the existing sequential group/criterion save steps.
+- [ ] Adopt the returned complete snapshot and synchronize selected-version, dossier revision and version-history caches after success.
+- [ ] Preserve the selected file, canonical rows and preview when apply rejects a stale revision; refresh revision/history without discarding input.
+- [ ] Keep import file/preview/errors transient and block the lock affordance only while unresolved import state is active.
+- [ ] Keep import state outside the already-large baseline editor and lifecycle hook.
+
+### TDD and verification
+
+- UI tests prove no persistence occurs before preview confirmation.
+- Download tests prove the selected draft is generated through the P5B codec and downloaded through the P5A helper.
+- Draft-only tests prove locked versions never render import controls and backend rejection remains authoritative.
+- Conflict tests preserve file, canonical rows and preview while refreshing the current revision.
+- Success tests prove one apply RPC, one returned snapshot adoption and no sequential CRUD calls.
+- Run focused baseline workflow tests plus the full repository TypeScript/React verification order.
+
+### Exit gate
+
+Users can create the same draft baseline manually or through one versioned system workbook built on the existing Equipment Excel infrastructure.
 
 ## Phase P6 - Shared URL Document Primitives
 
-**Depends on:** P0; scheduled after P5 and before P7B
+**Depends on:** P0; scheduled after P5D and before P7B
 **Requirements:** TC-11  
 **Deploy boundary:** refactor with no new technical-configuration persistence
 
@@ -737,8 +857,8 @@ Users can manually enter and update multiple supplier options for an exact basel
 
 ## Phase P9A - Supplier Option Excel
 
-**Depends on:** P5, P8B  
-**Requirements:** TC-10, TC-20  
+**Depends on:** P5A, P8B<br>
+**Requirements:** TC-10, TC-20<br>
 **Deploy boundary:** option template/import only; evidence remains deferred
 
 ### Planned files
@@ -752,6 +872,7 @@ Users can manually enter and update multiple supplier options for an exact basel
 ### Tasks
 
 - [ ] Generate option template from the selected baseline version.
+- [ ] Reuse P5A workbook/download/import-state primitives and keep only option-specific codec logic in this phase.
 - [ ] Preserve criterion IDs/codes and read-only requirement context.
 - [ ] Import response and supplementary information only after preview.
 - [ ] Require the expected option-response revision and preserve preview/input on conflict.

@@ -10,6 +10,8 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Giới hạn toàn bộ module cho người dùng `admin/global`, sử dụng `isGlobalRole()` tại các biên ngoài RPC proxy và kiểm tra quyền tương ứng tại backend.
 - Cho phép xây dựng cấu hình cơ sở theo mô hình text-first gồm hai cấp `Nhóm cấu hình -> Tiêu chí`. Bản nháp mới có bốn nhóm gợi ý từ dữ liệu khảo sát: `Yêu cầu chung`, `Yêu cầu cấu hình cung cấp`, `Yêu cầu kỹ thuật` và `Yêu cầu khác`; đây là template mặc định có thể thêm, đổi tên, xóa và sắp xếp, không phải danh mục khóa cứng.
 - Giữ cấu trúc tiêu chí tối thiểu và ổn định thay vì cho tạo cột nội dung tùy ý. Người dùng có thể tạo không giới hạn số nhóm/tiêu chí theo quy tắc nghiệp vụ, nhập text nhiều dòng, nhập nhanh, sắp xếp và import template Excel chuẩn của hệ thống.
+- Tái sử dụng pipeline import/export Excel hiện có của trang Equipment ở mức workbook loading/creation, worksheet conversion, Blob download, file lifecycle và dialog primitives; chỉ baseline/option workbook codec và validation nghiệp vụ là module-specific.
+- Import baseline dùng authoritative preview và một atomic apply RPC cho toàn phiên bản nháp; không chuyển workbook thành chuỗi CRUD RPC hoặc persist file/preview/error state.
 - Quản lý phiên bản cấu hình cơ sở theo trạng thái `Bản nháp` và `Đã khóa`; phiên bản đã khóa bất biến tuyệt đối, kể cả với `admin/global`.
 - Cho phép khai báo nhiều sản phẩm tham chiếu tùy chọn, nhập nội dung đối chiếu và trích dẫn theo từng tiêu chí, đồng thời giữ chúng tách biệt với các phương án cấu hình của nhà cung cấp.
 - Cho phép không giới hạn số nhà cung cấp theo quy tắc nghiệp vụ và cho phép mỗi nhà cung cấp có nhiều phương án/model cấu hình.
@@ -28,7 +30,8 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
   - `technical-configuration-comparison` (new capability)
 - Anticipated affected code:
   - Route và UI mới dưới `src/app/(app)/technical-configurations/`
-  - Data hooks, types, Excel helpers và validation dành riêng cho module
+  - Data hooks, types và baseline/option Excel codec dành riêng cho module
+  - Shared Excel primitives được trích từ pipeline Equipment với compatibility exports và regression coverage
   - Shared URL attachment primitives được trích xuất từ pattern Equipment khi triển khai
   - Supabase migration mới cho hồ sơ, phiên bản cấu hình cơ sở, nhóm/tiêu chí, nhà cung cấp, phương án, phản hồi, URL tài liệu, trích dẫn và đánh giá thủ công
   - Sidebar/navigation và route authorization cho `admin/global`

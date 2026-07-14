@@ -8,7 +8,7 @@
 - Add draft/locked lifecycle, irreversible lock, version history, blank draft creation, and locked-version copy.
 - Copy only baseline groups and criteria in P4.
 - Preserve the P7A/P7B extension contract without creating reference product, response, document, or citation tables/RPCs.
-- Do not add P5 Excel import/apply, P8 supplier/comparison behavior, or later-phase audit/AI work.
+- Do not add P5B-P5D Excel codec/import/apply, P8 supplier/comparison behavior, or later-phase audit/AI work.
 
 ## Assumptions And Contracts
 
@@ -16,7 +16,7 @@
 - `technical_configuration_baseline_lock` checks the current draft `p_expected_revision`.
 - `technical_configuration_baseline_copy` checks the locked source version `p_expected_revision`.
 - A copied version receives new row IDs, the next sequential version number, `source_baseline_version_id`, preserved criterion codes, and `source_criterion_id`.
-- P5 must extend lock prerequisites when it introduces persisted import-error state; P4 has no import-error entity to inspect.
+- P5D keeps import files, previews and errors transient; P4 has no import-error entity to inspect. P5D blocks the lock affordance only while unresolved local import state is active.
 - All lifecycle functions lock the dossier row before the baseline row to preserve the existing lock order.
 
 ## Planned Files

@@ -187,7 +187,7 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P1   | `technical_configuration_dossiers_list`, `technical_configuration_dossiers_get`, `technical_configuration_dossiers_create`, `technical_configuration_dossiers_update`, `technical_configuration_dossiers_archive`                                                                                                                                                                                                                                                                                                                                                                              |
 | P2   | `technical_configuration_baseline_draft_create`, `technical_configuration_baseline_draft_get`, `technical_configuration_baseline_group_create`, `technical_configuration_baseline_group_update`, `technical_configuration_baseline_group_delete`, `technical_configuration_baseline_groups_reorder`, `technical_configuration_baseline_criterion_create`, `technical_configuration_baseline_criterion_update`, `technical_configuration_baseline_criterion_delete`, `technical_configuration_baseline_criteria_reorder`, `technical_configuration_baseline_bulk_preview`                       |
 | P4   | `technical_configuration_baseline_versions_list`, `technical_configuration_baseline_lock`, `technical_configuration_baseline_copy`                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| P5   | `technical_configuration_baseline_import_apply`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| P5C  | `technical_configuration_baseline_import_preview`, `technical_configuration_baseline_import_apply`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | P7A  | `technical_configuration_reference_products_list`, `technical_configuration_reference_product_create`, `technical_configuration_reference_product_update`, `technical_configuration_reference_product_delete`, `technical_configuration_reference_response_upsert`                                                                                                                                                                                                                                                                                                                             |
 | P7B  | `technical_configuration_baseline_documents_list`, `technical_configuration_baseline_document_create`, `technical_configuration_baseline_document_update`, `technical_configuration_baseline_document_delete`, `technical_configuration_baseline_citation_upsert`, `technical_configuration_baseline_citation_delete`, `technical_configuration_reference_document_create`, `technical_configuration_reference_document_update`, `technical_configuration_reference_document_delete`, `technical_configuration_reference_citation_upsert`, `technical_configuration_reference_citation_delete` |
 | P8A  | `technical_configuration_suppliers_list`, `technical_configuration_supplier_create`, `technical_configuration_supplier_update`, `technical_configuration_supplier_delete`, `technical_configuration_options_list`, `technical_configuration_option_create`, `technical_configuration_option_update`, `technical_configuration_option_delete`, `technical_configuration_comparison_set_get_or_create`, `technical_configuration_option_response_upsert`                                                                                                                                         |
@@ -205,6 +205,8 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
 - Get/create/update/archive/copy/upsert response: `{ data }`.
 - Delete response: `{ data: { id, revision } }`.
 - Preview response: `{ data, errors }`; preview does not persist.
+- Baseline import preview/apply request: `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`, `p_expected_revision`.
+- Baseline import apply response: `{ data }`, where `data` is the complete updated baseline snapshot and owning revision.
 - Every mutation request includes `p_expected_revision`. Dossier create requires `0`; descendant creates use the owning aggregate revision.
 - A successful mutation returns the new revision in `data`.
 
@@ -221,11 +223,22 @@ RPCs raise the SQLSTATE and machine message below. The proxy's `{ error: payload
 | `PT409`  | `locked_version`       | P4           | Mutation targets locked baseline-owned data                         |
 | `PT409`  | `draft_already_exists` | P2           | Dossier already has an editable draft                               |
 | `PT422`  | `validation_error`     | P1           | Field, relationship, order, code or request-bound validation failed |
-| `PT422`  | `template_mismatch`    | P5           | Workbook kind/version/metadata/shape does not match the contract    |
+| `PT422`  | `template_mismatch`    | P5C          | Workbook kind/version/metadata/shape does not match the contract    |
 
 Errors must not include dossier data when authorization or ownership fails.
 
 ## Excel Contract
+
+### Shared Infrastructure Reuse
+
+P5A owns the shared Excel seams already exercised by the Equipment page:
+
+- workbook creation/loading and worksheet value conversion
+- Blob download and object-URL cleanup
+- `useBulkImportState` file/parse/error lifecycle with an optional custom workbook parser
+- `BulkImportDialogParts` file input, parse errors, row errors and submit state
+
+Equipment and existing bulk-import consumers keep their public behavior and compatibility exports. `exportToExcel` remains the flat visible-sheet export API; it is not extended with baseline-specific flags for hidden metadata, row types or import semantics. P5B adds only the baseline workbook codec on top of the shared primitives. P5D must not create parallel workbook loading, download, file-input state, error-list or submit-state helpers.
 
 ### Baseline Workbook Version 1
 
@@ -256,6 +269,32 @@ Visible columns, in order:
 
 Import parses and previews the whole workbook before mutation. Structural or row errors reject the entire apply; no partial write occurs.
 
+### Baseline Import Preview And Apply
+
+P5C introduces:
+
+```text
+technical_configuration_baseline_import_preview(
+  p_baseline_version_id uuid,
+  p_template_metadata jsonb,
+  p_rows jsonb,
+  p_expected_revision bigint
+)
+
+technical_configuration_baseline_import_apply(
+  p_baseline_version_id uuid,
+  p_template_metadata jsonb,
+  p_rows jsonb,
+  p_expected_revision bigint
+)
+```
+
+Both RPCs call the same internal server-side validator/normalizer. Both reject malformed canonical rows and metadata whose `template_kind`, `template_version`, `dossier_id`, `baseline_version_id` or `baseline_revision` does not match the target. Preview is read-only and returns canonical rows, provisional codes and row-level errors. Apply acquires the established dossier-row then baseline-row lock order, repeats validation under lock and rejects stale, archived or locked targets before mutation.
+
+Existing criteria are matched by immutable `criterion_code` and retain their criterion IDs and `source_criterion_id`. New criterion rows must have blank codes and receive codes from the target version's `next_criterion_number` during the apply transaction. The counter advances exactly once per newly allocated criterion and never for an existing row. The canonical group/criterion tree is reconciled as one aggregate mutation, the owning revision increments once, and any failure rolls back every change.
+
+The client must not translate workbook rows into the existing sequential group/criterion CRUD save steps. Import files, parsed rows, previews and errors remain transient client state; P5C and P5D create no import-error table or persisted upload record.
+
 ## Query And Performance Budgets
 
 - Dossier and entity lists use bounded pagination with a maximum page size of 100.
@@ -270,14 +309,15 @@ Import parses and previews the whole workbook before mutation. Structural or row
 1. P1 creates dossier/auth/archive helpers.
 2. P2 creates baseline draft/version/group/criterion contracts.
 3. P4 adds lock/history/source links and the core copy function.
-4. P7A adds reference entities and extends copy.
-5. P7B adds baseline/reference documents/citations and extends copy again.
-6. P8A adds suppliers/options/comparison sets/responses.
-7. P9B adds option documents/citations.
-8. P10A adds the bounded comparison read contract when a dedicated RPC is required.
-9. P11 adds manual assessments.
+4. P5C adds baseline import preview/apply functions without creating a new persistence table.
+5. P7A adds reference entities and extends copy.
+6. P7B adds baseline/reference documents/citations and extends copy again.
+7. P8A adds suppliers/options/comparison sets/responses.
+8. P9B adds option documents/citations.
+9. P10A adds the bounded comparison read contract when a dedicated RPC is required.
+10. P11 adds manual assessments.
 
-P6 creates no technical-configuration persistence. It lands after P5 and before the first document UI in P7B. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
+P5A, P5B and P5D create no technical-configuration persistence. P6 also creates no technical-configuration persistence; it lands after P5D and before the first document UI in P7B. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
 
 ## AI Boundary Audit
 

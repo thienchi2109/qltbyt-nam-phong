@@ -19,7 +19,7 @@ Excluded:
 - autosave or persistence from the dialog or preview
 - P4 versioning, lock, copy, or history behavior
 - migrations, Supabase changes, and live DB writes
-- Excel import or other P5 behavior
+- Excel import or other P5B-P5D behavior
 - parser rules not required by P3C, including bullets, numbering, or duplicate detection
 
 ## Assumptions And Design
