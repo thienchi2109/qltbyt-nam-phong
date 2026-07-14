@@ -474,19 +474,19 @@ Manual baseline authoring supports optional bulk text entry without changing per
 
 ### Tasks
 
-- [ ] Add draft/locked state machine and sequential version numbering.
-- [ ] Add lock prerequisites from the spec.
-- [ ] Add database/backend rejection for every locked baseline-owned mutation.
-- [ ] Record `locked_at` and `locked_by`.
-- [ ] Add explicit lock confirmation and visibly render lock actor/time in the locked workspace.
-- [ ] Require the expected draft revision for lock and copy operations; preserve user state on conflict.
-- [ ] Add create-new-draft from blank or locked version copy.
-- [ ] Copy new IDs, set `source_baseline_version_id` on every newly copied baseline version, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
-- [ ] Define the copy RPC as an extension contract so P7A/P7B add reference products, responses, documents and citations in their own migrations.
-- [ ] Add version selector/history without unlocking old versions.
-- [ ] Ensure supplier/evaluation contracts later can bind to an exact baseline version.
-- [ ] Remove edit affordances in locked views while retaining backend enforcement.
-- [ ] Complete the mandatory DB phase gate for versioning/locking objects and RPCs, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
+- [x] Add draft/locked state machine and sequential version numbering.
+- [x] Add lock prerequisites from the spec.
+- [x] Add database/backend rejection for every locked baseline-owned mutation.
+- [x] Record `locked_at` and `locked_by`.
+- [x] Add explicit lock confirmation and visibly render lock actor/time in the locked workspace.
+- [x] Require the expected draft revision for lock and copy operations; preserve user state on conflict.
+- [x] Add create-new-draft from blank or locked version copy.
+- [x] Copy new IDs, set `source_baseline_version_id` on every newly copied baseline version, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
+- [x] Define the copy RPC as an extension contract so P7A/P7B add reference products, responses, documents and citations in their own migrations.
+- [x] Add version selector/history without unlocking old versions.
+- [x] Ensure supplier/evaluation contracts later can bind to an exact baseline version.
+- [x] Remove edit affordances in locked views while retaining backend enforcement.
+- [x] Complete the mandatory DB phase gate for versioning/locking objects and RPCs, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
 
 ### TDD and verification
 
