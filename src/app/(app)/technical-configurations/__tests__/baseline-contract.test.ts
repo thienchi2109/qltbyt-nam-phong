@@ -14,10 +14,13 @@ describe("technical configuration baseline RPC contract", () => {
     vi.clearAllMocks()
   })
 
-  it("freezes the eleven named P2 RPC mappings", () => {
+  it("freezes the P2 and P4 baseline RPC mappings", () => {
     expect(BASELINE_RPC_FUNCTIONS).toEqual({
       createDraft: "technical_configuration_baseline_draft_create",
       getDraft: "technical_configuration_baseline_draft_get",
+      listVersions: "technical_configuration_baseline_versions_list",
+      lockVersion: "technical_configuration_baseline_lock",
+      copyVersion: "technical_configuration_baseline_copy",
       createGroup: "technical_configuration_baseline_group_create",
       updateGroup: "technical_configuration_baseline_group_update",
       deleteGroup: "technical_configuration_baseline_group_delete",
@@ -43,6 +46,10 @@ describe("technical configuration baseline RPC contract", () => {
       p_requirement_text: "Dòng 1\nDòng 2",
       p_expected_revision: 4,
     })
+    await technicalConfigurationBaselineRpc.lockVersion({
+      p_baseline_version_id: "draft-1",
+      p_expected_revision: 5,
+    })
 
     expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
       1,
@@ -60,6 +67,14 @@ describe("technical configuration baseline RPC contract", () => {
         p_title: null,
         p_requirement_text: "Dòng 1\nDòng 2",
         p_expected_revision: 4,
+      }
+    )
+    expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
+      3,
+      "technical_configuration_baseline_lock",
+      {
+        p_baseline_version_id: "draft-1",
+        p_expected_revision: 5,
       }
     )
   })

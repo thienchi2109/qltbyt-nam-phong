@@ -5,6 +5,7 @@ import type {
   TechnicalConfigurationBaselineBulkPreviewRpcArgs,
   TechnicalConfigurationBaselineBulkPreviewWireResponse,
   TechnicalConfigurationBaselineCriteriaReorderRpcArgs,
+  TechnicalConfigurationBaselineCopyRpcArgs,
   TechnicalConfigurationBaselineCriterionCreateRpcArgs,
   TechnicalConfigurationBaselineCriterionDeleteRpcArgs,
   TechnicalConfigurationBaselineCriterionUpdateRpcArgs,
@@ -19,9 +20,12 @@ import type {
   TechnicalConfigurationBaselineGroupsReorderRpcArgs,
   TechnicalConfigurationBaselineGroupUpdateRpcArgs,
   TechnicalConfigurationBaselineGroupWireResponse,
+  TechnicalConfigurationBaselineLockRpcArgs,
+  TechnicalConfigurationBaselineVersionsListRpcArgs,
+  TechnicalConfigurationBaselineVersionsListWireResponse,
 } from "../baseline-types"
 
-/** Typed client wrappers for the P2 baseline draft RPCs. */
+/** Typed client wrappers for baseline draft and lifecycle RPCs. */
 export const technicalConfigurationBaselineRpc = {
   createDraft(args: TechnicalConfigurationBaselineDraftCreateRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
@@ -32,6 +36,24 @@ export const technicalConfigurationBaselineRpc = {
   getDraft(args: TechnicalConfigurationBaselineDraftGetRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
       BASELINE_RPC_FUNCTIONS.getDraft,
+      { ...args }
+    )
+  },
+  listVersions(args: TechnicalConfigurationBaselineVersionsListRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineVersionsListWireResponse>(
+      BASELINE_RPC_FUNCTIONS.listVersions,
+      { ...args }
+    )
+  },
+  lockVersion(args: TechnicalConfigurationBaselineLockRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
+      BASELINE_RPC_FUNCTIONS.lockVersion,
+      { ...args }
+    )
+  },
+  copyVersion(args: TechnicalConfigurationBaselineCopyRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
+      BASELINE_RPC_FUNCTIONS.copyVersion,
       { ...args }
     )
   },
@@ -91,7 +113,7 @@ export const technicalConfigurationBaselineRpc = {
   },
 }
 
-/** Returns the typed P2 baseline draft RPC client. */
+/** Returns the typed baseline RPC client. */
 export function useTechnicalConfigurationBaseline() {
   return technicalConfigurationBaselineRpc
 }
