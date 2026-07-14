@@ -179,6 +179,7 @@ export function TechnicalConfigurationBaselineTab({
           isLocking: baseline.isLocking,
           isCopying: baseline.isCopying,
           isLoadingMoreVersions: baseline.isLoadingMoreVersions,
+          hasLoadMoreError: baseline.hasLoadMoreError,
           isNavigationDisabled: baseline.isLifecycleBusy,
           hasMoreVersions: baseline.hasMoreVersions,
         }}

@@ -1,8 +1,9 @@
 import "@testing-library/jest-dom"
-import { act, screen, waitFor, within } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { TechnicalConfigurationVersionBar } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationVersionBar"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 
 import {
@@ -163,5 +164,112 @@ describe("technical configuration version workflow review regressions", () => {
 
     expect(await screen.findByText("Phiên bản 2")).toBeInTheDocument()
     expect(screen.getByText("Sao chép từ phiên bản 1")).toBeInTheDocument()
+  })
+
+  it("recovers offset-shift history from the load-more control", async () => {
+    const user = userEvent.setup()
+    const createVersions = (highestVersion: number, count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        createLockedVersion({
+          id: `version-${highestVersion - index}`,
+          version_number: highestVersion - index,
+        })
+      )
+    const initialFirstPage = createVersions(200, 100)
+    const refreshedFirstPage = createVersions(201, 100)
+    const shiftedSecondPage = createVersions(101, 100)
+    const finalPage = createVersions(1, 1)
+    let pageOneRequestCount = 0
+    rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) => {
+      if (p_page === 2) {
+        return Promise.resolve({
+          data: shiftedSecondPage,
+          total: 201,
+          page: 2,
+          page_size: 100,
+        })
+      }
+      if (p_page === 3) {
+        return Promise.resolve({ data: finalPage, total: 201, page: 3, page_size: 100 })
+      }
+      pageOneRequestCount += 1
+      return Promise.resolve({
+        data: pageOneRequestCount === 1 ? initialFirstPage : refreshedFirstPage,
+        total: pageOneRequestCount === 1 ? 200 : 201,
+        page: 1,
+        page_size: 100,
+      })
+    })
+
+    renderTab()
+    await user.click(await screen.findByRole("button", { name: "Tải thêm phiên bản" }))
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeEnabled()
+    )
+    await user.click(screen.getByRole("button", { name: "Tải thêm phiên bản" }))
+
+    const retry = await screen.findByRole("button", { name: "Tải lại lịch sử phiên bản" })
+    await user.click(retry)
+
+    expect(
+      await screen.findByRole("option", { name: "Phiên bản 201 · Đã khóa" })
+    ).toBeInTheDocument()
+    expect(rpc.listVersions).toHaveBeenCalledWith({
+      p_dossier_id: dossier.id,
+      p_page: 1,
+      p_page_size: 100,
+    })
+  })
+
+  it("keeps a preserved historical selection represented in the selector", () => {
+    const selectedVersion = createLockedVersion({ id: "version-1", version_number: 1 })
+    const visibleVersion = createLockedVersion({ id: "version-2", version_number: 2 })
+
+    render(
+      <TechnicalConfigurationVersionBar
+        versions={[visibleVersion]}
+        selectedVersion={selectedVersion}
+        lockBlockedReason={null}
+        status={{
+          hasDraft: false,
+          isCreating: false,
+          isLocking: false,
+          isCopying: false,
+          isLoadingMoreVersions: false,
+          isNavigationDisabled: false,
+          hasMoreVersions: true,
+        }}
+        onSelectVersion={vi.fn()}
+        onLoadMoreVersions={vi.fn()}
+        onRequestLock={vi.fn()}
+        onCreateBlank={vi.fn()}
+        onCopy={vi.fn()}
+      />
+    )
+
+    const selector = screen.getByRole("combobox", {
+      name: "Lịch sử phiên bản",
+    }) as HTMLSelectElement
+    expect(selector.value).toBe(selectedVersion.id)
+    expect(
+      within(selector).getByRole("option", { name: "Phiên bản 1 · Đã khóa" })
+    ).toBeInTheDocument()
+  })
+
+  it("clears the creation alert after adopting a concurrently created draft", async () => {
+    const user = userEvent.setup()
+    const existingDraft = createDraft()
+    rpc.listVersions
+      .mockResolvedValueOnce(baselineVersionsResponse([]))
+      .mockResolvedValueOnce(baselineVersionsResponse([existingDraft]))
+    rpc.createDraft.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, { message: "draft_already_exists" })
+    )
+
+    renderTab()
+    await user.click(await screen.findByRole("button", { name: "Khởi tạo cấu hình cơ sở" }))
+
+    expect(await screen.findByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
   })
 })

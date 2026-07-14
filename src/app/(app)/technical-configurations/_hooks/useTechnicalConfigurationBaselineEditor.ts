@@ -114,7 +114,6 @@ export function useTechnicalConfigurationBaselineEditor({
     versionsQuery.data,
     versionsQuery.hasNextPage,
   ])
-
   const createDraftMutation = useMutation({
     mutationFn: () =>
       rpc.createDraft({
@@ -282,7 +281,7 @@ export function useTechnicalConfigurationBaselineEditor({
     reloadMutation.isPending ||
     versionsQuery.isFetching
   const createError = getTechnicalConfigurationBaselineCreateError(
-    createDraftMutation.isError,
+    createDraftMutation.isError && !versions.some((version) => version.status === "draft"),
     isConflict,
     lifecycleError
   )
@@ -303,6 +302,7 @@ export function useTechnicalConfigurationBaselineEditor({
     isLocking: lockMutation.isPending,
     isCopying: copyMutation.isPending,
     isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
+    hasLoadMoreError: versionsQuery.isFetchNextPageError,
     isLifecycleBusy,
     createError,
     queryError: getTechnicalConfigurationBaselineQueryError(

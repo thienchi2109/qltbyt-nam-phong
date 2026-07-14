@@ -15,6 +15,7 @@ type TechnicalConfigurationVersionBarProps = {
     isLocking: boolean
     isCopying: boolean
     isLoadingMoreVersions: boolean
+    hasLoadMoreError: boolean
     isNavigationDisabled: boolean
     hasMoreVersions: boolean
   }
@@ -43,6 +44,7 @@ export function TechnicalConfigurationVersionBar({
     isLocking,
     isCopying,
     isLoadingMoreVersions,
+    hasLoadMoreError,
     isNavigationDisabled,
     hasMoreVersions,
   } = status
@@ -51,6 +53,11 @@ export function TechnicalConfigurationVersionBar({
     selectedVersion.status === "locked" &&
     Boolean(selectedVersion.locked_at || selectedVersion.locked_by)
   const hasLineage = Boolean(selectedVersion.source_version_number)
+  const selectableVersions = versions.some((version) => version.id === selectedVersion.id)
+    ? versions
+    : [...versions, selectedVersion].toSorted(
+        (left, right) => right.version_number - left.version_number
+      )
 
   return (
     <section className="border-y py-4" aria-label="Lịch sử phiên bản cấu hình cơ sở">
@@ -73,7 +80,7 @@ export function TechnicalConfigurationVersionBar({
             disabled={isNavigationDisabled}
             onChange={(event) => onSelectVersion(event.target.value)}
           >
-            {versions.map((version) => (
+            {selectableVersions.map((version) => (
               <option key={version.id} value={version.id}>
                 Phiên bản {version.version_number} ·{" "}
                 {version.status === "locked" ? "Đã khóa" : "Bản nháp"}
@@ -89,7 +96,11 @@ export function TechnicalConfigurationVersionBar({
               onClick={onLoadMoreVersions}
             >
               <ChevronDown className="size-4" aria-hidden="true" />
-              {isLoadingMoreVersions ? "Đang tải..." : "Tải thêm phiên bản"}
+              {isLoadingMoreVersions
+                ? "Đang tải..."
+                : hasLoadMoreError
+                  ? "Tải lại lịch sử phiên bản"
+                  : "Tải thêm phiên bản"}
             </Button>
           ) : null}
 

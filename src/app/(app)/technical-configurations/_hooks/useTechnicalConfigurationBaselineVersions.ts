@@ -103,6 +103,10 @@ export function useTechnicalConfigurationBaselineVersions({
   }, [versionsQuery])
 
   const loadMoreVersions = React.useCallback(async () => {
+    if (versionsQuery.isFetchNextPageError) {
+      await versionsQuery.refetch()
+      return
+    }
     if (!versionsQuery.hasNextPage || versionsQuery.isFetchingNextPage) return
     await versionsQuery.fetchNextPage()
   }, [versionsQuery])

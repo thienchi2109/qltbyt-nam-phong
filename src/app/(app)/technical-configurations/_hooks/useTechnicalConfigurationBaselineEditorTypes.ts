@@ -21,6 +21,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   isLocking: boolean
   isCopying: boolean
   isLoadingMoreVersions: boolean
+  hasLoadMoreError: boolean
   isLifecycleBusy: boolean
   createError: string | null
   queryError: string | null
