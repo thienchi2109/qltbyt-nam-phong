@@ -16,6 +16,7 @@ const timestamp = "2026-07-13T00:00:00.000Z"
 
 const rpc = vi.hoisted(() => ({
   createDraft: vi.fn(),
+  getDossier: vi.fn(),
   getDraft: vi.fn(),
   listVersions: vi.fn(),
   lockVersion: vi.fn(),

@@ -10,6 +10,7 @@ import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-co
 
 const rpc = vi.hoisted(() => ({
   createDraft: vi.fn(),
+  getDossier: vi.fn(),
   getDraft: vi.fn(),
   listVersions: vi.fn(),
 }))
@@ -93,6 +94,7 @@ function createWrapper() {
 describe("useTechnicalConfigurationBaselineEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    rpc.getDossier.mockResolvedValue({ data: dossier })
     rpc.getDraft.mockResolvedValue({ data: draft })
     rpc.listVersions.mockResolvedValue({
       data: [draft],
@@ -193,29 +195,41 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
   })
 
   it("keeps a selected page-2 locked version when refreshing page 1", async () => {
-    const newest = { ...draft, id: "draft-101", version_number: 101 }
-    const oldest = {
+    const createVersion = (versionNumber: number) => ({
       ...draft,
-      id: "locked-1",
-      version_number: 1,
+      id: `version-${versionNumber}`,
+      version_number: versionNumber,
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
       locked_by: 42,
-    }
+    })
+    const initialFirstPage = Array.from({ length: 100 }, (_, index) => createVersion(200 - index))
+    const initialSecondPage = Array.from({ length: 100 }, (_, index) => createVersion(100 - index))
+    const refreshedFirstPage = Array.from({ length: 100 }, (_, index) => createVersion(201 - index))
+    const oldest = initialSecondPage.at(-1)
+    if (!oldest) throw new Error("Expected oldest version")
     let pageOneRequestCount = 0
     rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) => {
       if (p_page === 2) {
         return Promise.resolve({
-          data: [oldest],
-          total: 101,
+          data: initialSecondPage,
+          total: 200,
           page: 2,
+          page_size: 100,
+        })
+      }
+      if (p_page === 3) {
+        return Promise.resolve({
+          data: [oldest],
+          total: 201,
+          page: 3,
           page_size: 100,
         })
       }
       pageOneRequestCount += 1
       return Promise.resolve({
-        data: [{ ...newest, revision: newest.revision + pageOneRequestCount }],
-        total: 101,
+        data: pageOneRequestCount === 1 ? initialFirstPage : refreshedFirstPage,
+        total: pageOneRequestCount === 1 ? 200 : 201,
         page: 1,
         page_size: 100,
       })
@@ -229,11 +243,11 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
       { wrapper: createWrapper() }
     )
 
-    await waitFor(() => expect(result.current.versions).toHaveLength(1))
+    await waitFor(() => expect(result.current.versions).toHaveLength(100))
     await act(async () => {
       await result.current.onLoadMoreVersions()
     })
-    await waitFor(() => expect(result.current.versions).toHaveLength(2))
+    await waitFor(() => expect(result.current.versions).toHaveLength(200))
     act(() => {
       result.current.onSelectVersion(oldest.id)
     })
@@ -244,7 +258,22 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     })
 
     expect(result.current.selectedVersion?.id).toBe(oldest.id)
-    expect(result.current.versions.map((version) => version.id)).toEqual([newest.id, oldest.id])
+    expect(result.current.versions.map((version) => version.id)).not.toContain(oldest.id)
+    expect(result.current.hasMoreVersions).toBe(true)
+
+    await act(async () => {
+      await result.current.onLoadMoreVersions()
+    })
+
+    await waitFor(() =>
+      expect(result.current.versions.map((version) => version.id)).toContain(oldest.id)
+    )
+    expect(result.current.selectedVersion?.id).toBe(oldest.id)
+    expect(rpc.listVersions).toHaveBeenLastCalledWith({
+      p_dossier_id: dossier.id,
+      p_page: 3,
+      p_page_size: 100,
+    })
   })
 
   it("classifies stale draft creation as a recoverable conflict", async () => {
@@ -279,7 +308,60 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     })
 
     await waitFor(() => expect(result.current.isConflict).toBe(true))
-    expect(result.current.createError).toBeNull()
+    expect(result.current.createError).toBe(
+      "Dữ liệu hồ sơ đã thay đổi. Trạng thái mới đã được tải; vui lòng thử lại."
+    )
     expect(result.current.lifecycleError).toBeNull()
+  })
+
+  it("refreshes the dossier revision before retrying stale first-draft creation", async () => {
+    rpc.listVersions.mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      page_size: 100,
+    })
+    rpc.getDossier.mockResolvedValue({
+      data: {
+        ...dossier,
+        revision: 4,
+      },
+    })
+    rpc.createDraft
+      .mockRejectedValueOnce(new TechnicalConfigurationRpcError(409, { message: "stale_revision" }))
+      .mockResolvedValueOnce({
+        data: {
+          ...draft,
+          dossier_revision: 5,
+        },
+      })
+
+    const { result } = renderHook(
+      () =>
+        useTechnicalConfigurationBaselineEditor({
+          dossier,
+        }),
+      { wrapper: createWrapper() }
+    )
+
+    await waitFor(() => expect(result.current.isMissing).toBe(true))
+    act(() => {
+      result.current.onCreate()
+    })
+
+    await waitFor(() => expect(rpc.getDossier).toHaveBeenCalledWith(dossier.id))
+    expect(result.current.createError).toBe(
+      "Dữ liệu hồ sơ đã thay đổi. Trạng thái mới đã được tải; vui lòng thử lại."
+    )
+
+    act(() => {
+      result.current.onCreate()
+    })
+
+    await waitFor(() => expect(rpc.createDraft).toHaveBeenCalledTimes(2))
+    expect(rpc.createDraft).toHaveBeenLastCalledWith({
+      p_dossier_id: dossier.id,
+      p_expected_revision: 4,
+    })
   })
 })

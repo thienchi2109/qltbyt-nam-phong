@@ -27,6 +27,8 @@ const rpc = getBaselineRpcMock()
 describe("technical configuration baseline tab", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    rpc.listVersions.mockReset()
+    rpc.getDossier.mockResolvedValue({ data: dossier })
     rpc.listVersions.mockResolvedValue(baselineVersionsResponse([createDraft()]))
   })
 
@@ -287,7 +289,7 @@ describe("technical configuration baseline tab", () => {
     expect(pendingButton).toBeDisabled()
     expect(await screen.findByDisplayValue("Tên đang xung đột")).toBeDisabled()
     await user.click(pendingButton)
-    expect(rpc.listVersions).toHaveBeenCalledTimes(2)
+    expect(rpc.listVersions).toHaveBeenCalledTimes(3)
 
     await act(async () => {
       pending.reject(new Error("network_down"))
@@ -332,6 +334,41 @@ describe("technical configuration baseline tab", () => {
 
     expect(await screen.findByDisplayValue("Tên nhóm đã được lưu")).toBeInTheDocument()
     expect(rpc.listVersions).toHaveBeenCalledTimes(1)
+  })
+
+  it("refreshes a locked version into cache before remounting after a save conflict", async () => {
+    const user = userEvent.setup()
+    const queryClient = createPersistentQueryClient()
+    const lockedVersion = createDraft({
+      status: "locked",
+      locked_at: "2026-07-14T08:30:00.000Z",
+      locked_by: 42,
+    })
+    rpc.listVersions
+      .mockResolvedValueOnce(baselineVersionsResponse([createDraft()]))
+      .mockResolvedValueOnce(baselineVersionsResponse([lockedVersion]))
+    rpc.updateGroup.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, {
+        code: "PT409",
+        message: "locked_version",
+      })
+    )
+    const view = renderTab(vi.fn(), queryClient)
+
+    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(nameInput)
+    await user.type(nameInput, "Tên chưa lưu")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+    expect(screen.getByDisplayValue("Tên chưa lưu")).toBeInTheDocument()
+    await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
+
+    view.unmount()
+    renderTab(vi.fn(), queryClient)
+
+    expect(await screen.findByText("Phiên bản đã khóa")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
   })
 
   it("creates a missing draft only from an explicit action and renders locked data as a placeholder", async () => {

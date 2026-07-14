@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   flattenTechnicalConfigurationBaselineVersionPages,
   getTechnicalConfigurationBaselineNextPage,
+  replaceTechnicalConfigurationBaselineFirstPageInPages,
   replaceTechnicalConfigurationBaselineVersionInPages,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 
@@ -49,5 +50,54 @@ describe("technical configuration baseline version state", () => {
         page_size: 100,
       })
     ).toThrow("baseline_version_history_incomplete")
+  })
+
+  it("reconciles shifted loaded pages when a first-page refresh inserts a new version", () => {
+    const firstPageVersions = Array.from({ length: 100 }, (_, index) =>
+      createDraft({
+        id: `version-${200 - index}`,
+        version_number: 200 - index,
+        status: "locked",
+      })
+    )
+    const secondPageVersions = Array.from({ length: 100 }, (_, index) =>
+      createDraft({
+        id: `version-${100 - index}`,
+        version_number: 100 - index,
+        status: "locked",
+      })
+    )
+    const refreshedFirstPageVersions = Array.from({ length: 100 }, (_, index) =>
+      createDraft({
+        id: `version-${201 - index}`,
+        version_number: 201 - index,
+        status: "locked",
+      })
+    )
+
+    const pages = replaceTechnicalConfigurationBaselineFirstPageInPages(
+      {
+        pages: [
+          { data: firstPageVersions, total: 200, page: 1, page_size: 100 },
+          { data: secondPageVersions, total: 200, page: 2, page_size: 100 },
+        ],
+        pageParams: [1, 2],
+      },
+      {
+        data: refreshedFirstPageVersions,
+        total: 201,
+        page: 1,
+        page_size: 100,
+      }
+    )
+
+    const versionIds = flattenTechnicalConfigurationBaselineVersionPages(pages).map(
+      (version) => version.id
+    )
+    expect(versionIds).toHaveLength(200)
+    expect(versionIds).toContain("version-101")
+    expect(versionIds).not.toContain("version-1")
+    expect(pages.pageParams).toEqual([1, 2])
+    expect(getTechnicalConfigurationBaselineNextPage(pages.pages[1], pages.pages)).toBe(3)
   })
 })

@@ -10,6 +10,7 @@ import {
   BASELINE_VERSION_PAGE_SIZE,
   flattenTechnicalConfigurationBaselineVersionPages,
   getTechnicalConfigurationBaselineNextPage,
+  replaceTechnicalConfigurationBaselineFirstPageInPages,
   replaceTechnicalConfigurationBaselineVersionInPages,
   toTechnicalConfigurationBaselineVersionPages,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
@@ -70,17 +71,20 @@ export function useTechnicalConfigurationBaselineVersions({
   const replaceVersions = React.useCallback(
     (response: TechnicalConfigurationBaselineVersionsListWireResponse) => {
       queryClient.setQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey, (current) =>
-        current
-          ? {
-              ...current,
-              pages: [response, ...current.pages.slice(1)],
-              pageParams: [response.page, ...current.pageParams.slice(1)],
-            }
-          : toTechnicalConfigurationBaselineVersionPages(response)
+        replaceTechnicalConfigurationBaselineFirstPageInPages(current, response)
       )
     },
     [queryClient, queryKey]
   )
+
+  const invalidateVersions = React.useCallback(
+    () => queryClient.invalidateQueries({ queryKey, exact: true }),
+    [queryClient, queryKey]
+  )
+
+  const retryVersions = React.useCallback(async () => {
+    await versionsQuery.refetch()
+  }, [versionsQuery])
 
   const loadMoreVersions = React.useCallback(async () => {
     if (!versionsQuery.hasNextPage || versionsQuery.isFetchingNextPage) return
@@ -92,6 +96,8 @@ export function useTechnicalConfigurationBaselineVersions({
     versions,
     cacheVersion,
     replaceVersions,
+    invalidateVersions,
+    retryVersions,
     loadMoreVersions,
   }
 }

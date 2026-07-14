@@ -34,6 +34,19 @@ export function getTechnicalConfigurationBaselineErrorMessage(
   return error instanceof Error && error.message ? error.message : fallback
 }
 
+/** Returns the first-draft creation error visible to the empty state. */
+export function getTechnicalConfigurationBaselineCreateError(
+  isError: boolean,
+  isConflict: boolean,
+  lifecycleError: string | null
+): string | null {
+  if (!isError) return null
+  if (lifecycleError) return lifecycleError
+  return isConflict
+    ? "Dữ liệu hồ sơ đã thay đổi. Trạng thái mới đã được tải; vui lòng thử lại."
+    : "Không thể khởi tạo bản nháp."
+}
+
 /** Separates a newly created version snapshot from its dossier revision metadata. */
 export function splitTechnicalConfigurationBaselineCreatedVersion(
   data: TechnicalConfigurationBaselineDraftCreateWireResponse["data"]
@@ -58,6 +71,28 @@ export function flattenTechnicalConfigurationBaselineVersionPages(
   )
 }
 
+/** Selects the next visible version while preserving an older page selection during refresh. */
+export function selectTechnicalConfigurationBaselineVersion(
+  versions: TechnicalConfigurationBaselineDraftWire[],
+  selectedVersionId: string | null,
+  currentVersion: TechnicalConfigurationBaselineDraftWire | null,
+  hasNextPage: boolean
+): TechnicalConfigurationBaselineDraftWire | null {
+  const selectedVersion = versions.find((version) => version.id === selectedVersionId)
+  if (
+    !selectedVersion &&
+    selectedVersionId &&
+    currentVersion?.id === selectedVersionId &&
+    hasNextPage
+  ) {
+    return currentVersion
+  }
+
+  return (
+    selectedVersion ?? versions.find((version) => version.status === "draft") ?? versions[0] ?? null
+  )
+}
+
 /** Computes the next history page when the server reports remaining versions. */
 export function getTechnicalConfigurationBaselineNextPage(
   lastPage: TechnicalConfigurationBaselineVersionsListWireResponse,
@@ -79,6 +114,52 @@ export function toTechnicalConfigurationBaselineVersionPages(
   response: TechnicalConfigurationBaselineVersionsListWireResponse
 ): TechnicalConfigurationBaselineVersionPages {
   return { pages: [response], pageParams: [response.page] }
+}
+
+/** Reconciles a refreshed first page with already loaded offset-based history. */
+export function replaceTechnicalConfigurationBaselineFirstPageInPages(
+  current: TechnicalConfigurationBaselineVersionPages | undefined,
+  response: TechnicalConfigurationBaselineVersionsListWireResponse
+): TechnicalConfigurationBaselineVersionPages {
+  if (!current || current.pages.length === 0) {
+    return toTechnicalConfigurationBaselineVersionPages(response)
+  }
+
+  const versions = new Map<string, TechnicalConfigurationBaselineDraftWire>()
+  for (const version of response.data) versions.set(version.id, version)
+  for (const page of current.pages) {
+    for (const version of page.data) {
+      if (!versions.has(version.id)) versions.set(version.id, version)
+    }
+  }
+
+  const loadedCapacity = current.pages.length * response.page_size
+  const reconciledVersions = [...versions.values()]
+    .toSorted((left, right) => right.version_number - left.version_number)
+    .slice(0, Math.min(response.total, loadedCapacity))
+
+  if (reconciledVersions.length === 0) {
+    return toTechnicalConfigurationBaselineVersionPages(response)
+  }
+
+  const pages = Array.from(
+    { length: Math.ceil(reconciledVersions.length / response.page_size) },
+    (_, pageIndex) => ({
+      data: reconciledVersions.slice(
+        pageIndex * response.page_size,
+        (pageIndex + 1) * response.page_size
+      ),
+      total: response.total,
+      page: pageIndex + 1,
+      page_size: response.page_size,
+    })
+  )
+
+  return {
+    ...current,
+    pages,
+    pageParams: pages.map((page) => page.page),
+  }
 }
 
 /** Replaces or prepends a version snapshot without discarding loaded history pages. */

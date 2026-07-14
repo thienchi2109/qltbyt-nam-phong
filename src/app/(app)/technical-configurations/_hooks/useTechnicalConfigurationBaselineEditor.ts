@@ -1,37 +1,31 @@
 import * as React from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   BaselineEditorSaveFailure,
   BaselineEditorValidationFailure,
+  EMPTY_TECHNICAL_CONFIGURATION_BASELINE_EDITOR_VALIDATION as EMPTY_VALIDATION,
   isTechnicalConfigurationBaselineEditorDirty,
   saveTechnicalConfigurationBaselineEditorDraft,
+  type TechnicalConfigurationBaselineEditorDraft,
+  type TechnicalConfigurationBaselineEditorValidation,
   toTechnicalConfigurationBaselineEditorDraft,
-} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-import type {
-  TechnicalConfigurationBaselineEditorDraft,
-  TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import {
   BASELINE_VERSION_PAGE_SIZE,
+  getTechnicalConfigurationBaselineCreateError,
   getTechnicalConfigurationBaselineErrorMessage,
   isTechnicalConfigurationBaselineConflict,
+  selectTechnicalConfigurationBaselineVersion,
   splitTechnicalConfigurationBaselineCreatedVersion,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
-import { technicalConfigurationDossierDetailQueryKey } from "@/app/(app)/technical-configurations/technical-configuration-query-keys"
-import type {
-  TechnicalConfigurationDossierWire,
-  TechnicalConfigurationDossierWireResponse,
-} from "@/app/(app)/technical-configurations/types"
+import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
+import { useTechnicalConfigurationBaselineDossierRevision } from "./useTechnicalConfigurationBaselineDossierRevision"
 import type { UseTechnicalConfigurationBaselineEditorResult } from "./useTechnicalConfigurationBaselineEditorTypes"
 import { useTechnicalConfigurationBaselineVersions } from "./useTechnicalConfigurationBaselineVersions"
 
-const EMPTY_VALIDATION: TechnicalConfigurationBaselineEditorValidation = {
-  groupErrors: {},
-  criterionErrors: {},
-}
 /** Owns baseline version selection, lifecycle, explicit-save, dirty, and conflict state. */
 export function useTechnicalConfigurationBaselineEditor({
   dossier,
@@ -40,14 +34,24 @@ export function useTechnicalConfigurationBaselineEditor({
   dossier: TechnicalConfigurationDossierWire
   isExternalDraftReplacementBlocked?: boolean
 }): UseTechnicalConfigurationBaselineEditorResult {
-  const queryClient = useQueryClient()
   const rpc = useTechnicalConfigurationBaseline()
-  const { versionsQuery, versions, cacheVersion, replaceVersions, loadMoreVersions } =
-    useTechnicalConfigurationBaselineVersions({
-      dossierId: dossier.id,
-      listVersions: rpc.listVersions,
+  const { dossierRevision, updateDossierRevision, refreshDossierRevision } =
+    useTechnicalConfigurationBaselineDossierRevision({
+      dossier,
+      getDossier: rpc.getDossier,
     })
-  const [dossierRevision, setDossierRevision] = React.useState(dossier.revision)
+  const {
+    versionsQuery,
+    versions,
+    cacheVersion,
+    replaceVersions,
+    invalidateVersions,
+    retryVersions,
+    loadMoreVersions,
+  } = useTechnicalConfigurationBaselineVersions({
+    dossierId: dossier.id,
+    listVersions: rpc.listVersions,
+  })
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
   const [baseDraft, setBaseDraft] = React.useState<TechnicalConfigurationBaselineDraftWire | null>(
     null
@@ -85,11 +89,12 @@ export function useTechnicalConfigurationBaselineEditor({
   React.useEffect(() => {
     if (!versionsQuery.data || isDirty || isExternalDraftReplacementBlocked) return
 
-    const nextVersion =
-      versions.find((version) => version.id === selectedVersionId) ??
-      versions.find((version) => version.status === "draft") ??
-      versions[0] ??
-      null
+    const nextVersion = selectTechnicalConfigurationBaselineVersion(
+      versions,
+      selectedVersionId,
+      baseDraft,
+      Boolean(versionsQuery.hasNextPage)
+    )
 
     if (
       baseDraft?.id === nextVersion?.id &&
@@ -108,25 +113,8 @@ export function useTechnicalConfigurationBaselineEditor({
     selectedVersionId,
     versions,
     versionsQuery.data,
+    versionsQuery.hasNextPage,
   ])
-
-  const cacheDossierRevision = React.useCallback(
-    (revision: number) => {
-      queryClient.setQueryData<TechnicalConfigurationDossierWireResponse>(
-        technicalConfigurationDossierDetailQueryKey(dossier.id),
-        (current) =>
-          current
-            ? {
-                data: {
-                  ...current.data,
-                  revision,
-                },
-              }
-            : current
-      )
-    },
-    [dossier.id, queryClient]
-  )
 
   const createDraftMutation = useMutation({
     mutationFn: () =>
@@ -137,8 +125,7 @@ export function useTechnicalConfigurationBaselineEditor({
     onSuccess: (response) => {
       const { version, dossierRevision: nextDossierRevision } =
         splitTechnicalConfigurationBaselineCreatedVersion(response.data)
-      setDossierRevision(nextDossierRevision)
-      cacheDossierRevision(nextDossierRevision)
+      updateDossierRevision(nextDossierRevision)
       cacheVersion(version)
       adoptVersion(version)
     },
@@ -146,10 +133,18 @@ export function useTechnicalConfigurationBaselineEditor({
       setLifecycleError(null)
       setIsConflict(false)
     },
-    onError: (error) => {
+    onError: async (error) => {
       const stale = isTechnicalConfigurationBaselineConflict(error)
       setIsConflict(stale)
       setLifecycleError(stale ? null : "Không thể khởi tạo bản nháp.")
+      if (!stale) return
+
+      try {
+        await refreshDossierRevision()
+        await versionsQuery.refetch()
+      } catch {
+        setLifecycleError("Không thể tải lại trạng thái hồ sơ.")
+      }
     },
   })
 
@@ -173,7 +168,7 @@ export function useTechnicalConfigurationBaselineEditor({
       setSaveStatus("saved")
       cacheVersion(progress.baseDraft)
     },
-    onError: (error) => {
+    onError: async (error) => {
       setSaveStatus("idle")
       if (error instanceof BaselineEditorValidationFailure) {
         setValidation(error.validation)
@@ -185,7 +180,11 @@ export function useTechnicalConfigurationBaselineEditor({
         setEditorDraft(error.progress.editorDraft)
         setIsConflict(error.isConflict)
         setSaveError(error.isConflict ? null : "Không thể lưu cấu hình cơ sở.")
-        cacheVersion(error.progress.baseDraft)
+        if (error.isConflict) {
+          await invalidateVersions()
+        } else {
+          cacheVersion(error.progress.baseDraft)
+        }
         return
       }
       setSaveError("Không thể lưu cấu hình cơ sở.")
@@ -226,8 +225,7 @@ export function useTechnicalConfigurationBaselineEditor({
     onSuccess: (response) => {
       const { version, dossierRevision: nextDossierRevision } =
         splitTechnicalConfigurationBaselineCreatedVersion(response.data)
-      setDossierRevision(nextDossierRevision)
-      cacheDossierRevision(nextDossierRevision)
+      updateDossierRevision(nextDossierRevision)
       cacheVersion(version)
       adoptVersion(version)
     },
@@ -275,9 +273,6 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     []
   )
-  const retryQuery = React.useCallback(async (): Promise<void> => {
-    await versionsQuery.refetch()
-  }, [versionsQuery])
   const isLifecycleBusy =
     createDraftMutation.isPending ||
     saveMutation.isPending ||
@@ -285,6 +280,11 @@ export function useTechnicalConfigurationBaselineEditor({
     copyMutation.isPending ||
     reloadMutation.isPending ||
     versionsQuery.isFetching
+  const createError = getTechnicalConfigurationBaselineCreateError(
+    createDraftMutation.isError,
+    isConflict,
+    lifecycleError
+  )
   return {
     versions,
     selectedVersion: baseDraft,
@@ -303,7 +303,7 @@ export function useTechnicalConfigurationBaselineEditor({
     isCopying: copyMutation.isPending,
     isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
     isLifecycleBusy,
-    createError: createDraftMutation.isError && !isConflict ? "Không thể khởi tạo bản nháp." : null,
+    createError,
     queryError: versionsQuery.isError
       ? getTechnicalConfigurationBaselineErrorMessage(
           versionsQuery.error,
@@ -330,7 +330,7 @@ export function useTechnicalConfigurationBaselineEditor({
       if (version) adoptVersion(version)
     },
     onLoadMoreVersions: loadMoreVersions,
-    onRetryQuery: retryQuery,
+    onRetryQuery: retryVersions,
     onRefreshVersions: async () => {
       await reloadMutation.mutateAsync()
     },
