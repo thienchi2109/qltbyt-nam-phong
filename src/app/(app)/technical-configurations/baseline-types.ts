@@ -33,6 +33,7 @@ export interface TechnicalConfigurationBaselineDraftWire {
   version_number: number
   status: TechnicalConfigurationBaselineStatus
   source_baseline_version_id: string | null
+  source_version_number: number | null
   next_criterion_number: number
   revision: number
   locked_at: string | null

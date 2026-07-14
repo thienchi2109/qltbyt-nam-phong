@@ -88,7 +88,11 @@ export function TechnicalConfigurationBaselineTab({
   const handleReloadFromServer = async () => {
     if (bulkSessions.hasPendingInput) return
     if (selectedVersion?.status === "locked") {
-      await baseline.onRefreshVersions()
+      try {
+        await baseline.onRefreshVersions()
+      } catch {
+        return
+      }
       return
     }
     const confirmed = window.confirm(
@@ -173,6 +177,7 @@ export function TechnicalConfigurationBaselineTab({
         isLocking={baseline.isLocking}
         isCopying={baseline.isCopying}
         isLoadingMoreVersions={baseline.isLoadingMoreVersions}
+        isNavigationDisabled={baseline.isLifecycleBusy}
         hasMoreVersions={baseline.hasMoreVersions}
         onSelectVersion={handleSelectVersion}
         onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}

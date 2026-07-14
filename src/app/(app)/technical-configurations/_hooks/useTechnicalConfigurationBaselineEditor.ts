@@ -142,8 +142,15 @@ export function useTechnicalConfigurationBaselineEditor({
       cacheVersion(version)
       adoptVersion(version)
     },
-    onMutate: () => setLifecycleError(null),
-    onError: () => setLifecycleError("Không thể khởi tạo bản nháp."),
+    onMutate: () => {
+      setLifecycleError(null)
+      setIsConflict(false)
+    },
+    onError: (error) => {
+      const stale = isTechnicalConfigurationBaselineConflict(error)
+      setIsConflict(stale)
+      setLifecycleError(stale ? null : "Không thể khởi tạo bản nháp.")
+    },
   })
 
   const saveMutation = useMutation({
@@ -247,6 +254,7 @@ export function useTechnicalConfigurationBaselineEditor({
       replaceVersions(response)
       const nextVersion =
         response.data.find((version) => version.id === selectedVersionId) ??
+        versions.find((version) => version.id === selectedVersionId) ??
         response.data.find((version) => version.status === "draft") ??
         response.data[0] ??
         null
@@ -267,11 +275,16 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     []
   )
-
   const retryQuery = React.useCallback(async (): Promise<void> => {
     await versionsQuery.refetch()
   }, [versionsQuery])
-
+  const isLifecycleBusy =
+    createDraftMutation.isPending ||
+    saveMutation.isPending ||
+    lockMutation.isPending ||
+    copyMutation.isPending ||
+    reloadMutation.isPending ||
+    versionsQuery.isFetching
   return {
     versions,
     selectedVersion: baseDraft,
@@ -289,7 +302,8 @@ export function useTechnicalConfigurationBaselineEditor({
     isLocking: lockMutation.isPending,
     isCopying: copyMutation.isPending,
     isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
-    createError: createDraftMutation.isError ? "Không thể khởi tạo bản nháp." : null,
+    isLifecycleBusy,
+    createError: createDraftMutation.isError && !isConflict ? "Không thể khởi tạo bản nháp." : null,
     queryError: versionsQuery.isError
       ? getTechnicalConfigurationBaselineErrorMessage(
           versionsQuery.error,

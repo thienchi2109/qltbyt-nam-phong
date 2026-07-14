@@ -15,6 +15,7 @@ type TechnicalConfigurationVersionBarProps = {
   isLocking: boolean
   isCopying: boolean
   isLoadingMoreVersions: boolean
+  isNavigationDisabled: boolean
   hasMoreVersions: boolean
   onSelectVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
@@ -37,6 +38,7 @@ export function TechnicalConfigurationVersionBar({
   isLocking,
   isCopying,
   isLoadingMoreVersions,
+  isNavigationDisabled,
   hasMoreVersions,
   onSelectVersion,
   onLoadMoreVersions,
@@ -44,9 +46,6 @@ export function TechnicalConfigurationVersionBar({
   onCreateBlank,
   onCopy,
 }: Readonly<TechnicalConfigurationVersionBarProps>) {
-  const sourceVersion = versions.find(
-    (version) => version.id === selectedVersion.source_baseline_version_id
-  )
   const isBusy = isCreating || isLocking || isCopying
 
   return (
@@ -67,6 +66,7 @@ export function TechnicalConfigurationVersionBar({
             value={selectedVersion.id}
             aria-label="Lịch sử phiên bản"
             className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-[280px]"
+            disabled={isNavigationDisabled}
             onChange={(event) => onSelectVersion(event.target.value)}
           >
             {versions.map((version) => (
@@ -81,7 +81,7 @@ export function TechnicalConfigurationVersionBar({
               type="button"
               variant="ghost"
               size="sm"
-              disabled={isLoadingMoreVersions}
+              disabled={isNavigationDisabled || isLoadingMoreVersions}
               onClick={onLoadMoreVersions}
             >
               <ChevronDown className="size-4" aria-hidden="true" />
@@ -97,8 +97,8 @@ export function TechnicalConfigurationVersionBar({
               {selectedVersion.locked_by ? (
                 <span>Người khóa #{selectedVersion.locked_by}</span>
               ) : null}
-              {sourceVersion ? (
-                <span>Sao chép từ phiên bản {sourceVersion.version_number}</span>
+              {selectedVersion.source_version_number ? (
+                <span>Sao chép từ phiên bản {selectedVersion.source_version_number}</span>
               ) : null}
             </div>
           ) : null}

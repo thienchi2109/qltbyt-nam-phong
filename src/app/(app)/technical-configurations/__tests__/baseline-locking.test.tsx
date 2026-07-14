@@ -8,8 +8,10 @@ import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurat
 import {
   createDraft,
   createPersistentQueryClient,
+  deferred,
   dossier,
   getBaselineRpcMock,
+  groupMutation,
   renderTab,
 } from "./technical-configuration-baseline-tab-fixtures"
 
@@ -58,6 +60,23 @@ describe("technical configuration baseline locking and history", () => {
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Tạo bản nháp trống" })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Sao chép thành bản nháp" })).toBeEnabled()
+  })
+
+  it("renders copied-version lineage when the source page is not loaded", async () => {
+    const copied = createDraft({
+      id: "locked-3",
+      version_number: 3,
+      status: "locked",
+      source_baseline_version_id: "locked-1",
+      source_version_number: 1,
+      locked_at: "2026-07-14T08:30:00.000Z",
+      locked_by: 42,
+    })
+    mockVersions([copied])
+
+    renderTab()
+
+    expect(await screen.findByText("Sao chép từ phiên bản 1")).toBeInTheDocument()
   })
 
   it("requires confirmation and locks the current persisted revision", async () => {
@@ -210,6 +229,76 @@ describe("technical configuration baseline locking and history", () => {
     expect(requirement).toHaveValue("Nội dung đang sửa")
     expect(screen.getByText("Phiên bản 2")).toBeInTheDocument()
     expect(screen.queryByText("Nội dung chỉ đọc")).not.toBeInTheDocument()
+  })
+
+  it("blocks history navigation while a save is pending", async () => {
+    const user = userEvent.setup()
+    const pending = deferred<{ data: ReturnType<typeof groupMutation> }>()
+    const locked = createLockedVersion()
+    const draft = createDraft({ id: "draft-2", version_number: 2 })
+    rpc.listVersions.mockResolvedValue({
+      data: [draft, locked],
+      total: 101,
+      page: 1,
+      page_size: 100,
+    })
+    rpc.updateGroup.mockReturnValue(pending.promise)
+
+    renderTab()
+    const groupName = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(groupName)
+    await user.type(groupName, "Yêu cầu kỹ thuật chung")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+
+    await waitFor(() => expect(rpc.updateGroup).toHaveBeenCalled())
+    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
+
+    pending.resolve({ data: groupMutation(5, "Yêu cầu kỹ thuật chung") })
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+    )
+  })
+
+  it("blocks history navigation and handles rejection while refreshing locked history", async () => {
+    const user = userEvent.setup()
+    const pending = deferred<{
+      data: ReturnType<typeof createDraft>[]
+      total: number
+      page: number
+      page_size: number
+    }>()
+    const locked = createLockedVersion()
+    const older = createDraft({
+      id: "locked-0",
+      version_number: 0,
+      status: "locked",
+      locked_at: "2026-07-13T08:30:00.000Z",
+      locked_by: 41,
+    })
+    rpc.listVersions.mockResolvedValue({
+      data: [locked, older],
+      total: 102,
+      page: 1,
+      page_size: 100,
+    })
+    rpc.copyVersion.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, { message: "stale_revision" })
+    )
+
+    renderTab()
+    await user.click(await screen.findByRole("button", { name: "Sao chép thành bản nháp" }))
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+
+    rpc.listVersions.mockReturnValueOnce(pending.promise)
+    await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+
+    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
+
+    pending.reject(new Error("network_error"))
+    expect(await screen.findByText("Không thể tải lại cấu hình cơ sở.")).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
   })
 
   it("creates a blank draft after the locked history", async () => {

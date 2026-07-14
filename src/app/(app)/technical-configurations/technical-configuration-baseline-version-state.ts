@@ -60,8 +60,17 @@ export function flattenTechnicalConfigurationBaselineVersionPages(
 
 /** Computes the next history page when the server reports remaining versions. */
 export function getTechnicalConfigurationBaselineNextPage(
-  lastPage: TechnicalConfigurationBaselineVersionsListWireResponse
+  lastPage: TechnicalConfigurationBaselineVersionsListWireResponse,
+  allPages: TechnicalConfigurationBaselineVersionsListWireResponse[] = [lastPage]
 ): number | undefined {
+  const pageStartOffset = (lastPage.page - 1) * lastPage.page_size
+  if (lastPage.data.length === 0 && pageStartOffset < lastPage.total) {
+    throw new Error("baseline_version_history_incomplete")
+  }
+  const loadedVersionIds = new Set(
+    allPages.flatMap((page) => page.data.map((version) => version.id))
+  )
+  if (loadedVersionIds.size >= lastPage.total) return undefined
   return lastPage.page * lastPage.page_size < lastPage.total ? lastPage.page + 1 : undefined
 }
 

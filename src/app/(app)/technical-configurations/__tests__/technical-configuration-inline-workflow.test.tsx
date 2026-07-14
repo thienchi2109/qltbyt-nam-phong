@@ -15,6 +15,7 @@ const baseline = vi.hoisted(() => {
     version_number: 1,
     status: "draft",
     source_baseline_version_id: null,
+    source_version_number: null,
     next_criterion_number: 2,
     revision: 4,
     locked_at: null,

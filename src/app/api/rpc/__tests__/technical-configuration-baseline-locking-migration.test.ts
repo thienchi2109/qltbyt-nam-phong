@@ -9,6 +9,8 @@ const PHASE_GATE_PATH = path.resolve(
   "supabase/tests/technical_configuration_baseline_locking_phase_gate.sql"
 )
 const LOCKING_MIGRATION_SUFFIX = "_technical_configuration_baseline_locking.sql"
+const HISTORY_REVIEW_FIX_MIGRATION_SUFFIX =
+  "_technical_configuration_baseline_history_review_fixes.sql"
 const BASELINE_MUTATION_FUNCTIONS = [
   "technical_configuration_baseline_group_create",
   "technical_configuration_baseline_group_update",
@@ -24,6 +26,15 @@ const BASELINE_MUTATION_FUNCTIONS = [
 function getLockingMigrationSource(): string {
   const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((file) =>
     file.endsWith(LOCKING_MIGRATION_SUFFIX)
+  )
+
+  expect(migrationFiles).toHaveLength(1)
+  return readFileSync(path.join(MIGRATIONS_DIR, migrationFiles[0] ?? ""), "utf8")
+}
+
+function getHistoryReviewFixMigrationSource(): string {
+  const migrationFiles = readdirSync(MIGRATIONS_DIR).filter((file) =>
+    file.endsWith(HISTORY_REVIEW_FIX_MIGRATION_SUFFIX)
   )
 
   expect(migrationFiles).toHaveLength(1)
@@ -180,5 +191,41 @@ describe("technical configuration baseline P4 locking migration", () => {
     for (const functionName of BASELINE_MUTATION_FUNCTIONS) {
       expect(phaseGateSource).toContain(functionName)
     }
+  })
+})
+
+describe("technical configuration baseline P4 history review fixes", () => {
+  it("uses set-based history snapshots and returns stable lineage metadata", () => {
+    const migrationSource = getHistoryReviewFixMigrationSource()
+    const snapshotBlock = getFunctionBlock(
+      migrationSource,
+      "_technical_configuration_baseline_snapshot"
+    )
+    const historyBlock = getFunctionBlock(
+      migrationSource,
+      "technical_configuration_baseline_versions_list"
+    )
+
+    expect(snapshotBlock).toContain("'source_version_number'")
+    expect(snapshotBlock).toContain("source_version.version_number")
+    expect(historyBlock).toContain("paged_versions")
+    expect(historyBlock).toContain("criteria_by_group")
+    expect(historyBlock).toContain("groups_by_version")
+    expect(historyBlock).toContain("'source_version_number'")
+    expect(historyBlock).not.toContain("_technical_configuration_baseline_snapshot(")
+    expect(historyBlock).toContain("SECURITY DEFINER")
+    expect(historyBlock).toContain("SET search_path = public, pg_temp")
+    expect(migrationSource).toContain(
+      "REVOKE ALL ON FUNCTION public._technical_configuration_baseline_snapshot(UUID) FROM PUBLIC, anon, authenticated, service_role;"
+    )
+    expect(migrationSource).toContain(
+      "GRANT EXECUTE ON FUNCTION public._technical_configuration_baseline_snapshot(UUID) TO service_role;"
+    )
+    expect(migrationSource).toContain(
+      "REVOKE ALL ON FUNCTION public.technical_configuration_baseline_versions_list(UUID, INTEGER, INTEGER) FROM PUBLIC, anon, authenticated, service_role;"
+    )
+    expect(migrationSource).toContain(
+      "GRANT EXECUTE ON FUNCTION public.technical_configuration_baseline_versions_list(UUID, INTEGER, INTEGER) TO authenticated;"
+    )
   })
 })

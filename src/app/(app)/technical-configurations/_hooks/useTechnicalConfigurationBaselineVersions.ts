@@ -69,9 +69,14 @@ export function useTechnicalConfigurationBaselineVersions({
 
   const replaceVersions = React.useCallback(
     (response: TechnicalConfigurationBaselineVersionsListWireResponse) => {
-      queryClient.setQueryData<TechnicalConfigurationBaselineVersionPages>(
-        queryKey,
-        toTechnicalConfigurationBaselineVersionPages(response)
+      queryClient.setQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              pages: [response, ...current.pages.slice(1)],
+              pageParams: [response.page, ...current.pageParams.slice(1)],
+            }
+          : toTechnicalConfigurationBaselineVersionPages(response)
       )
     },
     [queryClient, queryKey]
