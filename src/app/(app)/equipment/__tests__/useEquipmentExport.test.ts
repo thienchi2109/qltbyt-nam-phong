@@ -1,80 +1,84 @@
-import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import * as React from 'react'
+import { renderHook, act } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import * as React from "react"
 
 // Mock excel-utils
 const mockExportToExcel = vi.fn()
 const mockGenerateEquipmentImportTemplate = vi.fn()
-vi.mock('@/lib/excel-utils', () => ({
+const mockDownloadBlob = vi.fn()
+vi.mock("@/lib/excel-utils", () => ({
   exportToExcel: (...args: unknown[]) => mockExportToExcel(...args),
   generateEquipmentImportTemplate: () => mockGenerateEquipmentImportTemplate(),
+  downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
 // Mock print utils
 const mockGenerateProfileSheet = vi.fn()
 const mockGenerateDeviceLabel = vi.fn()
-vi.mock('@/components/equipment/equipment-print-utils', () => ({
+vi.mock("@/components/equipment/equipment-print-utils", () => ({
   generateProfileSheet: (...args: unknown[]) => mockGenerateProfileSheet(...args),
   generateDeviceLabel: (...args: unknown[]) => mockGenerateDeviceLabel(...args),
 }))
 
 // Mock useToast
 const mockToast = vi.fn()
-vi.mock('@/hooks/use-toast', () => ({
+vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }))
 
 // Mock callRpc
 const mockCallRpc = vi.fn()
-vi.mock('@/lib/rpc-client', () => ({
+vi.mock("@/lib/rpc-client", () => ({
   callRpc: (args: unknown) => mockCallRpc(args),
 }))
 
 // Import after mocking
-import { useEquipmentExport } from '../_hooks/useEquipmentExport'
-import type { UseEquipmentExportParams, ExportFilterParams } from '../_hooks/useEquipmentExport'
-import type { Equipment } from '../types'
+import { useEquipmentExport } from "../_hooks/useEquipmentExport"
+import type { UseEquipmentExportParams, ExportFilterParams } from "../_hooks/useEquipmentExport"
+import type { Equipment } from "../types"
 
 // Mock equipment data - typed as Equipment[]
 const mockEquipmentList: Partial<Equipment>[] = [
   {
     id: 1,
-    ma_thiet_bi: 'EQ-001',
-    ten_thiet_bi: 'Test Equipment 1',
-    model: 'Model A',
-    serial: 'SN-001',
+    ma_thiet_bi: "EQ-001",
+    ten_thiet_bi: "Test Equipment 1",
+    model: "Model A",
+    serial: "SN-001",
     don_vi: 5,
-    khoa_phong_quan_ly: 'Khoa Nội',
-    tinh_trang_hien_tai: 'Hoạt động',
+    khoa_phong_quan_ly: "Khoa Nội",
+    tinh_trang_hien_tai: "Hoạt động",
     ngay_ngung_su_dung: null,
-    vi_tri_lap_dat: 'Phòng 101',
-    nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
+    vi_tri_lap_dat: "Phòng 101",
+    nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
   },
   {
     id: 2,
-    ma_thiet_bi: 'EQ-002',
-    ten_thiet_bi: 'Test Equipment 2',
-    model: 'Model B',
-    serial: 'SN-002',
+    ma_thiet_bi: "EQ-002",
+    ten_thiet_bi: "Test Equipment 2",
+    model: "Model B",
+    serial: "SN-002",
     don_vi: 5,
-    khoa_phong_quan_ly: 'Khoa Ngoại',
-    tinh_trang_hien_tai: 'Chờ sửa chữa',
-    ngay_ngung_su_dung: '2024-12-31',
-    vi_tri_lap_dat: 'Phòng 102',
-    nguoi_dang_truc_tiep_quan_ly: 'Trần Thị B',
+    khoa_phong_quan_ly: "Khoa Ngoại",
+    tinh_trang_hien_tai: "Chờ sửa chữa",
+    ngay_ngung_su_dung: "2024-12-31",
+    vi_tri_lap_dat: "Phòng 102",
+    nguoi_dang_truc_tiep_quan_ly: "Trần Thị B",
   },
 ]
 
 const mockTenantBranding = {
   id: 5,
-  name: 'Test Hospital',
-  code: 'TH',
-  logo_url: 'https://example.com/logo.png',
+  name: "Test Hospital",
+  code: "TH",
+  logo_url: "https://example.com/logo.png",
 }
 
-const createDefaultFilterParams = (overrides?: Partial<ExportFilterParams>): ExportFilterParams => ({
-  debouncedSearch: '',
-  sortParam: 'id.asc',
+const createDefaultFilterParams = (
+  overrides?: Partial<ExportFilterParams>
+): ExportFilterParams => ({
+  debouncedSearch: "",
+  sortParam: "id.asc",
   effectiveSelectedDonVi: 5,
   selectedDepartments: [],
   selectedUsers: [],
@@ -85,15 +89,17 @@ const createDefaultFilterParams = (overrides?: Partial<ExportFilterParams>): Exp
   ...overrides,
 })
 
-const createDefaultParams = (overrides?: Partial<UseEquipmentExportParams>): UseEquipmentExportParams => ({
+const createDefaultParams = (
+  overrides?: Partial<UseEquipmentExportParams>
+): UseEquipmentExportParams => ({
   total: mockEquipmentList.length,
   filterParams: createDefaultFilterParams(),
-  tenantBranding: mockTenantBranding as UseEquipmentExportParams['tenantBranding'],
-  userRole: 'to_qltb',
+  tenantBranding: mockTenantBranding as UseEquipmentExportParams["tenantBranding"],
+  userRole: "to_qltb",
   ...overrides,
 })
 
-describe('useEquipmentExport', () => {
+describe("useEquipmentExport", () => {
   // Store originals before mocking
   const originalCreateElement = document.createElement.bind(document)
   const originalCreateObjectURL = global.URL.createObjectURL
@@ -102,16 +108,16 @@ describe('useEquipmentExport', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Mock URL.createObjectURL and URL.revokeObjectURL
-    global.URL.createObjectURL = vi.fn(() => 'blob:test-url')
+    global.URL.createObjectURL = vi.fn(() => "blob:test-url")
     global.URL.revokeObjectURL = vi.fn()
     // Mock document methods
-    vi.spyOn(document.body, 'appendChild').mockImplementation(() => document.body)
-    vi.spyOn(document.body, 'removeChild').mockImplementation(() => document.body)
-    vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
-      if (tag === 'a') {
+    vi.spyOn(document.body, "appendChild").mockImplementation(() => document.body)
+    vi.spyOn(document.body, "removeChild").mockImplementation(() => document.body)
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag === "a") {
         return {
-          href: '',
-          download: '',
+          href: "",
+          download: "",
           click: vi.fn(),
         } as HTMLAnchorElement
       }
@@ -128,9 +134,11 @@ describe('useEquipmentExport', () => {
     global.URL.revokeObjectURL = originalRevokeObjectURL
   })
 
-  describe('handleDownloadTemplate', () => {
-    it('should download template successfully', async () => {
-      const mockBlob = new Blob(['test'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  describe("handleDownloadTemplate", () => {
+    it("should download template successfully", async () => {
+      const mockBlob = new Blob(["test"], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      })
       mockGenerateEquipmentImportTemplate.mockResolvedValueOnce(mockBlob)
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
@@ -140,12 +148,13 @@ describe('useEquipmentExport', () => {
       })
 
       expect(mockGenerateEquipmentImportTemplate).toHaveBeenCalled()
-      expect(global.URL.createObjectURL).toHaveBeenCalledWith(mockBlob)
-      expect(global.URL.revokeObjectURL).toHaveBeenCalled()
+      expect(mockDownloadBlob).toHaveBeenCalledWith(mockBlob, "Mau_Nhap_Thiet_Bi.xlsx")
     })
 
-    it('should handle template download error', async () => {
-      mockGenerateEquipmentImportTemplate.mockRejectedValueOnce(new Error('Template generation failed'))
+    it("should handle template download error", async () => {
+      mockGenerateEquipmentImportTemplate.mockRejectedValueOnce(
+        new Error("Template generation failed")
+      )
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
 
@@ -154,15 +163,15 @@ describe('useEquipmentExport', () => {
       })
 
       expect(mockToast).toHaveBeenCalledWith({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: 'Không thể tải template. Vui lòng thử lại.',
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không thể tải template. Vui lòng thử lại.",
       })
     })
   })
 
-  describe('handleExportData', () => {
-    it('should fetch all data and export to Excel successfully', async () => {
+  describe("handleExportData", () => {
+    it("should fetch all data and export to Excel successfully", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
@@ -174,7 +183,7 @@ describe('useEquipmentExport', () => {
       // Should call RPC with p_page_size = 10000 (MAX_EXPORT_PAGE_SIZE)
       expect(mockCallRpc).toHaveBeenCalledWith(
         expect.objectContaining({
-          fn: 'equipment_list_enhanced',
+          fn: "equipment_list_enhanced",
           args: expect.objectContaining({
             p_page_size: 10000,
             p_page: 1,
@@ -184,15 +193,13 @@ describe('useEquipmentExport', () => {
       expect(mockExportToExcel).toHaveBeenCalled()
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Xuất dữ liệu thành công',
+          title: "Xuất dữ liệu thành công",
         })
       )
     })
 
-    it('should show error when total is 0', async () => {
-      const { result } = renderHook(() =>
-        useEquipmentExport(createDefaultParams({ total: 0 }))
-      )
+    it("should show error when total is 0", async () => {
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ total: 0 })))
 
       await act(async () => {
         await result.current.handleExportData()
@@ -201,14 +208,14 @@ describe('useEquipmentExport', () => {
       expect(mockCallRpc).not.toHaveBeenCalled()
       expect(mockExportToExcel).not.toHaveBeenCalled()
       expect(mockToast).toHaveBeenCalledWith({
-        variant: 'destructive',
-        title: 'Không có dữ liệu',
-        description: 'Không có dữ liệu phù hợp để xuất.',
+        variant: "destructive",
+        title: "Không có dữ liệu",
+        description: "Không có dữ liệu phù hợp để xuất.",
       })
     })
 
-    it('should handle export error', async () => {
-      mockExportToExcel.mockRejectedValueOnce(new Error('Export failed'))
+    it("should handle export error", async () => {
+      mockExportToExcel.mockRejectedValueOnce(new Error("Export failed"))
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
 
@@ -217,13 +224,13 @@ describe('useEquipmentExport', () => {
       })
 
       expect(mockToast).toHaveBeenCalledWith({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: 'Không thể xuất dữ liệu. Vui lòng thử lại.',
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không thể xuất dữ liệu. Vui lòng thử lại.",
       })
     })
 
-    it('should generate correct filename with date', async () => {
+    it("should generate correct filename with date", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
       const today = new Date().toISOString().slice(0, 10)
 
@@ -236,12 +243,12 @@ describe('useEquipmentExport', () => {
       expect(mockExportToExcel).toHaveBeenCalledWith(
         expect.any(Array),
         `Danh_sach_thiet_bi_${today}.xlsx`,
-        'Danh sách thiết bị',
+        "Danh sách thiết bị",
         expect.any(Array)
       )
     })
 
-    it('should format data correctly for export', async () => {
+    it("should format data correctly for export", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
@@ -257,11 +264,11 @@ describe('useEquipmentExport', () => {
       expect(formattedData).toHaveLength(2)
 
       // Each row should have column labels as keys
-      expect(formattedData[0]).toHaveProperty('Mã thiết bị')
-      expect(formattedData[0]).toHaveProperty('Tên thiết bị')
+      expect(formattedData[0]).toHaveProperty("Mã thiết bị")
+      expect(formattedData[0]).toHaveProperty("Tên thiết bị")
     })
 
-    it('should include Ngày ngừng sử dụng in the exported column set', async () => {
+    it("should include Ngày ngừng sử dụng in the exported column set", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
@@ -273,14 +280,14 @@ describe('useEquipmentExport', () => {
       const exportCall = mockExportToExcel.mock.calls[0]
       const formattedData = exportCall[0]
 
-      expect(formattedData[0]).toHaveProperty('Ngày ngừng sử dụng')
-      expect(formattedData[1]).toHaveProperty('Ngày ngừng sử dụng')
-      expect(formattedData[1]['Ngày ngừng sử dụng']).toBe('2024-12-31')
+      expect(formattedData[0]).toHaveProperty("Ngày ngừng sử dụng")
+      expect(formattedData[1]).toHaveProperty("Ngày ngừng sử dụng")
+      expect(formattedData[1]["Ngày ngừng sử dụng"]).toBe("2024-12-31")
     })
   })
 
-  describe('handleGenerateProfileSheet', () => {
-    it('should generate profile sheet for equipment', async () => {
+  describe("handleGenerateProfileSheet", () => {
+    it("should generate profile sheet for equipment", async () => {
       mockGenerateProfileSheet.mockResolvedValueOnce(undefined)
       const equipment = mockEquipmentList[0]
 
@@ -294,20 +301,20 @@ describe('useEquipmentExport', () => {
         equipment,
         expect.objectContaining({
           tenantBranding: mockTenantBranding,
-          userRole: 'to_qltb',
+          userRole: "to_qltb",
           equipmentTenantId: 5,
         })
       )
     })
 
-    it('should pass correct print context', async () => {
+    it("should pass correct print context", async () => {
       mockGenerateProfileSheet.mockResolvedValueOnce(undefined)
       const equipment = { ...mockEquipmentList[0], don_vi: 10 }
 
       const { result } = renderHook(() =>
         useEquipmentExport(
           createDefaultParams({
-            userRole: 'global',
+            userRole: "global",
           })
         )
       )
@@ -319,13 +326,13 @@ describe('useEquipmentExport', () => {
       expect(mockGenerateProfileSheet).toHaveBeenCalledWith(
         equipment,
         expect.objectContaining({
-          userRole: 'global',
+          userRole: "global",
           equipmentTenantId: 10,
         })
       )
     })
 
-    it('should handle undefined don_vi', async () => {
+    it("should handle undefined don_vi", async () => {
       mockGenerateProfileSheet.mockResolvedValueOnce(undefined)
       const equipment = { ...mockEquipmentList[0], don_vi: null }
 
@@ -344,8 +351,8 @@ describe('useEquipmentExport', () => {
     })
   })
 
-  describe('handleGenerateDeviceLabel', () => {
-    it('should generate device label for equipment', async () => {
+  describe("handleGenerateDeviceLabel", () => {
+    it("should generate device label for equipment", async () => {
       mockGenerateDeviceLabel.mockResolvedValueOnce(undefined)
       const equipment = mockEquipmentList[0]
 
@@ -359,13 +366,13 @@ describe('useEquipmentExport', () => {
         equipment,
         expect.objectContaining({
           tenantBranding: mockTenantBranding,
-          userRole: 'to_qltb',
+          userRole: "to_qltb",
           equipmentTenantId: 5,
         })
       )
     })
 
-    it('should work without tenant branding', async () => {
+    it("should work without tenant branding", async () => {
       mockGenerateDeviceLabel.mockResolvedValueOnce(undefined)
       const equipment = mockEquipmentList[0]
 
@@ -390,8 +397,8 @@ describe('useEquipmentExport', () => {
     })
   })
 
-  describe('Memoization', () => {
-    it('should maintain stable handler references', () => {
+  describe("Memoization", () => {
+    it("should maintain stable handler references", () => {
       const { result, rerender } = renderHook(() => useEquipmentExport(createDefaultParams()))
 
       const initialHandlers = {
@@ -405,14 +412,18 @@ describe('useEquipmentExport', () => {
 
       // Handlers should be stable (memoized) when params don't change
       expect(result.current.handleDownloadTemplate).toBe(initialHandlers.handleDownloadTemplate)
-      expect(result.current.handleGenerateProfileSheet).toBe(initialHandlers.handleGenerateProfileSheet)
-      expect(result.current.handleGenerateDeviceLabel).toBe(initialHandlers.handleGenerateDeviceLabel)
+      expect(result.current.handleGenerateProfileSheet).toBe(
+        initialHandlers.handleGenerateProfileSheet
+      )
+      expect(result.current.handleGenerateDeviceLabel).toBe(
+        initialHandlers.handleGenerateDeviceLabel
+      )
     })
 
-    it('should update handlers when filterParams change', () => {
+    it("should update handlers when filterParams change", () => {
       const initialFilterParams = createDefaultFilterParams()
       const { result, rerender } = renderHook(
-        ({ filterParams }: { filterParams: ExportFilterParams }) => 
+        ({ filterParams }: { filterParams: ExportFilterParams }) =>
           useEquipmentExport(createDefaultParams({ filterParams })),
         { initialProps: { filterParams: initialFilterParams } }
       )
@@ -420,20 +431,20 @@ describe('useEquipmentExport', () => {
       const initialExportHandler = result.current.handleExportData
 
       // Change filterParams
-      rerender({ filterParams: createDefaultFilterParams({ debouncedSearch: 'máy thở' }) })
+      rerender({ filterParams: createDefaultFilterParams({ debouncedSearch: "máy thở" }) })
 
       // handleExportData should change when filterParams changes
       expect(result.current.handleExportData).not.toBe(initialExportHandler)
     })
   })
 
-  describe('Edge Cases', () => {
-    it('should handle equipment with null/undefined fields from RPC', async () => {
+  describe("Edge Cases", () => {
+    it("should handle equipment with null/undefined fields from RPC", async () => {
       const equipmentWithNulls = [
         {
           id: 1,
-          ma_thiet_bi: 'EQ-001',
-          ten_thiet_bi: 'Test',
+          ma_thiet_bi: "EQ-001",
+          ten_thiet_bi: "Test",
           model: null,
           serial: undefined,
           don_vi: 5,
@@ -442,9 +453,7 @@ describe('useEquipmentExport', () => {
       mockCallRpc.mockResolvedValueOnce({ data: equipmentWithNulls, total: 1 })
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
-      const { result } = renderHook(() =>
-        useEquipmentExport(createDefaultParams({ total: 1 }))
-      )
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ total: 1 })))
 
       await act(async () => {
         await result.current.handleExportData()
@@ -454,19 +463,17 @@ describe('useEquipmentExport', () => {
       // Should not throw error with null/undefined fields
     })
 
-    it('should handle large dataset export with warning toast', async () => {
+    it("should handle large dataset export with warning toast", async () => {
       const largeDataset = Array.from({ length: 6000 }, (_, i) => ({
         id: i + 1,
-        ma_thiet_bi: `EQ-${String(i + 1).padStart(4, '0')}`,
+        ma_thiet_bi: `EQ-${String(i + 1).padStart(4, "0")}`,
         ten_thiet_bi: `Equipment ${i + 1}`,
         don_vi: 5,
       }))
       mockCallRpc.mockResolvedValueOnce({ data: largeDataset, total: 6000 })
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
-      const { result } = renderHook(() =>
-        useEquipmentExport(createDefaultParams({ total: 6000 }))
-      )
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ total: 6000 })))
 
       await act(async () => {
         await result.current.handleExportData()
@@ -475,20 +482,20 @@ describe('useEquipmentExport', () => {
       // Should show warning toast for large dataset (>5000)
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: '⚠️ Danh sách lớn',
+          title: "⚠️ Danh sách lớn",
         })
       )
       expect(mockExportToExcel).toHaveBeenCalled()
     })
   })
 
-  describe('Full Export Flow (Issue #170)', () => {
-    it('should fetch ALL equipment with filters, not just current page', async () => {
+  describe("Full Export Flow (Issue #170)", () => {
+    it("should fetch ALL equipment with filters, not just current page", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
       const filterParams = createDefaultFilterParams({
-        debouncedSearch: 'máy thở',
-        selectedDepartments: ['Khoa Nội'],
-        selectedStatuses: ['Hoạt động'],
+        debouncedSearch: "máy thở",
+        selectedDepartments: ["Khoa Nội"],
+        selectedStatuses: ["Hoạt động"],
       })
 
       const { result } = renderHook(() =>
@@ -502,11 +509,11 @@ describe('useEquipmentExport', () => {
       // Should call RPC with same filters but large page size
       expect(mockCallRpc).toHaveBeenCalledWith(
         expect.objectContaining({
-          fn: 'equipment_list_enhanced',
+          fn: "equipment_list_enhanced",
           args: expect.objectContaining({
-            p_q: 'máy thở',
-            p_khoa_phong_array: ['Khoa Nội'],
-            p_tinh_trang_array: ['Hoạt động'],
+            p_q: "máy thở",
+            p_khoa_phong_array: ["Khoa Nội"],
+            p_tinh_trang_array: ["Hoạt động"],
             p_page_size: 10000,
             p_page: 1,
           }),
@@ -514,12 +521,10 @@ describe('useEquipmentExport', () => {
       )
     })
 
-    it('should show confirmation toast with count before export', async () => {
+    it("should show confirmation toast with count before export", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
-      const { result } = renderHook(() =>
-        useEquipmentExport(createDefaultParams({ total: 156 }))
-      )
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ total: 156 })))
 
       await act(async () => {
         await result.current.handleExportData()
@@ -528,17 +533,17 @@ describe('useEquipmentExport', () => {
       // First toast should be confirmation with count
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: '📥 Chuẩn bị tải xuống',
-          description: expect.stringContaining('156'),
+          title: "📥 Chuẩn bị tải xuống",
+          description: expect.stringContaining("156"),
         })
       )
     })
 
-    it('should show active filters in confirmation toast', async () => {
+    it("should show active filters in confirmation toast", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
       const filterParams = createDefaultFilterParams({
-        debouncedSearch: 'máy thở',
-        selectedDepartments: ['Khoa Nội'],
+        debouncedSearch: "máy thở",
+        selectedDepartments: ["Khoa Nội"],
       })
 
       const { result } = renderHook(() =>
@@ -556,10 +561,13 @@ describe('useEquipmentExport', () => {
       )
     })
 
-    it('should set isExporting state during export', async () => {
+    it("should set isExporting state during export", async () => {
       // Make the export take some time
-      mockCallRpc.mockImplementation(() => 
-        new Promise(resolve => setTimeout(() => resolve({ data: mockEquipmentList, total: 2 }), 50))
+      mockCallRpc.mockImplementation(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve({ data: mockEquipmentList, total: 2 }), 50)
+          )
       )
       mockExportToExcel.mockResolvedValueOnce(undefined)
 
@@ -583,8 +591,8 @@ describe('useEquipmentExport', () => {
       expect(result.current.isExporting).toBe(false)
     })
 
-    it('should handle RPC fetch error gracefully', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Network error'))
+    it("should handle RPC fetch error gracefully", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Network error"))
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams()))
 
@@ -593,14 +601,14 @@ describe('useEquipmentExport', () => {
       })
 
       expect(mockToast).toHaveBeenCalledWith({
-        variant: 'destructive',
-        title: 'Lỗi',
-        description: 'Không thể xuất dữ liệu. Vui lòng thử lại.',
+        variant: "destructive",
+        title: "Lỗi",
+        description: "Không thể xuất dữ liệu. Vui lòng thử lại.",
       })
       expect(result.current.isExporting).toBe(false)
     })
 
-    it('should handle empty RPC response', async () => {
+    it("should handle empty RPC response", async () => {
       mockCallRpc.mockResolvedValueOnce({ data: [], total: 0 })
 
       const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ total: 5 })))
@@ -610,9 +618,9 @@ describe('useEquipmentExport', () => {
       })
 
       expect(mockToast).toHaveBeenCalledWith({
-        variant: 'destructive',
-        title: 'Không có dữ liệu',
-        description: 'Không thể lấy dữ liệu để xuất. Vui lòng thử lại.',
+        variant: "destructive",
+        title: "Không có dữ liệu",
+        description: "Không thể lấy dữ liệu để xuất. Vui lòng thử lại.",
       })
     })
   })

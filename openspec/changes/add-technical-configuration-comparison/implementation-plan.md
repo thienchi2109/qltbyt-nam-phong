@@ -512,6 +512,7 @@ Baseline versions can be locked irreversibly and revised only through a new draf
 
 - Create: `src/lib/excel-workbook.ts`
 - Create: `src/lib/__tests__/excel-workbook.test.ts`
+- Create: `type-tests/useBulkImportState-options.ts`
 - Modify: `src/lib/excel-utils.ts`
 - Modify: `src/components/bulk-import/useBulkImportState.ts`
 - Modify: `src/components/bulk-import/bulk-import-types.ts`
@@ -521,13 +522,13 @@ Baseline versions can be locked irreversibly and revised only through a new draf
 
 ### Tasks
 
-- [ ] Freeze the current Equipment template download, data export, workbook parsing, validation and submit behavior with focused tests.
-- [ ] Extract generic workbook creation/loading, worksheet conversion and Blob download primitives from the oversized `excel-utils.ts`.
-- [ ] Preserve existing exports so Equipment and current bulk-import consumers do not require a flag-driven rewrite.
-- [ ] Add an optional custom workbook parser seam to `useBulkImportState`; keep the current first-sheet/header-map flow as the default.
-- [ ] Keep `BulkImportFileInput`, parse/error presentation and submit-state components as the shared dialog primitives.
-- [ ] Replace the manual `URL.createObjectURL` template-download block in Equipment with the shared Blob download primitive.
-- [ ] Do not add baseline-specific metadata, columns, validation or RPC behavior to shared Excel modules.
+- [x] Freeze the current Equipment template download, data export, workbook parsing, validation and submit behavior with focused tests.
+- [x] Extract generic workbook creation/loading, worksheet conversion and Blob download primitives from the oversized `excel-utils.ts`.
+- [x] Preserve existing exports so Equipment and current bulk-import consumers do not require a flag-driven rewrite.
+- [x] Add an optional custom workbook parser seam to `useBulkImportState`; keep the current first-sheet/header-map flow as the default.
+- [x] Keep `BulkImportFileInput`, parse/error presentation and submit-state components as the shared dialog primitives.
+- [x] Replace the manual `URL.createObjectURL` template-download block in Equipment with the shared Blob download primitive.
+- [x] Do not add baseline-specific metadata, columns, validation or RPC behavior to shared Excel modules.
 
 ### TDD and verification
 

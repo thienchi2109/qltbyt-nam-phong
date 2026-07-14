@@ -1,3 +1,5 @@
+import type { ExcelWorkbook } from "@/lib/excel-workbook"
+
 /**
  * Shared types for bulk import functionality
  *
@@ -20,7 +22,7 @@ export interface BulkImportRpcResult<TDetail = BulkImportDetailItem> {
  * State machine for bulk import workflow
  */
 export interface BulkImportState<TRow> {
-  status: 'idle' | 'parsing' | 'parsed' | 'submitting' | 'success' | 'error'
+  status: "idle" | "parsing" | "parsed" | "submitting" | "success" | "error"
   selectedFile: File | null
   parsedData: TRow[]
   parseError: string | null
@@ -35,6 +37,8 @@ export interface ValidationResult<TRow> {
   errors: string[]
   validRecords: TRow[]
 }
+
+export type BulkImportWorkbookParser<TRaw> = (workbook: ExcelWorkbook) => TRaw[] | Promise<TRaw[]>
 
 /**
  * Individual item result from bulk import RPC

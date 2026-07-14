@@ -43,33 +43,34 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 - Create: `src/lib/excel-workbook.ts`
 - Create: `src/lib/__tests__/excel-workbook.test.ts`
 - Create: `src/components/bulk-import/__tests__/useBulkImportState.test.tsx`
+- Create: `type-tests/useBulkImportState-options.ts`
 - Modify: `src/lib/excel-utils.ts`
 - Modify: `src/components/bulk-import/useBulkImportState.ts`
 - Modify: `src/components/bulk-import/bulk-import-types.ts`
 - Modify: `src/app/(app)/equipment/_hooks/useEquipmentExport.ts`
+- Modify: `src/app/(app)/equipment/__tests__/useEquipmentExport.test.ts`
 - Verify: `src/lib/__tests__/excel-template-generation.test.ts`
-- Verify: `src/app/(app)/equipment/__tests__/useEquipmentExport.test.ts`
 - Verify: `src/components/__tests__/import-equipment-dialog.test.tsx`
 - Verify: `src/components/__tests__/import-equipment-dialog.integration.test.tsx`
 
 ## Task 1 - Freeze Equipment Excel Behavior
 
-- [ ] Write or strengthen tests for Equipment template filename, workbook shape and Blob download cleanup.
-- [ ] Lock filtered Equipment export mapping, filename and `exportToExcel` invocation.
-- [ ] Lock import file selection, first-sheet parsing, validation errors and submit behavior.
-- [ ] Add failing tests for the new custom workbook parser option while proving the default path is unchanged.
-- [ ] Run the focused Equipment and bulk-import tests and confirm RED only for the missing shared seams.
+- [x] Write or strengthen tests for Equipment template filename, workbook shape and Blob download cleanup.
+- [x] Lock filtered Equipment export mapping, filename and `exportToExcel` invocation.
+- [x] Lock import file selection, first-sheet parsing, validation errors and submit behavior.
+- [x] Add failing tests for the new custom workbook parser option while proving the default path is unchanged.
+- [x] Run the focused Equipment and bulk-import tests and confirm RED only for the missing shared seams.
 
 ## Task 2 - Extract Shared Excel Primitives
 
-- [ ] Move generic ExcelJS workbook creation/loading and worksheet conversion into `excel-workbook.ts`.
-- [ ] Export one shared Blob download helper with object-URL cleanup.
-- [ ] Re-export moved APIs from `excel-utils.ts` so existing imports remain valid.
-- [ ] Change Equipment template download to the shared Blob helper without changing behavior.
-- [ ] Add the custom workbook parser option to `useBulkImportState`.
-- [ ] Keep the existing header-map parser as the backward-compatible default.
-- [ ] Run focused P5A tests and confirm GREEN.
-- [ ] Run `@code-deduplication` and document why no parallel helper remains.
+- [x] Move generic ExcelJS workbook creation/loading and worksheet conversion into `excel-workbook.ts`.
+- [x] Export one shared Blob download helper with object-URL cleanup.
+- [x] Re-export moved APIs from `excel-utils.ts` so existing imports remain valid.
+- [x] Change Equipment template download to the shared Blob helper without changing behavior.
+- [x] Add the custom workbook parser option to `useBulkImportState`.
+- [x] Keep the existing header-map parser as the backward-compatible default.
+- [x] Run focused P5A tests and confirm GREEN.
+- [x] Run `@code-deduplication`; confirm no existing generic workbook primitive duplicates `excel-workbook.ts`. Keep the domain-local downloaders in `category-excel.ts` and `DeviceQuotaChiTietToolbar.tsx` outside P5A and defer any reuse cleanup to a separate follow-up.
 
 ## P5B Planned Files
 
@@ -170,10 +171,10 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ### P5A PR gate
 
-- [ ] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
-- [ ] Run `node scripts/npm-run.js run test:run -- src/lib/__tests__/excel-workbook.test.ts src/components/bulk-import/__tests__/useBulkImportState.test.tsx src/components/bulk-import/__tests__/BulkImportDialogParts.test.tsx src/lib/__tests__/excel-template-generation.test.ts src/components/__tests__/import-equipment-validation.test.ts src/components/__tests__/import-equipment-dialog.test.tsx src/components/__tests__/import-equipment-dialog.integration.test.tsx "src/app/(app)/equipment/__tests__/useEquipmentExport.test.ts"`.
-- [ ] Run `node scripts/npm-run.js run react-doctor`, Code Review Graph change detection, GitNexus impact and `@code-deduplication` for the extracted shared symbols.
-- [ ] Confirm Equipment behavior is unchanged before starting P5B.
+- [x] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
+- [x] Run `node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/useEquipmentExport.test.ts" src/components/bulk-import/__tests__/bulk-import-index.test.ts src/components/bulk-import/__tests__/BulkImportDialogParts.test.tsx src/components/bulk-import/__tests__/useBulkImportState.test.tsx src/components/bulk-import/__tests__/bulk-import-error-utils.test.ts src/components/__tests__/import-equipment-dialog.test.tsx src/components/__tests__/import-equipment-dialog.integration.test.tsx src/lib/__tests__/category-excel.test.ts src/lib/__tests__/excel-template-generation.test.ts src/lib/__tests__/device-quota-excel.test.ts src/lib/__tests__/excel-workbook.test.ts` and confirm 234 passed, 4 skipped.
+- [x] Run `node scripts/npm-run.js run react-doctor`, Code Review Graph change detection, GitNexus impact and `@code-deduplication` for the extracted shared symbols.
+- [x] Confirm Equipment behavior is unchanged before starting P5B.
 - [ ] Update only P5A tasks, then commit, pull with rebase, push and open the P5A PR before starting P5B.
 
 ### P5B PR gate

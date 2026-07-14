@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useToast } from "@/hooks/use-toast"
-import { exportToExcel, generateEquipmentImportTemplate } from "@/lib/excel-utils"
+import { downloadBlob, exportToExcel, generateEquipmentImportTemplate } from "@/lib/excel-utils"
 import {
   generateProfileSheet,
   generateDeviceLabel,
@@ -49,6 +49,7 @@ export interface UseEquipmentExportReturn {
   isExporting: boolean
 }
 
+/** Provides Equipment export actions and their shared progress state. */
 export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipmentExportReturn {
   const { total, filterParams, tenantBranding, userRole } = params
   const { toast } = useToast()
@@ -67,14 +68,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
   const handleDownloadTemplate = React.useCallback(async () => {
     try {
       const blob = await generateEquipmentImportTemplate()
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = "Mau_Nhap_Thiet_Bi.xlsx"
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      downloadBlob(blob, "Mau_Nhap_Thiet_Bi.xlsx")
     } catch (error) {
       console.error("Error downloading template:", error)
       toast({
@@ -152,39 +146,42 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
   /**
    * Fetch all equipment matching current filters for export
    */
-  const fetchAllEquipmentForExport = React.useCallback(async (signal?: AbortSignal): Promise<Equipment[]> => {
-    const {
-      debouncedSearch,
-      sortParam,
-      effectiveSelectedDonVi,
-      selectedDepartments,
-      selectedUsers,
-      selectedLocations,
-      selectedStatuses,
-      selectedClassifications,
-      selectedFundingSources,
-    } = filterParams
+  const fetchAllEquipmentForExport = React.useCallback(
+    async (signal?: AbortSignal): Promise<Equipment[]> => {
+      const {
+        debouncedSearch,
+        sortParam,
+        effectiveSelectedDonVi,
+        selectedDepartments,
+        selectedUsers,
+        selectedLocations,
+        selectedStatuses,
+        selectedClassifications,
+        selectedFundingSources,
+      } = filterParams
 
-    const result = await callRpc<EquipmentListResponse>({
-      fn: "equipment_list_enhanced",
-      args: {
-        p_q: debouncedSearch || null,
-        p_sort: sortParam,
-        p_page: 1,
-        p_page_size: MAX_EXPORT_PAGE_SIZE,
-        p_don_vi: effectiveSelectedDonVi,
-        p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
-        p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
-        p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
-        p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
-        p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
-        p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
-      },
-      signal,
-    })
+      const result = await callRpc<EquipmentListResponse>({
+        fn: "equipment_list_enhanced",
+        args: {
+          p_q: debouncedSearch || null,
+          p_sort: sortParam,
+          p_page: 1,
+          p_page_size: MAX_EXPORT_PAGE_SIZE,
+          p_don_vi: effectiveSelectedDonVi,
+          p_khoa_phong_array: selectedDepartments.length > 0 ? selectedDepartments : null,
+          p_nguoi_su_dung_array: selectedUsers.length > 0 ? selectedUsers : null,
+          p_vi_tri_lap_dat_array: selectedLocations.length > 0 ? selectedLocations : null,
+          p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
+          p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
+          p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+        },
+        signal,
+      })
 
-    return result?.data ?? []
-  }, [filterParams])
+      return result?.data ?? []
+    },
+    [filterParams]
+  )
 
   const handleExportData = React.useCallback(async () => {
     // Check if there's data to export
@@ -203,13 +200,14 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
 
     // Show confirmation toast with count and active filters
     const activeFilters = formatActiveFilters()
-    const filterSummary = activeFilters.length > 0
-      ? `\nVới bộ lọc:\n• ${activeFilters.join("\n• ")}`
-      : " (không có bộ lọc)"
+    const filterSummary =
+      activeFilters.length > 0
+        ? `\nVới bộ lọc:\n• ${activeFilters.join("\n• ")}`
+        : " (không có bộ lọc)"
 
     // Show warning for large datasets
     if (total > LARGE_DATASET_WARNING_THRESHOLD) {
-      const cappedWarning = isCapped 
+      const cappedWarning = isCapped
         ? `\n⚠️ Giới hạn tối đa ${MAX_EXPORT_PAGE_SIZE.toLocaleString("vi-VN")} thiết bị/lần. Tổng ${total.toLocaleString("vi-VN")} thiết bị sẽ chỉ xuất ${exportCount.toLocaleString("vi-VN")} đầu tiên.`
         : ""
       toast({
@@ -257,9 +255,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
           const value = item[key]
           // Sanitize to prevent CSV/Excel formula injection
           const sanitizedValue =
-            typeof value === "string" && /^[=+\-@]/.test(value)
-              ? `'${value}`
-              : value ?? ""
+            typeof value === "string" && /^[=+\-@]/.test(value) ? `'${value}` : (value ?? "")
           rowData[header] = sanitizedValue
         })
         return rowData
@@ -276,7 +272,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
       })
     } catch (error) {
       // Don't show error toast if the request was aborted (component unmounted)
-      if (error instanceof Error && error.name === 'AbortError') {
+      if (error instanceof Error && error.name === "AbortError") {
         console.warn("Export aborted - component unmounted")
         return
       }
@@ -300,6 +296,12 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
       handleGenerateDeviceLabel,
       isExporting,
     }),
-    [handleDownloadTemplate, handleExportData, handleGenerateProfileSheet, handleGenerateDeviceLabel, isExporting]
+    [
+      handleDownloadTemplate,
+      handleExportData,
+      handleGenerateProfileSheet,
+      handleGenerateDeviceLabel,
+      isExporting,
+    ]
   )
 }
