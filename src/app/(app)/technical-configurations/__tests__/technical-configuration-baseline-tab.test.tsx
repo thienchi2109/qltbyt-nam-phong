@@ -367,7 +367,10 @@ describe("technical configuration baseline tab", () => {
     view.unmount()
     renderTab(vi.fn(), queryClient)
 
-    expect(await screen.findByText("Phiên bản đã khóa")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Nội dung phiên bản đã khóa" })
+    ).toBeInTheDocument()
+    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
   })
 

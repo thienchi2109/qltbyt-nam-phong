@@ -43,6 +43,7 @@ function createLockedVersion() {
 describe("technical configuration baseline locking and history", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    rpc.getDossier.mockResolvedValue({ data: dossier })
   })
 
   it("renders a locked historical version without edit affordances", async () => {
@@ -195,7 +196,7 @@ describe("technical configuration baseline locking and history", () => {
     ).toBe(4)
   })
 
-  it("keeps the selected locked history when copy rejects a stale revision", async () => {
+  it("refreshes and keeps the selected locked history when copy rejects a stale revision", async () => {
     const user = userEvent.setup()
     const locked = createLockedVersion()
     mockVersions([locked])
@@ -206,7 +207,8 @@ describe("technical configuration baseline locking and history", () => {
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Sao chép thành bản nháp" }))
 
-    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+    await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
+    expect(screen.queryByText("Xung đột dữ liệu")).not.toBeInTheDocument()
     expect(screen.getByText("Phiên bản 1")).toBeInTheDocument()
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
@@ -276,29 +278,30 @@ describe("technical configuration baseline locking and history", () => {
       locked_at: "2026-07-13T08:30:00.000Z",
       locked_by: 41,
     })
-    rpc.listVersions.mockResolvedValue({
-      data: [locked, older],
-      total: 102,
-      page: 1,
-      page_size: 100,
-    })
+    rpc.listVersions
+      .mockResolvedValueOnce({
+        data: [locked, older],
+        total: 102,
+        page: 1,
+        page_size: 100,
+      })
+      .mockReturnValueOnce(pending.promise)
     rpc.copyVersion.mockRejectedValue(
       new TechnicalConfigurationRpcError(409, { message: "stale_revision" })
     )
 
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Sao chép thành bản nháp" }))
-    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
 
-    rpc.listVersions.mockReturnValueOnce(pending.promise)
-    await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
-
+    await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
     expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
 
     pending.reject(new Error("network_error"))
-    expect(await screen.findByText("Không thể tải lại cấu hình cơ sở.")).toBeInTheDocument()
-    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+    )
   })
 
   it("creates a blank draft after the locked history", async () => {
@@ -348,7 +351,11 @@ describe("technical configuration baseline locking and history", () => {
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Tạo bản nháp trống" }))
 
-    expect(await screen.findByText("Không thể khởi tạo bản nháp.")).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        "Dữ liệu hồ sơ đã thay đổi. Trạng thái mới đã được tải; vui lòng thử lại."
+      )
+    ).toBeInTheDocument()
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
   })
 })
