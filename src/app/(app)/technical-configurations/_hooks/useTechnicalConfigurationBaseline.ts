@@ -1,6 +1,9 @@
 import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
 
-import { callTechnicalConfigurationRpc } from "../technical-configuration-rpc"
+import {
+  callTechnicalConfigurationRpc,
+  getTechnicalConfigurationDossier,
+} from "../technical-configuration-rpc"
 import type {
   TechnicalConfigurationBaselineBulkPreviewRpcArgs,
   TechnicalConfigurationBaselineBulkPreviewWireResponse,
@@ -27,6 +30,9 @@ import type {
 
 /** Typed client wrappers for baseline draft and lifecycle RPCs. */
 export const technicalConfigurationBaselineRpc = {
+  getDossier(dossierId: string) {
+    return getTechnicalConfigurationDossier(dossierId)
+  },
   createDraft(args: TechnicalConfigurationBaselineDraftCreateRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
       BASELINE_RPC_FUNCTIONS.createDraft,

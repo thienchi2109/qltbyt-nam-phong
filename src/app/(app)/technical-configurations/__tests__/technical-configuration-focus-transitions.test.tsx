@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 import {
+  baselineVersionsResponse,
   createDraft,
   getBaselineRpcMock,
   renderTab,
@@ -15,7 +16,7 @@ const rpc = getBaselineRpcMock()
 describe("technical configuration focus transitions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    rpc.getDraft.mockResolvedValue({ data: createDraft() })
+    rpc.listVersions.mockResolvedValue(baselineVersionsResponse([createDraft()]))
   })
 
   it("focuses the next group tab after deleting the selected group", async () => {
@@ -41,9 +42,11 @@ describe("technical configuration focus transitions", () => {
   it("focuses add group after deleting the final group", async () => {
     const user = userEvent.setup()
     const singleGroupDraft = createDraft()
-    rpc.getDraft.mockResolvedValueOnce({
-      data: { ...singleGroupDraft, groups: singleGroupDraft.groups.slice(0, 1) },
-    })
+    rpc.listVersions.mockResolvedValueOnce(
+      baselineVersionsResponse([
+        { ...singleGroupDraft, groups: singleGroupDraft.groups.slice(0, 1) },
+      ])
+    )
     renderTab()
 
     await user.click(await screen.findByRole("button", { name: "Xóa nhóm 1" }))
@@ -53,28 +56,30 @@ describe("technical configuration focus transitions", () => {
   it("focuses the first invalid requirement when manually returning to row mode", async () => {
     const user = userEvent.setup()
     const draft = createDraft()
-    rpc.getDraft.mockResolvedValueOnce({
-      data: {
-        ...draft,
-        groups: draft.groups.map((group, index) =>
-          index === 0
-            ? {
-                ...group,
-                criteria: [
-                  ...group.criteria,
-                  {
-                    ...group.criteria[0],
-                    id: "criterion-2",
-                    criterion_code: "TC-0002",
-                    requirement_text: " ",
-                    sort_order: 2,
-                  },
-                ],
-              }
-            : group
-        ),
-      },
-    })
+    rpc.listVersions.mockResolvedValueOnce(
+      baselineVersionsResponse([
+        {
+          ...draft,
+          groups: draft.groups.map((group, index) =>
+            index === 0
+              ? {
+                  ...group,
+                  criteria: [
+                    ...group.criteria,
+                    {
+                      ...group.criteria[0],
+                      id: "criterion-2",
+                      criterion_code: "TC-0002",
+                      requirement_text: " ",
+                      sort_order: 2,
+                    },
+                  ],
+                }
+              : group
+          ),
+        },
+      ])
+    )
     renderTab()
 
     await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
@@ -106,7 +111,7 @@ describe("technical configuration focus transitions", () => {
         index === 0 ? { ...group, name: "Tên mới từ máy chủ" } : group
       ),
     })
-    rpc.getDraft.mockResolvedValueOnce({ data: reloadedDraft })
+    rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([reloadedDraft]))
     vi.spyOn(window, "confirm").mockReturnValueOnce(true)
 
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))

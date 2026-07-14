@@ -23,6 +23,7 @@ import type {
   TechnicalConfigurationBaselineEditorDraft,
   TechnicalConfigurationBaselineEditorValidation,
 } from "./technical-configuration-baseline-editor-state"
+import { isTechnicalConfigurationBaselineConflict } from "./technical-configuration-baseline-version-state"
 
 export interface TechnicalConfigurationBaselineEditorProgress {
   baseDraft: TechnicalConfigurationBaselineDraftWire
@@ -65,7 +66,7 @@ export class BaselineEditorSaveFailure extends Error {
   constructor(error: unknown, progress: TechnicalConfigurationBaselineEditorProgress) {
     super(error instanceof Error && error.message ? error.message : "baseline_save_failed")
     this.name = "BaselineEditorSaveFailure"
-    this.isConflict = isOptimisticConflict(error)
+    this.isConflict = isTechnicalConfigurationBaselineConflict(error)
     this.progress = cloneProgress(progress)
     this.originalError = error
   }
@@ -113,14 +114,6 @@ export async function saveTechnicalConfigurationBaselineEditorDraft({
 
   progress.editorDraft.revision = progress.baseDraft.revision
   return cloneProgress(progress)
-}
-
-function isOptimisticConflict(error: unknown): boolean {
-  if (!(error instanceof Error)) return false
-  const metadata = error as Error & { code?: unknown; status?: unknown }
-  return (
-    error.message === "stale_revision" && (metadata.status === 409 || metadata.code === "PT409")
-  )
 }
 
 function cloneProgress(

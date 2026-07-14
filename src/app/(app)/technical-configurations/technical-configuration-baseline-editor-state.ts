@@ -29,6 +29,13 @@ export interface TechnicalConfigurationBaselineEditorValidation {
   criterionErrors: Record<string, string>
 }
 
+/** Stable empty validation state used before an explicit save attempt. */
+export const EMPTY_TECHNICAL_CONFIGURATION_BASELINE_EDITOR_VALIDATION: TechnicalConfigurationBaselineEditorValidation =
+  {
+    groupErrors: {},
+    criterionErrors: {},
+  }
+
 /** Maps a persisted P2 draft into the editable form shape. */
 export function toTechnicalConfigurationBaselineEditorDraft(
   draft: TechnicalConfigurationBaselineDraftWire

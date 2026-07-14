@@ -11,6 +11,7 @@ import {
   saveTechnicalConfigurationBaselineEditorDraft,
   toTechnicalConfigurationBaselineEditorDraft,
 } from "../technical-configuration-baseline-editor"
+import { TechnicalConfigurationRpcError } from "../technical-configuration-rpc"
 
 const timestamp = "2026-07-13T00:00:00.000Z"
 
@@ -293,28 +294,54 @@ describe("technical configuration baseline save runner", () => {
     })
   })
 
-  it("marks stale_revision as conflict without discarding edited content", async () => {
-    const baseDraft = createDraft()
-    const editorDraft = toTechnicalConfigurationBaselineEditorDraft(baseDraft)
-    editorDraft.groups[0].name = "Tên chưa lưu"
+  it.each(["stale_revision", "locked_version"])(
+    "marks %s as conflict without discarding edited content",
+    async (message) => {
+      const baseDraft = createDraft()
+      const editorDraft = toTechnicalConfigurationBaselineEditorDraft(baseDraft)
+      editorDraft.groups[0].name = "Tên chưa lưu"
 
-    const rpc = createRpc()
-    rpc.updateGroup.mockRejectedValue(
-      Object.assign(new Error("stale_revision"), {
-        status: 409,
-        code: "PT409",
-      })
-    )
+      const rpc = createRpc()
+      rpc.updateGroup.mockRejectedValue(
+        Object.assign(new Error(message), {
+          status: 409,
+          code: "PT409",
+        })
+      )
 
-    await expect(
-      saveTechnicalConfigurationBaselineEditorDraft({ baseDraft, editorDraft, rpc })
-    ).rejects.toMatchObject({
-      isConflict: true,
-      progress: {
-        editorDraft: {
-          groups: [{ name: "Tên chưa lưu" }],
+      await expect(
+        saveTechnicalConfigurationBaselineEditorDraft({ baseDraft, editorDraft, rpc })
+      ).rejects.toMatchObject({
+        isConflict: true,
+        progress: {
+          editorDraft: {
+            groups: [{ name: "Tên chưa lưu" }],
+          },
         },
-      },
-    })
-  })
+      })
+    }
+  )
+
+  it.each(["stale_revision", "locked_version"])(
+    "does not classify non-409 %s failures as conflicts",
+    async (message) => {
+      const baseDraft = createDraft()
+      const editorDraft = toTechnicalConfigurationBaselineEditorDraft(baseDraft)
+      editorDraft.groups[0].name = "Tên chưa lưu"
+
+      const rpc = createRpc()
+      rpc.updateGroup.mockRejectedValue(new TechnicalConfigurationRpcError(500, { message }))
+
+      await expect(
+        saveTechnicalConfigurationBaselineEditorDraft({ baseDraft, editorDraft, rpc })
+      ).rejects.toMatchObject({
+        isConflict: false,
+        progress: {
+          editorDraft: {
+            groups: [{ name: "Tên chưa lưu" }],
+          },
+        },
+      })
+    }
+  )
 })

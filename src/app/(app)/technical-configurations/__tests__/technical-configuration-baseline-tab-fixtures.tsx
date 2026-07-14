@@ -7,6 +7,7 @@ import type {
   TechnicalConfigurationBaselineCriterionMutationWire,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
+  TechnicalConfigurationBaselineVersionsListWireResponse,
 } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
@@ -15,7 +16,11 @@ const timestamp = "2026-07-13T00:00:00.000Z"
 
 const rpc = vi.hoisted(() => ({
   createDraft: vi.fn(),
+  getDossier: vi.fn(),
   getDraft: vi.fn(),
+  listVersions: vi.fn(),
+  lockVersion: vi.fn(),
+  copyVersion: vi.fn(),
   createGroup: vi.fn(),
   updateGroup: vi.fn(),
   deleteGroup: vi.fn(),
@@ -100,6 +105,17 @@ export function createDraft(
           : [],
     })),
     ...overrides,
+  }
+}
+
+export function baselineVersionsResponse(
+  data: TechnicalConfigurationBaselineDraftWire[]
+): TechnicalConfigurationBaselineVersionsListWireResponse {
+  return {
+    data,
+    total: data.length,
+    page: 1,
+    page_size: 100,
   }
 }
 

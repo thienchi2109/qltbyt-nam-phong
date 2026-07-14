@@ -1,66 +1,32 @@
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation } from "@tanstack/react-query"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   BaselineEditorSaveFailure,
   BaselineEditorValidationFailure,
+  EMPTY_TECHNICAL_CONFIGURATION_BASELINE_EDITOR_VALIDATION as EMPTY_VALIDATION,
   isTechnicalConfigurationBaselineEditorDirty,
   saveTechnicalConfigurationBaselineEditorDraft,
+  type TechnicalConfigurationBaselineEditorDraft,
+  type TechnicalConfigurationBaselineEditorValidation,
   toTechnicalConfigurationBaselineEditorDraft,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-import type {
-  TechnicalConfigurationBaselineEditorDraft,
-  TechnicalConfigurationBaselineEditorValidation,
-} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
+import {
+  BASELINE_VERSION_PAGE_SIZE,
+  getTechnicalConfigurationBaselineCreateError,
+  getTechnicalConfigurationBaselineQueryError,
+  isTechnicalConfigurationBaselineConflict,
+  selectTechnicalConfigurationBaselineVersion,
+  splitTechnicalConfigurationBaselineCreatedVersion,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
+import { useTechnicalConfigurationBaselineDossierRevision } from "./useTechnicalConfigurationBaselineDossierRevision"
+import type { UseTechnicalConfigurationBaselineEditorResult } from "./useTechnicalConfigurationBaselineEditorTypes"
+import { useTechnicalConfigurationBaselineVersions } from "./useTechnicalConfigurationBaselineVersions"
 
-const EMPTY_VALIDATION: TechnicalConfigurationBaselineEditorValidation = {
-  groupErrors: {},
-  criterionErrors: {},
-}
-
-export interface UseTechnicalConfigurationBaselineEditorResult {
-  baseDraft: TechnicalConfigurationBaselineDraftWire | null
-  editorDraft: TechnicalConfigurationBaselineEditorDraft | null
-  validation: TechnicalConfigurationBaselineEditorValidation
-  isDirty: boolean
-  isConflict: boolean
-  saveStatus: "idle" | "saved"
-  saveError: string | null
-  isSaving: boolean
-  isReloading: boolean
-  isCreating: boolean
-  createError: string | null
-  queryError: string | null
-  isLoading: boolean
-  isMissing: boolean
-  onEditorChange: (draft: TechnicalConfigurationBaselineEditorDraft) => void
-  onSave: () => void
-  onCreate: () => void
-  onRetryQuery: () => Promise<void>
-  onReloadFromServer: () => Promise<TechnicalConfigurationBaselineEditorDraft>
-}
-
-function baselineQueryKey(dossierId: string) {
-  return ["technical-configurations", "baseline-draft", dossierId] as const
-}
-
-function isNotFound(error: unknown): boolean {
-  return (
-    error instanceof TechnicalConfigurationRpcError &&
-    error.status === 404 &&
-    error.message === "not_found"
-  )
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error && error.message ? error.message : fallback
-}
-
-/** Owns P3B baseline query, explicit-save, dirty, and conflict state. */
+/** Owns baseline version selection, lifecycle, explicit-save, dirty, and conflict state. */
 export function useTechnicalConfigurationBaselineEditor({
   dossier,
   isExternalDraftReplacementBlocked = false,
@@ -68,9 +34,25 @@ export function useTechnicalConfigurationBaselineEditor({
   dossier: TechnicalConfigurationDossierWire
   isExternalDraftReplacementBlocked?: boolean
 }): UseTechnicalConfigurationBaselineEditorResult {
-  const queryClient = useQueryClient()
   const rpc = useTechnicalConfigurationBaseline()
-  const queryKey = baselineQueryKey(dossier.id)
+  const { dossierRevision, updateDossierRevision, refreshDossierRevision } =
+    useTechnicalConfigurationBaselineDossierRevision({
+      dossier,
+      getDossier: rpc.getDossier,
+    })
+  const {
+    versionsQuery,
+    versions,
+    cacheVersion,
+    replaceVersions,
+    refreshVersions,
+    retryVersions,
+    loadMoreVersions,
+  } = useTechnicalConfigurationBaselineVersions({
+    dossierId: dossier.id,
+    listVersions: rpc.listVersions,
+  })
+  const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
   const [baseDraft, setBaseDraft] = React.useState<TechnicalConfigurationBaselineDraftWire | null>(
     null
   )
@@ -79,46 +61,90 @@ export function useTechnicalConfigurationBaselineEditor({
   const [validation, setValidation] =
     React.useState<TechnicalConfigurationBaselineEditorValidation>(EMPTY_VALIDATION)
   const [saveError, setSaveError] = React.useState<string | null>(null)
+  const [lifecycleError, setLifecycleError] = React.useState<string | null>(null)
   const [isConflict, setIsConflict] = React.useState(false)
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
-
-  const draftQuery = useQuery({
-    queryKey,
-    queryFn: async () => {
-      try {
-        return await rpc.getDraft({ p_dossier_id: dossier.id })
-      } catch (error) {
-        if (isNotFound(error)) return null
-        throw error
-      }
-    },
-    staleTime: 30_000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
 
   const isDirty = React.useMemo(
     () => isTechnicalConfigurationBaselineEditorDirty(baseDraft, editorDraft),
     [baseDraft, editorDraft]
   )
+  const isDraftReplacementBlocked = isDirty || isExternalDraftReplacementBlocked
+
+  const adoptVersion = React.useCallback(
+    (version: TechnicalConfigurationBaselineDraftWire | null) => {
+      setSelectedVersionId(version?.id ?? null)
+      setBaseDraft(() => version)
+      setEditorDraft(
+        version?.status === "draft" ? toTechnicalConfigurationBaselineEditorDraft(version) : null
+      )
+      setValidation(EMPTY_VALIDATION)
+      setSaveError(null)
+      setLifecycleError(null)
+      setIsConflict(false)
+      setSaveStatus("idle")
+    },
+    []
+  )
 
   React.useEffect(() => {
-    if (!draftQuery.data?.data || isDirty || isExternalDraftReplacementBlocked) return
-    setBaseDraft(draftQuery.data.data)
-    setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(draftQuery.data.data))
-  }, [draftQuery.data, isDirty, isExternalDraftReplacementBlocked])
+    if (!versionsQuery.data || isDraftReplacementBlocked) return
+
+    const nextVersion = selectTechnicalConfigurationBaselineVersion(
+      versions,
+      selectedVersionId,
+      baseDraft,
+      Boolean(versionsQuery.hasNextPage)
+    )
+
+    if (
+      baseDraft?.id === nextVersion?.id &&
+      baseDraft?.revision === nextVersion?.revision &&
+      baseDraft?.status === nextVersion?.status
+    ) {
+      return
+    }
+
+    adoptVersion(nextVersion)
+  }, [
+    adoptVersion,
+    baseDraft,
+    isDraftReplacementBlocked,
+    selectedVersionId,
+    versions,
+    versionsQuery.data,
+    versionsQuery.hasNextPage,
+  ])
 
   const createDraftMutation = useMutation({
     mutationFn: () =>
       rpc.createDraft({
         p_dossier_id: dossier.id,
-        p_expected_revision: dossier.revision,
+        p_expected_revision: dossierRevision,
       }),
     onSuccess: (response) => {
-      const draft = response.data
-      setBaseDraft(draft)
-      setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(draft))
-      queryClient.setQueryData(queryKey, { data: draft })
+      const { version, dossierRevision: nextDossierRevision } =
+        splitTechnicalConfigurationBaselineCreatedVersion(response.data)
+      updateDossierRevision(nextDossierRevision)
+      cacheVersion(version)
+      adoptVersion(version)
+    },
+    onMutate: () => {
+      setLifecycleError(null)
+      setIsConflict(false)
+    },
+    onError: async (error) => {
+      const stale = isTechnicalConfigurationBaselineConflict(error)
+      setIsConflict(stale)
+      setLifecycleError(stale ? null : "Không thể khởi tạo bản nháp.")
+      if (!stale) return
+
+      try {
+        await refreshDossierRevision()
+        await versionsQuery.refetch()
+      } catch {
+        setLifecycleError("Không thể tải lại trạng thái hồ sơ.")
+      }
     },
   })
 
@@ -140,9 +166,9 @@ export function useTechnicalConfigurationBaselineEditor({
       setSaveError(null)
       setIsConflict(false)
       setSaveStatus("saved")
-      queryClient.setQueryData(queryKey, { data: progress.baseDraft })
+      cacheVersion(progress.baseDraft)
     },
-    onError: (error) => {
+    onError: async (error) => {
       setSaveStatus("idle")
       if (error instanceof BaselineEditorValidationFailure) {
         setValidation(error.validation)
@@ -154,27 +180,85 @@ export function useTechnicalConfigurationBaselineEditor({
         setEditorDraft(error.progress.editorDraft)
         setIsConflict(error.isConflict)
         setSaveError(error.isConflict ? null : "Không thể lưu cấu hình cơ sở.")
-        queryClient.setQueryData(queryKey, { data: error.progress.baseDraft })
+        if (error.isConflict) {
+          await refreshVersions()
+        } else {
+          cacheVersion(error.progress.baseDraft)
+        }
         return
       }
       setSaveError("Không thể lưu cấu hình cơ sở.")
     },
   })
 
-  const reloadMutation = useMutation({
-    mutationFn: () => rpc.getDraft({ p_dossier_id: dossier.id }),
+  const lockMutation = useMutation({
+    mutationFn: (version: TechnicalConfigurationBaselineDraftWire) =>
+      rpc.lockVersion({
+        p_baseline_version_id: version.id,
+        p_expected_revision: version.revision,
+      }),
     onMutate: () => {
-      setSaveError(null)
-      setSaveStatus("idle")
+      setLifecycleError(null)
+      setIsConflict(false)
     },
     onSuccess: (response) => {
-      setBaseDraft(response.data)
-      setEditorDraft(toTechnicalConfigurationBaselineEditorDraft(response.data))
-      setValidation(EMPTY_VALIDATION)
-      setSaveError(null)
+      cacheVersion(response.data)
+      adoptVersion(response.data)
+    },
+    onError: (error) => {
+      const stale = isTechnicalConfigurationBaselineConflict(error)
+      setIsConflict(stale)
+      setLifecycleError(stale ? null : "Không thể khóa phiên bản cấu hình.")
+    },
+  })
+
+  const copyMutation = useMutation({
+    mutationFn: (version: TechnicalConfigurationBaselineDraftWire) =>
+      rpc.copyVersion({
+        p_source_baseline_version_id: version.id,
+        p_expected_revision: version.revision,
+      }),
+    onMutate: () => {
+      setLifecycleError(null)
       setIsConflict(false)
+    },
+    onSuccess: (response) => {
+      const { version, dossierRevision: nextDossierRevision } =
+        splitTechnicalConfigurationBaselineCreatedVersion(response.data)
+      updateDossierRevision(nextDossierRevision)
+      cacheVersion(version)
+      adoptVersion(version)
+    },
+    onError: async (error) => {
+      const stale = isTechnicalConfigurationBaselineConflict(error)
+      setIsConflict(stale)
+      setLifecycleError(stale ? null : "Không thể sao chép phiên bản cấu hình.")
+      if (stale) adoptVersion(await refreshVersions())
+    },
+  })
+
+  const reloadMutation = useMutation({
+    mutationFn: (_forceEditorReplacement: boolean) =>
+      rpc.listVersions({
+        p_dossier_id: dossier.id,
+        p_page: 1,
+        p_page_size: BASELINE_VERSION_PAGE_SIZE,
+      }),
+    onMutate: () => {
+      setSaveError(null)
+      setLifecycleError(null)
       setSaveStatus("idle")
-      queryClient.setQueryData(queryKey, response)
+    },
+    onSuccess: (response, forceEditorReplacement) => {
+      replaceVersions(response)
+      if (!forceEditorReplacement && isDraftReplacementBlocked) return
+      const nextVersion =
+        response.data.find((version) => version.id === selectedVersionId) ??
+        versions.find((version) => version.id === selectedVersionId) ??
+        response.data.find((version) => version.status === "draft") ??
+        response.data[0] ??
+        null
+      adoptVersion(nextVersion)
     },
     onError: () => {
       setSaveError("Không thể tải lại cấu hình cơ sở.")
@@ -186,16 +270,26 @@ export function useTechnicalConfigurationBaselineEditor({
       setEditorDraft(draft)
       setValidation(EMPTY_VALIDATION)
       setSaveError(null)
+      setLifecycleError(null)
       setSaveStatus("idle")
     },
     []
   )
-
-  const retryQuery = React.useCallback(async (): Promise<void> => {
-    await draftQuery.refetch()
-  }, [draftQuery])
-
+  const isLifecycleBusy =
+    createDraftMutation.isPending ||
+    saveMutation.isPending ||
+    lockMutation.isPending ||
+    copyMutation.isPending ||
+    reloadMutation.isPending ||
+    versionsQuery.isFetching
+  const createError = getTechnicalConfigurationBaselineCreateError(
+    createDraftMutation.isError,
+    isConflict,
+    lifecycleError
+  )
   return {
+    versions,
+    selectedVersion: baseDraft,
     baseDraft,
     editorDraft,
     validation,
@@ -203,24 +297,52 @@ export function useTechnicalConfigurationBaselineEditor({
     isConflict,
     saveStatus,
     saveError,
+    lifecycleError,
     isSaving: saveMutation.isPending,
     isReloading: reloadMutation.isPending,
     isCreating: createDraftMutation.isPending,
-    createError: createDraftMutation.isError
-      ? getErrorMessage(createDraftMutation.error, "Không thể khởi tạo bản nháp.")
-      : null,
-    queryError: draftQuery.isError
-      ? getErrorMessage(draftQuery.error, "Không thể tải cấu hình cơ sở.")
-      : null,
-    isLoading: draftQuery.isLoading,
-    isMissing: draftQuery.data === null,
+    isLocking: lockMutation.isPending,
+    isCopying: copyMutation.isPending,
+    isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
+    isLifecycleBusy,
+    createError,
+    queryError: getTechnicalConfigurationBaselineQueryError(
+      versionsQuery.isError,
+      versionsQuery.error,
+      versions.length > 0
+    ),
+    isLoading: versionsQuery.isLoading,
+    isMissing: versionsQuery.isSuccess && versions.length === 0,
+    hasDraft: versions.some((version) => version.status === "draft"),
+    hasMoreVersions: Boolean(versionsQuery.hasNextPage),
     onEditorChange: handleEditorChange,
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
-    onRetryQuery: retryQuery,
+    onLock: async () => {
+      if (isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft") return
+      await lockMutation.mutateAsync(baseDraft)
+    },
+    onCopy: async () => {
+      if (!baseDraft || baseDraft.status !== "locked") return
+      await copyMutation.mutateAsync(baseDraft)
+    },
+    onSelectVersion: (versionId) => {
+      const version = versions.find((item) => item.id === versionId)
+      if (version && !isDraftReplacementBlocked) adoptVersion(version)
+    },
+    onLoadMoreVersions: loadMoreVersions,
+    onRetryQuery: retryVersions,
+    onRefreshVersions: async () => {
+      await reloadMutation.mutateAsync(false)
+    },
     onReloadFromServer: async () => {
-      const response = await reloadMutation.mutateAsync()
-      return toTechnicalConfigurationBaselineEditorDraft(response.data)
+      const response = await reloadMutation.mutateAsync(true)
+      const version =
+        response.data.find((item) => item.id === selectedVersionId) ??
+        response.data.find((item) => item.status === "draft")
+      return version?.status === "draft"
+        ? toTechnicalConfigurationBaselineEditorDraft(version)
+        : null
     },
   }
 }
