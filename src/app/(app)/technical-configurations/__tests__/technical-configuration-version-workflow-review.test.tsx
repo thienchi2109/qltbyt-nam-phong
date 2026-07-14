@@ -180,6 +180,7 @@ describe("technical configuration version workflow review regressions", () => {
     const shiftedSecondPage = createVersions(101, 100)
     const finalPage = createVersions(1, 1)
     let pageOneRequestCount = 0
+    let pageThreeRequestCount = 0
     rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) => {
       if (p_page === 2) {
         return Promise.resolve({
@@ -190,9 +191,11 @@ describe("technical configuration version workflow review regressions", () => {
         })
       }
       if (p_page === 3) {
+        pageThreeRequestCount += 1
         return Promise.resolve({ data: finalPage, total: 201, page: 3, page_size: 100 })
       }
       pageOneRequestCount += 1
+      if (pageOneRequestCount === 2) return Promise.reject(new Error("network unavailable"))
       return Promise.resolve({
         data: pageOneRequestCount === 1 ? initialFirstPage : refreshedFirstPage,
         total: pageOneRequestCount === 1 ? 200 : 201,
@@ -210,10 +213,16 @@ describe("technical configuration version workflow review regressions", () => {
 
     const retry = await screen.findByRole("button", { name: "Tải lại lịch sử phiên bản" })
     await user.click(retry)
+    const secondRetry = await screen.findByRole("button", {
+      name: "Tải lại lịch sử phiên bản",
+    })
+    await waitFor(() => expect(secondRetry).toBeEnabled())
+    await user.click(secondRetry)
 
     expect(
       await screen.findByRole("option", { name: "Phiên bản 201 · Đã khóa" })
     ).toBeInTheDocument()
+    expect(pageThreeRequestCount).toBe(1)
     expect(rpc.listVersions).toHaveBeenCalledWith({
       p_dossier_id: dossier.id,
       p_page: 1,
@@ -259,17 +268,27 @@ describe("technical configuration version workflow review regressions", () => {
   it("clears the creation alert after adopting a concurrently created draft", async () => {
     const user = userEvent.setup()
     const existingDraft = createDraft()
+    const lockedVersion = createLockedVersion({ id: existingDraft.id })
     rpc.listVersions
       .mockResolvedValueOnce(baselineVersionsResponse([]))
       .mockResolvedValueOnce(baselineVersionsResponse([existingDraft]))
     rpc.createDraft.mockRejectedValue(
       new TechnicalConfigurationRpcError(409, { message: "draft_already_exists" })
     )
+    rpc.lockVersion.mockResolvedValue({ data: lockedVersion })
 
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Khởi tạo cấu hình cơ sở" }))
 
     expect(await screen.findByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Khóa vĩnh viễn" })
+    )
+
+    expect(await screen.findByText("Đã khóa")).toBeInTheDocument()
     expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
   })
 })
