@@ -68,7 +68,9 @@ export function TechnicalConfigurationBaselineTab({
     bulkSessions.clearAll()
     try {
       const reloadedDraft = await baseline.onReloadFromServer()
-      inlineEditor.prepareForReload(reloadedDraft.groups[0]?.key ?? "")
+      if (reloadedDraft) {
+        inlineEditor.prepareForReload(reloadedDraft.groups[0]?.key ?? "")
+      }
     } catch {
       return
     }
