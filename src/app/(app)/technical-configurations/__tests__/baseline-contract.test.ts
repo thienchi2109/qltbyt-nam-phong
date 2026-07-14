@@ -46,9 +46,18 @@ describe("technical configuration baseline RPC contract", () => {
       p_requirement_text: "Dòng 1\nDòng 2",
       p_expected_revision: 4,
     })
+    await technicalConfigurationBaselineRpc.listVersions({
+      p_dossier_id: "dossier-1",
+      p_page: 2,
+      p_page_size: 25,
+    })
     await technicalConfigurationBaselineRpc.lockVersion({
       p_baseline_version_id: "draft-1",
       p_expected_revision: 5,
+    })
+    await technicalConfigurationBaselineRpc.copyVersion({
+      p_source_baseline_version_id: "draft-1",
+      p_expected_revision: 6,
     })
 
     expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
@@ -71,10 +80,27 @@ describe("technical configuration baseline RPC contract", () => {
     )
     expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
       3,
+      "technical_configuration_baseline_versions_list",
+      {
+        p_dossier_id: "dossier-1",
+        p_page: 2,
+        p_page_size: 25,
+      }
+    )
+    expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
+      4,
       "technical_configuration_baseline_lock",
       {
         p_baseline_version_id: "draft-1",
         p_expected_revision: 5,
+      }
+    )
+    expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
+      5,
+      "technical_configuration_baseline_copy",
+      {
+        p_source_baseline_version_id: "draft-1",
+        p_expected_revision: 6,
       }
     )
   })
