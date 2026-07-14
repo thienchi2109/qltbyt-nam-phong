@@ -1,6 +1,5 @@
 import * as React from "react"
 import { useMutation } from "@tanstack/react-query"
-
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   BaselineEditorSaveFailure,
@@ -48,6 +47,7 @@ export function useTechnicalConfigurationBaselineEditor({
     refreshVersions,
     retryVersions,
     loadMoreVersions,
+    hasHistoryRecoveryError,
   } = useTechnicalConfigurationBaselineVersions({
     dossierId: dossier.id,
     listVersions: rpc.listVersions,
@@ -64,7 +64,6 @@ export function useTechnicalConfigurationBaselineEditor({
   const [lifecycleError, setLifecycleError] = React.useState<string | null>(null)
   const [isConflict, setIsConflict] = React.useState(false)
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
-
   const isDirty = React.useMemo(
     () => isTechnicalConfigurationBaselineEditorDirty(baseDraft, editorDraft),
     [baseDraft, editorDraft]
@@ -86,17 +85,14 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     []
   )
-
   React.useEffect(() => {
     if (!versionsQuery.data || isDraftReplacementBlocked) return
-
     const nextVersion = selectTechnicalConfigurationBaselineVersion(
       versions,
       selectedVersionId,
       baseDraft,
       Boolean(versionsQuery.hasNextPage)
     )
-
     if (
       baseDraft?.id === nextVersion?.id &&
       baseDraft?.revision === nextVersion?.revision &&
@@ -104,7 +100,6 @@ export function useTechnicalConfigurationBaselineEditor({
     ) {
       return
     }
-
     adoptVersion(nextVersion)
   }, [
     adoptVersion,
@@ -115,7 +110,7 @@ export function useTechnicalConfigurationBaselineEditor({
     versionsQuery.data,
     versionsQuery.hasNextPage,
   ])
-
+  // react-doctor-disable-next-line react-doctor/query-mutation-missing-invalidation -- cacheVersion updates the exact history cache; conflict recovery refetches it.
   const createDraftMutation = useMutation({
     mutationFn: () =>
       rpc.createDraft({
@@ -141,13 +136,16 @@ export function useTechnicalConfigurationBaselineEditor({
 
       try {
         await refreshDossierRevision()
-        await versionsQuery.refetch()
+        await refreshVersions()
       } catch {
         setLifecycleError("Không thể tải lại trạng thái hồ sơ.")
       }
     },
   })
-
+  React.useEffect(() => {
+    if (createDraftMutation.isError && versions.some((version) => version.status === "draft"))
+      createDraftMutation.reset()
+  }, [createDraftMutation, versions])
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!baseDraft || !editorDraft) {
@@ -190,7 +188,6 @@ export function useTechnicalConfigurationBaselineEditor({
       setSaveError("Không thể lưu cấu hình cơ sở.")
     },
   })
-
   const lockMutation = useMutation({
     mutationFn: (version: TechnicalConfigurationBaselineDraftWire) =>
       rpc.lockVersion({
@@ -211,7 +208,6 @@ export function useTechnicalConfigurationBaselineEditor({
       setLifecycleError(stale ? null : "Không thể khóa phiên bản cấu hình.")
     },
   })
-
   const copyMutation = useMutation({
     mutationFn: (version: TechnicalConfigurationBaselineDraftWire) =>
       rpc.copyVersion({
@@ -233,10 +229,12 @@ export function useTechnicalConfigurationBaselineEditor({
       const stale = isTechnicalConfigurationBaselineConflict(error)
       setIsConflict(stale)
       setLifecycleError(stale ? null : "Không thể sao chép phiên bản cấu hình.")
-      if (stale) adoptVersion(await refreshVersions())
+      if (stale) {
+        await refreshDossierRevision()
+        adoptVersion(await refreshVersions())
+      }
     },
   })
-
   const reloadMutation = useMutation({
     mutationFn: (_forceEditorReplacement: boolean) =>
       rpc.listVersions({
@@ -304,6 +302,7 @@ export function useTechnicalConfigurationBaselineEditor({
     isLocking: lockMutation.isPending,
     isCopying: copyMutation.isPending,
     isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
+    hasLoadMoreError: hasHistoryRecoveryError,
     isLifecycleBusy,
     createError,
     queryError: getTechnicalConfigurationBaselineQueryError(
@@ -319,16 +318,17 @@ export function useTechnicalConfigurationBaselineEditor({
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
     onLock: async () => {
-      if (isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft") return
+      if (isConflict || isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft")
+        return
       await lockMutation.mutateAsync(baseDraft)
     },
     onCopy: async () => {
       if (!baseDraft || baseDraft.status !== "locked") return
       await copyMutation.mutateAsync(baseDraft)
     },
-    onSelectVersion: (versionId) => {
+    onSelectVersion: (versionId, options) => {
       const version = versions.find((item) => item.id === versionId)
-      if (version && !isDraftReplacementBlocked) adoptVersion(version)
+      if (version && (options?.force || !isDraftReplacementBlocked)) adoptVersion(version)
     },
     onLoadMoreVersions: loadMoreVersions,
     onRetryQuery: retryVersions,

@@ -21,6 +21,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   isLocking: boolean
   isCopying: boolean
   isLoadingMoreVersions: boolean
+  hasLoadMoreError: boolean
   isLifecycleBusy: boolean
   createError: string | null
   queryError: string | null
@@ -33,7 +34,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onCreate: () => void
   onLock: () => Promise<void>
   onCopy: () => Promise<void>
-  onSelectVersion: (versionId: string) => void
+  onSelectVersion: (versionId: string, options?: { force?: boolean }) => void
   onLoadMoreVersions: () => Promise<void>
   onRetryQuery: () => Promise<void>
   onRefreshVersions: () => Promise<void>

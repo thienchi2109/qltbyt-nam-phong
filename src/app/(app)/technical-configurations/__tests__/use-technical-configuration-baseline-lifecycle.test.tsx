@@ -187,6 +187,23 @@ describe("useTechnicalConfigurationBaselineEditor lifecycle safety", () => {
     rpc.copyVersion.mockRejectedValue(
       new TechnicalConfigurationRpcError(409, { message: "draft_already_exists" })
     )
+    rpc.getDossier.mockResolvedValue({ data: { ...dossier, revision: 4 } })
+    rpc.lockVersion.mockResolvedValue({
+      data: {
+        ...existingDraft,
+        status: "locked",
+        locked_at: "2026-07-14T09:00:00.000Z",
+        locked_by: 42,
+      },
+    })
+    rpc.createDraft.mockResolvedValue({
+      data: {
+        ...draft,
+        id: "next-draft",
+        version_number: 4,
+        dossier_revision: 5,
+      },
+    })
     const { result } = renderBaselineEditor()
 
     await waitFor(() => expect(result.current.selectedVersion?.id).toBe(locked.id))
@@ -198,5 +215,18 @@ describe("useTechnicalConfigurationBaselineEditor lifecycle safety", () => {
     expect(result.current.editorDraft).not.toBeNull()
     expect(result.current.lifecycleError).toBeNull()
     expect(rpc.listVersions).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      await result.current.onLock()
+    })
+    act(() => {
+      result.current.onCreate()
+    })
+
+    await waitFor(() => expect(rpc.createDraft).toHaveBeenCalledTimes(1))
+    expect(rpc.createDraft).toHaveBeenCalledWith({
+      p_dossier_id: dossier.id,
+      p_expected_revision: 4,
+    })
   })
 })

@@ -4,65 +4,99 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
+import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
-const baseline = vi.hoisted(() => ({
-  baseDraft: null,
-  editorDraft: {
+const baseline = vi.hoisted(() => {
+  const selectedVersion: TechnicalConfigurationBaselineDraftWire = {
     id: "draft-1",
-    dossierId: "dossier-1",
+    dossier_id: "dossier-1",
+    version_number: 1,
     status: "draft",
+    source_baseline_version_id: null,
+    source_version_number: null,
+    next_criterion_number: 2,
     revision: 4,
-    groups: [
-      {
-        key: "group-1",
-        id: "group-1",
-        name: "Yêu cầu chung",
-        criteria: [
-          {
-            key: "criterion-1",
-            id: "criterion-1",
-            criterionCode: "TC-0001",
-            title: "",
-            requirementText: "Nguồn điện ổn định",
-          },
-        ],
-      },
-      {
-        key: "group-2",
-        id: "group-2",
-        name: "Yêu cầu kỹ thuật",
-        criteria: [
-          {
-            key: "criterion-2",
-            id: null,
-            criterionCode: null,
-            title: "Áp lực",
-            requirementText: "Áp lực tối thiểu 3 bar",
-          },
-        ],
-      },
-    ],
-  } as TechnicalConfigurationBaselineEditorDraft,
-  validation: { groupErrors: {}, criterionErrors: {} },
-  isDirty: false,
-  isConflict: false,
-  saveStatus: "idle" as const,
-  saveError: null,
-  isSaving: false,
-  isReloading: false,
-  isCreating: false,
-  createError: null,
-  queryError: null,
-  isLoading: false,
-  isMissing: false,
-  onEditorChange: vi.fn(),
-  onSave: vi.fn(),
-  onCreate: vi.fn(),
-  onRetryQuery: vi.fn(),
-  onReloadFromServer: vi.fn(),
-}))
+    locked_at: null,
+    locked_by: null,
+    created_at: "2026-07-13T00:00:00.000Z",
+    created_by: 1,
+    updated_at: "2026-07-13T00:00:00.000Z",
+    updated_by: 1,
+    groups: [],
+  }
+
+  return {
+    versions: [selectedVersion],
+    selectedVersion,
+    baseDraft: null,
+    editorDraft: {
+      id: "draft-1",
+      dossierId: "dossier-1",
+      status: "draft",
+      revision: 4,
+      groups: [
+        {
+          key: "group-1",
+          id: "group-1",
+          name: "Yêu cầu chung",
+          criteria: [
+            {
+              key: "criterion-1",
+              id: "criterion-1",
+              criterionCode: "TC-0001",
+              title: "",
+              requirementText: "Nguồn điện ổn định",
+            },
+          ],
+        },
+        {
+          key: "group-2",
+          id: "group-2",
+          name: "Yêu cầu kỹ thuật",
+          criteria: [
+            {
+              key: "criterion-2",
+              id: null,
+              criterionCode: null,
+              title: "Áp lực",
+              requirementText: "Áp lực tối thiểu 3 bar",
+            },
+          ],
+        },
+      ],
+    } as TechnicalConfigurationBaselineEditorDraft,
+    validation: { groupErrors: {}, criterionErrors: {} },
+    isDirty: false,
+    isConflict: false,
+    saveStatus: "idle" as const,
+    saveError: null,
+    lifecycleError: null,
+    isSaving: false,
+    isReloading: false,
+    isCreating: false,
+    isLocking: false,
+    isCopying: false,
+    isLoadingMoreVersions: false,
+    createError: null,
+    queryError: null,
+    isLoading: false,
+    isMissing: false,
+    hasDraft: true,
+    hasMoreVersions: false,
+    onEditorChange: vi.fn(),
+    onSave: vi.fn(),
+    onCreate: vi.fn(),
+    onLock: vi.fn(),
+    onCopy: vi.fn(),
+    onSelectVersion: vi.fn(),
+    onLoadMoreVersions: vi.fn(),
+    onRetryQuery: vi.fn(),
+    onRefreshVersions: vi.fn(),
+    onReloadFromServer: vi.fn(),
+  }
+})
 
 vi.mock(
   "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor",

@@ -271,6 +271,40 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     expect(result.current.lifecycleError).toBeNull()
   })
 
+  it("surfaces a failed history refresh after stale draft creation", async () => {
+    const locked = {
+      ...draft,
+      id: "locked-1",
+      status: "locked" as const,
+      locked_at: "2026-07-14T08:30:00.000Z",
+      locked_by: 42,
+    }
+    rpc.listVersions
+      .mockResolvedValueOnce({
+        data: [locked],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      })
+      .mockRejectedValueOnce(new Error("network unavailable"))
+    rpc.createDraft.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, { message: "draft_already_exists" })
+    )
+
+    const { result } = renderBaselineEditor()
+
+    await waitFor(() => expect(result.current.selectedVersion?.id).toBe(locked.id))
+    act(() => {
+      result.current.onCreate()
+    })
+
+    await waitFor(() =>
+      expect(result.current.createError).toBe("Không thể tải lại trạng thái hồ sơ.")
+    )
+    expect(result.current.lifecycleError).toBe("Không thể tải lại trạng thái hồ sơ.")
+    expect(result.current.selectedVersion?.id).toBe(locked.id)
+  })
+
   it("refreshes the dossier revision before retrying stale first-draft creation", async () => {
     rpc.listVersions.mockResolvedValue({
       data: [],

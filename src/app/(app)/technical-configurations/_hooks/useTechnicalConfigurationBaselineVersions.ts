@@ -67,6 +67,7 @@ export function useTechnicalConfigurationBaselineVersions({
     () => flattenTechnicalConfigurationBaselineVersionPages(versionsQuery.data),
     [versionsQuery.data]
   )
+  const hasHistoryRecoveryError = versionsQuery.isFetchNextPageError || versionsQuery.isRefetchError
 
   const cacheVersion = React.useCallback(
     (version: TechnicalConfigurationBaselineDraftWire) => {
@@ -87,7 +88,7 @@ export function useTechnicalConfigurationBaselineVersions({
   )
 
   const refreshVersions = React.useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey, exact: true })
+    await queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true })
     const refreshedVersions = flattenTechnicalConfigurationBaselineVersionPages(
       queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
     )
@@ -103,9 +104,13 @@ export function useTechnicalConfigurationBaselineVersions({
   }, [versionsQuery])
 
   const loadMoreVersions = React.useCallback(async () => {
+    if (hasHistoryRecoveryError) {
+      await versionsQuery.refetch()
+      return
+    }
     if (!versionsQuery.hasNextPage || versionsQuery.isFetchingNextPage) return
     await versionsQuery.fetchNextPage()
-  }, [versionsQuery])
+  }, [hasHistoryRecoveryError, versionsQuery])
 
   return {
     versionsQuery,
@@ -115,5 +120,6 @@ export function useTechnicalConfigurationBaselineVersions({
     refreshVersions,
     retryVersions,
     loadMoreVersions,
+    hasHistoryRecoveryError,
   }
 }
