@@ -9,14 +9,16 @@ import { Button } from "@/components/ui/button"
 type TechnicalConfigurationVersionBarProps = {
   versions: TechnicalConfigurationBaselineDraftWire[]
   selectedVersion: TechnicalConfigurationBaselineDraftWire
-  hasDraft: boolean
   lockBlockedReason: string | null
-  isCreating: boolean
-  isLocking: boolean
-  isCopying: boolean
-  isLoadingMoreVersions: boolean
-  isNavigationDisabled: boolean
-  hasMoreVersions: boolean
+  status: {
+    hasDraft: boolean
+    isCreating: boolean
+    isLocking: boolean
+    isCopying: boolean
+    isLoadingMoreVersions: boolean
+    isNavigationDisabled: boolean
+    hasMoreVersions: boolean
+  }
   onSelectVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
   onRequestLock: () => void
@@ -32,20 +34,23 @@ function formatLockedAt(value: string): string {
 export function TechnicalConfigurationVersionBar({
   versions,
   selectedVersion,
-  hasDraft,
   lockBlockedReason,
-  isCreating,
-  isLocking,
-  isCopying,
-  isLoadingMoreVersions,
-  isNavigationDisabled,
-  hasMoreVersions,
+  status,
   onSelectVersion,
   onLoadMoreVersions,
   onRequestLock,
   onCreateBlank,
   onCopy,
 }: Readonly<TechnicalConfigurationVersionBarProps>) {
+  const {
+    hasDraft,
+    isCreating,
+    isLocking,
+    isCopying,
+    isLoadingMoreVersions,
+    isNavigationDisabled,
+    hasMoreVersions,
+  } = status
   const isBusy = isCreating || isLocking || isCopying
 
   return (

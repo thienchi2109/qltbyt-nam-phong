@@ -170,14 +170,16 @@ export function TechnicalConfigurationBaselineTab({
       <TechnicalConfigurationVersionBar
         versions={baseline.versions}
         selectedVersion={selectedVersion}
-        hasDraft={baseline.hasDraft}
         lockBlockedReason={lockBlockedReason}
-        isCreating={baseline.isCreating}
-        isLocking={baseline.isLocking}
-        isCopying={baseline.isCopying}
-        isLoadingMoreVersions={baseline.isLoadingMoreVersions}
-        isNavigationDisabled={baseline.isLifecycleBusy}
-        hasMoreVersions={baseline.hasMoreVersions}
+        status={{
+          hasDraft: baseline.hasDraft,
+          isCreating: baseline.isCreating,
+          isLocking: baseline.isLocking,
+          isCopying: baseline.isCopying,
+          isLoadingMoreVersions: baseline.isLoadingMoreVersions,
+          isNavigationDisabled: baseline.isLifecycleBusy,
+          hasMoreVersions: baseline.hasMoreVersions,
+        }}
         onSelectVersion={handleSelectVersion}
         onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
         onRequestLock={() => setIsLockDialogOpen(true)}
