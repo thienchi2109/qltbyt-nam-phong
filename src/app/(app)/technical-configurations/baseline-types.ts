@@ -32,8 +32,11 @@ export interface TechnicalConfigurationBaselineDraftWire {
   dossier_id: string
   version_number: number
   status: TechnicalConfigurationBaselineStatus
+  source_baseline_version_id: string | null
   next_criterion_number: number
   revision: number
+  locked_at: string | null
+  locked_by: number | null
   created_at: string
   created_by: number
   updated_at: string
@@ -49,6 +52,13 @@ export interface TechnicalConfigurationBaselineDraftCreateWireResponse {
   data: TechnicalConfigurationBaselineDraftWire & {
     dossier_revision: number
   }
+}
+
+export interface TechnicalConfigurationBaselineVersionsListWireResponse {
+  data: TechnicalConfigurationBaselineDraftWire[]
+  total: number
+  page: number
+  page_size: number
 }
 
 export interface TechnicalConfigurationBaselineGroupMutationWire extends Omit<
@@ -105,6 +115,22 @@ export interface TechnicalConfigurationBaselineDraftCreateRpcArgs {
 
 export interface TechnicalConfigurationBaselineDraftGetRpcArgs {
   p_dossier_id: string
+}
+
+export interface TechnicalConfigurationBaselineVersionsListRpcArgs {
+  p_dossier_id: string
+  p_page?: number
+  p_page_size?: number
+}
+
+export interface TechnicalConfigurationBaselineLockRpcArgs {
+  p_baseline_version_id: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationBaselineCopyRpcArgs {
+  p_source_baseline_version_id: string
+  p_expected_revision: number
 }
 
 export interface TechnicalConfigurationBaselineGroupCreateRpcArgs {

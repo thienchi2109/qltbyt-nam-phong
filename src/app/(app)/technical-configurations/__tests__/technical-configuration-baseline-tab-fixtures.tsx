@@ -13,19 +13,41 @@ import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/rea
 
 const timestamp = "2026-07-13T00:00:00.000Z"
 
-const rpc = vi.hoisted(() => ({
-  createDraft: vi.fn(),
-  getDraft: vi.fn(),
-  createGroup: vi.fn(),
-  updateGroup: vi.fn(),
-  deleteGroup: vi.fn(),
-  reorderGroups: vi.fn(),
-  createCriterion: vi.fn(),
-  updateCriterion: vi.fn(),
-  deleteCriterion: vi.fn(),
-  reorderCriteria: vi.fn(),
-  previewBulk: vi.fn(),
-}))
+const rpc = vi.hoisted(() => {
+  const getDraft = vi.fn()
+
+  return {
+    createDraft: vi.fn(),
+    getDraft,
+    listVersions: vi.fn(async () => {
+      try {
+        const response = await getDraft()
+        return { data: [response.data], total: 1, page: 1, page_size: 100 }
+      } catch (error) {
+        if (
+          typeof error === "object" &&
+          error !== null &&
+          "status" in error &&
+          error.status === 404
+        ) {
+          return { data: [], total: 0, page: 1, page_size: 100 }
+        }
+        throw error
+      }
+    }),
+    lockVersion: vi.fn(),
+    copyVersion: vi.fn(),
+    createGroup: vi.fn(),
+    updateGroup: vi.fn(),
+    deleteGroup: vi.fn(),
+    reorderGroups: vi.fn(),
+    createCriterion: vi.fn(),
+    updateCriterion: vi.fn(),
+    deleteCriterion: vi.fn(),
+    reorderCriteria: vi.fn(),
+    previewBulk: vi.fn(),
+  }
+})
 
 vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
   useTechnicalConfigurationBaseline: () => rpc,
@@ -52,6 +74,7 @@ export const dossier: TechnicalConfigurationDossierWire = {
 export function createDraft(
   overrides: Partial<TechnicalConfigurationBaselineDraftWire> = {}
 ): TechnicalConfigurationBaselineDraftWire {
+  const versionId = overrides.id ?? "draft-1"
   const groupNames = [
     "Yêu cầu chung",
     "Yêu cầu cấu hình cung cấp",
@@ -60,19 +83,22 @@ export function createDraft(
   ]
 
   return {
-    id: "draft-1",
+    id: versionId,
     dossier_id: dossier.id,
     version_number: 1,
     status: "draft",
+    source_baseline_version_id: null,
     next_criterion_number: 2,
     revision: 4,
+    locked_at: null,
+    locked_by: null,
     created_at: timestamp,
     created_by: 1,
     updated_at: timestamp,
     updated_by: 1,
     groups: groupNames.map((name, index) => ({
       id: `group-${index + 1}`,
-      baseline_version_id: "draft-1",
+      baseline_version_id: versionId,
       name,
       sort_order: index + 1,
       created_at: timestamp,
@@ -84,7 +110,7 @@ export function createDraft(
           ? [
               {
                 id: "criterion-1",
-                baseline_version_id: "draft-1",
+                baseline_version_id: versionId,
                 group_id: "group-1",
                 criterion_code: "TC-0001",
                 title: "Nguồn điện",

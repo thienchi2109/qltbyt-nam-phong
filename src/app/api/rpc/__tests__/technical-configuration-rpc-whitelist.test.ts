@@ -35,16 +35,19 @@ describe("technical configuration dossier RPC whitelist", () => {
 })
 
 describe("technical configuration baseline RPC whitelist", () => {
-  it("allowlists exactly the eleven P2 baseline RPCs", () => {
+  it("allowlists exactly the P2 and P4 baseline RPCs", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_baseline_"))
     ).toEqual(BASELINE_RPC_FUNCTION_NAMES)
   })
 
-  it.each(BASELINE_RPC_FUNCTION_NAMES)('allows P2 RPC "%s" through the whitelist', async (fn) => {
-    const response = await invokeRpcProxy(fn)
+  it.each(BASELINE_RPC_FUNCTION_NAMES)(
+    'allows baseline RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
 
-    expect(response.status).toBe(411)
-    await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
-  })
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
 })

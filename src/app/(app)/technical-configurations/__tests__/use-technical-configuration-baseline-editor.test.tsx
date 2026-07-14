@@ -9,6 +9,7 @@ import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-co
 
 const rpc = vi.hoisted(() => ({
   getDraft: vi.fn(),
+  listVersions: vi.fn(),
 }))
 
 vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
@@ -34,8 +35,11 @@ const draft: TechnicalConfigurationBaselineDraftWire = {
   dossier_id: "dossier-1",
   version_number: 1,
   status: "draft",
+  source_baseline_version_id: null,
   next_criterion_number: 2,
   revision: 4,
+  locked_at: null,
+  locked_by: null,
   created_at: "2026-07-13T00:00:00.000Z",
   created_by: 1,
   updated_at: "2026-07-13T00:00:00.000Z",
@@ -87,6 +91,12 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     rpc.getDraft.mockResolvedValue({ data: draft })
+    rpc.listVersions.mockResolvedValue({
+      data: [draft],
+      total: 1,
+      page: 1,
+      page_size: 100,
+    })
   })
 
   it("shows field validation only after an explicit save attempt", async () => {
@@ -135,5 +145,47 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
         },
       })
     )
+  })
+
+  it("loads older version-history pages on demand", async () => {
+    const newest = { ...draft, id: "draft-101", version_number: 101 }
+    const oldest = {
+      ...draft,
+      id: "locked-1",
+      version_number: 1,
+      status: "locked" as const,
+      locked_at: "2026-07-14T08:30:00.000Z",
+      locked_by: 42,
+    }
+    rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) =>
+      Promise.resolve(
+        p_page === 1
+          ? { data: [newest], total: 101, page: 1, page_size: 100 }
+          : { data: [oldest], total: 101, page: 2, page_size: 100 }
+      )
+    )
+
+    const { result } = renderHook(
+      () =>
+        useTechnicalConfigurationBaselineEditor({
+          dossier,
+        }),
+      { wrapper: createWrapper() }
+    )
+
+    await waitFor(() => expect(result.current.versions).toEqual([newest]))
+    expect(result.current.hasMoreVersions).toBe(true)
+
+    await act(async () => {
+      await result.current.onLoadMoreVersions()
+    })
+
+    await waitFor(() => expect(result.current.versions).toEqual([newest, oldest]))
+    expect(result.current.hasMoreVersions).toBe(false)
+    expect(rpc.listVersions).toHaveBeenLastCalledWith({
+      p_dossier_id: dossier.id,
+      p_page: 2,
+      p_page_size: 100,
+    })
   })
 })

@@ -7,6 +7,7 @@ import type {
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
 } from "@/app/(app)/technical-configurations/baseline-types"
+import type { TechnicalConfigurationBaselineVersionPages } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 import {
   createDraft,
@@ -315,18 +316,19 @@ describe("technical configuration baseline tab", () => {
     expect(rpc.updateGroup).toHaveBeenCalledTimes(1)
     expect(rpc.createCriterion).toHaveBeenCalledTimes(1)
     expect(setQueryData).toHaveBeenLastCalledWith(
-      ["technical-configurations", "baseline-draft", dossier.id],
-      {
-        data: expect.objectContaining({
-          revision: 5,
-        }),
-      }
+      ["technical-configurations", "baseline-versions", dossier.id],
+      expect.any(Function)
     )
-    const cachedDraft = queryClient.getQueryData<{ data: TechnicalConfigurationBaselineDraftWire }>(
-      ["technical-configurations", "baseline-draft", dossier.id]
-    )
-    expect(cachedDraft?.data.revision).toBe(5)
-    expect(cachedDraft?.data.groups[0].name).toBe("Tên nhóm đã được lưu")
+    const cachedVersions = queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>([
+      "technical-configurations",
+      "baseline-versions",
+      dossier.id,
+    ])
+    const cachedDraft = cachedVersions?.pages
+      .flatMap((page) => page.data)
+      .find((version) => version.status === "draft")
+    expect(cachedDraft?.revision).toBe(5)
+    expect(cachedDraft?.groups[0].name).toBe("Tên nhóm đã được lưu")
 
     view.unmount()
     renderTab(vi.fn(), queryClient)
@@ -335,7 +337,7 @@ describe("technical configuration baseline tab", () => {
     expect(rpc.getDraft).toHaveBeenCalledTimes(1)
   })
 
-  it("creates a missing draft only from an explicit action and renders locked data as a placeholder", async () => {
+  it("creates a missing draft only from an explicit action and renders locked history read-only", async () => {
     const user = userEvent.setup()
     rpc.getDraft.mockRejectedValueOnce(
       new TechnicalConfigurationRpcError(404, {
@@ -364,8 +366,16 @@ describe("technical configuration baseline tab", () => {
     })
     renderTab()
 
-    expect(await screen.findByText("Phiên bản đã khóa")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Lịch sử phiên bản cấu hình cơ sở" })
+    ).toBeInTheDocument()
+    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
+    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByText("TC-0001")).toBeInTheDocument()
+    expect(screen.getByText(/Dòng 1/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue("Yêu cầu chung")).not.toBeInTheDocument()
   })
 
   it("registers beforeunload protection only while the form is dirty", async () => {
