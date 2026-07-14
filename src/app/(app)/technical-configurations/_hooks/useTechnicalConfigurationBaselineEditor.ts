@@ -1,6 +1,5 @@
 import * as React from "react"
 import { useMutation } from "@tanstack/react-query"
-
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   BaselineEditorSaveFailure,
@@ -141,7 +140,7 @@ export function useTechnicalConfigurationBaselineEditor({
 
       try {
         await refreshDossierRevision()
-        await versionsQuery.refetch()
+        await versionsQuery.refetch({ throwOnError: true })
       } catch {
         setLifecycleError("Không thể tải lại trạng thái hồ sơ.")
       }
@@ -319,7 +318,8 @@ export function useTechnicalConfigurationBaselineEditor({
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
     onLock: async () => {
-      if (isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft") return
+      if (isConflict || isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft")
+        return
       await lockMutation.mutateAsync(baseDraft)
     },
     onCopy: async () => {

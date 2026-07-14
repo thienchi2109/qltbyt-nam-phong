@@ -33,7 +33,7 @@ describe("technical configuration baseline locking and history", () => {
 
     expect(await screen.findByText("Phiên bản 1")).toBeInTheDocument()
     expect(screen.getByText("Đã khóa")).toBeInTheDocument()
-    expect(screen.getByText("Khóa lúc 14/07/2026 08:30")).toBeInTheDocument()
+    expect(screen.getByText("Khóa lúc 14/07/2026 15:30")).toBeInTheDocument()
     expect(screen.getByText("Người khóa #42")).toBeInTheDocument()
     expect(screen.getByText(/Dòng 1\s+Dòng 2/)).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
@@ -103,7 +103,7 @@ describe("technical configuration baseline locking and history", () => {
 
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(requirement).toHaveValue("Dòng 1\nDòng 2")
-    expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeDisabled()
   })
 
   it("reloads a concurrently locked draft into read-only history", async () => {

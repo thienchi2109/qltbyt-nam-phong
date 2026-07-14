@@ -1,10 +1,9 @@
-import { format, parseISO } from "date-fns"
-import { vi } from "date-fns/locale"
 import { ChevronDown, Copy, FilePlus2, History, LockKeyhole } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { formatVietnamDateTime } from "@/lib/date-utils"
 
 type TechnicalConfigurationVersionBarProps = {
   versions: TechnicalConfigurationBaselineDraftWire[]
@@ -24,10 +23,6 @@ type TechnicalConfigurationVersionBarProps = {
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
-}
-
-function formatLockedAt(value: string): string {
-  return format(parseISO(value), "dd/MM/yyyy HH:mm", { locale: vi })
 }
 
 /** Renders baseline version selection, lifecycle metadata, and valid actions. */
@@ -101,7 +96,7 @@ export function TechnicalConfigurationVersionBar({
           {hasLockMetadata || hasLineage ? (
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {selectedVersion.status === "locked" && selectedVersion.locked_at ? (
-                <span>Khóa lúc {formatLockedAt(selectedVersion.locked_at)}</span>
+                <span>Khóa lúc {formatVietnamDateTime(selectedVersion.locked_at)}</span>
               ) : null}
               {selectedVersion.status === "locked" && selectedVersion.locked_by ? (
                 <span>Người khóa #{selectedVersion.locked_by}</span>

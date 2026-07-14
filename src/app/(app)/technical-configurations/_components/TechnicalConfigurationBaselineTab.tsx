@@ -41,6 +41,7 @@ export function TechnicalConfigurationBaselineTab({
   )
   const lockBlockedReason = React.useMemo(() => {
     if (!draft || selectedVersion?.status !== "draft") return null
+    if (baseline.isConflict) return "Tải lại dữ liệu từ máy chủ trước khi khóa phiên bản."
     if (baseline.isDirty) return "Lưu thay đổi trước khi khóa phiên bản."
     if (bulkSessions.hasPendingInput) return "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi khóa."
     if (
@@ -55,6 +56,7 @@ export function TechnicalConfigurationBaselineTab({
     }
     return null
   }, [
+    baseline.isConflict,
     baseline.isDirty,
     bulkSessions.hasPendingInput,
     draft,
