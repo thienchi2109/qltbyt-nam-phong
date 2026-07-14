@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest"
 
 import {
   flattenTechnicalConfigurationBaselineVersionPages,
+  getTechnicalConfigurationBaselineErrorMessage,
   getTechnicalConfigurationBaselineNextPage,
   replaceTechnicalConfigurationBaselineFirstPageInPages,
   replaceTechnicalConfigurationBaselineVersionInPages,
+  validateTechnicalConfigurationBaselineVersionPage,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 
 import { createDraft } from "./technical-configuration-baseline-tab-fixtures"
@@ -43,12 +45,56 @@ describe("technical configuration baseline version state", () => {
 
   it("rejects an empty page whose starting offset is still below the reported total", () => {
     expect(() =>
-      getTechnicalConfigurationBaselineNextPage({
+      validateTechnicalConfigurationBaselineVersionPage({
         data: [],
         total: 101,
         page: 2,
         page_size: 100,
       })
+    ).toThrow("baseline_version_history_incomplete")
+  })
+
+  it("maps the pagination integrity sentinel to the caller fallback", () => {
+    expect(
+      getTechnicalConfigurationBaselineErrorMessage(
+        new Error("baseline_version_history_incomplete"),
+        "Không thể tải cấu hình cơ sở."
+      )
+    ).toBe("Không thể tải cấu hình cơ sở.")
+  })
+
+  it("rejects a terminal page when a concurrent insert leaves a duplicate boundary", () => {
+    const createVersions = (highestVersion: number, count: number) =>
+      Array.from({ length: count }, (_, index) =>
+        createDraft({
+          id: `version-${highestVersion - index}`,
+          version_number: highestVersion - index,
+          status: "locked",
+        })
+      )
+    const firstPage = {
+      data: createVersions(200, 100),
+      total: 200,
+      page: 1,
+      page_size: 100,
+    }
+    const secondPage = {
+      data: createVersions(101, 100),
+      total: 201,
+      page: 2,
+      page_size: 100,
+    }
+
+    expect(() =>
+      validateTechnicalConfigurationBaselineVersionPage(
+        {
+          data: createVersions(1, 1),
+          total: 201,
+          page: 3,
+          page_size: 100,
+        },
+        [firstPage, secondPage]
+      )
     ).toThrow("baseline_version_history_incomplete")
   })
 

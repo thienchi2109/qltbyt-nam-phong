@@ -15,7 +15,7 @@ import {
 import {
   BASELINE_VERSION_PAGE_SIZE,
   getTechnicalConfigurationBaselineCreateError,
-  getTechnicalConfigurationBaselineErrorMessage,
+  getTechnicalConfigurationBaselineQueryError,
   isTechnicalConfigurationBaselineConflict,
   selectTechnicalConfigurationBaselineVersion,
   splitTechnicalConfigurationBaselineCreatedVersion,
@@ -45,7 +45,7 @@ export function useTechnicalConfigurationBaselineEditor({
     versions,
     cacheVersion,
     replaceVersions,
-    invalidateVersions,
+    refreshVersions,
     retryVersions,
     loadMoreVersions,
   } = useTechnicalConfigurationBaselineVersions({
@@ -69,6 +69,7 @@ export function useTechnicalConfigurationBaselineEditor({
     () => isTechnicalConfigurationBaselineEditorDirty(baseDraft, editorDraft),
     [baseDraft, editorDraft]
   )
+  const isDraftReplacementBlocked = isDirty || isExternalDraftReplacementBlocked
 
   const adoptVersion = React.useCallback(
     (version: TechnicalConfigurationBaselineDraftWire | null) => {
@@ -87,7 +88,7 @@ export function useTechnicalConfigurationBaselineEditor({
   )
 
   React.useEffect(() => {
-    if (!versionsQuery.data || isDirty || isExternalDraftReplacementBlocked) return
+    if (!versionsQuery.data || isDraftReplacementBlocked) return
 
     const nextVersion = selectTechnicalConfigurationBaselineVersion(
       versions,
@@ -108,8 +109,7 @@ export function useTechnicalConfigurationBaselineEditor({
   }, [
     adoptVersion,
     baseDraft,
-    isDirty,
-    isExternalDraftReplacementBlocked,
+    isDraftReplacementBlocked,
     selectedVersionId,
     versions,
     versionsQuery.data,
@@ -181,7 +181,7 @@ export function useTechnicalConfigurationBaselineEditor({
         setIsConflict(error.isConflict)
         setSaveError(error.isConflict ? null : "Không thể lưu cấu hình cơ sở.")
         if (error.isConflict) {
-          await invalidateVersions()
+          await refreshVersions()
         } else {
           cacheVersion(error.progress.baseDraft)
         }
@@ -229,15 +229,16 @@ export function useTechnicalConfigurationBaselineEditor({
       cacheVersion(version)
       adoptVersion(version)
     },
-    onError: (error) => {
+    onError: async (error) => {
       const stale = isTechnicalConfigurationBaselineConflict(error)
       setIsConflict(stale)
       setLifecycleError(stale ? null : "Không thể sao chép phiên bản cấu hình.")
+      if (stale) adoptVersion(await refreshVersions())
     },
   })
 
   const reloadMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (_forceEditorReplacement: boolean) =>
       rpc.listVersions({
         p_dossier_id: dossier.id,
         p_page: 1,
@@ -248,8 +249,9 @@ export function useTechnicalConfigurationBaselineEditor({
       setLifecycleError(null)
       setSaveStatus("idle")
     },
-    onSuccess: (response) => {
+    onSuccess: (response, forceEditorReplacement) => {
       replaceVersions(response)
+      if (!forceEditorReplacement && isDraftReplacementBlocked) return
       const nextVersion =
         response.data.find((version) => version.id === selectedVersionId) ??
         versions.find((version) => version.id === selectedVersionId) ??
@@ -304,12 +306,11 @@ export function useTechnicalConfigurationBaselineEditor({
     isLoadingMoreVersions: versionsQuery.isFetchingNextPage,
     isLifecycleBusy,
     createError,
-    queryError: versionsQuery.isError
-      ? getTechnicalConfigurationBaselineErrorMessage(
-          versionsQuery.error,
-          "Không thể tải cấu hình cơ sở."
-        )
-      : null,
+    queryError: getTechnicalConfigurationBaselineQueryError(
+      versionsQuery.isError,
+      versionsQuery.error,
+      versions.length > 0
+    ),
     isLoading: versionsQuery.isLoading,
     isMissing: versionsQuery.isSuccess && versions.length === 0,
     hasDraft: versions.some((version) => version.status === "draft"),
@@ -318,7 +319,7 @@ export function useTechnicalConfigurationBaselineEditor({
     onSave: () => saveMutation.mutate(),
     onCreate: () => createDraftMutation.mutate(),
     onLock: async () => {
-      if (!baseDraft || baseDraft.status !== "draft") return
+      if (isDraftReplacementBlocked || !baseDraft || baseDraft.status !== "draft") return
       await lockMutation.mutateAsync(baseDraft)
     },
     onCopy: async () => {
@@ -327,15 +328,15 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     onSelectVersion: (versionId) => {
       const version = versions.find((item) => item.id === versionId)
-      if (version) adoptVersion(version)
+      if (version && !isDraftReplacementBlocked) adoptVersion(version)
     },
     onLoadMoreVersions: loadMoreVersions,
     onRetryQuery: retryVersions,
     onRefreshVersions: async () => {
-      await reloadMutation.mutateAsync()
+      await reloadMutation.mutateAsync(false)
     },
     onReloadFromServer: async () => {
-      const response = await reloadMutation.mutateAsync()
+      const response = await reloadMutation.mutateAsync(true)
       const version =
         response.data.find((item) => item.id === selectedVersionId) ??
         response.data.find((item) => item.status === "draft")

@@ -1,95 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { act, renderHook, waitFor } from "@testing-library/react"
-import type { PropsWithChildren } from "react"
+import { act, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
-import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
-import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import {
+  dossier,
+  draft,
+  getBaselineEditorRpcMock,
+  renderBaselineEditor,
+} from "./use-technical-configuration-baseline-editor-fixtures"
 
-const rpc = vi.hoisted(() => ({
-  createDraft: vi.fn(),
-  getDossier: vi.fn(),
-  getDraft: vi.fn(),
-  listVersions: vi.fn(),
-}))
-
-vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
-  useTechnicalConfigurationBaseline: () => rpc,
-}))
-
-const dossier: TechnicalConfigurationDossierWire = {
-  id: "dossier-1",
-  device_type_name: "Máy lọc thận",
-  name: "Cấu hình máy lọc thận",
-  description: null,
-  revision: 3,
-  archived_at: null,
-  archived_by: null,
-  created_at: "2026-07-13T00:00:00.000Z",
-  created_by: 1,
-  updated_at: "2026-07-13T00:00:00.000Z",
-  updated_by: 1,
-}
-
-const draft: TechnicalConfigurationBaselineDraftWire = {
-  id: "draft-1",
-  dossier_id: "dossier-1",
-  version_number: 1,
-  status: "draft",
-  source_baseline_version_id: null,
-  source_version_number: null,
-  next_criterion_number: 2,
-  revision: 4,
-  locked_at: null,
-  locked_by: null,
-  created_at: "2026-07-13T00:00:00.000Z",
-  created_by: 1,
-  updated_at: "2026-07-13T00:00:00.000Z",
-  updated_by: 1,
-  groups: [
-    {
-      id: "group-1",
-      baseline_version_id: "draft-1",
-      name: "Yêu cầu chung",
-      sort_order: 1,
-      created_at: "2026-07-13T00:00:00.000Z",
-      created_by: 1,
-      updated_at: "2026-07-13T00:00:00.000Z",
-      updated_by: 1,
-      criteria: [
-        {
-          id: "criterion-1",
-          baseline_version_id: "draft-1",
-          group_id: "group-1",
-          criterion_code: "TC-0001",
-          title: null,
-          requirement_text: "Nguồn điện ổn định",
-          sort_order: 1,
-          source_criterion_id: null,
-          created_at: "2026-07-13T00:00:00.000Z",
-          created_by: 1,
-          updated_at: "2026-07-13T00:00:00.000Z",
-          updated_by: 1,
-        },
-      ],
-    },
-  ],
-}
-
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-      mutations: { retry: false },
-    },
-  })
-
-  return function QueryClientWrapper({ children }: PropsWithChildren) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  }
-}
+const rpc = getBaselineEditorRpcMock()
 
 describe("useTechnicalConfigurationBaselineEditor", () => {
   beforeEach(() => {
@@ -105,13 +25,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
   })
 
   it("shows field validation only after an explicit save attempt", async () => {
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationBaselineEditor({
-          dossier,
-        }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderBaselineEditor()
 
     await waitFor(() => expect(result.current.editorDraft).not.toBeNull())
     const currentDraft = result.current.editorDraft
@@ -153,45 +67,100 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
   })
 
   it("loads older version-history pages on demand", async () => {
-    const newest = { ...draft, id: "draft-101", version_number: 101 }
-    const oldest = {
+    const versions = Array.from({ length: 101 }, (_, index) => ({
       ...draft,
-      id: "locked-1",
-      version_number: 1,
+      id: `version-${101 - index}`,
+      version_number: 101 - index,
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
       locked_by: 42,
-    }
+    }))
     rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) =>
       Promise.resolve(
         p_page === 1
-          ? { data: [newest], total: 101, page: 1, page_size: 100 }
-          : { data: [oldest], total: 101, page: 2, page_size: 100 }
+          ? { data: versions.slice(0, 100), total: 101, page: 1, page_size: 100 }
+          : { data: versions.slice(100), total: 101, page: 2, page_size: 100 }
       )
     )
 
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationBaselineEditor({
-          dossier,
-        }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderBaselineEditor()
 
-    await waitFor(() => expect(result.current.versions).toEqual([newest]))
+    await waitFor(() => expect(result.current.versions).toEqual(versions.slice(0, 100)))
     expect(result.current.hasMoreVersions).toBe(true)
 
     await act(async () => {
       await result.current.onLoadMoreVersions()
     })
 
-    await waitFor(() => expect(result.current.versions).toEqual([newest, oldest]))
+    await waitFor(() => expect(result.current.versions).toEqual(versions))
     expect(result.current.hasMoreVersions).toBe(false)
     expect(rpc.listVersions).toHaveBeenLastCalledWith({
       p_dossier_id: dossier.id,
       p_page: 2,
       p_page_size: 100,
     })
+  })
+
+  it("recovers when a concurrent insert shifts offset pages during load more", async () => {
+    const createVersions = (highestVersion: number, count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        ...draft,
+        id: `version-${highestVersion - index}`,
+        version_number: highestVersion - index,
+        status: "locked" as const,
+        locked_at: "2026-07-14T08:30:00.000Z",
+        locked_by: 42,
+      }))
+    const initialFirstPage = createVersions(200, 100)
+    const refreshedFirstPage = createVersions(201, 100)
+    const shiftedSecondPage = createVersions(101, 100)
+    const finalPage = createVersions(1, 1)
+    let pageOneRequestCount = 0
+    rpc.listVersions.mockImplementation(({ p_page }: { p_page: number }) => {
+      if (p_page === 2) {
+        return Promise.resolve({
+          data: shiftedSecondPage,
+          total: 201,
+          page: 2,
+          page_size: 100,
+        })
+      }
+      if (p_page === 3) {
+        return Promise.resolve({ data: finalPage, total: 201, page: 3, page_size: 100 })
+      }
+      pageOneRequestCount += 1
+      return Promise.resolve({
+        data: pageOneRequestCount === 1 ? initialFirstPage : refreshedFirstPage,
+        total: pageOneRequestCount === 1 ? 200 : 201,
+        page: 1,
+        page_size: 100,
+      })
+    })
+    const { result } = renderBaselineEditor()
+
+    await waitFor(() => expect(result.current.versions).toHaveLength(100))
+    await act(async () => {
+      await result.current.onLoadMoreVersions()
+    })
+    await waitFor(() => expect(result.current.versions).toHaveLength(199))
+
+    await act(async () => {
+      await result.current.onLoadMoreVersions()
+    })
+    expect(result.current.versions).toHaveLength(199)
+    expect(result.current.hasMoreVersions).toBe(true)
+
+    await act(async () => {
+      await result.current.onRetryQuery()
+    })
+    await waitFor(() => expect(result.current.versions).toHaveLength(200))
+    expect(result.current.versions.map((version) => version.id)).toContain("version-201")
+
+    await act(async () => {
+      await result.current.onLoadMoreVersions()
+    })
+    await waitFor(() => expect(result.current.versions).toHaveLength(201))
+    expect(result.current.hasMoreVersions).toBe(false)
   })
 
   it("keeps a selected page-2 locked version when refreshing page 1", async () => {
@@ -235,13 +204,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
       })
     })
 
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationBaselineEditor({
-          dossier,
-        }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderBaselineEditor()
 
     await waitFor(() => expect(result.current.versions).toHaveLength(100))
     await act(async () => {
@@ -294,13 +257,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
       new TechnicalConfigurationRpcError(409, { message: "stale_revision" })
     )
 
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationBaselineEditor({
-          dossier,
-        }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderBaselineEditor()
 
     await waitFor(() => expect(result.current.selectedVersion?.id).toBe(locked.id))
     act(() => {
@@ -336,13 +293,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
         },
       })
 
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationBaselineEditor({
-          dossier,
-        }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderBaselineEditor()
 
     await waitFor(() => expect(result.current.isMissing).toBe(true))
     act(() => {

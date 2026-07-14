@@ -16,13 +16,17 @@ export type TechnicalConfigurationBaselineVersionPages = InfiniteData<
   number
 >
 
+const BASELINE_VERSION_HISTORY_INCOMPLETE = "baseline_version_history_incomplete"
+
 /** Returns whether an RPC error represents a recoverable baseline lifecycle conflict. */
 export function isTechnicalConfigurationBaselineConflict(error: unknown): boolean {
   if (!(error instanceof Error)) return false
   const metadata = error as Error & { code?: unknown; status?: unknown }
   return (
     (metadata.status === 409 || metadata.code === "PT409") &&
-    (error.message === "stale_revision" || error.message === "locked_version")
+    (error.message === "stale_revision" ||
+      error.message === "locked_version" ||
+      error.message === "draft_already_exists")
   )
 }
 
@@ -31,7 +35,37 @@ export function getTechnicalConfigurationBaselineErrorMessage(
   error: unknown,
   fallback: string
 ): string {
-  return error instanceof Error && error.message ? error.message : fallback
+  if (!(error instanceof Error) || !error.message) return fallback
+  return error.message === BASELINE_VERSION_HISTORY_INCOMPLETE ? fallback : error.message
+}
+
+/** Returns a localized blocking error only when no cached history remains usable. */
+export function getTechnicalConfigurationBaselineQueryError(
+  isError: boolean,
+  error: unknown,
+  hasVersions: boolean
+): string | null {
+  if (!isError || hasVersions) return null
+  return getTechnicalConfigurationBaselineErrorMessage(error, "Không thể tải cấu hình cơ sở.")
+}
+
+/** Rejects a history response whose reported total cannot contain the returned page. */
+export function validateTechnicalConfigurationBaselineVersionPage(
+  response: TechnicalConfigurationBaselineVersionsListWireResponse,
+  precedingPages: TechnicalConfigurationBaselineVersionsListWireResponse[] = []
+): TechnicalConfigurationBaselineVersionsListWireResponse {
+  const pageStartOffset = (response.page - 1) * response.page_size
+  const loadedVersionIds = new Set(
+    [...precedingPages, response].flatMap((page) => page.data.map((version) => version.id))
+  )
+  const reachedReportedEnd = response.page * response.page_size >= response.total
+  if (
+    (response.data.length === 0 && pageStartOffset < response.total) ||
+    (reachedReportedEnd && loadedVersionIds.size < response.total)
+  ) {
+    throw new Error(BASELINE_VERSION_HISTORY_INCOMPLETE)
+  }
+  return response
 }
 
 /** Returns the first-draft creation error visible to the empty state. */
@@ -98,10 +132,6 @@ export function getTechnicalConfigurationBaselineNextPage(
   lastPage: TechnicalConfigurationBaselineVersionsListWireResponse,
   allPages: TechnicalConfigurationBaselineVersionsListWireResponse[] = [lastPage]
 ): number | undefined {
-  const pageStartOffset = (lastPage.page - 1) * lastPage.page_size
-  if (lastPage.data.length === 0 && pageStartOffset < lastPage.total) {
-    throw new Error("baseline_version_history_incomplete")
-  }
   const loadedVersionIds = new Set(
     allPages.flatMap((page) => page.data.map((version) => version.id))
   )

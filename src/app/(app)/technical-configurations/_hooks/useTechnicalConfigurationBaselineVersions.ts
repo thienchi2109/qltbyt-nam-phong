@@ -13,6 +13,7 @@ import {
   replaceTechnicalConfigurationBaselineFirstPageInPages,
   replaceTechnicalConfigurationBaselineVersionInPages,
   toTechnicalConfigurationBaselineVersionPages,
+  validateTechnicalConfigurationBaselineVersionPage,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import type { TechnicalConfigurationBaselineVersionPages } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import { technicalConfigurationBaselineVersionsQueryKey } from "@/app/(app)/technical-configurations/technical-configuration-query-keys"
@@ -42,12 +43,20 @@ export function useTechnicalConfigurationBaselineVersions({
     number
   >({
     queryKey,
-    queryFn: ({ pageParam }) =>
-      listVersions({
-        p_dossier_id: dossierId,
-        p_page: pageParam,
-        p_page_size: BASELINE_VERSION_PAGE_SIZE,
-      }),
+    queryFn: async ({ pageParam }) => {
+      const precedingPages =
+        queryClient
+          .getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
+          ?.pages.filter((page) => page.page < pageParam) ?? []
+      return validateTechnicalConfigurationBaselineVersionPage(
+        await listVersions({
+          p_dossier_id: dossierId,
+          p_page: pageParam,
+          p_page_size: BASELINE_VERSION_PAGE_SIZE,
+        }),
+        precedingPages
+      )
+    },
     initialPageParam: 1,
     getNextPageParam: getTechnicalConfigurationBaselineNextPage,
     staleTime: 30_000,
@@ -77,10 +86,17 @@ export function useTechnicalConfigurationBaselineVersions({
     [queryClient, queryKey]
   )
 
-  const invalidateVersions = React.useCallback(
-    () => queryClient.invalidateQueries({ queryKey, exact: true }),
-    [queryClient, queryKey]
-  )
+  const refreshVersions = React.useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey, exact: true })
+    const refreshedVersions = flattenTechnicalConfigurationBaselineVersionPages(
+      queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
+    )
+    return (
+      refreshedVersions.find((version) => version.status === "draft") ??
+      refreshedVersions[0] ??
+      null
+    )
+  }, [queryClient, queryKey])
 
   const retryVersions = React.useCallback(async () => {
     await versionsQuery.refetch()
@@ -96,7 +112,7 @@ export function useTechnicalConfigurationBaselineVersions({
     versions,
     cacheVersion,
     replaceVersions,
-    invalidateVersions,
+    refreshVersions,
     retryVersions,
     loadMoreVersions,
   }
