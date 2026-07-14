@@ -124,6 +124,27 @@ export function baselineVersionsResponse(
   }
 }
 
+export function createLockedVersion(
+  overrides: Partial<TechnicalConfigurationBaselineDraftWire> = {}
+): TechnicalConfigurationBaselineDraftWire {
+  return createDraft({
+    id: "locked-1",
+    version_number: 1,
+    status: "locked",
+    revision: 7,
+    locked_at: "2026-07-14T08:30:00.000Z",
+    locked_by: 42,
+    ...overrides,
+  })
+}
+
+export function mockVersions(versions: TechnicalConfigurationBaselineDraftWire[]) {
+  rpc.listVersions.mockResolvedValue(baselineVersionsResponse(versions))
+  rpc.getDraft.mockResolvedValue({
+    data: versions.find((version) => version.status === "draft") ?? versions[0],
+  })
+}
+
 export function groupMutation(
   revision: number,
   name: string

@@ -7,38 +7,17 @@ import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurat
 
 import {
   createDraft,
+  createLockedVersion,
   createPersistentQueryClient,
   deferred,
   dossier,
   getBaselineRpcMock,
   groupMutation,
+  mockVersions,
   renderTab,
 } from "./technical-configuration-baseline-tab-fixtures"
 
 const rpc = getBaselineRpcMock()
-
-function mockVersions(versions: ReturnType<typeof createDraft>[]) {
-  rpc.listVersions.mockResolvedValue({
-    data: versions,
-    total: versions.length,
-    page: 1,
-    page_size: 100,
-  })
-  rpc.getDraft.mockResolvedValue({
-    data: versions.find((version) => version.status === "draft") ?? versions[0],
-  })
-}
-
-function createLockedVersion() {
-  return createDraft({
-    id: "locked-1",
-    version_number: 1,
-    status: "locked",
-    revision: 7,
-    locked_at: "2026-07-14T08:30:00.000Z",
-    locked_by: 42,
-  })
-}
 
 describe("technical configuration baseline locking and history", () => {
   beforeEach(() => {
@@ -298,10 +277,11 @@ describe("technical configuration baseline locking and history", () => {
     expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
 
     pending.reject(new Error("network_error"))
-    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
     )
+    expect(screen.getByText("Xung đột dữ liệu")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Sao chép thành bản nháp" })).toBeEnabled()
   })
 
   it("creates a blank draft after the locked history", async () => {

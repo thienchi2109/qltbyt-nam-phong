@@ -121,7 +121,7 @@ export function TechnicalConfigurationBaselineTab({
     }
 
     bulkSessions.clearAll()
-    baseline.onSelectVersion(versionId)
+    baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
     inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
   }
 

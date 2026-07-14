@@ -326,9 +326,9 @@ export function useTechnicalConfigurationBaselineEditor({
       if (!baseDraft || baseDraft.status !== "locked") return
       await copyMutation.mutateAsync(baseDraft)
     },
-    onSelectVersion: (versionId) => {
+    onSelectVersion: (versionId, options) => {
       const version = versions.find((item) => item.id === versionId)
-      if (version && !isDraftReplacementBlocked) adoptVersion(version)
+      if (version && (options?.force || !isDraftReplacementBlocked)) adoptVersion(version)
     },
     onLoadMoreVersions: loadMoreVersions,
     onRetryQuery: retryVersions,

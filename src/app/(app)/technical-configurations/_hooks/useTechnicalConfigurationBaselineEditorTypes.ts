@@ -33,7 +33,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onCreate: () => void
   onLock: () => Promise<void>
   onCopy: () => Promise<void>
-  onSelectVersion: (versionId: string) => void
+  onSelectVersion: (versionId: string, options?: { force?: boolean }) => void
   onLoadMoreVersions: () => Promise<void>
   onRetryQuery: () => Promise<void>
   onRefreshVersions: () => Promise<void>

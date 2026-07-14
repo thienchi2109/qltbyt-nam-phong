@@ -87,7 +87,7 @@ export function useTechnicalConfigurationBaselineVersions({
   )
 
   const refreshVersions = React.useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey, exact: true })
+    await queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true })
     const refreshedVersions = flattenTechnicalConfigurationBaselineVersionPages(
       queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
     )

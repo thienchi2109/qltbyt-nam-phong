@@ -51,7 +51,11 @@ export function TechnicalConfigurationVersionBar({
     isNavigationDisabled,
     hasMoreVersions,
   } = status
-  const isBusy = isCreating || isLocking || isCopying
+  const areActionsDisabled = isNavigationDisabled
+  const hasLockMetadata =
+    selectedVersion.status === "locked" &&
+    Boolean(selectedVersion.locked_at || selectedVersion.locked_by)
+  const hasLineage = Boolean(selectedVersion.source_version_number)
 
   return (
     <section className="border-y py-4" aria-label="Lịch sử phiên bản cấu hình cơ sở">
@@ -94,12 +98,12 @@ export function TechnicalConfigurationVersionBar({
             </Button>
           ) : null}
 
-          {selectedVersion.status === "locked" ? (
+          {hasLockMetadata || hasLineage ? (
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-              {selectedVersion.locked_at ? (
+              {selectedVersion.status === "locked" && selectedVersion.locked_at ? (
                 <span>Khóa lúc {formatLockedAt(selectedVersion.locked_at)}</span>
               ) : null}
-              {selectedVersion.locked_by ? (
+              {selectedVersion.status === "locked" && selectedVersion.locked_by ? (
                 <span>Người khóa #{selectedVersion.locked_by}</span>
               ) : null}
               {selectedVersion.source_version_number ? (
@@ -115,7 +119,7 @@ export function TechnicalConfigurationVersionBar({
               <Button
                 type="button"
                 variant="destructive"
-                disabled={isBusy || Boolean(lockBlockedReason)}
+                disabled={areActionsDisabled || Boolean(lockBlockedReason)}
                 onClick={onRequestLock}
               >
                 <LockKeyhole className="size-4" aria-hidden="true" />
@@ -127,11 +131,16 @@ export function TechnicalConfigurationVersionBar({
             </>
           ) : !hasDraft ? (
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" disabled={isBusy} onClick={onCreateBlank}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={areActionsDisabled}
+                onClick={onCreateBlank}
+              >
                 <FilePlus2 className="size-4" aria-hidden="true" />
                 {isCreating ? "Đang tạo..." : "Tạo bản nháp trống"}
               </Button>
-              <Button type="button" disabled={isBusy} onClick={onCopy}>
+              <Button type="button" disabled={areActionsDisabled} onClick={onCopy}>
                 <Copy className="size-4" aria-hidden="true" />
                 {isCopying ? "Đang sao chép..." : "Sao chép thành bản nháp"}
               </Button>
