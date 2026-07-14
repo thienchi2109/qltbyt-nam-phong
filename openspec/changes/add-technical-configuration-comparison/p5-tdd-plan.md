@@ -82,21 +82,21 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ## Task 3 - Freeze The Baseline Workbook Contract
 
-- [ ] Write failing tests for exactly one visible `Baseline` sheet and one hidden `_meta` sheet.
-- [ ] Freeze exact metadata keys, template version and visible column order.
-- [ ] Write failing tests for four suggested groups plus add/rename/remove/reorder behavior through rows.
-- [ ] Write failing tests for existing read-only codes and blank new codes.
-- [ ] Write malformed, extra-sheet, extra-column, wrong-version, duplicate-code, Unicode and multiline tests.
-- [ ] Run the focused codec test and confirm RED for the missing P5B implementation.
+- [x] Write failing tests for exactly one visible `Baseline` sheet and one hidden `_meta` sheet.
+- [x] Freeze exact metadata keys, template version and visible column order.
+- [x] Write failing tests for four suggested groups plus add/rename/remove/reorder behavior through rows.
+- [x] Write failing tests for existing read-only codes and blank new codes.
+- [x] Write malformed, extra-sheet, extra-column, wrong-version, duplicate-code, Unicode and multiline tests.
+- [x] Run the focused codec test and confirm RED for the missing P5B implementation.
 
 ## Task 4 - Implement The Baseline Workbook Codec
 
-- [ ] Add small contract/types, export and parse modules rather than one file above the repository size ceiling.
-- [ ] Generate the workbook through P5A workbook primitives.
-- [ ] Parse through the `useBulkImportState` custom-parser-compatible contract.
-- [ ] Validate workbook structure and produce canonical rows independent of React.
-- [ ] Keep authoritative code allocation and persistence outside P5B.
-- [ ] Run focused codec tests and confirm GREEN.
+- [x] Add small contract/types, export and parse modules rather than one file above the repository size ceiling.
+- [x] Generate the workbook through P5A workbook primitives.
+- [x] Parse through the `useBulkImportState` custom-parser-compatible contract.
+- [x] Validate workbook structure and produce canonical rows independent of React.
+- [x] Keep authoritative code allocation and persistence outside P5B.
+- [x] Run focused codec tests and confirm GREEN.
 
 ## P5C Planned Files
 
@@ -179,10 +179,10 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ### P5B PR gate
 
-- [ ] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
-- [ ] Run `node scripts/npm-run.js run test:run -- src/lib/__tests__/technical-configuration-baseline-excel.test.ts`.
-- [ ] Run Code Review Graph change detection, GitNexus impact and `@code-deduplication` for the baseline codec.
-- [ ] Confirm P5B has no DB mutation or user-facing activation before starting P5C.
+- [x] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
+- [x] Run `node scripts/npm-run.js run test:run -- src/lib/__tests__/technical-configuration-baseline-excel.test.ts`.
+- [x] Run Code Review Graph change detection, GitNexus impact and `@code-deduplication` for the baseline codec.
+- [x] Confirm P5B has no DB mutation or user-facing activation before starting P5C.
 - [ ] Update only P5B tasks, then commit, pull with rebase, push and open the P5B PR before starting P5C.
 
 ### P5C PR gate
