@@ -1,7 +1,10 @@
-/** Named P2 baseline RPC functions shared by client and server code. */
+/** Named baseline RPC functions shared by client and server code. */
 export const BASELINE_RPC_FUNCTIONS = {
   createDraft: "technical_configuration_baseline_draft_create",
   getDraft: "technical_configuration_baseline_draft_get",
+  listVersions: "technical_configuration_baseline_versions_list",
+  lockVersion: "technical_configuration_baseline_lock",
+  copyVersion: "technical_configuration_baseline_copy",
   createGroup: "technical_configuration_baseline_group_create",
   updateGroup: "technical_configuration_baseline_group_update",
   deleteGroup: "technical_configuration_baseline_group_delete",
@@ -13,5 +16,5 @@ export const BASELINE_RPC_FUNCTIONS = {
   previewBulk: "technical_configuration_baseline_bulk_preview",
 } as const
 
-/** Ordered P2 baseline RPC names for allowlists and contract iteration. */
+/** Ordered baseline RPC names for allowlists and contract iteration. */
 export const BASELINE_RPC_FUNCTION_NAMES = Object.values(BASELINE_RPC_FUNCTIONS)
