@@ -15,8 +15,10 @@ const browserGlobalCapabilities = new Set([
   "location",
   "navigator",
   "open",
+  "parent",
   "self",
   "sessionStorage",
+  "top",
   "WebSocket",
   "window",
   "Worker",
@@ -231,6 +233,19 @@ function isReferenceIdentifier(node: ts.Identifier) {
   return true
 }
 
+function isInTypePosition(node: ts.Node) {
+  let current = node.parent
+  while (current) {
+    if (ts.isTypeNode(current)) return true
+    if (ts.isExpression(current) || ts.isStatement(current) || ts.isSourceFile(current)) {
+      return false
+    }
+    current = current.parent
+  }
+
+  return false
+}
+
 function isShadowed(root: ts.Identifier, scopes: readonly Set<string>[]) {
   return scopes.some((bindings) => bindings.has(root.text))
 }
@@ -277,16 +292,18 @@ export function assertNoForbiddenBrowserCapabilities(
   const visit = (node: ts.Node, parentScopes: readonly Set<string>[]) => {
     const bindings = collectScopeBindings(node)
     const scopes = bindings ? [...parentScopes, bindings] : parentScopes
+    const inTypePosition = isInTypePosition(node)
 
-    if (ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+    if (!inTypePosition && ts.isIdentifier(node) && isReferenceIdentifier(node)) {
       assertAccessAllowed(readStaticAccess(node), scopes)
     }
 
     if (
-      ts.isCallExpression(node) ||
-      ts.isNewExpression(node) ||
-      ts.isPropertyAccessExpression(node) ||
-      ts.isElementAccessExpression(node)
+      !inTypePosition &&
+      (ts.isCallExpression(node) ||
+        ts.isNewExpression(node) ||
+        ts.isPropertyAccessExpression(node) ||
+        ts.isElementAccessExpression(node))
     ) {
       const expression =
         ts.isCallExpression(node) || ts.isNewExpression(node) ? node.expression : node
@@ -294,6 +311,7 @@ export function assertNoForbiddenBrowserCapabilities(
     }
 
     if (
+      !inTypePosition &&
       ts.isVariableDeclaration(node) &&
       ts.isObjectBindingPattern(node.name) &&
       node.initializer

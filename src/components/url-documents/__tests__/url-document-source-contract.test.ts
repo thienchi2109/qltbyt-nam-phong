@@ -113,14 +113,59 @@ function readLiteralModuleReference(
   return expression.text
 }
 
-function readModuleMemberName(node: ts.Node): string | null | undefined {
-  if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
-    return node.expression.text === "module" ? node.name.text : undefined
+function createSourceProgram(source: string, fileName: string) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKindForFile(fileName)
+  )
+  const compilerOptions: ts.CompilerOptions = {
+    allowJs: true,
+    jsx: ts.JsxEmit.Preserve,
+    module: ts.ModuleKind.ESNext,
+    noLib: true,
+    target: ts.ScriptTarget.Latest,
+  }
+  const host: ts.CompilerHost = {
+    fileExists: (requestedFileName) => requestedFileName === fileName,
+    getCanonicalFileName: (requestedFileName) => requestedFileName,
+    getCurrentDirectory: () => "",
+    getDefaultLibFileName: () => "",
+    getNewLine: () => "\n",
+    getSourceFile: (requestedFileName) => (requestedFileName === fileName ? sourceFile : undefined),
+    readFile: (requestedFileName) => (requestedFileName === fileName ? source : undefined),
+    useCaseSensitiveFileNames: () => true,
+    writeFile: () => undefined,
+  }
+  const program = ts.createProgram([fileName], compilerOptions, host)
+  const programSourceFile = program.getSourceFile(fileName)
+  if (!programSourceFile) throw new Error(`Unable to parse ${fileName}`)
+
+  return { checker: program.getTypeChecker(), sourceFile: programSourceFile }
+}
+
+function isUnboundIdentifier(node: ts.Identifier, checker: ts.TypeChecker) {
+  return checker.getSymbolAtLocation(node) === undefined
+}
+
+function readModuleMemberName(node: ts.Node, checker: ts.TypeChecker): string | null | undefined {
+  if (
+    ts.isPropertyAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "module" &&
+    isUnboundIdentifier(node.expression, checker)
+  ) {
+    return node.name.text
   }
 
-  if (ts.isElementAccessExpression(node) && ts.isIdentifier(node.expression)) {
-    if (node.expression.text !== "module") return undefined
-
+  if (
+    ts.isElementAccessExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "module" &&
+    isUnboundIdentifier(node.expression, checker)
+  ) {
     const argument = node.argumentExpression
     return argument &&
       (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
@@ -132,13 +177,7 @@ function readModuleMemberName(node: ts.Node): string | null | undefined {
 }
 
 function extractModuleReferences(source: string, fileName = "fixture.ts"): string[] {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    scriptKindForFile(fileName)
-  )
+  const { checker, sourceFile } = createSourceProgram(source, fileName)
   const references = new Set<string>()
 
   const visit = (node: ts.Node) => {
@@ -153,7 +192,7 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
     } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
       references.add(readLiteralModuleReference(node.moduleSpecifier, "export from", sourceFile))
     } else if (ts.isCallExpression(node)) {
-      const moduleMemberName = readModuleMemberName(node.expression)
+      const moduleMemberName = readModuleMemberName(node.expression, checker)
 
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         references.add(
@@ -163,7 +202,11 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
             sourceFile
           )
         )
-      } else if (ts.isIdentifier(node.expression) && node.expression.text === "require") {
+      } else if (
+        ts.isIdentifier(node.expression) &&
+        node.expression.text === "require" &&
+        isUnboundIdentifier(node.expression, checker)
+      ) {
         references.add(
           readLiteralModuleReference(
             node.arguments.length === 1 ? node.arguments[0] : undefined,
@@ -194,13 +237,25 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
     } else if (
       ts.isIdentifier(node) &&
       node.text === "require" &&
+      isUnboundIdentifier(node, checker) &&
       !ts.isDeclarationName(node) &&
       !(ts.isCallExpression(node.parent) && node.parent.expression === node) &&
       !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
     ) {
       throw new Error("require must be called directly")
+    } else if (
+      ts.isIdentifier(node) &&
+      node.text === "module" &&
+      isUnboundIdentifier(node, checker) &&
+      !(
+        (ts.isPropertyAccessExpression(node.parent) || ts.isElementAccessExpression(node.parent)) &&
+        node.parent.expression === node &&
+        readModuleMemberName(node.parent, checker) !== undefined
+      )
+    ) {
+      throw new Error("module must be accessed directly")
     } else {
-      const moduleMemberName = readModuleMemberName(node)
+      const moduleMemberName = readModuleMemberName(node, checker)
       if (
         moduleMemberName !== undefined &&
         !(ts.isCallExpression(node.parent) && node.parent.expression === node)
@@ -276,6 +331,36 @@ describe("URL document source-contract extractor", () => {
     ).toThrow(/require must be called directly/)
   })
 
+  it("fails closed when the ambient module object is aliased", () => {
+    expect(() =>
+      extractModuleReferences(`
+        const runtime = module
+        runtime.require("@tanstack/react-query")
+      `)
+    ).toThrow(/module must be accessed directly/)
+  })
+
+  it.each([
+    [
+      "require parameter",
+      `
+        function load(require: (name: string) => unknown) {
+          return require("local-adapter")
+        }
+      `,
+    ],
+    [
+      "module parameter",
+      `
+        function load(module: { require: (name: string) => unknown }) {
+          return module.require("local-adapter")
+        }
+      `,
+    ],
+  ])("ignores a locally shadowed CommonJS %s", (_name, source) => {
+    expect(extractModuleReferences(source)).toEqual([])
+  })
+
   it("fails closed when a computed module member could hide require", () => {
     expect(() =>
       extractModuleReferences(`
@@ -328,6 +413,8 @@ describe("URL document source-contract extractor", () => {
     ["XMLHttpRequest", "const request = new XMLHttpRequest()"],
     ["sendBeacon", "navigator.sendBeacon('/documents', payload)"],
     ["window.open", "window.open('/documents')"],
+    ["top.open", "top.open('/documents')"],
+    ["parent.open", "parent.open('/documents')"],
     ["global open", "open('/documents', '_blank')"],
     ["CacheStorage", "caches.open('documents')"],
     ["EventSource", "new EventSource('/documents')"],
@@ -388,6 +475,15 @@ describe("URL document source-contract extractor", () => {
     ],
     ["named class expression", "const Local = class fetch { static current() { return fetch } }"],
   ])("allows a browser-global name shadowed by a %s", (_name, source) => {
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
+  })
+
+  it("allows a browser-global name used only in a type position", () => {
+    const source = `
+      type Image = { src: string }
+      const preview: Image = { src: "" }
+    `
+
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })
 })
