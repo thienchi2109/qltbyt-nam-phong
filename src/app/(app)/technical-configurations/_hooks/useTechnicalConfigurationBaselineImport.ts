@@ -215,6 +215,7 @@ export function useTechnicalConfigurationBaselineImport({
     )
 
   React.useEffect(() => {
+    // react-doctor-disable-next-line react-doctor/no-pass-live-state-to-parent, react-doctor/no-pass-data-to-parent -- This bridge blocks version adoption while import state is unresolved.
     onUnresolvedStateChange(hasUnresolvedState)
   }, [hasUnresolvedState, onUnresolvedStateChange])
 

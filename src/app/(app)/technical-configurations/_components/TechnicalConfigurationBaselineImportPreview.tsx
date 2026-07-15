@@ -24,11 +24,7 @@ export function TechnicalConfigurationBaselineImportPreview({
   preview: TechnicalConfigurationBaselineImportPreviewWireResponse
 }>) {
   return (
-    <section
-      role="region"
-      aria-label="Xem trước cấu hình cơ sở"
-      className="space-y-3 border-t pt-4"
-    >
+    <section aria-label="Xem trước cấu hình cơ sở" className="space-y-3 border-t pt-4">
       <div>
         <h3 className="text-sm font-semibold">Bản xem trước từ máy chủ</h3>
         <p className="text-sm text-muted-foreground">
