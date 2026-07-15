@@ -75,10 +75,11 @@ export function isAllowedDocumentUrl(
   nhận.
 - Result chỉ expose `raw` và `protocol`, không expose normalized `URL.href`.
 - `isAllowedDocumentUrl` là policy riêng cho TC-11 và chỉ chấp nhận khi raw
-  string có case-insensitive lexical prefix `^https?://`, không chứa backslash,
-  parse thành công và parsed protocol là `http:`/`https:`. Protocol-only
-  shorthand như `https:example.com` không được chấp nhận dù `new URL(...)` có
-  thể canonicalize nó thành HTTP(S).
+  string có case-insensitive lexical prefix `^https?://`, không chứa backslash
+  hoặc ASCII control character (`U+0000`-`U+001F`, `U+007F`), parse thành công
+  và parsed protocol là `http:`/`https:`. Protocol-only shorthand như
+  `https:example.com` không được chấp nhận dù `new URL(...)` có thể canonicalize
+  nó thành HTTP(S).
 - Utility không trim, canonicalize hoặc rewrite field value.
 - Khi accepted, add callback và anchor `href` dùng chính `parsed.raw`; tests đọc
   `getAttribute("href")` để phân biệt raw attribute với DOM-resolved URL, đồng

@@ -9,6 +9,7 @@ const browserGlobalCapabilities = new Set([
   "fetch",
   "globalThis",
   "history",
+  "Image",
   "indexedDB",
   "localStorage",
   "location",
@@ -18,6 +19,7 @@ const browserGlobalCapabilities = new Set([
   "sessionStorage",
   "WebSocket",
   "window",
+  "Worker",
   "XMLHttpRequest",
 ])
 const browserMemberCapabilities = new Set([
@@ -199,6 +201,8 @@ function collectScopeBindings(node: ts.Node): Set<string> | null {
     if (ts.isFunctionExpression(node) && node.name) bindings.add(node.name.text)
     for (const parameter of node.parameters) addBindingNames(parameter.name, bindings)
     addFunctionScopedVarBindings(node, bindings)
+  } else if (ts.isClassExpression(node)) {
+    if (node.name) bindings.add(node.name.text)
   } else if (ts.isCatchClause(node) && node.variableDeclaration) {
     addBindingNames(node.variableDeclaration.name, bindings)
   } else if (

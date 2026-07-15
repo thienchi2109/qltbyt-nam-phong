@@ -25,8 +25,8 @@ describe("parseAbsoluteUrl", () => {
     "https://trusted.example\t@evil.example/document.pdf",
     "https://trusted.example\r@evil.example/document.pdf",
     "https://trusted.example\n@evil.example/document.pdf",
-  ])("rejects a URL containing an ASCII tab or line break", (value) => {
-    expect(parseAbsoluteUrl(value)).toBeNull()
+  ])("preserves a control character when the platform URL parser accepts it", (value) => {
+    expect(parseAbsoluteUrl(value)).toEqual({ raw: value, protocol: "https:" })
   })
 
   it.each([
@@ -76,6 +76,20 @@ describe("isAllowedDocumentUrl", () => {
     String.raw`https:\example.com`,
     String.raw`https:\\example.com`,
   ])("rejects HTTP(S) shorthand or backslash variant %s", (value) => {
+    expect(isAllowedDocumentUrl(parseAbsoluteUrl(value))).toBe(false)
+  })
+
+  it.each([
+    "https://trusted.example\u0000@evil.example/document.pdf",
+    "https://trusted.example\u0001@evil.example/document.pdf",
+    "https://trusted.example\t@evil.example/document.pdf",
+    "https://trusted.example\n@evil.example/document.pdf",
+    "https://trusted.example\u000b@evil.example/document.pdf",
+    "https://trusted.example\f@evil.example/document.pdf",
+    "https://trusted.example\r@evil.example/document.pdf",
+    "https://trusted.example\u001f@evil.example/document.pdf",
+    "https://trusted.example\u007f@evil.example/document.pdf",
+  ])("rejects an HTTP(S) URL containing an ASCII control character", (value) => {
     expect(isAllowedDocumentUrl(parseAbsoluteUrl(value))).toBe(false)
   })
 

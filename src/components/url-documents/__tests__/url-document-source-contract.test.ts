@@ -113,15 +113,22 @@ function readLiteralModuleReference(
   return expression.text
 }
 
-function isModuleRequireExpression(
-  expression: ts.LeftHandSideExpression
-): expression is ts.PropertyAccessExpression {
-  return (
-    ts.isPropertyAccessExpression(expression) &&
-    ts.isIdentifier(expression.expression) &&
-    expression.expression.text === "module" &&
-    expression.name.text === "require"
-  )
+function readModuleMemberName(node: ts.Node): string | null | undefined {
+  if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression)) {
+    return node.expression.text === "module" ? node.name.text : undefined
+  }
+
+  if (ts.isElementAccessExpression(node) && ts.isIdentifier(node.expression)) {
+    if (node.expression.text !== "module") return undefined
+
+    const argument = node.argumentExpression
+    return argument &&
+      (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
+      ? argument.text
+      : null
+  }
+
+  return undefined
 }
 
 function extractModuleReferences(source: string, fileName = "fixture.ts"): string[] {
@@ -146,6 +153,8 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
     } else if (ts.isExportDeclaration(node) && node.moduleSpecifier) {
       references.add(readLiteralModuleReference(node.moduleSpecifier, "export from", sourceFile))
     } else if (ts.isCallExpression(node)) {
+      const moduleMemberName = readModuleMemberName(node.expression)
+
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         references.add(
           readLiteralModuleReference(
@@ -162,7 +171,11 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
             sourceFile
           )
         )
-      } else if (isModuleRequireExpression(node.expression)) {
+      } else if (moduleMemberName !== undefined) {
+        if (moduleMemberName !== "require") {
+          throw new Error("module member must be a static require reference")
+        }
+
         references.add(
           readLiteralModuleReference(
             node.arguments.length === 1 ? node.arguments[0] : undefined,
@@ -186,11 +199,17 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
       !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
     ) {
       throw new Error("require must be called directly")
-    } else if (
-      isModuleRequireExpression(node as ts.LeftHandSideExpression) &&
-      !(ts.isCallExpression(node.parent) && node.parent.expression === node)
-    ) {
-      throw new Error("module.require must be called directly")
+    } else {
+      const moduleMemberName = readModuleMemberName(node)
+      if (
+        moduleMemberName !== undefined &&
+        !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+      ) {
+        if (moduleMemberName !== "require") {
+          throw new Error("module member must be a static require reference")
+        }
+        throw new Error("module.require must be called directly")
+      }
     }
 
     ts.forEachChild(node, visit)
@@ -211,10 +230,12 @@ describe("URL document source-contract extractor", () => {
       void import("dynamic-import")
       const required = require("required-module")
       const moduleRequired = module.require("module-required")
+      const computedModuleRequired = module["require"]("computed-module-required")
       type Imported = import("import-type").Imported
     `
 
     expect(extractModuleReferences(source)).toEqual([
+      "computed-module-required",
       "dynamic-import",
       "import-equals",
       "import-type",
@@ -253,6 +274,15 @@ describe("URL document source-contract extractor", () => {
         load("@/app/(app)/equipment/_hooks/use-equipment-attachments")
       `)
     ).toThrow(/require must be called directly/)
+  })
+
+  it("fails closed when a computed module member could hide require", () => {
+    expect(() =>
+      extractModuleReferences(`
+        const method = "require"
+        module[method]("@tanstack/react-query")
+      `)
+    ).toThrow(/module member must be a static require reference/)
   })
 
   it.each([...supportedExtensions])(
@@ -301,6 +331,8 @@ describe("URL document source-contract extractor", () => {
     ["global open", "open('/documents', '_blank')"],
     ["CacheStorage", "caches.open('documents')"],
     ["EventSource", "new EventSource('/documents')"],
+    ["Image", "const image = new Image(); image.src = '/documents/preview.png'"],
+    ["Worker", "new Worker('/documents/worker.js')"],
     ["self.fetch", "self.fetch('/documents')"],
     ["location.assign", "location.assign('/documents')"],
     ["history.pushState", "history.pushState({}, '', '/documents')"],
@@ -354,6 +386,7 @@ describe("URL document source-contract extractor", () => {
       "function-scoped var from a nested block",
       "function run() { if (condition) { var fetch = () => undefined } fetch() }",
     ],
+    ["named class expression", "const Local = class fetch { static current() { return fetch } }"],
   ])("allows a browser-global name shadowed by a %s", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })
