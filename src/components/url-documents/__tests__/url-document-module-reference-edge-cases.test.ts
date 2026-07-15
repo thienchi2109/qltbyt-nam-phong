@@ -33,12 +33,37 @@ describe("URL document module-reference edge cases", () => {
     ).toThrow(/ambient member must use a static reference/)
   })
 
+  it.each([
+    ["type assertion", "(runtime as typeof runtime).require"],
+    ["parentheses", "(runtime).require"],
+    ["non-null assertion", "runtime!.require"],
+  ])("extracts an ambient loader behind %s", (_name, loader) => {
+    expect(
+      extractModuleReferences(`
+        declare const runtime: { require(id: string): unknown }
+        ${loader}("@tanstack/react-query")
+      `)
+    ).toEqual(["@tanstack/react-query"])
+  })
+
   it.each(["fixture.js", "fixture.jsx", "fixture.mjs", "fixture.cjs"])(
     "extracts a JSDoc import type from %s",
     (fileName) => {
       expect(
         extractModuleReferences(
           '/** @type {import("@tanstack/react-query").QueryClient} */\nconst client = null',
+          fileName
+        )
+      ).toEqual(["@tanstack/react-query"])
+    }
+  )
+
+  it.each(["fixture.js", "fixture.jsx", "fixture.mjs", "fixture.cjs"])(
+    "extracts a JSDoc import tag from %s",
+    (fileName) => {
+      expect(
+        extractModuleReferences(
+          '/** @import { QueryClient } from "@tanstack/react-query" */\nconst client = null',
           fileName
         )
       ).toEqual(["@tanstack/react-query"])

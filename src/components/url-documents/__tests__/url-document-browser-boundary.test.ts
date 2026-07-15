@@ -28,6 +28,15 @@ describe("URL document browser boundary", () => {
   })
 
   it.each([
+    `const execute = (() => {}).constructor('return fetch("/api/documents")')`,
+    `const execute = (() => {})["constructor"]('return fetch("/api/documents")')`,
+  ])("rejects dynamic code execution through a constructor property: %s", (declaration) => {
+    expect(() =>
+      assertNoForbiddenBrowserCapabilities(`${declaration}\nvoid execute()`, "fixture source")
+    ).toThrow(/fixture source references runtime constructor/)
+  })
+
+  it.each([
     'new URL("https://example.com/document.pdf")',
     'new globalThis.URL("https://example.com/document.pdf")',
   ])("allows pure URL construction: %s", (source) => {

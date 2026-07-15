@@ -310,9 +310,10 @@ Test recursively enumerate mọi non-test production module dưới
 
 Với TypeScript compiler API, test parse mọi `ImportDeclaration`,
 `ImportEqualsDeclaration`, `ExportDeclaration` có module specifier, dynamic
-`import()`, `require()` và `ImportTypeNode`. Dynamic/require/import-type argument
-không phải string literal phải fail closed. Enforce exact module-specifier set
-equality, không prefix matching:
+`import()`, `require()`, `ImportTypeNode`, JSDoc `import()` type và JSDoc
+`@import` tag. Dynamic/require/import-type argument không phải string literal
+phải fail closed. Enforce exact module-specifier set equality, không prefix
+matching:
 
 - `url-document-utils.ts` không có module reference;
 - `UrlDocumentForm.tsx` có đúng `react`, `lucide-react`,
@@ -330,11 +331,17 @@ Test cũng fail khi source tham chiếu Equipment path/type, `Attachment`,
 persistence identifier cụ thể khác. Import allowlist là guard chính; symbol
 denylist chỉ bổ sung thông báo lỗi rõ hơn.
 
-Trong cùng test file, thêm synthetic source fixtures chứng minh extractor:
+Trong các source-contract suites, thêm synthetic source fixtures chứng minh
+extractor:
 
 - nhận diện allowed/denied static import và type import;
 - nhận diện `ImportEqualsDeclaration`, named/star `export ... from`, literal
-  dynamic `import()`, literal `require()` và `ImportTypeNode`;
+  dynamic `import()`, literal `require()`, `ImportTypeNode`, JSDoc `import()` và
+  JSDoc `@import`;
+- unwrap ambient loader roots qua parentheses, type assertion và non-null
+  assertion;
+- chặn ambient `eval`/`Function`/`process`/`global` và dynamic code execution qua
+  static/computed `constructor` access;
 - fail với computed/non-literal dynamic `import()`, `require()` hoặc import
   type;
 - fail khi có production `.js`/`.jsx`/`.mts`/`.cts`/`.mjs`/`.cjs` module thứ
@@ -368,7 +375,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- bảy focused test files với `176` tests pass, `0` failed tests;
+- bảy focused test files với `185` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.

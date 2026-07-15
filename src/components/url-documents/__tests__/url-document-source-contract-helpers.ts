@@ -106,6 +106,15 @@ function isAllowedUrlConstructorExpression(expression: ts.Expression) {
   return access?.path === "URL" || access?.path === "globalThis.URL"
 }
 
+function isRuntimeConstructorAccess(node: ts.Node) {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text === "constructor"
+  if (ts.isElementAccessExpression(node) && node.argumentExpression) {
+    return readStaticString(node.argumentExpression) === "constructor"
+  }
+
+  return false
+}
+
 function isExpressionWrapper(
   node: ts.Node
 ): node is
@@ -367,6 +376,10 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (!inTypePosition && ts.isElementAccessExpression(node)) {
       assertComputedAccessAllowed(node, scopes)
+    }
+
+    if (!inTypePosition && isRuntimeConstructorAccess(node)) {
+      throw new Error(`${subject} references runtime constructor`)
     }
 
     if (

@@ -1,6 +1,6 @@
 import ts from "typescript"
 
-import { readStaticString } from "./url-document-ast-helpers"
+import { readStaticString, unwrapExpression } from "./url-document-ast-helpers"
 import { scriptKindForFile } from "./url-document-source-contract-helpers"
 
 function readLiteralModuleReference(
@@ -104,7 +104,7 @@ function readStaticMemberName(node: ts.Node): string | null | undefined {
 function readAccessRootIdentifier(node: ts.Node): ts.Identifier | undefined {
   let current = node
   while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
-    current = current.expression
+    current = unwrapExpression(current.expression)
   }
 
   return ts.isIdentifier(current) ? current : undefined
@@ -147,6 +147,14 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
   const references = new Set<string>()
 
   const visit = (node: ts.Node) => {
+    for (const tag of ts.getJSDocTags(node)) {
+      if (ts.isJSDocImportTag(tag)) {
+        references.add(
+          readLiteralModuleReference(tag.moduleSpecifier, "JSDoc import tag", sourceFile)
+        )
+      }
+    }
+
     if (ts.isImportDeclaration(node)) {
       references.add(readLiteralModuleReference(node.moduleSpecifier, "import", sourceFile))
     } else if (ts.isImportEqualsDeclaration(node)) {
