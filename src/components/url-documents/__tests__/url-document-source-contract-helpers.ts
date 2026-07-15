@@ -2,6 +2,7 @@ import { extname } from "node:path"
 import ts from "typescript"
 
 const browserGlobalCapabilities = new Set([
+  "BroadcastChannel",
   "caches",
   "confirm",
   "document",
@@ -226,7 +227,9 @@ function isReferenceIdentifier(node: ts.Identifier) {
   if (ts.isDeclarationName(node)) return false
 
   const parent = node.parent
+  if (ts.isPropertyAccessExpression(parent) && parent.expression === node) return false
   if (ts.isPropertyAccessExpression(parent) && parent.name === node) return false
+  if (ts.isElementAccessExpression(parent) && parent.expression === node) return false
   if (ts.isPropertyAssignment(parent) && parent.name === node) return false
   if (ts.isBindingElement(parent) && parent.propertyName === node) return false
 

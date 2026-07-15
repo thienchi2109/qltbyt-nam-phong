@@ -39,6 +39,7 @@ export function UrlDocumentForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (controlsDisabled) return
     void onSubmit()
   }
 

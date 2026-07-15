@@ -176,13 +176,14 @@ describe("UrlDocumentForm", () => {
     { state: "pending", props: { isPending: true } },
     { state: "disabled", props: { disabled: true } },
   ])("disables all controls when $state", ({ props }) => {
+    const onSubmit = vi.fn()
     const { container } = render(
       <UrlDocumentForm
         name="Hồ sơ kỹ thuật"
         url="https://example.com/spec.pdf"
         onNameChange={vi.fn()}
         onUrlChange={vi.fn()}
-        onSubmit={vi.fn()}
+        onSubmit={onSubmit}
         {...props}
       />
     )
@@ -190,6 +191,8 @@ describe("UrlDocumentForm", () => {
     expect(screen.getByLabelText("Tên tài liệu")).toBeDisabled()
     expect(screen.getByLabelText("Đường dẫn (URL)")).toBeDisabled()
     expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeDisabled()
+    fireEvent.submit(screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")!)
+    expect(onSubmit).not.toHaveBeenCalled()
 
     if ("isPending" in props) {
       expect(screen.getByRole("button", { name: "Lưu liên kết" })).toHaveAttribute(
