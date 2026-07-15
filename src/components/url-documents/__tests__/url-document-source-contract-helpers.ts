@@ -11,9 +11,12 @@ import {
   unwrapExpression,
 } from "./url-document-ast-helpers"
 import {
+  assignmentPatternMayReferenceBrowserContext,
+  bindingPatternMayReferenceBrowserContext,
   hasBrowserContextAccess,
   isBrowserContextMemberAccess,
   isForbiddenBrowserCapability,
+  readForbiddenCreateElementNetworkAccess,
   readForbiddenJsxNetworkAttribute,
   readForbiddenJsxNetworkSpread,
 } from "./url-document-browser-capability-helpers"
@@ -226,6 +229,13 @@ export function assertNoForbiddenBrowserCapabilities(
       }
     }
 
+    if (!inTypePosition && ts.isCallExpression(node)) {
+      const networkAccess = readForbiddenCreateElementNetworkAccess(node)
+      if (networkAccess) {
+        throw new Error(`${subject} references browser network attribute ${networkAccess}`)
+      }
+    }
+
     if (!inTypePosition && isBrowserContextMemberAccess(node)) {
       throw new Error(`${subject} references browser context member`)
     }
@@ -244,11 +254,28 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (
       !inTypePosition &&
+      ts.isObjectBindingPattern(node) &&
+      bindingPatternMayReferenceBrowserContext(node)
+    ) {
+      throw new Error(`${subject} references browser context member`)
+    }
+
+    if (
+      !inTypePosition &&
       (ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) &&
       readDestructuringAssignmentSource(node) &&
       assignmentPatternMayReferenceProperty(node, "constructor")
     ) {
       throw new Error(`${subject} references runtime constructor`)
+    }
+
+    if (
+      !inTypePosition &&
+      (ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) &&
+      readDestructuringAssignmentSource(node) &&
+      assignmentPatternMayReferenceBrowserContext(node)
+    ) {
+      throw new Error(`${subject} references browser context member`)
     }
 
     if (

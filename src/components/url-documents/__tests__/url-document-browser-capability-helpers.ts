@@ -1,6 +1,15 @@
 import ts from "typescript"
 
+import {
+  assignmentPatternMayReferenceProperty,
+  bindingPatternMayReferenceProperty,
+  readStaticPropertyName,
+  readStaticString,
+  unwrapExpression,
+} from "./url-document-ast-helpers"
+
 const browserGlobalCapabilities = new Set([
+  "Audio",
   "BroadcastChannel",
   "caches",
   "confirm",
@@ -13,6 +22,7 @@ const browserGlobalCapabilities = new Set([
   "globalThis",
   "history",
   "Image",
+  "importScripts",
   "indexedDB",
   "localStorage",
   "location",
@@ -23,6 +33,7 @@ const browserGlobalCapabilities = new Set([
   "Reflect",
   "self",
   "sessionStorage",
+  "SharedWorker",
   "top",
   "URL",
   "WebSocket",
@@ -59,6 +70,17 @@ const forbiddenJsxNetworkAttributes = new Map<string, ReadonlySet<string>>([
   ["source", new Set(["src", "srcSet"])],
   ["track", new Set(["src"])],
   ["video", new Set(["poster", "src"])],
+])
+const forbiddenNetworkAttributeNames = new Set([
+  "action",
+  "data",
+  "formAction",
+  "ping",
+  "poster",
+  "src",
+  "srcSet",
+  "xlink:href",
+  "xlinkHref",
 ])
 
 function isDirectForbiddenBrowserCapability(path: string) {
@@ -111,10 +133,34 @@ export function isBrowserContextMemberAccess(node: ts.Node) {
   return false
 }
 
+export function bindingPatternMayReferenceBrowserContext(pattern: ts.BindingName) {
+  return [...browserContextMembers].some((propertyName) =>
+    bindingPatternMayReferenceProperty(pattern, propertyName)
+  )
+}
+
+export function assignmentPatternMayReferenceBrowserContext(pattern: ts.Expression) {
+  return [...browserContextMembers].some((propertyName) =>
+    assignmentPatternMayReferenceProperty(pattern, propertyName)
+  )
+}
+
+function readJsxTagName(tagName: ts.JsxTagNameExpression) {
+  if (ts.isIdentifier(tagName)) return tagName.text
+  if (ts.isPropertyAccessExpression(tagName)) return tagName.name.text
+  if (ts.isJsxNamespacedName(tagName)) return tagName.name.text
+  return null
+}
+
 function readJsxElementName(node: ts.JsxAttribute | ts.JsxSpreadAttribute) {
   const element = node.parent.parent
   if (!ts.isJsxOpeningElement(element) && !ts.isJsxSelfClosingElement(element)) return null
-  return ts.isIdentifier(element.tagName) ? element.tagName.text : null
+  return readJsxTagName(element.tagName)
+}
+
+function isForbiddenNetworkAttribute(tagName: string | null, attributeName: string) {
+  if (tagName && forbiddenJsxNetworkAttributes.get(tagName)?.has(attributeName)) return true
+  return forbiddenNetworkAttributeNames.has(attributeName)
 }
 
 export function readForbiddenJsxNetworkAttribute(node: ts.JsxAttribute) {
@@ -124,12 +170,62 @@ export function readForbiddenJsxNetworkAttribute(node: ts.JsxAttribute) {
   const attributeName = ts.isIdentifier(node.name)
     ? node.name.text
     : `${node.name.namespace.text}:${node.name.name.text}`
-  return forbiddenJsxNetworkAttributes.get(tagName)?.has(attributeName)
-    ? `${tagName}.${attributeName}`
-    : null
+  return isForbiddenNetworkAttribute(tagName, attributeName) ? `${tagName}.${attributeName}` : null
 }
 
 export function readForbiddenJsxNetworkSpread(node: ts.JsxSpreadAttribute) {
   const tagName = readJsxElementName(node)
-  return tagName && forbiddenJsxNetworkAttributes.has(tagName) ? `${tagName}.*` : null
+  return tagName && (forbiddenJsxNetworkAttributes.has(tagName) || /^[A-Z]/.test(tagName))
+    ? `${tagName}.*`
+    : null
+}
+
+function isCreateElementExpression(expression: ts.Expression) {
+  const unwrappedExpression = unwrapExpression(expression)
+  if (ts.isIdentifier(unwrappedExpression)) return unwrappedExpression.text === "createElement"
+  if (ts.isPropertyAccessExpression(unwrappedExpression)) {
+    return unwrappedExpression.name.text === "createElement"
+  }
+  if (ts.isElementAccessExpression(unwrappedExpression) && unwrappedExpression.argumentExpression) {
+    return readStaticString(unwrappedExpression.argumentExpression) === "createElement"
+  }
+
+  return false
+}
+
+export function readForbiddenCreateElementNetworkAccess(node: ts.CallExpression) {
+  if (!isCreateElementExpression(node.expression)) return null
+
+  const tagName = node.arguments[0] ? readStaticString(node.arguments[0]) : null
+  const props = node.arguments[1]
+  if (!props || props.kind === ts.SyntaxKind.NullKeyword) return null
+
+  const unwrappedProps = unwrapExpression(props)
+  if (!ts.isObjectLiteralExpression(unwrappedProps)) {
+    return tagName && forbiddenJsxNetworkAttributes.has(tagName) ? `${tagName}.*` : null
+  }
+
+  for (const property of unwrappedProps.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      if (!tagName || forbiddenJsxNetworkAttributes.has(tagName)) return `${tagName ?? "*"}.*`
+      continue
+    }
+    if (
+      !ts.isPropertyAssignment(property) &&
+      !ts.isShorthandPropertyAssignment(property) &&
+      !ts.isMethodDeclaration(property) &&
+      !ts.isGetAccessorDeclaration(property) &&
+      !ts.isSetAccessorDeclaration(property)
+    ) {
+      continue
+    }
+
+    const propertyName = readStaticPropertyName(property.name)
+    if (!propertyName) return `${tagName ?? "*"}.[computed]`
+    if (isForbiddenNetworkAttribute(tagName, propertyName)) {
+      return `${tagName ?? "*"}.${propertyName}`
+    }
+  }
+
+  return null
 }

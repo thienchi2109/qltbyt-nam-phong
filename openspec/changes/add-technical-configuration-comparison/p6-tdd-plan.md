@@ -158,6 +158,7 @@ export interface UrlDocumentListProps {
 - Create: `src/components/url-documents/__tests__/url-document-ast-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-browser-capability-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-browser-boundary.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-production-boundary.test.ts`
@@ -350,8 +351,9 @@ extractor:
   phép local runtime value;
 - chặn ambient `eval`/`Function`/`process`/`global`/`Reflect`/`WebTransport`,
   browser capability qua direct/aliased/destructured/call-chain DOM-derived
-  window access, network-loading/action JSX attributes và spreads, dynamic code
-  execution qua static/computed `constructor` và mọi variable/assignment,
+  window access, network-loading/action JSX attributes, spreads, dynamic tags
+  và `React.createElement`; chặn `SharedWorker`/`Audio`/`importScripts`; dynamic
+  code execution qua static/computed `constructor` và mọi variable/assignment,
   parameter, nested hoặc computed constructor destructuring; computed property
   access không có static key phải fail closed;
 - fail với computed/non-literal dynamic `import()`, `require()` hoặc import
@@ -362,7 +364,7 @@ extractor:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
 Expected: exit `0`; production inventory đúng ba module, mọi module-reference
@@ -378,7 +380,7 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 node scripts/npm-run.js run react-doctor
 node scripts/npm-run.js run verify:ts-docstrings
 openspec validate add-technical-configuration-comparison --type change --strict --no-interactive
@@ -388,7 +390,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- tám focused test files với `219` tests pass, `0` failed tests;
+- chín focused test files với `231` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.
@@ -407,10 +409,10 @@ Exit gate:
 Run P6A Equipment characterization và shared tests trước khi sửa source.
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
-Expected: exit `0`; tám test files pass; `0` failed tests.
+Expected: exit `0`; chín test files pass; `0` failed tests.
 
 ### B2. Adapter migration
 
@@ -473,10 +475,10 @@ Behavior test hiện hữu đồng thời thêm failing cases:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
-Expected red trên pre-P6B source: command exits non-zero; sáu test files được
+Expected red trên pre-P6B source: command exits non-zero; bảy test files được
 chọn. Consumer assertions fail vì Equipment chưa render shared primitives, còn
 behavior cases fail vì source chỉ dùng parse-only `new URL(...)`, đặt folder URL
 trực tiếp vào `href` và không catch delete callback rejection. Delegation cases
@@ -507,10 +509,10 @@ Không sửa:
 Run lại nguyên bộ P6A tests. Chỉ sửa assertions nếu markup/accessibility contract được cải thiện mà user-observable behavior không đổi; không nới assertion để che regression.
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
 ```
 
-Expected: exit `0`; mười hai focused test files pass; `0` failed tests.
+Expected: exit `0`; mười ba focused test files pass; `0` failed tests.
 
 ### B4. Conditional browser smoke
 
@@ -561,7 +563,7 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-browser-network-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
 node scripts/npm-run.js run react-doctor
 openspec validate add-technical-configuration-comparison --type change --strict --no-interactive
 git diff --check
@@ -570,7 +572,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- mười hai focused test files pass, `0` failed tests;
+- mười ba focused test files pass, `0` failed tests;
 - React Doctor không có finding mới;
 - OpenSpec valid;
 - `git diff --check` không có output.
