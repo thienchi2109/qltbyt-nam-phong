@@ -1,7 +1,9 @@
 import ts from "typescript"
 
 import {
-  readBindingPropertyName,
+  assignmentPatternMayReferenceProperty,
+  bindingPatternMayReferenceProperty,
+  readDestructuringAssignmentSource,
   readStaticString,
   unwrapExpression,
 } from "./url-document-ast-helpers"
@@ -150,6 +152,24 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
   const { checker, sourceFile } = createSourceProgram(source, fileName)
   const references = new Set<string>()
 
+  const assertNoAmbientRequireBinding = (pattern: ts.BindingName, initializer?: ts.Expression) => {
+    if (!bindingPatternMayReferenceProperty(pattern, "require")) return
+    if (!initializer) throw new Error("ambient require must be called directly")
+
+    const unwrappedInitializer = unwrapExpression(initializer)
+    if (
+      ts.isObjectLiteralExpression(unwrappedInitializer) ||
+      ts.isArrayLiteralExpression(unwrappedInitializer)
+    ) {
+      return
+    }
+
+    const root = readAccessRootIdentifier(initializer)
+    if (!root || isUnboundIdentifier(root, checker)) {
+      throw new Error("ambient require must be called directly")
+    }
+  }
+
   const visit = (node: ts.Node) => {
     for (const tag of ts.getJSDocTags(node)) {
       if (ts.isJSDocImportTag(tag)) {
@@ -161,15 +181,24 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
 
     if (
       ts.isVariableDeclaration(node) &&
-      ts.isObjectBindingPattern(node.name) &&
-      node.initializer
+      (ts.isObjectBindingPattern(node.name) || ts.isArrayBindingPattern(node.name))
     ) {
-      const root = readAccessRootIdentifier(node.initializer)
-      if (root && isUnboundIdentifier(root, checker)) {
-        for (const element of node.name.elements) {
-          if (readBindingPropertyName(element) === "require") {
-            throw new Error("ambient require must be called directly")
-          }
+      assertNoAmbientRequireBinding(node.name, node.initializer)
+    }
+
+    if (
+      ts.isParameter(node) &&
+      (ts.isObjectBindingPattern(node.name) || ts.isArrayBindingPattern(node.name))
+    ) {
+      assertNoAmbientRequireBinding(node.name)
+    }
+
+    if (ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) {
+      const assignmentSource = readDestructuringAssignmentSource(node)
+      if (assignmentSource && assignmentPatternMayReferenceProperty(node, "require")) {
+        const root = readAccessRootIdentifier(assignmentSource)
+        if (!root || isUnboundIdentifier(root, checker)) {
+          throw new Error("ambient require must be called directly")
         }
       }
     }

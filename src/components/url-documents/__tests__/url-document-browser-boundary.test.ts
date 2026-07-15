@@ -50,6 +50,53 @@ describe("URL document browser boundary", () => {
     )
   })
 
+  it.each([
+    [
+      "assignment",
+      `
+        let execute: typeof Function
+        ;({ constructor: execute } = (() => {}) as unknown as {
+          constructor: typeof Function
+        })
+        execute('return fetch("/api/documents")')()
+      `,
+    ],
+    [
+      "parameter",
+      `
+        function run({ constructor: execute }: { constructor: typeof Function }) {
+          execute('return fetch("/api/documents")')()
+        }
+      `,
+    ],
+    [
+      "nested binding",
+      `
+        const {
+          value: { constructor: execute },
+        } = { value: (() => {}) } as unknown as {
+          value: { constructor: typeof Function }
+        }
+        execute('return fetch("/api/documents")')()
+      `,
+    ],
+    [
+      "dynamic computed binding",
+      `
+        const key = "constructor"
+        const { [key]: execute } = (() => {}) as unknown as Record<
+          string,
+          typeof Function
+        >
+        execute('return fetch("/api/documents")')()
+      `,
+    ],
+  ])("rejects a runtime constructor extracted through %s", (_name, source) => {
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source references runtime constructor/
+    )
+  })
+
   it("fails closed for a dynamic property key", () => {
     const source = `
       const key = "constructor"

@@ -66,6 +66,57 @@ describe("URL document module-reference edge cases", () => {
     ).toEqual([])
   })
 
+  it.each([
+    [
+      "assignment",
+      `
+        declare const runtime: { require(id: string): unknown }
+        let load: (id: string) => unknown
+        ;({ require: load } = runtime)
+        load("@tanstack/react-query")
+      `,
+    ],
+    [
+      "parameter",
+      `
+        function run({ require: load }: { require(id: string): unknown }) {
+          load("@tanstack/react-query")
+        }
+      `,
+    ],
+    [
+      "nested binding",
+      `
+        declare const runtime: { nested: { require(id: string): unknown } }
+        const {
+          nested: { require: load },
+        } = runtime
+        load("@tanstack/react-query")
+      `,
+    ],
+    [
+      "dynamic computed binding",
+      `
+        declare const runtime: Record<string, (id: string) => unknown>
+        const key = "require"
+        const { [key]: load } = runtime
+        load("@tanstack/react-query")
+      `,
+    ],
+    [
+      "rest binding",
+      `
+        declare const runtime: { require(id: string): unknown }
+        const { ...loaders } = runtime
+        loaders.require("@tanstack/react-query")
+      `,
+    ],
+  ])("fails closed for ambient require extracted through %s", (_name, source) => {
+    expect(() => extractModuleReferences(source)).toThrow(
+      /(?:ambient )?require must be called directly/
+    )
+  })
+
   it.each(["fixture.js", "fixture.jsx", "fixture.mjs", "fixture.cjs"])(
     "extracts a JSDoc import type from %s",
     (fileName) => {

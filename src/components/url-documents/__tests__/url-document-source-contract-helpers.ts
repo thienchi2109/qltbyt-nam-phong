@@ -2,7 +2,10 @@ import { extname } from "node:path"
 import ts from "typescript"
 
 import {
+  assignmentPatternMayReferenceProperty,
+  bindingPatternMayReferenceProperty,
   readBindingPropertyName,
+  readDestructuringAssignmentSource,
   readStaticString,
   unwrapExpression,
 } from "./url-document-ast-helpers"
@@ -368,6 +371,23 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (
       !inTypePosition &&
+      ts.isObjectBindingPattern(node) &&
+      bindingPatternMayReferenceProperty(node, "constructor")
+    ) {
+      throw new Error(`${subject} references runtime constructor`)
+    }
+
+    if (
+      !inTypePosition &&
+      (ts.isObjectLiteralExpression(node) || ts.isArrayLiteralExpression(node)) &&
+      readDestructuringAssignmentSource(node) &&
+      assignmentPatternMayReferenceProperty(node, "constructor")
+    ) {
+      throw new Error(`${subject} references runtime constructor`)
+    }
+
+    if (
+      !inTypePosition &&
       !allowedUrlConstructorUse &&
       (ts.isCallExpression(node) ||
         ts.isNewExpression(node) ||
@@ -388,9 +408,6 @@ export function assertNoForbiddenBrowserCapabilities(
       const baseAccess = readStaticAccess(node.initializer)
       for (const element of node.name.elements) {
         const propertyName = readBindingPropertyName(element)
-        if (propertyName === "constructor") {
-          throw new Error(`${subject} references runtime constructor`)
-        }
         if (propertyName && baseAccess && !isShadowed(baseAccess.root, scopes)) {
           assertAccessAllowed({ ...baseAccess, path: `${baseAccess.path}.${propertyName}` }, scopes)
         }

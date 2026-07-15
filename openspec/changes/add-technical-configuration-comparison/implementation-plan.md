@@ -726,10 +726,11 @@ Users can create the same draft baseline manually or through one versioned syste
   resolves to `new URL(raw).href`.
 - Handler-level invalid cases use `fireEvent.submit(form)` so native `type="url"` constraints cannot bypass parser/policy assertions; separate `userEvent` cases cover native disabled and valid submit behavior.
 - Source-contract synthetic fixtures cover every parsed AST form, `ImportTypeNode`,
-  JSDoc `import()`/`@import`, wrapped/destructured ambient loader roots,
-  reflective/runtime constructor escapes, computed-reference fail-closed
-  behavior, TS/JS extension inventory drift and missing/extra module specifiers
-  before the production source check is trusted.
+  JSDoc `import()`/`@import`, recursively wrapped/destructured ambient loader
+  roots, variable/assignment/parameter/nested/computed constructor escapes,
+  reflective access, computed-reference fail-closed behavior, TS/JS extension
+  inventory drift and missing/extra module specifiers before the production
+  source check is trusted.
 - Run `@code-deduplication` discovery before creating the shared files; current graph/search evidence found no reusable URL-document form/list abstraction.
 - Run focused Vitest plus the TypeScript/React quality gates required for the new shared files.
 
