@@ -1,7 +1,11 @@
 import { extname } from "node:path"
 import ts from "typescript"
 
-import { readStaticString, unwrapExpression } from "./url-document-ast-helpers"
+import {
+  readBindingPropertyName,
+  readStaticString,
+  unwrapExpression,
+} from "./url-document-ast-helpers"
 
 const browserGlobalCapabilities = new Set([
   "BroadcastChannel",
@@ -23,6 +27,7 @@ const browserGlobalCapabilities = new Set([
   "open",
   "parent",
   "process",
+  "Reflect",
   "self",
   "sessionStorage",
   "top",
@@ -304,26 +309,6 @@ function isShadowed(root: ts.Identifier, scopes: readonly Set<string>[]) {
   return scopes.some((bindings) => bindings.has(root.text))
 }
 
-function readBindingPropertyName(element: ts.BindingElement) {
-  if (element.dotDotDotToken) return null
-
-  const propertyName = element.propertyName
-  if (!propertyName && ts.isIdentifier(element.name)) return element.name.text
-  if (
-    propertyName &&
-    (ts.isIdentifier(propertyName) ||
-      ts.isStringLiteral(propertyName) ||
-      ts.isNumericLiteral(propertyName))
-  ) {
-    return propertyName.text
-  }
-  if (propertyName && ts.isComputedPropertyName(propertyName)) {
-    return readStaticString(propertyName.expression)
-  }
-
-  return null
-}
-
 export function assertNoForbiddenBrowserCapabilities(
   source: string,
   subject: string,
@@ -350,13 +335,12 @@ export function assertNoForbiddenBrowserCapabilities(
     if (readStaticString(node.argumentExpression) !== null) return
 
     const baseAccess = readStaticAccess(node.expression)
-    if (
-      baseAccess &&
-      !isShadowed(baseAccess.root, scopes) &&
-      isForbiddenBrowserCapability(baseAccess.path)
-    ) {
+    if (baseAccess && isShadowed(baseAccess.root, scopes)) return
+    if (baseAccess && isForbiddenBrowserCapability(baseAccess.path)) {
       throw new Error(`${subject} references browser capability ${baseAccess.path}[computed]`)
     }
+
+    throw new Error(`${subject} uses a computed property access without a static key`)
   }
 
   const visit = (node: ts.Node, parentScopes: readonly Set<string>[]) => {
@@ -402,15 +386,13 @@ export function assertNoForbiddenBrowserCapabilities(
       node.initializer
     ) {
       const baseAccess = readStaticAccess(node.initializer)
-      if (baseAccess && !isShadowed(baseAccess.root, scopes)) {
-        for (const element of node.name.elements) {
-          const propertyName = readBindingPropertyName(element)
-          if (propertyName) {
-            assertAccessAllowed(
-              { ...baseAccess, path: `${baseAccess.path}.${propertyName}` },
-              scopes
-            )
-          }
+      for (const element of node.name.elements) {
+        const propertyName = readBindingPropertyName(element)
+        if (propertyName === "constructor") {
+          throw new Error(`${subject} references runtime constructor`)
+        }
+        if (propertyName && baseAccess && !isShadowed(baseAccess.root, scopes)) {
+          assertAccessAllowed({ ...baseAccess, path: `${baseAccess.path}.${propertyName}` }, scopes)
         }
       }
     }

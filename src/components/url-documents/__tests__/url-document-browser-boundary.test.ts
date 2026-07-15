@@ -21,6 +21,7 @@ describe("URL document browser boundary", () => {
       "global",
       'void global.process.getBuiltinModule("node:fs")?.writeFileSync("/tmp/document", "x")',
     ],
+    ["Reflect", `void Reflect.get(() => {}, "constructor")('return fetch("/api/documents")')()`],
   ])("rejects the unbound runtime escape hatch %s", (capability, source) => {
     expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
       new RegExp(`fixture source references browser capability ${capability}`)
@@ -34,6 +35,31 @@ describe("URL document browser boundary", () => {
     expect(() =>
       assertNoForbiddenBrowserCapabilities(`${declaration}\nvoid execute()`, "fixture source")
     ).toThrow(/fixture source references runtime constructor/)
+  })
+
+  it("rejects a runtime constructor extracted through destructuring", () => {
+    const source = `
+      const { constructor: execute } = (() => {}) as unknown as {
+        constructor: typeof Function
+      }
+      execute('return fetch("/api/documents")')()
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source references runtime constructor/
+    )
+  })
+
+  it("fails closed for a dynamic property key", () => {
+    const source = `
+      const key = "constructor"
+      const execute = (() => {})[key]
+      execute('return fetch("/api/documents")')()
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source uses a computed property access without a static key/
+    )
   })
 
   it.each([

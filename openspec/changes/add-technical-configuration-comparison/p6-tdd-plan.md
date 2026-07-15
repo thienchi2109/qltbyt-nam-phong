@@ -339,9 +339,11 @@ extractor:
   dynamic `import()`, literal `require()`, `ImportTypeNode`, JSDoc `import()` và
   JSDoc `@import`;
 - unwrap ambient loader roots qua parentheses, type assertion và non-null
-  assertion;
-- chặn ambient `eval`/`Function`/`process`/`global` và dynamic code execution qua
-  static/computed `constructor` access;
+  assertion; reject `require` destructuring từ ambient root nhưng cho phép local
+  runtime value;
+- chặn ambient `eval`/`Function`/`process`/`global`/`Reflect`, dynamic code
+  execution qua static/computed/destructured `constructor`, và computed property
+  access không có static key;
 - fail với computed/non-literal dynamic `import()`, `require()` hoặc import
   type;
 - fail khi có production `.js`/`.jsx`/`.mts`/`.cts`/`.mjs`/`.cjs` module thứ
@@ -375,7 +377,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- bảy focused test files với `185` tests pass, `0` failed tests;
+- bảy focused test files với `190` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.

@@ -1,6 +1,10 @@
 import ts from "typescript"
 
-import { readStaticString, unwrapExpression } from "./url-document-ast-helpers"
+import {
+  readBindingPropertyName,
+  readStaticString,
+  unwrapExpression,
+} from "./url-document-ast-helpers"
 import { scriptKindForFile } from "./url-document-source-contract-helpers"
 
 function readLiteralModuleReference(
@@ -102,7 +106,7 @@ function readStaticMemberName(node: ts.Node): string | null | undefined {
 }
 
 function readAccessRootIdentifier(node: ts.Node): ts.Identifier | undefined {
-  let current = node
+  let current = ts.isExpression(node) ? unwrapExpression(node) : node
   while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
     current = unwrapExpression(current.expression)
   }
@@ -152,6 +156,21 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
         references.add(
           readLiteralModuleReference(tag.moduleSpecifier, "JSDoc import tag", sourceFile)
         )
+      }
+    }
+
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isObjectBindingPattern(node.name) &&
+      node.initializer
+    ) {
+      const root = readAccessRootIdentifier(node.initializer)
+      if (root && isUnboundIdentifier(root, checker)) {
+        for (const element of node.name.elements) {
+          if (readBindingPropertyName(element) === "require") {
+            throw new Error("ambient require must be called directly")
+          }
+        }
       }
     }
 

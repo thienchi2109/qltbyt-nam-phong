@@ -46,6 +46,26 @@ describe("URL document module-reference edge cases", () => {
     ).toEqual(["@tanstack/react-query"])
   })
 
+  it("fails closed when require is destructured from an ambient root", () => {
+    expect(() =>
+      extractModuleReferences(`
+        declare const runtime: { require(id: string): unknown }
+        const { require } = runtime
+        require("@tanstack/react-query")
+      `)
+    ).toThrow(/ambient require must be called directly/)
+  })
+
+  it("allows require destructured from a local runtime value", () => {
+    expect(
+      extractModuleReferences(`
+        const runtime = { require: (id: string) => id }
+        const { require } = runtime
+        require("local-value")
+      `)
+    ).toEqual([])
+  })
+
   it.each(["fixture.js", "fixture.jsx", "fixture.mjs", "fixture.cjs"])(
     "extracts a JSDoc import type from %s",
     (fileName) => {

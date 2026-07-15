@@ -34,3 +34,23 @@ export function readStaticString(expression: ts.Expression): string | null {
 
   return null
 }
+
+export function readBindingPropertyName(element: ts.BindingElement) {
+  if (element.dotDotDotToken) return null
+
+  const propertyName = element.propertyName
+  if (!propertyName && ts.isIdentifier(element.name)) return element.name.text
+  if (
+    propertyName &&
+    (ts.isIdentifier(propertyName) ||
+      ts.isStringLiteral(propertyName) ||
+      ts.isNumericLiteral(propertyName))
+  ) {
+    return propertyName.text
+  }
+  if (propertyName && ts.isComputedPropertyName(propertyName)) {
+    return readStaticString(propertyName.expression)
+  }
+
+  return null
+}
