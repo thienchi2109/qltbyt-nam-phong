@@ -35,10 +35,11 @@ export function UrlDocumentList({
   if (isLoading) {
     return (
       <ScrollArea className="h-full pr-4">
-        <div className="space-y-2">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
+        <div role="status" aria-busy="true" className="space-y-2">
+          <span className="sr-only">Đang tải tài liệu.</span>
+          <Skeleton aria-hidden="true" className="h-10 w-full" />
+          <Skeleton aria-hidden="true" className="h-10 w-full" />
+          <Skeleton aria-hidden="true" className="h-10 w-full" />
         </div>
       </ScrollArea>
     )

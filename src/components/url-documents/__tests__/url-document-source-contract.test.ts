@@ -3,6 +3,11 @@ import { extname, join, relative, sep } from "node:path"
 import ts from "typescript"
 import { describe, expect, it } from "vitest"
 
+import {
+  assertNoForbiddenBrowserCapabilities,
+  scriptKindForFile,
+} from "./url-document-source-contract-helpers"
+
 const sourceRoot = join(process.cwd(), "src/components/url-documents")
 const supportedExtensions = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"])
 const expectedProductionModules = [
@@ -36,10 +41,6 @@ const forbiddenSourcePatterns: ReadonlyArray<readonly [RegExp, string]> = [
   [
     /\b(?:useMutation|useQuery|useToast|toast|confirm|fetch)\s*\(/,
     "mutation, query, toast, confirmation, or network orchestration",
-  ],
-  [
-    /\b(?:localStorage|sessionStorage|indexedDB|XMLHttpRequest)\b|\bnavigator\s*\.\s*sendBeacon\s*\(/,
-    "browser storage, database, request, or beacon side effect",
   ],
   [/\bqueryKey\b|\.rpc\s*\(|\bsupabase\b|["']use server["']/, "persistence boundary"],
 ]
@@ -92,27 +93,14 @@ function assertExactSet(
   }
 }
 
-function assertNoForbiddenSourcePatterns(source: string, subject: string) {
+function assertNoForbiddenSourcePatterns(source: string, subject: string, fileName = "fixture.ts") {
   for (const [pattern, description] of forbiddenSourcePatterns) {
     if (pattern.test(source)) {
       throw new Error(`${subject} references ${description}`)
     }
   }
-}
 
-function scriptKindForFile(fileName: string) {
-  switch (extname(fileName)) {
-    case ".js":
-    case ".cjs":
-    case ".mjs":
-      return ts.ScriptKind.JS
-    case ".jsx":
-      return ts.ScriptKind.JSX
-    case ".tsx":
-      return ts.ScriptKind.TSX
-    default:
-      return ts.ScriptKind.TS
-  }
+  assertNoForbiddenBrowserCapabilities(source, subject, fileName)
 }
 
 function readLiteralModuleReference(
@@ -269,9 +257,13 @@ describe("URL document source-contract extractor", () => {
     ["indexedDB", "globalThis.indexedDB.open('documents')"],
     ["XMLHttpRequest", "const request = new XMLHttpRequest()"],
     ["sendBeacon", "navigator.sendBeacon('/documents', payload)"],
+    ["window.open", "window.open('/documents')"],
+    ["computed sendBeacon", "navigator['sendBeacon']('/documents', payload)"],
+    ["WebSocket", "const socket = new WebSocket('wss://example.com/documents')"],
+    ["document.cookie", "document.cookie = 'draft=value'"],
   ])("detects the browser-side effect %s without relying on imports", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).toThrow(
-      /fixture source references browser storage, database, request, or beacon side effect/
+      /fixture source references browser capability/
     )
   })
 })
@@ -301,7 +293,7 @@ describe("URL document production source boundary", () => {
     "keeps %s free of Equipment and persistence-specific symbols",
     (fileName) => {
       const source = readFileSync(join(sourceRoot, fileName), "utf8")
-      expect(() => assertNoForbiddenSourcePatterns(source, fileName)).not.toThrow()
+      expect(() => assertNoForbiddenSourcePatterns(source, fileName, fileName)).not.toThrow()
     }
   )
 })

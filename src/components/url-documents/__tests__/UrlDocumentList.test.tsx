@@ -15,6 +15,9 @@ describe("UrlDocumentList", () => {
       <UrlDocumentList items={[documentItem]} isLoading emptyMessage="Chưa có hồ sơ." />
     )
 
+    const status = screen.getByRole("status")
+    expect(status).toHaveAttribute("aria-busy", "true")
+    expect(status).toHaveTextContent("Đang tải tài liệu.")
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(3)
     expect(screen.queryByText("Chưa có hồ sơ.")).not.toBeInTheDocument()
     expect(screen.queryByText(documentItem.name)).not.toBeInTheDocument()
