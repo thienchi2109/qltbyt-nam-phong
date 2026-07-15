@@ -24,14 +24,18 @@ describe("UrlDocumentList", () => {
   })
 
   it("shows the configured empty message only after loading", () => {
-    render(<UrlDocumentList items={[]} isLoading={false} emptyMessage="Chưa có hồ sơ." />)
+    const { container } = render(
+      <UrlDocumentList items={[]} isLoading={false} emptyMessage="Chưa có hồ sơ." />
+    )
 
     expect(screen.getByText("Chưa có hồ sơ.")).toBeInTheDocument()
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    expect(container.querySelector(".animate-pulse")).not.toBeInTheDocument()
   })
 
   it("exposes populated documents with list semantics", () => {
-    render(
+    const { container } = render(
       <UrlDocumentList
         items={[
           documentItem,
@@ -47,6 +51,9 @@ describe("UrlDocumentList", () => {
 
     expect(screen.getByRole("list")).toBeInTheDocument()
     expect(screen.getAllByRole("listitem")).toHaveLength(2)
+    expect(screen.queryByText("Chưa có tài liệu nào.")).not.toBeInTheDocument()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+    expect(container.querySelector(".animate-pulse")).not.toBeInTheDocument()
   })
 
   it.each([

@@ -10,44 +10,12 @@ import {
   readStaticString,
   unwrapExpression,
 } from "./url-document-ast-helpers"
+import {
+  hasBrowserContextAccess,
+  isForbiddenBrowserCapability,
+  readForbiddenJsxNetworkAttribute,
+} from "./url-document-browser-capability-helpers"
 import { collectScopeBindings } from "./url-document-scope-helpers"
-
-const browserGlobalCapabilities = new Set([
-  "BroadcastChannel",
-  "caches",
-  "confirm",
-  "document",
-  "eval",
-  "EventSource",
-  "fetch",
-  "Function",
-  "global",
-  "globalThis",
-  "history",
-  "Image",
-  "indexedDB",
-  "localStorage",
-  "location",
-  "navigator",
-  "open",
-  "parent",
-  "process",
-  "Reflect",
-  "self",
-  "sessionStorage",
-  "top",
-  "URL",
-  "WebSocket",
-  "window",
-  "Worker",
-  "XMLHttpRequest",
-])
-const browserMemberCapabilities = new Set([
-  "document.cookie",
-  "globalThis.open",
-  "navigator.sendBeacon",
-  "window.open",
-])
 
 interface StaticAccess {
   path: string
@@ -94,21 +62,6 @@ function readStaticAccess(expression: ts.Expression): StaticAccess | null {
   }
 
   return null
-}
-
-function isForbiddenBrowserCapability(path: string) {
-  const matchesMemberCapability = (candidate: string) =>
-    [...browserMemberCapabilities].some(
-      (capability) => candidate === capability || candidate.startsWith(`${capability}.`)
-    )
-
-  if (matchesMemberCapability(path)) return true
-
-  const normalizedPath = path.replace(/^(?:globalThis|window)\./, "")
-  if (matchesMemberCapability(normalizedPath)) return true
-
-  const rootCapability = normalizedPath.split(".")[0]
-  return browserGlobalCapabilities.has(rootCapability)
 }
 
 function isAllowedUrlConstructorExpression(expression: ts.Expression) {
@@ -208,7 +161,11 @@ export function assertNoForbiddenBrowserCapabilities(
   )
 
   const assertAccessAllowed = (access: StaticAccess | null, scopes: readonly Set<string>[]) => {
-    if (access && !isShadowed(access.root, scopes) && isForbiddenBrowserCapability(access.path)) {
+    if (
+      access &&
+      (!isShadowed(access.root, scopes) || hasBrowserContextAccess(access.path)) &&
+      isForbiddenBrowserCapability(access.path)
+    ) {
       throw new Error(`${subject} references browser capability ${access.path}`)
     }
   }
@@ -220,7 +177,13 @@ export function assertNoForbiddenBrowserCapabilities(
     if (readStaticString(node.argumentExpression) !== null) return
 
     const baseAccess = readStaticAccess(node.expression)
-    if (baseAccess && isShadowed(baseAccess.root, scopes)) return
+    if (
+      baseAccess &&
+      isShadowed(baseAccess.root, scopes) &&
+      !hasBrowserContextAccess(baseAccess.path)
+    ) {
+      return
+    }
     if (baseAccess && isForbiddenBrowserCapability(baseAccess.path)) {
       throw new Error(`${subject} references browser capability ${baseAccess.path}[computed]`)
     }
@@ -245,6 +208,13 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (!inTypePosition && ts.isElementAccessExpression(node)) {
       assertComputedAccessAllowed(node, scopes)
+    }
+
+    if (!inTypePosition && ts.isJsxAttribute(node)) {
+      const networkAttribute = readForbiddenJsxNetworkAttribute(node)
+      if (networkAttribute) {
+        throw new Error(`${subject} references browser network attribute ${networkAttribute}`)
+      }
     }
 
     if (!inTypePosition && isRuntimeConstructorAccess(node)) {

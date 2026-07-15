@@ -132,6 +132,38 @@ describe("URL document browser boundary", () => {
   })
 
   it.each([
+    [
+      "a browser capability reached through a DOM window chain",
+      `
+        function submit(event: Event) {
+          event.currentTarget?.ownerDocument.defaultView?.fetch("/api/documents")
+        }
+      `,
+      "fixture.ts",
+    ],
+    ["a form action", '<form action="/api/documents" method="post" />', "fixture.tsx"],
+    ["an image source", '<img src="/api/documents/export" alt="" />', "fixture.tsx"],
+    [
+      "an unbound WebTransport constructor",
+      'new WebTransport("https://example.com/documents")',
+      "fixture.ts",
+    ],
+  ])("rejects imperative or implicit network access through %s", (_name, source, fileName) => {
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source", fileName)).toThrow(
+      /fixture source references browser/
+    )
+  })
+
+  it("allows a local object method named fetch", () => {
+    const source = `
+      const api = { fetch: () => undefined }
+      api.fetch()
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).not.toThrow()
+  })
+
+  it.each([
     'new URL("https://example.com/document.pdf")',
     'new globalThis.URL("https://example.com/document.pdf")',
   ])("allows pure URL construction: %s", (source) => {
