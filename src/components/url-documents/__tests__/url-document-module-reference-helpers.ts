@@ -90,22 +90,10 @@ function isUnboundIdentifier(node: ts.Identifier, checker: ts.TypeChecker) {
   return !symbol || !hasRuntimeBinding(symbol)
 }
 
-function readModuleMemberName(node: ts.Node, checker: ts.TypeChecker): string | null | undefined {
-  if (
-    ts.isPropertyAccessExpression(node) &&
-    ts.isIdentifier(node.expression) &&
-    node.expression.text === "module" &&
-    isUnboundIdentifier(node.expression, checker)
-  ) {
-    return node.name.text
-  }
+function readStaticMemberName(node: ts.Node): string | null | undefined {
+  if (ts.isPropertyAccessExpression(node)) return node.name.text
 
-  if (
-    ts.isElementAccessExpression(node) &&
-    ts.isIdentifier(node.expression) &&
-    node.expression.text === "module" &&
-    isUnboundIdentifier(node.expression, checker)
-  ) {
+  if (ts.isElementAccessExpression(node)) {
     const argument = node.argumentExpression
     return argument &&
       (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
@@ -114,6 +102,40 @@ function readModuleMemberName(node: ts.Node, checker: ts.TypeChecker): string | 
   }
 
   return undefined
+}
+
+function readAccessRootIdentifier(node: ts.Node): ts.Identifier | undefined {
+  let current = node
+  while (ts.isPropertyAccessExpression(current) || ts.isElementAccessExpression(current)) {
+    current = current.expression
+  }
+
+  return ts.isIdentifier(current) ? current : undefined
+}
+
+function readModuleMemberName(node: ts.Node, checker: ts.TypeChecker): string | null | undefined {
+  if (
+    (ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "module" &&
+    isUnboundIdentifier(node.expression, checker)
+  ) {
+    return readStaticMemberName(node)
+  }
+
+  return undefined
+}
+
+function isUnboundAmbientRequireMember(node: ts.Node, checker: ts.TypeChecker) {
+  if (readStaticMemberName(node) !== "require") return false
+
+  const root = readAccessRootIdentifier(node)
+  return Boolean(root && root.text !== "module" && isUnboundIdentifier(root, checker))
+}
+
+function hasUnboundModuleRoot(node: ts.Node, checker: ts.TypeChecker) {
+  const root = readAccessRootIdentifier(node)
+  return Boolean(root && root.text === "module" && isUnboundIdentifier(root, checker))
 }
 
 export function extractModuleReferences(source: string, fileName = "fixture.ts"): string[] {
@@ -133,6 +155,7 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
       references.add(readLiteralModuleReference(node.moduleSpecifier, "export from", sourceFile))
     } else if (ts.isCallExpression(node)) {
       const moduleMemberName = readModuleMemberName(node.expression, checker)
+      const ambientRequireMember = isUnboundAmbientRequireMember(node.expression, checker)
 
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         references.add(
@@ -156,6 +179,14 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
             sourceFile
           )
         )
+      } else if (ambientRequireMember) {
+        references.add(
+          readLiteralModuleReference(
+            node.arguments.length === 1 ? node.arguments[0] : undefined,
+            "ambient require",
+            sourceFile
+          )
+        )
       } else if (moduleMemberName === null) {
         throw new Error("module member must be a static require reference")
       } else if (moduleMemberName === "require") {
@@ -166,6 +197,8 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
             sourceFile
           )
         )
+      } else if (hasUnboundModuleRoot(node.expression, checker)) {
+        throw new Error("module calls must use direct module.require")
       }
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument
@@ -196,6 +229,7 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
       throw new Error("module must be accessed directly")
     } else {
       const moduleMemberName = readModuleMemberName(node, checker)
+      const ambientRequireMember = isUnboundAmbientRequireMember(node, checker)
       if (
         moduleMemberName !== undefined &&
         !(ts.isCallExpression(node.parent) && node.parent.expression === node)
@@ -205,6 +239,12 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
         }
         if (moduleMemberName === "require")
           throw new Error("module.require must be called directly")
+      }
+      if (
+        ambientRequireMember &&
+        !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+      ) {
+        throw new Error("ambient require must be called directly")
       }
     }
 

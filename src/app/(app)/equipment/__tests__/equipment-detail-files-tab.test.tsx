@@ -224,6 +224,22 @@ describe("EquipmentDetailFilesTab", () => {
     })
   })
 
+  it("keeps deletion disabled while the external delete mutation is pending", async () => {
+    const onDeleteAttachment = vi.fn().mockResolvedValue(undefined)
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true)
+    const { container } = renderFilesTab({
+      attachments: [attachment],
+      isDeleting: true,
+      onDeleteAttachment,
+    })
+    const deleteButton = getDeleteButton(container)
+
+    expect(deleteButton).toBeDisabled()
+    await userEvent.setup().click(deleteButton)
+    expect(confirmSpy).not.toHaveBeenCalled()
+    expect(onDeleteAttachment).not.toHaveBeenCalled()
+  })
+
   it("blocks duplicate delete requests and re-enables deletion after the request settles", async () => {
     let resolveDelete = () => undefined
     const pendingDelete = new Promise<void>((resolve) => {

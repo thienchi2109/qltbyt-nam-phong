@@ -108,12 +108,15 @@ describe("URL document source-contract extractor", () => {
       void import("dynamic-import")
       void import("dynamic-import-with-attributes", { with: { type: "json" } })
       const required = require("required-module")
+      declare const window: { require(id: string): unknown }
+      const ambientMemberRequired = window.require("ambient-member-required")
       const moduleRequired = module.require("module-required")
       const computedModuleRequired = module["require"]("computed-module-required")
       type Imported = import("import-type").Imported
     `
 
     expect(extractModuleReferences(source)).toEqual([
+      "ambient-member-required",
       "computed-module-required",
       "dynamic-import",
       "dynamic-import-with-attributes",
@@ -165,6 +168,22 @@ describe("URL document source-contract extractor", () => {
     ).toThrow(/module must be accessed directly/)
   })
 
+  it("fails closed when an ambient member require uses a computed specifier", () => {
+    expect(() =>
+      extractModuleReferences(`
+        declare const window: { require(id: string): unknown }
+        const moduleName = "@tanstack/react-query"
+        window.require(moduleName)
+      `)
+    ).toThrow(/ambient require must use a string literal/)
+  })
+
+  it("fails closed when an indirect module loader chain is called", () => {
+    expect(() =>
+      extractModuleReferences('module.constructor._load("@tanstack/react-query")')
+    ).toThrow(/module calls must use direct module\.require/)
+  })
+
   it.each([
     [
       "require parameter",
@@ -184,6 +203,16 @@ describe("URL document source-contract extractor", () => {
     ],
   ])("ignores a locally shadowed CommonJS %s", (_name, source) => {
     expect(extractModuleReferences(source)).toEqual([])
+  })
+
+  it("ignores a locally shadowed member require", () => {
+    expect(
+      extractModuleReferences(`
+        function load(runtime: { require(name: string): unknown }) {
+          return runtime.require("local-adapter")
+        }
+      `)
+    ).toEqual([])
   })
 
   it("ignores CommonJS export assignment because it is not a module reference", () => {
