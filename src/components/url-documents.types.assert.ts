@@ -1,6 +1,7 @@
 import type { UrlDocumentFormProps } from "./url-documents/UrlDocumentForm"
 import type { UrlDocumentItem, UrlDocumentListProps } from "./url-documents/UrlDocumentList"
 import type { ParsedAbsoluteUrl } from "./url-documents/url-document-utils"
+import type { JSX } from "react"
 
 type Assert<T extends true> = T
 type Equal<A, B> =
@@ -43,7 +44,7 @@ type _urlDocumentFormProps = Assert<
     }
   >
 >
-type _urlDocumentForm = Assert<Equal<Parameters<UrlDocumentForm>, [UrlDocumentFormProps]>>
+type _urlDocumentForm = Assert<Equal<UrlDocumentForm, (props: UrlDocumentFormProps) => JSX.Element>>
 type _urlDocumentItem = Assert<
   Equal<
     UrlDocumentItem,
@@ -67,4 +68,4 @@ type _urlDocumentListProps = Assert<
     }
   >
 >
-type _urlDocumentList = Assert<Equal<Parameters<UrlDocumentList>, [UrlDocumentListProps]>>
+type _urlDocumentList = Assert<Equal<UrlDocumentList, (props: UrlDocumentListProps) => JSX.Element>>

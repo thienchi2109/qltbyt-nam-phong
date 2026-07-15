@@ -1,6 +1,8 @@
 import { extname } from "node:path"
 import ts from "typescript"
 
+import { readStaticString, unwrapExpression } from "./url-document-ast-helpers"
+
 const browserGlobalCapabilities = new Set([
   "BroadcastChannel",
   "caches",
@@ -20,6 +22,7 @@ const browserGlobalCapabilities = new Set([
   "self",
   "sessionStorage",
   "top",
+  "URL",
   "WebSocket",
   "window",
   "Worker",
@@ -50,41 +53,6 @@ export function scriptKindForFile(fileName: string) {
     default:
       return ts.ScriptKind.TS
   }
-}
-
-function unwrapExpression(expression: ts.Expression): ts.Expression {
-  if (
-    ts.isAsExpression(expression) ||
-    ts.isNonNullExpression(expression) ||
-    ts.isParenthesizedExpression(expression) ||
-    ts.isSatisfiesExpression(expression) ||
-    ts.isTypeAssertionExpression(expression)
-  ) {
-    return unwrapExpression(expression.expression)
-  }
-
-  return expression
-}
-
-function readStaticString(expression: ts.Expression): string | null {
-  const unwrappedExpression = unwrapExpression(expression)
-  if (
-    ts.isStringLiteral(unwrappedExpression) ||
-    ts.isNoSubstitutionTemplateLiteral(unwrappedExpression)
-  ) {
-    return unwrappedExpression.text
-  }
-
-  if (
-    ts.isBinaryExpression(unwrappedExpression) &&
-    unwrappedExpression.operatorToken.kind === ts.SyntaxKind.PlusToken
-  ) {
-    const left = readStaticString(unwrappedExpression.left)
-    const right = readStaticString(unwrappedExpression.right)
-    return left !== null && right !== null ? left + right : null
-  }
-
-  return null
 }
 
 function readStaticAccess(expression: ts.Expression): StaticAccess | null {
@@ -127,6 +95,50 @@ function isForbiddenBrowserCapability(path: string) {
 
   const rootCapability = normalizedPath.split(".")[0]
   return browserGlobalCapabilities.has(rootCapability)
+}
+
+function isAllowedUrlConstructorExpression(expression: ts.Expression) {
+  const access = readStaticAccess(expression)
+  return access?.path === "URL" || access?.path === "globalThis.URL"
+}
+
+function isExpressionWrapper(
+  node: ts.Node
+): node is
+  | ts.AsExpression
+  | ts.NonNullExpression
+  | ts.ParenthesizedExpression
+  | ts.SatisfiesExpression
+  | ts.TypeAssertion {
+  return (
+    ts.isAsExpression(node) ||
+    ts.isNonNullExpression(node) ||
+    ts.isParenthesizedExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isTypeAssertionExpression(node)
+  )
+}
+
+function isAllowedUrlConstructorUse(node: ts.Node) {
+  if (ts.isNewExpression(node)) return isAllowedUrlConstructorExpression(node.expression)
+  if (
+    !ts.isIdentifier(node) &&
+    !ts.isPropertyAccessExpression(node) &&
+    !ts.isElementAccessExpression(node)
+  ) {
+    return false
+  }
+
+  let expression: ts.Expression = node
+  while (isExpressionWrapper(expression.parent) && expression.parent.expression === expression) {
+    expression = expression.parent
+  }
+
+  return (
+    ts.isNewExpression(expression.parent) &&
+    expression.parent.expression === expression &&
+    isAllowedUrlConstructorExpression(expression)
+  )
 }
 
 function addBindingNames(name: ts.BindingName, bindings: Set<string>) {
@@ -338,8 +350,14 @@ export function assertNoForbiddenBrowserCapabilities(
     const bindings = collectScopeBindings(node)
     const scopes = bindings ? [...parentScopes, bindings] : parentScopes
     const inTypePosition = isInTypePosition(node)
+    const allowedUrlConstructorUse = isAllowedUrlConstructorUse(node)
 
-    if (!inTypePosition && ts.isIdentifier(node) && isReferenceIdentifier(node)) {
+    if (
+      !inTypePosition &&
+      !allowedUrlConstructorUse &&
+      ts.isIdentifier(node) &&
+      isReferenceIdentifier(node)
+    ) {
       assertAccessAllowed(readStaticAccess(node), scopes)
     }
 
@@ -349,6 +367,7 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (
       !inTypePosition &&
+      !allowedUrlConstructorUse &&
       (ts.isCallExpression(node) ||
         ts.isNewExpression(node) ||
         ts.isPropertyAccessExpression(node) ||

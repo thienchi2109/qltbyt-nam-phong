@@ -1,5 +1,6 @@
 import ts from "typescript"
 
+import { readStaticString } from "./url-document-ast-helpers"
 import { scriptKindForFile } from "./url-document-source-contract-helpers"
 
 function readLiteralModuleReference(
@@ -94,11 +95,7 @@ function readStaticMemberName(node: ts.Node): string | null | undefined {
   if (ts.isPropertyAccessExpression(node)) return node.name.text
 
   if (ts.isElementAccessExpression(node)) {
-    const argument = node.argumentExpression
-    return argument &&
-      (ts.isStringLiteral(argument) || ts.isNoSubstitutionTemplateLiteral(argument))
-      ? argument.text
-      : null
+    return readStaticString(node.argumentExpression)
   }
 
   return undefined
@@ -133,6 +130,13 @@ function isUnboundAmbientRequireMember(node: ts.Node, checker: ts.TypeChecker) {
   return Boolean(root && root.text !== "module" && isUnboundIdentifier(root, checker))
 }
 
+function isUnboundAmbientComputedMember(node: ts.Node, checker: ts.TypeChecker) {
+  if (!ts.isElementAccessExpression(node) || readStaticMemberName(node) !== null) return false
+
+  const root = readAccessRootIdentifier(node)
+  return Boolean(root && root.text !== "module" && isUnboundIdentifier(root, checker))
+}
+
 function hasUnboundModuleRoot(node: ts.Node, checker: ts.TypeChecker) {
   const root = readAccessRootIdentifier(node)
   return Boolean(root && root.text === "module" && isUnboundIdentifier(root, checker))
@@ -156,6 +160,7 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
     } else if (ts.isCallExpression(node)) {
       const moduleMemberName = readModuleMemberName(node.expression, checker)
       const ambientRequireMember = isUnboundAmbientRequireMember(node.expression, checker)
+      const ambientComputedMember = isUnboundAmbientComputedMember(node.expression, checker)
 
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         references.add(
@@ -179,6 +184,8 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
             sourceFile
           )
         )
+      } else if (ambientComputedMember) {
+        throw new Error("ambient member must use a static reference")
       } else if (ambientRequireMember) {
         references.add(
           readLiteralModuleReference(
@@ -230,6 +237,7 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
     } else {
       const moduleMemberName = readModuleMemberName(node, checker)
       const ambientRequireMember = isUnboundAmbientRequireMember(node, checker)
+      const ambientComputedMember = isUnboundAmbientComputedMember(node, checker)
       if (
         moduleMemberName !== undefined &&
         !(ts.isCallExpression(node.parent) && node.parent.expression === node)
@@ -246,8 +254,14 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
       ) {
         throw new Error("ambient require must be called directly")
       }
+      if (ambientComputedMember) {
+        throw new Error("ambient member must use a static reference")
+      }
     }
 
+    for (const jsDoc of ts.getJSDocCommentsAndTags(node)) {
+      if (jsDoc.parent === node) visit(jsDoc)
+    }
     ts.forEachChild(node, visit)
   }
 
