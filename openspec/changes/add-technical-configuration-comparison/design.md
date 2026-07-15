@@ -144,24 +144,58 @@ File, canonical rows, preview và lỗi import là client state tạm thời, kh
 
 ### 7. Tài liệu URL và trích dẫn theo tiêu chí
 
-Mỗi phiên bản cơ sở và mỗi phương án có danh sách tài liệu URL riêng. Metadata tối thiểu:
+Mỗi phiên bản cơ sở, mỗi sản phẩm tham chiếu và mỗi phương án có danh sách tài
+liệu URL riêng. Metadata tối thiểu:
 
 - ID
 - tên tài liệu
-- URL hợp lệ
-- ghi chú tùy chọn
+- absolute `http`/`https` URL hợp lệ
 - người tạo và thời điểm tạo/cập nhật
 
-Một tài liệu có thể được liên kết với nhiều tiêu chí. Mỗi liên kết có trang/mục tùy chọn và đoạn trích nhiều dòng. Trong tương lai, chỉ các đoạn trích liên kết trực tiếp với tiêu chí mới được đưa vào payload AI của tiêu chí đó.
+Document-level note nằm ngoài MVP. Trang/mục và đoạn trích bằng chứng thuộc
+criterion citation, tránh tạo metadata không có form/persistence/contract owner.
+Một tài liệu có thể được liên kết với nhiều tiêu chí. Mỗi liên kết có trang/mục
+tùy chọn và đoạn trích nhiều dòng. Trong tương lai, chỉ các đoạn trích liên kết
+trực tiếp với tiêu chí mới được đưa vào payload AI của tiêu chí đó.
 
 Pattern Equipment được tái sử dụng ở mức shared component/validation:
 
 - form tên tài liệu và URL
-- `new URL(...)` validation
+- `new URL(...)` syntax parsing tách khỏi document protocol policy
+- document policy yêu cầu case-insensitive lexical prefix `^https?://`, không có
+  raw backslash, parse thành công và parsed protocol là `http:`/`https:`;
+  create/update RPC enforce lại cùng contract trước write
 - danh sách liên kết mở tab mới với `noopener noreferrer`
+- URL dùng protocol ngoài allowlist không được persist hoặc đặt vào clickable `href`
 - trạng thái loading, empty, add và delete
+- accepted client values giữ raw string hiện có thay vì dùng normalized
+  `URL.href`; form callback, DB create/update response và rendered raw `href`
+  không rewrite value, trong khi test vẫn khóa resolved browser destination
+- inline validation dùng live error semantics; icon delete có accessible name và
+  không submit outer save form
 
-Không tái sử dụng bảng `file_dinh_kem` vì bảng đó gắn với `thiet_bi`. Khi triển khai, cần trích phần trình bày và validation dùng chung thay vì sao chép `EquipmentDetailFilesTab`.
+Không tái sử dụng bảng `file_dinh_kem` vì bảng đó gắn với `thiet_bi`. Khi triển
+khai, cần trích phần trình bày và validation dùng chung từ
+`EquipmentDetailFilesTab` thay vì sao chép component. Equipment tiếp tục map
+`useEquipmentAttachments` vào controlled primitives; P7B/P9B map adapter riêng
+của module vào cùng primitives. Google Drive folder affordance vẫn là
+Equipment-specific nhưng phải dùng cùng URL parser/policy trước khi tạo `href`.
+P7B sở hữu authoritative server-side HTTP(S) validator và P9B gọi lại cùng
+validator, không tạo bản sao logic. AST consumer contracts xác nhận Equipment,
+P7B và P9B thực sự import/render shared form/list bằng exact shared
+path/binding và không giữ local `new URL(...)` hoặc phần presentation đã
+extract. Manifest là cumulative: P6B có Equipment; P7B có Equipment + baseline;
+P9B có Equipment + baseline + option. Mỗi consumer còn có React
+runtime-delegation tests mock primitives/utility để chứng minh props/callbacks
+đang drive active create/update/render/delete workflow, không chỉ tồn tại dưới
+dạng dead import.
+
+P7B dùng một aggregate
+`technical_configuration_baseline_documents_list` làm read path cho cả tài liệu
+baseline và reference product. Response phân biệt exact `owner_type`/`owner_id`
+và trả nested citations chỉ trong cùng baseline version, để hook/UI không cần
+suy đoán hoặc ghép hai contract đọc. P9B dùng option-document list được scope
+bằng comparison set và trả citations của đúng comparison set đó.
 
 ### 8. Hai bề mặt làm việc bổ trợ nhau
 

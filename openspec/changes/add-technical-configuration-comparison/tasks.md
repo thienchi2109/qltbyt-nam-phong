@@ -28,13 +28,14 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P5B](./implementation-plan.md#phase-p5b---baseline-workbook-codec)                          | Baseline workbook codec                         | P3B, P4, P5A           | TC-05                                           |
 | [P5C](./implementation-plan.md#phase-p5c---atomic-baseline-import-contract)                  | Atomic baseline import RPC                      | P4, P5B                | TC-02, TC-05, TC-20                             |
 | [P5D](./implementation-plan.md#phase-p5d---baseline-import-workflow-ui)                      | Baseline import workflow UI                     | P5B, P5C               | TC-05, TC-20                                    |
-| [P6](./implementation-plan.md#phase-p6---shared-url-document-primitives)                     | Shared URL document primitives                  | P0; triển khai sau P5D | TC-11                                           |
+| [P6A](./implementation-plan.md#phase-p6a---url-document-contracts-and-shared-primitives)     | URL document contracts và shared primitives     | P0; triển khai sau P5D | TC-11                                           |
+| [P6B](./implementation-plan.md#phase-p6b---equipment-url-document-consumer-migration)        | Chuyển Equipment sang shared primitives         | P6A                    | TC-11                                           |
 | [P7A](./implementation-plan.md#phase-p7a---reference-products)                               | Sản phẩm tham chiếu và đối chiếu theo tiêu chí  | P3A, P4                | TC-02, TC-04, TC-06, TC-08, TC-20               |
-| [P7B](./implementation-plan.md#phase-p7b---baseline-documents-and-citations)                 | Tài liệu/trích dẫn cơ sở và sản phẩm tham chiếu | P4, P6, P7A            | TC-02, TC-04, TC-06, TC-11, TC-12, TC-20        |
+| [P7B](./implementation-plan.md#phase-p7b---baseline-documents-and-citations)                 | Tài liệu/trích dẫn cơ sở và sản phẩm tham chiếu | P4, P6B, P7A           | TC-02, TC-04, TC-06, TC-11, TC-12, TC-20        |
 | [P8A](./implementation-plan.md#phase-p8a---supplier-and-option-data-contracts)               | Data contract nhà cung cấp và phương án         | P4                     | TC-02, TC-07, TC-09, TC-17, TC-20               |
 | [P8B](./implementation-plan.md#phase-p8b---supplier-option-manual-workspace)                 | UI nhập thủ công phương án                      | P3A, P8A               | TC-04, TC-09, TC-17, TC-20                      |
 | [P9A](./implementation-plan.md#phase-p9a---supplier-option-excel)                            | Excel phương án                                 | P5A, P8B               | TC-10, TC-20                                    |
-| [P9B](./implementation-plan.md#phase-p9b---supplier-option-documents-and-citations)          | Tài liệu và trích dẫn phương án                 | P6, P7B, P8B           | TC-02, TC-04, TC-11, TC-12, TC-20               |
+| [P9B](./implementation-plan.md#phase-p9b---supplier-option-documents-and-citations)          | Tài liệu và trích dẫn phương án                 | P6B, P7B, P8B          | TC-02, TC-04, TC-11, TC-12, TC-20               |
 | [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                      | P7B, P9B               | TC-02, TC-13, TC-17                             |
 | [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                           | Ma trận so sánh                                 | P3A, P10A              | TC-13, TC-17                                    |
 | [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)         | Domain và persistence đánh giá thủ công         | P4, P8A                | TC-02, TC-15, TC-16, TC-19, TC-20               |
@@ -144,13 +145,35 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [ ] P5D.6 Chặn lock affordance khi import preview/error transient còn mở; không persist import-error entity.
 - [ ] P5D.7 Viết draft-only, template-download delegation, no-persistence-before-confirm, success/cache, locked-target và conflict-preservation React tests.
 
-## Phase P6 - Shared URL Document Primitives
+## Phase P6A - URL Document Contracts And Shared Primitives
 
-- [ ] P6.1 Khóa regression behavior hiện tại của Equipment attachments bằng tests.
-- [ ] P6.2 Trích shared URL validation, form/list presentation và safe external links.
-- [ ] P6.3 Giữ persistence adapter riêng cho Equipment.
-- [ ] P6.4 Chuyển Equipment consumer sang shared primitive không đổi UX.
-- [ ] P6.5 Chạy semantic dedup review và Equipment regression verification.
+- [ ] P6A.1 Viết direct characterization tests cho `EquipmentDetailFilesTab`; không dựa vào dialog tests đang mock component/hook.
+- [ ] P6A.2 Khóa loading, empty, listed-link, invalid URL, add/reset, rejected-add retry, add-pending inputs/button/spinner, delete cancel/confirm và delete-pending behavior.
+- [ ] P6A.3 Viết failing unit tests rồi thêm pure URL parser/policy với exact
+      TypeScript signatures; yêu cầu lexical `^https?://`, không có backslash,
+      parsed HTTP(S), chấp nhận mixed-case
+      `HtTpS://EXAMPLE.com/a/../spec.pdf`, giữ accepted raw value và khóa cả
+      resolved anchor destination thay vì expose normalized `URL.href`.
+- [ ] P6A.4 Viết failing component tests rồi thêm controlled `UrlDocumentForm`/`UrlDocumentList`, gồm `role="alert"` inline error và outer-form-safe accessible delete buttons.
+- [ ] P6A.5 Giữ mutation, toast, confirmation, dirty-state và affected-link policy ngoài shared primitives.
+- [ ] P6A.6 Thêm TypeScript-AST source-contract test recursive inventory mọi TS/JS module extension, parse import/import-equals/export-from/dynamic import/`require()`/`ImportTypeNode`, fail computed refs, enforce concrete per-file set equality và tự khóa extractor bằng synthetic fixtures; chạy semantic dedup/focused/TypeScript/React gates và không sửa Equipment production code.
+
+## Phase P6B - Equipment URL Document Consumer Migration
+
+- [ ] P6B.1 Chuyển `EquipmentDetailFilesTab` sang P6A primitives và map `Attachment` sang `id`/`name`/`url`.
+- [ ] P6B.2 Giữ local form state, invalid-URL toast, delete confirmation và Google Drive affordance trong Equipment wrapper; gate folder `href` bằng cùng P6A URL utility.
+- [ ] P6B.3 Không sửa `useEquipmentAttachments`, RPC names, query keys hoặc `file_dinh_kem` adapter.
+- [ ] P6B.4 Chạy P6A baseline green, append red behavior +
+      runtime-delegation + consumer AST tests, gồm
+      protocol-only/single-slash/backslash URL cases và mixed-case accepted
+      vector qua cả add/list/folder sinks; dùng `fireEvent.submit` cho
+      handler-level matrix, xác nhận red trước migration, rồi rerun toàn bộ
+      characterization/shared/delegation/source-contract tests cùng focused
+      dialog/repository gates ở green.
+- [ ] P6B.5 Chỉ browser-smoke read-only qua `/equipment?highlight=<fixture-id>` khi đã có authenticated non-production fixture/mock path; nếu không thì ghi `N/A` và dùng focused React tests làm mandatory gate.
+- [ ] P6B.6 Enforce exact shared path/named-binding AST contract với cumulative
+      manifest chỉ gồm Equipment ở P6B; delegation test mock form/list/utility
+      và chứng minh props/callbacks drive active add/list/delete/folder workflow.
 
 ## Phase P7A - Reference Products
 
@@ -165,12 +188,30 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 ## Phase P7B - Baseline Documents And Citations
 
 - [ ] P7B.1 Thêm document URL metadata và criterion citations cho baseline và từng sản phẩm tham chiếu.
-- [ ] P7B.2 Reuse document cho nhiều tiêu chí không sao chép URL.
-- [ ] P7B.3 Giữ owner rõ ràng để trích dẫn sản phẩm tham chiếu không bị trộn với baseline hoặc phương án.
-- [ ] P7B.4 Enforce locked immutability; editable delete phải xác nhận và nêu số liên kết.
-- [ ] P7B.5 Thêm explicit save, dirty-state, expected-revision guard và tích hợp P6 primitives.
-- [ ] P7B.6 Chạy DB phase gate cho quyền, ownership, cascade và concurrency.
-- [ ] P7B.7 Viết owner-scope, reuse, deletion, locked, conflict và long-excerpt tests.
+- [ ] P7B.2 Dùng một paginated
+      `technical_configuration_baseline_documents_list` aggregate cho cả
+      baseline/reference owners; trả exact `owner_type`/`owner_id`, raw URL và
+      nested citations chỉ trong cùng baseline version.
+- [ ] P7B.3 Reuse document cho nhiều tiêu chí không sao chép URL.
+- [ ] P7B.4 Giữ owner rõ ràng để trích dẫn sản phẩm tham chiếu không bị trộn với baseline hoặc phương án.
+- [ ] P7B.5 Enforce locked immutability; editable delete phải xác nhận và nêu số liên kết.
+- [ ] P7B.6 Thêm explicit save, dirty-state, expected-revision guard, tích hợp
+      P6B-proven primitives; enforce cumulative Equipment + baseline exact
+      path/named-binding AST manifest và runtime-delegation assertions chống
+      dead import/local duplicate form/list/URL parsing.
+- [ ] P7B.7 Tạo
+      `public._technical_configuration_validate_document_url(text) RETURNS void`
+      và dùng trong baseline/reference document create/update RPC trước
+      write/revision increment; cùng lexical HTTP(S)/no-backslash contract và
+      không rewrite accepted raw URL.
+- [ ] P7B.8 Chạy DB phase gate cho quyền, ownership,
+      malformed/disallowed/protocol-only/single-slash/backslash URL, exact raw
+      mixed-case create/update/list stored-returned equality, aggregate-list
+      owner/citation scope, cascade, concurrency và `pg_get_functiondef`
+      exact-caller contract: bốn callers trước P9B, sáu callers khi rerun sau
+      P9B, mọi list/delete/citation RPC là non-caller.
+- [ ] P7B.9 Viết owner-scope, reuse, raw create/update/list/render, URL
+      rejection, delegation, deletion, locked, conflict và long-excerpt tests.
 
 ## Phase P8A - Supplier And Option Data Contracts
 
@@ -200,10 +241,20 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 ## Phase P9B - Supplier Option Documents And Citations
 
 - [ ] P9B.1 Thêm option document URLs và criterion citations.
-- [ ] P9B.2 Reuse P6 primitives và P7B citation behavior.
-- [ ] P9B.3 Editable delete phải xác nhận và hiển thị affected-link count.
-- [ ] P9B.4 Thêm explicit save, dirty-state, expected-revision guard và chạy DB phase gate.
-- [ ] P9B.5 Viết URL/evidence integration tests.
+- [ ] P9B.2 Reuse P6B-proven primitives/P7B citation behavior; enforce
+      cumulative Equipment + baseline + option exact path/named-binding AST
+      manifest và runtime-delegation assertions chống dead import/local
+      duplicate form/list/URL parsing.
+- [ ] P9B.3 Reuse authoritative P7B HTTP(S) validator; editable delete phải xác nhận và hiển thị affected-link count.
+- [ ] P9B.4 Thêm explicit save, dirty-state, expected-revision guard và chạy DB
+      phase gate gồm malformed/disallowed/protocol-only/single-slash/backslash
+      URL, mixed-case acceptance, exact raw create/update/list stored-returned
+      equality cùng
+      `pg_get_functiondef` exact-six-caller assertion.
+- [ ] P9B.5 Rerun baseline/reference SQL + React evidence suites cùng option
+      suites; khóa raw create/update/list/render và active primitive/utility
+      delegation ở cả hai consumer generations.
+- [ ] P9B.6 Chỉ mark TC-11-S01/S02/S03 và TC-12-S01/S02 complete khi baseline, reference-product và supplier-option cases đều pass.
 
 ## Phase P10A - Comparison Read Contract
 

@@ -85,19 +85,20 @@ Do not reload the full feature history or all 24 leaf phases unless a cross-phas
 ## Dependency Graph
 
 ```text
-P0              -> P1, P5A, P6
+P0              -> P1, P5A, P6A
 P1              -> P2, P3A
 P2 + P3A        -> P3B
 P3B             -> P3C, P4
 P3B + P4 + P5A  -> P5B
 P4 + P5B        -> P5C
 P5B + P5C       -> P5D
+P6A             -> P6B
 P3A + P4        -> P7A
-P4 + P6 + P7A   -> P7B
+P4 + P6B + P7A  -> P7B
 P4              -> P8A
 P3A + P8A       -> P8B
 P5A + P8B       -> P9A
-P6 + P7B + P8B  -> P9B
+P6B + P7B + P8B -> P9B
 P7B + P9B       -> P10A
 P3A + P10A      -> P10B
 P4 + P8A        -> P11
@@ -108,7 +109,7 @@ P12C            -> P13A, P13B
 P13A + P13B + P7A + P9A -> P13C
 ```
 
-`P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6` is also technically independent after `P0`, but the default delivery order places it after `P5D` and requires it to land before the first document UI in `P7B`. Neither phase blocks reference-product or supplier work that has no document UI.
+`P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
 
 ## Requirement Traceability
 
@@ -126,7 +127,7 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-08 | Optional reference products                     | P0, P7A                                                                      |
 | TC-09 | Multiple supplier configuration options         | P8A, P8B                                                                     |
 | TC-10 | Standard supplier option Excel template         | P9A                                                                          |
-| TC-11 | URL-only document profiles                      | P6, P7B, P9B                                                                 |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B, P9B                                                           |
 | TC-12 | Criterion-level document citations              | P7B, P9B                                                                     |
 | TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                   |
 | TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                   |
@@ -666,41 +667,125 @@ The backend can authoritatively preview and atomically apply one complete baseli
 
 Users can create the same draft baseline manually or through one versioned system workbook built on the existing Equipment Excel infrastructure.
 
-## Phase P6 - Shared URL Document Primitives
+## Phase P6A - URL Document Contracts And Shared Primitives
 
-**Depends on:** P0; scheduled after P5D and before P7B
-**Requirements:** TC-11  
-**Deploy boundary:** refactor with no new technical-configuration persistence
+**Depends on:** P0; scheduled after P5D
+
+**Requirements:** TC-11
+
+**Deploy boundary:** additive tests and persistence-agnostic UI primitives; Equipment production code remains unchanged
+
+**Detailed TDD plan:** [P6A - TDD sequence](./p6-tdd-plan.md#p6a---tdd-sequence)
 
 ### Planned files
 
-- Create: `src/components/url-attachments/UrlAttachmentForm.tsx`
-- Create: `src/components/url-attachments/UrlAttachmentList.tsx`
-- Create: `src/components/url-attachments/url-attachment-utils.ts`
-- Create: `src/components/url-attachments/__tests__/UrlAttachmentForm.test.tsx`
-- Modify: `src/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab.tsx`
-- Test/modify as needed: existing Equipment detail attachment tests
+- Create: `src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx`
+- Create: `src/components/url-documents/UrlDocumentForm.tsx`
+- Create: `src/components/url-documents/UrlDocumentList.tsx`
+- Create: `src/components/url-documents/url-document-utils.ts`
+- Create: `src/components/url-documents/__tests__/UrlDocumentForm.test.tsx`
+- Create: `src/components/url-documents/__tests__/UrlDocumentList.test.tsx`
+- Create: `src/components/url-documents/__tests__/url-document-utils.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
 
 ### Tasks
 
-- [ ] Lock current Equipment attachment behavior with focused regression tests.
-- [ ] Extract URL parsing, form state and safe external-link presentation.
-- [ ] Keep shared components persistence-agnostic through callbacks/props.
-- [ ] Keep Equipment hook and `file_dinh_kem` adapter Equipment-specific.
-- [ ] Replace duplicated Equipment presentation with shared primitives.
-- [ ] Preserve loading, empty, add, delete and retry behavior.
-- [ ] Avoid nested cards when composing the new shared surface.
+- [ ] Add direct characterization tests for the current Equipment files tab instead of relying on dialog tests that mock the tab and attachment hook.
+- [ ] Lock loading, empty, listed-link, invalid URL, successful add/reset, rejected add/retry, add-pending inputs/button/spinner, delete cancel/confirm and delete-pending behavior.
+- [ ] Add pure `new URL(...)`-equivalent parser plus a separate document policy
+      that requires case-insensitive lexical `^https?://`, rejects raw
+      backslashes and then requires parsed `http:`/`https:` protocol, with no
+      RPC, query-key or table knowledge.
+- [ ] Add controlled form/list primitives whose props use canonical `id`, `name` and `url` fields; the form accepts accessible inline validation feedback without owning validation policy.
+- [ ] Freeze exact utility/form/list TypeScript signatures and preserve accepted
+      raw URL strings in callbacks and anchor attributes rather than exposing
+      normalized `URL.href`; tests also assert the resolved anchor destination.
+- [ ] Keep mutation, toast, confirmation, dirty-state and affected-link policies outside the shared primitives so P7B/P9B can supply their own persistence workflow.
+- [ ] Keep external links on the shared list in a new tab with `noopener noreferrer`.
+- [ ] Require `role="alert"` validation feedback plus `type="button"` and document-specific accessible labels for delete; prove delete cannot submit an outer form.
+- [ ] Add one TypeScript-AST source-contract test that recursively inventories every supported TS/JS module extension; parses import, import-equals, export-from, dynamic import, `require()` and `ImportTypeNode`; fails non-literal references; and enforces concrete per-file module-specifier set equality with no prefix matching.
+- [ ] Avoid nested cards and avoid introducing a shared manager component before multiple consumers prove that abstraction.
 
 ### TDD and verification
 
-- Existing Equipment tests must fail if behavior changes.
-- New shared primitive tests cover valid/invalid URL and safe link attributes.
-- `@code-deduplication` review before commit and push.
-- Browser check of Equipment files tab.
+- Characterization tests pass against the pre-refactor Equipment component and fail on deliberate behavior regressions.
+- Utility tests are written before implementation and cover parseable/unparseable URLs using the existing `new URL(...)` contract.
+- Form/list tests are written before implementation and cover controlled
+  callbacks, disabled states, live accessible inline URL errors,
+  outer-form-safe delete actions, loading/empty rendering and a table-driven
+  malformed/relative/scheme-relative/protocol-only/single-slash/backslash/non-HTTP/HTTP/HTTPS
+  link matrix; invalid items remain named text with no link role, anchor or
+  fallback `href`. The accepted matrix includes
+  `HtTpS://EXAMPLE.com/a/../spec.pdf`, preserves raw `getAttribute("href")` and
+  resolves to `new URL(raw).href`.
+- Handler-level invalid cases use `fireEvent.submit(form)` so native `type="url"` constraints cannot bypass parser/policy assertions; separate `userEvent` cases cover native disabled and valid submit behavior.
+- Source-contract synthetic fixtures cover every parsed AST form, `ImportTypeNode`, computed-reference fail-closed behavior, TS/JS extension inventory drift and missing/extra module specifiers before the production source check is trusted.
+- Run `@code-deduplication` discovery before creating the shared files; current graph/search evidence found no reusable URL-document form/list abstraction.
+- Run focused Vitest plus the TypeScript/React quality gates required for the new shared files.
 
 ### Exit gate
 
-Equipment uses tested shared URL primitives with no behavior or storage change. The new module has not yet created document records.
+Shared controlled URL-document primitives and direct Equipment characterization tests exist, but no Equipment production consumer and no technical-configuration document record has changed.
+
+## Phase P6B - Equipment URL Document Consumer Migration
+
+**Depends on:** P6A
+
+**Requirements:** TC-11
+
+**Deploy boundary:** Equipment presentation refactor with HTTP(S)-only document-link hardening; existing hook/RPC/storage behavior remains authoritative
+
+**Detailed TDD plan:** [P6B - TDD-safe migration sequence](./p6-tdd-plan.md#p6b---tdd-safe-migration-sequence)
+
+### Planned files
+
+- Modify: `src/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab.tsx`
+- Modify: `src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx`
+- Create: `src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx`
+- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
+
+### Tasks
+
+- [ ] Replace duplicated Equipment form/list presentation with the P6A controlled primitives.
+- [ ] Map Equipment `Attachment` fields to canonical shared `id`, `name` and `url` props inside the Equipment wrapper.
+- [ ] Keep local input state, `useToast`, invalid-URL feedback, delete confirmation and Google Drive affordance Equipment-specific, while gating that folder `href` through the same P6A URL parser/policy.
+- [ ] Keep `useEquipmentAttachments`, `equipment_attachments_list`, `equipment_attachment_create`, `equipment_attachment_delete`, query keys and `file_dinh_kem` ownership unchanged.
+- [ ] Preserve current supported HTTP(S) behavior while rejecting `javascript:`, `data:`, `file:` and other non-document schemes before add or any attachment/folder clickable-link rendering.
+- [ ] Apply the same table-driven
+      malformed/relative/scheme-relative/protocol-only/single-slash/backslash/non-HTTP/HTTP/HTTPS
+      matrix to add input, existing attachments and `googleDriveFolderUrl`;
+      include `HtTpS://EXAMPLE.com/a/../spec.pdf` as the accepted mixed-case
+      vector at all three sinks.
+- [ ] Preserve exact accepted raw strings in Equipment add payloads and
+      attachment/folder `href` attributes, while asserting each resolved anchor
+      destination equals `new URL(raw).href`.
+- [ ] Catch rejected delete callbacks in the Equipment wrapper after hook feedback, reset pending state and allow retry without an unhandled rejection.
+- [ ] Preserve loading, empty, add/reset, rejected-add retry, delete and safe-link behavior under the P6A regression suite.
+- [ ] Extend the AST source contract with exact shared module paths/named
+      bindings and cumulative manifest set equality. P6B requires exactly
+      `EquipmentDetailFilesTab.tsx`; P7B later adds baseline and P9B later adds
+      option without dropping earlier consumers.
+- [ ] Add a focused runtime-delegation test that mocks the exact
+      form/list/utility modules and proves captured props/callbacks drive active
+      Equipment field, add, mapped-list, delete-confirmation and Google Drive
+      workflows; imports alone do not satisfy the contract.
+- [ ] Run semantic dedup review and verify that the shared layer imports no Equipment type, hook, RPC client or persistence identifier.
+
+### TDD and verification
+
+- Run the P6A Equipment characterization/shared/source-contract baseline green;
+  append wrapper cases for every URL sink, runtime delegation and
+  rejected-delete retry; confirm behavior/delegation/source-contract suites fail
+  on pre-P6B source; migrate Equipment; rerun the unchanged baseline plus new
+  cases green.
+- Run shared primitive tests, focused Equipment dialog tests, typecheck and React Doctor in repository verification order.
+- When an authenticated non-production fixture/mock path already exists, browser-smoke the Equipment files tab read-only. Otherwise record it as `N/A`; focused React tests remain the mandatory gate and P6 does not add a browser harness.
+
+### Exit gate
+
+Equipment renders through the tested P6A primitives with no storage-contract change. Supported HTTP(S) workflow remains unchanged; disallowed schemes are rejected or rendered non-clickable. P7B may now add independent document records and reuse the controlled primitives.
+
+No P6C is planned. Current import/graph inspection shows one Equipment consumer boundary, one Equipment-specific hook/RPC adapter and no second independent extraction seam. Add P6C only if P6A/P6B execution reveals a separately testable boundary that cannot land safely in either leaf.
 
 ## Phase P7A - Reference Products
 
@@ -745,7 +830,7 @@ Reference products can be compared criterion-by-criterion while authoring the ba
 
 ## Phase P7B - Baseline Documents And Citations
 
-**Depends on:** P4, P6, P7A
+**Depends on:** P4, P6B, P7A
 **Requirements:** TC-02, TC-04, TC-06, TC-11, TC-12, TC-20  
 **Deploy boundary:** baseline/reference-product URL evidence and criterion citations
 
@@ -756,6 +841,8 @@ Reference products can be compared criterion-by-criterion while authoring the ba
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
 - Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/baseline-evidence.test.tsx`
+- Create: `supabase/tests/technical_configuration_baseline_documents_phase_gate.sql`
+- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
@@ -764,7 +851,22 @@ Reference products can be compared criterion-by-criterion while authoring the ba
 - [ ] Add document URL metadata owned by the baseline or one reference product.
 - [ ] Add criterion citation with document ID, page/section and excerpt while preserving owner scope.
 - [ ] Reuse one document across multiple criteria without URL duplication.
-- [ ] Use P6 primitives for URL list/form behavior.
+- [ ] Use P6B-proven primitives for URL list/form behavior.
+- [ ] Define `technical_configuration_baseline_documents_list` as the single
+      paginated P7B read path for both owner types. Return discriminated
+      `baseline`/`reference_product` items with exact `owner_id`, raw URL and
+      nested same-version citations; wire `useTechnicalConfigurationDocuments`
+      and both baseline/reference UI states to that response.
+- [ ] Extend the URL-document consumer AST contract to enforce the cumulative
+      Equipment + `TechnicalConfigurationBaselineDocuments.tsx` manifest with
+      exact shared module paths/named bindings, primitive render usage, shared
+      parser/policy calls and no local `new URL(...)` or extracted field/list
+      presentation.
+- [ ] Add
+      `public._technical_configuration_validate_document_url(text) RETURNS void`
+      and call it from baseline/reference document create/update RPCs before
+      write or revision increment; enforce lexical `^https?://`, no backslash
+      and parsed HTTP(S) semantics without rewriting accepted input.
 - [ ] Show reference evidence through indicators and the detail panel without adding permanent evidence columns.
 - [ ] Add explicit save and dirty-state handling for document/citation edits.
 - [ ] Require the expected baseline revision and preserve unsaved edits on conflict.
@@ -777,8 +879,21 @@ Reference products can be compared criterion-by-criterion while authoring the ba
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- SQL tests for baseline/reference-product owner scope, reuse, affected-link count, stale revision and locked immutability.
-- React tests for URL validation, dirty state, conflict preservation, deletion confirmation, citation editing and locked read-only state.
+- SQL tests for baseline/reference-product aggregate-list owner discrimination
+  and citation scope, reuse,
+  malformed/disallowed/protocol-only/single-slash/backslash URL rejection with
+  no write/revision change, mixed-case-scheme acceptance and exact raw URL
+  stored/returned equality across create, update and aggregate list,
+  affected-link count, stale revision and locked immutability.
+- SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four callers while P9B functions are absent; conditionally six after P9B exists; every list/delete/citation RPC remains a non-caller.
+- React tests for URL validation, aggregate baseline/reference owner routing,
+  exact raw create/update/list/render behavior, dirty state, conflict
+  preservation, deletion confirmation, citation editing and locked read-only
+  state. Mocked primitive/utility delegation assertions prove the active
+  baseline and reference workflows are driven through shared props/callbacks.
+- Consumer source-contract test is red before the baseline document UI exists
+  and green only when the cumulative Equipment + baseline manifest uses exact
+  shared paths/bindings.
 - Browser check with long Vietnamese excerpts.
 
 ### Exit gate
@@ -898,7 +1013,7 @@ Supplier options can be entered manually or through the exact system template.
 
 ## Phase P9B - Supplier Option Documents And Citations
 
-**Depends on:** P6, P7B, P8B  
+**Depends on:** P6B, P7B, P8B
 **Requirements:** TC-02, TC-04, TC-11, TC-12, TC-20  
 **Deploy boundary:** option URL evidence only
 
@@ -907,6 +1022,8 @@ Supplier options can be entered manually or through the exact system template.
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_evidence.sql`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionDocuments.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/option-evidence.test.tsx`
+- Create: `supabase/tests/technical_configuration_option_documents_phase_gate.sql`
+- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionEditor.tsx`
 
@@ -914,7 +1031,13 @@ Supplier options can be entered manually or through the exact system template.
 
 - [ ] Add option-level document URL metadata.
 - [ ] Add criterion citations with page/section/excerpt.
-- [ ] Reuse P6 URL primitives and P7B citation behavior.
+- [ ] Reuse P6B-proven URL primitives and P7B citation behavior.
+- [ ] Extend the URL-document consumer AST contract to enforce the cumulative
+      Equipment + baseline + `TechnicalConfigurationOptionDocuments.tsx`
+      manifest with exact shared module paths/named bindings, primitive render
+      usage, shared parser/policy calls and no local `new URL(...)` or extracted
+      field/list presentation.
+- [ ] Reuse the P7B authoritative HTTP(S) URL validator in option document create/update RPCs.
 - [ ] Reuse one option document across multiple criteria.
 - [ ] Add explicit save and dirty-state handling for option document/citation edits.
 - [ ] Require the expected option revision and preserve unsaved edits on conflict.
@@ -924,12 +1047,24 @@ Supplier options can be entered manually or through the exact system template.
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- Ownership, cascade, reuse, stale-revision and affected-link-count SQL tests.
-- URL validation, dirty state, conflict preservation, citation and deletion-confirmation UI tests.
+- Option-list ownership/citation scope, cascade, reuse,
+  malformed/disallowed/protocol-only/single-slash/backslash URL rejection,
+  mixed-case-scheme acceptance and exact raw URL stored/returned equality across
+  create, update and list, stale-revision and affected-link-count SQL tests.
+- SQL source-contract assertions over `pg_get_functiondef` proving the same validator has exactly six callers after P9B: baseline/reference/option document create/update only.
+- URL validation, exact raw create/update/list/render behavior, dirty state,
+  conflict preservation, citation and deletion-confirmation UI tests. Mocked
+  primitive/utility delegation assertions prove the active option workflow is
+  driven through shared props/callbacks.
+- Consumer source-contract test is red before the option document UI exists and
+  green only when the cumulative Equipment + baseline + option manifest uses
+  exact shared paths/bindings.
+- Rerun `supabase/tests/technical_configuration_baseline_documents_phase_gate.sql` and `baseline-evidence.test.tsx` together with the P9B option suites.
+- Mark TC-11-S01/S02/S03 and TC-12-S01/S02 complete only after baseline, reference-product and supplier-option cases pass together.
 
 ### Exit gate
 
-Supplier options have criterion-level URL evidence without changing Excel or assessment behavior.
+Baseline, reference-product and supplier-option cases all pass TC-11-S01/S02/S03 and TC-12-S01/S02 with authoritative HTTP(S) validation and correctly scoped reusable citations; supplier options gain criterion-level URL evidence without changing Excel or assessment behavior.
 
 ## Phase P10A - Comparison Read Contract
 

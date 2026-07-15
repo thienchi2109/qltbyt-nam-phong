@@ -208,6 +208,38 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
 - Baseline import preview/apply request: `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`, `p_expected_revision`.
 - Baseline import apply response: `{ data }`, where `data` is the complete updated baseline snapshot and owning revision.
 - Every mutation request includes `p_expected_revision`. Dossier create requires `0`; descendant creates use the owning aggregate revision.
+- `technical_configuration_baseline_documents_list` is the single P7B read RPC
+  for both baseline-owned and reference-product-owned evidence. Request:
+  `p_baseline_version_id`, `p_page`, `p_page_size`. Every `data` item contains
+  `{ id, owner_type, owner_id, name, url, created_by, created_at, updated_at, citations }`;
+  `owner_type` is exactly `baseline` or `reference_product`, `owner_id` is the
+  matching baseline-version/reference-product ID, and `citations` contains only
+  `{ id, criterion_id, page_section, excerpt }` rows valid for that same
+  baseline version. The RPC returns no reference product or citation from
+  another version.
+- `technical_configuration_option_documents_list` request:
+  `p_comparison_set_id`, `p_page`, `p_page_size`. It returns the selected
+  comparison set's option documents with the same document/audit fields and
+  nested citations restricted to criteria in that comparison set.
+- P7B owns exactly one internal
+  `public._technical_configuration_validate_document_url(text) RETURNS void`
+  validator. P7B/P9B document create/update requests accept only raw values with
+  a case-insensitive lexical `^https?://` prefix, no backslash, valid URL syntax
+  and parsed `http`/`https` protocol. Protocol-only/single-slash shorthand such
+  as `https:example.com` or `https:/example.com`, backslash variants, malformed
+  values and non-HTTP(S) protocols raise the existing `PT422 validation_error`.
+  At P7B the exact callers are baseline-document create/update and
+  reference-document create/update; P9B extends the exact caller set with
+  option-document create/update. These six RPCs call the helper before
+  insert/update or revision increment. List, delete and citation RPCs do not
+  call the helper because they accept no document URL. SQL phase gates inspect
+  `pg_get_functiondef` to prove one helper and the exact caller allowlist.
+  Client validation is not authoritative.
+- Validation does not trim, canonicalize or rewrite an accepted URL.
+  Case-insensitive scheme input such as
+  `HtTpS://EXAMPLE.com/a/../spec.pdf` is accepted. Create and update store the
+  exact raw request value and return that same value in `data`; document list
+  responses expose the stored raw value unchanged.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -317,7 +349,7 @@ The client must not translate workbook rows into the existing sequential group/c
 9. P10A adds the bounded comparison read contract when a dedicated RPC is required.
 10. P11 adds manual assessments.
 
-P5A, P5B and P5D create no technical-configuration persistence. P6 also creates no technical-configuration persistence; it lands after P5D and before the first document UI in P7B. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
+P5A, P5B and P5D create no technical-configuration persistence. P6A and P6B also create no technical-configuration persistence; P6A lands after P5D, P6B follows it, and both land before the first document UI in P7B. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
 
 ## AI Boundary Audit
 
