@@ -404,10 +404,10 @@ Exit gate:
 Run P6A Equipment characterization và shared tests trước khi sửa source.
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
-Expected: exit `0`; năm test files pass; `0` failed tests.
+Expected: exit `0`; sáu test files pass; `0` failed tests.
 
 ### B2. Adapter migration
 
@@ -470,10 +470,10 @@ Behavior test hiện hữu đồng thời thêm failing cases:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
-Expected red trên pre-P6B source: command exits non-zero; ba test files được
+Expected red trên pre-P6B source: command exits non-zero; bốn test files được
 chọn. Consumer assertions fail vì Equipment chưa render shared primitives, còn
 behavior cases fail vì source chỉ dùng parse-only `new URL(...)`, đặt folder URL
 trực tiếp vào `href` và không catch delete callback rejection. Delegation cases
@@ -504,10 +504,10 @@ Không sửa:
 Run lại nguyên bộ P6A tests. Chỉ sửa assertions nếu markup/accessibility contract được cải thiện mà user-observable behavior không đổi; không nới assertion để che regression.
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
 ```
 
-Expected: exit `0`; chín focused test files pass; `0` failed tests.
+Expected: exit `0`; mười focused test files pass; `0` failed tests.
 
 ### B4. Conditional browser smoke
 
@@ -558,7 +558,7 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-files-tab-delegation.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-decommission-date.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-delete-rbac.test.tsx" "src/app/(app)/equipment/__tests__/equipment-detail-dialog-tabs.test.tsx"
 node scripts/npm-run.js run react-doctor
 openspec validate add-technical-configuration-comparison --type change --strict --no-interactive
 git diff --check
@@ -567,7 +567,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- chín focused test files pass, `0` failed tests;
+- mười focused test files pass, `0` failed tests;
 - React Doctor không có finding mới;
 - OpenSpec valid;
 - `git diff --check` không có output.
