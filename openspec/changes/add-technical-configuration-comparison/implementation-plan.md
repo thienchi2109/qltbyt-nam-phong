@@ -585,9 +585,12 @@ The baseline workbook can be generated and parsed deterministically through shar
 
 ### Planned files
 
-- Create: a migration under `supabase/migrations/` with suffix `_technical_configuration_baseline_import.sql`; choose its numeric timestamp at P5C execution time after checking every local migration that touches the same functions, tables, grants or policies
+- Create: `supabase/migrations/20260715001200_technical_configuration_baseline_import_metadata_validation.sql`
+- Create: `supabase/migrations/20260715001250_technical_configuration_baseline_import_validation.sql`
+- Create: `supabase/migrations/20260715001300_technical_configuration_baseline_import.sql`
 - Create: `src/app/api/rpc/__tests__/technical-configuration-baseline-import-migration.test.ts`
 - Create: `supabase/tests/technical_configuration_baseline_import_phase_gate.sql`
+- Create: `supabase/tests/technical_configuration_baseline_import_atomicity_phase_gate.sql`
 - Modify: `src/lib/technical-configuration-baseline-rpcs.ts`
 - Modify: `src/app/(app)/technical-configurations/baseline-types.ts`
 - Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline.ts`
@@ -596,15 +599,15 @@ The baseline workbook can be generated and parsed deterministically through shar
 
 ### Tasks
 
-- [ ] Add `technical_configuration_baseline_import_preview` and `technical_configuration_baseline_import_apply`.
-- [ ] Define one internal server-side validator/normalizer used by both RPCs so preview and apply cannot drift.
-- [ ] Reuse the current JWT/editable-version helpers, lock order, criterion numbering semantics and response snapshot contract.
-- [ ] Validate template metadata against the target dossier/version and reject arbitrary or wrong-version payloads.
-- [ ] Return authoritative row-level preview errors and provisional codes without mutation.
-- [ ] Apply only to an editable draft with matching `p_expected_revision`.
-- [ ] Revalidate under dossier/baseline row locks, preserve existing criterion IDs/codes/source links and allocate new codes transactionally.
-- [ ] Reconcile the complete group/criterion tree, increment the owning revision once and roll back the entire mutation on any error.
-- [ ] Keep grants fail-closed and allowlist only the two P5C RPCs for `authenticated`.
+- [x] Add `technical_configuration_baseline_import_preview` and `technical_configuration_baseline_import_apply`.
+- [x] Define one internal server-side validator/normalizer used by both RPCs so preview and apply cannot drift.
+- [x] Reuse the current JWT/editable-version helpers, lock order, criterion numbering semantics and response snapshot contract.
+- [x] Validate template metadata against the target dossier/version and reject arbitrary or wrong-version payloads.
+- [x] Return authoritative row-level preview errors and provisional codes without mutation.
+- [x] Apply only to an editable draft with matching `p_expected_revision`.
+- [x] Revalidate under dossier/baseline row locks, preserve existing criterion IDs/codes/source links and allocate new codes transactionally.
+- [x] Reconcile the complete group/criterion tree, increment the owning revision once and roll back the entire mutation on any error.
+- [x] Keep grants fail-closed and allowlist only the two P5C RPCs for `authenticated`.
 
 ### TDD and verification
 

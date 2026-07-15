@@ -14,7 +14,7 @@ describe("technical configuration baseline RPC contract", () => {
     vi.clearAllMocks()
   })
 
-  it("freezes the P2 and P4 baseline RPC mappings", () => {
+  it("freezes the P2, P4, and P5C baseline RPC mappings", () => {
     expect(BASELINE_RPC_FUNCTIONS).toEqual({
       createDraft: "technical_configuration_baseline_draft_create",
       getDraft: "technical_configuration_baseline_draft_get",
@@ -30,6 +30,8 @@ describe("technical configuration baseline RPC contract", () => {
       deleteCriterion: "technical_configuration_baseline_criterion_delete",
       reorderCriteria: "technical_configuration_baseline_criteria_reorder",
       previewBulk: "technical_configuration_baseline_bulk_preview",
+      previewImport: "technical_configuration_baseline_import_preview",
+      applyImport: "technical_configuration_baseline_import_apply",
     })
   })
 
@@ -121,6 +123,47 @@ describe("technical configuration baseline RPC contract", () => {
         p_items: [{ title: "Nguồn điện", requirement_text: "220V" }],
         p_expected_revision: 5,
       }
+    )
+  })
+
+  it("passes the same canonical import contract to preview and apply", async () => {
+    vi.mocked(callTechnicalConfigurationRpc).mockResolvedValue({ data: {}, errors: [] })
+    const args = {
+      p_baseline_version_id: "draft-1",
+      p_template_metadata: {
+        template_kind: "technical_configuration_baseline" as const,
+        template_version: 1 as const,
+        dossier_id: "dossier-1",
+        baseline_version_id: "draft-1",
+        baseline_revision: 7,
+        generated_at: "2026-07-14T00:00:00.000Z",
+      },
+      p_rows: [
+        {
+          row_type: "GROUP" as const,
+          group_order: 1,
+          group_name: "Yêu cầu chung",
+          criterion_order: null,
+          criterion_code: null,
+          criterion_title: null,
+          requirement_text: null,
+        },
+      ],
+      p_expected_revision: 7,
+    }
+
+    await technicalConfigurationBaselineRpc.previewImport(args)
+    await technicalConfigurationBaselineRpc.applyImport(args)
+
+    expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
+      1,
+      "technical_configuration_baseline_import_preview",
+      args
+    )
+    expect(callTechnicalConfigurationRpc).toHaveBeenNthCalledWith(
+      2,
+      "technical_configuration_baseline_import_apply",
+      args
     )
   })
 })

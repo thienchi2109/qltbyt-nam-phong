@@ -23,6 +23,8 @@ import type {
   TechnicalConfigurationBaselineGroupsReorderRpcArgs,
   TechnicalConfigurationBaselineGroupUpdateRpcArgs,
   TechnicalConfigurationBaselineGroupWireResponse,
+  TechnicalConfigurationBaselineImportPreviewWireResponse,
+  TechnicalConfigurationBaselineImportRpcArgs,
   TechnicalConfigurationBaselineLockRpcArgs,
   TechnicalConfigurationBaselineVersionsListRpcArgs,
   TechnicalConfigurationBaselineVersionsListWireResponse,
@@ -114,6 +116,18 @@ export const technicalConfigurationBaselineRpc = {
   previewBulk(args: TechnicalConfigurationBaselineBulkPreviewRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>(
       BASELINE_RPC_FUNCTIONS.previewBulk,
+      { ...args }
+    )
+  },
+  previewImport(args: TechnicalConfigurationBaselineImportRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineImportPreviewWireResponse>(
+      BASELINE_RPC_FUNCTIONS.previewImport,
+      { ...args }
+    )
+  },
+  applyImport(args: TechnicalConfigurationBaselineImportRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
+      BASELINE_RPC_FUNCTIONS.applyImport,
       { ...args }
     )
   },

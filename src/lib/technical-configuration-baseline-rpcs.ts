@@ -14,6 +14,8 @@ export const BASELINE_RPC_FUNCTIONS = {
   deleteCriterion: "technical_configuration_baseline_criterion_delete",
   reorderCriteria: "technical_configuration_baseline_criteria_reorder",
   previewBulk: "technical_configuration_baseline_bulk_preview",
+  previewImport: "technical_configuration_baseline_import_preview",
+  applyImport: "technical_configuration_baseline_import_apply",
 } as const
 
 /** Ordered baseline RPC names for allowlists and contract iteration. */

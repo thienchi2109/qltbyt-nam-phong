@@ -100,9 +100,12 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ## P5C Planned Files
 
-- Create: a migration under `supabase/migrations/` with suffix `_technical_configuration_baseline_import.sql`; choose its numeric timestamp at P5C execution time after checking every local migration that touches the same functions, tables, grants or policies
+- Create: `supabase/migrations/20260715001200_technical_configuration_baseline_import_metadata_validation.sql`
+- Create: `supabase/migrations/20260715001250_technical_configuration_baseline_import_validation.sql`
+- Create: `supabase/migrations/20260715001300_technical_configuration_baseline_import.sql`
 - Create: `src/app/api/rpc/__tests__/technical-configuration-baseline-import-migration.test.ts`
 - Create: `supabase/tests/technical_configuration_baseline_import_phase_gate.sql`
+- Create: `supabase/tests/technical_configuration_baseline_import_atomicity_phase_gate.sql`
 - Modify: `src/lib/technical-configuration-baseline-rpcs.ts`
 - Modify: `src/app/(app)/technical-configurations/baseline-types.ts`
 - Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline.ts`
@@ -111,26 +114,26 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ## Task 5 - Freeze Authoritative Preview And Apply
 
-- [ ] Write failing migration tests for both RPC signatures, grants, `SECURITY DEFINER` and `search_path`.
-- [ ] Write failing tests proving preview and apply use the same canonical validator output.
-- [ ] Write trust-boundary tests proving both RPCs reject wrong template kind/version, mismatched dossier/version/revision metadata, malformed payloads and tampered canonical rows.
-- [ ] Write role/claim, archived, locked and stale-revision negative tests.
-- [ ] Write success tests for complete-tree create/update/delete/reorder reconciliation, immutable existing codes, preserved criterion identity, exactly one revision increment and exact `next_criterion_number` advancement for new rows only.
-- [ ] Write partial-failure tests proving groups, criteria, numbering and revision all roll back.
-- [ ] Run focused migration contract tests and confirm RED.
+- [x] Write failing migration tests for both RPC signatures, grants, `SECURITY DEFINER` and `search_path`.
+- [x] Write failing tests proving preview and apply use the same canonical validator output.
+- [x] Write trust-boundary tests proving both RPCs reject wrong template kind/version, mismatched dossier/version/revision metadata, malformed payloads and tampered canonical rows.
+- [x] Write role/claim, archived, locked and stale-revision negative tests.
+- [x] Write success tests for complete-tree create/update/delete/reorder reconciliation, immutable existing codes, preserved criterion identity, exactly one revision increment and exact `next_criterion_number` advancement for new rows only.
+- [x] Write partial-failure tests proving groups, criteria, numbering and revision all roll back.
+- [x] Run focused migration contract tests and confirm RED.
 
 ## Task 6 - Implement Atomic Import Persistence
 
-- [ ] Add one internal validator/normalizer used by preview and apply.
-- [ ] Reuse current auth/editable-version helpers and lock order.
-- [ ] Keep preview read-only.
-- [ ] Revalidate apply under row locks before mutation.
-- [ ] Reconcile the complete baseline tree and increment revision once.
-- [ ] Return the complete updated baseline snapshot.
-- [ ] Keep grants fail-closed and allowlist only the two P5C RPCs.
-- [ ] Run migration contract tests and confirm GREEN.
-- [ ] Request explicit approval before any live migration apply.
-- [ ] After approved apply, run the P5C phase gate and Supabase security/performance advisors.
+- [x] Add one internal validator/normalizer used by preview and apply.
+- [x] Reuse current auth/editable-version helpers and lock order.
+- [x] Keep preview read-only.
+- [x] Revalidate apply under row locks before mutation.
+- [x] Reconcile the complete baseline tree and increment revision once.
+- [x] Return the complete updated baseline snapshot.
+- [x] Keep grants fail-closed and allowlist only the two P5C RPCs.
+- [x] Run migration contract tests and confirm GREEN.
+- [x] Request explicit approval before any live migration apply.
+- [x] After approved apply, run the P5C phase gate and Supabase security/performance advisors.
 
 ## P5D Planned Files
 

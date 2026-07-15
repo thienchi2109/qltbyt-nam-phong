@@ -126,13 +126,13 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P5C - Atomic Baseline Import Contract
 
-- [ ] P5C.1 Thêm authoritative preview và atomic apply RPC cho toàn baseline draft.
-- [ ] P5C.2 Dùng chung một server-side validator/normalizer cho preview và apply; không sao chép validation giữa hai RPC.
-- [ ] P5C.3 Enforce JWT claims, archived/locked/editable guards, template metadata và `p_expected_revision`.
-- [ ] P5C.4 Giữ mã/ID/source linkage của tiêu chí hiện có; sinh mã mới theo `next_criterion_number` trong transaction.
-- [ ] P5C.5 Reconcile group/criterion tree và tăng revision đúng một lần; mọi lỗi rollback toàn bộ.
-- [ ] P5C.6 Viết trust-boundary tests buộc cả preview/apply từ chối metadata lệch target, payload malformed hoặc canonical rows bị sửa.
-- [ ] P5C.7 Mở rộng RPC map/allowlist/types và chạy migration contract, role/claim, full-tree reconciliation, exact revision/counter, atomicity, stale-revision và phase-gate tests.
+- [x] P5C.1 Thêm authoritative preview và atomic apply RPC cho toàn baseline draft.
+- [x] P5C.2 Dùng chung một server-side validator/normalizer cho preview và apply; không sao chép validation giữa hai RPC.
+- [x] P5C.3 Enforce JWT claims, archived/locked/editable guards, template metadata và `p_expected_revision`.
+- [x] P5C.4 Giữ mã/ID/source linkage của tiêu chí hiện có; sinh mã mới theo `next_criterion_number` trong transaction.
+- [x] P5C.5 Reconcile group/criterion tree và tăng revision đúng một lần; mọi lỗi rollback toàn bộ.
+- [x] P5C.6 Viết trust-boundary tests buộc cả preview/apply từ chối metadata lệch target, payload malformed hoặc canonical rows bị sửa.
+- [x] P5C.7 Mở rộng RPC map/allowlist/types và chạy migration contract, role/claim, full-tree reconciliation, exact revision/counter, atomicity, stale-revision và phase-gate tests.
 
 ## Phase P5D - Baseline Import Workflow UI
 

@@ -35,7 +35,7 @@ describe("technical configuration dossier RPC whitelist", () => {
 })
 
 describe("technical configuration baseline RPC whitelist", () => {
-  it("allowlists exactly the P2 and P4 baseline RPCs", () => {
+  it("allowlists exactly the P2, P4, and P5C baseline RPCs", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_baseline_"))
     ).toEqual(BASELINE_RPC_FUNCTION_NAMES)

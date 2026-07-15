@@ -1,3 +1,10 @@
+import type {
+  TechnicalConfigurationBaselineWorkbookCriterionRow,
+  TechnicalConfigurationBaselineWorkbookGroupRow,
+  TechnicalConfigurationBaselineWorkbookMetadata,
+  TechnicalConfigurationBaselineWorkbookRow,
+} from "@/lib/technical-configuration-baseline-excel-contract"
+
 export type TechnicalConfigurationBaselineStatus = "draft" | "locked"
 
 export interface TechnicalConfigurationBaselineCriterionWire {
@@ -109,6 +116,27 @@ export interface TechnicalConfigurationBaselineBulkPreviewWireResponse {
   errors: TechnicalConfigurationBaselineBulkPreviewError[]
 }
 
+export type TechnicalConfigurationBaselineImportPreviewRow =
+  | TechnicalConfigurationBaselineWorkbookGroupRow
+  | (Omit<TechnicalConfigurationBaselineWorkbookCriterionRow, "criterion_code"> & {
+      criterion_code: string
+    })
+
+export interface TechnicalConfigurationBaselineImportPreviewError {
+  row: number
+  code: string
+  column?: keyof TechnicalConfigurationBaselineWorkbookRow
+  message: string
+}
+
+export interface TechnicalConfigurationBaselineImportPreviewWireResponse {
+  data: {
+    metadata: TechnicalConfigurationBaselineWorkbookMetadata
+    rows: TechnicalConfigurationBaselineImportPreviewRow[]
+  }
+  errors: TechnicalConfigurationBaselineImportPreviewError[]
+}
+
 export interface TechnicalConfigurationBaselineDraftCreateRpcArgs {
   p_dossier_id: string
   p_expected_revision: number
@@ -185,5 +213,12 @@ export interface TechnicalConfigurationBaselineCriteriaReorderRpcArgs {
 export interface TechnicalConfigurationBaselineBulkPreviewRpcArgs {
   p_group_id: string
   p_items: TechnicalConfigurationBaselineBulkItem[]
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationBaselineImportRpcArgs {
+  p_baseline_version_id: string
+  p_template_metadata: TechnicalConfigurationBaselineWorkbookMetadata
+  p_rows: TechnicalConfigurationBaselineWorkbookRow[]
   p_expected_revision: number
 }
