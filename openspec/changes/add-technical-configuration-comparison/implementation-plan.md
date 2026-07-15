@@ -690,6 +690,9 @@ Users can create the same draft baseline manually or through one versioned syste
 - Create: `src/components/url-documents/__tests__/url-document-browser-boundary.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-production-boundary.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-scope-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract-fixtures.ts`
 - Create: `src/components/url-documents/__tests__/url-document-source-contract-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-utils.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`

@@ -3,6 +3,7 @@ import ts from "typescript"
 import {
   assignmentPatternMayReferenceProperty,
   bindingPatternMayReferenceProperty,
+  isShorthandPropertyReference,
   readDestructuringAssignmentSource,
   readStaticString,
   unwrapExpression,
@@ -93,7 +94,9 @@ function hasRuntimeBinding(symbol: ts.Symbol) {
 }
 
 function isUnboundIdentifier(node: ts.Identifier, checker: ts.TypeChecker) {
-  const symbol = checker.getSymbolAtLocation(node)
+  const symbol = isShorthandPropertyReference(node)
+    ? checker.getShorthandAssignmentValueSymbol(node.parent)
+    : checker.getSymbolAtLocation(node)
   return !symbol || !hasRuntimeBinding(symbol)
 }
 
@@ -274,7 +277,7 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
       ts.isIdentifier(node) &&
       node.text === "require" &&
       isUnboundIdentifier(node, checker) &&
-      !ts.isDeclarationName(node) &&
+      (!ts.isDeclarationName(node) || isShorthandPropertyReference(node)) &&
       !(ts.isCallExpression(node.parent) && node.parent.expression === node) &&
       !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
     ) {

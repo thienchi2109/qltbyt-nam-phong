@@ -60,6 +60,10 @@ export function readStaticPropertyName(propertyName: ts.PropertyName) {
   return null
 }
 
+export function isShorthandPropertyReference(node: ts.Identifier) {
+  return ts.isShorthandPropertyAssignment(node.parent) && node.parent.name === node
+}
+
 export function bindingPatternMayReferenceProperty(
   pattern: ts.BindingName,
   expectedPropertyName: string

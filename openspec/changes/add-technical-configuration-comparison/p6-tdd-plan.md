@@ -159,6 +159,9 @@ export interface UrlDocumentListProps {
 - Create: `src/components/url-documents/__tests__/url-document-browser-boundary.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-module-reference-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-production-boundary.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-scope-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract-fixtures.ts`
 - Create: `src/components/url-documents/__tests__/url-document-source-contract-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-utils.test.ts`
@@ -298,8 +301,10 @@ Expected green: exit `0`; một test file pass; `0` failed tests.
 
 ### A5. Shared source-boundary contract
 
-Create
-`src/components/url-documents/__tests__/url-document-source-contract.test.ts`.
+Create:
+
+- `src/components/url-documents/__tests__/url-document-source-contract.test.ts`;
+- `src/components/url-documents/__tests__/url-document-production-boundary.test.ts`.
 
 Test recursively enumerate mọi non-test production module dưới
 `src/components/url-documents/` với extension `.ts`, `.tsx`, `.js`, `.jsx`,
@@ -354,7 +359,7 @@ extractor:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 ```
 
 Expected: exit `0`; production inventory đúng ba module, mọi module-reference
@@ -370,8 +375,9 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts" "src/components/url-documents/__tests__/url-document-production-boundary.test.ts"
 node scripts/npm-run.js run react-doctor
+node scripts/npm-run.js run verify:ts-docstrings
 openspec validate add-technical-configuration-comparison --type change --strict --no-interactive
 git diff --check
 ```
@@ -379,7 +385,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- bảy focused test files với `199` tests pass, `0` failed tests;
+- tám focused test files với `203` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.

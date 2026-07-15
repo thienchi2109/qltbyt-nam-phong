@@ -109,6 +109,28 @@ describe("URL document browser boundary", () => {
     )
   })
 
+  it("rejects an unbound browser capability captured by shorthand property", () => {
+    const source = `
+      const capabilities = { fetch }
+      capabilities.fetch("/documents")
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source references browser capability fetch/
+    )
+  })
+
+  it("allows a locally shadowed capability captured by shorthand property", () => {
+    const source = `
+      function run(fetch: (url: string) => void) {
+        const capabilities = { fetch }
+        capabilities.fetch("/documents")
+      }
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).not.toThrow()
+  })
+
   it.each([
     'new URL("https://example.com/document.pdf")',
     'new globalThis.URL("https://example.com/document.pdf")',

@@ -117,6 +117,25 @@ describe("URL document module-reference edge cases", () => {
     )
   })
 
+  it("fails closed when ambient require is captured by shorthand property", () => {
+    expect(() =>
+      extractModuleReferences(`
+        const loaders = { require }
+        loaders.require("@tanstack/react-query")
+      `)
+    ).toThrow(/require must be called directly/)
+  })
+
+  it("allows a local require captured by shorthand property", () => {
+    expect(
+      extractModuleReferences(`
+        const require = (id: string) => id
+        const loaders = { require }
+        loaders.require("local-value")
+      `)
+    ).toEqual([])
+  })
+
   it.each(["fixture.js", "fixture.jsx", "fixture.mjs", "fixture.cjs"])(
     "extracts a JSDoc import type from %s",
     (fileName) => {
