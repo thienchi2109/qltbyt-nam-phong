@@ -71,6 +71,7 @@ export function UrlDocumentList({
                   href={parsed.raw}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`${item.name} (mở trong tab mới)`}
                   className="flex min-w-0 items-center gap-2 truncate text-primary hover:underline"
                 >
                   <ExternalLink aria-hidden="true" className="size-4 shrink-0" />

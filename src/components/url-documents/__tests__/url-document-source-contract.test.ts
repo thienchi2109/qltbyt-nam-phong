@@ -264,6 +264,16 @@ describe("URL document source-contract extractor", () => {
     ],
     ["aliased localStorage", "const storage = localStorage; storage.setItem('draft', 'value')"],
     ["computed window.open", "window['op' + 'en']('/documents')"],
+    ["aliased window root", "const browser = window; browser.open('/documents')"],
+    ["aliased globalThis root", "const runtime = globalThis; runtime.fetch('/documents')"],
+    [
+      "assignment-destructured sendBeacon",
+      "let send; ({ sendBeacon: send } = navigator); send('/documents', payload)",
+    ],
+    [
+      "nested-destructured sendBeacon",
+      "const { navigator: { sendBeacon } } = window; sendBeacon('/documents', payload)",
+    ],
   ])("detects the browser-side effect %s without relying on imports", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).toThrow(
       /fixture source references browser capability/

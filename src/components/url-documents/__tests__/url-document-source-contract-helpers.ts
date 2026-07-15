@@ -3,11 +3,15 @@ import ts from "typescript"
 
 const browserGlobalCapabilities = new Set([
   "confirm",
+  "document",
   "fetch",
+  "globalThis",
   "indexedDB",
   "localStorage",
+  "navigator",
   "sessionStorage",
   "WebSocket",
+  "window",
   "XMLHttpRequest",
 ])
 const browserMemberCapabilities = new Set([

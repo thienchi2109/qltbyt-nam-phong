@@ -36,7 +36,7 @@ describe("UrlDocumentList", () => {
   ])("renders a valid %s document as a safe external link", (name, url) => {
     render(<UrlDocumentList items={[{ id: name, name, url }]} isLoading={false} />)
 
-    const link = screen.getByRole("link", { name })
+    const link = screen.getByRole("link", { name: `${name} (mở trong tab mới)` })
     expect(link).toHaveAttribute("href", url)
     expect(link).toHaveAttribute("target", "_blank")
     expect(link).toHaveAttribute("rel", "noopener noreferrer")
@@ -76,7 +76,9 @@ describe("UrlDocumentList", () => {
       />
     )
 
-    const link = screen.getByRole("link", { name: "Mixed case" }) as HTMLAnchorElement
+    const link = screen.getByRole("link", {
+      name: "Mixed case (mở trong tab mới)",
+    }) as HTMLAnchorElement
     expect(link.getAttribute("href")).toBe(raw)
     expect(link.href).toBe(new URL(raw).href)
   })
