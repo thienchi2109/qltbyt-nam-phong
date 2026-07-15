@@ -44,11 +44,13 @@ const browserMemberCapabilities = new Set([
   "window.open",
 ])
 const forbiddenJsxNetworkAttributes = new Map<string, ReadonlySet<string>>([
+  ["a", new Set(["ping"])],
   ["audio", new Set(["src"])],
   ["button", new Set(["formAction"])],
   ["embed", new Set(["src"])],
   ["form", new Set(["action"])],
   ["iframe", new Set(["src"])],
+  ["image", new Set(["href", "xlink:href", "xlinkHref"])],
   ["img", new Set(["src", "srcSet"])],
   ["input", new Set(["formAction", "src"])],
   ["link", new Set(["href"])],
@@ -93,15 +95,41 @@ export function isForbiddenBrowserCapability(path: string) {
   return browserContextTail ? isDirectForbiddenBrowserCapability(browserContextTail) : false
 }
 
-export function readForbiddenJsxNetworkAttribute(node: ts.JsxAttribute) {
-  if (!ts.isIdentifier(node.name)) return null
+export function isBrowserContextMemberAccess(node: ts.Node) {
+  if (ts.isPropertyAccessExpression(node)) {
+    return browserContextMembers.has(node.name.text)
+  }
+  if (
+    ts.isElementAccessExpression(node) &&
+    node.argumentExpression &&
+    (ts.isStringLiteral(node.argumentExpression) ||
+      ts.isNoSubstitutionTemplateLiteral(node.argumentExpression))
+  ) {
+    return browserContextMembers.has(node.argumentExpression.text)
+  }
 
+  return false
+}
+
+function readJsxElementName(node: ts.JsxAttribute | ts.JsxSpreadAttribute) {
   const element = node.parent.parent
   if (!ts.isJsxOpeningElement(element) && !ts.isJsxSelfClosingElement(element)) return null
-  if (!ts.isIdentifier(element.tagName)) return null
+  return ts.isIdentifier(element.tagName) ? element.tagName.text : null
+}
 
-  const tagName = element.tagName.text
-  return forbiddenJsxNetworkAttributes.get(tagName)?.has(node.name.text)
-    ? `${tagName}.${node.name.text}`
+export function readForbiddenJsxNetworkAttribute(node: ts.JsxAttribute) {
+  const tagName = readJsxElementName(node)
+  if (!tagName) return null
+
+  const attributeName = ts.isIdentifier(node.name)
+    ? node.name.text
+    : `${node.name.namespace.text}:${node.name.name.text}`
+  return forbiddenJsxNetworkAttributes.get(tagName)?.has(attributeName)
+    ? `${tagName}.${attributeName}`
     : null
+}
+
+export function readForbiddenJsxNetworkSpread(node: ts.JsxSpreadAttribute) {
+  const tagName = readJsxElementName(node)
+  return tagName && forbiddenJsxNetworkAttributes.has(tagName) ? `${tagName}.*` : null
 }

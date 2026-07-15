@@ -148,6 +148,14 @@ describe("URL document browser boundary", () => {
       'new WebTransport("https://example.com/documents")',
       "fixture.ts",
     ],
+    ["an image source hidden in a spread", '<img {...{ src: "/x" }} alt="" />', "fixture.tsx"],
+    ["a form action hidden in a spread", "<form {...props} />", "fixture.tsx"],
+    ["an SVG image href", '<svg><image href="/x" /></svg>', "fixture.tsx"],
+    [
+      "an anchor ping",
+      '<a href="https://example.com/document.pdf" ping="/audit">Document</a>',
+      "fixture.tsx",
+    ],
   ])("rejects imperative or implicit network access through %s", (_name, source, fileName) => {
     expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source", fileName)).toThrow(
       /fixture source references browser/
@@ -161,6 +169,68 @@ describe("URL document browser boundary", () => {
     `
 
     expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).not.toThrow()
+  })
+
+  it.each([
+    [
+      "variable alias",
+      `
+        const view = node.ownerDocument.defaultView
+        view.fetch("/x")
+      `,
+    ],
+    [
+      "assignment alias",
+      `
+        let view
+        view = node.ownerDocument.defaultView
+        view.fetch("/x")
+      `,
+    ],
+    [
+      "destructuring alias",
+      `
+        const { fetch: load } = node.ownerDocument.defaultView
+        load("/x")
+      `,
+    ],
+    [
+      "nested destructuring alias",
+      `
+        const { runtime: { fetch: load } } = {
+          runtime: node.ownerDocument.defaultView,
+        }
+        load("/x")
+      `,
+    ],
+    [
+      "parameter-default alias",
+      `
+        function load(view = node.ownerDocument.defaultView) {
+          view.fetch("/x")
+        }
+      `,
+    ],
+    [
+      "call-chain access",
+      `
+        node.querySelector("iframe")?.contentWindow?.fetch("/x")
+      `,
+    ],
+  ])("rejects a DOM-derived browser context propagated through %s", (_name, source) => {
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source references browser/
+    )
+  })
+
+  it("allows an anchor href without request-producing attributes", () => {
+    expect(() =>
+      assertNoForbiddenBrowserCapabilities(
+        '<a href="https://example.com/document.pdf">Document</a>',
+        "fixture source",
+        "fixture.tsx"
+      )
+    ).not.toThrow()
   })
 
   it.each([

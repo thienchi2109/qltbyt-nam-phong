@@ -12,8 +12,10 @@ import {
 } from "./url-document-ast-helpers"
 import {
   hasBrowserContextAccess,
+  isBrowserContextMemberAccess,
   isForbiddenBrowserCapability,
   readForbiddenJsxNetworkAttribute,
+  readForbiddenJsxNetworkSpread,
 } from "./url-document-browser-capability-helpers"
 import { collectScopeBindings } from "./url-document-scope-helpers"
 
@@ -215,6 +217,17 @@ export function assertNoForbiddenBrowserCapabilities(
       if (networkAttribute) {
         throw new Error(`${subject} references browser network attribute ${networkAttribute}`)
       }
+    }
+
+    if (!inTypePosition && ts.isJsxSpreadAttribute(node)) {
+      const networkAttribute = readForbiddenJsxNetworkSpread(node)
+      if (networkAttribute) {
+        throw new Error(`${subject} references browser network attribute ${networkAttribute}`)
+      }
+    }
+
+    if (!inTypePosition && isBrowserContextMemberAccess(node)) {
+      throw new Error(`${subject} references browser context member`)
     }
 
     if (!inTypePosition && isRuntimeConstructorAccess(node)) {

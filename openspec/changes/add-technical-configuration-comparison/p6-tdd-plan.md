@@ -349,10 +349,11 @@ extractor:
   parameter, nested, computed hoặc rest destructuring từ ambient root nhưng cho
   phép local runtime value;
 - chặn ambient `eval`/`Function`/`process`/`global`/`Reflect`/`WebTransport`,
-  browser capability qua DOM-derived window chains, network-loading/action JSX
-  attributes, dynamic code execution qua static/computed `constructor` và mọi
-  variable/assignment, parameter, nested hoặc computed constructor
-  destructuring; computed property access không có static key phải fail closed;
+  browser capability qua direct/aliased/destructured/call-chain DOM-derived
+  window access, network-loading/action JSX attributes và spreads, dynamic code
+  execution qua static/computed `constructor` và mọi variable/assignment,
+  parameter, nested hoặc computed constructor destructuring; computed property
+  access không có static key phải fail closed;
 - fail với computed/non-literal dynamic `import()`, `require()` hoặc import
   type;
 - fail khi có production `.js`/`.jsx`/`.mts`/`.cts`/`.mjs`/`.cjs` module thứ
@@ -387,7 +388,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- tám focused test files với `208` tests pass, `0` failed tests;
+- tám focused test files với `219` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.
