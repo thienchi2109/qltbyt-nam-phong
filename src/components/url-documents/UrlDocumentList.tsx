@@ -55,14 +55,14 @@ export function UrlDocumentList({
 
   return (
     <ScrollArea className="h-full pr-4">
-      <div className="space-y-2">
+      <ul className="space-y-2">
         {items.map((item) => {
           const parsed = parseAbsoluteUrl(item.url)
           const linkAllowed = isAllowedDocumentUrl(parsed)
           const itemDeleting = deletingId === item.id
 
           return (
-            <div
+            <li
               key={item.id}
               className="flex items-center justify-between gap-2 rounded-md border bg-muted/50 p-2"
             >
@@ -98,10 +98,10 @@ export function UrlDocumentList({
                   )}
                 </Button>
               ) : null}
-            </div>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </ScrollArea>
   )
 }

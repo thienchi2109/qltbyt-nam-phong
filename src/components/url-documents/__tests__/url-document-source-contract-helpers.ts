@@ -2,8 +2,10 @@ import { extname } from "node:path"
 import ts from "typescript"
 
 const browserGlobalCapabilities = new Set([
+  "caches",
   "confirm",
   "document",
+  "EventSource",
   "fetch",
   "globalThis",
   "history",
@@ -11,6 +13,7 @@ const browserGlobalCapabilities = new Set([
   "localStorage",
   "location",
   "navigator",
+  "open",
   "self",
   "sessionStorage",
   "WebSocket",
@@ -166,17 +169,36 @@ function addStatementBindings(statement: ts.Statement, bindings: Set<string>) {
   }
 }
 
+function addFunctionScopedVarBindings(root: ts.Node, bindings: Set<string>) {
+  const visit = (node: ts.Node) => {
+    if (node !== root && ts.isFunctionLike(node)) return
+
+    if (ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.BlockScoped) === 0) {
+      for (const declaration of node.declarations) {
+        addBindingNames(declaration.name, bindings)
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  ts.forEachChild(root, visit)
+}
+
 function collectScopeBindings(node: ts.Node): Set<string> | null {
   const bindings = new Set<string>()
 
   if (ts.isSourceFile(node) || ts.isBlock(node)) {
     for (const statement of node.statements) addStatementBindings(statement, bindings)
+    if (ts.isSourceFile(node)) addFunctionScopedVarBindings(node, bindings)
   } else if (ts.isCaseBlock(node)) {
     for (const clause of node.clauses) {
       for (const statement of clause.statements) addStatementBindings(statement, bindings)
     }
   } else if (ts.isFunctionLike(node)) {
+    if (ts.isFunctionExpression(node) && node.name) bindings.add(node.name.text)
     for (const parameter of node.parameters) addBindingNames(parameter.name, bindings)
+    addFunctionScopedVarBindings(node, bindings)
   } else if (ts.isCatchClause(node) && node.variableDeclaration) {
     addBindingNames(node.variableDeclaration.name, bindings)
   } else if (

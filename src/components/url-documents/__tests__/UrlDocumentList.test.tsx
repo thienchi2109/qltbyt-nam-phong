@@ -30,6 +30,25 @@ describe("UrlDocumentList", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
   })
 
+  it("exposes populated documents with list semantics", () => {
+    render(
+      <UrlDocumentList
+        items={[
+          documentItem,
+          {
+            id: "document-2",
+            name: "Hướng dẫn sử dụng",
+            url: "https://example.com/manual.pdf",
+          },
+        ]}
+        isLoading={false}
+      />
+    )
+
+    expect(screen.getByRole("list")).toBeInTheDocument()
+    expect(screen.getAllByRole("listitem")).toHaveLength(2)
+  })
+
   it.each([
     ["HTTP", "http://example.com/spec.pdf"],
     ["HTTPS", "https://example.com/spec.pdf"],

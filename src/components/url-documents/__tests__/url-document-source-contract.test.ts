@@ -113,6 +113,17 @@ function readLiteralModuleReference(
   return expression.text
 }
 
+function isModuleRequireExpression(
+  expression: ts.LeftHandSideExpression
+): expression is ts.PropertyAccessExpression {
+  return (
+    ts.isPropertyAccessExpression(expression) &&
+    ts.isIdentifier(expression.expression) &&
+    expression.expression.text === "module" &&
+    expression.name.text === "require"
+  )
+}
+
 function extractModuleReferences(source: string, fileName = "fixture.ts"): string[] {
   const sourceFile = ts.createSourceFile(
     fileName,
@@ -151,6 +162,14 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
             sourceFile
           )
         )
+      } else if (isModuleRequireExpression(node.expression)) {
+        references.add(
+          readLiteralModuleReference(
+            node.arguments.length === 1 ? node.arguments[0] : undefined,
+            "module.require",
+            sourceFile
+          )
+        )
       }
     } else if (ts.isImportTypeNode(node)) {
       const argument = node.argument
@@ -159,6 +178,19 @@ function extractModuleReferences(source: string, fileName = "fixture.ts"): strin
           ? argument.literal
           : undefined
       references.add(readLiteralModuleReference(literal, "import type", sourceFile))
+    } else if (
+      ts.isIdentifier(node) &&
+      node.text === "require" &&
+      !ts.isDeclarationName(node) &&
+      !(ts.isCallExpression(node.parent) && node.parent.expression === node) &&
+      !(ts.isPropertyAccessExpression(node.parent) && node.parent.name === node)
+    ) {
+      throw new Error("require must be called directly")
+    } else if (
+      isModuleRequireExpression(node as ts.LeftHandSideExpression) &&
+      !(ts.isCallExpression(node.parent) && node.parent.expression === node)
+    ) {
+      throw new Error("module.require must be called directly")
     }
 
     ts.forEachChild(node, visit)
@@ -178,6 +210,7 @@ describe("URL document source-contract extractor", () => {
       export * from "star-export"
       void import("dynamic-import")
       const required = require("required-module")
+      const moduleRequired = module.require("module-required")
       type Imported = import("import-type").Imported
     `
 
@@ -185,6 +218,7 @@ describe("URL document source-contract extractor", () => {
       "dynamic-import",
       "import-equals",
       "import-type",
+      "module-required",
       "named-export",
       "required-module",
       "star-export",
@@ -210,6 +244,15 @@ describe("URL document source-contract extractor", () => {
     ["import type", "type ModuleName = 'types'; type Value = import(ModuleName).Value"],
   ])("fails closed for a computed %s reference", (_kind, source) => {
     expect(() => extractModuleReferences(source)).toThrow(/must use a string literal/)
+  })
+
+  it("fails closed when require is aliased instead of called directly", () => {
+    expect(() =>
+      extractModuleReferences(`
+        const load = require
+        load("@/app/(app)/equipment/_hooks/use-equipment-attachments")
+      `)
+    ).toThrow(/require must be called directly/)
   })
 
   it.each([...supportedExtensions])(
@@ -255,6 +298,9 @@ describe("URL document source-contract extractor", () => {
     ["XMLHttpRequest", "const request = new XMLHttpRequest()"],
     ["sendBeacon", "navigator.sendBeacon('/documents', payload)"],
     ["window.open", "window.open('/documents')"],
+    ["global open", "open('/documents', '_blank')"],
+    ["CacheStorage", "caches.open('documents')"],
+    ["EventSource", "new EventSource('/documents')"],
     ["self.fetch", "self.fetch('/documents')"],
     ["location.assign", "location.assign('/documents')"],
     ["history.pushState", "history.pushState({}, '', '/documents')"],
@@ -299,6 +345,16 @@ describe("URL document source-contract extractor", () => {
       }
     `
 
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
+  })
+
+  it.each([
+    ["named function expression", "const run = function fetch() { fetch() }"],
+    [
+      "function-scoped var from a nested block",
+      "function run() { if (condition) { var fetch = () => undefined } fetch() }",
+    ],
+  ])("allows a browser-global name shadowed by a %s", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })
 })
