@@ -680,11 +680,17 @@ Users can create the same draft baseline manually or through one versioned syste
 ### Planned files
 
 - Create: `src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx`
+- Create: `src/components/url-documents.types.assert.ts`
 - Create: `src/components/url-documents/UrlDocumentForm.tsx`
 - Create: `src/components/url-documents/UrlDocumentList.tsx`
 - Create: `src/components/url-documents/url-document-utils.ts`
 - Create: `src/components/url-documents/__tests__/UrlDocumentForm.test.tsx`
 - Create: `src/components/url-documents/__tests__/UrlDocumentList.test.tsx`
+- Create: `src/components/url-documents/__tests__/url-document-ast-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-browser-boundary.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-module-reference-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract-helpers.ts`
 - Create: `src/components/url-documents/__tests__/url-document-utils.test.ts`
 - Create: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
 

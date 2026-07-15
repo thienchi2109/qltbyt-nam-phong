@@ -14,6 +14,20 @@ describe("URL document browser boundary", () => {
   })
 
   it.each([
+    ["eval", "void eval('fetch(\"/api/documents\")')"],
+    ["Function", "void Function('return fetch(\"/api/documents\")')()"],
+    ["process", 'void process.getBuiltinModule("node:fs")?.writeFileSync("/tmp/document", "x")'],
+    [
+      "global",
+      'void global.process.getBuiltinModule("node:fs")?.writeFileSync("/tmp/document", "x")',
+    ],
+  ])("rejects the unbound runtime escape hatch %s", (capability, source) => {
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      new RegExp(`fixture source references browser capability ${capability}`)
+    )
+  })
+
+  it.each([
     'new URL("https://example.com/document.pdf")',
     'new globalThis.URL("https://example.com/document.pdf")',
   ])("allows pure URL construction: %s", (source) => {
@@ -24,6 +38,20 @@ describe("URL document browser boundary", () => {
     const source = `
       function create(URL: { createObjectURL(value: unknown): string }) {
         return URL.createObjectURL("document")
+      }
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).not.toThrow()
+  })
+
+  it("allows locally shadowed runtime names", () => {
+    const source = `
+      function run(
+        eval: (source: string) => void,
+        process: { write(value: string): void }
+      ) {
+        eval("local")
+        process.write("local")
       }
     `
 

@@ -146,6 +146,23 @@ export interface UrlDocumentListProps {
 
 ## P6A - TDD sequence
 
+### Planned files
+
+- Create: `src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx`
+- Create: `src/components/url-documents.types.assert.ts`
+- Create: `src/components/url-documents/UrlDocumentForm.tsx`
+- Create: `src/components/url-documents/UrlDocumentList.tsx`
+- Create: `src/components/url-documents/url-document-utils.ts`
+- Create: `src/components/url-documents/__tests__/UrlDocumentForm.test.tsx`
+- Create: `src/components/url-documents/__tests__/UrlDocumentList.test.tsx`
+- Create: `src/components/url-documents/__tests__/url-document-ast-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-browser-boundary.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-module-reference-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract-helpers.ts`
+- Create: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
+- Create: `src/components/url-documents/__tests__/url-document-utils.test.ts`
+
 ### A1. Characterize Equipment trước refactor
 
 Create `src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx`.
@@ -326,12 +343,12 @@ Trong cùng test file, thêm synthetic source fixtures chứng minh extractor:
 Run:
 
 ```bash
-node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts"
+node scripts/npm-run.js run test:run -- "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts"
 ```
 
 Expected: exit `0`; production inventory đúng ba module, mọi module-reference
-form nằm trong per-file allowlist và shared layer giữ persistence-agnostic
-boundary.
+form nằm trong per-file allowlist, ambient runtime escape hatches bị chặn và
+shared layer giữ persistence-agnostic boundary.
 
 ### A6. P6A verification
 
@@ -342,7 +359,7 @@ node scripts/npm-run.js run format:check
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
-node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts"
+node scripts/npm-run.js run test:run -- "src/app/(app)/equipment/__tests__/equipment-detail-files-tab.test.tsx" "src/components/url-documents/__tests__/url-document-utils.test.ts" "src/components/url-documents/__tests__/UrlDocumentForm.test.tsx" "src/components/url-documents/__tests__/UrlDocumentList.test.tsx" "src/components/url-documents/__tests__/url-document-source-contract.test.ts" "src/components/url-documents/__tests__/url-document-module-reference-edge-cases.test.ts" "src/components/url-documents/__tests__/url-document-browser-boundary.test.ts"
 node scripts/npm-run.js run react-doctor
 openspec validate add-technical-configuration-comparison --type change --strict --no-interactive
 git diff --check
@@ -351,7 +368,7 @@ git diff --check
 Expected:
 
 - mọi command exit `0`;
-- năm focused test files pass, `0` failed tests;
+- bảy focused test files với `176` tests pass, `0` failed tests;
 - React Doctor không có finding mới trong diff;
 - OpenSpec báo change valid;
 - `git diff --check` không có output.
