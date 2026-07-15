@@ -31,7 +31,10 @@ export function UrlDocumentForm({
   validationError = null,
   submitLabel = "Lưu liên kết",
 }: UrlDocumentFormProps) {
-  const validationErrorId = React.useId()
+  const formId = React.useId()
+  const nameInputId = `${formId}-name`
+  const urlInputId = `${formId}-url`
+  const validationErrorId = `${formId}-error`
   const controlsDisabled = disabled || isPending
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -42,9 +45,9 @@ export function UrlDocumentForm({
   return (
     <form className="space-y-4" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <Label htmlFor="url-document-name">Tên tài liệu</Label>
+        <Label htmlFor={nameInputId}>Tên tài liệu</Label>
         <Input
-          id="url-document-name"
+          id={nameInputId}
           value={name}
           onChange={(event) => onNameChange(event.target.value)}
           required
@@ -53,9 +56,9 @@ export function UrlDocumentForm({
       </div>
 
       <div className="space-y-1">
-        <Label htmlFor="url-document-url">Đường dẫn (URL)</Label>
+        <Label htmlFor={urlInputId}>Đường dẫn (URL)</Label>
         <Input
-          id="url-document-url"
+          id={urlInputId}
           type="url"
           value={url}
           onChange={(event) => onUrlChange(event.target.value)}

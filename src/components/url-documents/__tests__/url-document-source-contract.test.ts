@@ -37,6 +37,10 @@ const forbiddenSourcePatterns: ReadonlyArray<readonly [RegExp, string]> = [
     /\b(?:useMutation|useQuery|useToast|toast|confirm|fetch)\s*\(/,
     "mutation, query, toast, confirmation, or network orchestration",
   ],
+  [
+    /\b(?:localStorage|sessionStorage|indexedDB|XMLHttpRequest)\b|\bnavigator\s*\.\s*sendBeacon\s*\(/,
+    "browser storage, database, request, or beacon side effect",
+  ],
   [/\bqueryKey\b|\.rpc\s*\(|\bsupabase\b|["']use server["']/, "persistence boundary"],
 ]
 
@@ -85,6 +89,14 @@ function assertExactSet(
     throw new Error(
       `${subject} mismatch; missing=[${missing.join(", ")}]; unexpected=[${unexpected.join(", ")}]`
     )
+  }
+}
+
+function assertNoForbiddenSourcePatterns(source: string, subject: string) {
+  for (const [pattern, description] of forbiddenSourcePatterns) {
+    if (pattern.test(source)) {
+      throw new Error(`${subject} references ${description}`)
+    }
   }
 }
 
@@ -250,6 +262,18 @@ describe("URL document source-contract extractor", () => {
       )
     ).toThrow(/missing=\[lucide-react\]; unexpected=\[unexpected-module\]/)
   })
+
+  it.each([
+    ["localStorage", "localStorage.setItem('draft', 'value')"],
+    ["sessionStorage", "window.sessionStorage.removeItem('draft')"],
+    ["indexedDB", "globalThis.indexedDB.open('documents')"],
+    ["XMLHttpRequest", "const request = new XMLHttpRequest()"],
+    ["sendBeacon", "navigator.sendBeacon('/documents', payload)"],
+  ])("detects the browser-side effect %s without relying on imports", (_name, source) => {
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).toThrow(
+      /fixture source references browser storage, database, request, or beacon side effect/
+    )
+  })
 })
 
 describe("URL document production source boundary", () => {
@@ -277,10 +301,7 @@ describe("URL document production source boundary", () => {
     "keeps %s free of Equipment and persistence-specific symbols",
     (fileName) => {
       const source = readFileSync(join(sourceRoot, fileName), "utf8")
-
-      for (const [pattern, description] of forbiddenSourcePatterns) {
-        expect(source, `${fileName} references ${description}`).not.toMatch(pattern)
-      }
+      expect(() => assertNoForbiddenSourcePatterns(source, fileName)).not.toThrow()
     }
   )
 })

@@ -60,7 +60,7 @@ describe("UrlDocumentForm", () => {
   it("emits raw controlled field changes without rewriting values", () => {
     const onNameChange = vi.fn()
     const onUrlChange = vi.fn()
-    render(
+    const { rerender } = render(
       <UrlDocumentForm
         name=""
         url=""
@@ -79,6 +79,59 @@ describe("UrlDocumentForm", () => {
 
     expect(onNameChange).toHaveBeenCalledWith("  Hướng dẫn sử dụng  ")
     expect(onUrlChange).toHaveBeenCalledWith("HtTpS://EXAMPLE.com/a/../spec.pdf")
+    expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("")
+    expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("")
+
+    rerender(
+      <UrlDocumentForm
+        name="  Hướng dẫn sử dụng  "
+        url="HtTpS://EXAMPLE.com/a/../spec.pdf"
+        onNameChange={onNameChange}
+        onUrlChange={onUrlChange}
+        onSubmit={vi.fn()}
+      />
+    )
+
+    expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("  Hướng dẫn sử dụng  ")
+    expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue(
+      "HtTpS://EXAMPLE.com/a/../spec.pdf"
+    )
+  })
+
+  it("uses unique IDs and keeps each label associated when multiple forms are mounted", () => {
+    const { container } = render(
+      <>
+        <UrlDocumentForm
+          name="Biểu mẫu thứ nhất"
+          url="https://example.com/first.pdf"
+          onNameChange={vi.fn()}
+          onUrlChange={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+        <UrlDocumentForm
+          name="Biểu mẫu thứ hai"
+          url="https://example.com/second.pdf"
+          onNameChange={vi.fn()}
+          onUrlChange={vi.fn()}
+          onSubmit={vi.fn()}
+        />
+      </>
+    )
+
+    const forms = Array.from(container.querySelectorAll("form"))
+    expect(forms).toHaveLength(2)
+
+    const [firstNameInput, firstUrlInput] = Array.from(forms[0].querySelectorAll("input"))
+    const [secondNameInput, secondUrlInput] = Array.from(forms[1].querySelectorAll("input"))
+    const firstLabels = Array.from(forms[0].querySelectorAll("label"))
+    const secondLabels = Array.from(forms[1].querySelectorAll("label"))
+
+    expect(firstNameInput.id).not.toBe(secondNameInput.id)
+    expect(firstUrlInput.id).not.toBe(secondUrlInput.id)
+    expect(firstLabels[0]).toHaveAttribute("for", firstNameInput.id)
+    expect(firstLabels[1]).toHaveAttribute("for", firstUrlInput.id)
+    expect(secondLabels[0]).toHaveAttribute("for", secondNameInput.id)
+    expect(secondLabels[1]).toHaveAttribute("for", secondUrlInput.id)
   })
 
   it("prevents native submission and emits onSubmit exactly once", () => {

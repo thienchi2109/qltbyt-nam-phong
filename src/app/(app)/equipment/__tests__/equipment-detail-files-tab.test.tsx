@@ -144,6 +144,8 @@ describe("EquipmentDetailFilesTab", () => {
       title: "URL không hợp lệ",
       description: "Vui lòng nhập một đường dẫn URL hợp lệ.",
     })
+    expect(screen.getByLabelText("Tên file")).toHaveValue("Hướng dẫn sử dụng")
+    expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("không-phải-url")
   })
 
   it("submits exact values and clears both fields after a successful add", async () => {
