@@ -5,6 +5,8 @@ export type ParsedAbsoluteUrl = Readonly<{
 
 /** Parses an absolute URL while preserving the exact input string as `raw`. */
 export function parseAbsoluteUrl(value: string): ParsedAbsoluteUrl | null {
+  if (/[\t\r\n]/.test(value)) return null
+
   try {
     const parsed = new URL(value)
     return {

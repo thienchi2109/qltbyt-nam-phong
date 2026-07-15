@@ -56,6 +56,7 @@ describe("UrlDocumentList", () => {
     ["javascript", "javascript:alert(1)"],
     ["data", "data:text/plain,specification"],
     ["file", "file:///tmp/spec.pdf"],
+    ["line-break-host-confusion", "https://trusted.example\n@evil.example/document.pdf"],
   ])("renders the %s item name without any fallback link", (name, url) => {
     const { container } = render(
       <UrlDocumentList items={[{ id: name, name, url }]} isLoading={false} />

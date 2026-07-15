@@ -22,6 +22,14 @@ describe("parseAbsoluteUrl", () => {
   )
 
   it.each([
+    "https://trusted.example\t@evil.example/document.pdf",
+    "https://trusted.example\r@evil.example/document.pdf",
+    "https://trusted.example\n@evil.example/document.pdf",
+  ])("rejects a URL containing an ASCII tab or line break", (value) => {
+    expect(parseAbsoluteUrl(value)).toBeNull()
+  })
+
+  it.each([
     ["ftp://example.com/spec.pdf", "ftp:"],
     ["mailto:owner@example.com", "mailto:"],
     ["blob:https://example.com/document-id", "blob:"],

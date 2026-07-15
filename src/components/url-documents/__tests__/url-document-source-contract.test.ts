@@ -255,6 +255,9 @@ describe("URL document source-contract extractor", () => {
     ["XMLHttpRequest", "const request = new XMLHttpRequest()"],
     ["sendBeacon", "navigator.sendBeacon('/documents', payload)"],
     ["window.open", "window.open('/documents')"],
+    ["self.fetch", "self.fetch('/documents')"],
+    ["location.assign", "location.assign('/documents')"],
+    ["history.pushState", "history.pushState({}, '', '/documents')"],
     ["computed sendBeacon", "navigator['sendBeacon']('/documents', payload)"],
     ["WebSocket", "const socket = new WebSocket('wss://example.com/documents')"],
     ["document.cookie", "document.cookie = 'draft=value'"],
@@ -282,6 +285,19 @@ describe("URL document source-contract extractor", () => {
 
   it("allows a locally shadowed browser-global name", () => {
     const source = "function run(fetch: () => void) { fetch() }"
+
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
+  })
+
+  it("allows a browser-global name shadowed in a switch case block", () => {
+    const source = `
+      switch (kind) {
+        case "local":
+          const fetch = () => undefined
+          fetch()
+          break
+      }
+    `
 
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })

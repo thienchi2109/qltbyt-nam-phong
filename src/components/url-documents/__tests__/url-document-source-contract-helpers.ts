@@ -6,9 +6,12 @@ const browserGlobalCapabilities = new Set([
   "document",
   "fetch",
   "globalThis",
+  "history",
   "indexedDB",
   "localStorage",
+  "location",
   "navigator",
+  "self",
   "sessionStorage",
   "WebSocket",
   "window",
@@ -168,6 +171,10 @@ function collectScopeBindings(node: ts.Node): Set<string> | null {
 
   if (ts.isSourceFile(node) || ts.isBlock(node)) {
     for (const statement of node.statements) addStatementBindings(statement, bindings)
+  } else if (ts.isCaseBlock(node)) {
+    for (const clause of node.clauses) {
+      for (const statement of clause.statements) addStatementBindings(statement, bindings)
+    }
   } else if (ts.isFunctionLike(node)) {
     for (const parameter of node.parameters) addBindingNames(parameter.name, bindings)
   } else if (ts.isCatchClause(node) && node.variableDeclaration) {
