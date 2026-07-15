@@ -7,12 +7,21 @@ import type {
   TechnicalConfigurationBaselineCriterionMutationWire,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineGroupMutationWire,
+  TechnicalConfigurationBaselineImportPreviewWireResponse,
   TechnicalConfigurationBaselineVersionsListWireResponse,
 } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import type { TechnicalConfigurationBaselineWorkbookParseResult } from "@/lib/technical-configuration-baseline-excel-contract"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 
 const timestamp = "2026-07-13T00:00:00.000Z"
+
+const importCodec = vi.hoisted(() => ({
+  createWorkbook: vi.fn(),
+  downloadBlob: vi.fn(),
+  parseWorkbook: vi.fn(),
+  readExcelFile: vi.fn(),
+}))
 
 const rpc = vi.hoisted(() => ({
   createDraft: vi.fn(),
@@ -30,14 +39,44 @@ const rpc = vi.hoisted(() => ({
   deleteCriterion: vi.fn(),
   reorderCriteria: vi.fn(),
   previewBulk: vi.fn(),
+  previewImport: vi.fn(),
+  applyImport: vi.fn(),
 }))
 
 vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
   useTechnicalConfigurationBaseline: () => rpc,
 }))
 
+vi.mock("@/lib/technical-configuration-baseline-excel-export", () => ({
+  createTechnicalConfigurationBaselineWorkbook: importCodec.createWorkbook,
+}))
+
+vi.mock("@/lib/technical-configuration-baseline-excel-parse", () => ({
+  createTechnicalConfigurationBaselineWorkbookParser: () => importCodec.parseWorkbook,
+}))
+
+vi.mock("@/lib/excel-utils", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/excel-utils")>()
+  return {
+    ...actual,
+    readExcelFile: importCodec.readExcelFile,
+  }
+})
+
+vi.mock("@/lib/excel-workbook", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/excel-workbook")>()
+  return {
+    ...actual,
+    downloadBlob: importCodec.downloadBlob,
+  }
+})
+
 export function getBaselineRpcMock() {
   return rpc
+}
+
+export function getBaselineImportCodecMock() {
+  return importCodec
 }
 
 export const dossier: TechnicalConfigurationDossierWire = {
@@ -138,6 +177,65 @@ export function createLockedVersion(
   })
 }
 
+export function createBaselineImportPayload(): TechnicalConfigurationBaselineWorkbookParseResult {
+  return {
+    metadata: {
+      template_kind: "technical_configuration_baseline",
+      template_version: 1,
+      dossier_id: dossier.id,
+      baseline_version_id: "draft-1",
+      baseline_revision: 4,
+      generated_at: timestamp,
+    },
+    rows: [
+      {
+        row_type: "GROUP",
+        group_order: 1,
+        group_name: "Yêu cầu chung",
+        criterion_order: null,
+        criterion_code: null,
+        criterion_title: null,
+        requirement_text: null,
+      },
+      {
+        row_type: "CRITERION",
+        group_order: 1,
+        group_name: null,
+        criterion_order: 1,
+        criterion_code: null,
+        criterion_title: "Nguồn điện",
+        requirement_text: "Nguồn điện dự phòng",
+      },
+    ],
+  }
+}
+
+export function createBaselineImportPreview(
+  overrides: Partial<TechnicalConfigurationBaselineImportPreviewWireResponse> = {}
+): TechnicalConfigurationBaselineImportPreviewWireResponse {
+  const payload = createBaselineImportPayload()
+  return {
+    data: {
+      metadata: payload.metadata,
+      rows: [
+        payload.rows[0],
+        {
+          ...payload.rows[1],
+          criterion_code: "TC-0002",
+        },
+      ],
+    },
+    errors: [],
+    ...overrides,
+  }
+}
+
+export function createBaselineImportFile(name = "baseline-import.xlsx") {
+  return new File(["baseline"], name, {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  })
+}
+
 export function mockVersions(versions: TechnicalConfigurationBaselineDraftWire[]) {
   rpc.listVersions.mockResolvedValue(baselineVersionsResponse(versions))
   rpc.getDraft.mockResolvedValue({
@@ -187,11 +285,19 @@ export function criterionMutation(
   }
 }
 
-export function renderTab(onDirtyChange = vi.fn(), queryClient = createTestQueryClient()) {
+export function renderTab(
+  onDirtyChange = vi.fn(),
+  queryClient = createTestQueryClient(),
+  onNavigationBlockedChange = vi.fn()
+) {
   return {
     onDirtyChange,
     ...render(
-      <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />,
+      <TechnicalConfigurationBaselineTab
+        dossier={dossier}
+        onDirtyChange={onDirtyChange}
+        onNavigationBlockedChange={onNavigationBlockedChange}
+      />,
       {
         wrapper: createReactQueryWrapper(queryClient),
       }

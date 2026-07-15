@@ -39,4 +39,6 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onRetryQuery: () => Promise<void>
   onRefreshVersions: () => Promise<void>
   onReloadFromServer: () => Promise<TechnicalConfigurationBaselineEditorDraft | null>
+  onAdoptImportSnapshot: (version: TechnicalConfigurationBaselineDraftWire) => Promise<void>
+  onRefreshImportConflict: (versionId: string) => Promise<void>
 }

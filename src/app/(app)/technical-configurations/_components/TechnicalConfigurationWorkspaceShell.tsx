@@ -18,8 +18,10 @@ export function TechnicalConfigurationWorkspaceShell({
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
+  const [isBaselineNavigationBlocked, setIsBaselineNavigationBlocked] = React.useState(false)
 
   const handleBack = React.useCallback(() => {
+    if (isBaselineNavigationBlocked) return
     if (
       isBaselineDirty &&
       !window.confirm("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")
@@ -27,12 +29,18 @@ export function TechnicalConfigurationWorkspaceShell({
       return
     }
     onBack()
-  }, [isBaselineDirty, onBack])
+  }, [isBaselineDirty, isBaselineNavigationBlocked, onBack])
 
   return (
     <div className="w-full">
       <header className="border-b pb-5">
-        <Button type="button" variant="ghost" className="-ml-3" onClick={handleBack}>
+        <Button
+          type="button"
+          variant="ghost"
+          className="-ml-3"
+          disabled={isBaselineNavigationBlocked}
+          onClick={handleBack}
+        >
           <ArrowLeft className="size-4" aria-hidden="true" />
           Danh sách hồ sơ
         </Button>
@@ -68,7 +76,11 @@ export function TechnicalConfigurationWorkspaceShell({
         </TabsList>
 
         <TabsContent value="baseline" className="mt-6">
-          <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={setIsBaselineDirty} />
+          <TechnicalConfigurationBaselineTab
+            dossier={dossier}
+            onDirtyChange={setIsBaselineDirty}
+            onNavigationBlockedChange={setIsBaselineNavigationBlocked}
+          />
         </TabsContent>
       </Tabs>
     </div>

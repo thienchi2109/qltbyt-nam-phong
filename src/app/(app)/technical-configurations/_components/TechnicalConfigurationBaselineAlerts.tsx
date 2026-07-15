@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 type TechnicalConfigurationBaselineAlertsProps = Readonly<{
   isConflict: boolean
   isReloading: boolean
-  hasPendingBulkInput: boolean
+  isReloadBlocked: boolean
+  pendingInputDescriptionId?: string
   saveError: string | null
   onReload: () => void
 }>
@@ -15,7 +16,8 @@ type TechnicalConfigurationBaselineAlertsProps = Readonly<{
 export function TechnicalConfigurationBaselineAlerts({
   isConflict,
   isReloading,
-  hasPendingBulkInput,
+  isReloadBlocked,
+  pendingInputDescriptionId,
   saveError,
   onReload,
 }: TechnicalConfigurationBaselineAlertsProps) {
@@ -35,11 +37,12 @@ export function TechnicalConfigurationBaselineAlerts({
               variant="outline"
               size="sm"
               disabled={isReloading}
-              aria-disabled={hasPendingBulkInput}
-              aria-describedby={
-                hasPendingBulkInput ? "technical-configuration-pending-bulk-status" : undefined
-              }
-              onClick={onReload}
+              aria-disabled={isReloading || isReloadBlocked}
+              aria-describedby={pendingInputDescriptionId}
+              onClick={() => {
+                if (isReloading || isReloadBlocked) return
+                onReload()
+              }}
             >
               <RefreshCw className={isReloading ? "size-4 animate-spin" : "size-4"} />
               {isReloading ? "Đang tải lại..." : "Tải lại từ máy chủ"}

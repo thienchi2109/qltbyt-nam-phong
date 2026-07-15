@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
+import { useTechnicalConfigurationBaselineImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImport"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
 import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
@@ -8,6 +9,7 @@ import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-co
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
+import { TechnicalConfigurationBaselineImportDialog } from "./TechnicalConfigurationBaselineImportDialog"
 import { TechnicalConfigurationLockDialog } from "./TechnicalConfigurationLockDialog"
 import {
   TechnicalConfigurationBaselineLoadingState,
@@ -20,21 +22,33 @@ import { TechnicalConfigurationVersionBar } from "./TechnicalConfigurationVersio
 type TechnicalConfigurationBaselineTabProps = {
   dossier: TechnicalConfigurationDossierWire
   onDirtyChange: (dirty: boolean) => void
+  onNavigationBlockedChange?: (blocked: boolean) => void
 }
 
 /** Composes baseline data state with transient spreadsheet interaction state. */
 export function TechnicalConfigurationBaselineTab({
   dossier,
   onDirtyChange,
+  onNavigationBlockedChange,
 }: Readonly<TechnicalConfigurationBaselineTabProps>) {
   const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
+  const [hasUnresolvedImportState, setHasUnresolvedImportState] = React.useState(false)
   const bulkSessions = useTechnicalConfigurationBulkEntrySessions()
   const baseline = useTechnicalConfigurationBaselineEditor({
     dossier,
-    isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput,
+    isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput || hasUnresolvedImportState,
   })
   const draft = baseline.editorDraft
   const selectedVersion = baseline.selectedVersion
+  const isImportBlocked = baseline.isDirty || bulkSessions.hasPendingInput
+  const baselineImport = useTechnicalConfigurationBaselineImport({
+    dossierId: dossier.id,
+    selectedVersion,
+    isBlocked: isImportBlocked,
+    onApplied: baseline.onAdoptImportSnapshot,
+    onConflict: baseline.onRefreshImportConflict,
+    onUnresolvedStateChange: setHasUnresolvedImportState,
+  })
   const summaryValidation = React.useMemo(
     () => (draft ? validateTechnicalConfigurationBaselineEditorDraft(draft) : baseline.validation),
     [baseline.validation, draft]
@@ -44,6 +58,9 @@ export function TechnicalConfigurationBaselineTab({
     if (baseline.isConflict) return "Tải lại dữ liệu từ máy chủ trước khi khóa phiên bản."
     if (baseline.isDirty) return "Lưu thay đổi trước khi khóa phiên bản."
     if (bulkSessions.hasPendingInput) return "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi khóa."
+    if (baselineImport.hasUnresolvedState) {
+      return "Hoàn tất hoặc hủy nhập Excel trước khi khóa phiên bản."
+    }
     if (
       Object.keys(summaryValidation.groupErrors).length > 0 ||
       Object.keys(summaryValidation.criterionErrors).length > 0
@@ -58,6 +75,7 @@ export function TechnicalConfigurationBaselineTab({
   }, [
     baseline.isConflict,
     baseline.isDirty,
+    baselineImport.hasUnresolvedState,
     bulkSessions.hasPendingInput,
     draft,
     selectedVersion?.status,
@@ -70,12 +88,19 @@ export function TechnicalConfigurationBaselineTab({
     bulkSessions,
     onEditorChange: baseline.onEditorChange,
   })
-  const isUnsafeToLeave = baseline.isDirty || bulkSessions.hasPendingInput
-
+  const isUnsafeToLeave =
+    baseline.isDirty || bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState
+  const reportWorkspaceState = React.useCallback(
+    (dirty: boolean, navigationBlocked: boolean) => {
+      onDirtyChange(dirty)
+      onNavigationBlockedChange?.(navigationBlocked)
+    },
+    [onDirtyChange, onNavigationBlockedChange]
+  )
   React.useEffect(() => {
-    onDirtyChange(isUnsafeToLeave)
-    return () => onDirtyChange(false)
-  }, [isUnsafeToLeave, onDirtyChange])
+    reportWorkspaceState(isUnsafeToLeave, baselineImport.isApplying)
+    return () => reportWorkspaceState(false, false)
+  }, [baselineImport.isApplying, isUnsafeToLeave, reportWorkspaceState])
 
   React.useEffect(() => {
     if (!isUnsafeToLeave) return
@@ -88,7 +113,7 @@ export function TechnicalConfigurationBaselineTab({
   }, [isUnsafeToLeave])
 
   const handleReloadFromServer = async () => {
-    if (bulkSessions.hasPendingInput) return
+    if (bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState) return
     if (selectedVersion?.status === "locked") {
       try {
         await baseline.onRefreshVersions()
@@ -123,6 +148,7 @@ export function TechnicalConfigurationBaselineTab({
     }
 
     bulkSessions.clearAll()
+    baselineImport.reset()
     baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
     inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
   }
@@ -182,21 +208,36 @@ export function TechnicalConfigurationBaselineTab({
           hasLoadMoreError: baseline.hasLoadMoreError,
           isNavigationDisabled: baseline.isLifecycleBusy,
           hasMoreVersions: baseline.hasMoreVersions,
+          isDownloadingTemplate: baselineImport.isDownloading,
+          isImportBusy: baselineImport.isPreviewing || baselineImport.isApplying,
+          isImportBlocked,
         }}
         onSelectVersion={handleSelectVersion}
         onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
         onRequestLock={() => setIsLockDialogOpen(true)}
         onCreateBlank={baseline.onCreate}
         onCopy={() => void handleCopy()}
+        onDownloadTemplate={() => void baselineImport.downloadTemplate()}
+        onRequestImport={baselineImport.openDialog}
       />
 
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}
         isReloading={baseline.isReloading}
-        hasPendingBulkInput={bulkSessions.hasPendingInput}
-        saveError={baseline.createError ?? baseline.saveError ?? baseline.lifecycleError}
+        isReloadBlocked={bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState}
+        pendingInputDescriptionId={
+          bulkSessions.hasPendingInput ? "technical-configuration-pending-bulk-status" : undefined
+        }
+        saveError={
+          baselineImport.operationError ??
+          baseline.createError ??
+          baseline.saveError ??
+          baseline.lifecycleError
+        }
         onReload={handleReloadFromServer}
       />
+
+      <TechnicalConfigurationBaselineImportDialog workflow={baselineImport} />
 
       {selectedVersion.status === "locked" ? (
         <TechnicalConfigurationBaselineLockedState version={selectedVersion} />

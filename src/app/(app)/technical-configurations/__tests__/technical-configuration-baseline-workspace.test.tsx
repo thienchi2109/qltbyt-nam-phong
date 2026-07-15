@@ -12,6 +12,7 @@ import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-co
 
 const baselineTabMock = vi.hoisted(() => ({
   dirty: true,
+  navigationBlocked: false,
 }))
 
 vi.mock(
@@ -22,13 +23,19 @@ vi.mock(
     return {
       TechnicalConfigurationBaselineTab: ({
         onDirtyChange,
+        onNavigationBlockedChange,
       }: {
         onDirtyChange: (dirty: boolean) => void
+        onNavigationBlockedChange?: (blocked: boolean) => void
       }) => {
         ReactModule.useEffect(() => {
           onDirtyChange(baselineTabMock.dirty)
-          return () => onDirtyChange(false)
-        }, [onDirtyChange])
+          onNavigationBlockedChange?.(baselineTabMock.navigationBlocked)
+          return () => {
+            onDirtyChange(false)
+            onNavigationBlockedChange?.(false)
+          }
+        }, [onDirtyChange, onNavigationBlockedChange])
         return <div>Baseline editor</div>
       },
     }
@@ -66,6 +73,27 @@ describe("technical configuration baseline workspace integration", () => {
     expect(onBack).toHaveBeenCalledTimes(1)
   })
 
+  it("blocks dossier navigation while an atomic baseline apply is pending", async () => {
+    const user = userEvent.setup()
+    const onBack = vi.fn()
+    const confirm = vi.spyOn(window, "confirm")
+    confirm.mockClear()
+    baselineTabMock.navigationBlocked = true
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
+      const backButton = await screen.findByRole("button", { name: "Danh sách hồ sơ" })
+
+      expect(backButton).toBeDisabled()
+      await user.click(backButton)
+      expect(confirm).not.toHaveBeenCalled()
+      expect(onBack).not.toHaveBeenCalled()
+    } finally {
+      baselineTabMock.navigationBlocked = false
+      confirm.mockRestore()
+    }
+  })
+
   it("keeps the shell thin and baseline responsibilities extracted before the threshold", () => {
     const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
     const files = [
@@ -80,6 +108,7 @@ describe("technical configuration baseline workspace integration", () => {
       "_components/TechnicalConfigurationAllGroupsOverview.tsx",
       "_components/TechnicalConfigurationGroupNavigator.tsx",
       "_hooks/useTechnicalConfigurationBaselineEditor.ts",
+      "_hooks/useTechnicalConfigurationBaselineImport.ts",
       "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
       "_hooks/useTechnicalConfigurationInlineEditor.ts",
     ]

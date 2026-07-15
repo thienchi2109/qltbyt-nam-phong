@@ -642,16 +642,16 @@ The backend can authoritatively preview and atomically apply one complete baseli
 
 ### Tasks
 
-- [ ] Add template download/import actions only when the selected version is an editable draft.
-- [ ] Wire template download through the P5B generator and P5A shared Blob helper; do not add parallel workbook or object-URL logic.
-- [ ] Use the P5A `useBulkImportState` custom parser and shared bulk-import dialog parts.
-- [ ] Send P5B canonical rows to the P5C preview RPC and render authoritative provisional codes and row-level errors.
-- [ ] Require explicit preview confirmation before calling the atomic apply RPC.
-- [ ] Never persist through the existing sequential group/criterion save steps.
-- [ ] Adopt the returned complete snapshot and synchronize selected-version, dossier revision and version-history caches after success.
-- [ ] Preserve the selected file, canonical rows and preview when apply rejects a stale revision; refresh revision/history without discarding input.
-- [ ] Keep import file/preview/errors transient and block the lock affordance only while unresolved import state is active.
-- [ ] Keep import state outside the already-large baseline editor and lifecycle hook.
+- [x] Add template download/import actions only when the selected version is an editable draft.
+- [x] Wire template download through the P5B generator and P5A shared Blob helper; do not add parallel workbook or object-URL logic.
+- [x] Use the P5A `useBulkImportState` custom parser and shared bulk-import dialog parts.
+- [x] Send P5B canonical rows to the P5C preview RPC and render authoritative provisional codes and row-level errors.
+- [x] Require explicit preview confirmation before calling the atomic apply RPC.
+- [x] Never persist through the existing sequential group/criterion save steps.
+- [x] Adopt the returned complete snapshot and synchronize selected-version, dossier revision and version-history caches after success.
+- [x] Preserve the selected file, canonical rows and preview when apply rejects a stale revision; refresh revision/history without discarding input.
+- [x] Keep import file/preview/errors transient and block the lock affordance only while unresolved import state is active.
+- [x] Keep import state outside the already-large baseline editor and lifecycle hook.
 
 ### TDD and verification
 

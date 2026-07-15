@@ -148,27 +148,27 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ## Task 7 - Freeze The Draft-Only Import Workflow
 
-- [ ] Write failing tests proving import actions render only for the selected draft.
-- [ ] Prove template download delegates to the P5B generator and P5A Blob helper without parallel object-URL logic.
-- [ ] Write failing tests for shared file input, parser lifecycle and authoritative preview rendering.
-- [ ] Prove no persistence occurs before explicit confirmation.
-- [ ] Prove success invokes one apply RPC and no sequential CRUD RPC.
-- [ ] Prove returned snapshot/revision/history caches synchronize after success.
-- [ ] Prove stale apply preserves file, canonical rows and preview while refreshing current revision.
-- [ ] Prove unresolved transient import state blocks lock UI without adding persisted import-error data.
-- [ ] Run focused P5D tests and confirm RED.
+- [x] Write failing tests proving import actions render only for the selected draft.
+- [x] Prove template download delegates to the P5B generator and P5A Blob helper without parallel object-URL logic.
+- [x] Write failing tests for shared file input, parser lifecycle and authoritative preview rendering.
+- [x] Prove no persistence occurs before explicit confirmation.
+- [x] Prove success invokes one apply RPC and no sequential CRUD RPC.
+- [x] Prove returned snapshot/revision/history caches synchronize after success.
+- [x] Prove stale apply preserves file, canonical rows and preview while refreshing current revision.
+- [x] Prove unresolved transient import state blocks lock UI without adding persisted import-error data.
+- [x] Run focused P5D tests and confirm RED.
 
 ## Task 8 - Implement The Import Workflow
 
-- [ ] Add a dedicated import hook rather than growing the baseline lifecycle hook.
-- [ ] Compose the dialog from P5A shared bulk-import parts.
-- [ ] Wire template download through the P5B generator and P5A shared Blob helper.
-- [ ] Call P5C preview after P5B parse succeeds.
-- [ ] Require confirmation before atomic apply.
-- [ ] Adopt the returned snapshot and synchronize caches.
-- [ ] Preserve local import state on stale conflict.
-- [ ] Clear transient state only after success, explicit reset or dialog dismissal.
-- [ ] Run focused P5D tests and confirm GREEN.
+- [x] Add a dedicated import hook rather than growing the baseline lifecycle hook.
+- [x] Compose the dialog from P5A shared bulk-import parts.
+- [x] Wire template download through the P5B generator and P5A shared Blob helper.
+- [x] Call P5C preview after P5B parse succeeds.
+- [x] Require confirmation before atomic apply.
+- [x] Adopt the returned snapshot and synchronize caches.
+- [x] Preserve local import state on stale conflict.
+- [x] Clear transient state only after success, explicit reset or dialog dismissal.
+- [x] Run focused P5D tests and confirm GREEN.
 
 ## Task 9 - Verification And Delivery
 
@@ -199,8 +199,8 @@ Deliver the baseline Excel workflow without duplicating the Equipment Excel pipe
 
 ### P5D PR gate
 
-- [ ] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
-- [ ] Run `node scripts/npm-run.js run test:run -- "src/app/(app)/technical-configurations/__tests__/baseline-import-dialog.test.tsx" "src/app/(app)/technical-configurations/__tests__/use-technical-configuration-baseline-import.test.tsx" "src/app/(app)/technical-configurations/__tests__/baseline-locking.test.tsx"`.
-- [ ] Run `node scripts/npm-run.js run react-doctor`, Code Review Graph change detection and GitNexus impact for the import workflow.
-- [ ] Confirm one preview RPC and one apply RPC are used, with no sequential CRUD persistence.
+- [x] Run `node scripts/npm-run.js run format:check`, `node scripts/npm-run.js run verify:no-explicit-any`, `node scripts/npm-run.js run verify:dedupe` and `node scripts/npm-run.js run typecheck`.
+- [x] Run `node scripts/npm-run.js run test:run -- "src/app/(app)/technical-configurations/__tests__/baseline-import-dialog.test.tsx" "src/app/(app)/technical-configurations/__tests__/use-technical-configuration-baseline-import.test.tsx" "src/app/(app)/technical-configurations/__tests__/baseline-locking.test.tsx"`.
+- [x] Run `node scripts/npm-run.js run react-doctor`, Code Review Graph change detection and GitNexus impact for the import workflow.
+- [x] Confirm one preview RPC and one apply RPC are used, with no sequential CRUD persistence.
 - [ ] Update only P5D tasks, then commit, pull with rebase, push and open the P5D PR.

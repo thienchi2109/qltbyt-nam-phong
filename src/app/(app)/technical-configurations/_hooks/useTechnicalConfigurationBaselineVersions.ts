@@ -87,17 +87,23 @@ export function useTechnicalConfigurationBaselineVersions({
     [queryClient, queryKey]
   )
 
-  const refreshVersions = React.useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true })
-    const refreshedVersions = flattenTechnicalConfigurationBaselineVersionPages(
-      queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
-    )
-    return (
-      refreshedVersions.find((version) => version.status === "draft") ??
-      refreshedVersions[0] ??
-      null
-    )
-  }, [queryClient, queryKey])
+  const refreshVersions = React.useCallback(
+    async (versionId?: string) => {
+      await queryClient.invalidateQueries({ queryKey, exact: true }, { throwOnError: true })
+      const refreshedVersions = flattenTechnicalConfigurationBaselineVersionPages(
+        queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(queryKey)
+      )
+      if (versionId) {
+        return refreshedVersions.find((version) => version.id === versionId) ?? null
+      }
+      return (
+        refreshedVersions.find((version) => version.status === "draft") ??
+        refreshedVersions[0] ??
+        null
+      )
+    },
+    [queryClient, queryKey]
+  )
 
   const retryVersions = React.useCallback(async () => {
     await versionsQuery.refetch()

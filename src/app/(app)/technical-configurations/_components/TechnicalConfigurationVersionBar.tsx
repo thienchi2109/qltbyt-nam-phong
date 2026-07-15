@@ -1,4 +1,4 @@
-import { ChevronDown, Copy, FilePlus2, History, LockKeyhole } from "lucide-react"
+import { ChevronDown, Copy, Download, FilePlus2, History, LockKeyhole, Upload } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { Badge } from "@/components/ui/badge"
@@ -18,12 +18,17 @@ type TechnicalConfigurationVersionBarProps = {
     hasLoadMoreError: boolean
     isNavigationDisabled: boolean
     hasMoreVersions: boolean
+    isDownloadingTemplate: boolean
+    isImportBusy: boolean
+    isImportBlocked: boolean
   }
   onSelectVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
+  onDownloadTemplate: () => void
+  onRequestImport: () => void
 }
 
 /** Renders baseline version selection, lifecycle metadata, and valid actions. */
@@ -37,6 +42,8 @@ export function TechnicalConfigurationVersionBar({
   onRequestLock,
   onCreateBlank,
   onCopy,
+  onDownloadTemplate,
+  onRequestImport,
 }: Readonly<TechnicalConfigurationVersionBarProps>) {
   const {
     hasDraft,
@@ -47,8 +54,11 @@ export function TechnicalConfigurationVersionBar({
     hasLoadMoreError,
     isNavigationDisabled,
     hasMoreVersions,
+    isDownloadingTemplate,
+    isImportBusy,
+    isImportBlocked,
   } = status
-  const areActionsDisabled = isNavigationDisabled
+  const areActionsDisabled = isNavigationDisabled || isImportBusy
   const hasLockMetadata =
     selectedVersion.status === "locked" &&
     Boolean(selectedVersion.locked_at || selectedVersion.locked_by)
@@ -121,15 +131,35 @@ export function TechnicalConfigurationVersionBar({
         <div className="flex flex-col items-start gap-2 lg:items-end">
           {selectedVersion.status === "draft" ? (
             <>
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={areActionsDisabled || Boolean(lockBlockedReason)}
-                onClick={onRequestLock}
-              >
-                <LockKeyhole className="size-4" aria-hidden="true" />
-                {isLocking ? "Đang khóa..." : "Khóa phiên bản"}
-              </Button>
+              <div className="flex flex-wrap gap-2 lg:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={areActionsDisabled || isImportBlocked || isDownloadingTemplate}
+                  onClick={onDownloadTemplate}
+                >
+                  <Download className="size-4" aria-hidden="true" />
+                  {isDownloadingTemplate ? "Đang tạo template..." : "Tải template Excel"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={areActionsDisabled || isImportBlocked}
+                  onClick={onRequestImport}
+                >
+                  <Upload className="size-4" aria-hidden="true" />
+                  Nhập từ Excel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={areActionsDisabled || Boolean(lockBlockedReason)}
+                  onClick={onRequestLock}
+                >
+                  <LockKeyhole className="size-4" aria-hidden="true" />
+                  {isLocking ? "Đang khóa..." : "Khóa phiên bản"}
+                </Button>
+              </div>
               {lockBlockedReason ? (
                 <p className="max-w-md text-sm text-muted-foreground">{lockBlockedReason}</p>
               ) : null}

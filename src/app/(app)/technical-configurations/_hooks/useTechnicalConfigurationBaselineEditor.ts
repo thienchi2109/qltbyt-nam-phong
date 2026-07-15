@@ -19,12 +19,12 @@ import {
   selectTechnicalConfigurationBaselineVersion,
   splitTechnicalConfigurationBaselineCreatedVersion,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
+import { createBaselineImportBridge } from "@/app/(app)/technical-configurations/technical-configuration-baseline-import-bridge"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
 import { useTechnicalConfigurationBaselineDossierRevision } from "./useTechnicalConfigurationBaselineDossierRevision"
 import type { UseTechnicalConfigurationBaselineEditorResult } from "./useTechnicalConfigurationBaselineEditorTypes"
 import { useTechnicalConfigurationBaselineVersions } from "./useTechnicalConfigurationBaselineVersions"
-
 /** Owns baseline version selection, lifecycle, explicit-save, dirty, and conflict state. */
 export function useTechnicalConfigurationBaselineEditor({
   dossier,
@@ -34,11 +34,15 @@ export function useTechnicalConfigurationBaselineEditor({
   isExternalDraftReplacementBlocked?: boolean
 }): UseTechnicalConfigurationBaselineEditorResult {
   const rpc = useTechnicalConfigurationBaseline()
-  const { dossierRevision, updateDossierRevision, refreshDossierRevision } =
-    useTechnicalConfigurationBaselineDossierRevision({
-      dossier,
-      getDossier: rpc.getDossier,
-    })
+  const revisionState = useTechnicalConfigurationBaselineDossierRevision({
+    dossier,
+    getDossier: rpc.getDossier,
+  })
+  const { dossierRevision, updateDossierRevision, refreshDossierRevision } = revisionState
+  const versionState = useTechnicalConfigurationBaselineVersions({
+    dossierId: dossier.id,
+    listVersions: rpc.listVersions,
+  })
   const {
     versionsQuery,
     versions,
@@ -48,10 +52,7 @@ export function useTechnicalConfigurationBaselineEditor({
     retryVersions,
     loadMoreVersions,
     hasHistoryRecoveryError,
-  } = useTechnicalConfigurationBaselineVersions({
-    dossierId: dossier.id,
-    listVersions: rpc.listVersions,
-  })
+  } = versionState
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
   const [baseDraft, setBaseDraft] = React.useState<TechnicalConfigurationBaselineDraftWire | null>(
     null
@@ -69,7 +70,6 @@ export function useTechnicalConfigurationBaselineEditor({
     [baseDraft, editorDraft]
   )
   const isDraftReplacementBlocked = isDirty || isExternalDraftReplacementBlocked
-
   const adoptVersion = React.useCallback(
     (version: TechnicalConfigurationBaselineDraftWire | null) => {
       setSelectedVersionId(version?.id ?? null)
@@ -85,6 +85,7 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     []
   )
+  const importBridge = createBaselineImportBridge(revisionState, versionState, adoptVersion)
   React.useEffect(() => {
     if (!versionsQuery.data || isDraftReplacementBlocked) return
     const nextVersion = selectTechnicalConfigurationBaselineVersion(
@@ -133,7 +134,6 @@ export function useTechnicalConfigurationBaselineEditor({
       setIsConflict(stale)
       setLifecycleError(stale ? null : "Không thể khởi tạo bản nháp.")
       if (!stale) return
-
       try {
         await refreshDossierRevision()
         await refreshVersions()
@@ -262,7 +262,6 @@ export function useTechnicalConfigurationBaselineEditor({
       setSaveError("Không thể tải lại cấu hình cơ sở.")
     },
   })
-
   const handleEditorChange = React.useCallback(
     (draft: TechnicalConfigurationBaselineEditorDraft) => {
       setEditorDraft(draft)
@@ -344,5 +343,6 @@ export function useTechnicalConfigurationBaselineEditor({
         ? toTechnicalConfigurationBaselineEditorDraft(version)
         : null
     },
+    ...importBridge,
   }
 }
