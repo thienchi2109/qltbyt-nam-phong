@@ -142,18 +142,40 @@ function addBindingNames(name: ts.BindingName, bindings: Set<string>) {
 
 function addImportBindings(node: ts.ImportDeclaration, bindings: Set<string>) {
   const importClause = node.importClause
-  if (!importClause) return
+  if (!importClause || importClause.isTypeOnly) return
 
   if (importClause.name) bindings.add(importClause.name.text)
   const namedBindings = importClause.namedBindings
   if (namedBindings && ts.isNamespaceImport(namedBindings)) {
     bindings.add(namedBindings.name.text)
   } else if (namedBindings) {
-    for (const element of namedBindings.elements) bindings.add(element.name.text)
+    for (const element of namedBindings.elements) {
+      if (!element.isTypeOnly) bindings.add(element.name.text)
+    }
   }
 }
 
+function hasDeclareModifier(node: ts.Node) {
+  return (
+    ts.canHaveModifiers(node) &&
+    ts.getModifiers(node)?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword)
+  )
+}
+
+function isInAmbientContext(node: ts.Node) {
+  let current: ts.Node | undefined = node
+  while (current) {
+    if (ts.isSourceFile(current)) return current.isDeclarationFile
+    if (hasDeclareModifier(current)) return true
+    current = current.parent
+  }
+
+  return false
+}
+
 function addStatementBindings(statement: ts.Statement, bindings: Set<string>) {
+  if (isInAmbientContext(statement)) return
+
   if (ts.isVariableStatement(statement)) {
     for (const declaration of statement.declarationList.declarations) {
       addBindingNames(declaration.name, bindings)
@@ -169,7 +191,7 @@ function addStatementBindings(statement: ts.Statement, bindings: Set<string>) {
     bindings.add(statement.name.text)
   } else if (ts.isImportDeclaration(statement)) {
     addImportBindings(statement, bindings)
-  } else if (ts.isImportEqualsDeclaration(statement)) {
+  } else if (ts.isImportEqualsDeclaration(statement) && !statement.isTypeOnly) {
     bindings.add(statement.name.text)
   }
 }
@@ -178,7 +200,11 @@ function addFunctionScopedVarBindings(root: ts.Node, bindings: Set<string>) {
   const visit = (node: ts.Node) => {
     if (node !== root && ts.isFunctionLike(node)) return
 
-    if (ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.BlockScoped) === 0) {
+    if (
+      ts.isVariableDeclarationList(node) &&
+      (node.flags & ts.NodeFlags.BlockScoped) === 0 &&
+      !isInAmbientContext(node)
+    ) {
       for (const declaration of node.declarations) {
         addBindingNames(declaration.name, bindings)
       }

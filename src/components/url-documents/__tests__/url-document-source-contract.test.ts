@@ -188,6 +188,15 @@ describe("URL document source-contract extractor", () => {
     expect(extractModuleReferences("module.exports = {};", "fixture.cjs")).toEqual([])
   })
 
+  it("treats an ambient require declaration as non-runtime", () => {
+    expect(
+      extractModuleReferences(`
+        declare const require: (id: string) => unknown
+        require("@tanstack/react-query")
+      `)
+    ).toEqual(["@tanstack/react-query"])
+  })
+
   it("fails closed when a computed module member could hide require", () => {
     expect(() =>
       extractModuleReferences(`
@@ -235,6 +244,10 @@ describe("URL document source-contract extractor", () => {
 
   it.each([
     ["localStorage", "localStorage.setItem('draft', 'value')"],
+    [
+      "ambient fetch declaration",
+      "declare const fetch: (url: string) => Promise<unknown>; void fetch('/api/documents')",
+    ],
     ["sessionStorage", "window.sessionStorage.removeItem('draft')"],
     ["indexedDB", "globalThis.indexedDB.open('documents')"],
     ["XMLHttpRequest", "const request = new XMLHttpRequest()"],

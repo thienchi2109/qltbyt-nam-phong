@@ -48,8 +48,46 @@ function createSourceProgram(source: string, fileName: string) {
   return { checker: program.getTypeChecker(), sourceFile: programSourceFile }
 }
 
+function hasDeclareModifier(node: ts.Node) {
+  return (
+    ts.canHaveModifiers(node) &&
+    ts.getModifiers(node)?.some((modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword)
+  )
+}
+
+function isInAmbientContext(node: ts.Node) {
+  let current: ts.Node | undefined = node
+  while (current) {
+    if (ts.isSourceFile(current)) return current.isDeclarationFile
+    if (hasDeclareModifier(current)) return true
+    current = current.parent
+  }
+
+  return false
+}
+
+function isTypeOnlyImportDeclaration(node: ts.Declaration) {
+  if (ts.isImportSpecifier(node)) {
+    return node.isTypeOnly || node.parent.parent.isTypeOnly
+  }
+  if (ts.isNamespaceImport(node)) return node.parent.isTypeOnly
+  if (ts.isImportClause(node)) return node.isTypeOnly
+  if (ts.isImportEqualsDeclaration(node)) return node.isTypeOnly
+  return false
+}
+
+function hasRuntimeBinding(symbol: ts.Symbol) {
+  const runtimeSymbolFlags = ts.SymbolFlags.Value | ts.SymbolFlags.Alias
+  if ((symbol.flags & runtimeSymbolFlags) === 0) return false
+
+  return symbol.declarations?.some(
+    (declaration) => !isInAmbientContext(declaration) && !isTypeOnlyImportDeclaration(declaration)
+  )
+}
+
 function isUnboundIdentifier(node: ts.Identifier, checker: ts.TypeChecker) {
-  return checker.getSymbolAtLocation(node) === undefined
+  const symbol = checker.getSymbolAtLocation(node)
+  return !symbol || !hasRuntimeBinding(symbol)
 }
 
 function readModuleMemberName(node: ts.Node, checker: ts.TypeChecker): string | null | undefined {
