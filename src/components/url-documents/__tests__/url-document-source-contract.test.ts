@@ -38,10 +38,7 @@ const forbiddenSourcePatterns: ReadonlyArray<readonly [RegExp, string]> = [
     "Equipment-specific type, hook, component, or adapter",
   ],
   [/equipment_(?:attachments_list|attachment_create|attachment_delete)/, "Equipment RPC"],
-  [
-    /\b(?:useMutation|useQuery|useToast|toast|confirm|fetch)\s*\(/,
-    "mutation, query, toast, confirmation, or network orchestration",
-  ],
+  [/\b(?:useMutation|useQuery|useToast|toast)\s*\(/, "mutation, query, or toast orchestration"],
   [/\bqueryKey\b|\.rpc\s*\(|\bsupabase\b|["']use server["']/, "persistence boundary"],
 ]
 
@@ -261,10 +258,22 @@ describe("URL document source-contract extractor", () => {
     ["computed sendBeacon", "navigator['sendBeacon']('/documents', payload)"],
     ["WebSocket", "const socket = new WebSocket('wss://example.com/documents')"],
     ["document.cookie", "document.cookie = 'draft=value'"],
+    [
+      "destructured sendBeacon",
+      "const { sendBeacon } = navigator; sendBeacon('/documents', payload)",
+    ],
+    ["aliased localStorage", "const storage = localStorage; storage.setItem('draft', 'value')"],
+    ["computed window.open", "window['op' + 'en']('/documents')"],
   ])("detects the browser-side effect %s without relying on imports", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).toThrow(
       /fixture source references browser capability/
     )
+  })
+
+  it("allows a locally shadowed browser-global name", () => {
+    const source = "function run(fetch: () => void) { fetch() }"
+
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })
 })
 

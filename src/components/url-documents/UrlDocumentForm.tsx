@@ -43,7 +43,7 @@ export function UrlDocumentForm({
   }
 
   return (
-    <form className="space-y-4" onSubmit={handleSubmit}>
+    <form className="space-y-4" onSubmit={handleSubmit} noValidate>
       <div className="space-y-1">
         <Label htmlFor={nameInputId}>Tên tài liệu</Label>
         <Input
@@ -74,8 +74,13 @@ export function UrlDocumentForm({
         ) : null}
       </div>
 
-      <Button type="submit" disabled={controlsDisabled}>
-        {isPending ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+      {isPending ? (
+        <span role="status" className="sr-only">
+          Đang lưu tài liệu.
+        </span>
+      ) : null}
+      <Button type="submit" disabled={controlsDisabled} aria-busy={isPending ? true : undefined}>
+        {isPending ? <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" /> : null}
         {submitLabel}
       </Button>
     </form>

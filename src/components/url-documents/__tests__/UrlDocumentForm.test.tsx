@@ -189,6 +189,11 @@ describe("UrlDocumentForm", () => {
     expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeDisabled()
 
     if ("isPending" in props) {
+      expect(screen.getByRole("button", { name: "Lưu liên kết" })).toHaveAttribute(
+        "aria-busy",
+        "true"
+      )
+      expect(screen.getByRole("status")).toHaveTextContent("Đang lưu tài liệu.")
       expect(container.querySelector("svg.animate-spin")).toBeInTheDocument()
     }
   })
@@ -213,15 +218,18 @@ describe("UrlDocumentForm", () => {
     expect(urlInput).toHaveAttribute("aria-describedby", alert.id)
   })
 
-  it.each(["không-phải-url", "ftp://example.com/spec.pdf"])(
-    "lets the consumer reject %s without calling persistence",
-    async (initialUrl) => {
+  it.each([
+    { initialUrl: "không-phải-url", nativeValid: false },
+    { initialUrl: "ftp://example.com/spec.pdf", nativeValid: true },
+  ])(
+    "lets the consumer reject $initialUrl without calling persistence",
+    async ({ initialUrl, nativeValid }) => {
       const onPersist = vi.fn()
       render(<ValidationHarness initialUrl={initialUrl} onPersist={onPersist} />)
 
-      const form = screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")
-      expect(form).not.toBeNull()
-      fireEvent.submit(form!)
+      const urlInput = screen.getByLabelText("Đường dẫn (URL)")
+      expect(urlInput.checkValidity()).toBe(nativeValid)
+      await userEvent.setup().click(screen.getByRole("button", { name: "Lưu liên kết" }))
 
       expect(await screen.findByRole("alert")).toHaveTextContent("URL tài liệu không hợp lệ.")
       expect(onPersist).not.toHaveBeenCalled()
