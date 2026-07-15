@@ -318,6 +318,22 @@ export function assertNoForbiddenBrowserCapabilities(
     }
   }
 
+  const assertComputedAccessAllowed = (
+    node: ts.ElementAccessExpression,
+    scopes: readonly Set<string>[]
+  ) => {
+    if (readStaticString(node.argumentExpression) !== null) return
+
+    const baseAccess = readStaticAccess(node.expression)
+    if (
+      baseAccess &&
+      !isShadowed(baseAccess.root, scopes) &&
+      isForbiddenBrowserCapability(baseAccess.path)
+    ) {
+      throw new Error(`${subject} references browser capability ${baseAccess.path}[computed]`)
+    }
+  }
+
   const visit = (node: ts.Node, parentScopes: readonly Set<string>[]) => {
     const bindings = collectScopeBindings(node)
     const scopes = bindings ? [...parentScopes, bindings] : parentScopes
@@ -325,6 +341,10 @@ export function assertNoForbiddenBrowserCapabilities(
 
     if (!inTypePosition && ts.isIdentifier(node) && isReferenceIdentifier(node)) {
       assertAccessAllowed(readStaticAccess(node), scopes)
+    }
+
+    if (!inTypePosition && ts.isElementAccessExpression(node)) {
+      assertComputedAccessAllowed(node, scopes)
     }
 
     if (

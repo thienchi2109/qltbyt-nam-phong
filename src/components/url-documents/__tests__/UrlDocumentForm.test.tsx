@@ -54,7 +54,7 @@ describe("UrlDocumentForm", () => {
 
     expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("Hồ sơ kỹ thuật")
     expect(screen.getByLabelText("Đường dẫn (URL)"))
-      .toHaveAttribute("type", "text")
+      .toHaveAttribute("type", "url")
       .toHaveAttribute("inputmode", "url")
       .toHaveValue("https://example.com/spec.pdf")
     expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeEnabled()
@@ -77,18 +77,18 @@ describe("UrlDocumentForm", () => {
       target: { value: "  Hướng dẫn sử dụng  " },
     })
     fireEvent.change(screen.getByLabelText("Đường dẫn (URL)"), {
-      target: { value: "  HtTpS://EXAMPLE.com/a/../spec.pdf  " },
+      target: { value: "HtTpS://EXAMPLE.com/a/../spec.pdf" },
     })
 
     expect(onNameChange).toHaveBeenCalledWith("  Hướng dẫn sử dụng  ")
-    expect(onUrlChange).toHaveBeenCalledWith("  HtTpS://EXAMPLE.com/a/../spec.pdf  ")
+    expect(onUrlChange).toHaveBeenCalledWith("HtTpS://EXAMPLE.com/a/../spec.pdf")
     expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("")
     expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("")
 
     rerender(
       <UrlDocumentForm
         name="  Hướng dẫn sử dụng  "
-        url="  HtTpS://EXAMPLE.com/a/../spec.pdf  "
+        url="HtTpS://EXAMPLE.com/a/../spec.pdf"
         onNameChange={onNameChange}
         onUrlChange={onUrlChange}
         onSubmit={vi.fn()}
@@ -97,7 +97,7 @@ describe("UrlDocumentForm", () => {
 
     expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("  Hướng dẫn sử dụng  ")
     expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue(
-      "  HtTpS://EXAMPLE.com/a/../spec.pdf  "
+      "HtTpS://EXAMPLE.com/a/../spec.pdf"
     )
   })
 
@@ -224,15 +224,18 @@ describe("UrlDocumentForm", () => {
     expect(urlInput).toHaveAttribute("aria-describedby", alert.id)
   })
 
-  it.each(["không-phải-url", "ftp://example.com/spec.pdf"])(
+  it.each([
+    ["không-phải-url", false],
+    ["ftp://example.com/spec.pdf", true],
+  ])(
     "lets the consumer reject %s without calling persistence",
-    async (initialUrl) => {
+    async (initialUrl, isNativeUrlValid) => {
       const onPersist = vi.fn()
       render(<ValidationHarness initialUrl={initialUrl} onPersist={onPersist} />)
 
       const urlInput = screen.getByLabelText("Đường dẫn (URL)")
-      expect(urlInput.checkValidity()).toBe(true)
-      await userEvent.setup().click(screen.getByRole("button", { name: "Lưu liên kết" }))
+      expect(urlInput.checkValidity()).toBe(isNativeUrlValid)
+      fireEvent.submit(screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")!)
 
       expect(await screen.findByRole("alert")).toHaveTextContent("URL tài liệu không hợp lệ.")
       expect(onPersist).not.toHaveBeenCalled()

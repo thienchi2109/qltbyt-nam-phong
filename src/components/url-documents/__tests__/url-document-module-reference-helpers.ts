@@ -137,7 +137,9 @@ export function extractModuleReferences(source: string, fileName = "fixture.ts")
       if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
         references.add(
           readLiteralModuleReference(
-            node.arguments.length === 1 ? node.arguments[0] : undefined,
+            node.arguments.length === 1 || node.arguments.length === 2
+              ? node.arguments[0]
+              : undefined,
             "dynamic import",
             sourceFile
           )

@@ -106,6 +106,7 @@ describe("URL document source-contract extractor", () => {
       export { value } from "named-export"
       export * from "star-export"
       void import("dynamic-import")
+      void import("dynamic-import-with-attributes", { with: { type: "json" } })
       const required = require("required-module")
       const moduleRequired = module.require("module-required")
       const computedModuleRequired = module["require"]("computed-module-required")
@@ -115,6 +116,7 @@ describe("URL document source-contract extractor", () => {
     expect(extractModuleReferences(source)).toEqual([
       "computed-module-required",
       "dynamic-import",
+      "dynamic-import-with-attributes",
       "import-equals",
       "import-type",
       "module-required",
@@ -286,6 +288,18 @@ describe("URL document source-contract extractor", () => {
       "nested-destructured sendBeacon",
       "const { navigator: { sendBeacon } } = window; sendBeacon('/documents', payload)",
     ],
+    [
+      "identifier-computed window capability",
+      "const method = 'fetch'; window[method]('/documents')",
+    ],
+    [
+      "identifier-computed globalThis capability",
+      "const method = 'fetch'; globalThis[method]('/documents')",
+    ],
+    [
+      "identifier-computed navigator capability",
+      "const method = 'sendBeacon'; navigator[method]('/documents', payload)",
+    ],
   ])("detects the browser-side effect %s without relying on imports", (_name, source) => {
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).toThrow(
       /fixture source references browser capability/
@@ -294,6 +308,16 @@ describe("URL document source-contract extractor", () => {
 
   it("allows a locally shadowed browser-global name", () => {
     const source = "function run(fetch: () => void) { fetch() }"
+
+    expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
+  })
+
+  it("allows an identifier-computed member on a locally shadowed browser root", () => {
+    const source = `
+      function run(window: Record<string, () => void>, method: string) {
+        window[method]()
+      }
+    `
 
     expect(() => assertNoForbiddenSourcePatterns(source, "fixture source")).not.toThrow()
   })

@@ -60,7 +60,7 @@ export function UrlDocumentForm({
         <Label htmlFor={urlInputId}>Đường dẫn (URL)</Label>
         <Input
           id={urlInputId}
-          type="text"
+          type="url"
           inputMode="url"
           value={url}
           onChange={(event) => onUrlChange(event.target.value)}
