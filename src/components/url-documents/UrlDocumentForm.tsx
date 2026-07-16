@@ -36,10 +36,11 @@ export function UrlDocumentForm({
   const urlInputId = `${formId}-url`
   const validationErrorId = `${formId}-error`
   const controlsDisabled = disabled || isPending
+  const submitDisabled = controlsDisabled || !name || !url
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (controlsDisabled) return
+    if (submitDisabled) return
     void onSubmit()
   }
 
@@ -81,7 +82,7 @@ export function UrlDocumentForm({
           Đang lưu tài liệu.
         </span>
       ) : null}
-      <Button type="submit" disabled={controlsDisabled} aria-busy={isPending ? true : undefined}>
+      <Button type="submit" disabled={submitDisabled} aria-busy={isPending ? true : undefined}>
         {isPending ? <Loader2 aria-hidden="true" className="mr-2 size-4 animate-spin" /> : null}
         {submitLabel}
       </Button>

@@ -7,24 +7,19 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import {
-  AlertCircle,
-  ExternalLink,
-  Link as LinkIcon,
-  Loader2,
-  Trash2,
-} from "lucide-react"
+import { AlertCircle, ExternalLink } from "lucide-react"
 
-import { useToast } from "@/hooks/use-toast"
+import type { Attachment } from "@/app/(app)/equipment/types"
+import { UrlDocumentForm } from "@/components/url-documents/UrlDocumentForm"
+import { UrlDocumentList } from "@/components/url-documents/UrlDocumentList"
+import {
+  isAllowedDocumentUrl,
+  parseAbsoluteUrl,
+} from "@/components/url-documents/url-document-utils"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import type { Attachment } from "@/app/(app)/equipment/types"
+import { useToast } from "@/hooks/use-toast"
 
 export interface EquipmentDetailFilesTabProps {
   /** List of attachments to display */
@@ -43,6 +38,7 @@ export interface EquipmentDetailFilesTabProps {
   isDeleting: boolean
 }
 
+/** Renders equipment attachment management through shared URL document primitives. */
 export function EquipmentDetailFilesTab({
   attachments,
   isLoading,
@@ -59,13 +55,11 @@ export function EquipmentDetailFilesTab({
   const [newFileUrl, setNewFileUrl] = React.useState("")
   const [deletingAttachmentId, setDeletingAttachmentId] = React.useState<string | null>(null)
 
-  const handleAddAttachment = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAddAttachment = async () => {
     if (!newFileName || !newFileUrl) return
 
-    try {
-      new URL(newFileUrl)
-    } catch (_) {
+    const parsedUrl = parseAbsoluteUrl(newFileUrl)
+    if (!isAllowedDocumentUrl(parsedUrl)) {
       toast({
         variant: "destructive",
         title: "URL không hợp lệ",
@@ -75,7 +69,7 @@ export function EquipmentDetailFilesTab({
     }
 
     try {
-      await onAddAttachment({ name: newFileName, url: newFileUrl })
+      await onAddAttachment({ name: newFileName, url: parsedUrl.raw })
       // Only clear inputs on success - allows retry on error
       setNewFileName("")
       setNewFileUrl("")
@@ -91,10 +85,23 @@ export function EquipmentDetailFilesTab({
     setDeletingAttachmentId(attachmentId)
     try {
       await onDeleteAttachment(attachmentId)
+    } catch {
+      // Error already handled via toast in useEquipmentAttachments hook
+      // Catch here to prevent unhandled rejection warning
     } finally {
       setDeletingAttachmentId(null)
     }
   }
+
+  const documentItems = attachments.map((file) => ({
+    id: file.id,
+    name: file.ten_file,
+    url: file.duong_dan_luu_tru,
+  }))
+  const parsedGoogleDriveFolderUrl = googleDriveFolderUrl
+    ? parseAbsoluteUrl(googleDriveFolderUrl)
+    : null
+  const canOpenGoogleDriveFolder = isAllowedDocumentUrl(parsedGoogleDriveFolderUrl)
 
   return (
     <div className="h-full flex flex-col gap-4 py-4">
@@ -102,113 +109,51 @@ export function EquipmentDetailFilesTab({
         <CardHeader>
           <CardTitle className="text-lg">Thêm file đính kèm mới</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAddAttachment} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="file-name">Tên file</Label>
-              <Input
-                id="file-name"
-                placeholder="VD: Giấy chứng nhận hiệu chuẩn"
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                required
-                disabled={isAdding}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="file-url">Đường dẫn (URL)</Label>
-              <Input
-                id="file-url"
-                type="url"
-                placeholder="https://…"
-                value={newFileUrl}
-                onChange={(e) => setNewFileUrl(e.target.value)}
-                required
-                disabled={isAdding}
-              />
-            </div>
-            <Alert>
-              <AlertCircle className="size-4" />
-              <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
-              <AlertDescription className="space-y-2">
-                <div>
-                  Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ
-                  công khai và dán vào đây.
-                </div>
-                {googleDriveFolderUrl && (
-                  <Button type="button" variant="outline" size="sm" asChild className="mt-2">
-                    <a
-                      href={googleDriveFolderUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2"
-                    >
-                      <ExternalLink className="size-4" />
-                      Mở thư mục chung
-                    </a>
-                  </Button>
-                )}
-              </AlertDescription>
-            </Alert>
-            <Button
-              type="submit"
-              disabled={isAdding || !newFileName || !newFileUrl}
-            >
-              {isAdding && (
-                <Loader2 className="mr-2 size-4 animate-spin" />
-              )}
-              Lưu liên kết
-            </Button>
-          </form>
+        <CardContent className="space-y-4">
+          <UrlDocumentForm
+            name={newFileName}
+            url={newFileUrl}
+            onNameChange={setNewFileName}
+            onUrlChange={setNewFileUrl}
+            onSubmit={handleAddAttachment}
+            isPending={isAdding}
+            submitLabel="Lưu liên kết"
+          />
+          <Alert>
+            <AlertCircle className="size-4" />
+            <AlertTitle>Làm thế nào để lấy URL?</AlertTitle>
+            <AlertDescription className="space-y-2">
+              <div>
+                Tải file của bạn lên thư mục Drive chia sẻ của đơn vị, sau đó lấy link chia sẻ công
+                khai và dán vào đây.
+              </div>
+              {canOpenGoogleDriveFolder ? (
+                <Button type="button" variant="outline" size="sm" asChild className="mt-2">
+                  <a
+                    href={parsedGoogleDriveFolderUrl.raw}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2"
+                  >
+                    <ExternalLink className="size-4" />
+                    Mở thư mục chung
+                  </a>
+                </Button>
+              ) : null}
+            </AlertDescription>
+          </Alert>
         </CardContent>
       </Card>
       <div className="flex-grow overflow-hidden">
         <p className="font-medium mb-2">Danh sách file đã đính kèm</p>
-        <ScrollArea className="h-full pr-4">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : attachments.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic text-center py-4">
-              Chưa có file nào được đính kèm.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {attachments.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-2 border rounded-md bg-muted/50"
-                >
-                  <Link
-                    href={file.duong_dan_luu_tru}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-primary hover:underline truncate"
-                  >
-                    <LinkIcon className="size-4 shrink-0" />
-                    <span className="truncate">{file.ten_file}</span>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-destructive hover:bg-destructive/10"
-                    onClick={() => handleDeleteAttachment(file.id)}
-                    disabled={!!deletingAttachmentId || isDeleting}
-                  >
-                    {deletingAttachmentId === file.id ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="size-4" />
-                    )}
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+        <UrlDocumentList
+          items={documentItems}
+          isLoading={isLoading}
+          onDelete={handleDeleteAttachment}
+          deletingId={deletingAttachmentId}
+          disabled={isDeleting}
+          emptyMessage="Chưa có file nào được đính kèm."
+        />
       </div>
     </div>
   )

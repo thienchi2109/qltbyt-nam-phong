@@ -1,5 +1,11 @@
+import { readFileSync } from "node:fs"
+import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
+import {
+  collectUrlDocumentConsumers,
+  inspectUrlDocumentConsumer,
+} from "./url-document-consumer-contract-helpers"
 import { extractModuleReferences } from "./url-document-module-reference-helpers"
 import {
   assertExactSet,
@@ -8,6 +14,41 @@ import {
   isProductionModulePath,
   supportedExtensions,
 } from "./url-document-source-contract-fixtures"
+
+const applicationSourceRoot = join(process.cwd(), "src")
+const equipmentConsumerPath =
+  "app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab.tsx"
+
+describe("URL document consumer source contract", () => {
+  it("keeps the cumulative P6B consumer manifest exact", () => {
+    assertExactSet(
+      collectUrlDocumentConsumers(applicationSourceRoot),
+      [equipmentConsumerPath],
+      "P6B URL document consumers"
+    )
+  })
+
+  it("delegates Equipment presentation through exact shared bindings", () => {
+    const source = readFileSync(join(applicationSourceRoot, equipmentConsumerPath), "utf8")
+    const contract = inspectUrlDocumentConsumer(source, equipmentConsumerPath)
+
+    expect(contract.sharedImports).toEqual([
+      "@/components/url-documents/UrlDocumentForm:UrlDocumentForm->UrlDocumentForm",
+      "@/components/url-documents/UrlDocumentList:UrlDocumentList->UrlDocumentList",
+      "@/components/url-documents/url-document-utils:isAllowedDocumentUrl->isAllowedDocumentUrl",
+      "@/components/url-documents/url-document-utils:parseAbsoluteUrl->parseAbsoluteUrl",
+    ])
+    expect(contract.renderedElements).toEqual(
+      expect.arrayContaining(["UrlDocumentForm", "UrlDocumentList"])
+    )
+    expect(contract.calledFunctions).toEqual(
+      expect.arrayContaining(["isAllowedDocumentUrl", "parseAbsoluteUrl"])
+    )
+    expect(contract.forbiddenImports).toEqual([])
+    expect(contract.forbiddenPresentationElements).toEqual([])
+    expect(contract.constructsUrlDirectly).toBe(false)
+  })
+})
 
 describe("URL document source-contract extractor", () => {
   it("extracts every supported literal module-reference form", () => {

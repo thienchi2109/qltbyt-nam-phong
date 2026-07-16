@@ -40,6 +40,24 @@ const attachment: Attachment = {
   thiet_bi_id: 42,
 }
 
+const urlPolicyCases = [
+  ["malformed", "không-phải-url", false],
+  ["relative", "/documents/spec.pdf", false],
+  ["scheme-relative", "//example.com/spec.pdf", false],
+  ["protocol-only", "https:example.com", false],
+  ["single-slash", "https:/example.com", false],
+  ["one-backslash", String.raw`https:\example.com`, false],
+  ["two-backslashes", String.raw`https:\\example.com`, false],
+  ["ftp", "ftp://example.com/spec.pdf", false],
+  ["mailto", "mailto:owner@example.com", false],
+  ["blob", "blob:https://example.com/document-id", false],
+  ["javascript", "javascript:alert(1)", false],
+  ["data", "data:text/plain,specification", false],
+  ["file", "file:///tmp/spec.pdf", false],
+  ["HTTP", "http://example.com/spec.pdf", true],
+  ["HTTPS", "https://example.com/spec.pdf", true],
+] as const
+
 function renderFilesTab(overrides: Partial<EquipmentDetailFilesTabProps> = {}) {
   const props: EquipmentDetailFilesTabProps = {
     attachments: [],
@@ -58,6 +76,11 @@ function renderFilesTab(overrides: Partial<EquipmentDetailFilesTabProps> = {}) {
   }
 }
 
+function getNameInput() {
+  return (screen.queryByLabelText("Tên tài liệu") ??
+    screen.getByLabelText("Tên file")) as HTMLInputElement
+}
+
 function getDeleteButton(container: HTMLElement) {
   const button = Array.from(container.querySelectorAll("button")).find(
     (candidate) => !candidate.closest("form")
@@ -68,7 +91,7 @@ function getDeleteButton(container: HTMLElement) {
 
 async function fillValidAttachmentForm() {
   const user = userEvent.setup()
-  await user.type(screen.getByLabelText("Tên file"), "Hướng dẫn sử dụng")
+  await user.type(getNameInput(), "Hướng dẫn sử dụng")
   await user.type(screen.getByLabelText("Đường dẫn (URL)"), "https://example.com/manual.pdf")
   return user
 }
@@ -91,7 +114,9 @@ describe("EquipmentDetailFilesTab", () => {
 
     expect(container.querySelectorAll(".animate-pulse")).toHaveLength(3)
     expect(screen.queryByText("Chưa có file nào được đính kèm.")).not.toBeInTheDocument()
-    expect(screen.queryByRole("link", { name: attachment.ten_file })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("link", { name: new RegExp(attachment.ten_file) })
+    ).not.toBeInTheDocument()
   })
 
   it("shows the empty state after loading an empty list", () => {
@@ -103,7 +128,7 @@ describe("EquipmentDetailFilesTab", () => {
   it("renders an attachment from duong_dan_luu_tru with safe external-link attributes", () => {
     renderFilesTab({ attachments: [attachment] })
 
-    const link = screen.getByRole("link", { name: attachment.ten_file })
+    const link = screen.getByRole("link", { name: new RegExp(attachment.ten_file) })
     expect(link).toHaveAttribute("href", attachment.duong_dan_luu_tru)
     expect(link).toHaveAttribute("target", "_blank")
     expect(link).toHaveAttribute("rel", "noopener noreferrer")
@@ -116,37 +141,83 @@ describe("EquipmentDetailFilesTab", () => {
     const submitButton = screen.getByRole("button", { name: "Lưu liên kết" })
     expect(submitButton).toBeDisabled()
 
-    await user.type(screen.getByLabelText("Tên file"), "Hướng dẫn sử dụng")
+    await user.type(getNameInput(), "Hướng dẫn sử dụng")
     expect(submitButton).toBeDisabled()
 
     await user.type(screen.getByLabelText("Đường dẫn (URL)"), "https://example.com/manual.pdf")
     expect(submitButton).toBeEnabled()
   })
 
-  it("rejects malformed URLs in the submit handler and reports the current toast", () => {
-    const onAddAttachment = vi.fn().mockResolvedValue(undefined)
-    renderFilesTab({ onAddAttachment })
+  it.each(urlPolicyCases)(
+    "applies shared URL policy to add input: %s",
+    async (_name, url, allowed) => {
+      const onAddAttachment = vi.fn().mockResolvedValue(undefined)
+      renderFilesTab({ onAddAttachment })
 
-    fireEvent.change(screen.getByLabelText("Tên file"), {
-      target: { value: "Hướng dẫn sử dụng" },
-    })
-    fireEvent.change(screen.getByLabelText("Đường dẫn (URL)"), {
-      target: { value: "không-phải-url" },
-    })
+      fireEvent.change(getNameInput(), {
+        target: { value: "Hướng dẫn sử dụng" },
+      })
+      fireEvent.change(screen.getByLabelText("Đường dẫn (URL)"), {
+        target: { value: url },
+      })
+      fireEvent.submit(screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")!)
 
-    const form = screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")
-    expect(form).not.toBeNull()
-    fireEvent.submit(form!)
+      if (allowed) {
+        await waitFor(() =>
+          expect(onAddAttachment).toHaveBeenCalledWith({
+            name: "Hướng dẫn sử dụng",
+            url,
+          })
+        )
+      } else {
+        expect(onAddAttachment).not.toHaveBeenCalled()
+        expect(mocks.toast).toHaveBeenCalledWith({
+          variant: "destructive",
+          title: "URL không hợp lệ",
+          description: "Vui lòng nhập một đường dẫn URL hợp lệ.",
+        })
+      }
+    }
+  )
 
-    expect(onAddAttachment).not.toHaveBeenCalled()
-    expect(mocks.toast).toHaveBeenCalledWith({
-      variant: "destructive",
-      title: "URL không hợp lệ",
-      description: "Vui lòng nhập một đường dẫn URL hợp lệ.",
-    })
-    expect(screen.getByLabelText("Tên file")).toHaveValue("Hướng dẫn sử dụng")
-    expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("không-phải-url")
-  })
+  it.each(urlPolicyCases)(
+    "applies shared URL policy to an existing attachment: %s",
+    (_name, url, allowed) => {
+      const item = { ...attachment, duong_dan_luu_tru: url }
+      const { container } = renderFilesTab({ attachments: [item] })
+      const link = screen.queryByRole("link", {
+        name: new RegExp(item.ten_file),
+      })
+
+      expect(Boolean(link)).toBe(allowed)
+      if (allowed) {
+        expect(link).toHaveAttribute("href", url)
+        expect(link).toHaveAttribute("target", "_blank")
+        expect(link).toHaveAttribute("rel", "noopener noreferrer")
+      } else {
+        expect(screen.getByText(item.ten_file)).toBeInTheDocument()
+        expect(container.querySelector("a")).not.toBeInTheDocument()
+        expect(container.querySelector('[href="#"]')).not.toBeInTheDocument()
+      }
+    }
+  )
+
+  it.each(urlPolicyCases)(
+    "applies shared URL policy to the Google Drive folder: %s",
+    (_name, url, allowed) => {
+      const { container } = renderFilesTab({ googleDriveFolderUrl: url })
+      const link = screen.queryByRole("link", { name: "Mở thư mục chung" })
+
+      expect(Boolean(link)).toBe(allowed)
+      if (allowed) {
+        expect(link).toHaveAttribute("href", url)
+        expect(link).toHaveAttribute("target", "_blank")
+        expect(link).toHaveAttribute("rel", "noopener noreferrer")
+      } else {
+        expect(container.querySelector('a[href="#"]')).not.toBeInTheDocument()
+      }
+    }
+  )
 
   it("submits exact values and clears both fields after a successful add", async () => {
     const onAddAttachment = vi.fn().mockResolvedValue(undefined)
@@ -161,7 +232,7 @@ describe("EquipmentDetailFilesTab", () => {
         url: "https://example.com/manual.pdf",
       })
     })
-    expect(screen.getByLabelText("Tên file")).toHaveValue("")
+    expect(getNameInput()).toHaveValue("")
     expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("")
   })
 
@@ -177,20 +248,20 @@ describe("EquipmentDetailFilesTab", () => {
     await user.click(submitButton)
 
     await waitFor(() => expect(onAddAttachment).toHaveBeenCalledTimes(1))
-    expect(screen.getByLabelText("Tên file")).toHaveValue("Hướng dẫn sử dụng")
+    expect(getNameInput()).toHaveValue("Hướng dẫn sử dụng")
     expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("https://example.com/manual.pdf")
 
     await user.click(submitButton)
 
     await waitFor(() => expect(onAddAttachment).toHaveBeenCalledTimes(2))
-    expect(screen.getByLabelText("Tên file")).toHaveValue("")
+    expect(getNameInput()).toHaveValue("")
     expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue("")
   })
 
   it("disables both inputs and submit while add is pending and shows a spinner", () => {
     const { container } = renderFilesTab({ isAdding: true })
 
-    expect(screen.getByLabelText("Tên file")).toBeDisabled()
+    expect(getNameInput()).toBeDisabled()
     expect(screen.getByLabelText("Đường dẫn (URL)")).toBeDisabled()
     expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeDisabled()
     expect(container.querySelector("svg.animate-spin")).toBeInTheDocument()
@@ -271,6 +342,68 @@ describe("EquipmentDetailFilesTab", () => {
     await user.click(deleteButton)
     await waitFor(() => expect(onDeleteAttachment).toHaveBeenCalledTimes(2))
     expect(confirmSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("catches a rejected delete, clears pending state, and allows retry", async () => {
+    const onDeleteAttachment = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("delete failed"))
+      .mockResolvedValueOnce(undefined)
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true)
+    const { container } = renderFilesTab({
+      attachments: [attachment],
+      onDeleteAttachment,
+    })
+    const deleteButton = getDeleteButton(container)
+    const user = userEvent.setup()
+
+    await user.click(deleteButton)
+
+    await waitFor(() => expect(onDeleteAttachment).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(deleteButton).toBeEnabled())
+
+    await user.click(deleteButton)
+
+    await waitFor(() => expect(onDeleteAttachment).toHaveBeenCalledTimes(2))
+    expect(confirmSpy).toHaveBeenCalledTimes(2)
+  })
+
+  it("preserves normalization-prone raw URLs across all three Equipment sinks", async () => {
+    const raw = "HtTpS://EXAMPLE.com/a/../spec.pdf"
+    const onAddAttachment = vi.fn().mockResolvedValue(undefined)
+    renderFilesTab({
+      attachments: [{ ...attachment, ten_file: "Raw attachment", duong_dan_luu_tru: raw }],
+      googleDriveFolderUrl: raw,
+      onAddAttachment,
+    })
+
+    fireEvent.change(getNameInput(), {
+      target: { value: "Raw upload" },
+    })
+    fireEvent.change(screen.getByLabelText("Đường dẫn (URL)"), {
+      target: { value: raw },
+    })
+    fireEvent.submit(screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")!)
+
+    await waitFor(() =>
+      expect(onAddAttachment).toHaveBeenCalledWith({
+        name: "Raw upload",
+        url: raw,
+      })
+    )
+
+    const attachmentLink = screen.getByRole("link", {
+      name: /Raw attachment/,
+    }) as HTMLAnchorElement
+    const folderLink = screen.getByRole("link", {
+      name: "Mở thư mục chung",
+    }) as HTMLAnchorElement
+    for (const link of [attachmentLink, folderLink]) {
+      expect(link.getAttribute("href")).toBe(raw)
+      expect(link.href).toBe(new URL(raw).href)
+      expect(link).toHaveAttribute("target", "_blank")
+      expect(link).toHaveAttribute("rel", "noopener noreferrer")
+    }
   })
 
   it("renders the Google Drive action only for a provided folder URL with safe attributes", () => {

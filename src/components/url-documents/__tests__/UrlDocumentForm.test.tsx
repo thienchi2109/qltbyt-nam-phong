@@ -60,6 +60,30 @@ describe("UrlDocumentForm", () => {
     expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeEnabled()
   })
 
+  it("keeps fields editable while disabling submit until both required values exist", () => {
+    const onSubmit = vi.fn()
+    const props = {
+      onNameChange: vi.fn(),
+      onUrlChange: vi.fn(),
+      onSubmit,
+    }
+    const { rerender } = render(<UrlDocumentForm name="" url="" {...props} />)
+
+    expect(screen.getByLabelText("Tên tài liệu")).toBeEnabled()
+    expect(screen.getByLabelText("Đường dẫn (URL)")).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeDisabled()
+    fireEvent.submit(screen.getByRole("button", { name: "Lưu liên kết" }).closest("form")!)
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    rerender(<UrlDocumentForm name="Hồ sơ kỹ thuật" url="" {...props} />)
+    expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeDisabled()
+
+    rerender(
+      <UrlDocumentForm name="Hồ sơ kỹ thuật" url="https://example.com/spec.pdf" {...props} />
+    )
+    expect(screen.getByRole("button", { name: "Lưu liên kết" })).toBeEnabled()
+  })
+
   it("emits raw controlled field changes without rewriting values", () => {
     const onNameChange = vi.fn()
     const onUrlChange = vi.fn()
