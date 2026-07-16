@@ -62,6 +62,39 @@ describe("URL document browser network boundary", () => {
   })
 
   it.each([
+    [
+      "an aliased React.createElement",
+      `
+        const h = React.createElement
+        h("img", { src: "/api/documents", alt: "" })
+      `,
+    ],
+    ["React.cloneElement", 'React.cloneElement(<img alt="" />, { src: "/api/documents" })'],
+    [
+      "dangerouslySetInnerHTML",
+      `<div dangerouslySetInnerHTML={{ __html: '<img src="/api/documents">' }} />`,
+    ],
+    ["iframe srcDoc", `<iframe srcDoc={'<script>fetch("/api/documents")</script>'} />`],
+    [
+      "an imperative form action",
+      `
+        <form
+          ref={(node) => {
+            if (node) {
+              node.action = "/api/documents"
+              node.submit()
+            }
+          }}
+        />
+      `,
+    ],
+  ])("rejects a browser request constructed through %s", (_name, source) => {
+    expect(() =>
+      assertNoForbiddenBrowserCapabilities(source, "fixture source", "fixture.tsx")
+    ).toThrow(/fixture source references browser/)
+  })
+
+  it.each([
     ["SharedWorker", 'new SharedWorker("/worker.js")'],
     ["Audio", 'new Audio("/sound.mp3")'],
     ["importScripts", 'importScripts("/worker-dependency.js")'],

@@ -16,10 +16,14 @@ import {
   hasBrowserContextAccess,
   isBrowserContextMemberAccess,
   isForbiddenBrowserCapability,
-  readForbiddenCreateElementNetworkAccess,
+} from "./url-document-browser-capability-helpers"
+import {
+  collectElementFactoryAliases,
+  readForbiddenDomNetworkMutation,
+  readForbiddenElementFactoryNetworkAccess,
   readForbiddenJsxNetworkAttribute,
   readForbiddenJsxNetworkSpread,
-} from "./url-document-browser-capability-helpers"
+} from "./url-document-browser-network-helpers"
 import { collectScopeBindings } from "./url-document-scope-helpers"
 
 interface StaticAccess {
@@ -164,6 +168,7 @@ export function assertNoForbiddenBrowserCapabilities(
     true,
     scriptKindForFile(fileName)
   )
+  const elementFactoryAliases = collectElementFactoryAliases(sourceFile)
 
   const assertAccessAllowed = (access: StaticAccess | null, scopes: readonly Set<string>[]) => {
     if (
@@ -230,9 +235,16 @@ export function assertNoForbiddenBrowserCapabilities(
     }
 
     if (!inTypePosition && ts.isCallExpression(node)) {
-      const networkAccess = readForbiddenCreateElementNetworkAccess(node)
+      const networkAccess = readForbiddenElementFactoryNetworkAccess(node, elementFactoryAliases)
       if (networkAccess) {
         throw new Error(`${subject} references browser network attribute ${networkAccess}`)
+      }
+    }
+
+    if (!inTypePosition && ts.isBinaryExpression(node)) {
+      const networkMutation = readForbiddenDomNetworkMutation(node)
+      if (networkMutation) {
+        throw new Error(`${subject} references browser network attribute ${networkMutation}`)
       }
     }
 

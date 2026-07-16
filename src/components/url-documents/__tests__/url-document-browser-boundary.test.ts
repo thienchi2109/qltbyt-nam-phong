@@ -16,6 +16,7 @@ describe("URL document browser boundary", () => {
   it.each([
     ["eval", "void eval('fetch(\"/api/documents\")')"],
     ["Function", "void Function('return fetch(\"/api/documents\")')()"],
+    ["setTimeout", "void setTimeout('fetch(\"/api/documents\")', 0)"],
     ["process", 'void process.getBuiltinModule("node:fs")?.writeFileSync("/tmp/document", "x")'],
     [
       "global",
@@ -25,6 +26,20 @@ describe("URL document browser boundary", () => {
   ])("rejects the unbound runtime escape hatch %s", (capability, source) => {
     expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
       new RegExp(`fixture source references browser capability ${capability}`)
+    )
+  })
+
+  it("rejects a runtime constructor reached through a property descriptor", () => {
+    const source = `
+      const execute = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(() => {}),
+        "constructor"
+      )!.value
+      execute('return fetch("/api/documents")')()
+    `
+
+    expect(() => assertNoForbiddenBrowserCapabilities(source, "fixture source")).toThrow(
+      /fixture source references browser capability Object\.getOwnPropertyDescriptor/
     )
   })
 
