@@ -88,6 +88,71 @@ describe("URL document browser network boundary", () => {
         />
       `,
     ],
+    ["an unknown intrinsic spread", "<div {...props} />"],
+    [
+      "setAttribute",
+      `
+        node.setAttribute("src", url)
+      `,
+    ],
+    [
+      "a compound DOM property assignment",
+      `
+        node.src += suffix
+      `,
+    ],
+    [
+      "an inline CSS image URL",
+      `
+        <div style={{ backgroundImage: "url(/api/documents)" }} />
+      `,
+    ],
+    [
+      "React.createElement.call",
+      `
+        React.createElement.call(React, "img", { src: "/api/documents", alt: "" })
+      `,
+    ],
+    [
+      "a comma-wrapped React.createElement",
+      `
+        ;(0, React.createElement)("img", { src: "/api/documents", alt: "" })
+      `,
+    ],
+    [
+      "React.createElement.apply",
+      `
+        React.createElement.apply(React, [
+          "img",
+          { src: "/api/documents", alt: "" },
+        ])
+      `,
+    ],
+    [
+      "React.createElement.bind",
+      `
+        const h = React.createElement.bind(React)
+        h("img", { src: "/api/documents", alt: "" })
+      `,
+    ],
+    [
+      "an imperative CSS image URL",
+      `
+        node.style.backgroundImage = "url(/api/documents)"
+      `,
+    ],
+    [
+      "imperative innerHTML",
+      `
+        node.innerHTML = '<img src="/api/documents">'
+      `,
+    ],
+    [
+      "insertAdjacentHTML",
+      `
+        node.insertAdjacentHTML("beforeend", '<img src="/api/documents">')
+      `,
+    ],
   ])("rejects a browser request constructed through %s", (_name, source) => {
     expect(() =>
       assertNoForbiddenBrowserCapabilities(source, "fixture source", "fixture.tsx")

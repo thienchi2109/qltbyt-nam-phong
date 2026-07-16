@@ -19,6 +19,7 @@ import {
 } from "./url-document-browser-capability-helpers"
 import {
   collectElementFactoryAliases,
+  readForbiddenDomNetworkCall,
   readForbiddenDomNetworkMutation,
   readForbiddenElementFactoryNetworkAccess,
   readForbiddenJsxNetworkAttribute,
@@ -238,6 +239,10 @@ export function assertNoForbiddenBrowserCapabilities(
       const networkAccess = readForbiddenElementFactoryNetworkAccess(node, elementFactoryAliases)
       if (networkAccess) {
         throw new Error(`${subject} references browser network attribute ${networkAccess}`)
+      }
+      const networkMutation = readForbiddenDomNetworkCall(node)
+      if (networkMutation) {
+        throw new Error(`${subject} references browser network attribute ${networkMutation}`)
       }
     }
 

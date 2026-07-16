@@ -26,14 +26,18 @@ const forbiddenJsxNetworkAttributes = new Map<string, ReadonlySet<string>>([
 ])
 const forbiddenNetworkAttributeNames = new Set([
   "action",
+  "backgroundImage",
   "dangerouslySetInnerHTML",
   "data",
   "formAction",
+  "innerHTML",
+  "outerHTML",
   "ping",
   "poster",
   "src",
   "srcDoc",
   "srcSet",
+  "style",
   "xlink:href",
   "xlinkHref",
 ])
@@ -43,6 +47,11 @@ type ElementFactoryKind = "cloneElement" | "createElement"
 export interface ElementFactoryAliases {
   cloneElement: ReadonlySet<string>
   createElement: ReadonlySet<string>
+}
+
+interface ElementFactoryInvocation {
+  argumentOffset: number | null
+  factoryKind: ElementFactoryKind
 }
 
 function readJsxTagName(tagName: ts.JsxTagNameExpression) {
@@ -75,9 +84,7 @@ export function readForbiddenJsxNetworkAttribute(node: ts.JsxAttribute) {
 
 export function readForbiddenJsxNetworkSpread(node: ts.JsxSpreadAttribute) {
   const tagName = readJsxElementName(node)
-  return tagName && (forbiddenJsxNetworkAttributes.has(tagName) || /^[A-Z]/.test(tagName))
-    ? `${tagName}.*`
-    : null
+  return tagName ? `${tagName}.*` : null
 }
 
 function readElementFactoryKind(
@@ -85,6 +92,12 @@ function readElementFactoryKind(
   aliases?: ElementFactoryAliases
 ): ElementFactoryKind | null {
   const unwrappedExpression = unwrapExpression(expression)
+  if (
+    ts.isBinaryExpression(unwrappedExpression) &&
+    unwrappedExpression.operatorToken.kind === ts.SyntaxKind.CommaToken
+  ) {
+    return readElementFactoryKind(unwrappedExpression.right, aliases)
+  }
   if (ts.isIdentifier(unwrappedExpression)) {
     if (
       unwrappedExpression.text === "cloneElement" ||
@@ -107,6 +120,33 @@ function readElementFactoryKind(
   }
 
   return null
+}
+
+function readElementFactoryInvocation(
+  expression: ts.Expression,
+  aliases: ElementFactoryAliases
+): ElementFactoryInvocation | null {
+  const unwrappedExpression = unwrapExpression(expression)
+  let invocationMethod: string | null = null
+  if (ts.isPropertyAccessExpression(unwrappedExpression)) {
+    invocationMethod = unwrappedExpression.name.text
+  } else if (
+    ts.isElementAccessExpression(unwrappedExpression) &&
+    unwrappedExpression.argumentExpression
+  ) {
+    invocationMethod = readStaticString(unwrappedExpression.argumentExpression)
+  }
+  if (invocationMethod === "apply" || invocationMethod === "bind" || invocationMethod === "call") {
+    const factoryKind = readElementFactoryKind(unwrappedExpression.expression, aliases)
+    if (!factoryKind) return null
+    return {
+      argumentOffset: invocationMethod === "call" ? 1 : null,
+      factoryKind,
+    }
+  }
+
+  const factoryKind = readElementFactoryKind(unwrappedExpression, aliases)
+  return factoryKind ? { argumentOffset: 0, factoryKind } : null
 }
 
 export function collectElementFactoryAliases(sourceFile: ts.SourceFile): ElementFactoryAliases {
@@ -213,23 +253,29 @@ export function readForbiddenElementFactoryNetworkAccess(
   node: ts.CallExpression,
   aliases: ElementFactoryAliases
 ) {
-  const factoryKind = readElementFactoryKind(node.expression, aliases)
-  if (!factoryKind) return null
+  const invocation = readElementFactoryInvocation(node.expression, aliases)
+  if (!invocation) return null
+  if (invocation.argumentOffset === null) return "*.*"
 
-  const element = node.arguments[0]
+  const element = node.arguments[invocation.argumentOffset]
   let tagName: string | null = null
   if (element) {
     tagName =
-      factoryKind === "createElement"
+      invocation.factoryKind === "createElement"
         ? readStaticString(element)
         : readJsxExpressionTagName(element)
   }
 
-  return readForbiddenNetworkProps(tagName, node.arguments[1])
+  return readForbiddenNetworkProps(tagName, node.arguments[invocation.argumentOffset + 1])
 }
 
 export function readForbiddenDomNetworkMutation(node: ts.BinaryExpression) {
-  if (node.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return null
+  if (
+    node.operatorToken.kind < ts.SyntaxKind.FirstAssignment ||
+    node.operatorToken.kind > ts.SyntaxKind.LastAssignment
+  ) {
+    return null
+  }
 
   const target = unwrapExpression(node.left)
   let propertyName: string | null = null
@@ -242,4 +288,23 @@ export function readForbiddenDomNetworkMutation(node: ts.BinaryExpression) {
   return propertyName && forbiddenNetworkAttributeNames.has(propertyName)
     ? `*.${propertyName}`
     : null
+}
+
+export function readForbiddenDomNetworkCall(node: ts.CallExpression) {
+  const expression = unwrapExpression(node.expression)
+  let methodName: string | null = null
+  if (ts.isPropertyAccessExpression(expression)) {
+    methodName = expression.name.text
+  } else if (ts.isElementAccessExpression(expression) && expression.argumentExpression) {
+    methodName = readStaticString(expression.argumentExpression)
+  }
+  if (methodName === "insertAdjacentHTML") return "*.insertAdjacentHTML"
+  if (methodName !== "setAttribute" && methodName !== "setAttributeNS") return null
+
+  const attributeArgument = node.arguments[methodName === "setAttribute" ? 0 : 1]
+  if (!attributeArgument) return "*.[computed]"
+
+  const attributeName = readStaticString(attributeArgument)
+  if (attributeName === null) return "*.[computed]"
+  return forbiddenNetworkAttributeNames.has(attributeName) ? `*.${attributeName}` : null
 }
