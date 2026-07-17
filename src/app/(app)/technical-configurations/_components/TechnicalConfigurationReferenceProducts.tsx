@@ -5,6 +5,7 @@ import { TechnicalConfigurationReferenceProductsBody } from "@/app/(app)/technic
 import { useTechnicalConfigurationBaseline } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline"
 import { useTechnicalConfigurationBaselineVersions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineVersions"
 import { useTechnicalConfigurationReferenceProducts } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProducts"
+import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { selectTechnicalConfigurationBaselineVersion } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -38,16 +39,21 @@ export function TechnicalConfigurationReferenceProducts({
     listVersions: baselineRpc.listVersions,
   })
   const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
-  const selectedVersion = selectTechnicalConfigurationBaselineVersion(
-    versionState.versions,
-    selectedVersionId,
-    null,
-    Boolean(versionState.versionsQuery.hasNextPage)
+  const [selectedVersion, setSelectedVersion] =
+    React.useState<TechnicalConfigurationBaselineDraftWire | null>(null)
+  const adoptVersion = React.useCallback(
+    (version: TechnicalConfigurationBaselineDraftWire | null) => {
+      setSelectedVersionId(version?.id ?? null)
+      setSelectedVersion(version)
+    },
+    []
   )
   const handleRevisionChange = React.useCallback(
     (revision: number) => {
       if (!selectedVersion) return
-      versionState.cacheVersion({ ...selectedVersion, revision })
+      const nextVersion = { ...selectedVersion, revision }
+      setSelectedVersion(nextVersion)
+      versionState.cacheVersion(nextVersion)
     },
     [selectedVersion, versionState]
   )
@@ -61,6 +67,39 @@ export function TechnicalConfigurationReferenceProducts({
   const hasInitialProductsError =
     referenceState.productsQuery.isError && referenceState.productsQuery.data === undefined
   const isProductDataUnavailable = referenceState.productsQuery.isLoading || hasInitialProductsError
+  const versionOptions = React.useMemo(
+    () =>
+      selectedVersion && !versionState.versions.some((version) => version.id === selectedVersion.id)
+        ? [selectedVersion, ...versionState.versions]
+        : versionState.versions,
+    [selectedVersion, versionState.versions]
+  )
+
+  React.useEffect(() => {
+    if (!versionState.versionsQuery.data || referenceState.isDirty) return
+    const nextVersion = selectTechnicalConfigurationBaselineVersion(
+      versionState.versions,
+      selectedVersionId,
+      selectedVersion,
+      Boolean(versionState.versionsQuery.hasNextPage)
+    )
+    if (
+      selectedVersion?.id === nextVersion?.id &&
+      selectedVersion?.revision === nextVersion?.revision &&
+      selectedVersion?.status === nextVersion?.status
+    ) {
+      return
+    }
+    adoptVersion(nextVersion)
+  }, [
+    adoptVersion,
+    referenceState.isDirty,
+    selectedVersion,
+    selectedVersionId,
+    versionState.versions,
+    versionState.versionsQuery.data,
+    versionState.versionsQuery.hasNextPage,
+  ])
 
   React.useEffect(() => {
     onDirtyChange?.(referenceState.isDirty)
@@ -85,9 +124,10 @@ export function TechnicalConfigurationReferenceProducts({
       ) {
         return
       }
-      setSelectedVersionId(nextVersionId)
+      const nextVersion = versionOptions.find((version) => version.id === nextVersionId)
+      if (nextVersion) adoptVersion(nextVersion)
     },
-    [referenceState.isDirty]
+    [adoptVersion, referenceState.isDirty, versionOptions]
   )
 
   const handleVersionSelect = React.useCallback(
@@ -173,7 +213,7 @@ export function TechnicalConfigurationReferenceProducts({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {versionState.versions
+              {versionOptions
                 .toSorted((left, right) => right.version_number - left.version_number)
                 .map((version) => (
                   <SelectItem key={version.id} value={version.id}>
@@ -197,52 +237,50 @@ export function TechnicalConfigurationReferenceProducts({
           </Select>
         </div>
 
-        {!referenceState.isReadOnly ? (
-          <div className="flex flex-wrap gap-2">
-            {referenceState.isDirty ||
-            referenceState.isConflict ||
-            referenceState.refreshWarning ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isNavigationBlocked || isProductDataUnavailable}
+            onClick={handleReload}
+          >
+            <RefreshCw
+              className={`size-4 ${referenceState.isReloading ? "animate-spin" : ""}`}
+              aria-hidden="true"
+            />
+            Tải lại dữ liệu
+          </Button>
+          {!referenceState.isReadOnly ? (
+            <>
               <Button
                 type="button"
                 variant="outline"
                 disabled={isNavigationBlocked || isProductDataUnavailable}
-                onClick={handleReload}
+                onClick={referenceState.addProduct}
               >
-                <RefreshCw
-                  className={`size-4 ${referenceState.isReloading ? "animate-spin" : ""}`}
-                  aria-hidden="true"
-                />
-                Tải lại dữ liệu
+                <Plus className="size-4" aria-hidden="true" />
+                Thêm sản phẩm tham chiếu
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              disabled={isNavigationBlocked || isProductDataUnavailable}
-              onClick={referenceState.addProduct}
-            >
-              <Plus className="size-4" aria-hidden="true" />
-              Thêm sản phẩm tham chiếu
-            </Button>
-            <Button
-              type="button"
-              disabled={
-                !referenceState.isDirty ||
-                referenceState.invalidProductIds.length > 0 ||
-                isNavigationBlocked ||
-                isProductDataUnavailable
-              }
-              onClick={referenceState.save}
-            >
-              {referenceState.isSaving ? (
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="size-4" aria-hidden="true" />
-              )}
-              Lưu thay đổi
-            </Button>
-          </div>
-        ) : null}
+              <Button
+                type="button"
+                disabled={
+                  !referenceState.isDirty ||
+                  referenceState.invalidProductIds.length > 0 ||
+                  isNavigationBlocked ||
+                  isProductDataUnavailable
+                }
+                onClick={referenceState.save}
+              >
+                {referenceState.isSaving ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-4" aria-hidden="true" />
+                )}
+                Lưu thay đổi
+              </Button>
+            </>
+          ) : null}
+        </div>
       </section>
 
       {readOnlyMessage ? (

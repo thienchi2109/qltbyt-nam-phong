@@ -1,6 +1,7 @@
 import { act, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { listAllTechnicalConfigurationReferenceProducts } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-operations"
 import {
   baselineVersion,
   listResponse,
@@ -42,12 +43,14 @@ export function registerReferenceProductHookTests(referenceRpc: ReferenceProduct
       referenceRpc.listProducts
         .mockResolvedValueOnce({
           data: firstPage,
+          revision: baselineVersion.revision,
           total: 101,
           page: 1,
           page_size: 100,
         })
         .mockResolvedValueOnce({
           data: [lastProduct],
+          revision: baselineVersion.revision,
           total: 101,
           page: 2,
           page_size: 100,
@@ -66,7 +69,54 @@ export function registerReferenceProductHookTests(referenceRpc: ReferenceProduct
         expect.any(AbortSignal)
       )
       expect(result.current.products.at(-1)?.model).toBe("Model 101")
+      expect(result.current.productsQuery.data).toEqual({
+        products: [...firstPage, lastProduct],
+        revision: baselineVersion.revision,
+      })
     })
+
+    it.each([
+      {
+        changedField: "revision",
+        secondRevision: baselineVersion.revision + 1,
+        secondTotal: 2,
+      },
+      {
+        changedField: "total",
+        secondRevision: baselineVersion.revision,
+        secondTotal: 3,
+      },
+    ])(
+      "rejects the aggregate when paginated snapshot $changedField changes",
+      async ({ secondRevision, secondTotal }) => {
+        referenceRpc.listProducts
+          .mockResolvedValueOnce({
+            data: [product("product-1", "Model 1")],
+            revision: baselineVersion.revision,
+            total: 2,
+            page: 1,
+            page_size: 100,
+          })
+          .mockResolvedValueOnce({
+            data: [product("product-2", "Model 2", secondRevision)],
+            revision: secondRevision,
+            total: secondTotal,
+            page: 2,
+            page_size: 100,
+          })
+          .mockResolvedValueOnce({
+            data: [],
+            revision: secondRevision,
+            total: secondTotal,
+            page: 3,
+            page_size: 100,
+          })
+
+        await expect(
+          listAllTechnicalConfigurationReferenceProducts(baselineVersion.id)
+        ).rejects.toThrow("Reference-product pagination snapshot changed during load.")
+      }
+    )
 
     it("reports navigation blocking while reload is in flight", async () => {
       let resolveReload: ((value: ReturnType<typeof listResponse>) => void) | undefined

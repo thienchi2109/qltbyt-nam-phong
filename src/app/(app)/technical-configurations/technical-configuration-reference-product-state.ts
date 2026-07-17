@@ -1,5 +1,8 @@
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
-import type { TechnicalConfigurationReferenceProductWire } from "@/app/(app)/technical-configurations/reference-product-types"
+import type {
+  TechnicalConfigurationReferenceProductWire,
+  TechnicalConfigurationReferenceProductsSnapshot,
+} from "@/app/(app)/technical-configurations/reference-product-types"
 import { isTechnicalConfigurationBaselineConflict } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 
 export type TechnicalConfigurationReferenceProductDraft = {
@@ -25,6 +28,13 @@ export type TechnicalConfigurationReferenceProductSaveProgress = {
   products: TechnicalConfigurationReferenceProductDraft[]
 }
 
+export type TechnicalConfigurationReferenceProductsHookArgs = {
+  baselineVersion: TechnicalConfigurationBaselineDraftWire | null
+  isArchived?: boolean
+  onRevisionChange?: (revision: number) => void
+  onNavigationBlockedChange?: (blocked: boolean) => void
+}
+
 export type TechnicalConfigurationReferenceProductsState = {
   loadedVersionId: string
   baseProducts: TechnicalConfigurationReferenceProductDraft[]
@@ -37,7 +47,7 @@ export type TechnicalConfigurationReferenceProductsState = {
   saveError: string | null
   refreshWarning: string | null
   ignoreProductsQueryData: boolean
-  syncedProductsQueryData: TechnicalConfigurationReferenceProductWire[] | null
+  syncedProductsQueryData: TechnicalConfigurationReferenceProductsSnapshot | null
 }
 
 /** Creates reference-product editor state for the selected baseline version. */
@@ -149,7 +159,7 @@ export function reconcileTechnicalConfigurationReferenceProductsState({
 }: {
   state: TechnicalConfigurationReferenceProductsState
   baselineVersion: TechnicalConfigurationBaselineDraftWire | null
-  productsQueryData: TechnicalConfigurationReferenceProductWire[] | undefined
+  productsQueryData: TechnicalConfigurationReferenceProductsSnapshot | undefined
   isDirty: boolean
 }): TechnicalConfigurationReferenceProductsState | null {
   if ((baselineVersion?.id ?? "") !== state.loadedVersionId) {
@@ -163,14 +173,10 @@ export function reconcileTechnicalConfigurationReferenceProductsState({
     !isDirty &&
     !state.isConflict &&
     !state.isSaving
-  const nextRevision =
-    !isDirty && baselineVersion?.revision !== undefined
-      ? Math.max(state.revision, baselineVersion.revision)
-      : state.revision
-  if (!canSyncProducts && nextRevision === state.revision) return null
+  if (!canSyncProducts) return null
 
   const nextProducts = canSyncProducts
-    ? productsQueryData?.map(toTechnicalConfigurationReferenceProductDraft)
+    ? productsQueryData?.products.map(toTechnicalConfigurationReferenceProductDraft)
     : null
   return {
     ...state,
@@ -181,7 +187,7 @@ export function reconcileTechnicalConfigurationReferenceProductsState({
           syncedProductsQueryData: productsQueryData ?? null,
         }
       : {}),
-    revision: nextRevision,
+    revision: productsQueryData?.revision ?? state.revision,
   }
 }
 

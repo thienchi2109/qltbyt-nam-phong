@@ -104,10 +104,12 @@ export function product(
 }
 
 export function listResponse(
-  data: TechnicalConfigurationReferenceProductWire[]
+  data: TechnicalConfigurationReferenceProductWire[],
+  revision = data[0]?.revision ?? baselineVersion.revision
 ): TechnicalConfigurationReferenceProductsListWireResponse {
   return {
     data,
+    revision,
     total: data.length,
     page: 1,
     page_size: 100,

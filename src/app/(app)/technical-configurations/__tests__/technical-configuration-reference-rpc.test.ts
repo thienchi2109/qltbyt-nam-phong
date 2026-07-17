@@ -73,6 +73,7 @@ describe("technical configuration reference-product RPC adapter", () => {
           ],
         },
       ],
+      revision: 3,
       total: 1,
       page: 2,
       page_size: 25,

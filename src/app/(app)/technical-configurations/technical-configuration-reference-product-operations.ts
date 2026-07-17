@@ -1,5 +1,8 @@
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
-import type { TechnicalConfigurationReferenceProductWire } from "@/app/(app)/technical-configurations/reference-product-types"
+import type {
+  TechnicalConfigurationReferenceProductWire,
+  TechnicalConfigurationReferenceProductsSnapshot,
+} from "@/app/(app)/technical-configurations/reference-product-types"
 import { isTechnicalConfigurationBaselineConflict } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import {
   cloneTechnicalConfigurationReferenceProductDrafts,
@@ -44,10 +47,11 @@ export class ReferenceProductSaveFailure extends Error {
 export async function listAllTechnicalConfigurationReferenceProducts(
   baselineVersionId: string,
   signal?: AbortSignal
-): Promise<TechnicalConfigurationReferenceProductWire[]> {
+): Promise<TechnicalConfigurationReferenceProductsSnapshot> {
   const products: TechnicalConfigurationReferenceProductWire[] = []
   let page = 1
   let total = Number.POSITIVE_INFINITY
+  let revision: number | null = null
 
   while (products.length < total) {
     const response = await listTechnicalConfigurationReferenceProducts(
@@ -58,13 +62,20 @@ export async function listAllTechnicalConfigurationReferenceProducts(
       },
       signal
     )
+    if (
+      (revision !== null && response.revision !== revision) ||
+      (Number.isFinite(total) && response.total !== total)
+    ) {
+      throw new Error("Reference-product pagination snapshot changed during load.")
+    }
+    revision ??= response.revision
     products.push(...response.data)
     total = response.total
     if (response.data.length === 0) break
     page += 1
   }
 
-  return products
+  return { products, revision: revision ?? 0 }
 }
 
 /** Persists reference-product drafts with resumable optimistic-concurrency progress. */

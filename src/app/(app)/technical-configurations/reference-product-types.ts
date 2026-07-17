@@ -28,9 +28,15 @@ export interface TechnicalConfigurationReferenceProductWire {
 
 export interface TechnicalConfigurationReferenceProductsListWireResponse {
   data: TechnicalConfigurationReferenceProductWire[]
+  revision: number
   total: number
   page: number
   page_size: number
+}
+
+export type TechnicalConfigurationReferenceProductsSnapshot = {
+  products: TechnicalConfigurationReferenceProductWire[]
+  revision: number
 }
 
 export interface TechnicalConfigurationReferenceProductMutationWireResponse {

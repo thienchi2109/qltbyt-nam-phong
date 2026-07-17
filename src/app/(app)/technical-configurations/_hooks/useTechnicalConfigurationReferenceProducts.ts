@@ -1,8 +1,7 @@
 import * as React from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 
-import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
-import type { TechnicalConfigurationReferenceProductWire } from "@/app/(app)/technical-configurations/reference-product-types"
+import type { TechnicalConfigurationReferenceProductsSnapshot } from "@/app/(app)/technical-configurations/reference-product-types"
 import {
   applyTechnicalConfigurationReferenceProductSaveErrorState,
   applyTechnicalConfigurationReferenceProductSaveFailureState,
@@ -14,6 +13,7 @@ import {
   toTechnicalConfigurationReferenceProductDraft,
   type TechnicalConfigurationReferenceProductDraft,
   type TechnicalConfigurationReferenceProductPatch,
+  type TechnicalConfigurationReferenceProductsHookArgs,
   type TechnicalConfigurationReferenceProductsState,
 } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-state"
 import {
@@ -30,12 +30,6 @@ export type {
   TechnicalConfigurationReferenceProductDraft,
   TechnicalConfigurationReferenceProductPatch,
 } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-state"
-type UseTechnicalConfigurationReferenceProductsArgs = {
-  baselineVersion: TechnicalConfigurationBaselineDraftWire | null
-  isArchived?: boolean
-  onRevisionChange?: (revision: number) => void
-  onNavigationBlockedChange?: (blocked: boolean) => void
-}
 
 /** Owns reference-product retrieval, local drafts, explicit save, and conflict preservation. */
 export function useTechnicalConfigurationReferenceProducts({
@@ -43,7 +37,7 @@ export function useTechnicalConfigurationReferenceProducts({
   isArchived = false,
   onRevisionChange,
   onNavigationBlockedChange,
-}: UseTechnicalConfigurationReferenceProductsArgs) {
+}: TechnicalConfigurationReferenceProductsHookArgs) {
   const queryClient = useQueryClient()
   const baselineVersionId = baselineVersion?.id ?? ""
   const queryKey = React.useMemo(
@@ -222,11 +216,15 @@ export function useTechnicalConfigurationReferenceProducts({
       ])
       if (productsRefresh.status === "fulfilled") {
         const refreshedProducts =
-          queryClient.getQueryData<TechnicalConfigurationReferenceProductWire[]>(queryKey)
+          queryClient.getQueryData<TechnicalConfigurationReferenceProductsSnapshot>(queryKey)
         if (refreshedProducts) {
-          const nextProducts = refreshedProducts.map(toTechnicalConfigurationReferenceProductDraft)
+          const nextProducts = refreshedProducts.products.map(
+            toTechnicalConfigurationReferenceProductDraft
+          )
+          onRevisionChange?.(refreshedProducts.revision)
           setState((current) => ({
             ...current,
+            revision: refreshedProducts.revision,
             baseProducts: nextProducts,
             products: cloneTechnicalConfigurationReferenceProductDrafts(nextProducts),
             ignoreProductsQueryData: false,
@@ -294,9 +292,13 @@ export function useTechnicalConfigurationReferenceProducts({
         }
         const refreshed = await productsQuery.refetch({ throwOnError: true })
         if (refreshed.data) {
-          const nextProducts = refreshed.data.map(toTechnicalConfigurationReferenceProductDraft)
+          const nextProducts = refreshed.data.products.map(
+            toTechnicalConfigurationReferenceProductDraft
+          )
+          onRevisionChange?.(refreshed.data.revision)
           setState((current) => ({
             ...current,
+            revision: refreshed.data.revision,
             baseProducts: nextProducts,
             products: cloneTechnicalConfigurationReferenceProductDrafts(nextProducts),
             isConflict: false,
@@ -322,7 +324,7 @@ export function useTechnicalConfigurationReferenceProducts({
         onNavigationBlockedChange?.(false)
       }
     },
-    [baselineVersionId, onNavigationBlockedChange, productsQuery]
+    [baselineVersionId, onNavigationBlockedChange, onRevisionChange, productsQuery]
   )
 
   return {
