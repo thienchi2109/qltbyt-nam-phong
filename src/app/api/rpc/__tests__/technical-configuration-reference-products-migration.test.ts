@@ -10,6 +10,8 @@ const LIST_PERFORMANCE_MIGRATION_SUFFIX =
   "_technical_configuration_reference_products_list_set_based.sql"
 const SNAPSHOT_REVISION_MIGRATION_SUFFIX =
   "_technical_configuration_reference_products_snapshot_revision.sql"
+const PAGINATION_BIGINT_OFFSET_MIGRATION_SUFFIX =
+  "_technical_configuration_reference_products_pagination_bigint_offset.sql"
 const PHASE_GATE_PATH = path.resolve(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_products_phase_gate.sql"
@@ -76,6 +78,13 @@ const snapshotRevisionMigrationFiles = readdirSync(MIGRATIONS_DIR)
 const snapshotRevisionMigrationFile = snapshotRevisionMigrationFiles[0] ?? ""
 const snapshotRevisionMigrationSource = snapshotRevisionMigrationFile
   ? readFileSync(path.resolve(MIGRATIONS_DIR, snapshotRevisionMigrationFile), "utf8")
+  : ""
+const paginationBigintOffsetMigrationFiles = readdirSync(MIGRATIONS_DIR)
+  .filter((file) => file.endsWith(PAGINATION_BIGINT_OFFSET_MIGRATION_SUFFIX))
+  .sort()
+const paginationBigintOffsetMigrationFile = paginationBigintOffsetMigrationFiles[0] ?? ""
+const paginationBigintOffsetMigrationSource = paginationBigintOffsetMigrationFile
+  ? readFileSync(path.resolve(MIGRATIONS_DIR, paginationBigintOffsetMigrationFile), "utf8")
   : ""
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 const rpcNamesSource = readIfExists(RPC_NAMES_PATH)
@@ -201,6 +210,33 @@ describe("technical configuration P7A1 reference product contracts", () => {
       "REVOKE ALL ON FUNCTION public.technical_configuration_reference_products_list"
     )
     expect(snapshotRevisionMigrationSource).toContain(
+      "GRANT EXECUTE ON FUNCTION public.technical_configuration_reference_products_list"
+    )
+  })
+
+  it("widens list pagination arithmetic in a later superseding migration", () => {
+    expect(paginationBigintOffsetMigrationFiles).toHaveLength(1)
+    expect(paginationBigintOffsetMigrationFile > snapshotRevisionMigrationFile).toBe(true)
+
+    const listBlock = getFunctionBlock(
+      paginationBigintOffsetMigrationSource,
+      "technical_configuration_reference_products_list"
+    )
+    expect(listBlock).not.toBe("")
+    expect(listBlock).toContain(
+      "technical_configuration_reference_products_list(\n  p_baseline_version_id UUID,\n  p_page INTEGER DEFAULT 1,\n  p_page_size INTEGER DEFAULT 50"
+    )
+    expect(listBlock).toContain("LANGUAGE plpgsql SECURITY DEFINER")
+    expect(listBlock).toContain("SET search_path = public, pg_temp")
+    expect(listBlock).toContain("WITH baseline AS MATERIALIZED")
+    expect(listBlock).toContain("snapshot AS MATERIALIZED")
+    expect(listBlock).toContain("'revision', snapshot.revision")
+    expect(listBlock).toContain("OFFSET (p_page::BIGINT - 1) * p_page_size")
+    expect(listBlock).not.toContain("OFFSET (p_page - 1) * p_page_size")
+    expect(paginationBigintOffsetMigrationSource).toContain(
+      "REVOKE ALL ON FUNCTION public.technical_configuration_reference_products_list"
+    )
+    expect(paginationBigintOffsetMigrationSource).toContain(
       "GRANT EXECUTE ON FUNCTION public.technical_configuration_reference_products_list"
     )
   })
