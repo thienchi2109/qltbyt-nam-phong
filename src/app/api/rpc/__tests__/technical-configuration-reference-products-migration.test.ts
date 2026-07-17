@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest"
 const REPO_ROOT = process.cwd()
 const MIGRATIONS_DIR = path.resolve(REPO_ROOT, "supabase/migrations")
 const MIGRATION_SUFFIX = "_technical_configuration_reference_products.sql"
+const PERFORMANCE_MIGRATION_SUFFIX = "_technical_configuration_reference_response_fk_indexes.sql"
 const PHASE_GATE_PATH = path.resolve(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_products_phase_gate.sql"
@@ -50,6 +51,13 @@ const migrationFiles = getMigrationFiles()
 const migrationFile = migrationFiles[0] ?? ""
 const migrationSource = migrationFile
   ? readFileSync(path.resolve(MIGRATIONS_DIR, migrationFile), "utf8")
+  : ""
+const performanceMigrationFiles = readdirSync(MIGRATIONS_DIR)
+  .filter((file) => file.endsWith(PERFORMANCE_MIGRATION_SUFFIX))
+  .sort()
+const performanceMigrationFile = performanceMigrationFiles[0] ?? ""
+const performanceMigrationSource = performanceMigrationFile
+  ? readFileSync(path.resolve(MIGRATIONS_DIR, performanceMigrationFile), "utf8")
   : ""
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 const rpcNamesSource = readIfExists(RPC_NAMES_PATH)
@@ -121,6 +129,17 @@ describe("technical configuration P7A1 reference product contracts", () => {
     )
     expect(migrationSource).toMatch(
       /ADD CONSTRAINT technical_configuration_baseline_criteria_id_version_key\s+UNIQUE \(id, baseline_version_id\)/
+    )
+  })
+
+  it("covers both composite response foreign keys with ordered indexes", () => {
+    expect(performanceMigrationFiles).toHaveLength(1)
+    expect(performanceMigrationFile > migrationFile).toBe(true)
+    expect(performanceMigrationSource).toMatch(
+      /CREATE INDEX technical_configuration_reference_responses_product_version_idx\s+ON public\.technical_configuration_reference_responses\s+\(reference_product_id, baseline_version_id\)/
+    )
+    expect(performanceMigrationSource).toMatch(
+      /CREATE INDEX technical_configuration_reference_responses_criterion_version_idx\s+ON public\.technical_configuration_reference_responses\s+\(criterion_id, baseline_version_id\)/
     )
   })
 
