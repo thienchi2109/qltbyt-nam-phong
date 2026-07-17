@@ -938,7 +938,7 @@ Reference products can be compared criterion-by-criterion while authoring the ba
   no write/revision change, mixed-case-scheme acceptance and exact raw URL
   stored/returned equality across create, update and aggregate list,
   affected-link count, stale revision and locked immutability.
-- SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four callers while P9B functions are absent; conditionally six after P9B exists; every list/delete/citation RPC remains a non-caller.
+- SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four baseline/reference document create/update callers with no branch on P9B function presence; every list/delete/citation RPC remains a non-caller.
 
 ### Exit gate
 

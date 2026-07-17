@@ -349,6 +349,8 @@ The client must not translate workbook rows into the existing sequential group/c
 9. P10A adds the bounded comparison read contract when a dedicated RPC is required.
 10. P11 adds manual assessments.
 
+The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
+
 P5A, P5B and P5D create no technical-configuration persistence. P6A and P6B also create no technical-configuration persistence; P6A lands after P5D, P6B follows it, and both land before the first document UI in P7B2. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
 
 ## AI Boundary Audit
