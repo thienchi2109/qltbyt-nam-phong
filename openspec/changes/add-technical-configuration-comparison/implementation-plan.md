@@ -93,50 +93,52 @@ P3B + P4 + P5A  -> P5B
 P4 + P5B        -> P5C
 P5B + P5C       -> P5D
 P6A             -> P6B
-P3A + P4        -> P7A
-P4 + P6B + P7A  -> P7B
+P3A + P4        -> P7A1
+P7A1            -> P7A2
+P4 + P6B + P7A2 -> P7B1
+P7B1            -> P7B2
 P4              -> P8A
 P3A + P8A       -> P8B
 P5A + P8B       -> P9A
-P6B + P7B + P8B -> P9B
-P7B + P9B       -> P10A
+P6B + P7B2 + P8B -> P9B
+P7B2 + P9B      -> P10A
 P3A + P10A      -> P10B
 P4 + P8A        -> P11
 P10B + P11      -> P12A
 P12A            -> P12B
 P12B            -> P12C
 P12C            -> P13A, P13B
-P13A + P13B + P7A + P9A -> P13C
+P13A + P13B + P7A2 + P9A -> P13C
 ```
 
-`P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
+`P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B2`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                               |
-| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                       |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                    |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                             |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A, P7B, P8B, P9B, P12A                                      |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                       |
-| TC-06 | Immutable locked baseline versions              | P4, P7A, P7B                                                                 |
-| TC-07 | Historical baseline linkage                     | P4, P8A                                                                      |
-| TC-08 | Optional reference products                     | P0, P7A                                                                      |
-| TC-09 | Multiple supplier configuration options         | P8A, P8B                                                                     |
-| TC-10 | Standard supplier option Excel template         | P9A                                                                          |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B, P9B                                                           |
-| TC-12 | Criterion-level document citations              | P7B, P9B                                                                     |
-| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                   |
-| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                   |
-| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                    |
-| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                              |
-| TC-17 | Non-scoring supplementary information           | P8A, P8B, P10A, P10B, P12A                                                   |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                         |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                            |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A, P7B, P8A, P8B, P9A, P9B, P11, P12A, P13B |
+| ID    | Requirement                                     | Primary phases                                                                             |
+| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                     |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                  |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                           |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8B, P9B, P12A                                                  |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                     |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                 |
+| TC-07 | Historical baseline linkage                     | P4, P8A                                                                                    |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                             |
+| TC-09 | Multiple supplier configuration options         | P8A, P8B                                                                                   |
+| TC-10 | Standard supplier option Excel template         | P9A                                                                                        |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B                                                                  |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B                                                                            |
+| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                 |
+| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                 |
+| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                  |
+| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                            |
+| TC-17 | Non-scoring supplementary information           | P8A, P8B, P10A, P10B, P12A                                                                 |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                                       |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                          |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A, P8B, P9A, P9B, P11, P12A, P13B |
 
 ## Shared Technical Constraints
 
@@ -483,7 +485,7 @@ Manual baseline authoring supports optional bulk text entry without changing per
 - [x] Require the expected draft revision for lock and copy operations; preserve user state on conflict.
 - [x] Add create-new-draft from blank or locked version copy.
 - [x] Copy new IDs, set `source_baseline_version_id` on every newly copied baseline version, preserve criterion codes and `source_criterion_id`, and copy every baseline-owned entity available when this phase lands.
-- [x] Define the copy RPC as an extension contract so P7A/P7B add reference products, responses, documents and citations in their own migrations.
+- [x] Define the copy RPC as an extension contract so P7A1/P7B1 add reference products, responses, documents and citations in their own migrations.
 - [x] Add version selector/history without unlocking old versions.
 - [x] Ensure supplier/evaluation contracts later can bind to an exact baseline version.
 - [x] Remove edit affordances in locked views while retaining backend enforcement.
@@ -711,7 +713,7 @@ Users can create the same draft baseline manually or through one versioned syste
 - [ ] Freeze exact utility/form/list TypeScript signatures and preserve accepted
       raw URL strings in callbacks and anchor attributes rather than exposing
       normalized `URL.href`; tests also assert the resolved anchor destination.
-- [ ] Keep mutation, toast, confirmation, dirty-state and affected-link policies outside the shared primitives so P7B/P9B can supply their own persistence workflow.
+- [ ] Keep mutation, toast, confirmation, dirty-state and affected-link policies outside the shared primitives so P7B2/P9B can supply their own persistence workflow.
 - [ ] Keep external links on the shared list in a new tab with `noopener noreferrer`.
 - [ ] Require `role="alert"` validation feedback plus `type="button"` and document-specific accessible labels for delete; prove delete cannot submit an outer form.
 - [ ] Add one TypeScript-AST source-contract test that recursively inventories every supported TS/JS module extension; parses import, import-equals, export-from, dynamic import, `require()` and `ImportTypeNode`; fails non-literal references; and enforces concrete per-file module-specifier set equality with no prefix matching.
@@ -779,7 +781,7 @@ Shared controlled URL-document primitives and direct Equipment characterization 
 - [ ] Preserve loading, empty, add/reset, rejected-add retry, delete and safe-link behavior under the P6A regression suite.
 - [ ] Extend the AST source contract with exact shared module paths/named
       bindings and cumulative manifest set equality. P6B requires exactly
-      `EquipmentDetailFilesTab.tsx`; P7B later adds baseline and P9B later adds
+      `EquipmentDetailFilesTab.tsx`; P7B2 later adds baseline and P9B later adds
       option without dropping earlier consumers.
 - [ ] Add a focused runtime-delegation test that mocks the exact
       form/list/utility modules and proves captured props/callbacks drive active
@@ -799,102 +801,137 @@ Shared controlled URL-document primitives and direct Equipment characterization 
 
 ### Exit gate
 
-Equipment renders through the tested P6A primitives with no storage-contract change. Supported HTTP(S) workflow remains unchanged; disallowed schemes are rejected or rendered non-clickable. P7B may now add independent document records and reuse the controlled primitives.
+Equipment renders through the tested P6A primitives with no storage-contract change. Supported HTTP(S) workflow remains unchanged; disallowed schemes are rejected or rendered non-clickable. P7B1 may now add independent document records and P7B2 may reuse the controlled primitives.
 
 No P6C is planned. Current import/graph inspection shows one Equipment consumer boundary, one Equipment-specific hook/RPC adapter and no second independent extraction seam. Add P6C only if P6A/P6B execution reveals a separately testable boundary that cannot land safely in either leaf.
 
-## Phase P7A - Reference Products
+## Phase P7A1 - Reference Product Data Contracts
+
+**Detailed TDD plan:** [P7A1 - Reference Product Data Contracts](./p7-tdd-plan.md#p7a1---reference-product-data-contracts)
 
 **Depends on:** P3A, P4  
 **Requirements:** TC-02, TC-04, TC-06, TC-08, TC-20  
-**Deploy boundary:** optional reference-product criterion comparison; documents remain deferred
+**Deploy boundary:** backend reference-product contracts only; no reference-product UI
 
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_reference_products.sql`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProducts.tsx`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/reference-products.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-reference-products-migration.test.ts`
+- Create: `supabase/tests/technical_configuration_reference_products_phase_gate.sql`
+- Create: `src/lib/technical-configuration-reference-rpcs.ts`
+- Create: `src/app/(app)/technical-configurations/reference-product-types.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-reference-rpc.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
 
 ### Tasks
 
 - [ ] Add zero-to-many reference products scoped to an exact baseline version.
 - [ ] Add model, manufacturer, description and notes without creating supplier records.
 - [ ] Add one multiline comparison response per `reference product + baseline criterion`.
-- [ ] Render groups/criteria as rows, the baseline requirement as a sticky column and selected reference products as dynamic columns.
-- [ ] Add column selection, horizontal scrolling and a full-text detail panel for large reference sets.
-- [ ] Do not add custom content columns or permanent evidence columns.
-- [ ] Add explicit save and dirty-state handling for draft CRUD.
-- [ ] Require the expected baseline revision and preserve unsaved product/criterion-response edits on conflict.
+- [ ] Require the expected baseline revision for every reference-product mutation.
 - [ ] Reject every mutation after baseline lock.
 - [ ] Extend locked-baseline copy to clone reference products/responses with new IDs and remapped criterion links.
 - [ ] Exclude reference products from option counts, assessments and ranking contracts.
-- [ ] Add the reference-products surface to the baseline workspace.
+- [ ] Add typed RPC names, wire types, module-local wrappers and RPC allowlisting without changing `callTechnicalConfigurationRpc`.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
 
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
-- SQL tests for baseline ownership, criterion-response ownership/cascade and locked immutability.
-- Stale-revision tests for create/update/delete.
+- Migration/source tests for exact tables, constraints, RPC names, grants and allowlist entries.
+- SQL tests for baseline ownership, criterion-response ownership/cascade, archived/locked immutability and copy remapping.
+- Stale-revision tests for create/update/delete/upsert with no partial write.
+- Contract tests proving reference products remain outside supplier, assessment and ranking domains.
+
+### Exit gate
+
+Reference-product persistence, revision, lock and copy contracts are deployable but no new user-facing reference-product surface exists.
+
+## Phase P7A2 - Reference Product Workspace
+
+**Detailed TDD plan:** [P7A2 - Reference Product Workspace](./p7-tdd-plan.md#p7a2---reference-product-workspace)
+
+**Depends on:** P7A1
+**Requirements:** TC-04, TC-06, TC-08, TC-20
+**Deploy boundary:** optional reference-product criterion comparison; documents remain deferred
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProducts.ts`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProducts.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/reference-products.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
+
+### Tasks
+
+- [ ] Render groups/criteria as rows, the baseline requirement as a sticky column and selected reference products as dynamic columns.
+- [ ] Add column selection, horizontal scrolling and a full-text detail panel for large reference sets.
+- [ ] Do not add custom content columns or permanent evidence columns.
+- [ ] Add explicit save and dirty-state handling for product/criterion-response edits.
+- [ ] Preserve unsaved product/criterion-response edits on stale-revision conflict.
+- [ ] Render locked versions read-only with no mutation affordance.
+- [ ] Add the reference-products surface through `TechnicalConfigurationWorkspaceShell` without adding P7 state to `TechnicalConfigurationBaselineTab` or `useTechnicalConfigurationBaselineEditor`.
+
+### TDD and verification
+
 - React tests for optional/multiple products, long criterion text, many dynamic columns, dirty state, conflict preservation and locked read-only rendering.
+- RPC adapter/query-key tests for create/update/delete/upsert success, error and invalidation behavior.
+- Source/file-size review proving the workspace shell remains composition-only and every new source file stays below the 350-line extraction threshold.
 
 ### Exit gate
 
 Reference products can be compared criterion-by-criterion while authoring the baseline, but cannot enter supplier assessment or ranking.
 
-## Phase P7B - Baseline Documents And Citations
+## Phase P7B1 - Baseline And Reference Evidence Contracts
 
-**Depends on:** P4, P6B, P7A
+**Detailed TDD plan:** [P7B1 - Baseline And Reference Evidence Contracts](./p7-tdd-plan.md#p7b1---baseline-and-reference-evidence-contracts)
+
+**Depends on:** P4, P6B, P7A2
 **Requirements:** TC-02, TC-04, TC-06, TC-11, TC-12, TC-20  
-**Deploy boundary:** baseline/reference-product URL evidence and criterion citations
+**Deploy boundary:** backend evidence contracts only; no baseline/reference document UI
 
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_baseline_documents.sql`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments.tsx`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
-- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments.ts`
-- Create: `src/app/(app)/technical-configurations/__tests__/baseline-evidence.test.tsx`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-baseline-documents-migration.test.ts`
 - Create: `supabase/tests/technical_configuration_baseline_documents_phase_gate.sql`
-- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
+- Create: `src/lib/technical-configuration-document-rpcs.ts`
+- Create: `src/app/(app)/technical-configurations/document-types.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-document-rpc.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
 
 ### Tasks
 
 - [ ] Add document URL metadata owned by the baseline or one reference product.
 - [ ] Add criterion citation with document ID, page/section and excerpt while preserving owner scope.
 - [ ] Reuse one document across multiple criteria without URL duplication.
-- [ ] Use P6B-proven primitives for URL list/form behavior.
 - [ ] Define `technical_configuration_baseline_documents_list` as the single
-      paginated P7B read path for both owner types. Return discriminated
+      paginated P7B1 read path for both owner types. Return discriminated
       `baseline`/`reference_product` items with exact `owner_id`, raw URL and
-      nested same-version citations; wire `useTechnicalConfigurationDocuments`
-      and both baseline/reference UI states to that response.
-- [ ] Extend the URL-document consumer AST contract to enforce the cumulative
-      Equipment + `TechnicalConfigurationBaselineDocuments.tsx` manifest with
-      exact shared module paths/named bindings, primitive render usage, shared
-      parser/policy calls and no local `new URL(...)` or extracted field/list
-      presentation.
+      nested same-version citations.
 - [ ] Add
       `public._technical_configuration_validate_document_url(text) RETURNS void`
       and call it from baseline/reference document create/update RPCs before
       write or revision increment; enforce lexical `^https?://`, no backslash
       and parsed HTTP(S) semantics without rewriting accepted input.
-- [ ] Show reference evidence through indicators and the detail panel without adding permanent evidence columns.
-- [ ] Add explicit save and dirty-state handling for document/citation edits.
-- [ ] Require the expected baseline revision and preserve unsaved edits on conflict.
+- [ ] Require the expected baseline revision for every document/citation mutation.
 - [ ] Extend lock enforcement to baseline/reference-product document metadata and citations.
 - [ ] Extend locked-baseline copy to clone baseline/reference documents and citations with new IDs and remapped owner/criterion links.
-- [ ] For editable data, show affected-link count before confirmed document deletion.
-- [ ] For locked data, reject edit/delete before any confirmation flow.
+- [ ] Return affected-link count from editable document delete contracts.
+- [ ] Add typed RPC names, wire types, module-local wrappers and RPC allowlisting without changing `callTechnicalConfigurationRpc`.
 - [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
 
 ### TDD and verification
 
 - Authorization tests for all required role/claim states.
+- Migration/source tests for four evidence tables, constraints, eleven RPCs, exact grants and allowlist entries.
 - SQL tests for baseline/reference-product aggregate-list owner discrimination
   and citation scope, reuse,
   malformed/disallowed/protocol-only/single-slash/backslash URL rejection with
@@ -902,6 +939,50 @@ Reference products can be compared criterion-by-criterion while authoring the ba
   stored/returned equality across create, update and aggregate list,
   affected-link count, stale revision and locked immutability.
 - SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four callers while P9B functions are absent; conditionally six after P9B exists; every list/delete/citation RPC remains a non-caller.
+
+### Exit gate
+
+Baseline/reference evidence persistence, URL validation, revision, lock, copy and delete-count contracts are deployable but no new evidence UI exists.
+
+## Phase P7B2 - Baseline And Reference Evidence Workspace
+
+**Detailed TDD plan:** [P7B2 - Baseline And Reference Evidence Workspace](./p7-tdd-plan.md#p7b2---baseline-and-reference-evidence-workspace)
+
+**Depends on:** P7B1
+**Requirements:** TC-04, TC-06, TC-11, TC-12, TC-20
+**Deploy boundary:** baseline/reference-product URL evidence and criterion citations
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments.ts`
+- Create: `src/app/(app)/technical-configurations/__tests__/baseline-evidence.test.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/baseline-evidence-delegation.test.tsx`
+- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
+
+### Tasks
+
+- [ ] Use P6B-proven primitives for URL list/form behavior.
+- [ ] Wire `useTechnicalConfigurationDocuments` and both baseline/reference UI states to the P7B1 aggregate response.
+- [ ] Extend the URL-document consumer AST contract to enforce the cumulative
+      Equipment + `TechnicalConfigurationBaselineDocuments.tsx` manifest with
+      exact shared module paths/named bindings, primitive render usage, shared
+      parser/policy calls and no local `new URL(...)` or extracted field/list
+      presentation.
+- [ ] Show reference evidence through indicators and the detail panel without adding permanent evidence columns.
+- [ ] Add explicit save and dirty-state handling for document/citation edits.
+- [ ] Preserve unsaved edits on stale-revision conflict.
+- [ ] For editable data, show affected-link count before confirmed document deletion.
+- [ ] For locked data, reject edit/delete before any confirmation flow.
+- [ ] Integrate through the workspace/reference surfaces without adding document state to `TechnicalConfigurationBaselineTab` or `useTechnicalConfigurationBaselineEditor`.
+
+### TDD and verification
+
 - React tests for URL validation, aggregate baseline/reference owner routing,
   exact raw create/update/list/render behavior, dirty state, conflict
   preservation, deletion confirmation, citation editing and locked read-only
@@ -911,6 +992,7 @@ Reference products can be compared criterion-by-criterion while authoring the ba
   and green only when the cumulative Equipment + baseline manifest uses exact
   shared paths/bindings.
 - Browser check with long Vietnamese excerpts.
+- Source/file-size review proving shared URL primitives remain unchanged and each new workspace file stays below the 350-line extraction threshold.
 
 ### Exit gate
 
@@ -1029,7 +1111,7 @@ Supplier options can be entered manually or through the exact system template.
 
 ## Phase P9B - Supplier Option Documents And Citations
 
-**Depends on:** P6B, P7B, P8B
+**Depends on:** P6B, P7B2, P8B
 **Requirements:** TC-02, TC-04, TC-11, TC-12, TC-20  
 **Deploy boundary:** option URL evidence only
 
@@ -1047,13 +1129,13 @@ Supplier options can be entered manually or through the exact system template.
 
 - [ ] Add option-level document URL metadata.
 - [ ] Add criterion citations with page/section/excerpt.
-- [ ] Reuse P6B-proven URL primitives and P7B citation behavior.
+- [ ] Reuse P6B-proven URL primitives and P7B2 citation behavior.
 - [ ] Extend the URL-document consumer AST contract to enforce the cumulative
       Equipment + baseline + `TechnicalConfigurationOptionDocuments.tsx`
       manifest with exact shared module paths/named bindings, primitive render
       usage, shared parser/policy calls and no local `new URL(...)` or extracted
       field/list presentation.
-- [ ] Reuse the P7B authoritative HTTP(S) URL validator in option document create/update RPCs.
+- [ ] Reuse the P7B1 authoritative HTTP(S) URL validator in option document create/update RPCs.
 - [ ] Reuse one option document across multiple criteria.
 - [ ] Add explicit save and dirty-state handling for option document/citation edits.
 - [ ] Require the expected option revision and preserve unsaved edits on conflict.
@@ -1084,7 +1166,7 @@ Baseline, reference-product and supplier-option cases all pass TC-11-S01/S02/S03
 
 ## Phase P10A - Comparison Read Contract
 
-**Depends on:** P7B, P9B  
+**Depends on:** P7B2, P9B
 **Requirements:** TC-02, TC-13, TC-17  
 **Deploy boundary:** bounded read API only; no matrix UI
 
@@ -1370,7 +1452,7 @@ No release-blocking UI, accessibility or Equipment regression remains.
 
 ## Phase P13C - Release, OpenSpec And AI-Boundary Audit
 
-**Depends on:** P13A, P13B, P7A, P9A  
+**Depends on:** P13A, P13B, P7A2, P9A
 **Requirements:** TC-19  
 **Deploy boundary:** release documentation and final acceptance only
 
@@ -1385,7 +1467,7 @@ No release-blocking UI, accessibility or Equipment regression remains.
 ### Tasks
 
 - [ ] Use the feature-baseline SHA from P0 to enumerate all feature commits/files and verify every leaf phase landed.
-- [ ] Confirm optional productivity leaves P7A and P9A are complete even though they are not on the manual-comparison critical path.
+- [ ] Confirm optional productivity leaves P7A1, P7A2 and P9A are complete even though they are not on the manual-comparison critical path.
 - [ ] Aggregate preserved per-leaf `verify:no-explicit-any`, `verify:dedupe`, focused test and review evidence.
 - [ ] Run fresh full `typecheck` and all focused feature Vitest suites; do not claim a fresh P13 branch diff covers earlier merged leaf diffs.
 - [ ] Run `openspec validate add-technical-configuration-comparison --strict`.

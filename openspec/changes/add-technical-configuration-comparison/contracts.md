@@ -31,12 +31,12 @@ Each entity or schema alteration has one primary leaf owner. A later leaf may ex
 | P2   | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
 | P2   | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
 | P4   | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
-| P7A  | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
-| P7A  | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
-| P7B  | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
-| P7B  | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
-| P7B  | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
-| P7B  | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
+| P7A1 | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
+| P7A1 | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
+| P7B1 | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
+| P7B1 | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
+| P7B1 | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
+| P7B1 | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
 | P8A  | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier                                                                                |
 | P8A  | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable                                                               |
 | P8A  | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
@@ -131,8 +131,8 @@ Create requires `p_expected_revision=0` and returns revision `1`. Update and arc
 - Preserve criterion codes and set `source_criterion_id` on copied criteria.
 - Remap every child relationship to the newly created IDs.
 - Copy groups and criteria in P4.
-- Extend the same RPC in P7A to copy reference products and reference responses.
-- Extend the same RPC in P7B to copy baseline/reference documents and citations.
+- Extend the same RPC in P7A1 to copy reference products and reference responses.
+- Extend the same RPC in P7B1 to copy baseline/reference documents and citations.
 - Never copy suppliers, options, comparison sets, option responses, option documents/citations or manual assessments.
 
 Each migration that extends this function must sort after the latest local migration that defines it.
@@ -188,8 +188,8 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P2   | `technical_configuration_baseline_draft_create`, `technical_configuration_baseline_draft_get`, `technical_configuration_baseline_group_create`, `technical_configuration_baseline_group_update`, `technical_configuration_baseline_group_delete`, `technical_configuration_baseline_groups_reorder`, `technical_configuration_baseline_criterion_create`, `technical_configuration_baseline_criterion_update`, `technical_configuration_baseline_criterion_delete`, `technical_configuration_baseline_criteria_reorder`, `technical_configuration_baseline_bulk_preview`                       |
 | P4   | `technical_configuration_baseline_versions_list`, `technical_configuration_baseline_lock`, `technical_configuration_baseline_copy`                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | P5C  | `technical_configuration_baseline_import_preview`, `technical_configuration_baseline_import_apply`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| P7A  | `technical_configuration_reference_products_list`, `technical_configuration_reference_product_create`, `technical_configuration_reference_product_update`, `technical_configuration_reference_product_delete`, `technical_configuration_reference_response_upsert`                                                                                                                                                                                                                                                                                                                             |
-| P7B  | `technical_configuration_baseline_documents_list`, `technical_configuration_baseline_document_create`, `technical_configuration_baseline_document_update`, `technical_configuration_baseline_document_delete`, `technical_configuration_baseline_citation_upsert`, `technical_configuration_baseline_citation_delete`, `technical_configuration_reference_document_create`, `technical_configuration_reference_document_update`, `technical_configuration_reference_document_delete`, `technical_configuration_reference_citation_upsert`, `technical_configuration_reference_citation_delete` |
+| P7A1 | `technical_configuration_reference_products_list`, `technical_configuration_reference_product_create`, `technical_configuration_reference_product_update`, `technical_configuration_reference_product_delete`, `technical_configuration_reference_response_upsert`                                                                                                                                                                                                                                                                                                                             |
+| P7B1 | `technical_configuration_baseline_documents_list`, `technical_configuration_baseline_document_create`, `technical_configuration_baseline_document_update`, `technical_configuration_baseline_document_delete`, `technical_configuration_baseline_citation_upsert`, `technical_configuration_baseline_citation_delete`, `technical_configuration_reference_document_create`, `technical_configuration_reference_document_update`, `technical_configuration_reference_document_delete`, `technical_configuration_reference_citation_upsert`, `technical_configuration_reference_citation_delete` |
 | P8A  | `technical_configuration_suppliers_list`, `technical_configuration_supplier_create`, `technical_configuration_supplier_update`, `technical_configuration_supplier_delete`, `technical_configuration_options_list`, `technical_configuration_option_create`, `technical_configuration_option_update`, `technical_configuration_option_delete`, `technical_configuration_comparison_set_get_or_create`, `technical_configuration_option_response_upsert`                                                                                                                                         |
 | P9B  | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
 | P10A | `technical_configuration_comparison_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -208,7 +208,7 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
 - Baseline import preview/apply request: `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`, `p_expected_revision`.
 - Baseline import apply response: `{ data }`, where `data` is the complete updated baseline snapshot and owning revision.
 - Every mutation request includes `p_expected_revision`. Dossier create requires `0`; descendant creates use the owning aggregate revision.
-- `technical_configuration_baseline_documents_list` is the single P7B read RPC
+- `technical_configuration_baseline_documents_list` is the single P7B1 read RPC
   for both baseline-owned and reference-product-owned evidence. Request:
   `p_baseline_version_id`, `p_page`, `p_page_size`. Every `data` item contains
   `{ id, owner_type, owner_id, name, url, created_by, created_at, updated_at, citations }`;
@@ -221,14 +221,14 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
   `p_comparison_set_id`, `p_page`, `p_page_size`. It returns the selected
   comparison set's option documents with the same document/audit fields and
   nested citations restricted to criteria in that comparison set.
-- P7B owns exactly one internal
+- P7B1 owns exactly one internal
   `public._technical_configuration_validate_document_url(text) RETURNS void`
-  validator. P7B/P9B document create/update requests accept only raw values with
+  validator. P7B1/P9B document create/update requests accept only raw values with
   a case-insensitive lexical `^https?://` prefix, no backslash, valid URL syntax
   and parsed `http`/`https` protocol. Protocol-only/single-slash shorthand such
   as `https:example.com` or `https:/example.com`, backslash variants, malformed
   values and non-HTTP(S) protocols raise the existing `PT422 validation_error`.
-  At P7B the exact callers are baseline-document create/update and
+  At P7B1 the exact callers are baseline-document create/update and
   reference-document create/update; P9B extends the exact caller set with
   option-document create/update. These six RPCs call the helper before
   insert/update or revision increment. List, delete and citation RPCs do not
@@ -342,14 +342,14 @@ The client must not translate workbook rows into the existing sequential group/c
 2. P2 creates baseline draft/version/group/criterion contracts.
 3. P4 adds lock/history/source links and the core copy function.
 4. P5C adds baseline import preview/apply functions without creating a new persistence table.
-5. P7A adds reference entities and extends copy.
-6. P7B adds baseline/reference documents/citations and extends copy again.
+5. P7A1 adds reference entities and extends copy.
+6. P7B1 adds baseline/reference documents/citations and extends copy again.
 7. P8A adds suppliers/options/comparison sets/responses.
 8. P9B adds option documents/citations.
 9. P10A adds the bounded comparison read contract when a dedicated RPC is required.
 10. P11 adds manual assessments.
 
-P5A, P5B and P5D create no technical-configuration persistence. P6A and P6B also create no technical-configuration persistence; P6A lands after P5D, P6B follows it, and both land before the first document UI in P7B. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
+P5A, P5B and P5D create no technical-configuration persistence. P6A and P6B also create no technical-configuration persistence; P6A lands after P5D, P6B follows it, and both land before the first document UI in P7B2. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
 
 ## AI Boundary Audit
 

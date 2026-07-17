@@ -7,7 +7,7 @@
 - Implement only OpenSpec Phase P4 (`P4.1` through `P4.6`).
 - Add draft/locked lifecycle, irreversible lock, version history, blank draft creation, and locked-version copy.
 - Copy only baseline groups and criteria in P4.
-- Preserve the P7A/P7B extension contract without creating reference product, response, document, or citation tables/RPCs.
+- Preserve the P7A1/P7B1 extension contract without creating reference product, response, document, or citation tables/RPCs.
 - Do not add P5B-P5D Excel codec/import/apply, P8 supplier/comparison behavior, or later-phase audit/AI work.
 
 ## Assumptions And Contracts
