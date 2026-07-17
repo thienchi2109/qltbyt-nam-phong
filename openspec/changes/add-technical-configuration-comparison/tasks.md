@@ -184,7 +184,7 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P7A1.3 Mở rộng locked-baseline copy để clone products/responses với ID mới và remap criterion links.
 - [x] P7A1.4 Giữ reference products ngoài supplier/option/assessment/ranking domains.
 - [x] P7A1.5 Thêm typed RPC names, wire types, module-local wrappers và RPC allowlist mà không đổi shared RPC helper.
-- [ ] P7A1.6 Chạy migration/source/authorization/concurrency/copy SQL tests và DB phase gate sau explicit live-write approval.
+- [x] P7A1.6 Chạy migration/source/authorization/concurrency/copy SQL tests và DB phase gate sau explicit live-write approval.
 - [x] P7A1.7 Không thêm reference-product UI, hook hoặc workspace state.
 
 ## Phase P7A2 - Reference Product Workspace
