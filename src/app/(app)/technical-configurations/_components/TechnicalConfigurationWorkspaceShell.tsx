@@ -1,11 +1,19 @@
 import * as React from "react"
-import { ArrowLeft, ClipboardList, GitCompareArrows, ListChecks, PackageSearch } from "lucide-react"
+import {
+  ArrowLeft,
+  ClipboardList,
+  GitCompareArrows,
+  LibraryBig,
+  ListChecks,
+  PackageSearch,
+} from "lucide-react"
 
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
+import { TechnicalConfigurationReferenceProducts } from "./TechnicalConfigurationReferenceProducts"
 
 type TechnicalConfigurationWorkspaceShellProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -17,19 +25,47 @@ export function TechnicalConfigurationWorkspaceShell({
   dossier,
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
+  const [activeTab, setActiveTab] = React.useState("baseline")
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
   const [isBaselineNavigationBlocked, setIsBaselineNavigationBlocked] = React.useState(false)
+  const [isReferenceDirty, setIsReferenceDirty] = React.useState(false)
+  const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
+  const isDirty = isBaselineDirty || isReferenceDirty
+  const isNavigationBlocked = isBaselineNavigationBlocked || isReferenceNavigationBlocked
 
   const handleBack = React.useCallback(() => {
-    if (isBaselineNavigationBlocked) return
-    if (
-      isBaselineDirty &&
-      !window.confirm("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")
-    ) {
+    if (isNavigationBlocked) return
+    if (isDirty && !window.confirm("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")) {
       return
     }
     onBack()
-  }, [isBaselineDirty, isBaselineNavigationBlocked, onBack])
+  }, [isDirty, isNavigationBlocked, onBack])
+
+  const handleTabChange = React.useCallback(
+    (nextTab: string) => {
+      const isCurrentTabDirty =
+        (activeTab === "baseline" && isBaselineDirty) ||
+        (activeTab === "references" && isReferenceDirty)
+      const isCurrentTabBlocked =
+        (activeTab === "baseline" && isBaselineNavigationBlocked) ||
+        (activeTab === "references" && isReferenceNavigationBlocked)
+      if (isCurrentTabBlocked) return
+      if (
+        isCurrentTabDirty &&
+        !window.confirm("Bạn có thay đổi chưa lưu. Chuyển khu vực và bỏ các thay đổi?")
+      ) {
+        return
+      }
+      setActiveTab(nextTab)
+    },
+    [
+      activeTab,
+      isBaselineDirty,
+      isBaselineNavigationBlocked,
+      isReferenceDirty,
+      isReferenceNavigationBlocked,
+    ]
+  )
 
   return (
     <div className="w-full">
@@ -38,7 +74,7 @@ export function TechnicalConfigurationWorkspaceShell({
           type="button"
           variant="ghost"
           className="-ml-3"
-          disabled={isBaselineNavigationBlocked}
+          disabled={isNavigationBlocked}
           onClick={handleBack}
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
@@ -59,11 +95,15 @@ export function TechnicalConfigurationWorkspaceShell({
         </div>
       </header>
 
-      <Tabs defaultValue="baseline" className="mt-6">
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-3">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-4">
           <TabsTrigger value="baseline" className="min-h-10 gap-2">
             <ListChecks className="size-4" aria-hidden="true" />
             Cấu hình cơ sở
+          </TabsTrigger>
+          <TabsTrigger value="references" className="min-h-10 gap-2">
+            <LibraryBig className="size-4" aria-hidden="true" />
+            Sản phẩm tham chiếu
           </TabsTrigger>
           <TabsTrigger value="options" className="min-h-10 gap-2" disabled>
             <PackageSearch className="size-4" aria-hidden="true" />
@@ -80,6 +120,13 @@ export function TechnicalConfigurationWorkspaceShell({
             dossier={dossier}
             onDirtyChange={setIsBaselineDirty}
             onNavigationBlockedChange={setIsBaselineNavigationBlocked}
+          />
+        </TabsContent>
+        <TabsContent value="references" className="mt-6">
+          <TechnicalConfigurationReferenceProducts
+            dossier={dossier}
+            onDirtyChange={setIsReferenceDirty}
+            onNavigationBlockedChange={setIsReferenceNavigationBlocked}
           />
         </TabsContent>
       </Tabs>
