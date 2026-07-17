@@ -30,7 +30,6 @@ export type {
   TechnicalConfigurationReferenceProductDraft,
   TechnicalConfigurationReferenceProductPatch,
 } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-state"
-
 type UseTechnicalConfigurationReferenceProductsArgs = {
   baselineVersion: TechnicalConfigurationBaselineDraftWire | null
   isArchived?: boolean
@@ -55,7 +54,7 @@ export function useTechnicalConfigurationReferenceProducts({
     createTechnicalConfigurationReferenceProductsState(baselineVersion)
   )
   const nextLocalId = React.useRef(0)
-
+  const activeOperationRef = React.useRef<"save" | "reload" | null>(null)
   const productsQuery = useQuery({
     queryKey,
     queryFn: ({ signal }) =>
@@ -98,7 +97,7 @@ export function useTechnicalConfigurationReferenceProducts({
   }
 
   const addProduct = React.useCallback(() => {
-    if (isReadOnly) return ""
+    if (isReadOnly || activeOperationRef.current) return ""
     nextLocalId.current += 1
     const id = `new-reference-product-${nextLocalId.current}`
     setState((current) => ({
@@ -123,7 +122,7 @@ export function useTechnicalConfigurationReferenceProducts({
 
   const updateProduct = React.useCallback(
     (productId: string, patch: TechnicalConfigurationReferenceProductPatch) => {
-      if (isReadOnly) return
+      if (isReadOnly || activeOperationRef.current) return
       setState((current) => ({
         ...current,
         products: current.products.map((product) =>
@@ -138,7 +137,7 @@ export function useTechnicalConfigurationReferenceProducts({
 
   const removeProduct = React.useCallback(
     (productId: string) => {
-      if (isReadOnly) return
+      if (isReadOnly || activeOperationRef.current) return
       setState((current) => ({
         ...current,
         products: current.products.filter((product) => product.id !== productId),
@@ -151,7 +150,7 @@ export function useTechnicalConfigurationReferenceProducts({
 
   const updateResponse = React.useCallback(
     (productId: string, criterionId: string, responseText: string) => {
-      if (isReadOnly) return
+      if (isReadOnly || activeOperationRef.current) return
       setState((current) => ({
         ...current,
         products: current.products.map((product) =>
@@ -178,11 +177,12 @@ export function useTechnicalConfigurationReferenceProducts({
       isReadOnly ||
       !isDirty ||
       invalidProductIds.length > 0 ||
-      state.isSaving
+      activeOperationRef.current
     ) {
       return
     }
 
+    activeOperationRef.current = "save"
     onNavigationBlockedChange?.(true)
     setState((current) => ({
       ...current,
@@ -259,6 +259,7 @@ export function useTechnicalConfigurationReferenceProducts({
         applyTechnicalConfigurationReferenceProductSaveErrorState(current, error)
       )
     } finally {
+      activeOperationRef.current = null
       setState((current) => ({ ...current, isSaving: false }))
       onNavigationBlockedChange?.(false)
     }
@@ -272,14 +273,14 @@ export function useTechnicalConfigurationReferenceProducts({
     queryClient,
     queryKey,
     state.baseProducts,
-    state.isSaving,
     state.products,
     state.revision,
   ])
 
   const reload = React.useCallback(
     async (beforeProductsReload?: () => Promise<void>) => {
-      if (!baselineVersionId || state.isSaving) return
+      if (!baselineVersionId || activeOperationRef.current) return
+      activeOperationRef.current = "reload"
       onNavigationBlockedChange?.(true)
       setState((current) => ({
         ...current,
@@ -316,11 +317,12 @@ export function useTechnicalConfigurationReferenceProducts({
           saveError: "Không thể tải lại sản phẩm tham chiếu.",
         }))
       } finally {
+        activeOperationRef.current = null
         setState((current) => ({ ...current, isReloading: false }))
         onNavigationBlockedChange?.(false)
       }
     },
-    [baselineVersionId, onNavigationBlockedChange, productsQuery, state.isSaving]
+    [baselineVersionId, onNavigationBlockedChange, productsQuery]
   )
 
   return {

@@ -46,6 +46,9 @@ export function registerReferenceProductResilienceTests({
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
 
       expect(await screen.findByRole("button", { name: "Thêm sản phẩm tham chiếu" })).toBeDisabled()
+      expect(
+        screen.queryByRole("region", { name: "Ma trận đối chiếu sản phẩm tham chiếu" })
+      ).not.toBeInTheDocument()
 
       resolveProducts?.(listResponse([]))
       await waitFor(() =>
@@ -62,6 +65,11 @@ export function registerReferenceProductResilienceTests({
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
 
       expect(await screen.findByText("Không thể tải sản phẩm tham chiếu")).toBeInTheDocument()
+      expect(screen.getByText("Vui lòng thử lại.")).toBeInTheDocument()
+      expect(screen.queryByText("products unavailable")).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole("region", { name: "Ma trận đối chiếu sản phẩm tham chiếu" })
+      ).not.toBeInTheDocument()
       expect(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" })).toBeDisabled()
       await user.click(screen.getByRole("button", { name: "Thử lại" }))
 

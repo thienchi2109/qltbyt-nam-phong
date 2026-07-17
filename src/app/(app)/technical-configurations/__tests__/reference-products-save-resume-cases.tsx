@@ -132,5 +132,26 @@ export function registerReferenceProductSaveResumeTests(referenceRpc: ReferenceP
       expect(onRevisionChange).toHaveBeenLastCalledWith(7)
       await waitFor(() => expect(result.current.isDirty).toBe(false))
     })
+
+    it("does not expose raw non-conflict save errors", async () => {
+      referenceRpc.listProducts.mockResolvedValue(listResponse([]))
+      referenceRpc.createProduct.mockRejectedValue(
+        new Error("rpc_internal: relation details must stay private")
+      )
+
+      const { result } = renderReferenceProductsHook()
+      await waitFor(() => expect(result.current.productsQuery.isSuccess).toBe(true))
+
+      act(() => {
+        const localId = result.current.addProduct()
+        result.current.updateProduct(localId, { model: "Model A" })
+      })
+      await act(async () => {
+        await result.current.save()
+      })
+
+      expect(result.current.saveError).toBe("Không thể lưu sản phẩm tham chiếu.")
+      expect(result.current.saveError).not.toMatch(/relation details/i)
+    })
   })
 }

@@ -26,6 +26,7 @@ export function TechnicalConfigurationReferenceProductsBody({
   )
   const hasInitialQueryError =
     referenceState.productsQuery.isError && referenceState.productsQuery.data === undefined
+  const canRenderProducts = !referenceState.productsQuery.isLoading && !hasInitialQueryError
 
   return (
     <>
@@ -41,11 +42,7 @@ export function TechnicalConfigurationReferenceProductsBody({
           <AlertCircle className="size-4" aria-hidden="true" />
           <AlertTitle>Không thể tải sản phẩm tham chiếu</AlertTitle>
           <AlertDescription className="flex flex-col items-start gap-3">
-            <span>
-              {referenceState.productsQuery.error instanceof Error
-                ? referenceState.productsQuery.error.message
-                : "Vui lòng thử lại."}
-            </span>
+            <span>Vui lòng thử lại.</span>
             <Button
               type="button"
               variant="outline"
@@ -60,12 +57,8 @@ export function TechnicalConfigurationReferenceProductsBody({
         </Alert>
       ) : null}
 
-      {!referenceState.productsQuery.isLoading && !hasInitialQueryError ? (
+      {canRenderProducts ? (
         <div className="space-y-4">
-          {referenceState.products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Chưa có sản phẩm tham chiếu.</p>
-          ) : null}
-
           {referenceState.products.map((product, index) => (
             <TechnicalConfigurationReferenceProductEditor
               key={product.id}
@@ -81,12 +74,14 @@ export function TechnicalConfigurationReferenceProductsBody({
         </div>
       ) : null}
 
-      <TechnicalConfigurationReferenceComparison
-        baselineVersion={baselineVersion}
-        products={referenceState.products}
-        readOnly={referenceState.isReadOnly || navigationBlocked}
-        onResponseChange={referenceState.updateResponse}
-      />
+      {canRenderProducts ? (
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={baselineVersion}
+          products={referenceState.products}
+          readOnly={referenceState.isReadOnly || navigationBlocked}
+          onResponseChange={referenceState.updateResponse}
+        />
+      ) : null}
     </>
   )
 }

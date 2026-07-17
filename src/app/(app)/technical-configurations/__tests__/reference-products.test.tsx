@@ -3,6 +3,7 @@ import { vi } from "vitest"
 import { registerReferenceProductComparisonTests } from "./reference-products-comparison-cases"
 import { registerReferenceProductConflictTests } from "./reference-products-conflict-cases"
 import { registerReferenceProductHookTests } from "./reference-products-hook-cases"
+import { registerReferenceProductOperationLockTests } from "./reference-products-operation-lock-cases"
 import { registerReferenceProductResilienceTests } from "./reference-products-resilience-cases"
 import { registerReferenceProductSaveResumeTests } from "./reference-products-save-resume-cases"
 import { registerReferenceProductWorkspaceTests } from "./reference-products-workspace-cases"
@@ -54,6 +55,7 @@ vi.mock(
 )
 
 registerReferenceProductHookTests(referenceRpc)
+registerReferenceProductOperationLockTests(referenceRpc)
 registerReferenceProductSaveResumeTests(referenceRpc)
 registerReferenceProductConflictTests(referenceRpc)
 registerReferenceProductComparisonTests()

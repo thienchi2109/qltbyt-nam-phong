@@ -132,7 +132,7 @@ describe("technical configuration baseline workspace integration", () => {
       "_hooks/useTechnicalConfigurationBaselineEditor.ts",
     ]) {
       const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
-      expect(source).not.toMatch(/ReferenceProduct|reference-product/)
+      expect(source).not.toMatch(/reference[-_ ]?product/i)
     }
   })
 })

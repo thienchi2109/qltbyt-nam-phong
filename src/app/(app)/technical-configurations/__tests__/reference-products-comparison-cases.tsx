@@ -32,8 +32,13 @@ export function registerReferenceProductComparisonTests() {
         const draft = toTechnicalConfigurationReferenceProductDraft(
           product(`product-${index + 1}`, model)
         )
-        draft.responses["criterion-1"] = index === 0 ? longResponse : `Phản hồi dài của ${model}`
-        return draft
+        return {
+          ...draft,
+          responses: {
+            ...draft.responses,
+            "criterion-1": index === 0 ? longResponse : `Phản hồi dài của ${model}`,
+          },
+        }
       })
 
       const { rerender } = renderWithQueryClient(

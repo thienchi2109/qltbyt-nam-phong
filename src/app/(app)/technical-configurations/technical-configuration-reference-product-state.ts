@@ -229,5 +229,5 @@ export function getTechnicalConfigurationReferenceProductSaveError(error: unknow
   if (isTechnicalConfigurationBaselineConflict(error)) {
     return "Dữ liệu sản phẩm tham chiếu đã thay đổi. Các chỉnh sửa chưa lưu được giữ lại; hãy tải lại dữ liệu máy chủ."
   }
-  return error instanceof Error ? error.message : "Không thể lưu sản phẩm tham chiếu."
+  return "Không thể lưu sản phẩm tham chiếu."
 }
