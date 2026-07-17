@@ -72,10 +72,146 @@ DECLARE
   v_list JSONB;
   v_count BIGINT;
   v_definition TEXT;
+  v_table_name TEXT;
+  v_policy_name TEXT;
+  v_role_name TEXT;
+  v_privilege_name TEXT;
+  v_function_signature TEXT;
+  v_function_oid OID;
+  v_security_definer BOOLEAN;
+  v_function_config TEXT[];
+  v_rls_enabled BOOLEAN;
+  v_forbidden_identifier TEXT;
 BEGIN
   PERFORM pg_advisory_xact_lock(
     hashtext('technical_configuration_reference_products_phase_gate')
   );
+
+  -- live catalog posture
+  FOREACH v_table_name IN ARRAY ARRAY[
+    'technical_configuration_reference_products',
+    'technical_configuration_reference_responses'
+  ]
+  LOOP
+    SELECT c.relrowsecurity INTO v_rls_enabled
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = v_table_name;
+    IF NOT COALESCE(v_rls_enabled, false) THEN
+      RAISE EXCEPTION 'Catalog check failed: RLS disabled for %', v_table_name;
+    END IF;
+
+    v_policy_name := v_table_name || '_no_client_access';
+    IF NOT EXISTS (
+      SELECT 1
+      FROM pg_policies p
+      WHERE p.schemaname = 'public'
+        AND p.tablename = v_table_name
+        AND p.policyname = v_policy_name
+        AND p.cmd = 'ALL'
+        AND p.roles @> ARRAY['anon', 'authenticated']::NAME[]
+        AND p.qual = 'false'
+        AND p.with_check = 'false'
+    ) THEN
+      RAISE EXCEPTION 'Catalog check failed: deny policy missing for %', v_table_name;
+    END IF;
+
+    FOREACH v_privilege_name IN ARRAY ARRAY[
+      'SELECT',
+      'INSERT',
+      'UPDATE',
+      'DELETE',
+      'TRUNCATE',
+      'REFERENCES',
+      'TRIGGER'
+    ]
+    LOOP
+      FOREACH v_role_name IN ARRAY ARRAY['anon', 'authenticated']
+      LOOP
+        IF has_table_privilege(
+          v_role_name,
+          format('public.%I', v_table_name),
+          v_privilege_name
+        ) THEN
+          RAISE EXCEPTION 'Catalog check failed: % has % on %',
+            v_role_name, v_privilege_name, v_table_name;
+        END IF;
+      END LOOP;
+
+      IF NOT has_table_privilege(
+        'service_role',
+        format('public.%I', v_table_name),
+        v_privilege_name
+      ) THEN
+        RAISE EXCEPTION 'Catalog check failed: service_role lacks % on %',
+          v_privilege_name, v_table_name;
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  FOREACH v_function_signature IN ARRAY ARRAY[
+    'technical_configuration_reference_products_list(uuid,integer,integer)',
+    'technical_configuration_reference_product_create(uuid,text,text,text,text,bigint)',
+    'technical_configuration_reference_product_update(uuid,text,text,text,text,bigint)',
+    'technical_configuration_reference_product_delete(uuid,bigint)',
+    'technical_configuration_reference_response_upsert(uuid,uuid,text,bigint)',
+    'technical_configuration_baseline_copy(uuid,bigint)'
+  ]
+  LOOP
+    v_function_oid := to_regprocedure('public.' || v_function_signature);
+    IF v_function_oid IS NULL THEN
+      RAISE EXCEPTION 'Catalog check failed: function missing %', v_function_signature;
+    END IF;
+
+    SELECT p.prosecdef, p.proconfig
+    INTO v_security_definer, v_function_config
+    FROM pg_proc p
+    WHERE p.oid = v_function_oid;
+    IF NOT v_security_definer
+       OR NOT ('search_path=public, pg_temp' = ANY(COALESCE(v_function_config, ARRAY[]::TEXT[]))) THEN
+      RAISE EXCEPTION 'Catalog check failed: security posture invalid for %',
+        v_function_signature;
+    END IF;
+
+    IF NOT has_function_privilege('authenticated', v_function_oid, 'EXECUTE')
+       OR has_function_privilege('anon', v_function_oid, 'EXECUTE')
+       OR has_function_privilege('service_role', v_function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Catalog check failed: function ACL invalid for %',
+        v_function_signature;
+    END IF;
+  END LOOP;
+
+  FOREACH v_function_signature IN ARRAY ARRAY[
+    '_technical_configuration_reference_response_payload(uuid,bigint)',
+    '_technical_configuration_reference_product_payload(uuid,bigint)',
+    '_technical_configuration_baseline_copy_p4(uuid,bigint)'
+  ]
+  LOOP
+    v_function_oid := to_regprocedure('public.' || v_function_signature);
+    IF v_function_oid IS NULL THEN
+      RAISE EXCEPTION 'Catalog check failed: internal function missing %',
+        v_function_signature;
+    END IF;
+
+    SELECT p.prosecdef, p.proconfig
+    INTO v_security_definer, v_function_config
+    FROM pg_proc p
+    WHERE p.oid = v_function_oid;
+    IF NOT v_security_definer
+       OR NOT ('search_path=public, pg_temp' = ANY(COALESCE(v_function_config, ARRAY[]::TEXT[])))
+       OR has_function_privilege('anon', v_function_oid, 'EXECUTE')
+       OR has_function_privilege('authenticated', v_function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Catalog check failed: internal function posture invalid for %',
+        v_function_signature;
+    END IF;
+
+    IF v_function_signature = '_technical_configuration_baseline_copy_p4(uuid,bigint)'
+       AND has_function_privilege('service_role', v_function_oid, 'EXECUTE') THEN
+      RAISE EXCEPTION 'Catalog check failed: internal copy exposed to service_role';
+    END IF;
+  END LOOP;
+
   SELECT nv.id INTO v_user_id
   FROM public.nhan_vien nv
   WHERE nv.is_active = true
@@ -345,16 +481,82 @@ BEGIN
   SET archived_at = now(), archived_by = v_user_id
   WHERE id = v_dossier_id;
   PERFORM pg_temp.expect_error(
-    'archived dossier',
+    'archived create',
     format(
-      'SELECT public.technical_configuration_reference_product_update(%L::UUID, %L, NULL, NULL, NULL, %s)',
-      v_product_id,
-      'Archived',
+      'SELECT public.technical_configuration_reference_product_create(%L::UUID, %L, NULL, NULL, NULL, %s)',
+      v_version_id,
+      'Archived create',
       v_revision
     ),
     'PT409',
     'archived_dossier'
   );
+  PERFORM pg_temp.expect_error(
+    'archived update',
+    format(
+      'SELECT public.technical_configuration_reference_product_update(%L::UUID, %L, NULL, NULL, NULL, %s)',
+      v_product_id,
+      'Archived update',
+      v_revision
+    ),
+    'PT409',
+    'archived_dossier'
+  );
+  PERFORM pg_temp.expect_error(
+    'archived delete',
+    format(
+      'SELECT public.technical_configuration_reference_product_delete(%L::UUID, %s)',
+      v_product_id,
+      v_revision
+    ),
+    'PT409',
+    'archived_dossier'
+  );
+  PERFORM pg_temp.expect_error(
+    'archived response upsert',
+    format(
+      'SELECT public.technical_configuration_reference_response_upsert(%L::UUID, %L::UUID, %L, %s)',
+      v_product_id,
+      v_criterion_id,
+      'Archived response',
+      v_revision
+    ),
+    'PT409',
+    'archived_dossier'
+  );
+  SELECT v.revision INTO v_count
+  FROM public.technical_configuration_baseline_versions v
+  WHERE v.id = v_version_id;
+  IF v_count <> v_revision THEN
+    RAISE EXCEPTION 'Archived mutations changed the baseline revision';
+  END IF;
+  SELECT count(*) INTO v_count
+  FROM public.technical_configuration_reference_products p
+  WHERE p.baseline_version_id = v_version_id;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Archived mutations changed reference products';
+  END IF;
+  SELECT count(*) INTO v_count
+  FROM public.technical_configuration_reference_responses r
+  WHERE r.baseline_version_id = v_version_id;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Archived mutations changed reference responses';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.technical_configuration_reference_products p
+    WHERE p.id = v_product_id
+      AND p.model = 'Model A2'
+      AND p.description = 'Mô tả mới'
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM public.technical_configuration_reference_responses r
+    WHERE r.reference_product_id = v_product_id
+      AND r.criterion_id = v_criterion_id
+      AND r.response_text = E'Dòng 1\nDòng 2'
+  ) THEN
+    RAISE EXCEPTION 'Archived mutations changed persisted values';
+  END IF;
   UPDATE public.technical_configuration_dossiers
   SET archived_at = NULL, archived_by = NULL
   WHERE id = v_dossier_id;
@@ -364,7 +566,39 @@ BEGIN
   SET status = 'locked', locked_at = now(), locked_by = v_user_id
   WHERE id = v_version_id;
   PERFORM pg_temp.expect_error(
-    'locked version',
+    'locked create',
+    format(
+      'SELECT public.technical_configuration_reference_product_create(%L::UUID, %L, NULL, NULL, NULL, %s)',
+      v_version_id,
+      'Locked create',
+      v_revision
+    ),
+    'PT409',
+    'locked_version'
+  );
+  PERFORM pg_temp.expect_error(
+    'locked update',
+    format(
+      'SELECT public.technical_configuration_reference_product_update(%L::UUID, %L, NULL, NULL, NULL, %s)',
+      v_product_id,
+      'Locked update',
+      v_revision
+    ),
+    'PT409',
+    'locked_version'
+  );
+  PERFORM pg_temp.expect_error(
+    'locked delete',
+    format(
+      'SELECT public.technical_configuration_reference_product_delete(%L::UUID, %s)',
+      v_product_id,
+      v_revision
+    ),
+    'PT409',
+    'locked_version'
+  );
+  PERFORM pg_temp.expect_error(
+    'locked response upsert',
     format(
       'SELECT public.technical_configuration_reference_response_upsert(%L::UUID, %L::UUID, %L, %s)',
       v_product_id,
@@ -375,6 +609,39 @@ BEGIN
     'PT409',
     'locked_version'
   );
+  SELECT v.revision INTO v_count
+  FROM public.technical_configuration_baseline_versions v
+  WHERE v.id = v_version_id;
+  IF v_count <> v_revision THEN
+    RAISE EXCEPTION 'Locked mutations changed the baseline revision';
+  END IF;
+  SELECT count(*) INTO v_count
+  FROM public.technical_configuration_reference_products p
+  WHERE p.baseline_version_id = v_version_id;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Locked mutations changed reference products';
+  END IF;
+  SELECT count(*) INTO v_count
+  FROM public.technical_configuration_reference_responses r
+  WHERE r.baseline_version_id = v_version_id;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Locked mutations changed reference responses';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.technical_configuration_reference_products p
+    WHERE p.id = v_product_id
+      AND p.model = 'Model A2'
+      AND p.description = 'Mô tả mới'
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM public.technical_configuration_reference_responses r
+    WHERE r.reference_product_id = v_product_id
+      AND r.criterion_id = v_criterion_id
+      AND r.response_text = E'Dòng 1\nDòng 2'
+  ) THEN
+    RAISE EXCEPTION 'Locked mutations changed persisted values';
+  END IF;
 
   -- copy remapping
   SELECT public.technical_configuration_baseline_copy(v_version_id, v_revision)
@@ -408,17 +675,23 @@ BEGIN
   )
   INTO v_definition;
   -- supplier exclusion
-  IF v_definition LIKE '%technical_configuration_suppliers%' THEN
-    RAISE EXCEPTION 'Supplier exclusion failed';
-  END IF;
+  -- option exclusion
   -- assessment exclusion
-  IF v_definition LIKE '%technical_configuration_assessments%' THEN
-    RAISE EXCEPTION 'Assessment exclusion failed';
-  END IF;
   -- ranking exclusion
-  IF v_definition LIKE '%technical_configuration_comparison_sets%' THEN
-    RAISE EXCEPTION 'Ranking exclusion failed';
-  END IF;
+  FOREACH v_forbidden_identifier IN ARRAY ARRAY[
+    'technical_configuration_suppliers',
+    'technical_configuration_options',
+    'technical_configuration_comparison_sets',
+    'technical_configuration_option_responses',
+    'technical_configuration_option_documents',
+    'technical_configuration_option_citations',
+    'technical_configuration_manual_assessments'
+  ]
+  LOOP
+    IF position(v_forbidden_identifier IN v_definition) > 0 THEN
+      RAISE EXCEPTION 'Copy exclusion failed: %', v_forbidden_identifier;
+    END IF;
+  END LOOP;
 END;
 $gate$;
 

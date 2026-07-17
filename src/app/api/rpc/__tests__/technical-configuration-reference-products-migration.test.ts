@@ -6,6 +6,8 @@ const REPO_ROOT = process.cwd()
 const MIGRATIONS_DIR = path.resolve(REPO_ROOT, "supabase/migrations")
 const MIGRATION_SUFFIX = "_technical_configuration_reference_products.sql"
 const PERFORMANCE_MIGRATION_SUFFIX = "_technical_configuration_reference_response_fk_indexes.sql"
+const LIST_PERFORMANCE_MIGRATION_SUFFIX =
+  "_technical_configuration_reference_products_list_set_based.sql"
 const PHASE_GATE_PATH = path.resolve(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_products_phase_gate.sql"
@@ -58,6 +60,13 @@ const performanceMigrationFiles = readdirSync(MIGRATIONS_DIR)
 const performanceMigrationFile = performanceMigrationFiles[0] ?? ""
 const performanceMigrationSource = performanceMigrationFile
   ? readFileSync(path.resolve(MIGRATIONS_DIR, performanceMigrationFile), "utf8")
+  : ""
+const listPerformanceMigrationFiles = readdirSync(MIGRATIONS_DIR)
+  .filter((file) => file.endsWith(LIST_PERFORMANCE_MIGRATION_SUFFIX))
+  .sort()
+const listPerformanceMigrationFile = listPerformanceMigrationFiles[0] ?? ""
+const listPerformanceMigrationSource = listPerformanceMigrationFile
+  ? readFileSync(path.resolve(MIGRATIONS_DIR, listPerformanceMigrationFile), "utf8")
   : ""
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 const rpcNamesSource = readIfExists(RPC_NAMES_PATH)
@@ -140,6 +149,28 @@ describe("technical configuration P7A1 reference product contracts", () => {
     )
     expect(performanceMigrationSource).toMatch(
       /CREATE INDEX technical_configuration_reference_responses_criterion_version_idx\s+ON public\.technical_configuration_reference_responses\s+\(criterion_id, baseline_version_id\)/
+    )
+  })
+
+  it("replaces the list RPC with set-based response aggregation in a later migration", () => {
+    expect(listPerformanceMigrationFiles).toHaveLength(1)
+    expect(listPerformanceMigrationFile > performanceMigrationFile).toBe(true)
+
+    const listBlock = getFunctionBlock(
+      listPerformanceMigrationSource,
+      "technical_configuration_reference_products_list"
+    )
+    expect(listBlock).not.toBe("")
+    expect(listBlock).toContain("WITH page AS")
+    expect(listBlock).toContain("responses_by_product AS")
+    expect(listBlock).toContain("LEFT JOIN responses_by_product")
+    expect(listBlock).toContain("'responses', COALESCE(responses.responses, '[]'::JSONB)")
+    expect(listBlock).not.toContain("_technical_configuration_reference_product_payload")
+    expect(listPerformanceMigrationSource).toContain(
+      "REVOKE ALL ON FUNCTION public.technical_configuration_reference_products_list"
+    )
+    expect(listPerformanceMigrationSource).toContain(
+      "GRANT EXECUTE ON FUNCTION public.technical_configuration_reference_products_list"
     )
   })
 
@@ -242,6 +273,35 @@ describe("technical configuration P7A1 reference product contracts", () => {
     }
     for (const rpcName of REFERENCE_RPC_NAMES) {
       expect(phaseGateSource).toContain(rpcName)
+    }
+
+    for (const catalogMarker of [
+      "relrowsecurity",
+      "pg_policies",
+      "has_table_privilege",
+      "has_function_privilege",
+      "prosecdef",
+      "proconfig",
+    ]) {
+      expect(phaseGateSource).toContain(catalogMarker)
+    }
+
+    for (const state of ["archived", "locked"]) {
+      for (const mutation of ["create", "update", "delete", "response upsert"]) {
+        expect(phaseGateSource.toLowerCase()).toContain(`${state} ${mutation}`)
+      }
+    }
+
+    for (const forbiddenDomain of [
+      "technical_configuration_suppliers",
+      "technical_configuration_options",
+      "technical_configuration_comparison_sets",
+      "technical_configuration_option_responses",
+      "technical_configuration_option_documents",
+      "technical_configuration_option_citations",
+      "technical_configuration_manual_assessments",
+    ]) {
+      expect(phaseGateSource).toContain(forbiddenDomain)
     }
   })
 
