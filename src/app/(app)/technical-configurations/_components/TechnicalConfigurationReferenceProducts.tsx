@@ -199,7 +199,9 @@ export function TechnicalConfigurationReferenceProducts({
 
         {!referenceState.isReadOnly ? (
           <div className="flex flex-wrap gap-2">
-            {referenceState.isDirty || referenceState.isConflict ? (
+            {referenceState.isDirty ||
+            referenceState.isConflict ||
+            referenceState.refreshWarning ? (
               <Button
                 type="button"
                 variant="outline"

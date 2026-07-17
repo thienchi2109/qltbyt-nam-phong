@@ -1,7 +1,14 @@
 import * as React from "react"
-import { Maximize2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
+import {
+  clampReferenceProductPageIndex,
+  getReferenceProductDisplayLabels,
+  reconcileReferenceColumnState,
+  REFERENCE_PRODUCT_PAGE_SIZE,
+  type ReferenceColumnState,
+} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparisonUtils"
 import {
   getTechnicalConfigurationReferenceProductName,
   type TechnicalConfigurationReferenceProductDraft,
@@ -30,54 +37,6 @@ type FullTextDetail = {
   text: string
 }
 
-type ReferenceColumnState = {
-  baselineVersionId: string
-  productIds: string[]
-  hiddenProductIds: string[]
-}
-
-const NEW_REFERENCE_PRODUCT_PREFIX = "new-reference-product-"
-
-function haveSameProductIds(left: string[], right: string[]) {
-  return (
-    left.length === right.length && left.every((productId, index) => productId === right[index])
-  )
-}
-
-function reconcileReferenceColumnState(
-  current: ReferenceColumnState,
-  baselineVersionId: string,
-  productIds: string[]
-): ReferenceColumnState | null {
-  if (current.baselineVersionId !== baselineVersionId) {
-    return {
-      baselineVersionId,
-      productIds,
-      hiddenProductIds: [],
-    }
-  }
-  if (haveSameProductIds(current.productIds, productIds)) return null
-
-  const priorProductIdSet = new Set(current.productIds)
-  const hiddenProductIdSet = new Set(current.hiddenProductIds)
-  productIds.forEach((productId, index) => {
-    if (priorProductIdSet.has(productId)) return
-    const priorProductId = current.productIds[index]
-    if (
-      priorProductId?.startsWith(NEW_REFERENCE_PRODUCT_PREFIX) &&
-      hiddenProductIdSet.has(priorProductId)
-    ) {
-      hiddenProductIdSet.add(productId)
-    }
-  })
-
-  return {
-    baselineVersionId,
-    productIds,
-    hiddenProductIds: [...hiddenProductIdSet],
-  }
-}
-
 /** Renders the baseline-first comparison matrix with user-selectable product columns. */
 export function TechnicalConfigurationReferenceComparison({
   baselineVersion,
@@ -90,6 +49,7 @@ export function TechnicalConfigurationReferenceComparison({
     baselineVersionId: baselineVersion.id,
     productIds,
     hiddenProductIds: [],
+    pageIndex: 0,
   }))
   const [fullTextDetail, setFullTextDetail] = React.useState<FullTextDetail | null>(null)
   const reconciledColumnState = reconcileReferenceColumnState(
@@ -101,15 +61,26 @@ export function TechnicalConfigurationReferenceComparison({
     setColumnState(reconciledColumnState)
   }
 
+  const activeColumnState = reconciledColumnState ?? columnState
   const hiddenProductIdSet = React.useMemo(
-    () => new Set(columnState.hiddenProductIds),
-    [columnState.hiddenProductIds]
+    () => new Set(activeColumnState.hiddenProductIds),
+    [activeColumnState.hiddenProductIds]
   )
   const productIndexById = React.useMemo(
     () => new Map(products.map((product, index) => [product.id, index])),
     [products]
   )
+  const productLabelById = React.useMemo(
+    () => getReferenceProductDisplayLabels(products),
+    [products]
+  )
   const selectedProducts = products.filter((product) => !hiddenProductIdSet.has(product.id))
+  const pageCount = Math.max(1, Math.ceil(selectedProducts.length / REFERENCE_PRODUCT_PAGE_SIZE))
+  const pageIndex = Math.min(activeColumnState.pageIndex, pageCount - 1)
+  const visibleProducts = selectedProducts.slice(
+    pageIndex * REFERENCE_PRODUCT_PAGE_SIZE,
+    (pageIndex + 1) * REFERENCE_PRODUCT_PAGE_SIZE
+  )
 
   if (products.length === 0) {
     return (
@@ -126,7 +97,9 @@ export function TechnicalConfigurationReferenceComparison({
         <h3 className="text-base font-semibold">Đối chiếu theo tiêu chí</h3>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">
           {products.map((product, index) => {
-            const name = getTechnicalConfigurationReferenceProductName(product, index)
+            const name =
+              productLabelById.get(product.id) ??
+              getTechnicalConfigurationReferenceProductName(product, index)
             const checkboxId = `reference-product-column-${product.id}`
             return (
               <div key={product.id} className="flex items-center gap-2">
@@ -142,9 +115,15 @@ export function TechnicalConfigurationReferenceComparison({
                       } else {
                         hiddenProductIds.add(product.id)
                       }
+                      const nextHiddenProductIds = [...hiddenProductIds]
                       return {
                         ...current,
-                        hiddenProductIds: [...hiddenProductIds],
+                        hiddenProductIds: nextHiddenProductIds,
+                        pageIndex: clampReferenceProductPageIndex(
+                          current.pageIndex,
+                          current.productIds,
+                          nextHiddenProductIds
+                        ),
                       }
                     })
                   }}
@@ -169,14 +148,15 @@ export function TechnicalConfigurationReferenceComparison({
               <th className="sticky left-[220px] z-30 w-[360px] min-w-[360px] border-b border-r bg-muted px-3 py-3 font-semibold">
                 Yêu cầu cơ sở
               </th>
-              {selectedProducts.map((product) => {
+              {visibleProducts.map((product) => {
                 const productIndex = productIndexById.get(product.id) ?? 0
                 return (
                   <th
                     key={product.id}
                     className="w-[320px] min-w-[320px] border-b border-r bg-muted px-3 py-3 font-semibold last:border-r-0"
                   >
-                    {getTechnicalConfigurationReferenceProductName(product, productIndex)}
+                    {productLabelById.get(product.id) ??
+                      getTechnicalConfigurationReferenceProductName(product, productIndex)}
                   </th>
                 )
               })}
@@ -187,7 +167,7 @@ export function TechnicalConfigurationReferenceComparison({
               <React.Fragment key={group.id}>
                 <tr>
                   <th
-                    colSpan={selectedProducts.length + 2}
+                    colSpan={visibleProducts.length + 2}
                     className="border-b bg-muted/40 px-3 py-2 font-semibold"
                   >
                     {group.name}
@@ -224,17 +204,16 @@ export function TechnicalConfigurationReferenceComparison({
                         Xem đầy đủ
                       </Button>
                     </td>
-                    {selectedProducts.map((product) => {
+                    {visibleProducts.map((product) => {
                       const productIndex = productIndexById.get(product.id) ?? 0
-                      const productName = getTechnicalConfigurationReferenceProductName(
-                        product,
-                        productIndex
-                      )
+                      const productName =
+                        productLabelById.get(product.id) ??
+                        getTechnicalConfigurationReferenceProductName(product, productIndex)
                       return (
                         <td key={product.id} className="border-b border-r p-3 last:border-r-0">
                           <Textarea
                             value={product.responses[criterion.id] ?? ""}
-                            disabled={readOnly}
+                            readOnly={readOnly}
                             aria-label={`Phản hồi ${productName} cho ${criterion.criterion_code}`}
                             className="min-h-[120px] resize-y whitespace-pre-wrap"
                             onChange={(event) =>
@@ -268,6 +247,42 @@ export function TechnicalConfigurationReferenceComparison({
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pageIndex === 0}
+          onClick={() =>
+            setColumnState((current) => ({
+              ...current,
+              pageIndex: Math.max(0, current.pageIndex - 1),
+            }))
+          }
+        >
+          <ChevronLeft className="size-4" aria-hidden="true" />
+          Trước
+        </Button>
+        <p className="min-w-24 text-center text-sm text-muted-foreground" aria-live="polite">
+          Trang {pageIndex + 1} / {pageCount}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={pageIndex >= pageCount - 1}
+          onClick={() =>
+            setColumnState((current) => ({
+              ...current,
+              pageIndex: Math.min(pageCount - 1, current.pageIndex + 1),
+            }))
+          }
+        >
+          Sau
+          <ChevronRight className="size-4" aria-hidden="true" />
+        </Button>
       </div>
 
       <Dialog

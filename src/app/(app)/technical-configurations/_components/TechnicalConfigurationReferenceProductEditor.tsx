@@ -32,7 +32,6 @@ export function TechnicalConfigurationReferenceProductEditor({
 }: Readonly<TechnicalConfigurationReferenceProductEditorProps>) {
   const productName = getTechnicalConfigurationReferenceProductName(product, index)
   const fieldPrefix = `reference-product-${product.id}`
-  const disabled = readOnly || navigationBlocked
 
   return (
     <section className="rounded-md border p-4">
@@ -65,7 +64,8 @@ export function TechnicalConfigurationReferenceProductEditor({
           <Input
             id={`${fieldPrefix}-model`}
             value={product.model}
-            disabled={disabled}
+            readOnly={readOnly}
+            disabled={navigationBlocked}
             onChange={(event) => onUpdate(product.id, { model: event.target.value })}
           />
         </div>
@@ -74,7 +74,8 @@ export function TechnicalConfigurationReferenceProductEditor({
           <Input
             id={`${fieldPrefix}-manufacturer`}
             value={product.manufacturer}
-            disabled={disabled}
+            readOnly={readOnly}
+            disabled={navigationBlocked}
             onChange={(event) => onUpdate(product.id, { manufacturer: event.target.value })}
           />
         </div>
@@ -83,7 +84,8 @@ export function TechnicalConfigurationReferenceProductEditor({
           <Textarea
             id={`${fieldPrefix}-description`}
             value={product.description}
-            disabled={disabled}
+            readOnly={readOnly}
+            disabled={navigationBlocked}
             onChange={(event) => onUpdate(product.id, { description: event.target.value })}
           />
         </div>
@@ -92,7 +94,8 @@ export function TechnicalConfigurationReferenceProductEditor({
           <Textarea
             id={`${fieldPrefix}-notes`}
             value={product.notes}
-            disabled={disabled}
+            readOnly={readOnly}
+            disabled={navigationBlocked}
             onChange={(event) => onUpdate(product.id, { notes: event.target.value })}
           />
         </div>

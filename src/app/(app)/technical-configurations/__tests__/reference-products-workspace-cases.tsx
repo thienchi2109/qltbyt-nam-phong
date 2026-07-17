@@ -232,13 +232,21 @@ export function registerReferenceProductWorkspaceTests({
 
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
 
-      expect(await screen.findByDisplayValue("Model A")).toBeDisabled()
+      const modelInput = await screen.findByDisplayValue("Model A")
+      expect(modelInput).toHaveAttribute("readonly")
+      expect(modelInput).not.toBeDisabled()
+      modelInput.focus()
+      expect(modelInput).toHaveFocus()
       expect(
         screen.queryByRole("button", { name: "Thêm sản phẩm tham chiếu" })
       ).not.toBeInTheDocument()
       expect(screen.queryByRole("button", { name: "Lưu thay đổi" })).not.toBeInTheDocument()
       expect(screen.queryByRole("button", { name: "Xóa Model A" })).not.toBeInTheDocument()
-      expect(screen.getByLabelText("Phản hồi Model A cho TC-0001")).toBeDisabled()
+      const response = screen.getByLabelText("Phản hồi Model A cho TC-0001")
+      expect(response).toHaveAttribute("readonly")
+      expect(response).not.toBeDisabled()
+      response.focus()
+      expect(response).toHaveFocus()
     })
 
     it("preserves a dirty reference draft when dossier-back navigation is rejected", async () => {

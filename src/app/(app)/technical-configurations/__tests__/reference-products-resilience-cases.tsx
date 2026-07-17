@@ -81,6 +81,7 @@ export function registerReferenceProductResilienceTests({
     it("keeps saved products visible when background cache refresh fails", async () => {
       const user = userEvent.setup()
       const created = product("product-1", "Model đã lưu", 6)
+      const refreshed = product("product-1", "Model từ máy chủ", 6)
       baselineRpc.listVersions
         .mockResolvedValueOnce({
           data: [baselineVersion],
@@ -89,9 +90,16 @@ export function registerReferenceProductResilienceTests({
           page_size: 20,
         })
         .mockRejectedValueOnce(new Error("versions unavailable"))
+        .mockResolvedValueOnce({
+          data: [baselineVersion],
+          total: 1,
+          page: 1,
+          page_size: 20,
+        })
       referenceRpc.listProducts
         .mockResolvedValueOnce(listResponse([]))
         .mockRejectedValueOnce(new Error("products unavailable"))
+        .mockResolvedValueOnce(listResponse([refreshed]))
       referenceRpc.createProduct.mockResolvedValueOnce({ data: created })
 
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
@@ -107,6 +115,14 @@ export function registerReferenceProductResilienceTests({
       ).toBeInTheDocument()
       expect(screen.getByDisplayValue("Model đã lưu")).toBeInTheDocument()
       expect(screen.queryByRole("button", { name: "Thử lại" })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }))
+
+      expect(await screen.findByDisplayValue("Model từ máy chủ")).toBeInTheDocument()
+      expect(screen.queryByDisplayValue("Model đã lưu")).not.toBeInTheDocument()
+      expect(
+        screen.queryByText("Đã lưu thay đổi nhưng không thể làm mới dữ liệu từ máy chủ.")
+      ).not.toBeInTheDocument()
     })
 
     it("blocks version and product navigation while version refresh is pending", async () => {

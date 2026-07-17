@@ -1,3 +1,4 @@
+import * as React from "react"
 import { screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
@@ -5,6 +6,39 @@ import { describe, expect, it, vi } from "vitest"
 import { TechnicalConfigurationReferenceComparison } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison"
 import { toTechnicalConfigurationReferenceProductDraft } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-state"
 import { baselineVersion, product, renderWithQueryClient } from "./reference-products-fixtures"
+
+type ReferenceProductDraft = React.ComponentProps<
+  typeof TechnicalConfigurationReferenceComparison
+>["products"][number]
+
+function ReferenceComparisonHarness({
+  initialProducts,
+}: Readonly<{ initialProducts: ReferenceProductDraft[] }>) {
+  const [products, setProducts] = React.useState(initialProducts)
+
+  return (
+    <TechnicalConfigurationReferenceComparison
+      baselineVersion={baselineVersion}
+      products={products}
+      readOnly={false}
+      onResponseChange={(productId, criterionId, responseText) =>
+        setProducts((current) =>
+          current.map((draft) =>
+            draft.id === productId
+              ? {
+                  ...draft,
+                  responses: {
+                    ...draft.responses,
+                    [criterionId]: responseText,
+                  },
+                }
+              : draft
+          )
+        )
+      }
+    />
+  )
+}
 
 export function registerReferenceProductComparisonTests() {
   describe("technical configuration reference-product comparison", () => {
@@ -110,6 +144,93 @@ export function registerReferenceProductComparisonTests() {
       expect(screen.getByRole("columnheader", { name: "Model D" })).toBeInTheDocument()
       expect(screen.getByRole("columnheader", { name: "Model E" })).toBeInTheDocument()
       expect(screen.queryByText(/xếp hạng|tài liệu|trích dẫn/i)).not.toBeInTheDocument()
+    })
+
+    it("paginates visible products in groups of five and preserves drafts between pages", async () => {
+      const user = userEvent.setup()
+      const products = Array.from({ length: 12 }, (_, index) =>
+        toTechnicalConfigurationReferenceProductDraft(
+          product(`product-${index + 1}`, `Model ${index + 1}`)
+        )
+      )
+
+      renderWithQueryClient(<ReferenceComparisonHarness initialProducts={products} />)
+
+      expect(screen.getByText("Trang 1 / 3")).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Trước" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Sau" })).toBeEnabled()
+      expect(screen.getByRole("columnheader", { name: "Model 1" })).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 5" })).toBeInTheDocument()
+      expect(screen.queryByRole("columnheader", { name: "Model 6" })).not.toBeInTheDocument()
+
+      const firstPageResponse = screen.getByLabelText("Phản hồi Model 1 cho TC-0001")
+      await user.clear(firstPageResponse)
+      await user.type(firstPageResponse, "Bản nháp trang 1")
+      await user.click(screen.getByRole("button", { name: "Sau" }))
+
+      expect(screen.getByText("Trang 2 / 3")).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 6" })).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 10" })).toBeInTheDocument()
+      expect(screen.queryByRole("columnheader", { name: "Model 11" })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole("button", { name: "Sau" }))
+      expect(screen.getByText("Trang 3 / 3")).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 11" })).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 12" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Sau" })).toBeDisabled()
+
+      await user.click(screen.getByRole("button", { name: "Trước" }))
+      await user.click(screen.getByRole("button", { name: "Trước" }))
+      expect(screen.getByLabelText("Phản hồi Model 1 cho TC-0001")).toHaveValue("Bản nháp trang 1")
+
+      await user.click(screen.getByRole("checkbox", { name: "Hiển thị Model 5" }))
+      expect(screen.queryByRole("columnheader", { name: "Model 5" })).not.toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 6" })).toBeInTheDocument()
+
+      await user.click(screen.getByRole("button", { name: "Sau" }))
+      await user.click(screen.getByRole("button", { name: "Sau" }))
+      expect(screen.getByText("Trang 3 / 3")).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 12" })).toBeInTheDocument()
+
+      await user.click(screen.getByRole("checkbox", { name: "Hiển thị Model 12" }))
+      expect(screen.getByText("Trang 2 / 2")).toBeInTheDocument()
+      expect(screen.getByRole("columnheader", { name: "Model 11" })).toBeInTheDocument()
+    })
+
+    it("disambiguates duplicate product names across comparison controls", () => {
+      const products = [1, 2].map((number) => {
+        const draft = toTechnicalConfigurationReferenceProductDraft(
+          product(`product-${number}`, "Model A")
+        )
+        return {
+          ...draft,
+          responses: {
+            ...draft.responses,
+            "criterion-1": `Phản hồi ${number}`,
+          },
+        }
+      })
+
+      renderWithQueryClient(
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={baselineVersion}
+          products={products}
+          readOnly={false}
+          onResponseChange={vi.fn()}
+        />
+      )
+
+      for (const number of [1, 2]) {
+        const name = `Model A (Sản phẩm ${number})`
+        expect(screen.getByRole("columnheader", { name })).toBeInTheDocument()
+        expect(screen.getByRole("checkbox", { name: `Hiển thị ${name}` })).toBeInTheDocument()
+        expect(screen.getByLabelText(`Phản hồi ${name} cho TC-0001`)).toBeInTheDocument()
+        expect(
+          screen.getByRole("button", {
+            name: `Xem đầy đủ phản hồi ${name} cho TC-0001`,
+          })
+        ).toBeInTheDocument()
+      }
     })
   })
 }
