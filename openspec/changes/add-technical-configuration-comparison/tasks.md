@@ -179,13 +179,13 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P7A1 - Reference Product Data Contracts
 
-- [ ] P7A1.1 Thêm reference products và criterion responses theo exact baseline version.
-- [ ] P7A1.2 Thêm expected-revision CRUD/upsert, archived/locked guards và ownership/cascade constraints.
-- [ ] P7A1.3 Mở rộng locked-baseline copy để clone products/responses với ID mới và remap criterion links.
-- [ ] P7A1.4 Giữ reference products ngoài supplier/option/assessment/ranking domains.
-- [ ] P7A1.5 Thêm typed RPC names, wire types, module-local wrappers và RPC allowlist mà không đổi shared RPC helper.
+- [x] P7A1.1 Thêm reference products và criterion responses theo exact baseline version.
+- [x] P7A1.2 Thêm expected-revision CRUD/upsert, archived/locked guards và ownership/cascade constraints.
+- [x] P7A1.3 Mở rộng locked-baseline copy để clone products/responses với ID mới và remap criterion links.
+- [x] P7A1.4 Giữ reference products ngoài supplier/option/assessment/ranking domains.
+- [x] P7A1.5 Thêm typed RPC names, wire types, module-local wrappers và RPC allowlist mà không đổi shared RPC helper.
 - [ ] P7A1.6 Chạy migration/source/authorization/concurrency/copy SQL tests và DB phase gate sau explicit live-write approval.
-- [ ] P7A1.7 Không thêm reference-product UI, hook hoặc workspace state.
+- [x] P7A1.7 Không thêm reference-product UI, hook hoặc workspace state.
 
 ## Phase P7A2 - Reference Product Workspace
 

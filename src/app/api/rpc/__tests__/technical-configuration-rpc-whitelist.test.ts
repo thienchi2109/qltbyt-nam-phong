@@ -14,6 +14,14 @@ const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_archive",
 ] as const
 
+const REFERENCE_RPC_FUNCTIONS = [
+  "technical_configuration_reference_products_list",
+  "technical_configuration_reference_product_create",
+  "technical_configuration_reference_product_update",
+  "technical_configuration_reference_product_delete",
+  "technical_configuration_reference_response_upsert",
+] as const
+
 async function invokeRpcProxy(fn: string) {
   const request = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST" })
   return POST(request as never, { params: Promise.resolve({ fn }) })
@@ -43,6 +51,24 @@ describe("technical configuration baseline RPC whitelist", () => {
 
   it.each(BASELINE_RPC_FUNCTION_NAMES)(
     'allows baseline RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
+})
+
+describe("technical configuration reference product RPC whitelist", () => {
+  it("allowlists exactly the five P7A1 reference product RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_reference_"))
+    ).toEqual(REFERENCE_RPC_FUNCTIONS)
+  })
+
+  it.each(REFERENCE_RPC_FUNCTIONS)(
+    'allows reference product RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
 
