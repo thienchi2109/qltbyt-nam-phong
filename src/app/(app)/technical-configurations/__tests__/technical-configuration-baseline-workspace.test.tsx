@@ -126,5 +126,13 @@ describe("technical configuration baseline workspace integration", () => {
     expect(shellSource).toContain("TechnicalConfigurationBaselineTab")
     expect(shellSource).not.toContain("useQuery")
     expect(shellSource).not.toContain("useMutation")
+
+    for (const file of [
+      "_components/TechnicalConfigurationBaselineTab.tsx",
+      "_hooks/useTechnicalConfigurationBaselineEditor.ts",
+    ]) {
+      const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
+      expect(source).not.toMatch(/reference[-_ ]?product/i)
+    }
   })
 })

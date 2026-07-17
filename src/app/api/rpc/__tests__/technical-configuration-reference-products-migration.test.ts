@@ -8,6 +8,8 @@ const MIGRATION_SUFFIX = "_technical_configuration_reference_products.sql"
 const PERFORMANCE_MIGRATION_SUFFIX = "_technical_configuration_reference_response_fk_indexes.sql"
 const LIST_PERFORMANCE_MIGRATION_SUFFIX =
   "_technical_configuration_reference_products_list_set_based.sql"
+const SNAPSHOT_REVISION_MIGRATION_SUFFIX =
+  "_technical_configuration_reference_products_snapshot_revision.sql"
 const PHASE_GATE_PATH = path.resolve(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_products_phase_gate.sql"
@@ -67,6 +69,13 @@ const listPerformanceMigrationFiles = readdirSync(MIGRATIONS_DIR)
 const listPerformanceMigrationFile = listPerformanceMigrationFiles[0] ?? ""
 const listPerformanceMigrationSource = listPerformanceMigrationFile
   ? readFileSync(path.resolve(MIGRATIONS_DIR, listPerformanceMigrationFile), "utf8")
+  : ""
+const snapshotRevisionMigrationFiles = readdirSync(MIGRATIONS_DIR)
+  .filter((file) => file.endsWith(SNAPSHOT_REVISION_MIGRATION_SUFFIX))
+  .sort()
+const snapshotRevisionMigrationFile = snapshotRevisionMigrationFiles[0] ?? ""
+const snapshotRevisionMigrationSource = snapshotRevisionMigrationFile
+  ? readFileSync(path.resolve(MIGRATIONS_DIR, snapshotRevisionMigrationFile), "utf8")
   : ""
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 const rpcNamesSource = readIfExists(RPC_NAMES_PATH)
@@ -170,6 +179,28 @@ describe("technical configuration P7A1 reference product contracts", () => {
       "REVOKE ALL ON FUNCTION public.technical_configuration_reference_products_list"
     )
     expect(listPerformanceMigrationSource).toContain(
+      "GRANT EXECUTE ON FUNCTION public.technical_configuration_reference_products_list"
+    )
+  })
+
+  it("returns the product data and revision from one later statement snapshot", () => {
+    expect(snapshotRevisionMigrationFiles).toHaveLength(1)
+    expect(snapshotRevisionMigrationFile > listPerformanceMigrationFile).toBe(true)
+
+    const listBlock = getFunctionBlock(
+      snapshotRevisionMigrationSource,
+      "technical_configuration_reference_products_list"
+    )
+    expect(listBlock).not.toBe("")
+    expect(listBlock).toContain("WITH baseline AS MATERIALIZED")
+    expect(listBlock).toContain("snapshot AS MATERIALIZED")
+    expect(listBlock).toContain("'revision', snapshot.revision")
+    expect(listBlock).toContain("'data', data.products")
+    expect(listBlock).not.toContain("SELECT v.revision INTO")
+    expect(snapshotRevisionMigrationSource).toContain(
+      "REVOKE ALL ON FUNCTION public.technical_configuration_reference_products_list"
+    )
+    expect(snapshotRevisionMigrationSource).toContain(
       "GRANT EXECUTE ON FUNCTION public.technical_configuration_reference_products_list"
     )
   })
@@ -332,6 +363,16 @@ describe("technical configuration P7A1 reference product contracts", () => {
       .filter((file) => /\.(?:ts|tsx)$/.test(file))
       .filter((file) => /reference/i.test(file))
       .filter((file) => /(?:_components|_hooks|\.tsx$)/.test(file))
+      .filter((file) => {
+        const source = readFileSync(
+          path.resolve(REPO_ROOT, "src/app/(app)/technical-configurations", file),
+          "utf8"
+        )
+        return (
+          source.includes("callTechnicalConfigurationRpc") ||
+          source.includes("REFERENCE_PRODUCT_RPC_FUNCTIONS")
+        )
+      })
 
     expect(forbiddenRuntimeFiles).toEqual([])
   })

@@ -13,3 +13,8 @@ export function technicalConfigurationDossierDetailQueryKey(dossierId: string) {
 export function technicalConfigurationBaselineVersionsQueryKey(dossierId: string) {
   return ["technical-configurations", "baseline-versions", dossierId] as const
 }
+
+/** Builds the cache key for reference products under one exact baseline version. */
+export function technicalConfigurationReferenceProductsQueryKey(baselineVersionId: string) {
+  return ["technical-configurations", "reference-products", baselineVersionId] as const
+}
