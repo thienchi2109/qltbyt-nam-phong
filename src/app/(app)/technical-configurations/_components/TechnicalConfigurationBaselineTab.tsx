@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
 import { useTechnicalConfigurationBaselineImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImport"
+import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
 import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
@@ -102,15 +103,7 @@ export function TechnicalConfigurationBaselineTab({
     return () => reportWorkspaceState(false, false)
   }, [baselineImport.isApplying, isUnsafeToLeave, reportWorkspaceState])
 
-  React.useEffect(() => {
-    if (!isUnsafeToLeave) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ""
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [isUnsafeToLeave])
+  useTechnicalConfigurationBeforeUnloadGuard(isUnsafeToLeave)
 
   const handleReloadFromServer = async () => {
     if (bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState) return

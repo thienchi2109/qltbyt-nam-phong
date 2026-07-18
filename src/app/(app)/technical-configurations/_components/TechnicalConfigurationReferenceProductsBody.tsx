@@ -12,6 +12,9 @@ type TechnicalConfigurationReferenceProductsBodyProps = {
   baselineVersion: TechnicalConfigurationBaselineDraftWire
   referenceState: ReturnType<typeof useTechnicalConfigurationReferenceProducts>
   navigationBlocked: boolean
+  onRevisionChange?: (revision: number) => void
+  onEvidenceDirtyChange?: (dirty: boolean) => void
+  onEvidenceNavigationBlockedChange?: (blocked: boolean) => void
 }
 
 /** Renders reference-product query states, metadata editors, and comparison matrix. */
@@ -19,6 +22,9 @@ export function TechnicalConfigurationReferenceProductsBody({
   baselineVersion,
   referenceState,
   navigationBlocked,
+  onRevisionChange,
+  onEvidenceDirtyChange,
+  onEvidenceNavigationBlockedChange,
 }: Readonly<TechnicalConfigurationReferenceProductsBodyProps>) {
   const invalidProductIdSet = React.useMemo(
     () => new Set(referenceState.invalidProductIds),
@@ -80,6 +86,9 @@ export function TechnicalConfigurationReferenceProductsBody({
           products={referenceState.products}
           readOnly={referenceState.isReadOnly || navigationBlocked}
           onResponseChange={referenceState.updateResponse}
+          onRevisionChange={onRevisionChange}
+          onEvidenceDirtyChange={onEvidenceDirtyChange}
+          onEvidenceNavigationBlockedChange={onEvidenceNavigationBlockedChange}
         />
       ) : null}
     </>

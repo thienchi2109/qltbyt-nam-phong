@@ -3,6 +3,7 @@ import type {
   TechnicalConfigurationReferenceProductWire,
   TechnicalConfigurationReferenceProductsSnapshot,
 } from "@/app/(app)/technical-configurations/reference-product-types"
+import { collectStableTechnicalConfigurationPages } from "@/app/(app)/technical-configurations/technical-configuration-pagination"
 import { isTechnicalConfigurationBaselineConflict } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import {
   cloneTechnicalConfigurationReferenceProductDrafts,
@@ -48,34 +49,24 @@ export async function listAllTechnicalConfigurationReferenceProducts(
   baselineVersionId: string,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationReferenceProductsSnapshot> {
-  const products: TechnicalConfigurationReferenceProductWire[] = []
-  let page = 1
-  let total = Number.POSITIVE_INFINITY
-  let revision: number | null = null
+  const { items: products, firstPage } = await collectStableTechnicalConfigurationPages<
+    TechnicalConfigurationReferenceProductWire,
+    Awaited<ReturnType<typeof listTechnicalConfigurationReferenceProducts>>
+  >({
+    loadPage: (page) =>
+      listTechnicalConfigurationReferenceProducts(
+        {
+          p_baseline_version_id: baselineVersionId,
+          p_page: page,
+          p_page_size: REFERENCE_PRODUCT_PAGE_SIZE,
+        },
+        signal
+      ),
+    snapshotError: "Reference-product pagination snapshot changed during load.",
+    isSameSnapshot: (first, next) => first.revision === next.revision,
+  })
 
-  while (products.length < total) {
-    const response = await listTechnicalConfigurationReferenceProducts(
-      {
-        p_baseline_version_id: baselineVersionId,
-        p_page: page,
-        p_page_size: REFERENCE_PRODUCT_PAGE_SIZE,
-      },
-      signal
-    )
-    if (
-      (revision !== null && response.revision !== revision) ||
-      (Number.isFinite(total) && response.total !== total)
-    ) {
-      throw new Error("Reference-product pagination snapshot changed during load.")
-    }
-    revision ??= response.revision
-    products.push(...response.data)
-    total = response.total
-    if (response.data.length === 0) break
-    page += 1
-  }
-
-  return { products, revision: revision ?? 0 }
+  return { products, revision: firstPage.revision }
 }
 
 /** Persists reference-product drafts with resumable optimistic-concurrency progress. */

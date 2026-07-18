@@ -15,6 +15,11 @@ const baselineTabMock = vi.hoisted(() => ({
   navigationBlocked: false,
 }))
 
+const baselineEvidenceMock = vi.hoisted(() => ({
+  dirty: false,
+  navigationBlocked: false,
+}))
+
 vi.mock(
   "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab",
   async () => {
@@ -37,6 +42,29 @@ vi.mock(
           }
         }, [onDirtyChange, onNavigationBlockedChange])
         return <div>Baseline editor</div>
+      },
+    }
+  }
+)
+
+vi.mock(
+  "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEvidence",
+  async () => {
+    const ReactModule = await import("react")
+
+    return {
+      TechnicalConfigurationBaselineEvidence: ({
+        onDirtyChange,
+        onNavigationBlockedChange,
+      }: {
+        onDirtyChange: (dirty: boolean) => void
+        onNavigationBlockedChange?: (blocked: boolean) => void
+      }) => {
+        ReactModule.useEffect(() => {
+          onDirtyChange(baselineEvidenceMock.dirty)
+          onNavigationBlockedChange?.(baselineEvidenceMock.navigationBlocked)
+        }, [onDirtyChange, onNavigationBlockedChange])
+        return <div>Baseline evidence workspace</div>
       },
     }
   }
@@ -94,12 +122,28 @@ describe("technical configuration baseline workspace integration", () => {
     }
   })
 
+  it("renders baseline evidence in a separate workspace tab", async () => {
+    const user = userEvent.setup()
+    baselineTabMock.dirty = false
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+      await user.click(screen.getByRole("tab", { name: "Tài liệu & trích dẫn" }))
+
+      expect(screen.getByText("Baseline evidence workspace")).toBeInTheDocument()
+      expect(screen.queryByText("Baseline editor")).not.toBeInTheDocument()
+    } finally {
+      baselineTabMock.dirty = true
+    }
+  })
+
   it("keeps the shell thin and baseline responsibilities extracted before the threshold", () => {
     const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
     const files = [
       "TechnicalConfigurationsClient.tsx",
       "_components/TechnicalConfigurationWorkspaceShell.tsx",
       "_components/TechnicalConfigurationBaselineTab.tsx",
+      "_components/TechnicalConfigurationBaselineEvidence.tsx",
       "_components/TechnicalConfigurationBaselineAlerts.tsx",
       "_components/TechnicalConfigurationBaselineTabStates.tsx",
       "_components/TechnicalConfigurationBaselineEditor.tsx",
@@ -124,6 +168,7 @@ describe("technical configuration baseline workspace integration", () => {
       "utf8"
     )
     expect(shellSource).toContain("TechnicalConfigurationBaselineTab")
+    expect(shellSource).toContain("TechnicalConfigurationBaselineEvidence")
     expect(shellSource).not.toContain("useQuery")
     expect(shellSource).not.toContain("useMutation")
 

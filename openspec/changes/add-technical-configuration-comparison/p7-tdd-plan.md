@@ -373,7 +373,8 @@ node scripts/npm-run.js run test:run -- \
   src/components/url-documents/__tests__/url-document-utils.test.ts \
   src/components/url-documents/__tests__/UrlDocumentForm.test.tsx \
   src/components/url-documents/__tests__/UrlDocumentList.test.tsx \
-  src/components/url-documents/__tests__/url-document-source-contract.test.ts
+  src/components/url-documents/__tests__/url-document-source-contract.test.ts \
+  src/components/url-documents/__tests__/url-document-source-contract-extractor.test.ts
 ```
 
 Expected:

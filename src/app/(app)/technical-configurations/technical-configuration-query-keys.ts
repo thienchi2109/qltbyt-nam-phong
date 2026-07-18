@@ -18,3 +18,8 @@ export function technicalConfigurationBaselineVersionsQueryKey(dossierId: string
 export function technicalConfigurationReferenceProductsQueryKey(baselineVersionId: string) {
   return ["technical-configurations", "reference-products", baselineVersionId] as const
 }
+
+/** Builds the cache key for baseline and reference evidence under one baseline version. */
+export function technicalConfigurationDocumentsQueryKey(baselineVersionId: string) {
+  return ["technical-configurations", "documents", baselineVersionId] as const
+}
