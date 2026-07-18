@@ -112,9 +112,9 @@ describe("technical configuration focus transitions", () => {
       ),
     })
     rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([reloadedDraft]))
-    vi.spyOn(window, "confirm").mockReturnValueOnce(true)
 
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+    await user.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }))
 
     const firstGroupTab = await screen.findByRole("tab", { name: /Tên mới từ máy chủ/ })
     await waitFor(() => expect(firstGroupTab).toHaveFocus())

@@ -7,6 +7,7 @@ import { TechnicalConfigurationCitationEditor } from "@/app/(app)/technical-conf
 import { TechnicalConfigurationDocumentDeleteDialog } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentDeleteDialog"
 import { TechnicalConfigurationDocumentsHeader } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader"
 import { TechnicalConfigurationDocumentsQueryError } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError"
+import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationDocumentDraft } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocumentDraft"
 import { useTechnicalConfigurationDocuments } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments"
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
@@ -46,6 +47,8 @@ export function TechnicalConfigurationBaselineDocuments({
   const [pendingDeleteDocument, setPendingDeleteDocument] =
     React.useState<TechnicalConfigurationDocumentWire | null>(null)
   const [deleteError, setDeleteError] = React.useState<unknown>(null)
+  const { discardConfirmationDialog, requestDiscardConfirmation } =
+    useTechnicalConfigurationDiscardConfirmation()
   const documentState = useTechnicalConfigurationDocuments({
     baselineVersion,
     readOnly,
@@ -92,26 +95,38 @@ export function TechnicalConfigurationBaselineDocuments({
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
-  const confirmDocumentChange = React.useCallback(
-    () =>
-      !documentDirty ||
-      window.confirm("Chuyển tài liệu sẽ bỏ nội dung tài liệu chưa lưu. Tiếp tục?"),
-    [documentDirty]
-  )
-
   const resetDraft = React.useCallback(() => {
-    if (!confirmDocumentChange()) return
+    if (documentDirty) {
+      requestDiscardConfirmation(
+        "Chuyển tài liệu sẽ bỏ nội dung tài liệu chưa lưu. Tiếp tục?",
+        clearDraft
+      )
+      return
+    }
     clearDraft()
-  }, [clearDraft, confirmDocumentChange])
+  }, [clearDraft, documentDirty, requestDiscardConfirmation])
 
   const selectDocument = React.useCallback(
     (documentId: string) => {
-      if (documentId === selectedDocumentId || !confirmDocumentChange()) return
+      if (documentId === selectedDocumentId) return
       const document = ownerDocuments.find((item) => item.id === documentId)
       if (!document) return
+      if (documentDirty) {
+        requestDiscardConfirmation(
+          "Chuyển tài liệu sẽ bỏ nội dung tài liệu chưa lưu. Tiếp tục?",
+          () => adoptSelectedDocument(document)
+        )
+        return
+      }
       adoptSelectedDocument(document)
     },
-    [adoptSelectedDocument, confirmDocumentChange, ownerDocuments, selectedDocumentId]
+    [
+      adoptSelectedDocument,
+      documentDirty,
+      ownerDocuments,
+      requestDiscardConfirmation,
+      selectedDocumentId,
+    ]
   )
 
   const handleSubmit = React.useCallback(async () => {
@@ -275,6 +290,8 @@ export function TechnicalConfigurationBaselineDocuments({
         onDelete={documentState.deleteCitation}
         onDirtyChange={setCitationDirty}
       />
+
+      {discardConfirmationDialog}
 
       <TechnicalConfigurationDocumentDeleteDialog
         document={pendingDeleteDocument}

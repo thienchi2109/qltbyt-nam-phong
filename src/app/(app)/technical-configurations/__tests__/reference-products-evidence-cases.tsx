@@ -1,6 +1,6 @@
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, type Mock } from "vitest"
+import { describe, expect, it, vi, type Mock } from "vitest"
 
 import { TechnicalConfigurationReferenceComparison } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparison"
 import { toTechnicalConfigurationReferenceProductDraft } from "@/app/(app)/technical-configurations/technical-configuration-reference-product-state"
@@ -160,6 +160,55 @@ export function registerReferenceProductEvidenceTests({
 
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
       expect(onNavigationBlockedChange).toHaveBeenCalledWith(false)
+    })
+
+    it("uses an alert dialog before closing dirty evidence", async () => {
+      const user = userEvent.setup()
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const onEvidenceDirtyChange = vi.fn()
+      const referenceProduct = toTechnicalConfigurationReferenceProductDraft(
+        product("product-1", "Model A")
+      )
+      evidenceState.getDocumentsForOwner.mockReturnValue([])
+
+      try {
+        renderWithQueryClient(
+          <TechnicalConfigurationReferenceComparison
+            baselineVersion={baselineVersion}
+            products={[referenceProduct]}
+            readOnly={false}
+            onResponseChange={vi.fn()}
+            onEvidenceDirtyChange={onEvidenceDirtyChange}
+          />
+        )
+
+        await user.click(
+          screen.getByRole("button", {
+            name: "Bằng chứng Model A cho TC-0001: 0 tài liệu, 0 trích dẫn",
+          })
+        )
+        await user.type(screen.getByRole("textbox", { name: "Bản nháp bằng chứng" }), "Đang sửa")
+        baselineDocumentsMock.props?.onDirtyChange?.(true)
+        await user.click(screen.getByRole("button", { name: "Đóng" }))
+
+        expect(nativeConfirm).not.toHaveBeenCalled()
+        const discardDialog = await screen.findByRole("alertdialog")
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+        await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
+        expect(screen.getByRole("dialog")).toBeInTheDocument()
+        expect(screen.getByRole("textbox", { name: "Bản nháp bằng chứng" })).toHaveValue("Đang sửa")
+
+        await user.click(screen.getByRole("button", { name: "Đóng" }))
+        await user.click(
+          within(await screen.findByRole("alertdialog")).getByRole("button", {
+            name: "Bỏ thay đổi",
+          })
+        )
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument())
+        expect(onEvidenceDirtyChange).toHaveBeenLastCalledWith(false)
+      } finally {
+        nativeConfirm.mockRestore()
+      }
     })
 
     it("resolves evidence documents once per visible product", () => {

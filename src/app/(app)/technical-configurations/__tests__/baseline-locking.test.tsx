@@ -108,7 +108,7 @@ describe("technical configuration baseline locking and history", () => {
 
   it("reloads a concurrently locked draft into read-only history", async () => {
     const user = userEvent.setup()
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+    const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
     const draft = createDraft()
     const locked = createLockedVersion()
     mockVersions([draft])
@@ -133,10 +133,11 @@ describe("technical configuration baseline locking and history", () => {
       page_size: 100,
     })
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+    expect(nativeConfirm).not.toHaveBeenCalled()
 
-    expect(confirm).toHaveBeenCalled()
     expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
+    nativeConfirm.mockRestore()
   })
 
   it("copies a locked version into a new editable draft", async () => {
@@ -198,7 +199,7 @@ describe("technical configuration baseline locking and history", () => {
     const locked = createLockedVersion()
     const draft = createDraft({ id: "draft-2", version_number: 2 })
     mockVersions([draft, locked])
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+    const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
 
     renderTab()
     const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
@@ -206,10 +207,13 @@ describe("technical configuration baseline locking and history", () => {
     await user.type(requirement, "Nội dung đang sửa")
     await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
 
-    expect(confirm).toHaveBeenCalledWith("Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?")
+    expect(nativeConfirm).not.toHaveBeenCalled()
+    const discardDialog = await screen.findByRole("alertdialog")
+    await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
     expect(requirement).toHaveValue("Nội dung đang sửa")
     expect(screen.getByText("Phiên bản 2")).toBeInTheDocument()
     expect(screen.queryByText("Nội dung chỉ đọc")).not.toBeInTheDocument()
+    nativeConfirm.mockRestore()
   })
 
   it("blocks history navigation while a save is pending", async () => {

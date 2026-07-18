@@ -4,6 +4,7 @@ import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-c
 import { useTechnicalConfigurationBaselineImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImport"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
+import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
 import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
@@ -34,6 +35,8 @@ export function TechnicalConfigurationBaselineTab({
 }: Readonly<TechnicalConfigurationBaselineTabProps>) {
   const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
   const [hasUnresolvedImportState, setHasUnresolvedImportState] = React.useState(false)
+  const { discardConfirmationDialog, requestDiscardConfirmation } =
+    useTechnicalConfigurationDiscardConfirmation()
   const bulkSessions = useTechnicalConfigurationBulkEntrySessions()
   const baseline = useTechnicalConfigurationBaselineEditor({
     dossier,
@@ -105,20 +108,7 @@ export function TechnicalConfigurationBaselineTab({
 
   useTechnicalConfigurationBeforeUnloadGuard(isUnsafeToLeave)
 
-  const handleReloadFromServer = async () => {
-    if (bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState) return
-    if (selectedVersion?.status === "locked") {
-      try {
-        await baseline.onRefreshVersions()
-      } catch {
-        return
-      }
-      return
-    }
-    const confirmed = window.confirm(
-      "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
-    )
-    if (!confirmed) return
+  const reloadDraftFromServer = async () => {
     bulkSessions.clearAll()
     try {
       const reloadedDraft = await baseline.onReloadFromServer()
@@ -130,20 +120,42 @@ export function TechnicalConfigurationBaselineTab({
     }
   }
 
+  const handleReloadFromServer = () => {
+    if (bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState) return
+    if (selectedVersion?.status === "locked") {
+      void baseline.onRefreshVersions().catch(() => undefined)
+      return
+    }
+    if (!isUnsafeToLeave) {
+      void reloadDraftFromServer()
+      return
+    }
+    requestDiscardConfirmation(
+      "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?",
+      () => void reloadDraftFromServer()
+    )
+  }
+
   const handleSelectVersion = (versionId: string) => {
     const nextVersion = baseline.versions.find((version) => version.id === versionId)
     if (!nextVersion || nextVersion.id === selectedVersion?.id) return
-    if (
-      isUnsafeToLeave &&
-      !window.confirm("Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?")
-    ) {
+
+    const selectVersion = () => {
+      bulkSessions.clearAll()
+      baselineImport.reset()
+      baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
+      inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
+    }
+
+    if (isUnsafeToLeave) {
+      requestDiscardConfirmation(
+        "Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?",
+        selectVersion
+      )
       return
     }
 
-    bulkSessions.clearAll()
-    baselineImport.reset()
-    baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
-    inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
+    selectVersion()
   }
 
   const handleConfirmLock = async () => {
@@ -280,6 +292,8 @@ export function TechnicalConfigurationBaselineTab({
           onConfirm={() => void handleConfirmLock()}
         />
       ) : null}
+
+      {discardConfirmationDialog}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -139,7 +139,7 @@ export function registerBaselineEvidenceCitationTests() {
           },
         ],
       }
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
       render(
         <TechnicalConfigurationCitationEditor
           documents={[firstDocument, secondDocument]}
@@ -159,12 +159,17 @@ export function registerBaselineEvidenceCitationTests() {
       await user.keyboard("{ArrowDown}")
       await user.click(await screen.findByRole("option", { name: secondDocument.name }))
 
-      expect(confirm).toHaveBeenCalledWith(
-        "Chuyển lựa chọn sẽ bỏ nội dung trích dẫn chưa lưu. Tiếp tục?"
-      )
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      const dialog = await screen.findByRole("alertdialog")
+      expect(within(dialog).getByText("Bỏ thay đổi chưa lưu?")).toBeInTheDocument()
+      expect(
+        within(dialog).getByText("Chuyển lựa chọn sẽ bỏ nội dung trích dẫn chưa lưu. Tiếp tục?")
+      ).toBeInTheDocument()
       expect(screen.getByLabelText("Trích đoạn")).toHaveValue("Bản nháp chưa lưu")
       expect(documentPicker).toHaveTextContent(firstDocument.name)
-      confirm.mockRestore()
+      await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+      nativeConfirm.mockRestore()
     })
 
     it("preserves a dirty citation when the selected document disappears", async () => {
@@ -202,15 +207,18 @@ export function registerBaselineEvidenceCitationTests() {
       expect(screen.getByLabelText("Trích đoạn")).toHaveValue("Bản nháp chưa lưu")
       expect(screen.getByRole("button", { name: "Lưu trích dẫn" })).toBeDisabled()
 
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
       const documentPicker = screen.getByRole("button", { name: /Tài liệu/i })
       act(() => documentPicker.focus())
       await user.keyboard("{ArrowDown}")
       await user.click(await screen.findByRole("option", { name: secondDocument.name }))
+      await user.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", {
+          name: "Bỏ thay đổi",
+        })
+      )
 
       await waitFor(() => expect(screen.getByText(secondDocument.name)).toBeInTheDocument())
       expect(screen.queryByRole("alert")).not.toBeInTheDocument()
-      confirm.mockRestore()
     })
 
     it("renders citation deletion failures without an unhandled rejection", async () => {
