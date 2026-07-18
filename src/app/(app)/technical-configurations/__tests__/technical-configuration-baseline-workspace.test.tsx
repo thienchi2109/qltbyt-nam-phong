@@ -3,7 +3,7 @@ import path from "node:path"
 
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -85,20 +85,66 @@ const dossier: TechnicalConfigurationDossierWire = {
 }
 
 describe("technical configuration baseline workspace integration", () => {
-  it("keeps dirty form state when dossier-back confirmation is rejected", async () => {
+  it("uses an alert dialog before leaving a dirty dossier", async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()
-    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true)
+    const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
 
-    render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
-    await waitFor(() => expect(screen.getByText("Baseline editor")).toBeInTheDocument())
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
+      await waitFor(() => expect(screen.getByText("Baseline editor")).toBeInTheDocument())
 
-    await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
-    expect(confirm).toHaveBeenCalledWith("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")
-    expect(onBack).not.toHaveBeenCalled()
+      await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
 
-    await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
-    expect(onBack).toHaveBeenCalledTimes(1)
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      const dialog = await screen.findByRole("alertdialog")
+      expect(within(dialog).getByText("Bỏ thay đổi chưa lưu?")).toBeInTheDocument()
+      expect(onBack).not.toHaveBeenCalled()
+
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: "Tiếp tục chỉnh sửa",
+        })
+      )
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+      expect(screen.getByText("Baseline editor")).toBeInTheDocument()
+
+      await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
+      await user.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", {
+          name: "Bỏ thay đổi",
+        })
+      )
+      expect(onBack).toHaveBeenCalledTimes(1)
+    } finally {
+      nativeConfirm.mockRestore()
+    }
+  })
+
+  it("uses an alert dialog before switching away from a dirty workspace", async () => {
+    const user = userEvent.setup()
+    const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+      await waitFor(() => expect(screen.getByText("Baseline editor")).toBeInTheDocument())
+
+      await user.click(screen.getByRole("tab", { name: "Tài liệu & trích dẫn" }))
+
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      expect(screen.queryByText("Baseline evidence workspace")).not.toBeInTheDocument()
+
+      await user.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", {
+          name: "Bỏ thay đổi",
+        })
+      )
+
+      expect(screen.getByText("Baseline evidence workspace")).toBeInTheDocument()
+      expect(screen.queryByText("Baseline editor")).not.toBeInTheDocument()
+    } finally {
+      nativeConfirm.mockRestore()
+    }
   })
 
   it("blocks dossier navigation while an atomic baseline apply is pending", async () => {

@@ -10,6 +10,16 @@ import {
 } from "lucide-react"
 
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
@@ -22,12 +32,21 @@ type TechnicalConfigurationWorkspaceShellProps = {
   onBack: () => void
 }
 
+type PendingWorkspaceNavigation =
+  | { kind: "back" }
+  | {
+      kind: "tab"
+      value: string
+    }
+
 /** Renders the dossier workspace tabs available in the current delivery phase. */
 export function TechnicalConfigurationWorkspaceShell({
   dossier,
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
   const [activeTab, setActiveTab] = React.useState("baseline")
+  const [pendingNavigation, setPendingNavigation] =
+    React.useState<PendingWorkspaceNavigation | null>(null)
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
   const [isBaselineNavigationBlocked, setIsBaselineNavigationBlocked] = React.useState(false)
   const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
@@ -40,7 +59,8 @@ export function TechnicalConfigurationWorkspaceShell({
 
   const handleBack = React.useCallback(() => {
     if (isNavigationBlocked) return
-    if (isDirty && !window.confirm("Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?")) {
+    if (isDirty) {
+      setPendingNavigation({ kind: "back" })
       return
     }
     onBack()
@@ -48,6 +68,7 @@ export function TechnicalConfigurationWorkspaceShell({
 
   const handleTabChange = React.useCallback(
     (nextTab: string) => {
+      if (nextTab === activeTab) return
       const isCurrentTabDirty =
         (activeTab === "baseline" && isBaselineDirty) ||
         (activeTab === "evidence" && isEvidenceDirty) ||
@@ -57,10 +78,8 @@ export function TechnicalConfigurationWorkspaceShell({
         (activeTab === "evidence" && isEvidenceNavigationBlocked) ||
         (activeTab === "references" && isReferenceNavigationBlocked)
       if (isCurrentTabBlocked) return
-      if (
-        isCurrentTabDirty &&
-        !window.confirm("Bạn có thay đổi chưa lưu. Chuyển khu vực và bỏ các thay đổi?")
-      ) {
+      if (isCurrentTabDirty) {
+        setPendingNavigation({ kind: "tab", value: nextTab })
         return
       }
       setActiveTab(nextTab)
@@ -75,6 +94,20 @@ export function TechnicalConfigurationWorkspaceShell({
       isReferenceNavigationBlocked,
     ]
   )
+
+  const dismissPendingNavigation = React.useCallback(() => {
+    setPendingNavigation(null)
+  }, [])
+
+  const confirmPendingNavigation = React.useCallback(() => {
+    if (!pendingNavigation) return
+    setPendingNavigation(null)
+    if (pendingNavigation.kind === "back") {
+      onBack()
+      return
+    }
+    setActiveTab(pendingNavigation.value)
+  }, [onBack, pendingNavigation])
 
   return (
     <div className="w-full">
@@ -150,6 +183,32 @@ export function TechnicalConfigurationWorkspaceShell({
           />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog
+        open={pendingNavigation !== null}
+        onOpenChange={(open) => {
+          if (!open) dismissPendingNavigation()
+        }}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Bỏ thay đổi chưa lưu?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Các thay đổi chưa lưu sẽ bị mất nếu bạn tiếp tục. Hãy tiếp tục chỉnh sửa để lưu hoặc
+              xác nhận bỏ thay đổi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Tiếp tục chỉnh sửa</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmPendingNavigation}
+            >
+              Bỏ thay đổi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
