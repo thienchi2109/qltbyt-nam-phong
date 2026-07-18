@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { AlertDialog, Button, Chip, ListBox, Select } from "@heroui/react"
+import { AlertDialog, Button, ListBox, Select } from "@heroui/react"
 
 import { TechnicalConfigurationCitationEditor } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor"
+import { TechnicalConfigurationDocumentsHeader } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader"
+import { TechnicalConfigurationDocumentsQueryError } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError"
 import { useTechnicalConfigurationDocuments } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments"
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
@@ -54,6 +56,11 @@ export function TechnicalConfigurationBaselineDocuments({
   const ownerDocuments = documentState.getDocumentsForOwner(ownerType, ownerId)
   const selectedDocument =
     ownerDocuments.find((document) => document.id === selectedDocumentId) ?? null
+  const hasInitialDocumentsError =
+    documentState.documentsQuery.isError && documentState.documentsQuery.data === undefined
+  const hasStaleDocuments =
+    documentState.documentsQuery.isError && documentState.documentsQuery.data !== undefined
+  const controlsDisabled = documentState.isReadOnly || hasStaleDocuments
   const criteria = React.useMemo(
     () =>
       baselineVersion.groups.flatMap((group) =>
@@ -157,34 +164,47 @@ export function TechnicalConfigurationBaselineDocuments({
     }
   }, [clearDraft, documentState, pendingDeleteDocument, selectedDocumentId])
 
+  const header = (
+    <TechnicalConfigurationDocumentsHeader
+      ownerType={ownerType}
+      isReadOnly={documentState.isReadOnly}
+      hasSelectedDocument={selectedDocument !== null}
+      isCreateDisabled={hasStaleDocuments}
+      onCreateNew={resetDraft}
+    />
+  )
+
+  if (hasInitialDocumentsError) {
+    return (
+      <section aria-label="Tài liệu và trích dẫn" className="space-y-5">
+        {header}
+        <TechnicalConfigurationDocumentsQueryError
+          isInitialLoad
+          isRetrying={documentState.documentsQuery.isFetching}
+          onRetry={() => void documentState.documentsQuery.refetch()}
+        />
+      </section>
+    )
+  }
+
   return (
     <section aria-label="Tài liệu và trích dẫn" className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">Tài liệu và trích dẫn</h2>
-          <p className="text-sm text-muted-foreground">
-            {ownerType === "baseline"
-              ? "Bằng chứng áp dụng cho cấu hình cơ sở."
-              : "Bằng chứng của sản phẩm tham chiếu đang chọn."}
-          </p>
-        </div>
-        {documentState.isReadOnly ? (
-          <Chip color="warning" size="sm" variant="soft">
-            Chỉ đọc
-          </Chip>
-        ) : selectedDocument ? (
-          <Button size="sm" variant="tertiary" onPress={resetDraft}>
-            Tạo tài liệu mới
-          </Button>
-        ) : null}
-      </div>
+      {header}
+
+      {hasStaleDocuments ? (
+        <TechnicalConfigurationDocumentsQueryError
+          isInitialLoad={false}
+          isRetrying={documentState.documentsQuery.isFetching}
+          onRetry={() => void documentState.documentsQuery.refetch()}
+        />
+      ) : null}
 
       {ownerDocuments.length > 0 ? (
         <Select
           className="max-w-md"
           selectedKey={selectedDocumentId}
           onSelectionChange={(key) => selectDocument(String(key))}
-          isDisabled={documentState.isReadOnly || documentState.isSaving}
+          isDisabled={controlsDisabled || documentState.isSaving}
           placeholder="Chọn tài liệu"
           aria-label="Tài liệu đang chỉnh sửa"
         >
@@ -212,7 +232,7 @@ export function TechnicalConfigurationBaselineDocuments({
         onUrlChange={setUrl}
         onSubmit={handleSubmit}
         isPending={documentState.isSaving}
-        disabled={documentState.isReadOnly}
+        disabled={controlsDisabled}
         validationError={validationError}
         submitLabel={selectedDocument ? "Lưu thay đổi" : "Thêm tài liệu"}
       />
@@ -228,8 +248,8 @@ export function TechnicalConfigurationBaselineDocuments({
       <UrlDocumentList
         items={ownerDocuments}
         isLoading={documentState.documentsQuery.isLoading}
-        onDelete={documentState.isReadOnly ? undefined : requestDelete}
-        disabled={documentState.isSaving}
+        onDelete={controlsDisabled ? undefined : requestDelete}
+        disabled={documentState.isSaving || hasStaleDocuments}
       />
 
       <TechnicalConfigurationCitationEditor
@@ -237,7 +257,7 @@ export function TechnicalConfigurationBaselineDocuments({
         criteria={criteria}
         fixedCriterionId={criterionId}
         isPending={documentState.isSaving}
-        disabled={documentState.isReadOnly}
+        disabled={controlsDisabled}
         onSave={documentState.upsertCitation}
         onDelete={documentState.deleteCitation}
         onDirtyChange={setCitationDirty}

@@ -34,6 +34,14 @@ describe("check-heroui-import-boundary", () => {
         content: 'import { TextArea, TextField } from "@heroui/react"\n',
       },
       {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader.tsx",
+        content: 'import { Button, Chip } from "@heroui/react"\n',
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError.tsx",
+        content: 'import { Button } from "@heroui/react"\n',
+      },
+      {
         path: "src/components/equipment/equipment-toolbar.tsx",
         content: 'import { Button } from "@heroui/react"\n',
       },

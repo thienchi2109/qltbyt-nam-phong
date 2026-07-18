@@ -63,6 +63,7 @@ export async function listAllTechnicalConfigurationReferenceProducts(
         signal
       ),
     snapshotError: "Reference-product pagination snapshot changed during load.",
+    getItemKey: (product) => product.id,
     isSameSnapshot: (first, next) => first.revision === next.revision,
   })
 

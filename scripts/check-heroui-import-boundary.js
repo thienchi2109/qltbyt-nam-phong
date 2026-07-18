@@ -17,6 +17,8 @@ const ALLOWED_BOUNDARY_FILES = [
   "src/components/equipment/filter-bottom-sheet.tsx",
   "src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments.tsx",
   "src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx",
+  "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader.tsx",
+  "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError.tsx",
 ]
 
 function normalizePath(filePath) {

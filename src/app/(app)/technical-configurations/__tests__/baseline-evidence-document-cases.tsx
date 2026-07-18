@@ -16,6 +16,13 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
+const emptyDocumentListResponse = {
+  data: [],
+  total: 0,
+  page: 1,
+  page_size: 100,
+}
+
 export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMocks) {
   describe("TechnicalConfigurationBaselineDocuments behavior", () => {
     beforeEach(() => {
@@ -114,12 +121,7 @@ export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMo
 
     it("renders document submission failures while preserving the draft", async () => {
       const user = userEvent.setup()
-      documentRpc.listDocuments.mockResolvedValue({
-        data: [],
-        total: 0,
-        page: 1,
-        page_size: 100,
-      })
+      documentRpc.listDocuments.mockResolvedValue(emptyDocumentListResponse)
       documentRpc.createBaselineDocument.mockRejectedValue(new Error("create_failed"))
 
       render(
@@ -137,6 +139,77 @@ export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMo
 
       expect(await screen.findByRole("alert")).toHaveTextContent("Không thể lưu thay đổi tài liệu")
       expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("Hồ sơ chưa lưu")
+    })
+
+    it("blocks document controls until a failed initial load is retried", async () => {
+      const user = userEvent.setup()
+      documentRpc.listDocuments
+        .mockRejectedValueOnce(new Error("list_failed"))
+        .mockResolvedValueOnce(emptyDocumentListResponse)
+
+      render(
+        <TechnicalConfigurationBaselineDocuments
+          baselineVersion={baselineVersion}
+          ownerType="baseline"
+          ownerId={baselineVersion.id}
+        />,
+        { wrapper: createReactQueryWrapper(createTestQueryClient()) }
+      )
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Không thể tải tài liệu và trích dẫn"
+      )
+      expect(screen.queryByLabelText("Tên tài liệu")).not.toBeInTheDocument()
+      expect(screen.queryByText("Chưa có tài liệu")).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole("button", { name: "Thử lại" }))
+
+      expect(await screen.findByLabelText("Tên tài liệu")).toBeInTheDocument()
+      expect(documentRpc.listDocuments).toHaveBeenCalledTimes(2)
+    })
+
+    it("blocks stale document controls when refresh fails after a successful write", async () => {
+      const user = userEvent.setup()
+      const createdDocument = evidenceDocument("document-1", "baseline", baselineVersion.id)
+      documentRpc.listDocuments
+        .mockResolvedValueOnce(emptyDocumentListResponse)
+        .mockRejectedValueOnce(new Error("refresh_failed"))
+        .mockResolvedValueOnce({
+          data: [createdDocument],
+          total: 1,
+          page: 1,
+          page_size: 100,
+        })
+      documentRpc.createBaselineDocument.mockResolvedValue({
+        data: { ...createdDocument, revision: baselineVersion.revision + 1 },
+      })
+
+      render(
+        <TechnicalConfigurationBaselineDocuments
+          baselineVersion={baselineVersion}
+          ownerType="baseline"
+          ownerId={baselineVersion.id}
+        />,
+        { wrapper: createReactQueryWrapper(createTestQueryClient()) }
+      )
+
+      await user.type(await screen.findByLabelText("Tên tài liệu"), createdDocument.name)
+      await user.type(screen.getByLabelText("Đường dẫn (URL)"), createdDocument.url)
+      await user.click(screen.getByRole("button", { name: "Thêm tài liệu" }))
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Đã lưu thay đổi nhưng không thể làm mới danh sách"
+      )
+      expect(screen.getByLabelText("Tên tài liệu")).toBeDisabled()
+      expect(documentRpc.createBaselineDocument).toHaveBeenCalledTimes(1)
+
+      await user.click(screen.getByRole("button", { name: "Thử lại" }))
+
+      expect(
+        await screen.findByRole("button", { name: /Tài liệu đang chỉnh sửa/i })
+      ).toBeInTheDocument()
+      expect(screen.getByLabelText("Tên tài liệu")).not.toBeDisabled()
+      expect(documentRpc.listDocuments).toHaveBeenCalledTimes(3)
     })
 
     it("confirms document deletion with the affected citation count", async () => {

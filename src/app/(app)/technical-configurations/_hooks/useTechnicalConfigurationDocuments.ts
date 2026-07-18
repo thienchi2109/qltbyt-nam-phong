@@ -90,6 +90,7 @@ async function listAllTechnicalConfigurationDocuments(
         signal
       ),
     snapshotError: "Evidence-document pagination snapshot changed during load.",
+    getItemKey: (document) => document.id,
   })
   return items
 }
