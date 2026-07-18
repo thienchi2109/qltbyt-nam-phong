@@ -17,7 +17,7 @@ const FK_INDEX_MIGRATION_PATH = path.resolve(
   "20260718040000_technical_configuration_document_fk_indexes.sql"
 )
 export const URL_VALIDATOR_MIGRATION_FILE =
-  "20260718060000_technical_configuration_document_registered_name_validation.sql"
+  "20260718070000_technical_configuration_document_hostname_compatibility.sql"
 const URL_VALIDATOR_MIGRATION_PATH = path.resolve(MIGRATIONS_DIR, URL_VALIDATOR_MIGRATION_FILE)
 const RPC_NAMES_PATH = path.resolve(REPO_ROOT, "src/lib/technical-configuration-document-rpcs.ts")
 const TYPES_PATH = path.resolve(

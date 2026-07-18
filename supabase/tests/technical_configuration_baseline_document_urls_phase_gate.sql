@@ -69,6 +69,7 @@ DECLARE
   v_forbidden_identifier TEXT;
   v_raw_create_url TEXT := 'HtTpS://EXAMPLE.com/a/../spec.pdf';
   v_raw_update_url TEXT := 'hTtP://Example.COM/raw/../updated.pdf';
+  v_valid_utf8_url TEXT := 'https://caf%C3%A9.example/spec.pdf';
 BEGIN
   PERFORM pg_advisory_xact_lock(
     hashtext('technical_configuration_baseline_document_urls_phase_gate')
@@ -277,6 +278,22 @@ BEGIN
     RAISE EXCEPTION 'raw list equality failed';
   END IF;
 
+  -- valid percent-encoded UTF-8 registered names remain accepted and raw-preserved.
+  SELECT public.technical_configuration_baseline_document_update(
+    v_baseline_document_id, 'Baseline UTF-8 URL', v_valid_utf8_url, v_revision
+  ) INTO v_response;
+  v_revision := (v_response->'data'->>'revision')::BIGINT;
+  IF v_response->'data'->>'url' IS DISTINCT FROM v_valid_utf8_url THEN
+    RAISE EXCEPTION 'valid UTF-8 raw equality failed on baseline update';
+  END IF;
+  SELECT public.technical_configuration_reference_document_update(
+    v_reference_document_id, 'Reference UTF-8 URL', v_valid_utf8_url, v_revision
+  ) INTO v_response;
+  v_revision := (v_response->'data'->>'revision')::BIGINT;
+  IF v_response->'data'->>'url' IS DISTINCT FROM v_valid_utf8_url THEN
+    RAISE EXCEPTION 'valid UTF-8 raw equality failed on reference update';
+  END IF;
+
   -- URL rejection matrix: relative, scheme-relative, protocol-only, single-slash,
   -- non-http, malformed, backslash, and ASCII-control values.
   FOREACH v_invalid_url IN ARRAY ARRAY[
@@ -295,6 +312,9 @@ BEGIN
     'https://exa%2Fmple.com',
     'https://%FF.com',
     'https://example%25.com',
+    'https://%E2%80%8D.example/spec.pdf',
+    'https://%EF%BF%BD.example/spec.pdf',
+    'https://xn--.example/spec.pdf',
     'https://example.com/' || chr(10) || 'spec.pdf',
     'https://example.com/' || chr(9) || 'spec.pdf'
   ] LOOP
@@ -350,9 +370,9 @@ BEGIN
        OR (SELECT count(*) FROM public.technical_configuration_reference_documents
            WHERE baseline_version_id = v_version_id) <> v_reference_count
        OR (SELECT url FROM public.technical_configuration_baseline_documents
-           WHERE id = v_baseline_document_id) IS DISTINCT FROM v_raw_update_url
+           WHERE id = v_baseline_document_id) IS DISTINCT FROM v_valid_utf8_url
        OR (SELECT url FROM public.technical_configuration_reference_documents
-           WHERE id = v_reference_document_id) IS DISTINCT FROM v_raw_update_url THEN
+           WHERE id = v_reference_document_id) IS DISTINCT FROM v_valid_utf8_url THEN
       RAISE EXCEPTION 'no data change on URL rejection';
     END IF;
   END LOOP;
