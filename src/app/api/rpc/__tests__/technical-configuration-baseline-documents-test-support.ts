@@ -17,7 +17,7 @@ const FK_INDEX_MIGRATION_PATH = path.resolve(
   "20260718040000_technical_configuration_document_fk_indexes.sql"
 )
 export const URL_VALIDATOR_MIGRATION_FILE =
-  "20260718050000_technical_configuration_document_url_validation.sql"
+  "20260718060000_technical_configuration_document_registered_name_validation.sql"
 const URL_VALIDATOR_MIGRATION_PATH = path.resolve(MIGRATIONS_DIR, URL_VALIDATOR_MIGRATION_FILE)
 const RPC_NAMES_PATH = path.resolve(REPO_ROOT, "src/lib/technical-configuration-document-rpcs.ts")
 const TYPES_PATH = path.resolve(
@@ -121,6 +121,10 @@ const URL_PHASE_GATE_MARKERS = [
   "https://[::1",
   "https://example.com:bad",
   "https://exa mple.com/spec.pdf",
+  "https://%zz",
+  "https://exa%2Fmple.com",
+  "https://%FF.com",
+  "https://example%25.com",
   "\\\\spec.pdf",
   "chr(10)",
   "chr(9)",
@@ -204,17 +208,17 @@ export const DOCUMENT_RPC_ARG_INTERFACES = {
   ],
 } as const
 
-function readIfExists(filePath: string) {
+function readIfExists(filePath: string): string {
   return existsSync(filePath) ? readFileSync(filePath, "utf8") : ""
 }
 
-function getMigrationFiles() {
+function getMigrationFiles(): string[] {
   return readdirSync(MIGRATIONS_DIR)
     .filter((file) => file.endsWith(MIGRATION_SUFFIX))
     .sort()
 }
 
-export function getFunctionBlock(source: string, functionName: string) {
+export function getFunctionBlock(source: string, functionName: string): string {
   const marker = `CREATE OR REPLACE FUNCTION public.${functionName}(`
   const start = source.indexOf(marker)
   if (start === -1) return ""
@@ -223,7 +227,7 @@ export function getFunctionBlock(source: string, functionName: string) {
   return end === -1 ? source.slice(start) : source.slice(start, end + 3)
 }
 
-export function getCreateTableBlock(source: string, tableName: string) {
+export function getCreateTableBlock(source: string, tableName: string): string {
   const marker = `CREATE TABLE public.${tableName}`
   const start = source.indexOf(marker)
   if (start === -1) return ""
@@ -232,11 +236,14 @@ export function getCreateTableBlock(source: string, tableName: string) {
   return end === -1 ? source.slice(start) : source.slice(start, end + 3)
 }
 
-export function countOccurrences(source: string, value: string) {
+export function countOccurrences(source: string, value: string): number {
   return source.split(value).length - 1
 }
 
-export function getFunctionContract(source: string, functionName: string) {
+export function getFunctionContract(
+  source: string,
+  functionName: string
+): { args: string[]; returnType: string } {
   const match = getFunctionBlock(source, functionName).match(/\(([\s\S]*?)\)\s*RETURNS\s+([A-Z]+)/)
   const args =
     match?.[1].split(",").map((arg) =>
@@ -248,7 +255,7 @@ export function getFunctionContract(source: string, functionName: string) {
   return { args, returnType: match?.[2] ?? "" }
 }
 
-export function getInterfaceFields(source: string, interfaceName: string) {
+export function getInterfaceFields(source: string, interfaceName: string): string[] {
   const marker = `export interface ${interfaceName} {`
   const start = source.indexOf(marker)
   const end = source.indexOf("\n}", start)

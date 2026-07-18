@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import { callTechnicalConfigurationRpc } from "../technical-configuration-rpc"
+import { callTechnicalConfigurationRpc } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 import {
   DOCUMENT_RPC_ARG_INTERFACES,
   getInterfaceFields,
-} from "../../../api/rpc/__tests__/technical-configuration-baseline-documents-test-support"
+} from "@/app/api/rpc/__tests__/technical-configuration-baseline-documents-test-support"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("../technical-configuration-rpc", () => ({
+vi.mock("@/app/(app)/technical-configurations/technical-configuration-rpc", () => ({
   callTechnicalConfigurationRpc: vi.fn(),
 }))
 
@@ -25,9 +25,9 @@ function importDocumentRpcManifest() {
 }
 
 function importDocumentRpcAdapter() {
-  return vi.importActual("../technical-configuration-document-rpc") as Promise<
-    Record<string, AsyncRpc>
-  >
+  return vi.importActual(
+    "@/app/(app)/technical-configurations/technical-configuration-document-rpc"
+  ) as Promise<Record<string, AsyncRpc>>
 }
 
 describe("technical configuration document RPC adapter", () => {

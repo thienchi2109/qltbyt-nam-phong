@@ -33,11 +33,11 @@ describe("technical configuration P7B1 baseline and reference evidence contracts
 
   it("ships a later corrective migration for parser-level URL validation", () => {
     expect(URL_VALIDATOR_MIGRATION_FILE).toBe(
-      "20260718050000_technical_configuration_document_url_validation.sql"
+      "20260718060000_technical_configuration_document_registered_name_validation.sql"
     )
     expect(
       URL_VALIDATOR_MIGRATION_FILE >
-        "20260718040000_technical_configuration_document_fk_indexes.sql"
+        "20260718050000_technical_configuration_document_url_validation.sql"
     ).toBe(true)
     expect(urlValidatorMigrationSource).toContain("BEGIN;")
     expect(urlValidatorMigrationSource).toContain("COMMIT;")
@@ -131,6 +131,7 @@ describe("technical configuration P7B1 baseline and reference evidence contracts
 
   it("defines one internal lexical HTTP(S) validator without network or extension calls", () => {
     const validatorBlock = getFunctionBlock(urlValidatorMigrationSource, VALIDATOR_FUNCTION)
+    const normalizedValidatorBlock = validatorBlock.toLowerCase()
     const normalizedValidatorMigrationSource = urlValidatorMigrationSource.replace(/\s+/g, " ")
 
     expect(
@@ -149,6 +150,10 @@ describe("technical configuration P7B1 baseline and reference evidence contracts
     expect(validatorBlock).toContain("v_host_port := regexp_replace(v_authority, '^.*@', '')")
     expect(validatorBlock).toContain("v_host::INET")
     expect(validatorBlock).toContain("v_port::INTEGER > 65535")
+    expect(validatorBlock).toContain("v_host_bytes := ''::BYTEA")
+    expect(validatorBlock).toContain("decode(substring(v_host FROM v_index + 1 FOR 2), 'hex')")
+    expect(validatorBlock).toContain("convert_from(v_host_bytes, 'UTF8')")
+    expect(validatorBlock).toContain("v_decoded_host")
     expect(validatorBlock).toContain("validation_error")
     expect(validatorBlock).toContain("PT422")
 
@@ -159,9 +164,9 @@ describe("technical configuration P7B1 baseline and reference evidence contracts
       "dblink",
       "curl",
       "wget",
-      "CREATE EXTENSION",
+      "create extension",
     ]) {
-      expect(validatorBlock).not.toContain(forbiddenPrimitive)
+      expect(normalizedValidatorBlock).not.toContain(forbiddenPrimitive)
     }
 
     expect(normalizedValidatorMigrationSource).toContain(
@@ -299,6 +304,25 @@ describe("technical configuration P7B1 baseline and reference evidence contracts
         expect(gate.source).toContain(rpcName)
       }
     }
+  })
+
+  it("locks the complete RPC-only privilege matrix including baseline copy", () => {
+    const coreGate = phaseGateContracts.find((gate) =>
+      gate.path.endsWith("technical_configuration_baseline_documents_phase_gate.sql")
+    )
+    const source = coreGate?.source ?? ""
+    const functionLoopStart = source.indexOf("FOREACH v_function_signature IN ARRAY ARRAY[")
+    const functionLoopEnd = source.indexOf("] LOOP", functionLoopStart)
+    const functionLoop = source.slice(functionLoopStart, functionLoopEnd)
+
+    for (const role of ["0::OID", "'anon'"]) {
+      for (const privilege of ["SELECT", "INSERT", "UPDATE", "DELETE"]) {
+        expect(source).toContain(
+          `has_table_privilege(${role}, format('public.%I', v_table_name), '${privilege}')`
+        )
+      }
+    }
+    expect(functionLoop).toContain("'technical_configuration_baseline_copy(uuid,bigint)'")
   })
 
   it("adds the shared RPC manifest, wire contracts, and eleven thin wrappers only", () => {

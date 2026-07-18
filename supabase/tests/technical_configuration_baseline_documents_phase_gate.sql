@@ -81,8 +81,8 @@ BEGIN
         WHERE schemaname = 'public' AND tablename = v_table_name) <> 0 THEN
       RAISE EXCEPTION 'Expected deny-all RLS without client policies for %', v_table_name;
     END IF;
-    IF has_table_privilege(0::OID, format('public.%I', v_table_name), 'SELECT')
-       OR has_table_privilege('anon', format('public.%I', v_table_name), 'SELECT')
+    IF has_table_privilege(0::OID, format('public.%I', v_table_name), 'SELECT') OR has_table_privilege(0::OID, format('public.%I', v_table_name), 'INSERT') OR has_table_privilege(0::OID, format('public.%I', v_table_name), 'UPDATE') OR has_table_privilege(0::OID, format('public.%I', v_table_name), 'DELETE')
+       OR has_table_privilege('anon', format('public.%I', v_table_name), 'SELECT') OR has_table_privilege('anon', format('public.%I', v_table_name), 'INSERT') OR has_table_privilege('anon', format('public.%I', v_table_name), 'UPDATE') OR has_table_privilege('anon', format('public.%I', v_table_name), 'DELETE')
        OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'SELECT')
        OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'INSERT')
        OR has_table_privilege('authenticated', format('public.%I', v_table_name), 'UPDATE')
@@ -105,7 +105,7 @@ BEGIN
     'technical_configuration_reference_document_create(uuid,text,text,bigint)',
     'technical_configuration_reference_document_update(uuid,text,text,bigint)',
     'technical_configuration_reference_document_delete(uuid,bigint)',
-    'technical_configuration_reference_citation_upsert(uuid,uuid,text,text,bigint)', 'technical_configuration_reference_citation_delete(uuid,bigint)'
+    'technical_configuration_reference_citation_upsert(uuid,uuid,text,text,bigint)', 'technical_configuration_reference_citation_delete(uuid,bigint)', 'technical_configuration_baseline_copy(uuid,bigint)'
   ] LOOP
     v_function_oid := to_regprocedure('public.' || v_function_signature);
     IF v_function_oid IS NULL THEN

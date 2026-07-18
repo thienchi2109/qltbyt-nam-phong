@@ -291,6 +291,10 @@ BEGIN
     'https://example.com:bad',
     E'https://example.com\\spec.pdf',
     'https://exa mple.com/spec.pdf',
+    'https://%zz',
+    'https://exa%2Fmple.com',
+    'https://%FF.com',
+    'https://example%25.com',
     'https://example.com/' || chr(10) || 'spec.pdf',
     'https://example.com/' || chr(9) || 'spec.pdf'
   ] LOOP
