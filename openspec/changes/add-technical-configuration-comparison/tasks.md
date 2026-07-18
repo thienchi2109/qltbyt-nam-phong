@@ -222,18 +222,20 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P7B2 - Baseline And Reference Evidence Workspace
 
-- [ ] P7B2.1 Thêm explicit save, dirty-state, expected-revision conflict preservation và tích hợp
+- [x] P7B2.1 Thêm explicit save, dirty-state, expected-revision conflict preservation và tích hợp
       P6B-proven primitives; enforce cumulative Equipment + baseline exact
       path/named-binding AST manifest và runtime-delegation assertions chống
       dead import/local duplicate form/list/URL parsing.
-- [ ] P7B2.2 Wire baseline/reference owner routing và nested same-version citations từ P7B1 aggregate.
-- [ ] P7B2.3 Hiển thị reference evidence bằng indicator/detail panel, không thêm permanent evidence columns.
-- [ ] P7B2.4 Hiển thị affected-link count trước editable delete confirmation.
-- [ ] P7B2.5 Chặn locked edit/delete trước confirmation flow.
-- [ ] P7B2.6 Tích hợp qua workspace/reference surfaces; không thêm document state vào baseline tab/editor hook.
-- [ ] P7B2.7 Viết owner-scope, reuse, raw create/update/list/render, URL
+- [x] P7B2.2 Wire baseline/reference owner routing và nested same-version citations từ P7B1 aggregate.
+- [x] P7B2.3 Hiển thị reference evidence bằng indicator/detail panel, không thêm permanent evidence columns.
+- [x] P7B2.4 Hiển thị affected-link count trước editable delete confirmation.
+- [x] P7B2.5 Chặn locked edit/delete trước confirmation flow.
+- [x] P7B2.6 Tích hợp qua workspace/reference surfaces; không thêm document state vào baseline tab/editor hook.
+- [x] P7B2.7 Viết owner-scope, reuse, raw create/update/list/render, URL
       rejection, delegation, deletion, locked, conflict và long-excerpt tests.
-- [ ] P7B2.8 Chạy focused React/source-contract/file-size/browser gates; không apply live DB.
+- [x] P7B2.8 Chạy focused React/source-contract/file-size gates; browser gate
+      `N/A` vì không có credentials và dev server được yêu cầu giữ dừng; không
+      apply live DB.
 
 ## Phase P8A - Supplier And Option Data Contracts
 

@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ArrowLeft,
   ClipboardList,
+  FileText,
   GitCompareArrows,
   LibraryBig,
   ListChecks,
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
+import { TechnicalConfigurationBaselineEvidence } from "./TechnicalConfigurationBaselineEvidence"
 import { TechnicalConfigurationReferenceProducts } from "./TechnicalConfigurationReferenceProducts"
 
 type TechnicalConfigurationWorkspaceShellProps = {
@@ -28,10 +30,13 @@ export function TechnicalConfigurationWorkspaceShell({
   const [activeTab, setActiveTab] = React.useState("baseline")
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
   const [isBaselineNavigationBlocked, setIsBaselineNavigationBlocked] = React.useState(false)
+  const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
+  const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
   const [isReferenceDirty, setIsReferenceDirty] = React.useState(false)
   const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
-  const isDirty = isBaselineDirty || isReferenceDirty
-  const isNavigationBlocked = isBaselineNavigationBlocked || isReferenceNavigationBlocked
+  const isDirty = isBaselineDirty || isEvidenceDirty || isReferenceDirty
+  const isNavigationBlocked =
+    isBaselineNavigationBlocked || isEvidenceNavigationBlocked || isReferenceNavigationBlocked
 
   const handleBack = React.useCallback(() => {
     if (isNavigationBlocked) return
@@ -45,9 +50,11 @@ export function TechnicalConfigurationWorkspaceShell({
     (nextTab: string) => {
       const isCurrentTabDirty =
         (activeTab === "baseline" && isBaselineDirty) ||
+        (activeTab === "evidence" && isEvidenceDirty) ||
         (activeTab === "references" && isReferenceDirty)
       const isCurrentTabBlocked =
         (activeTab === "baseline" && isBaselineNavigationBlocked) ||
+        (activeTab === "evidence" && isEvidenceNavigationBlocked) ||
         (activeTab === "references" && isReferenceNavigationBlocked)
       if (isCurrentTabBlocked) return
       if (
@@ -62,6 +69,8 @@ export function TechnicalConfigurationWorkspaceShell({
       activeTab,
       isBaselineDirty,
       isBaselineNavigationBlocked,
+      isEvidenceDirty,
+      isEvidenceNavigationBlocked,
       isReferenceDirty,
       isReferenceNavigationBlocked,
     ]
@@ -96,10 +105,14 @@ export function TechnicalConfigurationWorkspaceShell({
       </header>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-4">
+        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-5">
           <TabsTrigger value="baseline" className="min-h-10 gap-2">
             <ListChecks className="size-4" aria-hidden="true" />
             Cấu hình cơ sở
+          </TabsTrigger>
+          <TabsTrigger value="evidence" className="min-h-10 gap-2">
+            <FileText className="size-4" aria-hidden="true" />
+            Tài liệu &amp; trích dẫn
           </TabsTrigger>
           <TabsTrigger value="references" className="min-h-10 gap-2">
             <LibraryBig className="size-4" aria-hidden="true" />
@@ -120,6 +133,13 @@ export function TechnicalConfigurationWorkspaceShell({
             dossier={dossier}
             onDirtyChange={setIsBaselineDirty}
             onNavigationBlockedChange={setIsBaselineNavigationBlocked}
+          />
+        </TabsContent>
+        <TabsContent value="evidence" className="mt-6">
+          <TechnicalConfigurationBaselineEvidence
+            dossier={dossier}
+            onDirtyChange={setIsEvidenceDirty}
+            onNavigationBlockedChange={setIsEvidenceNavigationBlocked}
           />
         </TabsContent>
         <TabsContent value="references" className="mt-6">

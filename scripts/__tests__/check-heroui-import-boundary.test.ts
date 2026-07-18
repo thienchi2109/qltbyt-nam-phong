@@ -26,6 +26,22 @@ describe("check-heroui-import-boundary", () => {
         content: 'import { Popover } from "@heroui/react/popover"\n',
       },
       {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments.tsx",
+        content: 'import { Button, Select } from "@heroui/react"\n',
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx",
+        content: 'import { TextArea, TextField } from "@heroui/react"\n',
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader.tsx",
+        content: 'import { Button, Chip } from "@heroui/react"\n',
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError.tsx",
+        content: 'import { Button } from "@heroui/react"\n',
+      },
+      {
         path: "src/components/equipment/equipment-toolbar.tsx",
         content: 'import { Button } from "@heroui/react"\n',
       },

@@ -1,7 +1,14 @@
 import * as React from "react"
-import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react"
-
+import { ChevronLeft, ChevronRight } from "lucide-react"
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
+import {
+  TechnicalConfigurationReferenceComparisonTable,
+  type TechnicalConfigurationReferenceFullTextDetail,
+} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparisonTable"
+import {
+  TechnicalConfigurationReferenceEvidenceDialog,
+  type TechnicalConfigurationReferenceEvidenceDetail,
+} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceEvidence"
 import {
   clampReferenceProductPageIndex,
   getReferenceProductDisplayLabels,
@@ -9,6 +16,7 @@ import {
   REFERENCE_PRODUCT_PAGE_SIZE,
   type ReferenceColumnState,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceComparisonUtils"
+import { useTechnicalConfigurationDocuments } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments"
 import {
   getTechnicalConfigurationReferenceProductName,
   type TechnicalConfigurationReferenceProductDraft,
@@ -23,18 +31,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-
 type TechnicalConfigurationReferenceComparisonProps = {
   baselineVersion: TechnicalConfigurationBaselineDraftWire
   products: TechnicalConfigurationReferenceProductDraft[]
   readOnly: boolean
   onResponseChange: (productId: string, criterionId: string, responseText: string) => void
-}
-
-type FullTextDetail = {
-  title: string
-  text: string
+  onRevisionChange?: (revision: number) => void
+  onEvidenceDirtyChange?: (dirty: boolean) => void
+  onEvidenceNavigationBlockedChange?: (blocked: boolean) => void
 }
 
 /** Renders the baseline-first comparison matrix with user-selectable product columns. */
@@ -43,6 +47,9 @@ export function TechnicalConfigurationReferenceComparison({
   products,
   readOnly,
   onResponseChange,
+  onRevisionChange,
+  onEvidenceDirtyChange,
+  onEvidenceNavigationBlockedChange,
 }: Readonly<TechnicalConfigurationReferenceComparisonProps>) {
   const productIds = products.map((product) => product.id)
   const [columnState, setColumnState] = React.useState<ReferenceColumnState>(() => ({
@@ -51,7 +58,24 @@ export function TechnicalConfigurationReferenceComparison({
     hiddenProductIds: [],
     pageIndex: 0,
   }))
-  const [fullTextDetail, setFullTextDetail] = React.useState<FullTextDetail | null>(null)
+  const [fullTextDetail, setFullTextDetail] =
+    React.useState<TechnicalConfigurationReferenceFullTextDetail | null>(null)
+  const [evidenceDetail, setEvidenceDetail] =
+    React.useState<TechnicalConfigurationReferenceEvidenceDetail | null>(null)
+  const previousBaselineVersionIdRef = React.useRef(baselineVersion.id)
+  const evidenceState = useTechnicalConfigurationDocuments({
+    baselineVersion,
+    onRevisionChange,
+    onNavigationBlockedChange: onEvidenceNavigationBlockedChange,
+  })
+  React.useEffect(() => {
+    if (previousBaselineVersionIdRef.current === baselineVersion.id) return
+    previousBaselineVersionIdRef.current = baselineVersion.id
+    setEvidenceDetail(null)
+    setFullTextDetail(null)
+    onEvidenceDirtyChange?.(false)
+    onEvidenceNavigationBlockedChange?.(false)
+  }, [baselineVersion.id, onEvidenceDirtyChange, onEvidenceNavigationBlockedChange])
   const reconciledColumnState = reconcileReferenceColumnState(
     columnState,
     baselineVersion.id,
@@ -135,119 +159,17 @@ export function TechnicalConfigurationReferenceComparison({
         </div>
       </div>
 
-      <div
-        data-testid="reference-comparison-scroll"
-        className="w-full overflow-x-auto rounded-md border"
-      >
-        <table className="min-w-max border-separate border-spacing-0 text-left text-sm">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-30 w-[220px] min-w-[220px] border-b border-r bg-muted px-3 py-3 font-semibold">
-                Tiêu chí
-              </th>
-              <th className="sticky left-[220px] z-30 w-[360px] min-w-[360px] border-b border-r bg-muted px-3 py-3 font-semibold">
-                Yêu cầu cơ sở
-              </th>
-              {visibleProducts.map((product) => {
-                const productIndex = productIndexById.get(product.id) ?? 0
-                return (
-                  <th
-                    key={product.id}
-                    className="w-[320px] min-w-[320px] border-b border-r bg-muted px-3 py-3 font-semibold last:border-r-0"
-                  >
-                    {productLabelById.get(product.id) ??
-                      getTechnicalConfigurationReferenceProductName(product, productIndex)}
-                  </th>
-                )
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {baselineVersion.groups.map((group) => (
-              <React.Fragment key={group.id}>
-                <tr>
-                  <th
-                    colSpan={visibleProducts.length + 2}
-                    className="border-b bg-muted/40 px-3 py-2 font-semibold"
-                  >
-                    {group.name}
-                  </th>
-                </tr>
-                {group.criteria.map((criterion) => (
-                  <tr key={criterion.id} className="align-top">
-                    <th className="sticky left-0 z-20 border-b border-r bg-background px-3 py-3 font-medium">
-                      <span className="block text-xs text-muted-foreground">
-                        {criterion.criterion_code}
-                      </span>
-                      <span className="mt-1 block break-words">
-                        {criterion.title ?? "Chưa có tiêu đề"}
-                      </span>
-                    </th>
-                    <td className="sticky left-[220px] z-20 border-b border-r bg-background px-3 py-3">
-                      <p className="line-clamp-4 whitespace-pre-wrap break-words">
-                        {criterion.requirement_text}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-8 px-2"
-                        aria-label={`Xem đầy đủ yêu cầu ${criterion.criterion_code}`}
-                        onClick={() =>
-                          setFullTextDetail({
-                            title: `Yêu cầu ${criterion.criterion_code}`,
-                            text: criterion.requirement_text,
-                          })
-                        }
-                      >
-                        <Maximize2 className="size-4" aria-hidden="true" />
-                        Xem đầy đủ
-                      </Button>
-                    </td>
-                    {visibleProducts.map((product) => {
-                      const productIndex = productIndexById.get(product.id) ?? 0
-                      const productName =
-                        productLabelById.get(product.id) ??
-                        getTechnicalConfigurationReferenceProductName(product, productIndex)
-                      return (
-                        <td key={product.id} className="border-b border-r p-3 last:border-r-0">
-                          <Textarea
-                            value={product.responses[criterion.id] ?? ""}
-                            readOnly={readOnly}
-                            aria-label={`Phản hồi ${productName} cho ${criterion.criterion_code}`}
-                            className="min-h-[120px] resize-y whitespace-pre-wrap"
-                            onChange={(event) =>
-                              onResponseChange(product.id, criterion.id, event.target.value)
-                            }
-                          />
-                          {product.responses[criterion.id] ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="mt-2 h-8 px-2"
-                              aria-label={`Xem đầy đủ phản hồi ${productName} cho ${criterion.criterion_code}`}
-                              onClick={() =>
-                                setFullTextDetail({
-                                  title: `${productName} · ${criterion.criterion_code}`,
-                                  text: product.responses[criterion.id] ?? "",
-                                })
-                              }
-                            >
-                              <Maximize2 className="size-4" aria-hidden="true" />
-                              Xem đầy đủ
-                            </Button>
-                          ) : null}
-                        </td>
-                      )
-                    })}
-                  </tr>
-                ))}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <TechnicalConfigurationReferenceComparisonTable
+        baselineVersion={baselineVersion}
+        visibleProducts={visibleProducts}
+        productIndexById={productIndexById}
+        productLabelById={productLabelById}
+        readOnly={readOnly}
+        evidenceState={evidenceState}
+        onResponseChange={onResponseChange}
+        onOpenFullText={setFullTextDetail}
+        onOpenEvidence={setEvidenceDetail}
+      />
 
       <div className="flex items-center justify-end gap-3">
         <Button
@@ -298,6 +220,15 @@ export function TechnicalConfigurationReferenceComparison({
           </DialogHeader>
         </DialogContent>
       </Dialog>
+      <TechnicalConfigurationReferenceEvidenceDialog
+        detail={evidenceDetail}
+        baselineVersion={baselineVersion}
+        readOnly={readOnly}
+        onClose={() => setEvidenceDetail(null)}
+        onRevisionChange={onRevisionChange}
+        onDirtyChange={onEvidenceDirtyChange}
+        onNavigationBlockedChange={onEvidenceNavigationBlockedChange}
+      />
     </section>
   )
 }

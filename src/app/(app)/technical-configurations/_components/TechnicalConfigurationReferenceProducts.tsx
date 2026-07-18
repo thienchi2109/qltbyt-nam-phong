@@ -2,11 +2,9 @@ import * as React from "react"
 import { AlertCircle, Archive, Loader2, LockKeyhole, Plus, RefreshCw, Save } from "lucide-react"
 
 import { TechnicalConfigurationReferenceProductsBody } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProductsBody"
-import { useTechnicalConfigurationBaseline } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline"
-import { useTechnicalConfigurationBaselineVersions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineVersions"
+import { useTechnicalConfigurationBaselineVersionSelection } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineVersionSelection"
+import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationReferenceProducts } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProducts"
-import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
-import { selectTechnicalConfigurationBaselineVersion } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -33,93 +31,71 @@ export function TechnicalConfigurationReferenceProducts({
   onDirtyChange,
   onNavigationBlockedChange,
 }: Readonly<TechnicalConfigurationReferenceProductsProps>) {
-  const baselineRpc = useTechnicalConfigurationBaseline()
-  const versionState = useTechnicalConfigurationBaselineVersions({
-    dossierId: dossier.id,
-    listVersions: baselineRpc.listVersions,
-  })
-  const [selectedVersionId, setSelectedVersionId] = React.useState<string | null>(null)
-  const [selectedVersion, setSelectedVersion] =
-    React.useState<TechnicalConfigurationBaselineDraftWire | null>(null)
-  const adoptVersion = React.useCallback(
-    (version: TechnicalConfigurationBaselineDraftWire | null) => {
-      setSelectedVersionId(version?.id ?? null)
-      setSelectedVersion(version)
+  const selection = useTechnicalConfigurationBaselineVersionSelection(dossier.id)
+  const {
+    adoptVersion,
+    handleRevisionChange,
+    selectedVersion,
+    synchronizeVersion,
+    versionOptions,
+    versionState,
+  } = selection
+  const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
+  const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
+  const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
+  const evidenceNavigationBlockedRef = React.useRef(false)
+  const referenceNavigationBlockedRef = React.useRef(false)
+  const handleEvidenceNavigationBlockedChange = React.useCallback(
+    (blocked: boolean) => {
+      evidenceNavigationBlockedRef.current = blocked
+      setIsEvidenceNavigationBlocked(blocked)
+      onNavigationBlockedChange?.(blocked || referenceNavigationBlockedRef.current)
     },
-    []
+    [onNavigationBlockedChange]
   )
-  const handleRevisionChange = React.useCallback(
-    (revision: number) => {
-      if (!selectedVersion) return
-      const nextVersion = { ...selectedVersion, revision }
-      setSelectedVersion(nextVersion)
-      versionState.cacheVersion(nextVersion)
+  const handleReferenceNavigationBlockedChange = React.useCallback(
+    (blocked: boolean) => {
+      referenceNavigationBlockedRef.current = blocked
+      setIsReferenceNavigationBlocked(blocked)
+      onNavigationBlockedChange?.(blocked || evidenceNavigationBlockedRef.current)
     },
-    [selectedVersion, versionState]
+    [onNavigationBlockedChange]
   )
   const referenceState = useTechnicalConfigurationReferenceProducts({
     baselineVersion: selectedVersion,
     isArchived: Boolean(dossier.archived_at),
     onRevisionChange: handleRevisionChange,
-    onNavigationBlockedChange,
+    onNavigationBlockedChange: handleReferenceNavigationBlockedChange,
   })
-  const isNavigationBlocked = referenceState.isSaving || referenceState.isReloading
+  const isDirty = referenceState.isDirty || isEvidenceDirty
+  const isNavigationBlocked =
+    isReferenceNavigationBlocked ||
+    isEvidenceNavigationBlocked ||
+    referenceState.isSaving ||
+    referenceState.isReloading
   const hasInitialProductsError =
     referenceState.productsQuery.isError && referenceState.productsQuery.data === undefined
   const isProductDataUnavailable = referenceState.productsQuery.isLoading || hasInitialProductsError
-  const versionOptions = React.useMemo(
-    () =>
-      selectedVersion && !versionState.versions.some((version) => version.id === selectedVersion.id)
-        ? [selectedVersion, ...versionState.versions]
-        : versionState.versions,
-    [selectedVersion, versionState.versions]
-  )
+  React.useEffect(() => {
+    // react-doctor-disable-next-line react-doctor/no-pass-live-state-to-parent, react-doctor/no-pass-data-to-parent -- Baseline history arrives asynchronously; the shared selector must preserve dirty reference and evidence drafts.
+    synchronizeVersion(isDirty)
+  }, [isDirty, synchronizeVersion])
 
   React.useEffect(() => {
-    if (!versionState.versionsQuery.data || referenceState.isDirty) return
-    const nextVersion = selectTechnicalConfigurationBaselineVersion(
-      versionState.versions,
-      selectedVersionId,
-      selectedVersion,
-      Boolean(versionState.versionsQuery.hasNextPage)
-    )
-    if (
-      selectedVersion?.id === nextVersion?.id &&
-      selectedVersion?.revision === nextVersion?.revision &&
-      selectedVersion?.status === nextVersion?.status
-    ) {
-      return
-    }
-    adoptVersion(nextVersion)
-  }, [
-    adoptVersion,
-    referenceState.isDirty,
-    selectedVersion,
-    selectedVersionId,
-    versionState.versions,
-    versionState.versionsQuery.data,
-    versionState.versionsQuery.hasNextPage,
-  ])
+    // react-doctor-disable-next-line react-doctor/no-pass-live-state-to-parent, react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent -- The reference hook owns draft state while WorkspaceShell owns the cross-tab navigation guard.
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   React.useEffect(() => {
-    onDirtyChange?.(referenceState.isDirty)
     return () => onDirtyChange?.(false)
-  }, [onDirtyChange, referenceState.isDirty])
+  }, [onDirtyChange])
 
-  React.useEffect(() => {
-    if (!referenceState.isDirty) return
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      event.preventDefault()
-      event.returnValue = ""
-    }
-    window.addEventListener("beforeunload", handleBeforeUnload)
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
-  }, [referenceState.isDirty])
+  useTechnicalConfigurationBeforeUnloadGuard(isDirty)
 
   const handleVersionChange = React.useCallback(
     (nextVersionId: string) => {
       if (
-        referenceState.isDirty &&
+        isDirty &&
         !window.confirm("Bạn có thay đổi chưa lưu. Chuyển phiên bản và bỏ các thay đổi?")
       ) {
         return
@@ -127,7 +103,7 @@ export function TechnicalConfigurationReferenceProducts({
       const nextVersion = versionOptions.find((version) => version.id === nextVersionId)
       if (nextVersion) adoptVersion(nextVersion)
     },
-    [adoptVersion, referenceState.isDirty, versionOptions]
+    [adoptVersion, isDirty, versionOptions]
   )
 
   const handleVersionSelect = React.useCallback(
@@ -144,7 +120,7 @@ export function TechnicalConfigurationReferenceProducts({
   const handleReload = React.useCallback(async () => {
     if (!selectedVersion) return
     if (
-      referenceState.isDirty &&
+      isDirty &&
       !window.confirm("Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?")
     ) {
       return
@@ -155,7 +131,7 @@ export function TechnicalConfigurationReferenceProducts({
         versionState.cacheVersion(refreshedVersion)
       }
     })
-  }, [referenceState, selectedVersion, versionState])
+  }, [isDirty, referenceState, selectedVersion, versionState])
 
   if (versionState.versionsQuery.isLoading) {
     return (
@@ -323,6 +299,9 @@ export function TechnicalConfigurationReferenceProducts({
         baselineVersion={selectedVersion}
         referenceState={referenceState}
         navigationBlocked={isNavigationBlocked}
+        onRevisionChange={handleRevisionChange}
+        onEvidenceDirtyChange={setIsEvidenceDirty}
+        onEvidenceNavigationBlockedChange={handleEvidenceNavigationBlockedChange}
       />
     </div>
   )
