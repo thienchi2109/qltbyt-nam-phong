@@ -127,7 +127,6 @@ export function registerReferenceProductResilienceTests({
 
     it("blocks version and product navigation while version refresh is pending", async () => {
       const user = userEvent.setup()
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
       let resolveVersions:
         | ((value: {
             data: Array<typeof baselineVersion>
@@ -156,6 +155,7 @@ export function registerReferenceProductResilienceTests({
       await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
       await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
       await user.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }))
+      await user.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }))
 
       expect(screen.getByRole("combobox", { name: "Phiên bản cấu hình cơ sở" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" })).toBeDisabled()
@@ -169,7 +169,6 @@ export function registerReferenceProductResilienceTests({
       await waitFor(() =>
         expect(screen.getByRole("combobox", { name: "Phiên bản cấu hình cơ sở" })).toBeEnabled()
       )
-      confirm.mockRestore()
     })
 
     it("wires visible product update, response upsert, and delete through explicit save", async () => {

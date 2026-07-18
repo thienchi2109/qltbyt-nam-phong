@@ -7,6 +7,7 @@ import {
   getTechnicalConfigurationCitationValues,
   type TechnicalConfigurationCitationSelectionSnapshot,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditorState"
+import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 import { isTechnicalConfigurationBaselineConflict } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 
@@ -62,6 +63,8 @@ export function TechnicalConfigurationCitationEditor({
   const [excerpt, setExcerpt] = React.useState(initialValues.excerpt)
   const [baseValues, setBaseValues] = React.useState(initialValues)
   const [saveError, setSaveError] = React.useState<unknown>(null)
+  const { discardConfirmationDialog, requestDiscardConfirmation } =
+    useTechnicalConfigurationDiscardConfirmation()
   const observedSelectionRef = React.useRef<TechnicalConfigurationCitationSelectionSnapshot>({
     documentId: initialDocumentId,
     criterionId: initialCriterionId,
@@ -125,15 +128,16 @@ export function TechnicalConfigurationCitationEditor({
       if (documentId === selectedDocumentId && criterionId === selectedCriterionId) {
         return
       }
-      if (
-        isDirty &&
-        !window.confirm("Chuyển lựa chọn sẽ bỏ nội dung trích dẫn chưa lưu. Tiếp tục?")
-      ) {
+      if (isDirty) {
+        requestDiscardConfirmation(
+          "Chuyển lựa chọn sẽ bỏ nội dung trích dẫn chưa lưu. Tiếp tục?",
+          () => adoptSelection(documentId, criterionId)
+        )
         return
       }
       adoptSelection(documentId, criterionId)
     },
-    [adoptSelection, isDirty, selectedCriterionId, selectedDocumentId]
+    [adoptSelection, isDirty, requestDiscardConfirmation, selectedCriterionId, selectedDocumentId]
   )
 
   const handleSave = React.useCallback(async () => {
@@ -284,6 +288,8 @@ export function TechnicalConfigurationCitationEditor({
             : "Không thể lưu trích dẫn. Vui lòng thử lại."}
         </p>
       ) : null}
+
+      {discardConfirmationDialog}
 
       {!disabled ? (
         <div className="flex flex-wrap justify-end gap-2">

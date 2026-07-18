@@ -179,25 +179,28 @@ export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMo
       expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled()
       expect(documentRpc.createBaselineDocument).not.toHaveBeenCalled()
 
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
       const refreshedDocumentPicker = screen.getByRole("button", {
         name: /Tài liệu đang chỉnh sửa/i,
       })
       act(() => refreshedDocumentPicker.focus())
       await user.keyboard("{ArrowDown}")
       await user.click(await screen.findByRole("option", { name: secondDocument.name }))
+      await user.click(
+        within(await screen.findByRole("alertdialog")).getByRole("button", {
+          name: "Bỏ thay đổi",
+        })
+      )
 
       await waitFor(() => {
         expect(screen.queryByRole("alert")).not.toBeInTheDocument()
         expect(screen.getByLabelText("Tên tài liệu")).toHaveValue(secondDocument.name)
       })
-      confirm.mockRestore()
     })
 
     it("preserves a dirty document draft when creating a new document is rejected", async () => {
       const user = userEvent.setup()
       const document = evidenceDocument("document-1", "baseline", baselineVersion.id)
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
       documentRpc.listDocuments.mockResolvedValue({
         data: [document],
         total: 1,
@@ -223,11 +226,15 @@ export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMo
       await user.type(screen.getByLabelText("Tên tài liệu"), " chưa lưu")
       await user.click(screen.getByRole("button", { name: "Tạo tài liệu mới" }))
 
-      expect(confirm).toHaveBeenCalledWith(
-        "Chuyển tài liệu sẽ bỏ nội dung tài liệu chưa lưu. Tiếp tục?"
-      )
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      const dialog = await screen.findByRole("alertdialog")
+      expect(
+        within(dialog).getByText("Chuyển tài liệu sẽ bỏ nội dung tài liệu chưa lưu. Tiếp tục?")
+      ).toBeInTheDocument()
       expect(screen.getByLabelText("Tên tài liệu")).toHaveValue(`${document.name} chưa lưu`)
-      confirm.mockRestore()
+      await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+      nativeConfirm.mockRestore()
     })
 
     it("renders document submission failures while preserving the draft", async () => {

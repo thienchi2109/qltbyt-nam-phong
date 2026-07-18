@@ -29,7 +29,6 @@ describe("technical configuration version workflow review regressions", () => {
     const user = userEvent.setup()
     const locked = createLockedVersion()
     const draft = createDraft({ id: "draft-2", version_number: 2 })
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     mockVersions([draft, locked])
 
     renderTab()
@@ -37,8 +36,12 @@ describe("technical configuration version workflow review regressions", () => {
     await user.clear(requirement)
     await user.type(requirement, "Nội dung đang sửa")
     await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Bỏ thay đổi",
+      })
+    )
 
-    expect(confirm).toHaveBeenCalledWith("Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?")
     expect(await screen.findByText("Phiên bản 1")).toBeInTheDocument()
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
@@ -48,15 +51,18 @@ describe("technical configuration version workflow review regressions", () => {
     const user = userEvent.setup()
     const locked = createLockedVersion()
     const draft = createDraft({ id: "draft-2", version_number: 2 })
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
     mockVersions([draft, locked])
 
     renderTab()
     await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
     await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Nội dung chưa áp dụng")
     await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Bỏ thay đổi",
+      })
+    )
 
-    expect(confirm).toHaveBeenCalledWith("Chuyển phiên bản sẽ bỏ các thay đổi chưa lưu. Tiếp tục?")
     expect(await screen.findByText("Phiên bản 1")).toBeInTheDocument()
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByLabelText("Nội dung nhập nhanh")).not.toBeInTheDocument()
@@ -81,8 +87,12 @@ describe("technical configuration version workflow review regressions", () => {
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
 
     rpc.listVersions.mockReturnValueOnce(pending.promise)
-    vi.spyOn(window, "confirm").mockReturnValueOnce(true)
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+    await user.click(
+      within(await screen.findByRole("alertdialog")).getByRole("button", {
+        name: "Bỏ thay đổi",
+      })
+    )
 
     const lockWasDisabled = screen
       .getByRole("button", { name: "Khóa phiên bản" })

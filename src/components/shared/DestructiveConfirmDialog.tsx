@@ -25,7 +25,7 @@ export interface DestructiveConfirmDialogProps {
 }
 
 /**
- * Shared destructive confirmation shell for feature-owned delete flows.
+ * Shared destructive confirmation shell for irreversible user actions.
  */
 export function DestructiveConfirmDialog({
   open,

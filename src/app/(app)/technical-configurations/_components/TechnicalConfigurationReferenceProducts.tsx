@@ -4,6 +4,7 @@ import { AlertCircle, Archive, Loader2, LockKeyhole, Plus, RefreshCw, Save } fro
 import { TechnicalConfigurationReferenceProductsBody } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProductsBody"
 import { useTechnicalConfigurationBaselineVersionSelection } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineVersionSelection"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
+import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationReferenceProducts } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProducts"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -43,6 +44,8 @@ export function TechnicalConfigurationReferenceProducts({
   const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
   const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
   const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
+  const { discardConfirmationDialog, requestDiscardConfirmation } =
+    useTechnicalConfigurationDiscardConfirmation()
   const evidenceNavigationBlockedRef = React.useRef(false)
   const referenceNavigationBlockedRef = React.useRef(false)
   const handleEvidenceNavigationBlockedChange = React.useCallback(
@@ -94,16 +97,18 @@ export function TechnicalConfigurationReferenceProducts({
 
   const handleVersionChange = React.useCallback(
     (nextVersionId: string) => {
-      if (
-        isDirty &&
-        !window.confirm("Bạn có thay đổi chưa lưu. Chuyển phiên bản và bỏ các thay đổi?")
-      ) {
+      const nextVersion = versionOptions.find((version) => version.id === nextVersionId)
+      if (!nextVersion) return
+      if (isDirty) {
+        requestDiscardConfirmation(
+          "Bạn có thay đổi chưa lưu. Chuyển phiên bản và bỏ các thay đổi?",
+          () => adoptVersion(nextVersion)
+        )
         return
       }
-      const nextVersion = versionOptions.find((version) => version.id === nextVersionId)
-      if (nextVersion) adoptVersion(nextVersion)
+      adoptVersion(nextVersion)
     },
-    [adoptVersion, isDirty, versionOptions]
+    [adoptVersion, isDirty, requestDiscardConfirmation, versionOptions]
   )
 
   const handleVersionSelect = React.useCallback(
@@ -117,21 +122,27 @@ export function TechnicalConfigurationReferenceProducts({
     [handleVersionChange, versionState.loadMoreVersions]
   )
 
-  const handleReload = React.useCallback(async () => {
+  const reloadReferenceProducts = React.useCallback(async () => {
     if (!selectedVersion) return
-    if (
-      isDirty &&
-      !window.confirm("Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?")
-    ) {
-      return
-    }
     await referenceState.reload(async () => {
       const refreshedVersion = await versionState.refreshVersions(selectedVersion.id)
       if (refreshedVersion) {
         versionState.cacheVersion(refreshedVersion)
       }
     })
-  }, [isDirty, referenceState, selectedVersion, versionState])
+  }, [referenceState, selectedVersion, versionState])
+
+  const handleReload = React.useCallback(() => {
+    if (!selectedVersion) return
+    if (isDirty) {
+      requestDiscardConfirmation(
+        "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?",
+        () => void reloadReferenceProducts()
+      )
+      return
+    }
+    void reloadReferenceProducts()
+  }, [isDirty, reloadReferenceProducts, requestDiscardConfirmation, selectedVersion])
 
   if (versionState.versionsQuery.isLoading) {
     return (
@@ -303,6 +314,8 @@ export function TechnicalConfigurationReferenceProducts({
         onEvidenceDirtyChange={setIsEvidenceDirty}
         onEvidenceNavigationBlockedChange={handleEvidenceNavigationBlockedChange}
       />
+
+      {discardConfirmationDialog}
     </div>
   )
 }

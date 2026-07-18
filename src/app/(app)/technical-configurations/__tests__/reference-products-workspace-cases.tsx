@@ -67,6 +67,44 @@ export function registerReferenceProductWorkspaceTests({
       expect(versionPicker.tagName).toBe("BUTTON")
     })
 
+    it("uses an alert dialog before switching a dirty reference workspace version", async () => {
+      const user = userEvent.setup()
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const lockedVersion = {
+        ...baselineVersion,
+        id: "version-2",
+        version_number: 2,
+        status: "locked" as const,
+        locked_at: "2026-07-18T00:00:00.000Z",
+        locked_by: 1,
+      }
+      baselineRpc.listVersions.mockResolvedValueOnce({
+        data: [baselineVersion, lockedVersion],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      })
+      referenceRpc.listProducts.mockResolvedValue(listResponse([]))
+
+      renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
+      await screen.findByText("Chưa có sản phẩm tham chiếu.")
+      await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
+      await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
+
+      const versionPicker = screen.getByRole("combobox", {
+        name: "Phiên bản cấu hình cơ sở",
+      })
+      fireEvent.keyDown(versionPicker, { key: "ArrowDown" })
+      fireEvent.click(await screen.findByRole("option", { name: "Phiên bản 2 · Đã khóa" }))
+
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      const discardDialog = await screen.findByRole("alertdialog")
+      await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
+      expect(versionPicker).not.toHaveTextContent("Phiên bản 2")
+      expect(screen.getByDisplayValue("Model chưa lưu")).toBeInTheDocument()
+      nativeConfirm.mockRestore()
+    })
+
     it("reloads a clean reference-product workspace on demand", async () => {
       const user = userEvent.setup()
       referenceRpc.listProducts
@@ -149,7 +187,6 @@ export function registerReferenceProductWorkspaceTests({
     it("supports zero products, reload, and explicit save without premature mutations", async () => {
       const user = userEvent.setup()
       const onDirtyChange = vi.fn()
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
       const created = product("product-1", "Model lưu", 6)
       referenceRpc.listProducts
         .mockResolvedValueOnce(listResponse([]))
@@ -168,6 +205,7 @@ export function registerReferenceProductWorkspaceTests({
       await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true))
 
       await user.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }))
+      await user.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }))
       await waitFor(() => expect(screen.queryByDisplayValue("Model tạm")).not.toBeInTheDocument())
 
       await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
@@ -186,7 +224,6 @@ export function registerReferenceProductWorkspaceTests({
         })
       )
       expect(await screen.findByRole("columnheader", { name: "Model lưu" })).toBeInTheDocument()
-      confirm.mockRestore()
     })
 
     it("preserves a dirty draft when the versions query selects a newer draft", async () => {
@@ -269,7 +306,7 @@ export function registerReferenceProductWorkspaceTests({
 
     it("preserves a dirty draft when reload confirmation is rejected", async () => {
       const user = userEvent.setup()
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
       referenceRpc.listProducts.mockResolvedValue(listResponse([]))
 
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
@@ -279,12 +316,17 @@ export function registerReferenceProductWorkspaceTests({
       await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
       await user.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }))
 
-      expect(confirm).toHaveBeenCalledWith(
-        "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
-      )
+      expect(nativeConfirm).not.toHaveBeenCalled()
+      const discardDialog = await screen.findByRole("alertdialog")
+      expect(
+        within(discardDialog).getByText(
+          "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?"
+        )
+      ).toBeInTheDocument()
+      await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
       expect(referenceRpc.listProducts).toHaveBeenCalledTimes(1)
       expect(screen.getByDisplayValue("Model chưa lưu")).toBeInTheDocument()
-      confirm.mockRestore()
+      nativeConfirm.mockRestore()
     })
 
     it("registers beforeunload protection while the reference draft is dirty", async () => {
