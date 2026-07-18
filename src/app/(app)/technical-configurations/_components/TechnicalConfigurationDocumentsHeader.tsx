@@ -4,7 +4,7 @@ import { Button, Chip } from "@heroui/react"
 
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 
-type TechnicalConfigurationDocumentsHeaderProps = {
+interface TechnicalConfigurationDocumentsHeaderProps {
   ownerType: TechnicalConfigurationDocumentWire["owner_type"]
   isReadOnly: boolean
   hasSelectedDocument: boolean

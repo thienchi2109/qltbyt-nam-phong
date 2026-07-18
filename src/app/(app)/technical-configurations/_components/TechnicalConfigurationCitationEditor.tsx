@@ -47,7 +47,7 @@ export function TechnicalConfigurationCitationEditor({
   onSave,
   onDelete,
   onDirtyChange,
-}: Readonly<TechnicalConfigurationCitationEditorProps>) {
+}: Readonly<TechnicalConfigurationCitationEditorProps>): React.JSX.Element {
   const initialDocumentId = documents[0]?.id ?? null
   const initialCriterionId = fixedCriterionId ?? criteria[0]?.id ?? null
   const initialDocument = documents.find((document) => document.id === initialDocumentId) ?? null
@@ -185,7 +185,7 @@ export function TechnicalConfigurationCitationEditor({
   return (
     <div className="space-y-4 border-t pt-4">
       <div className="flex flex-wrap items-end gap-3">
-        {documents.length === 1 ? (
+        {documents.length === 1 && selectedDocument ? (
           <div className="space-y-1">
             <p className="text-sm font-medium">Tài liệu</p>
             <Chip size="sm" variant="soft">

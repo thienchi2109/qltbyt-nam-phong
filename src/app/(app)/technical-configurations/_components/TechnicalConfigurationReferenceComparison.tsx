@@ -62,11 +62,20 @@ export function TechnicalConfigurationReferenceComparison({
     React.useState<TechnicalConfigurationReferenceFullTextDetail | null>(null)
   const [evidenceDetail, setEvidenceDetail] =
     React.useState<TechnicalConfigurationReferenceEvidenceDetail | null>(null)
+  const previousBaselineVersionIdRef = React.useRef(baselineVersion.id)
   const evidenceState = useTechnicalConfigurationDocuments({
     baselineVersion,
     onRevisionChange,
     onNavigationBlockedChange: onEvidenceNavigationBlockedChange,
   })
+  React.useEffect(() => {
+    if (previousBaselineVersionIdRef.current === baselineVersion.id) return
+    previousBaselineVersionIdRef.current = baselineVersion.id
+    setEvidenceDetail(null)
+    setFullTextDetail(null)
+    onEvidenceDirtyChange?.(false)
+    onEvidenceNavigationBlockedChange?.(false)
+  }, [baselineVersion.id, onEvidenceDirtyChange, onEvidenceNavigationBlockedChange])
   const reconciledColumnState = reconcileReferenceColumnState(
     columnState,
     baselineVersion.id,

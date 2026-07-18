@@ -83,6 +83,117 @@ export function registerBaselineEvidenceDocumentTests(documentRpc: DocumentRpcMo
       )
     })
 
+    it("adopts refreshed document values only while the local draft remains clean", async () => {
+      const user = userEvent.setup()
+      const document = evidenceDocument("document-1", "baseline", baselineVersion.id)
+      const queryClient = createTestQueryClient()
+      documentRpc.listDocuments.mockResolvedValue({
+        data: [document],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      })
+
+      render(
+        <TechnicalConfigurationBaselineDocuments
+          baselineVersion={baselineVersion}
+          ownerType="baseline"
+          ownerId={baselineVersion.id}
+        />,
+        { wrapper: createReactQueryWrapper(queryClient) }
+      )
+
+      const documentPicker = await screen.findByRole("button", {
+        name: /Tài liệu đang chỉnh sửa/i,
+      })
+      act(() => documentPicker.focus())
+      await user.keyboard("{ArrowDown}")
+      await user.click(await screen.findByRole("option", { name: document.name }))
+
+      act(() => {
+        queryClient.setQueryData(
+          ["technical-configurations", "documents", baselineVersion.id],
+          [{ ...document, name: "Hồ sơ từ máy chủ", url: "https://example.com/server-v2.pdf" }]
+        )
+      })
+
+      await waitFor(() =>
+        expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("Hồ sơ từ máy chủ")
+      )
+      expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue(
+        "https://example.com/server-v2.pdf"
+      )
+
+      await user.type(screen.getByLabelText("Tên tài liệu"), " bản nháp")
+      act(() => {
+        queryClient.setQueryData(
+          ["technical-configurations", "documents", baselineVersion.id],
+          [{ ...document, name: "Hồ sơ từ máy chủ v3", url: "https://example.com/server-v3.pdf" }]
+        )
+      })
+
+      expect(screen.getByLabelText("Tên tài liệu")).toHaveValue("Hồ sơ từ máy chủ bản nháp")
+      expect(screen.getByLabelText("Đường dẫn (URL)")).toHaveValue(
+        "https://example.com/server-v2.pdf"
+      )
+    })
+
+    it("blocks stale document submission until another document is selected", async () => {
+      const user = userEvent.setup()
+      const firstDocument = evidenceDocument("document-1", "baseline", baselineVersion.id)
+      const secondDocument = evidenceDocument("document-2", "baseline", baselineVersion.id)
+      const queryClient = createTestQueryClient()
+      documentRpc.listDocuments.mockResolvedValue({
+        data: [firstDocument, secondDocument],
+        total: 2,
+        page: 1,
+        page_size: 100,
+      })
+
+      render(
+        <TechnicalConfigurationBaselineDocuments
+          baselineVersion={baselineVersion}
+          ownerType="baseline"
+          ownerId={baselineVersion.id}
+        />,
+        { wrapper: createReactQueryWrapper(queryClient) }
+      )
+
+      const documentPicker = await screen.findByRole("button", {
+        name: /Tài liệu đang chỉnh sửa/i,
+      })
+      act(() => documentPicker.focus())
+      await user.keyboard("{ArrowDown}")
+      await user.click(await screen.findByRole("option", { name: firstDocument.name }))
+
+      act(() => {
+        queryClient.setQueryData(
+          ["technical-configurations", "documents", baselineVersion.id],
+          [secondDocument]
+        )
+      })
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Tài liệu đang chỉnh sửa không còn trong danh sách"
+      )
+      expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toBeDisabled()
+      expect(documentRpc.createBaselineDocument).not.toHaveBeenCalled()
+
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+      const refreshedDocumentPicker = screen.getByRole("button", {
+        name: /Tài liệu đang chỉnh sửa/i,
+      })
+      act(() => refreshedDocumentPicker.focus())
+      await user.keyboard("{ArrowDown}")
+      await user.click(await screen.findByRole("option", { name: secondDocument.name }))
+
+      await waitFor(() => {
+        expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+        expect(screen.getByLabelText("Tên tài liệu")).toHaveValue(secondDocument.name)
+      })
+      confirm.mockRestore()
+    })
+
     it("preserves a dirty document draft when creating a new document is rejected", async () => {
       const user = userEvent.setup()
       const document = evidenceDocument("document-1", "baseline", baselineVersion.id)

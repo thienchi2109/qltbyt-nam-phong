@@ -130,6 +130,73 @@ export function registerBaselineEvidenceQueryTests(documentRpc: DocumentRpcMocks
       })
     })
 
+    it("rejects an overlapping mutation before it can reuse the current revision", async () => {
+      const onNavigationBlockedChange = vi.fn()
+      const firstDocument = evidenceDocument("baseline-document", "baseline", baselineVersion.id)
+      let resolveFirstMutation:
+        ((value: { data: typeof firstDocument & { revision: number } }) => void) | undefined
+      documentRpc.listDocuments.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        page_size: 100,
+      })
+      documentRpc.createBaselineDocument
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              resolveFirstMutation = resolve
+            })
+        )
+        .mockResolvedValueOnce({
+          data: {
+            ...evidenceDocument("second-document", "baseline", baselineVersion.id),
+            revision: 7,
+          },
+        })
+      const queryClient = createTestQueryClient()
+      const { result } = renderHook(
+        () =>
+          useTechnicalConfigurationDocuments({
+            baselineVersion,
+            onNavigationBlockedChange,
+          }),
+        { wrapper: createReactQueryWrapper(queryClient) }
+      )
+      await waitFor(() => expect(result.current.documentsQuery.isSuccess).toBe(true))
+
+      let outcomes: PromiseSettledResult<unknown>[] = []
+      await act(async () => {
+        const firstMutation = result.current.createDocument({
+          ownerType: "baseline",
+          ownerId: baselineVersion.id,
+          name: "Hồ sơ thứ nhất",
+          url: "https://example.com/first.pdf",
+        })
+        const secondMutation = result.current.createDocument({
+          ownerType: "baseline",
+          ownerId: baselineVersion.id,
+          name: "Hồ sơ thứ hai",
+          url: "https://example.com/second.pdf",
+        })
+        resolveFirstMutation?.({
+          data: {
+            ...firstDocument,
+            revision: 6,
+          },
+        })
+        outcomes = await Promise.allSettled([firstMutation, secondMutation])
+      })
+
+      expect(outcomes[0]).toMatchObject({ status: "fulfilled" })
+      expect(outcomes[1]).toMatchObject({
+        status: "rejected",
+        reason: expect.objectContaining({ message: "mutation_in_progress" }),
+      })
+      expect(documentRpc.createBaselineDocument).toHaveBeenCalledTimes(1)
+      expect(onNavigationBlockedChange.mock.calls.flat()).toEqual([true, false])
+    })
+
     it("marks stale conflicts while keeping the failed input under caller control", async () => {
       documentRpc.listDocuments.mockResolvedValue({
         data: [],

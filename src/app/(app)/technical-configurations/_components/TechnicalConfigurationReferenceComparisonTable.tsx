@@ -43,6 +43,19 @@ export function TechnicalConfigurationReferenceComparisonTable({
   onOpenFullText,
   onOpenEvidence,
 }: Readonly<TechnicalConfigurationReferenceComparisonTableProps>) {
+  const { getDocumentsForOwner } = evidenceState
+  const evidenceDocumentsByOwnerId = React.useMemo(() => {
+    const documentsByOwnerId = new Map<string, ReturnType<typeof getDocumentsForOwner>>()
+    visibleProducts.forEach((product) => {
+      if (!product.persistedId) return
+      documentsByOwnerId.set(
+        product.persistedId,
+        getDocumentsForOwner("reference_product", product.persistedId)
+      )
+    })
+    return documentsByOwnerId
+  }, [getDocumentsForOwner, visibleProducts])
+
   return (
     <div
       data-testid="reference-comparison-scroll"
@@ -150,10 +163,7 @@ export function TechnicalConfigurationReferenceComparisonTable({
                         ) : null}
                         {ownerId ? (
                           <TechnicalConfigurationReferenceEvidenceIndicator
-                            documents={evidenceState.getDocumentsForOwner(
-                              "reference_product",
-                              ownerId
-                            )}
+                            documents={evidenceDocumentsByOwnerId.get(ownerId) ?? []}
                             productName={productName}
                             criterionId={criterion.id}
                             criterionCode={criterion.criterion_code}

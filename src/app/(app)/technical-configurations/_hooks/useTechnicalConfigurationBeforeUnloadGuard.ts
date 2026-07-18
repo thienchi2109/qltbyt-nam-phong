@@ -3,7 +3,7 @@
 import * as React from "react"
 
 /** Prevents accidental browser unload while a technical-configuration draft is dirty. */
-export function useTechnicalConfigurationBeforeUnloadGuard(isDirty: boolean) {
+export function useTechnicalConfigurationBeforeUnloadGuard(isDirty: boolean): void {
   React.useEffect(() => {
     if (!isDirty) return
 

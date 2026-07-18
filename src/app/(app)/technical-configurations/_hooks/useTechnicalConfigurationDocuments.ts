@@ -104,6 +104,7 @@ export function useTechnicalConfigurationDocuments({
 }: UseTechnicalConfigurationDocumentsOptions) {
   const queryClient = useQueryClient()
   const revisionRef = React.useRef(baselineVersion.revision)
+  const mutationInFlightRef = React.useRef(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [isConflict, setIsConflict] = React.useState(false)
   const [mutationError, setMutationError] = React.useState<unknown>(null)
@@ -143,6 +144,9 @@ export function useTechnicalConfigurationDocuments({
     async <TResponse extends RevisionedMutationResponse>(
       request: (expectedRevision: number) => Promise<TResponse>
     ): Promise<TResponse> => {
+      if (mutationInFlightRef.current) {
+        throw new Error("mutation_in_progress")
+      }
       if (baselineVersion.locked_at !== null) {
         throw new Error("locked_version")
       }
@@ -150,6 +154,7 @@ export function useTechnicalConfigurationDocuments({
         throw new Error("read_only")
       }
 
+      mutationInFlightRef.current = true
       setIsSaving(true)
       setIsConflict(false)
       setMutationError(null)
@@ -163,6 +168,7 @@ export function useTechnicalConfigurationDocuments({
         setIsConflict(isTechnicalConfigurationBaselineConflict(error))
         throw error
       } finally {
+        mutationInFlightRef.current = false
         setIsSaving(false)
         onNavigationBlockedChange?.(false)
       }

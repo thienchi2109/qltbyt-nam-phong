@@ -19,7 +19,7 @@ export function TechnicalConfigurationBaselineEvidence({
   dossier,
   onDirtyChange,
   onNavigationBlockedChange,
-}: Readonly<TechnicalConfigurationBaselineEvidenceProps>) {
+}: Readonly<TechnicalConfigurationBaselineEvidenceProps>): React.JSX.Element {
   const [isDirty, setIsDirty] = React.useState(false)
   const selection = useTechnicalConfigurationBaselineVersionSelection(dossier.id)
   const {

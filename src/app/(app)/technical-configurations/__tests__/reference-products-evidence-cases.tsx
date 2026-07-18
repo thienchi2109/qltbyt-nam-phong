@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, type Mock } from "vitest"
 
@@ -16,6 +16,8 @@ type BaselineDocumentsMock = {
     ownerId: string
     criterionId?: string | null
     readOnly?: boolean
+    onDirtyChange?: (dirty: boolean) => void
+    onNavigationBlockedChange?: (blocked: boolean) => void
   } | null
 }
 
@@ -77,6 +79,127 @@ export function registerReferenceProductEvidenceTests({
         ownerId: "product-1",
         criterionId: "criterion-1",
       })
+    })
+
+    it("closes stale evidence details when the baseline version changes", async () => {
+      const user = userEvent.setup()
+      const onEvidenceDirtyChange = vi.fn()
+      const onEvidenceNavigationBlockedChange = vi.fn()
+      const referenceProduct = toTechnicalConfigurationReferenceProductDraft(
+        product("product-1", "Model A")
+      )
+      evidenceState.getDocumentsForOwner.mockReturnValue([])
+      const view = renderWithQueryClient(
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={baselineVersion}
+          products={[referenceProduct]}
+          readOnly={false}
+          onResponseChange={vi.fn()}
+          onEvidenceDirtyChange={onEvidenceDirtyChange}
+          onEvidenceNavigationBlockedChange={onEvidenceNavigationBlockedChange}
+        />
+      )
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Bằng chứng Model A cho TC-0001: 0 tài liệu, 0 trích dẫn",
+        })
+      )
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      baselineDocumentsMock.props?.onDirtyChange?.(true)
+      baselineDocumentsMock.props?.onNavigationBlockedChange?.(true)
+
+      view.rerender(
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={{ ...baselineVersion, id: "version-2" }}
+          products={[referenceProduct]}
+          readOnly={false}
+          onResponseChange={vi.fn()}
+          onEvidenceDirtyChange={onEvidenceDirtyChange}
+          onEvidenceNavigationBlockedChange={onEvidenceNavigationBlockedChange}
+        />
+      )
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      await waitFor(() => {
+        expect(onEvidenceDirtyChange).toHaveBeenLastCalledWith(false)
+        expect(onEvidenceNavigationBlockedChange).toHaveBeenLastCalledWith(false)
+      })
+    })
+
+    it("keeps the evidence dialog open while a mutation blocks navigation", async () => {
+      const user = userEvent.setup()
+      const onNavigationBlockedChange = vi.fn()
+      const referenceProduct = toTechnicalConfigurationReferenceProductDraft(
+        product("product-1", "Model A")
+      )
+      evidenceState.getDocumentsForOwner.mockReturnValue([])
+      renderWithQueryClient(
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={baselineVersion}
+          products={[referenceProduct]}
+          readOnly={false}
+          onResponseChange={vi.fn()}
+          onEvidenceNavigationBlockedChange={onNavigationBlockedChange}
+        />
+      )
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Bằng chứng Model A cho TC-0001: 0 tài liệu, 0 trích dẫn",
+        })
+      )
+      baselineDocumentsMock.props?.onNavigationBlockedChange?.(true)
+      await user.click(screen.getByRole("button", { name: "Đóng" }))
+
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      expect(onNavigationBlockedChange).toHaveBeenCalledWith(true)
+
+      baselineDocumentsMock.props?.onNavigationBlockedChange?.(false)
+      await user.click(screen.getByRole("button", { name: "Đóng" }))
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+      expect(onNavigationBlockedChange).toHaveBeenCalledWith(false)
+    })
+
+    it("resolves evidence documents once per visible product", () => {
+      const referenceProduct = toTechnicalConfigurationReferenceProductDraft(
+        product("product-1", "Model A")
+      )
+      const firstCriterion = baselineVersion.groups[0].criteria[0]
+      const baselineWithTwoCriteria = {
+        ...baselineVersion,
+        groups: [
+          {
+            ...baselineVersion.groups[0],
+            criteria: [
+              firstCriterion,
+              {
+                ...firstCriterion,
+                id: "criterion-2",
+                criterion_code: "TC-0002",
+                sort_order: 2,
+              },
+            ],
+          },
+        ],
+      }
+      evidenceState.getDocumentsForOwner.mockReturnValue([])
+
+      renderWithQueryClient(
+        <TechnicalConfigurationReferenceComparison
+          baselineVersion={baselineWithTwoCriteria}
+          products={[referenceProduct]}
+          readOnly={false}
+          onResponseChange={vi.fn()}
+        />
+      )
+
+      expect(evidenceState.getDocumentsForOwner).toHaveBeenCalledTimes(1)
+      expect(evidenceState.getDocumentsForOwner).toHaveBeenCalledWith(
+        "reference_product",
+        "product-1"
+      )
     })
 
     it("propagates archived read-only state into the reference evidence editor", async () => {

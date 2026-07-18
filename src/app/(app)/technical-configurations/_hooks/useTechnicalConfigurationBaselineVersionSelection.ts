@@ -5,8 +5,19 @@ import { useTechnicalConfigurationBaselineVersions } from "@/app/(app)/technical
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { selectTechnicalConfigurationBaselineVersion } from "@/app/(app)/technical-configurations/technical-configuration-baseline-version-state"
 
+export interface TechnicalConfigurationBaselineVersionSelectionResult {
+  versionState: ReturnType<typeof useTechnicalConfigurationBaselineVersions>
+  selectedVersion: TechnicalConfigurationBaselineDraftWire | null
+  versionOptions: TechnicalConfigurationBaselineDraftWire[]
+  adoptVersion: (version: TechnicalConfigurationBaselineDraftWire | null) => void
+  synchronizeVersion: (replacementBlocked: boolean) => void
+  handleRevisionChange: (revision: number) => void
+}
+
 /** Shares active-version selection and revision cache updates across read-oriented workspaces. */
-export function useTechnicalConfigurationBaselineVersionSelection(dossierId: string) {
+export function useTechnicalConfigurationBaselineVersionSelection(
+  dossierId: string
+): TechnicalConfigurationBaselineVersionSelectionResult {
   const baselineRpc = useTechnicalConfigurationBaseline()
   const versionState = useTechnicalConfigurationBaselineVersions({
     dossierId,
@@ -25,7 +36,7 @@ export function useTechnicalConfigurationBaselineVersionSelection(dossierId: str
   )
   const versionOptions = React.useMemo(
     () =>
-      selectedVersion && !versionState.versions.some((version) => version.id === selectedVersion.id)
+      selectedVersion && !versions.some((version) => version.id === selectedVersion.id)
         ? [selectedVersion, ...versions]
         : versions,
     [selectedVersion, versions]

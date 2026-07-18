@@ -2,7 +2,7 @@
 
 import { Button } from "@heroui/react"
 
-type TechnicalConfigurationDocumentsQueryErrorProps = {
+interface TechnicalConfigurationDocumentsQueryErrorProps {
   isInitialLoad: boolean
   isRetrying: boolean
   onRetry: () => void

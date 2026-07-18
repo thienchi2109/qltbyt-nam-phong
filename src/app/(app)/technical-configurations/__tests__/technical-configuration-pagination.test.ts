@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from "vitest"
 
 import { collectStableTechnicalConfigurationPages } from "@/app/(app)/technical-configurations/technical-configuration-pagination"
 
-type PageItem = {
+interface PageItem {
   id: string
 }
 
-type Page = {
+interface Page {
   data: PageItem[]
   total: number
 }

@@ -32,6 +32,8 @@ const baselineDocumentsMock = vi.hoisted(() => ({
     ownerId: string
     criterionId?: string | null
     readOnly?: boolean
+    onDirtyChange?: (dirty: boolean) => void
+    onNavigationBlockedChange?: (blocked: boolean) => void
   } | null,
 }))
 

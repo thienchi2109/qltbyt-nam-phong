@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { AlertDialog, Button, ListBox, Select } from "@heroui/react"
+import { ListBox, Select } from "@heroui/react"
 
 import { TechnicalConfigurationCitationEditor } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor"
+import { TechnicalConfigurationDocumentDeleteDialog } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentDeleteDialog"
 import { TechnicalConfigurationDocumentsHeader } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsHeader"
 import { TechnicalConfigurationDocumentsQueryError } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDocumentsQueryError"
+import { useTechnicalConfigurationDocumentDraft } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocumentDraft"
 import { useTechnicalConfigurationDocuments } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDocuments"
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
@@ -18,7 +20,7 @@ import {
 
 export type TechnicalConfigurationEvidenceOwnerType = "baseline" | "reference_product"
 
-type TechnicalConfigurationBaselineDocumentsProps = {
+interface TechnicalConfigurationBaselineDocumentsProps {
   baselineVersion: TechnicalConfigurationBaselineDraftWire
   ownerType: TechnicalConfigurationEvidenceOwnerType
   ownerId: string
@@ -39,10 +41,7 @@ export function TechnicalConfigurationBaselineDocuments({
   onRevisionChange,
   onDirtyChange,
   onNavigationBlockedChange,
-}: Readonly<TechnicalConfigurationBaselineDocumentsProps>) {
-  const [name, setName] = React.useState("")
-  const [url, setUrl] = React.useState("")
-  const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | null>(null)
+}: Readonly<TechnicalConfigurationBaselineDocumentsProps>): React.JSX.Element {
   const [citationDirty, setCitationDirty] = React.useState(false)
   const [pendingDeleteDocument, setPendingDeleteDocument] =
     React.useState<TechnicalConfigurationDocumentWire | null>(null)
@@ -54,8 +53,18 @@ export function TechnicalConfigurationBaselineDocuments({
     onNavigationBlockedChange,
   })
   const ownerDocuments = documentState.getDocumentsForOwner(ownerType, ownerId)
-  const selectedDocument =
-    ownerDocuments.find((document) => document.id === selectedDocumentId) ?? null
+  const {
+    name,
+    url,
+    selectedDocumentId,
+    selectedDocument,
+    selectedDocumentMissing,
+    documentDirty,
+    setName,
+    setUrl,
+    clearDraft,
+    selectDocument: adoptSelectedDocument,
+  } = useTechnicalConfigurationDocumentDraft(ownerDocuments)
   const hasInitialDocumentsError =
     documentState.documentsQuery.isError && documentState.documentsQuery.data === undefined
   const hasStaleDocuments =
@@ -77,21 +86,11 @@ export function TechnicalConfigurationBaselineDocuments({
     url && !isAllowedDocumentUrl(parsedUrl)
       ? "Chỉ chấp nhận đường dẫn HTTP hoặc HTTPS hợp lệ."
       : null
-  const documentDirty =
-    selectedDocument === null
-      ? Boolean(name || url)
-      : name !== selectedDocument.name || url !== selectedDocument.url
   const isDirty = documentDirty || citationDirty
 
   React.useEffect(() => {
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
-
-  const clearDraft = React.useCallback(() => {
-    setSelectedDocumentId(null)
-    setName("")
-    setUrl("")
-  }, [])
 
   const confirmDocumentChange = React.useCallback(
     () =>
@@ -110,16 +109,14 @@ export function TechnicalConfigurationBaselineDocuments({
       if (documentId === selectedDocumentId || !confirmDocumentChange()) return
       const document = ownerDocuments.find((item) => item.id === documentId)
       if (!document) return
-      setSelectedDocumentId(document.id)
-      setName(document.name)
-      setUrl(document.url)
+      adoptSelectedDocument(document)
     },
-    [confirmDocumentChange, ownerDocuments, selectedDocumentId]
+    [adoptSelectedDocument, confirmDocumentChange, ownerDocuments, selectedDocumentId]
   )
 
   const handleSubmit = React.useCallback(async () => {
     const acceptedUrl = parseAbsoluteUrl(url)
-    if (!name || !isAllowedDocumentUrl(acceptedUrl)) return
+    if (selectedDocumentMissing || !name || !isAllowedDocumentUrl(acceptedUrl)) return
 
     try {
       if (selectedDocument) {
@@ -140,7 +137,16 @@ export function TechnicalConfigurationBaselineDocuments({
     } catch {
       // Mutation state owns the rendered error while the controlled draft stays intact.
     }
-  }, [clearDraft, documentState, name, ownerId, ownerType, selectedDocument, url])
+  }, [
+    clearDraft,
+    documentState,
+    name,
+    ownerId,
+    ownerType,
+    selectedDocument,
+    selectedDocumentMissing,
+    url,
+  ])
 
   const requestDelete = React.useCallback(
     (documentId: string) => {
@@ -168,7 +174,7 @@ export function TechnicalConfigurationBaselineDocuments({
     <TechnicalConfigurationDocumentsHeader
       ownerType={ownerType}
       isReadOnly={documentState.isReadOnly}
-      hasSelectedDocument={selectedDocument !== null}
+      hasSelectedDocument={selectedDocumentId !== null}
       isCreateDisabled={hasStaleDocuments}
       onCreateNew={resetDraft}
     />
@@ -225,6 +231,13 @@ export function TechnicalConfigurationBaselineDocuments({
         </Select>
       ) : null}
 
+      {selectedDocumentMissing ? (
+        <p role="alert" className="text-sm text-destructive">
+          Tài liệu đang chỉnh sửa không còn trong danh sách. Chọn tài liệu khác hoặc tạo tài liệu
+          mới.
+        </p>
+      ) : null}
+
       <UrlDocumentForm
         name={name}
         url={url}
@@ -232,9 +245,9 @@ export function TechnicalConfigurationBaselineDocuments({
         onUrlChange={setUrl}
         onSubmit={handleSubmit}
         isPending={documentState.isSaving}
-        disabled={controlsDisabled}
+        disabled={controlsDisabled || selectedDocumentMissing}
         validationError={validationError}
-        submitLabel={selectedDocument ? "Lưu thay đổi" : "Thêm tài liệu"}
+        submitLabel={selectedDocumentId ? "Lưu thay đổi" : "Thêm tài liệu"}
       />
 
       {documentState.mutationError ? (
@@ -263,62 +276,16 @@ export function TechnicalConfigurationBaselineDocuments({
         onDirtyChange={setCitationDirty}
       />
 
-      <AlertDialog
-        isOpen={pendingDeleteDocument !== null}
-        onOpenChange={(isOpen) => {
-          if (!isOpen && !documentState.isSaving) {
-            setDeleteError(null)
-            setPendingDeleteDocument(null)
-          }
+      <TechnicalConfigurationDocumentDeleteDialog
+        document={pendingDeleteDocument}
+        deleteError={deleteError}
+        isSaving={documentState.isSaving}
+        onDismiss={() => {
+          setDeleteError(null)
+          setPendingDeleteDocument(null)
         }}
-      >
-        <Button className="hidden" aria-hidden="true">
-          Mở xác nhận xóa
-        </Button>
-        <AlertDialog.Backdrop>
-          <AlertDialog.Container>
-            <AlertDialog.Dialog className="sm:max-w-md">
-              <AlertDialog.Header>
-                <AlertDialog.Icon status="danger" />
-                <AlertDialog.Heading>Xóa tài liệu?</AlertDialog.Heading>
-              </AlertDialog.Header>
-              <AlertDialog.Body>
-                <p>
-                  Tài liệu <strong>{pendingDeleteDocument?.name}</strong>
-                  {pendingDeleteDocument?.citations.length
-                    ? ` đang có ${pendingDeleteDocument.citations.length} trích dẫn liên kết.`
-                    : " chưa có trích dẫn liên kết."}{" "}
-                  Hành động này không thể hoàn tác.
-                </p>
-                {deleteError ? (
-                  <p role="alert" className="mt-3 text-sm text-destructive">
-                    Không thể xóa tài liệu. Vui lòng thử lại.
-                  </p>
-                ) : null}
-              </AlertDialog.Body>
-              <AlertDialog.Footer>
-                <Button
-                  variant="tertiary"
-                  isDisabled={documentState.isSaving}
-                  onPress={() => {
-                    setDeleteError(null)
-                    setPendingDeleteDocument(null)
-                  }}
-                >
-                  Hủy
-                </Button>
-                <Button
-                  variant="danger"
-                  isPending={documentState.isSaving}
-                  onPress={() => void confirmDelete()}
-                >
-                  Xóa tài liệu
-                </Button>
-              </AlertDialog.Footer>
-            </AlertDialog.Dialog>
-          </AlertDialog.Container>
-        </AlertDialog.Backdrop>
-      </AlertDialog>
+        onConfirm={() => void confirmDelete()}
+      />
     </section>
   )
 }

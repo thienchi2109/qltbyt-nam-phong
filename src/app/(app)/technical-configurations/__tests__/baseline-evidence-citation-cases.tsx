@@ -201,6 +201,16 @@ export function registerBaselineEvidenceCitationTests() {
       )
       expect(screen.getByLabelText("Trích đoạn")).toHaveValue("Bản nháp chưa lưu")
       expect(screen.getByRole("button", { name: "Lưu trích dẫn" })).toBeDisabled()
+
+      const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+      const documentPicker = screen.getByRole("button", { name: /Tài liệu/i })
+      act(() => documentPicker.focus())
+      await user.keyboard("{ArrowDown}")
+      await user.click(await screen.findByRole("option", { name: secondDocument.name }))
+
+      await waitFor(() => expect(screen.getByText(secondDocument.name)).toBeInTheDocument())
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument()
+      confirm.mockRestore()
     })
 
     it("renders citation deletion failures without an unhandled rejection", async () => {

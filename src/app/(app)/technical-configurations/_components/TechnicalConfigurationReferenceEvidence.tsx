@@ -37,7 +37,7 @@ export function TechnicalConfigurationReferenceEvidenceIndicator({
   criterionCode,
   isLoading,
   onOpen,
-}: Readonly<TechnicalConfigurationReferenceEvidenceIndicatorProps>) {
+}: Readonly<TechnicalConfigurationReferenceEvidenceIndicatorProps>): React.JSX.Element {
   const citationCount = documents.reduce(
     (count, document) =>
       count + document.citations.filter((citation) => citation.criterion_id === criterionId).length,
@@ -82,22 +82,27 @@ export function TechnicalConfigurationReferenceEvidenceDialog({
   onRevisionChange,
   onDirtyChange,
   onNavigationBlockedChange,
-}: Readonly<TechnicalConfigurationReferenceEvidenceDialogProps>) {
-  const [isDirty, setIsDirty] = React.useState(false)
+}: Readonly<TechnicalConfigurationReferenceEvidenceDialogProps>): React.JSX.Element {
+  const isDirtyRef = React.useRef(false)
+  const isNavigationBlockedRef = React.useRef(false)
 
   React.useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
 
   const handleOpenChange = React.useCallback(
     (open: boolean) => {
       if (open) return
-      if (isDirty && !window.confirm("Bạn có thay đổi bằng chứng chưa lưu. Đóng và bỏ thay đổi?")) {
+      if (isNavigationBlockedRef.current) return
+      if (
+        isDirtyRef.current &&
+        !window.confirm("Bạn có thay đổi bằng chứng chưa lưu. Đóng và bỏ thay đổi?")
+      ) {
         return
       }
-      setIsDirty(false)
+      isDirtyRef.current = false
       onDirtyChange?.(false)
       onClose()
     },
-    [isDirty, onClose, onDirtyChange]
+    [onClose, onDirtyChange]
   )
 
   return (
@@ -120,10 +125,13 @@ export function TechnicalConfigurationReferenceEvidenceDialog({
             readOnly={readOnly}
             onRevisionChange={onRevisionChange}
             onDirtyChange={(dirty) => {
-              setIsDirty(dirty)
+              isDirtyRef.current = dirty
               onDirtyChange?.(dirty)
             }}
-            onNavigationBlockedChange={onNavigationBlockedChange}
+            onNavigationBlockedChange={(blocked) => {
+              isNavigationBlockedRef.current = blocked
+              onNavigationBlockedChange?.(blocked)
+            }}
           />
         ) : null}
       </DialogContent>
