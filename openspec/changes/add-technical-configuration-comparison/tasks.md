@@ -233,7 +233,9 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P7B2.6 Tích hợp qua workspace/reference surfaces; không thêm document state vào baseline tab/editor hook.
 - [x] P7B2.7 Viết owner-scope, reuse, raw create/update/list/render, URL
       rejection, delegation, deletion, locked, conflict và long-excerpt tests.
-- [ ] P7B2.8 Chạy focused React/source-contract/file-size/browser gates; không apply live DB.
+- [x] P7B2.8 Chạy focused React/source-contract/file-size gates; browser gate
+      `N/A` vì không có credentials và dev server được yêu cầu giữ dừng; không
+      apply live DB.
 
 ## Phase P8A - Supplier And Option Data Contracts
 
