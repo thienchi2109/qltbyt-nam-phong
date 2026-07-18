@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -348,23 +348,29 @@ export function registerReferenceProductWorkspaceTests({
     it("preserves a dirty reference draft when dossier-back navigation is rejected", async () => {
       const user = userEvent.setup()
       const onBack = vi.fn()
-      const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+      const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
       referenceRpc.listProducts.mockResolvedValue(listResponse([]))
 
-      renderWithQueryClient(
-        <TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />
-      )
-      await user.click(screen.getByRole("tab", { name: "Sản phẩm tham chiếu" }))
-      await user.click(await screen.findByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
-      await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
-      await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
+      try {
+        renderWithQueryClient(
+          <TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />
+        )
+        await user.click(screen.getByRole("tab", { name: "Sản phẩm tham chiếu" }))
+        await user.click(await screen.findByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
+        await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
+        await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
 
-      expect(confirm).toHaveBeenCalledWith(
-        "Bạn có thay đổi chưa lưu. Rời hồ sơ và bỏ các thay đổi?"
-      )
-      expect(onBack).not.toHaveBeenCalled()
-      expect(screen.getByDisplayValue("Model chưa lưu")).toBeInTheDocument()
-      confirm.mockRestore()
+        expect(nativeConfirm).not.toHaveBeenCalled()
+        await user.click(
+          within(await screen.findByRole("alertdialog")).getByRole("button", {
+            name: "Tiếp tục chỉnh sửa",
+          })
+        )
+        expect(onBack).not.toHaveBeenCalled()
+        expect(screen.getByDisplayValue("Model chưa lưu")).toBeInTheDocument()
+      } finally {
+        nativeConfirm.mockRestore()
+      }
     })
   })
 }
