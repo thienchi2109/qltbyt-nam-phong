@@ -193,6 +193,7 @@ describe("technical configuration dossier shell", () => {
     expect(await screen.findByRole("heading", { name: dossier.name })).toBeInTheDocument()
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent?.trim())).toEqual([
       "Cấu hình cơ sở",
+      "Tài liệu & trích dẫn",
       "Sản phẩm tham chiếu",
       "Phương án",
       "So sánh & đánh giá",
