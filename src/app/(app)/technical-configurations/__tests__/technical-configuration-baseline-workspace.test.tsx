@@ -3,7 +3,7 @@ import path from "node:path"
 
 import * as React from "react"
 import "@testing-library/jest-dom"
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -92,7 +92,7 @@ describe("technical configuration baseline workspace integration", () => {
 
     try {
       render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
-      await waitFor(() => expect(screen.getByText("Baseline editor")).toBeInTheDocument())
+      await screen.findByText("Baseline editor")
 
       await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
 
@@ -127,7 +127,7 @@ describe("technical configuration baseline workspace integration", () => {
 
     try {
       render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
-      await waitFor(() => expect(screen.getByText("Baseline editor")).toBeInTheDocument())
+      await screen.findByText("Baseline editor")
 
       await user.click(screen.getByRole("tab", { name: "Tài liệu & trích dẫn" }))
 
