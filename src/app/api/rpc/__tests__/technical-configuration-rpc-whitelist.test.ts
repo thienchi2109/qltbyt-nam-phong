@@ -5,6 +5,7 @@ vi.mock("server-only", () => ({}))
 import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -14,12 +15,39 @@ const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_archive",
 ] as const
 
-const REFERENCE_RPC_FUNCTIONS = [
+const BASELINE_DOCUMENT_RPC_FUNCTIONS = [
+  "technical_configuration_baseline_documents_list",
+  "technical_configuration_baseline_document_create",
+  "technical_configuration_baseline_document_update",
+  "technical_configuration_baseline_document_delete",
+  "technical_configuration_baseline_citation_upsert",
+  "technical_configuration_baseline_citation_delete",
+] as const
+
+const REFERENCE_DOCUMENT_RPC_FUNCTIONS = [
+  "technical_configuration_reference_document_create",
+  "technical_configuration_reference_document_update",
+  "technical_configuration_reference_document_delete",
+  "technical_configuration_reference_citation_upsert",
+  "technical_configuration_reference_citation_delete",
+] as const
+
+const P7A1_REFERENCE_RPC_FUNCTIONS = [
   "technical_configuration_reference_products_list",
   "technical_configuration_reference_product_create",
   "technical_configuration_reference_product_update",
   "technical_configuration_reference_product_delete",
   "technical_configuration_reference_response_upsert",
+] as const
+
+const BASELINE_RPC_FUNCTIONS = [
+  ...BASELINE_RPC_FUNCTION_NAMES,
+  ...BASELINE_DOCUMENT_RPC_FUNCTIONS,
+] as const
+
+const REFERENCE_RPC_FUNCTIONS = [
+  ...P7A1_REFERENCE_RPC_FUNCTIONS,
+  ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -43,25 +71,37 @@ describe("technical configuration dossier RPC whitelist", () => {
 })
 
 describe("technical configuration baseline RPC whitelist", () => {
-  it("allowlists exactly the P2, P4, and P5C baseline RPCs", () => {
-    expect(
-      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_baseline_"))
-    ).toEqual(BASELINE_RPC_FUNCTION_NAMES)
+  it("keeps the ordered P7B1 document RPC manifest split by owner", async () => {
+    const { DOCUMENT_RPC_FUNCTION_NAMES } = (await vi.importActual(
+      "@/lib/technical-configuration-document-rpcs"
+    )) as { DOCUMENT_RPC_FUNCTION_NAMES: readonly string[] }
+
+    expect(DOCUMENT_RPC_FUNCTION_NAMES).toEqual([
+      ...BASELINE_DOCUMENT_RPC_FUNCTIONS,
+      ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
+    ])
   })
 
-  it.each(BASELINE_RPC_FUNCTION_NAMES)(
-    'allows baseline RPC "%s" through the whitelist',
-    async (fn) => {
-      const response = await invokeRpcProxy(fn)
+  it("allowlists exactly the existing baseline RPCs plus six P7B1 baseline names", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_baseline_"))
+    ).toEqual(BASELINE_RPC_FUNCTIONS)
+  })
 
-      expect(response.status).toBe(411)
-      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
-    }
-  )
+  it.each(BASELINE_RPC_FUNCTIONS)('allows baseline RPC "%s" through the whitelist', async (fn) => {
+    const response = await invokeRpcProxy(fn)
+
+    expect(response.status).toBe(411)
+    await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
 })
 
 describe("technical configuration reference product RPC whitelist", () => {
-  it("allowlists exactly the five P7A1 reference product RPCs", () => {
+  it("keeps the local P7A1 reference-product prefix aligned with the shared manifest", () => {
+    expect(P7A1_REFERENCE_RPC_FUNCTIONS).toEqual(REFERENCE_PRODUCT_RPC_FUNCTION_NAMES)
+  })
+
+  it("allowlists exactly five P7A1 names plus five P7B1 reference-document names", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_reference_"))
     ).toEqual(REFERENCE_RPC_FUNCTIONS)

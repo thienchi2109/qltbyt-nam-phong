@@ -1,4 +1,5 @@
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+import { DOCUMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-document-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 
 /** Whitelist RPCs allowed through the Next.js RPC proxy. */
@@ -96,6 +97,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "technical_configuration_dossiers_archive",
   ...BASELINE_RPC_FUNCTION_NAMES,
   ...REFERENCE_PRODUCT_RPC_FUNCTION_NAMES,
+  ...DOCUMENT_RPC_FUNCTION_NAMES,
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

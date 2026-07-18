@@ -12,6 +12,7 @@ const SNAPSHOT_REVISION_MIGRATION_SUFFIX =
   "_technical_configuration_reference_products_snapshot_revision.sql"
 const PAGINATION_BIGINT_OFFSET_MIGRATION_SUFFIX =
   "_technical_configuration_reference_products_pagination_bigint_offset.sql"
+const LATEST_P4_COPY_MIGRATION = "20260714010000_technical_configuration_baseline_locking.sql"
 const PHASE_GATE_PATH = path.resolve(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_products_phase_gate.sql"
@@ -92,22 +93,22 @@ const typesSource = readIfExists(TYPES_PATH)
 const adapterSource = readIfExists(ADAPTER_PATH)
 
 describe("technical configuration P7A1 reference product contracts", () => {
-  it("ships one correctly ordered migration after the latest baseline-copy definition", () => {
+  it("ships one correctly ordered migration after the latest earlier baseline-copy definition", () => {
     expect(migrationFiles).toHaveLength(1)
 
-    const latestCopyMigration = readdirSync(MIGRATIONS_DIR)
+    const earlierCopyMigrations = readdirSync(MIGRATIONS_DIR)
       .filter((file) => file.endsWith(".sql"))
-      .filter((file) => file !== migrationFile)
+      .filter((file) => file < migrationFile)
       .filter((file) =>
         readFileSync(path.resolve(MIGRATIONS_DIR, file), "utf8").includes(
           "CREATE OR REPLACE FUNCTION public.technical_configuration_baseline_copy("
         )
       )
       .sort()
-      .at(-1)
 
-    expect(latestCopyMigration).toBeDefined()
-    expect(migrationFile > (latestCopyMigration ?? "")).toBe(true)
+    expect(earlierCopyMigrations).toContain(LATEST_P4_COPY_MIGRATION)
+    expect(earlierCopyMigrations.at(-1)).toBe(LATEST_P4_COPY_MIGRATION)
+    expect(migrationFile > LATEST_P4_COPY_MIGRATION).toBe(true)
   })
 
   it("creates the two exact-version reference tables with audit columns", () => {
