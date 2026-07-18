@@ -2,7 +2,7 @@ import * as React from "react"
 
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 
-interface TechnicalConfigurationDocumentDraftState {
+export interface TechnicalConfigurationDocumentDraftState {
   name: string
   url: string
   selectedDocumentId: string | null
