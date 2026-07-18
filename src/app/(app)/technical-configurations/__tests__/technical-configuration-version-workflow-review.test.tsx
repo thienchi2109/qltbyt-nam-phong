@@ -88,11 +88,7 @@ describe("technical configuration version workflow review regressions", () => {
 
     rpc.listVersions.mockReturnValueOnce(pending.promise)
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
-    await user.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Bỏ thay đổi",
-      })
-    )
+    await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
 
     const lockWasDisabled = screen
       .getByRole("button", { name: "Khóa phiên bản" })

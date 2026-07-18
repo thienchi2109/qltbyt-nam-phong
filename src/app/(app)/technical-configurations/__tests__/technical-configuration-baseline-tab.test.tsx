@@ -229,6 +229,35 @@ describe("technical configuration baseline tab", () => {
     expect(screen.getByRole("button", { name: "Tải lại từ máy chủ" })).toBeEnabled()
   })
 
+  it("reloads a clean draft without discard confirmation", async () => {
+    const user = userEvent.setup()
+    rpc.updateGroup.mockRejectedValue(
+      new TechnicalConfigurationRpcError(409, {
+        code: "PT409",
+        message: "stale_revision",
+      })
+    )
+    renderTab()
+
+    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+    await user.clear(nameInput)
+    await user.type(nameInput, "Tên đang xung đột")
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
+    expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
+
+    await user.clear(nameInput)
+    await user.type(nameInput, "Yêu cầu chung")
+    const listVersionsCallCount = rpc.listVersions.mock.calls.length
+    rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([createDraft({ revision: 8 })]))
+
+    await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(rpc.listVersions).toHaveBeenCalledTimes(listVersionsCallCount + 1)
+    })
+  })
+
   it("keeps the explicitly reloaded server draft instead of restoring stale query data", async () => {
     const user = userEvent.setup()
     rpc.updateGroup.mockRejectedValue(

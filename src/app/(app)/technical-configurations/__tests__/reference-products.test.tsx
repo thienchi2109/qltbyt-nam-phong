@@ -63,6 +63,7 @@ vi.mock(
       return (
         <div data-testid="reference-evidence-detail">
           {props.ownerType}:{props.ownerId}:{props.criterionId}
+          <input aria-label="Bản nháp bằng chứng" />
         </div>
       )
     },

@@ -133,13 +133,7 @@ describe("technical configuration baseline locking and history", () => {
       page_size: 100,
     })
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
-    const discardDialog = await screen.findByRole("alertdialog")
     expect(nativeConfirm).not.toHaveBeenCalled()
-    await user.click(
-      within(discardDialog).getByRole("button", {
-        name: "Bỏ thay đổi",
-      })
-    )
 
     expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()

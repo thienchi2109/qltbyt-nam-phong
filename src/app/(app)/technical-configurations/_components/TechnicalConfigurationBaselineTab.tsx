@@ -126,6 +126,10 @@ export function TechnicalConfigurationBaselineTab({
       void baseline.onRefreshVersions().catch(() => undefined)
       return
     }
+    if (!isUnsafeToLeave) {
+      void reloadDraftFromServer()
+      return
+    }
     requestDiscardConfirmation(
       "Tải lại từ máy chủ sẽ thay thế các thay đổi chưa lưu. Tiếp tục?",
       () => void reloadDraftFromServer()

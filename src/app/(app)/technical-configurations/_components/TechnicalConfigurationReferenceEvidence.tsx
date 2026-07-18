@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { FileText } from "lucide-react"
 
 import { TechnicalConfigurationBaselineDocuments } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments"
@@ -86,10 +87,25 @@ export function TechnicalConfigurationReferenceEvidenceDialog({
 }: Readonly<TechnicalConfigurationReferenceEvidenceDialogProps>): React.JSX.Element {
   const isDirtyRef = React.useRef(false)
   const isNavigationBlockedRef = React.useRef(false)
+  const evidencePortalRef = React.useRef<HTMLDivElement | null>(null)
+  const [evidencePortal, setEvidencePortal] = React.useState<HTMLDivElement | null>(null)
   const { discardConfirmationDialog, isDiscardConfirmationOpen, requestDiscardConfirmation } =
     useTechnicalConfigurationDiscardConfirmation()
 
   React.useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+  React.useEffect(() => () => evidencePortalRef.current?.remove(), [])
+
+  const attachEvidencePortal = React.useCallback((host: HTMLDivElement | null) => {
+    if (!host) return
+    let portal = evidencePortalRef.current
+    if (!portal) {
+      portal = document.createElement("div")
+      portal.className = "contents"
+      evidencePortalRef.current = portal
+      setEvidencePortal(portal)
+    }
+    host.append(portal)
+  }, [])
 
   const closeEvidence = React.useCallback(() => {
     isDirtyRef.current = false
@@ -125,7 +141,11 @@ export function TechnicalConfigurationReferenceEvidenceDialog({
               Tài liệu và trích dẫn áp dụng cho sản phẩm tham chiếu tại tiêu chí đang chọn.
             </DialogDescription>
           </DialogHeader>
-          {detail ? (
+          <div ref={attachEvidencePortal} />
+        </DialogContent>
+      </Dialog>
+      {detail && evidencePortal
+        ? createPortal(
             <TechnicalConfigurationBaselineDocuments
               baselineVersion={baselineVersion}
               ownerType="reference_product"
@@ -141,10 +161,10 @@ export function TechnicalConfigurationReferenceEvidenceDialog({
                 isNavigationBlockedRef.current = blocked
                 onNavigationBlockedChange?.(blocked)
               }}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+            />,
+            evidencePortal
+          )
+        : null}
       {discardConfirmationDialog}
     </>
   )

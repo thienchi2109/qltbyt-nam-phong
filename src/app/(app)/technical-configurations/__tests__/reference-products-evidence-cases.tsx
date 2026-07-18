@@ -187,6 +187,7 @@ export function registerReferenceProductEvidenceTests({
             name: "Bằng chứng Model A cho TC-0001: 0 tài liệu, 0 trích dẫn",
           })
         )
+        await user.type(screen.getByRole("textbox", { name: "Bản nháp bằng chứng" }), "Đang sửa")
         baselineDocumentsMock.props?.onDirtyChange?.(true)
         await user.click(screen.getByRole("button", { name: "Đóng" }))
 
@@ -195,6 +196,7 @@ export function registerReferenceProductEvidenceTests({
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
         await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
         expect(screen.getByRole("dialog")).toBeInTheDocument()
+        expect(screen.getByRole("textbox", { name: "Bản nháp bằng chứng" })).toHaveValue("Đang sửa")
 
         await user.click(screen.getByRole("button", { name: "Đóng" }))
         await user.click(
