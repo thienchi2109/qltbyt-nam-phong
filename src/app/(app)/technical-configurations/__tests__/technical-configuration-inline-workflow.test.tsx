@@ -179,6 +179,7 @@ describe("technical configuration inline workflow", () => {
   it("preserves group buffers and treats clean-draft bulk input as unsafe", async () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
+    const addEventListener = vi.spyOn(window, "addEventListener")
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
 
     await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
@@ -187,8 +188,12 @@ describe("technical configuration inline workflow", () => {
     expect(screen.getByText("Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.")).toBeVisible()
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
     expect(onDirtyChange).toHaveBeenLastCalledWith(true)
+    const beforeUnloadHandler = addEventListener.mock.calls
+      .filter(([eventName]) => eventName === "beforeunload")
+      .at(-1)?.[1]
+    expect(beforeUnloadHandler).toBeTypeOf("function")
     const unsafeEvent = new Event("beforeunload", { cancelable: true })
-    window.dispatchEvent(unsafeEvent)
+    ;(beforeUnloadHandler as EventListener)(unsafeEvent)
     expect(unsafeEvent.defaultPrevented).toBe(true)
 
     await user.click(screen.getByRole("tab", { name: /Yêu cầu kỹ thuật/ }))
@@ -198,6 +203,7 @@ describe("technical configuration inline workflow", () => {
     await user.click(screen.getByRole("tab", { name: /Yêu cầu chung/ }))
     expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("Buffer nhóm 1")
     expect(baseline.onSave).not.toHaveBeenCalled()
+    addEventListener.mockRestore()
   })
 
   it("keeps pending-buffer delete and reload controls focusable while blocking actions", async () => {

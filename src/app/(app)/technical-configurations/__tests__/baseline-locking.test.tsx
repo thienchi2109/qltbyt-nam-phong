@@ -15,6 +15,7 @@ import {
   groupMutation,
   mockVersions,
   renderTab,
+  selectBaselineVersion,
 } from "./technical-configuration-baseline-tab-fixtures"
 
 const rpc = getBaselineRpcMock()
@@ -205,7 +206,7 @@ describe("technical configuration baseline locking and history", () => {
     const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
     await user.clear(requirement)
     await user.type(requirement, "Nội dung đang sửa")
-    await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
+    await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
 
     expect(nativeConfirm).not.toHaveBeenCalled()
     const discardDialog = await screen.findByRole("alertdialog")
@@ -236,12 +237,12 @@ describe("technical configuration baseline locking and history", () => {
     await user.click(screen.getByRole("button", { name: "Lưu" }))
 
     await waitFor(() => expect(rpc.updateGroup).toHaveBeenCalled())
-    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
 
     pending.resolve({ data: groupMutation(5, "Yêu cầu kỹ thuật chung") })
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeEnabled()
     )
   })
 
@@ -277,12 +278,12 @@ describe("technical configuration baseline locking and history", () => {
     await user.click(await screen.findByRole("button", { name: "Sao chép thành bản nháp" }))
 
     await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
-    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
 
     pending.reject(new Error("network_error"))
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeEnabled()
     )
     expect(screen.getByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Sao chép thành bản nháp" })).toBeEnabled()

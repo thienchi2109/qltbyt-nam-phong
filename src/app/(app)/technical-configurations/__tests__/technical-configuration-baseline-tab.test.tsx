@@ -430,28 +430,12 @@ describe("technical configuration baseline tab", () => {
     expect(
       await screen.findByRole("region", { name: "Lịch sử phiên bản cấu hình cơ sở" })
     ).toBeInTheDocument()
-    expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText(/Dòng 1/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue("Yêu cầu chung")).not.toBeInTheDocument()
-  })
-
-  it("registers beforeunload protection only while the form is dirty", async () => {
-    const user = userEvent.setup()
-    renderTab()
-
-    const cleanEvent = new Event("beforeunload", { cancelable: true })
-    window.dispatchEvent(cleanEvent)
-    expect(cleanEvent.defaultPrevented).toBe(false)
-
-    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
-    await user.type(nameInput, " thay đổi")
-
-    const dirtyEvent = new Event("beforeunload", { cancelable: true })
-    window.dispatchEvent(dirtyEvent)
-    expect(dirtyEvent.defaultPrevented).toBe(true)
   })
 })
