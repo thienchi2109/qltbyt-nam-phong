@@ -24,27 +24,31 @@ describe("technical configuration beforeunload protection", () => {
   it("registers beforeunload protection only while the form is dirty", async () => {
     const user = userEvent.setup()
     const addEventListener = vi.spyOn(window, "addEventListener")
-    renderTab()
 
-    const cleanHandlerCount = addEventListener.mock.calls.filter(
-      ([eventName]) => eventName === "beforeunload"
-    ).length
+    try {
+      renderTab()
 
-    const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
-    await user.type(nameInput, " thay đổi")
+      const cleanHandlerCount = addEventListener.mock.calls.filter(
+        ([eventName]) => eventName === "beforeunload"
+      ).length
 
-    await waitFor(() =>
-      expect(
-        addEventListener.mock.calls.filter(([eventName]) => eventName === "beforeunload")
-      ).toHaveLength(cleanHandlerCount + 1)
-    )
-    const beforeUnloadHandler = addEventListener.mock.calls
-      .filter(([eventName]) => eventName === "beforeunload")
-      .at(-1)?.[1]
-    expect(beforeUnloadHandler).toBeTypeOf("function")
-    const dirtyEvent = new Event("beforeunload", { cancelable: true })
-    ;(beforeUnloadHandler as EventListener)(dirtyEvent)
-    expect(dirtyEvent.defaultPrevented).toBe(true)
-    addEventListener.mockRestore()
+      const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
+      await user.type(nameInput, " thay đổi")
+
+      await waitFor(() =>
+        expect(
+          addEventListener.mock.calls.filter(([eventName]) => eventName === "beforeunload")
+        ).toHaveLength(cleanHandlerCount + 1)
+      )
+      const beforeUnloadHandler = addEventListener.mock.calls
+        .filter(([eventName]) => eventName === "beforeunload")
+        .at(-1)?.[1]
+      expect(beforeUnloadHandler).toBeTypeOf("function")
+      const dirtyEvent = new Event("beforeunload", { cancelable: true })
+      ;(beforeUnloadHandler as EventListener)(dirtyEvent)
+      expect(dirtyEvent.defaultPrevented).toBe(true)
+    } finally {
+      addEventListener.mockRestore()
+    }
   })
 })

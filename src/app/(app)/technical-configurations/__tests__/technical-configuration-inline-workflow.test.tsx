@@ -180,30 +180,36 @@ describe("technical configuration inline workflow", () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
     const addEventListener = vi.spyOn(window, "addEventListener")
-    render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
 
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 1")
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
 
-    expect(screen.getByText("Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.")).toBeVisible()
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
-    expect(onDirtyChange).toHaveBeenLastCalledWith(true)
-    const beforeUnloadHandler = addEventListener.mock.calls
-      .filter(([eventName]) => eventName === "beforeunload")
-      .at(-1)?.[1]
-    expect(beforeUnloadHandler).toBeTypeOf("function")
-    const unsafeEvent = new Event("beforeunload", { cancelable: true })
-    ;(beforeUnloadHandler as EventListener)(unsafeEvent)
-    expect(unsafeEvent.defaultPrevented).toBe(true)
+      await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
+      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 1")
 
-    await user.click(screen.getByRole("tab", { name: /Yêu cầu kỹ thuật/ }))
-    expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("")
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 2")
+      expect(
+        screen.getByText("Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.")
+      ).toBeVisible()
+      expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
+      expect(onDirtyChange).toHaveBeenLastCalledWith(true)
+      const beforeUnloadHandler = addEventListener.mock.calls
+        .filter(([eventName]) => eventName === "beforeunload")
+        .at(-1)?.[1]
+      expect(beforeUnloadHandler).toBeTypeOf("function")
+      const unsafeEvent = new Event("beforeunload", { cancelable: true })
+      ;(beforeUnloadHandler as EventListener)(unsafeEvent)
+      expect(unsafeEvent.defaultPrevented).toBe(true)
 
-    await user.click(screen.getByRole("tab", { name: /Yêu cầu chung/ }))
-    expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("Buffer nhóm 1")
-    expect(baseline.onSave).not.toHaveBeenCalled()
-    addEventListener.mockRestore()
+      await user.click(screen.getByRole("tab", { name: /Yêu cầu kỹ thuật/ }))
+      expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("")
+      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 2")
+
+      await user.click(screen.getByRole("tab", { name: /Yêu cầu chung/ }))
+      expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("Buffer nhóm 1")
+      expect(baseline.onSave).not.toHaveBeenCalled()
+    } finally {
+      addEventListener.mockRestore()
+    }
   })
 
   it("keeps pending-buffer delete and reload controls focusable while blocking actions", async () => {

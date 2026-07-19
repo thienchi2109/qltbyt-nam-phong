@@ -2,6 +2,7 @@
 
 import { ListBox } from "@heroui/react/list-box"
 import { Select } from "@heroui/react/select"
+import type { ReactElement } from "react"
 
 export interface SingleSelectOption {
   value: string
@@ -28,7 +29,7 @@ export function SingleSelect({
   disabled = false,
   placeholder,
   className,
-}: Readonly<SingleSelectProps>) {
+}: Readonly<SingleSelectProps>): ReactElement {
   return (
     <Select
       aria-label={ariaLabel}
