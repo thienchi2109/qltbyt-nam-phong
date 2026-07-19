@@ -3,6 +3,39 @@ import { describe, expect, it } from "vitest"
 import { findHeroUIImportViolations } from "../check-heroui-import-boundary"
 
 describe("check-heroui-import-boundary", () => {
+  it("allows shared HeroUI primitives without allowing direct consumer imports", () => {
+    const violations = findHeroUIImportViolations([
+      {
+        path: "src/components/ui/heroui/SingleSelect.tsx",
+        content: [
+          'import { ListBox } from "@heroui/react/list-box"',
+          'import { Select } from "@heroui/react/select"',
+        ].join("\n"),
+      },
+      {
+        path: "src/components/ui/button.tsx",
+        content: 'import { Button } from "@heroui/react/button"\n',
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationVersionBar.tsx",
+        content: 'import { Select } from "@heroui/react/select"\n',
+      },
+    ])
+
+    expect(violations).toEqual([
+      {
+        path: "src/components/ui/button.tsx",
+        line: 1,
+        importPath: "@heroui/react/button",
+      },
+      {
+        path: "src/app/(app)/technical-configurations/_components/TechnicalConfigurationVersionBar.tsx",
+        line: 1,
+        importPath: "@heroui/react/select",
+      },
+    ])
+  })
+
   it("allows HeroUI imports only inside approved boundary folders", () => {
     const violations = findHeroUIImportViolations([
       {

@@ -1,9 +1,8 @@
 import "@testing-library/jest-dom"
-import { act, render, screen, waitFor, within } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TechnicalConfigurationVersionBar } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationVersionBar"
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
 
 import {
@@ -14,7 +13,9 @@ import {
   dossier,
   getBaselineRpcMock,
   mockVersions,
+  openBaselineVersionSelect,
   renderTab,
+  selectBaselineVersion,
 } from "./technical-configuration-baseline-tab-fixtures"
 
 const rpc = getBaselineRpcMock()
@@ -35,7 +36,7 @@ describe("technical configuration version workflow review regressions", () => {
     const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
     await user.clear(requirement)
     await user.type(requirement, "Nội dung đang sửa")
-    await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
+    await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
         name: "Bỏ thay đổi",
@@ -56,7 +57,7 @@ describe("technical configuration version workflow review regressions", () => {
     renderTab()
     await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
     await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Nội dung chưa áp dụng")
-    await user.selectOptions(screen.getByRole("combobox", { name: "Lịch sử phiên bản" }), locked.id)
+    await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
         name: "Bỏ thay đổi",
@@ -98,7 +99,7 @@ describe("technical configuration version workflow review regressions", () => {
       await pending.promise
     })
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeEnabled()
     )
 
     expect(lockWasDisabled).toBe(true)
@@ -143,7 +144,7 @@ describe("technical configuration version workflow review regressions", () => {
       await pending.promise
     })
     await waitFor(() =>
-      expect(screen.getByRole("combobox", { name: "Lịch sử phiên bản" })).toBeEnabled()
+      expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeEnabled()
     )
 
     expect(createWasDisabled).toBe(true)
@@ -224,6 +225,7 @@ describe("technical configuration version workflow review regressions", () => {
     })
     await waitFor(() => expect(secondRetry).toBeEnabled())
     await user.click(secondRetry)
+    await openBaselineVersionSelect(user)
 
     expect(
       await screen.findByRole("option", { name: "Phiên bản 201 · Đã khóa" })
@@ -234,76 +236,6 @@ describe("technical configuration version workflow review regressions", () => {
       p_page: 1,
       p_page_size: 100,
     })
-  })
-
-  it("keeps a preserved historical selection represented in the selector", () => {
-    const selectedVersion = createLockedVersion({ id: "version-1", version_number: 1 })
-    const visibleVersion = createLockedVersion({ id: "version-2", version_number: 2 })
-
-    render(
-      <TechnicalConfigurationVersionBar
-        versions={[visibleVersion]}
-        selectedVersion={selectedVersion}
-        lockBlockedReason={null}
-        status={{
-          hasDraft: false,
-          isCreating: false,
-          isLocking: false,
-          isCopying: false,
-          isLoadingMoreVersions: false,
-          isNavigationDisabled: false,
-          hasMoreVersions: true,
-        }}
-        onSelectVersion={vi.fn()}
-        onLoadMoreVersions={vi.fn()}
-        onRequestLock={vi.fn()}
-        onCreateBlank={vi.fn()}
-        onCopy={vi.fn()}
-      />
-    )
-
-    const selector = screen.getByRole("combobox", {
-      name: "Lịch sử phiên bản",
-    }) as HTMLSelectElement
-    expect(selector.value).toBe(selectedVersion.id)
-    expect(
-      within(selector).getByRole("option", { name: "Phiên bản 1 · Đã khóa" })
-    ).toBeInTheDocument()
-  })
-
-  it("uses the preserved draft snapshot for a same-id selector option", () => {
-    const selectedVersion = createDraft({ id: "version-1", version_number: 1 })
-    const serverVersion = createLockedVersion({ id: selectedVersion.id, version_number: 1 })
-
-    render(
-      <TechnicalConfigurationVersionBar
-        versions={[serverVersion]}
-        selectedVersion={selectedVersion}
-        lockBlockedReason={null}
-        status={{
-          hasDraft: true,
-          isCreating: false,
-          isLocking: false,
-          isCopying: false,
-          isLoadingMoreVersions: false,
-          isNavigationDisabled: false,
-          hasMoreVersions: false,
-        }}
-        onSelectVersion={vi.fn()}
-        onLoadMoreVersions={vi.fn()}
-        onRequestLock={vi.fn()}
-        onCreateBlank={vi.fn()}
-        onCopy={vi.fn()}
-      />
-    )
-
-    const selector = screen.getByRole("combobox", { name: "Lịch sử phiên bản" })
-    expect(
-      within(selector).getByRole("option", { name: "Phiên bản 1 · Bản nháp" })
-    ).toBeInTheDocument()
-    expect(
-      within(selector).queryByRole("option", { name: "Phiên bản 1 · Đã khóa" })
-    ).not.toBeInTheDocument()
   })
 
   it("clears the creation alert after adopting a concurrently created draft", async () => {

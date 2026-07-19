@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query"
-import { render } from "@testing-library/react"
+import { act, render, screen } from "@testing-library/react"
 import { vi } from "vitest"
 
 import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
@@ -303,6 +303,23 @@ export function renderTab(
       }
     ),
   }
+}
+
+type VersionSelectUser = {
+  click: (element: Element) => Promise<void>
+  keyboard: (text: string) => Promise<void>
+}
+
+export async function openBaselineVersionSelect(user: VersionSelectUser) {
+  const trigger = screen.getByRole("button", { name: /Lịch sử phiên bản/ })
+  act(() => trigger.focus())
+  await user.keyboard("{ArrowDown}")
+  return trigger
+}
+
+export async function selectBaselineVersion(user: VersionSelectUser, optionName: string) {
+  await openBaselineVersionSelect(user)
+  await user.click(await screen.findByRole("option", { name: optionName }))
 }
 
 export function deferred<T>() {

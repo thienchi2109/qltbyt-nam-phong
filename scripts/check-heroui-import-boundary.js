@@ -9,6 +9,7 @@ const HEROUI_IMPORT_RE =
 const ALLOWED_BOUNDARY_PREFIXES = [
   "src/components/equipment/heroui-pilot/",
   "src/components/shared/floating-actions/",
+  "src/components/ui/heroui/",
 ]
 const ALLOWED_BOUNDARY_FILES = [
   "src/components/shared/SearchInput.tsx",

@@ -3,6 +3,7 @@ import { ChevronDown, Copy, Download, FilePlus2, History, LockKeyhole, Upload } 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { SingleSelect } from "@/components/ui/heroui/SingleSelect"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 
 type TechnicalConfigurationVersionBarProps = {
@@ -67,6 +68,12 @@ export function TechnicalConfigurationVersionBar({
     selectedVersion,
     ...versions.filter((version) => version.id !== selectedVersion.id),
   ].toSorted((left, right) => right.version_number - left.version_number)
+  const versionOptions = selectableVersions.map((version) => ({
+    value: version.id,
+    label: `Phiên bản ${version.version_number} · ${
+      version.status === "locked" ? "Đã khóa" : "Bản nháp"
+    }`,
+  }))
 
   return (
     <section className="border-y py-4" aria-label="Lịch sử phiên bản cấu hình cơ sở">
@@ -82,20 +89,14 @@ export function TechnicalConfigurationVersionBar({
             </Badge>
           </div>
 
-          <select
+          <SingleSelect
             value={selectedVersion.id}
-            aria-label="Lịch sử phiên bản"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm sm:w-[280px]"
+            ariaLabel="Lịch sử phiên bản"
+            className="w-full sm:w-[280px]"
             disabled={isNavigationDisabled}
-            onChange={(event) => onSelectVersion(event.target.value)}
-          >
-            {selectableVersions.map((version) => (
-              <option key={version.id} value={version.id}>
-                Phiên bản {version.version_number} ·{" "}
-                {version.status === "locked" ? "Đã khóa" : "Bản nháp"}
-              </option>
-            ))}
-          </select>
+            onValueChange={onSelectVersion}
+            options={versionOptions}
+          />
           {hasMoreVersions ? (
             <Button
               type="button"
