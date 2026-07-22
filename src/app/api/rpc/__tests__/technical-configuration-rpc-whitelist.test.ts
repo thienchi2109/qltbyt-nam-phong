@@ -6,7 +6,9 @@ import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
-import { SUPPLIER_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-supplier-option-rpcs"
+import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
+
+const { SUPPLIER_RPC_FUNCTION_NAMES } = supplierOptionRpcManifest
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -56,6 +58,13 @@ const P8A1_SUPPLIER_RPC_FUNCTIONS = [
   "technical_configuration_supplier_create",
   "technical_configuration_supplier_update",
   "technical_configuration_supplier_delete",
+] as const
+
+const P8A2_OPTION_RPC_FUNCTIONS = [
+  "technical_configuration_options_list",
+  "technical_configuration_option_create",
+  "technical_configuration_option_update",
+  "technical_configuration_option_delete",
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -150,4 +159,29 @@ describe("technical configuration supplier RPC whitelist", () => {
       await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
     }
   )
+})
+
+describe("technical configuration option RPC whitelist", () => {
+  it("keeps the local P8A2 option prefix aligned with the shared manifest", () => {
+    expect(
+      (supplierOptionRpcManifest as Record<string, unknown>).OPTION_RPC_FUNCTION_NAMES
+    ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
+  })
+
+  it("allowlists exactly the four P8A2 option RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter(
+        (fn) =>
+          fn === "technical_configuration_options_list" ||
+          fn.startsWith("technical_configuration_option_")
+      )
+    ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
+  })
+
+  it.each(P8A2_OPTION_RPC_FUNCTIONS)('allows option RPC "%s" through the whitelist', async (fn) => {
+    const response = await invokeRpcProxy(fn)
+
+    expect(response.status).toBe(411)
+    await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
 })
