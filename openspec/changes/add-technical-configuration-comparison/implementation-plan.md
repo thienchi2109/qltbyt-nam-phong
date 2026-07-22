@@ -1099,7 +1099,7 @@ user-facing option workspace.
 
 ## Phase P8A3 - Baseline-Bound Option Response Contracts
 
-**Depends on:** P4, P8A2
+**Depends on:** P4, P7A1, P8A2
 
 **Requirements:** TC-02, TC-07, TC-09, TC-17, TC-20
 
@@ -1108,11 +1108,17 @@ user-facing option workspace.
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_responses.sql`
-- Extend: `supabase/tests/technical_configuration_suppliers_phase_gate.sql`
+- Create: `supabase/tests/technical_configuration_option_responses_phase_gate.sql`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-option-responses-migration.test.ts`
 - Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
 - Modify: `src/app/(app)/technical-configurations/supplier-option-types.ts`
 - Modify: `src/app/(app)/technical-configurations/technical-configuration-supplier-option-rpc.ts`
 - Modify: `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/p8a-tdd-plan.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
 
 ### Tasks
 
@@ -1121,17 +1127,25 @@ user-facing option workspace.
 - [ ] Store supplementary information structurally apart from compliance and
       future manual-assessment fields.
 - [ ] Use dossier-revision optimistic concurrency without baseline-lock checks.
+- [ ] Treat an existing comparison set as a read, including after dossier
+      archive; reject missing-set creation and response upsert for archived
+      dossiers.
 - [ ] Keep historical response datasets separate when a new baseline version is
       selected; source updates preserve stable criterion linkage and audit
       metadata instead of rewriting old datasets.
 - [ ] Complete the mandatory DB phase gate after separate explicit live-write
-      approval, followed by security and performance advisors.
+      approvals for migration apply and transaction-wrapped phase-gate
+      execution, followed by security and performance advisors.
 
 ### TDD and verification
 
 - Tests for correct baseline-version/criterion binding and cross-owner rejection.
-- Tests proving supplementary information cannot alter compliance.
+- Tests proving response and supplementary text are independent and that P8A3
+  exposes no compliance/evaluation fields; actual compliance derivation remains
+  owned by P11 and ranking remains owned by P12C.
 - Tests for stale dossier revisions, cascade and historical dataset separation.
+- Tests proving an existing set is readable after archive while create/upsert
+  mutations are rejected.
 - Tests proving baseline lock does not block supplier-option response editing.
 
 ### Exit gate
