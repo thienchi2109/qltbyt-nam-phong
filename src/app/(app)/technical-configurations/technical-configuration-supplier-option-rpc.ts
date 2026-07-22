@@ -1,6 +1,16 @@
-import { SUPPLIER_RPC_FUNCTIONS } from "@/lib/technical-configuration-supplier-option-rpcs"
+import {
+  OPTION_RPC_FUNCTIONS,
+  SUPPLIER_RPC_FUNCTIONS,
+} from "@/lib/technical-configuration-supplier-option-rpcs"
 import { callTechnicalConfigurationRpc } from "./technical-configuration-rpc"
 import type {
+  TechnicalConfigurationOptionCreateRpcArgs,
+  TechnicalConfigurationOptionDeleteRpcArgs,
+  TechnicalConfigurationOptionDeleteWireResponse,
+  TechnicalConfigurationOptionMutationWireResponse,
+  TechnicalConfigurationOptionsListRpcArgs,
+  TechnicalConfigurationOptionsListWireResponse,
+  TechnicalConfigurationOptionUpdateRpcArgs,
   TechnicalConfigurationSupplierCreateRpcArgs,
   TechnicalConfigurationSupplierDeleteRpcArgs,
   TechnicalConfigurationSupplierDeleteWireResponse,
@@ -46,6 +56,46 @@ export function deleteTechnicalConfigurationSupplier(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationSupplierDeleteWireResponse> {
   return callTechnicalConfigurationRpc(SUPPLIER_RPC_FUNCTIONS.deleteSupplier, args, {
+    signal,
+  })
+}
+
+/** Lists dossier-scoped options with optional supplier filtering. */
+export function listTechnicalConfigurationOptions(
+  args: TechnicalConfigurationOptionsListRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionsListWireResponse> {
+  return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.listOptions, args, {
+    signal,
+  })
+}
+
+/** Creates one option with optimistic dossier-revision protection. */
+export function createTechnicalConfigurationOption(
+  args: TechnicalConfigurationOptionCreateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionMutationWireResponse> {
+  return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.createOption, args, {
+    signal,
+  })
+}
+
+/** Updates one option with optimistic dossier-revision protection. */
+export function updateTechnicalConfigurationOption(
+  args: TechnicalConfigurationOptionUpdateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionMutationWireResponse> {
+  return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.updateOption, args, {
+    signal,
+  })
+}
+
+/** Deletes one option and returns the next dossier revision. */
+export function deleteTechnicalConfigurationOption(
+  args: TechnicalConfigurationOptionDeleteRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionDeleteWireResponse> {
+  return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.deleteOption, args, {
     signal,
   })
 }
