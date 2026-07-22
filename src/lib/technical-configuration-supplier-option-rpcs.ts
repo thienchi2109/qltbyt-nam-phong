@@ -19,3 +19,12 @@ export const OPTION_RPC_FUNCTIONS = {
 
 /** Ordered P8A2 RPC names for allowlists and contract iteration. */
 export const OPTION_RPC_FUNCTION_NAMES = Object.values(OPTION_RPC_FUNCTIONS)
+
+/** Named P8A3 exact-baseline option response RPCs shared by client and server code. */
+export const OPTION_RESPONSE_RPC_FUNCTIONS = {
+  getOrCreateComparisonSet: "technical_configuration_comparison_set_get_or_create",
+  upsertOptionResponse: "technical_configuration_option_response_upsert",
+} as const
+
+/** Ordered P8A3 response RPC names for allowlists and contract iteration. */
+export const OPTION_RESPONSE_RPC_FUNCTION_NAMES = Object.values(OPTION_RESPONSE_RPC_FUNCTIONS)

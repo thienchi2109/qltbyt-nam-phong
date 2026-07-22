@@ -8,7 +8,11 @@ import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-basel
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
 
-const { OPTION_RPC_FUNCTION_NAMES, SUPPLIER_RPC_FUNCTION_NAMES } = supplierOptionRpcManifest
+const {
+  OPTION_RESPONSE_RPC_FUNCTION_NAMES,
+  OPTION_RPC_FUNCTION_NAMES,
+  SUPPLIER_RPC_FUNCTION_NAMES,
+} = supplierOptionRpcManifest
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -65,6 +69,11 @@ const P8A2_OPTION_RPC_FUNCTIONS = [
   "technical_configuration_option_create",
   "technical_configuration_option_update",
   "technical_configuration_option_delete",
+] as const
+
+const P8A3_OPTION_RESPONSE_RPC_FUNCTIONS = [
+  "technical_configuration_comparison_set_get_or_create",
+  "technical_configuration_option_response_upsert",
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -171,7 +180,8 @@ describe("technical configuration option RPC whitelist", () => {
       [...ALLOWED_FUNCTIONS].filter(
         (fn) =>
           fn === "technical_configuration_options_list" ||
-          fn.startsWith("technical_configuration_option_")
+          (fn.startsWith("technical_configuration_option_") &&
+            !fn.startsWith("technical_configuration_option_response_"))
       )
     ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
   })
@@ -182,4 +192,30 @@ describe("technical configuration option RPC whitelist", () => {
     expect(response.status).toBe(411)
     await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
+})
+
+describe("technical configuration option response RPC whitelist", () => {
+  it("keeps the local P8A3 response prefix aligned with the shared manifest", () => {
+    expect(OPTION_RESPONSE_RPC_FUNCTION_NAMES).toEqual(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)
+  })
+
+  it("allowlists exactly the two P8A3 response RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter(
+        (fn) =>
+          fn.startsWith("technical_configuration_comparison_set_") ||
+          fn.startsWith("technical_configuration_option_response_")
+      )
+    ).toEqual(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)
+  })
+
+  it.each(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)(
+    'allows option response RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
 })

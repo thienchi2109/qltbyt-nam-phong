@@ -1,13 +1,18 @@
 import {
+  OPTION_RESPONSE_RPC_FUNCTIONS,
   OPTION_RPC_FUNCTIONS,
   SUPPLIER_RPC_FUNCTIONS,
 } from "@/lib/technical-configuration-supplier-option-rpcs"
 import { callTechnicalConfigurationRpc } from "./technical-configuration-rpc"
 import type {
+  TechnicalConfigurationComparisonSetGetOrCreateRpcArgs,
+  TechnicalConfigurationComparisonSetWireResponse,
   TechnicalConfigurationOptionCreateRpcArgs,
   TechnicalConfigurationOptionDeleteRpcArgs,
   TechnicalConfigurationOptionDeleteWireResponse,
   TechnicalConfigurationOptionMutationWireResponse,
+  TechnicalConfigurationOptionResponseUpsertRpcArgs,
+  TechnicalConfigurationOptionResponseWireResponse,
   TechnicalConfigurationOptionsListRpcArgs,
   TechnicalConfigurationOptionsListWireResponse,
   TechnicalConfigurationOptionUpdateRpcArgs,
@@ -96,6 +101,28 @@ export function deleteTechnicalConfigurationOption(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationOptionDeleteWireResponse> {
   return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.deleteOption, args, {
+    signal,
+  })
+}
+
+/** Gets or creates the response dataset for one option and exact baseline version. */
+export function getOrCreateTechnicalConfigurationComparisonSet(
+  args: TechnicalConfigurationComparisonSetGetOrCreateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationComparisonSetWireResponse> {
+  return callTechnicalConfigurationRpc(
+    OPTION_RESPONSE_RPC_FUNCTIONS.getOrCreateComparisonSet,
+    args,
+    { signal }
+  )
+}
+
+/** Full-replaces one criterion response and its separate supplementary information. */
+export function upsertTechnicalConfigurationOptionResponse(
+  args: TechnicalConfigurationOptionResponseUpsertRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionResponseWireResponse> {
+  return callTechnicalConfigurationRpc(OPTION_RESPONSE_RPC_FUNCTIONS.upsertOptionResponse, args, {
     signal,
   })
 }

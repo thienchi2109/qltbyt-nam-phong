@@ -379,7 +379,7 @@ comparison set.
   composite ownership keys and foreign keys, FK indexes, exact RPC signatures,
   audit fields, authorization, concurrency helpers, no-lock behavior, cascade,
   RLS, grants, compliance-field exclusion, file-size limits and the dedicated
-  phase gate.
+  phase-gate suite.
 - Extend
   `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
   with exactly two P8A3 RPC names, complete wire shapes and module-local adapter
@@ -402,10 +402,13 @@ types and adapter functions do not exist yet.
 ### GREEN
 
 - Create
-  `supabase/migrations/<ordered_timestamp>_technical_configuration_option_responses.sql`.
+  `supabase/migrations/20260722072748_technical_configuration_option_responses.sql`.
 - Create
-  `supabase/tests/technical_configuration_option_responses_phase_gate.sql`; do
-  not extend the P8A1 supplier or P8A2 option phase gates.
+  `supabase/tests/technical_configuration_option_responses_phase_gate.sql` for
+  RPC/business behavior and
+  `supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql`
+  for direct composite-ownership failures; do not extend the P8A1 supplier or
+  P8A2 option phase gates.
 - Add all FK-supporting indexes in the primary migration, including child-side
   indexes whose leftmost columns match the composite FK order.
 - Add `technical_configuration_comparison_set_get_or_create` and
@@ -413,6 +416,10 @@ types and adapter functions do not exist yet.
 - Reuse `_technical_configuration_require_global_user()` and
   `_technical_configuration_require_editable_dossier()` instead of creating a
   new authorization/revision helper.
+- Hold a shared dossier-row lock, then re-read and shared-lock the existing
+  comparison set before assembling its response. This keeps dossier revision and
+  response rows in one committed writer state and returns `PT404 not_found`
+  rather than `{ data: null }` if a concurrent cascade removed either row.
 - Extend the existing supplier-option RPC manifest, wire types and module-local
   adapter. Do not change `callTechnicalConfigurationRpc`.
 - Add only the two P8A3 RPC names to the existing route allowlist.
@@ -420,13 +427,15 @@ types and adapter functions do not exist yet.
 
 ### SQL Phase Gate
 
-The dedicated transaction-wrapped phase gate must prove:
+The dedicated transaction-wrapped phase-gate suite must prove:
 
 - missing claims and non-global roles fail closed while raw `admin` and
   `global` are accepted;
-- option and baseline version must belong to the same dossier;
+- option and baseline version must belong to the same dossier, with direct
+  negative inserts proving both comparison-set composite foreign keys;
 - a response criterion must belong to the comparison set's exact baseline
-  version;
+  version, with direct negative inserts proving both response composite foreign
+  keys;
 - get-or-create returns the same set for the same option/version pair and does
   not bump revision or audit metadata on the existing path;
 - stale expected revisions are ignored on the existing path for both active
@@ -436,7 +445,7 @@ The dedicated transaction-wrapped phase gate must prove:
 - stale revisions reject create/upsert with no partial row or revision change;
 - existing sets remain readable after dossier archive, while missing-set
   creation and response upsert are rejected;
-- get-or-create and upsert continue to work against a locked baseline;
+- get-or-create and upsert continue to work against draft and locked baselines;
 - response and supplementary text remain separate and preserve exact multiline
   values; full replacement can change one field while resending the unchanged
   value of the other;
@@ -454,7 +463,7 @@ The dedicated transaction-wrapped phase gate must prove:
   and service-role can execute only the two public P8A3 RPCs, and anon cannot;
 - the transaction ends with `ROLLBACK`.
 
-The phase-gate `ROLLBACK` only reverts test fixtures and assertions. If the
+Each phase-gate `ROLLBACK` only reverts test fixtures and assertions. If the
 P8A3 migration has been applied and must be reversed, create a new superseding
 migration rather than editing the applied migration. Provided no later
 migration depends on P8A3, reverse it in this order:
@@ -471,6 +480,26 @@ migration depends on P8A3, reverse it in this order:
 
 Any live reversal requires separate explicit write authorization and the same
 post-migration read-only schema, grant, RLS and advisor verification.
+
+### LIVE APPLY RECORD - 2026-07-22
+
+- Applied local migration
+  `20260722072748_technical_configuration_option_responses.sql` through
+  Supabase MCP as live version `20260722085301`
+  (`technical_configuration_option_responses`).
+- Executed
+  `supabase/tests/technical_configuration_option_responses_phase_gate.sql` and
+  `supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql`
+  through Supabase MCP. Both transaction-wrapped gates completed without errors
+  and ended in `ROLLBACK`.
+- Post-gate read-only verification confirmed both P8A3 tables have RLS enabled,
+  no `anon`/`authenticated` table CRUD, the intended `service_role` table
+  privileges, fixed RPC `search_path`, intended RPC execute grants, and the
+  required constraints and supporting indexes. Both P8A3 tables were empty
+  after rollback.
+- Security and performance advisors were run. The performance advisor reported
+  no missing-index finding for either P8A3 table; remaining advisor notices are
+  the repo-wide baseline or intentional guarded-RPC/RPC-only-table patterns.
 
 ### REFACTOR AND VERIFY
 
@@ -498,6 +527,7 @@ P8A3_MIGRATION="$(
 test "$(printf '%s\n' "$P8A3_MIGRATION" | sed '/^$/d' | wc -l)" -eq 1
 test "$(wc -l < "$P8A3_MIGRATION")" -le 450
 test "$(wc -l < supabase/tests/technical_configuration_option_responses_phase_gate.sql)" -le 450
+test "$(wc -l < supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql)" -le 450
 ```
 
 Run a final Code Review Graph change-detection pass before commit. Commit and

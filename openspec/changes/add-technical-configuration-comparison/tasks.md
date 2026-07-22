@@ -257,11 +257,11 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P8A3 - Baseline-Bound Option Response Contracts
 
-- [ ] P8A3.1 Thêm option response datasets bound tới exact baseline version và criterion.
-- [ ] P8A3.2 Tách response và supplementary information ở cả storage/wire contract; không thêm compliance/evaluation fields trong P8A3.
-- [ ] P8A3.3 Giữ dataset lịch sử riêng khi nguồn/baseline version thay đổi; không sửa response cũ ngầm.
-- [ ] P8A3.4 Dùng dossier-revision concurrency; existing dataset vẫn đọc được sau archive, còn create/upsert bị chặn; baseline lock không chặn.
-- [ ] P8A3.5 Sau hai quyền live-write riêng cho migration apply và transaction-wrapped phase gate, chạy dedicated option-response contract/DB gate cho baseline binding, ownership, cascade và historical linkage.
+- [x] P8A3.1 Thêm option response datasets bound tới exact baseline version và criterion.
+- [x] P8A3.2 Tách response và supplementary information ở cả storage/wire contract; không thêm compliance/evaluation fields trong P8A3.
+- [x] P8A3.3 Giữ dataset lịch sử riêng khi nguồn/baseline version thay đổi; không sửa response cũ ngầm.
+- [x] P8A3.4 Dùng dossier-revision concurrency với existing-read snapshot nhất quán; existing dataset vẫn đọc được sau archive, còn create/upsert bị chặn; draft/locked baseline đều không chặn.
+- [x] P8A3.5 Sau hai quyền live-write riêng cho migration apply và transaction-wrapped phase gate, chạy dedicated option-response contract/DB gate cho baseline binding, ownership, cascade và historical linkage.
 
 ## Phase P8B - Supplier Option Manual Workspace
 
