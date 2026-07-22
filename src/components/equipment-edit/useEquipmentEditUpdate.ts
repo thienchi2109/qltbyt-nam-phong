@@ -15,6 +15,10 @@ interface UseEquipmentEditUpdateOptions {
 interface UpdateEquipmentParams {
   id: number
   patch: Partial<EquipmentFormValues>
+  successToast?: {
+    title: string
+    description: string
+  }
 }
 
 interface UseEquipmentEditUpdateReturn {
@@ -23,6 +27,7 @@ interface UseEquipmentEditUpdateReturn {
   error: Error | null
 }
 
+/** Updates equipment data and reports the mutation result through toast callbacks. */
 export function useEquipmentEditUpdate({
   onSuccess,
   onError,
@@ -39,8 +44,13 @@ export function useEquipmentEditUpdate({
       })
       return vars.patch
     },
-    onSuccess: (savedPatch) => {
-      toast({ title: "Thành công", description: successMessage })
+    onSuccess: (savedPatch, variables) => {
+      const selectedToast = variables.successToast ?? {
+        title: "Thành công",
+        description: successMessage,
+      }
+
+      toast(selectedToast)
       onSuccess?.(savedPatch)
     },
     onError: (error: Error) => {

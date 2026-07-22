@@ -1,9 +1,10 @@
--- Purpose: ensure equipment_list_enhanced has only the 17-parameter signature (no legacy p_fields overload).
+-- Purpose: ensure equipment_list_enhanced has only the 18-parameter signature (no legacy p_fields overload).
 
 DO $$
 DECLARE
   v_overload_count integer;
   v_legacy_count integer;
+  v_liquidation_flag_count integer;
 BEGIN
   SELECT COUNT(*)
   INTO v_overload_count
@@ -26,5 +27,18 @@ BEGIN
 
   IF v_legacy_count <> 0 THEN
     RAISE EXCEPTION 'Legacy p_fields overload still exists';
+  END IF;
+
+  SELECT COUNT(*)
+  INTO v_liquidation_flag_count
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'equipment_list_enhanced'
+    AND pg_get_function_identity_arguments(p.oid)
+      LIKE '%p_liquidation_last boolean%';
+
+  IF v_liquidation_flag_count <> 1 THEN
+    RAISE EXCEPTION 'Expected the sole overload to include p_liquidation_last boolean';
   END IF;
 END $$;

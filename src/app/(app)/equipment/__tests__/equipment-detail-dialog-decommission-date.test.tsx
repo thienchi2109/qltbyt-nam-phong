@@ -144,16 +144,18 @@ describe("EquipmentDetailDialog decommission date", () => {
     render(
       <EquipmentDetailDialog
         {...baseProps}
-        equipment={{
-          id: 42,
-          ma_thiet_bi: "EQ-042",
-          ten_thiet_bi: "Monitor",
-          khoa_phong_quan_ly: "ICU",
-          vi_tri_lap_dat: "P-01",
-          nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
-          tinh_trang_hien_tai: "Ngưng sử dụng",
-          ngay_ngung_su_dung: null,
-        } as Equipment}
+        equipment={
+          {
+            id: 42,
+            ma_thiet_bi: "EQ-042",
+            ten_thiet_bi: "Monitor",
+            khoa_phong_quan_ly: "ICU",
+            vi_tri_lap_dat: "P-01",
+            nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+            tinh_trang_hien_tai: "Ngưng sử dụng",
+            ngay_ngung_su_dung: null,
+          } as Equipment
+        }
       />
     )
 
@@ -171,16 +173,18 @@ describe("EquipmentDetailDialog decommission date", () => {
       render(
         <EquipmentDetailDialog
           {...baseProps}
-          equipment={{
-            id: 7,
-            ma_thiet_bi: "EQ-007",
-            ten_thiet_bi: "Infusion Pump",
-            khoa_phong_quan_ly: "ICU",
-            vi_tri_lap_dat: "P-02",
-            nguoi_dang_truc_tiep_quan_ly: "Trần Văn B",
-            tinh_trang_hien_tai: "Hoạt động",
-            ngay_ngung_su_dung: null,
-          } as Equipment}
+          equipment={
+            {
+              id: 7,
+              ma_thiet_bi: "EQ-007",
+              ten_thiet_bi: "Infusion Pump",
+              khoa_phong_quan_ly: "ICU",
+              vi_tri_lap_dat: "P-02",
+              nguoi_dang_truc_tiep_quan_ly: "Trần Văn B",
+              tinh_trang_hien_tai: "Hoạt động",
+              ngay_ngung_su_dung: null,
+            } as Equipment
+          }
         />
       )
 
@@ -189,6 +193,9 @@ describe("EquipmentDetailDialog decommission date", () => {
       const decommissionDateInput = await screen.findByLabelText("Ngày ngừng sử dụng")
       expect(decommissionDateInput).toHaveValue("")
 
+      fireEvent.change(screen.getByLabelText(/Khoa\/Phòng quản lý/), {
+        target: { value: "VT-TBYT- KHO THANH LÍ" },
+      })
       fireEvent.change(screen.getAllByRole("combobox")[0], {
         target: { value: "Ngưng sử dụng" },
       })
@@ -201,9 +208,15 @@ describe("EquipmentDetailDialog decommission date", () => {
         expect(mockUpdateEquipment).toHaveBeenCalledWith({
           id: 7,
           patch: expect.objectContaining({
+            khoa_phong_quan_ly: "VT-TBYT- KHO THANH LÍ",
             tinh_trang_hien_tai: "Ngưng sử dụng",
             ngay_ngung_su_dung: "2026-03-25",
           }),
+          successToast: {
+            title: "Đã chuyển thiết bị",
+            description:
+              "Thiết bị đã được chuyển về cuối danh sách vì đang Ngưng sử dụng và thuộc Kho thanh lý.",
+          },
         })
       })
     } finally {
@@ -222,12 +235,7 @@ describe("EquipmentDetailDialog decommission date", () => {
       tinh_trang_hien_tai: "Hoạt động",
     } as Equipment
 
-    const view = render(
-      <EquipmentDetailDialog
-        {...baseProps}
-        equipment={equipment}
-      />
-    )
+    const view = render(<EquipmentDetailDialog {...baseProps} equipment={equipment} />)
 
     fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
 
@@ -237,21 +245,9 @@ describe("EquipmentDetailDialog decommission date", () => {
     fireEvent.change(nameInput, { target: { value: "Giá trị chỉnh tạm" } })
     expect(nameInput).toHaveValue("Giá trị chỉnh tạm")
 
-    view.rerender(
-      <EquipmentDetailDialog
-        {...baseProps}
-        equipment={equipment}
-        open={false}
-      />
-    )
+    view.rerender(<EquipmentDetailDialog {...baseProps} equipment={equipment} open={false} />)
 
-    view.rerender(
-      <EquipmentDetailDialog
-        {...baseProps}
-        equipment={equipment}
-        open
-      />
-    )
+    view.rerender(<EquipmentDetailDialog {...baseProps} equipment={equipment} open />)
 
     const reopenEditButton = screen.queryByRole("button", { name: "Sửa thông tin" })
     if (reopenEditButton) {
@@ -269,15 +265,17 @@ describe("EquipmentDetailDialog decommission date", () => {
     render(
       <EquipmentDetailDialog
         {...baseProps}
-        equipment={{
-          id: 12,
-          ma_thiet_bi: "EQ-012",
-          ten_thiet_bi: "Máy thở",
-          khoa_phong_quan_ly: "ICU",
-          vi_tri_lap_dat: "P-04",
-          nguoi_dang_truc_tiep_quan_ly: "Phạm Văn D",
-          tinh_trang_hien_tai: "Hoạt động",
-        } as Equipment}
+        equipment={
+          {
+            id: 12,
+            ma_thiet_bi: "EQ-012",
+            ten_thiet_bi: "Máy thở",
+            khoa_phong_quan_ly: "ICU",
+            vi_tri_lap_dat: "P-04",
+            nguoi_dang_truc_tiep_quan_ly: "Phạm Văn D",
+            tinh_trang_hien_tai: "Hoạt động",
+          } as Equipment
+        }
       />
     )
 
