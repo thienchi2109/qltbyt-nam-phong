@@ -18,8 +18,27 @@ const liquidationEquipment = {
 }
 
 describe("equipment liquidation transition", () => {
-  it("detects entering the end state when both required values change", () => {
-    expect(didEnterLiquidationEndState(activeEquipment, liquidationEquipment)).toBe(true)
+  it.each([
+    {
+      name: "only department changes because status already matches",
+      before: {
+        khoa_phong_quan_ly: activeEquipment.khoa_phong_quan_ly,
+        tinh_trang_hien_tai: DECOMMISSIONED_EQUIPMENT_STATUS,
+      },
+    },
+    {
+      name: "only status changes because department already matches",
+      before: {
+        khoa_phong_quan_ly: LIQUIDATION_DEPARTMENT_NAME,
+        tinh_trang_hien_tai: activeEquipment.tinh_trang_hien_tai,
+      },
+    },
+    {
+      name: "both required values change",
+      before: activeEquipment,
+    },
+  ])("detects entering the end state when $name", ({ before }) => {
+    expect(didEnterLiquidationEndState(before, liquidationEquipment)).toBe(true)
   })
 
   it.each([
