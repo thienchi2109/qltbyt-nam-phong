@@ -253,7 +253,7 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P8A2.1 Thêm nhiều options cho mỗi supplier với model/manufacturer/option-name/notes/audit/display-label contract.
 - [x] P8A2.2 Thêm direct-edit/no-lock/no-version contract và optimistic concurrency.
 - [x] P8A2.3 Giữ option identity ngoài baseline aggregate và không copy trong baseline-copy flow.
-- [ ] P8A2.4 Chạy contract/DB phase gate cho authorization, archived reads, ownership, index, cascade và multiple options.
+- [x] P8A2.4 Chạy contract/DB phase gate cho authorization, archived reads, ownership, index, cascade và multiple options.
 
 ## Phase P8A3 - Baseline-Bound Option Response Contracts
 
