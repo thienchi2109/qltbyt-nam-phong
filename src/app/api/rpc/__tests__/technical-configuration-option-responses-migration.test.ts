@@ -216,14 +216,25 @@ describe("P8A3 technical configuration option response migration", () => {
       migrationSource,
       "technical_configuration_option_response_upsert"
     )
+    const existingSetBlock = getSqlBlock(
+      getOrCreateBlock,
+      "IF v_comparison_set_id IS NOT NULL THEN",
+      "\n  ELSE"
+    )
 
     expect(getOrCreateBlock).toContain(
       "PERFORM public._technical_configuration_require_global_user()"
     )
     expect(getOrCreateBlock).toContain("IF v_comparison_set_id IS NOT NULL THEN")
-    expect(getOrCreateBlock).toMatch(
-      /IF v_comparison_set_id IS NOT NULL THEN[\s\S]*?SELECT d\.revision[\s\S]*?FOR SHARE;/
+    expect(existingSetBlock).toMatch(
+      /SELECT d\.revision[\s\S]*?FOR SHARE;[\s\S]*?SELECT cs\.id[\s\S]*?FOR SHARE;/
     )
+    expect(existingSetBlock).toMatch(
+      /SELECT cs\.id[\s\S]*?FOR SHARE;\s+IF NOT FOUND THEN\s+RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';/
+    )
+    expect(
+      existingSetBlock.match(/RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';/g)
+    ).toHaveLength(2)
     expect(getOrCreateBlock.indexOf("IF v_comparison_set_id IS NOT NULL THEN")).toBeLessThan(
       getOrCreateBlock.indexOf("public._technical_configuration_require_editable_dossier(")
     )

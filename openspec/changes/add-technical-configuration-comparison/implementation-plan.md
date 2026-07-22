@@ -1130,7 +1130,8 @@ user-facing option workspace.
       future manual-assessment fields.
 - [ ] Use dossier-revision optimistic concurrency without baseline-lock checks.
 - [ ] Treat an existing comparison set as a read, including after dossier
-      archive; keep its revision/response snapshot writer-consistent and reject
+      archive; keep its revision/response snapshot writer-consistent, return
+      `PT404` instead of nullable data after a concurrent cascade, and reject
       missing-set creation and response upsert for archived dossiers.
 - [ ] Keep historical response datasets separate when a new baseline version is
       selected; source updates preserve stable criterion linkage and audit

@@ -416,9 +416,10 @@ types and adapter functions do not exist yet.
 - Reuse `_technical_configuration_require_global_user()` and
   `_technical_configuration_require_editable_dossier()` instead of creating a
   new authorization/revision helper.
-- Hold a shared dossier-row lock while an existing set response is assembled so
-  its returned dossier revision and response rows cannot come from different
-  committed writer states.
+- Hold a shared dossier-row lock, then re-read and shared-lock the existing
+  comparison set before assembling its response. This keeps dossier revision and
+  response rows in one committed writer state and returns `PT404 not_found`
+  rather than `{ data: null }` if a concurrent cascade removed either row.
 - Extend the existing supplier-option RPC manifest, wire types and module-local
   adapter. Do not change `callTechnicalConfigurationRpc`.
 - Add only the two P8A3 RPC names to the existing route allowlist.

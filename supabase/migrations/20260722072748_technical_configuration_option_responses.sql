@@ -122,6 +122,18 @@ BEGIN
     FROM public.technical_configuration_dossiers d
     WHERE d.id = v_option_dossier_id
     FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';
+    END IF;
+
+    SELECT cs.id
+    INTO v_comparison_set_id
+    FROM public.technical_configuration_comparison_sets cs
+    WHERE cs.id = v_comparison_set_id
+    FOR SHARE;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';
+    END IF;
   ELSE
     v_user_id := public._technical_configuration_require_editable_dossier(
       v_option_dossier_id,
