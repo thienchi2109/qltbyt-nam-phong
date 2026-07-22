@@ -48,6 +48,23 @@ const OPTION_RPC_NAMES = [
   "technical_configuration_option_delete",
 ] as const
 
+const OPTION_ITEM_WIRE_FIELDS = [
+  "'id'",
+  "'dossier_id'",
+  "'supplier_id'",
+  "'supplier_name'",
+  "'model'",
+  "'manufacturer'",
+  "'option_name'",
+  "'notes'",
+  "'display_label'",
+  "'created_at'",
+  "'created_by'",
+  "'updated_at'",
+  "'updated_by'",
+  "'revision'",
+] as const
+
 describe("P8A2 technical configuration option migration", () => {
   it("uses one ordered deploy-safe migration after the applied supplier contract", () => {
     expect(existsSync(MIGRATION_PATH)).toBe(true)
@@ -85,6 +102,7 @@ describe("P8A2 technical configuration option migration", () => {
     }
 
     expect(tableBlock).toContain("CHECK (model IS NOT NULL OR option_name IS NOT NULL)")
+    expect(tableBlock).toContain("notes <> ''")
     expect(tableBlock).toContain("FOREIGN KEY (supplier_id, dossier_id)")
     expect(tableBlock).toContain(
       "REFERENCES public.technical_configuration_suppliers (id, dossier_id)"
@@ -116,26 +134,27 @@ describe("P8A2 technical configuration option migration", () => {
     }
 
     const listBlock = getFunctionBlock(migrationSource, "technical_configuration_options_list")
-    for (const wireField of [
-      "'id'",
-      "'dossier_id'",
-      "'supplier_id'",
-      "'supplier_name'",
-      "'model'",
-      "'manufacturer'",
-      "'option_name'",
-      "'notes'",
-      "'display_label'",
-      "'created_at'",
-      "'created_by'",
-      "'updated_at'",
-      "'updated_by'",
-      "'revision'",
-    ]) {
+    for (const wireField of OPTION_ITEM_WIRE_FIELDS) {
       expect(listBlock).toContain(wireField)
     }
     expect(listBlock).toContain("COALESCE(o.model, o.option_name)")
     expect(listBlock).toContain("s.name || ' · ' || COALESCE(o.model, o.option_name)")
+    expect(listBlock).toContain(
+      "ORDER BY s.normalized_name, COALESCE(o.model, o.option_name), o.id"
+    )
+    expect(listBlock).toContain(
+      "ORDER BY page.supplier_normalized_name, page.identity_label, page.id"
+    )
+
+    for (const functionName of [
+      "technical_configuration_option_create",
+      "technical_configuration_option_update",
+    ]) {
+      const block = getFunctionBlock(migrationSource, functionName)
+      for (const wireField of OPTION_ITEM_WIRE_FIELDS) {
+        expect(block).toContain(wireField)
+      }
+    }
   })
 
   it("uses global reads and dossier revision ownership for every mutation", () => {
@@ -188,16 +207,20 @@ describe("P8A2 technical configuration option migration", () => {
       "ROLLBACK;",
       "multiple options under one supplier",
       "duplicate option identity remains allowed",
+      "empty notes rejected",
       "cross-dossier supplier ownership rejected",
       "option list pagination",
+      "deterministic option ordering and fallback label",
       "supplier filter stays dossier scoped",
       "archived dossier remains readable",
       "archived dossier rejects option mutation",
+      "archived mutations leave option and dossier unchanged",
       "current revision increments exactly once",
       "stale revision leaves option and dossier unchanged",
       "locked baseline does not block option mutation",
       "option create audit metadata",
       "option update preserves creation audit",
+      "option update advances updated_at",
       "supplier delete cascades options",
       "dossier delete cascades options",
       "FOREACH v_function_signature IN ARRAY",

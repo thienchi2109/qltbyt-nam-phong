@@ -28,7 +28,10 @@ CREATE TABLE public.technical_configuration_options (
     ))
     AND (
       notes IS NULL
-      OR notes = regexp_replace(notes, '^[[:space:]]+|[[:space:]]+$', '', 'g')
+      OR (
+        notes <> ''
+        AND notes = regexp_replace(notes, '^[[:space:]]+|[[:space:]]+$', '', 'g')
+      )
     )
   ),
   FOREIGN KEY (supplier_id, dossier_id)

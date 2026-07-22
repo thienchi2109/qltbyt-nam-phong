@@ -1,6 +1,5 @@
 -- P8A2 rollback-only authorization, identity, revision, cascade, and grant gate.
 BEGIN;
-
 CREATE FUNCTION pg_temp.expect_error(
   p_label TEXT,
   p_statement TEXT,
@@ -11,8 +10,7 @@ RETURNS VOID
 LANGUAGE plpgsql
 AS $gate$
 DECLARE
-  v_state TEXT;
-  v_message TEXT;
+  v_state TEXT; v_message TEXT;
 BEGIN
   BEGIN
     EXECUTE p_statement;
@@ -31,7 +29,6 @@ BEGIN
   RAISE EXCEPTION '%: expected statement to fail', p_label;
 END;
 $gate$;
-
 CREATE FUNCTION pg_temp.set_claims(p_app_role TEXT, p_user_id BIGINT)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -49,7 +46,6 @@ BEGIN
   );
 END;
 $gate$;
-
 CREATE FUNCTION pg_temp.assert_true(p_label TEXT, p_condition BOOLEAN)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -60,7 +56,6 @@ BEGIN
   END IF;
 END;
 $gate$;
-
 DO $gate$
 DECLARE
   v_suffix TEXT := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
@@ -88,9 +83,9 @@ DECLARE
   v_rls_enabled BOOLEAN;
   v_function_signature TEXT;
   v_table_privilege TEXT;
+  v_statement TEXT;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('technical_configuration_options_phase_gate'));
-
   SELECT nv.id
   INTO v_user_id
   FROM public.nhan_vien nv
@@ -100,7 +95,6 @@ BEGIN
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'P8A2 phase gate requires one active public.nhan_vien row';
   END IF;
-
   INSERT INTO public.technical_configuration_dossiers (
     id, device_type_name, name, archived_at, archived_by, created_by, updated_by
   )
@@ -111,7 +105,6 @@ BEGIN
       'P8A2 archived dossier ' || v_suffix, now(), v_user_id, v_user_id, v_user_id),
     (v_cascade_dossier_id, 'P8A2 cascade device ' || v_suffix,
       'P8A2 cascade dossier ' || v_suffix, NULL, NULL, v_user_id, v_user_id);
-
   INSERT INTO public.technical_configuration_suppliers (
     id, dossier_id, name, created_by, updated_by
   )
@@ -123,13 +116,11 @@ BEGIN
       v_user_id, v_user_id),
     (v_cascade_supplier_id, v_cascade_dossier_id, 'Dossier Cascade Medical',
       v_user_id, v_user_id);
-
   INSERT INTO public.technical_configuration_baseline_versions (
     dossier_id, version_number, status, revision, locked_at, locked_by,
     created_by, updated_by
   )
   VALUES (v_dossier_id, 1, 'locked', 1, now(), v_user_id, v_user_id, v_user_id);
-
   INSERT INTO public.technical_configuration_options (
     id, dossier_id, supplier_id, option_name, created_by, updated_by
   )
@@ -138,7 +129,6 @@ BEGIN
       'Archived Option', v_user_id, v_user_id),
     (v_dossier_cascade_option_id, v_cascade_dossier_id, v_cascade_supplier_id,
       'Dossier Cascade Option', v_user_id, v_user_id);
-
   PERFORM pg_temp.expect_error(
     'cross-dossier supplier ownership rejected',
     format(
@@ -148,28 +138,33 @@ BEGIN
     '23503',
     'insert or update on table "technical_configuration_options" violates foreign key constraint "technical_configuration_options_supplier_id_dossier_id_fkey"'
   );
-
+  PERFORM pg_temp.expect_error(
+    'empty notes rejected',
+    format(
+      'INSERT INTO public.technical_configuration_options (dossier_id, supplier_id, model, notes, created_by, updated_by) VALUES (%L::UUID, %L::UUID, %L, %L, %s, %s)',
+      v_dossier_id, v_supplier_a_id, 'Model', '', v_user_id, v_user_id
+    ),
+    '23514',
+    'new row for relation "technical_configuration_options" violates check constraint "technical_configuration_options_check1"'
+  );
   PERFORM set_config('request.jwt.claims', '{}'::JSONB::TEXT, true);
   PERFORM pg_temp.expect_error(
     'missing claims fail closed',
     format('SELECT public.technical_configuration_options_list(%L::UUID)', v_dossier_id),
     '42501', 'permission_denied'
   );
-
   PERFORM pg_temp.set_claims('to_qltb', v_user_id);
   PERFORM pg_temp.expect_error(
     'non-global role denied',
     format('SELECT public.technical_configuration_options_list(%L::UUID)', v_dossier_id),
     '42501', 'permission_denied'
   );
-
   PERFORM pg_temp.set_claims('admin', v_user_id);
   v_response := public.technical_configuration_options_list(v_dossier_id);
   PERFORM pg_temp.assert_true(
     'raw admin must read option collections',
     v_response->>'total' = '0' AND v_response->>'revision' = '1'
   );
-
   PERFORM pg_temp.set_claims('global', v_user_id);
   PERFORM pg_temp.expect_error(
     'bounded pagination validation',
@@ -195,7 +190,6 @@ BEGIN
     ),
     'PT422', 'validation_error'
   );
-
   v_before_revision := v_revision;
   v_response := public.technical_configuration_option_create(
     v_supplier_a_id, E' Model   X ', E' Maker   A ', 'Choice A',
@@ -219,7 +213,6 @@ BEGIN
       AND v_created_by = v_user_id
       AND v_response #>> '{data,updated_by}' = v_user_id::TEXT
   );
-
   v_response := public.technical_configuration_option_create(
     v_supplier_a_id, 'Model X', 'Maker A', 'Choice A',
     E'line one\n  line two', v_revision
@@ -236,7 +229,6 @@ BEGIN
     AND o.model = 'Model X'
     AND o.option_name = 'Choice A';
   PERFORM pg_temp.assert_true('duplicate option identity remains allowed', v_count = 2);
-
   v_response := public.technical_configuration_options_list(
     v_dossier_id, v_supplier_a_id, 2, 1
   );
@@ -247,13 +239,11 @@ BEGIN
       AND v_response->>'page_size' = '1'
       AND jsonb_array_length(v_response->'data') = 1
   );
-
   v_response := public.technical_configuration_option_create(
     v_supplier_b_id, NULL, NULL, E' Series   B ', NULL, v_revision
   );
   v_other_option_id := (v_response #>> '{data,id}')::UUID;
   v_revision := (v_response #>> '{data,revision}')::BIGINT;
-
   v_response := public.technical_configuration_options_list(
     v_dossier_id, v_supplier_a_id, 1, 50
   );
@@ -263,6 +253,19 @@ BEGIN
       AND v_response #>> '{data,0,display_label}' = 'Alpha Medical · Model X'
       AND v_response #>> '{data,1,display_label}' = 'Alpha Medical · Model X'
   );
+  INSERT INTO public.technical_configuration_options (
+    dossier_id, supplier_id, model, created_by, updated_by
+  ) VALUES (v_dossier_id, v_supplier_a_id, 'Model A', v_user_id, v_user_id);
+  v_response := public.technical_configuration_options_list(v_dossier_id, NULL, 1, 50);
+  PERFORM pg_temp.assert_true(
+    'deterministic option ordering and fallback label',
+    v_response->>'total' = '4'
+      AND v_response #>> '{data,0,model}' = 'Model A'
+      AND (v_response #>> '{data,1,id}')::UUID = LEAST(v_option_id, v_duplicate_option_id)
+      AND (v_response #>> '{data,2,id}')::UUID = GREATEST(v_option_id, v_duplicate_option_id)
+      AND v_response #>> '{data,3,id}' = v_other_option_id::TEXT
+      AND v_response #>> '{data,3,display_label}' = 'Beta Medical · Series B'
+  );
   PERFORM pg_temp.expect_error(
     'supplier filter stays dossier scoped',
     format(
@@ -271,7 +274,6 @@ BEGIN
     ),
     'PT404', 'not_found'
   );
-
   v_response := public.technical_configuration_options_list(
     v_archived_dossier_id, v_archived_supplier_id, 1, 50
   );
@@ -281,15 +283,23 @@ BEGIN
       AND v_response #>> '{data,0,display_label}'
         = 'Archived Medical · Archived Option'
   );
-  PERFORM pg_temp.expect_error(
-    'archived dossier rejects option mutation',
-    format(
-      'SELECT public.technical_configuration_option_create(%L::UUID, NULL, NULL, %L, NULL, 1)',
-      v_archived_supplier_id, 'Blocked Option'
-    ),
-    'PT409', 'archived_dossier'
+  FOREACH v_statement IN ARRAY ARRAY[
+    format('SELECT public.technical_configuration_option_create(%L::UUID, NULL, NULL, %L, NULL, 1)', v_archived_supplier_id, 'Blocked Option'),
+    format('SELECT public.technical_configuration_option_update(%L::UUID, NULL, NULL, %L, NULL, 1)', v_archived_option_id, 'Blocked Option'),
+    format('SELECT public.technical_configuration_option_delete(%L::UUID, 1)', v_archived_option_id)
+  ]
+  LOOP
+    PERFORM pg_temp.expect_error(
+      'archived dossier rejects option mutation', v_statement, 'PT409', 'archived_dossier'
+    );
+  END LOOP;
+  PERFORM pg_temp.assert_true(
+    'archived mutations leave option and dossier unchanged',
+    (SELECT o.option_name FROM public.technical_configuration_options o
+     WHERE o.id = v_archived_option_id) = 'Archived Option'
+      AND (SELECT d.revision FROM public.technical_configuration_dossiers d
+           WHERE d.id = v_archived_dossier_id) = 1
   );
-
   v_before_revision := v_revision;
   PERFORM pg_temp.expect_error(
     'stale option update rejected',
@@ -306,7 +316,9 @@ BEGIN
       AND (SELECT d.revision FROM public.technical_configuration_dossiers d
            WHERE d.id = v_dossier_id) = v_before_revision
   );
-
+  UPDATE public.technical_configuration_options
+  SET updated_at = v_created_at - INTERVAL '1 hour'
+  WHERE id = v_option_id;
   v_response := public.technical_configuration_option_update(
     v_option_id, E' Model   Y ', E' Maker   B ', E' Choice   B ',
     E'\n\t row one\n    row two \t\n', v_revision
@@ -328,7 +340,12 @@ BEGIN
       AND v_response #>> '{data,updated_by}' = v_user_id::TEXT
       AND v_response #>> '{data,notes}' = E'row one\n    row two'
   );
-
+  PERFORM pg_temp.assert_true(
+    'option update advances updated_at',
+    (v_response #>> '{data,updated_at}')::TIMESTAMPTZ > v_created_at - INTERVAL '1 hour'
+      AND (SELECT o.updated_at FROM public.technical_configuration_options o
+           WHERE o.id = v_option_id) = (v_response #>> '{data,updated_at}')::TIMESTAMPTZ
+  );
   v_before_revision := v_revision;
   v_response := public.technical_configuration_option_delete(
     v_duplicate_option_id, v_revision
@@ -343,7 +360,6 @@ BEGIN
         WHERE o.id = v_duplicate_option_id
       )
   );
-
   INSERT INTO public.technical_configuration_options (
     id, dossier_id, supplier_id, option_name, created_by, updated_by
   )
@@ -360,7 +376,6 @@ BEGIN
       WHERE o.id = v_supplier_cascade_option_id
     )
   );
-
   DELETE FROM public.technical_configuration_dossiers
   WHERE id = v_cascade_dossier_id;
   PERFORM pg_temp.assert_true(
@@ -370,7 +385,6 @@ BEGIN
       WHERE o.id = v_dossier_cascade_option_id
     )
   );
-
   SELECT c.relrowsecurity
   INTO v_rls_enabled
   FROM pg_class c
@@ -387,7 +401,6 @@ BEGIN
           AND p.policyname = 'technical_configuration_options_no_client_access'
       )
   );
-
   FOREACH v_function_signature IN ARRAY ARRAY[
     'public.technical_configuration_options_list(UUID, UUID, INTEGER, INTEGER)',
     'public.technical_configuration_option_create(UUID, TEXT, TEXT, TEXT, TEXT, BIGINT)',
@@ -411,7 +424,6 @@ BEGIN
       RAISE EXCEPTION 'anon/PUBLIC must not execute %', v_function_signature;
     END IF;
   END LOOP;
-
   FOREACH v_table_privilege IN ARRAY ARRAY[
     'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'
   ]
@@ -434,5 +446,4 @@ BEGIN
   END LOOP;
 END;
 $gate$;
-
 ROLLBACK;
