@@ -2,16 +2,32 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
 import * as supplierOptionRpcAdapter from "../technical-configuration-supplier-option-rpc"
 import type {
+  TechnicalConfigurationOptionCreateRpcArgs,
+  TechnicalConfigurationOptionDeleteRpcArgs,
+  TechnicalConfigurationOptionDeleteWireResponse,
+  TechnicalConfigurationOptionMutationWireResponse,
+  TechnicalConfigurationOptionsListRpcArgs,
+  TechnicalConfigurationOptionsListWireResponse,
+  TechnicalConfigurationOptionUpdateRpcArgs,
   TechnicalConfigurationSupplierDeleteWireResponse,
   TechnicalConfigurationSupplierMutationWireResponse,
   TechnicalConfigurationSuppliersListWireResponse,
 } from "../supplier-option-types"
 
-const { SUPPLIER_RPC_FUNCTION_NAMES, SUPPLIER_RPC_FUNCTIONS } = supplierOptionRpcManifest
 const {
+  OPTION_RPC_FUNCTION_NAMES,
+  OPTION_RPC_FUNCTIONS,
+  SUPPLIER_RPC_FUNCTION_NAMES,
+  SUPPLIER_RPC_FUNCTIONS,
+} = supplierOptionRpcManifest
+const {
+  createTechnicalConfigurationOption,
   createTechnicalConfigurationSupplier,
+  deleteTechnicalConfigurationOption,
   deleteTechnicalConfigurationSupplier,
+  listTechnicalConfigurationOptions,
   listTechnicalConfigurationSuppliers,
+  updateTechnicalConfigurationOption,
   updateTechnicalConfigurationSupplier,
 } = supplierOptionRpcAdapter
 
@@ -130,42 +146,25 @@ describe("P8A2 option RPC contract", () => {
     callRpcMock.mockReset()
   })
 
-  function getManifestValue(name: string): unknown {
-    return (supplierOptionRpcManifest as Record<string, unknown>)[name]
-  }
-
-  function getAdapter(
-    name: string
-  ): (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown> {
-    const adapter = (supplierOptionRpcAdapter as Record<string, unknown>)[name]
-    expect(adapter).toBeTypeOf("function")
-    return adapter as (args: Record<string, unknown>, signal?: AbortSignal) => Promise<unknown>
-  }
-
   it("freezes exactly the four option RPC names", () => {
-    const optionFunctions = getManifestValue("OPTION_RPC_FUNCTIONS")
-
-    expect(optionFunctions).toEqual({
+    expect(OPTION_RPC_FUNCTIONS).toEqual({
       listOptions: "technical_configuration_options_list",
       createOption: "technical_configuration_option_create",
       updateOption: "technical_configuration_option_update",
       deleteOption: "technical_configuration_option_delete",
     })
-    expect(getManifestValue("OPTION_RPC_FUNCTION_NAMES")).toEqual(
-      Object.values(optionFunctions as Record<string, string>)
-    )
+    expect(OPTION_RPC_FUNCTION_NAMES).toEqual(Object.values(OPTION_RPC_FUNCTIONS))
   })
 
   it("delegates dossier list filtering and preserves the complete option wire shape", async () => {
-    const listOptions = getAdapter("listTechnicalConfigurationOptions")
-    const args = {
+    const args: TechnicalConfigurationOptionsListRpcArgs = {
       p_dossier_id: "00000000-0000-0000-0000-000000000001",
       p_supplier_id: "00000000-0000-0000-0000-000000000002",
       p_page: 2,
       p_page_size: 25,
     }
     const signal = new AbortController().signal
-    const response = {
+    const response: TechnicalConfigurationOptionsListWireResponse = {
       data: [
         {
           id: "00000000-0000-0000-0000-000000000003",
@@ -191,19 +190,14 @@ describe("P8A2 option RPC contract", () => {
     }
     callRpcMock.mockResolvedValueOnce(response)
 
-    await expect(listOptions(args, signal)).resolves.toEqual(response)
-    expect(callRpcMock).toHaveBeenCalledWith("technical_configuration_options_list", args, {
-      signal,
-    })
+    await expect(listTechnicalConfigurationOptions(args, signal)).resolves.toEqual(response)
+    expect(callRpcMock).toHaveBeenCalledWith(OPTION_RPC_FUNCTIONS.listOptions, args, { signal })
   })
 
   it("routes create, update and delete through nullable identity and dossier revision", async () => {
-    const createOption = getAdapter("createTechnicalConfigurationOption")
-    const updateOption = getAdapter("updateTechnicalConfigurationOption")
-    const deleteOption = getAdapter("deleteTechnicalConfigurationOption")
     const optionId = "00000000-0000-0000-0000-000000000003"
     const supplierId = "00000000-0000-0000-0000-000000000002"
-    const mutationResponse = {
+    const mutationResponse: TechnicalConfigurationOptionMutationWireResponse = {
       data: {
         id: optionId,
         dossier_id: "00000000-0000-0000-0000-000000000001",
@@ -221,8 +215,10 @@ describe("P8A2 option RPC contract", () => {
         revision: 5,
       },
     }
-    const deleteResponse = { data: { id: optionId, revision: 6 } }
-    const createArgs = {
+    const deleteResponse: TechnicalConfigurationOptionDeleteWireResponse = {
+      data: { id: optionId, revision: 6 },
+    }
+    const createArgs: TechnicalConfigurationOptionCreateRpcArgs = {
       p_supplier_id: supplierId,
       p_model: null,
       p_manufacturer: "  Hãng   A  ",
@@ -230,7 +226,7 @@ describe("P8A2 option RPC contract", () => {
       p_notes: null,
       p_expected_revision: 4,
     }
-    const updateArgs = {
+    const updateArgs: TechnicalConfigurationOptionUpdateRpcArgs = {
       p_option_id: optionId,
       p_model: "Model A",
       p_manufacturer: "Hãng A",
@@ -238,7 +234,7 @@ describe("P8A2 option RPC contract", () => {
       p_notes: "Ghi chú",
       p_expected_revision: 4,
     }
-    const deleteArgs = {
+    const deleteArgs: TechnicalConfigurationOptionDeleteRpcArgs = {
       p_option_id: optionId,
       p_expected_revision: 5,
     }
@@ -247,14 +243,14 @@ describe("P8A2 option RPC contract", () => {
       .mockResolvedValueOnce(mutationResponse)
       .mockResolvedValueOnce(deleteResponse)
 
-    await expect(createOption(createArgs)).resolves.toEqual(mutationResponse)
-    await expect(updateOption(updateArgs)).resolves.toEqual(mutationResponse)
-    await expect(deleteOption(deleteArgs)).resolves.toEqual(deleteResponse)
+    await expect(createTechnicalConfigurationOption(createArgs)).resolves.toEqual(mutationResponse)
+    await expect(updateTechnicalConfigurationOption(updateArgs)).resolves.toEqual(mutationResponse)
+    await expect(deleteTechnicalConfigurationOption(deleteArgs)).resolves.toEqual(deleteResponse)
 
     expect(callRpcMock.mock.calls).toEqual([
-      ["technical_configuration_option_create", createArgs, { signal: undefined }],
-      ["technical_configuration_option_update", updateArgs, { signal: undefined }],
-      ["technical_configuration_option_delete", deleteArgs, { signal: undefined }],
+      [OPTION_RPC_FUNCTIONS.createOption, createArgs, { signal: undefined }],
+      [OPTION_RPC_FUNCTIONS.updateOption, updateArgs, { signal: undefined }],
+      [OPTION_RPC_FUNCTIONS.deleteOption, deleteArgs, { signal: undefined }],
     ])
   })
 })

@@ -188,6 +188,8 @@ describe("P8A2 technical configuration option migration", () => {
       "ROLLBACK;",
       "multiple options under one supplier",
       "duplicate option identity remains allowed",
+      "cross-dossier supplier ownership rejected",
+      "option list pagination",
       "supplier filter stays dossier scoped",
       "archived dossier remains readable",
       "archived dossier rejects option mutation",

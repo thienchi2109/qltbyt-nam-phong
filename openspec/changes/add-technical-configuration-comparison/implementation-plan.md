@@ -1072,14 +1072,14 @@ option table, response dataset, hook or UI is present.
 
 ### Tasks
 
-- [ ] Add multiple options per supplier with model, manufacturer, option-name,
+- [x] Add multiple options per supplier with model, manufacturer, option-name,
       notes, audit metadata and deterministic display-label contracts.
-- [ ] Add dossier/supplier ownership and supporting index contracts without
+- [x] Add dossier/supplier ownership and supporting index contracts without
       speculative option uniqueness or user-managed ordering.
-- [ ] Add direct-edit option CRUD with dossier-revision optimistic concurrency.
-- [ ] Add ownership/cascade constraints and archived-dossier guards.
-- [ ] Define no option lock/version backend contract.
-- [ ] Keep option identity outside the baseline aggregate and baseline-copy flow.
+- [x] Add direct-edit option CRUD with dossier-revision optimistic concurrency.
+- [x] Add ownership/cascade constraints and archived-dossier guards.
+- [x] Define no option lock/version backend contract.
+- [x] Keep option identity outside the baseline aggregate and baseline-copy flow.
 
 ### TDD and verification
 

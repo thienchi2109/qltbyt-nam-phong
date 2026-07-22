@@ -8,7 +8,7 @@ import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-basel
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
 
-const { SUPPLIER_RPC_FUNCTION_NAMES } = supplierOptionRpcManifest
+const { OPTION_RPC_FUNCTION_NAMES, SUPPLIER_RPC_FUNCTION_NAMES } = supplierOptionRpcManifest
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -163,9 +163,7 @@ describe("technical configuration supplier RPC whitelist", () => {
 
 describe("technical configuration option RPC whitelist", () => {
   it("keeps the local P8A2 option prefix aligned with the shared manifest", () => {
-    expect(
-      (supplierOptionRpcManifest as Record<string, unknown>).OPTION_RPC_FUNCTION_NAMES
-    ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
+    expect(OPTION_RPC_FUNCTION_NAMES).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
   })
 
   it("allowlists exactly the four P8A2 option RPCs", () => {

@@ -1,7 +1,10 @@
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import { DOCUMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-document-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
-import { SUPPLIER_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-supplier-option-rpcs"
+import {
+  OPTION_RPC_FUNCTION_NAMES,
+  SUPPLIER_RPC_FUNCTION_NAMES,
+} from "@/lib/technical-configuration-supplier-option-rpcs"
 
 /** Whitelist RPCs allowed through the Next.js RPC proxy. */
 export const ALLOWED_FUNCTIONS = new Set<string>([
@@ -100,6 +103,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   ...REFERENCE_PRODUCT_RPC_FUNCTION_NAMES,
   ...DOCUMENT_RPC_FUNCTION_NAMES,
   ...SUPPLIER_RPC_FUNCTION_NAMES,
+  ...OPTION_RPC_FUNCTION_NAMES,
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

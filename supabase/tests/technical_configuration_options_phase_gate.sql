@@ -139,6 +139,16 @@ BEGIN
     (v_dossier_cascade_option_id, v_cascade_dossier_id, v_cascade_supplier_id,
       'Dossier Cascade Option', v_user_id, v_user_id);
 
+  PERFORM pg_temp.expect_error(
+    'cross-dossier supplier ownership rejected',
+    format(
+      'INSERT INTO public.technical_configuration_options (dossier_id, supplier_id, option_name, created_by, updated_by) VALUES (%L::UUID, %L::UUID, %L, %s, %s)',
+      v_dossier_id, v_archived_supplier_id, 'Cross-dossier Option', v_user_id, v_user_id
+    ),
+    '23503',
+    'insert or update on table "technical_configuration_options" violates foreign key constraint "technical_configuration_options_supplier_id_dossier_id_fkey"'
+  );
+
   PERFORM set_config('request.jwt.claims', '{}'::JSONB::TEXT, true);
   PERFORM pg_temp.expect_error(
     'missing claims fail closed',
@@ -226,6 +236,17 @@ BEGIN
     AND o.model = 'Model X'
     AND o.option_name = 'Choice A';
   PERFORM pg_temp.assert_true('duplicate option identity remains allowed', v_count = 2);
+
+  v_response := public.technical_configuration_options_list(
+    v_dossier_id, v_supplier_a_id, 2, 1
+  );
+  PERFORM pg_temp.assert_true(
+    'option list pagination',
+    v_response->>'total' = '2'
+      AND v_response->>'page' = '2'
+      AND v_response->>'page_size' = '1'
+      AND jsonb_array_length(v_response->'data') = 1
+  );
 
   v_response := public.technical_configuration_option_create(
     v_supplier_b_id, NULL, NULL, E' Series   B ', NULL, v_revision
