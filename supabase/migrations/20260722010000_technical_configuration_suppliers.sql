@@ -9,7 +9,7 @@ IMMUTABLE
 STRICT
 SET search_path = public, pg_temp
 AS $$
-  SELECT lower(regexp_replace(btrim(p_name), '[[:space:]]+', ' ', 'g'));
+  SELECT lower(btrim(regexp_replace(p_name, '[[:space:]]+', ' ', 'g')));
 $$;
 
 REVOKE ALL ON FUNCTION public._technical_configuration_normalize_supplier_name(TEXT)
@@ -32,7 +32,7 @@ CREATE TABLE public.technical_configuration_suppliers (
   UNIQUE (dossier_id, normalized_name),
   CHECK (
     name <> ''
-    AND name = regexp_replace(btrim(name), '[[:space:]]+', ' ', 'g')
+    AND name = btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g'))
   ),
   FOREIGN KEY (dossier_id)
     REFERENCES public.technical_configuration_dossiers (id)
@@ -60,9 +60,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_revision BIGINT;
-  v_total BIGINT;
-  v_data JSONB;
+  v_result JSONB;
 BEGIN
   PERFORM public._technical_configuration_require_global_user();
 
@@ -74,39 +72,12 @@ BEGIN
     RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422';
   END IF;
 
-  SELECT d.revision
-  INTO v_revision
-  FROM public.technical_configuration_dossiers d
-  WHERE d.id = p_dossier_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';
-  END IF;
-
-  SELECT count(*)
-  INTO v_total
-  FROM public.technical_configuration_suppliers s
-  WHERE s.dossier_id = p_dossier_id;
-
-  SELECT COALESCE(
-    jsonb_agg(
-      jsonb_build_object(
-        'id', page.id,
-        'dossier_id', page.dossier_id,
-        'name', page.name,
-        'normalized_name', page.normalized_name,
-        'created_at', page.created_at,
-        'created_by', page.created_by,
-        'updated_at', page.updated_at,
-        'updated_by', page.updated_by,
-        'revision', v_revision
-      )
-      ORDER BY page.normalized_name, page.id
-    ),
-    '[]'::JSONB
-  )
-  INTO v_data
-  FROM (
+  WITH dossier AS (
+    SELECT d.revision
+    FROM public.technical_configuration_dossiers d
+    WHERE d.id = p_dossier_id
+  ),
+  supplier_page AS (
     SELECT
       s.id,
       s.dossier_id,
@@ -120,16 +91,49 @@ BEGIN
     WHERE s.dossier_id = p_dossier_id
     ORDER BY s.normalized_name, s.id
     LIMIT p_page_size
-    OFFSET (p_page - 1) * p_page_size
-  ) page;
-
-  RETURN jsonb_build_object(
-    'data', v_data,
-    'revision', v_revision,
-    'total', v_total,
+    OFFSET (p_page::BIGINT - 1) * p_page_size::BIGINT
+  ),
+  supplier_summary AS (
+    SELECT count(*) AS total
+    FROM public.technical_configuration_suppliers s
+    WHERE s.dossier_id = p_dossier_id
+  )
+  SELECT jsonb_build_object(
+    'data',
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', page.id,
+            'dossier_id', page.dossier_id,
+            'name', page.name,
+            'normalized_name', page.normalized_name,
+            'created_at', page.created_at,
+            'created_by', page.created_by,
+            'updated_at', page.updated_at,
+            'updated_by', page.updated_by,
+            'revision', d.revision
+          )
+          ORDER BY page.normalized_name, page.id
+        )
+        FROM supplier_page page
+      ),
+      '[]'::JSONB
+    ),
+    'revision', d.revision,
+    'total', summary.total,
     'page', p_page,
     'page_size', p_page_size
-  );
+  )
+  INTO v_result
+  FROM dossier d
+  CROSS JOIN supplier_summary summary;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';
+  END IF;
+
+  RETURN v_result;
 END;
 $$;
 
@@ -147,7 +151,7 @@ DECLARE
   v_user_id BIGINT;
   v_revision BIGINT;
   v_data JSONB;
-  v_name TEXT := NULLIF(regexp_replace(btrim(p_name), '[[:space:]]+', ' ', 'g'), '');
+  v_name TEXT := NULLIF(btrim(regexp_replace(p_name, '[[:space:]]+', ' ', 'g')), '');
 BEGIN
   v_user_id := public._technical_configuration_require_editable_dossier(
     p_dossier_id,
@@ -215,7 +219,7 @@ DECLARE
   v_dossier_id UUID;
   v_revision BIGINT;
   v_data JSONB;
-  v_name TEXT := NULLIF(regexp_replace(btrim(p_name), '[[:space:]]+', ' ', 'g'), '');
+  v_name TEXT := NULLIF(btrim(regexp_replace(p_name, '[[:space:]]+', ' ', 'g')), '');
 BEGIN
   PERFORM public._technical_configuration_require_global_user();
 

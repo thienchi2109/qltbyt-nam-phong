@@ -76,6 +76,8 @@ DECLARE
   v_response JSONB;
   v_count BIGINT;
   v_rls_enabled BOOLEAN;
+  v_function_signature TEXT;
+  v_table_privilege TEXT;
 BEGIN
   PERFORM pg_advisory_xact_lock(hashtext('technical_configuration_suppliers_phase_gate'));
 
@@ -172,9 +174,10 @@ BEGIN
   END IF;
 
   PERFORM pg_temp.set_claims('global', v_user_id);
+  -- boundary whitespace canonicalization
   v_response := public.technical_configuration_supplier_create(
     v_dossier_id,
-    '  Công ty   Thiết bị A  ',
+    E'\tCông ty \n Thiết bị A\t',
     v_revision
   );
   v_supplier_id := (v_response #>> '{data,id}')::UUID;
@@ -184,6 +187,18 @@ BEGIN
      OR v_response #>> '{data,normalized_name}' IS DISTINCT FROM 'công ty thiết bị a' THEN
     RAISE EXCEPTION 'supplier create must preserve canonical name and normalized identity';
   END IF;
+
+  PERFORM pg_temp.expect_error(
+    'all-whitespace supplier rejected',
+    format(
+      'SELECT public.technical_configuration_supplier_create(%L::UUID, %L, %s)',
+      v_dossier_id,
+      E'\n\t',
+      v_revision
+    ),
+    'PT422',
+    'validation_error'
+  );
 
   PERFORM pg_temp.expect_error(
     'normalized duplicate rejected',
@@ -283,17 +298,69 @@ BEGIN
     RAISE EXCEPTION 'supplier table must have RLS enabled';
   END IF;
 
-  IF has_table_privilege('authenticated', 'public.technical_configuration_suppliers', 'SELECT') THEN
-    RAISE EXCEPTION 'authenticated must not read supplier rows directly';
-  END IF;
-
-  IF NOT has_function_privilege(
-    'authenticated',
+  FOREACH v_function_signature IN ARRAY ARRAY[
     'public.technical_configuration_suppliers_list(UUID, INTEGER, INTEGER)',
-    'EXECUTE'
-  ) THEN
-    RAISE EXCEPTION 'authenticated must execute the supplier list RPC';
-  END IF;
+    'public.technical_configuration_supplier_create(UUID, TEXT, BIGINT)',
+    'public.technical_configuration_supplier_update(UUID, TEXT, BIGINT)',
+    'public.technical_configuration_supplier_delete(UUID, BIGINT)'
+  ]
+  LOOP
+    IF NOT has_function_privilege(
+      'authenticated',
+      v_function_signature,
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'authenticated must execute %', v_function_signature;
+    END IF;
+
+    IF NOT has_function_privilege(
+      'service_role',
+      v_function_signature,
+      'EXECUTE'
+    ) THEN
+      RAISE EXCEPTION 'service_role must execute %', v_function_signature;
+    END IF;
+
+    -- anon includes any privilege inherited from PUBLIC.
+    IF has_function_privilege('anon', v_function_signature, 'EXECUTE') THEN
+      RAISE EXCEPTION 'anon/PUBLIC must not execute %', v_function_signature;
+    END IF;
+  END LOOP;
+
+  FOREACH v_table_privilege IN ARRAY ARRAY[
+    'SELECT',
+    'INSERT',
+    'UPDATE',
+    'DELETE',
+    'TRUNCATE',
+    'REFERENCES',
+    'TRIGGER'
+  ]
+  LOOP
+    IF has_table_privilege(
+      'authenticated',
+      'public.technical_configuration_suppliers',
+      v_table_privilege
+    ) THEN
+      RAISE EXCEPTION 'authenticated must not have table privilege %', v_table_privilege;
+    END IF;
+
+    IF has_table_privilege(
+      'anon',
+      'public.technical_configuration_suppliers',
+      v_table_privilege
+    ) THEN
+      RAISE EXCEPTION 'anon/PUBLIC must not have table privilege %', v_table_privilege;
+    END IF;
+
+    IF NOT has_table_privilege(
+      'service_role',
+      'public.technical_configuration_suppliers',
+      v_table_privilege
+    ) THEN
+      RAISE EXCEPTION 'service_role must have table privilege %', v_table_privilege;
+    END IF;
+  END LOOP;
 END;
 $gate$;
 

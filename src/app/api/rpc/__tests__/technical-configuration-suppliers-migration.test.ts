@@ -90,7 +90,7 @@ describe("P8A1 technical configuration supplier migration", () => {
       "CREATE OR REPLACE FUNCTION public._technical_configuration_normalize_supplier_name("
     )
     expect(migrationSource).toContain(
-      "lower(regexp_replace(btrim(p_name), '[[:space:]]+', ' ', 'g'))"
+      "lower(btrim(regexp_replace(p_name, '[[:space:]]+', ' ', 'g')))"
     )
 
     for (const functionName of [
@@ -99,7 +99,7 @@ describe("P8A1 technical configuration supplier migration", () => {
     ]) {
       const block = getFunctionBlock(migrationSource, functionName)
       expect(block).toContain(
-        "v_name TEXT := NULLIF(regexp_replace(btrim(p_name), '[[:space:]]+', ' ', 'g'), '')"
+        "v_name TEXT := NULLIF(btrim(regexp_replace(p_name, '[[:space:]]+', ' ', 'g')), '')"
       )
       expect(block).toContain("RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422'")
       expect(block).toContain("RAISE EXCEPTION 'duplicate_supplier' USING ERRCODE = 'PT409'")
@@ -123,11 +123,17 @@ describe("P8A1 technical configuration supplier migration", () => {
   it("uses global reads and dossier-owned optimistic concurrency for mutations", () => {
     const listBlock = getFunctionBlock(migrationSource, "technical_configuration_suppliers_list")
     expect(listBlock).toContain("PERFORM public._technical_configuration_require_global_user()")
-    expect(listBlock).toContain("FROM public.technical_configuration_dossiers d")
-    expect(listBlock).toContain("FROM public.technical_configuration_suppliers s")
-    expect(listBlock).toContain("'revision', v_revision")
+    expect(listBlock).toContain("WITH dossier AS (")
+    expect(listBlock).toContain("supplier_page AS (")
+    expect(listBlock).toContain("supplier_summary AS (")
+    expect(listBlock).toContain("INTO v_result")
+    expect(listBlock).toContain("FROM dossier d")
+    expect(listBlock).toContain("CROSS JOIN supplier_summary summary")
+    expect(listBlock).not.toContain("INTO v_revision")
+    expect(listBlock).not.toContain("INTO v_total")
+    expect(listBlock).not.toContain("INTO v_data")
     expect(listBlock).toContain("LIMIT p_page_size")
-    expect(listBlock).toContain("OFFSET (p_page - 1) * p_page_size")
+    expect(listBlock).toContain("OFFSET (p_page::BIGINT - 1) * p_page_size::BIGINT")
 
     const createBlock = getFunctionBlock(migrationSource, "technical_configuration_supplier_create")
     expect(createBlock).toContain(
@@ -186,6 +192,28 @@ describe("P8A1 technical configuration supplier migration", () => {
     expect(phaseGateSource).toContain("duplicate_supplier")
     expect(phaseGateSource).toContain("stale_revision")
     expect(phaseGateSource).toContain("archived_dossier")
+    expect(phaseGateSource).toContain("boundary whitespace canonicalization")
+    expect(phaseGateSource).toContain("all-whitespace supplier rejected")
+    expect(phaseGateSource).toContain("FOREACH v_function_signature IN ARRAY")
+    expect(phaseGateSource).toMatch(
+      /has_function_privilege\(\s*'authenticated',\s*v_function_signature,\s*'EXECUTE'\s*\)/
+    )
+    expect(phaseGateSource).toMatch(
+      /has_function_privilege\(\s*'service_role',\s*v_function_signature,\s*'EXECUTE'\s*\)/
+    )
+    expect(phaseGateSource).toMatch(
+      /has_function_privilege\(\s*'anon',\s*v_function_signature,\s*'EXECUTE'\s*\)/
+    )
+    expect(phaseGateSource).toContain("FOREACH v_table_privilege IN ARRAY")
+    expect(phaseGateSource).toMatch(
+      /has_table_privilege\(\s*'authenticated',\s*'public\.technical_configuration_suppliers',\s*v_table_privilege\s*\)/
+    )
+    expect(phaseGateSource).toMatch(
+      /has_table_privilege\(\s*'anon',\s*'public\.technical_configuration_suppliers',\s*v_table_privilege\s*\)/
+    )
+    expect(phaseGateSource).toMatch(
+      /has_table_privilege\(\s*'service_role',\s*'public\.technical_configuration_suppliers',\s*v_table_privilege\s*\)/
+    )
     expect(phaseGateSource).toContain("ON DELETE CASCADE")
     expect(phaseGateSource).not.toMatch(/technical_configuration_options|option_responses/)
   })
