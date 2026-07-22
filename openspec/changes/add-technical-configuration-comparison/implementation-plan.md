@@ -1124,19 +1124,19 @@ user-facing option workspace.
 
 ### Tasks
 
-- [ ] Add option response datasets bound to an exact baseline version and
+- [x] Add option response datasets bound to an exact baseline version and
       criterion with ownership and cascade constraints.
-- [ ] Store supplementary information structurally apart from compliance and
+- [x] Store supplementary information structurally apart from compliance and
       future manual-assessment fields.
-- [ ] Use dossier-revision optimistic concurrency without baseline-lock checks.
-- [ ] Treat an existing comparison set as a read, including after dossier
+- [x] Use dossier-revision optimistic concurrency without baseline-lock checks.
+- [x] Treat an existing comparison set as a read, including after dossier
       archive; keep its revision/response snapshot writer-consistent, return
       `PT404` instead of nullable data after a concurrent cascade, and reject
       missing-set creation and response upsert for archived dossiers.
-- [ ] Keep historical response datasets separate when a new baseline version is
+- [x] Keep historical response datasets separate when a new baseline version is
       selected; source updates preserve stable criterion linkage and audit
       metadata instead of rewriting old datasets.
-- [ ] Complete the mandatory DB phase gate after separate explicit live-write
+- [x] Complete the mandatory DB phase gate after separate explicit live-write
       approvals for migration apply and transaction-wrapped phase-gate
       execution, followed by security and performance advisors.
 

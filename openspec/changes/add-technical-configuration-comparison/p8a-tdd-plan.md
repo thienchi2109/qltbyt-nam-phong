@@ -481,6 +481,26 @@ migration depends on P8A3, reverse it in this order:
 Any live reversal requires separate explicit write authorization and the same
 post-migration read-only schema, grant, RLS and advisor verification.
 
+### LIVE APPLY RECORD - 2026-07-22
+
+- Applied local migration
+  `20260722072748_technical_configuration_option_responses.sql` through
+  Supabase MCP as live version `20260722085301`
+  (`technical_configuration_option_responses`).
+- Executed
+  `supabase/tests/technical_configuration_option_responses_phase_gate.sql` and
+  `supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql`
+  through Supabase MCP. Both transaction-wrapped gates completed without errors
+  and ended in `ROLLBACK`.
+- Post-gate read-only verification confirmed both P8A3 tables have RLS enabled,
+  no `anon`/`authenticated` table CRUD, the intended `service_role` table
+  privileges, fixed RPC `search_path`, intended RPC execute grants, and the
+  required constraints and supporting indexes. Both P8A3 tables were empty
+  after rollback.
+- Security and performance advisors were run. The performance advisor reported
+  no missing-index finding for either P8A3 table; remaining advisor notices are
+  the repo-wide baseline or intentional guarded-RPC/RPC-only-table patterns.
+
 ### REFACTOR AND VERIFY
 
 The pre-edit skills and graph-analysis gates above are workflow steps, not shell
