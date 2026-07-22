@@ -998,47 +998,142 @@ Baseline/reference evidence persistence, URL validation, revision, lock, copy an
 
 A locked baseline preserves its own and each reference product's criterion-level URL evidence as immutable context.
 
-## Phase P8A - Supplier And Option Data Contracts
+## Phase P8A1 - Supplier Data Contracts
 
-**Depends on:** P4  
-**Requirements:** TC-02, TC-07, TC-09, TC-17, TC-20  
-**Deploy boundary:** backend contracts only; no supplier workspace
+**Depends on:** P1
+
+**Requirements:** TC-09, TC-20
+
+**Deploy boundary:** supplier persistence and RPC contracts only; no option,
+response, hook or UI surface
 
 ### Planned files
 
-- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_supplier_options.sql`
+- Create: `supabase/migrations/20260722010000_technical_configuration_suppliers.sql`
+- Create: `supabase/tests/technical_configuration_suppliers_phase_gate.sql`
+- Create: `src/lib/technical-configuration-supplier-option-rpcs.ts`
 - Create: `src/app/(app)/technical-configurations/supplier-option-types.ts`
-- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptions.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-supplier-option-rpc.ts`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-suppliers-migration.test.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Create: `openspec/changes/add-technical-configuration-comparison/p8a-tdd-plan.md`
 
 ### Tasks
 
-- [ ] Add dossier-scoped supplier and option entities with multiple options per supplier.
-- [ ] Normalize supplier names by trim, whitespace collapse and lowercase; enforce normalized uniqueness per dossier.
-- [ ] Add option response dataset bound to exact baseline version and criterion.
-- [ ] Add model/manufacturer/option name and display-label contract.
-- [ ] Add separate supplementary information field.
-- [ ] Add optimistic concurrency for option metadata and responses.
-- [ ] Keep options directly editable with no lock/version lifecycle.
-- [ ] Reject supplier, option and response mutations when the owning dossier is archived.
-- [ ] Keep old baseline response datasets separate when a new baseline is selected.
-- [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
+- [x] Add dossier-scoped suppliers with trim, whitespace-collapse and lowercase
+      normalized-name uniqueness.
+- [x] Add list/create/update/delete RPCs guarded by the existing global/raw-admin
+      and editable-dossier authorization helpers.
+- [x] Use dossier revision as the optimistic-concurrency owner for supplier
+      mutations.
+- [x] Reject mutations for archived dossiers while allowing direct supplier
+      editing regardless of baseline lock state.
+- [x] Keep supplier tables RPC-only with RLS enabled, deny-by-default table
+      grants and exact authenticated RPC grants.
+- [x] Keep suppliers outside the baseline aggregate and baseline-copy flow.
+- [x] Prepare the phase-local DB gate without applying or executing it against
+      live DB before explicit approval.
 
 ### TDD and verification
 
-- Authorization tests for all required role/claim states.
-- Tests for multiple options under one supplier.
-- Tests for correct baseline-version/criterion binding and ownership/cascade.
-- Tests proving supplementary information is structurally separate from assessment data.
-- Tests proving no supplier lock/version backend contract exists.
+- Migration-source tests for ordering, schema, normalization, ownership,
+  cascade, authorization, concurrency, RLS and grants.
+- Type-level/runtime contract tests for supplier RPC names, wire values and the
+  module-local proxy adapter.
+- RPC allowlist tests proving exactly four supplier RPCs are exposed.
+- Local OpenSpec, formatting, typecheck, focused Vitest and React Doctor gates.
 
 ### Exit gate
 
-Secure supplier/option contracts exist, but no user-facing supplier workspace is available.
+Supplier persistence and secure RPC contracts can deploy independently. No
+option table, response dataset, hook or UI is present.
+
+## Phase P8A2 - Option Identity Data Contracts
+
+**Depends on:** P8A1
+
+**Requirements:** TC-09, TC-20
+
+**Deploy boundary:** option identity and metadata only; no baseline-bound responses
+
+### Planned files
+
+- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_options.sql`
+- Extend: `supabase/tests/technical_configuration_suppliers_phase_gate.sql`
+- Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
+- Modify: `src/app/(app)/technical-configurations/supplier-option-types.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-supplier-option-rpc.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
+
+### Tasks
+
+- [ ] Add multiple options per supplier with model, manufacturer, option-name
+      and deterministic display-label contracts.
+- [ ] Add direct-edit option CRUD with dossier-revision optimistic concurrency.
+- [ ] Add ownership/cascade constraints and archived-dossier guards.
+- [ ] Define no option lock/version backend contract.
+- [ ] Keep option identity outside the baseline aggregate and baseline-copy flow.
+
+### TDD and verification
+
+- Tests for multiple options under one supplier and cross-dossier rejection.
+- Tests for display labels, stale dossier revisions and cascade behavior.
+- Tests proving no baseline lock/version dependency exists.
+- Phase-local authorization and RPC allowlist tests.
+
+### Exit gate
+
+Supplier and option identity contracts can deploy without response persistence or
+user-facing option workspace.
+
+## Phase P8A3 - Baseline-Bound Option Response Contracts
+
+**Depends on:** P4, P8A2
+
+**Requirements:** TC-02, TC-07, TC-09, TC-17, TC-20
+
+**Deploy boundary:** exact-baseline response persistence only; no hook or UI
+
+### Planned files
+
+- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_responses.sql`
+- Extend: `supabase/tests/technical_configuration_suppliers_phase_gate.sql`
+- Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
+- Modify: `src/app/(app)/technical-configurations/supplier-option-types.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-supplier-option-rpc.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
+
+### Tasks
+
+- [ ] Add option response datasets bound to an exact baseline version and
+      criterion with ownership and cascade constraints.
+- [ ] Store supplementary information structurally apart from compliance and
+      future manual-assessment fields.
+- [ ] Use dossier-revision optimistic concurrency without baseline-lock checks.
+- [ ] Keep historical response datasets separate when a new baseline version is
+      selected; source updates preserve stable criterion linkage and audit
+      metadata instead of rewriting old datasets.
+- [ ] Complete the mandatory DB phase gate after separate explicit live-write
+      approval, followed by security and performance advisors.
+
+### TDD and verification
+
+- Tests for correct baseline-version/criterion binding and cross-owner rejection.
+- Tests proving supplementary information cannot alter compliance.
+- Tests for stale dossier revisions, cascade and historical dataset separation.
+- Tests proving baseline lock does not block supplier-option response editing.
+
+### Exit gate
+
+Secure supplier, option and exact-baseline response contracts exist, but no
+user-facing supplier workspace is available.
 
 ## Phase P8B - Supplier Option Manual Workspace
 
-**Depends on:** P3A, P8A  
+**Depends on:** P3A, P8A3
+
 **Requirements:** TC-04, TC-09, TC-17, TC-20  
 **Deploy boundary:** manual supplier-option entry without Excel or evidence
 
@@ -1047,6 +1142,7 @@ Secure supplier/option contracts exist, but no user-facing supplier workspace is
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionEditor.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponses.tsx`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptions.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/supplier-options.test.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
@@ -1236,7 +1332,8 @@ Users can scan and inspect baseline versus selected options, but cannot yet save
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
 
-**Depends on:** P4, P8A  
+**Depends on:** P4, P8A3
+
 **Requirements:** TC-02, TC-15, TC-16, TC-19, TC-20  
 **Deploy boundary:** backend/domain capability with minimal or test-only UI exposure
 
