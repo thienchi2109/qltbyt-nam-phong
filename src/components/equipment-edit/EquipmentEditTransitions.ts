@@ -8,10 +8,6 @@ interface EquipmentLiquidationStateValues {
   tinh_trang_hien_tai?: string | null
 }
 
-function normalizeBusinessValue(value: string | null | undefined): string {
-  return (value ?? "").normalize("NFC").trim().toLocaleLowerCase("vi-VN")
-}
-
 function normalizeDepartmentScope(value: string | null | undefined): string {
   return (value ?? "")
     .normalize("NFC")
@@ -24,7 +20,6 @@ function normalizeDepartmentScope(value: string | null | undefined): string {
 }
 
 const NORMALIZED_LIQUIDATION_DEPARTMENT = normalizeDepartmentScope(LIQUIDATION_DEPARTMENT_NAME)
-const NORMALIZED_DECOMMISSIONED_STATUS = normalizeBusinessValue(DECOMMISSIONED_EQUIPMENT_STATUS)
 
 /** Returns whether the equipment satisfies both liquidation-list conditions. */
 export function isLiquidationEndState(
@@ -32,7 +27,7 @@ export function isLiquidationEndState(
 ): boolean {
   return (
     normalizeDepartmentScope(values?.khoa_phong_quan_ly) === NORMALIZED_LIQUIDATION_DEPARTMENT &&
-    normalizeBusinessValue(values?.tinh_trang_hien_tai) === NORMALIZED_DECOMMISSIONED_STATUS
+    (values?.tinh_trang_hien_tai ?? "").trim() === DECOMMISSIONED_EQUIPMENT_STATUS
   )
 }
 

@@ -71,18 +71,35 @@ describe("equipment liquidation transition", () => {
     expect(didEnterLiquidationEndState(liquidationEquipment, liquidationEquipment)).toBe(false)
   })
 
-  it("uses strict equality after NFC, trim, and locale-aware case normalization", () => {
+  it("normalizes the department while accepting the trimmed canonical status", () => {
     const equivalentValues = {
       khoa_phong_quan_ly: ` ${LIQUIDATION_DEPARTMENT_NAME.normalize("NFD").toLocaleLowerCase(
         "vi-VN"
       )} `,
-      tinh_trang_hien_tai: ` ${DECOMMISSIONED_EQUIPMENT_STATUS.normalize("NFD").toLocaleUpperCase(
-        "vi-VN"
-      )} `,
+      tinh_trang_hien_tai: ` ${DECOMMISSIONED_EQUIPMENT_STATUS} `,
     }
 
     expect(isLiquidationEndState(equivalentValues)).toBe(true)
     expect(didEnterLiquidationEndState(activeEquipment, equivalentValues)).toBe(true)
+  })
+
+  it.each([
+    {
+      name: "case variant",
+      status: DECOMMISSIONED_EQUIPMENT_STATUS.toLocaleUpperCase("vi-VN"),
+    },
+    {
+      name: "Unicode decomposition variant",
+      status: DECOMMISSIONED_EQUIPMENT_STATUS.normalize("NFD"),
+    },
+  ])("rejects a non-canonical status $name", ({ status }) => {
+    const nonCanonicalValues = {
+      khoa_phong_quan_ly: LIQUIDATION_DEPARTMENT_NAME,
+      tinh_trang_hien_tai: status,
+    }
+
+    expect(isLiquidationEndState(nonCanonicalValues)).toBe(false)
+    expect(didEnterLiquidationEndState(activeEquipment, nonCanonicalValues)).toBe(false)
   })
 
   it("matches the server department normalization for hyphens and internal whitespace", () => {
