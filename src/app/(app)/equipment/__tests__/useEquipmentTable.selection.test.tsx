@@ -165,6 +165,50 @@ describe("useEquipmentTable row selection", () => {
   })
 })
 
+describe("useEquipmentTable server sorting", () => {
+  it("preserves server-provided row order when sorting state is controlled", () => {
+    const serverOrderedData = [
+      { ...createEquipment(1), ten_thiet_bi: "A - normal priority" },
+      { ...createEquipment(2), ten_thiet_bi: "Z - liquidation priority" },
+    ]
+    const serverColumns: ColumnDef<Equipment>[] = [
+      {
+        accessorKey: "ten_thiet_bi",
+        header: "Tên thiết bị",
+      },
+    ]
+
+    const { result } = renderHook(() => {
+      const [sorting, setSorting] = React.useState([{ id: "ten_thiet_bi", desc: true }])
+      const [columnFilters, setColumnFilters] = React.useState([])
+      const [searchTerm, setSearchTerm] = React.useState("")
+      const [pagination, setPagination] = React.useState({
+        pageIndex: 0,
+        pageSize: 20,
+      })
+
+      return useEquipmentTable({
+        data: serverOrderedData,
+        total: serverOrderedData.length,
+        columns: serverColumns,
+        sorting,
+        setSorting,
+        columnFilters,
+        setColumnFilters,
+        debouncedSearch: searchTerm,
+        setSearchTerm,
+        pagination,
+        setPagination,
+        selectedDonVi: 5,
+        selectedFacilityId: 5,
+      })
+    })
+
+    expect(result.current.table.options.manualSorting).toBe(true)
+    expect(result.current.table.getRowModel().rows.map((row) => row.id)).toEqual(["1", "2"])
+  })
+})
+
 describe("useEquipmentTable responsive visibility", () => {
   it("auto-hides the desktop-only columns on 768px-1800px screens", async () => {
     setMediaQueryResponses({

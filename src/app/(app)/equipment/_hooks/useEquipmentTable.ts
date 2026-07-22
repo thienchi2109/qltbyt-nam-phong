@@ -9,12 +9,7 @@ import type {
   VisibilityState,
   Table,
 } from "@tanstack/react-table"
-import {
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table"
+import { getCoreRowModel, getPaginationRowModel, useReactTable } from "@tanstack/react-table"
 import { useMediaQuery } from "@/hooks/use-media-query"
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -25,7 +20,7 @@ import { DEFAULT_COLUMN_VISIBILITY } from "@/app/(app)/equipment/_constants/equi
 import type { Equipment } from "../types"
 
 // Columns to hide on medium screens (768px-1800px)
-const RESPONSIVE_HIDE_COLUMNS = ['serial', 'phan_loai_theo_nd98', 'so_luu_hanh'] as const
+const RESPONSIVE_HIDE_COLUMNS = ["serial", "phan_loai_theo_nd98", "so_luu_hanh"] as const
 
 function restoreResponsivePreference(
   visibility: VisibilityState,
@@ -222,7 +217,6 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     onRowSelectionChange: setRowSelection,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
     getRowId: (row) => String(row.id),
     onColumnVisibilityChange: setColumnVisibility,
     onGlobalFilterChange: (value: string) => setSearchTerm(value),
@@ -237,6 +231,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     },
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
     pageCount: pageCount,
   })
 

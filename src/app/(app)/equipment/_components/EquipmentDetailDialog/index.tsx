@@ -35,11 +35,18 @@ import {
   DEFAULT_EQUIPMENT_FORM_VALUES,
   equipmentToFormValues,
 } from "@/components/equipment-edit/EquipmentEditFormDefaults"
+import { didEnterLiquidationEndState } from "@/components/equipment-edit/EquipmentEditTransitions"
 import { useEquipmentEditUpdate } from "@/components/equipment-edit/useEquipmentEditUpdate"
 import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
 import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
 import { EquipmentDetailTabs } from "./EquipmentDetailTabs"
+
+const LIQUIDATION_SUCCESS_TOAST = {
+  title: "Đã chuyển thiết bị",
+  description:
+    "Thiết bị đã được chuyển về cuối danh sách vì đang Ngưng sử dụng và thuộc Kho thanh lý.",
+}
 
 export interface EquipmentDetailDialogProps {
   equipment: Equipment | null
@@ -139,8 +146,15 @@ function EquipmentDetailDialogState({
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
     if (!equipment) return
+    const previousValues = savedValues ?? equipmentToFormValues(equipment)
+    const enteredLiquidationEndState = didEnterLiquidationEndState(previousValues, values)
+
     try {
-      await updateEquipment({ id: equipment.id, patch: values })
+      await updateEquipment({
+        id: equipment.id,
+        patch: values,
+        ...(enteredLiquidationEndState ? { successToast: LIQUIDATION_SUCCESS_TOAST } : {}),
+      })
     } catch {
       // The mutation toast already reports the failure; keep submit handlers from leaking rejections.
     }

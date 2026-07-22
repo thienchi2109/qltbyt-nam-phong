@@ -16,6 +16,12 @@ vi.mock("@/lib/rpc-client", () => ({
 
 import { useEquipmentEditUpdate } from "../equipment-edit/useEquipmentEditUpdate"
 
+const specialToast = {
+  title: "Đã chuyển thiết bị",
+  description:
+    "Thiết bị đã được chuyển về cuối danh sách vì đang Ngưng sử dụng và thuộc Kho thanh lý.",
+}
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -25,11 +31,7 @@ function createWrapper() {
   })
 
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
-    )
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
 }
 
@@ -38,7 +40,7 @@ describe("useEquipmentEditUpdate", () => {
     vi.clearAllMocks()
   })
 
-  it("submits equipment_update with the patch and shows the success toast", async () => {
+  it("submits equipment_update with the patch and shows one success toast", async () => {
     mockCallRpc.mockResolvedValueOnce(undefined)
     const onSuccess = vi.fn()
 
@@ -66,19 +68,36 @@ describe("useEquipmentEditUpdate", () => {
       },
     })
     expect(onSuccess).toHaveBeenCalledWith(patch)
+    expect(mockToast).toHaveBeenCalledTimes(1)
     expect(mockToast).toHaveBeenCalledWith({
       title: "Thành công",
       description: "Đã cập nhật thông tin thiết bị.",
     })
   })
 
-  it("shows the normalized error toast and preserves the hook error state", async () => {
+  it("replaces the generic toast with one per-mutation success toast", async () => {
+    mockCallRpc.mockResolvedValueOnce(undefined)
+    const { result } = renderHook(() => useEquipmentEditUpdate(), {
+      wrapper: createWrapper(),
+    })
+
+    await result.current.updateEquipment({
+      id: 16,
+      patch: { ten_thiet_bi: "Máy theo dõi" },
+      successToast: specialToast,
+    })
+
+    expect(mockToast).toHaveBeenCalledTimes(1)
+    expect(mockToast).toHaveBeenCalledWith(specialToast)
+    expect(mockToast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "Thành công" }))
+  })
+
+  it("shows one normalized error toast and preserves the hook error state", async () => {
     mockCallRpc.mockRejectedValueOnce({ message: "Permission denied" })
 
-    const { result } = renderHook(
-      () => useEquipmentEditUpdate(),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useEquipmentEditUpdate(), {
+      wrapper: createWrapper(),
+    })
 
     await expect(
       result.current.updateEquipment({
@@ -88,6 +107,7 @@ describe("useEquipmentEditUpdate", () => {
     ).rejects.toEqual({ message: "Permission denied" })
 
     await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledTimes(1)
       expect(mockToast).toHaveBeenCalledWith({
         variant: "destructive",
         title: "Lỗi",

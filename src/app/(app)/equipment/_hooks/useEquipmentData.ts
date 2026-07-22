@@ -183,6 +183,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
         page: pagination.pageIndex,
         size: pagination.pageSize,
         sort: sortParam,
+        liquidationLast: true,
       },
     ],
     enabled: shouldFetchData,
@@ -194,6 +195,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
           p_sort: sortParam,
           p_page: effectivePage,
           p_page_size: effectivePageSize,
+          p_liquidation_last: true,
         },
         signal,
       })
