@@ -1060,17 +1060,22 @@ option table, response dataset, hook or UI is present.
 
 ### Planned files
 
-- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_options.sql`
-- Extend: `supabase/tests/technical_configuration_suppliers_phase_gate.sql`
+- Create: `supabase/migrations/20260722034323_technical_configuration_options.sql`
+- Create: `supabase/tests/technical_configuration_options_phase_gate.sql`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-options-migration.test.ts`
 - Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
 - Modify: `src/app/(app)/technical-configurations/supplier-option-types.ts`
 - Modify: `src/app/(app)/technical-configurations/technical-configuration-supplier-option-rpc.ts`
 - Modify: `src/app/(app)/technical-configurations/__tests__/supplier-option-contract.test.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
 
 ### Tasks
 
-- [ ] Add multiple options per supplier with model, manufacturer, option-name
-      and deterministic display-label contracts.
+- [ ] Add multiple options per supplier with model, manufacturer, option-name,
+      notes, audit metadata and deterministic display-label contracts.
+- [ ] Add dossier/supplier ownership and supporting index contracts without
+      speculative option uniqueness or user-managed ordering.
 - [ ] Add direct-edit option CRUD with dossier-revision optimistic concurrency.
 - [ ] Add ownership/cascade constraints and archived-dossier guards.
 - [ ] Define no option lock/version backend contract.
@@ -1080,6 +1085,7 @@ option table, response dataset, hook or UI is present.
 
 - Tests for multiple options under one supplier and cross-dossier rejection.
 - Tests for display labels, stale dossier revisions and cascade behavior.
+- Tests for current-revision increments, archived reads and audit metadata.
 - Tests proving no baseline lock/version dependency exists.
 - Phase-local authorization and RPC allowlist tests.
 
