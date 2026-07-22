@@ -1061,6 +1061,9 @@ option table, response dataset, hook or UI is present.
 ### Planned files
 
 - Create: `supabase/migrations/20260722034323_technical_configuration_options.sql`
+- Create:
+  `supabase/migrations/20260722060629_technical_configuration_options_supplier_fk_index.sql`
+  as the ordered follow-up for the supplier-first composite-FK covering index.
 - Create: `supabase/tests/technical_configuration_options_phase_gate.sql`
 - Create: `src/app/api/rpc/__tests__/technical-configuration-options-migration.test.ts`
 - Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`

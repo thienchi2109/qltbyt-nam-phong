@@ -6,6 +6,9 @@ const REPO_ROOT = path.resolve(process.cwd())
 const MIGRATIONS_DIR = path.join(REPO_ROOT, "supabase/migrations")
 const MIGRATION_FILE = "20260722034323_technical_configuration_options.sql"
 const MIGRATION_PATH = path.join(MIGRATIONS_DIR, MIGRATION_FILE)
+const FK_INDEX_MIGRATION_FILE =
+  "20260722060629_technical_configuration_options_supplier_fk_index.sql"
+const FK_INDEX_MIGRATION_PATH = path.join(MIGRATIONS_DIR, FK_INDEX_MIGRATION_FILE)
 const PHASE_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_options_phase_gate.sql"
@@ -32,6 +35,7 @@ function getFunctionBlock(source: string, functionName: string): string {
 }
 
 const migrationSource = readIfExists(MIGRATION_PATH)
+const fkIndexMigrationSource = readIfExists(FK_INDEX_MIGRATION_PATH)
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 
 const OPTION_RPC_SIGNATURES = [
@@ -66,16 +70,17 @@ const OPTION_ITEM_WIRE_FIELDS = [
 ] as const
 
 describe("P8A2 technical configuration option migration", () => {
-  it("uses one ordered deploy-safe migration after the applied supplier contract", () => {
+  it("uses ordered deploy-safe migrations after the applied supplier contract", () => {
     expect(existsSync(MIGRATION_PATH)).toBe(true)
     expect(
       readdirSync(MIGRATIONS_DIR)
         .filter((file) => file.includes("technical_configuration_options"))
         .sort()
-    ).toEqual([MIGRATION_FILE])
+    ).toEqual([MIGRATION_FILE, FK_INDEX_MIGRATION_FILE])
     expect(
       MIGRATION_FILE.localeCompare("20260722010000_technical_configuration_suppliers.sql")
     ).toBeGreaterThan(0)
+    expect(FK_INDEX_MIGRATION_FILE.localeCompare(MIGRATION_FILE)).toBeGreaterThan(0)
   })
 
   it("creates dossier-consistent option identity with audit metadata and no version state", () => {
@@ -117,6 +122,16 @@ describe("P8A2 technical configuration option migration", () => {
     )
     expect(migrationSource).toContain(
       "ON public.technical_configuration_options (dossier_id, supplier_id)"
+    )
+  })
+
+  it("adds a supplier-first covering index for the composite supplier foreign key", () => {
+    expect(existsSync(FK_INDEX_MIGRATION_PATH)).toBe(true)
+    expect(fkIndexMigrationSource).toContain(
+      "CREATE INDEX technical_configuration_options_supplier_dossier_idx"
+    )
+    expect(fkIndexMigrationSource).toContain(
+      "ON public.technical_configuration_options (supplier_id, dossier_id)"
     )
   })
 

@@ -155,6 +155,11 @@ and adapter functions do not exist yet.
 
 - Create
   `supabase/migrations/20260722034323_technical_configuration_options.sql`.
+- After the live performance advisor identifies the supplier-first composite FK
+  as uncovered, keep the applied migration immutable and create
+  `supabase/migrations/20260722060629_technical_configuration_options_supplier_fk_index.sql`
+  with an index on `(supplier_id, dossier_id)`. Retain the original
+  `(dossier_id, supplier_id)` index for dossier-first list reads.
 - Create
   `supabase/tests/technical_configuration_options_phase_gate.sql`; do not grow
   the P8A1 supplier phase gate past the repository file-size ceiling.
@@ -234,6 +239,7 @@ node scripts/npm-run.js run react-doctor
 openspec validate add-technical-configuration-comparison \
   --type change --strict --no-interactive
 test "$(wc -l < supabase/migrations/20260722034323_technical_configuration_options.sql)" -le 450
+test "$(wc -l < supabase/migrations/20260722060629_technical_configuration_options_supplier_fk_index.sql)" -le 450
 test "$(wc -l < supabase/tests/technical_configuration_options_phase_gate.sql)" -le 450
 ```
 
