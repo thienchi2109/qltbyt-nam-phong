@@ -1107,8 +1107,10 @@ user-facing option workspace.
 
 ### Planned files
 
-- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_responses.sql`
+- Create: `supabase/migrations/20260722072748_technical_configuration_option_responses.sql`
 - Create: `supabase/tests/technical_configuration_option_responses_phase_gate.sql`
+- Create:
+  `supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql`
 - Create:
   `src/app/api/rpc/__tests__/technical-configuration-option-responses-migration.test.ts`
 - Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
@@ -1128,8 +1130,8 @@ user-facing option workspace.
       future manual-assessment fields.
 - [ ] Use dossier-revision optimistic concurrency without baseline-lock checks.
 - [ ] Treat an existing comparison set as a read, including after dossier
-      archive; reject missing-set creation and response upsert for archived
-      dossiers.
+      archive; keep its revision/response snapshot writer-consistent and reject
+      missing-set creation and response upsert for archived dossiers.
 - [ ] Keep historical response datasets separate when a new baseline version is
       selected; source updates preserve stable criterion linkage and audit
       metadata instead of rewriting old datasets.
@@ -1139,7 +1141,8 @@ user-facing option workspace.
 
 ### TDD and verification
 
-- Tests for correct baseline-version/criterion binding and cross-owner rejection.
+- Tests for correct baseline-version/criterion binding, direct composite-FK
+  enforcement and cross-owner rejection.
 - Tests proving response and supplementary text are independent and that P8A3
   exposes no compliance/evaluation fields; actual compliance derivation remains
   owned by P11 and ranking remains owned by P12C.

@@ -117,3 +117,52 @@ export interface TechnicalConfigurationOptionDeleteRpcArgs {
   p_option_id: string
   p_expected_revision: number
 }
+
+export interface TechnicalConfigurationOptionResponseWire {
+  id: string
+  comparison_set_id: string
+  baseline_version_id: string
+  criterion_id: string
+  response_text: string
+  supplementary_information: string
+  created_at: string
+  created_by: number
+  updated_at: string
+  updated_by: number
+  revision: number
+}
+
+export interface TechnicalConfigurationComparisonSetWire {
+  id: string
+  dossier_id: string
+  option_id: string
+  baseline_version_id: string
+  created_at: string
+  created_by: number
+  updated_at: string
+  updated_by: number
+  revision: number
+  responses: TechnicalConfigurationOptionResponseWire[]
+}
+
+export interface TechnicalConfigurationComparisonSetWireResponse {
+  data: TechnicalConfigurationComparisonSetWire
+}
+
+export interface TechnicalConfigurationOptionResponseWireResponse {
+  data: TechnicalConfigurationOptionResponseWire
+}
+
+export interface TechnicalConfigurationComparisonSetGetOrCreateRpcArgs {
+  p_option_id: string
+  p_baseline_version_id: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionResponseUpsertRpcArgs {
+  p_comparison_set_id: string
+  p_criterion_id: string
+  p_response_text: string | null
+  p_supplementary_information: string | null
+  p_expected_revision: number
+}
