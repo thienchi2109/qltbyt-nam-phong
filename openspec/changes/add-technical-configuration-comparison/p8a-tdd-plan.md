@@ -72,6 +72,15 @@ push P8A1 independently.
 
 ## P8A2 Red-Green-Refactor
 
+### Pre-Edit Workflow
+
+- Invoke `/react-best-practices` before editing the TypeScript contracts,
+  adapters or route allowlist.
+- Run Code Review Graph first to narrow the affected files and symbols, then
+  run GitNexus context/impact analysis for those symbols before implementation.
+  If GitNexus reports HIGH or CRITICAL impact, stop and warn the user before
+  editing.
+
 ### Contract Decisions
 
 - Create `public.technical_configuration_options` as dossier-scoped option
@@ -185,7 +194,31 @@ The dedicated transaction-wrapped phase gate must prove:
   service-role can execute only the public option RPCs, and anon cannot;
 - the transaction ends with `ROLLBACK`.
 
+The phase-gate `ROLLBACK` only reverts its test fixtures and assertions. If the
+P8A2 migration has been applied and must be reversed, create a new superseding
+migration rather than editing the applied migration. Provided no later migration
+depends on P8A2, reverse it in this order:
+
+1. Revoke and drop
+   `technical_configuration_option_delete(UUID, BIGINT)`,
+   `technical_configuration_option_update(UUID, TEXT, TEXT, TEXT, TEXT, BIGINT)`,
+   `technical_configuration_option_create(UUID, TEXT, TEXT, TEXT, TEXT, BIGINT)`
+   and
+   `technical_configuration_options_list(UUID, UUID, INTEGER, INTEGER)`.
+2. Drop `public.technical_configuration_options`; its policy and index are
+   removed with the table.
+3. Preserve `public.technical_configuration_suppliers`,
+   `_technical_configuration_require_global_user()` and
+   `_technical_configuration_require_editable_dossier(UUID, BIGINT)` because
+   they belong to P8A1.
+
+Any live reversal requires separate explicit write authorization and the same
+post-migration read-only schema, grant, RLS and advisor verification.
+
 ### REFACTOR AND VERIFY
+
+The pre-edit `/react-best-practices` and graph-analysis gates above are workflow
+steps, not shell commands. Then run:
 
 ```bash
 node scripts/npm-run.js run format:check
@@ -204,7 +237,7 @@ test "$(wc -l < supabase/migrations/20260722034323_technical_configuration_optio
 test "$(wc -l < supabase/tests/technical_configuration_options_phase_gate.sql)" -le 450
 ```
 
-Run Code Review Graph and GitNexus change detection before commit. Commit and
+Run a final Code Review Graph change-detection pass before commit. Commit and
 push P8A2 as one branch and one PR.
 
 ## Live Database Boundary
