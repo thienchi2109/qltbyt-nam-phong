@@ -6,6 +6,7 @@ import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
+import { SUPPLIER_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-supplier-option-rpcs"
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -48,6 +49,13 @@ const BASELINE_RPC_FUNCTIONS = [
 const REFERENCE_RPC_FUNCTIONS = [
   ...P7A1_REFERENCE_RPC_FUNCTIONS,
   ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
+] as const
+
+const P8A1_SUPPLIER_RPC_FUNCTIONS = [
+  "technical_configuration_suppliers_list",
+  "technical_configuration_supplier_create",
+  "technical_configuration_supplier_update",
+  "technical_configuration_supplier_delete",
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -109,6 +117,32 @@ describe("technical configuration reference product RPC whitelist", () => {
 
   it.each(REFERENCE_RPC_FUNCTIONS)(
     'allows reference product RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
+})
+
+describe("technical configuration supplier RPC whitelist", () => {
+  it("keeps the local P8A1 supplier prefix aligned with the shared manifest", () => {
+    expect(P8A1_SUPPLIER_RPC_FUNCTIONS).toEqual(SUPPLIER_RPC_FUNCTION_NAMES)
+  })
+
+  it("allowlists exactly the four P8A1 supplier RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter(
+        (fn) =>
+          fn === "technical_configuration_suppliers_list" ||
+          fn.startsWith("technical_configuration_supplier_")
+      )
+    ).toEqual(P8A1_SUPPLIER_RPC_FUNCTIONS)
+  })
+
+  it.each(P8A1_SUPPLIER_RPC_FUNCTIONS)(
+    'allows supplier RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
 

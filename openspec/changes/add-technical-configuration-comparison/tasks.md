@@ -34,13 +34,15 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P7A2](./implementation-plan.md#phase-p7a2---reference-product-workspace)                    | Workspace đối chiếu sản phẩm tham chiếu        | P7A1                   | TC-04, TC-06, TC-08, TC-20                      |
 | [P7B1](./implementation-plan.md#phase-p7b1---baseline-and-reference-evidence-contracts)      | Data contract tài liệu/trích dẫn cơ sở         | P4, P6B, P7A2          | TC-02, TC-04, TC-06, TC-11, TC-12, TC-20        |
 | [P7B2](./implementation-plan.md#phase-p7b2---baseline-and-reference-evidence-workspace)      | Workspace tài liệu/trích dẫn cơ sở             | P7B1                   | TC-04, TC-06, TC-11, TC-12, TC-20               |
-| [P8A](./implementation-plan.md#phase-p8a---supplier-and-option-data-contracts)               | Data contract nhà cung cấp và phương án        | P4                     | TC-02, TC-07, TC-09, TC-17, TC-20               |
-| [P8B](./implementation-plan.md#phase-p8b---supplier-option-manual-workspace)                 | UI nhập thủ công phương án                     | P3A, P8A               | TC-04, TC-09, TC-17, TC-20                      |
+| [P8A1](./implementation-plan.md#phase-p8a1---supplier-data-contracts)                        | Data contract nhà cung cấp                     | P1                     | TC-09, TC-20                                    |
+| [P8A2](./implementation-plan.md#phase-p8a2---option-identity-data-contracts)                 | Identity và metadata nhiều phương án           | P8A1                   | TC-09, TC-20                                    |
+| [P8A3](./implementation-plan.md#phase-p8a3---baseline-bound-option-response-contracts)       | Response phương án theo baseline version       | P4, P8A2               | TC-02, TC-07, TC-09, TC-17, TC-20               |
+| [P8B](./implementation-plan.md#phase-p8b---supplier-option-manual-workspace)                 | UI nhập thủ công phương án                     | P3A, P8A3              | TC-04, TC-09, TC-17, TC-20                      |
 | [P9A](./implementation-plan.md#phase-p9a---supplier-option-excel)                            | Excel phương án                                | P5A, P8B               | TC-10, TC-20                                    |
 | [P9B](./implementation-plan.md#phase-p9b---supplier-option-documents-and-citations)          | Tài liệu và trích dẫn phương án                | P6B, P7B2, P8B         | TC-02, TC-04, TC-11, TC-12, TC-20               |
 | [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                     | P7B2, P9B              | TC-02, TC-13, TC-17                             |
 | [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                           | Ma trận so sánh                                | P3A, P10A              | TC-13, TC-17                                    |
-| [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)         | Domain và persistence đánh giá thủ công        | P4, P8A                | TC-02, TC-15, TC-16, TC-19, TC-20               |
+| [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)         | Domain và persistence đánh giá thủ công        | P4, P8A3               | TC-02, TC-15, TC-16, TC-19, TC-20               |
 | [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow) | Nhập đánh giá, save và navigation              | P10B, P11              | TC-04, TC-14, TC-15, TC-16, TC-17, TC-20        |
 | [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                | Tiến độ và bộ lọc đánh giá                     | P12A                   | TC-14, TC-16                                    |
 | [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                     | Xếp hạng tham khảo                             | P12B                   | TC-18                                           |
@@ -237,13 +239,29 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
       `N/A` vì không có credentials và dev server được yêu cầu giữ dừng; không
       apply live DB.
 
-## Phase P8A - Supplier And Option Data Contracts
+## Phase P8A1 - Supplier Data Contracts
 
-- [ ] P8A.1 Thêm supplier, nhiều options và option response datasets theo baseline version.
-- [ ] P8A.2 Thêm supplementary information tách khỏi compliance.
-- [ ] P8A.3 Thêm direct-edit/no-lock/no-version contract và optimistic concurrency.
-- [ ] P8A.4 Chạy DB phase gate cho quyền, ownership, cascade và historical linkage.
-- [ ] P8A.5 Viết contract tests cho multiple options, baseline binding và source updates.
+- [x] P8A1.1 Thêm supplier dossier-scoped với normalized-name uniqueness.
+- [x] P8A1.2 Thêm list/create/update/delete RPC với global/raw-admin authorization.
+- [x] P8A1.3 Dùng dossier revision cho optimistic concurrency và từ chối mutation khi dossier archived.
+- [x] P8A1.4 Giữ supplier RPC-only, RLS deny-by-default và explicit grants.
+- [x] P8A1.5 Viết migration/source/RPC allowlist/authorization/ownership/cascade contract tests.
+- [x] P8A1.6 Chuẩn bị DB phase gate nhưng không apply hoặc chạy live trước explicit live-write approval.
+
+## Phase P8A2 - Option Identity Data Contracts
+
+- [ ] P8A2.1 Thêm nhiều options cho mỗi supplier với model/manufacturer/option-name/display-label contract.
+- [ ] P8A2.2 Thêm direct-edit/no-lock/no-version contract và optimistic concurrency.
+- [ ] P8A2.3 Giữ option identity ngoài baseline aggregate và không copy trong baseline-copy flow.
+- [ ] P8A2.4 Chạy contract/DB phase gate cho authorization, ownership, cascade và multiple options.
+
+## Phase P8A3 - Baseline-Bound Option Response Contracts
+
+- [ ] P8A3.1 Thêm option response datasets bound tới exact baseline version và criterion.
+- [ ] P8A3.2 Tách supplementary information khỏi compliance/evaluation fields.
+- [ ] P8A3.3 Giữ dataset lịch sử riêng khi nguồn/baseline version thay đổi; không sửa response cũ ngầm.
+- [ ] P8A3.4 Thêm optimistic concurrency và archived-dossier guard nhưng không bị baseline lock chặn.
+- [ ] P8A3.5 Chạy contract/DB phase gate cho baseline binding, ownership, cascade và historical linkage.
 
 ## Phase P8B - Supplier Option Manual Workspace
 
