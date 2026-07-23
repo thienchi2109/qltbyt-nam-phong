@@ -26,12 +26,15 @@ function countLines(source: string): number {
 }
 
 function getFunctionBlock(source: string, functionName: string): string {
-  const marker = `FUNCTION public.${functionName}(`
-  const start = source.indexOf(marker)
-  if (start === -1) return ""
+  const functions = [
+    ...source.matchAll(/^CREATE(?: OR REPLACE)? FUNCTION public\.([a-z0-9_]+)\(/gim),
+  ]
+  const index = functions.findIndex((match) => match[1] === functionName)
+  if (index === -1) return ""
 
-  const nextFunction = source.indexOf("\nCREATE OR REPLACE FUNCTION public.", start + marker.length)
-  return source.slice(start, nextFunction === -1 ? source.length : nextFunction)
+  const start = functions[index].index ?? 0
+  const end = functions[index + 1]?.index ?? source.length
+  return source.slice(start, end)
 }
 
 const migrationSource = readIfExists(MIGRATION_PATH)
@@ -42,6 +45,20 @@ const readFunctionBlock = getFunctionBlock(
 )
 
 describe("P8A4 technical configuration comparison-set read migration", () => {
+  it("extracts only the requested function across both function DDL forms", () => {
+    const source = [
+      "CREATE OR REPLACE FUNCTION public.target_function()",
+      "RETURNS TEXT",
+      "AS $$ SELECT 'target' $$;",
+      "CREATE FUNCTION public.followup_function()",
+      "RETURNS TEXT",
+      "AS $$ SELECT 'followup' $$;",
+    ].join("\n")
+
+    expect(getFunctionBlock(source, "target_function")).toContain("'target'")
+    expect(getFunctionBlock(source, "target_function")).not.toContain("'followup'")
+  })
+
   it("uses one ordered migration after the immutable P8A3 response migration", () => {
     expect(existsSync(MIGRATION_PATH)).toBe(true)
     expect(
@@ -136,13 +153,16 @@ describe("P8A4 technical configuration comparison-set read migration", () => {
   })
 
   it("does not modify the applied P8A3 migration source contract", () => {
-    const source = readFileSync(P8A3_MIGRATION_PATH)
+    const source = readFileSync(P8A3_MIGRATION_PATH, "utf8")
     expect(createHash("sha256").update(source).digest("hex")).toBe(P8A3_MIGRATION_SHA256)
+    expect(source).toContain("UNIQUE (option_id, baseline_version_id)")
   })
 
   it("ships a rollback-only phase gate for read behavior and privileges", () => {
     expect(existsSync(PHASE_GATE_PATH)).toBe(true)
     expect(countLines(migrationSource)).toBeLessThanOrEqual(450)
+    expect(phaseGateSource).not.toMatch(/\bCOMMIT\s*;/i)
+    expect(phaseGateSource.trimEnd()).toMatch(/\bROLLBACK\s*;$/i)
 
     for (const marker of [
       "BEGIN;",
