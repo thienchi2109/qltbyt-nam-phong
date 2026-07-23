@@ -2,16 +2,19 @@
 
 ## Scope Boundary
 
-P8A is split into three deploy-safe leaves:
+P8A is split into four deploy-safe leaves:
 
 1. P8A1 adds dossier-scoped supplier persistence and RPC contracts.
 2. P8A2 adds option identity and multiple-option persistence.
 3. P8A3 adds exact-baseline response datasets and supplementary information.
+4. P8A4 adds a nullable, side-effect-free comparison-set read RPC required by
+   the explicit-save P8B2 workspace.
 
 Supplier and option identity data remain outside the baseline aggregate. Baseline
 copy does not clone them, and baseline lock state does not block their direct
-editing. P8B owns hooks and UI. P9A, P9B, P10, P11 and P12 remain out of
-scope.
+editing. P8B1 owns supplier/option CRUD UI and P8B2 owns exact-baseline response
+UI. The detailed P8A4/P8B1/P8B2 execution plan lives in
+`p8b-tdd-plan.md`. P9A, P9B, P10, P11 and P12 remain out of scope.
 
 ## P8A1 Red-Green-Refactor
 
@@ -98,7 +101,7 @@ push P8A1 independently.
 - Do not add option identity uniqueness or user-managed ordering because the
   OpenSpec does not require either contract. List results are deterministic by
   supplier normalized name, option display key and option ID.
-- List by dossier with an optional supplier filter so P8B can load option
+- List by dossier with an optional supplier filter so P8B1 can load option
   identity without one RPC call per supplier.
 - Add an index on `(dossier_id, supplier_id)` for dossier reads, optional
   supplier filtering and composite-FK cascade checks.
