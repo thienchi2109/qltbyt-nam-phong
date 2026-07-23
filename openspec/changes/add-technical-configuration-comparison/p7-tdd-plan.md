@@ -80,7 +80,7 @@ P3A + P4          -> P7A1
 P7A1              -> P7A2
 P4 + P6B + P7A2  -> P7B1
 P7B1              -> P7B2
-P6B + P7B2 + P8B -> P9B
+P6B + P7B2 + P8B2 -> P9B
 P7B2 + P9B       -> P10A
 ```
 

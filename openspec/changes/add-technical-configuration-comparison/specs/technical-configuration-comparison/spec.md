@@ -119,6 +119,12 @@ Hệ thống SHALL không autosave thay đổi trong các form soạn cấu hìn
 - **THEN** UI giữ nguyên tiêu chí đang xem và dữ liệu người dùng chưa lưu
 - **AND** hiển thị lỗi có thể hành động thay vì chuyển sang tiêu chí khác
 
+#### Scenario: Open option responses without saving
+
+- **WHEN** người dùng chọn một phương án và phiên bản cơ sở chỉ để xem phản hồi
+- **THEN** backend trả comparison set hiện có hoặc trạng thái rỗng
+- **AND** không tạo comparison set, không tăng dossier revision và không thay đổi audit metadata
+
 ### Requirement: Standard baseline Excel template
 
 Hệ thống SHALL cho phép import cấu hình cơ sở chỉ từ template Excel chuẩn do hệ thống phát hành.
@@ -272,6 +278,20 @@ Hệ thống SHALL cho phép một hồ sơ có nhiều nhà cung cấp và mỗ
 - **THEN** nhà cung cấp chỉ được dùng bởi các phương án trong cùng hồ sơ
 - **AND** backend từ chối tên trùng sau khi trim, gom khoảng trắng và chuyển chữ thường trong phạm vi hồ sơ
 - **AND** hồ sơ khác có thể dùng cùng tên đã chuẩn hóa
+
+#### Scenario: Delete one supplier option
+
+- **WHEN** người dùng yêu cầu xóa một phương án
+- **THEN** UI xác nhận bằng nhãn `Nhà cung cấp · Model hoặc tên phương án`
+- **AND** cảnh báo rằng response datasets phụ thuộc của phương án cũng bị xóa
+- **AND** chỉ gửi mutation sau khi người dùng xác nhận
+
+#### Scenario: Delete a supplier and its options
+
+- **WHEN** người dùng yêu cầu xóa một nhà cung cấp
+- **THEN** UI hiển thị số phương án bị ảnh hưởng và yêu cầu xác nhận phá hủy
+- **AND** cảnh báo rằng mọi phương án cùng response datasets phụ thuộc cũng bị xóa
+- **AND** chỉ gửi mutation sau khi người dùng xác nhận
 
 ### Requirement: Standard supplier option Excel template
 

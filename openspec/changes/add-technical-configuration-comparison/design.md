@@ -111,6 +111,19 @@ Entity nhà cung cấp giữ thông tin tổ chức dùng chung. Entity phương
 
 Cấu trúc này cho phép một phương án được nhập lại theo phiên bản cơ sở mới mà không gọi đó là phiên bản hồ sơ nhà cung cấp. Phương án và phản hồi là dữ liệu làm việc, được sửa trực tiếp và không có hành động khóa.
 
+Workspace phương án cung cấp create/update/delete cho cả nhà cung cấp và phương
+án. Delete luôn đi qua destructive confirmation. Xóa một phương án cảnh báo
+toàn bộ response datasets phụ thuộc; xóa một nhà cung cấp hiển thị số phương án
+bị ảnh hưởng và cảnh báo cascade toàn bộ phương án cùng response datasets phụ
+thuộc. Dossier archived giữ toàn bộ bề mặt ở read-only.
+
+Đọc phản hồi của cặp `phương án + phiên bản cơ sở` dùng một nullable read RPC:
+comparison set hiện có được trả về, còn cặp chưa có dữ liệu trả `data: null`.
+Read path không tạo comparison set, không tăng dossier revision và không đổi
+audit metadata. Chỉ explicit save mới được gọi get-or-create rồi upsert response;
+nhờ đó việc mở selector hoặc chuyển baseline không tạo side effect và không gây
+conflict chéo tab.
+
 ### 6. Template Excel chuẩn
 
 MVP chỉ chấp nhận template do hệ thống tạo.
