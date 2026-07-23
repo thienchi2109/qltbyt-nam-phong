@@ -1,11 +1,14 @@
 import {
+  OPTION_RESPONSE_READ_RPC_FUNCTIONS,
   OPTION_RESPONSE_RPC_FUNCTIONS,
   OPTION_RPC_FUNCTIONS,
   SUPPLIER_RPC_FUNCTIONS,
 } from "@/lib/technical-configuration-supplier-option-rpcs"
 import { callTechnicalConfigurationRpc } from "./technical-configuration-rpc"
 import type {
+  TechnicalConfigurationComparisonSetGetRpcArgs,
   TechnicalConfigurationComparisonSetGetOrCreateRpcArgs,
+  TechnicalConfigurationComparisonSetReadWireResponse,
   TechnicalConfigurationComparisonSetWireResponse,
   TechnicalConfigurationOptionCreateRpcArgs,
   TechnicalConfigurationOptionDeleteRpcArgs,
@@ -103,6 +106,21 @@ export function deleteTechnicalConfigurationOption(
   return callTechnicalConfigurationRpc(OPTION_RPC_FUNCTIONS.deleteOption, args, {
     signal,
   })
+}
+
+/** Reads the response dataset without creating it when the pair is missing. */
+export function getTechnicalConfigurationComparisonSet(
+  args: TechnicalConfigurationComparisonSetGetRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationComparisonSetReadWireResponse> {
+  return callTechnicalConfigurationRpc(
+    OPTION_RESPONSE_READ_RPC_FUNCTIONS.getComparisonSet,
+    {
+      p_option_id: args.p_option_id,
+      p_baseline_version_id: args.p_baseline_version_id,
+    },
+    { signal }
+  )
 }
 
 /** Gets or creates the response dataset for one option and exact baseline version. */

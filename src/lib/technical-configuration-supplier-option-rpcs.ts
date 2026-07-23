@@ -28,3 +28,13 @@ export const OPTION_RESPONSE_RPC_FUNCTIONS = {
 
 /** Ordered P8A3 response RPC names for allowlists and contract iteration. */
 export const OPTION_RESPONSE_RPC_FUNCTION_NAMES = Object.values(OPTION_RESPONSE_RPC_FUNCTIONS)
+
+/** Named P8A4 side-effect-free response read RPC shared by client and server code. */
+export const OPTION_RESPONSE_READ_RPC_FUNCTIONS = {
+  getComparisonSet: "technical_configuration_comparison_set_get",
+} as const
+
+/** Ordered P8A4 nullable read RPC names for allowlists and contract iteration. */
+export const OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES = Object.values(
+  OPTION_RESPONSE_READ_RPC_FUNCTIONS
+)

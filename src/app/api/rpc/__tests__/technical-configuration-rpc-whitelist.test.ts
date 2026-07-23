@@ -9,6 +9,7 @@ import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configurat
 import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
 
 const {
+  OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_RPC_FUNCTION_NAMES,
   OPTION_RPC_FUNCTION_NAMES,
   SUPPLIER_RPC_FUNCTION_NAMES,
@@ -74,6 +75,10 @@ const P8A2_OPTION_RPC_FUNCTIONS = [
 const P8A3_OPTION_RESPONSE_RPC_FUNCTIONS = [
   "technical_configuration_comparison_set_get_or_create",
   "technical_configuration_option_response_upsert",
+] as const
+
+const P8A4_OPTION_RESPONSE_READ_RPC_FUNCTIONS = [
+  "technical_configuration_comparison_set_get",
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -199,17 +204,21 @@ describe("technical configuration option response RPC whitelist", () => {
     expect(OPTION_RESPONSE_RPC_FUNCTION_NAMES).toEqual(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)
   })
 
-  it("allowlists exactly the two P8A3 response RPCs", () => {
+  it("keeps the P8A4 nullable read prefix aligned with its shared manifest", () => {
+    expect(OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES).toEqual(P8A4_OPTION_RESPONSE_READ_RPC_FUNCTIONS)
+  })
+
+  it("allowlists exactly the P8A3 mutation RPCs plus the P8A4 read RPC", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter(
         (fn) =>
           fn.startsWith("technical_configuration_comparison_set_") ||
           fn.startsWith("technical_configuration_option_response_")
       )
-    ).toEqual(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)
+    ).toEqual([...P8A3_OPTION_RESPONSE_RPC_FUNCTIONS, ...P8A4_OPTION_RESPONSE_READ_RPC_FUNCTIONS])
   })
 
-  it.each(P8A3_OPTION_RESPONSE_RPC_FUNCTIONS)(
+  it.each([...P8A3_OPTION_RESPONSE_RPC_FUNCTIONS, ...P8A4_OPTION_RESPONSE_READ_RPC_FUNCTIONS])(
     'allows option response RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
