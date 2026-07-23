@@ -2,7 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
 import * as supplierOptionRpcAdapter from "../technical-configuration-supplier-option-rpc"
 import type {
+  TechnicalConfigurationComparisonSetGetRpcArgs,
   TechnicalConfigurationComparisonSetGetOrCreateRpcArgs,
+  TechnicalConfigurationComparisonSetReadWireResponse,
   TechnicalConfigurationComparisonSetWireResponse,
   TechnicalConfigurationOptionCreateRpcArgs,
   TechnicalConfigurationOptionDeleteRpcArgs,
@@ -19,6 +21,8 @@ import type {
 } from "../supplier-option-types"
 
 const {
+  OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES,
+  OPTION_RESPONSE_READ_RPC_FUNCTIONS,
   OPTION_RESPONSE_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_RPC_FUNCTIONS,
   OPTION_RPC_FUNCTION_NAMES,
@@ -31,6 +35,7 @@ const {
   createTechnicalConfigurationSupplier,
   deleteTechnicalConfigurationOption,
   deleteTechnicalConfigurationSupplier,
+  getTechnicalConfigurationComparisonSet,
   getOrCreateTechnicalConfigurationComparisonSet,
   listTechnicalConfigurationOptions,
   listTechnicalConfigurationSuppliers,
@@ -336,5 +341,93 @@ describe("P8A3 exact-baseline option response RPC contract", () => {
       [OPTION_RESPONSE_RPC_FUNCTIONS.getOrCreateComparisonSet, getOrCreateArgs, { signal }],
       [OPTION_RESPONSE_RPC_FUNCTIONS.upsertOptionResponse, upsertArgs, { signal: undefined }],
     ])
+  })
+})
+
+describe("P8A4 side-effect-free comparison-set read RPC contract", () => {
+  beforeEach(() => {
+    callRpcMock.mockReset()
+  })
+
+  it("freezes exactly one nullable read RPC without changing the P8A3 manifest", () => {
+    expect(OPTION_RESPONSE_READ_RPC_FUNCTIONS).toEqual({
+      getComparisonSet: "technical_configuration_comparison_set_get",
+    })
+    expect(OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES).toEqual(
+      Object.values(OPTION_RESPONSE_READ_RPC_FUNCTIONS)
+    )
+    expect(OPTION_RESPONSE_RPC_FUNCTIONS).toEqual({
+      getOrCreateComparisonSet: "technical_configuration_comparison_set_get_or_create",
+      upsertOptionResponse: "technical_configuration_option_response_upsert",
+    })
+  })
+
+  it("delegates only the option and baseline identifiers and preserves data null", async () => {
+    const argsWithExtraProperty = {
+      p_option_id: "00000000-0000-0000-0000-000000000003",
+      p_baseline_version_id: "00000000-0000-0000-0000-000000000005",
+      p_expected_revision: 4,
+    }
+    const expectedArgs: TechnicalConfigurationComparisonSetGetRpcArgs = {
+      p_option_id: argsWithExtraProperty.p_option_id,
+      p_baseline_version_id: argsWithExtraProperty.p_baseline_version_id,
+    }
+    const response: TechnicalConfigurationComparisonSetReadWireResponse = {
+      data: null,
+    }
+    const signal = new AbortController().signal
+    callRpcMock.mockResolvedValueOnce(response)
+
+    await expect(
+      getTechnicalConfigurationComparisonSet(argsWithExtraProperty, signal)
+    ).resolves.toEqual(response)
+    expect(callRpcMock).toHaveBeenCalledWith(
+      OPTION_RESPONSE_READ_RPC_FUNCTIONS.getComparisonSet,
+      expectedArgs,
+      { signal }
+    )
+  })
+
+  it("preserves existing ordered multiline response rows without remapping", async () => {
+    const args: TechnicalConfigurationComparisonSetGetRpcArgs = {
+      p_option_id: "00000000-0000-0000-0000-000000000003",
+      p_baseline_version_id: "00000000-0000-0000-0000-000000000005",
+    }
+    const response: TechnicalConfigurationComparisonSetReadWireResponse = {
+      data: {
+        id: "00000000-0000-0000-0000-000000000004",
+        dossier_id: "00000000-0000-0000-0000-000000000001",
+        option_id: args.p_option_id,
+        baseline_version_id: args.p_baseline_version_id,
+        created_at: "2026-07-22T00:00:00Z",
+        created_by: 1,
+        updated_at: "2026-07-22T00:00:00Z",
+        updated_by: 1,
+        revision: 5,
+        responses: [
+          {
+            id: "00000000-0000-0000-0000-000000000007",
+            comparison_set_id: "00000000-0000-0000-0000-000000000004",
+            baseline_version_id: args.p_baseline_version_id,
+            criterion_id: "00000000-0000-0000-0000-000000000006",
+            response_text: "Dòng 1\nDòng 2",
+            supplementary_information: "Tài liệu A\nTài liệu B",
+            created_at: "2026-07-22T00:00:00Z",
+            created_by: 1,
+            updated_at: "2026-07-22T00:01:00Z",
+            updated_by: 1,
+            revision: 5,
+          },
+        ],
+      },
+    }
+    callRpcMock.mockResolvedValueOnce(response)
+
+    await expect(getTechnicalConfigurationComparisonSet(args)).resolves.toEqual(response)
+    expect(callRpcMock).toHaveBeenCalledWith(
+      OPTION_RESPONSE_READ_RPC_FUNCTIONS.getComparisonSet,
+      args,
+      { signal: undefined }
+    )
   })
 })

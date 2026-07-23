@@ -149,8 +149,17 @@ export interface TechnicalConfigurationComparisonSetWireResponse {
   data: TechnicalConfigurationComparisonSetWire
 }
 
+export interface TechnicalConfigurationComparisonSetReadWireResponse {
+  data: TechnicalConfigurationComparisonSetWire | null
+}
+
 export interface TechnicalConfigurationOptionResponseWireResponse {
   data: TechnicalConfigurationOptionResponseWire
+}
+
+export interface TechnicalConfigurationComparisonSetGetRpcArgs {
+  p_option_id: string
+  p_baseline_version_id: string
 }
 
 export interface TechnicalConfigurationComparisonSetGetOrCreateRpcArgs {
