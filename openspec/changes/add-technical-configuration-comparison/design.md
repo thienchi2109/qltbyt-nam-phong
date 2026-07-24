@@ -140,14 +140,40 @@ Template cấu hình cơ sở có đúng một sheet hiển thị tên `Baseline
 
 Sheet `_meta` chứa đúng các metadata key `template_kind`, `template_version`, `dossier_id`, `baseline_version_id`, `baseline_revision` và `generated_at`. Template mới điền sẵn bốn nhóm gợi ý nhưng cho phép người dùng thêm, đổi tên, xóa hoặc sắp xếp nhóm bằng các dòng dữ liệu hợp lệ. Mã của tiêu chí đã tồn tại là read-only và parser từ chối mã bị sửa; dòng tiêu chí mới phải để trống mã để preview/apply sinh mã. Template không hỗ trợ thêm sheet hoặc cột nội dung tùy ý; cấu trúc ngoài contract của phiên bản template bị từ chối.
 
-Template phương án được xuất từ một phiên bản cơ sở đã chọn và chứa:
+Template phương án v1 có đúng một sheet hiển thị tên `OptionResponses`, đúng
+một sheet ẩn tên `_meta` và không có sheet hoặc cột nội dung bổ sung.
+`OptionResponses` chứa theo thứ tự:
 
-- ID/mã tiêu chí dùng để ánh xạ
-- nhóm và nội dung yêu cầu ở dạng chỉ đọc/tham khảo
-- nội dung phản hồi của phương án
-- thông tin bổ sung tùy chọn
+- `group_order`
+- `group_name`
+- `criterion_order`
+- `criterion_id`
+- `criterion_code`
+- `criterion_title`
+- `requirement_text`
+- `response_text`
+- `supplementary_information`
 
-Import phải có bước parse và preview. Hệ thống báo lỗi theo dòng, không ghi một phần khi file có lỗi cấu trúc, tiêu chí lạ hoặc tiêu chí trùng. Tài liệu URL và trích dẫn được quản lý trong UI để tránh lặp URL trên nhiều dòng Excel.
+Bảy cột đầu là context chỉ đọc từ exact baseline version. Workbook là
+authoritative full snapshot: mọi tiêu chí hiện tại phải xuất hiện đúng một lần;
+dòng thiếu, lạ hoặc trùng đều làm import bị từ chối, không được hiểu dòng bị xóa
+là lệnh clear. Ô trống ở `response_text` hoặc `supplementary_information` được
+canonicalize thành chuỗi rỗng và, sau confirmation, xóa giá trị cũ của trường
+tương ứng.
+
+Sheet `_meta` chứa đúng `template_kind=technical_configuration_option`,
+`template_version=1`, `dossier_id`, `option_id`, `baseline_version_id`,
+`dossier_revision` và `generated_at`. Option identity, tài liệu URL, trích dẫn
+và đánh giá không nằm trong workbook.
+
+P9A1 chỉ đóng băng contract/codec, chưa thêm RPC hoặc UI. P9A2 thêm authoritative
+preview/apply dùng chung một server-side validator. Preview chỉ đọc, không tạo
+comparison set hoặc ghi response. Confirmed apply revalidate dưới dossier lock,
+có thể tạo comparison set trong cùng transaction, reconcile toàn bộ snapshot,
+tăng dossier revision đúng một lần và rollback toàn bộ khi có lỗi. P9A3 mới mở
+download/import UI; stale apply phải giữ file, canonical rows và preview để
+refresh revision rồi preview lại. Draft và locked baseline đều cho sửa option
+responses; archived dossier chỉ đọc.
 
 Triển khai dùng `exceljs` thông qua pipeline Excel hiện có của trang Equipment. P5A trích và tái dùng workbook loading/creation, worksheet conversion, Blob download, `useBulkImportState` và `BulkImportDialogParts`; mọi behavior và test hiện tại của Equipment phải giữ nguyên. `exportToExcel` tiếp tục là API xuất một sheet phẳng, không nhận thêm flag riêng cho baseline. P5B chỉ thêm codec dành riêng cho `Baseline`/`_meta` và tách parser/validator khỏi UI để kiểm thử độc lập.
 
@@ -190,15 +216,15 @@ Pattern Equipment được tái sử dụng ở mức shared component/validatio
 Không tái sử dụng bảng `file_dinh_kem` vì bảng đó gắn với `thiet_bi`. Khi triển
 khai, cần trích phần trình bày và validation dùng chung từ
 `EquipmentDetailFilesTab` thay vì sao chép component. Equipment tiếp tục map
-`useEquipmentAttachments` vào controlled primitives; P7B2/P9B map adapter riêng
+`useEquipmentAttachments` vào controlled primitives; P7B2/P9B2 map adapter riêng
 của module vào cùng primitives. Google Drive folder affordance vẫn là
 Equipment-specific nhưng phải dùng cùng URL parser/policy trước khi tạo `href`.
-P7B1 sở hữu authoritative server-side HTTP(S) validator và P9B gọi lại cùng
+P7B1 sở hữu authoritative server-side HTTP(S) validator và P9B1 gọi lại cùng
 validator, không tạo bản sao logic. AST consumer contracts xác nhận Equipment,
-P7B2 và P9B thực sự import/render shared form/list bằng exact shared
+P7B2 và P9B2 thực sự import/render shared form/list bằng exact shared
 path/binding và không giữ local `new URL(...)` hoặc phần presentation đã
 extract. Manifest là cumulative: P6B có Equipment; P7B2 có Equipment + baseline;
-P9B có Equipment + baseline + option. Mỗi consumer còn có React
+P9B2 có Equipment + baseline + option. Mỗi consumer còn có React
 runtime-delegation tests mock primitives/utility để chứng minh props/callbacks
 đang drive active create/update/render/delete workflow, không chỉ tồn tại dưới
 dạng dead import.
@@ -208,8 +234,20 @@ P7B1 định nghĩa một aggregate
 baseline và reference product. Response phân biệt exact `owner_type`/`owner_id`
 và trả nested citations chỉ trong cùng baseline version; P7B2 dùng contract này
 để hook/UI không cần
-suy đoán hoặc ghép hai contract đọc. P9B dùng option-document list được scope
-bằng comparison set và trả citations của đúng comparison set đó.
+suy đoán hoặc ghép hai contract đọc. P9B1 lưu document theo `option_id`, nên một
+document của phương án được dùng chung khi phương án được đối chiếu với nhiều
+baseline version. Citation vẫn đi qua exact comparison set và exact criterion;
+option-document list nhận `option_id + baseline_version_id`, trả shared
+documents, chỉ các citation của comparison set tương ứng và tổng số citation bị
+ảnh hưởng của từng document trên mọi baseline.
+
+P9B2 dùng contract đó để hiển thị evidence mà không tạo comparison set khi chỉ
+mở hoặc đọc. Xóa option document phải hiển thị tổng số citation bị ảnh hưởng,
+chỉ mutation sau confirmation và xóa document cùng toàn bộ citation liên quan
+trong một transaction; lỗi phải giữ nguyên tất cả dữ liệu. Option evidence vẫn
+editable khi baseline đã khóa vì nằm ngoài baseline aggregate; archived dossier
+chỉ đọc. P9B1 sở hữu DB/source contracts, còn P9B2 là normative completion owner
+cho TC-11 và TC-12 sau khi rerun Equipment và baseline/reference coverage.
 
 ### 8. Hai bề mặt làm việc bổ trợ nhau
 

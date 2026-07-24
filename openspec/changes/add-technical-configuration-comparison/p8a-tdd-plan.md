@@ -14,7 +14,7 @@ Supplier and option identity data remain outside the baseline aggregate. Baselin
 copy does not clone them, and baseline lock state does not block their direct
 editing. P8B1 owns supplier/option CRUD UI and P8B2 owns exact-baseline response
 UI. The detailed P8A4/P8B1/P8B2 execution plan lives in
-`p8b-tdd-plan.md`. P9A, P9B, P10, P11 and P12 remain out of scope.
+`p8b-tdd-plan.md`. P9, P10, P11 and P12 remain out of scope.
 
 ## P8A1 Red-Green-Refactor
 

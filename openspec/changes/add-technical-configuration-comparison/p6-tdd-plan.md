@@ -7,7 +7,7 @@ Tách P6 thành hai PR-sized leaves:
 - P6A khóa behavior hiện tại và tạo shared URL-document contracts/primitives.
 - P6B chuyển Equipment sang primitives mà không đổi hook, RPC hoặc storage adapter.
 
-P6 không tạo technical-configuration document records. Persistence bắt đầu ở P7B1 cho baseline/reference products và P9B cho supplier options; P7B2 mới mở baseline/reference evidence UI.
+P6 không tạo technical-configuration document records. Persistence bắt đầu ở P7B1 cho baseline/reference products và P9B1 cho supplier options; P7B2 mới mở baseline/reference evidence UI.
 
 ## Evidence khảo sát
 
@@ -27,13 +27,13 @@ Shared component sở hữu field state, validation, mutation lifecycle và dele
 
 Ưu điểm: migration Equipment ngắn.
 
-Nhược điểm: đóng cứng immediate persistence và simple confirmation, không hợp P7B2/P9B dirty-state, expected revision, lock policy và affected-link count.
+Nhược điểm: đóng cứng immediate persistence và simple confirmation, không hợp P7B2/P9B2 dirty-state, expected revision, lock policy và affected-link count.
 
 ### 2. Controlled form/list + pure URL utility
 
 Shared form/list chỉ nhận canonical data/callbacks; consumer giữ mutation, feedback, confirmation và persistence policy.
 
-Ưu điểm: boundary nhỏ, test độc lập, giữ Equipment behavior và dùng được cho P7B2/P9B.
+Ưu điểm: boundary nhỏ, test độc lập, giữ Equipment behavior và dùng được cho P7B2/P9B2.
 
 Nhược điểm: Equipment wrapper vẫn giữ một ít orchestration và field mapping.
 
@@ -434,7 +434,7 @@ Consumer manifest phải cumulative thay vì thay thế theo phase:
 
 - P6B: `EquipmentDetailFilesTab.tsx`;
 - P7B2: Equipment + `TechnicalConfigurationBaselineDocuments.tsx`;
-- P9B: Equipment + baseline + `TechnicalConfigurationOptionDocuments.tsx`.
+- P9B2: Equipment + baseline + `TechnicalConfigurationOptionDocuments.tsx`.
 
 Mỗi phase assert set equality cho toàn manifest hiện hành, exact path/binding và
 không có missing/extra consumer entry.
@@ -502,7 +502,7 @@ Không sửa:
 - RPC names/arguments;
 - `equipmentDetailQueryKeys`;
 - `file_dinh_kem`;
-- P7B1/P9B persistence và P7B2/P9B workspace orchestration.
+- P7B1/P9B1 persistence và P7B2/P9B2 workspace orchestration.
 
 ### B3. Regression gate
 
@@ -594,11 +594,13 @@ Exit gate:
   baseline/reference owners cùng nested citations.
 - P7B2: baseline/reference evidence workspace, cumulative Equipment + baseline
   AST manifest, runtime delegation và raw create-update-list-render tests.
-- P9B: supplier-option document persistence/citations, reuse P7B1 authoritative
-  URL validator và primary completion ownership cho TC-11-S01/S02/S03 cùng
-  TC-12-S01/S02 sau khi rerun P7B1 SQL gate và P7B2 React coverage; rerun
-  cumulative Equipment + baseline + option AST manifest và add option runtime-delegation/raw
-  create-update-list-render tests.
+- P9B1: supplier-option document persistence/citations, option-global documents,
+  exact-baseline citations, affected-count delete contract và reuse P7B1
+  authoritative URL validator.
+- P9B2: primary completion ownership cho TC-11-S01..S05 cùng TC-12-S01/S02 sau
+  khi rerun P7B1/P9B1 SQL gates và P7B2 React coverage; rerun cumulative
+  Equipment + baseline + option AST manifest và add option
+  runtime-delegation/raw create-update-list-render-delete tests.
 - P13A/P13B: cross-leaf SQL/UI regression.
 
-P6A/P6B tests xác nhận partial callback/presentation contracts và không được tạo document records. P7B1/P7B2 có phase-local persistence/citation/UI tests nhưng chưa mark normative TC-11 hoặc TC-12 scenarios complete. Chỉ P9B mark TC-11-S01/S02/S03 và TC-12-S01/S02 complete sau khi baseline/reference và supplier-option cases đều pass.
+P6A/P6B tests xác nhận partial callback/presentation contracts và không được tạo document records. P7B1/P7B2/P9B1 có phase-local persistence/citation/UI tests nhưng chưa mark normative TC-11 hoặc TC-12 scenarios complete. Chỉ P9B2 mark TC-11-S01..S05 và TC-12-S01/S02 complete sau khi baseline/reference và supplier-option cases đều pass.

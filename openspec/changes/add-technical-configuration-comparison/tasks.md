@@ -40,9 +40,12 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P8A4](./implementation-plan.md#phase-p8a4---side-effect-free-option-response-read-contract) | Read-only nullable comparison-set contract     | P8A3                   | TC-02, TC-04, TC-07, TC-09, TC-17, TC-20        |
 | [P8B1](./implementation-plan.md#phase-p8b1---supplier-and-option-identity-crud-workspace)    | UI CRUD supplier và option identity            | P3A, P8A2              | TC-04, TC-09, TC-20                             |
 | [P8B2](./implementation-plan.md#phase-p8b2---exact-baseline-option-response-workspace)       | UI response theo exact baseline                | P4, P8A3, P8A4, P8B1   | TC-04, TC-09, TC-17, TC-20                      |
-| [P9A](./implementation-plan.md#phase-p9a---supplier-option-excel)                            | Excel phương án                                | P5A, P8B2              | TC-10, TC-20                                    |
-| [P9B](./implementation-plan.md#phase-p9b---supplier-option-documents-and-citations)          | Tài liệu và trích dẫn phương án                | P6B, P7B2, P8B2        | TC-02, TC-04, TC-11, TC-12, TC-20               |
-| [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                     | P7B2, P9B              | TC-02, TC-13, TC-17                             |
+| [P9A1](./implementation-plan.md#phase-p9a1---supplier-option-workbook-codec)                 | Contract và codec Excel phương án              | P5A, P8B2              | TC-10                                           |
+| [P9A2](./implementation-plan.md#phase-p9a2---atomic-supplier-option-import-contracts)        | Preview/apply nguyên tử cho Excel phương án    | P8A4, P9A1             | TC-02, TC-10, TC-20                             |
+| [P9A3](./implementation-plan.md#phase-p9a3---supplier-option-import-workspace)               | UI import Excel phương án                      | P9A2                   | TC-04, TC-10, TC-20                             |
+| [P9B1](./implementation-plan.md#phase-p9b1---supplier-option-evidence-contracts)             | Data contract tài liệu/trích dẫn phương án     | P7B1, P8A4, P9A3       | TC-02, TC-11, TC-12, TC-20                      |
+| [P9B2](./implementation-plan.md#phase-p9b2---supplier-option-evidence-workspace)             | Workspace tài liệu/trích dẫn phương án         | P6B, P7B2, P8B2, P9B1  | TC-04, TC-11, TC-12, TC-20                      |
+| [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                     | P7B2, P9B2             | TC-02, TC-13, TC-17                             |
 | [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                           | Ma trận so sánh                                | P3A, P10A              | TC-13, TC-17                                    |
 | [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)         | Domain và persistence đánh giá thủ công        | P4, P8A3               | TC-02, TC-15, TC-16, TC-19, TC-20               |
 | [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow) | Nhập đánh giá, save và navigation              | P10B, P11              | TC-04, TC-14, TC-15, TC-16, TC-17, TC-20        |
@@ -50,7 +53,7 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                     | Xếp hạng tham khảo                             | P12B                   | TC-18                                           |
 | [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)    | Hardening DB, quyền và hiệu năng               | P12C                   | TC-02, TC-20                                    |
 | [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)      | Hardening UI, accessibility và regression      | P12C                   | TC-03, TC-04, TC-11, TC-13, TC-14, TC-20        |
-| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)         | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A  | TC-19                                           |
+| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)         | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3 | TC-19                                           |
 
 ## Phase P0 - Discovery And Contract Freeze
 
@@ -220,8 +223,8 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
       malformed/disallowed/protocol-only/single-slash/backslash URL, exact raw
       mixed-case create/update/list stored-returned equality, aggregate-list
       owner/citation scope, cascade, concurrency và `pg_get_functiondef`
-      exact-caller contract: bốn callers trước P9B, sáu callers khi rerun sau
-      P9B, mọi list/delete/citation RPC là non-caller.
+      exact-caller contract: bốn callers trước P9B1, sáu callers khi rerun sau
+      P9B1, mọi list/delete/citation RPC là non-caller.
 - [x] P7B1.9 Không thêm document/citation UI hoặc URL-document consumer mới.
 
 ## Phase P7B2 - Baseline And Reference Evidence Workspace
@@ -294,32 +297,98 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P8B2.6 Thêm dirty navigation cho option/baseline/tab/dossier, archived read-only và draft/locked baseline tests.
 - [x] P8B2.7 Viết no-write-on-open, exact-baseline, supplementary-non-scoring, responsive và no-lock-control tests.
 
-## Phase P9A - Supplier Option Excel
+## Phase P9A1 - Supplier Option Workbook Codec
 
-- [ ] P9A.1 Sinh option template từ baseline version đã chọn.
-- [ ] P9A.2 Parse/preview/import response và supplementary information.
-- [ ] P9A.3 Từ chối arbitrary/wrong-version/unknown/duplicate criteria và partial writes.
-- [ ] P9A.4 Thêm expected-revision guard và giữ preview/input khi conflict.
-- [ ] P9A.5 Tích hợp import vào option workspace.
-- [ ] P9A.6 Viết round-trip, conflict và atomic-import tests.
+- [ ] P9A1.1 Đóng băng option workbook v1 với đúng một sheet dữ liệu hiển thị,
+      đúng một sheet `_meta` ẩn và tập cột cố định.
+- [ ] P9A1.2 Sinh template từ exact option + baseline version, giữ criterion
+      ID/code, group và requirement context ở dạng read-only.
+- [ ] P9A1.3 Parse toàn bộ criterion set; mỗi criterion phải xuất hiện đúng một
+      lần, thiếu/unknown/duplicate criterion đều bị từ chối.
+- [ ] P9A1.4 Canonicalize ô response/supplementary trống thành empty string để
+      import sau đó xóa nội dung cũ một cách rõ ràng.
+- [ ] P9A1.5 Từ chối arbitrary/wrong-version/metadata-less/extra-sheet/
+      extra-column workbook và giữ URL documents/citations ngoài Excel.
+- [ ] P9A1.6 Reuse P5A workbook/download primitives; không thêm RPC, migration
+      hoặc UI trong leaf này.
+- [ ] P9A1.7 Viết exact-contract, Vietnamese round-trip và malformed workbook
+      tests.
 
-## Phase P9B - Supplier Option Documents And Citations
+## Phase P9A2 - Atomic Supplier Option Import Contracts
 
-- [ ] P9B.1 Thêm option document URLs và criterion citations.
-- [ ] P9B.2 Reuse P6B-proven primitives/P7B2 citation behavior; enforce
-      cumulative Equipment + baseline + option exact path/named-binding AST
-      manifest và runtime-delegation assertions chống dead import/local
-      duplicate form/list/URL parsing.
-- [ ] P9B.3 Reuse authoritative P7B1 HTTP(S) validator; editable delete phải xác nhận và hiển thị affected-link count.
-- [ ] P9B.4 Thêm explicit save, dirty-state, expected-revision guard và chạy DB
-      phase gate gồm malformed/disallowed/protocol-only/single-slash/backslash
-      URL, mixed-case acceptance, exact raw create/update/list stored-returned
-      equality cùng
-      `pg_get_functiondef` exact-six-caller assertion.
-- [ ] P9B.5 Rerun baseline/reference SQL + React evidence suites cùng option
-      suites; khóa raw create/update/list/render và active primitive/utility
-      delegation ở cả hai consumer generations.
-- [ ] P9B.6 Chỉ mark TC-11-S01/S02/S03 và TC-12-S01/S02 complete khi baseline, reference-product và supplier-option cases đều pass.
+- [ ] P9A2.1 Thêm authoritative preview/apply RPC dùng chung một server-side
+      validator/normalizer cho exact option + baseline version.
+- [ ] P9A2.2 Preview là read-only: không tạo comparison set, không ghi response
+      và không tăng dossier revision.
+- [ ] P9A2.3 Apply chỉ chạy sau confirmation, được phép tạo comparison set trong
+      transaction và dùng dossier revision làm optimistic concurrency token.
+- [ ] P9A2.4 Reconcile full response snapshot: mọi criterion phải có mặt đúng
+      một lần; empty string xóa response/supplementary cũ; revision tăng đúng
+      một lần cho toàn apply.
+- [ ] P9A2.5 Từ chối stale revision, archived dossier, metadata lệch target,
+      malformed/tampered canonical rows và mọi partial write.
+- [ ] P9A2.6 Không thay đổi option identity, URL documents, citations,
+      assessments hoặc baseline aggregate.
+- [ ] P9A2.7 Mở rộng RPC map/types/allowlist và chạy migration/source,
+      role/claim, no-write preview, full-snapshot, atomicity và rollback phase
+      gates.
+
+## Phase P9A3 - Supplier Option Import Workspace
+
+- [ ] P9A3.1 Thêm download/import action vào exact-baseline option response
+      workspace, không đặt vào option identity editor.
+- [ ] P9A3.2 Dùng P9A1 codec, P5A `useBulkImportState`, Blob helper và shared
+      bulk-import dialog parts.
+- [ ] P9A3.3 Không mutation trước preview confirmation; apply chỉ gọi P9A2
+      atomic RPC.
+- [ ] P9A3.4 Giữ selected file, canonical rows và preview khi stale conflict;
+      refresh revision mà không làm mất input.
+- [ ] P9A3.5 Adopt complete returned snapshot và đồng bộ option-response,
+      dossier/detail caches sau success.
+- [ ] P9A3.6 Import pending/dirty state phải chặn identity mutations và
+      option/baseline/tab/dossier navigation; locked baseline vẫn editable,
+      archived dossier read-only.
+- [ ] P9A3.7 Viết template delegation, full-snapshot clear, missing-row reject,
+      no-write-before-confirm, success/cache và conflict-preservation React
+      tests.
+
+## Phase P9B1 - Supplier Option Evidence Contracts
+
+- [ ] P9B1.1 Thêm option-level document URL metadata và exact-comparison-set
+      criterion citations với composite ownership/FK guards.
+- [ ] P9B1.2 Document được dùng chung cho option trên nhiều baseline; citation
+      chỉ thuộc exact option + baseline + criterion.
+- [ ] P9B1.3 List theo option + baseline không tạo comparison set, trả document
+      dùng chung, citations của exact set và tổng affected citation count trên
+      mọi baseline.
+- [ ] P9B1.4 Reuse authoritative P7B1 HTTP(S) validator trong option document
+      create/update; exact caller set tăng từ bốn lên sáu.
+- [ ] P9B1.5 Document/citation mutations dùng dossier revision, vẫn cho phép khi
+      baseline locked và từ chối khi dossier archived.
+- [ ] P9B1.6 Confirmed document delete xóa document cùng mọi citation liên quan
+      trong một transaction; không có unconfirmed mutation.
+- [ ] P9B1.7 Thêm typed RPC names/wire types/wrappers/allowlist mà chưa mở UI.
+- [ ] P9B1.8 Chạy migration/source, role/claim, RLS/grants/search_path,
+      owner/version isolation, raw URL, affected-count, cascade, stale revision
+      và exact-six-caller phase gates.
+
+## Phase P9B2 - Supplier Option Evidence Workspace
+
+- [ ] P9B2.1 Thêm option-specific evidence hook/component; không mở rộng
+      baseline/reference document hook bằng option-specific branching.
+- [ ] P9B2.2 Reuse P6B-proven `UrlDocumentForm`/`UrlDocumentList` và
+      P7B2-proven owner-neutral citation editor behavior.
+- [ ] P9B2.3 First citation save dùng established comparison-set
+      get-or-create revision chain; list/open vẫn side-effect-free.
+- [ ] P9B2.4 Thêm explicit save, dirty/conflict preservation, option-level
+      document reuse và delete confirmation hiển thị tổng affected citations.
+- [ ] P9B2.5 Locked baseline vẫn cho sửa option evidence; archived dossier
+      read-only; pending evidence state chặn identity/response mutations và
+      navigation.
+- [ ] P9B2.6 Enforce cumulative Equipment + baseline + option exact
+      path/named-binding AST manifest và runtime-delegation assertions.
+- [ ] P9B2.7 Rerun baseline/reference SQL + React suites cùng option evidence
+      suites; chỉ leaf này mark TC-11-S01..S05 và TC-12-S01/S02 complete.
 
 ## Phase P10A - Comparison Read Contract
 

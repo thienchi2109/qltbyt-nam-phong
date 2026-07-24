@@ -103,46 +103,56 @@ P4 + P7A1 + P8A2 -> P8A3
 P8A3            -> P8A4
 P3A + P8A2      -> P8B1
 P4 + P8A3 + P8A4 + P8B1 -> P8B2
-P5A + P8B2      -> P9A
-P6B + P7B2 + P8B2 -> P9B
-P7B2 + P9B      -> P10A
+P5A + P8B2      -> P9A1
+P8A4 + P9A1     -> P9A2
+P9A2             -> P9A3
+P7B1 + P8A4 + P9A3 -> P9B1
+P6B + P7B2 + P8B2 + P9B1 -> P9B2
+P7B2 + P9B2     -> P10A
 P3A + P10A      -> P10B
 P4 + P8A3       -> P11
 P10B + P11      -> P12A
 P12A            -> P12B
 P12B            -> P12C
 P12C            -> P13A, P13B
-P13A + P13B + P7A2 + P9A -> P13C
+P13A + P13B + P7A2 + P9A3 -> P13C
 ```
 
 `P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B2`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
+
+P9 uses the strict delivery order
+`P9A1 -> P9A2 -> P9A3 -> P9B1 -> P9B2`. P9B1 is technically grounded by
+P7B1/P8A4, but it deliberately waits for P9A3 so the option RPC maps,
+allowlists and response workspace are changed by one reviewed leaf at a time.
+P9A1/P9A2 and P9B1 are dormant contracts; only P9A3 and P9B2 activate new
+user-visible workflows.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                       |
-| ----- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                               |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                            |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                     |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P9B, P12A                                                               |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                               |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                           |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                       |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                       |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2                                                                                   |
-| TC-10 | Standard supplier option Excel template         | P9A                                                                                                                  |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B                                                                                            |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B                                                                                                      |
-| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                                           |
-| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                           |
-| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                            |
-| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                      |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P10A, P10B, P12A                                                                                   |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                 |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                    |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P9A, P9B, P11, P12A, P13B |
+| ID    | Requirement                                     | Primary phases                                                                                                                     |
+| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                             |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                          |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                   |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P9A3, P9B2, P12A                                                                      |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                             |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                         |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                     |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                     |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2                                                                                                 |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                   |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                   |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                             |
+| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                                                         |
+| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                         |
+| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                          |
+| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                    |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P10A, P10B, P12A                                                                                                 |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                               |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                  |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
 
 ## Shared Technical Constraints
 
@@ -717,7 +727,7 @@ Users can create the same draft baseline manually or through one versioned syste
 - [ ] Freeze exact utility/form/list TypeScript signatures and preserve accepted
       raw URL strings in callbacks and anchor attributes rather than exposing
       normalized `URL.href`; tests also assert the resolved anchor destination.
-- [ ] Keep mutation, toast, confirmation, dirty-state and affected-link policies outside the shared primitives so P7B2/P9B can supply their own persistence workflow.
+- [ ] Keep mutation, toast, confirmation, dirty-state and affected-link policies outside the shared primitives so P7B2/P9B2 can supply their own persistence workflow.
 - [ ] Keep external links on the shared list in a new tab with `noopener noreferrer`.
 - [ ] Require `role="alert"` validation feedback plus `type="button"` and document-specific accessible labels for delete; prove delete cannot submit an outer form.
 - [ ] Add one TypeScript-AST source-contract test that recursively inventories every supported TS/JS module extension; parses import, import-equals, export-from, dynamic import, `require()` and `ImportTypeNode`; fails non-literal references; and enforces concrete per-file module-specifier set equality with no prefix matching.
@@ -785,7 +795,7 @@ Shared controlled URL-document primitives and direct Equipment characterization 
 - [ ] Preserve loading, empty, add/reset, rejected-add retry, delete and safe-link behavior under the P6A regression suite.
 - [ ] Extend the AST source contract with exact shared module paths/named
       bindings and cumulative manifest set equality. P6B requires exactly
-      `EquipmentDetailFilesTab.tsx`; P7B2 later adds baseline and P9B later adds
+      `EquipmentDetailFilesTab.tsx`; P7B2 later adds baseline and P9B2 later adds
       option without dropping earlier consumers.
 - [ ] Add a focused runtime-delegation test that mocks the exact
       form/list/utility modules and proves captured props/callbacks drive active
@@ -942,7 +952,7 @@ Reference products can be compared criterion-by-criterion while authoring the ba
   no write/revision change, mixed-case-scheme acceptance and exact raw URL
   stored/returned equality across create, update and aggregate list,
   affected-link count, stale revision and locked immutability.
-- SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four baseline/reference document create/update callers with no branch on P9B function presence; every list/delete/citation RPC remains a non-caller.
+- SQL source-contract assertions over `pg_get_functiondef`: exactly one validator; exactly four baseline/reference document create/update callers with no branch on P9B1 function presence; every list/delete/citation RPC remains a non-caller.
 
 ### Exit gate
 
@@ -1340,101 +1350,291 @@ evidence, comparison or evaluation
 Users can manually enter and update multiple supplier options for an exact
 baseline version without side effects before explicit save.
 
-## Phase P9A - Supplier Option Excel
+## Phase P9A1 - Supplier Option Workbook Codec
 
 **Depends on:** P5A, P8B2<br>
-**Requirements:** TC-10, TC-20<br>
-**Deploy boundary:** option template/import only; evidence remains deferred
+**Requirements:** TC-10<br>
+**Detailed TDD plan:** [P9A1 - Supplier Option Workbook Codec](./p9-tdd-plan.md#p9a1---supplier-option-workbook-codec)<br>
+**Deploy boundary:** dormant option workbook contract and codec only
 
 ### Planned files
 
-- Create: `src/lib/technical-configuration-option-excel.ts`
+- Create: `src/lib/technical-configuration-option-excel-contract.ts`
+- Create: `src/lib/technical-configuration-option-excel-export.ts`
+- Create: `src/lib/technical-configuration-option-excel-parse.ts`
 - Create: `src/lib/__tests__/technical-configuration-option-excel.test.ts`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionImportDialog.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/option-import.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionEditor.tsx`
 
 ### Tasks
 
-- [ ] Generate option template from the selected baseline version.
-- [ ] Reuse P5A workbook/download/import-state primitives and keep only option-specific codec logic in this phase.
-- [ ] Preserve criterion IDs/codes and read-only requirement context.
-- [ ] Import response and supplementary information only after preview.
-- [ ] Require the expected option-response revision and preserve preview/input on conflict.
-- [ ] Reject arbitrary, metadata-less, wrong-version and malformed workbooks.
-- [ ] Reject unknown/duplicate criteria and partial writes.
-- [ ] Keep URL documents and citations outside the workbook.
+- [ ] Freeze workbook v1 with exactly one visible option-response sheet, one
+      hidden `_meta` sheet and no extra sheet or content column.
+- [ ] Generate from the selected option and exact baseline version while
+      preserving criterion IDs/codes, group labels and requirement text as
+      read-only context.
+- [ ] Require every baseline criterion exactly once. Reject missing, unknown or
+      duplicate criteria instead of treating a removed row as a clear command.
+- [ ] Canonicalize blank response and supplementary cells to empty strings so a
+      confirmed import explicitly clears prior values.
+- [ ] Reject arbitrary, metadata-less, wrong-option, wrong-baseline,
+      wrong-version and malformed workbooks.
+- [ ] Keep URL documents, citations, assessments and option identity outside the
+      workbook.
+- [ ] Reuse P5A workbook loading/creation, worksheet conversion and Blob
+      primitives without changing Equipment or baseline codec behavior.
 
 ### TDD and verification
 
-- Round-trip tests for multiple options and Vietnamese text.
-- Wrong baseline version, unknown criterion and duplicate criterion tests.
-- Stale option-revision and preview-preservation tests.
-- Atomic import failure tests.
-- Semantic dedup review against baseline and existing Excel helpers.
+- Exact sheet, column and metadata tests.
+- Vietnamese/multiline export-parse round trips.
+- Blank-cell clear canonicalization and complete-criterion-set tests.
+- Missing/unknown/duplicate criterion, wrong target, extra sheet/column and
+  unsupported-cell tests.
+- Equipment and baseline Excel regression tests plus semantic dedup review.
 
 ### Exit gate
 
-Supplier options can be entered manually or through the exact system template.
+The exact option workbook v1 contract round-trips deterministically and remains
+dormant: no RPC, migration or user-visible import action exists.
 
-## Phase P9B - Supplier Option Documents And Citations
+## Phase P9A2 - Atomic Supplier Option Import Contracts
 
-**Depends on:** P6B, P7B2, P8B2
-**Requirements:** TC-02, TC-04, TC-11, TC-12, TC-20  
-**Deploy boundary:** option URL evidence only
+**Depends on:** P8A4, P9A1<br>
+**Requirements:** TC-02, TC-10, TC-20<br>
+**Detailed TDD plan:** [P9A2 - Atomic Supplier Option Import Contracts](./p9-tdd-plan.md#p9a2---atomic-supplier-option-import-contracts)<br>
+**Deploy boundary:** dormant authoritative preview/apply RPCs only
+
+### Planned files
+
+- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_import.sql`
+- Create: `supabase/tests/technical_configuration_option_import_phase_gate.sql`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-option-import-migration.test.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-option-import-rpc.ts`
+- Modify: `src/lib/technical-configuration-supplier-option-rpcs.ts`
+- Modify: `src/app/(app)/technical-configurations/supplier-option-types.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+
+### Tasks
+
+- [ ] Add preview/apply RPCs that share one authoritative server-side
+      validator/normalizer for an exact option + baseline pair.
+- [ ] Accept the P9A1 metadata/canonical rows plus `p_expected_revision`, using
+      the dossier revision rather than inventing an option-response revision.
+- [ ] Keep preview side-effect-free: no comparison set, response or audit write
+      and no revision increment.
+- [ ] Let confirmed apply create the comparison set inside the same transaction
+      when it does not exist.
+- [ ] Reconcile the complete criterion response snapshot, including deleting
+      prior text through canonical empty strings, and increment revision exactly
+      once for the whole apply.
+- [ ] Revalidate under the established dossier lock order and reject stale,
+      archived, mismatched, malformed or tampered requests with zero partial
+      writes.
+- [ ] Leave option identity, baseline/reference data, URL evidence, citations
+      and assessments unchanged.
+- [ ] Add exact RPC names, wire types, wrappers and allowlist entries without
+      activating UI.
+
+### TDD and verification
+
+- Migration/source tests for signatures, `SECURITY DEFINER`, `search_path`,
+  grants and allowlist entries.
+- Role/claim, exact owner/version and archived-dossier tests.
+- Preview no-write/no-revision/no-comparison-set tests.
+- Complete-set, blank-clear, missing/unknown/duplicate criterion and
+  metadata/tamper rejection tests.
+- Apply success tests proving optional comparison-set creation, full
+  reconciliation and one revision increment.
+- Failure injection and stale-revision tests proving total rollback.
+- Apply through Supabase MCP only after explicit permission; then run the phase
+  gate and security/performance advisors.
+
+### Exit gate
+
+Authoritative option import preview/apply contracts are deployed and verified
+but unused by the application; preview is read-only and apply is one atomic
+full-snapshot mutation.
+
+## Phase P9A3 - Supplier Option Import Workspace
+
+**Depends on:** P9A2<br>
+**Requirements:** TC-04, TC-10, TC-20<br>
+**Detailed TDD plan:** [P9A3 - Supplier Option Import Workspace](./p9-tdd-plan.md#p9a3---supplier-option-import-workspace)<br>
+**Deploy boundary:** option template download and import UI only
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptionImport.ts`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionImportDialog.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionImportPreview.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/option-import.test.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/use-technical-configuration-option-import.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
+
+### Tasks
+
+- [ ] Add template download/import actions to the exact-baseline response
+      workspace, not the option identity editor.
+- [ ] Wire download through P9A1 and P5A Blob primitives; use
+      `useBulkImportState` and shared bulk-import dialog parts.
+- [ ] Parse locally, request authoritative preview and require explicit
+      confirmation before calling the P9A2 apply RPC.
+- [ ] Preserve selected file, canonical rows and preview when apply rejects a
+      stale dossier revision; refresh revision without discarding input.
+- [ ] Adopt the returned complete comparison snapshot and synchronize
+      option-response and dossier/detail caches after success.
+- [ ] Propagate import pending/dirty state through the existing external
+      mutation-blocking contract so identity, response and navigation actions
+      cannot race.
+- [ ] Keep option import editable against draft or locked baselines and
+      read-only only when the dossier is archived.
+- [ ] Keep import file/rows/preview/errors transient and evidence outside the
+      workbook.
+
+### TDD and verification
+
+- Template download delegation and exact target metadata tests.
+- Full-snapshot preview tests proving blank cells clear and missing rows reject.
+- No mutation before confirmation and one apply call after confirmation.
+- Stale-conflict preservation and refreshed-revision retry tests.
+- Success snapshot/cache adoption and pending-state coordination tests.
+- Draft/locked baseline editability, archived read-only and dirty navigation
+  tests.
+- Focused option-response, supplier coordination, shared import, file-size and
+  React Doctor gates.
+
+### Exit gate
+
+Supplier option responses can be entered manually or imported through the exact
+system template with authoritative preview, full-snapshot semantics and
+conflict-safe retry.
+
+## Phase P9B1 - Supplier Option Evidence Contracts
+
+**Depends on:** P7B1, P8A4, P9A3<br>
+**Requirements:** TC-02, TC-11, TC-12, TC-20<br>
+**Detailed TDD plan:** [P9B1 - Supplier Option Evidence Contracts](./p9-tdd-plan.md#p9b1---supplier-option-evidence-contracts)<br>
+**Deploy boundary:** dormant option-document/citation schema and RPCs only
 
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_option_evidence.sql`
-- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionDocuments.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/option-evidence.test.tsx`
 - Create: `supabase/tests/technical_configuration_option_documents_phase_gate.sql`
-- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionEditor.tsx`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-option-documents-migration.test.ts`
+- Modify: `src/lib/technical-configuration-document-rpcs.ts`
+- Modify: `src/app/(app)/technical-configurations/document-types.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-document-rpc.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
 
 ### Tasks
 
-- [ ] Add option-level document URL metadata.
-- [ ] Add criterion citations with page/section/excerpt.
-- [ ] Reuse P6B-proven URL primitives and P7B2 citation behavior.
-- [ ] Extend the URL-document consumer AST contract to enforce the cumulative
-      Equipment + baseline + `TechnicalConfigurationOptionDocuments.tsx`
-      manifest with exact shared module paths/named bindings, primitive render
-      usage, shared parser/policy calls and no local `new URL(...)` or extracted
-      field/list presentation.
-- [ ] Reuse the P7B1 authoritative HTTP(S) URL validator in option document create/update RPCs.
-- [ ] Reuse one option document across multiple criteria.
-- [ ] Add explicit save and dirty-state handling for option document/citation edits.
-- [ ] Require the expected option revision and preserve unsaved edits on conflict.
-- [ ] Show affected-link count before confirmed deletion of an editable linked document.
-- [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
+- [ ] Add option-level URL document metadata and citation rows constrained
+      through the matching option/baseline comparison set and criterion.
+- [ ] Keep one document reusable across baseline versions for the same option;
+      citations remain exact-baseline and exact-criterion.
+- [ ] Add a side-effect-free option + baseline list RPC that returns shared
+      documents, citations for the exact comparison set when present and each
+      document's total affected citation count across all baselines.
+- [ ] Add document create/update/delete and citation upsert/delete RPCs using
+      dossier revision and the existing global/raw-admin authorization helpers.
+- [ ] Reuse the P7B1 authoritative HTTP(S) validator only in option document
+      create/update, increasing its exact caller set from four to six.
+- [ ] Permit mutations when the selected baseline is locked because option
+      evidence is outside the baseline aggregate; reject archived dossiers.
+- [ ] Cascade confirmed document deletion through every linked option citation
+      in one transaction.
+- [ ] Add RPC types/wrappers/allowlist entries without creating a UI consumer.
 
 ### TDD and verification
 
-- Authorization tests for all required role/claim states.
-- Option-list ownership/citation scope, cascade, reuse,
-  malformed/disallowed/protocol-only/single-slash/backslash URL rejection,
-  mixed-case-scheme acceptance and exact raw URL stored/returned equality across
-  create, update and list, stale-revision and affected-link-count SQL tests.
-- SQL source-contract assertions over `pg_get_functiondef` proving the same validator has exactly six callers after P9B: baseline/reference/option document create/update only.
-- URL validation, exact raw create/update/list/render behavior, dirty state,
-  conflict preservation, citation and deletion-confirmation UI tests. Mocked
-  primitive/utility delegation assertions prove the active option workflow is
-  driven through shared props/callbacks.
-- Consumer source-contract test is red before the option document UI exists and
-  green only when the cumulative Equipment + baseline + option manifest uses
-  exact shared paths/bindings.
-- Rerun `supabase/tests/technical_configuration_baseline_documents_phase_gate.sql` and `baseline-evidence.test.tsx` together with the P9B option suites.
-- Mark TC-11-S01/S02/S03 and TC-12-S01/S02 complete only after baseline, reference-product and supplier-option cases pass together.
+- Migration/source tests for two tables, composite ownership/version FKs,
+  indexes, RLS, grants, six RPCs and allowlist entries.
+- Role/claim, archived/readable, locked-baseline editable and stale dossier
+  revision tests.
+- Side-effect-free list, option-global document reuse, exact-set citation scope
+  and cross-option/version rejection tests.
+- Raw URL rejection/acceptance/equality tests and
+  `pg_get_functiondef` exact-six-caller assertions.
+- Affected-count, confirmed cascade and rollback tests across more than one
+  baseline comparison set.
+- Rerun the P7B1 SQL phase gate.
+- Apply through Supabase MCP only after explicit permission; then run the phase
+  gate and security/performance advisors.
 
 ### Exit gate
 
-Baseline, reference-product and supplier-option cases all pass TC-11-S01/S02/S03 and TC-12-S01/S02 with authoritative HTTP(S) validation and correctly scoped reusable citations; supplier options gain criterion-level URL evidence without changing Excel or assessment behavior.
+Option evidence persistence is deployed, denied for direct client table access
+and fully verified, but no option evidence UI exists.
+
+## Phase P9B2 - Supplier Option Evidence Workspace
+
+**Depends on:** P6B, P7B2, P8B2, P9B1<br>
+**Requirements:** TC-04, TC-11, TC-12, TC-20<br>
+**Detailed TDD plan:** [P9B2 - Supplier Option Evidence Workspace](./p9-tdd-plan.md#p9b2---supplier-option-evidence-workspace)<br>
+**Deploy boundary:** option URL evidence UI only
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptionDocuments.ts`
+- Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionDocuments.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/option-evidence.test.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/option-evidence-delegation.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
+- Modify: `src/components/url-documents/__tests__/url-document-source-contract.test.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/baseline-evidence.test.tsx`
+
+### Tasks
+
+- [ ] Add an option-specific evidence hook instead of adding option branches to
+      the existing baseline/reference document hook.
+- [ ] Compose the P6B-proven form/list primitives and the P7B2-proven
+      owner-neutral citation editor without adding option-specific branches to
+      the already-large citation editor.
+- [ ] Keep list/open side-effect-free. On the first explicit citation save,
+      follow the established comparison-set get-or-create revision chain before
+      the citation upsert.
+- [ ] Preserve unsaved document/citation edits on stale conflicts and propagate
+      evidence pending/dirty state to identity/response mutation blockers and
+      navigation guards.
+- [ ] Show the total affected citation count across all baselines before a
+      confirmed option-document delete.
+- [ ] Keep evidence editable against locked baselines and read-only for archived
+      dossiers.
+- [ ] Extend the cumulative URL consumer source contract to exactly Equipment +
+      baseline + option with active primitive/utility delegation.
+- [ ] Rerun baseline/reference evidence SQL and React suites with the option
+      suites before completing normative TC-11/TC-12 ownership.
+
+### TDD and verification
+
+- Option-global document reuse and exact-baseline citation render tests.
+- One option document linked independently to multiple criteria without
+  duplicating the document record.
+- URL validation and exact raw create/update/list/render behavior.
+- First-citation get-or-create revision-chain tests with no write on open.
+- Dirty state, stale conflict preservation, pending coordination and archived
+  read-only tests.
+- Multi-baseline affected-count confirmation and delete retry tests.
+- Cumulative Equipment + baseline + option source-contract and mocked runtime
+  delegation tests.
+- Rerun `technical_configuration_baseline_documents_phase_gate.sql`,
+  `baseline-evidence.test.tsx` and all shared URL primitive suites.
+- Mark TC-11-S01..S05 and TC-12-S01/S02 complete only after
+  baseline/reference and option cases pass together.
+
+### Exit gate
+
+Baseline, reference-product and supplier-option cases all pass
+TC-11-S01..S05 and TC-12-S01/S02; option documents are reusable across
+baselines, citations remain exact-set scoped and P10A may begin.
 
 ## Phase P10A - Comparison Read Contract
 
-**Depends on:** P7B2, P9B
+**Depends on:** P7B2, P9B2
 **Requirements:** TC-02, TC-13, TC-17  
 **Deploy boundary:** bounded read API only; no matrix UI
 
@@ -1722,7 +1922,7 @@ No release-blocking UI, accessibility or Equipment regression remains.
 
 ## Phase P13C - Release, OpenSpec And AI-Boundary Audit
 
-**Depends on:** P13A, P13B, P7A2, P9A
+**Depends on:** P13A, P13B, P7A2, P9A3
 **Requirements:** TC-19  
 **Deploy boundary:** release documentation and final acceptance only
 
@@ -1737,7 +1937,7 @@ No release-blocking UI, accessibility or Equipment regression remains.
 ### Tasks
 
 - [ ] Use the feature-baseline SHA from P0 to enumerate all feature commits/files and verify every leaf phase landed.
-- [ ] Confirm optional productivity leaves P7A1, P7A2 and P9A are complete even though they are not on the manual-comparison critical path.
+- [ ] Confirm optional productivity leaves P7A1, P7A2 and P9A1-P9A3 are complete even though they are not on the manual-comparison critical path.
 - [ ] Aggregate preserved per-leaf `verify:no-explicit-any`, `verify:dedupe`, focused test and review evidence.
 - [ ] Run fresh full `typecheck` and all focused feature Vitest suites; do not claim a fresh P13 branch diff covers earlier merged leaf diffs.
 - [ ] Run `openspec validate add-technical-configuration-comparison --strict`.

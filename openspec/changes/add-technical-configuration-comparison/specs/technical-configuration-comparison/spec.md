@@ -268,9 +268,11 @@ Hệ thống SHALL cho phép một hồ sơ có nhiều nhà cung cấp và mỗ
 
 #### Scenario: Edit supplier working data
 
-- **WHEN** người dùng sửa phương án hoặc phản hồi tiêu chí
+- **WHEN** người dùng sửa phương án, phản hồi tiêu chí hoặc bằng chứng của phương án
 - **THEN** hệ thống cho phép lưu trực tiếp dữ liệu mới
 - **AND** không yêu cầu khóa, mở khóa hoặc tạo phiên bản phương án
+- **AND** baseline đã khóa không chặn sửa phản hồi hoặc bằng chứng của phương án
+- **AND** hồ sơ đã archive chỉ đọc và backend từ chối mọi mutation
 
 #### Scenario: Keep suppliers scoped to one dossier
 
@@ -295,31 +297,56 @@ Hệ thống SHALL cho phép một hồ sơ có nhiều nhà cung cấp và mỗ
 
 ### Requirement: Standard supplier option Excel template
 
-Hệ thống SHALL cho phép xuất và import phương án bằng template chuẩn được tạo từ phiên bản cơ sở đang chọn.
+Hệ thống SHALL cho phép xuất và import phản hồi phương án bằng template chuẩn
+được tạo từ exact baseline version đang chọn. Import SHALL là authoritative full
+snapshot của toàn bộ tập tiêu chí hiện tại và chỉ được ghi sau preview cùng xác
+nhận rõ ràng.
 
 #### Scenario: Export an option template
 
-- **WHEN** người dùng yêu cầu template cho một phiên bản cơ sở
-- **THEN** file chứa ID/mã tiêu chí, nhóm và yêu cầu cơ sở làm căn cứ ánh xạ
-- **AND** cung cấp cột nhập phản hồi và thông tin bổ sung
+- **WHEN** người dùng yêu cầu template cho một phương án và phiên bản cơ sở
+- **THEN** workbook có đúng một sheet hiển thị `OptionResponses`, một sheet ẩn
+  `_meta` và không có sheet hoặc cột nội dung khác
+- **AND** sheet dữ liệu chứa đúng thứ tự cột `group_order`, `group_name`,
+  `criterion_order`, `criterion_id`, `criterion_code`, `criterion_title`,
+  `requirement_text`, `response_text`, `supplementary_information`
+- **AND** metadata xác định đúng kind/version, dossier, option, baseline version,
+  dossier revision và thời điểm sinh file
 
-#### Scenario: Import option responses
+#### Scenario: Preview and apply a complete option-response snapshot
 
 - **WHEN** người dùng import template hợp lệ cho đúng phiên bản cơ sở
-- **THEN** hệ thống ánh xạ phản hồi theo ID/mã tiêu chí
-- **AND** hiển thị preview trước khi lưu
+- **THEN** mọi tiêu chí hiện tại xuất hiện đúng một lần và hệ thống hiển thị
+  authoritative preview trước khi lưu
+- **AND** preview không tạo comparison set, không ghi response, không tăng
+  revision và không thay đổi audit metadata
+- **AND** ô phản hồi hoặc thông tin bổ sung trống được hiểu là xóa giá trị cũ
+  của trường tương ứng sau khi người dùng xác nhận
+- **AND** confirmed apply có thể tạo comparison set trong cùng transaction,
+  reconcile toàn bộ snapshot và tăng dossier revision đúng một lần
 
 #### Scenario: Reject a mismatched option template
 
-- **WHEN** template thuộc phiên bản khác hoặc chứa tiêu chí không tồn tại/trùng lặp
-- **THEN** hệ thống không ghi dữ liệu
-- **AND** hiển thị lỗi theo dòng hoặc lỗi version phù hợp
+- **WHEN** metadata không khớp dossier, option hoặc baseline version, hoặc tập
+  dòng thiếu tiêu chí, chứa tiêu chí lạ hay trùng tiêu chí
+- **THEN** preview/apply từ chối toàn bộ workbook và không ghi dữ liệu
+- **AND** không hiểu dòng bị xóa là lệnh clear
+- **AND** hiển thị lỗi theo dòng hoặc lỗi target/version phù hợp
 
 #### Scenario: Reject an arbitrary option workbook
 
-- **WHEN** workbook không có metadata của template chuẩn dù các cột hiển thị có tên tương tự
+- **WHEN** workbook thiếu metadata chuẩn, sai template version, có thêm sheet,
+  thêm cột hoặc chứa cell value không được hỗ trợ dù tên cột nhìn tương tự
 - **THEN** hệ thống không ghi dữ liệu
 - **AND** hướng dẫn người dùng xuất template từ phiên bản cơ sở đang chọn
+
+#### Scenario: Preserve import state after a stale apply
+
+- **WHEN** confirmed apply bị từ chối vì dossier revision đã stale
+- **THEN** hệ thống không tạo comparison set hoặc ghi một phần response
+- **AND** UI giữ selected file, canonical rows và preview hiện tại
+- **AND** người dùng có thể refresh revision và yêu cầu authoritative preview
+  lại trước khi xác nhận lần nữa
 
 ### Requirement: URL-only document profiles
 
@@ -329,7 +356,9 @@ nhận SHALL có case-insensitive lexical prefix `^https?://`, không chứa raw
 backslash, parse thành công và có parsed protocol `http:` hoặc `https:`. Client
 validation SHALL provide early feedback, nhưng create/update RPC SHALL enforce
 cùng contract trước khi ghi. Validation SHALL không trim, canonicalize hoặc
-rewrite accepted value.
+rewrite accepted value. Tài liệu của phương án SHALL thuộc `option_id` và được
+dùng chung qua các baseline version; citation của tài liệu đó vẫn thuộc exact
+comparison set.
 
 #### Scenario: Add a valid document URL
 
@@ -353,6 +382,24 @@ rewrite accepted value.
 - **THEN** tài liệu thuộc đúng phiên bản cơ sở, sản phẩm tham chiếu hoặc phương án tương ứng
 - **AND** không yêu cầu hoặc tạo liên kết tới `thiet_bi`
 
+#### Scenario: Reuse one option document across baseline versions
+
+- **WHEN** cùng một phương án được đối chiếu với nhiều baseline version
+- **THEN** danh sách tài liệu của phương án dùng chung các document record theo
+  `option_id`
+- **AND** mỗi lần đọc chỉ trả citation thuộc comparison set của exact baseline
+  version đang chọn
+
+#### Scenario: Delete an option document with linked citations
+
+- **WHEN** người dùng yêu cầu xóa một tài liệu phương án đang có citation trên
+  một hoặc nhiều baseline version
+- **THEN** UI hiển thị tổng số citation bị ảnh hưởng và chưa gửi mutation trước
+  khi người dùng xác nhận
+- **AND** confirmed delete xóa document cùng toàn bộ citation liên quan trong
+  một transaction
+- **AND** nếu mutation thất bại thì document và mọi citation vẫn còn nguyên
+
 ### Requirement: Criterion-level document citations
 
 Hệ thống SHALL cho phép liên kết một tài liệu URL với từng tiêu chí bằng trang/mục và đoạn trích cụ thể.
@@ -361,6 +408,9 @@ Hệ thống SHALL cho phép liên kết một tài liệu URL với từng tiê
 
 - **WHEN** người dùng chọn tài liệu của cấu hình cơ sở, sản phẩm tham chiếu hoặc phương án và nhập trang/mục hoặc đoạn trích
 - **THEN** hệ thống lưu liên kết với đúng tiêu chí và đúng owner của tài liệu
+- **AND** citation của phương án thuộc đúng option, exact baseline version và
+  exact criterion thông qua comparison set tương ứng
+- **AND** backend từ chối liên kết chéo option, baseline version hoặc criterion
 - **AND** hiển thị trích dẫn trong panel đánh giá tiêu chí đó
 
 #### Scenario: Reuse one document for multiple criteria

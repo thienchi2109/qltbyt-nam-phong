@@ -20,8 +20,9 @@ Recommended delivery order is `P8A4 -> P8B1 -> P8B2`. P8B1 does not have a
 hard dependency on P8A4, but landing the read contract first removes ambiguity
 from the response workspace and keeps each later review focused.
 
-P9A and P9B depend on P8B2. Comparison, evaluation, evidence, Excel, ranking and
-AI remain out of scope.
+P9A1 and P9B2 depend directly on P8B2; P9A2, P9A3 and P9B1 inherit the response
+workspace dependency through the strict P9 delivery chain. Comparison,
+evaluation, evidence, Excel, ranking and AI remain out of scope for P8B.
 
 ## Design Read
 
