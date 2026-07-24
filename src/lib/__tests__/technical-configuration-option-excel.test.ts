@@ -335,6 +335,17 @@ describe("technical configuration supplier-option workbook codec", () => {
     await expectWorkbookIssue(malformedRow, "invalid_row")
   })
 
+  it.each(["group_order", "criterion_order"] as const)(
+    "rejects text-formatted numeric %s values",
+    async (column) => {
+      const workbook = await createWorkbook()
+      const columnNumber = OPTION_WORKBOOK_COLUMNS.indexOf(column) + 1
+      workbook.getWorksheet("OptionResponses")!.getRow(2).getCell(columnNumber).value = "1"
+
+      await expectWorkbookIssue(workbook, "invalid_row")
+    }
+  )
+
   it("validates response cells and columns after an interior blank row", async () => {
     const unsupportedValue = await createWorkbook()
     insertBlankRowBeforeSecondCriterion(unsupportedValue).getRow(4).getCell(8).value = {
