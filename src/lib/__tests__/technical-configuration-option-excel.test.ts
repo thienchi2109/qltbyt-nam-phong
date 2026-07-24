@@ -6,6 +6,7 @@ import {
   OPTION_WORKBOOK_COLUMNS,
   OPTION_WORKBOOK_META_KEYS,
   TechnicalConfigurationOptionWorkbookError,
+  toPositiveOptionWorkbookInteger,
   type TechnicalConfigurationOptionWorkbookIssueCode,
   type TechnicalConfigurationOptionWorkbookMetadata,
   type TechnicalConfigurationOptionWorkbookParseOptions,
@@ -107,6 +108,12 @@ async function expectWorkbookIssue(
 }
 
 describe("technical configuration supplier-option workbook codec", () => {
+  it("rejects non-string and non-number values as positive workbook integers", () => {
+    expect(toPositiveOptionWorkbookInteger(true)).toBeNull()
+    expect(toPositiveOptionWorkbookInteger(["1"])).toBeNull()
+    expect(toPositiveOptionWorkbookInteger({ valueOf: () => 1 })).toBeNull()
+  })
+
   it("generates the exact OptionResponses and hidden _meta contract", async () => {
     const rowWithExcludedFields = {
       ...ROWS[0],

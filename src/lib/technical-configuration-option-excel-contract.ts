@@ -147,6 +147,9 @@ export function toNullableOptionWorkbookCellText(value: unknown): string | null 
 
 /** Parses a supported order cell as a positive integer. */
 export function toPositiveOptionWorkbookInteger(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null
+  if (typeof value === "string" && value.trim() === "") return null
+
   const number = typeof value === "number" ? value : Number(value)
   return Number.isInteger(number) && number > 0 ? number : null
 }
