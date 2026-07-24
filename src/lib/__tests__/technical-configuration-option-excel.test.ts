@@ -1,5 +1,5 @@
 import type { CellValue, Workbook, Worksheet } from "exceljs"
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import type { BulkImportWorkbookParser } from "@/components/bulk-import/bulk-import-types"
 import {
@@ -87,6 +87,12 @@ async function createWorkbook(): Promise<Workbook> {
     metadata: METADATA,
     rows: ROWS,
   })
+}
+
+function insertBlankRowBeforeSecondCriterion(workbook: Workbook): Worksheet {
+  const worksheet = workbook.getWorksheet("OptionResponses")!
+  worksheet.spliceRows(3, 0, [])
+  return worksheet
 }
 
 async function expectWorkbookIssue(
@@ -327,5 +333,79 @@ describe("technical configuration supplier-option workbook codec", () => {
     const malformedRow = await createWorkbook()
     malformedRow.getWorksheet("OptionResponses")!.getRow(2).getCell(1).value = 0
     await expectWorkbookIssue(malformedRow, "invalid_row")
+  })
+
+  it("validates response cells and columns after an interior blank row", async () => {
+    const unsupportedValue = await createWorkbook()
+    insertBlankRowBeforeSecondCriterion(unsupportedValue).getRow(4).getCell(8).value = {
+      formula: "1+1",
+      result: 2,
+    }
+    const unsupportedValueError = await expectWorkbookIssue(unsupportedValue, "invalid_cell_value")
+    expect(unsupportedValueError.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid_cell_value",
+          row: 4,
+          column: "response_text",
+        }),
+      ])
+    )
+
+    const extraColumn = await createWorkbook()
+    insertBlankRowBeforeSecondCriterion(extraColumn).getRow(4).getCell(10).value = "extra"
+    await expectWorkbookIssue(extraColumn, "invalid_columns")
+  })
+
+  it("reports physical response row numbers after an interior blank row", async () => {
+    const workbook = await createWorkbook()
+    insertBlankRowBeforeSecondCriterion(workbook).getRow(4).getCell(5).value = "TC-9999"
+
+    const error = await expectWorkbookIssue(workbook, "changed_context")
+    expect(error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "changed_context",
+          row: 4,
+          column: "criterion_code",
+        }),
+      ])
+    )
+  })
+
+  it("does not materialize every missing row in a sparse response sheet", async () => {
+    const workbook = await createWorkbook()
+    const worksheet = workbook.getWorksheet("OptionResponses")!
+    const secondCriterionRow = worksheet.getRow(3)
+    const sparseRow = worksheet.getRow(1_000)
+    OPTION_WORKBOOK_COLUMNS.forEach((_, index) => {
+      sparseRow.getCell(index + 1).value = secondCriterionRow.getCell(index + 1).value
+    })
+    secondCriterionRow.values = []
+    const getRowSpy = vi.spyOn(worksheet, "getRow")
+
+    const result = await parseTechnicalConfigurationOptionWorkbook(
+      toExcelWorkbookAdapter(workbook),
+      PARSE_OPTIONS
+    )
+
+    expect(result.rows).toHaveLength(ROWS.length)
+    expect(getRowSpy.mock.calls.length).toBeLessThan(100)
+  })
+
+  it("rejects metadata content after an interior blank row", async () => {
+    const extraKey = await createWorkbook()
+    extraKey
+      .getWorksheet("_meta")!
+      .getRow(OPTION_WORKBOOK_META_KEYS.length + 3)
+      .getCell(1).value = "extra_key"
+    await expectWorkbookIssue(extraKey, "invalid_metadata")
+
+    const extraColumn = await createWorkbook()
+    extraColumn
+      .getWorksheet("_meta")!
+      .getRow(OPTION_WORKBOOK_META_KEYS.length + 3)
+      .getCell(3).value = "extra"
+    await expectWorkbookIssue(extraColumn, "invalid_metadata")
   })
 })

@@ -207,18 +207,13 @@ export function collectOptionWorkbookColumnIssues(
   const hasWrongHeader = headers.some((header, index) => header !== OPTION_WORKBOOK_COLUMNS[index])
   let hasExtraContent = false
 
-  for (let rowNumber = 1; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
-    for (
-      let columnNumber = OPTION_WORKBOOK_COLUMNS.length + 1;
-      columnNumber <= worksheet.columnCount;
-      columnNumber += 1
-    ) {
-      if (hasOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(columnNumber).value)) {
+  worksheet.eachRow((row) => {
+    row.eachCell((cell, columnNumber) => {
+      if (columnNumber > OPTION_WORKBOOK_COLUMNS.length && hasOptionWorkbookCellValue(cell.value)) {
         hasExtraContent = true
-        break
       }
-    }
-  }
+    })
+  })
 
   return hasWrongHeader || hasExtraContent
     ? [
@@ -236,10 +231,11 @@ export function collectOptionWorkbookCellValueIssues(
 ): TechnicalConfigurationOptionWorkbookIssue[] {
   const issues: TechnicalConfigurationOptionWorkbookIssue[] = []
 
-  for (let rowNumber = 1; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
-    for (let columnNumber = 1; columnNumber <= OPTION_WORKBOOK_COLUMNS.length; columnNumber += 1) {
+  worksheet.eachRow((row, rowNumber) => {
+    row.eachCell((cell, columnNumber) => {
       if (
-        !isSupportedOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(columnNumber).value)
+        columnNumber <= OPTION_WORKBOOK_COLUMNS.length &&
+        !isSupportedOptionWorkbookCellValue(cell.value)
       ) {
         issues.push({
           code: "invalid_cell_value",
@@ -248,8 +244,8 @@ export function collectOptionWorkbookCellValueIssues(
           message: "Workbook chỉ chấp nhận ô text, số hoặc để trống.",
         })
       }
-    }
-  }
+    })
+  })
 
   return issues
 }

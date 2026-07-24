@@ -48,18 +48,21 @@ function parseMetadata(
     })
   }
 
-  for (let rowNumber = 1; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
-    for (let columnNumber = 3; columnNumber <= worksheet.columnCount; columnNumber += 1) {
-      if (hasOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(columnNumber).value)) {
-        issues.push({
-          code: "invalid_metadata",
-          row: rowNumber,
-          message: "Sheet _meta chỉ được chứa hai cột key và value.",
-        })
-        break
+  worksheet.eachRow((row, rowNumber) => {
+    let hasExtraColumnValue = false
+    row.eachCell((cell, columnNumber) => {
+      if (columnNumber > 2 && hasOptionWorkbookCellValue(cell.value)) {
+        hasExtraColumnValue = true
       }
+    })
+    if (hasExtraColumnValue) {
+      issues.push({
+        code: "invalid_metadata",
+        row: rowNumber,
+        message: "Sheet _meta chỉ được chứa hai cột key và value.",
+      })
     }
-  }
+  })
 
   OPTION_WORKBOOK_META_KEYS.forEach((expectedKey, index) => {
     const rowNumber = index + 2
@@ -78,22 +81,23 @@ function parseMetadata(
     values[expectedKey] = valueCell.value
   })
 
-  for (
-    let rowNumber = OPTION_WORKBOOK_META_KEYS.length + 2;
-    rowNumber <= worksheet.actualRowCount;
-    rowNumber += 1
-  ) {
-    if (
-      hasOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(1).value) ||
-      hasOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(2).value)
-    ) {
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber < OPTION_WORKBOOK_META_KEYS.length + 2) return
+
+    let hasExtraMetadataValue = false
+    row.eachCell((cell, columnNumber) => {
+      if (columnNumber <= 2 && hasOptionWorkbookCellValue(cell.value)) {
+        hasExtraMetadataValue = true
+      }
+    })
+    if (hasExtraMetadataValue) {
       issues.push({
         code: "invalid_metadata",
         row: rowNumber,
         message: "Sheet _meta không được chứa khóa bổ sung.",
       })
     }
-  }
+  })
 
   const templateKind = typeof values.template_kind === "string" ? values.template_kind : ""
   if (templateKind !== OPTION_WORKBOOK_TEMPLATE_KIND) {
@@ -174,12 +178,20 @@ function parseMetadata(
 function getDataRowNumbers(worksheet: Worksheet): number[] {
   const rowNumbers: number[] = []
 
-  for (let rowNumber = 2; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
-    const hasData = OPTION_WORKBOOK_COLUMNS.some((_, index) =>
-      hasOptionWorkbookCellValue(worksheet.getRow(rowNumber).getCell(index + 1).value)
-    )
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return
+
+    let hasData = false
+    row.eachCell((cell, columnNumber) => {
+      if (
+        columnNumber <= OPTION_WORKBOOK_COLUMNS.length &&
+        hasOptionWorkbookCellValue(cell.value)
+      ) {
+        hasData = true
+      }
+    })
     if (hasData) rowNumbers.push(rowNumber)
-  }
+  })
 
   return rowNumbers
 }
