@@ -80,8 +80,9 @@ P3A + P4          -> P7A1
 P7A1              -> P7A2
 P4 + P6B + P7A2  -> P7B1
 P7B1              -> P7B2
-P6B + P7B2 + P8B2 -> P9B
-P7B2 + P9B       -> P10A
+P7B1 + P8A4 + P9A3 -> P9B1
+P6B + P7B2 + P8B2 + P9B1 -> P9B2
+P7B2 + P9B2       -> P10A
 ```
 
 ## Cross-Leaf Contracts
@@ -132,7 +133,7 @@ P7B2 + P9B       -> P10A
 - Accepted raw input is stored and returned unchanged.
 - Only baseline/reference document create/update RPCs call the validator in
   P7B1. List/delete/citation RPCs are non-callers.
-- P9B later expands the exact caller set from four to six and reruns the P7B1
+- P9B1 later expands the exact caller set from four to six and reruns the P7B1
   SQL phase gate.
 
 ## P7A1 - Reference Product Data Contracts
@@ -290,7 +291,7 @@ authoritative URL validation and aggregate reads without activating evidence UI.
 - [ ] Implement the four tables, validator, aggregate list and ten mutation
       RPCs.
 - [ ] Inspect `pg_get_functiondef` and prove exactly four validator callers
-      before P9B; list/delete/citation RPCs remain non-callers.
+      before P9B1; list/delete/citation RPCs remain non-callers.
 - [ ] Ask for explicit permission before applying the migration through Supabase
       MCP.
 - [ ] After approved apply, run the phase gate plus security/performance

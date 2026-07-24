@@ -42,8 +42,8 @@ Each entity or schema alteration has one primary leaf owner. A later leaf may ex
 | P8A3 | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
 | P8A3 | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
 | P8A4 | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
-| P9B  | `technical_configuration_option_documents`    | FK option; URL metadata only                                                                                                  |
-| P9B  | `technical_configuration_option_citations`    | FK option document + criterion through the matching comparison set                                                            |
+| P9B1 | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
+| P9B1 | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
 | P11  | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; two axes, notes, evaluator metadata and revision                                           |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
@@ -195,7 +195,8 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P8A2 | `technical_configuration_options_list`, `technical_configuration_option_create`, `technical_configuration_option_update`, `technical_configuration_option_delete`                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | P8A3 | `technical_configuration_comparison_set_get_or_create`, `technical_configuration_option_response_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | P8A4 | `technical_configuration_comparison_set_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| P9B  | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
+| P9A2 | `technical_configuration_option_import_preview`, `technical_configuration_option_import_apply`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| P9B1 | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
 | P10A | `technical_configuration_comparison_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | P11  | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
@@ -219,6 +220,11 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
 - Preview response: `{ data, errors }`; preview does not persist.
 - Baseline import preview/apply request: `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`, `p_expected_revision`.
 - Baseline import apply response: `{ data }`, where `data` is the complete updated baseline snapshot and owning revision.
+- Option import preview/apply request: `p_option_id`,
+  `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`,
+  `p_expected_revision`. The revision is the dossier revision.
+- Option import apply response: `{ data }`, where `data` is the complete
+  option/baseline comparison snapshot and new dossier revision.
 - Every mutation request includes `p_expected_revision`. Dossier create requires `0`; descendant creates use the owning aggregate revision.
 - `technical_configuration_baseline_documents_list` is the single P7B1 read RPC
   for both baseline-owned and reference-product-owned evidence. Request:
@@ -230,18 +236,21 @@ Each leaf that introduces an RPC owns allowlisting only the names introduced by 
   baseline version. The RPC returns no reference product or citation from
   another version.
 - `technical_configuration_option_documents_list` request:
-  `p_comparison_set_id`, `p_page`, `p_page_size`. It returns the selected
-  comparison set's option documents with the same document/audit fields and
-  nested citations restricted to criteria in that comparison set.
+  `p_option_id`, `p_baseline_version_id`, `p_page`, `p_page_size`. It returns
+  option-level shared documents with the same document/audit fields,
+  `affected_citation_count` across every baseline for that option and nested
+  citations restricted to the exact option/baseline comparison set. When that
+  comparison set does not exist, the RPC still returns shared documents with
+  empty nested citations and performs no write.
 - P7B1 owns exactly one internal
   `public._technical_configuration_validate_document_url(text) RETURNS void`
-  validator. P7B1/P9B document create/update requests accept only raw values with
+  validator. P7B1/P9B1 document create/update requests accept only raw values with
   a case-insensitive lexical `^https?://` prefix, no backslash, valid URL syntax
   and parsed `http`/`https` protocol. Protocol-only/single-slash shorthand such
   as `https:example.com` or `https:/example.com`, backslash variants, malformed
   values and non-HTTP(S) protocols raise the existing `PT422 validation_error`.
   At P7B1 the exact callers are baseline-document create/update and
-  reference-document create/update; P9B extends the exact caller set with
+  reference-document create/update; P9B1 extends the exact caller set with
   option-document create/update. These six RPCs call the helper before
   insert/update or revision increment. List, delete and citation RPCs do not
   call the helper because they accept no document URL. SQL phase gates inspect
@@ -339,6 +348,91 @@ Existing criteria are matched by immutable `criterion_code` and retain their cri
 
 The client must not translate workbook rows into the existing sequential group/criterion CRUD save steps. Import files, parsed rows, previews and errors remain transient client state; P5C and P5D create no import-error table or persisted upload record.
 
+### Supplier Option Workbook Version 1
+
+- Exactly one visible data sheet named `OptionResponses`.
+- Exactly one hidden metadata sheet named `_meta`.
+- No additional visible or hidden sheet or content column.
+
+Visible columns, in order:
+
+1. `group_order`
+2. `group_name`
+3. `criterion_order`
+4. `criterion_id`
+5. `criterion_code`
+6. `criterion_title`
+7. `requirement_text`
+8. `response_text`
+9. `supplementary_information`
+
+The first seven columns are read-only mapping/context fields generated from the
+selected exact baseline version. Every baseline criterion must appear exactly
+once. A missing, unknown or duplicate criterion rejects the workbook; deleting
+a row is never interpreted as clearing data. Blank `response_text` or
+`supplementary_information` cells canonicalize to empty strings and explicitly
+clear the corresponding stored value during confirmed apply.
+
+`_meta` contains exactly:
+
+- `template_kind=technical_configuration_option`
+- `template_version=1`
+- `dossier_id`
+- `option_id`
+- `baseline_version_id`
+- `dossier_revision`
+- `generated_at`
+
+The codec rejects a workbook with a wrong target, stale/unknown template
+version, missing metadata, extra sheet, extra content column, malformed row or
+unsupported cell value. Option identity, URL documents, citations and
+assessments are never represented in this workbook.
+
+### Supplier Option Import Preview And Apply
+
+P9A2 introduces:
+
+```text
+technical_configuration_option_import_preview(
+  p_option_id uuid,
+  p_baseline_version_id uuid,
+  p_template_metadata jsonb,
+  p_rows jsonb,
+  p_expected_revision bigint
+)
+
+technical_configuration_option_import_apply(
+  p_option_id uuid,
+  p_baseline_version_id uuid,
+  p_template_metadata jsonb,
+  p_rows jsonb,
+  p_expected_revision bigint
+)
+```
+
+Both RPCs call the same internal server-side validator/normalizer. Both reject
+metadata whose dossier, option, baseline version, template kind/version or
+dossier revision does not match the target. Both require the complete current
+criterion set exactly once and reject malformed or tampered canonical rows.
+
+Preview authenticates and validates ownership but is side-effect-free: it does
+not create a comparison set, write an option response, increment revision or
+change audit metadata. It returns the authoritative full-snapshot result and
+row-level errors.
+
+Apply acquires the established dossier lock, repeats validation under lock and
+rejects stale or archived targets. It may create the exact option/baseline
+comparison set inside the same transaction, then reconciles all response rows
+as one aggregate mutation. A row with both canonical text fields empty removes
+the persisted response row; otherwise it creates or updates that row. A
+successful apply increments the dossier revision exactly once. Any failure
+rolls back comparison-set creation and every response change.
+
+The selected baseline may be draft or locked because option responses are
+working data outside the immutable baseline aggregate. Import files, parsed
+rows, previews and errors remain transient client state. A stale apply preserves
+that client state for refresh and re-preview.
+
 ## Query And Performance Budgets
 
 - Dossier and entity lists use bounded pagination with a maximum page size of 100.
@@ -359,13 +453,20 @@ The client must not translate workbook rows into the existing sequential group/c
 7. P8A1 adds suppliers; P8A2 adds options; P8A3 adds comparison
    sets/responses; P8A4 adds only the nullable comparison-set read RPC after
    P8A3 and creates no table or index.
-8. P9B adds option documents/citations.
-9. P10A adds the bounded comparison read contract when a dedicated RPC is required.
-10. P11 adds manual assessments.
+8. P9A2 adds option import preview/apply functions without creating a new
+   persistence table.
+9. P9B1 adds option documents/citations.
+10. P10A adds the bounded comparison read contract when a dedicated RPC is required.
+11. P11 adds manual assessments.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
-P5A, P5B and P5D create no technical-configuration persistence. P6A and P6B also create no technical-configuration persistence; P6A lands after P5D, P6B follows it, and both land before the first document UI in P7B2. Migration timestamps are selected at leaf execution time after checking all local migrations touching the same functions/tables.
+P5A, P5B, P5D, P9A1, P9A3 and P9B2 create no
+technical-configuration persistence. P6A and P6B also create no
+technical-configuration persistence; P6A lands after P5D, P6B follows it, and
+both land before the first document UI in P7B2. Migration timestamps are
+selected at leaf execution time after checking all local migrations touching
+the same functions/tables.
 
 ## AI Boundary Audit
 
