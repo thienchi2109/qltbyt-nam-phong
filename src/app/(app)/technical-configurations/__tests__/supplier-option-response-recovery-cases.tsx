@@ -2,6 +2,7 @@ import { act, renderHook, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi, type Mock } from "vitest"
 
+import { TechnicalConfigurationOptionResponseEditor } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor"
 import { TechnicalConfigurationSuppliers } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers"
 import { useTechnicalConfigurationIdentityMutationState } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationIdentityMutationState"
 import {
@@ -237,6 +238,71 @@ export function registerSupplierOptionResponseRecoveryTests({
 
       expect(result.current.draft.responseText).toBe("Đã phục hồi")
       expect(result.current.isDirty).toBe(false)
+    })
+
+    it("keeps the existing editor and dirty draft visible when reload fails", async () => {
+      const user = userEvent.setup()
+      const baseline = baselineVersion()
+      const persistedResponse = optionResponse(baseline, { response_text: "Nội dung đã lưu" })
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ data: comparisonSet(baseline, [persistedResponse]) }))
+        .mockResolvedValueOnce(jsonResponse({ message: "read_failed" }, 500))
+
+      renderWithQueryClient(
+        <TechnicalConfigurationOptionResponseEditor
+          dossier={dossier}
+          option={option({ id: "option-1" })}
+          baselineVersion={baseline}
+          requestDiscardConfirmation={(_description, action) => action()}
+        />
+      )
+      const responseInput = await screen.findByLabelText("Phản hồi tiêu chí")
+      await waitFor(() => expect(responseInput).toHaveValue("Nội dung đã lưu"))
+      await user.clear(responseInput)
+      await user.type(responseInput, "Bản nháp cục bộ")
+
+      await user.click(screen.getByRole("button", { name: "Tải lại dữ liệu" }))
+
+      expect((await screen.findAllByText("read_failed")).length).toBeGreaterThan(0)
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toHaveValue("Bản nháp cục bộ")
+    })
+
+    it("shows persisted response text and clears dirty state when the dossier becomes archived", async () => {
+      const user = userEvent.setup()
+      const baseline = baselineVersion()
+      const currentOption = option({ id: "option-1" })
+      const persistedResponse = optionResponse(baseline, { response_text: "Nội dung đã lưu" })
+      const onDirtyChange = vi.fn()
+      fetchMock.mockResolvedValueOnce(
+        jsonResponse({ data: comparisonSet(baseline, [persistedResponse]) })
+      )
+      const editor = (dossierValue: typeof dossier): React.ReactElement => (
+        <TechnicalConfigurationOptionResponseEditor
+          dossier={dossierValue}
+          option={currentOption}
+          baselineVersion={baseline}
+          onDirtyChange={onDirtyChange}
+          requestDiscardConfirmation={(_description, action) => action()}
+        />
+      )
+      const { rerender } = renderWithQueryClient(editor(dossier))
+      const responseInput = await screen.findByLabelText("Phản hồi tiêu chí")
+      await waitFor(() => expect(responseInput).toHaveValue("Nội dung đã lưu"))
+      await user.clear(responseInput)
+      await user.type(responseInput, "Bản nháp chưa lưu")
+      await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(true))
+
+      rerender(
+        editor({
+          ...dossier,
+          archived_at: "2026-07-24T00:00:00.000Z",
+          archived_by: 1,
+        })
+      )
+
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toBeDisabled()
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toHaveValue("Nội dung đã lưu")
+      await waitFor(() => expect(onDirtyChange).toHaveBeenLastCalledWith(false))
     })
 
     it("updates the dossier detail cache after a successful response save", async () => {

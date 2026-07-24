@@ -88,6 +88,41 @@ export function registerSupplierOptionResponseConflictTests({
       })
     })
 
+    it("keeps conflict blocked until an explicit reload after the draft returns to base", async () => {
+      const baseline = baselineVersion({ revision: 7 })
+      const persistedResponse = optionResponse(baseline, {
+        response_text: "Nội dung đã lưu",
+        revision: 7,
+      })
+      const existingSet = comparisonSet(baseline, [persistedResponse], 7)
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ data: existingSet }))
+        .mockResolvedValueOnce(conflictResponse())
+
+      const { result } = renderResponseHook({
+        baseline,
+        dossierValue: { ...dossier, revision: 7 },
+      })
+      await waitFor(() => expect(result.current.draft.responseText).toBe("Nội dung đã lưu"))
+      act(() => result.current.updateDraft({ responseText: "Nội dung mới" }))
+      await act(async () => result.current.save())
+      expect(result.current.isConflict).toBe(true)
+
+      await act(async () => {
+        result.current.updateDraft({ responseText: persistedResponse.response_text })
+        await Promise.resolve()
+      })
+
+      expect(result.current.isDirty).toBe(false)
+      expect(result.current.isConflict).toBe(true)
+      expect(result.current.operationError).toMatch(/Tải lại dữ liệu/)
+
+      act(() => result.current.updateDraft({ responseText: "Nội dung mới lần nữa" }))
+      await act(async () => result.current.save())
+
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
     it("adopts the created revision after upsert failure and reloads without losing the draft", async () => {
       const onRevisionChange = vi.fn()
       const baseline = baselineVersion()

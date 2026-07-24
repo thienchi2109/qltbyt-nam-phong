@@ -60,7 +60,7 @@ export function TechnicalConfigurationOptionResponseEditor({
     },
     [requestDiscardConfirmation, state]
   )
-  const hasInitialError = state.responseQuery.isError && !state.responseQuery.isSuccess
+  const hasInitialError = state.responseQuery.isError && state.responseQuery.data === undefined
   const isUnavailable = state.responseQuery.isLoading || hasInitialError
 
   return (

@@ -92,11 +92,10 @@ export function useTechnicalConfigurationOptionResponses({
     retry: false,
     refetchOnWindowFocus: false,
   })
-  const isDirty = React.useMemo(
-    () => !areTechnicalConfigurationOptionResponseDraftsEqual(baseDraft, draft),
-    [baseDraft, draft]
-  )
   const isReadOnly = Boolean(dossier.archived_at)
+  const isDirty =
+    !isReadOnly && !areTechnicalConfigurationOptionResponseDraftsEqual(baseDraft, draft)
+  const visibleDraft = isReadOnly ? baseDraft : draft
   const commitRevision = React.useCallback(
     (nextRevision: number) => {
       const committedRevision = Math.max(revisionRef.current, dossier.revision, nextRevision)
@@ -111,6 +110,7 @@ export function useTechnicalConfigurationOptionResponses({
       !responseQuery.isSuccess ||
       responseQuery.dataUpdatedAt === adoptedQueryAtRef.current ||
       isDirty ||
+      isConflict ||
       activeOperationRef.current
     ) {
       return
@@ -139,6 +139,7 @@ export function useTechnicalConfigurationOptionResponses({
     commitRevision,
     criteria,
     dossier.revision,
+    isConflict,
     isDirty,
     responseQuery.data,
     responseQuery.dataUpdatedAt,
@@ -328,7 +329,7 @@ export function useTechnicalConfigurationOptionResponses({
     selectedCriterion,
     selectedCriterionId,
     snapshot,
-    draft,
+    draft: visibleDraft,
     isDirty,
     isReadOnly,
     isSaving,
