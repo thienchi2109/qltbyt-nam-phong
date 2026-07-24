@@ -204,8 +204,14 @@ function parseRow(
   issues: TechnicalConfigurationOptionWorkbookIssue[]
 ): TechnicalConfigurationOptionWorkbookRow | null {
   const criterionId = toOptionWorkbookCellText(record.criterion_id)
-  const groupOrder = toPositiveOptionWorkbookInteger(record.group_order)
-  const criterionOrder = toPositiveOptionWorkbookInteger(record.criterion_order)
+  const groupOrder =
+    typeof record.group_order === "number"
+      ? toPositiveOptionWorkbookInteger(record.group_order)
+      : null
+  const criterionOrder =
+    typeof record.criterion_order === "number"
+      ? toPositiveOptionWorkbookInteger(record.criterion_order)
+      : null
   const expectedCriterion = expectedCriteria.get(criterionId)
 
   if (!criterionId || groupOrder === null || criterionOrder === null) {
