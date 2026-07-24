@@ -279,6 +279,8 @@ describe("technical configuration baseline workspace integration", () => {
       "_components/TechnicalConfigurationBaselineTab.tsx",
       "_components/TechnicalConfigurationBaselineEvidence.tsx",
       "_components/TechnicalConfigurationBaselineAlerts.tsx",
+      "_components/TechnicalConfigurationOptionResponseEditor.tsx",
+      "_components/TechnicalConfigurationOptionResponses.tsx",
       "_components/TechnicalConfigurationBaselineTabStates.tsx",
       "_components/TechnicalConfigurationBaselineEditor.tsx",
       "_components/TechnicalConfigurationCriteriaSpreadsheet.tsx",
@@ -289,6 +291,7 @@ describe("technical configuration baseline workspace integration", () => {
       "_hooks/useTechnicalConfigurationBaselineImport.ts",
       "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
       "_hooks/useTechnicalConfigurationInlineEditor.ts",
+      "_hooks/useTechnicalConfigurationOptionResponses.ts",
     ]
 
     for (const file of files) {

@@ -16,6 +16,7 @@ type TechnicalConfigurationSupplierSelectorProps = {
   state: TechnicalConfigurationOptionsState
   selectedSupplier: TechnicalConfigurationSupplierWire | null
   isLoadingDeleteCount: boolean
+  isMutationBlocked: boolean
   requestIdentityChange: (description: React.ReactNode, action: () => void) => void
   onDeleteSupplier: () => void
 }
@@ -25,6 +26,7 @@ export function TechnicalConfigurationSupplierSelector({
   state,
   selectedSupplier,
   isLoadingDeleteCount,
+  isMutationBlocked,
   requestIdentityChange,
   onDeleteSupplier,
 }: Readonly<TechnicalConfigurationSupplierSelectorProps>) {
@@ -56,7 +58,9 @@ export function TechnicalConfigurationSupplierSelector({
                       state.selectSupplier(supplier.id)
                     )
                   }
-                  disabled={state.isPending || state.isConflict || isLoadingDeleteCount}
+                  disabled={
+                    state.isPending || state.isConflict || isLoadingDeleteCount || isMutationBlocked
+                  }
                 >
                   <span className="break-words font-medium">{supplier.name}</span>
                 </Button>
@@ -76,7 +80,12 @@ export function TechnicalConfigurationSupplierSelector({
                           state.selectOption(option.id)
                         )
                       }
-                      disabled={state.isPending || state.isConflict || isLoadingDeleteCount}
+                      disabled={
+                        state.isPending ||
+                        state.isConflict ||
+                        isLoadingDeleteCount ||
+                        isMutationBlocked
+                      }
                     >
                       <span className="break-words">{option.display_label}</span>
                     </Button>
@@ -97,7 +106,11 @@ export function TechnicalConfigurationSupplierSelector({
               value={state.supplierDraft.name}
               onChange={(event) => state.updateSupplierDraft(event.target.value)}
               disabled={
-                state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount
+                state.isReadOnly ||
+                state.isPending ||
+                state.isConflict ||
+                isLoadingDeleteCount ||
+                isMutationBlocked
               }
             />
           </div>
@@ -106,7 +119,11 @@ export function TechnicalConfigurationSupplierSelector({
               type="button"
               onClick={() => void state.saveSupplier()}
               disabled={
-                state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount
+                state.isReadOnly ||
+                state.isPending ||
+                state.isConflict ||
+                isLoadingDeleteCount ||
+                isMutationBlocked
               }
             >
               <Save className="size-4" aria-hidden="true" />
@@ -121,6 +138,7 @@ export function TechnicalConfigurationSupplierSelector({
                 state.isPending ||
                 state.isConflict ||
                 isLoadingDeleteCount ||
+                isMutationBlocked ||
                 state.isCreatingSupplier ||
                 !selectedSupplier
               }

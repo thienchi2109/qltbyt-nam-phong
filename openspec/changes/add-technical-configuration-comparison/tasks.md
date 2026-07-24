@@ -285,14 +285,14 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P8B2 - Exact-Baseline Option Response Workspace
 
-- [ ] P8B2.1 Dùng P8A4 để đọc existing/null snapshot mà không tạo comparison set khi chọn option/baseline.
-- [ ] P8B2.2 Thêm manual response/supplementary editor với explicit save.
-- [ ] P8B2.3 Khi first save, chạy get-or-create rồi upsert bằng revision mới nhất
+- [x] P8B2.1 Dùng P8A4 để đọc existing/null snapshot mà không tạo comparison set khi chọn option/baseline.
+- [x] P8B2.2 Thêm manual response/supplementary editor với explicit save.
+- [x] P8B2.3 Khi first save, chạy get-or-create rồi upsert bằng revision mới nhất
       được trả về từ chính lời gọi get-or-create đó.
-- [ ] P8B2.4 Hiển thị `max(option.updated_at, response.updated_at)` cho editor context hiện tại.
-- [ ] P8B2.5 Giữ option/baseline/criterion/draft khi validation, persistence hoặc conflict thất bại.
-- [ ] P8B2.6 Thêm dirty navigation cho option/baseline/tab/dossier, archived read-only và draft/locked baseline tests.
-- [ ] P8B2.7 Viết no-write-on-open, exact-baseline, supplementary-non-scoring, responsive và no-lock-control tests.
+- [x] P8B2.4 Hiển thị `max(option.updated_at, response.updated_at)` cho editor context hiện tại.
+- [x] P8B2.5 Giữ option/baseline/criterion/draft khi validation, persistence hoặc conflict thất bại.
+- [x] P8B2.6 Thêm dirty navigation cho option/baseline/tab/dossier, archived read-only và draft/locked baseline tests.
+- [x] P8B2.7 Viết no-write-on-open, exact-baseline, supplementary-non-scoring, responsive và no-lock-control tests.
 
 ## Phase P9A - Supplier Option Excel
 

@@ -4,18 +4,15 @@ import * as React from "react"
 import { useQueryClient } from "@tanstack/react-query"
 
 import {
-  technicalConfigurationDossierDetailQueryKey,
   type technicalConfigurationOptionsQueryKey,
   type technicalConfigurationSuppliersQueryKey,
 } from "../technical-configuration-query-keys"
+import { updateTechnicalConfigurationDossierRevisionCache } from "../technical-configuration-dossier-revision-cache"
 import type {
   TechnicalConfigurationOptionsSnapshot,
   TechnicalConfigurationSuppliersSnapshot,
 } from "../technical-configuration-supplier-option-operations"
-import type {
-  TechnicalConfigurationDossierWire,
-  TechnicalConfigurationDossierWireResponse,
-} from "../types"
+import type { TechnicalConfigurationDossierWire } from "../types"
 import {
   getTechnicalConfigurationBaselineErrorMessage,
   isTechnicalConfigurationBaselineConflict,
@@ -58,14 +55,15 @@ export function useTechnicalConfigurationIdentityMutationState({
   const [refreshWarning, setRefreshWarning] = React.useState<string | null>(null)
   const isReadOnly = Boolean(dossier.archived_at)
 
+  React.useEffect(() => {
+    revisionRef.current = Math.max(revisionRef.current, dossier.revision)
+  }, [dossier.revision])
+
   const commitRevision = React.useCallback(
     (revision: number) => {
       revisionRef.current = revision
       onRevisionChange?.(revision)
-      queryClient.setQueryData<TechnicalConfigurationDossierWireResponse>(
-        technicalConfigurationDossierDetailQueryKey(dossier.id),
-        (current) => (current ? { data: { ...current.data, revision } } : current)
-      )
+      updateTechnicalConfigurationDossierRevisionCache(queryClient, dossier, revision)
       queryClient.setQueryData<TechnicalConfigurationSuppliersSnapshot>(
         supplierQueryKey,
         (current) => (current ? { ...current, revision } : current)
@@ -74,7 +72,7 @@ export function useTechnicalConfigurationIdentityMutationState({
         current ? { ...current, revision } : current
       )
     },
-    [dossier.id, onRevisionChange, optionQueryKey, queryClient, supplierQueryKey]
+    [dossier, onRevisionChange, optionQueryKey, queryClient, supplierQueryKey]
   )
 
   const refreshQueries = React.useCallback(async () => {
