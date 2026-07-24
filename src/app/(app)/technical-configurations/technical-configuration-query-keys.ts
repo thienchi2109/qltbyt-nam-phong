@@ -33,3 +33,11 @@ export function technicalConfigurationSuppliersQueryKey(dossierId: string) {
 export function technicalConfigurationOptionsQueryKey(dossierId: string) {
   return ["technical-configurations", "options", dossierId] as const
 }
+
+/** Builds the cache key for one option's nullable exact-baseline response snapshot. */
+export function technicalConfigurationOptionResponsesQueryKey(
+  optionId: string,
+  baselineVersionId: string
+) {
+  return ["technical-configurations", "option-responses", optionId, baselineVersionId] as const
+}

@@ -10,6 +10,7 @@ import {
   supplier,
   suppliersResponse,
 } from "./supplier-options-fixtures"
+import { baselineVersion, jsonResponse, renderResponseHook } from "./supplier-option-response-cases"
 import {
   baselineVersionsResponse,
   createDraft,
@@ -111,6 +112,37 @@ describe("technical configuration beforeunload protection", () => {
       expect(dirtyEvent.defaultPrevented).toBe(true)
     } finally {
       addEventListener.mockRestore()
+    }
+  })
+
+  it("registers beforeunload protection for a dirty exact-baseline response draft", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch")
+    fetchMock.mockResolvedValueOnce(jsonResponse({ data: null }))
+    const addEventListener = vi.spyOn(window, "addEventListener")
+
+    try {
+      const cleanHandlerCount = addEventListener.mock.calls.filter(
+        ([eventName]) => eventName === "beforeunload"
+      ).length
+      const { result } = renderResponseHook({ baseline: baselineVersion() })
+      await waitFor(() => expect(result.current.responseQuery.isSuccess).toBe(true))
+
+      act(() => result.current.updateDraft({ responseText: "Phản hồi chưa lưu" }))
+
+      await waitFor(() =>
+        expect(
+          addEventListener.mock.calls.filter(([eventName]) => eventName === "beforeunload")
+        ).toHaveLength(cleanHandlerCount + 1)
+      )
+      const beforeUnloadHandler = addEventListener.mock.calls
+        .filter(([eventName]) => eventName === "beforeunload")
+        .at(-1)?.[1]
+      const dirtyEvent = new Event("beforeunload", { cancelable: true })
+      ;(beforeUnloadHandler as EventListener)(dirtyEvent)
+      expect(dirtyEvent.defaultPrevented).toBe(true)
+    } finally {
+      addEventListener.mockRestore()
+      fetchMock.mockRestore()
     }
   })
 })

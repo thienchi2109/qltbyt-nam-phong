@@ -11,6 +11,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 import { TechnicalConfigurationOptionEditor } from "./TechnicalConfigurationOptionEditor"
+import { TechnicalConfigurationOptionResponses } from "./TechnicalConfigurationOptionResponses"
 import { TechnicalConfigurationSupplierSelector } from "./TechnicalConfigurationSupplierSelector"
 
 type TechnicalConfigurationSuppliersProps = {
@@ -31,10 +32,13 @@ export function TechnicalConfigurationSuppliers({
   onNavigationBlockedChange,
   onRevisionChange,
 }: Readonly<TechnicalConfigurationSuppliersProps>) {
+  const [isIdentityNavigationBlocked, setIsIdentityNavigationBlocked] = React.useState(false)
+  const [isResponseDirty, setIsResponseDirty] = React.useState(false)
+  const [isResponseNavigationBlocked, setIsResponseNavigationBlocked] = React.useState(false)
   const state = useTechnicalConfigurationOptions({
     dossier,
     onRevisionChange,
-    onNavigationBlockedChange,
+    onNavigationBlockedChange: setIsIdentityNavigationBlocked,
   })
   const { discardConfirmationDialog, requestDiscardConfirmation } =
     useTechnicalConfigurationDiscardConfirmation()
@@ -47,24 +51,38 @@ export function TechnicalConfigurationSuppliers({
     (state.suppliersQuery.isError && !state.suppliersQuery.data) ||
     (state.optionsQuery.isError && !state.optionsQuery.data)
   const isInitialLoading = state.suppliersQuery.isLoading || state.optionsQuery.isLoading
+  const isDirty = state.isDirty || isResponseDirty
+  const isNavigationBlocked = isIdentityNavigationBlocked || isResponseNavigationBlocked
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- WorkspaceShell owns cross-tab dirty navigation while this component owns supplier/option drafts.
-    onDirtyChange?.(state.isDirty)
-  }, [onDirtyChange, state.isDirty])
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
-  React.useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+  React.useEffect(() => {
+    // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- Identity and response mutations share one cross-tab navigation block.
+    onNavigationBlockedChange?.(isNavigationBlocked)
+  }, [isNavigationBlocked, onNavigationBlockedChange])
+
+  React.useEffect(
+    () => () => {
+      onDirtyChange?.(false)
+      onNavigationBlockedChange?.(false)
+    },
+    [onDirtyChange, onNavigationBlockedChange]
+  )
 
   const requestIdentityChange = React.useCallback(
     (description: React.ReactNode, action: () => void) => {
+      if (isNavigationBlocked) return
       setDeleteCountError(null)
-      if (!state.isDirty) {
+      if (!isDirty) {
         action()
         return
       }
       requestDiscardConfirmation(description, action)
     },
-    [requestDiscardConfirmation, state.isDirty]
+    [isDirty, isNavigationBlocked, requestDiscardConfirmation]
   )
 
   const handleSupplierDeleteRequest = React.useCallback(async () => {
@@ -213,7 +231,11 @@ export function TechnicalConfigurationSuppliers({
                 variant="outline"
                 onClick={() => state.startOptionCreate(selectedSupplier.id)}
                 disabled={
-                  state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount
+                  state.isReadOnly ||
+                  state.isPending ||
+                  state.isConflict ||
+                  isLoadingDeleteCount ||
+                  isResponseNavigationBlocked
                 }
               >
                 <PackagePlus className="size-4" aria-hidden="true" />
@@ -234,7 +256,11 @@ export function TechnicalConfigurationSuppliers({
                     )
                   }
                   disabled={
-                    state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount
+                    state.isReadOnly ||
+                    state.isPending ||
+                    state.isConflict ||
+                    isLoadingDeleteCount ||
+                    isResponseNavigationBlocked
                   }
                 >
                   <PackagePlus className="size-4" aria-hidden="true" />
@@ -247,7 +273,11 @@ export function TechnicalConfigurationSuppliers({
                 option={selectedOption}
                 mode={state.isCreatingOption ? "create" : "edit"}
                 disabled={
-                  state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount
+                  state.isReadOnly ||
+                  state.isPending ||
+                  state.isConflict ||
+                  isLoadingDeleteCount ||
+                  isResponseNavigationBlocked
                 }
                 isPending={state.isPending}
                 onChange={state.updateOptionDraft}
@@ -262,6 +292,16 @@ export function TechnicalConfigurationSuppliers({
                     : undefined
                 }
               />
+              {selectedOption ? (
+                <TechnicalConfigurationOptionResponses
+                  key={selectedOption.id}
+                  dossier={dossier}
+                  option={selectedOption}
+                  onDirtyChange={setIsResponseDirty}
+                  onNavigationBlockedChange={setIsResponseNavigationBlocked}
+                  onRevisionChange={onRevisionChange}
+                />
+              ) : null}
             </div>
           ) : null}
         </main>
