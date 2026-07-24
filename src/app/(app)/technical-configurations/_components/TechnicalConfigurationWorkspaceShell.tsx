@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
 import { TechnicalConfigurationBaselineEvidence } from "./TechnicalConfigurationBaselineEvidence"
 import { TechnicalConfigurationReferenceProducts } from "./TechnicalConfigurationReferenceProducts"
+import { TechnicalConfigurationSuppliers } from "./TechnicalConfigurationSuppliers"
 
 type TechnicalConfigurationWorkspaceShellProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -39,12 +40,20 @@ type PendingWorkspaceNavigation =
       value: string
     }
 
+type WorkspaceRevisionOverride = {
+  dossierId: string
+  revision: number
+}
+
 /** Renders the dossier workspace tabs available in the current delivery phase. */
 export function TechnicalConfigurationWorkspaceShell({
   dossier,
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
   const [activeTab, setActiveTab] = React.useState("baseline")
+  const [revisionOverride, setRevisionOverride] = React.useState<WorkspaceRevisionOverride | null>(
+    null
+  )
   const [pendingNavigation, setPendingNavigation] =
     React.useState<PendingWorkspaceNavigation | null>(null)
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
@@ -53,9 +62,38 @@ export function TechnicalConfigurationWorkspaceShell({
   const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
   const [isReferenceDirty, setIsReferenceDirty] = React.useState(false)
   const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
-  const isDirty = isBaselineDirty || isEvidenceDirty || isReferenceDirty
+  const [isOptionDirty, setIsOptionDirty] = React.useState(false)
+  const [isOptionNavigationBlocked, setIsOptionNavigationBlocked] = React.useState(false)
+  const isDirty = isBaselineDirty || isEvidenceDirty || isReferenceDirty || isOptionDirty
   const isNavigationBlocked =
-    isBaselineNavigationBlocked || isEvidenceNavigationBlocked || isReferenceNavigationBlocked
+    isBaselineNavigationBlocked ||
+    isEvidenceNavigationBlocked ||
+    isReferenceNavigationBlocked ||
+    isOptionNavigationBlocked
+  const workspaceRevision =
+    revisionOverride?.dossierId === dossier.id
+      ? Math.max(dossier.revision, revisionOverride.revision)
+      : dossier.revision
+  const workspaceDossier = React.useMemo(
+    () =>
+      workspaceRevision === dossier.revision
+        ? dossier
+        : { ...dossier, revision: workspaceRevision },
+    [dossier, workspaceRevision]
+  )
+  const handleRevisionChange = React.useCallback(
+    (revision: number) => {
+      setRevisionOverride((current) => ({
+        dossierId: dossier.id,
+        revision: Math.max(
+          dossier.revision,
+          current?.dossierId === dossier.id ? current.revision : 0,
+          revision
+        ),
+      }))
+    },
+    [dossier.id, dossier.revision]
+  )
 
   const handleBack = React.useCallback(() => {
     if (isNavigationBlocked) return
@@ -72,11 +110,13 @@ export function TechnicalConfigurationWorkspaceShell({
       const isCurrentTabDirty =
         (activeTab === "baseline" && isBaselineDirty) ||
         (activeTab === "evidence" && isEvidenceDirty) ||
-        (activeTab === "references" && isReferenceDirty)
+        (activeTab === "references" && isReferenceDirty) ||
+        (activeTab === "options" && isOptionDirty)
       const isCurrentTabBlocked =
         (activeTab === "baseline" && isBaselineNavigationBlocked) ||
         (activeTab === "evidence" && isEvidenceNavigationBlocked) ||
-        (activeTab === "references" && isReferenceNavigationBlocked)
+        (activeTab === "references" && isReferenceNavigationBlocked) ||
+        (activeTab === "options" && isOptionNavigationBlocked)
       if (isCurrentTabBlocked) return
       if (isCurrentTabDirty) {
         setPendingNavigation({ kind: "tab", value: nextTab })
@@ -90,6 +130,8 @@ export function TechnicalConfigurationWorkspaceShell({
       isBaselineNavigationBlocked,
       isEvidenceDirty,
       isEvidenceNavigationBlocked,
+      isOptionDirty,
+      isOptionNavigationBlocked,
       isReferenceDirty,
       isReferenceNavigationBlocked,
     ]
@@ -151,7 +193,7 @@ export function TechnicalConfigurationWorkspaceShell({
             <LibraryBig className="size-4" aria-hidden="true" />
             Sản phẩm tham chiếu
           </TabsTrigger>
-          <TabsTrigger value="options" className="min-h-10 gap-2" disabled>
+          <TabsTrigger value="options" className="min-h-10 gap-2">
             <PackageSearch className="size-4" aria-hidden="true" />
             Phương án
           </TabsTrigger>
@@ -163,23 +205,31 @@ export function TechnicalConfigurationWorkspaceShell({
 
         <TabsContent value="baseline" className="mt-6">
           <TechnicalConfigurationBaselineTab
-            dossier={dossier}
+            dossier={workspaceDossier}
             onDirtyChange={setIsBaselineDirty}
             onNavigationBlockedChange={setIsBaselineNavigationBlocked}
           />
         </TabsContent>
         <TabsContent value="evidence" className="mt-6">
           <TechnicalConfigurationBaselineEvidence
-            dossier={dossier}
+            dossier={workspaceDossier}
             onDirtyChange={setIsEvidenceDirty}
             onNavigationBlockedChange={setIsEvidenceNavigationBlocked}
           />
         </TabsContent>
         <TabsContent value="references" className="mt-6">
           <TechnicalConfigurationReferenceProducts
-            dossier={dossier}
+            dossier={workspaceDossier}
             onDirtyChange={setIsReferenceDirty}
             onNavigationBlockedChange={setIsReferenceNavigationBlocked}
+          />
+        </TabsContent>
+        <TabsContent value="options" className="mt-6">
+          <TechnicalConfigurationSuppliers
+            dossier={workspaceDossier}
+            onDirtyChange={setIsOptionDirty}
+            onNavigationBlockedChange={setIsOptionNavigationBlocked}
+            onRevisionChange={handleRevisionChange}
           />
         </TabsContent>
       </Tabs>

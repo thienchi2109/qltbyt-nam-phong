@@ -23,3 +23,13 @@ export function technicalConfigurationReferenceProductsQueryKey(baselineVersionI
 export function technicalConfigurationDocumentsQueryKey(baselineVersionId: string) {
   return ["technical-configurations", "documents", baselineVersionId] as const
 }
+
+/** Builds the cache key for supplier identities in one dossier. */
+export function technicalConfigurationSuppliersQueryKey(dossierId: string) {
+  return ["technical-configurations", "suppliers", dossierId] as const
+}
+
+/** Builds the cache key for option identities in one dossier. */
+export function technicalConfigurationOptionsQueryKey(dossierId: string) {
+  return ["technical-configurations", "options", dossierId] as const
+}

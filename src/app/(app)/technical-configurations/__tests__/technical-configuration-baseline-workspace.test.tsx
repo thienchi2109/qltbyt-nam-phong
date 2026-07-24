@@ -20,6 +20,11 @@ const baselineEvidenceMock = vi.hoisted(() => ({
   navigationBlocked: false,
 }))
 
+const supplierOptionsMock = vi.hoisted(() => ({
+  dirty: false,
+  navigationBlocked: false,
+}))
+
 vi.mock(
   "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab",
   async () => {
@@ -27,9 +32,11 @@ vi.mock(
 
     return {
       TechnicalConfigurationBaselineTab: ({
+        dossier,
         onDirtyChange,
         onNavigationBlockedChange,
       }: {
+        dossier: TechnicalConfigurationDossierWire
         onDirtyChange: (dirty: boolean) => void
         onNavigationBlockedChange?: (blocked: boolean) => void
       }) => {
@@ -41,7 +48,12 @@ vi.mock(
             onNavigationBlockedChange?.(false)
           }
         }, [onDirtyChange, onNavigationBlockedChange])
-        return <div>Baseline editor</div>
+        return (
+          <div>
+            <span>Baseline editor</span>
+            <span>Baseline revision {dossier.revision}</span>
+          </div>
+        )
       },
     }
   }
@@ -65,6 +77,44 @@ vi.mock(
           onNavigationBlockedChange?.(baselineEvidenceMock.navigationBlocked)
         }, [onDirtyChange, onNavigationBlockedChange])
         return <div>Baseline evidence workspace</div>
+      },
+    }
+  }
+)
+
+vi.mock(
+  "@/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers",
+  async () => {
+    const ReactModule = await import("react")
+
+    return {
+      TechnicalConfigurationSuppliers: ({
+        dossier,
+        onDirtyChange,
+        onNavigationBlockedChange,
+        onRevisionChange,
+      }: {
+        dossier: TechnicalConfigurationDossierWire
+        onDirtyChange?: (dirty: boolean) => void
+        onNavigationBlockedChange?: (blocked: boolean) => void
+        onRevisionChange?: (revision: number) => void
+      }) => {
+        ReactModule.useEffect(() => {
+          onDirtyChange?.(supplierOptionsMock.dirty)
+          onNavigationBlockedChange?.(supplierOptionsMock.navigationBlocked)
+          return () => {
+            onDirtyChange?.(false)
+            onNavigationBlockedChange?.(false)
+          }
+        }, [onDirtyChange, onNavigationBlockedChange])
+        return (
+          <div>
+            <span>Supplier option workspace revision {dossier.revision}</span>
+            <button type="button" onClick={() => onRevisionChange?.(4)}>
+              Advance option revision
+            </button>
+          </div>
+        )
       },
     }
   }
@@ -178,6 +228,44 @@ describe("technical configuration baseline workspace integration", () => {
 
       expect(screen.getByText("Baseline evidence workspace")).toBeInTheDocument()
       expect(screen.queryByText("Baseline editor")).not.toBeInTheDocument()
+    } finally {
+      baselineTabMock.dirty = true
+    }
+  })
+
+  it("enables the supplier option tab and guards dirty option navigation", async () => {
+    const user = userEvent.setup()
+    baselineTabMock.dirty = false
+    supplierOptionsMock.dirty = true
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+      const optionsTab = screen.getByRole("tab", { name: "Phương án" })
+      expect(optionsTab).toBeEnabled()
+
+      await user.click(optionsTab)
+      expect(await screen.findByText(/Supplier option workspace revision/)).toBeInTheDocument()
+
+      await user.click(screen.getByRole("tab", { name: "Sản phẩm tham chiếu" }))
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
+      expect(screen.getByText(/Supplier option workspace revision/)).toBeInTheDocument()
+    } finally {
+      baselineTabMock.dirty = true
+      supplierOptionsMock.dirty = false
+    }
+  })
+
+  it("propagates an option mutation revision to another workspace tab", async () => {
+    const user = userEvent.setup()
+    baselineTabMock.dirty = false
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+      await user.click(screen.getByRole("tab", { name: "Phương án" }))
+      await user.click(screen.getByRole("button", { name: "Advance option revision" }))
+      await user.click(screen.getByRole("tab", { name: "Cấu hình cơ sở" }))
+
+      expect(await screen.findByText("Baseline revision 4")).toBeInTheDocument()
     } finally {
       baselineTabMock.dirty = true
     }
