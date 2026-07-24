@@ -37,6 +37,7 @@ export function TechnicalConfigurationSuppliers({
   const [isResponseNavigationBlocked, setIsResponseNavigationBlocked] = React.useState(false)
   const state = useTechnicalConfigurationOptions({
     dossier,
+    isMutationBlocked: isResponseNavigationBlocked,
     onRevisionChange,
     onNavigationBlockedChange: setIsIdentityNavigationBlocked,
   })
@@ -53,6 +54,8 @@ export function TechnicalConfigurationSuppliers({
   const isInitialLoading = state.suppliersQuery.isLoading || state.optionsQuery.isLoading
   const isDirty = state.isDirty || isResponseDirty
   const isNavigationBlocked = isIdentityNavigationBlocked || isResponseNavigationBlocked
+  const isIdentityMutationBlocked =
+    state.isPending || state.isConflict || isResponseNavigationBlocked
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- WorkspaceShell owns cross-tab dirty navigation while this component owns supplier/option drafts.
@@ -86,7 +89,7 @@ export function TechnicalConfigurationSuppliers({
   )
 
   const handleSupplierDeleteRequest = React.useCallback(async () => {
-    if (!selectedSupplier || state.isPending || state.isConflict) return
+    if (!selectedSupplier || isIdentityMutationBlocked) return
     const supplier = selectedSupplier
     setDeleteCountError(null)
     setIsLoadingDeleteCount(true)
@@ -103,16 +106,16 @@ export function TechnicalConfigurationSuppliers({
     } finally {
       setIsLoadingDeleteCount(false)
     }
-  }, [selectedSupplier, state])
+  }, [isIdentityMutationBlocked, selectedSupplier, state])
 
   const handleConfirmDelete = React.useCallback(() => {
-    if (!pendingDelete) return
+    if (!pendingDelete || isResponseNavigationBlocked) return
     const action =
       pendingDelete.kind === "option"
         ? () => state.deleteOption(pendingDelete.id)
         : () => state.deleteSupplier(pendingDelete.id)
     void action().finally(() => setPendingDelete(null))
-  }, [pendingDelete, state.deleteOption, state.deleteSupplier])
+  }, [isResponseNavigationBlocked, pendingDelete, state.deleteOption, state.deleteSupplier])
 
   if (isInitialLoading) {
     return (
@@ -161,7 +164,7 @@ export function TechnicalConfigurationSuppliers({
               state.startSupplierCreate
             )
           }
-          disabled={state.isReadOnly || state.isPending || state.isConflict || isLoadingDeleteCount}
+          disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
         >
           <Plus className="size-4" aria-hidden="true" />
           Thêm nhà cung cấp
@@ -216,6 +219,7 @@ export function TechnicalConfigurationSuppliers({
           state={state}
           selectedSupplier={selectedSupplier}
           isLoadingDeleteCount={isLoadingDeleteCount}
+          isMutationBlocked={isResponseNavigationBlocked}
           requestIdentityChange={requestIdentityChange}
           onDeleteSupplier={() => void handleSupplierDeleteRequest()}
         />
@@ -230,13 +234,7 @@ export function TechnicalConfigurationSuppliers({
                 type="button"
                 variant="outline"
                 onClick={() => state.startOptionCreate(selectedSupplier.id)}
-                disabled={
-                  state.isReadOnly ||
-                  state.isPending ||
-                  state.isConflict ||
-                  isLoadingDeleteCount ||
-                  isResponseNavigationBlocked
-                }
+                disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
               >
                 <PackagePlus className="size-4" aria-hidden="true" />
                 Thêm phương án
@@ -255,13 +253,7 @@ export function TechnicalConfigurationSuppliers({
                       state.startOptionCreate(selectedSupplier.id)
                     )
                   }
-                  disabled={
-                    state.isReadOnly ||
-                    state.isPending ||
-                    state.isConflict ||
-                    isLoadingDeleteCount ||
-                    isResponseNavigationBlocked
-                  }
+                  disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
                 >
                   <PackagePlus className="size-4" aria-hidden="true" />
                   Thêm phương án
@@ -272,13 +264,7 @@ export function TechnicalConfigurationSuppliers({
                 draft={state.optionDraft}
                 option={selectedOption}
                 mode={state.isCreatingOption ? "create" : "edit"}
-                disabled={
-                  state.isReadOnly ||
-                  state.isPending ||
-                  state.isConflict ||
-                  isLoadingDeleteCount ||
-                  isResponseNavigationBlocked
-                }
+                disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
                 isPending={state.isPending}
                 onChange={state.updateOptionDraft}
                 onSave={() => void state.saveOption()}
@@ -320,7 +306,7 @@ export function TechnicalConfigurationSuppliers({
             : `${pendingDelete?.label ?? ""}. Các response datasets phụ thuộc của phương án cũng sẽ bị xóa.`
         }
         confirmLabel={pendingDelete?.kind === "supplier" ? "Xóa nhà cung cấp" : "Xóa phương án"}
-        isPending={state.isPending}
+        isPending={state.isPending || isResponseNavigationBlocked}
         onConfirm={handleConfirmDelete}
       />
     </div>

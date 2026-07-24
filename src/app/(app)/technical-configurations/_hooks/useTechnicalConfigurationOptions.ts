@@ -34,6 +34,7 @@ const EMPTY_OPTIONS: TechnicalConfigurationOptionWire[] = []
 
 type TechnicalConfigurationOptionsHookArgs = {
   dossier: TechnicalConfigurationDossierWire
+  isMutationBlocked?: boolean
   onRevisionChange?: (revision: number) => void
   onNavigationBlockedChange?: (blocked: boolean) => void
 }
@@ -41,6 +42,7 @@ type TechnicalConfigurationOptionsHookArgs = {
 /** Owns dossier-scoped supplier/option snapshots and their local editable drafts. */
 export function useTechnicalConfigurationOptions({
   dossier,
+  isMutationBlocked = false,
   onRevisionChange,
   onNavigationBlockedChange,
 }: TechnicalConfigurationOptionsHookArgs) {
@@ -160,6 +162,7 @@ export function useTechnicalConfigurationOptions({
     suppliersQuery,
     optionsQuery,
     isSnapshotConflict: hasSnapshotConflict,
+    isMutationBlocked,
     hasLocalDraftChanges: isDirty,
     adoptSelection,
     setSelectedSupplierId,

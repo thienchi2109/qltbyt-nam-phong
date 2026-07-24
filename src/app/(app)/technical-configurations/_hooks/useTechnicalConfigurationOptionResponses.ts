@@ -148,9 +148,8 @@ export function useTechnicalConfigurationOptionResponses({
   ])
 
   React.useEffect(() => {
-    if (isDirty) return
     revisionRef.current = Math.max(revisionRef.current, dossier.revision)
-  }, [dossier.revision, isDirty])
+  }, [dossier.revision])
 
   useTechnicalConfigurationBeforeUnloadGuard(isDirty)
 

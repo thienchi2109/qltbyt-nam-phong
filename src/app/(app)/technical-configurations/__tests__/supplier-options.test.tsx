@@ -1,5 +1,6 @@
 import { beforeEach, vi } from "vitest"
 
+import { registerSupplierOptionResponseCoordinationTests } from "./supplier-option-response-coordination-cases"
 import { registerSupplierOptionResponseConflictTests } from "./supplier-option-response-conflict-cases"
 import { registerSupplierOptionResponseTests } from "./supplier-option-response-cases"
 import { registerSupplierOptionResponseRecoveryTests } from "./supplier-option-response-recovery-cases"
@@ -66,6 +67,11 @@ registerSupplierOptionResponseConflictTests({
   supplierOptionRpc,
 })
 registerSupplierOptionResponseRecoveryTests({
+  baselineRpc,
+  fetchMock: optionResponseFetch,
+  supplierOptionRpc,
+})
+registerSupplierOptionResponseCoordinationTests({
   baselineRpc,
   fetchMock: optionResponseFetch,
   supplierOptionRpc,

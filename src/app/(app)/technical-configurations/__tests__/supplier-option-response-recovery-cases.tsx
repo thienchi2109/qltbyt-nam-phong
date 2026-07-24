@@ -392,7 +392,26 @@ export function registerSupplierOptionResponseRecoveryTests({
       })
       supplierOptionRpc.listSuppliers.mockResolvedValue(suppliersResponse([currentSupplier]))
       supplierOptionRpc.listOptions.mockResolvedValue(optionsResponse([firstOption, secondOption]))
-      fetchMock.mockResolvedValue(jsonResponse({ data: null }))
+      fetchMock.mockImplementation((_url, init?: RequestInit) => {
+        const body = JSON.parse(typeof init?.body === "string" ? init.body : "{}") as Record<
+          string,
+          unknown
+        >
+        const optionId = String(body.p_option_id)
+        const selectedBaseline =
+          body.p_baseline_version_id === firstBaseline.id ? firstBaseline : secondBaseline
+        const responseText = `${optionId}-${selectedBaseline.id}`
+        return Promise.resolve(
+          jsonResponse({
+            data: {
+              ...comparisonSet(selectedBaseline, [
+                optionResponse(selectedBaseline, { response_text: responseText }),
+              ]),
+              option_id: optionId,
+            },
+          })
+        )
+      })
 
       renderWithQueryClient(<TechnicalConfigurationSuppliers dossier={dossier} />)
       expect(await screen.findByTestId("option-response-workspace")).toHaveClass(
@@ -403,14 +422,18 @@ export function registerSupplierOptionResponseRecoveryTests({
       expect(
         screen.getByRole("navigation", { name: "Tiêu chí cấu hình cơ sở" }).querySelector("div")
       ).toHaveClass("overflow-x-auto", "lg:flex-col", "lg:overflow-visible")
+      const responseInput = await screen.findByLabelText("Phản hồi tiêu chí")
+      expect(responseInput).toHaveValue("option-1-baseline-2")
 
       await user.click(screen.getByRole("button", { name: secondOption.display_label }))
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toHaveValue("option-2-baseline-2")
 
       act(() => screen.getByLabelText("Phiên bản cấu hình cơ sở").focus())
       await user.keyboard("{ArrowDown}")
       await user.click(await screen.findByRole("option", { name: /Phiên bản 1/ }))
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toHaveValue("option-2-baseline-1")
 
       expect(fetchMock.mock.calls.map((_, index) => getRequest(fetchMock, index).url)).toEqual([
         "/api/rpc/technical_configuration_comparison_set_get",

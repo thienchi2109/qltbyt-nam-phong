@@ -56,6 +56,7 @@ type TechnicalConfigurationOptionOperationsArgs = {
   suppliersQuery: UseQueryResult<TechnicalConfigurationSuppliersSnapshot>
   optionsQuery: UseQueryResult<TechnicalConfigurationOptionsSnapshot>
   isSnapshotConflict: boolean
+  isMutationBlocked: boolean
   hasLocalDraftChanges: boolean
   adoptSelection: AdoptSelection
   setSelectedSupplierId: SetState<string | null>
@@ -92,6 +93,7 @@ export function useTechnicalConfigurationOptionOperations({
   suppliersQuery,
   optionsQuery,
   isSnapshotConflict,
+  isMutationBlocked,
   hasLocalDraftChanges,
   adoptSelection,
   setSelectedSupplierId,
@@ -112,7 +114,7 @@ export function useTechnicalConfigurationOptionOperations({
     dossier,
     supplierQueryKey,
     optionQueryKey,
-    isMutationBlocked: isSnapshotConflict,
+    isMutationBlocked: isSnapshotConflict || isMutationBlocked,
     onRevisionChange,
     onNavigationBlockedChange,
   })
