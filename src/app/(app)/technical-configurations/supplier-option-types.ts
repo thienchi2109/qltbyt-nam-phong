@@ -1,3 +1,8 @@
+import type {
+  TechnicalConfigurationOptionWorkbookMetadata,
+  TechnicalConfigurationOptionWorkbookRow,
+} from "@/lib/technical-configuration-option-excel-contract"
+
 export interface TechnicalConfigurationSupplierWire {
   id: string
   dossier_id: string
@@ -174,4 +179,35 @@ export interface TechnicalConfigurationOptionResponseUpsertRpcArgs {
   p_response_text: string | null
   p_supplementary_information: string | null
   p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionImportRpcArgs {
+  p_option_id: string
+  p_baseline_version_id: string
+  p_template_metadata: TechnicalConfigurationOptionWorkbookMetadata
+  p_rows: TechnicalConfigurationOptionWorkbookRow[]
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionImportPreviewWireResponse {
+  data: {
+    metadata: TechnicalConfigurationOptionWorkbookMetadata
+    rows: TechnicalConfigurationOptionWorkbookRow[]
+  }
+  errors: TechnicalConfigurationOptionImportIssue[]
+}
+
+export type TechnicalConfigurationOptionImportApplyWireResponse =
+  TechnicalConfigurationComparisonSetWireResponse
+
+export interface TechnicalConfigurationOptionImportIssue {
+  code:
+    | "invalid_row_shape"
+    | "changed_context"
+    | "missing_criterion"
+    | "unknown_criterion"
+    | "duplicate_criterion"
+  message: string
+  row?: number
+  criterion_id?: string
 }

@@ -2,6 +2,7 @@ import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-basel
 import { DOCUMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-document-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import {
+  OPTION_IMPORT_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_RPC_FUNCTION_NAMES,
   OPTION_RPC_FUNCTION_NAMES,
@@ -108,6 +109,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   ...OPTION_RPC_FUNCTION_NAMES,
   ...OPTION_RESPONSE_RPC_FUNCTION_NAMES,
   ...OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES,
+  ...OPTION_IMPORT_RPC_FUNCTION_NAMES,
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

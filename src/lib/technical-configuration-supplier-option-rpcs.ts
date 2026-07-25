@@ -38,3 +38,12 @@ export const OPTION_RESPONSE_READ_RPC_FUNCTIONS = {
 export const OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES = Object.values(
   OPTION_RESPONSE_READ_RPC_FUNCTIONS
 )
+
+/** Named P9A2 atomic supplier-option import RPCs shared by client and server code. */
+export const OPTION_IMPORT_RPC_FUNCTIONS = {
+  previewOptionImport: "technical_configuration_option_import_preview",
+  applyOptionImport: "technical_configuration_option_import_apply",
+} as const
+
+/** Ordered P9A2 import RPC names for allowlists and contract iteration. */
+export const OPTION_IMPORT_RPC_FUNCTION_NAMES = Object.values(OPTION_IMPORT_RPC_FUNCTIONS)
