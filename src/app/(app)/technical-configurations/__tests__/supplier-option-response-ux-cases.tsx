@@ -295,7 +295,6 @@ export function registerSupplierOptionResponseUxTests({
       expect(await screen.findByLabelText("Phản hồi tiêu chí")).toBeEnabled()
       expect(screen.getByRole("button", { name: "Sao chép từ cấu hình cơ bản" })).toBeEnabled()
 
-      fetchMock.mockResolvedValueOnce(jsonResponse({ data: comparisonSet(locked) }))
       rerender(
         <TechnicalConfigurationOptionResponses
           dossier={{
