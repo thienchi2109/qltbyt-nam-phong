@@ -146,7 +146,7 @@ export function TechnicalConfigurationOptionResponses({
   }
 
   return (
-    <div className="space-y-5 border-t pt-5">
+    <div className="space-y-5">
       <div className="min-w-0">
         <Label htmlFor="option-response-baseline-version">Phiên bản cấu hình cơ sở</Label>
         <Select

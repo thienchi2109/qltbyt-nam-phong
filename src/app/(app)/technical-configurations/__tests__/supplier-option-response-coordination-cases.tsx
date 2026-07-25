@@ -105,7 +105,7 @@ export function registerSupplierOptionResponseCoordinationTests({
         await screen.findByLabelText("Phản hồi tiêu chí"),
         savedResponse.response_text
       )
-      await user.click(screen.getByRole("button", { name: "Lưu phản hồi" }))
+      await user.click(screen.getByRole("button", { name: "Lưu" }))
 
       await waitFor(() =>
         expect(screen.getByRole("button", { name: "Lưu nhà cung cấp" })).toBeDisabled()

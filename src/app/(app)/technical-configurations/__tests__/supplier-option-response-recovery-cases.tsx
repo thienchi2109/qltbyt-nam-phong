@@ -365,7 +365,7 @@ export function registerSupplierOptionResponseRecoveryTests({
       await waitFor(() => expect(result.current.responseQuery.isSuccess).toBe(true))
       act(() => result.current.updateDraft({ responseText: savedResponse.response_text }))
 
-      let savePromise: Promise<void> | undefined
+      let savePromise: Promise<boolean> | undefined
       act(() => {
         savePromise = result.current.save()
       })
@@ -377,7 +377,7 @@ export function registerSupplierOptionResponseRecoveryTests({
       expect(onNavigationBlockedChange).toHaveBeenLastCalledWith(false)
     })
 
-    it("switches option and baseline with read-only calls and responsive navigation", async () => {
+    it("switches option and baseline with read-only calls and existing criterion navigation", async () => {
       const user = userEvent.setup()
       const firstBaseline = baselineVersion()
       const secondBaseline = baselineVersion({ id: "baseline-2", version_number: 2 })
@@ -417,7 +417,7 @@ export function registerSupplierOptionResponseRecoveryTests({
       expect(await screen.findByTestId("option-response-workspace")).toHaveClass(
         "grid",
         "min-w-0",
-        "lg:grid-cols-[minmax(12rem,0.45fr)_minmax(0,1fr)]"
+        "lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)]"
       )
       expect(
         screen.getByRole("navigation", { name: "Tiêu chí cấu hình cơ sở" }).querySelector("div")

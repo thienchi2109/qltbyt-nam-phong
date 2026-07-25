@@ -1,9 +1,11 @@
 import { beforeEach, vi } from "vitest"
 
+import { registerSupplierOptionResponseAvailabilityTests } from "./supplier-option-response-availability-cases"
 import { registerSupplierOptionResponseCoordinationTests } from "./supplier-option-response-coordination-cases"
 import { registerSupplierOptionResponseConflictTests } from "./supplier-option-response-conflict-cases"
 import { registerSupplierOptionResponseTests } from "./supplier-option-response-cases"
 import { registerSupplierOptionResponseRecoveryTests } from "./supplier-option-response-recovery-cases"
+import { registerSupplierOptionResponseUxTests } from "./supplier-option-response-ux-cases"
 import { registerSupplierOptionConflictTests } from "./supplier-options-conflict-cases"
 import { registerSupplierOptionHookTests } from "./supplier-options-hook-cases"
 import { registerSupplierOptionWorkspaceTests } from "./supplier-options-workspace-cases"
@@ -72,6 +74,14 @@ registerSupplierOptionResponseRecoveryTests({
   supplierOptionRpc,
 })
 registerSupplierOptionResponseCoordinationTests({
+  baselineRpc,
+  fetchMock: optionResponseFetch,
+  supplierOptionRpc,
+})
+registerSupplierOptionResponseAvailabilityTests({
+  fetchMock: optionResponseFetch,
+})
+registerSupplierOptionResponseUxTests({
   baselineRpc,
   fetchMock: optionResponseFetch,
   supplierOptionRpc,
