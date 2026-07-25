@@ -198,7 +198,7 @@ describe("technical configuration dossier shell", () => {
       "Phương án",
       "So sánh & đánh giá",
     ])
-    expect(screen.getByRole("tab", { name: "Phương án" })).toBeDisabled()
+    expect(screen.getByRole("tab", { name: "Phương án" })).toBeEnabled()
     expect(screen.getByRole("tab", { name: "So sánh & đánh giá" })).toBeDisabled()
     expect(screen.queryByRole("button", { name: "Thêm nhóm" })).not.toBeInTheDocument()
   })
