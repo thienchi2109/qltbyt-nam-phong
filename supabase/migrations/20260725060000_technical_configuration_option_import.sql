@@ -217,10 +217,10 @@ BEGIN
        OR v_row->>'group_name' IS DISTINCT FROM v_target->>'group_name'
        OR v_criterion_order IS DISTINCT FROM (v_target->>'criterion_order')::INTEGER
        OR v_row->>'criterion_code' IS DISTINCT FROM v_target->>'criterion_code'
-       OR CASE
+       OR (CASE
          WHEN v_row->'criterion_title' = 'null'::JSONB THEN NULL
          ELSE v_row->>'criterion_title'
-       END IS DISTINCT FROM v_target->>'criterion_title'
+       END) IS DISTINCT FROM v_target->>'criterion_title'
        OR v_row->>'requirement_text' IS DISTINCT FROM v_target->>'requirement_text' THEN
       v_errors := v_errors || jsonb_build_array(jsonb_build_object(
         'row', v_row_number, 'criterion_id', v_criterion_id,

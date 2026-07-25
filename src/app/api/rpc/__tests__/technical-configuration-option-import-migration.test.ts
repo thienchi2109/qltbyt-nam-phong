@@ -141,6 +141,12 @@ describe("P9A2 technical configuration supplier option import migration", () => 
     }
   })
 
+  it("parenthesizes CASE expressions inside PL/pgSQL IF conditions", () => {
+    expect(validatorBlock).toMatch(
+      /OR \(CASE\s+WHEN v_row->'criterion_title' = 'null'::JSONB THEN NULL\s+ELSE v_row->>'criterion_title'\s+END\) IS DISTINCT FROM/
+    )
+  })
+
   it("preloads canonical criteria once before validating imported rows", () => {
     const criteriaLoadMarker = "FROM public.technical_configuration_baseline_criteria c"
     const criteriaLoadIndex = validatorBlock.indexOf(criteriaLoadMarker)

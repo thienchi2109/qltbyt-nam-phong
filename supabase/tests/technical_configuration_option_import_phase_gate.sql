@@ -1,5 +1,7 @@
 -- P9A2 rollback-only supplier-option import trust, validation, and atomicity gate.
 -- Execute as one SQL batch through Supabase MCP after explicit live-write approval.
+-- The failure trigger holds a table DDL lock until ROLLBACK; use an acceptable
+-- write-blocking window when running this gate against live infrastructure.
 BEGIN;
 
 CREATE FUNCTION pg_temp.set_claims(p_app_role TEXT, p_user_id BIGINT)
