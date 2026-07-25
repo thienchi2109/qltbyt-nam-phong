@@ -328,37 +328,37 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P9A1 - Supplier Option Workbook Codec
 
-- [ ] P9A1.1 Đóng băng option workbook v1 với đúng một sheet dữ liệu hiển thị,
+- [x] P9A1.1 Đóng băng option workbook v1 với đúng một sheet dữ liệu hiển thị,
       đúng một sheet `_meta` ẩn và tập cột cố định.
-- [ ] P9A1.2 Sinh template từ exact option + baseline version, giữ criterion
+- [x] P9A1.2 Sinh template từ exact option + baseline version, giữ criterion
       ID/code, group và requirement context ở dạng read-only.
-- [ ] P9A1.3 Parse toàn bộ criterion set; mỗi criterion phải xuất hiện đúng một
+- [x] P9A1.3 Parse toàn bộ criterion set; mỗi criterion phải xuất hiện đúng một
       lần, thiếu/unknown/duplicate criterion đều bị từ chối.
-- [ ] P9A1.4 Canonicalize ô response/supplementary trống thành empty string để
+- [x] P9A1.4 Canonicalize ô response/supplementary trống thành empty string để
       import sau đó xóa nội dung cũ một cách rõ ràng.
-- [ ] P9A1.5 Từ chối arbitrary/wrong-version/metadata-less/extra-sheet/
+- [x] P9A1.5 Từ chối arbitrary/wrong-version/metadata-less/extra-sheet/
       extra-column workbook và giữ URL documents/citations ngoài Excel.
-- [ ] P9A1.6 Reuse P5A workbook/download primitives; không thêm RPC, migration
+- [x] P9A1.6 Reuse P5A workbook/download primitives; không thêm RPC, migration
       hoặc UI trong leaf này.
-- [ ] P9A1.7 Viết exact-contract, Vietnamese round-trip và malformed workbook
+- [x] P9A1.7 Viết exact-contract, Vietnamese round-trip và malformed workbook
       tests.
 
 ## Phase P9A2 - Atomic Supplier Option Import Contracts
 
-- [ ] P9A2.1 Thêm authoritative preview/apply RPC dùng chung một server-side
+- [x] P9A2.1 Thêm authoritative preview/apply RPC dùng chung một server-side
       validator/normalizer cho exact option + baseline version.
-- [ ] P9A2.2 Preview là read-only: không tạo comparison set, không ghi response
+- [x] P9A2.2 Preview là read-only: không tạo comparison set, không ghi response
       và không tăng dossier revision.
-- [ ] P9A2.3 Apply chỉ chạy sau confirmation, được phép tạo comparison set trong
+- [x] P9A2.3 Apply chỉ chạy sau confirmation, được phép tạo comparison set trong
       transaction và dùng dossier revision làm optimistic concurrency token.
-- [ ] P9A2.4 Reconcile full response snapshot: mọi criterion phải có mặt đúng
+- [x] P9A2.4 Reconcile full response snapshot: mọi criterion phải có mặt đúng
       một lần; empty string xóa response/supplementary cũ; revision tăng đúng
       một lần cho toàn apply.
-- [ ] P9A2.5 Từ chối stale revision, archived dossier, metadata lệch target,
+- [x] P9A2.5 Từ chối stale revision, archived dossier, metadata lệch target,
       malformed/tampered canonical rows và mọi partial write.
-- [ ] P9A2.6 Không thay đổi option identity, URL documents, citations,
+- [x] P9A2.6 Không thay đổi option identity, URL documents, citations,
       assessments hoặc baseline aggregate.
-- [ ] P9A2.7 Mở rộng RPC map/types/allowlist và chạy migration/source,
+- [x] P9A2.7 Mở rộng RPC map/types/allowlist và chạy migration/source,
       role/claim, no-write preview, full-snapshot, atomicity và rollback phase
       gates.
 
