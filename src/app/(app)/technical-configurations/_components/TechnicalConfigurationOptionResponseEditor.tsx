@@ -1,17 +1,31 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, Archive, Loader2, RefreshCw, Save } from "lucide-react"
+import {
+  AlertCircle,
+  Archive,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  PencilLine,
+  RefreshCw,
+} from "lucide-react"
 
 import { useTechnicalConfigurationOptionResponses } from "../_hooks/useTechnicalConfigurationOptionResponses"
 import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
+import {
+  copyTechnicalConfigurationBaselineRequirementToResponseDraft,
+  getNextTechnicalConfigurationOptionResponseCriterionId,
+  getTechnicalConfigurationOptionResponseCriterionStatus,
+  type TechnicalConfigurationOptionResponseCriterionStatus,
+} from "../technical-configuration-option-response-state"
 import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 import type { TechnicalConfigurationDossierWire } from "../types"
+import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { formatVietnamDateTime } from "@/lib/vietnam-date-format"
+
+import { TechnicalConfigurationOptionResponsePanels } from "./TechnicalConfigurationOptionResponsePanels"
 
 type TechnicalConfigurationOptionResponseEditorProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -22,6 +36,13 @@ type TechnicalConfigurationOptionResponseEditorProps = {
   onRevisionChange?: (revision: number) => void
   requestDiscardConfirmation: (description: React.ReactNode, action: () => void) => void
 }
+
+const CRITERION_STATUS_LABELS: Record<TechnicalConfigurationOptionResponseCriterionStatus, string> =
+  {
+    empty: "Chưa phản hồi",
+    persisted: "Đã lưu",
+    dirty: "Đang chỉnh sửa",
+  }
 
 /** Renders one exact-baseline criterion navigator and explicit response editor. */
 export function TechnicalConfigurationOptionResponseEditor({
@@ -40,6 +61,7 @@ export function TechnicalConfigurationOptionResponseEditor({
     onRevisionChange,
     onNavigationBlockedChange,
   })
+  const [isCopyConfirmationOpen, setIsCopyConfirmationOpen] = React.useState(false)
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- The response hook owns the draft while the supplier workspace combines cross-surface dirty state.
@@ -58,10 +80,44 @@ export function TechnicalConfigurationOptionResponseEditor({
       }
       state.selectCriterion(criterionId)
     },
-    [requestDiscardConfirmation, state]
+    [requestDiscardConfirmation, state.isDirty, state.selectCriterion]
   )
+  const applyRequirementCopy = React.useCallback(() => {
+    if (!state.selectedCriterion) return
+    state.updateDraft(
+      copyTechnicalConfigurationBaselineRequirementToResponseDraft(
+        state.draft,
+        state.selectedCriterion.requirement_text
+      )
+    )
+  }, [state.draft, state.selectedCriterion, state.updateDraft])
+  const handleCopyRequirement = React.useCallback(() => {
+    if (state.draft.responseText.trim()) {
+      setIsCopyConfirmationOpen(true)
+      return
+    }
+    applyRequirementCopy()
+  }, [applyRequirementCopy, state.draft.responseText])
+  const handleConfirmRequirementCopy = React.useCallback(() => {
+    setIsCopyConfirmationOpen(false)
+    applyRequirementCopy()
+  }, [applyRequirementCopy])
+  const nextCriterionId = getNextTechnicalConfigurationOptionResponseCriterionId(
+    state.criteria,
+    state.selectedCriterionId
+  )
+  const handleSaveNext = React.useCallback(async () => {
+    if (!nextCriterionId) return
+    const didSave = await state.save()
+    if (didSave) state.selectCriterion(nextCriterionId)
+  }, [nextCriterionId, state.save, state.selectCriterion])
   const hasInitialError = state.responseQuery.isError && state.responseQuery.data === undefined
-  const isUnavailable = state.responseQuery.isLoading || hasInitialError
+  const isUnavailable = !state.hasAdoptedSnapshot || hasInitialError
+  const responseStatusAvailability = state.hasAdoptedSnapshot
+    ? "ready"
+    : hasInitialError
+      ? "unavailable"
+      : "loading"
 
   return (
     <div className="space-y-4">
@@ -96,35 +152,65 @@ export function TechnicalConfigurationOptionResponseEditor({
 
       <div
         data-testid="option-response-workspace"
-        className="grid min-w-0 gap-5 lg:grid-cols-[minmax(12rem,0.45fr)_minmax(0,1fr)]"
+        className="grid min-w-0 gap-6 lg:grid-cols-[minmax(14rem,0.32fr)_minmax(0,1fr)]"
       >
         <nav aria-label="Tiêu chí cấu hình cơ sở" className="min-w-0 border-y py-3">
           <p className="mb-2 text-sm font-medium">Tiêu chí</p>
           <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
-            {state.criteria.map((criterion) => (
-              <Button
-                key={criterion.id}
-                type="button"
-                variant={criterion.id === state.selectedCriterionId ? "secondary" : "ghost"}
-                className="h-auto min-w-44 justify-start whitespace-normal text-left lg:min-w-0"
-                disabled={state.isPending}
-                onClick={() => handleCriterionChange(criterion.id)}
-              >
-                <span className="min-w-0">
-                  <span className="block text-xs text-muted-foreground">
-                    {criterion.criterion_code}
+            {state.criteria.map((criterion) => {
+              const status = getTechnicalConfigurationOptionResponseCriterionStatus({
+                snapshot: state.snapshot,
+                criterionId: criterion.id,
+                selectedCriterionId: state.selectedCriterionId,
+                isDirty: state.isDirty,
+              })
+              const StatusIcon =
+                status === "dirty" ? PencilLine : status === "persisted" ? CheckCircle2 : Circle
+
+              return (
+                <Button
+                  key={criterion.id}
+                  type="button"
+                  variant={criterion.id === state.selectedCriterionId ? "secondary" : "ghost"}
+                  className="h-auto min-w-44 justify-start whitespace-normal text-left lg:min-w-0"
+                  aria-current={criterion.id === state.selectedCriterionId ? "true" : undefined}
+                  disabled={state.isPending}
+                  onClick={() => handleCriterionChange(criterion.id)}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-xs text-muted-foreground">
+                      {criterion.criterion_code}
+                    </span>
+                    <span className="block break-words">
+                      {criterion.title ?? criterion.requirement_text}
+                    </span>
+                    <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                      {responseStatusAvailability === "loading" ? (
+                        <>
+                          <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+                          Đang tải phản hồi
+                        </>
+                      ) : responseStatusAvailability === "unavailable" ? (
+                        <>
+                          <AlertCircle className="size-3" aria-hidden="true" />
+                          Chưa xác định
+                        </>
+                      ) : (
+                        <>
+                          <StatusIcon className="size-3" aria-hidden="true" />
+                          {CRITERION_STATUS_LABELS[status]}
+                        </>
+                      )}
+                    </span>
                   </span>
-                  <span className="block break-words">
-                    {criterion.title ?? criterion.requirement_text}
-                  </span>
-                </span>
-              </Button>
-            ))}
+                </Button>
+              )
+            })}
           </div>
         </nav>
 
         <section className="min-w-0 space-y-4">
-          {state.responseQuery.isLoading ? (
+          {!state.hasAdoptedSnapshot && !hasInitialError ? (
             <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
               Đang tải phản hồi...
@@ -141,85 +227,36 @@ export function TechnicalConfigurationOptionResponseEditor({
           ) : null}
 
           {!isUnavailable && state.selectedCriterion ? (
-            <>
-              <div className="border-b pb-3">
-                <p className="text-sm font-medium">
-                  {state.selectedCriterion.criterion_code} ·{" "}
-                  {state.selectedCriterion.title ?? "Không có tiêu đề"}
-                </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
-                  {state.selectedCriterion.requirement_text}
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Cập nhật phản hồi gần nhất: {formatVietnamDateTime(state.updatedAt)}
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="technical-option-response-text">Phản hồi tiêu chí</Label>
-                <Textarea
-                  id="technical-option-response-text"
-                  value={state.draft.responseText}
-                  rows={7}
-                  disabled={state.isReadOnly || state.isPending}
-                  onChange={(event) => state.updateDraft({ responseText: event.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="technical-option-supplementary-information">
-                  Thông tin bổ sung
-                </Label>
-                <Textarea
-                  id="technical-option-supplementary-information"
-                  value={state.draft.supplementaryInformation}
-                  rows={5}
-                  disabled={state.isReadOnly || state.isPending}
-                  onChange={(event) =>
-                    state.updateDraft({ supplementaryInformation: event.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Thông tin bổ sung không dùng để chấm điểm.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={state.isPending}
-                  onClick={() => void state.reload()}
-                >
-                  <RefreshCw
-                    className={`size-4 ${state.isReloading ? "animate-spin" : ""}`}
-                    aria-hidden="true"
-                  />
-                  Tải lại dữ liệu
-                </Button>
-                {!state.isReadOnly ? (
-                  <Button
-                    type="button"
-                    disabled={!state.isDirty || state.isPending || state.isConflict}
-                    onClick={() => void state.save()}
-                  >
-                    {state.isSaving ? (
-                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Save className="size-4" aria-hidden="true" />
-                    )}
-                    Lưu phản hồi
-                  </Button>
-                ) : null}
-              </div>
-              {state.saveStatus === "saved" ? (
-                <p role="status" className="text-sm text-emerald-700">
-                  Đã lưu phản hồi phương án.
-                </p>
-              ) : null}
-            </>
+            <TechnicalConfigurationOptionResponsePanels
+              criterion={state.selectedCriterion}
+              draft={state.draft}
+              updatedAt={state.updatedAt}
+              mode={state.isReadOnly ? "read-only" : "editable"}
+              draftState={state.isConflict ? "conflict" : state.isDirty ? "dirty" : "clean"}
+              operation={state.isSaving ? "saving" : state.isReloading ? "reloading" : "idle"}
+              saveStatus={state.saveStatus}
+              hasNextCriterion={nextCriterionId !== null}
+              onResponseChange={(responseText) => state.updateDraft({ responseText })}
+              onSupplementaryChange={(supplementaryInformation) =>
+                state.updateDraft({ supplementaryInformation })
+              }
+              onCopyRequirement={handleCopyRequirement}
+              onReload={() => void state.reload()}
+              onSave={() => void state.save()}
+              onSaveNext={() => void handleSaveNext()}
+            />
           ) : null}
         </section>
       </div>
+      <DestructiveConfirmDialog
+        open={isCopyConfirmationOpen && !state.isReadOnly}
+        onOpenChange={setIsCopyConfirmationOpen}
+        title="Ghi đè phản hồi hiện tại?"
+        description="Phản hồi hiện tại sẽ được thay bằng nội dung cấu hình cơ bản. Thông tin bổ sung được giữ nguyên."
+        confirmLabel="Ghi đè phản hồi"
+        isPending={state.isPending || state.isReadOnly}
+        onConfirm={handleConfirmRequirementCopy}
+      />
     </div>
   )
 }

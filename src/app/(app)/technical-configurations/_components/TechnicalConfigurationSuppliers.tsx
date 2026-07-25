@@ -214,7 +214,10 @@ export function TechnicalConfigurationSuppliers({
         </Alert>
       ) : null}
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.5fr)]">
+      <div
+        data-testid="supplier-option-identity-region"
+        className="grid min-w-0 gap-6 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.5fr)]"
+      >
         <TechnicalConfigurationSupplierSelector
           state={state}
           selectedSupplier={selectedSupplier}
@@ -278,20 +281,26 @@ export function TechnicalConfigurationSuppliers({
                     : undefined
                 }
               />
-              {selectedOption ? (
-                <TechnicalConfigurationOptionResponses
-                  key={selectedOption.id}
-                  dossier={dossier}
-                  option={selectedOption}
-                  onDirtyChange={setIsResponseDirty}
-                  onNavigationBlockedChange={setIsResponseNavigationBlocked}
-                  onRevisionChange={onRevisionChange}
-                />
-              ) : null}
             </div>
           ) : null}
         </main>
       </div>
+
+      {selectedOption ? (
+        <section
+          data-testid="supplier-option-response-region"
+          className="w-full min-w-0 border-t pt-6"
+        >
+          <TechnicalConfigurationOptionResponses
+            key={selectedOption.id}
+            dossier={dossier}
+            option={selectedOption}
+            onDirtyChange={setIsResponseDirty}
+            onNavigationBlockedChange={setIsResponseNavigationBlocked}
+            onRevisionChange={onRevisionChange}
+          />
+        </section>
+      ) : null}
 
       {discardConfirmationDialog}
       <DestructiveConfirmDialog

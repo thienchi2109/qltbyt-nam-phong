@@ -57,27 +57,6 @@ export function useTechnicalConfigurationOptionResponses({
     () => flattenTechnicalConfigurationBaselineCriteria(baselineVersion),
     [baselineVersion]
   )
-  const [selectedCriterionId, setSelectedCriterionId] = React.useState<string | null>(
-    criteria[0]?.id ?? null
-  )
-  const [snapshot, setSnapshot] = React.useState<TechnicalConfigurationComparisonSetWire | null>(
-    null
-  )
-  const [baseDraft, setBaseDraft] = React.useState<TechnicalConfigurationOptionResponseDraft>(() =>
-    toTechnicalConfigurationOptionResponseDraft(null)
-  )
-  const [draft, setDraft] = React.useState<TechnicalConfigurationOptionResponseDraft>(() =>
-    toTechnicalConfigurationOptionResponseDraft(null)
-  )
-  const [isSaving, setIsSaving] = React.useState(false)
-  const [isReloading, setIsReloading] = React.useState(false)
-  const [isConflict, setIsConflict] = React.useState(false)
-  const [validationError, setValidationError] = React.useState<string | null>(null)
-  const [operationError, setOperationError] = React.useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
-  const activeOperationRef = React.useRef<"save" | "reload" | null>(null)
-  const adoptedQueryAtRef = React.useRef(0)
-  const revisionRef = React.useRef(dossier.revision)
   const responseQuery = useQuery({
     queryKey,
     queryFn: ({ signal }) =>
@@ -92,13 +71,49 @@ export function useTechnicalConfigurationOptionResponses({
     retry: false,
     refetchOnWindowFocus: false,
   })
+  const initialResponseState = React.useMemo(() => {
+    const selectedCriterionId = criteria[0]?.id ?? null
+    const snapshot = responseQuery.data ?? null
+    const draft = toTechnicalConfigurationOptionResponseDraft(
+      findTechnicalConfigurationOptionResponse(snapshot, selectedCriterionId)
+    )
+    return { selectedCriterionId, snapshot, draft }
+  }, [criteria, responseQuery.data])
+  const [selectedCriterionId, setSelectedCriterionId] = React.useState<string | null>(
+    initialResponseState.selectedCriterionId
+  )
+  const [snapshot, setSnapshot] = React.useState<TechnicalConfigurationComparisonSetWire | null>(
+    initialResponseState.snapshot
+  )
+  const [baseDraft, setBaseDraft] = React.useState<TechnicalConfigurationOptionResponseDraft>(
+    () => initialResponseState.draft
+  )
+  const [draft, setDraft] = React.useState<TechnicalConfigurationOptionResponseDraft>(
+    () => initialResponseState.draft
+  )
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [isReloading, setIsReloading] = React.useState(false)
+  const [isConflict, setIsConflict] = React.useState(false)
+  const [validationError, setValidationError] = React.useState<string | null>(null)
+  const [operationError, setOperationError] = React.useState<string | null>(null)
+  const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
+  const activeOperationRef = React.useRef<"save" | "reload" | null>(null)
+  const adoptedQueryAtRef = React.useRef(0)
+  const revisionRef = React.useRef<number | null>(null)
+  if (revisionRef.current === null) {
+    revisionRef.current = Math.max(dossier.revision, initialResponseState.snapshot?.revision ?? 0)
+  }
   const isReadOnly = Boolean(dossier.archived_at)
   const isDirty =
     !isReadOnly && !areTechnicalConfigurationOptionResponseDraftsEqual(baseDraft, draft)
   const visibleDraft = isReadOnly ? baseDraft : draft
   const commitRevision = React.useCallback(
     (nextRevision: number) => {
-      const committedRevision = Math.max(revisionRef.current, dossier.revision, nextRevision)
+      const committedRevision = Math.max(
+        revisionRef.current ?? dossier.revision,
+        dossier.revision,
+        nextRevision
+      )
       revisionRef.current = committedRevision
       onRevisionChange?.(committedRevision)
       updateTechnicalConfigurationDossierRevisionCache(queryClient, dossier, committedRevision)
@@ -131,7 +146,7 @@ export function useTechnicalConfigurationOptionResponses({
     if (nextRevision > dossier.revision) {
       commitRevision(nextRevision) // react-doctor-disable-line react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent
     } else {
-      revisionRef.current = Math.max(revisionRef.current, nextRevision)
+      revisionRef.current = Math.max(revisionRef.current ?? dossier.revision, nextRevision)
     }
     setIsConflict(false) // react-doctor-disable-line react-doctor/no-adjust-state-on-prop-change
     setOperationError(null) // react-doctor-disable-line react-doctor/no-adjust-state-on-prop-change
@@ -148,7 +163,7 @@ export function useTechnicalConfigurationOptionResponses({
   ])
 
   React.useEffect(() => {
-    revisionRef.current = Math.max(revisionRef.current, dossier.revision)
+    revisionRef.current = Math.max(revisionRef.current ?? dossier.revision, dossier.revision)
   }, [dossier.revision])
 
   useTechnicalConfigurationBeforeUnloadGuard(isDirty)
@@ -186,13 +201,13 @@ export function useTechnicalConfigurationOptionResponses({
   )
 
   const save = React.useCallback(async () => {
-    if (isReadOnly || activeOperationRef.current || isConflict) return
+    if (isReadOnly || activeOperationRef.current || isConflict) return false
     const error = validateTechnicalConfigurationOptionResponseDraft(draft, selectedCriterionId)
     if (error) {
       setValidationError(error)
-      return
+      return false
     }
-    if (!selectedCriterionId) return
+    if (!selectedCriterionId) return false
 
     activeOperationRef.current = "save"
     setIsSaving(true)
@@ -208,7 +223,7 @@ export function useTechnicalConfigurationOptionResponses({
         criterionId: selectedCriterionId,
         responseText: draft.responseText,
         supplementaryInformation: draft.supplementaryInformation,
-        expectedRevision: revisionRef.current,
+        expectedRevision: revisionRef.current ?? dossier.revision,
         comparisonSet: snapshot,
         onComparisonSetReady: (comparisonSet) => {
           setSnapshot(comparisonSet)
@@ -228,6 +243,7 @@ export function useTechnicalConfigurationOptionResponses({
       setDraft(nextDraft)
       setIsConflict(false)
       setSaveStatus("saved")
+      return true
     } catch (caught) {
       const sourceError =
         caught instanceof TechnicalConfigurationOptionResponseSaveFailure
@@ -249,6 +265,7 @@ export function useTechnicalConfigurationOptionResponses({
           "Không thể lưu phản hồi phương án."
         )
       )
+      return false
     } finally {
       activeOperationRef.current = null
       setIsSaving(false)
@@ -257,6 +274,7 @@ export function useTechnicalConfigurationOptionResponses({
   }, [
     baselineVersion.id,
     commitRevision,
+    dossier.revision,
     draft,
     isConflict,
     isReadOnly,
@@ -316,6 +334,7 @@ export function useTechnicalConfigurationOptionResponses({
 
   const selectedCriterion =
     criteria.find((criterion) => criterion.id === selectedCriterionId) ?? null
+  const hasAdoptedSnapshot = snapshot !== null || responseQuery.data === null
   const updatedAt = getTechnicalConfigurationOptionResponseUpdatedAt(
     option,
     snapshot,
@@ -328,6 +347,7 @@ export function useTechnicalConfigurationOptionResponses({
     selectedCriterion,
     selectedCriterionId,
     snapshot,
+    hasAdoptedSnapshot,
     draft: visibleDraft,
     isDirty,
     isReadOnly,

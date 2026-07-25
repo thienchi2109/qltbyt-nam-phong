@@ -300,30 +300,31 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P8B3 - Focused Option Response Comparison UX
 
-- [ ] P8B3.1 Giữ supplier selector và option identity editor ở vùng trên; chuyển
+- [x] P8B3.1 Giữ supplier selector và option identity editor ở vùng trên; chuyển
       exact-baseline response workspace thành một vùng desktop toàn chiều rộng
       bên dưới.
-- [ ] P8B3.2 Hiển thị ba vùng ổn định: criterion navigator, panel cấu hình cơ bản
+- [x] P8B3.2 Hiển thị ba vùng ổn định: criterion navigator, panel cấu hình cơ bản
       chỉ đọc và panel response/supplementary chỉnh sửa cho đúng criterion đang
       chọn; không render toàn bộ matrix.
-- [ ] P8B3.3 Hiển thị trạng thái `chưa có response`, `đã lưu` và `đang có thay đổi
+- [x] P8B3.3 Hiển thị trạng thái `chưa có response`, `đã lưu` và `đang có thay đổi
 chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
-- [ ] P8B3.4 Thêm nút `Sao chép từ cấu hình cơ bản`: chỉ copy
+- [x] P8B3.4 Thêm nút `Sao chép từ cấu hình cơ bản`: chỉ copy
       `requirement_text` vào response draft, giữ nguyên supplementary, vẫn cho
       sửa tiếp và không mutation trước explicit save; response không rỗng phải
       xác nhận trước khi ghi đè.
-- [ ] P8B3.5 Đổi action hiện tại thành secondary `Lưu` và thêm primary
+- [x] P8B3.5 Đổi action hiện tại thành secondary `Lưu` và thêm primary
       `Lưu & tiếp theo`; chỉ chuyển sau save thành công tới criterion liền sau
       theo canonical baseline order, không skip criterion đã lưu, không chuyển
       khi validation/conflict/persistence thất bại và criterion cuối chỉ hiển
       thị `Lưu`.
-- [ ] P8B3.6 Giữ nguyên P8B2 RPC/data semantics, locked-baseline editability,
+- [x] P8B3.6 Giữ nguyên P8B2 RPC/data semantics, locked-baseline editability,
       archived read-only, dirty navigation và conflict recovery; không thêm API,
       migration, data contract, live DB write, bulk-copy, batch-save hoặc mobile
       responsive acceptance.
-- [ ] P8B3.7 Viết focused state/React/browser tests cho desktop layout, selected
-      criterion binding, status indicators, copy/confirm/cancel, supplementary
-      preservation, explicit save và save-next ordering.
+- [x] P8B3.7 Viết focused state/React tests cho desktop layout, selected criterion
+      binding, status indicators, copy/confirm/cancel, supplementary preservation,
+      explicit save và save-next ordering. Browser test được bỏ theo chỉ định thực
+      thi ngày 2026-07-25.
 
 ## Phase P9A1 - Supplier Option Workbook Codec
 

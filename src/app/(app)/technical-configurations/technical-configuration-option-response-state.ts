@@ -16,6 +16,8 @@ export type TechnicalConfigurationOptionResponseDraft = {
 export type TechnicalConfigurationOptionResponseDraftPatch =
   Partial<TechnicalConfigurationOptionResponseDraft>
 
+export type TechnicalConfigurationOptionResponseCriterionStatus = "empty" | "persisted" | "dirty"
+
 /** Empty local draft used when an exact-baseline comparison set has no response yet. */
 export const EMPTY_OPTION_RESPONSE_DRAFT: TechnicalConfigurationOptionResponseDraft = {
   responseText: "",
@@ -43,6 +45,31 @@ export function findTechnicalConfigurationOptionResponse(
   return snapshot.responses.find((response) => response.criterion_id === criterionId) ?? null
 }
 
+/** Classifies each criterion for compact navigation without mutating the response snapshot. */
+export function getTechnicalConfigurationOptionResponseCriterionStatus({
+  snapshot,
+  criterionId,
+  selectedCriterionId,
+  isDirty,
+}: {
+  snapshot: TechnicalConfigurationComparisonSetWire | null
+  criterionId: string
+  selectedCriterionId: string | null
+  isDirty: boolean
+}): TechnicalConfigurationOptionResponseCriterionStatus {
+  if (criterionId === selectedCriterionId && isDirty) return "dirty"
+  return findTechnicalConfigurationOptionResponse(snapshot, criterionId) ? "persisted" : "empty"
+}
+
+/** Returns the immediate next criterion in canonical baseline order. */
+export function getNextTechnicalConfigurationOptionResponseCriterionId(
+  criteria: TechnicalConfigurationBaselineCriterionWire[],
+  selectedCriterionId: string | null
+): string | null {
+  const selectedIndex = criteria.findIndex((criterion) => criterion.id === selectedCriterionId)
+  return selectedIndex >= 0 ? (criteria[selectedIndex + 1]?.id ?? null) : null
+}
+
 /** Converts a persisted response into the local multiline editor shape. */
 export function toTechnicalConfigurationOptionResponseDraft(
   response: TechnicalConfigurationOptionResponseWire | null
@@ -63,6 +90,17 @@ export function areTechnicalConfigurationOptionResponseDraftsEqual(
     left.responseText === right.responseText &&
     left.supplementaryInformation === right.supplementaryInformation
   )
+}
+
+/** Copies only the baseline requirement while preserving non-scoring supplementary information. */
+export function copyTechnicalConfigurationBaselineRequirementToResponseDraft(
+  draft: TechnicalConfigurationOptionResponseDraft,
+  requirementText: string
+): TechnicalConfigurationOptionResponseDraft {
+  return {
+    ...draft,
+    responseText: requirementText,
+  }
 }
 
 /** Requires a scoring response while keeping supplementary text optional and non-scoring. */
