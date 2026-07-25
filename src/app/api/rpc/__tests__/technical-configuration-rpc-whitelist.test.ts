@@ -6,14 +6,13 @@ import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
-import * as supplierOptionRpcManifest from "@/lib/technical-configuration-supplier-option-rpcs"
-
-const {
+import {
+  OPTION_IMPORT_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_READ_RPC_FUNCTION_NAMES,
   OPTION_RESPONSE_RPC_FUNCTION_NAMES,
   OPTION_RPC_FUNCTION_NAMES,
   SUPPLIER_RPC_FUNCTION_NAMES,
-} = supplierOptionRpcManifest
+} from "@/lib/technical-configuration-supplier-option-rpcs"
 
 const DOSSIER_RPC_FUNCTIONS = [
   "technical_configuration_dossiers_list",
@@ -56,6 +55,11 @@ const BASELINE_RPC_FUNCTIONS = [
 const REFERENCE_RPC_FUNCTIONS = [
   ...P7A1_REFERENCE_RPC_FUNCTIONS,
   ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
+] as const
+
+const P9A2_OPTION_IMPORT_RPC_FUNCTIONS = [
+  "technical_configuration_option_import_preview",
+  "technical_configuration_option_import_apply",
 ] as const
 
 const P8A1_SUPPLIER_RPC_FUNCTIONS = [
@@ -186,6 +190,7 @@ describe("technical configuration option RPC whitelist", () => {
         (fn) =>
           fn === "technical_configuration_options_list" ||
           (fn.startsWith("technical_configuration_option_") &&
+            !fn.startsWith("technical_configuration_option_import_") &&
             !fn.startsWith("technical_configuration_option_response_"))
       )
     ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
@@ -220,6 +225,28 @@ describe("technical configuration option response RPC whitelist", () => {
 
   it.each([...P8A3_OPTION_RESPONSE_RPC_FUNCTIONS, ...P8A4_OPTION_RESPONSE_READ_RPC_FUNCTIONS])(
     'allows option response RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
+})
+
+describe("technical configuration option import RPC whitelist", () => {
+  it("keeps the P9A2 import prefix aligned with its shared manifest", () => {
+    expect(OPTION_IMPORT_RPC_FUNCTION_NAMES).toEqual(P9A2_OPTION_IMPORT_RPC_FUNCTIONS)
+  })
+
+  it("allowlists exactly the two dormant P9A2 import RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_option_import_"))
+    ).toEqual(P9A2_OPTION_IMPORT_RPC_FUNCTIONS)
+  })
+
+  it.each(P9A2_OPTION_IMPORT_RPC_FUNCTIONS)(
+    'allows option import RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
 
