@@ -20,6 +20,25 @@
 9. A dossier may contain unlimited options. One matrix request selects at most 8 options and reads at most 100 criteria.
 10. MVP adds no AI runtime table, column, RPC, job, cache, quota, API call or UI affordance.
 
+## Frontend Surface Ownership
+
+- P8B3 owns desktop authoring for one exact option, baseline version and selected
+  criterion. It renders the baseline requirement read-only beside editable
+  response/supplementary drafts and uses only the existing P8B2 read/save
+  contracts.
+- `Sao chép từ cấu hình cơ bản` is a local draft operation. It copies only
+  `requirement_text` into response text, preserves supplementary information,
+  requires confirmation before replacing a non-empty response and performs no
+  mutation before explicit save.
+- P8B3 save-next uses the existing single-criterion save operation, then selects
+  only the immediately following criterion in canonical baseline order after
+  success. It is not a batch or atomic multi-row operation.
+- P10B owns the read-only multi-option matrix. It may display baseline,
+  responses, supplementary information and evidence detail but does not render
+  response editors, copy controls, dirty drafts or save commands.
+- P8B3 adds no RPC name, request/response shape, query key, migration, table,
+  grant, live database operation or alternative persistence semantics.
+
 ## Entity And Migration Ownership
 
 Each entity or schema alteration has one primary leaf owner. A later leaf may extend an existing copy/guard function only when its own entities require that extension.

@@ -103,9 +103,10 @@ P4 + P7A1 + P8A2 -> P8A3
 P8A3            -> P8A4
 P3A + P8A2      -> P8B1
 P4 + P8A3 + P8A4 + P8B1 -> P8B2
+P8B2            -> P8B3
 P5A + P8B2      -> P9A1
 P8A4 + P9A1     -> P9A2
-P9A2             -> P9A3
+P8B3 + P9A2     -> P9A3
 P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
 P7B2 + P9B2     -> P10A
@@ -125,34 +126,35 @@ P9 uses the strict delivery order
 P7B1/P8A4, but it deliberately waits for P9A3 so the option RPC maps,
 allowlists and response workspace are changed by one reviewed leaf at a time.
 P9A1/P9A2 and P9B1 are dormant contracts; only P9A3 and P9B2 activate new
-user-visible workflows.
+user-visible workflows. P8B3 is an external frontend prerequisite for P9A3 but
+does not block P9A1 or P9A2.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                                     |
-| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                             |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                          |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                   |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P9A3, P9B2, P12A                                                                      |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                             |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                         |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                     |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                     |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2                                                                                                 |
-| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                   |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                   |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                             |
-| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                                                         |
-| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                         |
-| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                          |
-| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                    |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P10A, P10B, P12A                                                                                                 |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                               |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                  |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
+| ID    | Requirement                                     | Primary phases                                                                                                                           |
+| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                   |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                         |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A                                                                      |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                   |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                               |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                           |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                           |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                 |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                         |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                         |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                   |
+| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                                                               |
+| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                               |
+| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                                |
+| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                          |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A, P10B, P12A                                                                                                 |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                     |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                        |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
 
 ## Shared Technical Constraints
 
@@ -1350,6 +1352,77 @@ evidence, comparison or evaluation
 Users can manually enter and update multiple supplier options for an exact
 baseline version without side effects before explicit save.
 
+## Phase P8B3 - Focused Option Response Comparison UX
+
+**Depends on:** P8B2<br>
+**Requirements:** TC-04, TC-09, TC-17, TC-20<br>
+**Detailed TDD plan:** [P8B3 - Focused Option Response Comparison UX](./p8b-tdd-plan.md#p8b3-red-green-refactor)<br>
+**Deploy boundary:** desktop-focused frontend refinement for one selected
+option/baseline/criterion; no new RPC, API shape, data contract, migration or
+live database write
+
+### Planned files
+
+- Create:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponsePanels.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/supplier-option-response-ux-cases.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptionResponses.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-option-response-state.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/supplier-options.test.tsx`
+
+### Tasks
+
+- [ ] Keep the supplier selector and option identity editor in the existing
+      upper region; move the exact-baseline response workspace into a full-width
+      desktop region below them.
+- [ ] Render a stable criterion navigator, a read-only baseline panel and an
+      editable response/supplementary panel for only the selected criterion.
+- [ ] Show compact criterion states for no response, persisted response and the
+      current dirty draft.
+- [ ] Add `Sao chép từ cấu hình cơ bản`; copy only `requirement_text` into the
+      response draft, preserve supplementary information, keep the copied text
+      editable and perform no mutation before explicit save.
+- [ ] Require confirmation before copy replaces a non-empty response; cancel
+      preserves both response and supplementary drafts exactly.
+- [ ] Rename the current action to secondary `Lưu` and add primary
+      `Lưu & tiếp theo`; advance only after success to the immediately following
+      criterion in canonical baseline order, never skip a persisted criterion
+      and render only `Lưu` on the final criterion.
+- [ ] Preserve P8B2 dirty-navigation, conflict/reload, pending coordination,
+      locked-baseline editability and archived read-only behavior.
+- [ ] Keep bulk copy, batch save, all-criteria inline editing, matrix controls,
+      mobile responsive UX and every backend/data change out of scope.
+
+### TDD and verification
+
+- Pure state tests for criterion status, copy semantics and canonical next-item
+  selection.
+- React tests for the full-width desktop layout and exact selected-criterion
+  binding.
+- Copy/confirm/cancel tests proving supplementary preservation, editable dirty
+  state and zero mutation before explicit save.
+- Save/save-next success, final-criterion, validation, persistence and conflict
+  tests.
+- Regression tests for locked/archived states, dirty navigation and existing
+  P8B2 operation coordination.
+- Desktop browser screenshots and interaction checks only; no mobile responsive
+  acceptance belongs to P8B3.
+
+### Exit gate
+
+Users can compare one selected baseline criterion directly against one editable
+supplier response, copy the baseline requirement deliberately and move through
+criteria in canonical order without introducing a matrix or changing persistence
+contracts.
+
 ## Phase P9A1 - Supplier Option Workbook Codec
 
 **Depends on:** P5A, P8B2<br>
@@ -1457,7 +1530,7 @@ full-snapshot mutation.
 
 ## Phase P9A3 - Supplier Option Import Workspace
 
-**Depends on:** P9A2<br>
+**Depends on:** P8B3, P9A2<br>
 **Requirements:** TC-04, TC-10, TC-20<br>
 **Detailed TDD plan:** [P9A3 - Supplier Option Import Workspace](./p9-tdd-plan.md#p9a3---supplier-option-import-workspace)<br>
 **Deploy boundary:** option template download and import UI only
@@ -1469,13 +1542,14 @@ full-snapshot mutation.
 - Create: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionImportPreview.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/option-import.test.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/use-technical-configuration-option-import.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponses.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
 
 ### Tasks
 
-- [ ] Add template download/import actions to the exact-baseline response
-      workspace, not the option identity editor.
+- [ ] Add template download/import actions to the header of the P8B3 full-width
+      exact-baseline response workspace, not the option identity editor or the
+      baseline/response panels.
 - [ ] Wire download through P9A1 and P5A Blob primitives; use
       `useBulkImportState` and shared bulk-import dialog parts.
 - [ ] Parse locally, request authoritative preview and require explicit
@@ -1491,6 +1565,9 @@ full-snapshot mutation.
       read-only only when the dossier is archived.
 - [ ] Keep import file/rows/preview/errors transient and evidence outside the
       workbook.
+- [ ] Preserve the P8B3 selected-criterion layout, copy confirmation, status
+      indicators and save/save-next ownership; import does not add matrix or
+      inline editing behavior.
 
 ### TDD and verification
 
@@ -1670,7 +1747,8 @@ The backend can return bounded comparison data without exposing a new matrix UI.
 
 **Depends on:** P3A, P10A  
 **Requirements:** TC-13, TC-17  
-**Deploy boundary:** read/inspect comparison only; evaluation editing remains deferred
+**Deploy boundary:** read/inspect comparison only; response authoring remains in
+P8B3 and evaluation editing remains deferred
 
 ### Planned files
 
@@ -1682,26 +1760,34 @@ The backend can return bounded comparison data without exposing a new matrix UI.
 
 ### Tasks
 
-- [ ] Render groups/criteria as ordered rows and add a sticky baseline column.
+- [ ] Render groups/criteria as ordered read-only rows and add a sticky baseline
+      column.
 - [ ] Add stable option columns labeled
       `Nhà cung cấp · Model hoặc tên phương án`.
 - [ ] Add horizontal scrolling without layout shifts.
 - [ ] Add column selector, pinning and focus mode.
-- [ ] Add concise cell rendering and detail panel for full content/evidence without arbitrary content or permanent evidence columns.
+- [ ] Add concise read-only cell rendering and a detail panel for full
+      content/evidence without arbitrary content or permanent evidence columns.
 - [ ] Show supplementary information without treating it as compliance.
 - [ ] Preserve usable behavior with many options through bounded selection/loading.
 - [ ] Keep matrix state/data hooks outside the workspace shell.
+- [ ] Render no response textarea, copy-from-baseline confirmation, dirty draft,
+      `Lưu` or `Lưu & tiếp theo`; P10B must not become a second authoring
+      surface.
 
 ### TDD and verification
 
 - Matrix rendering tests for long text, empty responses and many columns.
 - Keyboard/focus tests for toolbar and detail panel.
+- Ownership tests proving matrix cells/detail remain read-only and no P8B3
+  authoring controls render.
 - Desktop/mobile screenshots and browser interaction checks.
 - React Doctor after focused tests pass.
 
 ### Exit gate
 
-Users can scan and inspect baseline versus selected options, but cannot yet save manual assessments.
+Users can scan and inspect baseline versus selected options without duplicating
+P8B3 response authoring and cannot yet save manual assessments.
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
 

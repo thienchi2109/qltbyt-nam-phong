@@ -249,11 +249,35 @@ editable khi baseline đã khóa vì nằm ngoài baseline aggregate; archived d
 chỉ đọc. P9B1 sở hữu DB/source contracts, còn P9B2 là normative completion owner
 cho TC-11 và TC-12 sau khi rerun Equipment và baseline/reference coverage.
 
-### 8. Hai bề mặt làm việc bổ trợ nhau
+### 8. Các bề mặt làm việc bổ trợ nhau
+
+#### Nhập phản hồi từng tiêu chí
+
+P8B3 sở hữu bề mặt authoring desktop cho đúng một phương án, một exact baseline
+version và một tiêu chí đang chọn:
+
+- supplier selector và option identity editor giữ ở vùng trên
+- exact-baseline response workspace trải toàn chiều rộng bên dưới
+- criterion navigator hiển thị trạng thái chưa có response, đã lưu và current
+  dirty draft
+- panel trái chỉ đọc mã, tiêu đề và `requirement_text` của cấu hình cơ bản
+- panel phải chỉnh sửa response và supplementary information của phương án
+- `Sao chép từ cấu hình cơ bản` chỉ copy `requirement_text` vào response draft,
+  giữ nguyên supplementary information và không ghi backend
+- response không rỗng phải xác nhận trước khi copy ghi đè; sau copy người dùng
+  vẫn sửa được và phải explicit save
+- secondary `Lưu` giữ criterion hiện tại; primary `Lưu & tiếp theo` chỉ chuyển
+  sau save thành công tới criterion liền sau theo canonical baseline order;
+  criterion cuối chỉ hiển thị `Lưu`
+
+Leaf này không làm mobile responsive UX, bulk copy, batch save, all-criteria
+inline editing hoặc matrix. Locked baseline vẫn cho sửa option response; archived
+dossier chỉ đọc. Mọi validation, conflict và persistence failure giữ criterion
+cùng draft hiện tại.
 
 #### Ma trận so sánh
 
-Ma trận ưu tiên quét nhanh:
+P10B sở hữu bề mặt read/inspect nhiều phương án và ưu tiên quét nhanh:
 
 - nhóm và tiêu chí là các hàng có thứ tự; bốn nhóm mặc định không được xử lý như cột
 - cột yêu cầu cơ sở sticky
@@ -261,12 +285,14 @@ Ma trận ưu tiên quét nhanh:
 - cuộn ngang, chọn cột, ghim cột và chế độ tập trung để hỗ trợ nhiều phương án
 - hiển thị phản hồi rút gọn và trạng thái đánh giá
 - mở panel chi tiết thay vì nhồi tài liệu và đánh giá vào ô nhỏ
+- không render response textarea, `Sao chép từ cấu hình cơ bản`, dirty draft,
+  `Lưu` hoặc `Lưu & tiếp theo`
 
 Không thêm cột nội dung tùy biến vào ma trận. Số cột ngang tăng theo số sản phẩm tham chiếu hoặc phương án được chọn, tùy bề mặt; hai loại không bị trộn semantics và sản phẩm tham chiếu không tham gia đánh giá/xếp hạng.
 
 Hồ sơ không có giới hạn tổng số phương án. Một request ma trận chọn tối đa 8 phương án và đọc tối đa 100 tiêu chí; tiêu chí được phân trang khi phiên bản lớn hơn giới hạn. Phương án thứ chín vẫn được lưu và có thể được chọn trong request khác. Read contract trả baseline, supplier label, response, supplementary information và citation summary trong một RPC có giới hạn, không tạo N+1.
 
-Ma trận không thay thế workflow đánh giá chi tiết.
+Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
 
 #### Đánh giá từng phương án
 

@@ -7,7 +7,7 @@ P9 is delivered as five deploy-safe leaves in this strict order:
 ```text
 P5A + P8B2         -> P9A1
 P8A4 + P9A1        -> P9A2
-P9A2               -> P9A3
+P8B3 + P9A2        -> P9A3
 P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
 P7B2 + P9B2        -> P10A
@@ -48,6 +48,9 @@ operation.
   and deletes the document plus all linked citations transactionally.
 - Option responses and evidence remain editable against draft or locked
   baselines. Archived dossiers are read-only.
+- P9A3 mounts import actions in the P8B3 full-width response-workspace header.
+  It does not replace the selected-criterion panels, copy confirmation,
+  criterion statuses or save/save-next behavior and does not introduce a matrix.
 
 ## Required Workflow Before Each Leaf
 
@@ -244,7 +247,7 @@ the application still has no import UI.
 ## P9A3 - Supplier Option Import Workspace
 
 **Deploy boundary:** template download and import UI using the deployed P9A1/A2
-contracts.
+contracts inside the P8B3 full-width response workspace.
 
 ### Files
 
@@ -259,7 +262,7 @@ contracts.
 - Create:
   `src/app/(app)/technical-configurations/__tests__/use-technical-configuration-option-import.test.tsx`
 - Modify:
-  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponses.tsx`
 - Modify:
   `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
 
@@ -277,6 +280,9 @@ contracts.
 - Prove import pending/dirty state blocks identity, response and navigation
   mutations.
 - Prove locked baseline remains editable and archived dossier is read-only.
+- Prove import actions render in the full-width workspace header while the P8B3
+  selected-criterion panels, statuses, copy confirmation and save controls keep
+  their existing ownership and behavior.
 
 Run:
 
@@ -293,12 +299,14 @@ Expected RED: option import hook/dialog/actions do not exist.
 
 - Reuse `useBulkImportState`, `BulkImportDialogParts` and P5A Blob download
   primitives.
-- Keep import actions in the exact-baseline response workspace, not the option
-  identity editor.
+- Keep import actions in the P8B3 full-width exact-baseline response-workspace
+  header, not the option identity editor or baseline/response panels.
 - Keep file, rows, preview and errors transient.
 - Route preview/apply only through the P9A2 wrapper.
 - Propagate pending/dirty state through the existing external mutation-blocking
   contract.
+- Preserve the focused selected-criterion authoring layout and add no matrix,
+  copy or save semantics in P9A3.
 
 Run:
 

@@ -112,6 +112,9 @@ Hệ thống SHALL không autosave thay đổi trong các form soạn cấu hìn
 - **WHEN** người dùng bấm `Lưu & tiếp tục`
 - **THEN** hệ thống lưu dữ liệu hợp lệ
 - **AND** chỉ sau khi lưu thành công mới chuyển tới tiêu chí kế tiếp
+- **AND** tiêu chí kế tiếp là tiêu chí liền sau theo thứ tự cấu hình cơ bản, không
+  tự bỏ qua tiêu chí đã có dữ liệu
+- **AND** nếu không còn tiêu chí kế tiếp thì giữ nguyên tiêu chí cuối
 
 #### Scenario: Save and continue fails
 
@@ -124,6 +127,37 @@ Hệ thống SHALL không autosave thay đổi trong các form soạn cấu hìn
 - **WHEN** người dùng chọn một phương án và phiên bản cơ sở chỉ để xem phản hồi
 - **THEN** backend trả comparison set hiện có hoặc trạng thái rỗng
 - **AND** không tạo comparison set, không tăng dossier revision và không thay đổi audit metadata
+
+#### Scenario: Compare and edit one selected option response
+
+- **WHEN** người dùng chọn một phương án, exact baseline version và tiêu chí trên
+  desktop
+- **THEN** workspace phản hồi trải toàn chiều rộng bên dưới supplier/option
+  identity và hiển thị criterion navigator, panel cấu hình cơ bản chỉ đọc cùng
+  panel response/supplementary chỉnh sửa
+- **AND** hai panel chỉ hiển thị tiêu chí đang chọn, không render all-criteria
+  matrix
+- **AND** criterion navigator phân biệt tiêu chí chưa có response, đã lưu và
+  current dirty draft
+
+#### Scenario: Copy a baseline requirement into an option response
+
+- **WHEN** người dùng bấm `Sao chép từ cấu hình cơ bản`
+- **THEN** UI copy `requirement_text` của tiêu chí đang chọn vào response draft,
+  giữ nguyên supplementary information và cho phép sửa nội dung đã copy
+- **AND** copy chỉ tạo dirty local draft, không autosave hoặc gửi mutation
+- **AND** response không rỗng phải được xác nhận trước khi ghi đè; cancel giữ
+  nguyên cả response và supplementary draft
+
+#### Scenario: Save an option response and move to the next baseline criterion
+
+- **WHEN** người dùng bấm primary action `Lưu & tiếp theo`
+- **THEN** hệ thống dùng cùng explicit single-criterion save của secondary
+  action `Lưu`
+- **AND** chỉ sau khi save thành công mới chuyển tới tiêu chí liền sau theo thứ
+  tự cấu hình cơ bản, không tự bỏ qua tiêu chí đã có response
+- **AND** validation, conflict hoặc persistence failure giữ nguyên tiêu chí cùng
+  draft; criterion cuối chỉ hiển thị `Lưu`
 
 ### Requirement: Standard baseline Excel template
 
@@ -428,6 +462,9 @@ Hệ thống SHALL cung cấp ma trận so sánh cấu hình cơ sở với các
 - **WHEN** người dùng chọn các phương án trong cùng hồ sơ và phiên bản cơ sở
 - **THEN** ma trận hiển thị yêu cầu cơ sở và phản hồi của từng phương án theo cùng thứ tự nhóm/tiêu chí
 - **AND** nhóm/tiêu chí là hàng, cột yêu cầu là sticky và mỗi phương án là một cột động
+- **AND** ma trận chỉ dùng để đọc/kiểm tra, không render response textarea,
+  `Sao chép từ cấu hình cơ bản`, dirty draft, `Lưu` hoặc `Lưu & tiếp theo` của
+  focused authoring workspace
 
 #### Scenario: Do not introduce arbitrary matrix dimensions
 

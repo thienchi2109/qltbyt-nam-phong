@@ -7,6 +7,7 @@ P8B is not delivered as one monolithic UI leaf.
 1. P8A4 adds the side-effect-free nullable comparison-set read contract.
 2. P8B1 adds supplier and option identity CRUD.
 3. P8B2 adds exact-baseline option response editing.
+4. P8B3 adds a desktop-focused selected-criterion comparison and authoring UX.
 
 Hard dependencies:
 
@@ -14,15 +15,18 @@ Hard dependencies:
 P8A3 -> P8A4
 P3A + P8A2 -> P8B1
 P4 + P8A3 + P8A4 + P8B1 -> P8B2
+P8B2 -> P8B3
 ```
 
-Recommended delivery order is `P8A4 -> P8B1 -> P8B2`. P8B1 does not have a
-hard dependency on P8A4, but landing the read contract first removes ambiguity
-from the response workspace and keeps each later review focused.
+Recommended delivery order is `P8A4 -> P8B1 -> P8B2 -> P8B3`. P8B1 does not
+have a hard dependency on P8A4, but landing the read contract first removes
+ambiguity from the response workspace and keeps each later review focused.
 
-P9A1 and P9B2 depend directly on P8B2; P9A2, P9A3 and P9B1 inherit the response
-workspace dependency through the strict P9 delivery chain. Comparison,
-evaluation, evidence, Excel, ranking and AI remain out of scope for P8B.
+P9A1 continues to depend directly on the P8B2 response/data behavior. P9A3
+depends on P8B3 so import actions land in the refined full-width workspace;
+P9A2 remains independent because it is a dormant backend leaf. Multi-option
+matrix comparison, evaluation, evidence, Excel implementation, ranking and AI
+remain out of scope for P8B.
 
 ## Design Read
 
@@ -36,6 +40,9 @@ low motion.
 - Use existing Lucide icons for create, edit, delete and save commands.
 - Desktop may use a stable two-column selector/editor layout. Mobile stacks the
   selected context above the editor without horizontal page overflow.
+- P8B3 is intentionally desktop-only: keep supplier/option identity above a
+  full-width criterion authoring workspace and add no mobile responsive
+  acceptance in this leaf.
 - Implement loading, empty, validation, persistence, conflict, archived,
   pending and success states.
 - Keep labels, textareas, timestamps and destructive warnings readable with long
@@ -283,6 +290,87 @@ node scripts/npm-run.js exec vitest run \
   revision conflict.
 - Render no evidence, comparison, evaluation, compliance or ranking controls.
 
+## P8B3 Red-Green-Refactor
+
+### Files
+
+- Create:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponsePanels.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/supplier-option-response-ux-cases.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationSuppliers.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/TechnicalConfigurationOptionResponseEditor.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptionResponses.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-option-response-state.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/supplier-options.test.tsx`
+
+### RED
+
+Write tests for:
+
+- supplier selector and option identity remain in the upper region while the
+  exact-baseline response workspace spans the full desktop width below them
+- the response workspace renders a criterion navigator, a read-only baseline
+  panel and an editable response/supplementary panel for only the selected
+  criterion
+- criterion navigation shows compact states for no response, persisted response
+  and the current dirty draft
+- the exact button label is `Sao chép từ cấu hình cơ bản`
+- copying into an empty response places only `requirement_text` into the response
+  draft, preserves supplementary information, remains editable, marks the draft
+  dirty and sends no mutation
+- copying over a non-empty response requires confirmation; cancel preserves both
+  drafts and confirm replaces only the response draft
+- secondary `Lưu` stays on the current criterion
+- primary `Lưu & tiếp theo` advances only after success to the immediate next
+  criterion in canonical baseline order, does not skip persisted criteria and
+  does not render on the final criterion
+- validation, persistence or revision conflict preserves the selected criterion
+  and unsaved text and does not advance
+- locked baselines remain editable, archived dossiers remain read-only and
+  existing dirty-navigation/pending coordination still works
+- no matrix, bulk-copy, batch-save, response autosave, API, RPC or migration
+  behavior is introduced
+
+Run RED:
+
+```bash
+node scripts/npm-run.js exec vitest run \
+  'src/app/(app)/technical-configurations/__tests__/supplier-options.test.tsx'
+```
+
+Expected: failures for the absent full-width layout, focused panels, criterion
+statuses, copy confirmation and save-next behavior.
+
+### GREEN
+
+- Move `TechnicalConfigurationOptionResponses` outside the upper
+  selector/identity grid while preserving the current selected option and
+  external dirty/pending callbacks.
+- Keep the canonical comparison snapshot and selected criterion in the existing
+  hook; add pure state helpers for criterion status, copy semantics and canonical
+  next-criterion selection.
+- Extract the selected-criterion baseline/response presentation into
+  `TechnicalConfigurationOptionResponsePanels.tsx` so
+  `TechnicalConfigurationSuppliers.tsx` stays below the extraction threshold.
+- Copy baseline `requirement_text` into the local response draft only after any
+  required confirmation; do not touch supplementary information or call the
+  save operation.
+- Reuse the current explicit save operation. Implement save-next as save
+  followed by selection of the immediate next criterion only after the save
+  operation reports success.
+- Keep `Lưu` visually secondary and `Lưu & tiếp theo` primary so repetitive
+  entry has one clear default without hiding the stay-on-current action.
+- Disable copy/save/save-next in archived read-only state. Locked baselines keep
+  the same editable option-response behavior as P8B2.
+- Add no mobile-specific layout, backend wrapper, query key, transport or data
+  shape.
+
 ## Verification Order
 
 For each leaf, gather the common gates and that leaf's focused tests in one
@@ -324,6 +412,13 @@ node scripts/npm-run.js exec vitest run \
   'src/app/(app)/technical-configurations/__tests__/technical-configuration-beforeunload.test.tsx'
 ```
 
+P8B3 focused tests:
+
+```bash
+node scripts/npm-run.js exec vitest run \
+  'src/app/(app)/technical-configurations/__tests__/supplier-options.test.tsx'
+```
+
 After the focused tests for the current leaf:
 
 ```bash
@@ -332,14 +427,14 @@ openspec validate add-technical-configuration-comparison \
   --type change --strict --no-interactive
 ```
 
-Before P8B1/P8B2 React edits, invoke `frontend-design`,
+Before P8B1/P8B2/P8B3 React edits, invoke `frontend-design`,
 `design-taste-frontend`, then the available React best-practices skill
 (`build-web-apps:react-best-practices` preferred;
 `vercel-react-best-practices` fallback).
 
-Invoke the code-deduplication check before commit because P8B1/P8B2 introduce
-new hooks, state helpers and operations. Use Code Review Graph first, then
-GitNexus for the narrowed symbols.
+Invoke the code-deduplication check before commit because P8B1/P8B2/P8B3
+introduce or extend hooks, state helpers and components. Use Code Review Graph
+first, then GitNexus for the narrowed symbols.
 
 ## Browser Verification
 
@@ -354,6 +449,16 @@ After P8B1 and P8B2 implementation:
 - capture screenshot evidence for normal, destructive confirmation, empty,
   error/conflict and mobile states
 
+After P8B3 implementation, run a desktop-only browser pass:
+
+- verify the upper selector/identity region and full-width response workspace
+- verify selected-criterion baseline/response alignment with long Vietnamese text
+- exercise criterion statuses, copy/cancel/confirm, edit-after-copy, save and
+  save-next success/failure
+- capture desktop screenshots for normal, dirty, overwrite-confirmation,
+  archived and conflict states
+- do not add mobile responsive acceptance or alter the later P10B mobile plan
+
 The live database currently has no supplier, option or option-response rows.
 Creating representative live browser fixtures and cleaning them up requires a
 separate explicit live-write approval. Without that permission, browser checks
@@ -366,6 +471,7 @@ Approval of this plan or any frontend leaf does not authorize live writes.
 - P8A4 migration apply requires explicit permission.
 - P8A4 transaction-wrapped SQL phase gate requires explicit permission.
 - Browser fixture create/update/delete requires explicit permission.
+- P8B3 introduces no migration, RPC, API or live database operation.
 - No Supabase CLI command is used for database operations.
 - If P8A4 reveals another schema gap, stop and propose a separate ordered
-  migration leaf instead of silently widening P8B2.
+  migration leaf instead of silently widening P8B2 or P8B3.

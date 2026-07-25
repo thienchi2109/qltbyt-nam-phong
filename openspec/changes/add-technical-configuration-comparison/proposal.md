@@ -15,10 +15,10 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Quản lý phiên bản cấu hình cơ sở theo trạng thái `Bản nháp` và `Đã khóa`; phiên bản đã khóa bất biến tuyệt đối, kể cả với `admin/global`.
 - Cho phép khai báo nhiều sản phẩm tham chiếu tùy chọn, nhập nội dung đối chiếu và trích dẫn theo từng tiêu chí, đồng thời giữ chúng tách biệt với các phương án cấu hình của nhà cung cấp.
 - Cho phép không giới hạn số nhà cung cấp theo quy tắc nghiệp vụ và cho phép mỗi nhà cung cấp có nhiều phương án/model cấu hình.
-- Cho phép nhập phương án nhà cung cấp thủ công hoặc bằng template Excel được xuất từ phiên bản cấu hình cơ sở đang chọn. Phương án nhà cung cấp là dữ liệu làm việc, không có cơ chế khóa hoặc quản lý phiên bản riêng.
+- Cho phép nhập phương án nhà cung cấp thủ công hoặc bằng template Excel được xuất từ phiên bản cấu hình cơ sở đang chọn. Luồng nhập thủ công trên desktop đối chiếu một tiêu chí đang chọn giữa panel cấu hình cơ bản chỉ đọc và panel phản hồi chỉnh sửa, hỗ trợ sao chép có xác nhận cùng explicit save. Phương án nhà cung cấp là dữ liệu làm việc, không có cơ chế khóa hoặc quản lý phiên bản riêng.
 - Quản lý danh sách tài liệu dưới dạng URL và liên kết từng tài liệu với tiêu chí bằng vị trí trang/mục và đoạn trích. Không tải hoặc lưu file trong ứng dụng.
 - Tái sử dụng pattern URL đính kèm của Equipment ở mức hành vi, validation và thành phần giao diện dùng chung; không phụ thuộc bảng `thiet_bi` hoặc sao chép nguyên khối logic Equipment.
-- Cung cấp các bề mặt so sánh có cùng mô hình hiển thị: nhóm/tiêu chí là hàng, cấu hình cơ sở là cột sticky, còn sản phẩm tham chiếu hoặc phương án được chọn là các cột động. Tài liệu được mở trong panel chi tiết thay vì tạo thêm cột bằng chứng cố định.
+- Tách rõ bề mặt authoring và bề mặt quét: workspace nhập phản hồi chỉ làm việc với một option/criterion, còn ma trận read-only dùng nhóm/tiêu chí làm hàng, cấu hình cơ sở làm cột sticky và các phương án được chọn làm cột động. Ma trận không chứa response editor, copy hoặc save controls; tài liệu được mở trong panel chi tiết thay vì tạo thêm cột bằng chứng cố định.
 - Tách đánh giá thành hai trục độc lập: mức đáp ứng kỹ thuật và mức đầy đủ bằng chứng. Trạng thái tổng hợp được suy ra bằng quy tắc minh bạch và không cho sửa trực tiếp.
 - Cho phép lưu "Thông tin bổ sung" của nhà cung cấp; nội dung này vẫn hiển thị khi so sánh nhưng không làm thay đổi kết quả đáp ứng cấu hình cơ sở đã khóa.
 - Cung cấp xếp hạng tham khảo tùy chọn từ kết luận thủ công, cho phép đồng hạng và không xếp hạng chéo giữa các hồ sơ hoặc phiên bản cấu hình cơ sở.

@@ -40,9 +40,10 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P8A4](./implementation-plan.md#phase-p8a4---side-effect-free-option-response-read-contract) | Read-only nullable comparison-set contract     | P8A3                   | TC-02, TC-04, TC-07, TC-09, TC-17, TC-20        |
 | [P8B1](./implementation-plan.md#phase-p8b1---supplier-and-option-identity-crud-workspace)    | UI CRUD supplier và option identity            | P3A, P8A2              | TC-04, TC-09, TC-20                             |
 | [P8B2](./implementation-plan.md#phase-p8b2---exact-baseline-option-response-workspace)       | UI response theo exact baseline                | P4, P8A3, P8A4, P8B1   | TC-04, TC-09, TC-17, TC-20                      |
+| [P8B3](./implementation-plan.md#phase-p8b3---focused-option-response-comparison-ux)          | UX đối chiếu và nhập response từng tiêu chí    | P8B2                   | TC-04, TC-09, TC-17, TC-20                      |
 | [P9A1](./implementation-plan.md#phase-p9a1---supplier-option-workbook-codec)                 | Contract và codec Excel phương án              | P5A, P8B2              | TC-10                                           |
 | [P9A2](./implementation-plan.md#phase-p9a2---atomic-supplier-option-import-contracts)        | Preview/apply nguyên tử cho Excel phương án    | P8A4, P9A1             | TC-02, TC-10, TC-20                             |
-| [P9A3](./implementation-plan.md#phase-p9a3---supplier-option-import-workspace)               | UI import Excel phương án                      | P9A2                   | TC-04, TC-10, TC-20                             |
+| [P9A3](./implementation-plan.md#phase-p9a3---supplier-option-import-workspace)               | UI import Excel phương án                      | P8B3, P9A2             | TC-04, TC-10, TC-20                             |
 | [P9B1](./implementation-plan.md#phase-p9b1---supplier-option-evidence-contracts)             | Data contract tài liệu/trích dẫn phương án     | P7B1, P8A4, P9A3       | TC-02, TC-11, TC-12, TC-20                      |
 | [P9B2](./implementation-plan.md#phase-p9b2---supplier-option-evidence-workspace)             | Workspace tài liệu/trích dẫn phương án         | P6B, P7B2, P8B2, P9B1  | TC-04, TC-11, TC-12, TC-20                      |
 | [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                     | P7B2, P9B2             | TC-02, TC-13, TC-17                             |
@@ -297,6 +298,33 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 - [x] P8B2.6 Thêm dirty navigation cho option/baseline/tab/dossier, archived read-only và draft/locked baseline tests.
 - [x] P8B2.7 Viết no-write-on-open, exact-baseline, supplementary-non-scoring, responsive và no-lock-control tests.
 
+## Phase P8B3 - Focused Option Response Comparison UX
+
+- [ ] P8B3.1 Giữ supplier selector và option identity editor ở vùng trên; chuyển
+      exact-baseline response workspace thành một vùng desktop toàn chiều rộng
+      bên dưới.
+- [ ] P8B3.2 Hiển thị ba vùng ổn định: criterion navigator, panel cấu hình cơ bản
+      chỉ đọc và panel response/supplementary chỉnh sửa cho đúng criterion đang
+      chọn; không render toàn bộ matrix.
+- [ ] P8B3.3 Hiển thị trạng thái `chưa có response`, `đã lưu` và `đang có thay đổi
+chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
+- [ ] P8B3.4 Thêm nút `Sao chép từ cấu hình cơ bản`: chỉ copy
+      `requirement_text` vào response draft, giữ nguyên supplementary, vẫn cho
+      sửa tiếp và không mutation trước explicit save; response không rỗng phải
+      xác nhận trước khi ghi đè.
+- [ ] P8B3.5 Đổi action hiện tại thành secondary `Lưu` và thêm primary
+      `Lưu & tiếp theo`; chỉ chuyển sau save thành công tới criterion liền sau
+      theo canonical baseline order, không skip criterion đã lưu, không chuyển
+      khi validation/conflict/persistence thất bại và criterion cuối chỉ hiển
+      thị `Lưu`.
+- [ ] P8B3.6 Giữ nguyên P8B2 RPC/data semantics, locked-baseline editability,
+      archived read-only, dirty navigation và conflict recovery; không thêm API,
+      migration, data contract, live DB write, bulk-copy, batch-save hoặc mobile
+      responsive acceptance.
+- [ ] P8B3.7 Viết focused state/React/browser tests cho desktop layout, selected
+      criterion binding, status indicators, copy/confirm/cancel, supplementary
+      preservation, explicit save và save-next ordering.
+
 ## Phase P9A1 - Supplier Option Workbook Codec
 
 - [ ] P9A1.1 Đóng băng option workbook v1 với đúng một sheet dữ liệu hiển thị,
@@ -400,10 +428,14 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Phase P10B - Comparison Matrix UI
 
-- [ ] P10B.1 Hiển thị nhóm/tiêu chí theo hàng, sticky baseline và option columns động.
+- [ ] P10B.1 Hiển thị read-only groups/criteria theo hàng, sticky baseline và
+      option columns động cho nhiều phương án được chọn.
 - [ ] P10B.2 Thêm column selection, pinning, horizontal scroll và focus mode.
-- [ ] P10B.3 Thêm detail panel cho full text, supplementary information và citations; không tạo arbitrary content/evidence columns.
-- [ ] P10B.4 Tích hợp matrix tab vào workspace shell.
+- [ ] P10B.3 Thêm read-only detail panel cho full text, supplementary information
+      và citations; không tạo arbitrary content/evidence columns.
+- [ ] P10B.4 Tích hợp matrix tab vào workspace shell nhưng không render response
+      textarea, `Sao chép từ cấu hình cơ bản`, `Lưu` hoặc `Lưu & tiếp theo`;
+      authoring một option/criterion vẫn thuộc P8B3.
 - [ ] P10B.5 Viết interaction, long-text, keyboard và responsive verification.
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
