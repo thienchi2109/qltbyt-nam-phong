@@ -1,20 +1,19 @@
 import * as React from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 
 import { useTechnicalConfigurationBeforeUnloadGuard } from "./useTechnicalConfigurationBeforeUnloadGuard"
+import { useTechnicalConfigurationOptionResponseRevision } from "./useTechnicalConfigurationOptionResponseRevision"
+import { useTechnicalConfigurationOptionResponsesQuery } from "./useTechnicalConfigurationOptionResponsesQuery"
 import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
 import { isTechnicalConfigurationBaselineConflict } from "../technical-configuration-baseline-version-state"
+import { fetchTechnicalConfigurationDossierRevision } from "../technical-configuration-dossier-revision-cache"
 import {
-  fetchTechnicalConfigurationDossierRevision,
-  updateTechnicalConfigurationDossierRevisionCache,
-} from "../technical-configuration-dossier-revision-cache"
-import {
-  readTechnicalConfigurationComparisonSet,
   saveTechnicalConfigurationOptionResponse,
   TechnicalConfigurationOptionResponseSaveFailure,
 } from "../technical-configuration-option-response-operations"
 import {
   areTechnicalConfigurationOptionResponseDraftsEqual,
+  createTechnicalConfigurationOptionResponseInitialState,
   findTechnicalConfigurationOptionResponse,
   flattenTechnicalConfigurationBaselineCriteria,
   getTechnicalConfigurationOptionResponseErrorMessage,
@@ -25,7 +24,6 @@ import {
   type TechnicalConfigurationOptionResponseDraft,
   type TechnicalConfigurationOptionResponseDraftPatch,
 } from "../technical-configuration-option-response-state"
-import { technicalConfigurationOptionResponsesQueryKey } from "../technical-configuration-query-keys"
 import type {
   TechnicalConfigurationComparisonSetWire,
   TechnicalConfigurationOptionWire,
@@ -38,6 +36,7 @@ type UseTechnicalConfigurationOptionResponsesArgs = {
   baselineVersion: TechnicalConfigurationBaselineDraftWire
   onRevisionChange?: (revision: number) => void
   onNavigationBlockedChange?: (blocked: boolean) => void
+  isMutationBlocked?: boolean
 }
 
 /** Owns one option/exact-baseline response snapshot, local criterion draft, and explicit save. */
@@ -47,38 +46,22 @@ export function useTechnicalConfigurationOptionResponses({
   baselineVersion,
   onRevisionChange,
   onNavigationBlockedChange,
+  isMutationBlocked = false,
 }: UseTechnicalConfigurationOptionResponsesArgs) {
   const queryClient = useQueryClient()
-  const queryKey = React.useMemo(
-    () => technicalConfigurationOptionResponsesQueryKey(option.id, baselineVersion.id),
-    [baselineVersion.id, option.id]
-  )
+  const { queryKey, responseQuery } = useTechnicalConfigurationOptionResponsesQuery({
+    optionId: option.id,
+    baselineVersionId: baselineVersion.id,
+  })
   const criteria = React.useMemo(
     () => flattenTechnicalConfigurationBaselineCriteria(baselineVersion),
     [baselineVersion]
   )
-  const responseQuery = useQuery({
-    queryKey,
-    queryFn: ({ signal }) =>
-      readTechnicalConfigurationComparisonSet(
-        {
-          p_option_id: option.id,
-          p_baseline_version_id: baselineVersion.id,
-        },
-        signal
-      ),
-    staleTime: 30_000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
-  const initialResponseState = React.useMemo(() => {
-    const selectedCriterionId = criteria[0]?.id ?? null
-    const snapshot = responseQuery.data ?? null
-    const draft = toTechnicalConfigurationOptionResponseDraft(
-      findTechnicalConfigurationOptionResponse(snapshot, selectedCriterionId)
-    )
-    return { selectedCriterionId, snapshot, draft }
-  }, [criteria, responseQuery.data])
+  const initialResponseState = React.useMemo(
+    () =>
+      createTechnicalConfigurationOptionResponseInitialState(criteria, responseQuery.data ?? null),
+    [criteria, responseQuery.data]
+  )
   const [selectedCriterionId, setSelectedCriterionId] = React.useState<string | null>(
     initialResponseState.selectedCriterionId
   )
@@ -99,39 +82,32 @@ export function useTechnicalConfigurationOptionResponses({
   const [saveStatus, setSaveStatus] = React.useState<"idle" | "saved">("idle")
   const activeOperationRef = React.useRef<"save" | "reload" | null>(null)
   const adoptedQueryAtRef = React.useRef(0)
-  const revisionRef = React.useRef<number | null>(null)
-  if (revisionRef.current === null) {
-    revisionRef.current = Math.max(dossier.revision, initialResponseState.snapshot?.revision ?? 0)
-  }
+  const { commitRevision, revisionRef } = useTechnicalConfigurationOptionResponseRevision({
+    dossier,
+    initialRevision: initialResponseState.snapshot?.revision,
+    onRevisionChange,
+  })
   const isReadOnly = Boolean(dossier.archived_at)
   const isDirty =
     !isReadOnly && !areTechnicalConfigurationOptionResponseDraftsEqual(baseDraft, draft)
   const visibleDraft = isReadOnly ? baseDraft : draft
-  const commitRevision = React.useCallback(
-    (nextRevision: number) => {
-      const committedRevision = Math.max(
-        revisionRef.current ?? dossier.revision,
-        dossier.revision,
-        nextRevision
-      )
-      revisionRef.current = committedRevision
-      onRevisionChange?.(committedRevision)
-      updateTechnicalConfigurationDossierRevisionCache(queryClient, dossier, committedRevision)
-    },
-    [dossier, onRevisionChange, queryClient]
-  )
   React.useEffect(() => {
+    const nextSnapshot = responseQuery.data ?? null
+    const hasNewerSnapshot =
+      (nextSnapshot?.revision ?? 0) > (snapshot?.revision ?? dossier.revision)
+    const wouldRegressSnapshot =
+      snapshot !== null && (nextSnapshot === null || nextSnapshot.revision < snapshot.revision)
     if (
       !responseQuery.isSuccess ||
       responseQuery.dataUpdatedAt === adoptedQueryAtRef.current ||
       isDirty ||
-      isConflict ||
+      (isConflict && !hasNewerSnapshot) ||
+      wouldRegressSnapshot ||
       activeOperationRef.current
     ) {
       return
     }
     adoptedQueryAtRef.current = responseQuery.dataUpdatedAt
-    const nextSnapshot = responseQuery.data
     const nextCriterionId = criteria.some((criterion) => criterion.id === selectedCriterionId)
       ? selectedCriterionId
       : (criteria[0]?.id ?? null)
@@ -159,29 +135,27 @@ export function useTechnicalConfigurationOptionResponses({
     responseQuery.data,
     responseQuery.dataUpdatedAt,
     responseQuery.isSuccess,
+    revisionRef,
     selectedCriterionId,
+    snapshot,
   ])
-
-  React.useEffect(() => {
-    revisionRef.current = Math.max(revisionRef.current ?? dossier.revision, dossier.revision)
-  }, [dossier.revision])
-
   useTechnicalConfigurationBeforeUnloadGuard(isDirty)
 
   const updateDraft = React.useCallback(
     (patch: TechnicalConfigurationOptionResponseDraftPatch) => {
-      if (isReadOnly || activeOperationRef.current) return
+      if (isReadOnly || isMutationBlocked || activeOperationRef.current) return
       setDraft((current) => ({ ...current, ...patch }))
       setValidationError(null)
       if (!isConflict) setOperationError(null)
       setSaveStatus("idle")
     },
-    [isConflict, isReadOnly]
+    [isConflict, isMutationBlocked, isReadOnly]
   )
 
   const selectCriterion = React.useCallback(
     (criterionId: string) => {
       if (
+        isMutationBlocked ||
         activeOperationRef.current ||
         !criteria.some((criterion) => criterion.id === criterionId)
       ) {
@@ -197,11 +171,11 @@ export function useTechnicalConfigurationOptionResponses({
       if (!isConflict) setOperationError(null)
       setSaveStatus("idle")
     },
-    [criteria, isConflict, snapshot]
+    [criteria, isConflict, isMutationBlocked, snapshot]
   )
 
   const save = React.useCallback(async () => {
-    if (isReadOnly || activeOperationRef.current || isConflict) return false
+    if (isReadOnly || isMutationBlocked || activeOperationRef.current || isConflict) return false
     const error = validateTechnicalConfigurationOptionResponseDraft(draft, selectedCriterionId)
     if (error) {
       setValidationError(error)
@@ -277,17 +251,19 @@ export function useTechnicalConfigurationOptionResponses({
     dossier.revision,
     draft,
     isConflict,
+    isMutationBlocked,
     isReadOnly,
     onNavigationBlockedChange,
     option.id,
     queryClient,
     queryKey,
+    revisionRef,
     selectedCriterionId,
     snapshot,
   ])
 
   const reload = React.useCallback(async () => {
-    if (activeOperationRef.current) return
+    if (isMutationBlocked || activeOperationRef.current) return
     const preserveDraft = isDirty
     activeOperationRef.current = "reload"
     setIsReloading(true)
@@ -326,6 +302,7 @@ export function useTechnicalConfigurationOptionResponses({
     commitRevision,
     dossier.id,
     isDirty,
+    isMutationBlocked,
     onNavigationBlockedChange,
     queryClient,
     responseQuery,
@@ -351,9 +328,10 @@ export function useTechnicalConfigurationOptionResponses({
     draft: visibleDraft,
     isDirty,
     isReadOnly,
+    isMutationBlocked,
     isSaving,
     isReloading,
-    isPending: isSaving || isReloading,
+    isPending: isSaving || isReloading || isMutationBlocked,
     isConflict,
     validationError,
     operationError,

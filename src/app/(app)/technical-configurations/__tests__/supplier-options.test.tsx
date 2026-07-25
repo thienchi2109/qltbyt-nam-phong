@@ -1,5 +1,7 @@
 import { beforeEach, vi } from "vitest"
 
+import { registerSupplierOptionImportConflictTests } from "./supplier-option-import-conflict-cases"
+import { registerSupplierOptionImportWorkspaceTests } from "./supplier-option-import-workspace-cases"
 import { registerSupplierOptionResponseAvailabilityTests } from "./supplier-option-response-availability-cases"
 import { registerSupplierOptionResponseCoordinationTests } from "./supplier-option-response-coordination-cases"
 import { registerSupplierOptionResponseConflictTests } from "./supplier-option-response-conflict-cases"
@@ -27,6 +29,13 @@ const supplierOptionRpc = vi.hoisted(() => ({
 
 const optionResponseFetch = vi.hoisted(() => vi.fn())
 
+const workbookCodec = vi.hoisted(() => ({
+  readWorkbook: vi.fn(),
+  createParser: vi.fn(),
+  createWorkbook: vi.fn(),
+  downloadBlob: vi.fn(),
+}))
+
 vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({
   useTechnicalConfigurationBaseline: () => baselineRpc,
 }))
@@ -40,6 +49,23 @@ vi.mock("@/app/(app)/technical-configurations/technical-configuration-supplier-o
   createTechnicalConfigurationOption: supplierOptionRpc.createOption,
   updateTechnicalConfigurationOption: supplierOptionRpc.updateOption,
   deleteTechnicalConfigurationOption: supplierOptionRpc.deleteOption,
+}))
+
+vi.mock("@/lib/excel-utils", () => ({
+  readExcelFile: workbookCodec.readWorkbook,
+  worksheetToJson: vi.fn(),
+}))
+
+vi.mock("@/lib/excel-workbook", () => ({
+  downloadBlob: workbookCodec.downloadBlob,
+}))
+
+vi.mock("@/lib/technical-configuration-option-excel-export", () => ({
+  createTechnicalConfigurationOptionWorkbook: workbookCodec.createWorkbook,
+}))
+
+vi.mock("@/lib/technical-configuration-option-excel-parse", () => ({
+  createTechnicalConfigurationOptionWorkbookParser: workbookCodec.createParser,
 }))
 
 vi.stubGlobal("fetch", optionResponseFetch)
@@ -58,6 +84,18 @@ beforeEach(() => {
 registerSupplierOptionHookTests(supplierOptionRpc)
 registerSupplierOptionWorkspaceTests(supplierOptionRpc)
 registerSupplierOptionConflictTests(supplierOptionRpc)
+registerSupplierOptionImportWorkspaceTests({
+  baselineRpc,
+  fetchMock: optionResponseFetch,
+  supplierOptionRpc,
+  workbookCodec,
+})
+registerSupplierOptionImportConflictTests({
+  baselineRpc,
+  fetchMock: optionResponseFetch,
+  supplierOptionRpc,
+  workbookCodec,
+})
 registerSupplierOptionResponseTests({
   baselineRpc,
   fetchMock: optionResponseFetch,
