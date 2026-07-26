@@ -364,20 +364,20 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P9A3 - Supplier Option Import Workspace
 
-- [ ] P9A3.1 Thêm download/import action vào exact-baseline option response
+- [x] P9A3.1 Thêm download/import action vào exact-baseline option response
       workspace, không đặt vào option identity editor.
-- [ ] P9A3.2 Dùng P9A1 codec, P5A `useBulkImportState`, Blob helper và shared
+- [x] P9A3.2 Dùng P9A1 codec, P5A `useBulkImportState`, Blob helper và shared
       bulk-import dialog parts.
-- [ ] P9A3.3 Không mutation trước preview confirmation; apply chỉ gọi P9A2
+- [x] P9A3.3 Không mutation trước preview confirmation; apply chỉ gọi P9A2
       atomic RPC.
-- [ ] P9A3.4 Giữ selected file, canonical rows và preview khi stale conflict;
+- [x] P9A3.4 Giữ selected file, canonical rows và preview khi stale conflict;
       refresh revision mà không làm mất input.
-- [ ] P9A3.5 Adopt complete returned snapshot và đồng bộ option-response,
+- [x] P9A3.5 Adopt complete returned snapshot và đồng bộ option-response,
       dossier/detail caches sau success.
-- [ ] P9A3.6 Import pending/dirty state phải chặn identity mutations và
+- [x] P9A3.6 Import pending/dirty state phải chặn identity mutations và
       option/baseline/tab/dossier navigation; locked baseline vẫn editable,
       archived dossier read-only.
-- [ ] P9A3.7 Viết template delegation, full-snapshot clear, missing-row reject,
+- [x] P9A3.7 Viết template delegation, full-snapshot clear, missing-row reject,
       no-write-before-confirm, success/cache và conflict-preservation React
       tests.
 
