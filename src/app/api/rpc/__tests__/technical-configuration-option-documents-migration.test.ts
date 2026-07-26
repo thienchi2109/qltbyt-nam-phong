@@ -116,7 +116,7 @@ function getCreateTableBlock(source: string, tableName: string): string {
 }
 
 function getFunctionBlock(source: string, functionName: string): string {
-  const start = source.indexOf(`CREATE OR REPLACE FUNCTION public.${functionName}(`)
+  const start = source.lastIndexOf(`CREATE OR REPLACE FUNCTION public.${functionName}(`)
   if (start < 0) return ""
   const end = source.indexOf("$$;", start)
   return end < 0 ? source.slice(start) : source.slice(start, end + 3)
@@ -154,6 +154,32 @@ describe("technical configuration P9B1 option evidence contracts", () => {
     expect(MIGRATION_FILE > "20260725060000_technical_configuration_option_import.sql").toBe(true)
     expect(migrationSource).toContain("BEGIN;")
     expect(migrationSource).toContain("COMMIT;")
+  })
+
+  it("reads the latest function definition from concatenated migration history", () => {
+    const history = `
+CREATE OR REPLACE FUNCTION public.example_document_rpc()
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN '{"version":"old"}'::JSONB;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.example_document_rpc()
+RETURNS JSONB
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN '{"version":"current"}'::JSONB;
+END;
+$$;
+`
+
+    const block = getFunctionBlock(history, "example_document_rpc")
+    expect(block).toContain('{"version":"current"}')
+    expect(block).not.toContain('{"version":"old"}')
   })
 
   it("creates option-owned documents and exact comparison-set citations", () => {
