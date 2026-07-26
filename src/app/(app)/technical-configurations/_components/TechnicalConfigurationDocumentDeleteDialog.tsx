@@ -4,8 +4,14 @@ import { AlertDialog, Button } from "@heroui/react"
 
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 
+type TechnicalConfigurationDeleteDocument = Pick<
+  TechnicalConfigurationDocumentWire,
+  "name" | "citations"
+>
+
 interface TechnicalConfigurationDocumentDeleteDialogProps {
-  document: TechnicalConfigurationDocumentWire | null
+  document: TechnicalConfigurationDeleteDocument | null
+  affectedCitationCount?: number
   deleteError: unknown
   isSaving: boolean
   onDismiss: () => void
@@ -15,11 +21,14 @@ interface TechnicalConfigurationDocumentDeleteDialogProps {
 /** Confirms destructive evidence-document deletion and keeps mutation failures in context. */
 export function TechnicalConfigurationDocumentDeleteDialog({
   document,
+  affectedCitationCount,
   deleteError,
   isSaving,
   onDismiss,
   onConfirm,
 }: Readonly<TechnicalConfigurationDocumentDeleteDialogProps>): React.JSX.Element {
+  const citationCount = affectedCitationCount ?? document?.citations.length ?? 0
+
   return (
     <AlertDialog
       isOpen={document !== null}
@@ -40,8 +49,8 @@ export function TechnicalConfigurationDocumentDeleteDialog({
             <AlertDialog.Body>
               <p>
                 Tài liệu <strong>{document?.name}</strong>
-                {document?.citations.length
-                  ? ` đang có ${document.citations.length} trích dẫn liên kết.`
+                {citationCount
+                  ? ` đang có ${citationCount} trích dẫn liên kết.`
                   : " chưa có trích dẫn liên kết."}{" "}
                 Hành động này không thể hoàn tác.
               </p>

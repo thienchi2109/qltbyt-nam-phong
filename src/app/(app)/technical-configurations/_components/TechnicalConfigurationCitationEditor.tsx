@@ -4,7 +4,9 @@ import * as React from "react"
 import { Button, Chip, Input, Label, ListBox, Select, TextArea, TextField } from "@heroui/react"
 
 import {
+  createTechnicalConfigurationCitationEditorState,
   getTechnicalConfigurationCitationValues,
+  reduceTechnicalConfigurationCitationEditorState,
   type TechnicalConfigurationCitationSelectionSnapshot,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditorState"
 import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
@@ -17,29 +19,37 @@ export type TechnicalConfigurationCitationCriterion = {
   title: string
 }
 
-export type TechnicalConfigurationCitationSaveInput = {
-  document: TechnicalConfigurationDocumentWire
+export type TechnicalConfigurationCitationDocument = Pick<
+  TechnicalConfigurationDocumentWire,
+  "id" | "name" | "citations"
+>
+
+export type TechnicalConfigurationCitationSaveInput<
+  TDocument extends TechnicalConfigurationCitationDocument = TechnicalConfigurationDocumentWire,
+> = {
+  document: TDocument
   criterionId: string
   pageSection: string | null
   excerpt: string | null
 }
 
-type TechnicalConfigurationCitationEditorProps = {
-  documents: readonly TechnicalConfigurationDocumentWire[]
+export type TechnicalConfigurationCitationEditorProps<
+  TDocument extends TechnicalConfigurationCitationDocument,
+> = {
+  documents: readonly TDocument[]
   criteria: readonly TechnicalConfigurationCitationCriterion[]
   fixedCriterionId?: string | null
   isPending: boolean
   disabled: boolean
-  onSave: (input: TechnicalConfigurationCitationSaveInput) => Promise<unknown>
-  onDelete: (input: {
-    document: TechnicalConfigurationDocumentWire
-    citationId: string
-  }) => Promise<unknown>
+  onSave: (input: TechnicalConfigurationCitationSaveInput<TDocument>) => Promise<unknown>
+  onDelete: (input: { document: TDocument; citationId: string }) => Promise<unknown>
   onDirtyChange?: (dirty: boolean) => void
 }
 
 /** Renders controlled criterion-level citation fields with explicit persistence. */
-export function TechnicalConfigurationCitationEditor({
+export function TechnicalConfigurationCitationEditor<
+  TDocument extends TechnicalConfigurationCitationDocument,
+>({
   documents,
   criteria,
   fixedCriterionId = null,
@@ -48,21 +58,21 @@ export function TechnicalConfigurationCitationEditor({
   onSave,
   onDelete,
   onDirtyChange,
-}: Readonly<TechnicalConfigurationCitationEditorProps>): React.JSX.Element {
+}: Readonly<TechnicalConfigurationCitationEditorProps<TDocument>>): React.JSX.Element {
   const initialDocumentId = documents[0]?.id ?? null
   const initialCriterionId = fixedCriterionId ?? criteria[0]?.id ?? null
   const initialDocument = documents.find((document) => document.id === initialDocumentId) ?? null
   const initialValues = getTechnicalConfigurationCitationValues(initialDocument, initialCriterionId)
-  const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | null>(
-    initialDocumentId
+  const [editorState, dispatch] = React.useReducer(
+    reduceTechnicalConfigurationCitationEditorState,
+    createTechnicalConfigurationCitationEditorState(
+      initialDocumentId,
+      initialCriterionId,
+      initialValues
+    )
   )
-  const [selectedCriterionId, setSelectedCriterionId] = React.useState<string | null>(
-    initialCriterionId
-  )
-  const [pageSection, setPageSection] = React.useState(initialValues.pageSection)
-  const [excerpt, setExcerpt] = React.useState(initialValues.excerpt)
-  const [baseValues, setBaseValues] = React.useState(initialValues)
-  const [saveError, setSaveError] = React.useState<unknown>(null)
+  const { selectedDocumentId, selectedCriterionId, pageSection, excerpt, baseValues, saveError } =
+    editorState
   const { discardConfirmationDialog, requestDiscardConfirmation } =
     useTechnicalConfigurationDiscardConfirmation()
   const observedSelectionRef = React.useRef<TechnicalConfigurationCitationSelectionSnapshot>({
@@ -89,12 +99,7 @@ export function TechnicalConfigurationCitationEditor({
       const document = documents.find((item) => item.id === documentId) ?? null
       const values = getTechnicalConfigurationCitationValues(document, criterionId)
       observedSelectionRef.current = { documentId, criterionId, ...values }
-      setSelectedDocumentId(documentId)
-      setSelectedCriterionId(criterionId)
-      setPageSection(values.pageSection)
-      setExcerpt(values.excerpt)
-      setBaseValues(values)
-      setSaveError(null)
+      dispatch({ type: "adopt-selection", documentId, criterionId, values })
     },
     [documents]
   )
@@ -142,7 +147,7 @@ export function TechnicalConfigurationCitationEditor({
 
   const handleSave = React.useCallback(async () => {
     if (!canSave || !selectedDocument || !selectedCriterionId) return
-    setSaveError(null)
+    dispatch({ type: "save-start" })
     try {
       await onSave({
         document: selectedDocument,
@@ -150,15 +155,15 @@ export function TechnicalConfigurationCitationEditor({
         pageSection: pageSection || null,
         excerpt: excerpt || null,
       })
-      setBaseValues({ pageSection, excerpt })
+      dispatch({ type: "save-success", values: { pageSection, excerpt } })
     } catch (error) {
-      setSaveError(error)
+      dispatch({ type: "save-error", error })
     }
   }, [canSave, excerpt, onSave, pageSection, selectedCriterionId, selectedDocument])
 
   const handleDelete = React.useCallback(async () => {
     if (disabled || isPending || !selectedDocument || !selectedCitation) return
-    setSaveError(null)
+    dispatch({ type: "save-start" })
     try {
       await onDelete({
         document: selectedDocument,
@@ -170,11 +175,9 @@ export function TechnicalConfigurationCitationEditor({
         criterionId: selectedCriterionId,
         ...emptyValues,
       }
-      setPageSection("")
-      setExcerpt("")
-      setBaseValues(emptyValues)
+      dispatch({ type: "delete-success" })
     } catch (error) {
-      setSaveError(error)
+      dispatch({ type: "save-error", error })
     }
   }, [disabled, isPending, onDelete, selectedCitation, selectedCriterionId, selectedDocument])
 
@@ -266,11 +269,19 @@ export function TechnicalConfigurationCitationEditor({
         )}
       </div>
 
-      <TextField value={pageSection} onChange={setPageSection} isDisabled={disabled || isPending}>
+      <TextField
+        value={pageSection}
+        onChange={(value) => dispatch({ type: "set-page-section", value })}
+        isDisabled={disabled || isPending}
+      >
         <Label>Trang hoặc mục</Label>
         <Input placeholder="Ví dụ: Trang 12, Mục 4.2" />
       </TextField>
-      <TextField value={excerpt} onChange={setExcerpt} isDisabled={disabled || isPending}>
+      <TextField
+        value={excerpt}
+        onChange={(value) => dispatch({ type: "set-excerpt", value })}
+        isDisabled={disabled || isPending}
+      >
         <Label>Trích đoạn</Label>
         <TextArea rows={5} placeholder="Nhập nguyên văn đoạn chứng minh cho tiêu chí." />
       </TextField>

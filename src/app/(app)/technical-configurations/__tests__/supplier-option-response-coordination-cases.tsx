@@ -26,12 +26,17 @@ import {
 type ResponseCoordinationTestMocks = {
   baselineRpc: { listVersions: Mock }
   fetchMock: Mock
+  optionEvidenceRpc: {
+    listDocuments: Mock
+    createDocument: Mock
+  }
   supplierOptionRpc: SupplierOptionRpcMocks
 }
 
 export function registerSupplierOptionResponseCoordinationTests({
   baselineRpc,
   fetchMock,
+  optionEvidenceRpc,
   supplierOptionRpc,
 }: ResponseCoordinationTestMocks) {
   describe("technical configuration option response coordination", () => {
@@ -115,6 +120,79 @@ export function registerSupplierOptionResponseCoordinationTests({
 
       act(() => createRequest.resolve(jsonResponse({ data: createdSet })))
       await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+    })
+
+    it("blocks response and identity writes while option evidence is dirty or pending", async () => {
+      const user = userEvent.setup()
+      const baseline = baselineVersion()
+      const currentSupplier = supplier("supplier-1", "Công ty Thiết bị A")
+      const currentOption = option({ id: "option-1", supplierId: currentSupplier.id })
+      const evidenceCreateRequest = deferred<{
+        data: {
+          id: string
+          option_id: string
+          name: string
+          url: string
+          created_by: number
+          created_at: string
+          updated_at: string
+          affected_citation_count: number
+          citations: []
+          revision: number
+        }
+      }>()
+      baselineRpc.listVersions.mockResolvedValue({
+        data: [baseline],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      })
+      supplierOptionRpc.listSuppliers.mockResolvedValue(suppliersResponse([currentSupplier]))
+      supplierOptionRpc.listOptions.mockResolvedValue(optionsResponse([currentOption]))
+      fetchMock.mockResolvedValueOnce(jsonResponse({ data: comparisonSet(baseline) }))
+      optionEvidenceRpc.createDocument.mockImplementationOnce(() => evidenceCreateRequest.promise)
+
+      renderWithQueryClient(<TechnicalConfigurationSuppliers dossier={dossier} />)
+      const supplierNameInput = await screen.findByLabelText("Tên nhà cung cấp")
+      await user.type(supplierNameInput, " cập nhật")
+      expect(screen.getByRole("button", { name: "Lưu nhà cung cấp" })).toBeEnabled()
+
+      await user.type(await screen.findByLabelText("Tên tài liệu"), "Hồ sơ chứng minh")
+
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toBeDisabled()
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Lưu nhà cung cấp" })).toBeDisabled()
+      )
+      expect(supplierOptionRpc.updateSupplier).not.toHaveBeenCalled()
+
+      await user.type(
+        screen.getByLabelText("Đường dẫn (URL)"),
+        "https://example.com/option-evidence.pdf"
+      )
+      await user.click(screen.getByRole("button", { name: "Thêm tài liệu" }))
+
+      await waitFor(() =>
+        expect(screen.getByRole("button", { name: "Thêm nhà cung cấp" })).toBeDisabled()
+      )
+      expect(screen.getByLabelText("Phản hồi tiêu chí")).toBeDisabled()
+
+      act(() =>
+        evidenceCreateRequest.resolve({
+          data: {
+            id: "document-1",
+            option_id: currentOption.id,
+            name: "Hồ sơ chứng minh",
+            url: "https://example.com/option-evidence.pdf",
+            created_by: 1,
+            created_at: "2026-07-26T00:00:00.000Z",
+            updated_at: "2026-07-26T00:00:00.000Z",
+            affected_citation_count: 0,
+            citations: [],
+            revision: dossier.revision + 1,
+          },
+        })
+      )
+      await waitFor(() => expect(optionEvidenceRpc.createDocument).toHaveBeenCalledTimes(1))
     })
   })
 }
