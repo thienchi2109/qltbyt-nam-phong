@@ -1,4 +1,4 @@
-/** Named P7B1 evidence RPCs shared by client and server code. */
+/** Named P7B1/P9B1 evidence RPCs shared by client and server code. */
 export const DOCUMENT_RPC_FUNCTIONS = {
   listBaselineDocuments: "technical_configuration_baseline_documents_list",
   createBaselineDocument: "technical_configuration_baseline_document_create",
@@ -11,7 +11,13 @@ export const DOCUMENT_RPC_FUNCTIONS = {
   deleteReferenceDocument: "technical_configuration_reference_document_delete",
   upsertReferenceCitation: "technical_configuration_reference_citation_upsert",
   deleteReferenceCitation: "technical_configuration_reference_citation_delete",
+  listOptionDocuments: "technical_configuration_option_documents_list",
+  createOptionDocument: "technical_configuration_option_document_create",
+  updateOptionDocument: "technical_configuration_option_document_update",
+  deleteOptionDocument: "technical_configuration_option_document_delete",
+  upsertOptionCitation: "technical_configuration_option_citation_upsert",
+  deleteOptionCitation: "technical_configuration_option_citation_delete",
 } as const
 
-/** Ordered P7B1 RPC names for allowlists and contract iteration. */
+/** Ordered P7B1/P9B1 RPC names for allowlists and contract iteration. */
 export const DOCUMENT_RPC_FUNCTION_NAMES = Object.values(DOCUMENT_RPC_FUNCTIONS)
