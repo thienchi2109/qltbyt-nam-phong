@@ -2,23 +2,30 @@ import * as React from "react"
 
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 
-export interface TechnicalConfigurationDocumentDraftState {
+type TechnicalConfigurationDocumentDraftItem = Pick<
+  TechnicalConfigurationDocumentWire,
+  "id" | "name" | "url"
+>
+
+export interface TechnicalConfigurationDocumentDraftState<
+  TDocument extends TechnicalConfigurationDocumentDraftItem,
+> {
   name: string
   url: string
   selectedDocumentId: string | null
-  selectedDocument: TechnicalConfigurationDocumentWire | null
+  selectedDocument: TDocument | null
   selectedDocumentMissing: boolean
   documentDirty: boolean
   setName: React.Dispatch<React.SetStateAction<string>>
   setUrl: React.Dispatch<React.SetStateAction<string>>
   clearDraft: () => void
-  selectDocument: (document: TechnicalConfigurationDocumentWire) => void
+  selectDocument: (document: TDocument) => void
 }
 
 /** Reconciles clean document drafts with refreshed server values while preserving user edits. */
-export function useTechnicalConfigurationDocumentDraft(
-  documents: readonly TechnicalConfigurationDocumentWire[]
-): TechnicalConfigurationDocumentDraftState {
+export function useTechnicalConfigurationDocumentDraft<
+  TDocument extends TechnicalConfigurationDocumentDraftItem,
+>(documents: readonly TDocument[]): TechnicalConfigurationDocumentDraftState<TDocument> {
   const [name, setName] = React.useState("")
   const [url, setUrl] = React.useState("")
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | null>(null)
@@ -40,7 +47,7 @@ export function useTechnicalConfigurationDocumentDraft(
       : !draftMatchesAdoptedDocument &&
         (name !== selectedDocument.name || url !== selectedDocument.url)
 
-  const adoptDocument = React.useCallback((document: TechnicalConfigurationDocumentWire) => {
+  const adoptDocument = React.useCallback((document: TDocument) => {
     adoptedDocumentRef.current = {
       id: document.id,
       name: document.name,
@@ -75,7 +82,7 @@ export function useTechnicalConfigurationDocumentDraft(
   }, [])
 
   const selectDocument = React.useCallback(
-    (document: TechnicalConfigurationDocumentWire) => {
+    (document: TDocument) => {
       setSelectedDocumentId(document.id)
       adoptDocument(document)
     },

@@ -403,20 +403,20 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P9B2 - Supplier Option Evidence Workspace
 
-- [ ] P9B2.1 Thêm option-specific evidence hook/component; không mở rộng
+- [x] P9B2.1 Thêm option-specific evidence hook/component; không mở rộng
       baseline/reference document hook bằng option-specific branching.
-- [ ] P9B2.2 Reuse P6B-proven `UrlDocumentForm`/`UrlDocumentList` và
+- [x] P9B2.2 Reuse P6B-proven `UrlDocumentForm`/`UrlDocumentList` và
       P7B2-proven owner-neutral citation editor behavior.
-- [ ] P9B2.3 First citation save dùng established comparison-set
+- [x] P9B2.3 First citation save dùng established comparison-set
       get-or-create revision chain; list/open vẫn side-effect-free.
-- [ ] P9B2.4 Thêm explicit save, dirty/conflict preservation, option-level
+- [x] P9B2.4 Thêm explicit save, dirty/conflict preservation, option-level
       document reuse và delete confirmation hiển thị tổng affected citations.
-- [ ] P9B2.5 Locked baseline vẫn cho sửa option evidence; archived dossier
+- [x] P9B2.5 Locked baseline vẫn cho sửa option evidence; archived dossier
       read-only; pending evidence state chặn identity/response mutations và
       navigation.
-- [ ] P9B2.6 Enforce cumulative Equipment + baseline + option exact
+- [x] P9B2.6 Enforce cumulative Equipment + baseline + option exact
       path/named-binding AST manifest và runtime-delegation assertions.
-- [ ] P9B2.7 Rerun baseline/reference SQL + React suites cùng option evidence
+- [x] P9B2.7 Rerun baseline/reference SQL + React suites cùng option evidence
       suites; chỉ leaf này mark TC-11-S01..S05 và TC-12-S01/S02 complete.
 
 ## Phase P10A - Comparison Read Contract

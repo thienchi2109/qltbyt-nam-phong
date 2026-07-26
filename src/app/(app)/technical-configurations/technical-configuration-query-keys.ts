@@ -24,6 +24,22 @@ export function technicalConfigurationDocumentsQueryKey(baselineVersionId: strin
   return ["technical-configurations", "documents", baselineVersionId] as const
 }
 
+/** Builds the cache-key prefix for one option's documents across every baseline. */
+export function technicalConfigurationOptionDocumentsQueryKeyPrefix(optionId: string) {
+  return ["technical-configurations", "option-documents", optionId] as const
+}
+
+/** Builds the cache key for one option's shared documents and exact-baseline citations. */
+export function technicalConfigurationOptionDocumentsQueryKey(
+  optionId: string,
+  baselineVersionId: string
+) {
+  return [
+    ...technicalConfigurationOptionDocumentsQueryKeyPrefix(optionId),
+    baselineVersionId,
+  ] as const
+}
+
 /** Builds the cache key for supplier identities in one dossier. */
 export function technicalConfigurationSuppliersQueryKey(dossierId: string) {
   return ["technical-configurations", "suppliers", dossierId] as const

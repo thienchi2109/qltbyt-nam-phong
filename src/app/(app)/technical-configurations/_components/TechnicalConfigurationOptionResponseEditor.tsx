@@ -26,6 +26,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 import { TechnicalConfigurationOptionResponsePanels } from "./TechnicalConfigurationOptionResponsePanels"
+import { TechnicalConfigurationOptionDocuments } from "./TechnicalConfigurationOptionDocuments"
 
 type TechnicalConfigurationOptionResponseEditorProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -56,26 +57,42 @@ export function TechnicalConfigurationOptionResponseEditor({
   requestDiscardConfirmation,
   isExternalMutationBlocked = false,
 }: Readonly<TechnicalConfigurationOptionResponseEditorProps>) {
+  const [isResponseNavigationBlocked, setIsResponseNavigationBlocked] = React.useState(false)
+  const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
+  const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
   const state = useTechnicalConfigurationOptionResponses({
     dossier,
     option,
     baselineVersion,
     onRevisionChange,
-    onNavigationBlockedChange,
-    isMutationBlocked: isExternalMutationBlocked,
+    onNavigationBlockedChange: setIsResponseNavigationBlocked,
+    isMutationBlocked: isExternalMutationBlocked || isEvidenceNavigationBlocked,
   })
   const [isCopyConfirmationOpen, setIsCopyConfirmationOpen] = React.useState(false)
+  const isDirty = state.isDirty || isEvidenceDirty
+  const isNavigationBlocked = isResponseNavigationBlocked || isEvidenceNavigationBlocked
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- The response hook owns the draft while the supplier workspace combines cross-surface dirty state.
-    onDirtyChange?.(state.isDirty)
-  }, [onDirtyChange, state.isDirty])
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
-  React.useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+  React.useEffect(() => {
+    // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- Response and evidence mutations share one exact-baseline navigation block.
+    onNavigationBlockedChange?.(isNavigationBlocked)
+  }, [isNavigationBlocked, onNavigationBlockedChange])
+
+  React.useEffect(
+    () => () => {
+      onDirtyChange?.(false)
+      onNavigationBlockedChange?.(false)
+    },
+    [onDirtyChange, onNavigationBlockedChange]
+  )
 
   const handleCriterionChange = React.useCallback(
     (criterionId: string) => {
-      if (state.isDirty) {
+      if (isDirty) {
         requestDiscardConfirmation("Chuyển tiêu chí sẽ bỏ phản hồi chưa lưu. Tiếp tục?", () =>
           state.selectCriterion(criterionId)
         )
@@ -83,7 +100,7 @@ export function TechnicalConfigurationOptionResponseEditor({
       }
       state.selectCriterion(criterionId)
     },
-    [requestDiscardConfirmation, state.isDirty, state.selectCriterion]
+    [isDirty, requestDiscardConfirmation, state.selectCriterion]
   )
   const applyRequirementCopy = React.useCallback(() => {
     if (!state.selectedCriterion) return
@@ -177,7 +194,7 @@ export function TechnicalConfigurationOptionResponseEditor({
                   variant={criterion.id === state.selectedCriterionId ? "secondary" : "ghost"}
                   className="h-auto min-w-44 justify-start whitespace-normal text-left lg:min-w-0"
                   aria-current={criterion.id === state.selectedCriterionId ? "true" : undefined}
-                  disabled={state.isPending}
+                  disabled={state.isPending || isEvidenceNavigationBlocked}
                   onClick={() => handleCriterionChange(criterion.id)}
                 >
                   <span className="min-w-0">
@@ -234,7 +251,11 @@ export function TechnicalConfigurationOptionResponseEditor({
               criterion={state.selectedCriterion}
               draft={state.draft}
               updatedAt={state.updatedAt}
-              mode={state.isReadOnly || state.isMutationBlocked ? "read-only" : "editable"}
+              mode={
+                state.isReadOnly || state.isMutationBlocked || isEvidenceDirty
+                  ? "read-only"
+                  : "editable"
+              }
               draftState={state.isConflict ? "conflict" : state.isDirty ? "dirty" : "clean"}
               operation={state.isSaving ? "saving" : state.isReloading ? "reloading" : "idle"}
               saveStatus={state.saveStatus}
@@ -247,6 +268,20 @@ export function TechnicalConfigurationOptionResponseEditor({
               onReload={() => void state.reload()}
               onSave={() => void state.save()}
               onSaveNext={() => void handleSaveNext()}
+            />
+          ) : null}
+          {!isUnavailable && state.selectedCriterion ? (
+            <TechnicalConfigurationOptionDocuments
+              key={`${option.id}:${baselineVersion.id}:${state.selectedCriterion.id}`}
+              dossier={dossier}
+              option={option}
+              baselineVersion={baselineVersion}
+              comparisonSet={state.snapshot}
+              criterionId={state.selectedCriterion.id}
+              isExternalMutationBlocked={isExternalMutationBlocked || isResponseNavigationBlocked}
+              onDirtyChange={setIsEvidenceDirty}
+              onNavigationBlockedChange={setIsEvidenceNavigationBlocked}
+              onRevisionChange={onRevisionChange}
             />
           ) : null}
         </section>

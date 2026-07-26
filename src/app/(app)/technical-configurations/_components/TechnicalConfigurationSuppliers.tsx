@@ -54,8 +54,8 @@ export function TechnicalConfigurationSuppliers({
   const isInitialLoading = state.suppliersQuery.isLoading || state.optionsQuery.isLoading
   const isDirty = state.isDirty || isResponseDirty
   const isNavigationBlocked = isIdentityNavigationBlocked || isResponseNavigationBlocked
-  const isIdentityMutationBlocked =
-    state.isPending || state.isConflict || isResponseNavigationBlocked
+  const isIdentityActionBlocked = state.isPending || state.isConflict || isResponseNavigationBlocked
+  const isIdentityWriteBlocked = isIdentityActionBlocked || isResponseDirty
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- WorkspaceShell owns cross-tab dirty navigation while this component owns supplier/option drafts.
@@ -89,7 +89,7 @@ export function TechnicalConfigurationSuppliers({
   )
 
   const handleSupplierDeleteRequest = React.useCallback(async () => {
-    if (!selectedSupplier || isIdentityMutationBlocked) return
+    if (!selectedSupplier || isIdentityWriteBlocked) return
     const supplier = selectedSupplier
     setDeleteCountError(null)
     setIsLoadingDeleteCount(true)
@@ -106,7 +106,7 @@ export function TechnicalConfigurationSuppliers({
     } finally {
       setIsLoadingDeleteCount(false)
     }
-  }, [isIdentityMutationBlocked, selectedSupplier, state])
+  }, [isIdentityWriteBlocked, selectedSupplier, state])
 
   const handleConfirmDelete = React.useCallback(() => {
     if (!pendingDelete || isResponseNavigationBlocked) return
@@ -164,7 +164,7 @@ export function TechnicalConfigurationSuppliers({
               state.startSupplierCreate
             )
           }
-          disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
+          disabled={state.isReadOnly || isIdentityActionBlocked || isLoadingDeleteCount}
         >
           <Plus className="size-4" aria-hidden="true" />
           Thêm nhà cung cấp
@@ -222,7 +222,8 @@ export function TechnicalConfigurationSuppliers({
           state={state}
           selectedSupplier={selectedSupplier}
           isLoadingDeleteCount={isLoadingDeleteCount}
-          isMutationBlocked={isResponseNavigationBlocked}
+          isNavigationBlocked={isResponseNavigationBlocked}
+          isWriteBlocked={isIdentityWriteBlocked}
           requestIdentityChange={requestIdentityChange}
           onDeleteSupplier={() => void handleSupplierDeleteRequest()}
         />
@@ -237,7 +238,7 @@ export function TechnicalConfigurationSuppliers({
                 type="button"
                 variant="outline"
                 onClick={() => state.startOptionCreate(selectedSupplier.id)}
-                disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
+                disabled={state.isReadOnly || isIdentityActionBlocked || isLoadingDeleteCount}
               >
                 <PackagePlus className="size-4" aria-hidden="true" />
                 Thêm phương án
@@ -256,7 +257,7 @@ export function TechnicalConfigurationSuppliers({
                       state.startOptionCreate(selectedSupplier.id)
                     )
                   }
-                  disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
+                  disabled={state.isReadOnly || isIdentityActionBlocked || isLoadingDeleteCount}
                 >
                   <PackagePlus className="size-4" aria-hidden="true" />
                   Thêm phương án
@@ -267,7 +268,7 @@ export function TechnicalConfigurationSuppliers({
                 draft={state.optionDraft}
                 option={selectedOption}
                 mode={state.isCreatingOption ? "create" : "edit"}
-                disabled={state.isReadOnly || isIdentityMutationBlocked || isLoadingDeleteCount}
+                disabled={state.isReadOnly || isIdentityWriteBlocked || isLoadingDeleteCount}
                 isPending={state.isPending}
                 onChange={state.updateOptionDraft}
                 onSave={() => void state.saveOption()}

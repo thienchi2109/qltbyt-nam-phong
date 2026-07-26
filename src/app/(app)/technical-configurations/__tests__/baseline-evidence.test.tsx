@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it, vi } from "vitest"
 
@@ -59,5 +59,18 @@ describe("TechnicalConfigurationCitationEditor", () => {
         )
       )
     ).toBe(true)
+  })
+
+  it("remains owner-neutral without option-specific branches", () => {
+    const source = readFileSync(
+      join(
+        process.cwd(),
+        "src/app/(app)/technical-configurations/_components/TechnicalConfigurationCitationEditor.tsx"
+      ),
+      "utf8"
+    )
+
+    expect(source).not.toContain("TechnicalConfigurationOptionDocumentWire")
+    expect(source).not.toMatch(/\boption_id\b/)
   })
 })

@@ -16,7 +16,8 @@ type TechnicalConfigurationSupplierSelectorProps = {
   state: TechnicalConfigurationOptionsState
   selectedSupplier: TechnicalConfigurationSupplierWire | null
   isLoadingDeleteCount: boolean
-  isMutationBlocked: boolean
+  isNavigationBlocked: boolean
+  isWriteBlocked: boolean
   requestIdentityChange: (description: React.ReactNode, action: () => void) => void
   onDeleteSupplier: () => void
 }
@@ -26,7 +27,8 @@ export function TechnicalConfigurationSupplierSelector({
   state,
   selectedSupplier,
   isLoadingDeleteCount,
-  isMutationBlocked,
+  isNavigationBlocked,
+  isWriteBlocked,
   requestIdentityChange,
   onDeleteSupplier,
 }: Readonly<TechnicalConfigurationSupplierSelectorProps>) {
@@ -59,7 +61,10 @@ export function TechnicalConfigurationSupplierSelector({
                     )
                   }
                   disabled={
-                    state.isPending || state.isConflict || isLoadingDeleteCount || isMutationBlocked
+                    state.isPending ||
+                    state.isConflict ||
+                    isLoadingDeleteCount ||
+                    isNavigationBlocked
                   }
                 >
                   <span className="break-words font-medium">{supplier.name}</span>
@@ -84,7 +89,7 @@ export function TechnicalConfigurationSupplierSelector({
                         state.isPending ||
                         state.isConflict ||
                         isLoadingDeleteCount ||
-                        isMutationBlocked
+                        isNavigationBlocked
                       }
                     >
                       <span className="break-words">{option.display_label}</span>
@@ -110,7 +115,7 @@ export function TechnicalConfigurationSupplierSelector({
                 state.isPending ||
                 state.isConflict ||
                 isLoadingDeleteCount ||
-                isMutationBlocked
+                isWriteBlocked
               }
             />
           </div>
@@ -123,7 +128,7 @@ export function TechnicalConfigurationSupplierSelector({
                 state.isPending ||
                 state.isConflict ||
                 isLoadingDeleteCount ||
-                isMutationBlocked
+                isWriteBlocked
               }
             >
               <Save className="size-4" aria-hidden="true" />
@@ -138,7 +143,7 @@ export function TechnicalConfigurationSupplierSelector({
                 state.isPending ||
                 state.isConflict ||
                 isLoadingDeleteCount ||
-                isMutationBlocked ||
+                isWriteBlocked ||
                 state.isCreatingSupplier ||
                 !selectedSupplier
               }

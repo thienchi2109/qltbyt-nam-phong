@@ -13,19 +13,22 @@ const equipmentConsumerPath =
   "app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailFilesTab.tsx"
 const baselineConsumerPath =
   "app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDocuments.tsx"
+const optionConsumerPath =
+  "app/(app)/technical-configurations/_components/TechnicalConfigurationOptionDocuments.tsx"
 
 describe("URL document consumer source contract", () => {
-  it("keeps the cumulative P7B2 consumer manifest exact", () => {
+  it("keeps the cumulative P9B2 consumer manifest exact", () => {
     assertExactSet(
       collectUrlDocumentConsumers(applicationSourceRoot),
-      [equipmentConsumerPath, baselineConsumerPath],
-      "P7B2 URL document consumers"
+      [equipmentConsumerPath, baselineConsumerPath, optionConsumerPath],
+      "P9B2 URL document consumers"
     )
   })
 
   it.each([
     ["Equipment", equipmentConsumerPath],
     ["baseline evidence", baselineConsumerPath],
+    ["option evidence", optionConsumerPath],
   ])("delegates %s presentation through exact shared bindings", (_label, consumerPath) => {
     const source = readFileSync(join(applicationSourceRoot, consumerPath), "utf8")
     const contract = inspectUrlDocumentConsumer(source, consumerPath)

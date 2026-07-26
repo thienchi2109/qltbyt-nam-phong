@@ -29,6 +29,15 @@ const supplierOptionRpc = vi.hoisted(() => ({
 
 const optionResponseFetch = vi.hoisted(() => vi.fn())
 
+const optionEvidenceRpc = vi.hoisted(() => ({
+  listDocuments: vi.fn(),
+  createDocument: vi.fn(),
+  updateDocument: vi.fn(),
+  deleteDocument: vi.fn(),
+  upsertCitation: vi.fn(),
+  deleteCitation: vi.fn(),
+}))
+
 const workbookCodec = vi.hoisted(() => ({
   readWorkbook: vi.fn(),
   createParser: vi.fn(),
@@ -49,6 +58,15 @@ vi.mock("@/app/(app)/technical-configurations/technical-configuration-supplier-o
   createTechnicalConfigurationOption: supplierOptionRpc.createOption,
   updateTechnicalConfigurationOption: supplierOptionRpc.updateOption,
   deleteTechnicalConfigurationOption: supplierOptionRpc.deleteOption,
+}))
+
+vi.mock("@/app/(app)/technical-configurations/technical-configuration-document-rpc", () => ({
+  listTechnicalConfigurationOptionDocuments: optionEvidenceRpc.listDocuments,
+  createTechnicalConfigurationOptionDocument: optionEvidenceRpc.createDocument,
+  updateTechnicalConfigurationOptionDocument: optionEvidenceRpc.updateDocument,
+  deleteTechnicalConfigurationOptionDocument: optionEvidenceRpc.deleteDocument,
+  upsertTechnicalConfigurationOptionCitation: optionEvidenceRpc.upsertCitation,
+  deleteTechnicalConfigurationOptionCitation: optionEvidenceRpc.deleteCitation,
 }))
 
 vi.mock("@/lib/excel-utils", () => ({
@@ -79,6 +97,13 @@ beforeEach(() => {
     page_size: 100,
   })
   optionResponseFetch.mockReset()
+  Object.values(optionEvidenceRpc).forEach((mock) => mock.mockReset())
+  optionEvidenceRpc.listDocuments.mockResolvedValue({
+    data: [],
+    total: 0,
+    page: 1,
+    page_size: 100,
+  })
 })
 
 registerSupplierOptionHookTests(supplierOptionRpc)
@@ -114,6 +139,7 @@ registerSupplierOptionResponseRecoveryTests({
 registerSupplierOptionResponseCoordinationTests({
   baselineRpc,
   fetchMock: optionResponseFetch,
+  optionEvidenceRpc,
   supplierOptionRpc,
 })
 registerSupplierOptionResponseAvailabilityTests({
