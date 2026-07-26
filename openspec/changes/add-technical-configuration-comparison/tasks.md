@@ -383,21 +383,21 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P9B1 - Supplier Option Evidence Contracts
 
-- [ ] P9B1.1 Thêm option-level document URL metadata và exact-comparison-set
+- [x] P9B1.1 Thêm option-level document URL metadata và exact-comparison-set
       criterion citations với composite ownership/FK guards.
-- [ ] P9B1.2 Document được dùng chung cho option trên nhiều baseline; citation
+- [x] P9B1.2 Document được dùng chung cho option trên nhiều baseline; citation
       chỉ thuộc exact option + baseline + criterion.
-- [ ] P9B1.3 List theo option + baseline không tạo comparison set, trả document
+- [x] P9B1.3 List theo option + baseline không tạo comparison set, trả document
       dùng chung, citations của exact set và tổng affected citation count trên
       mọi baseline.
-- [ ] P9B1.4 Reuse authoritative P7B1 HTTP(S) validator trong option document
+- [x] P9B1.4 Reuse authoritative P7B1 HTTP(S) validator trong option document
       create/update; exact caller set tăng từ bốn lên sáu.
-- [ ] P9B1.5 Document/citation mutations dùng dossier revision, vẫn cho phép khi
+- [x] P9B1.5 Document/citation mutations dùng dossier revision, vẫn cho phép khi
       baseline locked và từ chối khi dossier archived.
-- [ ] P9B1.6 Confirmed document delete xóa document cùng mọi citation liên quan
+- [x] P9B1.6 Confirmed document delete xóa document cùng mọi citation liên quan
       trong một transaction; không có unconfirmed mutation.
-- [ ] P9B1.7 Thêm typed RPC names/wire types/wrappers/allowlist mà chưa mở UI.
-- [ ] P9B1.8 Chạy migration/source, role/claim, RLS/grants/search_path,
+- [x] P9B1.7 Thêm typed RPC names/wire types/wrappers/allowlist mà chưa mở UI.
+- [x] P9B1.8 Chạy migration/source, role/claim, RLS/grants/search_path,
       owner/version isolation, raw URL, affected-count, cascade, stale revision
       và exact-six-caller phase gates.
 

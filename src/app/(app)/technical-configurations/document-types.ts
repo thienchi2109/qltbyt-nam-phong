@@ -51,6 +51,39 @@ export interface TechnicalConfigurationCitationDeleteWireResponse {
   }
 }
 
+export interface TechnicalConfigurationOptionDocumentWire {
+  id: string
+  option_id: string
+  name: string
+  url: string
+  created_by: number
+  created_at: string
+  updated_at: string
+  affected_citation_count: number
+  citations: TechnicalConfigurationCitationWire[]
+}
+
+export interface TechnicalConfigurationOptionDocumentsListWireResponse {
+  data: TechnicalConfigurationOptionDocumentWire[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface TechnicalConfigurationOptionDocumentMutationWireResponse {
+  data: TechnicalConfigurationOptionDocumentWire & {
+    revision: number
+  }
+}
+
+export interface TechnicalConfigurationOptionDocumentDeleteWireResponse {
+  data: {
+    id: string
+    revision: number
+    affected_citation_count: number
+  }
+}
+
 export interface TechnicalConfigurationBaselineDocumentsListRpcArgs {
   p_baseline_version_id: string
   p_page?: number
@@ -118,5 +151,45 @@ export interface TechnicalConfigurationReferenceCitationUpsertRpcArgs {
 
 export interface TechnicalConfigurationReferenceCitationDeleteRpcArgs {
   p_reference_citation_id: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionDocumentsListRpcArgs {
+  p_option_id: string
+  p_baseline_version_id: string
+  p_page?: number
+  p_page_size?: number
+}
+
+export interface TechnicalConfigurationOptionDocumentCreateRpcArgs {
+  p_option_id: string
+  p_name: string
+  p_url: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionDocumentUpdateRpcArgs {
+  p_option_document_id: string
+  p_name: string
+  p_url: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionDocumentDeleteRpcArgs {
+  p_option_document_id: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionCitationUpsertRpcArgs {
+  p_option_document_id: string
+  p_comparison_set_id: string
+  p_criterion_id: string
+  p_page_section: string | null
+  p_excerpt: string | null
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationOptionCitationDeleteRpcArgs {
+  p_option_citation_id: string
   p_expected_revision: number
 }

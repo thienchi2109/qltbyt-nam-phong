@@ -298,4 +298,81 @@ describe("technical configuration document RPC adapter", () => {
     expect(documentDeleteResult).toEqual(documentDelete)
     expect(citationDeleteResult).toEqual(citationDelete)
   })
+
+  it("delegates the six dormant P9B1 option evidence wrappers unchanged", async () => {
+    const { DOCUMENT_RPC_FUNCTIONS } = await importDocumentRpcManifest()
+    const adapter = await importDocumentRpcAdapter()
+    const cases = [
+      [
+        "listTechnicalConfigurationOptionDocuments",
+        DOCUMENT_RPC_FUNCTIONS.listOptionDocuments,
+        {
+          p_option_id: "option-1",
+          p_baseline_version_id: "version-1",
+          p_page: 2,
+          p_page_size: 25,
+        },
+      ],
+      [
+        "createTechnicalConfigurationOptionDocument",
+        DOCUMENT_RPC_FUNCTIONS.createOptionDocument,
+        {
+          p_option_id: "option-1",
+          p_name: "Shared guide",
+          p_url: "https://example.com/guide.pdf",
+          p_expected_revision: 1,
+        },
+      ],
+      [
+        "updateTechnicalConfigurationOptionDocument",
+        DOCUMENT_RPC_FUNCTIONS.updateOptionDocument,
+        {
+          p_option_document_id: "option-document-1",
+          p_name: "Updated guide",
+          p_url: "https://example.com/updated.pdf",
+          p_expected_revision: 2,
+        },
+      ],
+      [
+        "deleteTechnicalConfigurationOptionDocument",
+        DOCUMENT_RPC_FUNCTIONS.deleteOptionDocument,
+        {
+          p_option_document_id: "option-document-1",
+          p_expected_revision: 3,
+        },
+      ],
+      [
+        "upsertTechnicalConfigurationOptionCitation",
+        DOCUMENT_RPC_FUNCTIONS.upsertOptionCitation,
+        {
+          p_option_document_id: "option-document-1",
+          p_comparison_set_id: "comparison-set-1",
+          p_criterion_id: "criterion-1",
+          p_page_section: "p. 4",
+          p_excerpt: "Exact criterion evidence",
+          p_expected_revision: 4,
+        },
+      ],
+      [
+        "deleteTechnicalConfigurationOptionCitation",
+        DOCUMENT_RPC_FUNCTIONS.deleteOptionCitation,
+        {
+          p_option_citation_id: "option-citation-1",
+          p_expected_revision: 5,
+        },
+      ],
+    ] as const
+
+    callRpcMock.mockResolvedValue({ data: null })
+    for (const [wrapperName, rpcName, args] of cases) {
+      const wrapper = adapter[wrapperName]
+      expect(typeof wrapper).toBe("function")
+      if (typeof wrapper === "function") {
+        await wrapper(args)
+      }
+      expect(callRpcMock).toHaveBeenLastCalledWith(rpcName, args, {
+        signal: undefined,
+      })
+    }
+  })
 })

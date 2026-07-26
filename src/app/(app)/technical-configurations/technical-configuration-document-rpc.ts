@@ -12,6 +12,15 @@ import type {
   TechnicalConfigurationDocumentDeleteWireResponse,
   TechnicalConfigurationDocumentMutationWireResponse,
   TechnicalConfigurationDocumentsListWireResponse,
+  TechnicalConfigurationOptionCitationDeleteRpcArgs,
+  TechnicalConfigurationOptionCitationUpsertRpcArgs,
+  TechnicalConfigurationOptionDocumentCreateRpcArgs,
+  TechnicalConfigurationOptionDocumentDeleteRpcArgs,
+  TechnicalConfigurationOptionDocumentDeleteWireResponse,
+  TechnicalConfigurationOptionDocumentsListRpcArgs,
+  TechnicalConfigurationOptionDocumentsListWireResponse,
+  TechnicalConfigurationOptionDocumentMutationWireResponse,
+  TechnicalConfigurationOptionDocumentUpdateRpcArgs,
   TechnicalConfigurationReferenceCitationDeleteRpcArgs,
   TechnicalConfigurationReferenceCitationUpsertRpcArgs,
   TechnicalConfigurationReferenceDocumentCreateRpcArgs,
@@ -125,6 +134,66 @@ export function deleteTechnicalConfigurationReferenceCitation(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationCitationDeleteWireResponse> {
   return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.deleteReferenceCitation, args, {
+    signal,
+  })
+}
+
+/** Lists option-owned evidence documents for one exact baseline comparison. */
+export function listTechnicalConfigurationOptionDocuments(
+  args: TechnicalConfigurationOptionDocumentsListRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionDocumentsListWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.listOptionDocuments, args, {
+    signal,
+  })
+}
+
+/** Creates one option-owned evidence document. */
+export function createTechnicalConfigurationOptionDocument(
+  args: TechnicalConfigurationOptionDocumentCreateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionDocumentMutationWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.createOptionDocument, args, {
+    signal,
+  })
+}
+
+/** Updates one option-owned evidence document with dossier revision control. */
+export function updateTechnicalConfigurationOptionDocument(
+  args: TechnicalConfigurationOptionDocumentUpdateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionDocumentMutationWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.updateOptionDocument, args, {
+    signal,
+  })
+}
+
+/** Deletes an option document and all exact-baseline citations linked to it. */
+export function deleteTechnicalConfigurationOptionDocument(
+  args: TechnicalConfigurationOptionDocumentDeleteRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationOptionDocumentDeleteWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.deleteOptionDocument, args, {
+    signal,
+  })
+}
+
+/** Creates or updates an option citation for one exact comparison-set criterion. */
+export function upsertTechnicalConfigurationOptionCitation(
+  args: TechnicalConfigurationOptionCitationUpsertRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationCitationMutationWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.upsertOptionCitation, args, {
+    signal,
+  })
+}
+
+/** Deletes one exact option citation with dossier revision control. */
+export function deleteTechnicalConfigurationOptionCitation(
+  args: TechnicalConfigurationOptionCitationDeleteRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationCitationDeleteWireResponse> {
+  return callTechnicalConfigurationRpc(DOCUMENT_RPC_FUNCTIONS.deleteOptionCitation, args, {
     signal,
   })
 }

@@ -39,6 +39,15 @@ const REFERENCE_DOCUMENT_RPC_FUNCTIONS = [
   "technical_configuration_reference_citation_delete",
 ] as const
 
+const OPTION_DOCUMENT_RPC_FUNCTIONS = [
+  "technical_configuration_option_documents_list",
+  "technical_configuration_option_document_create",
+  "technical_configuration_option_document_update",
+  "technical_configuration_option_document_delete",
+  "technical_configuration_option_citation_upsert",
+  "technical_configuration_option_citation_delete",
+] as const
+
 const P7A1_REFERENCE_RPC_FUNCTIONS = [
   "technical_configuration_reference_products_list",
   "technical_configuration_reference_product_create",
@@ -106,7 +115,7 @@ describe("technical configuration dossier RPC whitelist", () => {
 })
 
 describe("technical configuration baseline RPC whitelist", () => {
-  it("keeps the ordered P7B1 document RPC manifest split by owner", async () => {
+  it("keeps the ordered P7B1/P9B1 document RPC manifest split by owner", async () => {
     const { DOCUMENT_RPC_FUNCTION_NAMES } = (await vi.importActual(
       "@/lib/technical-configuration-document-rpcs"
     )) as { DOCUMENT_RPC_FUNCTION_NAMES: readonly string[] }
@@ -114,6 +123,7 @@ describe("technical configuration baseline RPC whitelist", () => {
     expect(DOCUMENT_RPC_FUNCTION_NAMES).toEqual([
       ...BASELINE_DOCUMENT_RPC_FUNCTIONS,
       ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
+      ...OPTION_DOCUMENT_RPC_FUNCTIONS,
     ])
   })
 
@@ -191,7 +201,9 @@ describe("technical configuration option RPC whitelist", () => {
           fn === "technical_configuration_options_list" ||
           (fn.startsWith("technical_configuration_option_") &&
             !fn.startsWith("technical_configuration_option_import_") &&
-            !fn.startsWith("technical_configuration_option_response_"))
+            !fn.startsWith("technical_configuration_option_response_") &&
+            !fn.startsWith("technical_configuration_option_document") &&
+            !fn.startsWith("technical_configuration_option_citation_"))
       )
     ).toEqual(P8A2_OPTION_RPC_FUNCTIONS)
   })
@@ -202,6 +214,29 @@ describe("technical configuration option RPC whitelist", () => {
     expect(response.status).toBe(411)
     await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
+
+  it("allowlists exactly the six P9B1 option evidence RPCs", () => {
+    expect(
+      [...ALLOWED_FUNCTIONS].filter(
+        (fn) =>
+          fn === "technical_configuration_option_documents_list" ||
+          fn.startsWith("technical_configuration_option_document_") ||
+          fn.startsWith("technical_configuration_option_citation_")
+      )
+    ).toEqual(OPTION_DOCUMENT_RPC_FUNCTIONS)
+  })
+
+  it.each(OPTION_DOCUMENT_RPC_FUNCTIONS)(
+    'allows option evidence RPC "%s" through the whitelist',
+    async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({
+        error: "Content-Length header required",
+      })
+    }
+  )
 })
 
 describe("technical configuration option response RPC whitelist", () => {
