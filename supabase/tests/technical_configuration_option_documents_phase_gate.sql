@@ -1,4 +1,6 @@
 -- Rollback-only P9B1 option evidence contract and behavior gate.
+-- CREATE TRIGGER holds a SHARE ROW EXCLUSIVE lock on the citation table until
+-- ROLLBACK, so run this gate only during a quiesced maintenance window.
 BEGIN;
 SET LOCAL request.jwt.claims = '{}';
 

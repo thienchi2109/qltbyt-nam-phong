@@ -387,6 +387,8 @@ $$;
 
   it("ships the rollback-only P9B1 phase gate contract", () => {
     expect(existsSync(PHASE_GATE_PATH)).toBe(true)
+    expect(phaseGateSource).toContain("SHARE ROW EXCLUSIVE")
+    expect(phaseGateSource).toContain("quiesced maintenance window")
     for (const marker of [
       "BEGIN;",
       "pg_advisory_xact_lock",
