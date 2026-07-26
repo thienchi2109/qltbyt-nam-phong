@@ -131,7 +131,6 @@ describe("P9B2 shared option-evidence delegation", () => {
             {
               id: "group-1",
               baseline_version_id: baselineVersion.id,
-              code: "NHOM-01",
               name: "Yêu cầu chung",
               sort_order: 1,
               created_at: baselineVersion.created_at,
@@ -141,11 +140,13 @@ describe("P9B2 shared option-evidence delegation", () => {
               criteria: [
                 {
                   id: "criterion-1",
-                  baseline_group_id: "group-1",
+                  baseline_version_id: baselineVersion.id,
+                  group_id: "group-1",
                   criterion_code: "TC-0001",
                   title: "Nguồn điện",
                   requirement_text: "220V",
                   sort_order: 1,
+                  source_criterion_id: null,
                   created_at: baselineVersion.created_at,
                   created_by: 1,
                   updated_at: baselineVersion.updated_at,
