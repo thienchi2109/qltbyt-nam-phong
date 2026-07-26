@@ -19,7 +19,7 @@ export type TechnicalConfigurationCitationCriterion = {
   title: string
 }
 
-type TechnicalConfigurationCitationDocument = Pick<
+export type TechnicalConfigurationCitationDocument = Pick<
   TechnicalConfigurationDocumentWire,
   "id" | "name" | "citations"
 >
@@ -33,7 +33,7 @@ export type TechnicalConfigurationCitationSaveInput<
   excerpt: string | null
 }
 
-type TechnicalConfigurationCitationEditorProps<
+export type TechnicalConfigurationCitationEditorProps<
   TDocument extends TechnicalConfigurationCitationDocument,
 > = {
   documents: readonly TDocument[]

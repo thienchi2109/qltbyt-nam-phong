@@ -2,7 +2,7 @@ import * as React from "react"
 
 import type { TechnicalConfigurationDocumentWire } from "@/app/(app)/technical-configurations/document-types"
 
-type TechnicalConfigurationDocumentDraftItem = Pick<
+export type TechnicalConfigurationDocumentDraftItem = Pick<
   TechnicalConfigurationDocumentWire,
   "id" | "name" | "url"
 >

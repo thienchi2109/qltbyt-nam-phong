@@ -97,9 +97,16 @@ export function TechnicalConfigurationOptionDocuments({
   const isDirty = documentDirty || citationDirty
 
   React.useEffect(() => {
+    // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- The evidence component owns both drafts while the supplier workspace combines cross-surface dirty state.
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
-  React.useEffect(() => () => onDirtyChange?.(false), [onDirtyChange])
+  React.useEffect(
+    () => () => {
+      // react-doctor-disable-next-line react-doctor/no-prop-callback-in-effect, react-doctor/no-pass-data-to-parent, react-doctor/no-pass-live-state-to-parent -- Clear the evidence contribution when this exact-baseline editor unmounts.
+      onDirtyChange?.(false)
+    },
+    [onDirtyChange]
+  )
 
   const resetDraft = React.useCallback(() => {
     if (documentDirty) {
