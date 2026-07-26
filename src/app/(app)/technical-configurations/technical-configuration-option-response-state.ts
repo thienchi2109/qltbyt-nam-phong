@@ -18,10 +18,25 @@ export type TechnicalConfigurationOptionResponseDraftPatch =
 
 export type TechnicalConfigurationOptionResponseCriterionStatus = "empty" | "persisted" | "dirty"
 
+export type TechnicalConfigurationOptionResponseInitialState = {
+  selectedCriterionId: string | null
+  snapshot: TechnicalConfigurationComparisonSetWire | null
+  draft: TechnicalConfigurationOptionResponseDraft
+}
+
 /** Empty local draft used when an exact-baseline comparison set has no response yet. */
 export const EMPTY_OPTION_RESPONSE_DRAFT: TechnicalConfigurationOptionResponseDraft = {
   responseText: "",
   supplementaryInformation: "",
+}
+
+/** Prevents exact-baseline response snapshots from moving backward in dossier revision. */
+export function selectNewestTechnicalConfigurationOptionResponseSnapshot(
+  current: TechnicalConfigurationComparisonSetWire | null | undefined,
+  incoming: TechnicalConfigurationComparisonSetWire | null
+): TechnicalConfigurationComparisonSetWire | null {
+  if (current && (!incoming || current.revision > incoming.revision)) return current
+  return incoming
 }
 
 /** Flattens exact-version criteria without changing the canonical baseline snapshot. */
@@ -78,6 +93,21 @@ export function toTechnicalConfigurationOptionResponseDraft(
   return {
     responseText: response.response_text,
     supplementaryInformation: response.supplementary_information,
+  }
+}
+
+/** Creates the first selected criterion, snapshot, and local draft for one response query. */
+export function createTechnicalConfigurationOptionResponseInitialState(
+  criteria: TechnicalConfigurationBaselineCriterionWire[],
+  snapshot: TechnicalConfigurationComparisonSetWire | null
+): TechnicalConfigurationOptionResponseInitialState {
+  const selectedCriterionId = criteria[0]?.id ?? null
+  return {
+    selectedCriterionId,
+    snapshot,
+    draft: toTechnicalConfigurationOptionResponseDraft(
+      findTechnicalConfigurationOptionResponse(snapshot, selectedCriterionId)
+    ),
   }
 }
 

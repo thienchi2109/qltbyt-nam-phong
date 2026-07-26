@@ -255,6 +255,33 @@ describe("technical configuration baseline workspace integration", () => {
     }
   })
 
+  it("blocks outer back and tab navigation while the option workspace is pending", async () => {
+    const user = userEvent.setup()
+    const onBack = vi.fn()
+    baselineTabMock.dirty = false
+    supplierOptionsMock.dirty = true
+    supplierOptionsMock.navigationBlocked = true
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
+      await user.click(screen.getByRole("tab", { name: "Phương án" }))
+      expect(await screen.findByText(/Supplier option workspace revision/)).toBeInTheDocument()
+
+      const backButton = screen.getByRole("button", { name: "Danh sách hồ sơ" })
+      expect(backButton).toBeDisabled()
+      await user.click(backButton)
+      await user.click(screen.getByRole("tab", { name: "Sản phẩm tham chiếu" }))
+
+      expect(onBack).not.toHaveBeenCalled()
+      expect(screen.getByText(/Supplier option workspace revision/)).toBeInTheDocument()
+      expect(screen.queryByText("Reference product workspace")).not.toBeInTheDocument()
+    } finally {
+      baselineTabMock.dirty = true
+      supplierOptionsMock.dirty = false
+      supplierOptionsMock.navigationBlocked = false
+    }
+  })
+
   it("propagates an option mutation revision to another workspace tab", async () => {
     const user = userEvent.setup()
     baselineTabMock.dirty = false

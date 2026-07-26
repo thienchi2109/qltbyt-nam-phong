@@ -35,6 +35,7 @@ type TechnicalConfigurationOptionResponseEditorProps = {
   onNavigationBlockedChange?: (blocked: boolean) => void
   onRevisionChange?: (revision: number) => void
   requestDiscardConfirmation: (description: React.ReactNode, action: () => void) => void
+  isExternalMutationBlocked?: boolean
 }
 
 const CRITERION_STATUS_LABELS: Record<TechnicalConfigurationOptionResponseCriterionStatus, string> =
@@ -53,6 +54,7 @@ export function TechnicalConfigurationOptionResponseEditor({
   onNavigationBlockedChange,
   onRevisionChange,
   requestDiscardConfirmation,
+  isExternalMutationBlocked = false,
 }: Readonly<TechnicalConfigurationOptionResponseEditorProps>) {
   const state = useTechnicalConfigurationOptionResponses({
     dossier,
@@ -60,6 +62,7 @@ export function TechnicalConfigurationOptionResponseEditor({
     baselineVersion,
     onRevisionChange,
     onNavigationBlockedChange,
+    isMutationBlocked: isExternalMutationBlocked,
   })
   const [isCopyConfirmationOpen, setIsCopyConfirmationOpen] = React.useState(false)
 
@@ -231,7 +234,7 @@ export function TechnicalConfigurationOptionResponseEditor({
               criterion={state.selectedCriterion}
               draft={state.draft}
               updatedAt={state.updatedAt}
-              mode={state.isReadOnly ? "read-only" : "editable"}
+              mode={state.isReadOnly || state.isMutationBlocked ? "read-only" : "editable"}
               draftState={state.isConflict ? "conflict" : state.isDirty ? "dirty" : "clean"}
               operation={state.isSaving ? "saving" : state.isReloading ? "reloading" : "idle"}
               saveStatus={state.saveStatus}
@@ -249,12 +252,12 @@ export function TechnicalConfigurationOptionResponseEditor({
         </section>
       </div>
       <DestructiveConfirmDialog
-        open={isCopyConfirmationOpen && !state.isReadOnly}
+        open={isCopyConfirmationOpen && !state.isReadOnly && !state.isMutationBlocked}
         onOpenChange={setIsCopyConfirmationOpen}
         title="Ghi đè phản hồi hiện tại?"
         description="Phản hồi hiện tại sẽ được thay bằng nội dung cấu hình cơ bản. Thông tin bổ sung được giữ nguyên."
         confirmLabel="Ghi đè phản hồi"
-        isPending={state.isPending || state.isReadOnly}
+        isPending={state.isPending || state.isReadOnly || state.isMutationBlocked}
         onConfirm={handleConfirmRequirementCopy}
       />
     </div>
