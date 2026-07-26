@@ -99,7 +99,10 @@ export function getTechnicalConfigurationCitationValues(
   document: TechnicalConfigurationCitationValuesDocument | null,
   criterionId: string | null
 ): TechnicalConfigurationCitationValues {
-  const citation = document?.citations.find((item) => item.criterion_id === criterionId)
+  if (!document || !criterionId) {
+    return { pageSection: "", excerpt: "" }
+  }
+  const citation = document.citations.find((item) => item.criterion_id === criterionId)
   return {
     pageSection: citation?.page_section ?? "",
     excerpt: citation?.excerpt ?? "",

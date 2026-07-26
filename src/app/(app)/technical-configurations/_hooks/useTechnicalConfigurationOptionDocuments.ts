@@ -130,13 +130,8 @@ export function useTechnicalConfigurationOptionDocuments({
     ) ?? null
   const comparisonSetRef = React.useRef(comparisonSet ?? cachedComparisonSet)
   React.useEffect(() => {
-    if (
-      comparisonSet &&
-      comparisonSet.revision >= (comparisonSetRef.current?.revision ?? Number.NEGATIVE_INFINITY)
-    ) {
-      comparisonSetRef.current = comparisonSet
-    }
-  }, [comparisonSet])
+    comparisonSetRef.current = comparisonSet ?? cachedComparisonSet
+  }, [baselineVersion.id, cachedComparisonSet, comparisonSet, option.id])
   const { commitRevision, revisionRef } = useTechnicalConfigurationOptionResponseRevision({
     dossier,
     initialRevision: Math.max(

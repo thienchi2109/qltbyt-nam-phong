@@ -158,6 +158,81 @@ export function registerOptionEvidenceWorkspaceTests(rpc: OptionEvidenceRpcMocks
       expect(rpc.getOrCreateComparisonSet).not.toHaveBeenCalled()
     })
 
+    it("switches to the exact comparison set when the selected option changes", async () => {
+      const user = userEvent.setup()
+      const firstOption = option({ id: "option-1" })
+      const secondOption = option({ id: "option-2" })
+      const firstBaseline = baselineVersion({ id: "baseline-1" })
+      const secondBaseline = baselineVersion({ id: "baseline-2" })
+      const secondCriterionId = secondBaseline.groups[0]?.criteria[0]?.id ?? ""
+      const firstComparisonSet = {
+        ...comparisonSet(firstBaseline, [], dossier.revision + 5),
+        id: "comparison-set-option-1",
+        option_id: firstOption.id,
+      }
+      const secondComparisonSet = {
+        ...comparisonSet(secondBaseline, [], dossier.revision + 1),
+        id: "comparison-set-option-2",
+        option_id: secondOption.id,
+      }
+      const firstDocument = optionDocument({ id: "document-option-1" })
+      const secondDocument = {
+        ...optionDocument({ id: "document-option-2" }),
+        option_id: secondOption.id,
+      }
+      rpc.listDocuments
+        .mockResolvedValueOnce(documentsResponse([firstDocument]))
+        .mockResolvedValueOnce(documentsResponse([secondDocument]))
+      rpc.upsertCitation.mockResolvedValue({
+        data: {
+          id: "citation-option-2",
+          criterion_id: secondCriterionId,
+          page_section: "Trang 8",
+          excerpt: "Đúng phương án 2",
+          revision: firstComparisonSet.revision + 1,
+        },
+      })
+      const queryClient = createTestQueryClient()
+      const view = render(
+        <TechnicalConfigurationOptionDocuments
+          dossier={dossier}
+          option={firstOption}
+          baselineVersion={firstBaseline}
+          comparisonSet={firstComparisonSet}
+          criterionId={firstBaseline.groups[0]?.criteria[0]?.id}
+        />,
+        { wrapper: createReactQueryWrapper(queryClient) }
+      )
+      await screen.findByRole("link", {
+        name: `${firstDocument.name} (mở trong tab mới)`,
+      })
+
+      view.rerender(
+        <TechnicalConfigurationOptionDocuments
+          dossier={dossier}
+          option={secondOption}
+          baselineVersion={secondBaseline}
+          comparisonSet={secondComparisonSet}
+          criterionId={secondCriterionId}
+        />
+      )
+      await screen.findByRole("link", {
+        name: `${secondDocument.name} (mở trong tab mới)`,
+      })
+      await user.type(screen.getByLabelText("Trang hoặc mục"), "Trang 8")
+      await user.type(screen.getByLabelText("Trích đoạn"), "Đúng phương án 2")
+      await user.click(screen.getByRole("button", { name: "Lưu trích dẫn" }))
+
+      await waitFor(() =>
+        expect(rpc.upsertCitation).toHaveBeenCalledWith(
+          expect.objectContaining({
+            p_comparison_set_id: secondComparisonSet.id,
+          })
+        )
+      )
+      expect(rpc.getOrCreateComparisonSet).not.toHaveBeenCalled()
+    })
+
     it("shows the global affected citation count and mutates only after confirmation", async () => {
       const user = userEvent.setup()
       const document = optionDocument({ affectedCitationCount: 7 })
