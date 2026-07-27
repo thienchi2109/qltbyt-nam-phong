@@ -5,6 +5,10 @@ vi.mock("server-only", () => ({}))
 import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+import {
+  COMPARISON_READ_RPC_FUNCTION_NAMES,
+  COMPARISON_READ_RPC_FUNCTIONS,
+} from "@/lib/technical-configuration-comparison-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import {
   OPTION_IMPORT_RPC_FUNCTION_NAMES,
@@ -283,6 +287,32 @@ describe("technical configuration option import RPC whitelist", () => {
   it.each(P9A2_OPTION_IMPORT_RPC_FUNCTIONS)(
     'allows option import RPC "%s" through the whitelist',
     async (fn) => {
+      const response = await invokeRpcProxy(fn)
+
+      expect(response.status).toBe(411)
+      await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+    }
+  )
+})
+
+describe("technical configuration comparison read RPC whitelist", () => {
+  it("freezes exactly one read-only P10A2 comparison RPC name", () => {
+    expect(COMPARISON_READ_RPC_FUNCTIONS).toEqual({
+      getComparison: "technical_configuration_comparison_get",
+    })
+    expect(COMPARISON_READ_RPC_FUNCTION_NAMES).toEqual(Object.values(COMPARISON_READ_RPC_FUNCTIONS))
+    expect(COMPARISON_READ_RPC_FUNCTION_NAMES).not.toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/_(?:create|update|delete|upsert|get_or_create)$/),
+      ])
+    )
+  })
+
+  it.each(COMPARISON_READ_RPC_FUNCTION_NAMES)(
+    'allows comparison read RPC "%s" through the whitelist',
+    async (fn) => {
+      expect(ALLOWED_FUNCTIONS.has(fn)).toBe(true)
+
       const response = await invokeRpcProxy(fn)
 
       expect(response.status).toBe(411)
