@@ -601,11 +601,13 @@ BEGIN
 
   SELECT count(*)
   INTO v_before_set_count
-  FROM public.technical_configuration_comparison_sets;
+  FROM public.technical_configuration_comparison_sets cs
+  WHERE cs.dossier_id = v_dossier_id;
 
   SELECT count(*)
   INTO v_before_response_count
-  FROM public.technical_configuration_option_responses;
+  FROM public.technical_configuration_option_responses r
+  WHERE r.baseline_version_id = v_baseline_version_id;
 
   -- missing role rejected
   PERFORM set_config(
@@ -1033,9 +1035,11 @@ BEGIN
   -- read preserves comparison set count
   PERFORM pg_temp.assert_true(
     'read preserves comparison set count',
-    (SELECT count(*) FROM public.technical_configuration_comparison_sets)
+    (SELECT count(*) FROM public.technical_configuration_comparison_sets cs
+      WHERE cs.dossier_id = v_dossier_id)
       = v_before_set_count
-    AND (SELECT count(*) FROM public.technical_configuration_option_responses)
+    AND (SELECT count(*) FROM public.technical_configuration_option_responses r
+      WHERE r.baseline_version_id = v_baseline_version_id)
       = v_before_response_count
   );
 
@@ -1110,6 +1114,7 @@ BEGIN
         WHERE c.baseline_version_id = %L::UUID
         ORDER BY g.sort_order, c.sort_order, c.id
         LIMIT 100
+        OFFSET 100
       ),
       baseline_evidence AS (
         SELECT
@@ -1168,7 +1173,7 @@ BEGIN
           ON response.comparison_set_id = comparison_set.id
          AND response.baseline_version_id = paged.baseline_version_id
          AND response.criterion_id = paged.criterion_id
-        LEFT JOIN option_evidence evidence
+        JOIN option_evidence evidence
           ON evidence.option_id = selected.option_id
          AND evidence.criterion_id = paged.criterion_id
       ),
@@ -1262,7 +1267,10 @@ BEGIN
 
   PERFORM pg_temp.assert_true(
     'inner set-based plan has no repeated subplan',
-    v_plan::TEXT NOT LIKE '%"Parent Relationship": "SubPlan"%'
+    NOT jsonb_path_exists(
+      v_plan,
+      '$.**."Parent Relationship" ? (@ == "SubPlan")'
+    )
   );
   PERFORM pg_temp.assert_true(
     'inner plan remains page and selection bounded',

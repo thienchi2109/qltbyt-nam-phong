@@ -41,6 +41,7 @@ const comparisonFunctionBlock = getFunctionBlock(
 describe("P10A1 technical configuration comparison read migration", () => {
   it("uses one ordered primary RPC migration after every referenced table contract", () => {
     expect(existsSync(MIGRATION_PATH)).toBe(true)
+    expect(migrationSource).not.toBe("")
     expect(
       readdirSync(MIGRATIONS_DIR)
         .filter((file) => file.includes("technical_configuration_comparison_reads"))
@@ -52,6 +53,7 @@ describe("P10A1 technical configuration comparison read migration", () => {
   })
 
   it("freezes the bounded four-argument RPC and explicit execute grants", () => {
+    expect(comparisonFunctionBlock).not.toBe("")
     expect(migrationSource).toContain(
       "FUNCTION public.technical_configuration_comparison_get(\n" +
         "  p_baseline_version_id UUID,\n" +
@@ -192,6 +194,25 @@ describe("P10A1 technical configuration comparison read migration", () => {
     expect(existsSync(PHASE_GATE_PATH)).toBe(true)
     expect(phaseGateSource).not.toMatch(/\bCOMMIT\s*;/i)
     expect(phaseGateSource.trimEnd()).toMatch(/\bROLLBACK\s*;$/i)
+    expect(
+      phaseGateSource.match(
+        /FROM public\.technical_configuration_comparison_sets cs\s+WHERE cs\.dossier_id = v_dossier_id/g
+      ) ?? []
+    ).toHaveLength(2)
+    expect(
+      phaseGateSource.match(
+        /FROM public\.technical_configuration_option_responses r\s+WHERE r\.baseline_version_id = v_baseline_version_id/g
+      ) ?? []
+    ).toHaveLength(2)
+    expect(phaseGateSource).toContain("        LIMIT 100\n        OFFSET 100")
+    expect(phaseGateSource).toContain("        JOIN option_evidence evidence")
+    expect(phaseGateSource).toContain(
+      "NOT jsonb_path_exists(\n" +
+        "      v_plan,\n" +
+        '      \'$.**."Parent Relationship" ? (@ == "SubPlan")\'\n' +
+        "    )"
+    )
+    expect(phaseGateSource).not.toContain("v_plan::TEXT NOT LIKE")
 
     for (const marker of [
       "missing role rejected",
