@@ -15,46 +15,47 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 
 ## Roadmap
 
-| Phase                                                                                        | Mục tiêu                                       | Depends on             | Requirements                                    |
-| -------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------- | ----------------------------------------------- |
-| [P0](./implementation-plan.md#phase-p0---discovery-and-contract-freeze)                      | Discovery và đóng băng contract                | Không                  | TC-01, TC-02, TC-03, TC-05, TC-08, TC-19, TC-20 |
-| [P1](./implementation-plan.md#phase-p1---dossier-foundation-and-authorization)               | Nền tảng hồ sơ và quyền                        | P0                     | TC-01, TC-02, TC-19, TC-20                      |
-| [P2](./implementation-plan.md#phase-p2---baseline-draft-data-contracts)                      | Data contract cho bản nháp cơ sở               | P1                     | TC-02, TC-03, TC-20                             |
-| [P3A](./implementation-plan.md#phase-p3a---route-workspace-shell-and-dossier-list)           | Route, workspace shell, danh sách và tạo hồ sơ | P1                     | TC-02, TC-04                                    |
-| [P3B](./implementation-plan.md#phase-p3b---manual-baseline-editor-and-save-conflicts)        | Editor cơ sở và save/conflict                  | P2, P3A                | TC-03, TC-04, TC-20                             |
-| [P3C](./implementation-plan.md#phase-p3c---bulk-text-entry)                                  | Nhập nhanh nhiều tiêu chí                      | P3B                    | TC-03, TC-04                                    |
-| [P4](./implementation-plan.md#phase-p4---baseline-versioning-lock-and-history)               | Phiên bản, khóa bất biến và lịch sử            | P2, P3B                | TC-02, TC-06, TC-07, TC-20                      |
-| [P5A](./implementation-plan.md#phase-p5a---shared-equipment-excel-primitives)                | Shared Excel primitives từ Equipment           | P0; triển khai sau P4  | TC-05                                           |
-| [P5B](./implementation-plan.md#phase-p5b---baseline-workbook-codec)                          | Baseline workbook codec                        | P3B, P4, P5A           | TC-05                                           |
-| [P5C](./implementation-plan.md#phase-p5c---atomic-baseline-import-contract)                  | Atomic baseline import RPC                     | P4, P5B                | TC-02, TC-05, TC-20                             |
-| [P5D](./implementation-plan.md#phase-p5d---baseline-import-workflow-ui)                      | Baseline import workflow UI                    | P5B, P5C               | TC-05, TC-20                                    |
-| [P6A](./implementation-plan.md#phase-p6a---url-document-contracts-and-shared-primitives)     | URL document contracts và shared primitives    | P0; triển khai sau P5D | TC-11                                           |
-| [P6B](./implementation-plan.md#phase-p6b---equipment-url-document-consumer-migration)        | Chuyển Equipment sang shared primitives        | P6A                    | TC-11                                           |
-| [P7A1](./implementation-plan.md#phase-p7a1---reference-product-data-contracts)               | Data contract sản phẩm tham chiếu              | P3A, P4                | TC-02, TC-04, TC-06, TC-08, TC-20               |
-| [P7A2](./implementation-plan.md#phase-p7a2---reference-product-workspace)                    | Workspace đối chiếu sản phẩm tham chiếu        | P7A1                   | TC-04, TC-06, TC-08, TC-20                      |
-| [P7B1](./implementation-plan.md#phase-p7b1---baseline-and-reference-evidence-contracts)      | Data contract tài liệu/trích dẫn cơ sở         | P4, P6B, P7A2          | TC-02, TC-04, TC-06, TC-11, TC-12, TC-20        |
-| [P7B2](./implementation-plan.md#phase-p7b2---baseline-and-reference-evidence-workspace)      | Workspace tài liệu/trích dẫn cơ sở             | P7B1                   | TC-04, TC-06, TC-11, TC-12, TC-20               |
-| [P8A1](./implementation-plan.md#phase-p8a1---supplier-data-contracts)                        | Data contract nhà cung cấp                     | P1                     | TC-09, TC-20                                    |
-| [P8A2](./implementation-plan.md#phase-p8a2---option-identity-data-contracts)                 | Identity và metadata nhiều phương án           | P8A1                   | TC-09, TC-20                                    |
-| [P8A3](./implementation-plan.md#phase-p8a3---baseline-bound-option-response-contracts)       | Response phương án theo baseline version       | P4, P7A1, P8A2         | TC-02, TC-07, TC-09, TC-17, TC-20               |
-| [P8A4](./implementation-plan.md#phase-p8a4---side-effect-free-option-response-read-contract) | Read-only nullable comparison-set contract     | P8A3                   | TC-02, TC-04, TC-07, TC-09, TC-17, TC-20        |
-| [P8B1](./implementation-plan.md#phase-p8b1---supplier-and-option-identity-crud-workspace)    | UI CRUD supplier và option identity            | P3A, P8A2              | TC-04, TC-09, TC-20                             |
-| [P8B2](./implementation-plan.md#phase-p8b2---exact-baseline-option-response-workspace)       | UI response theo exact baseline                | P4, P8A3, P8A4, P8B1   | TC-04, TC-09, TC-17, TC-20                      |
-| [P8B3](./implementation-plan.md#phase-p8b3---focused-option-response-comparison-ux)          | UX đối chiếu và nhập response từng tiêu chí    | P8B2                   | TC-04, TC-09, TC-17, TC-20                      |
-| [P9A1](./implementation-plan.md#phase-p9a1---supplier-option-workbook-codec)                 | Contract và codec Excel phương án              | P5A, P8B2              | TC-10                                           |
-| [P9A2](./implementation-plan.md#phase-p9a2---atomic-supplier-option-import-contracts)        | Preview/apply nguyên tử cho Excel phương án    | P8A4, P9A1             | TC-02, TC-10, TC-20                             |
-| [P9A3](./implementation-plan.md#phase-p9a3---supplier-option-import-workspace)               | UI import Excel phương án                      | P8B3, P9A2             | TC-04, TC-10, TC-20                             |
-| [P9B1](./implementation-plan.md#phase-p9b1---supplier-option-evidence-contracts)             | Data contract tài liệu/trích dẫn phương án     | P7B1, P8A4, P9A3       | TC-02, TC-11, TC-12, TC-20                      |
-| [P9B2](./implementation-plan.md#phase-p9b2---supplier-option-evidence-workspace)             | Workspace tài liệu/trích dẫn phương án         | P6B, P7B2, P8B2, P9B1  | TC-04, TC-11, TC-12, TC-20                      |
-| [P10A](./implementation-plan.md#phase-p10a---comparison-read-contract)                       | Query contract cho so sánh                     | P7B2, P9B2             | TC-02, TC-13, TC-17                             |
-| [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                           | Ma trận so sánh                                | P3A, P10A              | TC-13, TC-17                                    |
-| [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)         | Domain và persistence đánh giá thủ công        | P4, P8A3               | TC-02, TC-15, TC-16, TC-19, TC-20               |
-| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow) | Nhập đánh giá, save và navigation              | P10B, P11              | TC-04, TC-14, TC-15, TC-16, TC-17, TC-20        |
-| [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                | Tiến độ và bộ lọc đánh giá                     | P12A                   | TC-14, TC-16                                    |
-| [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                     | Xếp hạng tham khảo                             | P12B                   | TC-18                                           |
-| [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)    | Hardening DB, quyền và hiệu năng               | P12C                   | TC-02, TC-20                                    |
-| [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)      | Hardening UI, accessibility và regression      | P12C                   | TC-03, TC-04, TC-11, TC-13, TC-14, TC-20        |
-| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)         | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3 | TC-19                                           |
+| Phase                                                                                               | Mục tiêu                                       | Depends on                 | Requirements                                    |
+| --------------------------------------------------------------------------------------------------- | ---------------------------------------------- | -------------------------- | ----------------------------------------------- |
+| [P0](./implementation-plan.md#phase-p0---discovery-and-contract-freeze)                             | Discovery và đóng băng contract                | Không                      | TC-01, TC-02, TC-03, TC-05, TC-08, TC-19, TC-20 |
+| [P1](./implementation-plan.md#phase-p1---dossier-foundation-and-authorization)                      | Nền tảng hồ sơ và quyền                        | P0                         | TC-01, TC-02, TC-19, TC-20                      |
+| [P2](./implementation-plan.md#phase-p2---baseline-draft-data-contracts)                             | Data contract cho bản nháp cơ sở               | P1                         | TC-02, TC-03, TC-20                             |
+| [P3A](./implementation-plan.md#phase-p3a---route-workspace-shell-and-dossier-list)                  | Route, workspace shell, danh sách và tạo hồ sơ | P1                         | TC-02, TC-04                                    |
+| [P3B](./implementation-plan.md#phase-p3b---manual-baseline-editor-and-save-conflicts)               | Editor cơ sở và save/conflict                  | P2, P3A                    | TC-03, TC-04, TC-20                             |
+| [P3C](./implementation-plan.md#phase-p3c---bulk-text-entry)                                         | Nhập nhanh nhiều tiêu chí                      | P3B                        | TC-03, TC-04                                    |
+| [P4](./implementation-plan.md#phase-p4---baseline-versioning-lock-and-history)                      | Phiên bản, khóa bất biến và lịch sử            | P2, P3B                    | TC-02, TC-06, TC-07, TC-20                      |
+| [P5A](./implementation-plan.md#phase-p5a---shared-equipment-excel-primitives)                       | Shared Excel primitives từ Equipment           | P0; triển khai sau P4      | TC-05                                           |
+| [P5B](./implementation-plan.md#phase-p5b---baseline-workbook-codec)                                 | Baseline workbook codec                        | P3B, P4, P5A               | TC-05                                           |
+| [P5C](./implementation-plan.md#phase-p5c---atomic-baseline-import-contract)                         | Atomic baseline import RPC                     | P4, P5B                    | TC-02, TC-05, TC-20                             |
+| [P5D](./implementation-plan.md#phase-p5d---baseline-import-workflow-ui)                             | Baseline import workflow UI                    | P5B, P5C                   | TC-05, TC-20                                    |
+| [P6A](./implementation-plan.md#phase-p6a---url-document-contracts-and-shared-primitives)            | URL document contracts và shared primitives    | P0; triển khai sau P5D     | TC-11                                           |
+| [P6B](./implementation-plan.md#phase-p6b---equipment-url-document-consumer-migration)               | Chuyển Equipment sang shared primitives        | P6A                        | TC-11                                           |
+| [P7A1](./implementation-plan.md#phase-p7a1---reference-product-data-contracts)                      | Data contract sản phẩm tham chiếu              | P3A, P4                    | TC-02, TC-04, TC-06, TC-08, TC-20               |
+| [P7A2](./implementation-plan.md#phase-p7a2---reference-product-workspace)                           | Workspace đối chiếu sản phẩm tham chiếu        | P7A1                       | TC-04, TC-06, TC-08, TC-20                      |
+| [P7B1](./implementation-plan.md#phase-p7b1---baseline-and-reference-evidence-contracts)             | Data contract tài liệu/trích dẫn cơ sở         | P4, P6B, P7A2              | TC-02, TC-04, TC-06, TC-11, TC-12, TC-20        |
+| [P7B2](./implementation-plan.md#phase-p7b2---baseline-and-reference-evidence-workspace)             | Workspace tài liệu/trích dẫn cơ sở             | P7B1                       | TC-04, TC-06, TC-11, TC-12, TC-20               |
+| [P8A1](./implementation-plan.md#phase-p8a1---supplier-data-contracts)                               | Data contract nhà cung cấp                     | P1                         | TC-09, TC-20                                    |
+| [P8A2](./implementation-plan.md#phase-p8a2---option-identity-data-contracts)                        | Identity và metadata nhiều phương án           | P8A1                       | TC-09, TC-20                                    |
+| [P8A3](./implementation-plan.md#phase-p8a3---baseline-bound-option-response-contracts)              | Response phương án theo baseline version       | P4, P7A1, P8A2             | TC-02, TC-07, TC-09, TC-17, TC-20               |
+| [P8A4](./implementation-plan.md#phase-p8a4---side-effect-free-option-response-read-contract)        | Read-only nullable comparison-set contract     | P8A3                       | TC-02, TC-04, TC-07, TC-09, TC-17, TC-20        |
+| [P8B1](./implementation-plan.md#phase-p8b1---supplier-and-option-identity-crud-workspace)           | UI CRUD supplier và option identity            | P3A, P8A2                  | TC-04, TC-09, TC-20                             |
+| [P8B2](./implementation-plan.md#phase-p8b2---exact-baseline-option-response-workspace)              | UI response theo exact baseline                | P4, P8A3, P8A4, P8B1       | TC-04, TC-09, TC-17, TC-20                      |
+| [P8B3](./implementation-plan.md#phase-p8b3---focused-option-response-comparison-ux)                 | UX đối chiếu và nhập response từng tiêu chí    | P8B2                       | TC-04, TC-09, TC-17, TC-20                      |
+| [P9A1](./implementation-plan.md#phase-p9a1---supplier-option-workbook-codec)                        | Contract và codec Excel phương án              | P5A, P8B2                  | TC-10                                           |
+| [P9A2](./implementation-plan.md#phase-p9a2---atomic-supplier-option-import-contracts)               | Preview/apply nguyên tử cho Excel phương án    | P8A4, P9A1                 | TC-02, TC-10, TC-20                             |
+| [P9A3](./implementation-plan.md#phase-p9a3---supplier-option-import-workspace)                      | UI import Excel phương án                      | P8B3, P9A2                 | TC-04, TC-10, TC-20                             |
+| [P9B1](./implementation-plan.md#phase-p9b1---supplier-option-evidence-contracts)                    | Data contract tài liệu/trích dẫn phương án     | P7B1, P8A4, P9A3           | TC-02, TC-11, TC-12, TC-20                      |
+| [P9B2](./implementation-plan.md#phase-p9b2---supplier-option-evidence-workspace)                    | Workspace tài liệu/trích dẫn phương án         | P6B, P7B2, P8B2, P9B1      | TC-04, TC-11, TC-12, TC-20                      |
+| [P10A1](./implementation-plan.md#phase-p10a1---comparison-matrix-read-rpc-and-performance-contract) | RPC/query/performance contract cho so sánh     | P7B2, P9B2                 | TC-02, TC-13, TC-17                             |
+| [P10A2](./implementation-plan.md#phase-p10a2---comparison-read-client-contract)                     | Typed client/proxy contract cho so sánh        | P10A1 merged/applied/gated | TC-13, TC-17                                    |
+| [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                                  | Ma trận so sánh                                | P3A, P10A2                 | TC-13, TC-17                                    |
+| [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)                | Domain và persistence đánh giá thủ công        | P4, P8A3                   | TC-02, TC-15, TC-16, TC-19, TC-20               |
+| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B, P11                  | TC-04, TC-14, TC-15, TC-16, TC-17, TC-20        |
+| [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A                       | TC-14, TC-16                                    |
+| [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B                       | TC-18                                           |
+| [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C                       | TC-02, TC-20                                    |
+| [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C                       | TC-03, TC-04, TC-11, TC-13, TC-14, TC-20        |
+| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3     | TC-19                                           |
 
 ## Phase P0 - Discovery And Contract Freeze
 
@@ -419,13 +420,39 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 - [x] P9B2.7 Rerun baseline/reference SQL + React suites cùng option evidence
       suites; chỉ leaf này mark TC-11-S01..S05 và TC-12-S01/S02 complete.
 
-## Phase P10A - Comparison Read Contract
+## Phase P10A1 - Comparison Matrix Read RPC And Performance Contract
 
-- [ ] P10A.1 Thêm bounded/paginated matrix query contract không N+1.
-- [ ] P10A.2 Chỉ select trường cần thiết và review indexes/query plan.
-- [ ] P10A.3 Chạy DB phase gate và performance advisor sau apply được phê duyệt.
-- [ ] P10A.4 Giữ supplementary information tách khỏi compliance.
-- [ ] P10A.5 Viết query shape, authorization, bounds và query-count tests.
+- [ ] P10A1.1 Thêm `technical_configuration_comparison_get` set-based,
+      side-effect-free cho một baseline version và 1-8 option IDs có thứ tự.
+- [ ] P10A1.2 Thêm raw admin/global claim guard, fail-closed claims và
+      same-dossier validation không tạo ownership oracle.
+- [ ] P10A1.3 Phân trang criteria trước aggregation, trả tối đa 100 criteria và
+      giữ option request order bằng ordinality; reject NULL/duplicate/0/9 IDs.
+- [ ] P10A1.4 Aggregate exact baseline/option response cùng fixed-size
+      `document_count`/`citation_count`/`has_evidence`; không nhúng full
+      evidence/reference-product data và giữ supplementary tách khỏi
+      response/compliance.
+- [ ] P10A1.5 Giữ archived/locked read-only semantics, explicit grants/revokes,
+      `search_path`; nếu inner-query `EXPLAIN` sau apply chứng minh cần index,
+      thêm follow-up index migration trong cùng P10A1 rồi apply/gate lại.
+- [ ] P10A1.6 Viết migration source contract và rollback-only SQL phase gate cho
+      exact nested/error schema, null/bounds, authorization, no-write, exact
+      scope, 450-line ceiling và fixture 500 x 50 x 8.
+- [ ] P10A1.7 Chỉ apply/chạy live phase gate sau từng permission cụ thể; sau
+      apply chạy security/performance advisors.
+
+## Phase P10A2 - Comparison Read Client Contract
+
+- [ ] P10A2.1 Thêm RPC-name manifest và proxy allowlist entry, không đổi behavior
+      của shared RPC transport.
+- [ ] P10A2.2 Thêm wire/domain types và typed adapter bám nguyên contract P10A1.
+- [ ] P10A2.3 Thêm query key gồm baseline version, immutable snapshot của
+      ordered option IDs, page và page size; không sort/deduplicate IDs.
+- [ ] P10A2.4 Thêm `useTechnicalConfigurationComparison` với enablement,
+      `AbortSignal`, `staleTime: 30_000`, `retry: false` và
+      `refetchOnWindowFocus: false`.
+- [ ] P10A2.5 Viết source/contract tests cho RPC name, allowlist, args, response,
+      ordered key, one-call/disabled behavior và rerun P10A1 source contracts.
 
 ## Phase P10B - Comparison Matrix UI
 

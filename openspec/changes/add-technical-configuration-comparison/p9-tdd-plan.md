@@ -10,7 +10,9 @@ P8A4 + P9A1        -> P9A2
 P8B3 + P9A2        -> P9A3
 P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
-P7B2 + P9B2        -> P10A
+P7B2 + P9B2        -> P10A1
+P10A1              -> P10A2
+P3A + P10A2        -> P10B
 ```
 
 Each leaf starts from `main` after the preceding leaf has merged. Do not stack

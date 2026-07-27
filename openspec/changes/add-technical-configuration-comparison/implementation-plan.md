@@ -109,8 +109,9 @@ P8A4 + P9A1     -> P9A2
 P8B3 + P9A2     -> P9A3
 P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
-P7B2 + P9B2     -> P10A
-P3A + P10A      -> P10B
+P7B2 + P9B2     -> P10A1
+P10A1           -> P10A2
+P3A + P10A2     -> P10B
 P4 + P8A3       -> P11
 P10B + P11      -> P12A
 P12A            -> P12B
@@ -147,11 +148,11 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                         |
 | TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                         |
 | TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                   |
-| TC-13 | Scan-friendly comparison matrix                 | P10A, P10B                                                                                                                               |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B                                                                                                                       |
 | TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                               |
 | TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                                |
 | TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                          |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A, P10B, P12A                                                                                                 |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B, P12A                                                                                         |
 | TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                     |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                        |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
@@ -1707,45 +1708,116 @@ and fully verified, but no option evidence UI exists.
 
 Baseline, reference-product and supplier-option cases all pass
 TC-11-S01..S05 and TC-12-S01/S02; option documents are reusable across
-baselines, citations remain exact-set scoped and P10A may begin.
+baselines, citations remain exact-set scoped and P10A1 may begin.
 
-## Phase P10A - Comparison Read Contract
+## Phase P10A1 - Comparison Matrix Read RPC And Performance Contract
 
-**Depends on:** P7B2, P9B2
-**Requirements:** TC-02, TC-13, TC-17  
-**Deploy boundary:** bounded read API only; no matrix UI
+**Depends on:** P7B2, P9B2<br>
+**Requirements:** TC-02, TC-13, TC-17<br>
+**Detailed TDD plan:** [P10A1 - Comparison Matrix Read RPC And Performance Contract](./p10-tdd-plan.md#p10a1---comparison-matrix-read-rpc-and-performance-contract)<br>
+**Deploy boundary:** dormant bounded database read contract only; no proxy,
+client hook or matrix UI
 
 ### Planned files
 
-- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_comparison_reads.sql` if a dedicated RPC is required
-- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparison.ts`
-- Create: `src/app/(app)/technical-configurations/__tests__/comparison-contract.test.ts`
+- Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_comparison_reads.sql`
+- Optionally create after live plan evidence:
+  `supabase/migrations/<later_ordered_timestamp>_technical_configuration_comparison_indexes.sql`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-comparison-migration.test.ts`
+- Create: `supabase/tests/technical_configuration_comparison_phase_gate.sql`
 
 ### Tasks
 
-- [ ] Define one bounded query for baseline rows and selected option responses.
-- [ ] Select only fields needed by matrix and detail panel.
-- [ ] Avoid N+1 for supplier labels, responses, supplementary information and citations.
-- [ ] Allow unlimited total options while enforcing at most 8 selected option IDs and 100 criteria per request.
-- [ ] Add criterion pagination for baseline versions larger than 100 criteria.
-- [ ] Review indexes and representative query plans.
-- [ ] Keep supplementary information structurally separate from compliance.
-- [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply security/performance advisors.
+- [ ] Add `technical_configuration_comparison_get` as one set-based,
+      side-effect-free RPC for one baseline version and 1-8 ordered option IDs.
+- [ ] Authenticate raw `admin`/`global`, fail closed on missing claims and
+      validate baseline, options, suppliers and comparison sets against the
+      same dossier without exposing an ownership oracle.
+- [ ] Page baseline criteria before aggregating exact baseline and
+      selected-option responses/evidence summaries.
+- [ ] Reject null, duplicate, zero or more than eight option IDs, preserve
+      request order through ordinality and return at most 100 criteria per page.
+- [ ] Keep `supplementary_information` separate from response/compliance and
+      return fixed-size `document_count`/`citation_count`/`has_evidence`
+      summaries only; full evidence remains on existing bounded document RPCs
+      and reference-product data remains on P7 surfaces.
+- [ ] Preserve archived-dossier and locked-baseline reads without creating
+      comparison sets, incrementing revision or changing audit metadata.
+- [ ] Add explicit grants/revokes, mandatory `search_path` and only indexes
+      justified by inner-query `EXPLAIN`; a proven follow-up index migration
+      remains inside P10A1 and blocks P10A2 until gated.
+- [ ] Add migration source tests and a rollback-only SQL phase gate for 500
+      criteria, 50 total options and 8 selected options.
 
 ### TDD and verification
 
-- Authorization tests for all required role/claim states.
-- Response-shape, option-nine boundary, 100-criterion bound and query-count tests.
+- Migration source-contract tests for exact nested/error schema, claims,
+  ownership, null/bound checks, grants, search path, no `SELECT *`, no side
+  effects and the 450-line migration ceiling.
+- Rollback-only SQL tests for exact-scope aggregation, archived/locked reads,
+  option order, duplicate rejection, option-nine and 100-criterion boundaries.
 - Representative `EXPLAIN` review with 500 criteria, 50 total options and 8 selected options.
-- Performance advisor after an explicitly approved live apply.
+- Explicit permission before migration apply and separate explicit permission
+  before live rollback-only phase-gate execution.
+- Security and performance advisors after an explicitly approved live apply.
 
 ### Exit gate
 
-The backend can return bounded comparison data without exposing a new matrix UI.
+The applied database contract can return bounded, ordered and exact-scope
+comparison summaries without exposing a proxy/client consumer or matrix UI.
+
+## Phase P10A2 - Comparison Read Client Contract
+
+**Depends on:** P10A1 merged, applied and DB-gated<br>
+**Requirements:** TC-13, TC-17<br>
+**Detailed TDD plan:** [P10A2 - Comparison Read Client Contract](./p10-tdd-plan.md#p10a2---comparison-read-client-contract)<br>
+**Deploy boundary:** dormant typed client/proxy contract only; no matrix UI
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-comparison-rpcs.ts`
+- Create: `src/app/(app)/technical-configurations/comparison-types.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-comparison-rpc.ts`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparison.ts`
+- Create: `src/app/(app)/technical-configurations/__tests__/comparison-contract.test.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+
+### Tasks
+
+- [ ] Add the RPC-name manifest and append the comparison read RPC to the proxy
+      allowlist without changing shared RPC transport behavior.
+- [ ] Define wire/domain types and one typed adapter for the fixed P10A1
+      request/response contract.
+- [ ] Add a query key containing baseline version, ordered option IDs, page and
+      page size; snapshot the IDs and do not sort or deduplicate them in the key.
+- [ ] Add `useTechnicalConfigurationComparison` with exact enablement,
+      `AbortSignal` forwarding, `staleTime: 30_000`, `retry: false` and
+      `refetchOnWindowFocus: false`.
+- [ ] Add source/contract tests for RPC name, allowlist, arguments, wire shape,
+      option-order-sensitive key, one-call behavior and disabled states.
+- [ ] Rerun P10A1 source contracts without changing the migration, SQL phase
+      gate or database ownership.
+
+### TDD and verification
+
+- RPC-name/allowlist source tests fail before proxy exposure.
+- Adapter tests prove exact arguments, typed normalization and one RPC call.
+- Hook tests prove immutable ordered query keys, disabled states, abort
+  forwarding, `staleTime: 30_000`, `retry: false` and
+  `refetchOnWindowFocus: false`.
+- Mandatory TypeScript/React gates and focused contract tests.
+- P10A1 migration source tests rerun as an upstream regression gate.
+
+### Exit gate
+
+The stable P10A1 RPC is exposed through a typed, bounded and dormant client
+contract. No P8/P9 consumer changes behavior, and P10B may begin.
 
 ## Phase P10B - Comparison Matrix UI
 
-**Depends on:** P3A, P10A  
+**Depends on:** P3A, P10A2
 **Requirements:** TC-13, TC-17  
 **Deploy boundary:** read/inspect comparison only; response authoring remains in
 P8B3 and evaluation editing remains deferred
