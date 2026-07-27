@@ -82,7 +82,9 @@ P4 + P6B + P7A2  -> P7B1
 P7B1              -> P7B2
 P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
-P7B2 + P9B2       -> P10A
+P7B2 + P9B2       -> P10A1
+P10A1             -> P10A2
+P3A + P10A2       -> P10B
 ```
 
 ## Cross-Leaf Contracts

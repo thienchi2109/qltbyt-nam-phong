@@ -277,20 +277,32 @@ cùng draft hiện tại.
 
 #### Ma trận so sánh
 
+Delivery được tách theo dependency bắt buộc
+`P7B2 + P9B2 -> P10A1 -> P10A2` rồi `P3A + P10A2 -> P10B`.
+P10A1 sở hữu RPC, authorization, exact-scope aggregation, bounds và performance;
+P10A2 chỉ expose contract đó qua manifest/allowlist/types/adapter/query key/hook;
 P10B sở hữu bề mặt read/inspect nhiều phương án và ưu tiên quét nhanh:
 
 - nhóm và tiêu chí là các hàng có thứ tự; bốn nhóm mặc định không được xử lý như cột
 - cột yêu cầu cơ sở sticky
 - mỗi phương án là một cột, nhãn rõ nhà cung cấp và model
 - cuộn ngang, chọn cột, ghim cột và chế độ tập trung để hỗ trợ nhiều phương án
-- hiển thị phản hồi rút gọn và trạng thái đánh giá
+- hiển thị phản hồi rút gọn và trạng thái có/không có bằng chứng
 - mở panel chi tiết thay vì nhồi tài liệu và đánh giá vào ô nhỏ
 - không render response textarea, `Sao chép từ cấu hình cơ bản`, dirty draft,
   `Lưu` hoặc `Lưu & tiếp theo`
 
-Không thêm cột nội dung tùy biến vào ma trận. Số cột ngang tăng theo số sản phẩm tham chiếu hoặc phương án được chọn, tùy bề mặt; hai loại không bị trộn semantics và sản phẩm tham chiếu không tham gia đánh giá/xếp hạng.
+Không thêm cột nội dung tùy biến vào ma trận. P10B chỉ tăng cột theo các phương án được chọn; sản phẩm tham chiếu tiếp tục thuộc bề mặt P7 riêng, không bị aggregate vào P10A1 và không tham gia đánh giá/xếp hạng.
 
-Hồ sơ không có giới hạn tổng số phương án. Một request ma trận chọn tối đa 8 phương án và đọc tối đa 100 tiêu chí; tiêu chí được phân trang khi phiên bản lớn hơn giới hạn. Phương án thứ chín vẫn được lưu và có thể được chọn trong request khác. Read contract trả baseline, supplier label, response, supplementary information và citation summary trong một RPC có giới hạn, không tạo N+1.
+Hồ sơ không có giới hạn tổng số phương án. Một request ma trận chọn tối đa 8 phương án và đọc tối đa 100 tiêu chí; tiêu chí được phân trang khi phiên bản lớn hơn giới hạn. Phương án thứ chín vẫn được lưu và có thể được chọn trong request khác. Option IDs giữ nguyên request order bằng ordinality và duplicate IDs bị từ chối; query key của P10A2 giữ một immutable snapshot theo đúng thứ tự này. Read contract trả baseline, supplier label, response, supplementary information và fixed-size evidence summary (`document_count`, `citation_count`, `has_evidence`) trong một RPC có giới hạn, không tạo N+1.
+
+RPC chỉ trả evidence summary exact baseline/option scope; reference-product
+response/evidence tiếp tục thuộc bề mặt P7 và không được aggregate bởi P10A1.
+Full document/excerpt được lazy-load qua các bounded document RPC hiện có khi mở
+detail panel. Archived dossier và locked baseline vẫn đọc được; read path không
+tạo comparison set, không tăng revision và không đổi audit metadata. P10A2
+không sửa behavior của shared `callTechnicalConfigurationRpc` hoặc các consumer
+P8/P9.
 
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
 
