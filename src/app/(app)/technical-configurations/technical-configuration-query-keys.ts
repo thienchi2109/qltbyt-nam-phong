@@ -57,3 +57,25 @@ export function technicalConfigurationOptionResponsesQueryKey(
 ) {
   return ["technical-configurations", "option-responses", optionId, baselineVersionId] as const
 }
+
+/** Builds the ordered cache key for one bounded comparison page. */
+export function technicalConfigurationComparisonQueryKey({
+  baselineVersionId,
+  optionIds,
+  page,
+  pageSize,
+}: {
+  baselineVersionId: string
+  optionIds: readonly string[]
+  page: number
+  pageSize: number
+}) {
+  return [
+    "technical-configurations",
+    "comparison",
+    baselineVersionId,
+    [...optionIds],
+    page,
+    pageSize,
+  ] as const
+}
