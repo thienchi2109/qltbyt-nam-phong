@@ -4,11 +4,9 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 
 import { useTechnicalConfigurationBeforeUnloadGuard } from "./useTechnicalConfigurationBeforeUnloadGuard"
+import { useTechnicalConfigurationOptionListQuery } from "./useTechnicalConfigurationOptionListQuery"
 import { useTechnicalConfigurationOptionOperations } from "./useTechnicalConfigurationOptionOperations"
-import {
-  listAllTechnicalConfigurationOptions,
-  listAllTechnicalConfigurationSuppliers,
-} from "../technical-configuration-supplier-option-operations"
+import { listAllTechnicalConfigurationSuppliers } from "../technical-configuration-supplier-option-operations"
 import {
   createEmptyTechnicalConfigurationOptionDraft,
   createEmptyTechnicalConfigurationSupplierDraft,
@@ -19,10 +17,7 @@ import {
   toTechnicalConfigurationSupplierDraft,
   type TechnicalConfigurationOptionDraftPatch,
 } from "../technical-configuration-supplier-option-state"
-import {
-  technicalConfigurationOptionsQueryKey,
-  technicalConfigurationSuppliersQueryKey,
-} from "../technical-configuration-query-keys"
+import { technicalConfigurationSuppliersQueryKey } from "../technical-configuration-query-keys"
 import type {
   TechnicalConfigurationOptionWire,
   TechnicalConfigurationSupplierWire,
@@ -50,10 +45,6 @@ export function useTechnicalConfigurationOptions({
     () => technicalConfigurationSuppliersQueryKey(dossier.id),
     [dossier.id]
   )
-  const optionQueryKey = React.useMemo(
-    () => technicalConfigurationOptionsQueryKey(dossier.id),
-    [dossier.id]
-  )
   const suppliersQuery = useQuery({
     queryKey: supplierQueryKey,
     queryFn: ({ signal }) => listAllTechnicalConfigurationSuppliers(dossier.id, signal),
@@ -61,13 +52,9 @@ export function useTechnicalConfigurationOptions({
     retry: false,
     refetchOnWindowFocus: false,
   })
-  const optionsQuery = useQuery({
-    queryKey: optionQueryKey,
-    queryFn: ({ signal }) => listAllTechnicalConfigurationOptions(dossier.id, signal),
-    staleTime: 30_000,
-    retry: false,
-    refetchOnWindowFocus: false,
-  })
+  const { queryKey: optionQueryKey, optionsQuery } = useTechnicalConfigurationOptionListQuery(
+    dossier.id
+  )
   const suppliers = suppliersQuery.data?.suppliers ?? EMPTY_SUPPLIERS
   const options = optionsQuery.data?.options ?? EMPTY_OPTIONS
   const hasSnapshotMismatch = Boolean(
