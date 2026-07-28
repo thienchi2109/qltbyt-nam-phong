@@ -37,18 +37,13 @@ export function useTechnicalConfigurationComparison({
   page,
   pageSize,
 }: UseTechnicalConfigurationComparisonInput) {
-  const queryKey = technicalConfigurationComparisonQueryKey({
+  const request: TechnicalConfigurationComparisonRequest = {
     baselineVersionId: baselineVersionId ?? "",
-    optionIds,
+    optionIds: [...optionIds],
     page,
     pageSize,
-  })
-  const request: TechnicalConfigurationComparisonRequest = {
-    baselineVersionId: queryKey[2],
-    optionIds: queryKey[3],
-    page: queryKey[4],
-    pageSize: queryKey[5],
   }
+  const queryKey = technicalConfigurationComparisonQueryKey(request)
   const enabled = isValidComparisonRequest(request)
   const comparisonQuery = useQuery<TechnicalConfigurationComparisonResult>({
     queryKey,

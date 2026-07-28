@@ -1,13 +1,13 @@
-import { readFileSync } from "node:fs"
-import path from "node:path"
 import { createElement, type PropsWithChildren } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, expectTypeOf, it, vi } from "vitest"
 
 import { COMPARISON_READ_RPC_FUNCTIONS } from "@/lib/technical-configuration-comparison-rpcs"
 import { useTechnicalConfigurationComparison } from "../_hooks/useTechnicalConfigurationComparison"
 import type {
+  TechnicalConfigurationComparisonCriterion,
+  TechnicalConfigurationComparisonCriterionWire,
   TechnicalConfigurationComparisonRequest,
   TechnicalConfigurationComparisonWireResponse,
 } from "../comparison-types"
@@ -15,10 +15,6 @@ import { getTechnicalConfigurationComparison } from "../technical-configuration-
 import { technicalConfigurationComparisonQueryKey } from "../technical-configuration-query-keys"
 
 const callRpcMock = vi.fn()
-const comparisonTypesSource = readFileSync(
-  path.resolve(process.cwd(), "src/app/(app)/technical-configurations/comparison-types.ts"),
-  "utf8"
-)
 
 vi.mock("../technical-configuration-rpc", () => ({
   callTechnicalConfigurationRpc: (...args: unknown[]) => callRpcMock(...args),
@@ -44,7 +40,12 @@ describe("P10A2 comparison read adapter contract", () => {
   })
 
   it("keeps nullable criterion titles aligned with the baseline contract", () => {
-    expect(comparisonTypesSource.match(/title: string \| null/g)).toHaveLength(2)
+    expectTypeOf<TechnicalConfigurationComparisonCriterionWire["title"]>().toEqualTypeOf<
+      string | null
+    >()
+    expectTypeOf<TechnicalConfigurationComparisonCriterion["title"]>().toEqualTypeOf<
+      string | null
+    >()
   })
 
   it("forwards the ordered request once and normalizes the fixed response envelope", async () => {
@@ -394,6 +395,9 @@ describe("P10A2 dormant comparison query hook", () => {
       },
       { signal: expect.any(AbortSignal) }
     )
+    const forwardedArgs = callRpcMock.mock.calls[0]?.[1] as
+      { p_option_ids: readonly string[] } | undefined
+    expect(forwardedArgs?.p_option_ids).not.toBe(validInput.optionIds)
   })
 
   it("aborts the shared transport when the query is cancelled", async () => {
