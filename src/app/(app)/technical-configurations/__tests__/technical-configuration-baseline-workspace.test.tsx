@@ -120,6 +120,13 @@ vi.mock(
   }
 )
 
+vi.mock(
+  "@/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationComparisonTab",
+  () => ({
+    TechnicalConfigurationComparisonTab: () => <div>Comparison matrix workspace</div>,
+  })
+)
+
 const dossier: TechnicalConfigurationDossierWire = {
   id: "dossier-1",
   device_type_name: "Máy lọc thận",
@@ -227,6 +234,24 @@ describe("technical configuration baseline workspace integration", () => {
       await user.click(screen.getByRole("tab", { name: "Tài liệu & trích dẫn" }))
 
       expect(screen.getByText("Baseline evidence workspace")).toBeInTheDocument()
+      expect(screen.queryByText("Baseline editor")).not.toBeInTheDocument()
+    } finally {
+      baselineTabMock.dirty = true
+    }
+  })
+
+  it("enables the complete comparison workspace in its own tab", async () => {
+    const user = userEvent.setup()
+    baselineTabMock.dirty = false
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+      const comparisonTab = screen.getByRole("tab", { name: "So sánh & đánh giá" })
+
+      expect(comparisonTab).toBeEnabled()
+      await user.click(comparisonTab)
+
+      expect(screen.getByText("Comparison matrix workspace")).toBeInTheDocument()
       expect(screen.queryByText("Baseline editor")).not.toBeInTheDocument()
     } finally {
       baselineTabMock.dirty = true

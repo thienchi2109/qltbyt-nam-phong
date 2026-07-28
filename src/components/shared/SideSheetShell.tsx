@@ -27,6 +27,7 @@ export interface SideSheetShellProps {
   readonly headerClassName?: string
   readonly bodyClassName?: string
   readonly footerClassName?: string
+  readonly onCloseAutoFocus?: React.ComponentProps<typeof SheetContent>["onCloseAutoFocus"]
 }
 
 /**
@@ -46,6 +47,7 @@ export function SideSheetShell({
   headerClassName,
   bodyClassName,
   footerClassName,
+  onCloseAutoFocus,
 }: SideSheetShellProps): React.JSX.Element {
   const hasHeader = title !== null && title !== undefined
 
@@ -56,6 +58,7 @@ export function SideSheetShell({
         closeLabel={closeLabel}
         hideCloseButton={hideCloseButton}
         className={cn("w-full p-0", contentClassName)}
+        onCloseAutoFocus={onCloseAutoFocus}
       >
         <div className="flex h-full flex-col">
           {hasHeader ? (

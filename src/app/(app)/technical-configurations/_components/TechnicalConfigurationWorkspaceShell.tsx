@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
 import { TechnicalConfigurationBaselineEvidence } from "./TechnicalConfigurationBaselineEvidence"
+import { TechnicalConfigurationComparisonTab } from "./comparison/TechnicalConfigurationComparisonTab"
 import { TechnicalConfigurationReferenceProducts } from "./TechnicalConfigurationReferenceProducts"
 import { TechnicalConfigurationSuppliers } from "./TechnicalConfigurationSuppliers"
 
@@ -197,7 +198,7 @@ export function TechnicalConfigurationWorkspaceShell({
             <PackageSearch className="size-4" aria-hidden="true" />
             Phương án
           </TabsTrigger>
-          <TabsTrigger value="comparison" className="min-h-10 gap-2" disabled>
+          <TabsTrigger value="comparison" className="min-h-10 gap-2">
             <GitCompareArrows className="size-4" aria-hidden="true" />
             So sánh &amp; đánh giá
           </TabsTrigger>
@@ -231,6 +232,9 @@ export function TechnicalConfigurationWorkspaceShell({
             onNavigationBlockedChange={setIsOptionNavigationBlocked}
             onRevisionChange={handleRevisionChange}
           />
+        </TabsContent>
+        <TabsContent value="comparison" className="mt-6">
+          <TechnicalConfigurationComparisonTab dossier={workspaceDossier} />
         </TabsContent>
       </Tabs>
 

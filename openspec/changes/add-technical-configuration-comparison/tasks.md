@@ -458,19 +458,19 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P10B1 - Core Read-Only Comparison Matrix
 
-- [ ] P10B1.1 Thêm baseline-version selection, ordered selected-option controls
+- [x] P10B1.1 Thêm baseline-version selection, ordered selected-option controls
       tối đa 8 phương án và fixed criterion page size 50.
-- [ ] P10B1.2 Reuse một shared read-only option-list query seam mà không đổi P8
+- [x] P10B1.2 Reuse một shared read-only option-list query seam mà không đổi P8
       draft/mutation behavior.
-- [ ] P10B1.3 Hiển thị ordered groups/criteria theo hàng, sticky baseline,
+- [x] P10B1.3 Hiển thị ordered groups/criteria theo hàng, sticky baseline,
       dynamic option columns và bounded horizontal scroll.
-- [ ] P10B1.4 Thêm concise read-only cells cùng text-only detail panel cho full
+- [x] P10B1.4 Thêm concise read-only cells cùng text-only detail panel cho full
       requirement, response và supplementary information.
-- [ ] P10B1.5 Tích hợp và enable comparison tab nhưng giữ matrix state/data hooks
+- [x] P10B1.5 Tích hợp và enable comparison tab nhưng giữ matrix state/data hooks
       ngoài workspace shell.
-- [ ] P10B1.6 Khóa ownership: không response editor, copy, dirty draft, save,
+- [x] P10B1.6 Khóa ownership: không response editor, copy, dirty draft, save,
       assessment persistence, ranking hoặc derived compliance.
-- [ ] P10B1.7 Viết ordered-selection, paging, long-text, empty/loading/error,
+- [x] P10B1.7 Viết ordered-selection, paging, long-text, empty/loading/error,
       keyboard, responsive-source và P8 regression tests; không browser test.
 
 ## Phase P10B2 - Many-Option Column Ergonomics
