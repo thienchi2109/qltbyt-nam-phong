@@ -4,6 +4,7 @@ import * as React from "react"
 import { callRpc } from "@/lib/rpc-client"
 import { useToast } from "@/hooks/use-toast"
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
+import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import type { MaintenanceTask } from "@/lib/data"
 import { buildPrintTemplate } from "./maintenance-print-template"
 
@@ -13,11 +14,8 @@ interface UseMaintenancePrintParams {
   user: { full_name?: string | null } | null
 }
 
-export function useMaintenancePrint({
-  selectedPlan,
-  tasks,
-  user,
-}: UseMaintenancePrintParams) {
+/** Generates a printable maintenance plan using branding for the selected plan tenant. */
+export function useMaintenancePrint({ selectedPlan, tasks, user }: UseMaintenancePrintParams) {
   const { toast } = useToast()
   const [isGenerating, setIsGenerating] = React.useState(false)
 
@@ -56,18 +54,19 @@ export function useMaintenancePrint({
       </body></html>
     `)
 
-    let tenantBranding: { logo_url?: string | null; name?: string | null } | null = null
+    let tenantBranding: TenantBranding | null = null
     try {
-      const brandingResult = await callRpc<Array<{ logo_url?: string | null; name?: string | null }>>({
+      const brandingResult = await callRpc<TenantBranding[]>({
         fn: "don_vi_branding_get",
-        args: { p_id: null },
+        args: { p_id: selectedPlan.don_vi },
       })
-      tenantBranding = Array.isArray(brandingResult) ? brandingResult[0] : null
+      tenantBranding = brandingResult?.[0] ?? null
     } catch (error) {
       console.error("Failed to fetch tenant branding:", error)
     }
 
-    const logoUrl = tenantBranding?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo"
+    const logoUrl =
+      tenantBranding?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo"
     const organizationName = tenantBranding?.name || "Nền tảng QLTBYT"
 
     if (newWindow.closed) {
