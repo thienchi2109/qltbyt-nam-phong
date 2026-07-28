@@ -323,6 +323,11 @@ và locked baseline vẫn đọc được; read path không tạo comparison set
 revision và không đổi audit metadata. P10A2 không sửa behavior của shared
 `callTechnicalConfigurationRpc` hoặc các consumer P8/P9.
 
+P12A không dựng lại read-only detail. `TechnicalConfigurationEvaluationPanel`
+chỉ compose `TechnicalConfigurationCriterionPanel` đã được P10B1/P10B3 hoàn
+thiện với assessment controls của P12A; không thêm renderer, query key hoặc
+evidence fetch path thứ hai.
+
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
 Focused React, keyboard và responsive-source tests là gate của từng leaf; browser
 screenshot/interaction verification được defer sang P13B theo chỉ định product

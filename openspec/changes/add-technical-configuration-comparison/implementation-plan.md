@@ -2024,14 +2024,21 @@ TC-14, TC-15, TC-16, TC-17, TC-20
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationCriterionList.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationPanel.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationAssessmentControls.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/manual-evaluation-workflow.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPanel.tsx` only if typed composition props/slots are required
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
 ### Tasks
 
 - [ ] Add one-option-at-a-time selector and context header.
 - [ ] Add left criterion list with group/status scanning.
-- [ ] Add right panel with baseline, response, supplementary info, evidence, notes and both axes.
+- [ ] Make `TechnicalConfigurationEvaluationPanel` a thin wrapper that reuses
+      `TechnicalConfigurationCriterionPanel` for baseline, response,
+      supplementary info and evidence, then composes notes and both axes through
+      `TechnicalConfigurationAssessmentControls`.
+- [ ] Do not duplicate P10B detail rendering, comparison/evidence query keys or
+      fetch paths.
 - [ ] Add `Lưu` and `Lưu & tiếp tục`.
 - [ ] Keep current criterion and unsaved input on validation/conflict/persistence failure.
 - [ ] Block navigation or preserve a local draft when selecting another criterion/tab/dossier while dirty.
@@ -2041,6 +2048,8 @@ TC-14, TC-15, TC-16, TC-17, TC-20
 ### TDD and verification
 
 - Workflow tests for save, save-next and failure preservation.
+- Composition tests proving one shared read-only detail/evidence renderer and no
+  second query path.
 - Dirty criterion/tab/dossier navigation tests.
 - Two-axis and derived-status rendering tests.
 - Browser verification of the core evaluation journey.
@@ -2168,8 +2177,13 @@ No release-blocking database authorization, integrity or performance gap remains
 - [ ] Test concurrent edits and conflict recovery across two tabs.
 - [ ] Verify dirty criterion/tab/dossier navigation.
 - [ ] Verify long Vietnamese text, many options and narrow viewport.
+- [ ] Verify P10B3 one-cell evidence detail loading, no-evidence, error,
+      load-more and focus-restoration states on desktop and mobile.
 - [ ] Verify suggested groups remain editable, additional groups render correctly and no custom content-column controls exist.
 - [ ] Verify many reference-product columns remain selectable and all criterion content/evidence is reachable.
+- [ ] Verify P12A composes assessment controls onto the shared P10B detail and
+      supplementary information remains non-scoring after save, save-next and
+      derived-status rendering.
 - [ ] Verify keyboard/focus/accessibility across workspace, matrix and evaluation.
 - [ ] Verify stable dimensions and absence of overlap/layout shifts.
 - [ ] Verify Equipment attachment regressions after shared extraction.
@@ -2186,7 +2200,8 @@ No release-blocking database authorization, integrity or performance gap remains
   node scripts/npm-run.js npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose --project . --offline --full
   ```
 
-- Browser screenshot/interaction evidence.
+- Browser screenshot/interaction evidence covering P10B3 evidence detail,
+  P12A assessment composition and TC-17 non-scoring behavior.
 - Reviewer approval of UI/accessibility evidence.
 
 ### Exit gate

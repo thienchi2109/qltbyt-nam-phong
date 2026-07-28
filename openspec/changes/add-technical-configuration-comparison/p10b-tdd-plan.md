@@ -141,7 +141,7 @@ The fixed P10A contract is:
 - Modify:
   `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
-Estimated production additions: 600-850 lines across 6-8 files.
+Estimated production additions: 600-850 lines across 8 files.
 
 ### Test Files
 
@@ -153,7 +153,7 @@ Estimated production additions: 600-850 lines across 6-8 files.
   `comparison-contract.test.ts`,
   `supplier-options.test.tsx` and relevant supplier-option workspace cases.
 
-Estimated test additions: 450-650 lines across 2-3 files.
+Estimated test additions: 450-650 lines across 1-2 files.
 
 ### RED 1 - Shared Read-Only Option Query
 
@@ -299,7 +299,7 @@ Estimated test additions: 300-450 lines across 1-2 files.
 - Modify:
   `TechnicalConfigurationCriterionPanel.tsx`.
 
-Estimated production additions: 300-500 lines across 3-5 files.
+Estimated production additions: 300-500 lines across 3 files.
 Estimated test additions: 300-500 lines across 1-2 files.
 
 ### RED 1 - Lazy Enablement

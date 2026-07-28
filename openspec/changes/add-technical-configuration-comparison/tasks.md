@@ -511,8 +511,10 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
-- [ ] P12A.1 Thêm criterion list bên trái và detail panel bên phải cho một option.
-- [ ] P12A.2 Thêm hai trục, notes, `Lưu` và `Lưu & tiếp tục`.
+- [ ] P12A.1 Thêm criterion list và compose evaluation panel từ P10B
+      `TechnicalConfigurationCriterionPanel`; không duplicate read renderer/query.
+- [ ] P12A.2 Thêm assessment controls cho hai trục, notes, `Lưu` và
+      `Lưu & tiếp tục`.
 - [ ] P12A.3 Giữ current criterion/input khi save thất bại.
 - [ ] P12A.4 Chặn hoặc bảo toàn thay đổi khi chọn tiêu chí/chuyển trang lúc dirty.
 - [ ] P12A.5 Tích hợp evaluation tab và viết workflow/browser tests.
@@ -544,12 +546,15 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
 - [ ] P13B.1 Kiểm tra keyboard/focus/accessibility và dirty-navigation.
-- [ ] P13B.2 Kiểm tra long Vietnamese text, many options và narrow viewport.
+- [ ] P13B.2 Kiểm tra long Vietnamese text, many options, narrow viewport và
+      P10B3 evidence detail states/focus restoration trên desktop/mobile.
 - [ ] P13B.3 Kiểm tra default/editable groups, many reference products và không xuất hiện custom content-column controls.
 - [ ] P13B.4 Kiểm tra concurrent edits và conflict recovery qua hai tab.
-- [ ] P13B.5 Chạy Equipment attachment regression và full relevant React tests.
-- [ ] P13B.6 Chạy full React Doctor command và browser screenshot/interaction verification.
-- [ ] P13B.7 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
+- [ ] P13B.5 Kiểm tra P12A reuse P10B detail và supplementary information vẫn
+      non-scoring sau save/save-next/derived status.
+- [ ] P13B.6 Chạy Equipment attachment regression và full relevant React tests.
+- [ ] P13B.7 Chạy full React Doctor command và browser screenshot/interaction verification.
+- [ ] P13B.8 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
 
 ## Phase P13C - Release, OpenSpec And AI Boundary Audit
 

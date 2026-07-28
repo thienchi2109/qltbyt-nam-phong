@@ -230,9 +230,12 @@ Scenario ownership remains explicit:
 - P10B1 owns TC-13-S01, the core-dimension/text portion of TC-13-S02 and the
   TC-17-S01 core text surface.
 - P10B2 owns TC-13-S03; P10B3 owns the evidence-inspection portions of
-  TC-13-S02/S05; P12A completes their manual-assessment composition.
+  TC-13-S02/S05. P12A is the normative end-to-end completion owner after
+  composing manual assessment; P10B1/P10B3 must not mark those scenarios
+  complete.
 - P10A1/P10A2 only preserve structural separation for supplementary
-  information. TC-17-S02 remains P8A3-owned with P10B1 regression coverage.
+  information. TC-17-S02 remains P8A3-owned; P10B1/P12A rerun focused
+  regressions and P13B is the canonical regression owner.
 
 ## Required Workflow Before Each Leaf
 

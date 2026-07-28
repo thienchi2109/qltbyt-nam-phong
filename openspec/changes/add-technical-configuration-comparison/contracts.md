@@ -52,6 +52,9 @@
 - TC-13-S02/S05 remain staged across phases: P10B1 owns the reusable full-text
   detail, P10B3 extends that detail with evidence inspection, and P12A composes
   manual assessment after P11 supplies its domain and persistence contract.
+- P12A's evaluation panel must be a thin composition wrapper around the P10B
+  criterion detail plus assessment controls. It must not duplicate
+  baseline/response/supplementary/evidence rendering, query keys or fetch paths.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
