@@ -278,10 +278,26 @@ cùng draft hiện tại.
 #### Ma trận so sánh
 
 Delivery được tách theo dependency bắt buộc
-`P7B2 + P9B2 -> P10A1 -> P10A2` rồi `P3A + P10A2 -> P10B`.
+`P7B2 + P9B2 -> P10A1 -> P10A2` rồi
+`P3A + P10A2 -> P10B1 -> P10B2 -> P10B3`.
 P10A1 sở hữu RPC, authorization, exact-scope aggregation, bounds và performance;
 P10A2 chỉ expose contract đó qua manifest/allowlist/types/adapter/query key/hook;
-P10B sở hữu bề mặt read/inspect nhiều phương án và ưu tiên quét nhanh:
+ba leaf P10B sở hữu bề mặt read/inspect nhiều phương án theo các boundary:
+
+- P10B1 mở tab với ordered selection, criterion paging, sticky baseline, dynamic
+  option columns, horizontal scroll cơ bản, concise cells và text-only detail
+  cho full requirement/response/supplementary information
+- P10B2 chỉ thêm view-only column visibility, tối đa hai pinned option columns
+  và focus mode; các view state này không đổi selected option request/order
+- P10B3 chỉ lazy-load documents, excerpts và criterion citations cho đúng một
+  baseline/option cell đang mở qua các bounded P7/P9 read paths
+
+P10B1 hoàn tất core-dimension/text portion của TC-13-S02. P10B3 mở rộng đúng
+detail panel đó với evidence-inspection cho TC-13-S02/S05 nhưng không tạo
+assessment data hoặc control. P12A, sau P11, ghép manual assessment vào cùng
+detail workflow để hoàn tất phần `đánh giá` của hai scenario.
+
+Toàn bề mặt giữ các nguyên tắc:
 
 - nhóm và tiêu chí là các hàng có thứ tự; bốn nhóm mặc định không được xử lý như cột
 - cột yêu cầu cơ sở sticky
@@ -292,19 +308,25 @@ P10B sở hữu bề mặt read/inspect nhiều phương án và ưu tiên quét
 - không render response textarea, `Sao chép từ cấu hình cơ bản`, dirty draft,
   `Lưu` hoặc `Lưu & tiếp theo`
 
-Không thêm cột nội dung tùy biến vào ma trận. P10B chỉ tăng cột theo các phương án được chọn; sản phẩm tham chiếu tiếp tục thuộc bề mặt P7 riêng, không bị aggregate vào P10A1 và không tham gia đánh giá/xếp hạng.
+Không thêm cột nội dung tùy biến vào ma trận. P10B1 chỉ tăng cột theo các
+phương án được chọn; P10B2 có thể ẩn/ghim/tập trung các cột đó nhưng không đổi
+request membership. Sản phẩm tham chiếu tiếp tục thuộc bề mặt P7 riêng, không
+bị aggregate vào P10A1 và không tham gia đánh giá/xếp hạng.
 
 Hồ sơ không có giới hạn tổng số phương án. Một request ma trận chọn tối đa 8 phương án và đọc tối đa 100 tiêu chí; tiêu chí được phân trang khi phiên bản lớn hơn giới hạn. Phương án thứ chín vẫn được lưu và có thể được chọn trong request khác. Option IDs giữ nguyên request order bằng ordinality và duplicate IDs bị từ chối; query key của P10A2 giữ một immutable snapshot theo đúng thứ tự này. Read contract trả baseline, supplier label, response, supplementary information và fixed-size evidence summary (`document_count`, `citation_count`, `has_evidence`) trong một RPC có giới hạn, không tạo N+1.
 
 RPC chỉ trả evidence summary exact baseline/option scope; reference-product
 response/evidence tiếp tục thuộc bề mặt P7 và không được aggregate bởi P10A1.
 Full document/excerpt được lazy-load qua các bounded document RPC hiện có khi mở
-detail panel. Archived dossier và locked baseline vẫn đọc được; read path không
-tạo comparison set, không tăng revision và không đổi audit metadata. P10A2
-không sửa behavior của shared `callTechnicalConfigurationRpc` hoặc các consumer
-P8/P9.
+detail panel ở P10B3. P10B1/P10B2 không fetch full evidence. Archived dossier
+và locked baseline vẫn đọc được; read path không tạo comparison set, không tăng
+revision và không đổi audit metadata. P10A2 không sửa behavior của shared
+`callTechnicalConfigurationRpc` hoặc các consumer P8/P9.
 
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
+Focused React, keyboard và responsive-source tests là gate của từng leaf; browser
+screenshot/interaction verification được defer sang P13B theo chỉ định product
+owner.
 
 #### Đánh giá từng phương án
 
