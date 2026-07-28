@@ -85,6 +85,7 @@ export function useMaintenancePrint({ selectedPlan, tasks, user }: UseMaintenanc
       user,
       logoUrl,
       organizationName,
+      printLocation: tenantBranding?.print_location ?? "",
     })
 
     newWindow.document.open()

@@ -1,6 +1,5 @@
 import type { MaintenancePlan } from "@/hooks/use-cached-maintenance"
 import type { MaintenanceTask } from "@/lib/data"
-
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -9,22 +8,22 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;")
 }
-
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) {
     return ""
   }
   return escapeHtml(String(value))
 }
-
+/** Builds the printable maintenance plan HTML document. */
 export function buildPrintTemplate(params: {
   selectedPlan: MaintenancePlan
   tasks: MaintenanceTask[]
   user: { full_name?: string | null } | null
   logoUrl: string
   organizationName: string
+  printLocation: string
 }): string {
-  const { selectedPlan, tasks, user, logoUrl, organizationName } = params
+  const { selectedPlan, tasks, user, logoUrl, organizationName, printLocation } = params
   const safePlanName = formatValue(selectedPlan.ten_ke_hoach)
   const safePlanType = formatValue(selectedPlan.loai_cong_viec)
   const safePlanTypeUpper = formatValue(selectedPlan.loai_cong_viec.toUpperCase())
@@ -32,19 +31,20 @@ export function buildPrintTemplate(params: {
   const safePlanYear = formatValue(selectedPlan.nam)
   const safeLogoUrl = formatValue(logoUrl)
   const safeOrganizationName = formatValue(organizationName)
-
+  const locationSeparator = printLocation ? ", " : ""
   const generateTableRows = () => {
-    return tasks.map((task, index) => {
-      const checkboxes = Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
-        const fieldName = `thang_${month}` as keyof MaintenanceTask
-        const isChecked = task[fieldName] ? 'checked' : ''
-        return `<td><input type="checkbox" ${isChecked}></td>`
-      }).join('')
-
-      const noiBoChecked = task.don_vi_thuc_hien === 'Nội bộ' ? 'checked' : ''
-      const thueNgoaiChecked = task.don_vi_thuc_hien === 'Thuê ngoài' ? 'checked' : ''
-
-      return `
+    return tasks
+      .map((task, index) => {
+        const checkboxes = Array.from({ length: 12 }, (_, i) => i + 1)
+          .map((month) => {
+            const fieldName = `thang_${month}` as keyof MaintenanceTask
+            const isChecked = task[fieldName] ? "checked" : ""
+            return `<td><input type="checkbox" ${isChecked}></td>`
+          })
+          .join("")
+        const noiBoChecked = task.don_vi_thuc_hien === "Nội bộ" ? "checked" : ""
+        const thueNgoaiChecked = task.don_vi_thuc_hien === "Thuê ngoài" ? "checked" : ""
+        return `
         <tr>
           <td>${index + 1}</td>
           <td>${formatValue(task.thiet_bi?.ma_thiet_bi)}</td>
@@ -56,9 +56,9 @@ export function buildPrintTemplate(params: {
           <td><textarea class="auto-resize-textarea" rows="2" style="width: 100%; border: none; outline: none; background: transparent; resize: none; word-wrap: break-word; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-all; line-height: 1.2; padding: 4px; font-family: inherit; font-size: 10px; overflow: visible;">${formatValue(task.ghi_chu)}</textarea></td>
         </tr>
       `
-    }).join('')
+      })
+      .join("")
   }
-
   return `
 <!DOCTYPE html>
 <html lang="vi">
@@ -363,7 +363,6 @@ export function buildPrintTemplate(params: {
     </script>
 </head>
 <body>
-
     <div class="a4-landscape-page">
         <div class="content-body">
             <!-- Header -->
@@ -388,7 +387,6 @@ export function buildPrintTemplate(params: {
                     </h1>
                 </div>
             </header>
-
             <!-- Main Table -->
             <section class="mt-4">
                 <table class="w-full data-table">
@@ -424,7 +422,6 @@ export function buildPrintTemplate(params: {
                     </tbody>
                 </table>
             </section>
-
              <!-- Signature section -->
             <section class="mt-4">
                  <div class="flex justify-between">
@@ -435,7 +432,7 @@ export function buildPrintTemplate(params: {
                      <div class="w-1/3"></div>
                     <div class="signature-area w-1/3">
                          <p class="italic mb-2">
-                            Cần Thơ, ngày <input type="text" class="form-input-line w-12" value="${new Date().getDate()}">
+                            <input type="text" class="form-input-line w-24" value="${formatValue(printLocation)}"/>${locationSeparator}ngày <input type="text" class="form-input-line w-12" value="${new Date().getDate()}">
                             tháng <input type="text" class="form-input-line w-12" value="${new Date().getMonth() + 1}">
                             năm <input type="text" class="form-input-line w-20" value="${new Date().getFullYear()}">
                         </p>
@@ -446,9 +443,7 @@ export function buildPrintTemplate(params: {
                 </div>
             </section>
         </div>
-
     </div>
-
 </body>
 </html>
   `
