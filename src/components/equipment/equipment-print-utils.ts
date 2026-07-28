@@ -27,15 +27,15 @@ export interface PrintContext {
 async function fetchTenantBranding(tenantId: number): Promise<TenantBranding | null> {
   try {
     const res = await callRpc<TenantBranding[]>({
-      fn: 'don_vi_branding_get',
-      args: { p_id: tenantId }
+      fn: "don_vi_branding_get",
+      args: { p_id: tenantId },
     })
     const branding = res?.[0]
     if (branding && branding.name) {
       return branding
     }
   } catch (error) {
-    console.error('Failed to fetch equipment tenant branding:', error)
+    console.error("Failed to fetch equipment tenant branding:", error)
   }
   return null
 }
@@ -50,7 +50,7 @@ async function resolveBranding(context: PrintContext): Promise<TenantBranding | 
 
   // For global/admin users, ALWAYS use equipment's tenant branding
   if (isGlobalRole(userRole) && equipmentTenantId) {
-    return await fetchTenantBranding(equipmentTenantId) || tenantBranding || null
+    return (await fetchTenantBranding(equipmentTenantId)) || tenantBranding || null
   }
 
   // For regular users without tenant branding, try equipment tenant
@@ -68,12 +68,18 @@ async function resolveBranding(context: PrintContext): Promise<TenantBranding | 
 const escapeHtml = (str: string): string => {
   return str.replace(/[&<>"']/g, (c) => {
     switch (c) {
-      case '&': return '&amp;'
-      case '<': return '&lt;'
-      case '>': return '&gt;'
-      case '"': return '&quot;'
-      case "'": return '&#39;'
-      default: return c
+      case "&":
+        return "&amp;"
+      case "<":
+        return "&lt;"
+      case ">":
+        return "&gt;"
+      case '"':
+        return "&quot;"
+      case "'":
+        return "&#39;"
+      default:
+        return c
     }
   })
 }
@@ -85,7 +91,7 @@ const formatValue = (value: unknown): string => {
 
 const formatCurrency = (value: unknown): string => {
   if (value === null || value === undefined || value === "") return ""
-  return Number(value).toLocaleString('vi-VN') + ' VNĐ'
+  return Number(value).toLocaleString("vi-VN") + " VNĐ"
 }
 
 /**
@@ -99,8 +105,12 @@ export async function generateProfileSheet(
 
   const brandingToUse = await resolveBranding({
     ...context,
-    equipmentTenantId: equipment.don_vi ?? undefined
+    equipmentTenantId: equipment.don_vi ?? undefined,
   })
+  const printLocation =
+    isGlobalRole(context.userRole) && equipment.don_vi && brandingToUse?.id !== equipment.don_vi
+      ? ""
+      : (brandingToUse?.print_location ?? "")
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -140,9 +150,9 @@ export async function generateProfileSheet(
             <div class="content-body">
                 <header class="text-center">
                     <div class="flex justify-between items-center">
-                        <img src="${escapeHtml(brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo')}" alt="Logo ${escapeHtml(brandingToUse?.name || 'Organization')}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                        <img src="${escapeHtml(brandingToUse?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo")}" alt="Logo ${escapeHtml(brandingToUse?.name || "Organization")}" class="w-20 h-20" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                         <div class="flex-grow">
-                            <h2 class="title-sub uppercase font-bold text-xl">${escapeHtml(brandingToUse?.name || 'ĐƠN VỊ')}</h2>
+                            <h2 class="title-sub uppercase font-bold text-xl">${escapeHtml(brandingToUse?.name || "ĐƠN VỊ")}</h2>
                             <div class="flex items-baseline justify-center mt-2">
                                 <label class="font-bold whitespace-nowrap">KHOA/PHÒNG:</label>
                                 <div class="w-1/2 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.khoa_phong_quan_ly)}"></div>
@@ -188,8 +198,8 @@ export async function generateProfileSheet(
                         <div class="flex items-center">
                             <label class="whitespace-nowrap">12. Bảo hành:</label>
                             <div class="ml-10 flex items-center gap-x-10">
-                                 <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${!equipment.han_bao_hanh ? 'checked' : ''}>Không</label>
-                                 <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${equipment.han_bao_hanh ? 'checked' : ''}>Có ( Ngày BH cuối cùng: <span class="inline-block w-48 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.han_bao_hanh)}"></span>)</label>
+                                 <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${!equipment.han_bao_hanh ? "checked" : ""}>Không</label>
+                                 <label class="flex items-center"><input type="checkbox" class="h-4 w-4 mr-2" ${equipment.han_bao_hanh ? "checked" : ""}>Có ( Ngày BH cuối cùng: <span class="inline-block w-48 ml-2"><input type="text" class="form-input-line" value="${formatValue(equipment.han_bao_hanh)}"></span>)</label>
                             </div>
                         </div>
                     </div>
@@ -240,7 +250,7 @@ export async function generateProfileSheet(
                             <div class="w-1/2 signature-area">
                                 <div class="text-center pt-2 h-12">
                                     <p class="italic whitespace-nowrap">
-                                        <span class="inline-block w-24"><input type="text" class="form-input-line text-center italic" value="Cần Thơ"></span>, ngày
+                                        <span class="inline-block w-24"><input type="text" class="form-input-line text-center italic" value="${formatValue(printLocation)}"></span>, ngày
                                         <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> tháng
                                         <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span> năm
                                         <span class="inline-block w-8"><input type="text" class="form-input-line text-center"></span>
@@ -279,7 +289,7 @@ export async function generateDeviceLabel(
 
   const brandingToUse = await resolveBranding({
     ...context,
-    equipmentTenantId: equipment.don_vi ?? undefined
+    equipmentTenantId: equipment.don_vi ?? undefined,
   })
 
   // Use raw value for QR code data (not HTML-escaped) to ensure scanned data matches equipment code
@@ -317,7 +327,7 @@ export async function generateDeviceLabel(
         <div class="w-full max-w-md bg-white p-4 shadow-lg label-container" style="border: 3px double #000;">
             <header class="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
                 <div class="flex-shrink-0">
-                    <img src="${escapeHtml(brandingToUse?.logo_url || 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo')}" alt="Logo ${escapeHtml(brandingToUse?.name || 'Organization')}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
+                    <img src="${escapeHtml(brandingToUse?.logo_url || "https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo")}" alt="Logo ${escapeHtml(brandingToUse?.name || "Organization")}" class="w-16 h-auto" onerror="this.onerror=null;this.src='https://placehold.co/100x100/e2e8f0/e2e8f0?text=Logo';">
                 </div>
                 <div class="text-center flex-grow">
                     <h1 class="text-2xl font-bold tracking-wider">NHÃN THIẾT BỊ</h1>
