@@ -46,6 +46,8 @@ function buildPage1(
   const { day, month, year } = date
   const { completionDateValue } = derived
   const eq = request.thiet_bi!
+  const safeOrganizationName = formatValue(organizationName)
+  const safeLogoUrl = formatValue(logoUrl)
   const requesterName =
     options.prefillRequesterName === false ? "" : formatValue(request.nguoi_yeu_cau)
 
@@ -54,11 +56,11 @@ function buildPage1(
         <!-- Navy Header Banner -->
         <header class="header-banner">
             <div class="header-logo-container">
-                <img src="${logoUrl}" alt="Logo"
+                <img src="${safeLogoUrl}" alt="Logo"
                      onerror="this.onerror=null;this.src='${LOGO_FALLBACK}';">
             </div>
             <div class="header-text-container">
-                <div class="header-org-name">${organizationName}</div>
+                <div class="header-org-name">${safeOrganizationName}</div>
                 <h1 class="header-title">PHIẾU ĐỀ NGHỊ SỬA CHỮA THIẾT BỊ</h1>
                 <div class="header-gold-line-bottom"></div>
             </div>

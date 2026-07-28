@@ -114,6 +114,28 @@ describe("buildRepairRequestSheetHtml", () => {
     expect(html).not.toContain('An <Giang> & "Miền Tây"')
   })
 
+  it("escapes the tenant organization name before rendering the header", () => {
+    const html = buildRepairRequestSheetHtml(request, {
+      organizationName: 'CDC <script>alert("x")</script>',
+      logoUrl: "https://example.com/logo.png",
+      printLocation: "",
+    })
+
+    expect(html).toContain("CDC &lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;")
+    expect(html).not.toContain('<script>alert("x")</script>')
+  })
+
+  it("escapes the tenant logo URL before rendering the image source", () => {
+    const html = buildRepairRequestSheetHtml(request, {
+      organizationName: "CDC An Giang",
+      logoUrl: 'https://example.com/logo.png" onerror="alert(1)',
+      printLocation: "",
+    })
+
+    expect(html).toContain('src="https://example.com/logo.png&quot; onerror=&quot;alert(1)"')
+    expect(html).not.toContain('src="https://example.com/logo.png" onerror="alert(1)"')
+  })
+
   it("does not render the hardcoded Cần Thơ date prefix", () => {
     const html = buildRepairRequestSheetHtml(request, {
       organizationName: "CDC An Giang",
