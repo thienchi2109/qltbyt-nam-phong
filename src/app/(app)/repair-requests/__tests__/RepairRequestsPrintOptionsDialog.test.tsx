@@ -10,8 +10,18 @@ const mockCloseAllDialogs = vi.fn()
 const mockContext = vi.hoisted(() => ({
   useRepairRequestsContext: vi.fn(),
   handleGenerateRequestSheet: vi.fn(),
+  useTenantBranding: vi.fn(),
   toast: vi.fn(),
 }))
+
+const readyTenantBrandingResult = {
+  data: {
+    name: "CDC Cần Thơ",
+    logo_url: "https://example.com/logo.png",
+  },
+  isPending: false,
+  isPlaceholderData: false,
+}
 
 vi.mock("../_hooks/useRepairRequestsContext", () => ({
   useRepairRequestsContext: () => mockContext.useRepairRequestsContext(),
@@ -24,12 +34,7 @@ vi.mock("../_hooks/useRepairRequestUIHandlers", () => ({
 }))
 
 vi.mock("@/hooks/use-tenant-branding", () => ({
-  useTenantBranding: () => ({
-    data: {
-      name: "CDC Cần Thơ",
-      logo_url: "https://example.com/logo.png",
-    },
-  }),
+  useTenantBranding: mockContext.useTenantBranding,
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -39,14 +44,16 @@ vi.mock("@/hooks/use-toast", () => ({
 vi.mock("@/components/ui/button", () => ({
   Button: ({
     children,
+    disabled,
     onClick,
     variant,
   }: {
     readonly children: React.ReactNode
+    readonly disabled?: boolean
     readonly onClick?: () => void
     readonly variant?: string
   }) => (
-    <button data-variant={variant} onClick={onClick} type="button">
+    <button data-variant={variant} disabled={disabled} onClick={onClick} type="button">
       {children}
     </button>
   ),
@@ -107,6 +114,42 @@ function setupContext(request: RepairRequestWithEquipment | null = requestToPrin
 describe("RepairRequestsPrintOptionsDialog", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockContext.useTenantBranding.mockReturnValue(readyTenantBrandingResult)
+  })
+
+  it.each([
+    [
+      "initial branding load",
+      {
+        data: undefined,
+        isPending: true,
+        isPlaceholderData: false,
+      },
+    ],
+    [
+      "tenant branding transition",
+      {
+        ...readyTenantBrandingResult,
+        isPlaceholderData: true,
+      },
+    ],
+  ])("disables print actions during %s", async (_state, brandingResult) => {
+    const user = userEvent.setup()
+    mockContext.useTenantBranding.mockReturnValue(brandingResult)
+    setupContext()
+
+    render(<RepairRequestsPrintOptionsDialog />)
+
+    const blankNameAction = screen.getByRole("button", { name: "Bỏ trống tên" })
+    const prefillNameAction = screen.getByRole("button", { name: "Điền sẵn tên" })
+
+    expect(blankNameAction).toBeDisabled()
+    expect(prefillNameAction).toBeDisabled()
+
+    await user.click(blankNameAction)
+    await user.click(prefillNameAction)
+
+    expect(mockContext.handleGenerateRequestSheet).not.toHaveBeenCalled()
   })
 
   it("prints with requester name prefilled from the primary action", async () => {
@@ -115,6 +158,12 @@ describe("RepairRequestsPrintOptionsDialog", () => {
     setupContext()
 
     render(<RepairRequestsPrintOptionsDialog />)
+
+    expect(mockContext.useTenantBranding).toHaveBeenCalledTimes(1)
+    expect(mockContext.useTenantBranding).toHaveBeenCalledWith({
+      formTenantId: 1,
+      useFormContext: true,
+    })
 
     await user.click(screen.getByRole("button", { name: "Điền sẵn tên" }))
 
@@ -159,6 +208,11 @@ describe("RepairRequestsPrintOptionsDialog", () => {
 
     render(<RepairRequestsPrintOptionsDialog />)
 
+    expect(mockContext.useTenantBranding).toHaveBeenCalledTimes(1)
+    expect(mockContext.useTenantBranding).toHaveBeenCalledWith({
+      formTenantId: null,
+      useFormContext: true,
+    })
     expect(screen.queryByTestId("print-options-dialog")).not.toBeInTheDocument()
   })
 })

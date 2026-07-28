@@ -18,16 +18,23 @@ import { useRepairRequestsContext } from "../_hooks/useRepairRequestsContext"
 
 /** Lets users choose whether the printable request sheet pre-fills requester name. */
 export function RepairRequestsPrintOptionsDialog() {
-  const { data: branding } = useTenantBranding()
+  const {
+    dialogState: { requestToPrint },
+    closeAllDialogs,
+  } = useRepairRequestsContext()
+  const {
+    data: branding,
+    isPending,
+    isPlaceholderData,
+  } = useTenantBranding({
+    formTenantId: requestToPrint?.thiet_bi?.facility_id ?? null,
+    useFormContext: true,
+  })
   const { toast } = useToast()
   const { handleGenerateRequestSheet } = useRepairRequestUIHandlers({
     branding,
     toast,
   })
-  const {
-    dialogState: { requestToPrint },
-    closeAllDialogs,
-  } = useRepairRequestsContext()
 
   const handlePrint = (options: RepairRequestSheetOptions) => {
     if (!requestToPrint) return
@@ -49,12 +56,14 @@ export function RepairRequestsPrintOptionsDialog() {
           <Button
             type="button"
             variant="outline"
+            disabled={isPending || isPlaceholderData}
             onClick={() => handlePrint({ prefillRequesterName: false })}
           >
             Bỏ trống tên
           </Button>
           <Button
             type="button"
+            disabled={isPending || isPlaceholderData}
             onClick={() => handlePrint({ prefillRequesterName: true })}
           >
             Điền sẵn tên
