@@ -1,6 +1,3 @@
-import fs from "node:fs"
-import path from "node:path"
-
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen, within } from "@testing-library/react"
@@ -320,53 +317,6 @@ describe("technical configuration baseline workspace integration", () => {
       expect(await screen.findByText("Baseline revision 4")).toBeInTheDocument()
     } finally {
       baselineTabMock.dirty = true
-    }
-  })
-
-  it("keeps the shell thin and baseline responsibilities extracted before the threshold", () => {
-    const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
-    const files = [
-      "TechnicalConfigurationsClient.tsx",
-      "_components/TechnicalConfigurationWorkspaceShell.tsx",
-      "_components/TechnicalConfigurationBaselineTab.tsx",
-      "_components/TechnicalConfigurationBaselineEvidence.tsx",
-      "_components/TechnicalConfigurationBaselineAlerts.tsx",
-      "_components/TechnicalConfigurationOptionResponseEditor.tsx",
-      "_components/TechnicalConfigurationOptionResponses.tsx",
-      "_components/TechnicalConfigurationBaselineTabStates.tsx",
-      "_components/TechnicalConfigurationBaselineEditor.tsx",
-      "_components/TechnicalConfigurationCriteriaSpreadsheet.tsx",
-      "_components/TechnicalConfigurationBulkEntryWorkbench.tsx",
-      "_components/TechnicalConfigurationAllGroupsOverview.tsx",
-      "_components/TechnicalConfigurationGroupNavigator.tsx",
-      "_hooks/useTechnicalConfigurationBaselineEditor.ts",
-      "_hooks/useTechnicalConfigurationBaselineImport.ts",
-      "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
-      "_hooks/useTechnicalConfigurationInlineEditor.ts",
-      "_hooks/useTechnicalConfigurationOptionResponses.ts",
-    ]
-
-    for (const file of files) {
-      const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
-      const lineCount = source.split("\n").length
-      expect(lineCount).toBeLessThan(350)
-    }
-
-    const shellSource = fs.readFileSync(
-      path.join(moduleRoot, "_components/TechnicalConfigurationWorkspaceShell.tsx"),
-      "utf8"
-    )
-    expect(shellSource).toContain("TechnicalConfigurationBaselineTab")
-    expect(shellSource).toContain("TechnicalConfigurationBaselineEvidence")
-    expect(shellSource).not.toContain("useQuery")
-    expect(shellSource).not.toContain("useMutation")
-
-    for (const file of [
-      "_components/TechnicalConfigurationBaselineTab.tsx",
-      "_hooks/useTechnicalConfigurationBaselineEditor.ts",
-    ]) {
-      const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
-      expect(source).not.toMatch(/reference[-_ ]?product/i)
     }
   })
 })

@@ -102,8 +102,29 @@ export function TechnicalConfigurationMatrix({
     )
   }
 
-  if (!result || result.data.criteria.length === 0) {
+  if (!result) {
     return <MatrixState>Trang này chưa có tiêu chí để so sánh.</MatrixState>
+  }
+
+  if (result.data.criteria.length === 0) {
+    return (
+      <MatrixState>
+        <div className="space-y-3">
+          <p>Trang này chưa có tiêu chí để so sánh.</p>
+          {result.page > 1 ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(result.page - 1)}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Trang trước
+            </Button>
+          ) : null}
+        </div>
+      </MatrixState>
+    )
   }
 
   const { criteria, options } = result.data

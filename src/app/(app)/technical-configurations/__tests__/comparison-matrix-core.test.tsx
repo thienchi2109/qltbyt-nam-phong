@@ -12,6 +12,7 @@ import {
 import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 
 import { registerComparisonMatrixRenderingTests } from "./comparison-matrix-rendering-cases"
+import { registerComparisonMatrixReviewRegressionTests } from "./comparison-matrix-review-regression-cases"
 
 const listAllOptionsMock = vi.fn()
 const listBaselineVersionsMock = vi.fn()
@@ -274,3 +275,4 @@ describe("P10B1 ordered comparison request state", () => {
 })
 
 registerComparisonMatrixRenderingTests()
+registerComparisonMatrixReviewRegressionTests()

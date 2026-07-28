@@ -61,22 +61,26 @@ export function TechnicalConfigurationCriterionPanel({
             <p className="whitespace-pre-wrap break-words leading-6">{detail.requirementText}</p>
           </section>
 
-          <section className="space-y-2 border-b pb-5">
-            <h3 className="font-semibold">Phản hồi phương án</h3>
-            <p className="whitespace-pre-wrap break-words leading-6">
-              {detail.responseText || "Chưa có phản hồi."}
-            </p>
-          </section>
+          {detail.optionLabel !== null ? (
+            <>
+              <section className="space-y-2 border-b pb-5">
+                <h3 className="font-semibold">Phản hồi phương án</h3>
+                <p className="whitespace-pre-wrap break-words leading-6">
+                  {detail.responseText || "Chưa có phản hồi."}
+                </p>
+              </section>
 
-          <section className="space-y-2 border-b pb-5">
-            <h3 className="font-semibold">Thông tin bổ sung</h3>
-            <p className="text-xs text-muted-foreground">
-              Không dùng thông tin bổ sung để chấm điểm hoặc xác định mức đáp ứng.
-            </p>
-            <p className="whitespace-pre-wrap break-words leading-6">
-              {detail.supplementaryInformation || "Không có thông tin bổ sung."}
-            </p>
-          </section>
+              <section className="space-y-2 border-b pb-5">
+                <h3 className="font-semibold">Thông tin bổ sung</h3>
+                <p className="text-xs text-muted-foreground">
+                  Không dùng thông tin bổ sung để chấm điểm hoặc xác định mức đáp ứng.
+                </p>
+                <p className="whitespace-pre-wrap break-words leading-6">
+                  {detail.supplementaryInformation || "Không có thông tin bổ sung."}
+                </p>
+              </section>
+            </>
+          ) : null}
 
           <section className="space-y-2">
             <h3 className="font-semibold">Tóm tắt bằng chứng</h3>
