@@ -48,13 +48,15 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P9B2](./implementation-plan.md#phase-p9b2---supplier-option-evidence-workspace)                    | Workspace tài liệu/trích dẫn phương án         | P6B, P7B2, P8B2, P9B1      | TC-04, TC-11, TC-12, TC-20                      |
 | [P10A1](./implementation-plan.md#phase-p10a1---comparison-matrix-read-rpc-and-performance-contract) | RPC/query/performance contract cho so sánh     | P7B2, P9B2                 | TC-02, TC-13, TC-17                             |
 | [P10A2](./implementation-plan.md#phase-p10a2---comparison-read-client-contract)                     | Typed client/proxy contract cho so sánh        | P10A1 merged/applied/gated | TC-13, TC-17                                    |
-| [P10B](./implementation-plan.md#phase-p10b---comparison-matrix-ui)                                  | Ma trận so sánh                                | P3A, P10A2                 | TC-13, TC-17                                    |
+| [P10B1](./implementation-plan.md#phase-p10b1---core-read-only-comparison-matrix)                    | Core matrix read-only                          | P3A, P10A2                 | TC-13, TC-17                                    |
+| [P10B2](./implementation-plan.md#phase-p10b2---many-option-column-ergonomics)                       | Column selection, pinning và focus             | P10B1                      | TC-13                                           |
+| [P10B3](./implementation-plan.md#phase-p10b3---lazy-read-only-evidence-inspector)                   | Lazy evidence inspector                        | P10B2                      | TC-13                                           |
 | [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)                | Domain và persistence đánh giá thủ công        | P4, P8A3                   | TC-02, TC-15, TC-16, TC-19, TC-20               |
-| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B, P11                  | TC-04, TC-14, TC-15, TC-16, TC-17, TC-20        |
+| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B3, P11                 | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
 | [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A                       | TC-14, TC-16                                    |
 | [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B                       | TC-18                                           |
 | [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C                       | TC-02, TC-20                                    |
-| [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C                       | TC-03, TC-04, TC-11, TC-13, TC-14, TC-20        |
+| [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C                       | TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-20 |
 | [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3     | TC-19                                           |
 
 ## Phase P0 - Discovery And Contract Freeze
@@ -454,17 +456,50 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 - [ ] P10A2.5 Viết source/contract tests cho RPC name, allowlist, args, response,
       ordered key, one-call/disabled behavior và rerun P10A1 source contracts.
 
-## Phase P10B - Comparison Matrix UI
+## Phase P10B1 - Core Read-Only Comparison Matrix
 
-- [ ] P10B.1 Hiển thị read-only groups/criteria theo hàng, sticky baseline và
-      option columns động cho nhiều phương án được chọn.
-- [ ] P10B.2 Thêm column selection, pinning, horizontal scroll và focus mode.
-- [ ] P10B.3 Thêm read-only detail panel cho full text, supplementary information
-      và citations; không tạo arbitrary content/evidence columns.
-- [ ] P10B.4 Tích hợp matrix tab vào workspace shell nhưng không render response
-      textarea, `Sao chép từ cấu hình cơ bản`, `Lưu` hoặc `Lưu & tiếp theo`;
-      authoring một option/criterion vẫn thuộc P8B3.
-- [ ] P10B.5 Viết interaction, long-text, keyboard và responsive verification.
+- [ ] P10B1.1 Thêm baseline-version selection, ordered selected-option controls
+      tối đa 8 phương án và fixed criterion page size 50.
+- [ ] P10B1.2 Reuse một shared read-only option-list query seam mà không đổi P8
+      draft/mutation behavior.
+- [ ] P10B1.3 Hiển thị ordered groups/criteria theo hàng, sticky baseline,
+      dynamic option columns và bounded horizontal scroll.
+- [ ] P10B1.4 Thêm concise read-only cells cùng text-only detail panel cho full
+      requirement, response và supplementary information.
+- [ ] P10B1.5 Tích hợp và enable comparison tab nhưng giữ matrix state/data hooks
+      ngoài workspace shell.
+- [ ] P10B1.6 Khóa ownership: không response editor, copy, dirty draft, save,
+      assessment persistence, ranking hoặc derived compliance.
+- [ ] P10B1.7 Viết ordered-selection, paging, long-text, empty/loading/error,
+      keyboard, responsive-source và P8 regression tests; không browser test.
+
+## Phase P10B2 - Many-Option Column Ergonomics
+
+- [ ] P10B2.1 Tách selected request order khỏi view-only visible option order;
+      visibility không đổi query key.
+- [ ] P10B2.2 Giữ baseline luôn sticky và cho ghim tối đa 2 visible option
+      columns theo selected-option order.
+- [ ] P10B2.3 Thêm focus mode baseline + một option, thoát focus khôi phục
+      visible/pinned state trước đó.
+- [ ] P10B2.4 Giữ stable widths/offsets và horizontal access với 8 options ở
+      narrow/wide layout.
+- [ ] P10B2.5 Viết reducer, keyboard/focus, pin-limit, many-column,
+      responsive-source và file-size tests; không browser test.
+
+## Phase P10B3 - Lazy Read-Only Evidence Inspector
+
+- [ ] P10B3.1 Lazy-load read-only documents, excerpts và criterion citations cho
+      đúng một baseline hoặc option cell đang mở.
+- [ ] P10B3.2 Không fetch khi panel đóng hoặc evidence summary báo không có dữ
+      liệu; dùng bounded page/load-more.
+- [ ] P10B3.3 Reuse nguyên P7 baseline và P9 exact-baseline option RPC/query-key
+      paths; không thêm per-option comparison fetch path thứ hai.
+- [ ] P10B3.4 Giữ reference-product evidence ngoài matrix và không render
+      mutation/assessment controls.
+- [ ] P10B3.5 Viết lazy enablement, exact RPC, citation filtering, long excerpt,
+      keyboard/focus và P7/P9 regression tests; không browser test.
+- [ ] P10B3.6 Ghi rõ browser screenshot/interaction verification của toàn P10B
+      được defer sang P13B theo chỉ định product owner.
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
 
@@ -476,8 +511,10 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
-- [ ] P12A.1 Thêm criterion list bên trái và detail panel bên phải cho một option.
-- [ ] P12A.2 Thêm hai trục, notes, `Lưu` và `Lưu & tiếp tục`.
+- [ ] P12A.1 Thêm criterion list và compose evaluation panel từ P10B
+      `TechnicalConfigurationCriterionPanel`; không duplicate read renderer/query.
+- [ ] P12A.2 Thêm assessment controls cho hai trục, notes, `Lưu` và
+      `Lưu & tiếp tục`.
 - [ ] P12A.3 Giữ current criterion/input khi save thất bại.
 - [ ] P12A.4 Chặn hoặc bảo toàn thay đổi khi chọn tiêu chí/chuyển trang lúc dirty.
 - [ ] P12A.5 Tích hợp evaluation tab và viết workflow/browser tests.
@@ -509,12 +546,15 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
 - [ ] P13B.1 Kiểm tra keyboard/focus/accessibility và dirty-navigation.
-- [ ] P13B.2 Kiểm tra long Vietnamese text, many options và narrow viewport.
+- [ ] P13B.2 Kiểm tra long Vietnamese text, many options, narrow viewport và
+      P10B3 evidence detail states/focus restoration trên desktop/mobile.
 - [ ] P13B.3 Kiểm tra default/editable groups, many reference products và không xuất hiện custom content-column controls.
 - [ ] P13B.4 Kiểm tra concurrent edits và conflict recovery qua hai tab.
-- [ ] P13B.5 Chạy Equipment attachment regression và full relevant React tests.
-- [ ] P13B.6 Chạy full React Doctor command và browser screenshot/interaction verification.
-- [ ] P13B.7 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
+- [ ] P13B.5 Kiểm tra P12A reuse P10B detail và supplementary information vẫn
+      non-scoring sau save/save-next/derived status.
+- [ ] P13B.6 Chạy Equipment attachment regression và full relevant React tests.
+- [ ] P13B.7 Chạy full React Doctor command và browser screenshot/interaction verification.
+- [ ] P13B.8 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
 
 ## Phase P13C - Release, OpenSpec And AI Boundary Audit
 

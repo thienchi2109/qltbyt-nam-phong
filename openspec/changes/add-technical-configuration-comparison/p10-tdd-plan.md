@@ -8,7 +8,7 @@ the existing matrix UI leaf:
 ```text
 P7B2 + P9B2 -> P10A1
 P10A1       -> P10A2
-P3A + P10A2 -> P10B
+P3A + P10A2 -> P10B1 -> P10B2 -> P10B3
 ```
 
 Each leaf starts from `main` after its dependencies have merged. Do not stack
@@ -18,8 +18,9 @@ unmerged P10 implementation branches. The branches are:
 2. `feat/technical-config-p10a2-comparison-read-client`
 
 P10A2 starts only after P10A1 has merged, its migration has been applied with
-explicit permission and its database phase gate has passed. P10B starts only
-after P10A2 has merged and P3A is available.
+explicit permission and its database phase gate has passed. P10B1 starts only
+after P10A2 has merged and P3A is available; P10B2/P10B3 then land
+sequentially from updated `main`.
 
 Production-only implementation estimates, excluding tests and documentation:
 
@@ -154,7 +155,7 @@ The exact top-level and nested wire shape is:
 Evidence summaries have exactly three fixed-size fields:
 `document_count`, `citation_count` and `has_evidence`. The matrix RPC does not
 return citation/document arrays, reference-product responses, full documents or
-excerpts. P10B lazy-loads full baseline/option evidence through the existing
+excerpts. P10B3 lazy-loads full baseline/option evidence through the existing
 bounded document RPCs when the detail panel opens. Reference-product
 response/evidence remains owned by the existing P7 surfaces.
 
@@ -201,19 +202,20 @@ The error contract is fixed:
 
 ## Ownership And Conflict Prevention
 
-| Concern                                | Primary owner                    | Downstream use                   | Forbidden overlap                         |
-| -------------------------------------- | -------------------------------- | -------------------------------- | ----------------------------------------- |
-| RPC signature, SQL, grants and indexes | P10A1                            | P10A2 calls the fixed RPC        | P10A2/P10B must not redefine SQL          |
-| Authorization and same-dossier guards  | P10A1                            | P10A2 preserves errors           | No client-only authorization substitute   |
-| Bounds, order and criterion paging     | P10A1                            | P10A2 mirrors in keys/enablement | P10A2 must not sort IDs or raise limits   |
-| Evidence summary scope                 | P10A1                            | P10A2 types it; P10B renders it  | No full-evidence matrix payload           |
-| RPC-name manifest and proxy allowlist  | P10A2                            | P10B consumes the hook           | P10A1 does not expose the proxy           |
-| Wire/domain types and typed adapter    | P10A2                            | P10B imports them                | P10B must not create a second adapter     |
-| Query key and read hook                | P10A2                            | P10B selects/render pages        | No mutation or P8/P9 invalidation         |
-| Matrix rendering and interaction       | P10B                             | P13 regression coverage          | P10A1/P10A2 create no UI                  |
-| Response authoring and dirty state     | P8B3                             | Matrix remains read-only         | P10 must not duplicate authoring controls |
-| Full evidence document loading         | Existing P7B2/P9B2 RPCs; P10B UI | Detail panel lazy-loads          | P10A1 does not duplicate document RPCs    |
-| Reference-product response/evidence    | Existing P7A2/P7B2 surfaces      | Remains separately inspectable   | P10A1 does not aggregate it               |
+| Concern                                | Primary owner                  | Downstream use                   | Forbidden overlap                         |
+| -------------------------------------- | ------------------------------ | -------------------------------- | ----------------------------------------- |
+| RPC signature, SQL, grants and indexes | P10A1                          | P10A2 calls the fixed RPC        | P10A2/P10B1-3 must not redefine SQL       |
+| Authorization and same-dossier guards  | P10A1                          | P10A2 preserves errors           | No client-only authorization substitute   |
+| Bounds, order and criterion paging     | P10A1                          | P10A2 mirrors in keys/enablement | P10A2 must not sort IDs or raise limits   |
+| Evidence summary scope                 | P10A1                          | P10A2 types; P10B1/B3 render     | No full-evidence matrix payload           |
+| RPC-name manifest and proxy allowlist  | P10A2                          | P10B1 consumes the hook          | P10A1 does not expose the proxy           |
+| Wire/domain types and typed adapter    | P10A2                          | P10B1 imports them               | P10B1-3 create no second adapter          |
+| Query key and read hook                | P10A2                          | P10B1 selects/render pages       | No mutation or P8/P9 invalidation         |
+| Core matrix/text inspection            | P10B1                          | P10B2/P10B3 extend it            | No column/evidence ownership overlap      |
+| Column visibility/pinning/focus        | P10B2                          | P13B regression coverage         | View state must not change request order  |
+| Response authoring and dirty state     | P8B3                           | Matrix remains read-only         | P10 must not duplicate authoring controls |
+| Full evidence document loading         | Existing P7B2/P9B2 RPCs; P10B3 | Detail panel lazy-loads          | No preload or evidence mutation controls  |
+| Reference-product response/evidence    | Existing P7A2/P7B2 surfaces    | Remains separately inspectable   | P10A1 does not aggregate it               |
 
 `callTechnicalConfigurationRpc` is a shared transport hotspot. P10A2 may call
 it through a new module-local adapter but must not change its behavior,
@@ -225,9 +227,15 @@ Scenario ownership remains explicit:
   for TC-13-S01.
 - P10A2 is a required client/proxy prerequisite for TC-13-S01 and reruns P10A1
   source contracts.
-- P10B is the normative completion owner for TC-13-S01/S02/S03.
+- P10B1 owns TC-13-S01, the core-dimension/text portion of TC-13-S02 and the
+  TC-17-S01 core text surface.
+- P10B2 owns TC-13-S03; P10B3 owns the evidence-inspection portions of
+  TC-13-S02/S05. P12A is the normative end-to-end completion owner after
+  composing manual assessment; P10B1/P10B3 must not mark those scenarios
+  complete.
 - P10A1/P10A2 only preserve structural separation for supplementary
-  information. TC-17-S01 remains P10B-owned and TC-17-S02 remains P8A3-owned.
+  information. TC-17-S02 remains P8A3-owned; P10B1/P12A rerun focused
+  regressions and P13B is the canonical regression owner.
 
 ## Required Workflow Before Each Leaf
 
@@ -410,7 +418,7 @@ Only then may P10A2 begin.
 
 **Depends on:** P10A1 merged, applied and DB-gated
 
-**Deploy boundary:** dormant typed proxy/client contract. P10B is the first UI
+**Deploy boundary:** dormant typed proxy/client contract. P10B1 is the first UI
 consumer.
 
 ### Files
@@ -498,7 +506,7 @@ per-option data path.
 - Keep the adapter responsible for request/response translation.
 - Keep enablement and query policy in the hook.
 - Reuse established query-key and RPC error patterns.
-- Do not add a generic comparison abstraction before P10B demonstrates a
+- Do not add a generic comparison abstraction before P10B1 demonstrates a
   second consumer.
 
 ### P10A2 Verification
@@ -536,23 +544,22 @@ phase gate unless the user separately authorizes that exact execution.
 - Shared RPC transport and P8/P9 consumers are unchanged.
 - No matrix UI exists.
 
-Only then may P10B begin.
+Only then may P10B1 begin.
 
-## P10B Handoff Contract
+## P10B1/P10B2/P10B3 Handoff Contract
 
-P10B consumes `useTechnicalConfigurationComparison` and owns:
+The UI delivery contract, file ownership, RED/GREEN sequence and per-leaf gates
+live in [p10b-tdd-plan.md](./p10b-tdd-plan.md).
 
-- selected-option controls;
-- matrix criterion paging;
-- sticky baseline and ordered option columns;
-- horizontal scroll, pinning and focus mode;
-- concise cells and lazy-loaded evidence detail;
-- responsive, keyboard and read-only ownership tests.
+Across all three leaves:
 
-P10B must not:
-
-- redefine comparison wire types or call the RPC through another adapter;
-- sort option IDs independently of the selection order;
-- add response editors, copy controls, dirty drafts or save commands;
-- fetch full evidence for every matrix cell or aggregate reference-product data;
-- introduce manual assessment persistence or derived compliance.
+- consume `useTechnicalConfigurationComparison` and the P10A2 types/adapter/query
+  key without redefining them;
+- preserve selected option order and the 1-8 option / 1-100 criterion bounds;
+- keep response authoring, dirty state and save commands in P8B3;
+- lazy-load full evidence only in P10B3 through existing bounded P7/P9 paths;
+- treat P10B3 as the evidence-inspection portion of TC-13-S05; P12A composes
+  manual assessment into the same detail workflow after P11;
+- introduce no manual assessment persistence, ranking or derived compliance;
+- run focused React, keyboard and responsive-source tests without browser tests;
+  P13B remains the browser screenshot/interaction regression owner.

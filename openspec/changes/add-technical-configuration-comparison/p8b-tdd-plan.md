@@ -457,7 +457,8 @@ After P8B3 implementation, run a desktop-only browser pass:
   save-next success/failure
 - capture desktop screenshots for normal, dirty, overwrite-confirmation,
   archived and conflict states
-- do not add mobile responsive acceptance or alter the later P10B mobile plan
+- do not add mobile responsive acceptance or alter the later P13B mobile browser
+  plan
 
 The live database currently has no supplier, option or option-response rows.
 Creating representative live browser fixtures and cleaning them up requires a

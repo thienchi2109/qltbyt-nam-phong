@@ -111,9 +111,11 @@ P7B1 + P8A4 + P9A3 -> P9B1
 P6B + P7B2 + P8B2 + P9B1 -> P9B2
 P7B2 + P9B2     -> P10A1
 P10A1           -> P10A2
-P3A + P10A2     -> P10B
+P3A + P10A2     -> P10B1
+P10B1           -> P10B2
+P10B2           -> P10B3
 P4 + P8A3       -> P11
-P10B + P11      -> P12A
+P10B3 + P11     -> P12A
 P12A            -> P12B
 P12B            -> P12C
 P12C            -> P13A, P13B
@@ -148,11 +150,11 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                         |
 | TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                         |
 | TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                   |
-| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B                                                                                                                       |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A                                                                                                  |
 | TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                               |
 | TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                                |
 | TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                          |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B, P12A                                                                                         |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A, P13B                                                                                  |
 | TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                     |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                        |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
@@ -1813,53 +1815,161 @@ comparison summaries without exposing a proxy/client consumer or matrix UI.
 ### Exit gate
 
 The stable P10A1 RPC is exposed through a typed, bounded and dormant client
-contract. No P8/P9 consumer changes behavior, and P10B may begin.
+contract. No P8/P9 consumer changes behavior, and P10B1 may begin.
 
-## Phase P10B - Comparison Matrix UI
+P10B delivery follows the detailed
+[P10B TDD plan](./p10b-tdd-plan.md) and lands as three sequential, deploy-safe
+UI leaves. Browser screenshot/interaction verification is intentionally
+deferred to P13B by explicit product-owner direction; every P10B leaf still
+owns focused React, keyboard, responsive-source and read-only ownership gates.
+
+## Phase P10B1 - Core Read-Only Comparison Matrix
 
 **Depends on:** P3A, P10A2
-**Requirements:** TC-13, TC-17  
-**Deploy boundary:** read/inspect comparison only; response authoring remains in
-P8B3 and evaluation editing remains deferred
+
+**Requirements:** TC-13-S01, TC-13-S02 core-dimension/text portion, TC-17-S01;
+regression for TC-17-S02
+
+**Deploy boundary:** useful read-only baseline/option scan and text inspection;
+column ergonomics and evidence documents remain deferred
 
 ### Planned files
 
+- Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationComparisonTab.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationMatrix.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationMatrixToolbar.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPanel.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/comparison-matrix.test.tsx`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparisonMatrix.ts`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptionListQuery.ts`
+- Create: `src/app/(app)/technical-configurations/__tests__/comparison-matrix-core.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationOptions.ts`
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
 ### Tasks
 
-- [ ] Render groups/criteria as ordered read-only rows and add a sticky baseline
-      column.
-- [ ] Add stable option columns labeled
-      `Nhà cung cấp · Model hoặc tên phương án`.
-- [ ] Add horizontal scrolling without layout shifts.
-- [ ] Add column selector, pinning and focus mode.
-- [ ] Add concise read-only cell rendering and a detail panel for full
-      content/evidence without arbitrary content or permanent evidence columns.
-- [ ] Show supplementary information without treating it as compliance.
-- [ ] Preserve usable behavior with many options through bounded selection/loading.
-- [ ] Keep matrix state/data hooks outside the workspace shell.
-- [ ] Render no response textarea, copy-from-baseline confirmation, dirty draft,
-      `Lưu` or `Lưu & tiếp theo`; P10B must not become a second authoring
-      surface.
+- [ ] Add baseline-version selection and ordered selected-option controls with a
+      maximum of eight options; add appends, removal preserves remaining order
+      and no code sorts option IDs.
+- [ ] Reuse one shared read-only option-list query seam without changing P8
+      supplier/option draft or mutation behavior.
+- [ ] Add criterion paging with a fixed default page size of 50, reset page one
+      after baseline/selection changes and keep every request within P10A limits.
+- [ ] Render ordered group/criterion rows, a sticky baseline and stable option
+      columns labeled `Nhà cung cấp · Model hoặc tên phương án`.
+- [ ] Add bounded horizontal scrolling, concise read-only cells and a text-only
+      detail panel for full requirement, response and supplementary information.
+- [ ] Keep matrix state/data hooks outside the workspace shell and enable the
+      comparison tab only when the complete P10B1 surface is mounted.
+- [ ] Render no response editor, copy control, dirty draft, save command,
+      assessment persistence, ranking or derived compliance.
 
 ### TDD and verification
 
-- Matrix rendering tests for long text, empty responses and many columns.
-- Keyboard/focus tests for toolbar and detail panel.
-- Ownership tests proving matrix cells/detail remain read-only and no P8B3
-  authoring controls render.
-- Desktop/mobile screenshots and browser interaction checks.
+- Ordered selection, maximum-eight, page reset and disabled-query tests.
+- Ordered-row, sticky-baseline, long-text, empty-response and paging tests.
+- Loading, error, no-selection and empty-page tests.
+- Ownership tests proving the toolbar, cells and text detail remain read-only.
+- Existing P8 supplier/option query and authoring regressions after shared query
+  extraction.
+- Responsive class/source assertions and keyboard/focus React tests; no browser
+  test in this leaf.
 - React Doctor after focused tests pass.
 
 ### Exit gate
 
-Users can scan and inspect baseline versus selected options without duplicating
-P8B3 response authoring and cannot yet save manual assessments.
+Users can select ordered options, page through criteria, scan the baseline and
+option responses, and inspect full text without duplicating P8B3 authoring.
+
+## Phase P10B2 - Many-Option Column Ergonomics
+
+**Depends on:** P10B1
+
+**Requirements:** TC-13-S03
+
+**Deploy boundary:** view-only column visibility, pinning and focus controls on
+the already useful P10B1 matrix
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationMatrixColumnControls.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/comparison-matrix-columns.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationMatrix.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationMatrixToolbar.tsx`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparisonMatrix.ts`
+
+### Tasks
+
+- [ ] Keep request membership/order in `selectedOptionIds` and view-only
+      visibility in a separate ordered subset that never changes the query key.
+- [ ] Keep the baseline permanently sticky and allow at most two visible option
+      columns to be pinned in selected-option order.
+- [ ] Add focus mode showing baseline plus one option without mutating selected,
+      visible or pinned state; exiting restores the prior view.
+- [ ] Preserve stable widths/sticky offsets and complete horizontal access with
+      eight selected options at narrow and wide layout constraints.
+- [ ] Add keyboard-operable visibility, pin and focus controls with deterministic
+      focus restoration.
+
+### TDD and verification
+
+- View-state reducer tests proving selection and query order never change.
+- Pin-limit, sticky-offset and focus-mode restoration tests.
+- Keyboard/focus, narrow-layout and many-column React tests.
+- Source/file-size checks for matrix, toolbar and state hook.
+- No browser test in this leaf; P13B remains the browser regression owner.
+- React Doctor after focused tests pass.
+
+### Exit gate
+
+Users can reach, hide, pin and focus selected option columns without changing
+comparison request membership or order.
+
+## Phase P10B3 - Lazy Read-Only Evidence Inspector
+
+**Depends on:** P10B2
+
+**Requirements:** TC-13-S02/S05 evidence-inspection portions; rerun
+TC-13-S01/S03 and TC-17-S01/S02
+
+**Deploy boundary:** one active comparison detail lazily loads existing bounded
+baseline/option evidence reads; no evidence authoring or assessment data
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationComparisonEvidence.tsx`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparisonEvidence.ts`
+- Create: `src/app/(app)/technical-configurations/__tests__/comparison-matrix-evidence.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPanel.tsx`
+
+### Tasks
+
+- [ ] Extend the text detail panel with read-only documents, excerpts and
+      criterion citations for exactly one open baseline or option cell.
+- [ ] Do not issue an evidence request before the panel opens or when the fixed
+      evidence summary reports no evidence.
+- [ ] Reuse existing P7 baseline and P9 exact-baseline option document RPC
+      wrappers/query keys with bounded page/load-more behavior.
+- [ ] Keep baseline, option and reference-product ownership distinct; never
+      aggregate reference-product evidence into the matrix.
+- [ ] Restore focus to the opening cell and render loading, error, no-evidence
+      and long-excerpt states without mutation controls.
+- [ ] Do not invent assessment fields from TC-13-S05 wording; manual evaluation
+      remains owned by P11/P12.
+
+### TDD and verification
+
+- Lazy enablement tests for closed panel, no-evidence summary and one active
+  baseline/option detail.
+- Exact RPC/query-key, bounded pagination and criterion-citation filtering tests.
+- Read-only ownership tests proving no create/update/delete/save controls render.
+- Existing P7/P9 document contract and evidence regression suites.
+- Keyboard/focus and responsive React tests; no browser test in this leaf.
+- React Doctor after focused tests pass.
+
+### Exit gate
+
+Users can inspect full text and lazily loaded evidence for one matrix cell
+without N+1 fetching, evidence authoring or manual assessment persistence.
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
 
@@ -1902,8 +2012,11 @@ Manual assessments can be persisted and deterministically derived through tested
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
-**Depends on:** P10B, P11  
-**Requirements:** TC-04, TC-14, TC-15, TC-16, TC-17, TC-20  
+**Depends on:** P10B3, P11
+
+**Requirements:** TC-04, TC-13-S02/S05 assessment-composition completion,
+TC-14, TC-15, TC-16, TC-17, TC-20
+
 **Deploy boundary:** saveable manual assessment workspace; progress/ranking deferred
 
 ### Planned files
@@ -1911,14 +2024,21 @@ Manual assessments can be persisted and deterministically derived through tested
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationCriterionList.tsx`
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationPanel.tsx`
+- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationAssessmentControls.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/manual-evaluation-workflow.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPanel.tsx` only if typed composition props/slots are required
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
 
 ### Tasks
 
 - [ ] Add one-option-at-a-time selector and context header.
 - [ ] Add left criterion list with group/status scanning.
-- [ ] Add right panel with baseline, response, supplementary info, evidence, notes and both axes.
+- [ ] Make `TechnicalConfigurationEvaluationPanel` a thin wrapper that reuses
+      `TechnicalConfigurationCriterionPanel` for baseline, response,
+      supplementary info and evidence, then composes notes and both axes through
+      `TechnicalConfigurationAssessmentControls`.
+- [ ] Do not duplicate P10B detail rendering, comparison/evidence query keys or
+      fetch paths.
 - [ ] Add `Lưu` and `Lưu & tiếp tục`.
 - [ ] Keep current criterion and unsaved input on validation/conflict/persistence failure.
 - [ ] Block navigation or preserve a local draft when selecting another criterion/tab/dossier while dirty.
@@ -1928,6 +2048,8 @@ Manual assessments can be persisted and deterministically derived through tested
 ### TDD and verification
 
 - Workflow tests for save, save-next and failure preservation.
+- Composition tests proving one shared read-only detail/evidence renderer and no
+  second query path.
 - Dirty criterion/tab/dossier navigation tests.
 - Two-axis and derived-status rendering tests.
 - Browser verification of the core evaluation journey.
@@ -2038,8 +2160,10 @@ No release-blocking database authorization, integrity or performance gap remains
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
-**Depends on:** P12C  
-**Requirements:** TC-03, TC-04, TC-11, TC-13, TC-14, TC-20  
+**Depends on:** P12C
+
+**Requirements:** TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-20
+
 **Deploy boundary:** verification-only; fixes require separate blocking leaf phases
 **Production code:** prohibited
 
@@ -2053,8 +2177,13 @@ No release-blocking database authorization, integrity or performance gap remains
 - [ ] Test concurrent edits and conflict recovery across two tabs.
 - [ ] Verify dirty criterion/tab/dossier navigation.
 - [ ] Verify long Vietnamese text, many options and narrow viewport.
+- [ ] Verify P10B3 one-cell evidence detail loading, no-evidence, error,
+      load-more and focus-restoration states on desktop and mobile.
 - [ ] Verify suggested groups remain editable, additional groups render correctly and no custom content-column controls exist.
 - [ ] Verify many reference-product columns remain selectable and all criterion content/evidence is reachable.
+- [ ] Verify P12A composes assessment controls onto the shared P10B detail and
+      supplementary information remains non-scoring after save, save-next and
+      derived-status rendering.
 - [ ] Verify keyboard/focus/accessibility across workspace, matrix and evaluation.
 - [ ] Verify stable dimensions and absence of overlap/layout shifts.
 - [ ] Verify Equipment attachment regressions after shared extraction.
@@ -2071,7 +2200,8 @@ No release-blocking database authorization, integrity or performance gap remains
   node scripts/npm-run.js npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose --project . --offline --full
   ```
 
-- Browser screenshot/interaction evidence.
+- Browser screenshot/interaction evidence covering P10B3 evidence detail,
+  P12A assessment composition and TC-17 non-scoring behavior.
 - Reviewer approval of UI/accessibility evidence.
 
 ### Exit gate

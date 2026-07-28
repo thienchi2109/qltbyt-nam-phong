@@ -39,9 +39,24 @@
 - P10A2 owns only the RPC-name manifest, proxy allowlist, wire/domain types,
   typed adapter, ordered query key and dormant comparison hook. It creates no
   migration and does not change shared RPC transport behavior.
-- P10B owns the read-only multi-option matrix. It may display baseline,
-  responses, supplementary information and evidence detail but does not render
-  response editors, copy controls, dirty drafts or save commands.
+- P10B1 owns ordered option selection, criterion paging, the sticky-baseline
+  read-only matrix and text-only detail for full requirement, response and
+  supplementary information. It enables the comparison tab only with that
+  complete core workflow.
+- P10B2 owns view-only column visibility, at most two pinned option columns and
+  focus mode. These controls never change selected option membership/order or
+  the P10A2 query key.
+- P10B3 owns one-active-cell lazy evidence inspection through existing bounded
+  P7/P9 read paths. It does not preload full evidence or add evidence mutation
+  controls.
+- TC-13-S02/S05 remain staged across phases: P10B1 owns the reusable full-text
+  detail, P10B3 extends that detail with evidence inspection, and P12A composes
+  manual assessment after P11 supplies its domain and persistence contract.
+- P12A's evaluation panel must be a thin composition wrapper around the P10B
+  criterion detail plus assessment controls. It must not duplicate
+  baseline/response/supplementary/evidence rendering, query keys or fetch paths.
+- No P10B leaf renders response editors, copy controls, dirty drafts, save
+  commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
   grant, live database operation or alternative persistence semantics.
 
