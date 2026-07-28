@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { FormBrandingHeader } from "@/components/form-branding-header"
+import { useTenantBranding } from "@/hooks/use-tenant-branding"
 
 interface MaintenanceDevice {
   code?: string
@@ -17,7 +18,7 @@ interface MaintenanceFormProps {
   department?: string
   year?: number
   devices?: MaintenanceDevice[]
-  tenantId?: number | null  // New: Tenant ID for form branding context
+  tenantId?: number | null // New: Tenant ID for form branding context
 }
 
 interface MaintenanceDisplayRow extends MaintenanceDevice {
@@ -31,11 +32,19 @@ export function MaintenanceForm({
   department = "",
   year = new Date().getFullYear(),
   devices = EMPTY_DEVICES,
-  tenantId = null
+  tenantId = null,
 }: MaintenanceFormProps) {
+  const normalizedTenantId = tenantId ?? null
+  const { data: branding, isPlaceholderData } = useTenantBranding({
+    formTenantId: normalizedTenantId,
+    useFormContext: tenantId != null,
+  })
+  const printLocation = isPlaceholderData ? "" : (branding?.print_location ?? "")
+  const printLocationInputKey = `${normalizedTenantId ?? "session"}:${printLocation}`
+
   const formatValue = (value: unknown) => {
-    if (value === null || value === undefined || value === '') {
-      return ''
+    if (value === null || value === undefined || value === "") {
+      return ""
     }
     return String(value).trim()
   }
@@ -80,18 +89,18 @@ export function MaintenanceForm({
             <div className="flex justify-between items-start">
               <div className="w-1/4"></div>
               <div className="text-center w-1/2">
-                <FormBrandingHeader 
-                  align="center" 
-                  size="md" 
+                <FormBrandingHeader
+                  align="center"
+                  size="md"
                   showDivider={false}
                   className="mb-2"
                   tenantId={tenantId}
                 />
                 <div className="flex items-baseline justify-center font-bold">
                   <label htmlFor="department-name">KHOA/PHÒNG:</label>
-                  <input 
-                    type="text" 
-                    id="department-name" 
+                  <input
+                    type="text"
+                    id="department-name"
                     aria-label="Khoa phòng lập kế hoạch bảo trì"
                     className="form-input-line flex-grow ml-2"
                     defaultValue={formatValue(department)}
@@ -103,8 +112,8 @@ export function MaintenanceForm({
             <div className="text-center mt-4">
               <h1 className="title-main uppercase font-semibold flex justify-center items-baseline">
                 KẾ HOẠCH BẢO TRÌ HIỆU CHUẨN/KIỂM ĐỊNH THIẾT BỊ NĂM
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   aria-label="Năm lập kế hoạch bảo trì"
                   className="form-input-line w-24 ml-2"
                   defaultValue={year.toString()}
@@ -118,13 +127,23 @@ export function MaintenanceForm({
             <table className="w-full data-table">
               <thead className="font-bold">
                 <tr>
-                  <th rowSpan={2} className="w-[3%]">TT</th>
-                  <th rowSpan={2} className="w-[8%]">Mã TB</th>
-                  <th rowSpan={2} className="w-[15%]">Tên TB</th>
-                  <th rowSpan={2} className="w-[12%]">Khoa/Phòng sử dụng</th>
+                  <th rowSpan={2} className="w-[3%]">
+                    TT
+                  </th>
+                  <th rowSpan={2} className="w-[8%]">
+                    Mã TB
+                  </th>
+                  <th rowSpan={2} className="w-[15%]">
+                    Tên TB
+                  </th>
+                  <th rowSpan={2} className="w-[12%]">
+                    Khoa/Phòng sử dụng
+                  </th>
                   <th colSpan={2}>Đơn vị thực hiện</th>
                   <th colSpan={12}>Thời gian dự kiến hiệu chuẩn/kiểm định (tháng)</th>
-                  <th rowSpan={2} className="w-[8%]">Điểm hiệu chuẩn/kiểm định</th>
+                  <th rowSpan={2} className="w-[8%]">
+                    Điểm hiệu chuẩn/kiểm định
+                  </th>
                 </tr>
                 <tr>
                   <th className="w-[5%]">Nội bộ</th>
@@ -146,27 +165,27 @@ export function MaintenanceForm({
               <tbody>
                 {displayDevices.map((device, index) => (
                   <tr key={device._rowKey}>
-                    <td>{index + 1 || ''}</td>
+                    <td>{index + 1 || ""}</td>
                     <td>{formatValue(device.code)}</td>
                     <td>{formatValue(device.name)}</td>
                     <td>{formatValue(device.department)}</td>
                     <td>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         aria-label={`Thực hiện nội bộ cho ${formatValue(device.name)}`}
                         defaultChecked={device.internalImplementation || false}
                       />
                     </td>
                     <td>
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         aria-label={`Thuê ngoài cho ${formatValue(device.name)}`}
                         defaultChecked={device.outsourcedImplementation || false}
                       />
                     </td>
                     {Array.from({ length: 12 }, (_, monthIndex) => (
                       <td key={monthIndex}>
-                        <input 
+                        <input
                           type="checkbox"
                           aria-label={`Tháng ${monthIndex + 1} cho ${formatValue(device.name)}`}
                           defaultChecked={(device.months && device.months[monthIndex]) || false}
@@ -174,7 +193,7 @@ export function MaintenanceForm({
                       </td>
                     ))}
                     <td>
-                      <input 
+                      <input
                         type="text"
                         aria-label={`Địa điểm hiệu chuẩn cho ${formatValue(device.name)}`}
                         defaultValue={formatValue(device.calibrationPoint)}
@@ -196,9 +215,31 @@ export function MaintenanceForm({
               <div className="w-1/3"></div>
               <div className="signature-area w-1/3">
                 <p className="italic mb-2">
-                  Cần Thơ, ngày <input type="text" aria-label="Ngày lập biểu mẫu" className="form-input-line w-12" />
-                  {' '}tháng <input type="text" aria-label="Tháng lập biểu mẫu" className="form-input-line w-12" />
-                  {' '}năm <input type="text" aria-label="Năm lập biểu mẫu" className="form-input-line w-20" />
+                  <input
+                    key={printLocationInputKey}
+                    type="text"
+                    aria-label="Địa điểm lập biểu mẫu"
+                    defaultValue={printLocation}
+                    className="form-input-line w-24"
+                  />
+                  {", ngày "}
+                  <input
+                    type="text"
+                    aria-label="Ngày lập biểu mẫu"
+                    className="form-input-line w-12"
+                  />{" "}
+                  tháng{" "}
+                  <input
+                    type="text"
+                    aria-label="Tháng lập biểu mẫu"
+                    className="form-input-line w-12"
+                  />{" "}
+                  năm{" "}
+                  <input
+                    type="text"
+                    aria-label="Năm lập biểu mẫu"
+                    className="form-input-line w-20"
+                  />
                 </p>
                 <p className="font-bold">Người lập</p>
                 <div className="signature-space"></div>
