@@ -1,10 +1,11 @@
 import type { RepairRequestWithEquipment } from "../types"
 import { buildRepairRequestSheetHtml, type RepairRequestSheetOptions } from "../request-sheet"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
+import type { TenantBranding } from "@/hooks/use-tenant-branding"
 
 /** External dependencies for UI handlers */
 export interface UIHandlersDeps {
-  branding: { name?: string | null; logo_url?: string | null } | null | undefined
+  branding: TenantBranding | null | undefined
   toast: ReturnType<typeof import("@/hooks/use-toast").useToast>["toast"]
 }
 
@@ -40,6 +41,7 @@ export function useRepairRequestUIHandlers(deps: UIHandlersDeps): UIHandlersActi
         {
           organizationName,
           logoUrl,
+          printLocation: branding?.print_location ?? "",
         },
         options
       )

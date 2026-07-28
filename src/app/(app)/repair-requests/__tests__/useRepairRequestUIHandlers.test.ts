@@ -53,6 +53,36 @@ describe("useRepairRequestUIHandlers", () => {
     expect(didPrint).toBe(false)
   })
 
+  it("forwards the tenant print location to the print template builder", () => {
+    mockBuildRepairRequestSheetHtml.mockReturnValue("<html><body>print</body></html>")
+    vi.spyOn(window, "open").mockReturnValue(null)
+    const request = { id: 6 } as RepairRequestWithEquipment
+
+    const { result } = renderHook(() =>
+      useRepairRequestUIHandlers({
+        branding: {
+          id: 12,
+          name: "CDC An Giang",
+          logo_url: "https://example.com/an-giang-logo.png",
+          print_location: "An Giang",
+        },
+        toast: mocks.toast,
+      })
+    )
+
+    result.current.handleGenerateRequestSheet(request)
+
+    expect(mockBuildRepairRequestSheetHtml).toHaveBeenCalledWith(
+      request,
+      {
+        organizationName: "CDC An Giang",
+        logoUrl: "https://example.com/an-giang-logo.png",
+        printLocation: "An Giang",
+      },
+      undefined
+    )
+  })
+
   it("passes requester prefill options to the print template builder", () => {
     mockBuildRepairRequestSheetHtml.mockReturnValue("<html><body>print</body></html>")
 
@@ -69,8 +99,10 @@ describe("useRepairRequestUIHandlers", () => {
     const { result } = renderHook(() =>
       useRepairRequestUIHandlers({
         branding: {
+          id: 1,
           name: "CDC Cần Thơ",
           logo_url: "https://example.com/logo.png",
+          print_location: null,
         },
         toast: mocks.toast,
       })
@@ -85,6 +117,7 @@ describe("useRepairRequestUIHandlers", () => {
       {
         organizationName: "CDC Cần Thơ",
         logoUrl: "https://example.com/logo.png",
+        printLocation: "",
       },
       { prefillRequesterName: false }
     )

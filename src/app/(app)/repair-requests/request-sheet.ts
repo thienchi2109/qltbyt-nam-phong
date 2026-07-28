@@ -1,10 +1,11 @@
-import { format, parseISO } from 'date-fns'
-import type { RepairRequestWithEquipment } from './types'
-import { REPAIR_SHEET_STYLES } from './request-sheet-styles'
+import { format, parseISO } from "date-fns"
+import type { RepairRequestWithEquipment } from "./types"
+import { REPAIR_SHEET_STYLES } from "./request-sheet-styles"
 
 export type RepairRequestSheetBranding = {
   organizationName: string
   logoUrl: string
+  printLocation: string
 }
 
 export interface RepairRequestSheetOptions {
@@ -13,12 +14,23 @@ export interface RepairRequestSheetOptions {
 
 /* ── Shared helpers ── */
 
-const formatValue = (value: unknown) => (value ?? '')
+const HTML_ENTITIES: Record<string, string> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#039;",
+}
+
+const formatValue = (value: unknown) =>
+  String(value ?? "").replace(/[&<>"']/g, (character) => HTML_ENTITIES[character] ?? character)
 
 const LOGO_FALLBACK = "https://placehold.co/58x58/ebeeef/ebeeef?text=Logo"
 
-function buildDateLine(day: string, month: string, year: string): string {
-  return `<div class="date-line">Cần Thơ, ngày ${day} tháng ${month} năm ${year}</div>`
+function buildDateLine(printLocation: string, day: string, month: string, year: string): string {
+  const locationPrefix = printLocation ? `${formatValue(printLocation)}, ` : ""
+
+  return `<div class="date-line">${locationPrefix}ngày ${day} tháng ${month} năm ${year}</div>`
 }
 
 /* ── Page 1: Phiếu đề nghị ── */
@@ -28,14 +40,14 @@ function buildPage1(
   branding: RepairRequestSheetBranding,
   date: { day: string; month: string; year: string },
   derived: { completionDateValue: string },
-  options: RepairRequestSheetOptions,
+  options: RepairRequestSheetOptions
 ): string {
   const { organizationName, logoUrl } = branding
   const { day, month, year } = date
   const { completionDateValue } = derived
   const eq = request.thiet_bi!
   const requesterName =
-    options.prefillRequesterName === false ? '' : formatValue(request.nguoi_yeu_cau)
+    options.prefillRequesterName === false ? "" : formatValue(request.nguoi_yeu_cau)
 
   return `
     <div class="a4-page">
@@ -119,7 +131,7 @@ function buildPage1(
 
             <!-- Date & Signatures I -->
             <div style="margin-top: 24px; margin-bottom: 24px;">
-                ${buildDateLine(day, month, year)}
+                ${buildDateLine(branding.printLocation, day, month, year)}
                 <div class="signature-layout">
                     <div class="signature-row signature-row-top">
                         <div class="signature-col">
@@ -157,23 +169,23 @@ function buildPage1(
 export function buildRepairRequestSheetHtml(
   request: RepairRequestWithEquipment,
   branding: RepairRequestSheetBranding,
-  options: RepairRequestSheetOptions = {},
+  options: RepairRequestSheetOptions = {}
 ): string {
   if (!request || !request.thiet_bi) {
-    throw new Error('Không đủ thông tin để tạo phiếu yêu cầu.')
+    throw new Error("Không đủ thông tin để tạo phiếu yêu cầu.")
   }
 
   const requestDate = request.ngay_yeu_cau ? parseISO(request.ngay_yeu_cau) : new Date()
   const date = {
-    day: format(requestDate, 'dd'),
-    month: format(requestDate, 'MM'),
-    year: format(requestDate, 'yyyy'),
+    day: format(requestDate, "dd"),
+    month: format(requestDate, "MM"),
+    year: format(requestDate, "yyyy"),
   }
 
   const derived = {
     completionDateValue: request.ngay_mong_muon_hoan_thanh
-      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), 'dd/MM/yyyy')
-      : '',
+      ? format(parseISO(request.ngay_mong_muon_hoan_thanh), "dd/MM/yyyy")
+      : "",
   }
 
   return `

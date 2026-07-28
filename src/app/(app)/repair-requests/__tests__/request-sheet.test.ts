@@ -39,6 +39,7 @@ describe("buildRepairRequestSheetHtml", () => {
     const html = buildRepairRequestSheetHtml(request, {
       organizationName: "CDC Cần Thơ",
       logoUrl: "https://example.com/logo.png",
+      printLocation: "",
     })
 
     expect(html).toContain("1. THÔNG TIN THIẾT BỊ")
@@ -64,10 +65,70 @@ describe("buildRepairRequestSheetHtml", () => {
     expect(html).toContain("Nguyễn Văn A")
   })
 
+  it("renders the tenant location before the request date", () => {
+    const html = buildRepairRequestSheetHtml(
+      {
+        ...request,
+        ngay_yeu_cau: "2026-05-01",
+      },
+      {
+        organizationName: "CDC An Giang",
+        logoUrl: "https://example.com/logo.png",
+        printLocation: "An Giang",
+      }
+    )
+
+    expect(html).toContain("An Giang, ngày 01 tháng 05 năm 2026")
+  })
+
+  it("renders the request date without a prefix when the tenant location is blank", () => {
+    const html = buildRepairRequestSheetHtml(
+      {
+        ...request,
+        ngay_yeu_cau: "2026-05-01",
+      },
+      {
+        organizationName: "CDC An Giang",
+        logoUrl: "https://example.com/logo.png",
+        printLocation: "",
+      }
+    )
+
+    expect(html).toContain('<div class="date-line">ngày 01 tháng 05 năm 2026</div>')
+  })
+
+  it("escapes the tenant location before rendering it in the date line", () => {
+    const html = buildRepairRequestSheetHtml(
+      {
+        ...request,
+        ngay_yeu_cau: "2026-05-01",
+      },
+      {
+        organizationName: "CDC An Giang",
+        logoUrl: "https://example.com/logo.png",
+        printLocation: 'An <Giang> & "Miền Tây"',
+      }
+    )
+
+    expect(html).toContain("An &lt;Giang&gt; &amp; &quot;Miền Tây&quot;, ngày 01 tháng 05 năm 2026")
+    expect(html).not.toContain('An <Giang> & "Miền Tây"')
+  })
+
+  it("does not render the hardcoded Cần Thơ date prefix", () => {
+    const html = buildRepairRequestSheetHtml(request, {
+      organizationName: "CDC An Giang",
+      logoUrl: "https://example.com/logo.png",
+      printLocation: "An Giang",
+    })
+
+    expect(html).not.toContain("Cần Thơ, ngày")
+  })
+
   it("renders the equipment name and info strip in the requested print format", () => {
     const html = buildRepairRequestSheetHtml(request, {
       organizationName: "CDC Cần Thơ",
       logoUrl: "https://example.com/logo.png",
+      printLocation: "",
     })
 
     const equipmentNameSection = html.slice(
@@ -96,6 +157,7 @@ describe("buildRepairRequestSheetHtml", () => {
     const html = buildRepairRequestSheetHtml(request, {
       organizationName: "CDC Cần Thơ",
       logoUrl: "https://example.com/logo.png",
+      printLocation: "",
     })
 
     expect(html).toContain("10/01/2026")
@@ -112,6 +174,7 @@ describe("buildRepairRequestSheetHtml", () => {
       {
         organizationName: "CDC Cần Thơ",
         logoUrl: "https://example.com/logo.png",
+        printLocation: "",
       }
     )
 
@@ -134,13 +197,11 @@ describe("buildRepairRequestSheetHtml", () => {
       {
         organizationName: "CDC Cần Thơ",
         logoUrl: "https://example.com/logo.png",
+        printLocation: "",
       }
     )
 
-    const requesterSection = html.slice(
-      html.indexOf("NGƯỜI ĐỀ NGHỊ"),
-      html.indexOf("BAN GIÁM ĐỐC")
-    )
+    const requesterSection = html.slice(html.indexOf("NGƯỜI ĐỀ NGHỊ"), html.indexOf("BAN GIÁM ĐỐC"))
 
     expect(requesterSection).toContain('<div class="sig-line"></div>')
     expect(requesterSection).not.toContain('class="sig-name"')
@@ -152,14 +213,12 @@ describe("buildRepairRequestSheetHtml", () => {
       {
         organizationName: "CDC Cần Thơ",
         logoUrl: "https://example.com/logo.png",
+        printLocation: "",
       },
       { prefillRequesterName: false }
     )
 
-    const requesterSection = html.slice(
-      html.indexOf("NGƯỜI ĐỀ NGHỊ"),
-      html.indexOf("BAN GIÁM ĐỐC")
-    )
+    const requesterSection = html.slice(html.indexOf("NGƯỜI ĐỀ NGHỊ"), html.indexOf("BAN GIÁM ĐỐC"))
 
     expect(requesterSection).toContain('<div class="sig-line"></div>')
     expect(requesterSection).not.toContain("Nguyễn Văn A")
