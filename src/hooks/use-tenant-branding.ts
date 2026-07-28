@@ -9,6 +9,7 @@ export type TenantBranding = {
   id: number
   name: string | null
   logo_url: string | null
+  print_location: string | null
 }
 
 type TenantBrandingSessionUser = {
@@ -17,22 +18,24 @@ type TenantBrandingSessionUser = {
   don_vi?: number | null
 }
 
+/** Fetch branding for the tenant selected from the session or privileged form context. */
 export function useTenantBranding(options?: {
-  formTenantId?: number | null,
+  formTenantId?: number | null
   useFormContext?: boolean
 }) {
   const { data: session, status } = useSession()
   const user = session?.user as TenantBrandingSessionUser | undefined
   const isPrivileged = isGlobalRole(user?.role)
-  
+
   // Determine effective tenant ID based on user privilege and options
-  const sessionTenantKey = user?.don_vi ? String(user.don_vi) : 'none'
+  const sessionTenantKey = user?.don_vi ? String(user.don_vi) : "none"
   const formTenantKey = options?.formTenantId ? String(options.formTenantId) : null
-  
+
   // Smart tenant selection logic
   let effectiveTenantKey: string
   let rpcTenantId: number | null
-  
+
+  /* eslint-disable sonarjs/no-duplicated-branches -- Keep tenant security branches explicit. */
   if (options?.useFormContext && options?.formTenantId && isPrivileged) {
     // Static branding: privileged user viewing specific tenant's form
     effectiveTenantKey = formTenantKey!
@@ -46,21 +49,25 @@ export function useTenantBranding(options?: {
     effectiveTenantKey = sessionTenantKey
     rpcTenantId = user?.don_vi || null
   }
+  /* eslint-enable sonarjs/no-duplicated-branches */
 
   const query = useQuery<TenantBranding | null>({
-    queryKey: ['tenant_branding', { tenant: effectiveTenantKey }],
+    queryKey: ["tenant_branding", { tenant: effectiveTenantKey }],
     queryFn: async ({ signal }) => {
-      const res = await callRpc<TenantBranding[] | null>({ 
-        fn: 'don_vi_branding_get', 
-        args: { p_id: rpcTenantId }, 
-        signal 
+      const res = await callRpc<TenantBranding[] | null>({
+        fn: "don_vi_branding_get",
+        args: { p_id: rpcTenantId },
+        signal,
       })
       const row = Array.isArray(res) ? res[0] : null
-      return row ? { 
-        id: Number(row.id), 
-        name: row.name ?? null, 
-        logo_url: row.logo_url ?? null 
-      } : null
+      return row
+        ? {
+            id: Number(row.id),
+            name: row.name ?? null,
+            logo_url: row.logo_url ?? null,
+            print_location: row.print_location ?? null,
+          }
+        : null
     },
     enabled: status === "authenticated" && !!user?.id,
     placeholderData: keepPreviousData,
@@ -73,10 +80,10 @@ export function useTenantBranding(options?: {
   const queryClient = useQueryClient()
   React.useEffect(() => {
     const onTenantSwitch = () => {
-      queryClient.invalidateQueries({ queryKey: ['tenant_branding'] })
+      queryClient.invalidateQueries({ queryKey: ["tenant_branding"] })
     }
-    window.addEventListener('tenant-switched', onTenantSwitch as EventListener)
-    return () => window.removeEventListener('tenant-switched', onTenantSwitch as EventListener)
+    window.addEventListener("tenant-switched", onTenantSwitch as EventListener)
+    return () => window.removeEventListener("tenant-switched", onTenantSwitch as EventListener)
   }, [queryClient])
 
   return query
