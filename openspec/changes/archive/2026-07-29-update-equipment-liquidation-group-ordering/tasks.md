@@ -35,62 +35,62 @@ SQL cleanup, or live DB apply.
 
 ### Phase 1A - RED: Lock the source contract
 
-- [ ] 1.1 Create the implementation branch from the latest clean `main`.
-- [ ] 1.2 Add a failing source-contract assertion requiring the liquidation
+- [x] 1.1 Create the implementation branch from the latest clean `main`.
+- [x] 1.2 Add a failing source-contract assertion requiring the liquidation
       chronology key before the requested sort.
-- [ ] 1.3 Run the focused migration test and confirm the new assertion fails for
+- [x] 1.3 Run the focused migration test and confirm the new assertion fails for
       the current SQL.
 
 ### Phase 1B - GREEN: Change only the RPC ordering expression
 
-- [ ] 1.4 Create a migration whose filename sorts after
+- [x] 1.4 Create a migration whose filename sorts after
       `20260722094302_equipment_list_liquidation_last.sql`.
-- [ ] 1.5 Copy the latest local `equipment_list_enhanced` definition into the
+- [x] 1.5 Copy the latest local `equipment_list_enhanced` definition into the
       superseding migration.
-- [ ] 1.6 Add the null-safe ISO-text `ngay_ngung_su_dung` chronology key between
+- [x] 1.6 Add the null-safe ISO-text `ngay_ngung_su_dung` chronology key between
       the liquidation bucket and requested sort.
-- [ ] 1.7 Add or retain source-contract assertions for the unchanged 18-argument
+- [x] 1.7 Add or retain source-contract assertions for the unchanged 18-argument
       signature and default-false flag.
-- [ ] 1.8 Add or retain source-contract assertions for unchanged JWT guards,
+- [x] 1.8 Add or retain source-contract assertions for unchanged JWT guards,
       tenant scope, `SECURITY DEFINER`, fixed `search_path`, and grants.
-- [ ] 1.9 Add or retain source-contract assertions for unchanged filters, result
+- [x] 1.9 Add or retain source-contract assertions for unchanged filters, result
       envelope, and pagination.
-- [ ] 1.10 Run the focused migration source-contract test and confirm it passes.
+- [x] 1.10 Run the focused migration source-contract test and confirm it passes.
 
 ### Phase 1C - Prepare the transactional smoke coverage
 
-- [ ] 1.11 Extend the transactional smoke fixture with null, old, same-day, and
+- [x] 1.11 Extend the transactional smoke fixture with null, old, same-day, and
       newest liquidation dates.
-- [ ] 1.12 Add an exact-sequence expectation proving null or blank legacy dates
+- [x] 1.12 Add an exact-sequence expectation proving null or blank legacy dates
       precede every dated liquidation row.
-- [ ] 1.13 Add a same-date expectation proving the requested sort orders rows
+- [x] 1.13 Add a same-date expectation proving the requested sort orders rows
       within that date cohort.
-- [ ] 1.14 Add an equal-date-and-sort expectation proving equipment ID ascending
+- [x] 1.14 Add an equal-date-and-sort expectation proving equipment ID ascending
       is the final tie-breaker.
-- [ ] 1.15 Add an unfiltered smoke expectation proving the newest dated
+- [x] 1.15 Add an unfiltered smoke expectation proving the newest dated
       liquidation row is last in the liquidation group.
-- [ ] 1.16 Add a warehouse-filtered smoke expectation proving the same newest
+- [x] 1.16 Add a warehouse-filtered smoke expectation proving the same newest
       row is last in the filtered result.
-- [ ] 1.17 Add a custom-sort expectation proving liquidation chronology remains
+- [x] 1.17 Add a custom-sort expectation proving liquidation chronology remains
       stronger than the requested sort.
-- [ ] 1.18 Add an unfiltered page-boundary expectation proving chronology is
+- [x] 1.18 Add an unfiltered page-boundary expectation proving chronology is
       applied before pagination.
-- [ ] 1.19 Add a warehouse-filtered page-boundary expectation proving the same
+- [x] 1.19 Add a warehouse-filtered page-boundary expectation proving the same
       chronology is applied before pagination.
-- [ ] 1.20 Review the SQL fixture and expected sequences without executing it
+- [x] 1.20 Review the SQL fixture and expected sequences without executing it
       against the currently deployed function.
 
 ### Phase 1D - Regression gates and PR handoff
 
-- [ ] 1.21 Run the focused migration source-contract Vitest file.
-- [ ] 1.22 Run the existing caller-scope Vitest file.
-- [ ] 1.23 Run `node scripts/npm-run.js run format:check`.
-- [ ] 1.24 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 1.25 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 1.26 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 1.27 Run
+- [x] 1.21 Run the focused migration source-contract Vitest file.
+- [x] 1.22 Run the existing caller-scope Vitest file.
+- [x] 1.23 Run `node scripts/npm-run.js run format:check`.
+- [x] 1.24 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [x] 1.25 Run `node scripts/npm-run.js run verify:dedupe`.
+- [x] 1.26 Run `node scripts/npm-run.js run typecheck`.
+- [x] 1.27 Run
       `openspec validate update-equipment-liquidation-group-ordering --strict`.
-- [ ] 1.28 Confirm the final diff changes no more than the planned migration and
+- [x] 1.28 Confirm the final diff changes no more than the planned migration and
       two focused test files.
 
 **Exit criteria:** PR 2 is green, reviewable as one ordering change, and merged
@@ -132,6 +132,8 @@ mix follow-up code into the rollout.
       readiness in the tracking issue or rollout handoff.
 
 Evidence: [Phase 2 rollout record](rollout.md).
+Implementation: PR #817 (`eb180b9d`).
+Rollout documentation: PR #818 (`9c82c71e`).
 
 ### Phase 2D - Conditional forward rollback
 
@@ -146,20 +148,24 @@ Evidence: [Phase 2 rollout record](rollout.md).
 **Exit criteria:** live ordering is verified, no data was rewritten, and any
 change-caused advisor finding is resolved or explicitly tracked.
 
-## Phase 3 - Completion And Archive (PR 3: Docs Only)
+## Phase 3 - Completion And Archive (Direct Main: Docs Only)
 
 **Review boundary:** OpenSpec status/spec publication only. No runtime changes.
 
-- [ ] 3.1 Mark completed tasks with links or identifiers for PR 2 and rollout
+- [x] 3.1 Mark completed tasks with links or identifiers for PR 2 and rollout
       evidence.
-- [ ] 3.2 Run
+- [x] 3.2 Run
       `openspec archive update-equipment-liquidation-group-ordering --yes`.
-- [ ] 3.3 Run `openspec validate --strict`.
-- [ ] 3.4 Review the archive diff and confirm it only moves the change and
+- [x] 3.3 Run
+      `openspec validate equipment-liquidation-ordering --type spec --strict --no-interactive`
+      and `openspec validate --specs --strict --no-interactive`.
+- [x] 3.4 Review the archive diff and confirm it only moves the change and
       publishes the capability spec.
-- [ ] 3.5 Merge the archive PR.
-- [ ] 3.6 Sync local `main` with the merged remote state.
-- [ ] 3.7 Prune the merged docs branch.
+- [x] 3.5 Publish the archive directly to `main` under explicit user
+      authorization, replacing the planned archive PR.
+- [x] 3.6 Sync local `main` with `origin/main` after the direct push.
+- [x] 3.7 Confirm no docs branch requires pruning because Phase 3 was completed
+      directly on `main`.
 
 **Exit criteria:** the deployed contract is represented in current OpenSpec
 truth and the repository is clean and synchronized.
