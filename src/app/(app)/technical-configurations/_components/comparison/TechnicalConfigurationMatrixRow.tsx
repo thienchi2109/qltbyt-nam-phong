@@ -2,7 +2,8 @@ import type {
   TechnicalConfigurationComparisonEvidence,
   TechnicalConfigurationComparisonOptionValue,
   TechnicalConfigurationComparisonResult,
-} from "../../comparison-types"
+} from "@/app/(app)/technical-configurations/comparison-types"
+
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 
 const EMPTY_EVIDENCE: TechnicalConfigurationComparisonEvidence = {
@@ -55,7 +56,7 @@ export function TechnicalConfigurationMatrixRow({
           onClick={() =>
             onOpenDetail({
               criterionCode: row.criterion.criterionCode,
-              criterionTitle: row.criterion.title,
+              criterionTitle: title,
               optionLabel: null,
               requirementText: row.criterion.requirementText,
               responseText: null,
@@ -98,7 +99,7 @@ export function TechnicalConfigurationMatrixRow({
               onClick={() =>
                 onOpenDetail({
                   criterionCode: row.criterion.criterionCode,
-                  criterionTitle: row.criterion.title,
+                  criterionTitle: title,
                   optionLabel: option.displayLabel,
                   requirementText: row.criterion.requirementText,
                   responseText: response?.responseText ?? null,

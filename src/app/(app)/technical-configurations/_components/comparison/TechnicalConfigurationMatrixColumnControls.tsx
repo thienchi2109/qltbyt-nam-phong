@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Columns3, Focus, Pin, PinOff, X } from "lucide-react"
 
-import type { TechnicalConfigurationOptionWire } from "../../supplier-option-types"
+import type { TechnicalConfigurationOptionWire } from "@/app/(app)/technical-configurations/supplier-option-types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"

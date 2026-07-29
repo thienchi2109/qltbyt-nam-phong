@@ -2,10 +2,11 @@
 
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
 
-import type { TechnicalConfigurationComparisonResult } from "../../comparison-types"
+import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technical-configurations/comparison-types"
+import { Button } from "@/components/ui/button"
+
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 import { TechnicalConfigurationMatrixRow } from "./TechnicalConfigurationMatrixRow"
-import { Button } from "@/components/ui/button"
 
 type TechnicalConfigurationMatrixProps = {
   hasRequest: boolean

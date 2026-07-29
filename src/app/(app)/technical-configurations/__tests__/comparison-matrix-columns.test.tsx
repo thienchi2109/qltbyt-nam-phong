@@ -1,6 +1,7 @@
 import { createElement, type PropsWithChildren } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, render, renderHook, screen, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationMatrix } from "../_components/comparison/TechnicalConfigurationMatrix"
@@ -329,6 +330,38 @@ describe("P10B2 pinned matrix columns", () => {
 
     expect(screen.getByTestId("comparison-baseline-header")).toBeInTheDocument()
     expect(screen.queryAllByTestId("comparison-option-header")).toHaveLength(0)
+  })
+
+  it("passes the displayed fallback title to baseline and option details", async () => {
+    const user = userEvent.setup()
+    const result = createManyOptionResult()
+    const onOpenDetail = vi.fn()
+    render(
+      <TechnicalConfigurationMatrix
+        hasRequest
+        result={result}
+        visibleOptionIds={result.data.options.map((option) => option.id)}
+        pinnedOptionIds={[]}
+        focusedOptionId={null}
+        onOpenDetail={onOpenDetail}
+        onPageChange={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Xem chi tiết TS-01 · Yêu cầu cơ sở" }))
+    expect(onOpenDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ criterionTitle: "Chưa có tiêu đề" })
+    )
+
+    await user.click(
+      screen.getByRole("button", {
+        name: `Xem chi tiết TS-01 · ${result.data.options[0].displayLabel}`,
+      })
+    )
+    expect(onOpenDetail).toHaveBeenLastCalledWith(
+      expect.objectContaining({ criterionTitle: "Chưa có tiêu đề" })
+    )
   })
 
   it("renders only the focused option while preserving stable desktop dimensions", () => {
