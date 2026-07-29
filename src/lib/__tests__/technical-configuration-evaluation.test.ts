@@ -139,8 +139,8 @@ describe("technical configuration manual evaluation contract", () => {
     ).toThrow(`Invalid technical configuration technical axis: ${String(value)}`)
   })
 
-  it.each(["fails", "unclear", "not_applicable"] as const)(
-    "rejects invalid evidence values before applying %s precedence",
+  it.each([null, undefined, ...TECHNICAL_CONFIGURATION_TECHNICAL_AXIS_VALUES] as const)(
+    "rejects invalid evidence values before deriving from technical-axis %s",
     (technicalAxis) => {
       const invalidEvidenceValues = [
         ["empty string", ""],
