@@ -131,7 +131,7 @@ export function useTechnicalConfigurationDocuments({
       revisionRef.current = revision
       onRevisionChange?.(revision)
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey, exact: true }),
+        queryClient.invalidateQueries({ queryKey }),
         queryClient.invalidateQueries({
           queryKey: technicalConfigurationBaselineVersionsQueryKey(baselineVersion.dossier_id),
           exact: true,

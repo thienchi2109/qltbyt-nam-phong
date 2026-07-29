@@ -122,7 +122,6 @@ export function registerBaselineEvidenceQueryTests(documentRpc: DocumentRpcMocks
       expect(onNavigationBlockedChange.mock.calls.flat()).toEqual([true, false, true, false])
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ["technical-configurations", "documents", baselineVersion.id],
-        exact: true,
       })
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ["technical-configurations", "baseline-versions", baselineVersion.dossier_id],

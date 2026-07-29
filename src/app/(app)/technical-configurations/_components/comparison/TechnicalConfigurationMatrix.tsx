@@ -212,6 +212,7 @@ export function TechnicalConfigurationMatrix({
                   key={row.criterion.id}
                   row={row}
                   options={renderedOptions}
+                  baselineVersionId={result.data.baselineVersion.id}
                   pinnedOptionIds={renderedPinnedOptionIds}
                   valueByOptionId={
                     new Map(row.optionValues.map((value) => [value.optionId, value]))

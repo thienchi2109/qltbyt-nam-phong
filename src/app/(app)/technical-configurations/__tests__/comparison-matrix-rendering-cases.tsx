@@ -10,6 +10,7 @@ import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 
 import {
   ComparisonDetailHarness,
+  ComparisonQueryProvider,
   createComparisonResult,
   LONG_REQUIREMENT,
   LONG_RESPONSE,
@@ -308,8 +309,18 @@ export function registerComparisonMatrixRenderingTests() {
         responseText: LONG_RESPONSE,
         supplementaryInformation: "Có đầu dò bổ sung.",
         evidence: { documentCount: 1, citationCount: 1, hasEvidence: true },
+        evidenceTarget: {
+          kind: "option",
+          baselineVersionId: "baseline-1",
+          optionId: "option-b",
+          criterionId: "criterion-2",
+        },
       }
-      render(<TechnicalConfigurationCriterionPanel detail={detail} open onOpenChange={vi.fn()} />)
+      render(
+        <ComparisonQueryProvider>
+          <TechnicalConfigurationCriterionPanel detail={detail} open onOpenChange={vi.fn()} />
+        </ComparisonQueryProvider>
+      )
 
       expect(screen.getByText(LONG_REQUIREMENT)).toBeInTheDocument()
       expect(screen.getByText(LONG_RESPONSE)).toBeInTheDocument()

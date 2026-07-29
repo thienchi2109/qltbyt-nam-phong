@@ -1,4 +1,5 @@
 import * as React from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { vi } from "vitest"
 
 import {
@@ -12,6 +13,19 @@ export const LONG_REQUIREMENT =
   "Yêu cầu cơ sở rất dài để xác nhận ô ma trận chỉ hiển thị nội dung rút gọn nhưng panel chi tiết vẫn giữ nguyên toàn bộ văn bản kỹ thuật."
 export const LONG_RESPONSE =
   "Phản hồi phương án rất dài để xác nhận người dùng có thể mở phần chi tiết bằng bàn phím và đọc toàn bộ nội dung."
+
+export function ComparisonQueryProvider({ children }: React.PropsWithChildren) {
+  const [queryClient] = React.useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { retry: false, gcTime: 0 },
+        },
+      })
+  )
+
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+}
 
 export function createComparisonResult(): TechnicalConfigurationComparisonResult {
   return {
@@ -122,7 +136,7 @@ export function ComparisonDetailHarness() {
   }
 
   return (
-    <>
+    <ComparisonQueryProvider>
       <TechnicalConfigurationMatrix
         hasRequest
         result={createComparisonResult()}
@@ -138,6 +152,6 @@ export function ComparisonDetailHarness() {
           if (!open) setDetail(null)
         }}
       />
-    </>
+    </ComparisonQueryProvider>
   )
 }
