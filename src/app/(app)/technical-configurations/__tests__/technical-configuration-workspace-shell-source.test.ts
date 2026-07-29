@@ -20,10 +20,12 @@ describe("technical configuration workspace shell source boundaries", () => {
       "_components/TechnicalConfigurationBulkEntryWorkbench.tsx",
       "_components/TechnicalConfigurationAllGroupsOverview.tsx",
       "_components/TechnicalConfigurationGroupNavigator.tsx",
+      "_components/comparison/TechnicalConfigurationComparisonTab.tsx",
       "_components/comparison/TechnicalConfigurationMatrix.tsx",
       "_components/comparison/TechnicalConfigurationMatrixRow.tsx",
       "_components/comparison/TechnicalConfigurationMatrixToolbar.tsx",
       "_components/comparison/TechnicalConfigurationMatrixColumnControls.tsx",
+      "comparison-matrix-constants.ts",
       "_hooks/useTechnicalConfigurationBaselineEditor.ts",
       "_hooks/useTechnicalConfigurationBaselineImport.ts",
       "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
@@ -55,7 +57,23 @@ describe("technical configuration workspace shell source boundaries", () => {
     )
     expect(matrixSource).toContain("overflow-auto")
     expect(matrixSource).toContain("min-w-max")
-    expect(matrixSource).toContain("w-[320px] min-w-[320px] max-w-[320px]")
+
+    const matrixConstantsSource = fs.readFileSync(
+      path.join(moduleRoot, "comparison-matrix-constants.ts"),
+      "utf8"
+    )
+    expect(matrixConstantsSource).toContain("pinnedOptions: 2")
+    expect(matrixConstantsSource).toContain("w-[320px] min-w-[320px] max-w-[320px]")
+
+    for (const file of [
+      "_components/comparison/TechnicalConfigurationMatrix.tsx",
+      "_components/comparison/TechnicalConfigurationMatrixRow.tsx",
+      "_components/comparison/TechnicalConfigurationMatrixColumnControls.tsx",
+      "_hooks/useTechnicalConfigurationComparisonMatrix.ts",
+    ]) {
+      const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
+      expect(source).toContain("comparison-matrix-constants")
+    }
 
     for (const file of [
       "_components/TechnicalConfigurationBaselineTab.tsx",

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Columns3, Focus, Pin, PinOff, X } from "lucide-react"
 
+import { COMPARISON_MATRIX_LIMITS } from "@/app/(app)/technical-configurations/comparison-matrix-constants"
 import type { TechnicalConfigurationOptionWire } from "@/app/(app)/technical-configurations/supplier-option-types"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,29 +34,33 @@ export function TechnicalConfigurationMatrixColumnControls({
   const [open, setOpen] = React.useState(false)
   const triggerRef = React.useRef<HTMLButtonElement | null>(null)
   const exitFocusRef = React.useRef<HTMLButtonElement | null>(null)
-  const wasFocusedRef = React.useRef(focusedOptionId !== null)
   const visibleOptionIdSet = React.useMemo(() => new Set(visibleOptionIds), [visibleOptionIds])
   const pinnedOptionIdSet = React.useMemo(() => new Set(pinnedOptionIds), [pinnedOptionIds])
   const focusedOption = selectedOptions.find((option) => option.id === focusedOptionId)
+  const resolvedFocusedOptionId = focusedOption?.id ?? null
+  const wasFocusedRef = React.useRef(resolvedFocusedOptionId !== null)
 
   React.useEffect(() => {
-    if (focusedOptionId === null) return
+    if (resolvedFocusedOptionId === null) return
     const frame = window.requestAnimationFrame(() => exitFocusRef.current?.focus())
     return () => window.cancelAnimationFrame(frame)
-  }, [focusedOptionId])
+  }, [resolvedFocusedOptionId])
 
   React.useEffect(() => {
     const wasFocused = wasFocusedRef.current
-    wasFocusedRef.current = focusedOptionId !== null
-    if (!wasFocused || focusedOptionId !== null) return
+    wasFocusedRef.current = resolvedFocusedOptionId !== null
+    if (!wasFocused || resolvedFocusedOptionId !== null) return
 
     const frame = window.requestAnimationFrame(() => triggerRef.current?.focus())
     return () => window.cancelAnimationFrame(frame)
-  }, [focusedOptionId])
+  }, [resolvedFocusedOptionId])
 
   return (
     <div className="flex min-h-9 items-center gap-2">
-      <Popover open={open} onOpenChange={(nextOpen) => setOpen(focusedOptionId ? false : nextOpen)}>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => setOpen(resolvedFocusedOptionId ? false : nextOpen)}
+      >
         <PopoverTrigger asChild>
           <Button
             ref={triggerRef}
@@ -64,7 +69,7 @@ export function TechnicalConfigurationMatrixColumnControls({
             size="sm"
             className="h-9"
             aria-label="Tùy chỉnh cột so sánh"
-            disabled={selectedOptions.length === 0 || focusedOptionId !== null}
+            disabled={selectedOptions.length === 0 || resolvedFocusedOptionId !== null}
           >
             <Columns3 aria-hidden="true" />
             Cột
@@ -83,14 +88,16 @@ export function TechnicalConfigurationMatrixColumnControls({
               Cột phương án
             </p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Yêu cầu cơ sở luôn hiển thị · Ghim tối đa 2 cột
+              Yêu cầu cơ sở luôn hiển thị · Ghim tối đa {COMPARISON_MATRIX_LIMITS.pinnedOptions} cột
             </p>
           </div>
           <div className="max-h-80 overflow-y-auto p-1.5">
             {selectedOptions.map((option) => {
               const isVisible = visibleOptionIdSet.has(option.id)
               const isPinned = pinnedOptionIdSet.has(option.id)
-              const pinDisabled = !isVisible || (!isPinned && pinnedOptionIds.length >= 2)
+              const pinDisabled =
+                !isVisible ||
+                (!isPinned && pinnedOptionIds.length >= COMPARISON_MATRIX_LIMITS.pinnedOptions)
 
               return (
                 <div

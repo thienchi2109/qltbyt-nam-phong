@@ -2,6 +2,10 @@
 
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
 
+import {
+  COMPARISON_MATRIX_LAYOUT,
+  getPinnedComparisonOptionLeft,
+} from "@/app/(app)/technical-configurations/comparison-matrix-constants"
 import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technical-configurations/comparison-types"
 import { Button } from "@/components/ui/button"
 
@@ -157,14 +161,14 @@ export function TechnicalConfigurationMatrix({
             <tr>
               <th
                 data-testid="comparison-criterion-header"
-                className="sticky left-0 top-0 z-50 w-[220px] min-w-[220px] max-w-[220px] border-b border-r bg-muted px-3 py-3 font-semibold"
+                className={`sticky left-0 top-0 z-50 ${COMPARISON_MATRIX_LAYOUT.criterionWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold`}
                 scope="col"
               >
                 Tiêu chí
               </th>
               <th
                 data-testid="comparison-baseline-header"
-                className="sticky left-[220px] top-0 z-50 w-[360px] min-w-[360px] max-w-[360px] border-b border-r bg-muted px-3 py-3 font-semibold"
+                className={`sticky ${COMPARISON_MATRIX_LAYOUT.baselineStickyLeftClass} top-0 z-50 ${COMPARISON_MATRIX_LAYOUT.baselineWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold`}
                 scope="col"
               >
                 Yêu cầu cơ sở
@@ -178,10 +182,12 @@ export function TechnicalConfigurationMatrix({
                     data-testid="comparison-option-header"
                     data-option-id={option.id}
                     data-pinned={isPinned ? "true" : "false"}
-                    className={`sticky top-0 w-[320px] min-w-[320px] max-w-[320px] border-b border-r bg-muted px-3 py-3 font-semibold ${
+                    className={`sticky top-0 ${COMPARISON_MATRIX_LAYOUT.optionWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold ${
                       isPinned ? "z-50" : "z-40"
                     }`}
-                    style={isPinned ? { left: `${580 + pinnedIndex * 320}px` } : undefined}
+                    style={
+                      isPinned ? { left: getPinnedComparisonOptionLeft(pinnedIndex) } : undefined
+                    }
                     scope="col"
                   >
                     <span className="block break-words">{option.displayLabel}</span>

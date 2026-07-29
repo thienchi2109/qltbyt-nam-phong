@@ -1,3 +1,7 @@
+import {
+  COMPARISON_MATRIX_LAYOUT,
+  getPinnedComparisonOptionLeft,
+} from "@/app/(app)/technical-configurations/comparison-matrix-constants"
 import type {
   TechnicalConfigurationComparisonEvidence,
   TechnicalConfigurationComparisonOptionValue,
@@ -42,13 +46,15 @@ export function TechnicalConfigurationMatrixRow({
       className="align-top"
     >
       <th
-        className="sticky left-0 z-30 w-[220px] min-w-[220px] max-w-[220px] border-b border-r bg-background px-3 py-3 font-medium"
+        className={`sticky left-0 z-30 ${COMPARISON_MATRIX_LAYOUT.criterionWidthClass} border-b border-r bg-background px-3 py-3 font-medium`}
         scope="row"
       >
         <span className="block text-xs text-muted-foreground">{row.criterion.criterionCode}</span>
         <span className="mt-1 block break-words">{title}</span>
       </th>
-      <td className="sticky left-[220px] z-30 w-[360px] min-w-[360px] max-w-[360px] border-b border-r bg-background p-0">
+      <td
+        className={`sticky ${COMPARISON_MATRIX_LAYOUT.baselineStickyLeftClass} z-30 ${COMPARISON_MATRIX_LAYOUT.baselineWidthClass} border-b border-r bg-background p-0`}
+      >
         <button
           type="button"
           className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
@@ -87,10 +93,10 @@ export function TechnicalConfigurationMatrixRow({
             data-criterion-id={row.criterion.id}
             data-option-id={option.id}
             data-pinned={isPinned ? "true" : "false"}
-            className={`w-[320px] min-w-[320px] max-w-[320px] border-b border-r bg-background p-0 ${
+            className={`${COMPARISON_MATRIX_LAYOUT.optionWidthClass} border-b border-r bg-background p-0 ${
               isPinned ? "sticky z-20" : ""
             }`}
-            style={isPinned ? { left: `${580 + pinnedIndex * 320}px` } : undefined}
+            style={isPinned ? { left: getPinnedComparisonOptionLeft(pinnedIndex) } : undefined}
           >
             <button
               type="button"

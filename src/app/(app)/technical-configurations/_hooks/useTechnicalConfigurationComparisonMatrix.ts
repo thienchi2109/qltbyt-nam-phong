@@ -2,6 +2,8 @@
 
 import * as React from "react"
 
+import { COMPARISON_MATRIX_LIMITS } from "@/app/(app)/technical-configurations/comparison-matrix-constants"
+
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
 import { useTechnicalConfigurationBaselineVersions } from "./useTechnicalConfigurationBaselineVersions"
 import { useTechnicalConfigurationComparison } from "./useTechnicalConfigurationComparison"
@@ -9,7 +11,6 @@ import { useTechnicalConfigurationOptionListQuery } from "./useTechnicalConfigur
 import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 
 const COMPARISON_PAGE_SIZE = 50
-const MAX_SELECTED_OPTIONS = 8
 const EMPTY_OPTIONS: TechnicalConfigurationOptionWire[] = []
 
 type ComparisonRequestState = {
@@ -99,7 +100,7 @@ function comparisonMatrixReducer(
       if (
         !action.availableOptionIds.has(action.optionId) ||
         state.request.selectedOptionIds.includes(action.optionId) ||
-        state.request.selectedOptionIds.length >= MAX_SELECTED_OPTIONS
+        state.request.selectedOptionIds.length >= COMPARISON_MATRIX_LIMITS.selectedOptions
       ) {
         return state
       }
@@ -178,7 +179,7 @@ function comparisonMatrixReducer(
       if (pinnedOptionIdSet.has(action.optionId)) {
         pinnedOptionIdSet.delete(action.optionId)
       } else {
-        if (pinnedOptionIdSet.size >= 2) return state
+        if (pinnedOptionIdSet.size >= COMPARISON_MATRIX_LIMITS.pinnedOptions) return state
         pinnedOptionIdSet.add(action.optionId)
       }
 
@@ -295,7 +296,7 @@ export function useTechnicalConfigurationComparisonMatrix(dossierId: string) {
     focusedOptionId,
     page,
     pageSize: COMPARISON_PAGE_SIZE,
-    isSelectionLimitReached: selectedOptionIds.length >= MAX_SELECTED_OPTIONS,
+    isSelectionLimitReached: selectedOptionIds.length >= COMPARISON_MATRIX_LIMITS.selectedOptions,
     comparison,
     selectBaselineVersion,
     addOption,

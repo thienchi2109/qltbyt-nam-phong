@@ -127,4 +127,28 @@ describe("P10B2 clean column controls", () => {
       expect(screen.getByRole("button", { name: "Tùy chỉnh cột so sánh" })).toHaveFocus()
     )
   })
+
+  it("keeps column controls available when the focused option no longer resolves", async () => {
+    const user = userEvent.setup()
+    const options = [createOption(1)]
+    render(
+      <TechnicalConfigurationMatrixColumnControls
+        selectedOptions={options}
+        visibleOptionIds={options.map((option) => option.id)}
+        pinnedOptionIds={[]}
+        focusedOptionId="missing-option"
+        onToggleOptionVisibility={NOOP}
+        onToggleOptionPin={NOOP}
+        onFocusOption={NOOP}
+        onExitFocus={NOOP}
+      />
+    )
+
+    const trigger = screen.getByRole("button", { name: "Tùy chỉnh cột so sánh" })
+    expect(trigger).toBeEnabled()
+    expect(screen.queryByRole("button", { name: "Thoát chế độ tập trung" })).not.toBeInTheDocument()
+
+    await user.click(trigger)
+    expect(screen.getByRole("dialog", { name: "Cột phương án" })).toBeInTheDocument()
+  })
 })
