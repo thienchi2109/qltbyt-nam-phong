@@ -2,9 +2,10 @@
 
 import * as React from "react"
 
-import type { TechnicalConfigurationComparisonEvidenceTarget } from "../../_hooks/useTechnicalConfigurationComparisonEvidence"
-import type { TechnicalConfigurationComparisonEvidence } from "../../comparison-types"
+import type { TechnicalConfigurationComparisonEvidenceTarget } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparisonEvidence"
 import { SideSheetShell } from "@/components/shared/SideSheetShell"
+
+import type { TechnicalConfigurationComparisonEvidence } from "../../comparison-types"
 
 import { TechnicalConfigurationComparisonEvidence as TechnicalConfigurationComparisonEvidenceSection } from "./TechnicalConfigurationComparisonEvidence"
 

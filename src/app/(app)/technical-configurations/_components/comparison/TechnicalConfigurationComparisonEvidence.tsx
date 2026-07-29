@@ -5,7 +5,7 @@ import { AlertCircle, ExternalLink, Loader2, RefreshCw } from "lucide-react"
 import {
   type TechnicalConfigurationComparisonEvidenceTarget,
   useTechnicalConfigurationComparisonEvidence,
-} from "../../_hooks/useTechnicalConfigurationComparisonEvidence"
+} from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationComparisonEvidence"
 import { Button } from "@/components/ui/button"
 
 type TechnicalConfigurationComparisonEvidenceProps = {

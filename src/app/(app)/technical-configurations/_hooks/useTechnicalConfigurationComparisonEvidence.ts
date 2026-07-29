@@ -1,7 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useInfiniteQuery } from "@tanstack/react-query"
+import {
+  type InfiniteData,
+  type UseInfiniteQueryResult,
+  useInfiniteQuery,
+} from "@tanstack/react-query"
 
 import type {
   TechnicalConfigurationCitationWire,
@@ -44,6 +48,14 @@ type TechnicalConfigurationComparisonEvidencePage = {
   total: number
   page: number
   pageSize: number
+}
+
+export type TechnicalConfigurationComparisonEvidenceResult = {
+  documents: TechnicalConfigurationComparisonEvidenceDocument[]
+  evidenceQuery: UseInfiniteQueryResult<
+    InfiniteData<TechnicalConfigurationComparisonEvidencePage>,
+    Error
+  >
 }
 
 function normalizeComparisonEvidenceDocument(
@@ -117,7 +129,7 @@ async function listComparisonEvidencePage(
 /** Lazily loads bounded read-only evidence for one active comparison cell. */
 export function useTechnicalConfigurationComparisonEvidence(
   target: TechnicalConfigurationComparisonEvidenceTarget
-) {
+): TechnicalConfigurationComparisonEvidenceResult {
   const evidenceQuery = useInfiniteQuery({
     queryKey: getComparisonEvidenceQueryKey(target),
     queryFn: ({ pageParam, signal }) => listComparisonEvidencePage(target, pageParam, signal),
