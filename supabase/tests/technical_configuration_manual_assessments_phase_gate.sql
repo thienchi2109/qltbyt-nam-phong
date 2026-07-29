@@ -426,23 +426,23 @@ BEGIN
     'technical_configuration_manual_assessments RLS enabled',
     v_rls_enabled
   );
-  FOREACH v_table_privilege IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE']
-  LOOP
+  FOREACH v_table_privilege IN ARRAY ARRAY['SELECT', 'INSERT', 'UPDATE', 'DELETE'] LOOP
     PERFORM pg_temp.assert_true('authenticated table privilege denied',
       NOT has_table_privilege(
-        'authenticated', 'public.technical_configuration_manual_assessments',
-        v_table_privilege
-      ));
+        'authenticated', 'public.technical_configuration_manual_assessments', v_table_privilege));
     PERFORM pg_temp.assert_true('anon table privilege denied',
       NOT has_table_privilege(
-        'anon', 'public.technical_configuration_manual_assessments',
-        v_table_privilege
-      ));
+        'anon', 'public.technical_configuration_manual_assessments', v_table_privilege));
     PERFORM pg_temp.assert_true('service role table privilege granted',
       has_table_privilege(
         'service_role', 'public.technical_configuration_manual_assessments',
         v_table_privilege
       ));
+  END LOOP;
+  FOREACH v_table_privilege IN ARRAY ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER'] LOOP
+    PERFORM pg_temp.assert_true('service role table privilege denied',
+      NOT has_table_privilege(
+        'service_role', 'public.technical_configuration_manual_assessments', v_table_privilege));
   END LOOP;
 END;
 $gate$;

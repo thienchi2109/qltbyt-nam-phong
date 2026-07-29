@@ -116,7 +116,8 @@ Both RPCs return only:
 - [x] Enable RLS and add an explicit deny-all policy for `anon` and
       `authenticated`.
 - [x] Revoke all direct table privileges from `PUBLIC`, `anon` and
-      `authenticated`; grant table privileges only to `service_role`.
+      `authenticated`; grant only `SELECT`, `INSERT`, `UPDATE` and `DELETE`
+      to `service_role`.
 - [x] Implement the bounded list RPC with the existing global-user helper.
 - [x] Implement the upsert RPC with an active-dossier lock, exact
       comparison-set/criterion ownership and row-level optimistic concurrency.
@@ -176,11 +177,20 @@ subagent review, triage every finding and rerun affected gates after valid fixes
 - [x] Applied `20260729134453_technical_configuration_manual_assessments.sql`
       after explicit approval through Supabase MCP `apply_migration`; live
       migration registry version: `20260729144351`.
+- [x] Preserved the already-applied original migration and applied the
+      superseding
+      `20260729150646_technical_configuration_manual_assessments_service_role_grants.sql`
+      after explicit approval; live migration registry version:
+      `20260729155147`.
 - [x] Ran `supabase/tests/technical_configuration_manual_assessments_phase_gate.sql`
-      after explicit approval; every assertion passed and the transaction
-      rolled back.
-- [x] Ran read-only security/performance advisors after both operations and
-      confirmed `assessment_count = 0` plus `fixture_dossier_count = 0`.
+      again after the privilege repair; every assertion passed and the
+      transaction rolled back.
+- [x] Ran read-only security/performance advisors after the repair and phase
+      gate. The project baseline remains; no blocking P11B regression was
+      identified.
+- [x] Confirmed `assessment_count = 0`, `fixture_dossier_count = 0`, both RPCs
+      and the table still exist, and `service_role` has exactly the four
+      required DML privileges.
 
 ## Exit Gate
 

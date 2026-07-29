@@ -6,6 +6,9 @@ const REPO_ROOT = path.resolve(process.cwd())
 const MIGRATIONS_DIR = path.join(REPO_ROOT, "supabase/migrations")
 const MIGRATION_FILE = "20260729134453_technical_configuration_manual_assessments.sql"
 const MIGRATION_PATH = path.join(MIGRATIONS_DIR, MIGRATION_FILE)
+const GRANT_REPAIR_FILE =
+  "20260729150646_technical_configuration_manual_assessments_service_role_grants.sql"
+const GRANT_REPAIR_PATH = path.join(MIGRATIONS_DIR, GRANT_REPAIR_FILE)
 const PHASE_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_manual_assessments_phase_gate.sql"
@@ -28,11 +31,17 @@ function getSqlBlock(source: string, marker: string, nextMarker: string): string
 }
 
 function getFunctionBlock(source: string, functionName: string): string {
-  return getSqlBlock(
-    source,
-    `FUNCTION public.${functionName}(`,
-    "\nCREATE OR REPLACE FUNCTION public."
-  )
+  const marker = `FUNCTION public.${functionName}(`
+  const start = source.indexOf(marker)
+  if (start === -1) return ""
+
+  const candidates = [
+    source.indexOf("\n$$;", start + marker.length),
+    source.indexOf("\nCREATE OR REPLACE FUNCTION public.", start + marker.length),
+  ].filter((index) => index !== -1)
+  const end = candidates.length > 0 ? Math.min(...candidates) : source.length
+
+  return source.slice(start, end)
 }
 
 function getTableColumnNames(tableBlock: string): string[] {
@@ -49,6 +58,7 @@ function getJsonObjectKeys(objectBlock: string): string[] {
 }
 
 const migrationSource = readIfExists(MIGRATION_PATH)
+const grantRepairSource = readIfExists(GRANT_REPAIR_PATH)
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 
 const ASSESSMENT_RPC_SIGNATURES = [
@@ -77,19 +87,21 @@ const ASSESSMENT_WIRE_FIELDS = [
 ] as const
 
 describe("P11B technical configuration manual assessment migration", () => {
-  it("uses one ordered migration after the current technical configuration chain", () => {
+  it("uses ordered migrations after the current technical configuration chain", () => {
     expect(existsSync(MIGRATION_PATH)).toBe(true)
+    expect(existsSync(GRANT_REPAIR_PATH)).toBe(true)
     expect(
       readdirSync(MIGRATIONS_DIR)
         .filter((file) => file.includes("technical_configuration_manual_assessments"))
         .sort()
-    ).toEqual([MIGRATION_FILE])
+    ).toEqual([MIGRATION_FILE, GRANT_REPAIR_FILE])
     expect(
       MIGRATION_FILE.localeCompare("20260729062450_equipment_list_liquidation_chronology.sql")
     ).toBeGreaterThan(0)
     expect(
       MIGRATION_FILE.localeCompare("20260727090000_technical_configuration_comparison_reads.sql")
     ).toBeGreaterThan(0)
+    expect(GRANT_REPAIR_FILE.localeCompare(MIGRATION_FILE)).toBeGreaterThan(0)
   })
 
   it("creates one row-revisioned assessment per exact comparison set and criterion", () => {
@@ -204,6 +216,8 @@ describe("P11B technical configuration manual assessment migration", () => {
     expect(getJsonObjectKeys(upsertDataBlock)).toEqual(
       ASSESSMENT_WIRE_FIELDS.map((field) => field.slice(1, -1))
     )
+    expect(upsertBlock).not.toContain("REVOKE ALL ON FUNCTION")
+    expect(upsertBlock).not.toContain("COMMIT;")
     expect(listBlock).toContain("ORDER BY bg.sort_order, bc.sort_order, bc.id")
     expect(listBlock).toContain("WITH ordered_assessments AS MATERIALIZED")
     expect(listBlock).toContain("paged_assessments AS")
@@ -278,7 +292,15 @@ describe("P11B technical configuration manual assessment migration", () => {
     expect(migrationSource).toMatch(
       new RegExp(`REVOKE ALL ON TABLE public\\.${tableName}\\s+FROM PUBLIC, anon, authenticated`)
     )
+    const serviceRoleDmlGrant = new RegExp(
+      `GRANT SELECT, INSERT, UPDATE, DELETE\\s+ON TABLE public\\.${tableName} TO service_role`
+    )
     expect(migrationSource).toContain(`GRANT ALL ON TABLE public.${tableName} TO service_role`)
+    expect(grantRepairSource).toMatch(
+      new RegExp(`REVOKE ALL ON TABLE public\\.${tableName}\\s+FROM service_role`)
+    )
+    expect(grantRepairSource).toMatch(serviceRoleDmlGrant)
+    expect(grantRepairSource).not.toContain(`GRANT ALL ON TABLE public.${tableName}`)
 
     for (const functionName of ASSESSMENT_RPC_NAMES) {
       expect(migrationSource).toMatch(
@@ -338,6 +360,8 @@ describe("P11B technical configuration manual assessment migration", () => {
       "v_column_names = ARRAY[",
       "FOREACH v_function_signature IN ARRAY",
       "FOREACH v_table_privilege IN ARRAY",
+      "ARRAY['TRUNCATE', 'REFERENCES', 'TRIGGER']",
+      "service role table privilege denied",
     ]) {
       expect(phaseGateSource).toContain(marker)
     }
