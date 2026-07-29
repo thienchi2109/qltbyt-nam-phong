@@ -103,41 +103,43 @@ mix follow-up code into the rollout.
 
 ### Phase 2A - Approval and read-only preflight
 
-- [ ] 2.1 Request explicit user permission for the specific migration apply and
+- [x] 2.1 Request explicit user permission for the specific migration apply and
       rollback-only smoke write set.
-- [ ] 2.2 Inspect the live migration state read-only.
-- [ ] 2.3 Inspect the live function signature and body read-only.
-- [ ] 2.4 Inspect the live function security attributes and grants read-only.
+- [x] 2.2 Inspect the live migration state read-only.
+- [x] 2.3 Inspect the live function signature and body read-only.
+- [x] 2.4 Inspect the live function security attributes and grants read-only.
 
 ### Phase 2B - Apply the approved migration
 
-- [ ] 2.5 Apply the approved superseding migration through Supabase MCP.
+- [x] 2.5 Apply the approved superseding migration through Supabase MCP.
 
 ### Phase 2C - Verify behavior and deployment safety
 
-- [ ] 2.6 Verify the live migration version and ordering expression read-only.
-- [ ] 2.7 Verify the live signature and default-false flag read-only.
-- [ ] 2.8 Verify the live security attributes and grants read-only.
-- [ ] 2.9 Run
+- [x] 2.6 Verify the live migration version and ordering expression read-only.
+- [x] 2.7 Verify the live signature and default-false flag read-only.
+- [x] 2.8 Verify the live security attributes and grants read-only.
+- [x] 2.9 Run
       `supabase/tests/equipment_list_enhanced_overload_regression.sql` read-only
       through Supabase MCP.
-- [ ] 2.10 Run the approved transactional smoke fixture and confirm it rolls
+- [x] 2.10 Run the approved transactional smoke fixture and confirm it rolls
       back all fixture rows.
-- [ ] 2.11 Run Supabase MCP security advisors.
-- [ ] 2.12 Run Supabase MCP performance advisors and triage only findings caused
+- [x] 2.11 Run Supabase MCP security advisors.
+- [x] 2.12 Run Supabase MCP performance advisors and triage only findings caused
       by this change.
-- [ ] 2.13 Verify read-only that the liquidation warehouse still has unchanged
+- [x] 2.13 Verify read-only that the liquidation warehouse still has unchanged
       row counts and no data backfill occurred.
-- [ ] 2.14 Record migration version, smoke result, advisor result, and rollback
+- [x] 2.14 Record migration version, smoke result, advisor result, and rollback
       readiness in the tracking issue or rollout handoff.
+
+Evidence: [Phase 2 rollout record](rollout.md).
 
 ### Phase 2D - Conditional forward rollback
 
-- [ ] 2.15 If Phase 2C fails, stop the rollout and open a separate forward-only
+- [x] 2.15 If Phase 2C fails, stop the rollout and open a separate forward-only
       rollback PR; otherwise record this subsection as not applicable.
-- [ ] 2.16 Before any rollback apply, request explicit user authorization for
+- [x] 2.16 Before any rollback apply, request explicit user authorization for
       that exact live DB write; otherwise record this task as not applicable.
-- [ ] 2.17 After an authorized rollback, re-run the overload regression,
+- [x] 2.17 After an authorized rollback, re-run the overload regression,
       function-security inspection, and applicable ordering smoke; otherwise
       record this task as not applicable.
 
