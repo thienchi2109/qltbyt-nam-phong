@@ -23,7 +23,7 @@ writes.
       boundaries.
 - [x] 0.5 Run
       `openspec validate update-equipment-liquidation-group-ordering --strict`.
-- [ ] 0.6 Obtain proposal approval before starting Phase 1.
+- [x] 0.6 Obtain proposal approval before starting Phase 1.
 
 **Exit criteria:** strict validation passes and the proposal PR is approved.
 
