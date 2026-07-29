@@ -91,7 +91,7 @@ export function deriveTechnicalConfigurationEvaluationStatus(
     technicalAxis !== undefined &&
     !isTechnicalConfigurationTechnicalAxis(technicalAxis)
   ) {
-    throw new Error(`Invalid technical configuration technical axis: ${technicalAxis}`)
+    throw new Error(`Invalid technical configuration technical axis: ${String(technicalAxis)}`)
   }
 
   if (
@@ -99,7 +99,7 @@ export function deriveTechnicalConfigurationEvaluationStatus(
     evidenceAxis !== undefined &&
     !isTechnicalConfigurationEvidenceAxis(evidenceAxis)
   ) {
-    throw new Error(`Invalid technical configuration evidence axis: ${evidenceAxis}`)
+    throw new Error(`Invalid technical configuration evidence axis: ${String(evidenceAxis)}`)
   }
 
   if (technicalAxis === null || technicalAxis === undefined) {

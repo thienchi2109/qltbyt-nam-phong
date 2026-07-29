@@ -14,6 +14,14 @@ import {
 
 const EVIDENCE_INPUTS = [...TECHNICAL_CONFIGURATION_EVIDENCE_AXIS_VALUES, null, undefined] as const
 
+const INVALID_RUNTIME_AXIS_VALUES: ReadonlyArray<readonly [string, unknown]> = [
+  ["number", 42],
+  ["boolean", true],
+  ["array", []],
+  ["object", {}],
+  ["symbol", Symbol("invalid")],
+]
+
 describe("technical configuration manual evaluation contract", () => {
   it("freezes the canonical technical-axis values and Vietnamese labels", () => {
     expect(TECHNICAL_CONFIGURATION_TECHNICAL_AXIS_VALUES).toEqual([
@@ -115,24 +123,42 @@ describe("technical configuration manual evaluation contract", () => {
     }
   )
 
-  it.each(["", "unexpected"])("rejects invalid technical-axis value %j", (value) => {
+  it.each([
+    ["empty string", ""],
+    ["unknown string", "unexpected"],
+    ...TECHNICAL_CONFIGURATION_EVIDENCE_AXIS_VALUES.map(
+      (value) => [`evidence-axis value ${value}`, value] as const
+    ),
+    ...INVALID_RUNTIME_AXIS_VALUES,
+  ] as const)("rejects invalid technical-axis %s", (_label, value) => {
     expect(() =>
       deriveTechnicalConfigurationEvaluationStatus(
         value as TechnicalConfigurationTechnicalAxis,
         "complete"
       )
-    ).toThrow(`Invalid technical configuration technical axis: ${value}`)
+    ).toThrow(`Invalid technical configuration technical axis: ${String(value)}`)
   })
 
-  it.each(["", "unexpected"])(
-    "rejects invalid evidence-axis value %j before applying technical precedence",
-    (value) => {
-      expect(() =>
-        deriveTechnicalConfigurationEvaluationStatus(
-          "fails",
-          value as TechnicalConfigurationEvidenceAxis
-        )
-      ).toThrow(`Invalid technical configuration evidence axis: ${value}`)
+  it.each(["fails", "unclear", "not_applicable"] as const)(
+    "rejects invalid evidence values before applying %s precedence",
+    (technicalAxis) => {
+      const invalidEvidenceValues = [
+        ["empty string", ""],
+        ["unknown string", "unexpected"],
+        ...TECHNICAL_CONFIGURATION_TECHNICAL_AXIS_VALUES.map(
+          (value) => [`technical-axis value ${value}`, value] as const
+        ),
+        ...INVALID_RUNTIME_AXIS_VALUES,
+      ] as const
+
+      for (const [_label, value] of invalidEvidenceValues) {
+        expect(() =>
+          deriveTechnicalConfigurationEvaluationStatus(
+            technicalAxis,
+            value as TechnicalConfigurationEvidenceAxis
+          )
+        ).toThrow(`Invalid technical configuration evidence axis: ${String(value)}`)
+      }
     }
   )
 })
