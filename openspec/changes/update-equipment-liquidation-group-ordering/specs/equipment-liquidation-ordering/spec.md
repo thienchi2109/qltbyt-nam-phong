@@ -56,10 +56,17 @@ old or missing decommission date.
 
 #### Scenario: Same-date rows retain requested deterministic sorting
 
-- **GIVEN** multiple liquidation rows share the same decommission date
+- **GIVEN** multiple liquidation rows share the same decommission date and have
+  different values for the requested sortable column
 - **WHEN** the user requests a sortable column and direction
 - **THEN** those same-date rows follow the requested sort
-- **AND** equipment ID provides the final deterministic tie-breaker
+
+#### Scenario: Equal chronology and sort values use equipment ID
+
+- **GIVEN** multiple liquidation rows share the same decommission date and the
+  same requested-sort value
+- **WHEN** the list builds the final deterministic order
+- **THEN** those rows are ordered by equipment ID ascending
 
 #### Scenario: General-list chronology is applied before pagination
 

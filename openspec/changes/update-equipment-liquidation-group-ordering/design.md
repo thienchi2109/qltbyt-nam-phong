@@ -150,14 +150,23 @@ Extend the existing migration test to require:
 - the chronology key before the requested dynamic sort;
 - the requested sort before `OFFSET/LIMIT`;
 - unchanged opt-out ordering when the flag is false;
-- unchanged signature, security attributes, and grants.
+- unchanged 18-argument signature and default-false flag;
+- unchanged JWT claim extraction and guards, tenant-scope clauses,
+  `SECURITY DEFINER`, fixed `search_path`, and grants;
+- unchanged filters, result envelope, and pagination clauses.
+
+These invariants remain assertions in the existing source-contract test file.
+This avoids relying on manual migration review without introducing another test
+file.
 
 ### Transactional SQL smoke
 
 Extend the rollback-only smoke fixture with:
 
 - normal rows;
-- liquidation rows with null, older, same-day, and newest dates;
+- liquidation rows with null/blank, older, same-day, and newest dates;
+- same-day rows with different requested-sort values;
+- same-day rows with equal requested-sort values and different IDs;
 - an unfiltered call;
 - a call filtered to the liquidation warehouse;
 - a custom requested sort that would otherwise put the newest row first;
@@ -169,13 +178,19 @@ Extend the rollback-only smoke fixture with:
 The smoke must prove identical liquidation chronology with and without the
 warehouse filter.
 
+PR 2 prepares and reviews this SQL fixture but does not execute it against the
+currently deployed function, because the new migration is intentionally not
+applied during the code PR. Execute the fixture only in the approved Phase 2
+checkpoint after the migration is live, and confirm its transaction rolls back.
+
 ### Existing caller-scope and overload regressions
 
 Run the existing caller-scope Vitest file in PR 2 without changing it. Run the
 read-only `supabase/tests/equipment_list_enhanced_overload_regression.sql`
 against live database metadata after the migration is applied. No new frontend
-behavior test is required unless implementation unexpectedly touches client
-code.
+or authorization-negative test file is required: the existing source-contract
+test locks the JWT and tenant-scope clauses, while Phase 2 verifies the deployed
+definition and grants read-only.
 
 ## Rollout
 
@@ -193,6 +208,11 @@ code.
 Rollback is forward-only: if rollout verification finds a regression, create
 and apply a new superseding migration that restores the previous `v_order_by`
 expression. Do not edit migration metadata or mutate an already applied file.
+Stop the rollout before preparing that migration, review it in a separate
+rollback PR, and request explicit user authorization for the exact rollback
+apply. Authorization for the original migration or smoke fixture does not
+authorize the rollback write. After an authorized rollback, re-run the overload
+regression, function-security inspection, and applicable ordering smoke.
 
 ## PR Boundaries
 

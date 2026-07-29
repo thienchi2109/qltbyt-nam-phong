@@ -49,41 +49,48 @@ SQL cleanup, or live DB apply.
       superseding migration.
 - [ ] 1.6 Add the null-safe ISO-text `ngay_ngung_su_dung` chronology key between
       the liquidation bucket and requested sort.
-- [ ] 1.7 Verify that the 18-argument signature and default-false flag are
-      unchanged in the migration.
-- [ ] 1.8 Verify that JWT guards, tenant scope, `SECURITY DEFINER`, fixed
-      `search_path`, and grants are unchanged in the migration.
-- [ ] 1.9 Verify that filters, the result envelope, and pagination are unchanged
-      in the migration.
+- [ ] 1.7 Add or retain source-contract assertions for the unchanged 18-argument
+      signature and default-false flag.
+- [ ] 1.8 Add or retain source-contract assertions for unchanged JWT guards,
+      tenant scope, `SECURITY DEFINER`, fixed `search_path`, and grants.
+- [ ] 1.9 Add or retain source-contract assertions for unchanged filters, result
+      envelope, and pagination.
 - [ ] 1.10 Run the focused migration source-contract test and confirm it passes.
 
-### Phase 1C - Prove behavior through the transactional smoke test
+### Phase 1C - Prepare the transactional smoke coverage
 
 - [ ] 1.11 Extend the transactional smoke fixture with null, old, same-day, and
       newest liquidation dates.
-- [ ] 1.12 Add an unfiltered smoke expectation proving the newest dated
+- [ ] 1.12 Add an exact-sequence expectation proving null or blank legacy dates
+      precede every dated liquidation row.
+- [ ] 1.13 Add a same-date expectation proving the requested sort orders rows
+      within that date cohort.
+- [ ] 1.14 Add an equal-date-and-sort expectation proving equipment ID ascending
+      is the final tie-breaker.
+- [ ] 1.15 Add an unfiltered smoke expectation proving the newest dated
       liquidation row is last in the liquidation group.
-- [ ] 1.13 Add a warehouse-filtered smoke expectation proving the same newest
+- [ ] 1.16 Add a warehouse-filtered smoke expectation proving the same newest
       row is last in the filtered result.
-- [ ] 1.14 Add a custom-sort expectation proving liquidation chronology remains
+- [ ] 1.17 Add a custom-sort expectation proving liquidation chronology remains
       stronger than the requested sort.
-- [ ] 1.15 Add an unfiltered page-boundary expectation proving chronology is
+- [ ] 1.18 Add an unfiltered page-boundary expectation proving chronology is
       applied before pagination.
-- [ ] 1.16 Add a warehouse-filtered page-boundary expectation proving the same
+- [ ] 1.19 Add a warehouse-filtered page-boundary expectation proving the same
       chronology is applied before pagination.
-- [ ] 1.17 Run the focused transactional smoke test.
+- [ ] 1.20 Review the SQL fixture and expected sequences without executing it
+      against the currently deployed function.
 
 ### Phase 1D - Regression gates and PR handoff
 
-- [ ] 1.18 Run the focused migration source-contract Vitest file.
-- [ ] 1.19 Run the existing caller-scope Vitest file.
-- [ ] 1.20 Run `node scripts/npm-run.js run format:check`.
-- [ ] 1.21 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 1.22 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 1.23 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 1.24 Run
+- [ ] 1.21 Run the focused migration source-contract Vitest file.
+- [ ] 1.22 Run the existing caller-scope Vitest file.
+- [ ] 1.23 Run `node scripts/npm-run.js run format:check`.
+- [ ] 1.24 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [ ] 1.25 Run `node scripts/npm-run.js run verify:dedupe`.
+- [ ] 1.26 Run `node scripts/npm-run.js run typecheck`.
+- [ ] 1.27 Run
       `openspec validate update-equipment-liquidation-group-ordering --strict`.
-- [ ] 1.25 Confirm the final diff changes no more than the planned migration and
+- [ ] 1.28 Confirm the final diff changes no more than the planned migration and
       two focused test files.
 
 **Exit criteria:** PR 2 is green, reviewable as one ordering change, and merged
@@ -123,6 +130,16 @@ mix follow-up code into the rollout.
       row counts and no data backfill occurred.
 - [ ] 2.14 Record migration version, smoke result, advisor result, and rollback
       readiness in the tracking issue or rollout handoff.
+
+### Phase 2D - Conditional forward rollback
+
+- [ ] 2.15 If Phase 2C fails, stop the rollout and open a separate forward-only
+      rollback PR; otherwise record this subsection as not applicable.
+- [ ] 2.16 Before any rollback apply, request explicit user authorization for
+      that exact live DB write; otherwise record this task as not applicable.
+- [ ] 2.17 After an authorized rollback, re-run the overload regression,
+      function-security inspection, and applicable ordering smoke; otherwise
+      record this task as not applicable.
 
 **Exit criteria:** live ordering is verified, no data was rewritten, and any
 change-caused advisor finding is resolved or explicitly tracked.
