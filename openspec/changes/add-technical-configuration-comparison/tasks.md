@@ -475,30 +475,30 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P10B2 - Many-Option Column Ergonomics
 
-- [ ] P10B2.1 Tách selected request order khỏi view-only visible option order;
+- [x] P10B2.1 Tách selected request order khỏi view-only visible option order;
       visibility không đổi query key.
-- [ ] P10B2.2 Giữ baseline luôn sticky và cho ghim tối đa 2 visible option
+- [x] P10B2.2 Giữ baseline luôn sticky và cho ghim tối đa 2 visible option
       columns theo selected-option order.
-- [ ] P10B2.3 Thêm focus mode baseline + một option, thoát focus khôi phục
+- [x] P10B2.3 Thêm focus mode baseline + một option, thoát focus khôi phục
       visible/pinned state trước đó.
-- [ ] P10B2.4 Giữ stable widths/offsets và horizontal access với 8 options ở
+- [x] P10B2.4 Giữ stable widths/offsets và horizontal access với 8 options ở
       narrow/wide layout.
-- [ ] P10B2.5 Viết reducer, keyboard/focus, pin-limit, many-column,
+- [x] P10B2.5 Viết reducer, keyboard/focus, pin-limit, many-column,
       responsive-source và file-size tests; không browser test.
 
 ## Phase P10B3 - Lazy Read-Only Evidence Inspector
 
-- [ ] P10B3.1 Lazy-load read-only documents, excerpts và criterion citations cho
+- [x] P10B3.1 Lazy-load read-only documents, excerpts và criterion citations cho
       đúng một baseline hoặc option cell đang mở.
-- [ ] P10B3.2 Không fetch khi panel đóng hoặc evidence summary báo không có dữ
+- [x] P10B3.2 Không fetch khi panel đóng hoặc evidence summary báo không có dữ
       liệu; dùng bounded page/load-more.
-- [ ] P10B3.3 Reuse nguyên P7 baseline và P9 exact-baseline option RPC/query-key
+- [x] P10B3.3 Reuse nguyên P7 baseline và P9 exact-baseline option RPC/query-key
       paths; không thêm per-option comparison fetch path thứ hai.
-- [ ] P10B3.4 Giữ reference-product evidence ngoài matrix và không render
+- [x] P10B3.4 Giữ reference-product evidence ngoài matrix và không render
       mutation/assessment controls.
-- [ ] P10B3.5 Viết lazy enablement, exact RPC, citation filtering, long excerpt,
+- [x] P10B3.5 Viết lazy enablement, exact RPC, citation filtering, long excerpt,
       keyboard/focus và P7/P9 regression tests; không browser test.
-- [ ] P10B3.6 Ghi rõ browser screenshot/interaction verification của toàn P10B
+- [x] P10B3.6 Ghi rõ browser screenshot/interaction verification của toàn P10B
       được defer sang P13B theo chỉ định product owner.
 
 ## Phase P11 - Manual Evaluation Domain And Persistence
