@@ -32,6 +32,16 @@ vi.mock("../technical-configuration-comparison-rpc", () => ({
   getTechnicalConfigurationComparison: (...args: unknown[]) => getComparisonMock(...args),
 }))
 
+vi.mock("../technical-configuration-document-rpc", async (importOriginal) => {
+  const original = await importOriginal<typeof import("../technical-configuration-document-rpc")>()
+  const emptyPage = { data: [], total: 0, page: 1, page_size: 20 }
+  return {
+    ...original,
+    listTechnicalConfigurationBaselineDocuments: vi.fn().mockResolvedValue(emptyPage),
+    listTechnicalConfigurationOptionDocuments: vi.fn().mockResolvedValue(emptyPage),
+  }
+})
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {

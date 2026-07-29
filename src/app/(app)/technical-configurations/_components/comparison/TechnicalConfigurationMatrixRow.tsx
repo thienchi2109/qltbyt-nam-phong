@@ -19,6 +19,7 @@ const EMPTY_EVIDENCE: TechnicalConfigurationComparisonEvidence = {
 type TechnicalConfigurationMatrixRowProps = {
   row: TechnicalConfigurationComparisonResult["data"]["criteria"][number]
   options: TechnicalConfigurationComparisonResult["data"]["options"]
+  baselineVersionId: string
   pinnedOptionIds: readonly string[]
   valueByOptionId: ReadonlyMap<string, TechnicalConfigurationComparisonOptionValue>
   onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
@@ -33,6 +34,7 @@ function formatEvidenceSummary(evidence: TechnicalConfigurationComparisonEvidenc
 export function TechnicalConfigurationMatrixRow({
   row,
   options,
+  baselineVersionId,
   pinnedOptionIds,
   valueByOptionId,
   onOpenDetail,
@@ -68,6 +70,11 @@ export function TechnicalConfigurationMatrixRow({
               responseText: null,
               supplementaryInformation: null,
               evidence: row.baselineEvidence,
+              evidenceTarget: {
+                kind: "baseline",
+                baselineVersionId,
+                criterionId: row.criterion.id,
+              },
             })
           }
         >
@@ -111,6 +118,12 @@ export function TechnicalConfigurationMatrixRow({
                   responseText: response?.responseText ?? null,
                   supplementaryInformation: response?.supplementaryInformation ?? null,
                   evidence,
+                  evidenceTarget: {
+                    kind: "option",
+                    baselineVersionId,
+                    optionId: option.id,
+                    criterionId: row.criterion.id,
+                  },
                 })
               }
             >

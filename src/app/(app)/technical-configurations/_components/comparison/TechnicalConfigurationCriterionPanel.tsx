@@ -2,8 +2,11 @@
 
 import * as React from "react"
 
+import type { TechnicalConfigurationComparisonEvidenceTarget } from "../../_hooks/useTechnicalConfigurationComparisonEvidence"
 import type { TechnicalConfigurationComparisonEvidence } from "../../comparison-types"
 import { SideSheetShell } from "@/components/shared/SideSheetShell"
+
+import { TechnicalConfigurationComparisonEvidence as TechnicalConfigurationComparisonEvidenceSection } from "./TechnicalConfigurationComparisonEvidence"
 
 export type TechnicalConfigurationCriterionDetail = {
   criterionCode: string
@@ -13,6 +16,7 @@ export type TechnicalConfigurationCriterionDetail = {
   responseText: string | null
   supplementaryInformation: string | null
   evidence: TechnicalConfigurationComparisonEvidence
+  evidenceTarget: TechnicalConfigurationComparisonEvidenceTarget
 }
 
 type TechnicalConfigurationCriterionPanelProps = {
@@ -27,7 +31,7 @@ function formatEvidenceSummary(evidence: TechnicalConfigurationComparisonEvidenc
   return `${evidence.documentCount} tài liệu · ${evidence.citationCount} trích dẫn`
 }
 
-/** Renders full comparison text without loading evidence documents or assessment controls. */
+/** Renders full comparison text and lazy read-only evidence without assessment controls. */
 export function TechnicalConfigurationCriterionPanel({
   detail,
   open,
@@ -85,6 +89,9 @@ export function TechnicalConfigurationCriterionPanel({
           <section className="space-y-2">
             <h3 className="font-semibold">Tóm tắt bằng chứng</h3>
             <p className="text-muted-foreground">{formatEvidenceSummary(detail.evidence)}</p>
+            {open && detail.evidence.hasEvidence ? (
+              <TechnicalConfigurationComparisonEvidenceSection target={detail.evidenceTarget} />
+            ) : null}
           </section>
         </div>
       ) : null}

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vitest"
 import { TechnicalConfigurationCriterionPanel } from "../_components/comparison/TechnicalConfigurationCriterionPanel"
 import { TechnicalConfigurationMatrix } from "../_components/comparison/TechnicalConfigurationMatrix"
 
-import { createComparisonResult } from "./comparison-matrix-test-fixtures"
+import { ComparisonQueryProvider, createComparisonResult } from "./comparison-matrix-test-fixtures"
 
 export function registerComparisonMatrixReviewRegressionTests() {
   describe("P10B1 review regressions", () => {
@@ -34,19 +34,26 @@ export function registerComparisonMatrixReviewRegressionTests() {
 
     it("shows only baseline-relevant fields in baseline detail", () => {
       render(
-        <TechnicalConfigurationCriterionPanel
-          detail={{
-            criterionCode: "TS-01",
-            criterionTitle: "Độ phân giải",
-            optionLabel: null,
-            requirementText: "Độ phân giải tối thiểu 1920 x 1080",
-            responseText: null,
-            supplementaryInformation: null,
-            evidence: { documentCount: 2, citationCount: 1, hasEvidence: true },
-          }}
-          open
-          onOpenChange={vi.fn()}
-        />
+        <ComparisonQueryProvider>
+          <TechnicalConfigurationCriterionPanel
+            detail={{
+              criterionCode: "TS-01",
+              criterionTitle: "Độ phân giải",
+              optionLabel: null,
+              requirementText: "Độ phân giải tối thiểu 1920 x 1080",
+              responseText: null,
+              supplementaryInformation: null,
+              evidence: { documentCount: 2, citationCount: 1, hasEvidence: true },
+              evidenceTarget: {
+                kind: "baseline",
+                baselineVersionId: "baseline-1",
+                criterionId: "criterion-1",
+              },
+            }}
+            open
+            onOpenChange={vi.fn()}
+          />
+        </ComparisonQueryProvider>
       )
 
       expect(screen.getByText("Yêu cầu cơ sở")).toBeInTheDocument()
