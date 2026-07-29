@@ -505,14 +505,14 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P11A - Manual Evaluation Domain Contract
 
-- [ ] P11A.1 Thêm stable ASCII values và Vietnamese label maps cho hai trục và
+- [x] P11A.1 Thêm stable ASCII values và Vietnamese label maps cho hai trục và
       derived status.
-- [ ] P11A.2 Thêm pure derived-status function; không persist hoặc cho sửa trực
+- [x] P11A.2 Thêm pure derived-status function; không persist hoặc cho sửa trực
       tiếp derived status.
-- [ ] P11A.3 Chốt cả missing technical-axis và missing evidence-axis thành
+- [x] P11A.3 Chốt cả missing technical-axis và missing evidence-axis thành
       `not_evaluated` theo canonical precedence.
-- [ ] P11A.4 Viết exhaustive table-driven mapping và invalid-value tests.
-- [ ] P11A.5 Audit leaf không thêm DB, RPC, hook, UI hoặc AI runtime artifact.
+- [x] P11A.4 Viết exhaustive table-driven mapping và invalid-value tests.
+- [x] P11A.5 Audit leaf không thêm DB, RPC, hook, UI hoặc AI runtime artifact.
 
 ## Phase P11B - Manual Assessment Persistence And Security
 
