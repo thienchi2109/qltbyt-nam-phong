@@ -68,7 +68,7 @@ describe("equipment list liquidation-last migration", () => {
     expect(dropPosition).toBeGreaterThanOrEqual(0)
     expect(createPosition).toBeGreaterThan(dropPosition)
     expect(createEnd).toBeGreaterThan(createPosition)
-    expect(parameterDeclarations).toHaveLength(18)
+    expect(createSignature.split(", ")).toHaveLength(18)
     expect(createSignature).toBe(parameterDeclarations.join(", "))
     expect(compact).toContain("p_liquidation_last boolean DEFAULT false ) RETURNS jsonb")
     expect(compact).toContain("SECURITY DEFINER")
