@@ -294,8 +294,8 @@ ba leaf P10B sở hữu bề mặt read/inspect nhiều phương án theo các b
 
 P10B1 hoàn tất core-dimension/text portion của TC-13-S02. P10B3 mở rộng đúng
 detail panel đó với evidence-inspection cho TC-13-S02/S05 nhưng không tạo
-assessment data hoặc control. P12A, sau P11, ghép manual assessment vào cùng
-detail workflow để hoàn tất phần `đánh giá` của hai scenario.
+assessment data hoặc control. P12A, sau P11A-P11C, ghép manual assessment vào
+cùng detail workflow để hoàn tất phần `đánh giá` của hai scenario.
 
 Toàn bề mặt giữ các nguyên tắc:
 
@@ -348,18 +348,21 @@ Mặc định người dùng đánh giá một phương án đang chọn:
 
 Trục mức đáp ứng kỹ thuật:
 
-- `Vượt yêu cầu`
-- `Đạt`
-- `Không đạt`
-- `Chưa rõ`
-- `Không áp dụng`
+- `exceeds` -> `Vượt yêu cầu`
+- `meets` -> `Đạt`
+- `fails` -> `Không đạt`
+- `unclear` -> `Chưa rõ`
+- `not_applicable` -> `Không áp dụng`
 
 Trục mức đầy đủ bằng chứng:
 
-- `Đầy đủ`
-- `Một phần`
-- `Thiếu`
-- `Không yêu cầu`
+- `complete` -> `Đầy đủ`
+- `partial` -> `Một phần`
+- `missing` -> `Thiếu`
+- `not_required` -> `Không yêu cầu`
+
+Các mã ASCII là persisted/domain values ổn định. Nhãn tiếng Việt chỉ là display
+labels và không được gửi xuống database thay cho mã canonical.
 
 Hai giá trị được lưu riêng. Trạng thái tổng hợp không có input chỉnh sửa trực tiếp và được suy ra theo thứ tự ưu tiên:
 
@@ -369,14 +372,25 @@ Hai giá trị được lưu riêng. Trạng thái tổng hợp không có input
 | Không áp dụng        | Bất kỳ                    | Không áp dụng       |
 | Không đạt            | Bất kỳ                    | Không đạt           |
 | Chưa rõ              | Bất kỳ                    | Chưa rõ             |
+| Vượt yêu cầu         | Chưa chọn                 | Chưa đánh giá       |
+| Đạt                  | Chưa chọn                 | Chưa đánh giá       |
 | Vượt yêu cầu         | Một phần hoặc Thiếu       | Chưa đủ bằng chứng  |
 | Đạt                  | Một phần hoặc Thiếu       | Chưa đủ bằng chứng  |
 | Vượt yêu cầu         | Đầy đủ hoặc Không yêu cầu | Vượt yêu cầu        |
 | Đạt                  | Đầy đủ hoặc Không yêu cầu | Đạt                 |
 
-Backend và frontend phải dùng cùng một hàm/quy tắc chuẩn để tránh kết quả khác nhau.
+Derived status dùng các mã canonical `not_evaluated`, `not_applicable`,
+`fails`, `unclear`, `insufficient_evidence`, `exceeds` và `meets`. Một pure
+domain function là source of truth cho application code và contract tests.
+Database chỉ lưu/validate hai trục, không lưu một derived status có thể chỉnh
+sửa độc lập.
 
 Đánh giá thủ công là nguồn kết luận chính trong MVP. Thay đổi phản hồi nhà cung cấp không tự động xóa hoặc sửa kết luận của người dùng.
+
+Mỗi assessment row có `revision BIGINT` riêng. Thay đổi phản hồi, thông tin bổ
+sung hoặc tài liệu nguồn không tăng assessment revision và không tạo conflict
+giả khi người dùng lưu đánh giá. `updated_by` và `updated_at` là metadata người
+đánh giá gần nhất; không thêm `evaluated_by` hoặc `evaluated_at` trùng nghĩa.
 
 ### 10. Thông tin bổ sung không ảnh hưởng tuân thủ
 

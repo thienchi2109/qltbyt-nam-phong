@@ -561,6 +561,12 @@ Hệ thống SHALL suy ra trạng thái tổng hợp bằng một quy tắc chu�
 - **WHEN** người dùng chưa chọn mức đáp ứng kỹ thuật
 - **THEN** trạng thái tổng hợp là `Chưa đánh giá`
 
+#### Scenario: Evidence axis is missing
+
+- **WHEN** mức đáp ứng là `Đạt` hoặc `Vượt yêu cầu`
+- **AND** người dùng chưa chọn mức đầy đủ bằng chứng
+- **THEN** trạng thái tổng hợp là `Chưa đánh giá`
+
 ### Requirement: Non-scoring supplementary information
 
 Hệ thống SHALL lưu thông tin chỉ do nhà cung cấp khai báo trong trường "Thông tin bổ sung" tách khỏi phản hồi đáp ứng.

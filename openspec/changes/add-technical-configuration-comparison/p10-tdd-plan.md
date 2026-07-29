@@ -559,7 +559,7 @@ Across all three leaves:
 - keep response authoring, dirty state and save commands in P8B3;
 - lazy-load full evidence only in P10B3 through existing bounded P7/P9 paths;
 - treat P10B3 as the evidence-inspection portion of TC-13-S05; P12A composes
-  manual assessment into the same detail workflow after P11;
+  manual assessment into the same detail workflow after P11C;
 - introduce no manual assessment persistence, ranking or derived compliance;
 - run focused React, keyboard and responsive-source tests without browser tests;
   P13B remains the browser screenshot/interaction regression owner.

@@ -51,7 +51,8 @@
   controls.
 - TC-13-S02/S05 remain staged across phases: P10B1 owns the reusable full-text
   detail, P10B3 extends that detail with evidence inspection, and P12A composes
-  manual assessment after P11 supplies its domain and persistence contract.
+  manual assessment after P11A-P11C supply the domain, persistence and typed
+  client contracts.
 - P12A's evaluation panel must be a thin composition wrapper around the P10B
   criterion detail plus assessment controls. It must not duplicate
   baseline/response/supplementary/evidence rendering, query keys or fetch paths.
@@ -84,9 +85,16 @@ Each entity or schema alteration has one primary leaf owner. A later leaf may ex
 | P8A4 | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
 | P9B1 | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
 | P9B1 | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
-| P11  | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; two axes, notes, evaluator metadata and revision                                           |
+| P11B | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
+
+Manual assessments use stable ASCII persisted/domain values and Vietnamese
+display labels. The table stores the two axes but not a writable derived status.
+Each assessment row owns its `revision BIGINT`; supplier response, supplementary
+information and document updates do not increment that revision. `updated_by`
+and `updated_at` identify the latest evaluator without duplicate
+`evaluated_by`/`evaluated_at` columns.
 
 ## State And Identity Contracts
 
@@ -238,12 +246,13 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P9A2  | `technical_configuration_option_import_preview`, `technical_configuration_option_import_apply`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | P9B1  | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
 | P10A1 | `technical_configuration_comparison_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| P11   | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| P11B  | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
-Except for the explicitly dormant P10A1/P10A2 split, each leaf that introduces
-an RPC also owns allowlisting only the names introduced by that leaf. P10A1
-creates the database function without proxy exposure; P10A2 owns its RPC-name
-manifest and allowlist entry after the applied/gated P10A1 contract is stable.
+Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
+that introduces an RPC also owns allowlisting only the names introduced by that
+leaf. P10A1 and P11B create database functions without proxy exposure; P10A2
+and P11C own their respective RPC-name manifests and allowlist entries only
+after the database contracts are applied and gated.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -284,7 +293,9 @@ existing plain-`Error` behavior.
   `p_expected_revision`. The revision is the dossier revision.
 - Option import apply response: `{ data }`, where `data` is the complete
   option/baseline comparison snapshot and new dossier revision.
-- Every mutation request includes `p_expected_revision`. Dossier create requires `0`; descendant creates use the owning aggregate revision.
+- Every mutation request includes `p_expected_revision`. Dossier create and a
+  first manual-assessment row create require `0`; other descendant creates use
+  the owning aggregate revision.
 - `technical_configuration_baseline_documents_list` is the single P7B1 read RPC
   for both baseline-owned and reference-product-owned evidence. Request:
   `p_baseline_version_id`, `p_page`, `p_page_size`. Every `data` item contains
@@ -320,6 +331,32 @@ existing plain-`Error` behavior.
   `HtTpS://EXAMPLE.com/a/../spec.pdf` is accepted. Create and update store the
   exact raw request value and return that same value in `data`; document list
   responses expose the stored raw value unchanged.
+- `technical_configuration_assessments_list` request:
+  `p_comparison_set_id`, `p_page`, `p_page_size`, with `p_page >= 1` and
+  `1 <= p_page_size <= 100`. The comparison set must already exist; the RPC
+  never creates it or increments dossier revision. Archived dossiers remain
+  readable. The response is `{ data, total, page, page_size }`, ordered by
+  baseline group order, criterion order and criterion ID.
+- Every assessment-list item and successful assessment-upsert `data` object
+  contains exactly `{ id, comparison_set_id, baseline_version_id, criterion_id,
+technical_axis, evidence_axis, notes, revision, created_by, created_at,
+updated_by, updated_at }`. Both axis fields are nullable; `notes` is returned
+  as a non-null string; no derived status, option response, document, citation
+  or machine-result field is included.
+- `technical_configuration_assessment_upsert` request:
+  `p_comparison_set_id`, `p_criterion_id`, nullable `p_technical_axis`, nullable
+  `p_evidence_axis`, nullable `p_notes` and non-null
+  `p_expected_revision`. Axis values, when present, must be canonical P11A ASCII
+  values. SQL `NULL` notes are canonicalized to an empty string.
+- Assessment first-create uses `p_expected_revision = 0` and returns revision
+  `1`. An existing row with expected revision `0`, or a missing row with a
+  positive expected revision, returns `PT409/stale_revision`. An update requires
+  the exact current row revision and increments only that assessment revision
+  once. It never increments dossier revision.
+- Both P11B RPCs require an existing exact comparison set and never redefine or
+  bypass the P8A3/P8A4 comparison-set contracts. P11C reuses the existing
+  nullable read and get-or-create client paths before listing or creating the
+  first assessment.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -520,11 +557,11 @@ that client state for refresh and re-preview.
    persistence table.
 9. P9B1 adds option documents/citations.
 10. P10A1 adds the bounded comparison read RPC and any query-plan-proven indexes.
-11. P11 adds manual assessments.
+11. P11B adds manual assessments and their guarded database RPCs.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
-P5A, P5B, P5D, P9A1, P9A3, P9B2 and P10A2 create no
+P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A and P11C create no
 technical-configuration persistence. P6A and P6B also create no
 technical-configuration persistence; P6A lands after P5D, P6B follows it, and
 both land before the first document UI in P7B2. Migration timestamps are

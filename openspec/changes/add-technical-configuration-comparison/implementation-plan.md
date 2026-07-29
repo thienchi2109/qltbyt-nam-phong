@@ -114,8 +114,10 @@ P10A1           -> P10A2
 P3A + P10A2     -> P10B1
 P10B1           -> P10B2
 P10B2           -> P10B3
-P4 + P8A3       -> P11
-P10B3 + P11     -> P12A
+P4 + P8A3       -> P11A
+P11A            -> P11B
+P8A4 + P8B2 + P11B -> P11C
+P10B3 + P11C    -> P12A
 P12A            -> P12B
 P12B            -> P12C
 P12C            -> P13A, P13B
@@ -132,32 +134,41 @@ P9A1/P9A2 and P9B1 are dormant contracts; only P9A3 and P9B2 activate new
 user-visible workflows. P8B3 is an external frontend prerequisite for P9A3 but
 does not block P9A1 or P9A2.
 
+P11 uses the strict delivery order `P11A -> P11B -> P11C`. P11A deliberately
+retains the original P4/P8A3 delivery dependencies even though its code is a
+pure domain contract, so every leaf has a merged and verifiable predecessor.
+P11B adds the dormant database contract and must be applied and gated before
+P11C exposes the RPCs through the proxy and typed client. P11C also waits for
+the P8A4 nullable read and P8B2 no-write-on-open/first-save orchestration that
+it must reuse. None of the P11 leaves owns production assessment controls or
+navigation; those remain in P12A.
+
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                                           |
-| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                   |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                         |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A                                                                      |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                   |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                               |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                           |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                           |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                 |
-| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                         |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                         |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                   |
-| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A                                                                                                  |
-| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                               |
-| TC-15 | Separate manual evaluation axes                 | P11, P12A                                                                                                                                |
-| TC-16 | Transparent derived overall status              | P11, P12A, P12B                                                                                                                          |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A, P13B                                                                                  |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                     |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11, P13C                                                                                                                        |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11, P12A, P13B |
+| ID    | Requirement                                     | Primary phases                                                                                                                                  |
+| ----- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                          |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                       |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A                                                                             |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                          |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                                      |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                  |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                  |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                        |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                          |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A                                                                                                         |
+| TC-14 | Per-option manual evaluation workflow           | P12A, P12B                                                                                                                                      |
+| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P12A                                                                                                                          |
+| TC-16 | Transparent derived overall status              | P11A, P12A, P12B                                                                                                                                |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A, P13B                                                                                         |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                            |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                  |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A, P13B |
 
 ## Shared Technical Constraints
 
@@ -1165,7 +1176,7 @@ user-facing option workspace.
   enforcement and cross-owner rejection.
 - Tests proving response and supplementary text are independent and that P8A3
   exposes no compliance/evaluation fields; actual compliance derivation remains
-  owned by P11 and ranking remains owned by P12C.
+  owned by P11A and ranking remains owned by P12C.
 - Tests for stale dossier revisions, cascade and historical dataset separation.
 - Tests proving an existing set is readable after archive while create/upsert
   mutations are rejected.
@@ -1954,7 +1965,7 @@ baseline/option evidence reads; no evidence authoring or assessment data
 - [ ] Restore focus to the opening cell and render loading, error, no-evidence
       and long-excerpt states without mutation controls.
 - [ ] Do not invent assessment fields from TC-13-S05 wording; manual evaluation
-      remains owned by P11/P12.
+      remains owned by P11A-P11C/P12.
 
 ### TDD and verification
 
@@ -1971,48 +1982,144 @@ baseline/option evidence reads; no evidence authoring or assessment data
 Users can inspect full text and lazily loaded evidence for one matrix cell
 without N+1 fetching, evidence authoring or manual assessment persistence.
 
-## Phase P11 - Manual Evaluation Domain And Persistence
+## Phase P11A - Manual Evaluation Domain Contract
 
 **Depends on:** P4, P8A3
 
-**Requirements:** TC-02, TC-15, TC-16, TC-19, TC-20  
-**Deploy boundary:** backend/domain capability with minimal or test-only UI exposure
+**Requirements:** TC-15, TC-16, TC-19
+**Deploy boundary:** pure domain contract with no database, RPC, hook or UI behavior
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-evaluation.ts`
+- Create: `src/lib/__tests__/technical-configuration-evaluation.test.ts`
+
+### Tasks
+
+- [ ] Define stable ASCII values for both axes and every derived status, with
+      Vietnamese display labels kept outside the persisted/domain values.
+- [ ] Implement one pure derived-status function as the application source of
+      truth; the derived status is never a directly editable or persisted input.
+- [ ] Map a missing technical axis to `not_evaluated`.
+- [ ] Map a missing evidence axis to `not_evaluated` when the technical axis is
+      `meets` or `exceeds`.
+- [ ] Cover every precedence row, both missing-axis paths and invalid values.
+- [ ] Add no database, RPC, React hook, UI or machine-result contract.
+
+### TDD and verification
+
+- Exhaustive table-driven tests for canonical values, labels and every mapping
+  row.
+- Missing technical-axis and missing evidence-axis regression tests.
+- Source audit proving the leaf adds no persistence, RPC or AI runtime artifact.
+
+### Exit gate
+
+The canonical manual-evaluation values and deterministic derived-status
+function are frozen through exhaustive tests without changing runtime behavior.
+
+## Phase P11B - Manual Assessment Persistence And Security
+
+**Depends on:** P11A
+
+**Requirements:** TC-02, TC-15, TC-18-S06 persistence prerequisite, TC-19, TC-20
+**Deploy boundary:** dormant database capability with no proxy/client exposure
 
 ### Planned files
 
 - Create: `supabase/migrations/<ordered_timestamp>_technical_configuration_manual_assessments.sql`
-- Create: `src/lib/technical-configuration-evaluation.ts`
-- Create: `src/lib/__tests__/technical-configuration-evaluation.test.ts`
+- Create: `supabase/tests/technical_configuration_manual_assessments_phase_gate.sql`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-manual-assessments-migration.test.ts`
+
+### Tasks
+
+- [ ] Add manual-assessment persistence unique by comparison set and criterion,
+      preserving exact option/baseline/criterion ownership through composite
+      foreign keys.
+- [ ] Persist only the two canonical axes and notes; do not persist a writable
+      derived status or any machine-result/staleness field.
+- [ ] Give each assessment row its own `revision BIGINT`; source-response,
+      supplementary-information and document updates do not increment that row
+      revision or cause an assessment conflict.
+- [ ] Treat `updated_by` and `updated_at` as the latest evaluator metadata; do
+      not add duplicate evaluator columns.
+- [ ] Freeze and implement the exact bounded-list/upsert arguments, nullability,
+      wire fields, ordering and first-create revision semantics defined in
+      `contracts.md`.
+- [ ] Validate JWT role/user claims, normalize `admin` to `global`, reject
+      non-global roles fail-closed and reject mutations for archived dossiers.
+- [ ] Keep the table RPC-only with deny-by-default RLS and explicit grants.
+- [ ] Preserve manual conclusions when supplier source data changes and prove
+      no automatic delete, mutation or stale marker occurs.
+- [ ] Complete the mandatory DB phase gate, including migration ordering,
+      role/claim, ownership, archive, conflict, cascade, grant/RLS and no-AI
+      checks.
+
+### TDD and verification
+
+- Migration source tests freezing table constraints, RPC signatures, guards,
+  row-level revision behavior and deterministic wire fields.
+- Rollback-only SQL phase gate for authorization, exact ownership, current and
+  stale revisions, source-update preservation, cascades and direct privileges.
+- Obtain explicit permission to apply the exact migration through Supabase MCP.
+- After apply, run read-only security and performance advisors.
+- Obtain a separate explicit permission to execute the rollback-only SQL phase
+  gate through Supabase MCP.
+- After the gate, confirm rollback/fixture cleanup and rerun read-only advisors.
+
+### Exit gate
+
+Manual assessments can be stored and read through applied, guarded and tested
+database contracts, but no application proxy or client can call them yet.
+
+## Phase P11C - Manual Assessment Client Contract
+
+**Depends on:** P8A4, P8B2, P11B merged/applied/gated
+
+**Requirements:** TC-15, TC-19, TC-20
+**Deploy boundary:** typed proxy/client capability with no production assessment UI
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-assessment-rpcs.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Create: `src/app/(app)/technical-configurations/assessment-types.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-assessment-rpc.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
 - Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationAssessments.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/assessment-contract.test.ts`
 
 ### Tasks
 
-- [ ] Define canonical technical-axis and evidence-axis enums.
-- [ ] Implement one pure derived-status function shared by frontend/backend contract tests.
-- [ ] Cover every mapping row and missing-axis case.
-- [ ] Add assessment persistence keyed by baseline version, option and criterion.
-- [ ] Add notes, evaluator metadata and optimistic concurrency.
-- [ ] Preserve manual conclusions when supplier source data changes.
-- [ ] Keep manual records separate from any future machine result.
-- [ ] Add no AI result table, cache, job or quota field.
-- [ ] Reject assessment mutations when the owning dossier is archived.
-- [ ] Complete the mandatory DB phase gate, including phase-local role/claim tests, explicit live-write approval and post-apply advisors.
+- [ ] Freeze exactly the P11B list/upsert RPC names in a dedicated manifest and
+      allowlist them only after the database contract is applied and gated.
+- [ ] Add typed wire/request contracts that preserve canonical ASCII values,
+      notes, audit metadata and row revisions without remapping derived status.
+- [ ] Reuse the P8A4 nullable comparison-set read and the P8B2
+      no-write-on-open/first-save orchestration over P8A3 get-or-create; P11C
+      must not introduce a second comparison-set mutation path.
+- [ ] Add a bounded assessment query key and a dedicated hook outside the
+      workspace shell.
+- [ ] Preserve validation, authorization and stale-revision errors for P12A;
+      do not add navigation, dirty-draft handling or save controls.
+- [ ] Add no production UI, ranking or AI runtime artifact.
 
 ### TDD and verification
 
-- Exhaustive table-driven mapping tests.
-- Authorization tests for all required role/claim states and stale-revision tests.
-- Tests proving source edits do not mutate/delete/mark manual evaluation stale.
-- Schema inspection proving no AI runtime artifact was added.
+- RPC-manifest and proxy allowlist contract tests.
+- Wire-shape, exact-argument, bounded-list and stale-revision adapter tests.
+- Hook query/mutation/cache tests without rendering assessment controls.
+- React Doctor after focused tests pass.
 
 ### Exit gate
 
-Manual assessments can be persisted and deterministically derived through tested contracts.
+The applied P11B contract is available through a typed, tested client surface,
+while the production UI remains unchanged until P12A.
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
-**Depends on:** P10B3, P11
+**Depends on:** P10B3, P11C
 
 **Requirements:** TC-04, TC-13-S02/S05 assessment-composition completion,
 TC-14, TC-15, TC-16, TC-17, TC-20
@@ -2112,12 +2219,16 @@ Users can measure and navigate evaluation progress without any ranking decision.
 - [ ] Exclude incomplete options and show the reason.
 - [ ] Add mandatory reference-only disclaimer.
 - [ ] Block cross-dossier, cross-version and reference-product ranking.
+- [ ] Preserve current manual conclusions and ranking eligibility when supplier
+      source data changes; do not render a manual-assessment stale state.
 - [ ] Do not persist award decisions or AI-derived rank.
 
 ### TDD and verification
 
 - Table-driven precedence and tie tests.
 - Incomplete-eligibility and scope-guard tests.
+- Source-update regression proving eligibility remains based on the persisted
+  manual conclusions and no stale marker appears.
 - UI disclaimer and no-hidden-ranking tests.
 
 ### Exit gate

@@ -51,8 +51,10 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P10B1](./implementation-plan.md#phase-p10b1---core-read-only-comparison-matrix)                    | Core matrix read-only                          | P3A, P10A2                 | TC-13, TC-17                                    |
 | [P10B2](./implementation-plan.md#phase-p10b2---many-option-column-ergonomics)                       | Column selection, pinning và focus             | P10B1                      | TC-13                                           |
 | [P10B3](./implementation-plan.md#phase-p10b3---lazy-read-only-evidence-inspector)                   | Lazy evidence inspector                        | P10B2                      | TC-13                                           |
-| [P11](./implementation-plan.md#phase-p11---manual-evaluation-domain-and-persistence)                | Domain và persistence đánh giá thủ công        | P4, P8A3                   | TC-02, TC-15, TC-16, TC-19, TC-20               |
-| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B3, P11                 | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
+| [P11A](./implementation-plan.md#phase-p11a---manual-evaluation-domain-contract)                     | Domain và derived-status contract              | P4, P8A3                   | TC-15, TC-16, TC-19                             |
+| [P11B](./implementation-plan.md#phase-p11b---manual-assessment-persistence-and-security)            | Persistence, RPC DB và security gate           | P11A                       | TC-02, TC-15, TC-18-S06, TC-19, TC-20           |
+| [P11C](./implementation-plan.md#phase-p11c---manual-assessment-client-contract)                     | Proxy, typed client và hook contract           | P8A4, P8B2, P11B gated     | TC-15, TC-19, TC-20                             |
+| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B3, P11C                | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
 | [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A                       | TC-14, TC-16                                    |
 | [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B                       | TC-18                                           |
 | [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C                       | TC-02, TC-20                                    |
@@ -501,13 +503,48 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 - [x] P10B3.6 Ghi rõ browser screenshot/interaction verification của toàn P10B
       được defer sang P13B theo chỉ định product owner.
 
-## Phase P11 - Manual Evaluation Domain And Persistence
+## Phase P11A - Manual Evaluation Domain Contract
 
-- [ ] P11.1 Thêm canonical two-axis enums và shared derived-status function.
-- [ ] P11.2 Thêm assessment persistence, notes, evaluator metadata và concurrency.
-- [ ] P11.3 Giữ manual conclusions tách khỏi source updates và AI future data.
-- [ ] P11.4 Chạy DB phase gate và audit không có AI runtime artifact.
-- [ ] P11.5 Viết exhaustive mapping, auth, conflict và no-staleness tests.
+- [ ] P11A.1 Thêm stable ASCII values và Vietnamese label maps cho hai trục và
+      derived status.
+- [ ] P11A.2 Thêm pure derived-status function; không persist hoặc cho sửa trực
+      tiếp derived status.
+- [ ] P11A.3 Chốt cả missing technical-axis và missing evidence-axis thành
+      `not_evaluated` theo canonical precedence.
+- [ ] P11A.4 Viết exhaustive table-driven mapping và invalid-value tests.
+- [ ] P11A.5 Audit leaf không thêm DB, RPC, hook, UI hoặc AI runtime artifact.
+
+## Phase P11B - Manual Assessment Persistence And Security
+
+- [ ] P11B.1 Thêm bảng assessment unique theo comparison set + criterion với
+      exact ownership FKs và canonical two-axis values.
+- [ ] P11B.2 Thêm notes, row-level `revision BIGINT`; dùng
+      `updated_by`/`updated_at` làm latest evaluator metadata.
+- [ ] P11B.3 Đóng băng và triển khai exact list/upsert arguments, nullability,
+      wire order, first-create revision semantics cùng JWT, admin/global,
+      archived-dossier và deny-by-default guards.
+- [ ] P11B.4 Giữ manual conclusions tách khỏi source updates và future AI data;
+      không thêm derived/stale/machine-result fields.
+- [ ] P11B.5 Viết migration source tests và rollback-only DB phase gate cho
+      auth, ownership, conflict, source preservation, cascade, grants/RLS và
+      no-AI audit.
+- [ ] P11B.6 Xin explicit approval riêng để apply exact migration; sau apply chạy
+      read-only security/performance advisors.
+- [ ] P11B.7 Xin explicit approval riêng để chạy rollback-only phase gate; xác
+      nhận rollback/fixture cleanup và chạy lại read-only advisors.
+
+## Phase P11C - Manual Assessment Client Contract
+
+- [ ] P11C.1 Thêm dedicated RPC manifest và proxy allowlist sau khi P11B đã
+      merged/applied/gated.
+- [ ] P11C.2 Thêm typed wire/request contracts, RPC adapter và bounded query key.
+- [ ] P11C.3 Reuse P8A4 nullable read và P8B2 no-write-on-open/first-save
+      orchestration trên P8A3 get-or-create; thêm assessment hook ngoài
+      workspace shell nhưng không tạo mutation path thứ hai, production controls
+      hoặc navigation.
+- [ ] P11C.4 Bảo toàn validation/auth/conflict errors và row revisions cho P12A.
+- [ ] P11C.5 Viết manifest, whitelist, wire, adapter và hook contract tests;
+      audit không có ranking/AI runtime artifact.
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
@@ -534,6 +571,8 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 - [ ] P12C.3 Thêm ties, disclaimer và scope guards.
 - [ ] P12C.4 Ngăn cross-dossier/version/reference-product ranking.
 - [ ] P12C.5 Viết precedence, eligibility, ties và disclaimer tests.
+- [ ] P12C.6 Giữ manual conclusions và ranking eligibility khi source data thay
+      đổi; viết regression test không có manual stale marker.
 
 ## Phase P13A - Database Security And Performance Hardening
 

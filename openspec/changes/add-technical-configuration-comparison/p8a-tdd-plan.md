@@ -14,7 +14,7 @@ Supplier and option identity data remain outside the baseline aggregate. Baselin
 copy does not clone them, and baseline lock state does not block their direct
 editing. P8B1 owns supplier/option CRUD UI and P8B2 owns exact-baseline response
 UI. The detailed P8A4/P8B1/P8B2 execution plan lives in
-`p8b-tdd-plan.md`. P9, P10, P11 and P12 remain out of scope.
+`p8b-tdd-plan.md`. P9, P10, P11A-P11C and P12 remain out of scope.
 
 ## P8A1 Red-Green-Refactor
 
@@ -291,8 +291,8 @@ push P8A2 as one branch and one PR.
   text fields. Preserve supplied text exactly and canonicalize SQL `NULL` to an
   empty string.
 - Do not add compliance, evaluation, assessment, ranking or overall-status
-  fields or parameters. P11 owns manual assessment and derived compliance;
-  P12C owns ranking.
+  fields or parameters. P11A owns derived compliance, P11B/P11C own manual
+  assessment contracts and P12C owns ranking.
 - A comparison set already present for the requested pair is a read: return it
   without changing audit fields or dossier revision, including after dossier
   archive. Authenticate and resolve ownership first, but do not call the

@@ -8,7 +8,7 @@ P10B ships as three sequential, deploy-safe UI leaves:
 P3A + P10A2 -> P10B1
 P10B1       -> P10B2
 P10B2       -> P10B3
-P10B3 + P11 -> P12A
+P10B3 + P11C -> P12A
 ```
 
 Each leaf starts from updated `main` after its dependency is merged. Do not
@@ -92,7 +92,7 @@ The fixed P10A contract is:
 | Visibility, pinning and focus              | P10B2                     | No comparison refetch caused by view-only controls |
 | Full evidence detail                       | P10B3 through P7/P9 reads | No preload, N+1 or evidence mutations              |
 | Response authoring and dirty state         | P8B3                      | No P10 response textarea/copy/save controls        |
-| Manual evaluation and ranking              | P11/P12                   | No assessment field or derived compliance in P10B  |
+| Manual evaluation and ranking              | P11A-P11C/P12             | No assessment field or derived compliance in P10B  |
 | Browser regression                         | P13B                      | No browser gate in P10B1/P10B2/P10B3               |
 
 ## Required Workflow Before Each Leaf
