@@ -5,6 +5,7 @@ import { ChevronDown, RefreshCw, X } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "../../baseline-types"
 import type { TechnicalConfigurationOptionWire } from "../../supplier-option-types"
+import { TechnicalConfigurationMatrixColumnControls } from "./TechnicalConfigurationMatrixColumnControls"
 import { FacetedMultiSelectFilter } from "@/components/shared/table-filters/FacetedMultiSelectFilter"
 import { Button } from "@/components/ui/button"
 import { SingleSelect } from "@/components/ui/heroui/SingleSelect"
@@ -30,6 +31,9 @@ type TechnicalConfigurationMatrixToolbarProps = {
   options: TechnicalConfigurationOptionWire[]
   optionsQuery: OptionsQueryState
   selectedOptions: TechnicalConfigurationOptionWire[]
+  visibleOptionIds: readonly string[]
+  pinnedOptionIds: readonly string[]
+  focusedOptionId: string | null
   isSelectionLimitReached: boolean
   onSelectBaselineVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
@@ -37,6 +41,10 @@ type TechnicalConfigurationMatrixToolbarProps = {
   onRetryOptions: () => void
   onAddOption: (optionId: string) => void
   onRemoveOption: (optionId: string) => void
+  onToggleOptionVisibility: (optionId: string) => void
+  onToggleOptionPin: (optionId: string) => void
+  onFocusOption: (optionId: string) => void
+  onExitFocus: () => void
 }
 
 function getVersionLabel(version: TechnicalConfigurationBaselineDraftWire) {
@@ -53,6 +61,9 @@ export function TechnicalConfigurationMatrixToolbar({
   options,
   optionsQuery,
   selectedOptions,
+  visibleOptionIds,
+  pinnedOptionIds,
+  focusedOptionId,
   isSelectionLimitReached,
   onSelectBaselineVersion,
   onLoadMoreVersions,
@@ -60,6 +71,10 @@ export function TechnicalConfigurationMatrixToolbar({
   onRetryOptions,
   onAddOption,
   onRemoveOption,
+  onToggleOptionVisibility,
+  onToggleOptionPin,
+  onFocusOption,
+  onExitFocus,
 }: Readonly<TechnicalConfigurationMatrixToolbarProps>) {
   const selectedOptionIds = React.useMemo(
     () => selectedOptions.map((option) => option.id),
@@ -141,9 +156,21 @@ export function TechnicalConfigurationMatrixToolbar({
         <div className="min-w-0 space-y-3 p-4">
           <div className="flex min-h-10 items-start justify-between gap-4">
             <h2 className="text-sm font-semibold">Phương án so sánh</h2>
-            <span className="shrink-0 text-xs font-medium text-muted-foreground">
-              {selectedOptions.length}/8 phương án
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                {selectedOptions.length}/8 phương án
+              </span>
+              <TechnicalConfigurationMatrixColumnControls
+                selectedOptions={selectedOptions}
+                visibleOptionIds={visibleOptionIds}
+                pinnedOptionIds={pinnedOptionIds}
+                focusedOptionId={focusedOptionId}
+                onToggleOptionVisibility={onToggleOptionVisibility}
+                onToggleOptionPin={onToggleOptionPin}
+                onFocusOption={onFocusOption}
+                onExitFocus={onExitFocus}
+              />
+            </div>
           </div>
 
           {optionsQuery.isError ? (

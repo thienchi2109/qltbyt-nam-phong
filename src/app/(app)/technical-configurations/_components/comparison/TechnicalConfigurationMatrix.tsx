@@ -2,29 +2,28 @@
 
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
 
-import type {
-  TechnicalConfigurationComparisonEvidence,
-  TechnicalConfigurationComparisonOptionValue,
-  TechnicalConfigurationComparisonResult,
-} from "../../comparison-types"
-import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
+import {
+  COMPARISON_MATRIX_LAYOUT,
+  getPinnedComparisonOptionLeft,
+} from "@/app/(app)/technical-configurations/comparison-matrix-constants"
+import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technical-configurations/comparison-types"
 import { Button } from "@/components/ui/button"
+
+import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
+import { TechnicalConfigurationMatrixRow } from "./TechnicalConfigurationMatrixRow"
 
 type TechnicalConfigurationMatrixProps = {
   hasRequest: boolean
   result?: TechnicalConfigurationComparisonResult
+  visibleOptionIds?: readonly string[]
+  pinnedOptionIds?: readonly string[]
+  focusedOptionId?: string | null
   isLoading?: boolean
   isError?: boolean
   error?: Error | null
   onRetry: () => void
   onPageChange: (page: number) => void
   onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
-}
-
-const EMPTY_EVIDENCE: TechnicalConfigurationComparisonEvidence = {
-  documentCount: 0,
-  citationCount: 0,
-  hasEvidence: false,
 }
 
 type ComparisonCriterionRow = TechnicalConfigurationComparisonResult["data"]["criteria"][number]
@@ -51,11 +50,6 @@ function groupCriterionRows(criteria: readonly ComparisonCriterionRow[]) {
   return groups
 }
 
-function formatEvidenceSummary(evidence: TechnicalConfigurationComparisonEvidence) {
-  if (!evidence.hasEvidence) return "Chưa có bằng chứng"
-  return `${evidence.documentCount} tài liệu · ${evidence.citationCount} trích dẫn`
-}
-
 function MatrixState({ children, role }: { children: React.ReactNode; role?: "alert" | "status" }) {
   return (
     <div
@@ -71,6 +65,9 @@ function MatrixState({ children, role }: { children: React.ReactNode; role?: "al
 export function TechnicalConfigurationMatrix({
   hasRequest,
   result,
+  visibleOptionIds,
+  pinnedOptionIds = [],
+  focusedOptionId = null,
   isLoading = false,
   isError = false,
   error,
@@ -128,6 +125,26 @@ export function TechnicalConfigurationMatrix({
   }
 
   const { criteria, options } = result.data
+  const effectiveVisibleOptionIds =
+    focusedOptionId === null
+      ? (visibleOptionIds ?? options.map((option) => option.id))
+      : [focusedOptionId]
+  const visibleOptionIdSet = new Set(effectiveVisibleOptionIds)
+  const pinnedOptionIdSet = new Set(focusedOptionId === null ? pinnedOptionIds : [])
+  const renderedOptions = [
+    ...options.filter(
+      (option) => visibleOptionIdSet.has(option.id) && pinnedOptionIdSet.has(option.id)
+    ),
+    ...options.filter(
+      (option) => visibleOptionIdSet.has(option.id) && !pinnedOptionIdSet.has(option.id)
+    ),
+  ]
+  const renderedPinnedOptionIds: string[] = []
+  for (const option of renderedOptions) {
+    if (pinnedOptionIdSet.has(option.id)) {
+      renderedPinnedOptionIds.push(option.id)
+    }
+  }
   const criterionGroups = groupCriterionRows(criteria)
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
   const startItem = (result.page - 1) * result.pageSize + 1
@@ -144,28 +161,39 @@ export function TechnicalConfigurationMatrix({
             <tr>
               <th
                 data-testid="comparison-criterion-header"
-                className="sticky left-0 top-0 z-50 w-[220px] min-w-[220px] max-w-[220px] border-b border-r bg-muted px-3 py-3 font-semibold"
+                className={`sticky left-0 top-0 z-50 ${COMPARISON_MATRIX_LAYOUT.criterionWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold`}
                 scope="col"
               >
                 Tiêu chí
               </th>
               <th
                 data-testid="comparison-baseline-header"
-                className="sticky left-[220px] top-0 z-50 w-[360px] min-w-[360px] max-w-[360px] border-b border-r bg-muted px-3 py-3 font-semibold"
+                className={`sticky ${COMPARISON_MATRIX_LAYOUT.baselineStickyLeftClass} top-0 z-50 ${COMPARISON_MATRIX_LAYOUT.baselineWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold`}
                 scope="col"
               >
                 Yêu cầu cơ sở
               </th>
-              {options.map((option) => (
-                <th
-                  key={option.id}
-                  data-testid="comparison-option-header"
-                  className="sticky top-0 z-40 w-[320px] min-w-[320px] max-w-[320px] border-b border-r bg-muted px-3 py-3 font-semibold"
-                  scope="col"
-                >
-                  <span className="block break-words">{option.displayLabel}</span>
-                </th>
-              ))}
+              {renderedOptions.map((option) => {
+                const pinnedIndex = renderedPinnedOptionIds.indexOf(option.id)
+                const isPinned = pinnedIndex >= 0
+                return (
+                  <th
+                    key={option.id}
+                    data-testid="comparison-option-header"
+                    data-option-id={option.id}
+                    data-pinned={isPinned ? "true" : "false"}
+                    className={`sticky top-0 ${COMPARISON_MATRIX_LAYOUT.optionWidthClass} border-b border-r bg-muted px-3 py-3 font-semibold ${
+                      isPinned ? "z-50" : "z-40"
+                    }`}
+                    style={
+                      isPinned ? { left: getPinnedComparisonOptionLeft(pinnedIndex) } : undefined
+                    }
+                    scope="col"
+                  >
+                    <span className="block break-words">{option.displayLabel}</span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           {criterionGroups.map((group) => (
@@ -173,17 +201,18 @@ export function TechnicalConfigurationMatrix({
               <tr>
                 <th
                   className="border-b bg-muted/70 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground"
-                  colSpan={options.length + 2}
+                  colSpan={renderedOptions.length + 2}
                   scope="rowgroup"
                 >
                   {group.name}
                 </th>
               </tr>
               {group.rows.map((row) => (
-                <MatrixRow
+                <TechnicalConfigurationMatrixRow
                   key={row.criterion.id}
                   row={row}
-                  options={options}
+                  options={renderedOptions}
+                  pinnedOptionIds={renderedPinnedOptionIds}
                   valueByOptionId={
                     new Map(row.optionValues.map((value) => [value.optionId, value]))
                   }
@@ -223,100 +252,5 @@ export function TechnicalConfigurationMatrix({
         </div>
       </div>
     </div>
-  )
-}
-
-type MatrixRowProps = {
-  row: TechnicalConfigurationComparisonResult["data"]["criteria"][number]
-  options: TechnicalConfigurationComparisonResult["data"]["options"]
-  valueByOptionId: ReadonlyMap<string, TechnicalConfigurationComparisonOptionValue>
-  onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
-}
-
-function MatrixRow({ row, options, valueByOptionId, onOpenDetail }: Readonly<MatrixRowProps>) {
-  const title = row.criterion.title ?? "Chưa có tiêu đề"
-
-  return (
-    <tr
-      data-testid="comparison-criterion-row"
-      data-criterion-id={row.criterion.id}
-      className="align-top"
-    >
-      <th
-        className="sticky left-0 z-30 w-[220px] min-w-[220px] max-w-[220px] border-b border-r bg-background px-3 py-3 font-medium"
-        scope="row"
-      >
-        <span className="block text-xs text-muted-foreground">{row.criterion.criterionCode}</span>
-        <span className="mt-1 block break-words">{title}</span>
-      </th>
-      <td className="sticky left-[220px] z-30 w-[360px] min-w-[360px] max-w-[360px] border-b border-r bg-background p-0">
-        <button
-          type="button"
-          className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          aria-label={`Xem chi tiết ${row.criterion.criterionCode} · Yêu cầu cơ sở`}
-          onClick={() =>
-            onOpenDetail({
-              criterionCode: row.criterion.criterionCode,
-              criterionTitle: row.criterion.title,
-              optionLabel: null,
-              requirementText: row.criterion.requirementText,
-              responseText: null,
-              supplementaryInformation: null,
-              evidence: row.baselineEvidence,
-            })
-          }
-        >
-          <p className="line-clamp-4 whitespace-pre-wrap break-words leading-5">
-            {row.criterion.requirementText}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {formatEvidenceSummary(row.baselineEvidence)}
-          </p>
-        </button>
-      </td>
-      {options.map((option) => {
-        const value = valueByOptionId.get(option.id)
-        const response = value?.response
-        const evidence = value?.evidence ?? EMPTY_EVIDENCE
-
-        return (
-          <td
-            key={option.id}
-            className="w-[320px] min-w-[320px] max-w-[320px] border-b border-r bg-background p-0"
-          >
-            <button
-              type="button"
-              className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
-              onClick={() =>
-                onOpenDetail({
-                  criterionCode: row.criterion.criterionCode,
-                  criterionTitle: row.criterion.title,
-                  optionLabel: option.displayLabel,
-                  requirementText: row.criterion.requirementText,
-                  responseText: response?.responseText ?? null,
-                  supplementaryInformation: response?.supplementaryInformation ?? null,
-                  evidence,
-                })
-              }
-            >
-              {response ? (
-                <>
-                  <p className="line-clamp-4 whitespace-pre-wrap break-words leading-5">
-                    {response.responseText}
-                  </p>
-                  {response.supplementaryInformation ? (
-                    <p className="text-xs font-medium text-foreground">Có thông tin bổ sung</p>
-                  ) : null}
-                </>
-              ) : (
-                <p className="text-muted-foreground">Chưa có phản hồi</p>
-              )}
-              <p className="text-xs text-muted-foreground">{formatEvidenceSummary(evidence)}</p>
-            </button>
-          </td>
-        )
-      })}
-    </tr>
   )
 }

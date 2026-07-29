@@ -39,6 +39,9 @@ export function TechnicalConfigurationComparisonTab({
         options={matrix.options}
         optionsQuery={matrix.optionsQuery}
         selectedOptions={matrix.selectedOptions}
+        visibleOptionIds={matrix.visibleOptionIds}
+        pinnedOptionIds={matrix.pinnedOptionIds}
+        focusedOptionId={matrix.focusedOptionId}
         isSelectionLimitReached={matrix.isSelectionLimitReached}
         onSelectBaselineVersion={matrix.selectBaselineVersion}
         onLoadMoreVersions={() => void matrix.loadMoreVersions()}
@@ -46,11 +49,18 @@ export function TechnicalConfigurationComparisonTab({
         onRetryOptions={() => void matrix.optionsQuery.refetch()}
         onAddOption={matrix.addOption}
         onRemoveOption={matrix.removeOption}
+        onToggleOptionVisibility={matrix.toggleOptionVisibility}
+        onToggleOptionPin={matrix.toggleOptionPin}
+        onFocusOption={matrix.focusOption}
+        onExitFocus={matrix.exitFocusMode}
       />
 
       <TechnicalConfigurationMatrix
         hasRequest={hasRequest}
         result={comparisonQuery.data}
+        visibleOptionIds={matrix.visibleOptionIds}
+        pinnedOptionIds={matrix.pinnedOptionIds}
+        focusedOptionId={matrix.focusedOptionId}
         isLoading={comparisonQuery.isLoading}
         isError={comparisonQuery.isError}
         error={comparisonQuery.error}

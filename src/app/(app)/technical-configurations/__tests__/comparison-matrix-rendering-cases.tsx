@@ -80,12 +80,19 @@ export function registerComparisonMatrixRenderingTests() {
         options: [optionA, optionB, optionC],
         optionsQuery: { isLoading: false, isError: false },
         selectedOptions: [optionB, optionA],
+        visibleOptionIds: [optionB.id, optionA.id],
+        pinnedOptionIds: [],
+        focusedOptionId: null,
         onSelectBaselineVersion: vi.fn(),
         onLoadMoreVersions: vi.fn(),
         onRetryVersions: vi.fn(),
         onRetryOptions: vi.fn(),
         onAddOption,
         onRemoveOption,
+        onToggleOptionVisibility: vi.fn(),
+        onToggleOptionPin: vi.fn(),
+        onFocusOption: vi.fn(),
+        onExitFocus: vi.fn(),
       }
       const { rerender } = render(
         <TechnicalConfigurationMatrixToolbar {...toolbarProps} isSelectionLimitReached={false} />
