@@ -516,21 +516,21 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P11B - Manual Assessment Persistence And Security
 
-- [ ] P11B.1 Thêm bảng assessment unique theo comparison set + criterion với
+- [x] P11B.1 Thêm bảng assessment unique theo comparison set + criterion với
       exact ownership FKs và canonical two-axis values.
-- [ ] P11B.2 Thêm notes, row-level `revision BIGINT`; dùng
+- [x] P11B.2 Thêm notes, row-level `revision BIGINT`; dùng
       `updated_by`/`updated_at` làm latest evaluator metadata.
-- [ ] P11B.3 Đóng băng và triển khai exact list/upsert arguments, nullability,
+- [x] P11B.3 Đóng băng và triển khai exact list/upsert arguments, nullability,
       wire order, first-create revision semantics cùng JWT, admin/global,
       archived-dossier và deny-by-default guards.
-- [ ] P11B.4 Giữ manual conclusions tách khỏi source updates và future AI data;
+- [x] P11B.4 Giữ manual conclusions tách khỏi source updates và future AI data;
       không thêm derived/stale/machine-result fields.
-- [ ] P11B.5 Viết migration source tests và rollback-only DB phase gate cho
+- [x] P11B.5 Viết migration source tests và rollback-only DB phase gate cho
       auth, ownership, conflict, source preservation, cascade, grants/RLS và
       no-AI audit.
-- [ ] P11B.6 Xin explicit approval riêng để apply exact migration; sau apply chạy
+- [x] P11B.6 Xin explicit approval riêng để apply exact migration; sau apply chạy
       read-only security/performance advisors.
-- [ ] P11B.7 Xin explicit approval riêng để chạy rollback-only phase gate; xác
+- [x] P11B.7 Xin explicit approval riêng để chạy rollback-only phase gate; xác
       nhận rollback/fixture cleanup và chạy lại read-only advisors.
 
 ## Phase P11C - Manual Assessment Client Contract
