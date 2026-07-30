@@ -1,4 +1,11 @@
 -- P12B2: server-filtered criterion IDs for guarded evaluation navigation.
+-- Rollback (forward-only; never edit applied history): ship a separately reviewed migration with:
+-- REVOKE ALL ON FUNCTION public.technical_configuration_evaluation_criteria_list(
+--   UUID, UUID, TEXT, INTEGER, INTEGER
+-- ) FROM PUBLIC, anon, authenticated, service_role;
+-- DROP FUNCTION IF EXISTS public.technical_configuration_evaluation_criteria_list(
+--   UUID, UUID, TEXT, INTEGER, INTEGER
+-- );
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.technical_configuration_evaluation_criteria_list(

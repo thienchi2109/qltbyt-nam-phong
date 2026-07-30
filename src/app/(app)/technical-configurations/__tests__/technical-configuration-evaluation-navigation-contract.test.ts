@@ -119,6 +119,12 @@ describe("P12B2 server-filtered evaluation navigation contract", () => {
     expect(migrationSource).not.toContain(
       "((canonical.canonical_index - 1) / p_page_size) + 1 AS canonical_page"
     )
+    expect(migrationSource).toContain(
+      "-- Rollback (forward-only; never edit applied history): ship a separately reviewed migration with:"
+    )
+    expect(migrationSource).toContain(
+      "DROP FUNCTION IF EXISTS public.technical_configuration_evaluation_criteria_list("
+    )
   })
 
   it("ships a rollback-only SQL phase gate for auth, filters and canonical paging", () => {

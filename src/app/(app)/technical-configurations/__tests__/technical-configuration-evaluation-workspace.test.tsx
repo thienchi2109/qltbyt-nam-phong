@@ -496,6 +496,45 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     expect(screen.getByText("Phản hồi TC-03")).toBeInTheDocument()
   })
 
+  it("blocks option and filter changes while save-next reloads matching criteria", async () => {
+    const user = userEvent.setup()
+    const matchingCriteria = [
+      { criterion_id: "criterion-1", canonical_index: 1, canonical_page: 1 },
+      { criterion_id: "criterion-3", canonical_index: 3, canonical_page: 2 },
+    ] as const
+    const criteriaReload = createDeferred<readonly EvaluationCriterionEntry[]>()
+    mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = matchingCriteria
+    mocks.assessmentsByOptionId["option-1"] = {
+      ...mocks.assessmentsByOptionId["option-1"],
+      "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "fails", null),
+      "criterion-3": createEvaluationAssessment("option-1", "criterion-3", "fails", null),
+    }
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await user.click(getCriterion("criterion-1"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Chờ tải tiêu chí kế tiếp")
+    mocks.loadEvaluationCriteria.mockReset()
+    mocks.loadEvaluationCriteria.mockReturnValueOnce(criteriaReload.promise)
+
+    await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
+
+    await waitFor(() => expect(mocks.loadEvaluationCriteria).toHaveBeenCalledTimes(1))
+    expect(screen.getByLabelText("Phương án đánh giá")).toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toBeDisabled()
+
+    await act(async () => {
+      criteriaReload.resolve(matchingCriteria)
+      await criteriaReload.promise
+    })
+
+    await waitFor(() => expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true"))
+    expect(screen.getByLabelText("Phương án đánh giá")).not.toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).not.toBeDisabled()
+  })
+
   it("preserves filtered navigation and draft when save-next fails", async () => {
     const user = userEvent.setup()
     const matchingCriteria = [

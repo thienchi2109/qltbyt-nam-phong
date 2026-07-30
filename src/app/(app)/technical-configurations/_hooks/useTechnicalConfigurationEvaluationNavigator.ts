@@ -87,11 +87,11 @@ export function useTechnicalConfigurationEvaluationNavigator({
     !projection.some((item) => item.criterion.id === criterionId)
 
   const startTransition = React.useCallback((transition: () => Promise<void>) => {
-    if (transitionPendingRef.current) return
+    if (transitionPendingRef.current) return Promise.resolve()
 
     transitionPendingRef.current = true
     setIsTransitionPending(true)
-    void transition()
+    return transition()
       .catch(() => {
         // Candidate load failures preserve the current navigation state.
       })
@@ -110,7 +110,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
         return
       }
 
-      startTransition(async () => {
+      void startTransition(async () => {
         const entries = await loadCriteria({
           optionId: activeSelectedOptionId,
           baselineVersionId,
@@ -159,7 +159,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
       if (nextOptionId === activeSelectedOptionId || transitionPendingRef.current) return
 
       requestNavigation(() => {
-        startTransition(async () => {
+        void startTransition(async () => {
           const entries = await loadCriteria({
             optionId: nextOptionId,
             baselineVersionId,
@@ -228,29 +228,31 @@ export function useTechnicalConfigurationEvaluationNavigator({
 
   const advanceAfterSave = React.useCallback(async () => {
     if (!currentCriterion || !activeSelectedOptionId) return
-    const entries = await loadCriteria({
-      optionId: activeSelectedOptionId,
-      baselineVersionId,
-      statusFilter,
-    })
-    const nextProjection = buildTechnicalConfigurationEvaluationProjection({
-      groups: baselineGroups,
-      entries,
-    })
-    const nextCriterion = findNextTechnicalConfigurationEvaluationCriterion({
-      projection: nextProjection,
-      currentCanonicalIndex: currentCriterion.canonicalIndex,
-    })
+    await startTransition(async () => {
+      const entries = await loadCriteria({
+        optionId: activeSelectedOptionId,
+        baselineVersionId,
+        statusFilter,
+      })
+      const nextProjection = buildTechnicalConfigurationEvaluationProjection({
+        groups: baselineGroups,
+        entries,
+      })
+      const nextCriterion = findNextTechnicalConfigurationEvaluationCriterion({
+        projection: nextProjection,
+        currentCanonicalIndex: currentCriterion.canonicalIndex,
+      })
 
-    if (!nextCriterion) {
-      setHasNoMoreMatches(true)
-      return
-    }
+      if (!nextCriterion) {
+        setHasNoMoreMatches(true)
+        return
+      }
 
-    setPage(getProjectionPage(nextProjection, nextCriterion.criterion.id, pageSize))
-    setRequestedCriterionId(nextCriterion.criterion.id)
-    setIsPanelOpen(true)
-    setHasNoMoreMatches(false)
+      setPage(getProjectionPage(nextProjection, nextCriterion.criterion.id, pageSize))
+      setRequestedCriterionId(nextCriterion.criterion.id)
+      setIsPanelOpen(true)
+      setHasNoMoreMatches(false)
+    })
   }, [
     activeSelectedOptionId,
     baselineGroups,
@@ -258,6 +260,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
     currentCriterion,
     loadCriteria,
     pageSize,
+    startTransition,
     statusFilter,
   ])
 

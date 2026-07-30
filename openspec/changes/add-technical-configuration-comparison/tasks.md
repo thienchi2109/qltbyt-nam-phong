@@ -689,13 +689,19 @@ filter/selection/navigation journeys của P12B.5.
   - user-event coverage khóa exact IDs cho từng filter, empty state,
     dirty-cancel rollback, pending hard-block, option change, `Lưu` filtered-out,
     deferred-response race, save-next failure, cross-page next và final no-wrap;
+  - PR review follow-up giữ transition pending xuyên suốt criteria reload sau
+    save-next và document rollback forward-only bằng migration REVOKE/DROP riêng;
+    không đưa `SUPABASE_JWT_SECRET` vào SQL function vì RPC proxy mới là boundary
+    ký request;
   - rollback-only SQL phase gate khóa auth/ACL, validation, exact filter IDs và
     canonical page độc lập với transport page size.
 - Verification:
   - `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: pass;
   - full technical-configuration + assessment proxy regression: 59 files,
-    498 tests pass;
-  - React Doctor changed-scope: 100/100, no issues;
+    499 tests pass;
+  - React Doctor changed-scope review-fix rerun: 98/100; một warning
+    maintainability về boolean props của navigator pane, không nằm trong
+    review-fix diff và không block gate;
   - strict OpenSpec validation: valid;
   - semantic dedupe reused shared page collector and guarded-navigation hook;
     no equivalent canonical filtered-navigation helper existed;
