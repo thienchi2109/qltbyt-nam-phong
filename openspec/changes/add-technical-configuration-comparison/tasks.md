@@ -627,11 +627,13 @@ filter/selection/navigation journeys của P12B.5.
       filter state khi đổi option; dùng recommended defaults trong design nếu
       product owner phê duyệt.
 - [ ] P12B2.2 Viết RED tests cho exact filtered IDs, canonical order,
-      filtered pagination, canonical comparison-page mapping và empty result.
+      filtered pagination, canonical comparison-page mapping, empty result và
+      dirty-cancel rollback đầy đủ filter/page/criterion/panel/draft.
 - [ ] P12B2.3 Thêm single-select status filters và filtered projection trên
       P12B1 model, không thay data shape/counter/cache ownership của P12B1.
 - [ ] P12B2.4 Extract navigator owner; bảo toàn selection khi còn visible và
-      reuse dirty-confirm/pending-block khi filter làm đổi selection.
+      reuse dirty-confirm/pending-block khi filter làm đổi selection; cancel
+      restore filter, filtered page, criterion, panel/open state và local draft.
 - [ ] P12B2.5 Thêm filter-aware save-next chỉ sau success qua group/page boundary,
       giữ state khi failure và xử lý final match theo entry gate đã chốt.
 - [ ] P12B2.6 Viết user-event journeys và focused regressions; không thêm

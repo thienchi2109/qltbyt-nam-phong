@@ -2459,8 +2459,9 @@ defaults are recommendations, not silently approved normative requirements:
       to the canonical comparison page rather than the filtered page number.
 - [ ] Preserve current selection, page and panel state while the criterion
       remains visible; when a filter change would replace selection, reuse the
-      P12A2 dirty-confirm/pending-block contract and make cancel roll back both
-      filter and selection.
+      P12A2 dirty-confirm/pending-block contract and make cancel restore the
+      previous filter, filtered page, criterion, panel/open state and local
+      draft.
 - [ ] Define deterministic empty-result behavior with the option retained,
       selection cleared, panel closed and a clear-filter action.
 - [ ] Make `Lưu & tiếp tục` move only after save success to the next matching
