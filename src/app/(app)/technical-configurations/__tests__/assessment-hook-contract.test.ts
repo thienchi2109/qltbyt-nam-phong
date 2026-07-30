@@ -1,5 +1,3 @@
-import { createElement, type PropsWithChildren } from "react"
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -10,6 +8,11 @@ import {
   technicalConfigurationAssessmentsQueryKeyPrefix,
   technicalConfigurationOptionResponsesQueryKey,
 } from "../technical-configuration-query-keys"
+import {
+  createAssessmentQueryWrapper,
+  createAssessmentTestQueryClient,
+  renderAssessmentsHook,
+} from "./assessment-hook-test-support"
 import {
   assessment,
   assessmentListResponse,
@@ -37,41 +40,12 @@ vi.mock("../technical-configuration-option-response-operations", () => ({
   readTechnicalConfigurationComparisonSet: (...args: unknown[]) => mocks.readComparisonSet(...args),
 }))
 
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, gcTime: 0 },
-      mutations: { retry: false },
-    },
-  })
-}
-
-function createQueryWrapper(queryClient: QueryClient) {
-  return function QueryWrapper({ children }: PropsWithChildren) {
-    return createElement(QueryClientProvider, { client: queryClient }, children)
-  }
-}
-
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
   const promise = new Promise<T>((resolvePromise) => {
     resolve = resolvePromise
   })
   return { promise, resolve }
-}
-
-function renderAssessmentsHook(queryClient = createTestQueryClient()) {
-  const hook = renderHook(
-    () =>
-      useTechnicalConfigurationAssessments({
-        optionId,
-        baselineVersionId,
-        page: 1,
-        pageSize: 25,
-      }),
-    { wrapper: createQueryWrapper(queryClient) }
-  )
-  return { ...hook, queryClient }
 }
 
 describe("P11C assessment hook contract", () => {
@@ -115,11 +89,12 @@ describe("P11C assessment hook contract", () => {
       },
       { signal: expect.any(AbortSignal) }
     )
+    expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
   it("keeps an invalid assessment page disabled after the comparison set loads", async () => {
     mocks.readComparisonSet.mockResolvedValue(comparisonSet)
-    const queryClient = createTestQueryClient()
+    const queryClient = createAssessmentTestQueryClient()
     const { result } = renderHook(
       () =>
         useTechnicalConfigurationAssessments({
@@ -128,7 +103,7 @@ describe("P11C assessment hook contract", () => {
           page: 0,
           pageSize: 101,
         }),
-      { wrapper: createQueryWrapper(queryClient) }
+      { wrapper: createAssessmentQueryWrapper(queryClient) }
     )
 
     await waitFor(() => expect(result.current.comparisonSetQuery.isSuccess).toBe(true))
@@ -139,7 +114,7 @@ describe("P11C assessment hook contract", () => {
   it("publishes the first-save set before upsert and invalidates every cached page", async () => {
     mocks.readComparisonSet.mockResolvedValue(null)
     mocks.getOrCreateComparisonSet.mockResolvedValue(comparisonSet)
-    const queryClient = createTestQueryClient()
+    const queryClient = createAssessmentTestQueryClient()
     queryClient.setQueryDefaults(technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId), {
       gcTime: Infinity,
     })
@@ -152,7 +127,12 @@ describe("P11C assessment hook contract", () => {
       page: 2,
       pageSize: 25,
     })
+    const completeQueryKey = [
+      ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+      "complete",
+    ] as const
     queryClient.setQueryData(secondPageQueryKey, assessmentListResponse)
+    queryClient.setQueryData(completeQueryKey, { [criterionId]: assessment })
     mocks.callRpc.mockImplementation((fn: string) => {
       if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
         expect(queryClient.getQueryData(comparisonSetQueryKey)).toEqual(comparisonSet)
@@ -199,7 +179,9 @@ describe("P11C assessment hook contract", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
     })
+    expect(result.current.completeQueryKey).toEqual(completeQueryKey)
     expect(queryClient.getQueryState(secondPageQueryKey)?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(completeQueryKey)?.isInvalidated).toBe(true)
   })
 
   it("deduplicates comparison-set acquisition across simultaneous first saves", async () => {

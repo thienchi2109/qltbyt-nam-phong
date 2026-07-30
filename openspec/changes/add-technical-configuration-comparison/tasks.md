@@ -552,16 +552,16 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P11D - Complete Manual Assessment Collection
 
-- [ ] P11D.1 Thêm complete-collection query dưới assessment query prefix hiện
+- [x] P11D.1 Thêm complete-collection query dưới assessment query prefix hiện
       có; giữ bounded single-page contract của P11C.
-- [ ] P11D.2 Thu thập các trang ổn định qua RPC hiện có và
+- [x] P11D.2 Thu thập các trang ổn định qua RPC hiện có và
       `collectStableTechnicalConfigurationPages()`, sau đó reconcile theo
       `criterion_id`; không ghép assessment page N với criterion page N.
-- [ ] P11D.3 Bảo toàn `AbortSignal`, exact wire values, typed errors,
+- [x] P11D.3 Bảo toàn `AbortSignal`, exact wire values, typed errors,
       no-write-on-open và comparison-set acquisition hiện có.
-- [ ] P11D.4 Khóa zero/sparse/>100 rows, duplicate/incomplete-page protection,
+- [x] P11D.4 Khóa zero/sparse/>100 rows, duplicate/incomplete-page protection,
       prefix invalidation và no-write-on-mount bằng test.
-- [ ] P11D.5 Không thêm migration, RPC/proxy path, UI, navigation, ranking hoặc
+- [x] P11D.5 Không thêm migration, RPC/proxy path, UI, navigation, ranking hoặc
       AI runtime artifact.
 
 ## Phase P12A1 - Evaluation Core And Shared Composition

@@ -17,14 +17,28 @@ import {
   technicalConfigurationAssessmentsQueryKey,
   technicalConfigurationAssessmentsQueryKeyPrefix,
 } from "../technical-configuration-query-keys"
+import { collectStableTechnicalConfigurationPages } from "../technical-configuration-pagination"
 import type { TechnicalConfigurationComparisonSetWire } from "../supplier-option-types"
 
-interface UseTechnicalConfigurationAssessmentsInput {
+const ASSESSMENT_COLLECTION_PAGE_SIZE = 100
+const ASSESSMENT_PAGINATION_SNAPSHOT_ERROR = "Assessment pagination snapshot changed during load."
+
+interface TechnicalConfigurationAssessmentContext {
   optionId: string
   baselineVersionId: string | null
-  page: number
-  pageSize: number
 }
+
+type UseTechnicalConfigurationAssessmentsInput = TechnicalConfigurationAssessmentContext &
+  (
+    | {
+        collectionMode?: "bounded"
+        page: number
+        pageSize: number
+      }
+    | {
+        collectionMode: "complete"
+      }
+  )
 
 interface TechnicalConfigurationAssessmentSaveResult {
   comparisonSet: TechnicalConfigurationComparisonSetWire
@@ -44,6 +58,35 @@ function isValidAssessmentPage(page: number, pageSize: number): boolean {
     pageSize >= 1 &&
     pageSize <= 100
   )
+}
+
+async function collectTechnicalConfigurationAssessments(
+  comparisonSetId: string,
+  signal?: AbortSignal
+): Promise<Readonly<Record<string, TechnicalConfigurationAssessmentWire>>> {
+  const { items } = await collectStableTechnicalConfigurationPages<
+    TechnicalConfigurationAssessmentWire,
+    TechnicalConfigurationAssessmentListWireResponse
+  >({
+    loadPage: async (page) => {
+      const response = await listTechnicalConfigurationAssessments(
+        {
+          p_comparison_set_id: comparisonSetId,
+          p_page: page,
+          p_page_size: ASSESSMENT_COLLECTION_PAGE_SIZE,
+        },
+        signal
+      )
+      if (response.page !== page || response.page_size !== ASSESSMENT_COLLECTION_PAGE_SIZE) {
+        throw new Error(ASSESSMENT_PAGINATION_SNAPSHOT_ERROR)
+      }
+      return response
+    },
+    snapshotError: ASSESSMENT_PAGINATION_SNAPSHOT_ERROR,
+    getItemKey: (item) => item.criterion_id,
+  })
+
+  return Object.fromEntries(items.map((item) => [item.criterion_id, item]))
 }
 
 function acquireAssessmentComparisonSet({
@@ -101,12 +144,13 @@ function acquireAssessmentComparisonSet({
 }
 
 /** Exposes the dormant P11C assessment data contract without mounting assessment UI. */
-export function useTechnicalConfigurationAssessments({
-  optionId,
-  baselineVersionId,
-  page,
-  pageSize,
-}: UseTechnicalConfigurationAssessmentsInput) {
+export function useTechnicalConfigurationAssessments(
+  input: UseTechnicalConfigurationAssessmentsInput
+) {
+  const { optionId, baselineVersionId } = input
+  const isCompleteCollection = input.collectionMode === "complete"
+  const page = isCompleteCollection ? 1 : input.page
+  const pageSize = isCompleteCollection ? ASSESSMENT_COLLECTION_PAGE_SIZE : input.pageSize
   const queryClient = useQueryClient()
   const { queryKey: comparisonSetQueryKey, responseQuery: comparisonSetQuery } =
     useTechnicalConfigurationOptionResponsesQuery({
@@ -119,11 +163,18 @@ export function useTechnicalConfigurationAssessments({
     page,
     pageSize,
   })
-  const enabled = comparisonSetId !== "" && isValidAssessmentPage(page, pageSize)
+  const completeQueryKey = [
+    ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+    "complete",
+  ] as const
+  const hasComparisonSet = comparisonSetId !== ""
+  const boundedQueryEnabled =
+    hasComparisonSet && !isCompleteCollection && isValidAssessmentPage(page, pageSize)
+  const completeQueryEnabled = hasComparisonSet && isCompleteCollection
   const assessmentsQuery = useQuery<TechnicalConfigurationAssessmentListWireResponse>({
     queryKey,
     queryFn: ({ signal }) => {
-      if (!enabled) {
+      if (!boundedQueryEnabled) {
         return Promise.reject(new Error("Technical configuration assessment query is disabled"))
       }
 
@@ -136,7 +187,25 @@ export function useTechnicalConfigurationAssessments({
         signal
       )
     },
-    enabled,
+    enabled: boundedQueryEnabled,
+    staleTime: 30_000,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+  const completeAssessmentsQuery = useQuery<
+    Readonly<Record<string, TechnicalConfigurationAssessmentWire>>
+  >({
+    queryKey: completeQueryKey,
+    queryFn: ({ signal }) => {
+      if (!completeQueryEnabled) {
+        return Promise.reject(
+          new Error("Technical configuration assessment collection query is disabled")
+        )
+      }
+
+      return collectTechnicalConfigurationAssessments(comparisonSetId, signal)
+    },
+    enabled: completeQueryEnabled,
     staleTime: 30_000,
     retry: false,
     refetchOnWindowFocus: false,
@@ -181,6 +250,8 @@ export function useTechnicalConfigurationAssessments({
     comparisonSetQuery,
     queryKey,
     assessmentsQuery,
+    completeQueryKey,
+    completeAssessmentsQuery,
     upsertAssessment,
   }
 }
