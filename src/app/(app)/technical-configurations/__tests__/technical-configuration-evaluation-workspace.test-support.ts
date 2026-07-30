@@ -5,6 +5,11 @@ import type {
   TechnicalConfigurationComparisonCriterionRow,
   TechnicalConfigurationComparisonResult,
 } from "../comparison-types"
+import type { TechnicalConfigurationAssessmentWire } from "../assessment-types"
+import type {
+  TechnicalConfigurationBaselineCriterionWire,
+  TechnicalConfigurationBaselineGroupWire,
+} from "../baseline-types"
 import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 import type { TechnicalConfigurationDossierWire } from "../types"
 
@@ -38,6 +43,79 @@ export function createOption(id: string, displayLabel: string): TechnicalConfigu
     updated_at: "2026-07-30T00:00:00.000Z",
     updated_by: 1,
     revision: 1,
+  }
+}
+
+function createBaselineCriterion(
+  id: string,
+  groupId: string,
+  sortOrder: number
+): TechnicalConfigurationBaselineCriterionWire {
+  return {
+    id,
+    baseline_version_id: "baseline-1",
+    group_id: groupId,
+    criterion_code: `TC-0${sortOrder}`,
+    title: `Tiêu chí ${sortOrder}`,
+    requirement_text: `Yêu cầu ${sortOrder}`,
+    sort_order: sortOrder,
+    source_criterion_id: null,
+    created_at: "2026-07-30T00:00:00.000Z",
+    created_by: 1,
+    updated_at: "2026-07-30T00:00:00.000Z",
+    updated_by: 1,
+  }
+}
+
+export function createBaselineGroups(): TechnicalConfigurationBaselineGroupWire[] {
+  return [
+    {
+      id: "group-1",
+      baseline_version_id: "baseline-1",
+      name: "Thông số chính",
+      sort_order: 1,
+      created_at: "2026-07-30T00:00:00.000Z",
+      created_by: 1,
+      updated_at: "2026-07-30T00:00:00.000Z",
+      updated_by: 1,
+      criteria: [
+        createBaselineCriterion("criterion-1", "group-1", 1),
+        createBaselineCriterion("criterion-2", "group-1", 2),
+      ],
+    },
+    {
+      id: "group-2",
+      baseline_version_id: "baseline-1",
+      name: "An toàn",
+      sort_order: 2,
+      created_at: "2026-07-30T00:00:00.000Z",
+      created_by: 1,
+      updated_at: "2026-07-30T00:00:00.000Z",
+      updated_by: 1,
+      criteria: [createBaselineCriterion("criterion-3", "group-2", 3)],
+    },
+  ]
+}
+
+export function createEvaluationAssessment(
+  optionId: string,
+  criterionId: string,
+  technicalAxis: TechnicalConfigurationAssessmentWire["technical_axis"],
+  evidenceAxis: TechnicalConfigurationAssessmentWire["evidence_axis"]
+): TechnicalConfigurationAssessmentWire {
+  return {
+    id: `${optionId}-${criterionId}`,
+    comparison_set_id: `comparison-set-${optionId}`,
+    baseline_version_id: "baseline-1",
+    criterion_id: criterionId,
+    technical_axis: technicalAxis,
+    evidence_axis: evidenceAxis,
+    notes: "",
+    revision: 1,
+    created_by: 1,
+    created_at: "2026-07-30T00:00:00.000Z",
+    updated_by: 1,
+    updated_at: "2026-07-30T00:00:00.000Z",
   }
 }
 

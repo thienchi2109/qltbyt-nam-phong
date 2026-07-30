@@ -23,6 +23,14 @@ import {
 const mocks = getEvaluationDraftMocks()
 const otherComparisonSetId = "00000000-0000-0000-0000-000000000010"
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise
+  })
+  return { promise, resolve }
+}
+
 describe("P12A1 evaluation draft state", () => {
   beforeEach(() => resetEvaluationDraftMocks(mocks))
 
@@ -79,6 +87,55 @@ describe("P12A1 evaluation draft state", () => {
       },
       { signal: undefined }
     )
+  })
+
+  it("publishes the saved assessment before the complete-cache refetch finishes", async () => {
+    const refetch = createDeferred<TechnicalConfigurationAssessmentListWireResponse>()
+    let hasSaved = false
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        if (hasSaved) return refetch.promise
+        return Promise.resolve({
+          data: [assessment],
+          total: 1,
+          page: 1,
+          page_size: 100,
+        })
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        hasSaved = true
+        return Promise.resolve({ data: savedAssessment })
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+    const { result } = renderEvaluationDraftHook()
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    act(() => {
+      result.current.setTechnicalAxis("exceeds")
+      result.current.setEvidenceAxis("complete")
+      result.current.setNotes("Đã xác nhận.")
+    })
+
+    let savePromise!: Promise<unknown>
+    act(() => {
+      savePromise = result.current.save()
+    })
+
+    await waitFor(() =>
+      expect(result.current.assessmentsByCriterionId[criterionId]).toEqual(savedAssessment)
+    )
+
+    refetch.resolve({
+      data: [savedAssessment],
+      total: 1,
+      page: 1,
+      page_size: 100,
+    })
+    await act(async () => {
+      await savePromise
+    })
   })
 
   it("saves the latest draft update when editing and saving in one turn", async () => {

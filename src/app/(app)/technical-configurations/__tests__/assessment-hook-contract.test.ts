@@ -22,6 +22,7 @@ import {
   comparisonSetId,
   criterionId,
   optionId,
+  savedAssessment,
 } from "./assessment-test-fixtures"
 
 const mocks = vi.hoisted(() => ({
@@ -92,6 +93,34 @@ describe("P11C assessment hook contract", () => {
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
+  it("does not synthesize a complete collection when bounded save has not loaded it", async () => {
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve(assessmentListResponse)
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.resolve({ data: savedAssessment })
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+    const queryClient = createAssessmentTestQueryClient()
+    const completeQueryKey = [
+      ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+      "complete",
+    ] as const
+    const { result } = renderAssessmentsHook(queryClient)
+
+    await waitFor(() => expect(result.current.assessmentsQuery.isSuccess).toBe(true))
+    expect(queryClient.getQueryData(completeQueryKey)).toBeUndefined()
+
+    await act(async () => {
+      await result.current.upsertAssessment.mutateAsync(assessmentUpsertInput)
+    })
+
+    expect(queryClient.getQueryData(completeQueryKey)).toBeUndefined()
+  })
+
   it("keeps an invalid assessment page disabled after the comparison set loads", async () => {
     mocks.readComparisonSet.mockResolvedValue(comparisonSet)
     const queryClient = createAssessmentTestQueryClient()
@@ -136,14 +165,22 @@ describe("P11C assessment hook contract", () => {
     mocks.callRpc.mockImplementation((fn: string) => {
       if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
         expect(queryClient.getQueryData(comparisonSetQueryKey)).toEqual(comparisonSet)
-        return Promise.resolve({ data: assessment })
+        return Promise.resolve({ data: savedAssessment })
       }
       if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
         return Promise.resolve(assessmentListResponse)
       }
       return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
     })
-    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
+    const originalInvalidateQueries = queryClient.invalidateQueries.bind(queryClient)
+    const invalidateQueries = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockImplementation((filters, options) => {
+        expect(queryClient.getQueryData(completeQueryKey)).toEqual({
+          [criterionId]: savedAssessment,
+        })
+        return originalInvalidateQueries(filters, options)
+      })
     const { result } = renderAssessmentsHook(queryClient)
 
     await waitFor(() => expect(result.current.comparisonSetQuery.isSuccess).toBe(true))
@@ -175,7 +212,10 @@ describe("P11C assessment hook contract", () => {
       },
       { signal: undefined }
     )
-    expect(saved).toEqual({ comparisonSet, assessment })
+    expect(saved).toEqual({ comparisonSet, assessment: savedAssessment })
+    expect(queryClient.getQueryData(completeQueryKey)).toEqual({
+      [criterionId]: savedAssessment,
+    })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
     })
