@@ -9,10 +9,10 @@ import {
 import { cn } from "@/lib/utils"
 
 import type { TechnicalConfigurationAssessmentWire } from "../../assessment-types"
-import type { TechnicalConfigurationComparisonCriterionRow } from "../../comparison-types"
+import type { TechnicalConfigurationEvaluationCriterionListItem } from "./technical-configuration-evaluation-navigation"
 
 type TechnicalConfigurationCriterionListProps = {
-  criteria: readonly TechnicalConfigurationComparisonCriterionRow[]
+  criteria: readonly TechnicalConfigurationEvaluationCriterionListItem[]
   assessmentsByCriterionId: Readonly<Record<string, TechnicalConfigurationAssessmentWire>>
   currentCriterionId: string | null
   onSelectCriterion: (criterionId: string) => void
@@ -22,12 +22,12 @@ type TechnicalConfigurationCriterionListProps = {
 type TechnicalConfigurationCriterionGroup = {
   id: string
   name: string
-  criteria: TechnicalConfigurationComparisonCriterionRow[]
+  criteria: TechnicalConfigurationEvaluationCriterionListItem[]
 }
 
 function compareCanonicalCriteria(
-  left: TechnicalConfigurationComparisonCriterionRow,
-  right: TechnicalConfigurationComparisonCriterionRow
+  left: TechnicalConfigurationEvaluationCriterionListItem,
+  right: TechnicalConfigurationEvaluationCriterionListItem
 ) {
   return (
     left.group.sortOrder - right.group.sortOrder ||
@@ -38,7 +38,7 @@ function compareCanonicalCriteria(
 }
 
 function groupCanonicalCriteria(
-  criteria: readonly TechnicalConfigurationComparisonCriterionRow[]
+  criteria: readonly TechnicalConfigurationEvaluationCriterionListItem[]
 ): TechnicalConfigurationCriterionGroup[] {
   const groups: TechnicalConfigurationCriterionGroup[] = []
 

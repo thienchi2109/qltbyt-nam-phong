@@ -17,6 +17,7 @@ import { getOrCreateTechnicalConfigurationComparisonSet } from "../technical-con
 import {
   technicalConfigurationAssessmentsQueryKey,
   technicalConfigurationAssessmentsQueryKeyPrefix,
+  technicalConfigurationEvaluationCriteriaQueryKeyPrefix,
 } from "../technical-configuration-query-keys"
 import { collectStableTechnicalConfigurationPages } from "../technical-configuration-pagination"
 import type { TechnicalConfigurationComparisonSetWire } from "../supplier-option-types"
@@ -266,9 +267,22 @@ export function useTechnicalConfigurationAssessments(
     },
     onSuccess: async ({ comparisonSet, assessment }) => {
       adoptCompleteAssessment(queryClient, comparisonSet.id, assessment)
-      await queryClient.invalidateQueries({
-        queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
-      })
+      const invalidations = [
+        queryClient.invalidateQueries({
+          queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
+        }),
+      ]
+      if (baselineVersionId) {
+        invalidations.push(
+          queryClient.invalidateQueries({
+            queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(
+              optionId,
+              baselineVersionId
+            ),
+          })
+        )
+      }
+      await Promise.all(invalidations)
     },
   })
 

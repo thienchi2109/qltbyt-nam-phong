@@ -30,9 +30,10 @@ describe("P11C assessment RPC manifest and adapter", () => {
     callRpcMock.mockReset()
   })
 
-  it("freezes only the applied P11B assessment RPC names", () => {
+  it("freezes the applied assessment and server-filtered navigation RPC names", () => {
     expect(ASSESSMENT_RPC_FUNCTIONS).toEqual({
       listAssessments: "technical_configuration_assessments_list",
+      listEvaluationCriteria: "technical_configuration_evaluation_criteria_list",
       upsertAssessment: "technical_configuration_assessment_upsert",
     })
     expect(ASSESSMENT_RPC_FUNCTION_NAMES).toEqual(Object.values(ASSESSMENT_RPC_FUNCTIONS))

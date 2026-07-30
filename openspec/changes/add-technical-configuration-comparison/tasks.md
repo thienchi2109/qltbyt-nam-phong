@@ -649,22 +649,58 @@ Filter/navigation và task scope-guard P12B.4 không thuộc leaf này.
 Legacy mapping: hoàn tất P12B.2, P12B.3, task scope-guard P12B.4 và phần
 filter/selection/navigation journeys của P12B.5.
 
-- [ ] P12B2.1 Chốt entry gate cho post-save `Lưu`, no-more-match save-next và
-      filter state khi đổi option; dùng recommended defaults trong design nếu
-      product owner phê duyệt.
-- [ ] P12B2.2 Viết RED tests cho exact filtered IDs, canonical order,
+- [x] P12B2.1 Chốt entry gate cho post-save `Lưu`, no-more-match save-next và
+      filter state khi đổi option theo resolved defaults trong design.
+- [x] P12B2.2 Viết RED tests cho exact server-filtered IDs, canonical order,
       filtered pagination, canonical comparison-page mapping, empty result và
       dirty-cancel rollback đầy đủ filter/page/criterion/panel/draft.
-- [ ] P12B2.3 Thêm single-select status filters và filtered projection trên
-      P12B1 model, không thay data shape/counter/cache ownership của P12B1.
-- [ ] P12B2.4 Extract navigator owner; bảo toàn selection khi còn visible và
+- [x] P12B2.3 Thêm guarded read-only RPC lọc status ở Postgres, bounded complete
+      ID collection và single-select filtered projection; không thay data
+      shape/counter/cache ownership của P12B1.
+- [x] P12B2.4 Extract navigator owner; bảo toàn selection khi còn visible và
       reuse dirty-confirm/pending-block khi filter làm đổi selection; cancel
       restore filter, filtered page, criterion, panel/open state và local draft.
-- [ ] P12B2.5 Thêm filter-aware save-next chỉ sau success qua group/page boundary,
+- [x] P12B2.5 Thêm filter-aware save-next chỉ sau success qua group/page boundary,
       giữ state khi failure và xử lý final match theo entry gate đã chốt.
-- [ ] P12B2.6 Viết user-event journeys và focused regressions; không thêm
-      ranking/scoring/AI, DB/RPC/proxy/query contract hoặc browser/accessibility/
-      responsive matrix thuộc P13B.
+- [x] P12B2.6 Viết SQL/RPC/query contract, pure navigation, hook collection và
+      user-event regressions; không thêm write path, ranking/scoring/AI hoặc
+      browser/accessibility/responsive matrix thuộc P13B.
+
+### Evidence P12B2 - 2026-07-30
+
+- Entry decisions:
+  - `Lưu` giữ current panel khi criterion rời filter và hiển thị filtered-out
+    state;
+  - `Lưu & tiếp tục` không wrap ở final match, giữ saved panel và hiển thị
+    no-more-match;
+  - đổi option giữ active filter và resolve selection deterministic.
+- RED:
+  - focused P12B2 run ban đầu: 9 fail, 5 pass vì chưa có filter contract,
+    canonical filtered IDs, guarded reconciliation và filter-aware save-next.
+- GREEN:
+  - thêm guarded read-only RPC
+    `technical_configuration_evaluation_criteria_list` với four-filter
+    validation, canonical index/page, bounded pagination, explicit grants và
+    không có write path;
+  - client thu complete server-filtered pages qua shared stable collector, map
+    exact IDs sang locked-baseline rows và chỉ paginate presentation;
+  - navigator owner reuse shared dirty-confirm/pending-block contract cho
+    filter/option/page/criterion, giữ P12B1 progress/counter/cache ownership;
+  - user-event coverage khóa exact IDs cho từng filter, empty state,
+    dirty-cancel rollback, pending hard-block, option change, `Lưu` filtered-out,
+    deferred-response race, save-next failure, cross-page next và final no-wrap;
+  - rollback-only SQL phase gate khóa auth/ACL, validation, exact filter IDs và
+    canonical page độc lập với transport page size.
+- Verification:
+  - `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: pass;
+  - full technical-configuration + assessment proxy regression: 59 files,
+    498 tests pass;
+  - React Doctor changed-scope: 100/100, no issues;
+  - strict OpenSpec validation: valid;
+  - semantic dedupe reused shared page collector and guarded-navigation hook;
+    no equivalent canonical filtered-navigation helper existed;
+  - live Supabase inspection và canonical-page expression check đều read-only;
+    migration/SQL phase gate chưa được apply hoặc chạy trên live DB.
 
 ## Phase P12C - Optional Reference Ranking
 

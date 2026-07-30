@@ -37,6 +37,38 @@ export interface TechnicalConfigurationAssessmentListRpcArgs {
   p_page_size: number
 }
 
+/** Stable server-supported filters for the evaluation criterion navigator. */
+export const TECHNICAL_CONFIGURATION_EVALUATION_STATUS_FILTERS = [
+  "all",
+  "not_evaluated",
+  "fails",
+  "insufficient_evidence",
+] as const
+
+export type TechnicalConfigurationEvaluationStatusFilter =
+  (typeof TECHNICAL_CONFIGURATION_EVALUATION_STATUS_FILTERS)[number]
+
+export interface TechnicalConfigurationEvaluationCriterionWire {
+  criterion_id: string
+  canonical_index: number
+  canonical_page: number
+}
+
+export interface TechnicalConfigurationEvaluationCriterionListWireResponse {
+  data: TechnicalConfigurationEvaluationCriterionWire[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface TechnicalConfigurationEvaluationCriterionListRpcArgs {
+  p_option_id: string
+  p_baseline_version_id: string
+  p_status_filter: TechnicalConfigurationEvaluationStatusFilter
+  p_page: number
+  p_page_size: number
+}
+
 export interface TechnicalConfigurationAssessmentUpsertRpcArgs {
   p_comparison_set_id: string
   p_criterion_id: string

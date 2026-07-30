@@ -534,9 +534,12 @@ khớp giữa assessment page với comparison page.
 
 - **WHEN** người dùng chọn một filter `all`, `not_evaluated`, `fails` hoặc
   `insufficient_evidence`
-- **THEN** hệ thống SHALL tạo filtered projection từ cùng P12B1 progress model
+- **THEN** guarded read-only RPC SHALL áp dụng derived-status precedence ở
+  server và trả exact filtered criterion IDs
 - **AND** projection giữ canonical group/criterion order
 - **AND** mỗi criterion xuất hiện đúng theo derived status chuẩn dùng chung
+- **AND** P12B1 progress data shape, counters và complete-assessment cache
+  ownership không đổi
 
 #### Scenario: Preserve or guard selection when a filter changes
 
@@ -559,7 +562,9 @@ khớp giữa assessment page với comparison page.
 #### Scenario: Page a filtered projection without changing detail scope
 
 - **WHEN** filtered projection vượt page size hiện có
-- **THEN** hệ thống SHALL paginate client-side theo canonical order
+- **THEN** server SHALL trả bounded filtered-ID pages theo canonical order
+- **AND** client SHALL thu complete filtered IDs rồi paginate phần hiển thị theo
+  page size hiện có mà không re-filter assessment rows
 - **AND** khi chọn criterion, comparison detail SHALL dùng canonical source page
   của criterion thay vì filtered page number
 

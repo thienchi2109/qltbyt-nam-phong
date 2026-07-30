@@ -5,6 +5,8 @@ import type {
   TechnicalConfigurationAssessmentListWireResponse,
   TechnicalConfigurationAssessmentUpsertRpcArgs,
   TechnicalConfigurationAssessmentWireResponse,
+  TechnicalConfigurationEvaluationCriterionListRpcArgs,
+  TechnicalConfigurationEvaluationCriterionListWireResponse,
 } from "./assessment-types"
 import { callTechnicalConfigurationRpc } from "./technical-configuration-rpc"
 
@@ -14,6 +16,16 @@ export function listTechnicalConfigurationAssessments(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationAssessmentListWireResponse> {
   return callTechnicalConfigurationRpc(ASSESSMENT_RPC_FUNCTIONS.listAssessments, args, { signal })
+}
+
+/** Lists server-filtered evaluation criterion IDs in canonical baseline order. */
+export function listTechnicalConfigurationEvaluationCriteria(
+  args: TechnicalConfigurationEvaluationCriterionListRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationEvaluationCriterionListWireResponse> {
+  return callTechnicalConfigurationRpc(ASSESSMENT_RPC_FUNCTIONS.listEvaluationCriteria, args, {
+    signal,
+  })
 }
 
 /** Upserts one manual assessment while preserving the P11B row revision contract. */

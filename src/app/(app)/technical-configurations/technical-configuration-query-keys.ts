@@ -1,3 +1,5 @@
+import type { TechnicalConfigurationEvaluationStatusFilter } from "./assessment-types"
+
 /** Shared root for technical-configuration dossier queries. */
 export const TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT = [
   "technical-configurations",
@@ -61,6 +63,30 @@ export function technicalConfigurationOptionResponsesQueryKey(
 /** Builds the cache-key prefix for every manual-assessment page in one comparison set. */
 export function technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId: string) {
   return ["technical-configurations", "assessments", comparisonSetId] as const
+}
+
+/** Builds the cache prefix for every server-filtered evaluation criterion result. */
+export function technicalConfigurationEvaluationCriteriaQueryKeyPrefix(
+  optionId: string,
+  baselineVersionId: string
+) {
+  return ["technical-configurations", "evaluation-criteria", optionId, baselineVersionId] as const
+}
+
+/** Builds one complete server-filtered evaluation criterion query key. */
+export function technicalConfigurationEvaluationCriteriaQueryKey({
+  optionId,
+  baselineVersionId,
+  statusFilter,
+}: {
+  optionId: string
+  baselineVersionId: string
+  statusFilter: TechnicalConfigurationEvaluationStatusFilter
+}) {
+  return [
+    ...technicalConfigurationEvaluationCriteriaQueryKeyPrefix(optionId, baselineVersionId),
+    statusFilter,
+  ] as const
 }
 
 /** Builds the cache key for one bounded manual-assessment page. */

@@ -156,8 +156,9 @@ user-visible workflow. P12B uses the strict deploy-safe order
 `P12A2 -> P12B1 -> P12B2 -> P12C`: P12B1 owns selected-option progress,
 status counters, compact summaries and successful-save cache adoption while
 leaving existing navigation unchanged; P12B2 reuses that model without changing
-its data shape and owns status filters, filtered projection/pagination,
-selection reconciliation, dirty/pending guards and filter-aware save-next.
+its data shape, adds a guarded read-only server-filter RPC for exact canonical
+IDs and owns status filters, presentation pagination, selection reconciliation,
+dirty/pending guards and filter-aware save-next.
 P12C cannot start until P12B2 is complete.
 
 ## Requirement Traceability
@@ -2422,26 +2423,32 @@ navigation behavior change.
 
 ### Entry gate
 
-Before implementation, the product owner confirms these UX choices. The listed
-defaults are recommendations, not silently approved normative requirements:
+The implementation uses these approved choices:
 
-- `Lưu` when the current criterion leaves the active filter. Recommended:
-  preserve the P12A2 current panel, report that it no longer matches and do not
-  auto-navigate.
-- `Lưu & tiếp tục` when no matching criterion remains. Recommended: do not wrap;
-  keep the saved panel and show a no-more-match state.
-- Filter state when changing option. Recommended: retain the single selected
-  filter and resolve the new option's selection deterministically.
+- `Lưu` preserves the P12A2 current panel when the criterion leaves the active
+  filter, reports that it no longer matches and does not auto-navigate.
+- `Lưu & tiếp tục` does not wrap when no matching criterion remains; it keeps
+  the saved panel and shows a no-more-match state.
+- Changing option retains the single selected filter and resolves the new
+  option's selection deterministically.
 
 ### Planned files
 
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationFilters.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-navigation.ts`
+- Create:
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationCriteria.ts`
 - Create or extract:
   `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationNavigator.ts`
-- Extend:
-  `src/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress.ts`
-  with pure filtered projection/navigation helpers without changing the P12B1
-  progress data shape
+- Create:
+  `supabase/migrations/20260730151948_technical_configuration_evaluation_criteria_filter.sql`
+- Create:
+  `supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate.sql`
+- Modify: assessment RPC manifest, proxy allowlist, typed adapter, query keys and
+  successful-save invalidation
 - Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationCriterionList.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
 - Reuse unchanged where possible:
@@ -2450,31 +2457,36 @@ defaults are recommendations, not silently approved normative requirements:
 
 ### Tasks
 
-- [ ] Start RED with exact filter-ID, canonical-order, cross-group/page,
+- [x] Start RED with exact filter-ID, canonical-order, cross-group/page,
       empty-result, dirty/pending and failed-save journeys.
-- [ ] Add a single-select `all` / `not_evaluated` / `fails` /
-      `insufficient_evidence` filter over the P12B1 full criterion universe.
-- [ ] Preserve canonical group/criterion order, paginate the filtered projection
-      client-side with the existing page size and map criterion detail requests
-      to the canonical comparison page rather than the filtered page number.
-- [ ] Preserve current selection, page and panel state while the criterion
+- [x] Add one guarded read-only RPC that filters `all` / `not_evaluated` /
+      `fails` / `insufficient_evidence` in Postgres and returns exact
+      `criterion_id`, `canonical_index` and `canonical_page` rows in bounded
+      canonical pages.
+- [x] Collect complete server-filtered IDs through the shared stable page
+      collector, preserve canonical group/criterion order, paginate only the
+      display projection with the existing page size and map criterion detail
+      requests to the canonical comparison page rather than the filtered page
+      number.
+- [x] Preserve current selection, page and panel state while the criterion
       remains visible; when a filter change would replace selection, reuse the
       P12A2 dirty-confirm/pending-block contract and make cancel restore the
       previous filter, filtered page, criterion, panel/open state and local
       draft.
-- [ ] Define deterministic empty-result behavior with the option retained,
+- [x] Define deterministic empty-result behavior with the option retained,
       selection cleared, panel closed and a clear-filter action.
-- [ ] Make `Lưu & tiếp tục` move only after save success to the next matching
+- [x] Make `Lưu & tiếp tục` move only after save success to the next matching
       criterion in canonical order across group/page boundaries; preserve
       filter/page/criterion/draft on failure and implement the approved entry-gate
       behavior when no match remains.
-- [ ] Keep existing `Lưu` persistence semantics and implement its approved
+- [x] Keep existing `Lưu` persistence semantics and implement its approved
       post-save selection behavior without changing P12B1 counters or cache
       ownership.
-- [ ] Put navigation state in the extracted navigator owner so the active
+- [x] Put navigation state in the extracted navigator owner so the active
       workspace stays below the file-size ceiling.
-- [ ] Add no migration, RPC, proxy path, query contract, ranking, scoring or AI;
-      browser/accessibility/responsive matrices remain P13B-owned.
+- [x] Add no table or write RPC. Keep the new read RPC set-based, guarded,
+      explicitly granted and bounded; add no ranking, scoring or AI.
+      Browser/accessibility/responsive matrices remain P13B-owned.
 
 ### TDD and verification
 
@@ -2489,9 +2501,10 @@ defaults are recommendations, not silently approved normative requirements:
 
 ### Exit gate
 
-P12B2 can deploy independently with deterministic filter, selection, pagination
-and save-next behavior under the complete dirty/pending contract; P12B1
-progress remains correct and no ranking/scoring/AI behavior exists.
+P12B2 can deploy independently with deterministic server-filtered IDs,
+selection, presentation pagination and save-next behavior under the complete
+dirty/pending contract; P12B1 progress remains correct and no write path,
+ranking/scoring/AI behavior exists.
 
 ## Phase P12C - Optional Reference Ranking
 

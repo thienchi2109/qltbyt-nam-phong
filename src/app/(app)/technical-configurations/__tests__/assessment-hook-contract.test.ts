@@ -6,6 +6,7 @@ import { useTechnicalConfigurationAssessments } from "../_hooks/useTechnicalConf
 import {
   technicalConfigurationAssessmentsQueryKey,
   technicalConfigurationAssessmentsQueryKeyPrefix,
+  technicalConfigurationEvaluationCriteriaQueryKeyPrefix,
   technicalConfigurationOptionResponsesQueryKey,
 } from "../technical-configuration-query-keys"
 import {
@@ -218,6 +219,9 @@ describe("P11C assessment hook contract", () => {
     })
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(optionId, baselineVersionId),
     })
     expect(result.current.completeQueryKey).toEqual(completeQueryKey)
     expect(queryClient.getQueryState(secondPageQueryKey)?.isInvalidated).toBe(true)
