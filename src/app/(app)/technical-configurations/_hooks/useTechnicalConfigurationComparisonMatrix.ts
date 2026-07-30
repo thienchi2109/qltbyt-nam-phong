@@ -2,7 +2,10 @@
 
 import * as React from "react"
 
-import { COMPARISON_MATRIX_LIMITS } from "@/app/(app)/technical-configurations/comparison-matrix-constants"
+import {
+  COMPARISON_MATRIX_LIMITS,
+  TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
+} from "@/app/(app)/technical-configurations/comparison-matrix-constants"
 
 import { useTechnicalConfigurationBaseline } from "./useTechnicalConfigurationBaseline"
 import { useTechnicalConfigurationBaselineVersions } from "./useTechnicalConfigurationBaselineVersions"
@@ -10,7 +13,6 @@ import { useTechnicalConfigurationComparison } from "./useTechnicalConfiguration
 import { useTechnicalConfigurationOptionListQuery } from "./useTechnicalConfigurationOptionListQuery"
 import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 
-const COMPARISON_PAGE_SIZE = 50
 const EMPTY_OPTIONS: TechnicalConfigurationOptionWire[] = []
 
 type ComparisonRequestState = {
@@ -277,7 +279,7 @@ export function useTechnicalConfigurationComparisonMatrix(dossierId: string) {
     baselineVersionId,
     optionIds: selectedOptionIds,
     page,
-    pageSize: COMPARISON_PAGE_SIZE,
+    pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
   })
 
   return {
@@ -295,7 +297,7 @@ export function useTechnicalConfigurationComparisonMatrix(dossierId: string) {
     pinnedOptionIds,
     focusedOptionId,
     page,
-    pageSize: COMPARISON_PAGE_SIZE,
+    pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
     isSelectionLimitReached: selectedOptionIds.length >= COMPARISON_MATRIX_LIMITS.selectedOptions,
     comparison,
     selectBaselineVersion,

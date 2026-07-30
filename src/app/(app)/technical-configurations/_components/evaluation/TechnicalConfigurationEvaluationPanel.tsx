@@ -16,6 +16,7 @@ type TechnicalConfigurationEvaluationPanelProps = TechnicalConfigurationAssessme
   open: boolean
   onOpenChange: (open: boolean) => void
   returnFocusRef?: React.RefObject<HTMLElement | null>
+  actions?: React.ReactNode
 }
 
 /** Adds manual assessment controls to the single shared P10B criterion detail surface. */
@@ -24,6 +25,7 @@ export function TechnicalConfigurationEvaluationPanel({
   open,
   onOpenChange,
   returnFocusRef,
+  actions,
   ...assessmentControls
 }: Readonly<TechnicalConfigurationEvaluationPanelProps>) {
   return (
@@ -32,7 +34,12 @@ export function TechnicalConfigurationEvaluationPanel({
       open={open}
       onOpenChange={onOpenChange}
       returnFocusRef={returnFocusRef}
-      assessmentControls={<TechnicalConfigurationAssessmentControls {...assessmentControls} />}
+      assessmentControls={
+        <div className="space-y-4">
+          <TechnicalConfigurationAssessmentControls {...assessmentControls} />
+          {actions ? <div className="flex flex-wrap justify-end gap-2">{actions}</div> : null}
+        </div>
+      }
     />
   )
 }

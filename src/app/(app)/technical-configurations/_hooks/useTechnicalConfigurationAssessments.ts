@@ -27,6 +27,7 @@ const ASSESSMENT_PAGINATION_SNAPSHOT_ERROR = "Assessment pagination snapshot cha
 interface TechnicalConfigurationAssessmentContext {
   optionId: string
   baselineVersionId: string | null
+  onComparisonSetReady?: (comparisonSet: TechnicalConfigurationComparisonSetWire) => void
 }
 
 type UseTechnicalConfigurationAssessmentsInput = TechnicalConfigurationAssessmentContext &
@@ -143,7 +144,7 @@ function acquireAssessmentComparisonSet({
 export function useTechnicalConfigurationAssessments(
   input: UseTechnicalConfigurationAssessmentsInput
 ) {
-  const { optionId, baselineVersionId } = input
+  const { optionId, baselineVersionId, onComparisonSetReady } = input
   const isCompleteCollection = input.collectionMode === "complete"
   const page = isCompleteCollection ? 1 : input.page
   const pageSize = isCompleteCollection ? ASSESSMENT_COLLECTION_PAGE_SIZE : input.pageSize
@@ -216,6 +217,10 @@ export function useTechnicalConfigurationAssessments(
         throw new Error("technical_configuration_assessment_context_unavailable")
       }
 
+      const cachedComparisonSet =
+        queryClient.getQueryData<TechnicalConfigurationComparisonSetWire | null>(
+          comparisonSetQueryKey
+        )
       const comparisonSet = await acquireAssessmentComparisonSet({
         queryClient,
         comparisonSetQueryKey,
@@ -223,6 +228,9 @@ export function useTechnicalConfigurationAssessments(
         baselineVersionId,
         expectedDossierRevision: input.expectedDossierRevision,
       })
+      if (!cachedComparisonSet) {
+        onComparisonSetReady?.(comparisonSet)
+      }
 
       const response = await upsertTechnicalConfigurationAssessment({
         p_comparison_set_id: comparisonSet.id,

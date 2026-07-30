@@ -4,6 +4,9 @@ export const COMPARISON_MATRIX_LIMITS = {
   pinnedOptions: 2,
 } as const
 
+/** Keeps criterion paging identical across comparison and evaluation workspaces. */
+export const TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE = 50
+
 /** Stable desktop column geometry shared by matrix headers and body rows. */
 export const COMPARISON_MATRIX_LAYOUT = {
   criterionWidth: 220,

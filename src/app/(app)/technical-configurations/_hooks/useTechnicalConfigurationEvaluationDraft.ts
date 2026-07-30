@@ -91,6 +91,9 @@ export function useTechnicalConfigurationEvaluationDraft({
     optionId,
     baselineVersionId,
     collectionMode: "complete",
+    onComparisonSetReady: (comparisonSet) => {
+      onDossierRevisionChange?.(comparisonSet.revision)
+    },
   })
   const assessmentsByCriterionId =
     assessmentSource.completeAssessmentsQuery.data ?? EMPTY_ASSESSMENTS
@@ -166,6 +169,14 @@ export function useTechnicalConfigurationEvaluationDraft({
     ]
   )
 
+  const discard = React.useCallback(() => {
+    if (activeDraftContextTokenRef.current !== draftContextToken || saveInFlightRef.current) {
+      return
+    }
+    draftEntryRef.current = null
+    setDraftEntry(null)
+  }, [draftContextToken])
+
   const save = React.useCallback(async () => {
     const current = draftEntryRef.current
     const latestDraft = current?.contextKey === draftContextKey ? current.draft : currentDraft
@@ -208,7 +219,6 @@ export function useTechnicalConfigurationEvaluationDraft({
           draft: adoptedDraft,
         })
       }
-      onDossierRevisionChange?.(result.comparisonSet.revision)
       return result
     } catch (error) {
       const latestEntry = draftEntryRef.current
@@ -232,7 +242,6 @@ export function useTechnicalConfigurationEvaluationDraft({
     draftContextKey,
     draftContextToken,
     expectedDossierRevision,
-    onDossierRevisionChange,
     replaceDraftEntry,
   ])
 
@@ -266,6 +275,7 @@ export function useTechnicalConfigurationEvaluationDraft({
     setTechnicalAxis,
     setEvidenceAxis,
     setNotes,
+    discard,
     save,
   }
 }

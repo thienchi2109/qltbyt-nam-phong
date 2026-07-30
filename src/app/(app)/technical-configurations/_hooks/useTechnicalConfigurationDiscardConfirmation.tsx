@@ -18,8 +18,14 @@ interface TechnicalConfigurationDiscardConfirmationState {
   ) => void
 }
 
+interface TechnicalConfigurationDiscardConfirmationOptions {
+  cancelLabel?: React.ReactNode
+}
+
 /** Queues one destructive draft-discard action behind the shared alert dialog. */
-export function useTechnicalConfigurationDiscardConfirmation(): TechnicalConfigurationDiscardConfirmationState {
+export function useTechnicalConfigurationDiscardConfirmation({
+  cancelLabel,
+}: TechnicalConfigurationDiscardConfirmationOptions = {}): TechnicalConfigurationDiscardConfirmationState {
   const [pendingConfirmation, setPendingConfirmation] =
     React.useState<PendingDiscardConfirmation | null>(null)
 
@@ -49,6 +55,7 @@ export function useTechnicalConfigurationDiscardConfirmation(): TechnicalConfigu
         onOpenChange={handleOpenChange}
         title="Bỏ thay đổi chưa lưu?"
         description={pendingConfirmation?.description ?? ""}
+        cancelLabel={cancelLabel}
         confirmLabel="Bỏ thay đổi"
         isPending={false}
         onConfirm={handleConfirm}

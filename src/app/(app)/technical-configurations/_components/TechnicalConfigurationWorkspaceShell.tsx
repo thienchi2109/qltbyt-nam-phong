@@ -10,19 +10,10 @@ import {
 } from "lucide-react"
 
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+import { useTechnicalConfigurationGuardedNavigation } from "../_hooks/useTechnicalConfigurationGuardedNavigation"
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
 import { TechnicalConfigurationBaselineEvidence } from "./TechnicalConfigurationBaselineEvidence"
 import { TechnicalConfigurationComparisonTab } from "./comparison/TechnicalConfigurationComparisonTab"
@@ -33,13 +24,6 @@ type TechnicalConfigurationWorkspaceShellProps = {
   dossier: TechnicalConfigurationDossierWire
   onBack: () => void
 }
-
-type PendingWorkspaceNavigation =
-  | { kind: "back" }
-  | {
-      kind: "tab"
-      value: string
-    }
 
 type WorkspaceRevisionOverride = {
   dossierId: string
@@ -55,8 +39,6 @@ export function TechnicalConfigurationWorkspaceShell({
   const [revisionOverride, setRevisionOverride] = React.useState<WorkspaceRevisionOverride | null>(
     null
   )
-  const [pendingNavigation, setPendingNavigation] =
-    React.useState<PendingWorkspaceNavigation | null>(null)
   const [isBaselineDirty, setIsBaselineDirty] = React.useState(false)
   const [isBaselineNavigationBlocked, setIsBaselineNavigationBlocked] = React.useState(false)
   const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
@@ -65,12 +47,24 @@ export function TechnicalConfigurationWorkspaceShell({
   const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
   const [isOptionDirty, setIsOptionDirty] = React.useState(false)
   const [isOptionNavigationBlocked, setIsOptionNavigationBlocked] = React.useState(false)
-  const isDirty = isBaselineDirty || isEvidenceDirty || isReferenceDirty || isOptionDirty
+  const [isComparisonDirty, setIsComparisonDirty] = React.useState(false)
+  const [isComparisonNavigationBlocked, setIsComparisonNavigationBlocked] = React.useState(false)
+  const isDirty =
+    isBaselineDirty || isEvidenceDirty || isReferenceDirty || isOptionDirty || isComparisonDirty
   const isNavigationBlocked =
     isBaselineNavigationBlocked ||
     isEvidenceNavigationBlocked ||
     isReferenceNavigationBlocked ||
-    isOptionNavigationBlocked
+    isOptionNavigationBlocked ||
+    isComparisonNavigationBlocked
+  const { requestNavigation, discardConfirmationDialog } =
+    useTechnicalConfigurationGuardedNavigation({
+      isDirty,
+      isBlocked: isNavigationBlocked,
+      cancelLabel: "Tiếp tục chỉnh sửa",
+      description:
+        "Các thay đổi chưa lưu sẽ bị mất nếu bạn tiếp tục. Hãy tiếp tục chỉnh sửa để lưu hoặc xác nhận bỏ thay đổi.",
+    })
   const workspaceRevision =
     revisionOverride?.dossierId === dossier.id
       ? Math.max(dossier.revision, revisionOverride.revision)
@@ -97,60 +91,16 @@ export function TechnicalConfigurationWorkspaceShell({
   )
 
   const handleBack = React.useCallback(() => {
-    if (isNavigationBlocked) return
-    if (isDirty) {
-      setPendingNavigation({ kind: "back" })
-      return
-    }
-    onBack()
-  }, [isDirty, isNavigationBlocked, onBack])
+    requestNavigation(onBack)
+  }, [onBack, requestNavigation])
 
   const handleTabChange = React.useCallback(
     (nextTab: string) => {
       if (nextTab === activeTab) return
-      const isCurrentTabDirty =
-        (activeTab === "baseline" && isBaselineDirty) ||
-        (activeTab === "evidence" && isEvidenceDirty) ||
-        (activeTab === "references" && isReferenceDirty) ||
-        (activeTab === "options" && isOptionDirty)
-      const isCurrentTabBlocked =
-        (activeTab === "baseline" && isBaselineNavigationBlocked) ||
-        (activeTab === "evidence" && isEvidenceNavigationBlocked) ||
-        (activeTab === "references" && isReferenceNavigationBlocked) ||
-        (activeTab === "options" && isOptionNavigationBlocked)
-      if (isCurrentTabBlocked) return
-      if (isCurrentTabDirty) {
-        setPendingNavigation({ kind: "tab", value: nextTab })
-        return
-      }
-      setActiveTab(nextTab)
+      requestNavigation(() => setActiveTab(nextTab))
     },
-    [
-      activeTab,
-      isBaselineDirty,
-      isBaselineNavigationBlocked,
-      isEvidenceDirty,
-      isEvidenceNavigationBlocked,
-      isOptionDirty,
-      isOptionNavigationBlocked,
-      isReferenceDirty,
-      isReferenceNavigationBlocked,
-    ]
+    [activeTab, requestNavigation]
   )
-
-  const dismissPendingNavigation = React.useCallback(() => {
-    setPendingNavigation(null)
-  }, [])
-
-  const confirmPendingNavigation = React.useCallback(() => {
-    if (!pendingNavigation) return
-    setPendingNavigation(null)
-    if (pendingNavigation.kind === "back") {
-      onBack()
-      return
-    }
-    setActiveTab(pendingNavigation.value)
-  }, [onBack, pendingNavigation])
 
   return (
     <div className="w-full">
@@ -182,23 +132,43 @@ export function TechnicalConfigurationWorkspaceShell({
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
         <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-5">
-          <TabsTrigger value="baseline" className="min-h-10 gap-2">
+          <TabsTrigger
+            value="baseline"
+            className="min-h-10 gap-2"
+            disabled={isNavigationBlocked && activeTab !== "baseline"}
+          >
             <ListChecks className="size-4" aria-hidden="true" />
             Cấu hình cơ sở
           </TabsTrigger>
-          <TabsTrigger value="evidence" className="min-h-10 gap-2">
+          <TabsTrigger
+            value="evidence"
+            className="min-h-10 gap-2"
+            disabled={isNavigationBlocked && activeTab !== "evidence"}
+          >
             <FileText className="size-4" aria-hidden="true" />
             Tài liệu &amp; trích dẫn
           </TabsTrigger>
-          <TabsTrigger value="references" className="min-h-10 gap-2">
+          <TabsTrigger
+            value="references"
+            className="min-h-10 gap-2"
+            disabled={isNavigationBlocked && activeTab !== "references"}
+          >
             <LibraryBig className="size-4" aria-hidden="true" />
             Sản phẩm tham chiếu
           </TabsTrigger>
-          <TabsTrigger value="options" className="min-h-10 gap-2">
+          <TabsTrigger
+            value="options"
+            className="min-h-10 gap-2"
+            disabled={isNavigationBlocked && activeTab !== "options"}
+          >
             <PackageSearch className="size-4" aria-hidden="true" />
             Phương án
           </TabsTrigger>
-          <TabsTrigger value="comparison" className="min-h-10 gap-2">
+          <TabsTrigger
+            value="comparison"
+            className="min-h-10 gap-2"
+            disabled={isNavigationBlocked && activeTab !== "comparison"}
+          >
             <GitCompareArrows className="size-4" aria-hidden="true" />
             So sánh &amp; đánh giá
           </TabsTrigger>
@@ -234,35 +204,16 @@ export function TechnicalConfigurationWorkspaceShell({
           />
         </TabsContent>
         <TabsContent value="comparison" className="mt-6">
-          <TechnicalConfigurationComparisonTab dossier={workspaceDossier} />
+          <TechnicalConfigurationComparisonTab
+            dossier={workspaceDossier}
+            onDirtyChange={setIsComparisonDirty}
+            onNavigationBlockedChange={setIsComparisonNavigationBlocked}
+            onRevisionChange={handleRevisionChange}
+          />
         </TabsContent>
       </Tabs>
 
-      <AlertDialog
-        open={pendingNavigation !== null}
-        onOpenChange={(open) => {
-          if (!open) dismissPendingNavigation()
-        }}
-      >
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Bỏ thay đổi chưa lưu?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Các thay đổi chưa lưu sẽ bị mất nếu bạn tiếp tục. Hãy tiếp tục chỉnh sửa để lưu hoặc
-              xác nhận bỏ thay đổi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Tiếp tục chỉnh sửa</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={confirmPendingNavigation}
-            >
-              Bỏ thay đổi
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {discardConfirmationDialog}
     </div>
   )
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react"
+import { ChevronLeft, RefreshCw } from "lucide-react"
 
 import {
   COMPARISON_MATRIX_LAYOUT,
@@ -10,6 +10,7 @@ import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technic
 import { Button } from "@/components/ui/button"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
+import { TechnicalConfigurationCriterionPagination } from "./TechnicalConfigurationCriterionPagination"
 import { TechnicalConfigurationMatrixRow } from "./TechnicalConfigurationMatrixRow"
 
 type TechnicalConfigurationMatrixProps = {
@@ -146,10 +147,6 @@ export function TechnicalConfigurationMatrix({
     }
   }
   const criterionGroups = groupCriterionRows(criteria)
-  const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
-  const startItem = (result.page - 1) * result.pageSize + 1
-  const endItem = Math.min(result.page * result.pageSize, result.total)
-
   return (
     <div className="space-y-3">
       <div
@@ -225,33 +222,12 @@ export function TechnicalConfigurationMatrix({
         </table>
       </div>
 
-      <div className="flex min-h-10 items-center justify-between gap-4 text-sm">
-        <p className="text-muted-foreground">
-          Tiêu chí {startItem}-{endItem} trên {result.total} · Trang {result.page}/{totalPages}
-        </p>
-        <div className="flex items-center gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Trang trước"
-            disabled={result.page <= 1}
-            onClick={() => onPageChange(result.page - 1)}
-          >
-            <ChevronLeft aria-hidden="true" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Trang tiếp theo"
-            disabled={result.page >= totalPages}
-            onClick={() => onPageChange(result.page + 1)}
-          >
-            <ChevronRight aria-hidden="true" />
-          </Button>
-        </div>
-      </div>
+      <TechnicalConfigurationCriterionPagination
+        page={result.page}
+        pageSize={result.pageSize}
+        total={result.total}
+        onPageChange={onPageChange}
+      />
     </div>
   )
 }
