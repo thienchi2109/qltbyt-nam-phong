@@ -30,11 +30,7 @@ describe("technical configuration assessment RPC whitelist", () => {
 
   it("allowlists exactly the P11C assessment RPC manifest", () => {
     expect(
-      [...ALLOWED_FUNCTIONS].filter(
-        (fn) =>
-          fn === "technical_configuration_assessments_list" ||
-          fn === "technical_configuration_assessment_upsert"
-      )
+      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_assessment"))
     ).toEqual(P11B_ASSESSMENT_RPC_FUNCTIONS)
   })
 
