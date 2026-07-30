@@ -2,8 +2,8 @@ import "@testing-library/jest-dom"
 import { render, screen, within } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-import { TechnicalConfigurationProgressSummary } from "../_components/evaluation/TechnicalConfigurationProgressSummary"
-import type { TechnicalConfigurationEvaluationProgress } from "../_components/evaluation/technical-configuration-evaluation-progress"
+import { TechnicalConfigurationProgressSummary } from "@/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationProgressSummary"
+import type { TechnicalConfigurationEvaluationProgress } from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
 
 const progress: TechnicalConfigurationEvaluationProgress = {
   total: 6,
@@ -34,7 +34,9 @@ describe("P12B1 technical configuration progress summary", () => {
     )
 
     const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
-    expect(within(summary).getByText("Đã đánh giá 4 / 6 tiêu chí")).toBeInTheDocument()
+    const evaluatedOutput = within(summary).getByText("Đã đánh giá 4 / 6 tiêu chí")
+    expect(evaluatedOutput).toBeInTheDocument()
+    expect(evaluatedOutput.tagName).toBe("OUTPUT")
 
     const groupRows = within(summary).getAllByTestId("evaluation-progress-group")
     expect(groupRows).toHaveLength(2)

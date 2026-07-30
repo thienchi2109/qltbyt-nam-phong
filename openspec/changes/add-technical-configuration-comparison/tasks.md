@@ -639,7 +639,7 @@ Filter/navigation và task scope-guard P12B.4 không thuộc leaf này.
     đổi navigation, save-next, dirty/pending guards, DB/RPC/proxy/query contract.
 - Verification:
   - `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: pass;
-  - focused P11D/P12A1/P12A2/P12B1: 11 files, 100 tests pass;
+  - focused P11D/P12A1/P12A2/P12B1: 12 files, 102 tests pass;
   - React Doctor changed-scope: 100/100, no issues;
   - `openspec validate add-technical-configuration-comparison --type change
 --strict --no-interactive`: valid.

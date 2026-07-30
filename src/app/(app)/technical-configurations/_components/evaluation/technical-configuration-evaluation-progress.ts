@@ -3,8 +3,8 @@ import {
   type TechnicalConfigurationDerivedStatus,
 } from "@/lib/technical-configuration-evaluation"
 
-import type { TechnicalConfigurationAssessmentWire } from "../../assessment-types"
-import type { TechnicalConfigurationBaselineGroupWire } from "../../baseline-types"
+import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
+import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
 
 /** Compact progress for one canonical baseline group. */
 export type TechnicalConfigurationEvaluationGroupProgress = Readonly<{
@@ -47,7 +47,7 @@ export function buildTechnicalConfigurationEvaluationProgress({
   const assessmentsByCriterionId = new Map(
     assessments.map((assessment) => [assessment.criterion_id, assessment])
   )
-  const statusCounts = createEmptyStatusCounts()
+  let statusCounts = createEmptyStatusCounts()
   let evaluated = 0
 
   const groupProgress = groups.map((group) => {
@@ -59,7 +59,10 @@ export function buildTechnicalConfigurationEvaluationProgress({
         assessment?.technical_axis,
         assessment?.evidence_axis
       )
-      statusCounts[status] += 1
+      statusCounts = {
+        ...statusCounts,
+        [status]: statusCounts[status] + 1,
+      }
       if (status !== "not_evaluated") {
         evaluated += 1
         groupEvaluated += 1

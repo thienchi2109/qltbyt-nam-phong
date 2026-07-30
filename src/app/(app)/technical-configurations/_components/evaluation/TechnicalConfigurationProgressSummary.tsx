@@ -37,9 +37,9 @@ export function TechnicalConfigurationProgressSummary({
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h3 className="text-sm font-medium">Tiến độ đánh giá</h3>
-          <p className="text-sm tabular-nums text-muted-foreground">
+          <output className="text-sm tabular-nums text-muted-foreground">
             Đã đánh giá {progress.evaluated} / {progress.total} tiêu chí
-          </p>
+          </output>
         </div>
         {progress.groups.length > 0 ? (
           <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">

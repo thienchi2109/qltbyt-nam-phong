@@ -8,12 +8,12 @@ import type {
 import {
   buildTechnicalConfigurationEvaluationProgress,
   type TechnicalConfigurationEvaluationProgress,
-} from "../_components/evaluation/technical-configuration-evaluation-progress"
-import type { TechnicalConfigurationAssessmentWire } from "../assessment-types"
+} from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
+import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
 import type {
   TechnicalConfigurationBaselineCriterionWire,
   TechnicalConfigurationBaselineGroupWire,
-} from "../baseline-types"
+} from "@/app/(app)/technical-configurations/baseline-types"
 
 const STATUS_AXES: Record<
   TechnicalConfigurationDerivedStatus,
