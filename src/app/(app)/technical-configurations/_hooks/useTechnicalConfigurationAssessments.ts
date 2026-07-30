@@ -151,10 +151,13 @@ function adoptCompleteAssessment(
   ] as const
   queryClient.setQueryData<Readonly<Record<string, TechnicalConfigurationAssessmentWire>>>(
     completeQueryKey,
-    (current = {}) => ({
-      ...current,
-      [assessment.criterion_id]: assessment,
-    })
+    (current) =>
+      current
+        ? {
+            ...current,
+            [assessment.criterion_id]: assessment,
+          }
+        : current
   )
 }
 

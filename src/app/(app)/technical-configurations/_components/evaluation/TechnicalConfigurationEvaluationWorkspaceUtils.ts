@@ -1,4 +1,4 @@
-import type { TechnicalConfigurationComparisonCriterionRow } from "../../comparison-types"
+import type { TechnicalConfigurationComparisonCriterionRow } from "@/app/(app)/technical-configurations/comparison-types"
 
 /** Normalizes an unknown assessment save failure for the evaluation panel. */
 export function toTechnicalConfigurationSaveErrorMessage(error: unknown): string {

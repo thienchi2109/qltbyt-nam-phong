@@ -16,7 +16,7 @@ import {
 import { useTechnicalConfigurationComparison } from "../../_hooks/useTechnicalConfigurationComparison"
 import { useTechnicalConfigurationEvaluationDraft } from "../../_hooks/useTechnicalConfigurationEvaluationDraft"
 import { useTechnicalConfigurationGuardedNavigation } from "../../_hooks/useTechnicalConfigurationGuardedNavigation"
-import type { TechnicalConfigurationBaselineGroupWire } from "../../baseline-types"
+import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE } from "../../comparison-matrix-constants"
 import type {
   TechnicalConfigurationComparisonCriterionRow,

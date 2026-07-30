@@ -93,6 +93,34 @@ describe("P11C assessment hook contract", () => {
     expect(mocks.callRpc).toHaveBeenCalledTimes(1)
   })
 
+  it("does not synthesize a complete collection when bounded save has not loaded it", async () => {
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve(assessmentListResponse)
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.resolve({ data: savedAssessment })
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+    const queryClient = createAssessmentTestQueryClient()
+    const completeQueryKey = [
+      ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+      "complete",
+    ] as const
+    const { result } = renderAssessmentsHook(queryClient)
+
+    await waitFor(() => expect(result.current.assessmentsQuery.isSuccess).toBe(true))
+    expect(queryClient.getQueryData(completeQueryKey)).toBeUndefined()
+
+    await act(async () => {
+      await result.current.upsertAssessment.mutateAsync(assessmentUpsertInput)
+    })
+
+    expect(queryClient.getQueryData(completeQueryKey)).toBeUndefined()
+  })
+
   it("keeps an invalid assessment page disabled after the comparison set loads", async () => {
     mocks.readComparisonSet.mockResolvedValue(comparisonSet)
     const queryClient = createAssessmentTestQueryClient()

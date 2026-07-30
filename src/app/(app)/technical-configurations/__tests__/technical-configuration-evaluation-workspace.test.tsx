@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationEvaluationWorkspace } from "../_components/evaluation/TechnicalConfigurationEvaluationWorkspace"
-import type { TechnicalConfigurationAssessmentWire } from "../assessment-types"
+import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
 import {
   createBaselineGroups,
   createComparisonResult,
