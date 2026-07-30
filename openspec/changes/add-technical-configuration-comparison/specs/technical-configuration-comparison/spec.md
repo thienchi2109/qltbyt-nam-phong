@@ -493,18 +493,83 @@ Hệ thống SHALL cung cấp ma trận so sánh cấu hình cơ sở với các
 
 ### Requirement: Per-option manual evaluation workflow
 
-Hệ thống SHALL ưu tiên workflow đánh giá thủ công một phương án tại một thời điểm bằng danh sách tiêu chí và panel chi tiết.
+Hệ thống SHALL ưu tiên workflow đánh giá thủ công một phương án tại một thời
+điểm bằng danh sách tiêu chí và panel chi tiết. Tiến độ và bộ lọc SHALL dùng
+toàn bộ criterion universe của selected locked baseline, SHALL reconcile
+complete assessments bằng `criterion_id` và MUST không suy diễn từ sự trùng
+khớp giữa assessment page với comparison page.
 
 #### Scenario: Select a criterion for evaluation
 
 - **WHEN** người dùng chọn một tiêu chí trong danh sách bên trái
 - **THEN** panel bên phải hiển thị yêu cầu cơ sở, phản hồi, thông tin bổ sung, trích dẫn và đánh giá của phương án đang chọn
 
-#### Scenario: Navigate evaluation progress
+#### Scenario: Show selected-option evaluation progress
 
-- **WHEN** người dùng xem danh sách tiêu chí
-- **THEN** mỗi tiêu chí hiển thị nhóm và trạng thái tổng hợp hiện tại
-- **AND** người dùng có thể lọc hoặc quét nhanh tiêu chí chưa đánh giá, không đạt hoặc thiếu bằng chứng
+- **WHEN** người dùng chọn một phương án và complete assessment collection đã tải
+- **THEN** mẫu số tiến độ là toàn bộ tiêu chí của selected locked baseline
+- **AND** hệ thống hiển thị số đã có kết luận, số `Chưa đánh giá`, `Không đạt`
+  và `Chưa đủ bằng chứng` cho option đang chọn
+- **AND** mỗi group SHALL có compact progress summary từ cùng canonical counters
+- **AND** exact presentation density được xác nhận tại P12B1 entry gate, không
+  bị khóa bởi requirement này
+- **AND** chỉ `not_evaluated` được tính là chưa hoàn tất; sáu derived statuses
+  còn lại được tính là đã có kết luận
+
+#### Scenario: Avoid false progress while assessments are unavailable
+
+- **WHEN** complete assessment collection đang loading hoặc error
+- **THEN** hệ thống MUST không hiển thị toàn bộ criterion universe như
+  `Chưa đánh giá`
+- **AND** UI hiển thị loading hoặc error state tương ứng
+
+#### Scenario: Reflect a successful assessment save in progress
+
+- **WHEN** save một assessment thành công và mutation trả assessment đã lưu
+- **THEN** progress model SHALL reconcile assessment đó bằng `criterion_id`
+- **AND** summary của option đang chọn phản ánh kết quả mới mà không cần một
+  aggregate query thứ hai
+
+#### Scenario: Filter evaluation criteria by derived status
+
+- **WHEN** người dùng chọn một filter `all`, `not_evaluated`, `fails` hoặc
+  `insufficient_evidence`
+- **THEN** hệ thống SHALL tạo filtered projection từ cùng P12B1 progress model
+- **AND** projection giữ canonical group/criterion order
+- **AND** mỗi criterion xuất hiện đúng theo derived status chuẩn dùng chung
+
+#### Scenario: Preserve or guard selection when a filter changes
+
+- **WHEN** filter mới vẫn chứa criterion đang chọn
+- **THEN** hệ thống SHALL giữ criterion, filtered page và panel state hiện tại
+- **WHEN** filter mới loại criterion đang chọn nhưng còn kết quả
+- **THEN** hệ thống SHALL đi qua dirty-confirm/pending-block contract hiện có
+- **AND** clean hoặc confirmed navigation chọn first canonical match
+- **AND** cancel giữ filter cũ, criterion cũ và local draft
+- **AND** pending save MUST hard-block filter change
+
+#### Scenario: Show an empty filtered result
+
+- **WHEN** active filter không có criterion phù hợp cho option đang chọn
+- **THEN** hệ thống SHALL giữ selected option, clear criterion selection và đóng
+  detail panel
+- **AND** UI hiển thị empty state theo filter cùng action xóa filter
+
+#### Scenario: Page a filtered projection without changing detail scope
+
+- **WHEN** filtered projection vượt page size hiện có
+- **THEN** hệ thống SHALL paginate client-side theo canonical order
+- **AND** khi chọn criterion, comparison detail SHALL dùng canonical source page
+  của criterion thay vì filtered page number
+
+#### Scenario: Save and continue within the active filter
+
+- **WHEN** `Lưu & tiếp tục` thành công và còn matching criterion sau current
+  canonical position
+- **THEN** hệ thống SHALL chọn matching criterion kế tiếp, kể cả qua
+  group/page boundary
+- **WHEN** save thất bại
+- **THEN** hệ thống MUST giữ filter, page, criterion và local draft hiện tại
 
 ### Requirement: Separate manual evaluation axes
 

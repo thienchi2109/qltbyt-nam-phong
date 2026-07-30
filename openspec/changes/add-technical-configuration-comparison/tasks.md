@@ -57,8 +57,9 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P11D](./implementation-plan.md#phase-p11d---complete-manual-assessment-collection)                 | Thu thập đầy đủ assessment sparse              | P7B2, P11C                 | TC-14, TC-15, TC-20                             |
 | [P12A1](./implementation-plan.md#phase-p12a1---evaluation-core-and-shared-composition)              | Core đánh giá và composition dùng chung        | P10B3, P11D                | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
 | [P12A2](./implementation-plan.md#phase-p12a2---guarded-navigation-and-workspace-activation)         | Kích hoạt workflow và navigation có guard      | P12A1                      | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
-| [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A2                      | TC-14, TC-16                                    |
-| [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B                       | TC-18                                           |
+| [P12B1](./implementation-plan.md#phase-p12b1---selected-option-progress-foundation)                 | Nền tảng tiến độ option đang chọn              | P12A2                      | TC-04, TC-14, TC-16                             |
+| [P12B2](./implementation-plan.md#phase-p12b2---filtered-guarded-navigation)                         | Lọc và điều hướng có guard                     | P12B1                      | TC-04, TC-14, TC-16, TC-20                      |
+| [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B2                      | TC-18                                           |
 | [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C                       | TC-02, TC-20                                    |
 | [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C                       | TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-20 |
 | [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3     | TC-19                                           |
@@ -595,13 +596,44 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
       navigation và shell-integration tests bằng `@testing-library/user-event`;
       defer toàn bộ browser verification sang P13B.
 
-## Phase P12B - Evaluation Progress And Filters
+## Phase P12B1 - Selected-Option Progress Foundation
 
-- [ ] P12B.1 Thêm progress/status summaries theo group và option.
-- [ ] P12B.2 Thêm lọc chưa đánh giá, không đạt và thiếu bằng chứng.
-- [ ] P12B.3 Bảo toàn selection/navigation khi đổi filter.
-- [ ] P12B.4 Không thêm ranking hoặc AI trong phase này.
-- [ ] P12B.5 Viết counter/filter/navigation tests.
+Legacy mapping: hoàn tất P12B.1 và phần counter/cache/integration của P12B.5.
+Filter/navigation và task scope-guard P12B.4 không thuộc leaf này.
+
+- [ ] P12B1.1 Chốt entry gate về group-summary density; recommended default là
+      `đã đánh giá / tổng`, không seven-status breakdown, percentage hoặc card grid.
+- [ ] P12B1.2 Viết RED tests cho full locked-baseline criterion universe,
+      sparse/>100 assessments, bảy derived statuses và reconcile bằng
+      `criterion_id`.
+- [ ] P12B1.3 Thêm selected-option progress model, option/group counters và
+      loading/error/no-comparison-set states; không thêm filter/navigation.
+- [ ] P12B1.4 Adopt assessment trả về sau save vào complete cache theo
+      `criterion_id`, vẫn giữ prefix invalidation và P11D collection contracts.
+- [ ] P12B1.5 Truyền full selected baseline vào evaluation composition và extract
+      summary/model ownership để active workspace không vượt file ceiling.
+- [ ] P12B1.6 Viết counter/cache/workspace integration tests và khóa deploy state:
+      summary đúng, existing navigation/save-next không đổi, không DB/RPC/proxy.
+
+## Phase P12B2 - Filtered Guarded Navigation
+
+Legacy mapping: hoàn tất P12B.2, P12B.3, task scope-guard P12B.4 và phần
+filter/selection/navigation journeys của P12B.5.
+
+- [ ] P12B2.1 Chốt entry gate cho post-save `Lưu`, no-more-match save-next và
+      filter state khi đổi option; dùng recommended defaults trong design nếu
+      product owner phê duyệt.
+- [ ] P12B2.2 Viết RED tests cho exact filtered IDs, canonical order,
+      filtered pagination, canonical comparison-page mapping và empty result.
+- [ ] P12B2.3 Thêm single-select status filters và filtered projection trên
+      P12B1 model, không thay data shape/counter/cache ownership của P12B1.
+- [ ] P12B2.4 Extract navigator owner; bảo toàn selection khi còn visible và
+      reuse dirty-confirm/pending-block khi filter làm đổi selection.
+- [ ] P12B2.5 Thêm filter-aware save-next chỉ sau success qua group/page boundary,
+      giữ state khi failure và xử lý final match theo entry gate đã chốt.
+- [ ] P12B2.6 Viết user-event journeys và focused regressions; không thêm
+      ranking/scoring/AI, DB/RPC/proxy/query contract hoặc browser/accessibility/
+      responsive matrix thuộc P13B.
 
 ## Phase P12C - Optional Reference Ranking
 

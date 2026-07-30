@@ -120,8 +120,9 @@ P8A4 + P8B2 + P11B -> P11C
 P7B2 + P11C     -> P11D
 P10B3 + P11D    -> P12A1
 P12A1           -> P12A2
-P12A2           -> P12B
-P12B            -> P12C
+P12A2           -> P12B1
+P12B1           -> P12B2
+P12B2           -> P12C
 P12C            -> P13A, P13B
 P13A + P13B + P7A2 + P9A3 -> P13C
 ```
@@ -151,35 +152,40 @@ P12A uses the strict delivery order `P12A1 -> P12A2`. P12A1 owns the dormant
 evaluation core, shared criterion composition, local draft state and save
 state machine. P12A2 activates that core inside the existing
 `So sánh & đánh giá` tab, owns guarded navigation and completes the
-user-visible workflow. P12B starts only after P12A2 and remains the owner of
-progress summaries, counters, filters and filtered navigation.
+user-visible workflow. P12B uses the strict deploy-safe order
+`P12A2 -> P12B1 -> P12B2 -> P12C`: P12B1 owns selected-option progress,
+status counters, compact summaries and successful-save cache adoption while
+leaving existing navigation unchanged; P12B2 reuses that model without changing
+its data shape and owns status filters, filtered projection/pagination,
+selection reconciliation, dirty/pending guards and filter-aware save-next.
+P12C cannot start until P12B2 is complete.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                                                          |
-| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                                  |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                               |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                        |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2                                                                             |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                  |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                                              |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                          |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                          |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                |
-| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                        |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                        |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                  |
-| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                         |
-| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B                                                                                                                                |
-| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                    |
-| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B                                                                                                                                |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                         |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                                    |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                          |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P13B |
+| ID    | Requirement                                     | Primary phases                                                                                                                                                 |
+| ----- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                                         |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                                      |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                               |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2, P12B1, P12B2                                                                      |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                         |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                                                     |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                                 |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                                 |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                       |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                               |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                               |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                         |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                                |
+| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B1, P12B2                                                                                                                               |
+| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                           |
+| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                               |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                |
+| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                                           |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                 |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13B |
 
 ## Shared Technical Constraints
 
@@ -2221,7 +2227,8 @@ core, TC-15, TC-16, TC-17, TC-20
 ### Tasks
 
 - [x] Add a criterion list in canonical group/order with only a simple current
-      derived-status badge; counters, summaries and filters remain P12B.
+      derived-status badge; counters/summaries remain P12B1 and filters remain
+      P12B2.
 - [x] Make `TechnicalConfigurationEvaluationPanel` a thin wrapper around the
       shared `TechnicalConfigurationCriterionPanel` for baseline, response,
       supplementary information and evidence.
@@ -2334,41 +2341,158 @@ ranking deferred
 Users can evaluate and save one option criterion at a time without accidental
 draft loss, including deterministic save-next across page boundaries.
 
-## Phase P12B - Evaluation Progress And Filters
+## Phase P12B1 - Selected-Option Progress Foundation
 
 **Depends on:** P12A2
-**Requirements:** TC-14, TC-16  
-**Deploy boundary:** progress and navigation assistance; no ranking
+
+**Requirements:** TC-04, TC-14, TC-16
+
+**Deploy boundary:** correct selected-option progress; existing navigation unchanged
+
+### Entry gate
+
+- Progress is contractually scoped to the currently selected option. An
+  all-option summary requires a separate data-contract discovery leaf and is
+  not part of P12B1.
+- Product owner confirms group-summary density before implementation.
+  Recommended default: compact `đã đánh giá / tổng` only, without seven-status
+  breakdown, percentage or progress-card grid.
 
 ### Planned files
 
+- Create: `src/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress.ts`
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationProgressSummary.tsx`
-- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationFilters.tsx`
-- Create: `src/app/(app)/technical-configurations/__tests__/evaluation-progress-filters.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationCriterionList.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/technical-configuration-evaluation-progress.test.ts`
+- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationAssessments.ts`
+- Modify: focused assessment-hook, evaluation-workspace and test-support files
 
 ### Tasks
 
-- [ ] Add progress counters by group and option.
-- [ ] Add filters for unassessed, non-compliant and insufficient-evidence criteria.
-- [ ] Preserve current option/criterion selection where it remains visible.
-- [ ] Provide deterministic next-criterion behavior under active filters.
-- [ ] Do not add ranking or AI controls.
+- [ ] Start RED with a pure progress-model matrix covering zero/sparse/>100
+      assessments, all seven derived statuses, exact group/option reconciliation
+      and selected-option changes.
+- [ ] Build one immutable progress model from the selected locked-baseline
+      criterion universe and the selected option's complete assessment
+      collection, reconciling only by `criterion_id`.
+- [ ] Count only `not_evaluated` as incomplete; expose option totals, evaluated
+      totals, canonical status counters and compact group totals without adding
+      filter or navigation state.
+- [ ] Render loading/error/no-comparison-set states without false
+      all-unassessed counters.
+- [ ] Adopt a successful mutation result into the complete assessment cache by
+      `criterion_id` before retaining the existing prefix invalidation,
+      cancellation, pagination and exact error contracts.
+- [ ] Pass the full selected locked-baseline snapshot into the active evaluation
+      composition and extract summary/model ownership as needed so
+      `TechnicalConfigurationEvaluationActiveWorkspace.tsx` stays below the
+      450-line ceiling and does not absorb P12B2 navigation logic.
+- [ ] Add no migration, RPC, proxy path, query contract, ranking, scoring or AI.
 
 ### TDD and verification
 
-- Counter tests across all derived statuses.
-- Filter and selection-preservation tests.
-- Navigation tests with group boundaries and empty filter results.
+- RED/GREEN pure model tests for denominator, completion and canonical status
+  counts, including group totals that reconcile exactly to option totals.
+- Hook/cache tests proving immediate save-result adoption plus retained prefix
+  invalidation and P11D complete-collection behavior.
+- Focused React integration tests for selected-option summary,
+  loading/error/no-comparison-set states and unchanged P12A2 navigation.
+- Run the standard TypeScript/React gate order, focused
+  P11A/P11D/P12A1/P12A2 regressions, React Doctor and strict OpenSpec validation.
 
 ### Exit gate
 
-Users can measure and navigate evaluation progress without any ranking decision.
+P12B1 can deploy independently with correct full-universe progress for the
+selected option, immediate post-save summary updates and no filter or
+navigation behavior change.
+
+## Phase P12B2 - Filtered Guarded Navigation
+
+**Depends on:** P12B1
+
+**Requirements:** TC-04, TC-14, TC-16, TC-20
+
+**Deploy boundary:** deterministic filtered navigation; no ranking
+
+### Entry gate
+
+Before implementation, the product owner confirms these UX choices. The listed
+defaults are recommendations, not silently approved normative requirements:
+
+- `Lưu` when the current criterion leaves the active filter. Recommended:
+  preserve the P12A2 current panel, report that it no longer matches and do not
+  auto-navigate.
+- `Lưu & tiếp tục` when no matching criterion remains. Recommended: do not wrap;
+  keep the saved panel and show a no-more-match state.
+- Filter state when changing option. Recommended: retain the single selected
+  filter and resolve the new option's selection deterministically.
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationFilters.tsx`
+- Create or extract:
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationNavigator.ts`
+- Extend:
+  `src/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress.ts`
+  with pure filtered projection/navigation helpers without changing the P12B1
+  progress data shape
+- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationCriterionList.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
+- Reuse unchanged where possible:
+  `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPagination.tsx`
+- Modify: evaluation-workspace test support and focused integration tests
+
+### Tasks
+
+- [ ] Start RED with exact filter-ID, canonical-order, cross-group/page,
+      empty-result, dirty/pending and failed-save journeys.
+- [ ] Add a single-select `all` / `not_evaluated` / `fails` /
+      `insufficient_evidence` filter over the P12B1 full criterion universe.
+- [ ] Preserve canonical group/criterion order, paginate the filtered projection
+      client-side with the existing page size and map criterion detail requests
+      to the canonical comparison page rather than the filtered page number.
+- [ ] Preserve current selection, page and panel state while the criterion
+      remains visible; when a filter change would replace selection, reuse the
+      P12A2 dirty-confirm/pending-block contract and make cancel roll back both
+      filter and selection.
+- [ ] Define deterministic empty-result behavior with the option retained,
+      selection cleared, panel closed and a clear-filter action.
+- [ ] Make `Lưu & tiếp tục` move only after save success to the next matching
+      criterion in canonical order across group/page boundaries; preserve
+      filter/page/criterion/draft on failure and implement the approved entry-gate
+      behavior when no match remains.
+- [ ] Keep existing `Lưu` persistence semantics and implement its approved
+      post-save selection behavior without changing P12B1 counters or cache
+      ownership.
+- [ ] Put navigation state in the extracted navigator owner so the active
+      workspace stays below the file-size ceiling.
+- [ ] Add no migration, RPC, proxy path, query contract, ranking, scoring or AI;
+      browser/accessibility/responsive matrices remain P13B-owned.
+
+### TDD and verification
+
+- Pure projection/navigation tests for exact IDs, order, pagination and
+  canonical comparison-page mapping.
+- React user-event journeys for preserved/hidden selection, dirty cancel/
+  confirm, pending hard-block, empty results, failed save and filter-aware
+  save-next across group/page boundaries.
+- Existing P10B/P11D/P12A1/P12A2 progress/detail/evidence/guard regressions.
+- Run the standard TypeScript/React gate order, React Doctor and strict OpenSpec
+  validation. Do not add or run the P13B browser matrix as P12B2 evidence.
+
+### Exit gate
+
+P12B2 can deploy independently with deterministic filter, selection, pagination
+and save-next behavior under the complete dirty/pending contract; P12B1
+progress remains correct and no ranking/scoring/AI behavior exists.
 
 ## Phase P12C - Optional Reference Ranking
 
-**Depends on:** P12B  
-**Requirements:** TC-18  
+**Depends on:** P12B2
+
+**Requirements:** TC-18
+
 **Deploy boundary:** optional reference-only ranking
 
 ### Planned files
