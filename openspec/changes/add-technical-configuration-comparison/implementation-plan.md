@@ -2083,12 +2083,18 @@ database contracts, but no application proxy or client can call them yet.
 
 - Create: `src/lib/technical-configuration-assessment-rpcs.ts`
 - Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
-- Modify: `src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-assessment-rpc-whitelist.test.ts`
 - Create: `src/app/(app)/technical-configurations/assessment-types.ts`
 - Create: `src/app/(app)/technical-configurations/technical-configuration-assessment-rpc.ts`
 - Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
 - Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationAssessments.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/assessment-contract.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/assessment-hook-contract.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/assessment-test-fixtures.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
 
 ### Tasks
 
@@ -2098,9 +2104,11 @@ database contracts, but no application proxy or client can call them yet.
       notes, audit metadata and row revisions without remapping derived status.
 - [ ] Reuse the P8A4 nullable comparison-set read and the P8B2
       no-write-on-open/first-save orchestration over P8A3 get-or-create; P11C
-      must not introduce a second comparison-set mutation path.
+      must not introduce a second comparison-set mutation path and concurrent
+      first saves must share one in-flight comparison-set acquisition.
 - [ ] Add a bounded assessment query key and a dedicated hook outside the
-      workspace shell.
+      workspace shell; successful writes invalidate every bounded page for the
+      affected comparison set.
 - [ ] Preserve validation, authorization and stale-revision errors for P12A;
       do not add navigation, dirty-draft handling or save controls.
 - [ ] Add no production UI, ranking or AI runtime artifact.
