@@ -230,11 +230,11 @@ Scenario ownership remains explicit:
 - P10B1 owns TC-13-S01, the core-dimension/text portion of TC-13-S02 and the
   TC-17-S01 core text surface.
 - P10B2 owns TC-13-S03; P10B3 owns the evidence-inspection portions of
-  TC-13-S02/S05. P12A is the normative end-to-end completion owner after
-  composing manual assessment; P10B1/P10B3 must not mark those scenarios
-  complete.
+  TC-13-S02/S05. P12A1 owns dormant shared composition and P12A2 is the
+  normative end-to-end completion owner after activating manual assessment;
+  P10B1/P10B3/P12A1 must not mark those scenarios complete.
 - P10A1/P10A2 only preserve structural separation for supplementary
-  information. TC-17-S02 remains P8A3-owned; P10B1/P12A rerun focused
+  information. TC-17-S02 remains P8A3-owned; P10B1/P12A1/P12A2 rerun focused
   regressions and P13B is the canonical regression owner.
 
 ## Required Workflow Before Each Leaf
@@ -558,8 +558,9 @@ Across all three leaves:
 - preserve selected option order and the 1-8 option / 1-100 criterion bounds;
 - keep response authoring, dirty state and save commands in P8B3;
 - lazy-load full evidence only in P10B3 through existing bounded P7/P9 paths;
-- treat P10B3 as the evidence-inspection portion of TC-13-S05; P12A composes
-  manual assessment into the same detail workflow after P11C;
+- treat P10B3 as the evidence-inspection portion of TC-13-S05; P11D completes
+  sparse assessment collection, P12A1 composes the dormant evaluation core and
+  P12A2 activates it in the same detail workflow;
 - introduce no manual assessment persistence, ranking or derived compliance;
 - run focused React, keyboard and responsive-source tests without browser tests;
   P13B remains the browser screenshot/interaction regression owner.

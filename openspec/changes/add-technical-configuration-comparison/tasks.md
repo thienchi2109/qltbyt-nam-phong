@@ -54,8 +54,10 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P11A](./implementation-plan.md#phase-p11a---manual-evaluation-domain-contract)                     | Domain và derived-status contract              | P4, P8A3                   | TC-15, TC-16, TC-19                             |
 | [P11B](./implementation-plan.md#phase-p11b---manual-assessment-persistence-and-security)            | Persistence, RPC DB và security gate           | P11A                       | TC-02, TC-15, TC-18-S06, TC-19, TC-20           |
 | [P11C](./implementation-plan.md#phase-p11c---manual-assessment-client-contract)                     | Proxy, typed client và hook contract           | P8A4, P8B2, P11B gated     | TC-15, TC-19, TC-20                             |
-| [P12A](./implementation-plan.md#phase-p12a---manual-evaluation-save-and-navigation-workflow)        | Nhập đánh giá, save và navigation              | P10B3, P11C                | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
-| [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A                       | TC-14, TC-16                                    |
+| [P11D](./implementation-plan.md#phase-p11d---complete-manual-assessment-collection)                 | Thu thập đầy đủ assessment sparse              | P7B2, P11C                 | TC-14, TC-15, TC-20                             |
+| [P12A1](./implementation-plan.md#phase-p12a1---evaluation-core-and-shared-composition)              | Core đánh giá và composition dùng chung        | P10B3, P11D                | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
+| [P12A2](./implementation-plan.md#phase-p12a2---guarded-navigation-and-workspace-activation)         | Kích hoạt workflow và navigation có guard      | P12A1                      | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20 |
+| [P12B](./implementation-plan.md#phase-p12b---evaluation-progress-and-filters)                       | Tiến độ và bộ lọc đánh giá                     | P12A2                      | TC-14, TC-16                                    |
 | [P12C](./implementation-plan.md#phase-p12c---optional-reference-ranking)                            | Xếp hạng tham khảo                             | P12B                       | TC-18                                           |
 | [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C                       | TC-02, TC-20                                    |
 | [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C                       | TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-20 |
@@ -542,20 +544,54 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
       orchestration trên P8A3 get-or-create; thêm assessment hook ngoài
       workspace shell, dedupe in-flight acquisition cho concurrent first saves
       nhưng không tạo mutation path thứ hai, production controls hoặc navigation.
-- [x] P11C.4 Bảo toàn validation/auth/conflict errors và row revisions cho P12A.
+- [x] P11C.4 Bảo toàn validation/auth/conflict errors và row revisions cho
+      P11D/P12A.
 - [x] P11C.5 Viết manifest, whitelist, wire, adapter và hook contract tests;
       invalidate mọi bounded assessment page sau save và audit không có
       ranking/AI runtime artifact.
 
-## Phase P12A - Manual Evaluation Save And Navigation Workflow
+## Phase P11D - Complete Manual Assessment Collection
 
-- [ ] P12A.1 Thêm criterion list và compose evaluation panel từ P10B
-      `TechnicalConfigurationCriterionPanel`; không duplicate read renderer/query.
-- [ ] P12A.2 Thêm assessment controls cho hai trục, notes, `Lưu` và
-      `Lưu & tiếp tục`.
-- [ ] P12A.3 Giữ current criterion/input khi save thất bại.
-- [ ] P12A.4 Chặn hoặc bảo toàn thay đổi khi chọn tiêu chí/chuyển trang lúc dirty.
-- [ ] P12A.5 Tích hợp evaluation tab và viết workflow/browser tests.
+- [ ] P11D.1 Thêm complete-collection query dưới assessment query prefix hiện
+      có; giữ bounded single-page contract của P11C.
+- [ ] P11D.2 Thu thập các trang ổn định qua RPC hiện có và
+      `collectStableTechnicalConfigurationPages()`, sau đó reconcile theo
+      `criterion_id`; không ghép assessment page N với criterion page N.
+- [ ] P11D.3 Bảo toàn `AbortSignal`, exact wire values, typed errors,
+      no-write-on-open và comparison-set acquisition hiện có.
+- [ ] P11D.4 Khóa zero/sparse/>100 rows, duplicate/incomplete-page protection,
+      prefix invalidation và no-write-on-mount bằng test.
+- [ ] P11D.5 Không thêm migration, RPC/proxy path, UI, navigation, ranking hoặc
+      AI runtime artifact.
+
+## Phase P12A1 - Evaluation Core And Shared Composition
+
+- [ ] P12A1.1 Thêm criterion list theo canonical group/order với simple current
+      status badge; chưa thêm counter, summary hoặc filter.
+- [ ] P12A1.2 Compose evaluation panel từ P10B
+      `TechnicalConfigurationCriterionPanel`; không duplicate read
+      renderer/query/evidence path.
+- [ ] P12A1.3 Thêm assessment controls cho hai trục, notes và derived status từ
+      đúng P11A source of truth.
+- [ ] P12A1.4 Thêm local draft/save state machine, adopt row revision sau save
+      và giữ criterion/input khi validation/auth/conflict/persistence thất bại.
+- [ ] P12A1.5 Viết core/state/composition tests; giữ toàn bộ component/hook
+      dormant, chưa mount vào production UI.
+
+## Phase P12A2 - Guarded Navigation And Workspace Activation
+
+- [ ] P12A2.1 Mount evaluation workspace bằng internal segmented mode
+      `Ma trận` / `Đánh giá` trong tab `So sánh & đánh giá`; không thêm
+      top-level tab thứ sáu.
+- [ ] P12A2.2 Dùng một option selector, canonical criterion page controls và chỉ
+      hai action chính `Lưu`, `Lưu & tiếp tục`.
+- [ ] P12A2.3 `Lưu` giữ criterion; save-next chỉ chuyển sau success, đi qua page
+      boundary và giữ criterion cuối.
+- [ ] P12A2.4 Dùng một dirty-navigation contract cho option/criterion/page/view/
+      tab/dossier: pending hard-block, dirty idle confirm-discard, cancel giữ draft.
+- [ ] P12A2.5 Tích hợp workspace revision đúng ownership; viết workflow,
+      navigation và shell-integration tests bằng `@testing-library/user-event`;
+      defer toàn bộ browser verification sang P13B.
 
 ## Phase P12B - Evaluation Progress And Filters
 
@@ -590,7 +626,7 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
       P10B3 evidence detail states/focus restoration trên desktop/mobile.
 - [ ] P13B.3 Kiểm tra default/editable groups, many reference products và không xuất hiện custom content-column controls.
 - [ ] P13B.4 Kiểm tra concurrent edits và conflict recovery qua hai tab.
-- [ ] P13B.5 Kiểm tra P12A reuse P10B detail và supplementary information vẫn
+- [ ] P13B.5 Kiểm tra P12A1/P12A2 reuse P10B detail và supplementary information vẫn
       non-scoring sau save/save-next/derived status.
 - [ ] P13B.6 Chạy Equipment attachment regression và full relevant React tests.
 - [ ] P13B.7 Chạy full React Doctor command và browser screenshot/interaction verification.

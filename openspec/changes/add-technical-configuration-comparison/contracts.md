@@ -50,12 +50,27 @@
   P7/P9 read paths. It does not preload full evidence or add evidence mutation
   controls.
 - TC-13-S02/S05 remain staged across phases: P10B1 owns the reusable full-text
-  detail, P10B3 extends that detail with evidence inspection, and P12A composes
-  manual assessment after P11A-P11C supply the domain, persistence and typed
-  client contracts.
-- P12A's evaluation panel must be a thin composition wrapper around the P10B
+  detail, P10B3 extends that detail with evidence inspection, P11D completes
+  sparse assessment collection after P11A-P11C supply the domain, persistence
+  and typed client contracts, P12A1 composes the dormant evaluation core, and
+  P12A2 activates the end-to-end workflow.
+- P11D must collect every bounded assessment page through the existing P11C RPC
+  path and reconcile by `criterion_id`. It must not assume assessment-page and
+  criterion-page alignment or introduce a database, RPC, proxy or persistence
+  contract.
+- P12A1's evaluation panel must be a thin composition wrapper around the P10B
   criterion detail plus assessment controls. It must not duplicate
   baseline/response/supplementary/evidence rendering, query keys or fetch paths.
+- P12A1 remains dormant. P12A2 owns the internal `Ma trận` / `Đánh giá` mode,
+  one-option selection, save/save-next activation and guarded navigation.
+- P12A2 exposes only `Lưu` and `Lưu & tiếp tục` as primary assessment actions;
+  it must not add another top-level tab, duplicate toolbar actions, progress
+  controls, filters or ranking.
+- P12A2 workflow verification uses focused React integration tests with
+  `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
+  screenshot, interaction, accessibility and the canonical full regression
+  matrix. P12A2/P12B retain focused React/source regressions required by their
+  own dependency and exit gates.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
@@ -253,6 +268,7 @@ that introduces an RPC also owns allowlisting only the names introduced by that
 leaf. P10A1 and P11B create database functions without proxy exposure; P10A2
 and P11C own their respective RPC-name manifests and allowlist entries only
 after the database contracts are applied and gated.
+P11D, P12A1 and P12A2 introduce no RPC name or allowlist entry.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -357,6 +373,11 @@ updated_by, updated_at }`. Both axis fields are nullable; `notes` is returned
   bypass the P8A3/P8A4 comparison-set contracts. P11C reuses the existing
   nullable read and get-or-create client paths before listing or creating the
   first assessment.
+- P11D complete collection repeatedly calls only the existing bounded P11C list
+  adapter, uses the stable shared page collector and returns one map keyed by
+  `criterion_id`. Zero rows, sparse rows and more than one hundred rows are
+  valid. Duplicate or incomplete pages fail deterministically rather than
+  returning a partial map.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -561,7 +582,7 @@ that client state for refresh and re-preview.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
-P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A and P11C create no
+P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A, P11C, P11D, P12A1 and P12A2 create no
 technical-configuration persistence. P6A and P6B also create no
 technical-configuration persistence; P6A lands after P5D, P6B follows it, and
 both land before the first document UI in P7B2. Migration timestamps are
