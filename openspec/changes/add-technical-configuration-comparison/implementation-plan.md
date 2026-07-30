@@ -2326,7 +2326,7 @@ ranking deferred
 - Defer all real-browser, desktop/mobile screenshot, interaction,
   accessibility and the canonical full regression matrix to P13B; retain
   focused P10B3/P11D/P12A1 regressions in P12A2.
-- Implementation evidence on 2026-07-30: 16 focused Vitest files / 134 tests
+- Implementation evidence on 2026-07-30: 16 focused Vitest files / 135 tests
   pass across P10B, P11D, P12A1 and P12A2; React Doctor reports 100/100.
 
 ### Exit gate

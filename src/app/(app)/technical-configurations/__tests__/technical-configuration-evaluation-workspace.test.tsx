@@ -227,7 +227,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     await user.type(screen.getByLabelText("Ghi chú"), "Qua trang kế")
     await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
 
-    await waitFor(() => expect(screen.getByText("Trang 2/2")).toBeInTheDocument())
+    expect(await screen.findByText("Trang 2/2")).toBeInTheDocument()
     expect(getCriterion("criterion-3")).toHaveAttribute("data-criterion-id", "criterion-3")
     expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true")
 
@@ -280,7 +280,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }))
 
     expect(mocks.discard).toHaveBeenCalledTimes(1)
-    await waitFor(() => expect(screen.getByText("Trang 2/2")).toBeInTheDocument())
+    expect(await screen.findByText("Trang 2/2")).toBeInTheDocument()
     expect(getCriterion("criterion-3")).toHaveAttribute("data-criterion-id", "criterion-3")
   })
 

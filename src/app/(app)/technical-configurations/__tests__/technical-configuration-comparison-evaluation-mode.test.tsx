@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { TechnicalConfigurationDossierWire } from "../types"
 import { TechnicalConfigurationComparisonTab } from "../_components/comparison/TechnicalConfigurationComparisonTab"
+import type { TechnicalConfigurationCriterionDetail } from "../_components/comparison/TechnicalConfigurationCriterionPanel"
 
 const mocks = vi.hoisted(() => ({
   onDirtyChange: vi.fn(),
@@ -52,11 +53,46 @@ vi.mock("../_components/comparison/TechnicalConfigurationMatrixToolbar", () => (
 }))
 
 vi.mock("../_components/comparison/TechnicalConfigurationMatrix", () => ({
-  TechnicalConfigurationMatrix: () => <div>Matrix view</div>,
+  TechnicalConfigurationMatrix: ({
+    onOpenDetail,
+  }: {
+    onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
+  }) => (
+    <div>
+      <span>Matrix view</span>
+      <button
+        type="button"
+        onClick={() =>
+          onOpenDetail({
+            criterionCode: "TS-01",
+            criterionTitle: "Cấu hình chung",
+            optionLabel: null,
+            requirementText: "Yêu cầu cấu hình.",
+            responseText: null,
+            supplementaryInformation: null,
+            evidence: {
+              documentCount: 0,
+              citationCount: 0,
+              hasEvidence: false,
+            },
+            evidenceTarget: {
+              kind: "baseline",
+              baselineVersionId: "baseline-1",
+              criterionId: "criterion-1",
+            },
+          })
+        }
+      >
+        Mở chi tiết ma trận
+      </button>
+    </div>
+  ),
 }))
 
 vi.mock("../_components/comparison/TechnicalConfigurationCriterionPanel", () => ({
-  TechnicalConfigurationCriterionPanel: () => null,
+  TechnicalConfigurationCriterionPanel: ({ open }: { open: boolean }) => (
+    <div data-testid="matrix-detail-state">{open ? "open" : "closed"}</div>
+  ),
 }))
 
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationWorkspace", () => ({
@@ -147,5 +183,18 @@ describe("P12A2 comparison evaluation mode", () => {
     await waitFor(() => expect(screen.getByRole("tab", { name: "Ma trận" })).toBeDisabled())
     expect(mocks.onNavigationBlockedChange).toHaveBeenLastCalledWith(true)
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+  })
+
+  it("does not reopen stale matrix detail after returning from evaluation mode", async () => {
+    const user = userEvent.setup()
+    renderComparisonTab()
+
+    await user.click(screen.getByRole("button", { name: "Mở chi tiết ma trận" }))
+    expect(screen.getByTestId("matrix-detail-state")).toHaveTextContent("open")
+
+    await user.click(screen.getByRole("tab", { name: "Đánh giá" }))
+    await user.click(screen.getByRole("tab", { name: "Ma trận" }))
+
+    expect(screen.getByTestId("matrix-detail-state")).toHaveTextContent("closed")
   })
 })

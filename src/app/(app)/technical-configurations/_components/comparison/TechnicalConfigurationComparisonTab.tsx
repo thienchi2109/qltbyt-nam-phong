@@ -74,7 +74,10 @@ export function TechnicalConfigurationComparisonTab({
       if ((nextMode !== "matrix" && nextMode !== "evaluation") || nextMode === activeMode) {
         return
       }
-      requestNavigation(() => setActiveMode(nextMode))
+      requestNavigation(() => {
+        setActiveMode(nextMode)
+        if (activeMode === "matrix") setDetail(null)
+      })
     },
     [activeMode, requestNavigation]
   )

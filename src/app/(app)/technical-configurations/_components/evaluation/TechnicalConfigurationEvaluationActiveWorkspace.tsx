@@ -45,6 +45,16 @@ function toSaveErrorMessage(error: unknown): string {
   return error instanceof Error && error.message ? error.message : "Không thể lưu đánh giá."
 }
 
+function resolveCriterionId(
+  criteria: TechnicalConfigurationComparisonCriterionRow[],
+  requestedCriterionId: string | null
+): string | null {
+  if (requestedCriterionId && criteria.some((row) => row.criterion.id === requestedCriterionId)) {
+    return requestedCriterionId
+  }
+  return criteria[0]?.criterion.id ?? null
+}
+
 /** Owns the selected option, page, criterion and P12A1 draft for evaluation mode. */
 export function TechnicalConfigurationEvaluationActiveWorkspace({
   dossier,
@@ -69,10 +79,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   })
   const result = comparison.comparisonQuery.data
   const criteria = result?.data.criteria ?? EMPTY_CRITERIA
-  const criterionId =
-    requestedCriterionId && criteria.some((row) => row.criterion.id === requestedCriterionId)
-      ? requestedCriterionId
-      : (criteria[0]?.criterion.id ?? null)
+  const criterionId = resolveCriterionId(criteria, requestedCriterionId)
   const currentRow = criteria.find((row) => row.criterion.id === criterionId) ?? null
   const evaluation = useTechnicalConfigurationEvaluationDraft({
     optionId: activeSelectedOptionId,
