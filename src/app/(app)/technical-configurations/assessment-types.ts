@@ -3,6 +3,8 @@ import type {
   TechnicalConfigurationTechnicalAxis,
 } from "@/lib/technical-configuration-evaluation"
 
+import type { TechnicalConfigurationComparisonSetWire } from "./supplier-option-types"
+
 export interface TechnicalConfigurationAssessmentWire {
   id: string
   comparison_set_id: string
@@ -51,4 +53,9 @@ export interface TechnicalConfigurationAssessmentUpsertInput {
   notes: string | null
   expectedRevision: number
   expectedDossierRevision: number
+}
+
+export interface TechnicalConfigurationAssessmentSaveResult {
+  comparisonSet: TechnicalConfigurationComparisonSetWire
+  assessment: TechnicalConfigurationAssessmentWire
 }

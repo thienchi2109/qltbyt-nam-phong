@@ -566,16 +566,16 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P12A1 - Evaluation Core And Shared Composition
 
-- [ ] P12A1.1 Thêm criterion list theo canonical group/order với simple current
+- [x] P12A1.1 Thêm criterion list theo canonical group/order với simple current
       status badge; chưa thêm counter, summary hoặc filter.
-- [ ] P12A1.2 Compose evaluation panel từ P10B
+- [x] P12A1.2 Compose evaluation panel từ P10B
       `TechnicalConfigurationCriterionPanel`; không duplicate read
       renderer/query/evidence path.
-- [ ] P12A1.3 Thêm assessment controls cho hai trục, notes và derived status từ
+- [x] P12A1.3 Thêm assessment controls cho hai trục, notes và derived status từ
       đúng P11A source of truth.
-- [ ] P12A1.4 Thêm local draft/save state machine, adopt row revision sau save
+- [x] P12A1.4 Thêm local draft/save state machine, adopt row revision sau save
       và giữ criterion/input khi validation/auth/conflict/persistence thất bại.
-- [ ] P12A1.5 Viết core/state/composition tests; giữ toàn bộ component/hook
+- [x] P12A1.5 Viết core/state/composition tests; giữ toàn bộ component/hook
       dormant, chưa mount vào production UI.
 
 ## Phase P12A2 - Guarded Navigation And Workspace Activation
