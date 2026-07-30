@@ -58,6 +58,28 @@ export function technicalConfigurationOptionResponsesQueryKey(
   return ["technical-configurations", "option-responses", optionId, baselineVersionId] as const
 }
 
+/** Builds the cache-key prefix for every manual-assessment page in one comparison set. */
+export function technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId: string) {
+  return ["technical-configurations", "assessments", comparisonSetId] as const
+}
+
+/** Builds the cache key for one bounded manual-assessment page. */
+export function technicalConfigurationAssessmentsQueryKey({
+  comparisonSetId,
+  page,
+  pageSize,
+}: {
+  comparisonSetId: string
+  page: number
+  pageSize: number
+}) {
+  return [
+    ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+    page,
+    pageSize,
+  ] as const
+}
+
 /** Builds the ordered cache key for one bounded comparison page. */
 export function technicalConfigurationComparisonQueryKey({
   baselineVersionId,

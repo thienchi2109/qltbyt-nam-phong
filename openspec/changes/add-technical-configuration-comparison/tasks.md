@@ -535,16 +535,17 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P11C - Manual Assessment Client Contract
 
-- [ ] P11C.1 Thêm dedicated RPC manifest và proxy allowlist sau khi P11B đã
+- [x] P11C.1 Thêm dedicated RPC manifest và proxy allowlist sau khi P11B đã
       merged/applied/gated.
-- [ ] P11C.2 Thêm typed wire/request contracts, RPC adapter và bounded query key.
-- [ ] P11C.3 Reuse P8A4 nullable read và P8B2 no-write-on-open/first-save
+- [x] P11C.2 Thêm typed wire/request contracts, RPC adapter và bounded query key.
+- [x] P11C.3 Reuse P8A4 nullable read và P8B2 no-write-on-open/first-save
       orchestration trên P8A3 get-or-create; thêm assessment hook ngoài
-      workspace shell nhưng không tạo mutation path thứ hai, production controls
-      hoặc navigation.
-- [ ] P11C.4 Bảo toàn validation/auth/conflict errors và row revisions cho P12A.
-- [ ] P11C.5 Viết manifest, whitelist, wire, adapter và hook contract tests;
-      audit không có ranking/AI runtime artifact.
+      workspace shell, dedupe in-flight acquisition cho concurrent first saves
+      nhưng không tạo mutation path thứ hai, production controls hoặc navigation.
+- [x] P11C.4 Bảo toàn validation/auth/conflict errors và row revisions cho P12A.
+- [x] P11C.5 Viết manifest, whitelist, wire, adapter và hook contract tests;
+      invalidate mọi bounded assessment page sau save và audit không có
+      ranking/AI runtime artifact.
 
 ## Phase P12A - Manual Evaluation Save And Navigation Workflow
 
