@@ -16,6 +16,7 @@ import {
 import { useTechnicalConfigurationComparison } from "../../_hooks/useTechnicalConfigurationComparison"
 import { useTechnicalConfigurationEvaluationDraft } from "../../_hooks/useTechnicalConfigurationEvaluationDraft"
 import { useTechnicalConfigurationGuardedNavigation } from "../../_hooks/useTechnicalConfigurationGuardedNavigation"
+import type { TechnicalConfigurationBaselineGroupWire } from "../../baseline-types"
 import { TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE } from "../../comparison-matrix-constants"
 import type {
   TechnicalConfigurationComparisonCriterionRow,
@@ -26,13 +27,20 @@ import { toTechnicalConfigurationComparisonOption } from "../../technical-config
 import type { TechnicalConfigurationDossierWire } from "../../types"
 import { TechnicalConfigurationCriterionPagination } from "../comparison/TechnicalConfigurationCriterionPagination"
 import { createTechnicalConfigurationOptionCriterionDetail } from "../comparison/technical-configuration-criterion-detail"
+import { buildTechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
 import { TechnicalConfigurationCriterionList } from "./TechnicalConfigurationCriterionList"
 import { TechnicalConfigurationEvaluationLoadError } from "./TechnicalConfigurationEvaluationLoadError"
 import { TechnicalConfigurationEvaluationPanel } from "./TechnicalConfigurationEvaluationPanel"
+import { TechnicalConfigurationProgressSummary } from "./TechnicalConfigurationProgressSummary"
+import {
+  resolveTechnicalConfigurationCriterionId,
+  toTechnicalConfigurationSaveErrorMessage,
+} from "./TechnicalConfigurationEvaluationWorkspaceUtils"
 
 type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
   dossier: TechnicalConfigurationDossierWire
   baselineVersionId: string
+  baselineGroups: TechnicalConfigurationBaselineGroupWire[]
   options: TechnicalConfigurationOptionWire[]
   onDirtyChange: (dirty: boolean) => void
   onNavigationBlockedChange: (blocked: boolean) => void
@@ -41,24 +49,11 @@ type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
 
 const EMPTY_CRITERIA: TechnicalConfigurationComparisonCriterionRow[] = []
 
-function toSaveErrorMessage(error: unknown): string {
-  return error instanceof Error && error.message ? error.message : "Không thể lưu đánh giá."
-}
-
-function resolveCriterionId(
-  criteria: TechnicalConfigurationComparisonCriterionRow[],
-  requestedCriterionId: string | null
-): string | null {
-  if (requestedCriterionId && criteria.some((row) => row.criterion.id === requestedCriterionId)) {
-    return requestedCriterionId
-  }
-  return criteria[0]?.criterion.id ?? null
-}
-
 /** Owns the selected option, page, criterion and P12A1 draft for evaluation mode. */
 export function TechnicalConfigurationEvaluationActiveWorkspace({
   dossier,
   baselineVersionId,
+  baselineGroups,
   options,
   onDirtyChange,
   onNavigationBlockedChange,
@@ -79,7 +74,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   })
   const result = comparison.comparisonQuery.data
   const criteria = result?.data.criteria ?? EMPTY_CRITERIA
-  const criterionId = resolveCriterionId(criteria, requestedCriterionId)
+  const criterionId = resolveTechnicalConfigurationCriterionId(criteria, requestedCriterionId)
   const currentRow = criteria.find((row) => row.criterion.id === criterionId) ?? null
   const evaluation = useTechnicalConfigurationEvaluationDraft({
     optionId: activeSelectedOptionId,
@@ -115,6 +110,14 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   const evaluationReadError = isComparisonSetQueryError
     ? comparisonSetQueryError
     : assessmentQueryError
+  const progress = React.useMemo(
+    () =>
+      buildTechnicalConfigurationEvaluationProgress({
+        groups: baselineGroups,
+        assessments: Object.values(evaluation.assessmentsByCriterionId),
+      }),
+    [baselineGroups, evaluation.assessmentsByCriterionId]
+  )
 
   React.useEffect(() => {
     // react-doctor-disable-next-line react-doctor/no-pass-live-state-to-parent, react-doctor/no-pass-data-to-parent, react-doctor/no-prop-callback-in-effect -- P12A2 exposes one criterion-local draft to every enclosing navigation boundary.
@@ -249,6 +252,12 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         </Select>
       </div>
 
+      <TechnicalConfigurationProgressSummary
+        progress={progress}
+        isLoading={comparisonSetQuery.isLoading || assessmentQuery.isLoading}
+        isError={hasEvaluationReadError}
+      />
+
       {comparison.comparisonQuery.isLoading ? (
         <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -303,7 +312,9 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         onNotesChange={evaluation.setNotes}
         disabled={Boolean(dossier.archived_at)}
         loading={!evaluation.isReady}
-        errorMessage={evaluation.error ? toSaveErrorMessage(evaluation.error) : null}
+        errorMessage={
+          evaluation.error ? toTechnicalConfigurationSaveErrorMessage(evaluation.error) : null
+        }
         actions={
           <>
             <Button

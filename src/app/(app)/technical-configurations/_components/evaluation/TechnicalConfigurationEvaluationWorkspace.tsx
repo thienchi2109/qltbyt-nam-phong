@@ -128,6 +128,7 @@ export function TechnicalConfigurationEvaluationWorkspace({
     <TechnicalConfigurationEvaluationActiveWorkspace
       dossier={dossier}
       baselineVersionId={selection.selectedVersion.id}
+      baselineGroups={selection.selectedVersion.groups}
       options={options}
       onDirtyChange={setIsDirty}
       onNavigationBlockedChange={setIsNavigationBlocked}

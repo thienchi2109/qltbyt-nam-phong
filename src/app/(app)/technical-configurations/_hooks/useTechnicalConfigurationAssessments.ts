@@ -140,6 +140,24 @@ function acquireAssessmentComparisonSet({
   return acquisition
 }
 
+function adoptCompleteAssessment(
+  queryClient: QueryClient,
+  comparisonSetId: string,
+  assessment: TechnicalConfigurationAssessmentWire
+): void {
+  const completeQueryKey = [
+    ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
+    "complete",
+  ] as const
+  queryClient.setQueryData<Readonly<Record<string, TechnicalConfigurationAssessmentWire>>>(
+    completeQueryKey,
+    (current = {}) => ({
+      ...current,
+      [assessment.criterion_id]: assessment,
+    })
+  )
+}
+
 /** Exposes the dormant P11C assessment data contract without mounting assessment UI. */
 export function useTechnicalConfigurationAssessments(
   input: UseTechnicalConfigurationAssessmentsInput
@@ -243,7 +261,8 @@ export function useTechnicalConfigurationAssessments(
 
       return { comparisonSet, assessment: response.data }
     },
-    onSuccess: async ({ comparisonSet }) => {
+    onSuccess: async ({ comparisonSet, assessment }) => {
+      adoptCompleteAssessment(queryClient, comparisonSet.id, assessment)
       await queryClient.invalidateQueries({
         queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
       })

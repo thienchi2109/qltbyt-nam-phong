@@ -5,9 +5,12 @@ import userEvent from "@testing-library/user-event"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationEvaluationWorkspace } from "../_components/evaluation/TechnicalConfigurationEvaluationWorkspace"
+import type { TechnicalConfigurationAssessmentWire } from "../assessment-types"
 import {
+  createBaselineGroups,
   createComparisonResult,
   createDraft,
+  createEvaluationAssessment,
   createOption,
   dossier,
   getCriterion,
@@ -15,7 +18,12 @@ import {
 } from "./technical-configuration-evaluation-workspace.test-support"
 
 const mocks = vi.hoisted(() => ({
+  assessmentsByOptionId: {} as Record<
+    string,
+    Readonly<Record<string, TechnicalConfigurationAssessmentWire>>
+  >,
   assessmentQueryError: null as Error | null,
+  assessmentQueryLoading: false,
   comparisonSetQueryError: null as Error | null,
   discard: vi.fn(),
   refetchAssessment: vi.fn(),
@@ -32,7 +40,7 @@ vi.mock("../_hooks/useTechnicalConfigurationBaselineVersionSelection", () => ({
       version_number: 2,
       status: "locked",
       revision: 4,
-      groups: [],
+      groups: createBaselineGroups(),
     },
     synchronizeVersion: mocks.synchronizeVersion,
     versionState: {
@@ -151,9 +159,9 @@ vi.mock("../_hooks/useTechnicalConfigurationEvaluationDraft", async () => {
       }, [baselineVersionId, criterionId, onDossierRevisionChange, optionId])
 
       return {
-        assessmentsByCriterionId: {},
+        assessmentsByCriterionId: mocks.assessmentsByOptionId[optionId] ?? {},
         assessmentQuery: {
-          isLoading: false,
+          isLoading: mocks.assessmentQueryLoading,
           isError: mocks.assessmentQueryError !== null,
           error: mocks.assessmentQueryError,
           refetch: mocks.refetchAssessment,
@@ -202,9 +210,46 @@ afterAll(() => {
 describe("P12A2 technical configuration evaluation workspace", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.assessmentsByOptionId = {
+      "option-1": {
+        "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "meets", "complete"),
+        "criterion-2": createEvaluationAssessment("option-1", "criterion-2", "fails", null),
+      },
+      "option-2": {
+        "criterion-3": createEvaluationAssessment("option-2", "criterion-3", "exceeds", "complete"),
+      },
+    }
     mocks.assessmentQueryError = null
+    mocks.assessmentQueryLoading = false
     mocks.comparisonSetQueryError = null
     mocks.save.mockResolvedValue({})
+  })
+
+  it("renders progress only for the selected option across the complete baseline universe", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    expect(await screen.findByText("Đã đánh giá 2 / 3 tiêu chí")).toBeInTheDocument()
+    expect(screen.getByText("2 / 2")).toBeInTheDocument()
+    expect(screen.getByText("0 / 1")).toBeInTheDocument()
+
+    await user.click(screen.getByLabelText("Phương án đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Nhà cung cấp B · Model B" }))
+
+    expect(await screen.findByText("Đã đánh giá 1 / 3 tiêu chí")).toBeInTheDocument()
+    expect(screen.getByText("0 / 2")).toBeInTheDocument()
+    expect(screen.getByText("1 / 1")).toBeInTheDocument()
+    expect(screen.queryByText("Đã đánh giá 2 / 3 tiêu chí")).not.toBeInTheDocument()
+  })
+
+  it("does not render false progress counters while complete assessments are loading", () => {
+    mocks.assessmentQueryLoading = true
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    expect(screen.getByText("Đang tải tiến độ đánh giá...")).toBeInTheDocument()
+    expect(screen.queryByText(/Đã đánh giá \d+ \/ 3 tiêu chí/)).not.toBeInTheDocument()
   })
 
   it("keeps Lưu on the criterion and advances Lưu & tiếp tục across page boundaries", async () => {
@@ -320,6 +365,8 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
     expect(await screen.findByText("Không thể tải dữ liệu đánh giá")).toBeInTheDocument()
+    expect(screen.getByText("Chưa thể tính tiến độ đánh giá.")).toBeInTheDocument()
+    expect(screen.queryByText(/Đã đánh giá \d+ \/ 3 tiêu chí/)).not.toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Thử lại" }))
 
     expect(mocks.refetchAssessment).toHaveBeenCalledTimes(1)

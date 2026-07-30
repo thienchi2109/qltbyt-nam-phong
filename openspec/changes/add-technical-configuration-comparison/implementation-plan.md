@@ -2370,30 +2370,30 @@ draft loss, including deterministic save-next across page boundaries.
 
 ### Tasks
 
-- [ ] Start RED with a pure progress-model matrix covering zero/sparse/>100
+- [x] Start RED with a pure progress-model matrix covering zero/sparse/>100
       assessments, every derived status, repeated/mixed status distributions,
       exact group/option reconciliation and selected-option changes.
-- [ ] Build one immutable progress model from
+- [x] Build one immutable progress model from
       `useTechnicalConfigurationBaselineVersionSelection().selectedVersion`,
       whose `TechnicalConfigurationBaselineDraftWire.groups[].criteria[]`
       contains the complete ordered criterion universe for one locked version,
       and the selected option's complete assessment collection. Reconcile only
       by `criterion_id`; baseline-history pagination is across versions, not
       criteria.
-- [ ] Count only `not_evaluated` as incomplete; expose option totals, evaluated
+- [x] Count only `not_evaluated` as incomplete; expose option totals, evaluated
       totals, canonical status counters and compact group totals without adding
       filter or navigation state.
-- [ ] Render loading/error/no-comparison-set states without false
+- [x] Render loading/error/no-comparison-set states without false
       all-unassessed counters.
-- [ ] Adopt a successful mutation result into the complete assessment cache by
+- [x] Adopt a successful mutation result into the complete assessment cache by
       `criterion_id` before retaining the existing prefix invalidation,
       cancellation, pagination and exact error contracts.
-- [ ] Pass the complete `selectedVersion.groups[].criteria[]` snapshot into the
+- [x] Pass the complete `selectedVersion.groups[].criteria[]` snapshot into the
       active evaluation composition and extract summary/model ownership as
       needed so
       `TechnicalConfigurationEvaluationActiveWorkspace.tsx` stays below the
       450-line ceiling and does not absorb P12B2 navigation logic.
-- [ ] Add no migration, RPC, proxy path, query contract, ranking, scoring or AI.
+- [x] Add no migration, RPC, proxy path, query contract, ranking, scoring or AI.
 
 ### TDD and verification
 

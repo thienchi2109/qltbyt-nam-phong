@@ -601,22 +601,48 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 Legacy mapping: hoàn tất P12B.1 và phần counter/cache/integration của P12B.5.
 Filter/navigation và task scope-guard P12B.4 không thuộc leaf này.
 
-- [ ] P12B1.1 Chốt entry gate về group-summary density; recommended default là
+- [x] P12B1.1 Chốt entry gate về group-summary density; recommended default là
       `đã đánh giá / tổng`, không seven-status breakdown, percentage hoặc card grid.
-- [ ] P12B1.2 Viết RED tests dùng complete
+- [x] P12B1.2 Viết RED tests dùng complete
       `selectedVersion.groups[].criteria[]`, sparse/>100 assessments, đủ bảy
       derived statuses với repeated/mixed distributions, group/option totals
       reconcile và mỗi criterion đóng góp đúng một status theo `criterion_id`.
-- [ ] P12B1.3 Thêm selected-option progress model, option/group counters và
+- [x] P12B1.3 Thêm selected-option progress model, option/group counters và
       loading/error/no-comparison-set states; không thêm filter/navigation.
-- [ ] P12B1.4 Adopt assessment trả về sau save vào complete cache theo
+- [x] P12B1.4 Adopt assessment trả về sau save vào complete cache theo
       `criterion_id`, vẫn giữ prefix invalidation và P11D collection contracts.
-- [ ] P12B1.5 Truyền complete `selectedVersion.groups[].criteria[]` từ
+- [x] P12B1.5 Truyền complete `selectedVersion.groups[].criteria[]` từ
       `useTechnicalConfigurationBaselineVersionSelection` vào evaluation
       composition và extract summary/model ownership để active workspace không
       vượt file ceiling; không lấy denominator từ bounded comparison page.
-- [ ] P12B1.6 Viết counter/cache/workspace integration tests và khóa deploy state:
+- [x] P12B1.6 Viết counter/cache/workspace integration tests và khóa deploy state:
       summary đúng, existing navigation/save-next không đổi, không DB/RPC/proxy.
+
+### Evidence P12B1 - 2026-07-30
+
+- RED:
+  - pure progress tests fail vì production model chưa tồn tại;
+  - cache contract fail vì complete cache còn assessment revision 2 thay vì
+    mutation result revision 3;
+  - workspace integration fail vì selected-option summary và loading/error
+    progress states chưa được compose.
+- GREEN:
+  - pure model dùng complete `selectedVersion.groups[].criteria[]`, reconcile
+    assessment bằng `criterion_id`, cover zero/sparse/repeated/mixed/>100 và đủ
+    bảy derived statuses;
+  - summary chỉ hiện option đang chọn và compact group `đã đánh giá / tổng`,
+    không percentage, progressbar, card grid hoặc seven-status breakdown;
+  - successful save publish assessment vào complete cache trước prefix
+    invalidation; P11D consumer test giữ refetch pending để chứng minh immediate
+    adoption;
+  - `TechnicalConfigurationEvaluationActiveWorkspace.tsx` còn 347 dòng; không
+    đổi navigation, save-next, dirty/pending guards, DB/RPC/proxy/query contract.
+- Verification:
+  - `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: pass;
+  - focused P11D/P12A1/P12A2/P12B1: 11 files, 100 tests pass;
+  - React Doctor changed-scope: 100/100, no issues;
+  - `openspec validate add-technical-configuration-comparison --type change
+--strict --no-interactive`: valid.
 
 ## Phase P12B2 - Filtered Guarded Navigation
 
