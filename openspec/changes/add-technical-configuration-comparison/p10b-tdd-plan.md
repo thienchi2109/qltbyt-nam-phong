@@ -8,7 +8,8 @@ P10B ships as three sequential, deploy-safe UI leaves:
 P3A + P10A2 -> P10B1
 P10B1       -> P10B2
 P10B2       -> P10B3
-P10B3 + P11C -> P12A
+P7B2 + P11C -> P11D
+P10B3 + P11D -> P12A1 -> P12A2
 ```
 
 Each leaf starts from updated `main` after its dependency is merged. Do not
@@ -204,7 +205,8 @@ Estimated test additions: 450-650 lines across 1-2 files.
 ### P10B1 Exit Gate
 
 - TC-13-S01, the TC-13-S02 core-dimension/text gate and TC-17-S01 React/source
-  gates pass; P10B3/P12A remain responsible for evidence/assessment composition.
+  gates pass; P10B3/P12A1/P12A2 remain responsible for
+  evidence/assessment composition and activation.
 - TC-17-S02 regression proves supplementary information remains non-scoring.
 - Ordered query and P8 supplier-option regressions pass.
 - The shell remains composition-only and below the extraction threshold.
@@ -332,8 +334,9 @@ Estimated test additions: 300-500 lines across 1-2 files.
 ### P10B3 Exit Gate
 
 - The TC-13-S02/S05 evidence-inspection gates and rerun TC-13-S01/S03,
-  TC-17-S01/S02 gates pass; P12A remains responsible for composing manual
-  assessment into the detail workflow.
+  TC-17-S01/S02 gates pass; P11D remains responsible for complete sparse
+  assessment collection, P12A1 for dormant composition and P12A2 for workflow
+  activation.
 - Existing P7/P9 document contract/delegation tests remain green.
 - One comparison page plus at most one active detail read is observed; no N+1 or
   per-option comparison fetch path is introduced.

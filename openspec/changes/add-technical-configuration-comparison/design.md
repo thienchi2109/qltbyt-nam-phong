@@ -294,8 +294,12 @@ ba leaf P10B sở hữu bề mặt read/inspect nhiều phương án theo các b
 
 P10B1 hoàn tất core-dimension/text portion của TC-13-S02. P10B3 mở rộng đúng
 detail panel đó với evidence-inspection cho TC-13-S02/S05 nhưng không tạo
-assessment data hoặc control. P12A, sau P11A-P11C, ghép manual assessment vào
-cùng detail workflow để hoàn tất phần `đánh giá` của hai scenario.
+assessment data hoặc control. P11D hoàn thiện read model assessment sparse trên
+bounded-list contract của P11C: thu thập đủ các trang ổn định rồi reconcile theo
+`criterion_id`, tuyệt đối không ghép assessment page N với criterion page N.
+P12A1, sau P11D, ghép manual assessment vào cùng detail workflow ở dạng core
+dormant; P12A2 mới kích hoạt workflow để hoàn tất phần `đánh giá` của hai
+scenario.
 
 Toàn bề mặt giữ các nguyên tắc:
 
@@ -323,15 +327,40 @@ và locked baseline vẫn đọc được; read path không tạo comparison set
 revision và không đổi audit metadata. P10A2 không sửa behavior của shared
 `callTechnicalConfigurationRpc` hoặc các consumer P8/P9.
 
-P12A không dựng lại read-only detail. `TechnicalConfigurationEvaluationPanel`
-chỉ compose `TechnicalConfigurationCriterionPanel` đã được P10B1/P10B3 hoàn
-thiện với assessment controls của P12A; không thêm renderer, query key hoặc
-evidence fetch path thứ hai.
+P12A1 không dựng lại read-only detail.
+`TechnicalConfigurationEvaluationPanel` chỉ compose
+`TechnicalConfigurationCriterionPanel` đã được P10B1/P10B3 hoàn thiện với
+assessment controls của P12A1; không thêm renderer, query key hoặc evidence
+fetch path thứ hai. Composition seam phải là typed slot nhỏ nhất đủ dùng, không
+biến panel dùng chung thành một abstraction tổng quát khó kiểm soát.
+
+P12A1 sở hữu criterion list theo canonical group/order, simple current-status
+badge, hai trục, notes, derived status và local draft/save state machine. Core
+này chưa được mount vào production UI, vì vậy có thể merge/deploy độc lập mà
+không mở workflow dở dang. Counters, aggregate summaries, filters và
+filter-aware navigation vẫn hoàn toàn thuộc P12B.
+
+P12A2 kích hoạt core trong tab `So sánh & đánh giá` bằng đúng một internal
+segmented mode `Ma trận` / `Đánh giá`; không thêm top-level tab thứ sáu. Bề mặt
+đánh giá chỉ có một option selector độc lập, canonical criterion page controls
+và hai action chính `Lưu`, `Lưu & tiếp tục`. Không thêm toolbar, action menu,
+shortcut control hoặc nút điều hướng trùng lặp.
+
+Dirty behavior dùng một contract thống nhất cho đổi option, criterion, page,
+internal mode, top-level tab và dossier/back. Mutation đang pending hard-block
+navigation. Draft dirty nhưng idle dùng confirm-discard; cancel giữ nguyên draft
+và selection, confirm mới thực hiện navigation. Không giữ persistent
+multi-criterion drafts. `Lưu` ở lại criterion hiện tại; `Lưu & tiếp tục` chỉ
+chuyển sau success, đi qua page boundary theo canonical order và giữ criterion
+cuối nếu không còn mục kế tiếp.
 
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
-Focused React, keyboard và responsive-source tests là gate của từng leaf; browser
-screenshot/interaction verification được defer sang P13B theo chỉ định product
-owner.
+Focused React, keyboard và responsive-source tests là gate của từng leaf.
+P12A2 khóa core evaluation journey bằng focused React integration tests dùng
+`@testing-library/user-event`; toàn bộ browser screenshot/interaction,
+desktop/mobile, accessibility và canonical full regression matrix vẫn thuộc
+P13B theo chỉ định product owner. P12A2/P12B vẫn chạy focused React/source
+regressions thuộc dependency và exit gate của từng leaf.
 
 #### Đánh giá từng phương án
 

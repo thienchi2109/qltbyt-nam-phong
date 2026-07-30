@@ -6,7 +6,8 @@
 
 **Goal:** Expose the applied P11B manual-assessment RPC contract through the
 existing RPC proxy, a typed module-local client, bounded TanStack Query keys and
-a dormant hook for future P12A manual evaluation.
+a dormant hook for the P11D complete-collection prerequisite and future P12A
+manual evaluation.
 
 **Architecture:** Freeze the two P11B RPC names in a dedicated shared manifest,
 append them to the existing proxy allowlist, and call them through the unchanged
@@ -40,8 +41,8 @@ v5, Vitest, Testing Library.
     `technical-configuration-option-response-operations.ts` for first save
   - `callTechnicalConfigurationRpc()` for error-preserving transport
 - Do not change P11B migrations, SQL tests, grants, policies or live DB state.
-- Do not add P12A controls, navigation, dirty drafts, progress, ranking or AI
-  runtime artifacts.
+- Do not add P11D complete collection or P12A controls, navigation, dirty
+  drafts, progress, ranking or AI runtime artifacts.
 
 ## Planned Files
 
@@ -145,7 +146,7 @@ First-save behavior:
 4. Call P11B assessment upsert with the returned comparison-set ID and the
    assessment row revision supplied by the caller.
 5. Invalidate every bounded assessment page for the affected comparison set.
-6. Return both the comparison set and saved assessment so P12A can adopt
+6. Return both the comparison set and saved assessment so P12A1/P12A2 can adopt
    revisions without another read.
 
 Existing-set behavior skips get-or-create.
@@ -204,8 +205,8 @@ their message, status or code.
 - [x] Remove test-only duplication without adding a new shared abstraction.
 - [x] Keep new source files below the 350-line extraction threshold.
 - [x] Use Code Review Graph and GitNexus on the final diff.
-- [x] Audit the diff for P11B persistence changes, P12A UI, ranking or AI
-      artifacts.
+- [x] Audit the diff for P11B persistence changes, P11D collection, P12A UI,
+      ranking or AI artifacts.
 - [x] Mark only P11C tasks complete in `tasks.md`.
 
 ## Verification
@@ -233,4 +234,5 @@ proxy and a typed, tested P11C client/hook surface. Opening the future
 manual-evaluation context remains side-effect-free, first save reuses the
 existing comparison-set lifecycle without concurrent acquisition races, all
 affected assessment pages are invalidated, server errors and row revisions
-remain intact, and no P11B persistence or P12A UI behavior changes.
+remain intact, and no P11B persistence, P11D collection or P12A UI behavior
+changes.
