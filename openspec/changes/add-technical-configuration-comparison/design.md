@@ -358,14 +358,18 @@ cuối nếu không còn mục kế tiếp.
 P12B bắt buộc tách theo DAG deploy-safe duy nhất
 `P12A2 -> P12B1 -> P12B2 -> P12C`.
 
-P12B1 xây một immutable progress model từ toàn bộ criterion của selected locked
-baseline và complete assessment collection của option đang chọn. Hai tập được
-reconcile theo `criterion_id`; không ghép theo page, không tạo full comparison
-collector và không thêm DB/RPC/proxy/query contract. Chỉ `not_evaluated` là
-chưa hoàn tất; sáu derived statuses còn lại đều là đã có kết luận. Option/group
-summary dùng cùng model và mutation success được adopt vào complete cache trước
-existing prefix invalidation. Leaf này deploy với summary đúng nhưng giữ nguyên
-toàn bộ P12A2 navigation.
+P12B1 xây một immutable progress model từ
+`useTechnicalConfigurationBaselineVersionSelection().selectedVersion`, nơi mỗi
+`TechnicalConfigurationBaselineDraftWire` đã chứa toàn bộ ordered
+`groups[].criteria[]` của locked version, kể cả baseline có hơn 100 criteria.
+Pagination của baseline history là theo version, không cắt criterion universe.
+Snapshot này được reconcile với complete assessment collection của option đang
+chọn theo `criterion_id`; không ghép theo comparison page, không tạo full
+comparison collector và không thêm DB/RPC/proxy/query contract. Chỉ
+`not_evaluated` là chưa hoàn tất; sáu derived statuses còn lại đều là đã có kết
+luận. Option/group summary dùng cùng model và mutation success được adopt vào
+complete cache trước existing prefix invalidation. Leaf này deploy với summary
+đúng nhưng giữ nguyên toàn bộ P12A2 navigation.
 
 P12B2 mở rộng model P12B1 bằng pure filtered projection/navigation helpers,
 không đổi data shape, denominator, counters hoặc cache ownership. Filter là

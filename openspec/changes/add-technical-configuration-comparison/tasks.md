@@ -603,15 +603,18 @@ Filter/navigation và task scope-guard P12B.4 không thuộc leaf này.
 
 - [ ] P12B1.1 Chốt entry gate về group-summary density; recommended default là
       `đã đánh giá / tổng`, không seven-status breakdown, percentage hoặc card grid.
-- [ ] P12B1.2 Viết RED tests cho full locked-baseline criterion universe,
-      sparse/>100 assessments, bảy derived statuses và reconcile bằng
-      `criterion_id`.
+- [ ] P12B1.2 Viết RED tests dùng complete
+      `selectedVersion.groups[].criteria[]`, sparse/>100 assessments, đủ bảy
+      derived statuses với repeated/mixed distributions, group/option totals
+      reconcile và mỗi criterion đóng góp đúng một status theo `criterion_id`.
 - [ ] P12B1.3 Thêm selected-option progress model, option/group counters và
       loading/error/no-comparison-set states; không thêm filter/navigation.
 - [ ] P12B1.4 Adopt assessment trả về sau save vào complete cache theo
       `criterion_id`, vẫn giữ prefix invalidation và P11D collection contracts.
-- [ ] P12B1.5 Truyền full selected baseline vào evaluation composition và extract
-      summary/model ownership để active workspace không vượt file ceiling.
+- [ ] P12B1.5 Truyền complete `selectedVersion.groups[].criteria[]` từ
+      `useTechnicalConfigurationBaselineVersionSelection` vào evaluation
+      composition và extract summary/model ownership để active workspace không
+      vượt file ceiling; không lấy denominator từ bounded comparison page.
 - [ ] P12B1.6 Viết counter/cache/workspace integration tests và khóa deploy state:
       summary đúng, existing navigation/save-next không đổi, không DB/RPC/proxy.
 

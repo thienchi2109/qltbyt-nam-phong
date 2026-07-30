@@ -545,7 +545,8 @@ khớp giữa assessment page với comparison page.
 - **WHEN** filter mới loại criterion đang chọn nhưng còn kết quả
 - **THEN** hệ thống SHALL đi qua dirty-confirm/pending-block contract hiện có
 - **AND** clean hoặc confirmed navigation chọn first canonical match
-- **AND** cancel giữ filter cũ, criterion cũ và local draft
+- **AND** cancel giữ filter cũ, filtered page cũ, criterion cũ, panel/open state
+  và local draft
 - **AND** pending save MUST hard-block filter change
 
 #### Scenario: Show an empty filtered result

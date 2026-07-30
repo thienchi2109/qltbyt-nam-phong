@@ -580,10 +580,14 @@ that client state for refresh and re-preview.
   queries. Reference-product response/evidence remains on P7 surfaces and is
   not aggregated by this RPC.
 - P10A1 performance verification uses 500 criteria, 50 total options and 8 selected options, with representative `EXPLAIN` review. P10A2 layers typed client/proxy verification over the fixed RPC without taking database performance ownership.
-- P12B1 and P12B2 consume the existing selected locked-baseline snapshot and
-  selected-option complete assessment collection. They must not add a second
-  assessment query, full comparison collector, per-option N+1 path or database
-  aggregation.
+- P12B1 and P12B2 consume `selectedVersion` from the existing
+  `useTechnicalConfigurationBaselineVersionSelection` composition. Each
+  `TechnicalConfigurationBaselineDraftWire` carries the complete ordered
+  `groups[].criteria[]` snapshot for that locked version, including baselines
+  with more than 100 criteria; version-list pagination is across versions, not
+  criteria. They pair that snapshot with the selected-option complete assessment
+  collection and must not add a second assessment query, full comparison
+  collector, per-option N+1 path or database aggregation.
 
 ## Migration Order
 
