@@ -102,8 +102,11 @@ export function useTechnicalConfigurationEvaluationDraft({
   const assessment = criterionId ? (assessmentsByCriterionId[criterionId] ?? null) : null
   const comparisonSetId = assessmentSource.comparisonSetQuery.data?.id ?? null
   const draftContextKey = JSON.stringify([optionId, baselineVersionId, criterionId])
+  const draftContextToken = React.useMemo(() => Symbol(draftContextKey), [draftContextKey])
   const [draftEntry, setDraftEntry] =
     React.useState<TechnicalConfigurationEvaluationDraftEntry | null>(null)
+  const draftEntryRef = React.useRef<TechnicalConfigurationEvaluationDraftEntry | null>(null)
+  const activeDraftContextTokenRef = React.useRef(draftContextToken)
   const [isSaveInFlight, setIsSaveInFlight] = React.useState(false)
   const saveInFlightRef = React.useRef(false)
   const storedDraft = draftEntry?.contextKey === draftContextKey ? draftEntry.draft : null
@@ -118,86 +121,119 @@ export function useTechnicalConfigurationEvaluationDraft({
         })
       : null
 
+  React.useLayoutEffect(() => {
+    activeDraftContextTokenRef.current = draftContextToken
+  }, [draftContextToken])
+
+  const replaceDraftEntry = React.useCallback(
+    (entry: TechnicalConfigurationEvaluationDraftEntry) => {
+      draftEntryRef.current = entry
+      setDraftEntry(entry)
+    },
+    []
+  )
+
   const updateDraft = React.useCallback(
     (patch: Parameters<typeof updateTechnicalConfigurationEvaluationDraft>[1]) => {
-      setDraftEntry((current) => {
-        const baseDraft =
-          current?.contextKey === draftContextKey
-            ? reconcileTechnicalConfigurationEvaluationDraft({
-                draft: current.draft,
-                criterionId: current.draft.criterionId,
-                comparisonSetId,
-                assessment,
-                expectedDossierRevision,
-              })
-            : currentDraft
-        if (!baseDraft) {
-          return current
-        }
-        return {
-          contextKey: draftContextKey,
-          draft: updateTechnicalConfigurationEvaluationDraft(baseDraft, patch),
-        }
+      if (activeDraftContextTokenRef.current !== draftContextToken) return
+
+      const current = draftEntryRef.current
+      const baseDraft =
+        current?.contextKey === draftContextKey
+          ? reconcileTechnicalConfigurationEvaluationDraft({
+              draft: current.draft,
+              criterionId: current.draft.criterionId,
+              comparisonSetId,
+              assessment,
+              expectedDossierRevision,
+            })
+          : currentDraft
+      if (!baseDraft) return
+
+      replaceDraftEntry({
+        contextKey: draftContextKey,
+        draft: updateTechnicalConfigurationEvaluationDraft(baseDraft, patch),
       })
     },
-    [assessment, comparisonSetId, currentDraft, draftContextKey, expectedDossierRevision]
+    [
+      assessment,
+      comparisonSetId,
+      currentDraft,
+      draftContextKey,
+      draftContextToken,
+      expectedDossierRevision,
+      replaceDraftEntry,
+    ]
   )
 
   const save = React.useCallback(async () => {
-    if (!currentDraft || currentDraft.criterionId !== criterionId || saveInFlightRef.current) {
+    const current = draftEntryRef.current
+    const latestDraft = current?.contextKey === draftContextKey ? current.draft : currentDraft
+    if (
+      activeDraftContextTokenRef.current !== draftContextToken ||
+      !latestDraft ||
+      latestDraft.criterionId !== criterionId ||
+      saveInFlightRef.current
+    ) {
       throw new Error("technical_configuration_evaluation_save_unavailable")
     }
 
+    const draftToSave = reconcileTechnicalConfigurationEvaluationDraft({
+      draft: latestDraft,
+      criterionId: latestDraft.criterionId,
+      comparisonSetId,
+      assessment,
+      expectedDossierRevision,
+    })
     saveInFlightRef.current = true
     setIsSaveInFlight(true)
     const saveSnapshot = {
       contextKey: draftContextKey,
-      draft: currentDraft,
+      draft: draftToSave,
     }
-    setDraftEntry((current) => ({
+    replaceDraftEntry({
       contextKey: saveSnapshot.contextKey,
-      draft: beginTechnicalConfigurationEvaluationSave(
-        current?.contextKey === saveSnapshot.contextKey ? current.draft : saveSnapshot.draft
-      ),
-    }))
+      draft: beginTechnicalConfigurationEvaluationSave(saveSnapshot.draft),
+    })
 
     try {
       const result = await assessmentSource.upsertAssessment.mutateAsync(
         toTechnicalConfigurationAssessmentUpsertInput(saveSnapshot.draft)
       )
       const adoptedDraft = adoptTechnicalConfigurationEvaluationSave(saveSnapshot.draft, result)
-      setDraftEntry((current) => {
-        if (current?.contextKey !== saveSnapshot.contextKey) {
-          return current
-        }
-        return {
-          ...current,
+      const latestEntry = draftEntryRef.current
+      if (latestEntry?.contextKey === saveSnapshot.contextKey) {
+        replaceDraftEntry({
+          ...latestEntry,
           draft: adoptedDraft,
-        }
-      })
+        })
+      }
       onDossierRevisionChange?.(result.comparisonSet.revision)
       return result
     } catch (error) {
-      setDraftEntry((current) => {
-        if (current?.contextKey !== saveSnapshot.contextKey) {
-          return current
-        }
-        return {
-          ...current,
-          draft: applyTechnicalConfigurationEvaluationSaveFailure(current.draft, error),
-        }
-      })
+      const latestEntry = draftEntryRef.current
+      if (latestEntry?.contextKey === saveSnapshot.contextKey) {
+        replaceDraftEntry({
+          ...latestEntry,
+          draft: applyTechnicalConfigurationEvaluationSaveFailure(latestEntry.draft, error),
+        })
+      }
       throw error
     } finally {
       saveInFlightRef.current = false
       setIsSaveInFlight(false)
     }
   }, [
+    assessment,
     assessmentSource.upsertAssessment,
+    comparisonSetId,
     criterionId,
     currentDraft,
     draftContextKey,
+    draftContextToken,
+    expectedDossierRevision,
     onDossierRevisionChange,
+    replaceDraftEntry,
   ])
 
   const setTechnicalAxis = React.useCallback(

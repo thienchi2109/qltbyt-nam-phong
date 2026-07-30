@@ -574,9 +574,11 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 - [x] P12A1.3 Thêm assessment controls cho hai trục, notes và derived status từ
       đúng P11A source of truth.
 - [x] P12A1.4 Thêm local draft/save state machine, adopt row revision sau save
-      và giữ criterion/input khi validation/auth/conflict/persistence thất bại.
+      bằng cùng immutable draft snapshot cho saving state và mutation payload;
+      reject stale callback sau context switch và giữ criterion/input khi
+      validation/auth/conflict/persistence thất bại.
 - [x] P12A1.5 Viết core/state/composition tests; giữ toàn bộ component/hook
-      dormant, chưa mount vào production UI.
+      dormant, khóa edit-then-save cùng một nhịp và chưa mount vào production UI.
 
 ## Phase P12A2 - Guarded Navigation And Workspace Activation
 
