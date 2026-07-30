@@ -2269,10 +2269,19 @@ ranking deferred
 
 - Create:
   `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
+- Create shared P10B/P12A2 seams:
+  `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationCriterionPagination.tsx`,
+  `src/app/(app)/technical-configurations/_components/comparison/technical-configuration-criterion-detail.ts`
+  and
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGuardedNavigation.tsx`.
 - Modify:
   `src/app/(app)/technical-configurations/_components/comparison/TechnicalConfigurationComparisonTab.tsx`
 - Modify:
   `src/app/(app)/technical-configurations/_components/TechnicalConfigurationWorkspaceShell.tsx`
+- Modify P10B matrix composition only to consume the shared criterion pagination
+  and option-detail builder.
 - Modify P12A1 components/hooks only where activation or navigation contracts
   require it.
 - Create focused workflow, navigation and shell-integration tests using
@@ -2280,26 +2289,26 @@ ranking deferred
 
 ### Tasks
 
-- [ ] Activate evaluation as an internal `Ma trận` / `Đánh giá` segmented mode
+- [x] Activate evaluation as an internal `Ma trận` / `Đánh giá` segmented mode
       inside the existing `So sánh & đánh giá` tab; do not add a sixth
       top-level tab.
-- [ ] Add one independent option selector and reuse the existing canonical
+- [x] Add one independent option selector and reuse the existing canonical
       criterion page controls; do not add a toolbar or duplicate option actions.
-- [ ] Expose only the two primary assessment commands: `Lưu` and
+- [x] Expose only the two primary assessment commands: `Lưu` and
       `Lưu & tiếp tục`.
-- [ ] Keep `Lưu` on the current criterion. Advance only after
+- [x] Keep `Lưu` on the current criterion. Advance only after
       `Lưu & tiếp tục` succeeds, including across canonical page boundaries;
       keep the final criterion selected.
-- [ ] Use one navigation contract for option, criterion, page, internal mode,
+- [x] Use one navigation contract for option, criterion, page, internal mode,
       top-level tab and dossier/back changes: pending mutation hard-blocks;
       dirty idle state asks for confirm-discard; cancel keeps the draft.
-- [ ] Add the existing before-unload guard without creating persistent
+- [x] Add the existing before-unload guard without creating persistent
       multi-criterion drafts.
-- [ ] Propagate comparison-set revision to the existing workspace revision seam
+- [x] Propagate comparison-set revision to the existing workspace revision seam
       only when first acquisition changes that aggregate; keep assessment row
       revision local to assessment state.
-- [ ] Keep evaluation state/data hooks outside the workspace shell.
-- [ ] Add no progress summaries, counters, filters, ranking or AI controls.
+- [x] Keep evaluation state/data hooks outside the workspace shell.
+- [x] Add no progress summaries, counters, filters, ranking or AI controls.
 
 ### TDD and verification
 
@@ -2317,6 +2326,8 @@ ranking deferred
 - Defer all real-browser, desktop/mobile screenshot, interaction,
   accessibility and the canonical full regression matrix to P13B; retain
   focused P10B3/P11D/P12A1 regressions in P12A2.
+- Implementation evidence on 2026-07-30: 16 focused Vitest files / 135 tests
+  pass across P10B, P11D, P12A1 and P12A2; React Doctor reports 100/100.
 
 ### Exit gate
 

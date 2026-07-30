@@ -9,12 +9,7 @@ import type {
 } from "@/app/(app)/technical-configurations/comparison-types"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
-
-const EMPTY_EVIDENCE: TechnicalConfigurationComparisonEvidence = {
-  documentCount: 0,
-  citationCount: 0,
-  hasEvidence: false,
-}
+import { createTechnicalConfigurationOptionCriterionDetail } from "./technical-configuration-criterion-detail"
 
 type TechnicalConfigurationMatrixRowProps = {
   row: TechnicalConfigurationComparisonResult["data"]["criteria"][number]
@@ -88,8 +83,12 @@ export function TechnicalConfigurationMatrixRow({
       </td>
       {options.map((option) => {
         const value = valueByOptionId.get(option.id)
-        const response = value?.response
-        const evidence = value?.evidence ?? EMPTY_EVIDENCE
+        const detail = createTechnicalConfigurationOptionCriterionDetail({
+          row,
+          option,
+          value,
+          baselineVersionId,
+        })
         const pinnedIndex = pinnedOptionIds.indexOf(option.id)
         const isPinned = pinnedIndex >= 0
 
@@ -109,37 +108,23 @@ export function TechnicalConfigurationMatrixRow({
               type="button"
               className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
               aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
-              onClick={() =>
-                onOpenDetail({
-                  criterionCode: row.criterion.criterionCode,
-                  criterionTitle: title,
-                  optionLabel: option.displayLabel,
-                  requirementText: row.criterion.requirementText,
-                  responseText: response?.responseText ?? null,
-                  supplementaryInformation: response?.supplementaryInformation ?? null,
-                  evidence,
-                  evidenceTarget: {
-                    kind: "option",
-                    baselineVersionId,
-                    optionId: option.id,
-                    criterionId: row.criterion.id,
-                  },
-                })
-              }
+              onClick={() => onOpenDetail(detail)}
             >
-              {response ? (
+              {detail.responseText !== null ? (
                 <>
                   <p className="line-clamp-4 whitespace-pre-wrap break-words leading-5">
-                    {response.responseText}
+                    {detail.responseText}
                   </p>
-                  {response.supplementaryInformation ? (
+                  {detail.supplementaryInformation ? (
                     <p className="text-xs font-medium text-foreground">Có thông tin bổ sung</p>
                   ) : null}
                 </>
               ) : (
                 <p className="text-muted-foreground">Chưa có phản hồi</p>
               )}
-              <p className="text-xs text-muted-foreground">{formatEvidenceSummary(evidence)}</p>
+              <p className="text-xs text-muted-foreground">
+                {formatEvidenceSummary(detail.evidence)}
+              </p>
             </button>
           </td>
         )

@@ -66,7 +66,7 @@ describe("P12A1 evaluation draft state", () => {
       expectedDossierRevision: 7,
       isDirty: false,
     })
-    expect(onDossierRevisionChange).toHaveBeenCalledWith(7)
+    expect(onDossierRevisionChange).not.toHaveBeenCalled()
     expect(mocks.callRpc).toHaveBeenCalledWith(
       ASSESSMENT_RPC_FUNCTIONS.upsertAssessment,
       {
@@ -109,6 +109,36 @@ describe("P12A1 evaluation draft state", () => {
     )
   })
 
+  it("discards the current dirty draft back to the persisted assessment", async () => {
+    mockExistingAssessmentSave(mocks)
+    const { result } = renderEvaluationDraftHook()
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+
+    act(() => {
+      result.current.setTechnicalAxis("fails")
+      result.current.setEvidenceAxis("none")
+      result.current.setNotes("Nháp sẽ bỏ.")
+    })
+    expect(result.current.draft).toMatchObject({
+      technicalAxis: "fails",
+      evidenceAxis: "none",
+      notes: "Nháp sẽ bỏ.",
+      isDirty: true,
+    })
+
+    act(() => {
+      result.current.discard()
+    })
+
+    expect(result.current.draft).toMatchObject({
+      technicalAxis: "meets",
+      evidenceAxis: "partial",
+      notes: "Cần bổ sung chứng cứ.",
+      isDirty: false,
+    })
+  })
+
   it("rejects a misrouted assessment row and preserves the local draft", async () => {
     const onDossierRevisionChange = vi.fn()
     const misroutedAssessment = {
@@ -143,6 +173,7 @@ describe("P12A1 evaluation draft state", () => {
   })
 
   it("keeps the first-save draft while the newly created comparison set starts loading", async () => {
+    const onDossierRevisionChange = vi.fn()
     let resolveAssessmentList!: (value: TechnicalConfigurationAssessmentListWireResponse) => void
     const pendingAssessmentList = new Promise<TechnicalConfigurationAssessmentListWireResponse>(
       (resolve) => {
@@ -161,7 +192,7 @@ describe("P12A1 evaluation draft state", () => {
       throw new Error(`Unexpected RPC: ${fn}`)
     })
 
-    const { result } = renderEvaluationDraftHook()
+    const { result } = renderEvaluationDraftHook(onDossierRevisionChange)
 
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(mocks.getOrCreateComparisonSet).not.toHaveBeenCalled()
@@ -190,6 +221,7 @@ describe("P12A1 evaluation draft state", () => {
       p_baseline_version_id: baselineVersionId,
       p_expected_revision: 6,
     })
+    expect(onDossierRevisionChange).toHaveBeenCalledWith(7)
     expect(mocks.callRpc).toHaveBeenCalledWith(
       ASSESSMENT_RPC_FUNCTIONS.upsertAssessment,
       {
@@ -211,6 +243,45 @@ describe("P12A1 evaluation draft state", () => {
         page_size: 100,
       })
       await pendingAssessmentList
+    })
+  })
+
+  it("propagates the acquired comparison-set revision when assessment upsert fails", async () => {
+    const onDossierRevisionChange = vi.fn()
+    const persistenceError = new Error("assessment persistence failed")
+    mocks.readComparisonSet.mockResolvedValue(null)
+    mocks.getOrCreateComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve({
+          data: [],
+          total: 0,
+          page: 1,
+          page_size: 100,
+        })
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.reject(persistenceError)
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    const { result } = renderEvaluationDraftHook(onDossierRevisionChange)
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    act(() => {
+      result.current.setTechnicalAxis("meets")
+      result.current.setEvidenceAxis("partial")
+    })
+
+    await act(async () => {
+      await expect(result.current.save()).rejects.toBe(persistenceError)
+    })
+
+    expect(onDossierRevisionChange).toHaveBeenCalledWith(comparisonSet.revision)
+    expect(result.current.draft).toMatchObject({
+      isDirty: true,
+      error: persistenceError,
     })
   })
 })

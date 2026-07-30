@@ -582,16 +582,16 @@ chưa lưu` trong criterion navigator bằng icon/màu nhỏ.
 
 ## Phase P12A2 - Guarded Navigation And Workspace Activation
 
-- [ ] P12A2.1 Mount evaluation workspace bằng internal segmented mode
+- [x] P12A2.1 Mount evaluation workspace bằng internal segmented mode
       `Ma trận` / `Đánh giá` trong tab `So sánh & đánh giá`; không thêm
       top-level tab thứ sáu.
-- [ ] P12A2.2 Dùng một option selector, canonical criterion page controls và chỉ
+- [x] P12A2.2 Dùng một option selector, canonical criterion page controls và chỉ
       hai action chính `Lưu`, `Lưu & tiếp tục`.
-- [ ] P12A2.3 `Lưu` giữ criterion; save-next chỉ chuyển sau success, đi qua page
+- [x] P12A2.3 `Lưu` giữ criterion; save-next chỉ chuyển sau success, đi qua page
       boundary và giữ criterion cuối.
-- [ ] P12A2.4 Dùng một dirty-navigation contract cho option/criterion/page/view/
+- [x] P12A2.4 Dùng một dirty-navigation contract cho option/criterion/page/view/
       tab/dossier: pending hard-block, dirty idle confirm-discard, cancel giữ draft.
-- [ ] P12A2.5 Tích hợp workspace revision đúng ownership; viết workflow,
+- [x] P12A2.5 Tích hợp workspace revision đúng ownership; viết workflow,
       navigation và shell-integration tests bằng `@testing-library/user-event`;
       defer toàn bộ browser verification sang P13B.
 

@@ -19,6 +19,7 @@ export interface DestructiveConfirmDialogProps {
   readonly onOpenChange: (open: boolean) => void
   readonly title: React.ReactNode
   readonly description: React.ReactNode
+  readonly cancelLabel?: React.ReactNode
   readonly confirmLabel: React.ReactNode
   readonly isPending: boolean
   readonly onConfirm: () => void
@@ -32,6 +33,7 @@ export function DestructiveConfirmDialog({
   onOpenChange,
   title,
   description,
+  cancelLabel = "Hủy",
   confirmLabel,
   isPending,
   onConfirm,
@@ -52,7 +54,7 @@ export function DestructiveConfirmDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Hủy</AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>{cancelLabel}</AlertDialogCancel>
           <Button
             type="button"
             onClick={onConfirm}

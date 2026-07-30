@@ -13,6 +13,7 @@ import type {
   TechnicalConfigurationComparisonRpcArgs,
   TechnicalConfigurationComparisonWireResponse,
 } from "./comparison-types"
+import { toTechnicalConfigurationComparisonOption } from "./technical-configuration-comparison-mappers"
 import { callTechnicalConfigurationRpc } from "./technical-configuration-rpc"
 
 function normalizeEvidence(
@@ -103,15 +104,7 @@ export async function getTechnicalConfigurationComparison(
         status: response.data.baseline_version.status,
         revision: response.data.baseline_version.revision,
       },
-      options: response.data.options.map((option) => ({
-        id: option.id,
-        supplierId: option.supplier_id,
-        supplierName: option.supplier_name,
-        model: option.model,
-        manufacturer: option.manufacturer,
-        optionName: option.option_name,
-        displayLabel: option.display_label,
-      })),
+      options: response.data.options.map(toTechnicalConfigurationComparisonOption),
       criteria: response.data.criteria.map(normalizeCriterionRow),
     },
     total: response.total,
