@@ -66,11 +66,29 @@
 - P12A2 exposes only `Lưu` and `Lưu & tiếp tục` as primary assessment actions;
   it must not add another top-level tab, duplicate toolbar actions, progress
   controls, filters or ranking.
+- Delivery after P12A2 follows only
+  `P12A2 -> P12B1 -> P12B2 -> P12C`.
+- P12B1 owns the immutable selected-option progress model, status counters,
+  compact option/group summaries and successful-save adoption into the complete
+  assessment cache. Its criterion universe is the selected locked baseline;
+  complete assessments are reconciled by `criterion_id`. P12B1 owns no filter,
+  selection, pagination or navigation behavior.
+- P12B2 reuses the P12B1 model without changing its data shape, denominator,
+  counters or cache ownership. It owns the single selected status filter,
+  canonical filtered projection, client-side filtered pagination, selection
+  reconciliation, P12A2 dirty/pending guard reuse and filter-aware save-next.
+- P12B1 extracts progress/summary composition and P12B2 extracts a focused
+  navigator/state owner so
+  `TechnicalConfigurationEvaluationActiveWorkspace.tsx` does not absorb both
+  responsibilities or exceed the source-file ceiling.
+- P12B1 and P12B2 add no migration, RPC name, proxy allowlist, request/response
+  shape, query contract, ranking, scoring or AI runtime. P12C starts only after
+  P12B2.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
-  matrix. P12A2/P12B retain focused React/source regressions required by their
-  own dependency and exit gates.
+  matrix. P12A2/P12B1/P12B2 retain focused React/source regressions required by
+  their own dependency and exit gates.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
@@ -562,6 +580,14 @@ that client state for refresh and re-preview.
   queries. Reference-product response/evidence remains on P7 surfaces and is
   not aggregated by this RPC.
 - P10A1 performance verification uses 500 criteria, 50 total options and 8 selected options, with representative `EXPLAIN` review. P10A2 layers typed client/proxy verification over the fixed RPC without taking database performance ownership.
+- P12B1 and P12B2 consume `selectedVersion` from the existing
+  `useTechnicalConfigurationBaselineVersionSelection` composition. Each
+  `TechnicalConfigurationBaselineDraftWire` carries the complete ordered
+  `groups[].criteria[]` snapshot for that locked version, including baselines
+  with more than 100 criteria; version-list pagination is across versions, not
+  criteria. They pair that snapshot with the selected-option complete assessment
+  collection and must not add a second assessment query, full comparison
+  collector, per-option N+1 path or database aggregation.
 
 ## Migration Order
 
@@ -582,8 +608,8 @@ that client state for refresh and re-preview.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
-P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A, P11C, P11D, P12A1 and P12A2 create no
-technical-configuration persistence. P6A and P6B also create no
+P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A, P11C, P11D, P12A1, P12A2,
+P12B1 and P12B2 create no technical-configuration persistence. P6A and P6B also create no
 technical-configuration persistence; P6A lands after P5D, P6B follows it, and
 both land before the first document UI in P7B2. Migration timestamps are
 selected at leaf execution time after checking all local migrations touching

@@ -337,8 +337,9 @@ biến panel dùng chung thành một abstraction tổng quát khó kiểm soát
 P12A1 sở hữu criterion list theo canonical group/order, simple current-status
 badge, hai trục, notes, derived status và local draft/save state machine. Core
 này chưa được mount vào production UI, vì vậy có thể merge/deploy độc lập mà
-không mở workflow dở dang. Counters, aggregate summaries, filters và
-filter-aware navigation vẫn hoàn toàn thuộc P12B.
+không mở workflow dở dang. P12B1 sở hữu progress model, counters, compact
+summary và cache adoption cho option đang chọn; P12B2 sở hữu filters,
+filtered projection/pagination và filter-aware guarded navigation.
 
 P12A2 kích hoạt core trong tab `So sánh & đánh giá` bằng đúng một internal
 segmented mode `Ma trận` / `Đánh giá`; không thêm top-level tab thứ sáu. Bề mặt
@@ -354,13 +355,45 @@ multi-criterion drafts. `Lưu` ở lại criterion hiện tại; `Lưu & tiếp 
 chuyển sau success, đi qua page boundary theo canonical order và giữ criterion
 cuối nếu không còn mục kế tiếp.
 
+P12B bắt buộc tách theo DAG deploy-safe duy nhất
+`P12A2 -> P12B1 -> P12B2 -> P12C`.
+
+P12B1 xây một immutable progress model từ
+`useTechnicalConfigurationBaselineVersionSelection().selectedVersion`, nơi mỗi
+`TechnicalConfigurationBaselineDraftWire` đã chứa toàn bộ ordered
+`groups[].criteria[]` của locked version, kể cả baseline có hơn 100 criteria.
+Pagination của baseline history là theo version, không cắt criterion universe.
+Snapshot này được reconcile với complete assessment collection của option đang
+chọn theo `criterion_id`; không ghép theo comparison page, không tạo full
+comparison collector và không thêm DB/RPC/proxy/query contract. Chỉ
+`not_evaluated` là chưa hoàn tất; sáu derived statuses còn lại đều là đã có kết
+luận. Option/group summary dùng cùng model và mutation success được adopt vào
+complete cache trước existing prefix invalidation. Leaf này deploy với summary
+đúng nhưng giữ nguyên toàn bộ P12A2 navigation.
+
+P12B2 mở rộng model P12B1 bằng pure filtered projection/navigation helpers,
+không đổi data shape, denominator, counters hoặc cache ownership. Filter là
+single-select `all`, `not_evaluated`, `fails` hoặc
+`insufficient_evidence`; projection giữ canonical group/criterion order và
+phân trang client-side với page size hiện có. Detail request vẫn dùng canonical
+comparison page của criterion, không dùng filtered page number. Selection còn
+visible được giữ nguyên; mọi filter transition làm thay selection phải reuse
+P12A2 dirty-confirm/pending-block contract. Save-next chỉ điều hướng sau save
+success tới matching criterion tiếp theo theo canonical order.
+
+`TechnicalConfigurationEvaluationActiveWorkspace.tsx` đã sát ngưỡng extraction,
+vì vậy P12B1 phải tách progress/summary ownership và P12B2 phải có focused
+navigator/state owner; không dồn model, filter và guarded-navigation logic trở
+lại active workspace. P12B1/P12B2 không thêm ranking, scoring hoặc AI. P12C chỉ
+bắt đầu sau P12B2 và browser/accessibility/responsive matrix vẫn thuộc P13B.
+
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
 Focused React, keyboard và responsive-source tests là gate của từng leaf.
 P12A2 khóa core evaluation journey bằng focused React integration tests dùng
 `@testing-library/user-event`; toàn bộ browser screenshot/interaction,
 desktop/mobile, accessibility và canonical full regression matrix vẫn thuộc
-P13B theo chỉ định product owner. P12A2/P12B vẫn chạy focused React/source
-regressions thuộc dependency và exit gate của từng leaf.
+P13B theo chỉ định product owner. P12A2/P12B1/P12B2 vẫn chạy focused
+React/source regressions thuộc dependency và exit gate của từng leaf.
 
 #### Đánh giá từng phương án
 
@@ -554,4 +587,15 @@ Rollback có thể gỡ route/navigation và migration mới mà không tác đ�
 
 ## Open Questions
 
-Không còn câu hỏi chặn proposal. Các chi tiết trình bày nhỏ sẽ được quyết định trong implementation plan theo design system hiện có và ưu tiên workflow thủ công.
+Selected-option progress đã được khóa bởi P12B1. Các quyết định sau là entry
+gate của leaf tương ứng; recommended default chưa phải normative requirement
+cho tới khi product owner xác nhận:
+
+- P12B1 group-summary density: khuyến nghị chỉ `đã đánh giá / tổng`, không
+  seven-status breakdown, percentage hoặc progress-card grid.
+- P12B2 `Lưu` khi current criterion rời active filter: khuyến nghị giữ current
+  panel theo P12A2, báo criterion không còn match và không tự chuyển.
+- P12B2 `Lưu & tiếp tục` khi không còn matching criterion: khuyến nghị không
+  wrap, giữ saved panel và hiển thị no-more-match state.
+- P12B2 filter state khi đổi option: khuyến nghị giữ filter và resolve selection
+  deterministic theo option mới.
