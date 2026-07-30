@@ -17,6 +17,7 @@ type TechnicalConfigurationEvaluationValues = {
 
 export type TechnicalConfigurationEvaluationDraftState = TechnicalConfigurationEvaluationValues & {
   criterionId: string
+  comparisonSetId: string | null
   expectedAssessmentRevision: number
   expectedDossierRevision: number
   saveStatus: "idle" | "saving" | "error"
@@ -27,8 +28,26 @@ export type TechnicalConfigurationEvaluationDraftState = TechnicalConfigurationE
 
 type CreateTechnicalConfigurationEvaluationDraftStateInput = {
   criterionId: string
+  comparisonSetId: string | null
   assessment: TechnicalConfigurationAssessmentWire | null
   expectedDossierRevision: number
+}
+
+function validatePersistedAssessmentIdentity({
+  criterionId,
+  comparisonSetId,
+  assessment,
+}: Pick<
+  CreateTechnicalConfigurationEvaluationDraftStateInput,
+  "criterionId" | "comparisonSetId" | "assessment"
+>): void {
+  if (!assessment) return
+  if (assessment.criterion_id !== criterionId) {
+    throw new Error("technical_configuration_evaluation_assessment_criterion_mismatch")
+  }
+  if (!comparisonSetId || assessment.comparison_set_id !== comparisonSetId) {
+    throw new Error("technical_configuration_evaluation_assessment_comparison_set_mismatch")
+  }
 }
 
 function toEvaluationValues(
@@ -55,13 +74,16 @@ function hasEvaluationValuesChanged(
 /** Creates one criterion-local manual assessment draft from the persisted row. */
 export function createTechnicalConfigurationEvaluationDraftState({
   criterionId,
+  comparisonSetId,
   assessment,
   expectedDossierRevision,
 }: CreateTechnicalConfigurationEvaluationDraftStateInput): TechnicalConfigurationEvaluationDraftState {
+  validatePersistedAssessmentIdentity({ criterionId, comparisonSetId, assessment })
   const persistedValues = toEvaluationValues(assessment)
 
   return {
     criterionId,
+    comparisonSetId,
     ...persistedValues,
     expectedAssessmentRevision: assessment?.revision ?? 0,
     expectedDossierRevision,
@@ -113,9 +135,16 @@ export function adoptTechnicalConfigurationEvaluationSave(
   if (result.assessment.criterion_id !== state.criterionId) {
     throw new Error("technical_configuration_evaluation_save_criterion_mismatch")
   }
+  if (result.assessment.comparison_set_id !== result.comparisonSet.id) {
+    throw new Error("technical_configuration_evaluation_save_result_comparison_set_mismatch")
+  }
+  if (state.comparisonSetId && result.comparisonSet.id !== state.comparisonSetId) {
+    throw new Error("technical_configuration_evaluation_save_comparison_set_mismatch")
+  }
 
   return createTechnicalConfigurationEvaluationDraftState({
     criterionId: state.criterionId,
+    comparisonSetId: result.comparisonSet.id,
     assessment: result.assessment,
     expectedDossierRevision: result.comparisonSet.revision,
   })

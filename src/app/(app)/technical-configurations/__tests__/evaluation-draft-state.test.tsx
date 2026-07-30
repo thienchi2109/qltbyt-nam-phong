@@ -37,6 +37,22 @@ vi.mock("../technical-configuration-option-response-operations", () => ({
 const otherOptionId = "00000000-0000-0000-0000-000000000007"
 const otherBaselineVersionId = "00000000-0000-0000-0000-000000000008"
 const otherCriterionId = "00000000-0000-0000-0000-000000000009"
+const otherComparisonSetId = "00000000-0000-0000-0000-000000000010"
+
+function renderEvaluationDraftHook(onDossierRevisionChange?: (revision: number) => void) {
+  const queryClient = createAssessmentTestQueryClient()
+  return renderHook(
+    () =>
+      useTechnicalConfigurationEvaluationDraft({
+        optionId,
+        baselineVersionId,
+        criterionId,
+        expectedDossierRevision: 6,
+        onDossierRevisionChange,
+      }),
+    { wrapper: createAssessmentQueryWrapper(queryClient) }
+  )
+}
 
 describe("P12A1 evaluation draft state", () => {
   beforeEach(() => {
@@ -63,18 +79,7 @@ describe("P12A1 evaluation draft state", () => {
       throw new Error(`Unexpected RPC: ${fn}`)
     })
 
-    const queryClient = createAssessmentTestQueryClient()
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationEvaluationDraft({
-          optionId,
-          baselineVersionId,
-          criterionId,
-          expectedDossierRevision: 6,
-          onDossierRevisionChange,
-        }),
-      { wrapper: createAssessmentQueryWrapper(queryClient) }
-    )
+    const { result } = renderEvaluationDraftHook(onDossierRevisionChange)
 
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(result.current.assessmentsByCriterionId[criterionId]).toEqual(assessment)
@@ -123,6 +128,53 @@ describe("P12A1 evaluation draft state", () => {
       },
       { signal: undefined }
     )
+  })
+
+  it("rejects a misrouted assessment row and preserves the local draft", async () => {
+    const onDossierRevisionChange = vi.fn()
+    const misroutedAssessment = {
+      ...savedAssessment,
+      comparison_set_id: otherComparisonSetId,
+    }
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve({
+          data: [assessment],
+          total: 1,
+          page: 1,
+          page_size: 100,
+        })
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.resolve({ data: misroutedAssessment })
+      }
+      throw new Error(`Unexpected RPC: ${fn}`)
+    })
+
+    const { result } = renderEvaluationDraftHook(onDossierRevisionChange)
+
+    await waitFor(() => expect(result.current.isReady).toBe(true))
+    act(() => {
+      result.current.setNotes("Giữ bản nháp này.")
+    })
+
+    await act(async () => {
+      await expect(result.current.save()).rejects.toThrow(
+        "technical_configuration_evaluation_save_result_comparison_set_mismatch"
+      )
+    })
+
+    expect(result.current.draft).toMatchObject({
+      criterionId,
+      comparisonSetId,
+      notes: "Giữ bản nháp này.",
+      expectedAssessmentRevision: assessment.revision,
+      expectedDossierRevision: 6,
+      saveStatus: "error",
+      isDirty: true,
+    })
+    expect(onDossierRevisionChange).not.toHaveBeenCalled()
   })
 
   it("starts a fresh draft when switching options for the same criterion", async () => {
@@ -339,17 +391,7 @@ describe("P12A1 evaluation draft state", () => {
       throw new Error(`Unexpected RPC: ${fn}`)
     })
 
-    const queryClient = createAssessmentTestQueryClient()
-    const { result } = renderHook(
-      () =>
-        useTechnicalConfigurationEvaluationDraft({
-          optionId,
-          baselineVersionId,
-          criterionId,
-          expectedDossierRevision: 6,
-        }),
-      { wrapper: createAssessmentQueryWrapper(queryClient) }
-    )
+    const { result } = renderEvaluationDraftHook()
 
     await waitFor(() => expect(result.current.isReady).toBe(true))
     expect(mocks.getOrCreateComparisonSet).not.toHaveBeenCalled()

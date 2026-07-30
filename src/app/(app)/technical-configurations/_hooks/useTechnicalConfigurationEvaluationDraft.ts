@@ -37,17 +37,20 @@ type TechnicalConfigurationEvaluationDraftEntry = {
 function reconcileTechnicalConfigurationEvaluationDraft({
   draft,
   criterionId,
+  comparisonSetId,
   assessment,
   expectedDossierRevision,
 }: {
   draft: TechnicalConfigurationEvaluationDraftState | null
   criterionId: string
+  comparisonSetId: string | null
   assessment: TechnicalConfigurationAssessmentWire | null
   expectedDossierRevision: number
 }): TechnicalConfigurationEvaluationDraftState {
   if (!draft) {
     return createTechnicalConfigurationEvaluationDraftState({
       criterionId,
+      comparisonSetId,
       assessment,
       expectedDossierRevision,
     })
@@ -60,6 +63,7 @@ function reconcileTechnicalConfigurationEvaluationDraft({
   ) {
     return createTechnicalConfigurationEvaluationDraftState({
       criterionId,
+      comparisonSetId,
       assessment,
       expectedDossierRevision: Math.max(draft.expectedDossierRevision, expectedDossierRevision),
     })
@@ -96,6 +100,7 @@ export function useTechnicalConfigurationEvaluationDraft({
   const isCollectionReady =
     assessmentSource.completeAssessmentsQuery.isSuccess || hasNoComparisonSet
   const assessment = criterionId ? (assessmentsByCriterionId[criterionId] ?? null) : null
+  const comparisonSetId = assessmentSource.comparisonSetQuery.data?.id ?? null
   const draftContextKey = JSON.stringify([optionId, baselineVersionId, criterionId])
   const [draftEntry, setDraftEntry] =
     React.useState<TechnicalConfigurationEvaluationDraftEntry | null>(null)
@@ -107,6 +112,7 @@ export function useTechnicalConfigurationEvaluationDraft({
       ? reconcileTechnicalConfigurationEvaluationDraft({
           draft: storedDraft,
           criterionId,
+          comparisonSetId,
           assessment,
           expectedDossierRevision,
         })
@@ -120,6 +126,7 @@ export function useTechnicalConfigurationEvaluationDraft({
             ? reconcileTechnicalConfigurationEvaluationDraft({
                 draft: current.draft,
                 criterionId: current.draft.criterionId,
+                comparisonSetId,
                 assessment,
                 expectedDossierRevision,
               })
@@ -133,7 +140,7 @@ export function useTechnicalConfigurationEvaluationDraft({
         }
       })
     },
-    [assessment, currentDraft, draftContextKey, expectedDossierRevision]
+    [assessment, comparisonSetId, currentDraft, draftContextKey, expectedDossierRevision]
   )
 
   const save = React.useCallback(async () => {
@@ -158,13 +165,14 @@ export function useTechnicalConfigurationEvaluationDraft({
       const result = await assessmentSource.upsertAssessment.mutateAsync(
         toTechnicalConfigurationAssessmentUpsertInput(saveSnapshot.draft)
       )
+      const adoptedDraft = adoptTechnicalConfigurationEvaluationSave(saveSnapshot.draft, result)
       setDraftEntry((current) => {
         if (current?.contextKey !== saveSnapshot.contextKey) {
           return current
         }
         return {
           ...current,
-          draft: adoptTechnicalConfigurationEvaluationSave(current.draft, result),
+          draft: adoptedDraft,
         }
       })
       onDossierRevisionChange?.(result.comparisonSet.revision)

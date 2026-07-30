@@ -10,10 +10,14 @@ import {
 } from "../technical-configuration-evaluation-state"
 import { assessment, comparisonSet, criterionId, savedAssessment } from "./assessment-test-fixtures"
 
+const otherComparisonSetId = "00000000-0000-0000-0000-000000000010"
+const otherCriterionId = "00000000-0000-0000-0000-000000000011"
+
 describe("P12A1 evaluation draft transitions", () => {
   it("creates first-save revision zero and adopts both saved row and comparison-set revisions", () => {
     const initial = createTechnicalConfigurationEvaluationDraftState({
       criterionId,
+      comparisonSetId: null,
       assessment: null,
       expectedDossierRevision: 6,
     })
@@ -40,6 +44,7 @@ describe("P12A1 evaluation draft transitions", () => {
 
     expect(saved).toMatchObject({
       criterionId,
+      comparisonSetId: comparisonSet.id,
       technicalAxis: "exceeds",
       evidenceAxis: "complete",
       notes: "Đã xác nhận.",
@@ -54,6 +59,7 @@ describe("P12A1 evaluation draft transitions", () => {
   it("allows both nullable axes to be cleared back to not evaluated", () => {
     const initial = createTechnicalConfigurationEvaluationDraftState({
       criterionId,
+      comparisonSetId: comparisonSet.id,
       assessment,
       expectedDossierRevision: 6,
     })
@@ -81,6 +87,7 @@ describe("P12A1 evaluation draft transitions", () => {
   ])("preserves criterion and local input after %s failure", (_label, error) => {
     const initial = createTechnicalConfigurationEvaluationDraftState({
       criterionId,
+      comparisonSetId: comparisonSet.id,
       assessment,
       expectedDossierRevision: 6,
     })
@@ -105,5 +112,66 @@ describe("P12A1 evaluation draft transitions", () => {
       error,
       isDirty: true,
     })
+  })
+
+  it.each([
+    [
+      "criterion",
+      {
+        criterionId,
+        comparisonSetId: comparisonSet.id,
+        assessment: { ...assessment, criterion_id: otherCriterionId },
+        expectedDossierRevision: 6,
+      },
+      "technical_configuration_evaluation_assessment_criterion_mismatch",
+    ],
+    [
+      "comparison set",
+      {
+        criterionId,
+        comparisonSetId: otherComparisonSetId,
+        assessment,
+        expectedDossierRevision: 6,
+      },
+      "technical_configuration_evaluation_assessment_comparison_set_mismatch",
+    ],
+  ])("rejects a persisted assessment with mismatched %s identity", (_label, input, error) => {
+    expect(() => createTechnicalConfigurationEvaluationDraftState(input)).toThrow(error)
+  })
+
+  it.each([
+    [
+      "draft comparison set",
+      {
+        comparisonSet: { ...comparisonSet, id: otherComparisonSetId },
+        assessment: { ...savedAssessment, comparison_set_id: otherComparisonSetId },
+      },
+      "technical_configuration_evaluation_save_comparison_set_mismatch",
+    ],
+    [
+      "result comparison set",
+      {
+        comparisonSet,
+        assessment: { ...savedAssessment, comparison_set_id: otherComparisonSetId },
+      },
+      "technical_configuration_evaluation_save_result_comparison_set_mismatch",
+    ],
+    [
+      "criterion",
+      {
+        comparisonSet,
+        assessment: { ...savedAssessment, criterion_id: otherCriterionId },
+      },
+      "technical_configuration_evaluation_save_criterion_mismatch",
+    ],
+  ])("rejects a save result with mismatched %s identity", (_label, result, error) => {
+    const initial = createTechnicalConfigurationEvaluationDraftState({
+      criterionId,
+      comparisonSetId: comparisonSet.id,
+      assessment,
+      expectedDossierRevision: 6,
+    })
+
+    expect(() => adoptTechnicalConfigurationEvaluationSave(initial, result)).toThrow(error)
   })
 })
