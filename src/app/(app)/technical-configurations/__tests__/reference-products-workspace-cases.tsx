@@ -331,21 +331,36 @@ export function registerReferenceProductWorkspaceTests({
 
     it("registers beforeunload protection while the reference draft is dirty", async () => {
       const user = userEvent.setup()
+      const addEventListener = vi.spyOn(window, "addEventListener")
       referenceRpc.listProducts.mockResolvedValue(listResponse([]))
 
-      renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
-      expect(await screen.findByText("Chưa có sản phẩm tham chiếu.")).toBeInTheDocument()
+      try {
+        renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
+        expect(await screen.findByText("Chưa có sản phẩm tham chiếu.")).toBeInTheDocument()
 
-      const cleanEvent = new Event("beforeunload", { cancelable: true })
-      window.dispatchEvent(cleanEvent)
-      expect(cleanEvent.defaultPrevented).toBe(false)
+        const cleanHandlerCount = addEventListener.mock.calls.filter(
+          ([eventName]) => eventName === "beforeunload"
+        ).length
 
-      await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
-      await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
+        await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
+        await user.type(screen.getByLabelText("Model"), "Model chưa lưu")
 
-      const dirtyEvent = new Event("beforeunload", { cancelable: true })
-      window.dispatchEvent(dirtyEvent)
-      expect(dirtyEvent.defaultPrevented).toBe(true)
+        await waitFor(() =>
+          expect(
+            addEventListener.mock.calls.filter(([eventName]) => eventName === "beforeunload")
+          ).toHaveLength(cleanHandlerCount + 1)
+        )
+        const beforeUnloadHandler = addEventListener.mock.calls
+          .filter(([eventName]) => eventName === "beforeunload")
+          .at(-1)?.[1]
+        expect(beforeUnloadHandler).toBeTypeOf("function")
+
+        const dirtyEvent = new Event("beforeunload", { cancelable: true })
+        ;(beforeUnloadHandler as EventListener)(dirtyEvent)
+        expect(dirtyEvent.defaultPrevented).toBe(true)
+      } finally {
+        addEventListener.mockRestore()
+      }
     })
 
     it("renders locked reference products read-only without mutation affordances", async () => {

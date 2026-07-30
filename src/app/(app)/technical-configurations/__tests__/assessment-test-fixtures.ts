@@ -38,6 +38,14 @@ export const assessment: TechnicalConfigurationAssessmentWire = {
   updated_at: "2026-07-30T01:00:00.000Z",
 }
 
+export const savedAssessment: TechnicalConfigurationAssessmentWire = {
+  ...assessment,
+  technical_axis: "exceeds",
+  evidence_axis: "complete",
+  notes: "Đã xác nhận.",
+  revision: 3,
+}
+
 export const assessmentListResponse: TechnicalConfigurationAssessmentListWireResponse = {
   data: [assessment],
   total: 1,

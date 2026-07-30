@@ -2220,24 +2220,24 @@ core, TC-15, TC-16, TC-17, TC-20
 
 ### Tasks
 
-- [ ] Add a criterion list in canonical group/order with only a simple current
+- [x] Add a criterion list in canonical group/order with only a simple current
       derived-status badge; counters, summaries and filters remain P12B.
-- [ ] Make `TechnicalConfigurationEvaluationPanel` a thin wrapper around the
+- [x] Make `TechnicalConfigurationEvaluationPanel` a thin wrapper around the
       shared `TechnicalConfigurationCriterionPanel` for baseline, response,
       supplementary information and evidence.
-- [ ] Compose notes and both manual axes through
+- [x] Compose notes and both manual axes through
       `TechnicalConfigurationAssessmentControls`; reuse P11A values, labels and
       `deriveTechnicalConfigurationEvaluationStatus()` as the only source of
       truth.
-- [ ] Add pure/local draft state and a core save command that adopts the saved
+- [x] Add pure/local draft state and a core save command that adopts the saved
       assessment row revision and returned comparison-set revision.
-- [ ] Preserve the current criterion and local input on validation,
+- [x] Preserve the current criterion and local input on validation,
       authorization, conflict or persistence failure.
-- [ ] Adopt the saved assessment locally without adding a second comparison,
+- [x] Adopt the saved assessment locally without adding a second comparison,
       assessment or evidence fetch path.
-- [ ] Keep every component and hook dormant; do not mount them in the comparison
+- [x] Keep every component and hook dormant; do not mount them in the comparison
       tab or workspace shell in this leaf.
-- [ ] Add no progress summaries, counters, filters, ranking or AI controls.
+- [x] Add no progress summaries, counters, filters, ranking or AI controls.
 
 ### TDD and verification
 

@@ -20,11 +20,12 @@ export type TechnicalConfigurationCriterionDetail = {
   evidenceTarget: TechnicalConfigurationComparisonEvidenceTarget
 }
 
-type TechnicalConfigurationCriterionPanelProps = {
+export type TechnicalConfigurationCriterionPanelProps = {
   detail: TechnicalConfigurationCriterionDetail | null
   open: boolean
   onOpenChange: (open: boolean) => void
   returnFocusRef?: React.RefObject<HTMLElement | null>
+  assessmentControls?: React.ReactNode
 }
 
 function formatEvidenceSummary(evidence: TechnicalConfigurationComparisonEvidence) {
@@ -38,6 +39,7 @@ export function TechnicalConfigurationCriterionPanel({
   open,
   onOpenChange,
   returnFocusRef,
+  assessmentControls,
 }: Readonly<TechnicalConfigurationCriterionPanelProps>) {
   return (
     <SideSheetShell
@@ -94,6 +96,10 @@ export function TechnicalConfigurationCriterionPanel({
               <TechnicalConfigurationComparisonEvidenceSection target={detail.evidenceTarget} />
             ) : null}
           </section>
+
+          {assessmentControls ? (
+            <section className="border-t pt-5">{assessmentControls}</section>
+          ) : null}
         </div>
       ) : null}
     </SideSheetShell>

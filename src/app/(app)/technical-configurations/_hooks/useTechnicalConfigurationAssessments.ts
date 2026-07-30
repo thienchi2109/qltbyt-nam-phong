@@ -5,6 +5,7 @@ import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tansta
 import { useTechnicalConfigurationOptionResponsesQuery } from "./useTechnicalConfigurationOptionResponsesQuery"
 import type {
   TechnicalConfigurationAssessmentListWireResponse,
+  TechnicalConfigurationAssessmentSaveResult,
   TechnicalConfigurationAssessmentUpsertInput,
   TechnicalConfigurationAssessmentWire,
 } from "../assessment-types"
@@ -39,11 +40,6 @@ type UseTechnicalConfigurationAssessmentsInput = TechnicalConfigurationAssessmen
         collectionMode: "complete"
       }
   )
-
-interface TechnicalConfigurationAssessmentSaveResult {
-  comparisonSet: TechnicalConfigurationComparisonSetWire
-  assessment: TechnicalConfigurationAssessmentWire
-}
 
 const comparisonSetAcquisitions = new WeakMap<
   QueryClient,
