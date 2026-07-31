@@ -122,8 +122,10 @@ P10B3 + P11D    -> P12A1
 P12A1           -> P12A2
 P12A2           -> P12B1
 P12B1           -> P12B2
-P12B2           -> P12C
-P12C            -> P13A, P13B
+P12B2           -> P12C1
+P12C1           -> P12C2
+P12C1           -> P13A
+P12C2           -> P13B
 P13A + P13B + P7A2 + P9A3 -> P13C
 ```
 
@@ -152,14 +154,16 @@ P12A uses the strict delivery order `P12A1 -> P12A2`. P12A1 owns the dormant
 evaluation core, shared criterion composition, local draft state and save
 state machine. P12A2 activates that core inside the existing
 `So sánh & đánh giá` tab, owns guarded navigation and completes the
-user-visible workflow. P12B uses the strict deploy-safe order
-`P12A2 -> P12B1 -> P12B2 -> P12C`: P12B1 owns selected-option progress,
+user-visible workflow. These leaves use the strict deploy-safe order
+`P12A2 -> P12B1 -> P12B2 -> P12C1 -> P12C2`: P12B1 owns selected-option progress,
 status counters, compact summaries and successful-save cache adoption while
 leaving existing navigation unchanged; P12B2 reuses that model without changing
 its data shape, adds a guarded read-only server-filter RPC for exact canonical
 IDs and owns status filters, presentation pagination, selection reconciliation,
-dirty/pending guards and filter-aware save-next.
-P12C cannot start until P12B2 is complete.
+dirty/pending guards and filter-aware save-next. P12C1 then owns the complete,
+set-based, read-only ranking contract; P12C2 adds only the explicit-request
+ranking UI over that contract. P12C1 cannot start until P12B2 is complete, and
+P12C2 cannot start until P12C1 is complete.
 
 ## Requirement Traceability
 
@@ -184,7 +188,7 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                           |
 | TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                               |
 | TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                |
-| TC-18 | Optional transparent reference ranking          | P12C                                                                                                                                                           |
+| TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                   |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                 |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13B |
 
@@ -1194,7 +1198,7 @@ user-facing option workspace.
   enforcement and cross-owner rejection.
 - Tests proving response and supplementary text are independent and that P8A3
   exposes no compliance/evaluation fields; actual compliance derivation remains
-  owned by P11A and ranking remains owned by P12C.
+  owned by P11A and ranking remains owned by P12C1/P12C2.
 - Tests for stale dossier revisions, cascade and historical dataset separation.
 - Tests proving an existing set is readable after archive while create/upsert
   mutations are rejected.
@@ -2506,49 +2510,198 @@ selection, presentation pagination and save-next behavior under the complete
 dirty/pending contract; P12B1 progress remains correct and no write path,
 ranking/scoring/AI behavior exists.
 
-## Phase P12C - Optional Reference Ranking
+## Phase P12C1 - Complete Option Ranking Read Contract
 
-**Depends on:** P12B2
+**Depends on:** P12B2 merged, applied and phase-gated
 
-**Requirements:** TC-18
+**Requirements:** TC-18-S01, TC-18-S02, TC-18-S03, TC-18-S05,
+TC-18-S06 data/contract prerequisites
 
-**Deploy boundary:** optional reference-only ranking
+**Deploy boundary:** read-only complete-universe ranking contract; no ranking UI
+
+### Product entry gates
+
+Resolve tie numbering before writing RED tests: choose competition rank
+(`1, 1, 3`) or dense rank (`1, 1, 2`).
+
+`technical_axis = not_applicable` is not an open P12C1 product decision. It
+completes that non-applicable criterion even when `evidence_axis` is null, as
+already required by the normative "applicable criterion" distinction and the
+P11A derived-status contract.
+
+Within one tied rank, presentation order reuses the existing canonical option
+order (`supplier.normalized_name`, option identity, option ID). That order must
+not alter the shared rank.
+
+### Server/client ownership
+
+- The server owns dossier/baseline scope validation, the complete option and
+  criterion universe, raw-axis eligibility, aggregate counters, precedence,
+  tie rank and canonical presentation order.
+- The complete universe is every supplier option in the dossier crossed with
+  every canonical criterion in the exact baseline version, left joined to the
+  persisted manual assessment for that option/criterion.
+- The read path must remain set-based and bounded. It must not issue one request
+  per option, collect current filtered pages as if they were complete, or call
+  get-or-create comparison-set behavior.
+- Every result page must repeat one opaque snapshot identity derived from the
+  complete option universe and every contributing comparison-set/assessment
+  revision. The client must pass `isSameSnapshot` to the shared bounded-page
+  collector and reject the full collection when a later page differs.
+- The contract excludes reference products and must not join supplier responses,
+  supplementary information, documents or citations. Source changes therefore
+  cannot mutate eligibility or create a manual stale state.
+- The client contract owns only typed transport, stable bounded-page collection
+  and cache identity. P12C2 owns the explicit request and presentation.
+
+### Ranking RPC wire contract
+
+- RPC name:
+  `technical_configuration_reference_ranking_list(p_dossier_id,
+p_baseline_version_id, p_page, p_page_size)`.
+- Request paging is 1-based offset pagination. `p_page >= 1`,
+  `1 <= p_page_size <= 100`; the complete collector always requests 100. There
+  is no parallel cursor contract and no hidden cap on total dossier options or
+  baseline criteria.
+- Response root is exactly
+  `{ data, dossier_id, baseline_version_id, snapshot_token, total, page, page_size }`.
+  Each item is exactly
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`.
+- `option_id` is the stable collector key. `eligibility` is `eligible` or
+  `incomplete`; rank is a positive integer only for eligible rows and null for
+  incomplete rows. Every count is a non-negative integer.
+- The server computes eligibility, counters and shared rank over the complete
+  option/criterion universe before `LIMIT/OFFSET`. Eligible rows sort by rank
+  then canonical option order; incomplete rows follow in canonical option order.
+- Every page repeats exact scope, page metadata, total and one opaque
+  `snapshot_token`. A page beyond exhaustion returns empty `data` with unchanged
+  metadata. The client requests sequential pages only until collected count
+  equals `total`, exposes no partial ranking and rejects early empty pages,
+  duplicates, overflow, metadata/total mismatch or snapshot mismatch.
+- Invalid page arguments return `PT422/validation_error`; missing or
+  dossier-mismatched baseline identity returns `PT404/not_found`. Missing
+  comparison sets remain read-only incomplete rows.
 
 ### Planned files
 
-- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationReferenceRanking.tsx`
-- Create: `src/lib/technical-configuration-ranking.ts`
-- Create: `src/lib/__tests__/technical-configuration-ranking.test.ts`
-- Create: `src/app/(app)/technical-configurations/__tests__/reference-ranking.test.tsx`
-- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Create: `supabase/migrations/<timestamp>_technical_configuration_reference_ranking.sql`
+- Create: `supabase/tests/technical_configuration_reference_ranking_phase_gate.sql`
+- Create: `src/lib/technical-configuration-ranking-rpcs.ts`
+- Create: `src/app/(app)/technical-configurations/reference-ranking-types.ts`
+- Create: `src/app/(app)/technical-configurations/technical-configuration-reference-ranking-rpc.ts`
+- Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceRanking.ts`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-reference-ranking-migration.test.ts`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-reference-ranking-rpc-whitelist.test.ts`
+- Create: `src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+- Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/contracts.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/design.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/test-matrix.md`
 
-### Tasks
-
-- [ ] Add optional ranking using only complete two-axis evaluations.
-- [ ] Apply precedence: fewer `Không đạt`, fewer `Chưa đủ bằng chứng`, more `Vượt yêu cầu`.
-- [ ] Add ties without hidden tie-breakers.
-- [ ] Exclude incomplete options and show the reason.
-- [ ] Add mandatory reference-only disclaimer.
-- [ ] Block cross-dossier, cross-version and reference-product ranking.
-- [ ] Preserve current manual conclusions and ranking eligibility when supplier
-      source data changes; do not render a manual-assessment stale state.
-- [ ] Do not persist award decisions or AI-derived rank.
+The exact RPC name is locked by the migration/source-contract RED tests. Do not
+reuse or widen `technical_configuration_evaluation_criteria_list`; that RPC owns
+one-option filtered navigation, not dossier-wide ranking.
 
 ### TDD and verification
 
-- Table-driven precedence and tie tests.
-- Incomplete-eligibility and scope-guard tests.
-- Source-update regression proving eligibility remains based on the persisted
-  manual conclusions and no stale marker appears.
-- UI disclaimer and no-hidden-ranking tests.
+- RED migration/source tests for a missing guarded RPC, missing explicit grants,
+  wrong result shape, incomplete scope guards or any reference-product/source
+  data join.
+- RED table-driven SQL cases for precedence, incomplete raw axes, the
+  `not_applicable` null-evidence exception, ties, deterministic tied
+  presentation order and the approved tie-numbering decision.
+- RED phase-gate cases for cross-dossier/version rejection, absent comparison
+  sets, more than 100 options, more than 100 criteria, page sizes 0/101, page
+  exhaustion, page-invariant ranks, source changes after manual evaluation,
+  denied roles, raw `admin` compatibility and rollback cleanliness.
+- RED source/manifest tests proving the ranking RPC is imported and spread into
+  `allowed-functions.ts`, not only declared in its own manifest.
+- GREEN typed adapter/query tests proving stable bounded-page collection,
+  exact wire fields, fixed collector page size 100, no partial publication,
+  exact exhaustion, total/metadata mismatch rejection, snapshot mismatch after
+  a mutation between page requests and no hidden comparison-set mutation.
+- Run format, explicit-any, dedupe, typecheck, focused tests, React Doctor and
+  strict OpenSpec validation.
+- Apply the exact migration only after explicit approval for that migration
+  write through Supabase MCP.
+- After apply, request a second explicit approval before running the
+  rollback-only live phase gate. Run read-only security/performance advisors
+  after the gate.
 
 ### Exit gate
 
-The manual MVP is feature-complete, including optional transparent reference ranking.
+P12C1 can deploy independently when the read-only RPC is merged, explicitly
+applied, phase-gated and available through the typed client. No user-visible
+ranking is mounted.
+
+## Phase P12C2 - Optional Reference Ranking UI
+
+**Depends on:** P12C1 merged, applied and phase-gated
+
+**Requirements:** TC-18
+
+**Deploy boundary:** optional supplier-option reference ranking UI
+
+### Planned files
+
+- Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationOptionReferenceRanking.tsx`
+- Create: `src/app/(app)/technical-configurations/__tests__/reference-ranking.test.tsx`
+- Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationAssessments.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/assessment-hook-contract.test.ts`
+- Modify: `openspec/changes/add-technical-configuration-comparison/contracts.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/design.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
+- Modify: `openspec/changes/add-technical-configuration-comparison/test-matrix.md`
+
+### Tasks
+
+- [ ] Mount ranking as a sibling of the selected-option evaluation flow in
+      `TechnicalConfigurationEvaluationWorkspace`; do not move dossier-wide
+      state into `TechnicalConfigurationEvaluationActiveWorkspace`.
+- [ ] Keep the ranking query disabled until the user explicitly requests it.
+- [ ] Reset the explicit-request latch and visible ranking when `dossier.id` or
+      baseline version identity changes. Cancel or ignore obsolete in-flight
+      requests so a previous context cannot render or trigger ranking in the new
+      context.
+- [ ] Render loading, error/retry, eligible ranking, tied ranks, incomplete
+      options and the exact incomplete message without adding hidden score,
+      percentage or tie-break criteria.
+- [ ] Render the mandatory reference-only disclaimer whenever ranking is shown.
+      Do not add export/print behavior merely because the normative scenario
+      also constrains future exported ranking.
+- [ ] Invalidate/refetch an active ranking after a successful manual assessment
+      save. Supplier response/document changes may refetch the same result but
+      must not create a manual stale marker.
+- [ ] Keep reference products outside the request and render model.
+
+### TDD and verification
+
+- RED React integration for no automatic request on mount, explicit request,
+  loading, error/retry and empty/single-option states.
+- RED dossier/baseline-switch regressions proving request state resets, obsolete
+  results never render and the new context still requires an explicit request.
+- RED rendering cases for precedence output, incomplete reason, ties, stable
+  tied presentation order, disclaimer and reference-product exclusion.
+- RED assessment-hook contract proving successful save invalidates the ranking
+  cache without changing existing assessment/filter invalidations.
+- Source-update regression proving no manual stale marker is rendered.
+- Run format, explicit-any, dedupe, typecheck, focused P11/P12 tests, React
+  Doctor and strict OpenSpec validation. Browser/mobile hardening remains P13B.
+
+### Exit gate
+
+The manual MVP is feature-complete when TC-18-S01-S06 pass end to end and the
+optional ranking remains transparent, read-time only and separate from any
+supplier award decision.
 
 ## Phase P13A - Database Security And Performance Hardening
 
-**Depends on:** P12C  
+**Depends on:** P12C1 merged, applied and phase-gated
 **Requirements:** TC-02, TC-20  
 **Deploy boundary:** verification-only; fixes require separate blocking leaf phases
 **Production code:** prohibited
@@ -2582,9 +2735,9 @@ No release-blocking database authorization, integrity or performance gap remains
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
-**Depends on:** P12C
+**Depends on:** P12C2
 
-**Requirements:** TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-20
+**Requirements:** TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-18, TC-20
 
 **Deploy boundary:** verification-only; fixes require separate blocking leaf phases
 **Production code:** prohibited
@@ -2606,6 +2759,10 @@ No release-blocking database authorization, integrity or performance gap remains
 - [ ] Verify P12A1/P12A2 compose assessment controls onto the shared P10B detail and
       supplementary information remains non-scoring after save, save-next and
       derived-status rendering.
+- [ ] Verify the complete TC-18 flow on desktop and mobile: no ranking request on
+      mount or after dossier/baseline switch, explicit request, loading,
+      error/retry, incomplete options, ties, disclaimer, context reset and
+      refresh after a successful assessment save.
 - [ ] Verify keyboard/focus/accessibility across workspace, matrix and evaluation.
 - [ ] Verify stable dimensions and absence of overlap/layout shifts.
 - [ ] Verify Equipment attachment regressions after shared extraction.
@@ -2615,7 +2772,7 @@ No release-blocking database authorization, integrity or performance gap remains
 
 ### Verification
 
-- Full relevant Vitest suites from P3A-P12C.
+- Full relevant Vitest suites from P3A-P12C2.
 - True full-repo React Doctor:
 
   ```bash
@@ -2623,7 +2780,8 @@ No release-blocking database authorization, integrity or performance gap remains
   ```
 
 - Browser screenshot/interaction evidence covering P10B3 evidence detail,
-  P12A2 assessment activation and TC-17 non-scoring behavior.
+  P12A2 assessment activation, TC-17 non-scoring behavior and the complete
+  TC-18 explicit-request ranking flow.
 - Reviewer approval of UI/accessibility evidence.
 
 ### Exit gate

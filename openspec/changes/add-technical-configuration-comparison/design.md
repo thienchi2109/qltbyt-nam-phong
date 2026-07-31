@@ -356,7 +356,7 @@ chuyển sau success, đi qua page boundary theo canonical order và giữ crite
 cuối nếu không còn mục kế tiếp.
 
 P12B bắt buộc tách theo DAG deploy-safe duy nhất
-`P12A2 -> P12B1 -> P12B2 -> P12C`.
+`P12A2 -> P12B1 -> P12B2 -> P12C1 -> P12C2`.
 
 P12B1 xây một immutable progress model từ
 `useTechnicalConfigurationBaselineVersionSelection().selectedVersion`, nơi mỗi
@@ -389,8 +389,9 @@ theo theo canonical order.
 `TechnicalConfigurationEvaluationActiveWorkspace.tsx` đã sát ngưỡng extraction,
 vì vậy P12B1 phải tách progress/summary ownership và P12B2 phải có focused
 navigator/state owner; không dồn model, filter và guarded-navigation logic trở
-lại active workspace. P12B1/P12B2 không thêm ranking, scoring hoặc AI. P12C chỉ
-bắt đầu sau P12B2 và browser/accessibility/responsive matrix vẫn thuộc P13B.
+lại active workspace. P12B1/P12B2 không thêm ranking, scoring hoặc AI. P12C1
+chỉ bắt đầu sau P12B2, P12C2 chỉ bắt đầu sau P12C1 và
+browser/accessibility/responsive matrix vẫn thuộc P13B.
 
 Ma trận không thay thế P8B3 response authoring hoặc workflow đánh giá chi tiết.
 Focused React, keyboard và responsive-source tests là gate của từng leaf.
@@ -472,17 +473,71 @@ Mỗi phản hồi tiêu chí có trường "Thông tin bổ sung" riêng. Trư�
 
 Xếp hạng là hành động tùy chọn và được tính từ trạng thái tổng hợp thủ công của các phương án trong cùng hồ sơ và cùng phiên bản cơ sở.
 
+P12C delivery được chia thành hai deploy boundary:
+
+- P12C1 cung cấp contract đọc đầy đủ, read-only và set-based.
+- P12C2 chỉ request và hiển thị ranking sau hành động rõ ràng của người dùng.
+
+Server sở hữu scope, complete data universe, eligibility, các bộ đếm, precedence,
+ties và canonical presentation order. Complete universe là mọi supplier option
+trong hồ sơ kết hợp với mọi criterion của exact baseline version, left join
+manual assessment tương ứng. Client không được tính ranking từ option đang chọn,
+current criterion page hoặc current filtered projection; cũng không được gọi
+get-or-create comparison set để phục vụ một read-only ranking request.
+
 Thứ tự quy tắc:
 
 1. Ít tiêu chí `Không đạt` hơn.
 2. Nếu bằng nhau, ít tiêu chí `Chưa đủ bằng chứng` hơn.
 3. Nếu vẫn bằng nhau, nhiều tiêu chí `Vượt yêu cầu` hơn.
 
-Chỉ phương án đã có đủ cả hai trục đánh giá cho toàn bộ tiêu chí áp dụng mới đủ điều kiện xếp hạng. Phương án chưa hoàn tất vẫn hiển thị trong tổng quan nhưng được ghi rõ "Chưa đủ dữ liệu để xếp hạng".
+Eligibility phải kiểm tra raw technical/evidence axes cho toàn bộ tiêu chí áp
+dụng. Không được reuse `evaluated === total` của P12B1 vì canonical derived
+status có thể ưu tiên `fails` hoặc `unclear` khi evidence axis vẫn thiếu. Phương
+án chưa hoàn tất vẫn hiển thị trong tổng quan nhưng được ghi rõ "Chưa đủ dữ liệu
+để xếp hạng". `technical_axis = not_applicable` đánh dấu criterion đó là không
+áp dụng và hoàn tất criterion ngay cả khi `evidence_axis` null; ngoại lệ này giữ
+đúng normative distinction giữa tiêu chí áp dụng và không áp dụng.
 
-Các phương án có cùng bộ giá trị được đồng hạng. UI luôn ghi rõ "Xếp hạng tham khảo, không phải quyết định lựa chọn nhà cung cấp". Không tạo xếp hạng chéo giữa hồ sơ, giữa phiên bản cơ sở hoặc với sản phẩm tham chiếu.
+Các phương án có cùng bộ giá trị được đồng hạng. Thứ tự hiển thị bên trong một
+tie reuse canonical option order hiện có và không được thay đổi shared rank. UI
+luôn ghi rõ "Xếp hạng tham khảo, không phải quyết định lựa chọn nhà cung cấp".
+Không tạo xếp hạng chéo giữa hồ sơ, giữa phiên bản cơ sở hoặc với sản phẩm tham
+chiếu.
 
-Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự sửa, xóa hoặc đánh dấu lỗi thời kết luận thủ công. Xếp hạng dùng các kết luận thủ công đang được lưu; người dùng chịu trách nhiệm rà soát lại khi dữ liệu nguồn thay đổi. Cơ chế `Đã lỗi thời` chỉ dành cho kết quả AI trong change tương lai.
+Vì dossier không giới hạn tổng số option, ranking result có thể cần nhiều bounded
+page. Mỗi page phải lặp lại cùng một opaque snapshot identity được tính từ toàn
+bộ option universe và các manual assessment revision tham gia ranking. Client
+loại toàn bộ collection và yêu cầu retry nếu snapshot của bất kỳ page sau khác
+page đầu; không ghép các page thuộc hai trạng thái ranking khác nhau.
+
+P12C1 dùng đúng một RPC
+`technical_configuration_reference_ranking_list(p_dossier_id,
+p_baseline_version_id, p_page, p_page_size)`. Page là 1-based offset page,
+server chấp nhận page size 1-100 và complete collector luôn dùng 100. Response
+lặp lại `dossier_id`, `baseline_version_id`, opaque `snapshot_token`, `total`,
+`page`, `page_size` và tối đa 100 option rows. `option_id` là collection key;
+mỗi row có supplier/display identity, eligibility, incomplete count, ba ranking
+counters và nullable rank. Server tính rank trên toàn universe trước khi cắt
+page. Client chỉ công bố ranking sau khi thu đúng `total`, và reject toàn bộ
+collection khi metadata, total, key hoặc snapshot không nhất quán. Không dùng
+cursor song song với page contract và không đặt hidden cap lên tổng option hoặc
+criterion.
+
+Ranking read contract không join response, supplementary information, document
+hoặc citation source data. Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự
+sửa, xóa hoặc đánh dấu lỗi thời kết luận thủ công. Xếp hạng dùng các kết luận
+thủ công đang được lưu; người dùng chịu trách nhiệm rà soát lại khi dữ liệu
+nguồn thay đổi. Cơ chế `Đã lỗi thời` chỉ dành cho kết quả AI trong change tương
+lai.
+
+Trước RED tests của P12C1, product owner chỉ còn phải khóa tie numbering là
+competition rank (`1, 1, 3`) hay dense rank (`1, 1, 2`). Semantics của
+`not_applicable` đã được normative contract và P11A khóa, không phải một local
+P12C1 product gate.
+
+Không thêm numeric score, weighted score, percentage, persisted rank, award
+decision, export/print surface hoặc AI runtime trong P12C1/P12C2.
 
 ### 12. Quyền truy cập và audit tối thiểu
 

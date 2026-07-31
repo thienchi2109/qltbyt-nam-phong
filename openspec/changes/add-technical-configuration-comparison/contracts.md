@@ -67,7 +67,7 @@
   it must not add another top-level tab, duplicate toolbar actions, progress
   controls, filters or ranking.
 - Delivery after P12A2 follows only
-  `P12A2 -> P12B1 -> P12B2 -> P12C`.
+  `P12A2 -> P12B1 -> P12B2 -> P12C1 -> P12C2`.
 - P12B1 owns the immutable selected-option progress model, status counters,
   compact option/group summaries and successful-save adoption into the complete
   assessment cache. Its criterion universe is the selected locked baseline;
@@ -89,12 +89,38 @@
   `technical_configuration_evaluation_criteria_list` migration, RPC manifest/
   proxy allowlist entry, typed request/response contract and query key required
   for server-side filtering. It adds no table, write path, ranking, scoring or
-  AI runtime. P12C starts only after P12B2.
+  AI runtime. P12C1 starts only after P12B2 is merged, applied and phase-gated.
+- P12C1 owns a dedicated, read-only, set-based ranking contract over every
+  supplier option in one dossier and every canonical criterion in one exact
+  baseline version. It must left join persisted manual assessments without
+  creating comparison sets or issuing one request per option.
+- P12C1 owns server-side scope guards, raw-axis eligibility, aggregate counters,
+  precedence, shared tie rank and canonical tied presentation order. The result
+  is bounded and read-time only; it excludes reference products, supplier
+  response/document source joins, persisted rank, award decisions and AI.
+- `technical_axis = not_applicable` completes that non-applicable criterion even
+  when `evidence_axis` is null. Every applicable criterion still requires both
+  raw axes, including when derived status precedence would otherwise hide a
+  missing evidence axis.
+- Every bounded ranking page repeats one opaque snapshot identity derived from
+  the complete option and contributing manual-assessment universe. The client
+  must reject the whole collection when any later page has a different snapshot.
+- P12C1 adds the ranking migration, rollback-only phase gate, RPC manifest/proxy
+  allowlist integration in `allowed-functions.ts`, typed wire/adapter contract
+  and bounded query hook. It may deploy dormant only after separate explicit
+  approvals for migration apply and the rollback-only live phase gate.
+- P12C2 owns the explicit ranking request, loading/error/retry state, eligible
+  and incomplete rendering, tie presentation, disclaimer and ranking-cache
+  invalidation after successful assessment saves. It adds no migration and does
+  not move dossier-wide ranking state into the selected-option active workspace.
+  It resets the request latch and visible result when dossier or baseline
+  identity changes and ignores or cancels obsolete in-flight requests.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
-  matrix. P12A2/P12B1/P12B2 retain focused React/source regressions required by
-  their own dependency and exit gates.
+  matrix, including the complete TC-18 ranking flow. P12A2/P12B1/P12B2 retain
+  focused React/source regressions required by their own dependency and exit
+  gates.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
@@ -104,27 +130,28 @@
 
 Each entity or schema alteration has one primary leaf owner. A later leaf may extend an existing copy/guard function only when its own entities require that extension.
 
-| Leaf | Entity or alteration                          | Key ownership and cascade contract                                                                                            |
-| ---- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| P1   | `technical_configuration_dossiers`            | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                           |
-| P2   | `technical_configuration_baseline_versions`   | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision         |
-| P2   | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
-| P2   | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
-| P4   | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
-| P7A1 | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
-| P7A1 | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
-| P7B1 | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
-| P7B1 | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
-| P7B1 | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
-| P7B1 | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
-| P8A1 | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                 |
-| P8A2 | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                            |
-| P8A3 | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
-| P8A3 | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
-| P8A4 | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
-| P9B1 | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
-| P9B1 | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
-| P11B | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
+| Leaf  | Entity or alteration                          | Key ownership and cascade contract                                                                                            |
+| ----- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| P1    | `technical_configuration_dossiers`            | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                           |
+| P2    | `technical_configuration_baseline_versions`   | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision         |
+| P2    | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
+| P2    | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
+| P4    | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
+| P7A1  | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
+| P7A1  | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
+| P7B1  | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
+| P7B1  | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
+| P7B1  | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
+| P7B1  | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
+| P8A1  | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                 |
+| P8A2  | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                            |
+| P8A3  | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
+| P8A3  | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
+| P8A4  | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
+| P9B1  | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
+| P9B1  | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
+| P11B  | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
+| P12C1 | complete option ranking read contract         | Read-only set-based RPC over dossier options, exact baseline criteria and persisted manual assessments; no new table          |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
 
@@ -286,6 +313,8 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P9B1  | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
 | P10A1 | `technical_configuration_comparison_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | P11B  | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| P12B2 | `technical_configuration_evaluation_criteria_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| P12C1 | `technical_configuration_reference_ranking_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
 that introduces an RPC also owns allowlisting only the names introduced by that
@@ -293,6 +322,10 @@ leaf. P10A1 and P11B create database functions without proxy exposure; P10A2
 and P11C own their respective RPC-name manifests and allowlist entries only
 after the database contracts are applied and gated.
 P11D, P12A1 and P12A2 introduce no RPC name or allowlist entry.
+P12B2 owns its filtered-navigation RPC manifest/allowlist. P12C1 owns the
+ranking database function, dedicated manifest and final proxy allowlist
+integration in the same leaf, but exposes the function only after its migration
+and rollback-only gate pass.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -402,6 +435,35 @@ updated_by, updated_at }`. Both axis fields are nullable; `notes` is returned
   `criterion_id`. Zero rows, sparse rows and more than one hundred rows are
   valid. Duplicate or incomplete pages fail deterministically rather than
   returning a partial map.
+- `technical_configuration_reference_ranking_list` request is exactly
+  `{ p_dossier_id, p_baseline_version_id, p_page, p_page_size }`.
+  `p_page` is a non-null 1-based page number; `p_page_size` is non-null and
+  between 1 and 100. The P12C1 complete collector always requests page size 100.
+  This contract uses offset pages, not a client cursor.
+- Its response is exactly
+  `{ data, dossier_id, baseline_version_id, snapshot_token, total, page, page_size }`.
+  `snapshot_token` is one opaque non-empty string repeated unchanged on every
+  page from the same ranking universe. Each `data` item is exactly
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`. `eligibility` is `eligible` or `incomplete`; `rank`
+  is a positive integer only for eligible options and is null otherwise. Counts
+  are non-negative integers. No hidden score, response/document aggregate or
+  reference-product field is present.
+- Ranking and shared ties are computed over the complete dossier option universe
+  before page slicing. Presentation order is eligible rank ascending, then the
+  existing canonical option order within a tie; incomplete options follow in
+  canonical option order. `option_id` is the stable collection key. The server
+  returns the requested `page` and `page_size` unchanged, including an empty
+  `data` page beyond the end with the same `total` and `snapshot_token`.
+- The client requests pages sequentially from page 1 until collected item count
+  equals `total`. It publishes no partial ranking. It rejects the entire
+  collection on invalid metadata, an early empty page, duplicate `option_id`,
+  item count above `total`, changed `total` or changed `snapshot_token`. A page
+  after exact exhaustion is not requested.
+- Invalid page arguments return `PT422/validation_error`; a missing or
+  dossier-mismatched baseline returns `PT404/not_found`. Missing comparison sets
+  and sparse assessments produce incomplete option rows without creating data.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -595,6 +657,12 @@ that client state for refresh and re-preview.
   assessment collection. P12B2 keeps that progress path unchanged and uses one
   bounded, set-based read RPC for server-filtered IDs; it must not add a second
   assessment query, full comparison collector or per-option N+1 path.
+- P12C1 returns at most 100 option-ranking rows per page and imposes no hidden
+  domain cap on total dossier options or baseline criteria. One set-based
+  statement computes complete-universe eligibility, counters and rank before
+  pagination. Phase-gate coverage uses more than 100 options and more than 100
+  criteria; P13A reviews a representative ranking `EXPLAIN` and creates a
+  blocking fix leaf if the plan is not acceptable.
 
 ## Migration Order
 
@@ -614,6 +682,9 @@ that client state for refresh and re-preview.
 11. P11B adds manual assessments and their guarded database RPCs.
 12. P12B2 adds the guarded, read-only server-filtered evaluation criterion RPC;
     it creates no table or write path.
+13. P12C1 adds the guarded, read-only reference-ranking RPC after P12B2. Apply
+    requires explicit approval, then its rollback-only live phase gate requires
+    a second explicit approval before P13A or P12C2 may depend on it.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
