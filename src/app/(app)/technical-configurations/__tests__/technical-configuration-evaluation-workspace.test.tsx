@@ -17,20 +17,39 @@ import {
   openCurrentCriterion,
 } from "./technical-configuration-evaluation-workspace.test-support"
 
+type EvaluationCriterionEntry = {
+  criterion_id: string
+  canonical_index: number
+  canonical_page: number
+}
+
 const mocks = vi.hoisted(() => ({
   assessmentsByOptionId: {} as Record<
     string,
     Readonly<Record<string, TechnicalConfigurationAssessmentWire>>
   >,
+  evaluationCriteriaByOptionAndFilter: {} as Record<string, readonly EvaluationCriterionEntry[]>,
   assessmentQueryError: null as Error | null,
   assessmentQueryLoading: false,
   comparisonSetQueryError: null as Error | null,
   discard: vi.fn(),
+  loadEvaluationCriteria: vi.fn(),
+  refetchEvaluationCriteria: vi.fn(),
   refetchAssessment: vi.fn(),
   refetchComparisonSet: vi.fn(),
   save: vi.fn(),
   synchronizeVersion: vi.fn(),
 }))
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, resolve, reject }
+}
 
 vi.mock("../_hooks/useTechnicalConfigurationBaselineVersionSelection", () => ({
   useTechnicalConfigurationBaselineVersionSelection: () => ({
@@ -71,6 +90,10 @@ vi.mock("../_hooks/useTechnicalConfigurationOptionListQuery", () => ({
   }),
 }))
 
+vi.mock("../comparison-matrix-constants", () => ({
+  TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE: 2,
+}))
+
 vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
   useTechnicalConfigurationComparison: ({
     optionIds,
@@ -87,6 +110,44 @@ vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
       refetch: vi.fn(),
     },
   }),
+}))
+
+vi.mock("../_hooks/useTechnicalConfigurationEvaluationCriteria", () => ({
+  useTechnicalConfigurationEvaluationCriteria: ({
+    optionId,
+    statusFilter,
+  }: {
+    optionId: string
+    statusFilter: string
+  }) => {
+    const loadCriteria = async ({
+      optionId: targetOptionId,
+      statusFilter: targetStatusFilter,
+    }: {
+      optionId: string
+      statusFilter: string
+    }) => {
+      const override = (await mocks.loadEvaluationCriteria({
+        optionId: targetOptionId,
+        statusFilter: targetStatusFilter,
+      })) as readonly EvaluationCriterionEntry[] | undefined
+      if (override !== undefined) return override
+      return (
+        mocks.evaluationCriteriaByOptionAndFilter[`${targetOptionId}:${targetStatusFilter}`] ?? []
+      )
+    }
+
+    return {
+      criteriaQuery: {
+        data: mocks.evaluationCriteriaByOptionAndFilter[`${optionId}:${statusFilter}`] ?? [],
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: mocks.refetchEvaluationCriteria,
+      },
+      loadCriteria,
+    }
+  },
 }))
 
 vi.mock("../_hooks/useTechnicalConfigurationEvaluationDraft", async () => {
@@ -210,6 +271,22 @@ afterAll(() => {
 describe("P12A2 technical configuration evaluation workspace", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.loadEvaluationCriteria.mockReset()
+    const allCriteria = [
+      { criterion_id: "criterion-1", canonical_index: 1, canonical_page: 1 },
+      { criterion_id: "criterion-2", canonical_index: 2, canonical_page: 1 },
+      { criterion_id: "criterion-3", canonical_index: 3, canonical_page: 2 },
+    ] as const
+    mocks.evaluationCriteriaByOptionAndFilter = {
+      "option-1:all": allCriteria,
+      "option-1:not_evaluated": [allCriteria[2]],
+      "option-1:fails": [allCriteria[1]],
+      "option-1:insufficient_evidence": [],
+      "option-2:all": allCriteria,
+      "option-2:not_evaluated": [allCriteria[0], allCriteria[1]],
+      "option-2:fails": [allCriteria[0]],
+      "option-2:insufficient_evidence": [],
+    }
     mocks.assessmentsByOptionId = {
       "option-1": {
         "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "meets", "complete"),
@@ -250,6 +327,244 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     expect(screen.getByText("Đang tải tiến độ đánh giá...")).toBeInTheDocument()
     expect(screen.queryByText(/Đã đánh giá \d+ \/ 3 tiêu chí/)).not.toBeInTheDocument()
+  })
+
+  it.each([
+    {
+      label: "Chưa đánh giá",
+      statusFilter: "not_evaluated",
+      expectedCriterionIds: ["criterion-3"],
+    },
+    {
+      label: "Không đạt",
+      statusFilter: "fails",
+      expectedCriterionIds: ["criterion-2"],
+    },
+    {
+      label: "Chưa đủ bằng chứng",
+      statusFilter: "insufficient_evidence",
+      expectedCriterionIds: [],
+    },
+  ])(
+    "renders only canonical IDs returned by the server-side $statusFilter filter",
+    async ({ label, statusFilter, expectedCriterionIds }) => {
+      const user = userEvent.setup()
+
+      render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+      await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+      await user.click(await screen.findByRole("option", { name: label }))
+
+      await waitFor(() =>
+        expect(mocks.loadEvaluationCriteria).toHaveBeenCalledWith({
+          optionId: "option-1",
+          statusFilter,
+        })
+      )
+      expect(
+        screen
+          .queryAllByTestId("evaluation-criterion")
+          .map((criterion) => criterion.getAttribute("data-criterion-id"))
+      ).toEqual(expectedCriterionIds)
+      if (expectedCriterionIds.length === 0) {
+        expect(screen.getByText("Không có tiêu chí phù hợp")).toBeInTheDocument()
+      }
+    }
+  )
+
+  it("keeps the saved panel open when Lưu removes the current criterion from the filter", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await user.click(getCriterion("criterion-2"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Lưu rồi rời bộ lọc")
+    mocks.save.mockImplementationOnce(async () => {
+      mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = []
+      return {}
+    })
+
+    await user.click(screen.getByRole("button", { name: "Lưu", exact: true }))
+
+    expect(
+      await screen.findByText("Tiêu chí đang mở không còn phù hợp với bộ lọc sau khi lưu.")
+    ).toBeInTheDocument()
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Phản hồi TC-02")).toBeInTheDocument()
+  })
+
+  it("restores filter, page, criterion, panel and draft when dirty filter navigation is cancelled", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByRole("button", { name: "Trang tiếp theo" }))
+    await user.click(getCriterion("criterion-3"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Giữ nguyên toàn bộ state")
+    await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
+    await user.click(screen.getByRole("button", { name: "Hủy" }))
+
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Tất cả")
+    expect(screen.getByText("Trang 2/2")).toBeInTheDocument()
+    expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true")
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    await user.click(getCriterion("criterion-3"))
+    expect(screen.getByLabelText("Ghi chú")).toHaveValue("Giữ nguyên toàn bộ state")
+  })
+
+  it("freezes navigation while loading filtered IDs and guards before committing", async () => {
+    const user = userEvent.setup()
+    const deferred = createDeferred<readonly EvaluationCriterionEntry[]>()
+    mocks.loadEvaluationCriteria.mockReturnValueOnce(deferred.promise)
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await openCurrentCriterion(user)
+    await user.type(screen.getByLabelText("Ghi chú"), "Phải guard trước RPC")
+    await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+
+    await waitFor(() => expect(mocks.loadEvaluationCriteria).toHaveBeenCalledTimes(1))
+    expect(screen.getByLabelText("Phương án đánh giá")).toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toBeDisabled()
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+
+    deferred.resolve(mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"])
+
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
+    await user.click(screen.getByRole("button", { name: "Bỏ thay đổi" }))
+    await waitFor(() => expect(getCriterion("criterion-2")).toHaveAttribute("aria-current", "true"))
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+  })
+
+  it("keeps the active filter and resolves selection deterministically when option changes", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    expect(getCriterion("criterion-2")).toHaveAttribute("aria-current", "true")
+
+    await user.click(screen.getByLabelText("Phương án đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Nhà cung cấp B · Model B" }))
+
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+    expect(getCriterion("criterion-1")).toHaveAttribute("aria-current", "true")
+  })
+
+  it("moves save-next through matching canonical results and shows no-more-match without wrapping", async () => {
+    const user = userEvent.setup()
+    const matchingCriteria = [
+      { criterion_id: "criterion-1", canonical_index: 1, canonical_page: 1 },
+      { criterion_id: "criterion-3", canonical_index: 3, canonical_page: 2 },
+    ] as const
+    mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = matchingCriteria
+    mocks.assessmentsByOptionId["option-1"] = {
+      ...mocks.assessmentsByOptionId["option-1"],
+      "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "fails", null),
+      "criterion-3": createEvaluationAssessment("option-1", "criterion-3", "fails", null),
+    }
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await user.click(getCriterion("criterion-1"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Tiếp tục theo filter")
+    await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
+
+    await waitFor(() => expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true"))
+    expect(screen.getByText("Phản hồi TC-03")).toBeInTheDocument()
+
+    mocks.save.mockImplementationOnce(async () => {
+      mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = []
+      return {}
+    })
+    await user.type(screen.getByLabelText("Ghi chú"), "Kết quả cuối")
+    await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
+
+    expect(await screen.findByText("Không còn tiêu chí phù hợp với bộ lọc.")).toBeInTheDocument()
+    expect(screen.getByRole("dialog")).toBeInTheDocument()
+    expect(screen.getByText("Phản hồi TC-03")).toBeInTheDocument()
+  })
+
+  it("blocks option and filter changes while save-next reloads matching criteria", async () => {
+    const user = userEvent.setup()
+    const matchingCriteria = [
+      { criterion_id: "criterion-1", canonical_index: 1, canonical_page: 1 },
+      { criterion_id: "criterion-3", canonical_index: 3, canonical_page: 2 },
+    ] as const
+    const criteriaReload = createDeferred<readonly EvaluationCriterionEntry[]>()
+    mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = matchingCriteria
+    mocks.assessmentsByOptionId["option-1"] = {
+      ...mocks.assessmentsByOptionId["option-1"],
+      "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "fails", null),
+      "criterion-3": createEvaluationAssessment("option-1", "criterion-3", "fails", null),
+    }
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await user.click(getCriterion("criterion-1"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Chờ tải tiêu chí kế tiếp")
+    mocks.loadEvaluationCriteria.mockReset()
+    mocks.loadEvaluationCriteria.mockReturnValueOnce(criteriaReload.promise)
+
+    await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
+
+    await waitFor(() => expect(mocks.loadEvaluationCriteria).toHaveBeenCalledTimes(1))
+    expect(screen.getByLabelText("Phương án đánh giá")).toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toBeDisabled()
+
+    await act(async () => {
+      criteriaReload.resolve(matchingCriteria)
+      await criteriaReload.promise
+    })
+
+    await waitFor(() => expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true"))
+    expect(screen.getByLabelText("Phương án đánh giá")).not.toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).not.toBeDisabled()
+  })
+
+  it("preserves filtered navigation and draft when save-next fails", async () => {
+    const user = userEvent.setup()
+    const matchingCriteria = [
+      { criterion_id: "criterion-1", canonical_index: 1, canonical_page: 1 },
+      { criterion_id: "criterion-3", canonical_index: 3, canonical_page: 2 },
+    ] as const
+    mocks.evaluationCriteriaByOptionAndFilter["option-1:fails"] = matchingCriteria
+    mocks.assessmentsByOptionId["option-1"] = {
+      ...mocks.assessmentsByOptionId["option-1"],
+      "criterion-1": createEvaluationAssessment("option-1", "criterion-1", "fails", null),
+      "criterion-3": createEvaluationAssessment("option-1", "criterion-3", "fails", null),
+    }
+    mocks.save.mockRejectedValueOnce(new Error("save_failed"))
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await user.click(getCriterion("criterion-1"))
+    await user.type(screen.getByLabelText("Ghi chú"), "Giữ draft khi lỗi")
+    mocks.loadEvaluationCriteria.mockClear()
+
+    await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
+
+    await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1))
+    expect(mocks.loadEvaluationCriteria).not.toHaveBeenCalled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+    expect(getCriterion("criterion-1")).toHaveAttribute("aria-current", "true")
+    expect(screen.getByLabelText("Ghi chú")).toHaveValue("Giữ draft khi lỗi")
+    expect(screen.queryByText("Không còn tiêu chí phù hợp với bộ lọc.")).not.toBeInTheDocument()
   })
 
   it("keeps Lưu on the criterion and advances Lưu & tiếp tục across page boundaries", async () => {
@@ -348,6 +663,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
       expect(screen.getByRole("button", { name: "Trang tiếp theo", hidden: true })).toBeDisabled()
     )
     expect(screen.getByLabelText("Phương án đánh giá")).toBeDisabled()
+    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toBeDisabled()
     for (const criterion of screen.getAllByTestId("evaluation-criterion")) {
       expect(criterion).toBeDisabled()
     }

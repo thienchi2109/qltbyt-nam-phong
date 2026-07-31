@@ -73,17 +73,23 @@
   assessment cache. Its criterion universe is the selected locked baseline;
   complete assessments are reconciled by `criterion_id`. P12B1 owns no filter,
   selection, pagination or navigation behavior.
-- P12B2 reuses the P12B1 model without changing its data shape, denominator,
-  counters or cache ownership. It owns the single selected status filter,
-  canonical filtered projection, client-side filtered pagination, selection
-  reconciliation, P12A2 dirty/pending guard reuse and filter-aware save-next.
+- P12B2 does not derive filtered IDs from the client assessment cache. It adds
+  one guarded read-only RPC that applies the canonical derived-status rules in
+  Postgres and returns exact criterion IDs plus canonical index/page metadata in
+  bounded pages. The client collects those server-filtered pages, maps them to
+  locked-baseline display rows and paginates only the presentation projection.
+  P12B1 data shape, denominator, counters and cache ownership remain unchanged.
+  P12B2 also owns selection reconciliation, P12A2 dirty/pending guard reuse and
+  filter-aware save-next.
 - P12B1 extracts progress/summary composition and P12B2 extracts a focused
   navigator/state owner so
   `TechnicalConfigurationEvaluationActiveWorkspace.tsx` does not absorb both
   responsibilities or exceed the source-file ceiling.
-- P12B1 and P12B2 add no migration, RPC name, proxy allowlist, request/response
-  shape, query contract, ranking, scoring or AI runtime. P12C starts only after
-  P12B2.
+- P12B1 adds no migration or query contract. P12B2 adds only the read-only
+  `technical_configuration_evaluation_criteria_list` migration, RPC manifest/
+  proxy allowlist entry, typed request/response contract and query key required
+  for server-side filtering. It adds no table, write path, ranking, scoring or
+  AI runtime. P12C starts only after P12B2.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
@@ -585,9 +591,10 @@ that client state for refresh and re-preview.
   `TechnicalConfigurationBaselineDraftWire` carries the complete ordered
   `groups[].criteria[]` snapshot for that locked version, including baselines
   with more than 100 criteria; version-list pagination is across versions, not
-  criteria. They pair that snapshot with the selected-option complete assessment
-  collection and must not add a second assessment query, full comparison
-  collector, per-option N+1 path or database aggregation.
+  criteria. P12B1 pairs that snapshot with the selected-option complete
+  assessment collection. P12B2 keeps that progress path unchanged and uses one
+  bounded, set-based read RPC for server-filtered IDs; it must not add a second
+  assessment query, full comparison collector or per-option N+1 path.
 
 ## Migration Order
 
@@ -605,6 +612,8 @@ that client state for refresh and re-preview.
 9. P9B1 adds option documents/citations.
 10. P10A1 adds the bounded comparison read RPC and any query-plan-proven indexes.
 11. P11B adds manual assessments and their guarded database RPCs.
+12. P12B2 adds the guarded, read-only server-filtered evaluation criterion RPC;
+    it creates no table or write path.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 

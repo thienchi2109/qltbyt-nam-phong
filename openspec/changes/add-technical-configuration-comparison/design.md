@@ -371,15 +371,20 @@ luận. Option/group summary dùng cùng model và mutation success được ado
 complete cache trước existing prefix invalidation. Leaf này deploy với summary
 đúng nhưng giữ nguyên toàn bộ P12A2 navigation.
 
-P12B2 mở rộng model P12B1 bằng pure filtered projection/navigation helpers,
-không đổi data shape, denominator, counters hoặc cache ownership. Filter là
-single-select `all`, `not_evaluated`, `fails` hoặc
-`insufficient_evidence`; projection giữ canonical group/criterion order và
-phân trang client-side với page size hiện có. Detail request vẫn dùng canonical
-comparison page của criterion, không dùng filtered page number. Selection còn
-visible được giữ nguyên; mọi filter transition làm thay selection phải reuse
-P12A2 dirty-confirm/pending-block contract. Save-next chỉ điều hướng sau save
-success tới matching criterion tiếp theo theo canonical order.
+P12B2 không suy ra filtered IDs từ assessment cache ở client. Leaf này thêm
+guarded read-only RPC
+`technical_configuration_evaluation_criteria_list(option, baseline, filter,
+page, page_size)` để áp dụng cùng derived-status precedence trong Postgres và
+trả exact `criterion_id`, `canonical_index`, `canonical_page` theo canonical
+group/criterion order. Client thu toàn bộ bounded server pages qua shared stable
+page collector, map IDs sang locked-baseline display rows rồi paginate phần hiển
+thị với page size hiện có; không re-filter assessment rows ở client. Detail
+request vẫn dùng canonical comparison page của criterion, không dùng filtered
+page number. P12B1 data shape, denominator, counters và complete-assessment
+cache ownership không đổi. Selection còn visible được giữ nguyên; mọi filter
+transition làm thay selection phải reuse P12A2 dirty-confirm/pending-block
+contract. Save-next chỉ điều hướng sau save success tới matching criterion tiếp
+theo theo canonical order.
 
 `TechnicalConfigurationEvaluationActiveWorkspace.tsx` đã sát ngưỡng extraction,
 vì vậy P12B1 phải tách progress/summary ownership và P12B2 phải có focused
@@ -585,17 +590,13 @@ Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ ch�
 
 Rollback có thể gỡ route/navigation và migration mới mà không tác động dữ liệu Equipment. Việc xóa dữ liệu đã tạo trong module phải là quyết định migration riêng, không thực hiện tự động khi rollback UI.
 
-## Open Questions
+## Resolved Entry Decisions
 
-Selected-option progress đã được khóa bởi P12B1. Các quyết định sau là entry
-gate của leaf tương ứng; recommended default chưa phải normative requirement
-cho tới khi product owner xác nhận:
-
-- P12B1 group-summary density: khuyến nghị chỉ `đã đánh giá / tổng`, không
-  seven-status breakdown, percentage hoặc progress-card grid.
-- P12B2 `Lưu` khi current criterion rời active filter: khuyến nghị giữ current
-  panel theo P12A2, báo criterion không còn match và không tự chuyển.
-- P12B2 `Lưu & tiếp tục` khi không còn matching criterion: khuyến nghị không
-  wrap, giữ saved panel và hiển thị no-more-match state.
-- P12B2 filter state khi đổi option: khuyến nghị giữ filter và resolve selection
-  deterministic theo option mới.
+- P12B1 group summary chỉ dùng `đã đánh giá / tổng`, không seven-status
+  breakdown, percentage hoặc progress-card grid.
+- P12B2 `Lưu` khi current criterion rời active filter giữ current panel, báo
+  criterion không còn match và không tự chuyển.
+- P12B2 `Lưu & tiếp tục` khi không còn matching criterion không wrap, giữ saved
+  panel và hiển thị no-more-match state.
+- P12B2 giữ filter khi đổi option và resolve selection deterministic theo option
+  mới.

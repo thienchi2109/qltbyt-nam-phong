@@ -203,7 +203,7 @@ describe("P12A1 evaluation core composition", () => {
     expect(screen.getByLabelText("Ghi chú")).toHaveValue("Đánh giá độc lập với nội dung nguồn.")
   })
 
-  it("keeps evaluation core activation scoped to the P12A2 workspace", () => {
+  it("keeps evaluation core activation scoped to the P12 workspace and navigator", () => {
     const repoRoot = process.cwd()
     const sourceRoot = join(repoRoot, "src")
     const featureRoot = join(repoRoot, "src/app/(app)/technical-configurations")
@@ -223,8 +223,12 @@ describe("P12A1 evaluation core composition", () => {
       .filter((file) => evaluationCoreReference.test(readFileSync(file, "utf8")))
       .map((file) => relative(repoRoot, file))
 
-    expect(productionReferences).toEqual([
-      "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx",
-    ])
+    expect(productionReferences).toEqual(
+      [
+        "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx",
+        "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane.tsx",
+        "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationNavigator.ts",
+      ].sort()
+    )
   })
 })

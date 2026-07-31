@@ -15,27 +15,21 @@ import {
 
 import { useTechnicalConfigurationComparison } from "../../_hooks/useTechnicalConfigurationComparison"
 import { useTechnicalConfigurationEvaluationDraft } from "../../_hooks/useTechnicalConfigurationEvaluationDraft"
+import { useTechnicalConfigurationEvaluationNavigator } from "../../_hooks/useTechnicalConfigurationEvaluationNavigator"
 import { useTechnicalConfigurationGuardedNavigation } from "../../_hooks/useTechnicalConfigurationGuardedNavigation"
 import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE } from "../../comparison-matrix-constants"
-import type {
-  TechnicalConfigurationComparisonCriterionRow,
-  TechnicalConfigurationComparisonOption,
-} from "../../comparison-types"
+import type { TechnicalConfigurationComparisonOption } from "../../comparison-types"
 import type { TechnicalConfigurationOptionWire } from "../../supplier-option-types"
 import { toTechnicalConfigurationComparisonOption } from "../../technical-configuration-comparison-mappers"
 import type { TechnicalConfigurationDossierWire } from "../../types"
-import { TechnicalConfigurationCriterionPagination } from "../comparison/TechnicalConfigurationCriterionPagination"
 import { createTechnicalConfigurationOptionCriterionDetail } from "../comparison/technical-configuration-criterion-detail"
 import { buildTechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
-import { TechnicalConfigurationCriterionList } from "./TechnicalConfigurationCriterionList"
 import { TechnicalConfigurationEvaluationLoadError } from "./TechnicalConfigurationEvaluationLoadError"
+import { TechnicalConfigurationEvaluationNavigatorPane } from "./TechnicalConfigurationEvaluationNavigatorPane"
 import { TechnicalConfigurationEvaluationPanel } from "./TechnicalConfigurationEvaluationPanel"
 import { TechnicalConfigurationProgressSummary } from "./TechnicalConfigurationProgressSummary"
-import {
-  resolveTechnicalConfigurationCriterionId,
-  toTechnicalConfigurationSaveErrorMessage,
-} from "./TechnicalConfigurationEvaluationWorkspaceUtils"
+import { toTechnicalConfigurationSaveErrorMessage } from "./TechnicalConfigurationEvaluationWorkspaceUtils"
 
 type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -47,8 +41,6 @@ type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
   onRevisionChange?: (revision: number) => void
 }
 
-const EMPTY_CRITERIA: TechnicalConfigurationComparisonCriterionRow[] = []
-
 /** Owns the selected option, page, criterion and P12A1 draft for evaluation mode. */
 export function TechnicalConfigurationEvaluationActiveWorkspace({
   dossier,
@@ -59,27 +51,26 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   onNavigationBlockedChange,
   onRevisionChange,
 }: Readonly<TechnicalConfigurationEvaluationActiveWorkspaceProps>) {
-  const [selectedOptionId, setSelectedOptionId] = React.useState(options[0]?.id ?? "")
-  const [page, setPage] = React.useState(1)
-  const [requestedCriterionId, setRequestedCriterionId] = React.useState<string | null>(null)
-  const [isPanelOpen, setIsPanelOpen] = React.useState(false)
   const detailReturnFocusRef = React.useRef<HTMLElement | null>(null)
-  const selectedOption = options.find((option) => option.id === selectedOptionId) ?? options[0]
-  const activeSelectedOptionId = selectedOption?.id ?? ""
+  const navigator = useTechnicalConfigurationEvaluationNavigator({
+    options,
+    baselineGroups,
+    baselineVersionId,
+    pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
+  })
   const comparison = useTechnicalConfigurationComparison({
     baselineVersionId,
-    optionIds: activeSelectedOptionId ? [activeSelectedOptionId] : [],
-    page,
+    optionIds: navigator.activeSelectedOptionId ? [navigator.activeSelectedOptionId] : [],
+    page: navigator.currentCriterion?.canonicalPage ?? 1,
     pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
   })
   const result = comparison.comparisonQuery.data
-  const criteria = result?.data.criteria ?? EMPTY_CRITERIA
-  const criterionId = resolveTechnicalConfigurationCriterionId(criteria, requestedCriterionId)
-  const currentRow = criteria.find((row) => row.criterion.id === criterionId) ?? null
+  const currentRow =
+    result?.data.criteria.find((row) => row.criterion.id === navigator.criterionId) ?? null
   const evaluation = useTechnicalConfigurationEvaluationDraft({
-    optionId: activeSelectedOptionId,
+    optionId: navigator.activeSelectedOptionId,
     baselineVersionId,
-    criterionId,
+    criterionId: navigator.criterionId,
     expectedDossierRevision: dossier.revision,
     onDossierRevisionChange: onRevisionChange,
   })
@@ -95,15 +86,11 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
     refetch: refetchComparisonSet,
   } = comparisonSetQuery
   const isDirty = evaluation.draft?.isDirty ?? false
-  const isNavigationBlocked = evaluation.isSaving
-  const currentIndex = currentRow
-    ? criteria.findIndex((row) => row.criterion.id === currentRow.criterion.id)
-    : -1
-  const hasNextPage = result ? result.page * result.pageSize < result.total : false
+  const isNavigationBlocked = evaluation.isSaving || navigator.isTransitionPending
   const { requestNavigation, discardConfirmationDialog } =
     useTechnicalConfigurationGuardedNavigation({
       isDirty,
-      isBlocked: isNavigationBlocked,
+      isBlocked: evaluation.isSaving,
       onDiscard: evaluation.discard,
     })
   const hasEvaluationReadError = isComparisonSetQueryError || isAssessmentQueryError
@@ -137,41 +124,32 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
 
   const handleOptionChange = React.useCallback(
     (nextOptionId: string) => {
-      if (nextOptionId === activeSelectedOptionId) return
-      requestNavigation(() => {
-        setSelectedOptionId(nextOptionId)
-        setPage(1)
-        setRequestedCriterionId(null)
-        setIsPanelOpen(false)
-      })
+      if (isNavigationBlocked) return
+      navigator.changeOption(nextOptionId, requestNavigation)
     },
-    [activeSelectedOptionId, requestNavigation]
+    [isNavigationBlocked, navigator, requestNavigation]
+  )
+  const handleFilterChange = React.useCallback(
+    (nextFilter: Parameters<typeof navigator.changeFilter>[0]) => {
+      if (isNavigationBlocked) return
+      navigator.changeFilter(nextFilter, requestNavigation)
+    },
+    [isNavigationBlocked, navigator, requestNavigation]
   )
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
-      if (nextPage === page) return
-      requestNavigation(() => {
-        setPage(nextPage)
-        setRequestedCriterionId(null)
-      })
+      navigator.changePage(nextPage, requestNavigation)
     },
-    [page, requestNavigation]
+    [navigator, requestNavigation]
   )
   const handleCriterionChange = React.useCallback(
     (nextCriterionId: string) => {
-      const navigate = () => {
+      navigator.changeCriterion(nextCriterionId, requestNavigation, () => {
         detailReturnFocusRef.current =
           document.activeElement instanceof HTMLElement ? document.activeElement : null
-        setRequestedCriterionId(nextCriterionId)
-        setIsPanelOpen(true)
-      }
-      if (nextCriterionId === criterionId) {
-        navigate()
-        return
-      }
-      requestNavigation(navigate)
+      })
     },
-    [criterionId, requestNavigation]
+    [navigator, requestNavigation]
   )
   const handleSave = React.useCallback(async () => {
     try {
@@ -183,19 +161,11 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   const handleSaveAndContinue = React.useCallback(async () => {
     try {
       await evaluation.save()
-      const nextCriterionId = criteria[currentIndex + 1]?.criterion.id
-      if (nextCriterionId) {
-        setRequestedCriterionId(nextCriterionId)
-        setIsPanelOpen(true)
-      } else if (hasNextPage) {
-        setPage((current) => current + 1)
-        setRequestedCriterionId(null)
-        setIsPanelOpen(true)
-      }
+      await navigator.advanceAfterSave()
     } catch {
       // Failed saves intentionally remain on the current criterion.
     }
-  }, [criteria, currentIndex, evaluation, hasNextPage])
+  }, [evaluation, navigator])
   const handleRetryEvaluationData = React.useCallback(() => {
     if (isComparisonSetQueryError) {
       void refetchComparisonSet()
@@ -203,11 +173,20 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
     if (isAssessmentQueryError) {
       void refetchAssessments()
     }
-  }, [isAssessmentQueryError, isComparisonSetQueryError, refetchAssessments, refetchComparisonSet])
+    if (navigator.criteriaQuery.isError) {
+      void navigator.criteriaQuery.refetch()
+    }
+  }, [
+    isAssessmentQueryError,
+    isComparisonSetQueryError,
+    navigator.criteriaQuery,
+    refetchAssessments,
+    refetchComparisonSet,
+  ])
 
-  const comparisonOption: TechnicalConfigurationComparisonOption | null = selectedOption
-    ? (result?.data.options.find((option) => option.id === activeSelectedOptionId) ??
-      toTechnicalConfigurationComparisonOption(selectedOption))
+  const comparisonOption: TechnicalConfigurationComparisonOption | null = navigator.selectedOption
+    ? (result?.data.options.find((option) => option.id === navigator.activeSelectedOptionId) ??
+      toTechnicalConfigurationComparisonOption(navigator.selectedOption))
     : null
   const currentOptionValue =
     currentRow && comparisonOption
@@ -231,7 +210,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
       <div className="flex flex-col gap-2 border-y py-3 sm:flex-row sm:items-center sm:justify-between">
         <Label htmlFor="technical-configuration-evaluation-option">Phương án đánh giá</Label>
         <Select
-          value={activeSelectedOptionId}
+          value={navigator.activeSelectedOptionId}
           onValueChange={handleOptionChange}
           disabled={isNavigationBlocked}
         >
@@ -258,6 +237,26 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         isError={hasEvaluationReadError}
       />
 
+      <TechnicalConfigurationEvaluationNavigatorPane
+        statusFilter={navigator.statusFilter}
+        onStatusFilterChange={handleFilterChange}
+        criteria={navigator.pageCriteria}
+        assessmentsByCriterionId={evaluation.assessmentsByCriterionId}
+        currentCriterionId={navigator.criterionId}
+        onSelectCriterion={handleCriterionChange}
+        page={navigator.filteredPage}
+        pageSize={TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE}
+        total={navigator.projection.length}
+        onPageChange={handlePageChange}
+        disabled={isNavigationBlocked}
+        isLoading={navigator.criteriaQuery.isLoading || navigator.isTransitionPending}
+        isError={navigator.criteriaQuery.isError}
+        error={navigator.criteriaQuery.error}
+        onRetry={() => void navigator.criteriaQuery.refetch()}
+        isCurrentCriterionFilteredOut={navigator.isCurrentCriterionFilteredOut}
+        hasNoMoreMatches={navigator.hasNoMoreMatches}
+      />
+
       {comparison.comparisonQuery.isLoading ? (
         <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -280,29 +279,11 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
           onRetry={handleRetryEvaluationData}
         />
       ) : null}
-      {result ? (
-        <>
-          <TechnicalConfigurationCriterionList
-            criteria={criteria}
-            assessmentsByCriterionId={evaluation.assessmentsByCriterionId}
-            currentCriterionId={criterionId}
-            onSelectCriterion={handleCriterionChange}
-            disabled={isNavigationBlocked}
-          />
-          <TechnicalConfigurationCriterionPagination
-            page={result.page}
-            pageSize={result.pageSize}
-            total={result.total}
-            onPageChange={handlePageChange}
-            disabled={isNavigationBlocked}
-          />
-        </>
-      ) : null}
 
       <TechnicalConfigurationEvaluationPanel
         detail={detail}
-        open={isPanelOpen && detail !== null}
-        onOpenChange={setIsPanelOpen}
+        open={navigator.isPanelOpen && detail !== null}
+        onOpenChange={navigator.setIsPanelOpen}
         returnFocusRef={detailReturnFocusRef}
         technicalAxis={draft?.technicalAxis ?? null}
         evidenceAxis={draft?.evidenceAxis ?? null}
@@ -310,7 +291,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         onTechnicalAxisChange={evaluation.setTechnicalAxis}
         onEvidenceAxisChange={evaluation.setEvidenceAxis}
         onNotesChange={evaluation.setNotes}
-        disabled={Boolean(dossier.archived_at)}
+        disabled={Boolean(dossier.archived_at) || navigator.isTransitionPending}
         loading={!evaluation.isReady}
         errorMessage={
           evaluation.error ? toTechnicalConfigurationSaveErrorMessage(evaluation.error) : null

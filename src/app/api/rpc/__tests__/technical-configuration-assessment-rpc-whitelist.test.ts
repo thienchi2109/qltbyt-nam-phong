@@ -9,8 +9,9 @@ import {
   ASSESSMENT_RPC_FUNCTIONS,
 } from "@/lib/technical-configuration-assessment-rpcs"
 
-const P11B_ASSESSMENT_RPC_FUNCTIONS = [
+const ASSESSMENT_RPC_FUNCTIONS_WITH_P12B2 = [
   "technical_configuration_assessments_list",
+  "technical_configuration_evaluation_criteria_list",
   "technical_configuration_assessment_upsert",
 ] as const
 
@@ -20,21 +21,26 @@ async function invokeRpcProxy(fn: string) {
 }
 
 describe("technical configuration assessment RPC whitelist", () => {
-  it("freezes exactly the two applied P11B assessment RPC names", () => {
+  it("freezes the applied assessment and P12B2 navigation RPC names", () => {
     expect(ASSESSMENT_RPC_FUNCTIONS).toEqual({
       listAssessments: "technical_configuration_assessments_list",
+      listEvaluationCriteria: "technical_configuration_evaluation_criteria_list",
       upsertAssessment: "technical_configuration_assessment_upsert",
     })
-    expect(ASSESSMENT_RPC_FUNCTION_NAMES).toEqual(P11B_ASSESSMENT_RPC_FUNCTIONS)
+    expect(ASSESSMENT_RPC_FUNCTION_NAMES).toEqual(ASSESSMENT_RPC_FUNCTIONS_WITH_P12B2)
   })
 
   it("allowlists exactly the P11C assessment RPC manifest", () => {
     expect(
-      [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_assessment"))
-    ).toEqual(P11B_ASSESSMENT_RPC_FUNCTIONS)
+      [...ALLOWED_FUNCTIONS].filter(
+        (fn) =>
+          fn.startsWith("technical_configuration_assessment") ||
+          fn === "technical_configuration_evaluation_criteria_list"
+      )
+    ).toEqual(ASSESSMENT_RPC_FUNCTIONS_WITH_P12B2)
   })
 
-  it.each(P11B_ASSESSMENT_RPC_FUNCTIONS)(
+  it.each(ASSESSMENT_RPC_FUNCTIONS_WITH_P12B2)(
     'allows assessment RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
