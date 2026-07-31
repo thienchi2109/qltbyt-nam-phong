@@ -9,6 +9,7 @@ import {
   COMPARISON_READ_RPC_FUNCTION_NAMES,
   COMPARISON_READ_RPC_FUNCTIONS,
 } from "@/lib/technical-configuration-comparison-rpcs"
+import { REFERENCE_RANKING_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-ranking-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import {
   OPTION_IMPORT_RPC_FUNCTION_NAMES,
@@ -68,6 +69,7 @@ const BASELINE_RPC_FUNCTIONS = [
 const REFERENCE_RPC_FUNCTIONS = [
   ...P7A1_REFERENCE_RPC_FUNCTIONS,
   ...REFERENCE_DOCUMENT_RPC_FUNCTIONS,
+  ...REFERENCE_RANKING_RPC_FUNCTION_NAMES,
 ] as const
 
 const P9A2_OPTION_IMPORT_RPC_FUNCTIONS = [
@@ -145,19 +147,19 @@ describe("technical configuration baseline RPC whitelist", () => {
   })
 })
 
-describe("technical configuration reference product RPC whitelist", () => {
+describe("technical configuration reference RPC whitelist", () => {
   it("keeps the local P7A1 reference-product prefix aligned with the shared manifest", () => {
     expect(P7A1_REFERENCE_RPC_FUNCTIONS).toEqual(REFERENCE_PRODUCT_RPC_FUNCTION_NAMES)
   })
 
-  it("allowlists exactly five P7A1 names plus five P7B1 reference-document names", () => {
+  it("allowlists exactly the P7A1, P7B1, and P12C1 reference manifests", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_reference_"))
     ).toEqual(REFERENCE_RPC_FUNCTIONS)
   })
 
   it.each(REFERENCE_RPC_FUNCTIONS)(
-    'allows reference product RPC "%s" through the whitelist',
+    'allows reference RPC "%s" through the whitelist',
     async (fn) => {
       const response = await invokeRpcProxy(fn)
 

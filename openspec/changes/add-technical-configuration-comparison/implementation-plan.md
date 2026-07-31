@@ -2521,8 +2521,7 @@ TC-18-S06 data/contract prerequisites
 
 ### Product entry gates
 
-Resolve tie numbering before writing RED tests: choose competition rank
-(`1, 1, 3`) or dense rank (`1, 1, 2`).
+Tie numbering is locked to dense rank (`1, 1, 2`) before RED tests.
 
 `technical_axis = not_applicable` is not an open P12C1 product decision. It
 completes that non-applicable criterion even when `evidence_axis` is null, as
@@ -2538,9 +2537,11 @@ not alter the shared rank.
 - The server owns dossier/baseline scope validation, the complete option and
   criterion universe, raw-axis eligibility, aggregate counters, precedence,
   tie rank and canonical presentation order.
-- The complete universe is every supplier option in the dossier crossed with
+- The complete universe is every supplier option in the dossier paired with
   every canonical criterion in the exact baseline version, left joined to the
-  persisted manual assessment for that option/criterion.
+  persisted manual assessment for that option/criterion. A zero-criterion exact
+  baseline preserves every option with zero counters, eligible status and dense
+  rank `1`.
 - The read path must remain set-based and bounded. It must not issue one request
   per option, collect current filtered pages as if they were complete, or call
   get-or-create comparison-set behavior.
@@ -2612,12 +2613,13 @@ one-option filtered navigation, not dossier-wide ranking.
   wrong result shape, incomplete scope guards or any reference-product/source
   data join.
 - RED table-driven SQL cases for precedence, incomplete raw axes, the
-  `not_applicable` null-evidence exception, ties, deterministic tied
-  presentation order and the approved tie-numbering decision.
+  `not_applicable` null-evidence exception, dense ties (`1, 1, 2`) and
+  deterministic tied presentation order. Explicitly cover `fails` and `unclear`
+  with null evidence so derived-status precedence cannot hide incompleteness.
 - RED phase-gate cases for cross-dossier/version rejection, absent comparison
-  sets, more than 100 options, more than 100 criteria, page sizes 0/101, page
-  exhaustion, page-invariant ranks, source changes after manual evaluation,
-  denied roles, raw `admin` compatibility and rollback cleanliness.
+  sets, zero criteria, more than 100 options, more than 100 criteria, page sizes
+  0/101, page exhaustion, page-invariant ranks, source changes after manual
+  evaluation, denied roles, raw `admin` compatibility and rollback cleanliness.
 - RED source/manifest tests proving the ranking RPC is imported and spread into
   `allowed-functions.ts`, not only declared in its own manifest.
 - GREEN typed adapter/query tests proving stable bounded-page collection,

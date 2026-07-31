@@ -398,6 +398,7 @@ describe("technical configuration P7A1 reference product contracts", () => {
     )
       .map(String)
       .filter((file) => /\.(?:ts|tsx)$/.test(file))
+      .filter((file) => !file.startsWith("__tests__/"))
       .filter((file) => /reference/i.test(file))
       .filter((file) => /(?:_components|_hooks|\.tsx$)/.test(file))
       .filter((file) => {
