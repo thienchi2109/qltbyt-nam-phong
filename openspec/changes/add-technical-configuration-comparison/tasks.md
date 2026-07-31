@@ -59,9 +59,9 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P12A2](./implementation-plan.md#phase-p12a2---guarded-navigation-and-workspace-activation)         | Kích hoạt workflow và navigation có guard      | P12A1                      | TC-04, TC-13, TC-14, TC-15, TC-16, TC-17, TC-20        |
 | [P12B1](./implementation-plan.md#phase-p12b1---selected-option-progress-foundation)                 | Nền tảng tiến độ option đang chọn              | P12A2                      | TC-04, TC-14, TC-16                                    |
 | [P12B2](./implementation-plan.md#phase-p12b2---filtered-guarded-navigation)                         | Lọc và điều hướng có guard                     | P12B1                      | TC-04, TC-14, TC-16, TC-20                             |
-| [P12C1](./implementation-plan.md#phase-p12c1---complete-option-ranking-read-contract)               | Contract đọc xếp hạng đầy đủ                   | P12B2                      | TC-18-S01, S02, S03, S05, S06                          |
+| [P12C1](./implementation-plan.md#phase-p12c1---complete-option-ranking-read-contract)               | Contract đọc xếp hạng đầy đủ                   | P12B2 merged/applied/gated | TC-18-S01, S02, S03, S05, S06                          |
 | [P12C2](./implementation-plan.md#phase-p12c2---optional-reference-ranking-ui)                       | UI xếp hạng tham khảo tùy chọn                 | P12C1 merged/applied/gated | TC-18                                                  |
-| [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C2                      | TC-02, TC-20                                           |
+| [P13A](./implementation-plan.md#phase-p13a---database-security-and-performance-hardening)           | Hardening DB, quyền và hiệu năng               | P12C1 merged/applied/gated | TC-02, TC-20                                           |
 | [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)             | Hardening UI, accessibility và regression      | P12C2                      | TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-18, TC-20 |
 | [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                | Release, OpenSpec và audit AI boundary         | P13A, P13B, P7A2, P9A3     | TC-19                                                  |
 
@@ -711,26 +711,30 @@ filter/selection/navigation journeys của P12B.5.
 
 ## Phase P12C1 - Complete Option Ranking Read Contract
 
-- [ ] P12C1.1 Khóa product entry gates cho tie numbering và semantics của
-      `not_applicable` trước RED tests.
+- [ ] P12C1.1 Khóa product entry gate cho tie numbering trước RED tests;
+      `not_applicable` đã theo normative/P11A semantics, không phải local gate.
 - [ ] P12C1.2 Thêm RPC read-only, set-based cho toàn bộ option trong cùng dossier
       và toàn bộ criterion của exact baseline version; không gọi get-or-create
       comparison set.
 - [ ] P12C1.3 Tính eligibility từ raw technical/evidence axes cho mọi criterion
-      áp dụng; không reuse `evaluated === total` của progress hiện tại.
+      áp dụng; `technical_axis = not_applicable` hoàn tất criterion dù evidence
+      null; không reuse `evaluated === total` của progress hiện tại.
 - [ ] P12C1.4 Tính các bộ đếm và hạng theo ba quy tắc minh bạch; ties giữ cùng
       rank và chỉ dùng canonical option order để ổn định presentation.
 - [ ] P12C1.5 Chặn cross-dossier/version và loại reference products; không join
       supplier response/document source data, không persist rank và không thêm AI.
-- [ ] P12C1.6 Thêm migration, rollback-only phase gate, RPC manifest/allowlist,
-      typed wire contract, adapter, bounded query key/hook và focused tests.
-- [ ] P12C1.7 Chỉ apply migration sau explicit approval; sau apply chạy exact
-      phase gate và security/performance advisors.
+- [ ] P12C1.6 Thêm migration, rollback-only phase gate, RPC manifest, integration
+      vào `allowed-functions.ts`, typed wire contract, opaque snapshot identity,
+      adapter, bounded query key/hook và focused tests.
+- [ ] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
+- [ ] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
+      phase gate; reject toàn bộ page collection khi snapshot identity đổi và
+      chạy read-only security/performance advisors.
 
 ## Phase P12C2 - Optional Reference Ranking UI
 
 - [ ] P12C2.1 Chỉ request ranking sau hành động rõ ràng của người dùng; không tự
-      chạy ranking khi mở evaluation workspace.
+      chạy ranking khi mở evaluation workspace hoặc sau khi dossier/baseline đổi.
 - [ ] P12C2.2 Render option đủ điều kiện, option thiếu dữ liệu, ties và mandatory
       disclaimer; không thêm score, percentage, export hoặc award decision.
 - [ ] P12C2.3 Compose ranking như sibling của selected-option evaluation flow;
@@ -739,6 +743,8 @@ filter/selection/navigation journeys của P12B.5.
       save; supplier source changes không tạo manual stale marker.
 - [ ] P12C2.5 Viết explicit-request, loading/error/retry, precedence, eligibility,
       ties, disclaimer, scope và no-stale React regressions.
+- [ ] P12C2.6 Reset request/result state theo dossier/baseline identity, cancel
+      hoặc ignore request cũ và khóa bằng context-switch regressions.
 
 ## Phase P13A - Database Security And Performance Hardening
 
@@ -757,9 +763,12 @@ filter/selection/navigation journeys của P12B.5.
 - [ ] P13B.4 Kiểm tra concurrent edits và conflict recovery qua hai tab.
 - [ ] P13B.5 Kiểm tra P12A1/P12A2 reuse P10B detail và supplementary information vẫn
       non-scoring sau save/save-next/derived status.
-- [ ] P13B.6 Chạy Equipment attachment regression và full relevant React tests.
-- [ ] P13B.7 Chạy full React Doctor command và browser screenshot/interaction verification.
-- [ ] P13B.8 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
+- [ ] P13B.6 Kiểm tra full TC-18 ranking flow trên desktop/mobile: explicit
+      request, loading/retry, incomplete options, ties, disclaimer, context reset
+      và refresh sau assessment save.
+- [ ] P13B.7 Chạy Equipment attachment regression và full relevant React tests.
+- [ ] P13B.8 Chạy full React Doctor command và browser screenshot/interaction verification.
+- [ ] P13B.9 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
 
 ## Phase P13C - Release, OpenSpec And AI Boundary Audit
 

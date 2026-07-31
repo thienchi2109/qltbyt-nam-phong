@@ -495,13 +495,21 @@ Eligibility phải kiểm tra raw technical/evidence axes cho toàn bộ tiêu c
 dụng. Không được reuse `evaluated === total` của P12B1 vì canonical derived
 status có thể ưu tiên `fails` hoặc `unclear` khi evidence axis vẫn thiếu. Phương
 án chưa hoàn tất vẫn hiển thị trong tổng quan nhưng được ghi rõ "Chưa đủ dữ liệu
-để xếp hạng".
+để xếp hạng". `technical_axis = not_applicable` đánh dấu criterion đó là không
+áp dụng và hoàn tất criterion ngay cả khi `evidence_axis` null; ngoại lệ này giữ
+đúng normative distinction giữa tiêu chí áp dụng và không áp dụng.
 
 Các phương án có cùng bộ giá trị được đồng hạng. Thứ tự hiển thị bên trong một
 tie reuse canonical option order hiện có và không được thay đổi shared rank. UI
 luôn ghi rõ "Xếp hạng tham khảo, không phải quyết định lựa chọn nhà cung cấp".
 Không tạo xếp hạng chéo giữa hồ sơ, giữa phiên bản cơ sở hoặc với sản phẩm tham
 chiếu.
+
+Vì dossier không giới hạn tổng số option, ranking result có thể cần nhiều bounded
+page. Mỗi page phải lặp lại cùng một opaque snapshot identity được tính từ toàn
+bộ option universe và các manual assessment revision tham gia ranking. Client
+loại toàn bộ collection và yêu cầu retry nếu snapshot của bất kỳ page sau khác
+page đầu; không ghép các page thuộc hai trạng thái ranking khác nhau.
 
 Ranking read contract không join response, supplementary information, document
 hoặc citation source data. Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự
@@ -510,11 +518,10 @@ thủ công đang được lưu; người dùng chịu trách nhiệm rà soát 
 nguồn thay đổi. Cơ chế `Đã lỗi thời` chỉ dành cho kết quả AI trong change tương
 lai.
 
-Trước RED tests của P12C1, product owner phải khóa:
-
-1. tie numbering là competition rank (`1, 1, 3`) hay dense rank (`1, 1, 2`);
-2. `technical_axis = not_applicable` có hoàn tất một criterion không áp dụng khi
-   `evidence_axis` null hay vẫn cần một evidence value rõ ràng.
+Trước RED tests của P12C1, product owner chỉ còn phải khóa tie numbering là
+competition rank (`1, 1, 3`) hay dense rank (`1, 1, 2`). Semantics của
+`not_applicable` đã được normative contract và P11A khóa, không phải một local
+P12C1 product gate.
 
 Không thêm numeric score, weighted score, percentage, persisted rank, award
 decision, export/print surface hoặc AI runtime trong P12C1/P12C2.

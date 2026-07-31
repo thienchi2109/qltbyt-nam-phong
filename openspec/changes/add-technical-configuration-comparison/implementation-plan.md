@@ -124,7 +124,8 @@ P12A2           -> P12B1
 P12B1           -> P12B2
 P12B2           -> P12C1
 P12C1           -> P12C2
-P12C2           -> P13A, P13B
+P12C1           -> P13A
+P12C2           -> P13B
 P13A + P13B + P7A2 + P9A3 -> P13C
 ```
 
@@ -2511,7 +2512,7 @@ ranking/scoring/AI behavior exists.
 
 ## Phase P12C1 - Complete Option Ranking Read Contract
 
-**Depends on:** P12B2
+**Depends on:** P12B2 merged, applied and phase-gated
 
 **Requirements:** TC-18-S01, TC-18-S02, TC-18-S03, TC-18-S05,
 TC-18-S06 data/contract prerequisites
@@ -2520,13 +2521,13 @@ TC-18-S06 data/contract prerequisites
 
 ### Product entry gates
 
-Resolve both decisions before writing RED tests:
+Resolve tie numbering before writing RED tests: choose competition rank
+(`1, 1, 3`) or dense rank (`1, 1, 2`).
 
-1. Choose tie numbering semantics: competition rank (`1, 1, 3`) or dense rank
-   (`1, 1, 2`).
-2. Confirm whether `technical_axis = not_applicable` completes a non-applicable
-   criterion when `evidence_axis` is null, or whether an explicit evidence value
-   is still required.
+`technical_axis = not_applicable` is not an open P12C1 product decision. It
+completes that non-applicable criterion even when `evidence_axis` is null, as
+already required by the normative "applicable criterion" distinction and the
+P11A derived-status contract.
 
 Within one tied rank, presentation order reuses the existing canonical option
 order (`supplier.normalized_name`, option identity, option ID). That order must
@@ -2543,6 +2544,10 @@ not alter the shared rank.
 - The read path must remain set-based and bounded. It must not issue one request
   per option, collect current filtered pages as if they were complete, or call
   get-or-create comparison-set behavior.
+- Every result page must repeat one opaque snapshot identity derived from the
+  complete option universe and every contributing comparison-set/assessment
+  revision. The client must pass `isSameSnapshot` to the shared bounded-page
+  collector and reject the full collection when a later page differs.
 - The contract excludes reference products and must not join supplier responses,
   supplementary information, documents or citations. Source changes therefore
   cannot mutate eligibility or create a manual stale state.
@@ -2558,8 +2563,9 @@ not alter the shared rank.
 - Create: `src/app/(app)/technical-configurations/technical-configuration-reference-ranking-rpc.ts`
 - Create: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceRanking.ts`
 - Create: `src/app/api/rpc/__tests__/technical-configuration-reference-ranking-migration.test.ts`
+- Create: `src/app/api/rpc/__tests__/technical-configuration-reference-ranking-rpc-whitelist.test.ts`
 - Create: `src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx`
-- Modify: `src/app/api/rpc/__tests__/technical-configuration-assessment-rpc-whitelist.test.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
 - Modify: `src/app/(app)/technical-configurations/technical-configuration-query-keys.ts`
 - Modify: `openspec/changes/add-technical-configuration-comparison/contracts.md`
 - Modify: `openspec/changes/add-technical-configuration-comparison/design.md`
@@ -2575,19 +2581,24 @@ one-option filtered navigation, not dossier-wide ranking.
 - RED migration/source tests for a missing guarded RPC, missing explicit grants,
   wrong result shape, incomplete scope guards or any reference-product/source
   data join.
-- RED table-driven SQL cases for precedence, incomplete raw axes, ties,
-  deterministic tied presentation order and the two approved product entry-gate
-  decisions.
+- RED table-driven SQL cases for precedence, incomplete raw axes, the
+  `not_applicable` null-evidence exception, ties, deterministic tied
+  presentation order and the approved tie-numbering decision.
 - RED phase-gate cases for cross-dossier/version rejection, absent comparison
   sets, more than 100 criteria, source changes after manual evaluation, denied
   roles, raw `admin` compatibility and rollback cleanliness.
-- GREEN typed adapter/query tests proving stable bounded-page collection and no
+- RED source/manifest tests proving the ranking RPC is imported and spread into
+  `allowed-functions.ts`, not only declared in its own manifest.
+- GREEN typed adapter/query tests proving stable bounded-page collection,
+  snapshot mismatch rejection after a mutation between page requests and no
   hidden comparison-set mutation.
 - Run format, explicit-any, dedupe, typecheck, focused tests, React Doctor and
   strict OpenSpec validation.
-- Apply the exact migration only after separate explicit live-write approval.
-  After apply, run the rollback-only phase gate and security/performance
-  advisors through Supabase MCP.
+- Apply the exact migration only after explicit approval for that migration
+  write through Supabase MCP.
+- After apply, request a second explicit approval before running the
+  rollback-only live phase gate. Run read-only security/performance advisors
+  after the gate.
 
 ### Exit gate
 
@@ -2621,6 +2632,10 @@ ranking is mounted.
       `TechnicalConfigurationEvaluationWorkspace`; do not move dossier-wide
       state into `TechnicalConfigurationEvaluationActiveWorkspace`.
 - [ ] Keep the ranking query disabled until the user explicitly requests it.
+- [ ] Reset the explicit-request latch and visible ranking when `dossier.id` or
+      baseline version identity changes. Cancel or ignore obsolete in-flight
+      requests so a previous context cannot render or trigger ranking in the new
+      context.
 - [ ] Render loading, error/retry, eligible ranking, tied ranks, incomplete
       options and the exact incomplete message without adding hidden score,
       percentage or tie-break criteria.
@@ -2636,6 +2651,8 @@ ranking is mounted.
 
 - RED React integration for no automatic request on mount, explicit request,
   loading, error/retry and empty/single-option states.
+- RED dossier/baseline-switch regressions proving request state resets, obsolete
+  results never render and the new context still requires an explicit request.
 - RED rendering cases for precedence output, incomplete reason, ties, stable
   tied presentation order, disclaimer and reference-product exclusion.
 - RED assessment-hook contract proving successful save invalidates the ranking
@@ -2652,7 +2669,7 @@ supplier award decision.
 
 ## Phase P13A - Database Security And Performance Hardening
 
-**Depends on:** P12C2
+**Depends on:** P12C1 merged, applied and phase-gated
 **Requirements:** TC-02, TC-20  
 **Deploy boundary:** verification-only; fixes require separate blocking leaf phases
 **Production code:** prohibited
@@ -2710,6 +2727,10 @@ No release-blocking database authorization, integrity or performance gap remains
 - [ ] Verify P12A1/P12A2 compose assessment controls onto the shared P10B detail and
       supplementary information remains non-scoring after save, save-next and
       derived-status rendering.
+- [ ] Verify the complete TC-18 flow on desktop and mobile: no ranking request on
+      mount or after dossier/baseline switch, explicit request, loading,
+      error/retry, incomplete options, ties, disclaimer, context reset and
+      refresh after a successful assessment save.
 - [ ] Verify keyboard/focus/accessibility across workspace, matrix and evaluation.
 - [ ] Verify stable dimensions and absence of overlap/layout shifts.
 - [ ] Verify Equipment attachment regressions after shared extraction.
@@ -2727,7 +2748,8 @@ No release-blocking database authorization, integrity or performance gap remains
   ```
 
 - Browser screenshot/interaction evidence covering P10B3 evidence detail,
-  P12A2 assessment activation and TC-17 non-scoring behavior.
+  P12A2 assessment activation, TC-17 non-scoring behavior and the complete
+  TC-18 explicit-request ranking flow.
 - Reviewer approval of UI/accessibility evidence.
 
 ### Exit gate

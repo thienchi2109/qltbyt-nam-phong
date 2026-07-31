@@ -89,7 +89,7 @@
   `technical_configuration_evaluation_criteria_list` migration, RPC manifest/
   proxy allowlist entry, typed request/response contract and query key required
   for server-side filtering. It adds no table, write path, ranking, scoring or
-  AI runtime. P12C1 starts only after P12B2.
+  AI runtime. P12C1 starts only after P12B2 is merged, applied and phase-gated.
 - P12C1 owns a dedicated, read-only, set-based ranking contract over every
   supplier option in one dossier and every canonical criterion in one exact
   baseline version. It must left join persisted manual assessments without
@@ -98,18 +98,29 @@
   precedence, shared tie rank and canonical tied presentation order. The result
   is bounded and read-time only; it excludes reference products, supplier
   response/document source joins, persisted rank, award decisions and AI.
+- `technical_axis = not_applicable` completes that non-applicable criterion even
+  when `evidence_axis` is null. Every applicable criterion still requires both
+  raw axes, including when derived status precedence would otherwise hide a
+  missing evidence axis.
+- Every bounded ranking page repeats one opaque snapshot identity derived from
+  the complete option and contributing manual-assessment universe. The client
+  must reject the whole collection when any later page has a different snapshot.
 - P12C1 adds the ranking migration, rollback-only phase gate, RPC manifest/proxy
-  allowlist, typed wire/adapter contract and bounded query hook. It may deploy
-  dormant only after explicit live apply approval and a passing phase gate.
+  allowlist integration in `allowed-functions.ts`, typed wire/adapter contract
+  and bounded query hook. It may deploy dormant only after separate explicit
+  approvals for migration apply and the rollback-only live phase gate.
 - P12C2 owns the explicit ranking request, loading/error/retry state, eligible
   and incomplete rendering, tie presentation, disclaimer and ranking-cache
   invalidation after successful assessment saves. It adds no migration and does
   not move dossier-wide ranking state into the selected-option active workspace.
+  It resets the request latch and visible result when dossier or baseline
+  identity changes and ignores or cancels obsolete in-flight requests.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
-  matrix. P12A2/P12B1/P12B2 retain focused React/source regressions required by
-  their own dependency and exit gates.
+  matrix, including the complete TC-18 ranking flow. P12A2/P12B1/P12B2 retain
+  focused React/source regressions required by their own dependency and exit
+  gates.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
