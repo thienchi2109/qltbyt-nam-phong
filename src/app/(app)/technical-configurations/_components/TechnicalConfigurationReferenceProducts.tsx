@@ -1,30 +1,25 @@
 import * as React from "react"
-import { AlertCircle, Archive, Loader2, LockKeyhole, Plus, RefreshCw, Save } from "lucide-react"
+import { AlertCircle, Archive, Loader2, LockKeyhole, RefreshCw } from "lucide-react"
 
 import { TechnicalConfigurationReferenceProductsBody } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProductsBody"
+import {
+  LOAD_MORE_BASELINE_VERSIONS_VALUE,
+  TechnicalConfigurationReferenceProductsToolbar,
+} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationReferenceProductsToolbar"
 import { useTechnicalConfigurationBaselineVersionSelection } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineVersionSelection"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationReferenceProducts } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProducts"
+import { useTechnicalConfigurationReferenceProductSelection } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceProductSelection"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 type TechnicalConfigurationReferenceProductsProps = {
   dossier: TechnicalConfigurationDossierWire
   onDirtyChange?: (dirty: boolean) => void
   onNavigationBlockedChange?: (blocked: boolean) => void
 }
-
-const LOAD_MORE_BASELINE_VERSIONS_VALUE = "__load-more-baseline-versions__"
 
 /** Renders reference-product management and its baseline-first comparison surface. */
 export function TechnicalConfigurationReferenceProducts({
@@ -44,6 +39,7 @@ export function TechnicalConfigurationReferenceProducts({
   const [isEvidenceDirty, setIsEvidenceDirty] = React.useState(false)
   const [isEvidenceNavigationBlocked, setIsEvidenceNavigationBlocked] = React.useState(false)
   const [isReferenceNavigationBlocked, setIsReferenceNavigationBlocked] = React.useState(false)
+  const [referenceProductSearchRevision, setReferenceProductSearchRevision] = React.useState(0)
   const { discardConfirmationDialog, requestDiscardConfirmation } =
     useTechnicalConfigurationDiscardConfirmation()
   const evidenceNavigationBlockedRef = React.useRef(false)
@@ -69,6 +65,10 @@ export function TechnicalConfigurationReferenceProducts({
     isArchived: Boolean(dossier.archived_at),
     onRevisionChange: handleRevisionChange,
     onNavigationBlockedChange: handleReferenceNavigationBlockedChange,
+  })
+  const productSelection = useTechnicalConfigurationReferenceProductSelection({
+    scopeKey: selectedVersion?.id ?? "",
+    products: referenceState.products,
   })
   const isDirty = referenceState.isDirty || isEvidenceDirty
   const isNavigationBlocked =
@@ -144,6 +144,11 @@ export function TechnicalConfigurationReferenceProducts({
     void reloadReferenceProducts()
   }, [isDirty, reloadReferenceProducts, requestDiscardConfirmation, selectedVersion])
 
+  const handleAddProduct = React.useCallback(() => {
+    productSelection.selectAddedProduct(referenceState.addProduct())
+    setReferenceProductSearchRevision((revision) => revision + 1)
+  }, [productSelection.selectAddedProduct, referenceState.addProduct])
+
   if (versionState.versionsQuery.isLoading) {
     return (
       <div className="flex min-h-32 items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -188,87 +193,28 @@ export function TechnicalConfigurationReferenceProducts({
 
   return (
     <div className="space-y-6">
-      <section className="flex flex-col gap-4 border-y py-4 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <Label htmlFor="reference-baseline-version">Phiên bản cấu hình cơ sở</Label>
-          <Select
-            value={selectedVersion.id}
-            disabled={isNavigationBlocked}
-            onValueChange={handleVersionSelect}
-          >
-            <SelectTrigger id="reference-baseline-version" className="mt-2 w-full sm:w-[300px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {versionOptions
-                .toSorted((left, right) => right.version_number - left.version_number)
-                .map((version) => (
-                  <SelectItem key={version.id} value={version.id}>
-                    Phiên bản {version.version_number} ·{" "}
-                    {version.status === "locked" ? "Đã khóa" : "Bản nháp"}
-                  </SelectItem>
-                ))}
-              {versionState.versionsQuery.hasNextPage || versionState.hasHistoryRecoveryError ? (
-                <SelectItem
-                  value={LOAD_MORE_BASELINE_VERSIONS_VALUE}
-                  disabled={versionState.versionsQuery.isFetchingNextPage}
-                >
-                  {versionState.versionsQuery.isFetchingNextPage
-                    ? "Đang tải phiên bản..."
-                    : versionState.hasHistoryRecoveryError
-                      ? "Thử tải lại lịch sử phiên bản"
-                      : "Tải thêm phiên bản"}
-                </SelectItem>
-              ) : null}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isNavigationBlocked || isProductDataUnavailable}
-            onClick={handleReload}
-          >
-            <RefreshCw
-              className={`size-4 ${referenceState.isReloading ? "animate-spin" : ""}`}
-              aria-hidden="true"
-            />
-            Tải lại dữ liệu
-          </Button>
-          {!referenceState.isReadOnly ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isNavigationBlocked || isProductDataUnavailable}
-                onClick={referenceState.addProduct}
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                Thêm sản phẩm tham chiếu
-              </Button>
-              <Button
-                type="button"
-                disabled={
-                  !referenceState.isDirty ||
-                  referenceState.invalidProductIds.length > 0 ||
-                  isNavigationBlocked ||
-                  isProductDataUnavailable
-                }
-                onClick={referenceState.save}
-              >
-                {referenceState.isSaving ? (
-                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save className="size-4" aria-hidden="true" />
-                )}
-                Lưu thay đổi
-              </Button>
-            </>
-          ) : null}
-        </div>
-      </section>
+      <TechnicalConfigurationReferenceProductsToolbar
+        selectedVersion={selectedVersion}
+        versionOptions={versionOptions}
+        versionHistory={{
+          hasMoreVersions: Boolean(versionState.versionsQuery.hasNextPage),
+          hasHistoryRecoveryError: versionState.hasHistoryRecoveryError,
+          isFetchingNextPage: versionState.versionsQuery.isFetchingNextPage,
+        }}
+        workspaceStatus={{
+          isNavigationBlocked,
+          isProductDataUnavailable,
+          isReadOnly: referenceState.isReadOnly,
+          isDirty: referenceState.isDirty,
+          isReloading: referenceState.isReloading,
+          isSaving: referenceState.isSaving,
+        }}
+        invalidProductCount={referenceState.invalidProductIds.length}
+        onVersionSelect={handleVersionSelect}
+        onReload={handleReload}
+        onAddProduct={handleAddProduct}
+        onSave={referenceState.save}
+      />
 
       {readOnlyMessage ? (
         <Alert>
@@ -307,9 +253,13 @@ export function TechnicalConfigurationReferenceProducts({
       ) : null}
 
       <TechnicalConfigurationReferenceProductsBody
+        key={selectedVersion.id}
         baselineVersion={selectedVersion}
         referenceState={referenceState}
         navigationBlocked={isNavigationBlocked}
+        searchScopeKey={`${selectedVersion.id}:${referenceProductSearchRevision}`}
+        selectedProductId={productSelection.selectedProductId}
+        onSelectProduct={productSelection.selectProduct}
         onRevisionChange={handleRevisionChange}
         onEvidenceDirtyChange={setIsEvidenceDirty}
         onEvidenceNavigationBlockedChange={handleEvidenceNavigationBlockedChange}
