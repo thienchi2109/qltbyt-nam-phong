@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import path from "node:path"
+
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -23,6 +26,13 @@ vi.mock("../technical-configuration-rpc", () => ({
 const dossierId = "00000000-0000-0000-0000-000000000001"
 const baselineVersionId = "00000000-0000-0000-0000-000000000002"
 const input = { dossierId, baselineVersionId }
+const hookSource = readFileSync(
+  path.join(
+    process.cwd(),
+    "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceRanking.ts"
+  ),
+  "utf8"
+)
 
 function createItem(index: number): TechnicalConfigurationReferenceRankingItemWire {
   return {
@@ -70,6 +80,14 @@ function createPage({
 describe("P12C1 complete reference ranking collector hook", () => {
   beforeEach(() => {
     callRpcMock.mockReset()
+  })
+
+  it("uses explicit locale comparison when ordering wire keys", () => {
+    expect(hookSource).not.toContain(".sort()")
+    expect(hookSource).toContain(
+      "Object.keys(value).sort((left, right) => left.localeCompare(right))"
+    )
+    expect(hookSource).toContain("[...keys].sort((left, right) => left.localeCompare(right))")
   })
 
   it("stays dormant until the consumer explicitly requests ranking", () => {
