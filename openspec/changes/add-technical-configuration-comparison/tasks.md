@@ -729,7 +729,7 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 - [x] P12C1.6 Thêm migration, rollback-only phase gate, RPC manifest, integration
       vào `allowed-functions.ts`, typed wire contract, opaque snapshot identity,
       adapter, bounded query key/hook và focused tests.
-- [ ] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
+- [x] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
 - [ ] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
       phase gate; reject toàn bộ page collection khi snapshot identity đổi và
       chạy read-only security/performance advisors.
