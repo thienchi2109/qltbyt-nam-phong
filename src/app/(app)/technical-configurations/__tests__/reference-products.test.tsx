@@ -2,6 +2,7 @@ import { beforeEach, vi } from "vitest"
 
 import { registerReferenceProductComparisonTests } from "./reference-products-comparison-cases"
 import { registerReferenceProductConflictTests } from "./reference-products-conflict-cases"
+import { registerReferenceProductEditorWorkspaceTests } from "./reference-products-editor-workspace-cases"
 import { registerReferenceProductEvidenceTests } from "./reference-products-evidence-cases"
 import { registerReferenceProductHookTests } from "./reference-products-hook-cases"
 import { registerReferenceProductOperationLockTests } from "./reference-products-operation-lock-cases"
@@ -104,5 +105,6 @@ registerReferenceProductSaveResumeTests(referenceRpc)
 registerReferenceProductConflictTests(referenceRpc)
 registerReferenceProductComparisonTests()
 registerReferenceProductEvidenceTests({ evidenceState, baselineDocumentsMock })
+registerReferenceProductEditorWorkspaceTests({ baselineRpc, referenceRpc })
 registerReferenceProductWorkspaceTests({ baselineRpc, referenceRpc })
 registerReferenceProductResilienceTests({ baselineRpc, referenceRpc })

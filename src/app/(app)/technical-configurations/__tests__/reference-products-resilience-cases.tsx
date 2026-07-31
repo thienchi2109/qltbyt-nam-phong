@@ -159,6 +159,8 @@ export function registerReferenceProductResilienceTests({
 
       expect(screen.getByRole("combobox", { name: "Phiên bản cấu hình cơ sở" })).toBeDisabled()
       expect(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" })).toBeDisabled()
+      expect(screen.getByRole("searchbox", { name: "Tìm sản phẩm tham chiếu" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Chọn Model chưa lưu" })).toBeDisabled()
 
       resolveVersions?.({
         data: [baselineVersion],
@@ -198,10 +200,11 @@ export function registerReferenceProductResilienceTests({
       })
 
       renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
-      const modelInputs = await screen.findAllByLabelText("Model")
-      await user.clear(modelInputs[0]!)
-      await user.type(modelInputs[0]!, "Model A2")
+      const modelInput = await screen.findByDisplayValue("Model A")
+      await user.clear(modelInput)
+      await user.type(modelInput, "Model A2")
       await user.type(screen.getByLabelText("Phản hồi Model A2 cho TC-0001"), "Phản hồi cập nhật")
+      await user.click(screen.getByRole("button", { name: "Chọn Model B, Hãng A" }))
       await user.click(screen.getByRole("button", { name: "Xóa Model B" }))
 
       expect(referenceRpc.updateProduct).not.toHaveBeenCalled()
