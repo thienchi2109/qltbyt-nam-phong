@@ -59,7 +59,7 @@ export function TechnicalConfigurationReferenceComparisonTable({
   return (
     <div
       data-testid="reference-comparison-scroll"
-      className="w-full overflow-x-auto rounded-md border"
+      className="min-w-0 max-w-full overflow-x-auto rounded-md border"
     >
       <table className="min-w-max border-separate border-spacing-0 text-left text-sm">
         <thead>

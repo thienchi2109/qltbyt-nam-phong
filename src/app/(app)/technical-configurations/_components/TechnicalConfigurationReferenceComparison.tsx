@@ -108,7 +108,10 @@ export function TechnicalConfigurationReferenceComparison({
 
   if (products.length === 0) {
     return (
-      <section className="border-t pt-5" aria-label="Ma trận đối chiếu sản phẩm tham chiếu">
+      <section
+        className="min-w-0 max-w-full border-t pt-5"
+        aria-label="Ma trận đối chiếu sản phẩm tham chiếu"
+      >
         <h3 className="text-base font-semibold">Đối chiếu theo tiêu chí</h3>
         <p className="mt-2 text-sm text-muted-foreground">Chưa có sản phẩm tham chiếu.</p>
       </section>
@@ -116,7 +119,10 @@ export function TechnicalConfigurationReferenceComparison({
   }
 
   return (
-    <section className="space-y-4 border-t pt-5" aria-label="Ma trận đối chiếu sản phẩm tham chiếu">
+    <section
+      className="min-w-0 max-w-full space-y-4 border-t pt-5"
+      aria-label="Ma trận đối chiếu sản phẩm tham chiếu"
+    >
       <div>
         <h3 className="text-base font-semibold">Đối chiếu theo tiêu chí</h3>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-3">

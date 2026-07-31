@@ -207,7 +207,7 @@ export function TechnicalConfigurationReferenceProductsBody({
 
       {canRenderProducts ? (
         <section
-          className="grid min-h-0 overflow-hidden rounded-md border bg-background lg:h-[clamp(24rem,50vh,28rem)] lg:grid-cols-[20rem_minmax(0,1fr)]"
+          className="grid min-h-0 min-w-0 max-w-full overflow-hidden rounded-md border bg-background lg:h-[clamp(24rem,50vh,28rem)] lg:grid-cols-[20rem_minmax(0,1fr)]"
           aria-label="Không gian chỉnh sửa sản phẩm tham chiếu"
         >
           <TechnicalConfigurationReferenceProductNavigator

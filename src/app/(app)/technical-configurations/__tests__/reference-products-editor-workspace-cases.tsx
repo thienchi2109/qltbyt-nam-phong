@@ -253,6 +253,33 @@ export function registerReferenceProductEditorWorkspaceTests({
       ).toHaveAttribute("aria-current", "true")
     })
 
+    it("contains the editor and comparison matrix after adding a draft", async () => {
+      const user = userEvent.setup()
+      referenceRpc.listProducts.mockResolvedValue(listResponse([product("product-1", "Model A")]))
+
+      renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
+
+      await screen.findByDisplayValue("Model A")
+      await user.click(screen.getByRole("button", { name: "Thêm sản phẩm tham chiếu" }))
+
+      expect(
+        screen.getByRole("button", {
+          name: "Chọn Sản phẩm 2, thiếu thông tin",
+        })
+      ).toHaveAttribute("aria-current", "true")
+      expect(
+        screen.getByRole("region", {
+          name: "Không gian chỉnh sửa sản phẩm tham chiếu",
+        })
+      ).toHaveClass("min-w-0", "max-w-full")
+      expect(
+        screen.getByRole("region", {
+          name: "Ma trận đối chiếu sản phẩm tham chiếu",
+        })
+      ).toHaveClass("min-w-0", "max-w-full")
+      expect(screen.getByTestId("reference-comparison-scroll")).toHaveClass("min-w-0", "max-w-full")
+    })
+
     it("disambiguates accessible names for products with the same model and manufacturer", async () => {
       referenceRpc.listProducts.mockResolvedValue(
         listResponse([

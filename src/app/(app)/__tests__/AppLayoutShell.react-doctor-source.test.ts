@@ -29,4 +29,14 @@ describe("AppLayoutShell React Doctor source contract", () => {
     expect(source).toContain("React.useReducer")
     expect(source).not.toContain("React.useState")
   })
+
+  it("allows app content to shrink around internal horizontal scrollers", () => {
+    const source = readSource()
+
+    expect(source).toContain("lg:grid-cols-[220px_minmax(0,1fr)]")
+    expect(source).toContain("lg:grid-cols-[72px_minmax(0,1fr)]")
+    expect(source).toContain('<div className="flex min-w-0 flex-col">')
+    expect(source).toContain('<main className="flex min-w-0 flex-1 flex-col')
+    expect(source).toContain('<MainContentTransition className="min-w-0">')
+  })
 })
