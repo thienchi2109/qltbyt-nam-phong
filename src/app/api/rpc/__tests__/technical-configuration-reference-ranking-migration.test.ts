@@ -142,6 +142,18 @@ describe("P12C1 technical configuration reference ranking migration", () => {
     expect(functionBlock).toContain("md5(")
     expect(functionBlock).toContain("assessment.revision")
     expect(functionBlock).toContain("comparison_set.updated_at")
+    expect(functionBlock).toMatch(
+      /to_char\(\s*snapshot_option\.option_updated_at AT TIME ZONE 'UTC',\s*'YYYY-MM-DD"T"HH24:MI:SS\.US'\s*\)/
+    )
+    expect(functionBlock).toMatch(
+      /to_char\(\s*snapshot_option\.supplier_updated_at AT TIME ZONE 'UTC',\s*'YYYY-MM-DD"T"HH24:MI:SS\.US'\s*\)/
+    )
+    expect(functionBlock).toMatch(
+      /to_char\(\s*comparison_set\.updated_at AT TIME ZONE 'UTC',\s*'YYYY-MM-DD"T"HH24:MI:SS\.US'\s*\)/
+    )
+    expect(functionBlock).not.toMatch(
+      /(?:snapshot_option\.(?:option_updated_at|supplier_updated_at)|comparison_set\.updated_at)::TEXT/
+    )
     expect(functionBlock).not.toMatch(
       /reference_product|response_text|supplementary_information|option_document|option_citation|persisted_rank|award|machine|ai_/i
     )
@@ -161,6 +173,7 @@ describe("P12C1 technical configuration reference ranking migration", () => {
     expect(phaseGateSource).toContain("page size zero rejected")
     expect(phaseGateSource).toContain("page size 101 rejected")
     expect(phaseGateSource).toContain("page beyond exhaustion is empty")
+    expect(phaseGateSource).toContain("snapshot token ignores session timestamp formatting")
     expect(phaseGateSource).toContain("raw admin can read ranking")
     expect(phaseGateSource).toContain("denied role cannot read ranking")
   })

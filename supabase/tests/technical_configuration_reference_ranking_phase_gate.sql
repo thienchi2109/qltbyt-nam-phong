@@ -263,6 +263,7 @@ BEGIN
   FROM public.technical_configuration_comparison_sets comparison_set
   WHERE comparison_set.dossier_id = v_dossier_id
     AND comparison_set.baseline_version_id = v_version_id;
+  PERFORM set_config('TimeZone', 'UTC', true), set_config('DateStyle', 'ISO, MDY', true);
   SELECT public.technical_configuration_reference_ranking_list(
     v_dossier_id, v_version_id, 1, 100
   ) INTO v_result;
@@ -318,6 +319,11 @@ BEGIN
     jsonb_array_length(v_page_three->'data') = 0
       AND (v_page_three->>'total')::BIGINT = 103
       AND v_page_three->>'snapshot_token' = v_result->>'snapshot_token');
+  v_before_assessment_token := v_result->>'snapshot_token';
+  PERFORM set_config('TimeZone', 'America/Los_Angeles', true), set_config('DateStyle', 'SQL, DMY', true);
+  SELECT public.technical_configuration_reference_ranking_list(v_dossier_id, v_version_id, 1, 100)->>'snapshot_token' INTO v_after_assessment_token;
+  PERFORM pg_temp.assert_true('snapshot token ignores session timestamp formatting', v_before_assessment_token = v_after_assessment_token);
+  PERFORM set_config('TimeZone', 'UTC', true), set_config('DateStyle', 'ISO, MDY', true);
   PERFORM pg_temp.assert_true(
     'read path does not create comparison sets',
     (

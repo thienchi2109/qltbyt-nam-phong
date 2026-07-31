@@ -177,8 +177,14 @@ BEGIN
                 ':',
                 snapshot_option.option_id::TEXT,
                 snapshot_option.supplier_id::TEXT,
-                snapshot_option.option_updated_at::TEXT,
-                snapshot_option.supplier_updated_at::TEXT
+                to_char(
+                  snapshot_option.option_updated_at AT TIME ZONE 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.US'
+                ),
+                to_char(
+                  snapshot_option.supplier_updated_at AT TIME ZONE 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.US'
+                )
               ),
               ',' ORDER BY
                 snapshot_option.supplier_normalized_name,
@@ -208,7 +214,10 @@ BEGIN
               concat_ws(
                 ':',
                 comparison_set.id::TEXT,
-                comparison_set.updated_at::TEXT,
+                to_char(
+                  comparison_set.updated_at AT TIME ZONE 'UTC',
+                  'YYYY-MM-DD"T"HH24:MI:SS.US'
+                ),
                 COALESCE(assessment.id::TEXT, ''),
                 COALESCE(assessment.revision::TEXT, ''),
                 COALESCE(assessment.technical_axis, ''),
