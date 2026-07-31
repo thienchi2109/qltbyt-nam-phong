@@ -313,6 +313,8 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P9B1  | `technical_configuration_option_documents_list`, `technical_configuration_option_document_create`, `technical_configuration_option_document_update`, `technical_configuration_option_document_delete`, `technical_configuration_option_citation_upsert`, `technical_configuration_option_citation_delete`                                                                                                                                                                                                                                                                                      |
 | P10A1 | `technical_configuration_comparison_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | P11B  | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| P12B2 | `technical_configuration_evaluation_criteria_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| P12C1 | `technical_configuration_reference_ranking_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
 that introduces an RPC also owns allowlisting only the names introduced by that
@@ -320,6 +322,10 @@ leaf. P10A1 and P11B create database functions without proxy exposure; P10A2
 and P11C own their respective RPC-name manifests and allowlist entries only
 after the database contracts are applied and gated.
 P11D, P12A1 and P12A2 introduce no RPC name or allowlist entry.
+P12B2 owns its filtered-navigation RPC manifest/allowlist. P12C1 owns the
+ranking database function, dedicated manifest and final proxy allowlist
+integration in the same leaf, but exposes the function only after its migration
+and rollback-only gate pass.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -429,6 +435,35 @@ updated_by, updated_at }`. Both axis fields are nullable; `notes` is returned
   `criterion_id`. Zero rows, sparse rows and more than one hundred rows are
   valid. Duplicate or incomplete pages fail deterministically rather than
   returning a partial map.
+- `technical_configuration_reference_ranking_list` request is exactly
+  `{ p_dossier_id, p_baseline_version_id, p_page, p_page_size }`.
+  `p_page` is a non-null 1-based page number; `p_page_size` is non-null and
+  between 1 and 100. The P12C1 complete collector always requests page size 100.
+  This contract uses offset pages, not a client cursor.
+- Its response is exactly
+  `{ data, dossier_id, baseline_version_id, snapshot_token, total, page, page_size }`.
+  `snapshot_token` is one opaque non-empty string repeated unchanged on every
+  page from the same ranking universe. Each `data` item is exactly
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`. `eligibility` is `eligible` or `incomplete`; `rank`
+  is a positive integer only for eligible options and is null otherwise. Counts
+  are non-negative integers. No hidden score, response/document aggregate or
+  reference-product field is present.
+- Ranking and shared ties are computed over the complete dossier option universe
+  before page slicing. Presentation order is eligible rank ascending, then the
+  existing canonical option order within a tie; incomplete options follow in
+  canonical option order. `option_id` is the stable collection key. The server
+  returns the requested `page` and `page_size` unchanged, including an empty
+  `data` page beyond the end with the same `total` and `snapshot_token`.
+- The client requests pages sequentially from page 1 until collected item count
+  equals `total`. It publishes no partial ranking. It rejects the entire
+  collection on invalid metadata, an early empty page, duplicate `option_id`,
+  item count above `total`, changed `total` or changed `snapshot_token`. A page
+  after exact exhaustion is not requested.
+- Invalid page arguments return `PT422/validation_error`; a missing or
+  dossier-mismatched baseline returns `PT404/not_found`. Missing comparison sets
+  and sparse assessments produce incomplete option rows without creating data.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -622,6 +657,12 @@ that client state for refresh and re-preview.
   assessment collection. P12B2 keeps that progress path unchanged and uses one
   bounded, set-based read RPC for server-filtered IDs; it must not add a second
   assessment query, full comparison collector or per-option N+1 path.
+- P12C1 returns at most 100 option-ranking rows per page and imposes no hidden
+  domain cap on total dossier options or baseline criteria. One set-based
+  statement computes complete-universe eligibility, counters and rank before
+  pagination. Phase-gate coverage uses more than 100 options and more than 100
+  criteria; P13A reviews a representative ranking `EXPLAIN` and creates a
+  blocking fix leaf if the plan is not acceptable.
 
 ## Migration Order
 
@@ -641,6 +682,9 @@ that client state for refresh and re-preview.
 11. P11B adds manual assessments and their guarded database RPCs.
 12. P12B2 adds the guarded, read-only server-filtered evaluation criterion RPC;
     it creates no table or write path.
+13. P12C1 adds the guarded, read-only reference-ranking RPC after P12B2. Apply
+    requires explicit approval, then its rollback-only live phase gate requires
+    a second explicit approval before P13A or P12C2 may depend on it.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 

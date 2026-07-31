@@ -511,6 +511,19 @@ bộ option universe và các manual assessment revision tham gia ranking. Clien
 loại toàn bộ collection và yêu cầu retry nếu snapshot của bất kỳ page sau khác
 page đầu; không ghép các page thuộc hai trạng thái ranking khác nhau.
 
+P12C1 dùng đúng một RPC
+`technical_configuration_reference_ranking_list(p_dossier_id,
+p_baseline_version_id, p_page, p_page_size)`. Page là 1-based offset page,
+server chấp nhận page size 1-100 và complete collector luôn dùng 100. Response
+lặp lại `dossier_id`, `baseline_version_id`, opaque `snapshot_token`, `total`,
+`page`, `page_size` và tối đa 100 option rows. `option_id` là collection key;
+mỗi row có supplier/display identity, eligibility, incomplete count, ba ranking
+counters và nullable rank. Server tính rank trên toàn universe trước khi cắt
+page. Client chỉ công bố ranking sau khi thu đúng `total`, và reject toàn bộ
+collection khi metadata, total, key hoặc snapshot không nhất quán. Không dùng
+cursor song song với page contract và không đặt hidden cap lên tổng option hoặc
+criterion.
+
 Ranking read contract không join response, supplementary information, document
 hoặc citation source data. Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự
 sửa, xóa hoặc đánh dấu lỗi thời kết luận thủ công. Xếp hạng dùng các kết luận

@@ -2554,6 +2554,36 @@ not alter the shared rank.
 - The client contract owns only typed transport, stable bounded-page collection
   and cache identity. P12C2 owns the explicit request and presentation.
 
+### Ranking RPC wire contract
+
+- RPC name:
+  `technical_configuration_reference_ranking_list(p_dossier_id,
+p_baseline_version_id, p_page, p_page_size)`.
+- Request paging is 1-based offset pagination. `p_page >= 1`,
+  `1 <= p_page_size <= 100`; the complete collector always requests 100. There
+  is no parallel cursor contract and no hidden cap on total dossier options or
+  baseline criteria.
+- Response root is exactly
+  `{ data, dossier_id, baseline_version_id, snapshot_token, total, page, page_size }`.
+  Each item is exactly
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`.
+- `option_id` is the stable collector key. `eligibility` is `eligible` or
+  `incomplete`; rank is a positive integer only for eligible rows and null for
+  incomplete rows. Every count is a non-negative integer.
+- The server computes eligibility, counters and shared rank over the complete
+  option/criterion universe before `LIMIT/OFFSET`. Eligible rows sort by rank
+  then canonical option order; incomplete rows follow in canonical option order.
+- Every page repeats exact scope, page metadata, total and one opaque
+  `snapshot_token`. A page beyond exhaustion returns empty `data` with unchanged
+  metadata. The client requests sequential pages only until collected count
+  equals `total`, exposes no partial ranking and rejects early empty pages,
+  duplicates, overflow, metadata/total mismatch or snapshot mismatch.
+- Invalid page arguments return `PT422/validation_error`; missing or
+  dossier-mismatched baseline identity returns `PT404/not_found`. Missing
+  comparison sets remain read-only incomplete rows.
+
 ### Planned files
 
 - Create: `supabase/migrations/<timestamp>_technical_configuration_reference_ranking.sql`
@@ -2585,13 +2615,15 @@ one-option filtered navigation, not dossier-wide ranking.
   `not_applicable` null-evidence exception, ties, deterministic tied
   presentation order and the approved tie-numbering decision.
 - RED phase-gate cases for cross-dossier/version rejection, absent comparison
-  sets, more than 100 criteria, source changes after manual evaluation, denied
-  roles, raw `admin` compatibility and rollback cleanliness.
+  sets, more than 100 options, more than 100 criteria, page sizes 0/101, page
+  exhaustion, page-invariant ranks, source changes after manual evaluation,
+  denied roles, raw `admin` compatibility and rollback cleanliness.
 - RED source/manifest tests proving the ranking RPC is imported and spread into
   `allowed-functions.ts`, not only declared in its own manifest.
 - GREEN typed adapter/query tests proving stable bounded-page collection,
-  snapshot mismatch rejection after a mutation between page requests and no
-  hidden comparison-set mutation.
+  exact wire fields, fixed collector page size 100, no partial publication,
+  exact exhaustion, total/metadata mismatch rejection, snapshot mismatch after
+  a mutation between page requests and no hidden comparison-set mutation.
 - Run format, explicit-any, dedupe, typecheck, focused tests, React Doctor and
   strict OpenSpec validation.
 - Apply the exact migration only after explicit approval for that migration
