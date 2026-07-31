@@ -36,10 +36,6 @@ function getReferenceProductNavigatorName(
   product: TechnicalConfigurationReferenceProductDraft,
   index: number
 ) {
-  const hasProductName = Boolean(
-    product.model.trim() || product.manufacturer.trim() || product.description.trim()
-  )
-  if (!product.persistedId && !hasProductName) return `Sản phẩm mới ${index + 1}`
   return getTechnicalConfigurationReferenceProductName(product, index)
 }
 
@@ -67,7 +63,8 @@ export function TechnicalConfigurationReferenceProductNavigator({
     products.forEach((product, index) => {
       const name = getReferenceProductNavigatorName(product, index)
       const manufacturer = product.manufacturer.trim()
-      const accessibleDescription = manufacturer ? `${name}, ${manufacturer}` : name
+      const accessibleDescription =
+        manufacturer && manufacturer !== name ? `${name}, ${manufacturer}` : name
       nextMetadataById.set(product.id, {
         index,
         name,
@@ -160,9 +157,11 @@ export function TechnicalConfigurationReferenceProductNavigator({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium">{metadata.name}</span>
-                    <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                      {metadata.manufacturer || "Chưa có hãng sản xuất"}
-                    </span>
+                    {metadata.manufacturer !== metadata.name ? (
+                      <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                        {metadata.manufacturer || "Chưa có hãng sản xuất"}
+                      </span>
+                    ) : null}
                     {invalid ? (
                       <span className="mt-1 flex items-center gap-1 text-xs text-destructive">
                         <AlertCircle className="size-3" aria-hidden="true" />

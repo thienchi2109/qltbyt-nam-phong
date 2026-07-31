@@ -145,7 +145,9 @@ export function TechnicalConfigurationReferenceProducts({
   }, [isDirty, reloadReferenceProducts, requestDiscardConfirmation, selectedVersion])
 
   const handleAddProduct = React.useCallback(() => {
-    productSelection.selectAddedProduct(referenceState.addProduct())
+    const addedProductId = referenceState.addProduct()
+    if (!addedProductId) return
+    productSelection.selectAddedProduct(addedProductId)
     setReferenceProductSearchRevision((revision) => revision + 1)
   }, [productSelection.selectAddedProduct, referenceState.addProduct])
 

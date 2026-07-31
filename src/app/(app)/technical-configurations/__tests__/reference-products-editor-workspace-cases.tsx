@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 
@@ -18,30 +18,48 @@ type RegisterReferenceProductEditorWorkspaceTestsArgs = {
   referenceRpc: ReferenceProductRpcMocks
 }
 
-const originalHasPointerCapture = HTMLElement.prototype.hasPointerCapture
-const originalSetPointerCapture = HTMLElement.prototype.setPointerCapture
-const originalReleasePointerCapture = HTMLElement.prototype.releasePointerCapture
-const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
-
-beforeAll(() => {
-  HTMLElement.prototype.hasPointerCapture = () => false
-  HTMLElement.prototype.setPointerCapture = () => undefined
-  HTMLElement.prototype.releasePointerCapture = () => undefined
-  HTMLElement.prototype.scrollIntoView = () => undefined
-})
-
-afterAll(() => {
-  HTMLElement.prototype.hasPointerCapture = originalHasPointerCapture
-  HTMLElement.prototype.setPointerCapture = originalSetPointerCapture
-  HTMLElement.prototype.releasePointerCapture = originalReleasePointerCapture
-  HTMLElement.prototype.scrollIntoView = originalScrollIntoView
-})
-
 export function registerReferenceProductEditorWorkspaceTests({
   baselineRpc,
   referenceRpc,
 }: RegisterReferenceProductEditorWorkspaceTestsArgs) {
   describe("technical configuration reference-product editor workspace", () => {
+    const prototypeMethodNames = [
+      "hasPointerCapture",
+      "setPointerCapture",
+      "releasePointerCapture",
+      "scrollIntoView",
+    ] as const
+    const originalPrototypeDescriptors = new Map<
+      (typeof prototypeMethodNames)[number],
+      PropertyDescriptor | undefined
+    >()
+
+    beforeAll(() => {
+      prototypeMethodNames.forEach((methodName) => {
+        originalPrototypeDescriptors.set(
+          methodName,
+          Object.getOwnPropertyDescriptor(HTMLElement.prototype, methodName)
+        )
+      })
+      Object.defineProperties(HTMLElement.prototype, {
+        hasPointerCapture: { configurable: true, value: () => false },
+        setPointerCapture: { configurable: true, value: () => undefined },
+        releasePointerCapture: { configurable: true, value: () => undefined },
+        scrollIntoView: { configurable: true, value: () => undefined },
+      })
+    })
+
+    afterAll(() => {
+      prototypeMethodNames.forEach((methodName) => {
+        const originalDescriptor = originalPrototypeDescriptors.get(methodName)
+        if (originalDescriptor) {
+          Object.defineProperty(HTMLElement.prototype, methodName, originalDescriptor)
+          return
+        }
+        Reflect.deleteProperty(HTMLElement.prototype, methodName)
+      })
+    })
+
     beforeEach(() => {
       baselineRpc.listVersions.mockReset()
       baselineRpc.listVersions.mockResolvedValue({
@@ -114,7 +132,7 @@ export function registerReferenceProductEditorWorkspaceTests({
 
       expect(
         screen.getByRole("button", {
-          name: "Chọn Sản phẩm mới 2, thiếu thông tin",
+          name: "Chọn Sản phẩm 2, thiếu thông tin",
         })
       ).toHaveAttribute("aria-current", "true")
       await user.type(screen.getByLabelText("Model"), "Model mới")
@@ -230,7 +248,7 @@ export function registerReferenceProductEditorWorkspaceTests({
       expect(search).toHaveValue("")
       expect(
         screen.getByRole("button", {
-          name: "Chọn Sản phẩm mới 3, thiếu thông tin",
+          name: "Chọn Sản phẩm 3, thiếu thông tin",
         })
       ).toHaveAttribute("aria-current", "true")
     })
@@ -266,6 +284,26 @@ export function registerReferenceProductEditorWorkspaceTests({
       ).toBeInTheDocument()
     })
 
+    it("does not repeat the manufacturer when it is the product fallback name", async () => {
+      const user = userEvent.setup()
+      referenceRpc.listProducts.mockResolvedValue(
+        listResponse([
+          {
+            ...product("product-1", ""),
+            manufacturer: "B.Braun",
+          },
+        ])
+      )
+
+      renderWithQueryClient(<TechnicalConfigurationReferenceProducts dossier={dossier} />)
+
+      const productButton = await screen.findByRole("button", { name: "Chọn B.Braun" })
+      await user.click(productButton)
+
+      expect(screen.getByRole("button", { name: "Xóa B.Braun" })).toBeInTheDocument()
+      expect(within(productButton).getAllByText("B.Braun")).toHaveLength(1)
+    })
+
     it("resets search and selection when returning to a baseline version", async () => {
       const user = userEvent.setup()
       const lockedVersion = {
@@ -276,7 +314,7 @@ export function registerReferenceProductEditorWorkspaceTests({
         locked_at: "2026-07-18T00:00:00.000Z",
         locked_by: 1,
       }
-      baselineRpc.listVersions.mockResolvedValueOnce({
+      baselineRpc.listVersions.mockResolvedValue({
         data: [baselineVersion, lockedVersion],
         total: 2,
         page: 1,
@@ -326,7 +364,7 @@ export function registerReferenceProductEditorWorkspaceTests({
       expect(screen.getByRole("searchbox", { name: "Tìm sản phẩm tham chiếu" })).toHaveValue("")
     })
 
-    it("gives blank drafts unique accessible names with validation status", async () => {
+    it("aligns blank draft names across navigation and editor actions", async () => {
       const user = userEvent.setup()
       referenceRpc.listProducts.mockResolvedValue(listResponse([]))
 
@@ -340,14 +378,15 @@ export function registerReferenceProductEditorWorkspaceTests({
 
       expect(
         screen.getByRole("button", {
-          name: "Chọn Sản phẩm mới 1, thiếu thông tin",
+          name: "Chọn Sản phẩm 1, thiếu thông tin",
         })
       ).toBeInTheDocument()
       expect(
         screen.getByRole("button", {
-          name: "Chọn Sản phẩm mới 2, thiếu thông tin",
+          name: "Chọn Sản phẩm 2, thiếu thông tin",
         })
       ).toHaveAttribute("aria-current", "true")
+      expect(screen.getByRole("button", { name: "Xóa Sản phẩm 2" })).toBeInTheDocument()
     })
 
     it("selects the nearest product after removing the active draft", async () => {

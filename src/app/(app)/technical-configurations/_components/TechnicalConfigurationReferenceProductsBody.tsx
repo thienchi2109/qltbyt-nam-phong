@@ -161,10 +161,8 @@ export function TechnicalConfigurationReferenceProductsBody({
       target.kind === "search"
         ? searchInputRef.current
         : productButtonRefs.current.get(target.productId)
-    if (!element) return
-
-    element.focus()
     pendingFocusTargetRef.current = null
+    element?.focus()
   }, [referenceState.products, searchQuery, selectedProductId])
 
   const handleProductButtonRef = React.useCallback(
