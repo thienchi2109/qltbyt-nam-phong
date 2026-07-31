@@ -292,7 +292,7 @@ push P8A2 as one branch and one PR.
   empty string.
 - Do not add compliance, evaluation, assessment, ranking or overall-status
   fields or parameters. P11A owns derived compliance, P11B/P11C own manual
-  assessment contracts and P12C owns ranking.
+  assessment contracts and P12C1/P12C2 own ranking.
 - A comparison set already present for the requested pair is a read: return it
   without changing audit fields or dossier revision, including after dossier
   archive. Authenticate and resolve ownership first, but do not call the

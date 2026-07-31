@@ -67,7 +67,7 @@
   it must not add another top-level tab, duplicate toolbar actions, progress
   controls, filters or ranking.
 - Delivery after P12A2 follows only
-  `P12A2 -> P12B1 -> P12B2 -> P12C`.
+  `P12A2 -> P12B1 -> P12B2 -> P12C1 -> P12C2`.
 - P12B1 owns the immutable selected-option progress model, status counters,
   compact option/group summaries and successful-save adoption into the complete
   assessment cache. Its criterion universe is the selected locked baseline;
@@ -89,7 +89,22 @@
   `technical_configuration_evaluation_criteria_list` migration, RPC manifest/
   proxy allowlist entry, typed request/response contract and query key required
   for server-side filtering. It adds no table, write path, ranking, scoring or
-  AI runtime. P12C starts only after P12B2.
+  AI runtime. P12C1 starts only after P12B2.
+- P12C1 owns a dedicated, read-only, set-based ranking contract over every
+  supplier option in one dossier and every canonical criterion in one exact
+  baseline version. It must left join persisted manual assessments without
+  creating comparison sets or issuing one request per option.
+- P12C1 owns server-side scope guards, raw-axis eligibility, aggregate counters,
+  precedence, shared tie rank and canonical tied presentation order. The result
+  is bounded and read-time only; it excludes reference products, supplier
+  response/document source joins, persisted rank, award decisions and AI.
+- P12C1 adds the ranking migration, rollback-only phase gate, RPC manifest/proxy
+  allowlist, typed wire/adapter contract and bounded query hook. It may deploy
+  dormant only after explicit live apply approval and a passing phase gate.
+- P12C2 owns the explicit ranking request, loading/error/retry state, eligible
+  and incomplete rendering, tie presentation, disclaimer and ranking-cache
+  invalidation after successful assessment saves. It adds no migration and does
+  not move dossier-wide ranking state into the selected-option active workspace.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
@@ -104,27 +119,28 @@
 
 Each entity or schema alteration has one primary leaf owner. A later leaf may extend an existing copy/guard function only when its own entities require that extension.
 
-| Leaf | Entity or alteration                          | Key ownership and cascade contract                                                                                            |
-| ---- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| P1   | `technical_configuration_dossiers`            | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                           |
-| P2   | `technical_configuration_baseline_versions`   | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision         |
-| P2   | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
-| P2   | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
-| P4   | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
-| P7A1 | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
-| P7A1 | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
-| P7B1 | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
-| P7B1 | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
-| P7B1 | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
-| P7B1 | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
-| P8A1 | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                 |
-| P8A2 | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                            |
-| P8A3 | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
-| P8A3 | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
-| P8A4 | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
-| P9B1 | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
-| P9B1 | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
-| P11B | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
+| Leaf  | Entity or alteration                          | Key ownership and cascade contract                                                                                            |
+| ----- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| P1    | `technical_configuration_dossiers`            | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                           |
+| P2    | `technical_configuration_baseline_versions`   | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision         |
+| P2    | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
+| P2    | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
+| P4    | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
+| P7A1  | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
+| P7A1  | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
+| P7B1  | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
+| P7B1  | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
+| P7B1  | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
+| P7B1  | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
+| P8A1  | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                 |
+| P8A2  | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                            |
+| P8A3  | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
+| P8A3  | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
+| P8A4  | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
+| P9B1  | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
+| P9B1  | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
+| P11B  | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
+| P12C1 | complete option ranking read contract         | Read-only set-based RPC over dossier options, exact baseline criteria and persisted manual assessments; no new table          |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
 
