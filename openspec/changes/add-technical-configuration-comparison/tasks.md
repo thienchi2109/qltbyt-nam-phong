@@ -730,7 +730,7 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       vào `allowed-functions.ts`, typed wire contract, opaque snapshot identity,
       adapter, bounded query key/hook và focused tests.
 - [x] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
-- [ ] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
+- [x] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
       phase gate; reject toàn bộ page collection khi snapshot identity đổi và
       chạy read-only security/performance advisors.
 - [x] P12C1.9 Khóa exact response root/item fields, `option_id` collection key,
