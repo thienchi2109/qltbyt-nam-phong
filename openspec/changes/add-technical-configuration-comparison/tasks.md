@@ -711,29 +711,29 @@ filter/selection/navigation journeys của P12B.5.
 
 ## Phase P12C1 - Complete Option Ranking Read Contract
 
-- [ ] P12C1.1 Khóa product entry gate cho tie numbering trước RED tests;
+- [x] P12C1.1 Khóa product entry gate cho tie numbering trước RED tests;
       `not_applicable` đã theo normative/P11A semantics, không phải local gate.
-- [ ] P12C1.2 Thêm
+- [x] P12C1.2 Thêm
       `technical_configuration_reference_ranking_list(p_dossier_id,
 p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       bộ option/criterion universe; page 1-based, page size 1-100, collector dùng
       100 và không gọi get-or-create comparison set.
-- [ ] P12C1.3 Tính eligibility từ raw technical/evidence axes cho mọi criterion
+- [x] P12C1.3 Tính eligibility từ raw technical/evidence axes cho mọi criterion
       áp dụng; `technical_axis = not_applicable` hoàn tất criterion dù evidence
       null; không reuse `evaluated === total` của progress hiện tại.
-- [ ] P12C1.4 Tính các bộ đếm và hạng theo ba quy tắc minh bạch; ties giữ cùng
+- [x] P12C1.4 Tính các bộ đếm và hạng theo ba quy tắc minh bạch; ties giữ cùng
       rank; tính trên full universe trước pagination và chỉ dùng canonical option
       order để ổn định presentation.
-- [ ] P12C1.5 Chặn cross-dossier/version và loại reference products; không join
+- [x] P12C1.5 Chặn cross-dossier/version và loại reference products; không join
       supplier response/document source data, không persist rank và không thêm AI.
-- [ ] P12C1.6 Thêm migration, rollback-only phase gate, RPC manifest, integration
+- [x] P12C1.6 Thêm migration, rollback-only phase gate, RPC manifest, integration
       vào `allowed-functions.ts`, typed wire contract, opaque snapshot identity,
       adapter, bounded query key/hook và focused tests.
-- [ ] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
-- [ ] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
+- [x] P12C1.7 Chỉ apply migration sau explicit approval riêng cho migration.
+- [x] P12C1.8 Sau apply, xin explicit approval thứ hai trước rollback-only live
       phase gate; reject toàn bộ page collection khi snapshot identity đổi và
       chạy read-only security/performance advisors.
-- [ ] P12C1.9 Khóa exact response root/item fields, `option_id` collection key,
+- [x] P12C1.9 Khóa exact response root/item fields, `option_id` collection key,
       page exhaustion, no-partial-publication và invalid page-size/metadata/
       total/duplicate-key regressions; phase gate phải có hơn 100 options và hơn
       100 criteria.

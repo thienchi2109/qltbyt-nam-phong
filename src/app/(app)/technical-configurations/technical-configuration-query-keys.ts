@@ -89,6 +89,17 @@ export function technicalConfigurationEvaluationCriteriaQueryKey({
   ] as const
 }
 
+/** Builds the cache key for one complete dossier and baseline reference ranking. */
+export function technicalConfigurationReferenceRankingQueryKey({
+  dossierId,
+  baselineVersionId,
+}: {
+  dossierId: string
+  baselineVersionId: string
+}) {
+  return ["technical-configurations", "reference-ranking", dossierId, baselineVersionId] as const
+}
+
 /** Builds the cache key for one bounded manual-assessment page. */
 export function technicalConfigurationAssessmentsQueryKey({
   comparisonSetId,

@@ -2,6 +2,7 @@ import { ASSESSMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-ass
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import { COMPARISON_READ_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-comparison-rpcs"
 import { DOCUMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-document-rpcs"
+import { REFERENCE_RANKING_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-ranking-rpcs"
 import { REFERENCE_PRODUCT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-reference-rpcs"
 import {
   OPTION_IMPORT_RPC_FUNCTION_NAMES,
@@ -114,6 +115,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   ...OPTION_IMPORT_RPC_FUNCTION_NAMES,
   ...COMPARISON_READ_RPC_FUNCTION_NAMES,
   ...ASSESSMENT_RPC_FUNCTION_NAMES,
+  ...REFERENCE_RANKING_RPC_FUNCTION_NAMES,
   // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",

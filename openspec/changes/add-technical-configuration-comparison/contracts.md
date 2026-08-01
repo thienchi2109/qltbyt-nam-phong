@@ -95,13 +95,17 @@
   baseline version. It must left join persisted manual assessments without
   creating comparison sets or issuing one request per option.
 - P12C1 owns server-side scope guards, raw-axis eligibility, aggregate counters,
-  precedence, shared tie rank and canonical tied presentation order. The result
-  is bounded and read-time only; it excludes reference products, supplier
-  response/document source joins, persisted rank, award decisions and AI.
+  precedence, dense shared tie rank (`1, 1, 2`) and canonical tied presentation
+  order. The result is bounded and read-time only; it excludes reference
+  products, supplier response/document source joins, persisted rank, award
+  decisions and AI.
 - `technical_axis = not_applicable` completes that non-applicable criterion even
   when `evidence_axis` is null. Every applicable criterion still requires both
   raw axes, including when derived status precedence would otherwise hide a
   missing evidence axis.
+- An exact baseline with zero canonical criteria still preserves every dossier
+  option in the response; each row has zero counters, is eligible and shares
+  dense rank `1`.
 - Every bounded ranking page repeats one opaque snapshot identity derived from
   the complete option and contributing manual-assessment universe. The client
   must reject the whole collection when any later page has a different snapshot.

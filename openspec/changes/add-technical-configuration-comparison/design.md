@@ -499,6 +499,10 @@ status có thể ưu tiên `fails` hoặc `unclear` khi evidence axis vẫn thi�
 áp dụng và hoàn tất criterion ngay cả khi `evidence_axis` null; ngoại lệ này giữ
 đúng normative distinction giữa tiêu chí áp dụng và không áp dụng.
 
+Nếu exact baseline chưa có canonical criterion, server vẫn giữ toàn bộ option
+universe thay vì làm rỗng kết quả do Cartesian join. Mỗi option có ba counter và
+`incomplete_criterion_count` bằng `0`, đủ điều kiện và cùng dense rank `1`.
+
 Các phương án có cùng bộ giá trị được đồng hạng. Thứ tự hiển thị bên trong một
 tie reuse canonical option order hiện có và không được thay đổi shared rank. UI
 luôn ghi rõ "Xếp hạng tham khảo, không phải quyết định lựa chọn nhà cung cấp".
@@ -531,10 +535,10 @@ thủ công đang được lưu; người dùng chịu trách nhiệm rà soát 
 nguồn thay đổi. Cơ chế `Đã lỗi thời` chỉ dành cho kết quả AI trong change tương
 lai.
 
-Trước RED tests của P12C1, product owner chỉ còn phải khóa tie numbering là
-competition rank (`1, 1, 3`) hay dense rank (`1, 1, 2`). Semantics của
-`not_applicable` đã được normative contract và P11A khóa, không phải một local
-P12C1 product gate.
+Product owner đã khóa dense rank (`1, 1, 2`) cho P12C1 trước RED tests.
+Canonical option order chỉ ổn định presentation bên trong một tie và không đổi
+shared rank. Semantics của `not_applicable` đã được normative contract và P11A
+khóa, không phải một local P12C1 product gate.
 
 Không thêm numeric score, weighted score, percentage, persisted rank, award
 decision, export/print surface hoặc AI runtime trong P12C1/P12C2.
