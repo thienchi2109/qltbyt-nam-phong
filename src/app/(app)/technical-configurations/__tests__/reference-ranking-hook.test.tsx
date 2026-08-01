@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs"
-import path from "node:path"
-
 import { act, renderHook } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -26,13 +23,6 @@ vi.mock("../technical-configuration-rpc", () => ({
 const dossierId = "00000000-0000-0000-0000-000000000001"
 const baselineVersionId = "00000000-0000-0000-0000-000000000002"
 const input = { dossierId, baselineVersionId }
-const hookSource = readFileSync(
-  path.join(
-    process.cwd(),
-    "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceRanking.ts"
-  ),
-  "utf8"
-)
 
 function createItem(index: number): TechnicalConfigurationReferenceRankingItemWire {
   return {
@@ -82,12 +72,44 @@ describe("P12C1 complete reference ranking collector hook", () => {
     callRpcMock.mockReset()
   })
 
-  it("uses explicit locale comparison when ordering wire keys", () => {
-    expect(hookSource).not.toContain(".sort()")
-    expect(hookSource).toContain(
-      "Object.keys(value).sort((left, right) => left.localeCompare(right))"
-    )
-    expect(hookSource).toContain("[...keys].sort((left, right) => left.localeCompare(right))")
+  it("accepts exact wire keys regardless of insertion order", async () => {
+    const sourceItem = createItem(1)
+    const item = {
+      rank: sourceItem.rank,
+      exceeds_count: sourceItem.exceeds_count,
+      insufficient_evidence_count: sourceItem.insufficient_evidence_count,
+      failed_count: sourceItem.failed_count,
+      incomplete_criterion_count: sourceItem.incomplete_criterion_count,
+      eligibility: sourceItem.eligibility,
+      display_label: sourceItem.display_label,
+      supplier_name: sourceItem.supplier_name,
+      supplier_id: sourceItem.supplier_id,
+      option_id: sourceItem.option_id,
+    } satisfies TechnicalConfigurationReferenceRankingItemWire
+    const page = {
+      page_size: 100,
+      page: 1,
+      total: 1,
+      snapshot_token: "snapshot-1",
+      baseline_version_id: baselineVersionId,
+      dossier_id: dossierId,
+      data: [item],
+    } satisfies TechnicalConfigurationReferenceRankingPageWireResponse
+    callRpcMock.mockResolvedValue(page)
+    const queryClient = createAssessmentTestQueryClient()
+    const { result } = renderHook(() => useTechnicalConfigurationReferenceRanking(), {
+      wrapper: createAssessmentQueryWrapper(queryClient),
+    })
+
+    const ranking = await act(() => result.current.loadRanking(input))
+
+    expect(ranking).toEqual({
+      data: [item],
+      dossier_id: dossierId,
+      baseline_version_id: baselineVersionId,
+      snapshot_token: "snapshot-1",
+      total: 1,
+    })
   })
 
   it("stays dormant until the consumer explicitly requests ranking", () => {
