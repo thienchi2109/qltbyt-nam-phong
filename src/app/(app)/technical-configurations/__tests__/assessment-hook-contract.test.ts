@@ -1,4 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
+import { useQuery } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { ASSESSMENT_RPC_FUNCTIONS } from "@/lib/technical-configuration-assessment-rpcs"
@@ -142,7 +143,7 @@ describe("P11C assessment hook contract", () => {
     expect(mocks.callRpc).not.toHaveBeenCalled()
   })
 
-  it("publishes the first-save set before upsert and invalidates every cached page", async () => {
+  it("publishes the first-save set before upsert and refreshes the affected caches", async () => {
     mocks.readComparisonSet.mockResolvedValue(null)
     mocks.getOrCreateComparisonSet.mockResolvedValue(comparisonSet)
     const queryClient = createAssessmentTestQueryClient()
@@ -183,6 +184,7 @@ describe("P11C assessment hook contract", () => {
         })
         return originalInvalidateQueries(filters, options)
       })
+    const resetQueries = vi.spyOn(queryClient, "resetQueries")
     const { result } = renderAssessmentsHook(queryClient)
 
     await waitFor(() => expect(result.current.comparisonSetQuery.isSuccess).toBe(true))
@@ -224,7 +226,7 @@ describe("P11C assessment hook contract", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(optionId, baselineVersionId),
     })
-    expect(invalidateQueries).toHaveBeenCalledWith({
+    expect(resetQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationReferenceRankingQueryKey({
         dossierId: comparisonSet.dossier_id,
         baselineVersionId,
@@ -248,12 +250,10 @@ describe("P11C assessment hook contract", () => {
       return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
     })
     const queryClient = createAssessmentTestQueryClient()
-    const rankingInvalidation = createDeferred<void>()
-    const invalidateQueries = vi
-      .spyOn(queryClient, "invalidateQueries")
-      .mockImplementation((filters) =>
-        filters.exact ? rankingInvalidation.promise : Promise.resolve()
-      )
+    const rankingReset = createDeferred<void>()
+    const resetQueries = vi
+      .spyOn(queryClient, "resetQueries")
+      .mockImplementation((filters) => (filters?.exact ? rankingReset.promise : Promise.resolve()))
     const rankingQueryKey = technicalConfigurationReferenceRankingQueryKey({
       dossierId: comparisonSet.dossier_id,
       baselineVersionId,
@@ -273,7 +273,7 @@ describe("P11C assessment hook contract", () => {
     })
 
     await waitFor(() =>
-      expect(invalidateQueries).toHaveBeenCalledWith({
+      expect(resetQueries).toHaveBeenCalledWith({
         queryKey: rankingQueryKey,
         exact: true,
       })
@@ -284,12 +284,71 @@ describe("P11C assessment hook contract", () => {
     })
     const settledBeforeRankingRefresh = saveSettled
 
-    rankingInvalidation.resolve(undefined)
+    rankingReset.resolve(undefined)
     await act(async () => {
       await savePromise
     })
 
     expect(settledBeforeRankingRefresh).toBe(true)
+  })
+
+  it("restarts a pending pre-save ranking before it can enter the cache", async () => {
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve(assessmentListResponse)
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.resolve({ data: savedAssessment })
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+    const preSaveRanking = createDeferred<string>()
+    const rankingQueryFn = vi
+      .fn()
+      .mockImplementationOnce(() => preSaveRanking.promise)
+      .mockResolvedValue("post-save-ranking")
+    const rankingQueryKey = technicalConfigurationReferenceRankingQueryKey({
+      dossierId: comparisonSet.dossier_id,
+      baselineVersionId,
+    })
+    const queryClient = createAssessmentTestQueryClient()
+    const { result } = renderHook(
+      () => {
+        const rankingQuery = useQuery({
+          queryKey: rankingQueryKey,
+          queryFn: rankingQueryFn,
+          retry: false,
+        })
+        const assessments = useTechnicalConfigurationAssessments({
+          optionId,
+          baselineVersionId,
+          page: 1,
+          pageSize: 25,
+        })
+        return { assessments, rankingQuery }
+      },
+      { wrapper: createAssessmentQueryWrapper(queryClient) }
+    )
+
+    await waitFor(() => expect(result.current.assessments.assessmentsQuery.isSuccess).toBe(true))
+    await waitFor(() => expect(rankingQueryFn).toHaveBeenCalledTimes(1))
+    await act(async () => {
+      await result.current.assessments.upsertAssessment.mutateAsync(assessmentUpsertInput)
+    })
+
+    try {
+      await waitFor(() => expect(rankingQueryFn).toHaveBeenCalledTimes(2))
+    } finally {
+      preSaveRanking.resolve("pre-save-ranking")
+    }
+    await waitFor(() => expect(result.current.rankingQuery.data).toBe("post-save-ranking"))
+    await act(async () => {
+      await preSaveRanking.promise
+      await Promise.resolve()
+    })
+
+    expect(queryClient.getQueryData(rankingQueryKey)).toBe("post-save-ranking")
   })
 
   it("deduplicates comparison-set acquisition across simultaneous first saves", async () => {

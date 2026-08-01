@@ -293,7 +293,7 @@ export function useTechnicalConfigurationAssessments(
       await Promise.all(invalidations)
       if (rankingQueryKey) {
         void queryClient
-          .invalidateQueries({
+          .resetQueries({
             queryKey: rankingQueryKey,
             exact: true,
           })

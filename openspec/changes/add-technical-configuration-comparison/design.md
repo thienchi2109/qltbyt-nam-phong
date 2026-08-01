@@ -537,10 +537,11 @@ load hoặc refetch, UI ẩn complete result trước đó và chỉ publish l�
 P12C1 collector hoàn tất toàn bộ snapshot. Nếu refetch thất bại, cached result cũ
 vẫn bị ẩn và UI chỉ hiển thị error/retry.
 
-Sau successful manual-assessment save, assessment hook invalidates exact ranking
-cache key của dossier/baseline vừa lưu. Nếu ranking đang hiển thị, active query
-observer tự refetch nhưng promise refresh không kéo dài save completion hoặc
-navigation lock; nếu chưa từng request thì ranking vẫn dormant. Cơ chế này không
+Sau successful manual-assessment save, assessment hook reset exact ranking cache
+key của dossier/baseline vừa lưu để hủy pending pre-save request trước khi nó có
+thể đi vào cache. Nếu ranking đang hiển thị, active query observer tự refetch
+nhưng promise refresh không kéo dài save completion hoặc navigation lock; nếu
+chưa từng request thì ranking vẫn dormant. Cơ chế này không
 thêm state vào selected-option active workspace và không tạo manual stale marker.
 
 Ranking read contract không join response, supplementary information, document

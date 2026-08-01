@@ -122,10 +122,11 @@
   result synchronously when either identity changes, ignores or cancels obsolete
   in-flight requests and hides the previous complete result while a refetch is
   collecting a new snapshot or after that refetch fails.
-- A successful assessment save invalidates the exact dossier/baseline ranking
-  cache key after adopting the saved assessment. An active ranking observer
-  refetches from the P12C1 collector without delaying save completion; inactive
-  ranking remains dormant. Supplier response/document changes do not create a
+- A successful assessment save resets the exact dossier/baseline ranking cache
+  key after adopting the saved assessment, cancelling any pending pre-save
+  request before it can enter the cache. An active ranking observer refetches
+  from the P12C1 collector without delaying save completion; inactive ranking
+  remains dormant. Supplier response/document changes do not create a
   manual stale marker.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile

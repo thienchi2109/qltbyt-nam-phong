@@ -96,15 +96,11 @@ function TechnicalConfigurationRankingResult({
   )
 }
 
-/** Renders the dossier-wide ranking only after an explicit request for the active baseline. */
-export function TechnicalConfigurationOptionReferenceRanking({
+function TechnicalConfigurationOptionReferenceRankingScope({
   dossierId,
   baselineVersionId,
 }: Readonly<TechnicalConfigurationOptionReferenceRankingProps>) {
-  const scopeKey = `${dossierId}:${baselineVersionId}`
-  const scopeToken = React.useMemo(() => Symbol(scopeKey), [scopeKey])
-  const [requestedScopeToken, setRequestedScopeToken] = React.useState<symbol | null>(null)
-  const isRequested = requestedScopeToken === scopeToken
+  const [isRequested, setIsRequested] = React.useState(false)
   const rankingQuery = useTechnicalConfigurationReferenceRankingQuery(
     { dossierId, baselineVersionId },
     isRequested
@@ -127,7 +123,7 @@ export function TechnicalConfigurationOptionReferenceRanking({
             type="button"
             variant="outline"
             className="shrink-0"
-            onClick={() => setRequestedScopeToken(scopeToken)}
+            onClick={() => setIsRequested(true)}
           >
             <ListOrdered className="size-4" aria-hidden="true" />
             Xem xếp hạng tham khảo
@@ -177,5 +173,19 @@ export function TechnicalConfigurationOptionReferenceRanking({
         <TechnicalConfigurationRankingResult ranking={ranking} />
       ) : null}
     </section>
+  )
+}
+
+/** Renders the dossier-wide ranking only after an explicit request for the active baseline. */
+export function TechnicalConfigurationOptionReferenceRanking({
+  dossierId,
+  baselineVersionId,
+}: Readonly<TechnicalConfigurationOptionReferenceRankingProps>) {
+  return (
+    <TechnicalConfigurationOptionReferenceRankingScope
+      key={JSON.stringify([dossierId, baselineVersionId])}
+      dossierId={dossierId}
+      baselineVersionId={baselineVersionId}
+    />
   )
 }

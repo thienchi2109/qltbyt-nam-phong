@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query"
 
 import type {
   TechnicalConfigurationReferenceRankingItemWire,
@@ -153,18 +153,26 @@ async function collectTechnicalConfigurationReferenceRanking(
   }
 }
 
+function technicalConfigurationReferenceRankingQueryOptions(
+  input: TechnicalConfigurationReferenceRankingInput
+) {
+  return queryOptions({
+    queryKey: technicalConfigurationReferenceRankingQueryKey(input),
+    queryFn: ({ signal }) => collectTechnicalConfigurationReferenceRanking(input, signal),
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
+}
+
 /** Observes one exact ranking scope while preserving explicit consumer activation. */
 export function useTechnicalConfigurationReferenceRankingQuery(
   input: TechnicalConfigurationReferenceRankingInput,
   enabled: boolean
 ) {
-  return useQuery<TechnicalConfigurationReferenceRankingSnapshot>({
-    queryKey: technicalConfigurationReferenceRankingQueryKey(input),
-    queryFn: ({ signal }) => collectTechnicalConfigurationReferenceRanking(input, signal),
+  return useQuery({
+    ...technicalConfigurationReferenceRankingQueryOptions(input),
     enabled,
-    staleTime: 0,
-    retry: false,
-    refetchOnWindowFocus: false,
   })
 }
 
@@ -173,12 +181,7 @@ export function useTechnicalConfigurationReferenceRanking() {
   const queryClient = useQueryClient()
   const loadRanking = React.useCallback(
     (input: TechnicalConfigurationReferenceRankingInput) =>
-      queryClient.fetchQuery({
-        queryKey: technicalConfigurationReferenceRankingQueryKey(input),
-        queryFn: ({ signal }) => collectTechnicalConfigurationReferenceRanking(input, signal),
-        staleTime: 0,
-        retry: false,
-      }),
+      queryClient.fetchQuery(technicalConfigurationReferenceRankingQueryOptions(input)),
     [queryClient]
   )
 
