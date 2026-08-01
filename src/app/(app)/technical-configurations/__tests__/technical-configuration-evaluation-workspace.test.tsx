@@ -90,6 +90,16 @@ vi.mock("../_hooks/useTechnicalConfigurationOptionListQuery", () => ({
   }),
 }))
 
+vi.mock("../_components/evaluation/TechnicalConfigurationOptionReferenceRanking", () => ({
+  TechnicalConfigurationOptionReferenceRanking: ({
+    dossierId,
+    baselineVersionId,
+  }: {
+    dossierId: string
+    baselineVersionId: string
+  }) => <span data-testid="reference-ranking-scope">{`${dossierId}:${baselineVersionId}`}</span>,
+}))
+
 vi.mock("../comparison-matrix-constants", () => ({
   TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE: 2,
 }))
@@ -307,6 +317,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
+    expect(screen.getByTestId("reference-ranking-scope")).toHaveTextContent("dossier-1:baseline-1")
     expect(await screen.findByText("Đã đánh giá 2 / 3 tiêu chí")).toBeInTheDocument()
     expect(screen.getByText("2 / 2")).toBeInTheDocument()
     expect(screen.getByText("0 / 1")).toBeInTheDocument()

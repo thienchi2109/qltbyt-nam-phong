@@ -18,6 +18,7 @@ import {
   technicalConfigurationAssessmentsQueryKey,
   technicalConfigurationAssessmentsQueryKeyPrefix,
   technicalConfigurationEvaluationCriteriaQueryKeyPrefix,
+  technicalConfigurationReferenceRankingQueryKey,
 } from "../technical-configuration-query-keys"
 import { collectStableTechnicalConfigurationPages } from "../technical-configuration-pagination"
 import type { TechnicalConfigurationComparisonSetWire } from "../supplier-option-types"
@@ -272,6 +273,9 @@ export function useTechnicalConfigurationAssessments(
           queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
         }),
       ]
+      let rankingQueryKey: ReturnType<
+        typeof technicalConfigurationReferenceRankingQueryKey
+      > | null = null
       if (baselineVersionId) {
         invalidations.push(
           queryClient.invalidateQueries({
@@ -281,8 +285,20 @@ export function useTechnicalConfigurationAssessments(
             ),
           })
         )
+        rankingQueryKey = technicalConfigurationReferenceRankingQueryKey({
+          dossierId: comparisonSet.dossier_id,
+          baselineVersionId,
+        })
       }
       await Promise.all(invalidations)
+      if (rankingQueryKey) {
+        void queryClient
+          .resetQueries({
+            queryKey: rankingQueryKey,
+            exact: true,
+          })
+          .catch(() => undefined)
+      }
     },
   })
 
