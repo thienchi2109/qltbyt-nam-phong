@@ -740,17 +740,17 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P12C2 - Optional Reference Ranking UI
 
-- [ ] P12C2.1 Chỉ request ranking sau hành động rõ ràng của người dùng; không tự
+- [x] P12C2.1 Chỉ request ranking sau hành động rõ ràng của người dùng; không tự
       chạy ranking khi mở evaluation workspace hoặc sau khi dossier/baseline đổi.
-- [ ] P12C2.2 Render option đủ điều kiện, option thiếu dữ liệu, ties và mandatory
+- [x] P12C2.2 Render option đủ điều kiện, option thiếu dữ liệu, ties và mandatory
       disclaimer; không thêm score, percentage, export hoặc award decision.
-- [ ] P12C2.3 Compose ranking như sibling của selected-option evaluation flow;
+- [x] P12C2.3 Compose ranking như sibling của selected-option evaluation flow;
       không đưa all-option ownership vào active-workspace state.
-- [ ] P12C2.4 Invalidate/refetch ranking đang hiển thị sau successful assessment
+- [x] P12C2.4 Invalidate/refetch ranking đang hiển thị sau successful assessment
       save; supplier source changes không tạo manual stale marker.
-- [ ] P12C2.5 Viết explicit-request, loading/error/retry, precedence, eligibility,
+- [x] P12C2.5 Viết explicit-request, loading/error/retry, precedence, eligibility,
       ties, disclaimer, scope và no-stale React regressions.
-- [ ] P12C2.6 Reset request/result state theo dossier/baseline identity, cancel
+- [x] P12C2.6 Reset request/result state theo dossier/baseline identity, cancel
       hoặc ignore request cũ và khóa bằng context-switch regressions.
 
 ## Phase P13A - Database Security And Performance Hardening
