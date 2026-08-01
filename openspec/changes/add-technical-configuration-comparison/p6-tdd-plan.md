@@ -601,6 +601,6 @@ Exit gate:
   khi rerun P7B1/P9B1 SQL gates và P7B2 React coverage; rerun cumulative
   Equipment + baseline + option AST manifest và add option
   runtime-delegation/raw create-update-list-render-delete tests.
-- P13A/P13B: cross-leaf SQL/UI regression.
+- P13A-V/P13B: cross-leaf SQL/UI regression.
 
 P6A/P6B tests xác nhận partial callback/presentation contracts và không được tạo document records. P7B1/P7B2/P9B1 có phase-local persistence/citation/UI tests nhưng chưa mark normative TC-11 hoặc TC-12 scenarios complete. Chỉ P9B2 mark TC-11-S01..S05 và TC-12-S01/S02 complete sau khi baseline/reference và supplier-option cases đều pass.

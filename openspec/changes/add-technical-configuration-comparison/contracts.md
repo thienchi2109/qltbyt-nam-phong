@@ -673,9 +673,17 @@ that client state for refresh and re-preview.
 - P12C1 returns at most 100 option-ranking rows per page and imposes no hidden
   domain cap on total dossier options or baseline criteria. One set-based
   statement computes complete-universe eligibility, counters and rank before
-  pagination. Phase-gate coverage uses more than 100 options and more than 100
-  criteria; P13A reviews a representative ranking `EXPLAIN` and creates a
-  blocking fix leaf if the plan is not acceptable.
+  pagination. P13A-P1 covers more than 100 options by 102 criteria with page
+  size 100 and captures `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` or an
+  equivalent JSON-plan seam. Evidence must show bounded work and cardinality,
+  no temporary spill, and no repeated correlated `SubPlan` or unbounded full
+  rescan outside the contract; no hard wall-clock threshold applies until a
+  normalized SLO exists. If that evidence fails, P13A-P2 applies and
+  phase-gates only the evidenced query/index remediation under the required
+  approvals, then P13A-P1 reruns green before P13A-V performs final
+  authorization, security and performance acceptance. P13A-V satisfies only
+  the database dependency; P13C starts only after P13A-V, P13B, P7A2 and P9A3
+  are all complete.
 
 ## Migration Order
 
@@ -697,7 +705,7 @@ that client state for refresh and re-preview.
     it creates no table or write path.
 13. P12C1 adds the guarded, read-only reference-ranking RPC after P12B2. Apply
     requires explicit approval, then its rollback-only live phase gate requires
-    a second explicit approval before P13A or P12C2 may depend on it.
+    a second explicit approval before P13A-P1 or P12C2 may depend on it.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 

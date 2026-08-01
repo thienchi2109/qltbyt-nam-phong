@@ -124,9 +124,11 @@ P12A2           -> P12B1
 P12B1           -> P12B2
 P12B2           -> P12C1
 P12C1           -> P12C2
-P12C1           -> P13A
+P12C1           -> P13A-P1
+P13A-P1         -> P13A-V
+P13A-P1 fail    -> P13A-P2 -> approved apply/gate -> rerun P13A-P1 green -> P13A-V
 P12C2           -> P13B
-P13A + P13B + P7A2 + P9A3 -> P13C
+P13A-V + P13B + P7A2 + P9A3 -> P13C
 ```
 
 `P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B2`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
@@ -169,28 +171,28 @@ P12C2 cannot start until P12C1 is complete.
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                                                                 |
-| ----- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                                         |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A                                                                                                                                      |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                               |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2, P12B1, P12B2                                                                      |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                         |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                                                     |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                                 |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                                 |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                       |
-| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                               |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                               |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                         |
-| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                                |
-| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B1, P12B2                                                                                                                               |
-| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                           |
-| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                               |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                |
-| TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                   |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                 |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13B |
+| ID    | Requirement                                     | Primary phases                                                                                                                                                                                         |
+| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TC-01 | Independent technical configuration dossier     | P0, P1                                                                                                                                                                                                 |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P13A-V                                                                                                                                                                            |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                                                                       |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2, P12B1, P12B2                                                                                                              |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                                                                 |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2                                                                                                                                                                             |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                                                                         |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                                                                         |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                                                               |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                                                                       |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                                                                       |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                                                                 |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                                                                        |
+| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                       |
+| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                                                                   |
+| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                       |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                                                        |
+| TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                           |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                         |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
 
 ## Shared Technical Constraints
 
@@ -2709,37 +2711,173 @@ supplier award decision.
 
 ## Phase P13A - Database Security And Performance Hardening
 
-**Depends on:** P12C1 merged, applied and phase-gated
-**Requirements:** TC-02, TC-20  
-**Deploy boundary:** verification-only; fixes require separate blocking leaf phases
-**Production code:** prohibited
+P13A is DB-only. P13B retains UI, accessibility and browser regression
+ownership. P13A-P2 exists only when mandatory P13A-P1 evidence fails.
 
-### Planned files
+### Phase P13A-P1 - Mandatory Representative Ranking Performance Evidence
 
-- Create: `openspec/changes/add-technical-configuration-comparison/verification/P13A-db-security-performance.md`
-- Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md` only after verification passes
+**Depends on:** P12C1 merged, applied and phase-gated<br>
+**Requirements:** TC-20 DB prerequisite; representative ranking performance
+evidence<br>
+**Deploy boundary:** mandatory verification/test-only leaf; no deploy artifact<br>
+**Production code:** prohibited; evidence and test harness changes only<br>
+**Migration/apply/rollback-only live-write approval:** no migration apply;
+read-only `EXPLAIN` on existing data needs no write approval; a rollback-only
+seeded scale gate on live requires separate explicit user approval through
+Supabase MCP<br>
+**Deploy-safe state:** P12C1 runtime behavior remains unchanged; any approved
+scale seed is rolled back
 
-### Tasks
+#### Planned files/surfaces
+
+- Create:
+  `openspec/changes/add-technical-configuration-comparison/verification/P13A-P1-representative-ranking-plan.md`.
+- Modify
+  `supabase/tests/technical_configuration_reference_ranking_phase_gate.sql`
+  only if test-only plan assertions need a reproducible harness.
+- Inspect the deployed ranking RPC, supporting indexes and representative normal
+  and upper-limit data shapes.
+
+#### Acceptance
+
+- Required scale dataset: more than 100 options x 102 criteria, collected with
+  page size 100.
+- Plan evidence uses `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` or an equivalent
+  JSON-plan seam.
+- Cardinality and work remain bounded, with no temp spill, repeated correlated
+  `SubPlan` or unbounded full rescan outside the contract.
+- Do not hard-code a wall-clock threshold until an approved SLO exists.
+
+#### Tasks
+
+- [ ] Build the normal dataset and required scale dataset of more than 100
+      options x 102 criteria; collect ranking pages at size 100.
+- [ ] Capture `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` or equivalent JSON plans
+      and record indexes, cardinality, loops, buffers, sorts and pagination work.
+- [ ] Assert bounded cardinality/work, no temp spill, no repeated correlated
+      `SubPlan` and no unbounded full rescan outside the contract.
+- [ ] Record plan metrics without adding a wall-clock assertion until an SLO is
+      approved.
+- [ ] If existing data cannot prove representative scale, request explicit user
+      approval for the rollback-only seeded scale gate before running it through
+      Supabase MCP.
+- [ ] Run the focused ranking performance assertions and preserve plan and
+      rollback evidence.
+- [ ] On failure, stop and instantiate P13A-P2 with only the exact evidenced
+      query/index gap; otherwise omit P13A-P2 and unblock P13A-V.
+
+#### Verification
+
+- Evidence identifies the more-than-100-options x 102-criteria dataset, page
+  size 100 and JSON plans for every collected page.
+- Focused assertions prove bounded cardinality/work, no temp spill, no repeated
+  correlated `SubPlan` and no unbounded full rescan outside the contract.
+- No wall-clock pass/fail threshold is claimed without an approved SLO.
+- Reviewer confirmation that no migration apply or production-code change
+  occurred and any approved scale seed was rolled back.
+
+#### Exit gate
+
+Direct path: all representative TC-20 acceptance criteria pass and P13A-V is
+unblocked.
+Failure path: P13A-P1 remains failed, the exact P13A-P2 scope is recorded and
+P13A-V remains blocked until P13A-P2 is applied/phase-gated and P13A-P1 reruns
+green.
+
+### Phase P13A-P2 - Conditional Ranking Query Remediation
+
+**Depends on:** P13A-P1 failed with reproducible evidence and exact scope<br>
+**Requirements:** only the exact failed TC-20 ranking query/index invariant from
+P13A-P1<br>
+**Deploy boundary:** conditional single-gap DB remediation; absent when P13A-P1
+passes<br>
+**Production code:** allowed only for the exact evidence-backed ranking
+query/index gap; no UI, client or adjacent DB hardening<br>
+**Migration/apply/rollback-only live-write approval:** prepare locally; the
+exact apply and rollback-only live gate each require separate explicit approval
+through Supabase MCP<br>
+**Deploy-safe state:** before approval the change is repo-only; after approved
+apply, ranking result and paging contracts remain unchanged
+
+#### Planned files/surfaces
+
+- Create one exact ranking migration only if required by P13A-P1 evidence.
+- Modify
+  `supabase/tests/technical_configuration_reference_ranking_phase_gate.sql`
+  for the reproduced gap.
+- Create:
+  `openspec/changes/add-technical-configuration-comparison/verification/P13A-P2-ranking-query-remediation.md`.
+- Touch only the evidenced ranking RPC/index surface; do not touch P13B-owned
+  UI/browser surfaces.
+
+#### Tasks
+
+- [ ] Add a RED SQL/plan assertion reproducing the P13A-P1 failure.
+- [ ] Implement the minimum query/index remediation without changing contracts.
+- [ ] Verify migration order, fresh replay and rollback cleanliness locally.
+- [ ] Rerun the failed plan matrix and all focused ranking SQL/RPC suites.
+- [ ] Apply only after explicit approval; request separate approval before the
+      rollback-only live gate, then run read-only advisors.
+- [ ] Rerun P13A-P1 from the beginning after the remediation is phase-gated.
+
+#### Verification
+
+- RED/GREEN regression evidence and before/after representative plans.
+- Unchanged result shape, deterministic ranks and bounded paging.
+- Approved apply/rollback gate evidence and read-only advisors when deployed.
+
+#### Exit gate
+
+P13A-P2 is applied and phase-gated, the exact P13A-P1 gap is closed, P13A-P1
+reruns green and no broader production change was introduced; P13A-V is
+unblocked.
+
+### Phase P13A-V - Final Database Security And Performance Verification
+
+**Depends on:** P13A-P1 passed directly, or P13A-P2 applied and phase-gated
+followed by a green P13A-P1 rerun<br>
+**Requirements:** TC-02, TC-20 final DB gate<br>
+**Deploy boundary:** verification-only final gate; fixes require separate
+blocking leaves<br>
+**Production code:** prohibited<br>
+**Migration/apply/rollback-only live-write approval:** prohibited in this leaf;
+any corrective live write belongs to its fix leaf and requires separate
+explicit approval<br>
+**Deploy-safe state:** runtime and DB state remain unchanged; accepted evidence
+satisfies only P13C's P13A dependency
+
+#### Planned files/surfaces
+
+- Create:
+  `openspec/changes/add-technical-configuration-comparison/verification/P13A-V-db-security-performance.md`.
+- Modify `openspec/changes/add-technical-configuration-comparison/tasks.md`
+  only after verification passes.
+- Inspect all DB-phase tests, migration order and live schema/advisors read-only.
+
+#### Tasks
 
 - [ ] Rerun the complete authorization matrix against direct backend calls.
 - [ ] Inspect live schema read-only for grants, RLS, JWT guards and `search_path`.
 - [ ] Audit ownership/cascade and locked-baseline immutability.
 - [ ] Audit migration order and fresh-DB replay behavior.
-- [ ] Verify list/matrix query bounds, selected columns, indexes and absence of N+1.
-- [ ] Review representative query plans.
-- [ ] Run security/performance advisors after any explicitly approved live apply.
-- [ ] If any gap is found, create a blocking fix leaf with exact files/issue/branch/PR and stop P13A.
-- [ ] Rerun P13A from the beginning after every blocking fix leaf is merged.
+- [ ] Verify list/matrix/ranking bounds, selected columns, indexes and absence
+      of N+1.
+- [ ] Run read-only security/performance advisors against the final DB state.
+- [ ] If any gap is found, create an exact blocking fix leaf and stop P13A-V;
+      do not widen P13A-P2 or edit production in P13A-V.
+- [ ] Rerun P13A-V from the beginning after every blocking fix is phase-gated.
 
-### Verification
+#### Verification
 
 - Focused SQL/RPC suites from every DB phase.
 - Direct-call denial tests for `global`, raw `admin`, missing claims and denied roles.
 - Reviewer approval of DB security/performance evidence.
 
-### Exit gate
+#### Exit gate
 
-No release-blocking database authorization, integrity or performance gap remains.
+No release-blocking database authorization, integrity or performance gap
+remains; only P13C's P13A dependency is satisfied. P13C still requires P13B,
+P7A2 and P9A3.
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
@@ -2798,7 +2936,7 @@ No release-blocking UI, accessibility or Equipment regression remains.
 
 ## Phase P13C - Release, OpenSpec And AI-Boundary Audit
 
-**Depends on:** P13A, P13B, P7A2, P9A3
+**Depends on:** P13A-V, P13B, P7A2, P9A3
 **Requirements:** TC-19  
 **Deploy boundary:** release documentation and final acceptance only
 
@@ -2822,6 +2960,9 @@ No release-blocking UI, accessibility or Equipment regression remains.
 - [ ] Complete release notes, rollout boundary and rollback instructions.
 - [ ] Update OpenSpec tasks only from verified landed state.
 - [ ] Close/relate phase issues and create the separate AI follow-up issue only when requested.
+- [ ] Record final acceptance, then archive this OpenSpec change; do not archive
+      before every P13C dependency and acceptance gate passes.
+- [ ] Verify the archived change state and preserve its archive evidence.
 
 ### Verification
 
@@ -2829,11 +2970,15 @@ No release-blocking UI, accessibility or Equipment regression remains.
 - Feature-baseline-to-HEAD commit/file audit and per-leaf gate evidence.
 - Strict OpenSpec validation.
 - Reviewer approval of release and AI-boundary evidence.
+- Final-acceptance evidence followed by verified OpenSpec archived state.
 - `main` synchronized with `origin/main`.
 
 ### Exit gate
 
-The MVP is available only to `admin/global`, all manual workflows are verified, Equipment remains stable and AI remains a documented future extension rather than shipped runtime.
+The MVP is available only to `admin/global`, all manual workflows are verified,
+Equipment remains stable and AI remains a documented future extension rather
+than shipped runtime. Final acceptance is recorded before this OpenSpec change
+is archived, and the archived state is verified in release evidence.
 
 ## AI Follow-Up Boundary
 
