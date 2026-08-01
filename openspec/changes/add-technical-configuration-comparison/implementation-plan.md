@@ -2653,8 +2653,10 @@ ranking is mounted.
 - Create: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationOptionReferenceRanking.tsx`
 - Create: `src/app/(app)/technical-configurations/__tests__/reference-ranking.test.tsx`
 - Modify: `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationReferenceRanking.ts`
 - Modify: `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationAssessments.ts`
 - Modify: `src/app/(app)/technical-configurations/__tests__/assessment-hook-contract.test.ts`
+- Modify: `src/app/(app)/technical-configurations/__tests__/technical-configuration-evaluation-workspace.test.tsx`
 - Modify: `openspec/changes/add-technical-configuration-comparison/contracts.md`
 - Modify: `openspec/changes/add-technical-configuration-comparison/design.md`
 - Modify: `openspec/changes/add-technical-configuration-comparison/tasks.md`
@@ -2677,8 +2679,9 @@ ranking is mounted.
       Do not add export/print behavior merely because the normative scenario
       also constrains future exported ranking.
 - [ ] Invalidate/refetch an active ranking after a successful manual assessment
-      save. Supplier response/document changes may refetch the same result but
-      must not create a manual stale marker.
+      save without delaying save completion or navigation release. Supplier
+      response/document changes may refetch the same result but must not create
+      a manual stale marker.
 - [ ] Keep reference products outside the request and render model.
 
 ### TDD and verification
@@ -2690,7 +2693,10 @@ ranking is mounted.
 - RED rendering cases for precedence output, incomplete reason, ties, stable
   tied presentation order, disclaimer and reference-product exclusion.
 - RED assessment-hook contract proving successful save invalidates the ranking
-  cache without changing existing assessment/filter invalidations.
+  cache without changing existing assessment/filter invalidations or waiting for
+  the optional ranking refresh to finish.
+- RED active-refetch failure proving the previous cached ranking remains hidden
+  behind the error/retry state.
 - Source-update regression proving no manual stale marker is rendered.
 - Run format, explicit-any, dedupe, typecheck, focused P11/P12 tests, React
   Doctor and strict OpenSpec validation. Browser/mobile hardening remains P13B.

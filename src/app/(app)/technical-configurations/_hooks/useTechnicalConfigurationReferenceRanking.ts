@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 
 import type {
   TechnicalConfigurationReferenceRankingItemWire,
@@ -151,6 +151,21 @@ async function collectTechnicalConfigurationReferenceRanking(
     snapshot_token: firstPage.snapshot_token,
     total: firstPage.total,
   }
+}
+
+/** Observes one exact ranking scope while preserving explicit consumer activation. */
+export function useTechnicalConfigurationReferenceRankingQuery(
+  input: TechnicalConfigurationReferenceRankingInput,
+  enabled: boolean
+) {
+  return useQuery<TechnicalConfigurationReferenceRankingSnapshot>({
+    queryKey: technicalConfigurationReferenceRankingQueryKey(input),
+    queryFn: ({ signal }) => collectTechnicalConfigurationReferenceRanking(input, signal),
+    enabled,
+    staleTime: 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  })
 }
 
 /** Exposes explicit, cache-backed loading without automatically requesting ranking. */

@@ -185,6 +185,15 @@ approved. P12B2 journeys must encode the approved post-save, no-more-match and
 option-change behavior; the recommendations in `design.md` are not evidence of
 approval by themselves.
 
+## P12C Leaf Acceptance Gates
+
+| Leaf  | RED seams before implementation                                                                                                                                                                                                                                                                                                        | Focused quality gate                                                                                                                                                                                                    | Exit evidence                                                                                                                                                                                                                                                                         |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P12C2 | no request on mount; explicit request; complete-before-publish; loading/error/retry; failed active refetch hides cached result; empty/single option; dense ties and stable order; incomplete reason; disclaimer; dossier/baseline reset; obsolete request ignored; successful-save ranking invalidation does not delay save completion | P12C1 collector regressions; ranking React user-event journeys; assessment hook/cache contract; existing P12A2/P12B workspace regressions; standard TypeScript/React order, React Doctor and strict OpenSpec validation | ranking is mounted outside selected-option active state, remains dormant until requested, never exposes partial/obsolete results, refreshes after an active assessment changes without extending the save/navigation lock and adds no migration, score, export, award or stale marker |
+
+P13B remains the owner of the canonical real-browser desktop/mobile,
+accessibility and screenshot matrix for the complete TC-18 flow.
+
 ## Cross-Leaf Regression Obligations
 
 ### Archived Dossier Guard

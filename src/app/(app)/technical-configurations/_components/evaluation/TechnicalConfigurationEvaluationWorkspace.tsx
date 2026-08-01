@@ -12,6 +12,7 @@ import { useTechnicalConfigurationOptionListQuery } from "../../_hooks/useTechni
 import type { TechnicalConfigurationOptionWire } from "../../supplier-option-types"
 import type { TechnicalConfigurationDossierWire } from "../../types"
 import { TechnicalConfigurationEvaluationActiveWorkspace } from "./TechnicalConfigurationEvaluationActiveWorkspace"
+import { TechnicalConfigurationOptionReferenceRanking } from "./TechnicalConfigurationOptionReferenceRanking"
 
 type TechnicalConfigurationEvaluationWorkspaceProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -125,14 +126,20 @@ export function TechnicalConfigurationEvaluationWorkspace({
   }
 
   return (
-    <TechnicalConfigurationEvaluationActiveWorkspace
-      dossier={dossier}
-      baselineVersionId={selection.selectedVersion.id}
-      baselineGroups={selection.selectedVersion.groups}
-      options={options}
-      onDirtyChange={setIsDirty}
-      onNavigationBlockedChange={setIsNavigationBlocked}
-      onRevisionChange={onRevisionChange}
-    />
+    <div className="min-w-0 space-y-6">
+      <TechnicalConfigurationEvaluationActiveWorkspace
+        dossier={dossier}
+        baselineVersionId={selection.selectedVersion.id}
+        baselineGroups={selection.selectedVersion.groups}
+        options={options}
+        onDirtyChange={setIsDirty}
+        onNavigationBlockedChange={setIsNavigationBlocked}
+        onRevisionChange={onRevisionChange}
+      />
+      <TechnicalConfigurationOptionReferenceRanking
+        dossierId={dossier.id}
+        baselineVersionId={selection.selectedVersion.id}
+      />
+    </div>
   )
 }

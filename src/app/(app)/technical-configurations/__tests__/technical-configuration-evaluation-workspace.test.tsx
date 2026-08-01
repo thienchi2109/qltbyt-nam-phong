@@ -90,6 +90,10 @@ vi.mock("../_hooks/useTechnicalConfigurationOptionListQuery", () => ({
   }),
 }))
 
+vi.mock("../_components/evaluation/TechnicalConfigurationOptionReferenceRanking", () => ({
+  TechnicalConfigurationOptionReferenceRanking: () => null,
+}))
+
 vi.mock("../comparison-matrix-constants", () => ({
   TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE: 2,
 }))

@@ -8,6 +8,7 @@ import {
   technicalConfigurationAssessmentsQueryKeyPrefix,
   technicalConfigurationEvaluationCriteriaQueryKeyPrefix,
   technicalConfigurationOptionResponsesQueryKey,
+  technicalConfigurationReferenceRankingQueryKey,
 } from "../technical-configuration-query-keys"
 import {
   createAssessmentQueryWrapper,
@@ -223,9 +224,72 @@ describe("P11C assessment hook contract", () => {
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(optionId, baselineVersionId),
     })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: technicalConfigurationReferenceRankingQueryKey({
+        dossierId: comparisonSet.dossier_id,
+        baselineVersionId,
+      }),
+      exact: true,
+    })
     expect(result.current.completeQueryKey).toEqual(completeQueryKey)
     expect(queryClient.getQueryState(secondPageQueryKey)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(completeQueryKey)?.isInvalidated).toBe(true)
+  })
+
+  it("does not wait for the optional ranking refresh before completing a successful save", async () => {
+    mocks.readComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return Promise.resolve(assessmentListResponse)
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return Promise.resolve({ data: savedAssessment })
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+    const queryClient = createAssessmentTestQueryClient()
+    const rankingInvalidation = createDeferred<void>()
+    const invalidateQueries = vi
+      .spyOn(queryClient, "invalidateQueries")
+      .mockImplementation((filters) =>
+        filters.exact ? rankingInvalidation.promise : Promise.resolve()
+      )
+    const rankingQueryKey = technicalConfigurationReferenceRankingQueryKey({
+      dossierId: comparisonSet.dossier_id,
+      baselineVersionId,
+    })
+    const { result } = renderAssessmentsHook(queryClient)
+
+    await waitFor(() => expect(result.current.assessmentsQuery.isSuccess).toBe(true))
+
+    let saveSettled = false
+    let savePromise!: ReturnType<typeof result.current.upsertAssessment.mutateAsync>
+    act(() => {
+      savePromise = result.current.upsertAssessment
+        .mutateAsync(assessmentUpsertInput)
+        .finally(() => {
+          saveSettled = true
+        })
+    })
+
+    await waitFor(() =>
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: rankingQueryKey,
+        exact: true,
+      })
+    )
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const settledBeforeRankingRefresh = saveSettled
+
+    rankingInvalidation.resolve(undefined)
+    await act(async () => {
+      await savePromise
+    })
+
+    expect(settledBeforeRankingRefresh).toBe(true)
   })
 
   it("deduplicates comparison-set acquisition across simultaneous first saves", async () => {

@@ -528,6 +528,21 @@ collection khi metadata, total, key hoặc snapshot không nhất quán. Không 
 cursor song song với page contract và không đặt hidden cap lên tổng option hoặc
 criterion.
 
+P12C2 giữ explicit-request state theo exact `dossier_id` +
+`baseline_version_id`, không theo selected option. Ranking query observer chỉ
+được enable khi scope hiện tại trùng scope người dùng đã yêu cầu. Khi dossier
+hoặc baseline đổi, UI trở về trạng thái chưa request ngay trong render mới,
+không tự request scope mới và không để result/request cũ xuất hiện. Trong initial
+load hoặc refetch, UI ẩn complete result trước đó và chỉ publish lại sau khi
+P12C1 collector hoàn tất toàn bộ snapshot. Nếu refetch thất bại, cached result cũ
+vẫn bị ẩn và UI chỉ hiển thị error/retry.
+
+Sau successful manual-assessment save, assessment hook invalidates exact ranking
+cache key của dossier/baseline vừa lưu. Nếu ranking đang hiển thị, active query
+observer tự refetch nhưng promise refresh không kéo dài save completion hoặc
+navigation lock; nếu chưa từng request thì ranking vẫn dormant. Cơ chế này không
+thêm state vào selected-option active workspace và không tạo manual stale marker.
+
 Ranking read contract không join response, supplementary information, document
 hoặc citation source data. Thay đổi phản hồi hoặc tài liệu nhà cung cấp không tự
 sửa, xóa hoặc đánh dấu lỗi thời kết luận thủ công. Xếp hạng dùng các kết luận

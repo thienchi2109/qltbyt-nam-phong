@@ -117,8 +117,16 @@
   and incomplete rendering, tie presentation, disclaimer and ranking-cache
   invalidation after successful assessment saves. It adds no migration and does
   not move dossier-wide ranking state into the selected-option active workspace.
-  It resets the request latch and visible result when dossier or baseline
-  identity changes and ignores or cancels obsolete in-flight requests.
+  Its query observer is enabled only while the current dossier/baseline identity
+  matches the explicitly requested scope. It resets the request latch and visible
+  result synchronously when either identity changes, ignores or cancels obsolete
+  in-flight requests and hides the previous complete result while a refetch is
+  collecting a new snapshot or after that refetch fails.
+- A successful assessment save invalidates the exact dossier/baseline ranking
+  cache key after adopting the saved assessment. An active ranking observer
+  refetches from the P12C1 collector without delaying save completion; inactive
+  ranking remains dormant. Supplier response/document changes do not create a
+  manual stale marker.
 - P12A2 workflow verification uses focused React integration tests with
   `@testing-library/user-event`. P13B owns all real-browser, desktop/mobile
   screenshot, interaction, accessibility and the canonical full regression
