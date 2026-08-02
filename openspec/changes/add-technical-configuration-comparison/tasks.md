@@ -879,12 +879,12 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14A3 - Typed Export Adapters And Stable Dataset Collector
 
-- [ ] P14A3.1 Khóa exact wire decoding, typed errors, nullable fields và malformed
+- [x] P14A3.1 Khóa exact wire decoding, typed errors, nullable fields và malformed
       identity/total/token rejection.
-- [ ] P14A3.2 Thu tuần tự mọi required page, validate keys/totals/tokens, đọc lại
+- [x] P14A3.2 Thu tuần tự mọi required page, validate keys/totals/tokens, đọc lại
       manifest và không publish partial dataset.
-- [ ] P14A3.3 Không fetch ranking hoặc matrix surface ngoài mode người dùng chọn.
-- [ ] P14A3.4 Không mount query/UI, không import ExcelJS và không download.
+- [x] P14A3.3 Không fetch ranking hoặc matrix surface ngoài mode người dùng chọn.
+- [x] P14A3.4 Không mount query/UI, không import ExcelJS và không download.
 
 ## Phase P14B1 - Result Workbook Schema And Representative Fixtures
 

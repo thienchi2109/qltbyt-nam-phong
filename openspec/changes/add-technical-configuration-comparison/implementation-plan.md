@@ -3059,24 +3059,30 @@ P14A1 snapshot identities. No UI can call them yet and no export file exists.
 ### Planned files
 
 - Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-types.ts`
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-decoders.ts`
+- Create:
   `src/app/(app)/technical-configurations/technical-configuration-result-export-rpc.ts`
 - Create:
   `src/app/(app)/technical-configurations/technical-configuration-result-export-data.ts`
 - Create:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-data.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-fixtures.ts`
 
 ### Tasks
 
-- [ ] Write RED adapter tests for exact wire decoding, error taxonomy, nullable
+- [x] Write RED adapter tests for exact wire decoding, error taxonomy, nullable
       fields and rejection of malformed identities/totals/tokens.
-- [ ] Write RED collector tests for all pages, deterministic key uniqueness,
+- [x] Write RED collector tests for all pages, deterministic key uniqueness,
       complete-before-publish, requested-surface short-circuiting and final
       manifest revalidation.
-- [ ] Implement module-local typed RPC adapters through the existing
+- [x] Implement module-local typed RPC adapters through the existing
       technical-configuration RPC client; do not change shared `callRpc()`.
-- [ ] Collect pages sequentially, validate every response against the first
+- [x] Collect pages sequentially, validate every response against the first
       manifest and reject the entire dataset when the final manifest differs.
-- [ ] Prove `ranking_only` never fetches matrix pages and
+- [x] Prove `ranking_only` never fetches matrix pages and
       `detailed_matrix_only` never fetches ranking pages.
 
 ### Exit gate
