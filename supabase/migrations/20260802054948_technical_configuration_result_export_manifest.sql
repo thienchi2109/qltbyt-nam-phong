@@ -12,6 +12,7 @@
 -- DROP FUNCTION IF EXISTS public._technical_configuration_result_export_snapshot(
 --   UUID, UUID, UUID[], UUID[]
 -- );
+-- ALTER FUNCTION public.technical_configuration_reference_ranking_list(UUID, UUID, INTEGER, INTEGER) VOLATILE;
 BEGIN;
 ALTER FUNCTION public.technical_configuration_reference_ranking_list(UUID, UUID, INTEGER, INTEGER) STABLE;
 CREATE OR REPLACE FUNCTION public._technical_configuration_result_export_snapshot(

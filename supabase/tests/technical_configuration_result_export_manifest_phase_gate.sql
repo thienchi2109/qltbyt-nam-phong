@@ -108,10 +108,8 @@ BEGIN
     NOT has_function_privilege('authenticated', v_helper_signature, 'EXECUTE'));
   PERFORM pg_temp.assert_true('helper service role execute granted',
     has_function_privilege('service_role', v_helper_signature, 'EXECUTE'));
-  PERFORM pg_temp.assert_true('helper is stable',
-    (SELECT proc.provolatile = 's' FROM pg_proc proc WHERE proc.oid = v_helper_signature::regprocedure));
-  PERFORM pg_temp.assert_true('manifest is stable',
-    (SELECT proc.provolatile = 's' FROM pg_proc proc WHERE proc.oid = v_manifest_signature::regprocedure));
+  PERFORM pg_temp.assert_true('helper is stable', (SELECT proc.provolatile = 's' FROM pg_proc proc WHERE proc.oid = v_helper_signature::regprocedure));
+  PERFORM pg_temp.assert_true('manifest is stable', (SELECT proc.provolatile = 's' FROM pg_proc proc WHERE proc.oid = v_manifest_signature::regprocedure));
   PERFORM pg_temp.assert_true('P12C1 ranking is stable', (SELECT proc.provolatile = 's'
     FROM pg_proc proc WHERE proc.oid = 'public.technical_configuration_reference_ranking_list(uuid,uuid,integer,integer)'::regprocedure));
   INSERT INTO public.technical_configuration_dossiers (
@@ -441,9 +439,11 @@ BEGIN
   SET notes = 'Changed assessment'
   WHERE id = v_assessment_id;
   v_next_token := pg_temp.read_manifest(v_dossier_id, v_version_id)->'data'->>'snapshot_token';
-  PERFORM pg_temp.assert_changed(
-    'full token changes with manual assessment notes', v_token, v_next_token
-  );
+  PERFORM pg_temp.assert_changed('full token changes with manual assessment notes', v_token, v_next_token);
+  v_token := v_next_token;
+  UPDATE public.technical_configuration_manual_assessments SET technical_axis = 'exceeds' WHERE id = v_assessment_id;
+  v_next_token := pg_temp.read_manifest(v_dossier_id, v_version_id)->'data'->>'snapshot_token';
+  PERFORM pg_temp.assert_changed('full token changes with manual assessment technical axis', v_token, v_next_token);
 END;
 $gate$;
 ROLLBACK;

@@ -190,6 +190,7 @@ describe("P14A1 technical configuration result export manifest migration", () =>
 
   it("keeps both functions read-only and grants only the intended execution paths", () => {
     for (const functionBlock of [helperBlock, manifestBlock]) {
+      expect(functionBlock).not.toBe("")
       expect(functionBlock).not.toMatch(
         /\b(?:INSERT|UPDATE|DELETE|MERGE|TRUNCATE|COPY|CREATE|ALTER|DROP|CALL|PERFORM\s+public\.technical_configuration_comparison_set_get_or_create)\b/i
       )
@@ -246,6 +247,7 @@ describe("P14A1 technical configuration result export manifest migration", () =>
       "full token changes with document metadata",
       "full token changes with citation excerpt",
       "full token changes with manual assessment notes",
+      "full token changes with manual assessment technical axis",
       "missing rows remain absent",
       "manifest read preserves revisions and audit metadata",
     ]) {
@@ -262,6 +264,10 @@ describe("P14A1 technical configuration result export manifest migration", () =>
     )
     expect(migrationSource).toContain(
       "DROP FUNCTION IF EXISTS public._technical_configuration_result_export_snapshot("
+    )
+    expect(migrationSource).toContain(
+      "-- ALTER FUNCTION public.technical_configuration_reference_ranking_list(" +
+        "UUID, UUID, INTEGER, INTEGER) VOLATILE;"
     )
   })
 })
