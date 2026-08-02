@@ -369,21 +369,21 @@ UI or download.
   PT404/PT409/PT422/PT500 and sanitized HTTP 500 handling, malformed 2xx JSON,
   malformed identity/selected-scope totals/tokens, exact bounded-page
   cardinality, zero/one/many pages, duplicate or missing matrix keys, malformed
-  nested document links, final-manifest drift, cancellation signal forwarding
-  and requested-surface suppression.
+  nested document links, final-manifest drift, custom and timeout cancellation
+  reason preservation, deep runtime freezing and requested-surface suppression.
 - The adapter calls the existing `callTechnicalConfigurationRpc()` seam and the
   collector reuses `collectStableTechnicalConfigurationPages()`. No shared
   `callRpc()` behavior, query key, hook, UI, ExcelJS, workbook or download seam
   changed.
 - Approved file ownership extraction keeps each source below the repository
-  threshold: types `149`, decoders `348`, RPC adapter `129` and collector `226`
+  threshold: types `149`, decoders `348`, RPC adapter `130` and collector `242`
   lines.
 - Ranking pages use fixed size `100`; matrix pages use fixed size `1000`.
   Collection is sequential, validates dossier/baseline identity, page metadata,
   manifest totals, both opaque tokens and deterministic keys, and only returns
   the frozen dataset after the final manifest matches the first.
-- Focused P14A3 tests pass `24/24`; shared pagination and reference-ranking
-  regressions bring the focused total to `43/43`. Format, no-explicit-any,
+- Focused P14A3 tests pass `29/29`; shared pagination and reference-ranking
+  regressions bring the focused total to `48/48`. Format, no-explicit-any,
   diff-only dedupe and typecheck gates pass. React Doctor reports `100/100`, and
   strict OpenSpec validation passes.
 

@@ -5,6 +5,7 @@ import { RESULT_EXPORT_RPC_FUNCTIONS } from "@/lib/technical-configuration-resul
 import { collectTechnicalConfigurationResultExportDataset } from "../technical-configuration-result-export-data"
 import {
   getTechnicalConfigurationResultExportManifest,
+  listTechnicalConfigurationResultExportRanking,
   TechnicalConfigurationResultExportError,
 } from "../technical-configuration-result-export-rpc"
 import {
@@ -24,6 +25,54 @@ import {
 } from "./technical-configuration-result-export-fixtures"
 
 afterEach(() => vi.unstubAllGlobals())
+
+function pendingRpcResponse(signal: AbortSignal | null): Promise<Response> {
+  if (signal?.aborted) return Promise.reject(signal.reason)
+  return new Promise((_resolve, reject) => {
+    signal?.addEventListener("abort", () => reject(signal.reason), { once: true })
+  })
+}
+
+function startPendingRankingRpc(signal: AbortSignal) {
+  let activeSignal: AbortSignal | null = null
+  installRpcMock(({ signal: requestSignal }) => {
+    activeSignal = requestSignal
+    return pendingRpcResponse(requestSignal)
+  })
+  return {
+    result: listTechnicalConfigurationResultExportRanking(
+      {
+        p_dossier_id: DOSSIER_ID,
+        p_baseline_version_id: BASELINE_ID,
+        p_option_ids: OPTION_IDS,
+        p_criterion_ids: CRITERION_IDS,
+        p_page: 1,
+        p_page_size: 100,
+      },
+      signal
+    ),
+    waitUntilActive: () => vi.waitFor(() => expect(activeSignal).toBe(signal)),
+  }
+}
+
+function startPendingCollection(
+  mode: "ranking_only" | "detailed_matrix_only",
+  signal: AbortSignal
+) {
+  let activeSignal: AbortSignal | null = null
+  installRpcMock(({ fn, signal: requestSignal }) => {
+    if (fn === RESULT_EXPORT_RPC_FUNCTIONS.getManifest) return jsonResponse(manifestResponse)
+    activeSignal = requestSignal
+    return pendingRpcResponse(requestSignal)
+  })
+  return {
+    result: collectTechnicalConfigurationResultExportDataset({
+      ...exportRequest(mode),
+      signal,
+    }),
+    waitUntilActive: () => vi.waitFor(() => expect(activeSignal).toBe(signal)),
+  }
+}
 
 describe("P14A3 result export RPC adapters", () => {
   it.each([
@@ -55,6 +104,29 @@ describe("P14A3 result export RPC adapters", () => {
       status,
       code,
     })
+  })
+
+  it("preserves a custom cancellation reason at the RPC adapter boundary", async () => {
+    const controller = new AbortController()
+    const reason = new Error("custom RPC cancellation")
+    const { result, waitUntilActive } = startPendingRankingRpc(controller.signal)
+    await waitUntilActive()
+    controller.abort(reason)
+
+    await expect(result).rejects.toBe(reason)
+  })
+
+  it("preserves AbortSignal.timeout() at the RPC adapter boundary", async () => {
+    const signal = AbortSignal.timeout(100)
+    const { result, waitUntilActive } = startPendingRankingRpc(signal)
+    const rejection = result.then(
+      () => null,
+      (error: unknown) => error
+    )
+    await waitUntilActive()
+    await vi.waitFor(() => expect(signal.aborted).toBe(true))
+
+    await expect(rejection).resolves.toBe(signal.reason)
   })
 
   it("classifies malformed successful JSON as an invalid response", async () => {
@@ -156,6 +228,21 @@ describe("P14A3 stable result export dataset collector", () => {
     ])
   })
 
+  it("deep-freezes collected rows and nested document links", async () => {
+    installRpcMock(createPagedHandler())
+
+    const dataset = await collectTechnicalConfigurationResultExportDataset(exportRequest())
+
+    expect(dataset.mode).toBe("full")
+    if (dataset.mode !== "full") throw new Error("Expected a full export dataset.")
+    for (const row of dataset.ranking) expect(Object.isFrozen(row)).toBe(true)
+    for (const cell of dataset.matrix) {
+      expect(Object.isFrozen(cell)).toBe(true)
+      expect(Object.isFrozen(cell.document_links)).toBe(true)
+      for (const link of cell.document_links) expect(Object.isFrozen(link)).toBe(true)
+    }
+  })
+
   it("collects a zero-cell matrix when one selected dimension is empty", async () => {
     const emptyManifest = { data: { ...manifestResponse.data, option_total: 0 } }
     const { calls } = installRpcMock(
@@ -202,26 +289,37 @@ describe("P14A3 stable result export dataset collector", () => {
     expect(calls.map(({ fn }) => fn)).toEqual(expected)
   })
 
-  it("forwards and preserves cancellation from the active page request", async () => {
+  it.each([
+    {
+      mode: "ranking_only",
+      name: "AbortError",
+      reason: new DOMException("cancelled", "AbortError"),
+    },
+    {
+      mode: "detailed_matrix_only",
+      name: "custom error",
+      reason: new Error("custom cancellation"),
+    },
+  ] as const)("forwards and preserves $name cancellation in $mode", async ({ mode, reason }) => {
     const controller = new AbortController()
-    const abortError = new DOMException("cancelled", "AbortError")
-    let activeSignal: AbortSignal | null = null
-    installRpcMock(({ fn, signal }) => {
-      if (fn === RESULT_EXPORT_RPC_FUNCTIONS.getManifest) return jsonResponse(manifestResponse)
-      activeSignal = signal
-      return new Promise((_resolve, reject) => {
-        signal?.addEventListener("abort", () => reject(signal.reason), { once: true })
-      })
-    })
+    const { result, waitUntilActive } = startPendingCollection(mode, controller.signal)
+    await waitUntilActive()
+    controller.abort(reason)
 
-    const result = collectTechnicalConfigurationResultExportDataset({
-      ...exportRequest("ranking_only"),
-      signal: controller.signal,
-    })
-    await vi.waitFor(() => expect(activeSignal).toBe(controller.signal))
-    controller.abort(abortError)
+    await expect(result).rejects.toBe(reason)
+  })
 
-    await expect(result).rejects.toBe(abortError)
+  it("preserves the reason from AbortSignal.timeout()", async () => {
+    const signal = AbortSignal.timeout(100)
+    const { result, waitUntilActive } = startPendingCollection("ranking_only", signal)
+    const rejection = result.then(
+      () => null,
+      (error: unknown) => error
+    )
+    await waitUntilActive()
+    await vi.waitFor(() => expect(signal.aborted).toBe(true))
+
+    await expect(rejection).resolves.toBe(signal.reason)
   })
 
   it.each([

@@ -97,6 +97,20 @@ function freezeManifest(manifest: TechnicalConfigurationResultExportManifestWire
   })
 }
 
+function freezeRankingItems(items: readonly TechnicalConfigurationResultExportRankingItemWire[]) {
+  for (const item of items) Object.freeze(item)
+  return Object.freeze(items)
+}
+
+function freezeMatrixItems(items: readonly TechnicalConfigurationResultExportMatrixCellWire[]) {
+  for (const item of items) {
+    for (const link of item.document_links) Object.freeze(link)
+    Object.freeze(item.document_links)
+    Object.freeze(item)
+  }
+  return Object.freeze(items)
+}
+
 async function collectRanking(
   scope: TechnicalConfigurationResultExportScopeRpcArgs,
   manifest: TechnicalConfigurationResultExportManifestWire,
@@ -132,8 +146,9 @@ async function collectRanking(
     ) {
       throw snapshotChanged()
     }
-    return Object.freeze(items)
+    return freezeRankingItems(items)
   } catch (error) {
+    if (signal?.aborted) throw signal.reason
     if (error instanceof TechnicalConfigurationResultExportError || isAbortError(error)) throw error
     throw snapshotChanged()
   }
@@ -186,8 +201,9 @@ async function collectMatrix(
         first.ranking_snapshot_token === next.ranking_snapshot_token,
     })
     validateMatrixKeys(items, manifest, scope)
-    return Object.freeze(items)
+    return freezeMatrixItems(items)
   } catch (error) {
+    if (signal?.aborted) throw signal.reason
     if (error instanceof TechnicalConfigurationResultExportError || isAbortError(error)) throw error
     throw snapshotChanged()
   }

@@ -56,6 +56,7 @@ async function callResultExportRpc<T>(
   try {
     return decode(await callTechnicalConfigurationRpc<unknown>(fn, args, { signal }))
   } catch (error) {
+    if (signal?.aborted) throw signal.reason
     if (error instanceof TechnicalConfigurationResultExportError) throw error
     if (error instanceof TechnicalConfigurationRpcError) throw mapRpcError(error)
     if (error instanceof DOMException && error.name === "AbortError") throw error
