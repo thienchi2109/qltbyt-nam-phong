@@ -246,9 +246,11 @@ ranking_snapshot_token, total, page, page_size }`.
 2. Delegate ranking semantics to the P12C1 contract.
 3. Re-source the P14A1 private snapshot ranking token through the shared token
    helper so ranking pages do not trigger a preliminary paged P12C1 scan.
-4. Return only selected fields with bounded pages and deterministic keys.
-5. Add only the two P14A2 names to the manifest/allowlist.
-6. Run focused migration/whitelist tests and confirm green.
+4. Share immutable option-display-label and derived-status helpers between the
+   active ranking and matrix definitions.
+5. Return only selected fields with bounded pages and deterministic keys.
+6. Add only the two P14A2 names to the manifest/allowlist.
+7. Run focused migration/whitelist tests and confirm green.
 
 ### Refactor And Gate
 
@@ -277,16 +279,21 @@ workbook, UI or download.
   snapshot is superseded without changing its signature and now obtains the
   exact ranking token directly from the shared token helper. Matrix work is
   set-based over P14A1 validated IDs and pages cells before evidence joins.
+  Private immutable helpers now keep option labels and seven-status precedence
+  identical across the active ranking and matrix definitions.
 - The implementation is split across three ordered migrations to preserve
   applied P14A1 history and keep every source file below the mandatory
   450-line ceiling.
 - The rollback-only phase gate covers non-empty second pages, repeated metadata
   and tokens, complete ACLs, raw `admin` authorization and an actual
-  `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` bounded-call execution seam.
+  `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` wrapper-execution seam plus
+  source-level no-loop/get-or-create/page-limit guards.
 - Independent re-review resolved both initial Important findings and ended with
-  zero Critical/Important findings. The accepted residual limitation is that
-  the outer PL/pgSQL plan exposes aggregate execution/buffer/temp-spill
-  evidence, not internal statement plan nodes.
+  zero Critical/Important findings. PR review then correctly rejected the
+  outer-plan no-spill claim and identified shared-expression drift risk; RED
+  tests now lock the corrected evidence wording and shared helpers. The outer
+  PL/pgSQL plan still does not expose internal statement plan nodes or prove
+  their temporary-spill behavior.
 - Live apply, rollback-only execution and advisor evidence remain pending
   explicit approval for that exact live DB write.
 

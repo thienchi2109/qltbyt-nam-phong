@@ -871,7 +871,8 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       repeated scope/totals/tokens và empty/null semantics bằng RED tests.
 - [x] P14A2.2 Reuse P12C1 ranking semantics; thêm set-based read-only matrix
       contract, không tạo ranking algorithm/query loop song song và không chạy
-      paged P12C1 lần hai chỉ để lấy ranking token.
+      paged P12C1 lần hai chỉ để lấy ranking token; dùng chung immutable helper
+      cho option display label và derived status.
 - [ ] P14A2.3 Thêm hai RPC names vào manifest/allowlist và phase-gate
       authorization, bounds, query plan sau explicit live approval.
 - [x] P14A2.4 Xác minh không có client/UI/workbook/download trong leaf.

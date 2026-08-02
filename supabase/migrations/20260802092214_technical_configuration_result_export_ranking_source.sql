@@ -3,6 +3,38 @@
 -- private helpers, then restores 20260731102715 as STABLE.
 BEGIN;
 
+CREATE OR REPLACE FUNCTION public._technical_configuration_option_display_label(
+  p_supplier_name TEXT,
+  p_model TEXT,
+  p_option_name TEXT
+)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT p_supplier_name || ' ' || chr(183) || ' '
+    || COALESCE(p_model, p_option_name);
+$$;
+
+CREATE OR REPLACE FUNCTION public._technical_configuration_derived_status(
+  p_technical_axis TEXT,
+  p_evidence_axis TEXT
+)
+RETURNS TEXT
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_technical_axis IS NULL THEN 'not_evaluated'
+    WHEN p_technical_axis = 'not_applicable' THEN 'not_applicable'
+    WHEN p_technical_axis = 'fails' THEN 'fails'
+    WHEN p_technical_axis = 'unclear' THEN 'unclear'
+    WHEN p_evidence_axis IS NULL THEN 'not_evaluated'
+    WHEN p_evidence_axis IN ('partial', 'missing') THEN 'insufficient_evidence'
+    ELSE p_technical_axis
+  END;
+$$;
+
 CREATE OR REPLACE FUNCTION public._technical_configuration_reference_ranking_snapshot(
   p_dossier_id UUID,
   p_baseline_version_id UUID
@@ -31,8 +63,11 @@ AS $$
       supplier.name AS supplier_name,
       supplier.normalized_name AS supplier_normalized_name,
       COALESCE(option_row.model, option_row.option_name) AS identity_label,
-      supplier.name || ' ' || chr(183) || ' '
-        || COALESCE(option_row.model, option_row.option_name) AS display_label
+      public._technical_configuration_option_display_label(
+        supplier.name,
+        option_row.model,
+        option_row.option_name
+      ) AS display_label
     FROM public.technical_configuration_options option_row
     JOIN public.technical_configuration_suppliers supplier
       ON supplier.id = option_row.supplier_id
@@ -54,16 +89,11 @@ AS $$
           OR assessment.evidence_axis IS NULL THEN 1
         ELSE 0
       END AS incomplete_criterion,
-      CASE
-        WHEN criterion.criterion_id IS NULL THEN NULL
-        WHEN assessment.technical_axis IS NULL THEN 'not_evaluated'
-        WHEN assessment.technical_axis = 'not_applicable' THEN 'not_applicable'
-        WHEN assessment.technical_axis = 'fails' THEN 'fails'
-        WHEN assessment.technical_axis = 'unclear' THEN 'unclear'
-        WHEN assessment.evidence_axis IS NULL THEN 'not_evaluated'
-        WHEN assessment.evidence_axis IN ('partial', 'missing')
-          THEN 'insufficient_evidence'
-        ELSE assessment.technical_axis
+      CASE WHEN criterion.criterion_id IS NULL THEN NULL
+        ELSE public._technical_configuration_derived_status(
+          assessment.technical_axis,
+          assessment.evidence_axis
+        )
       END AS derived_status
     FROM option_universe option_row
     LEFT JOIN canonical_criteria criterion ON TRUE
@@ -359,6 +389,18 @@ $$;
 REVOKE ALL ON FUNCTION public._technical_configuration_reference_ranking_snapshot(
   UUID, UUID
 ) FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public._technical_configuration_option_display_label(
+  TEXT, TEXT, TEXT
+) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public._technical_configuration_option_display_label(
+  TEXT, TEXT, TEXT
+) TO service_role;
+REVOKE ALL ON FUNCTION public._technical_configuration_derived_status(
+  TEXT, TEXT
+) FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public._technical_configuration_derived_status(
+  TEXT, TEXT
+) TO service_role;
 GRANT EXECUTE ON FUNCTION public._technical_configuration_reference_ranking_snapshot(
   UUID, UUID
 ) TO service_role;

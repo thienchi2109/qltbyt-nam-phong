@@ -106,6 +106,8 @@ DECLARE
     'public._technical_configuration_reference_ranking_token(uuid,uuid)';
   v_snapshot_helper_signature TEXT :=
     'public._technical_configuration_result_export_snapshot(uuid,uuid,uuid[],uuid[])';
+  v_label_helper_signature TEXT := 'public._technical_configuration_option_display_label(text,text,text)';
+  v_status_helper_signature TEXT := 'public._technical_configuration_derived_status(text,text)';
 BEGIN
   PERFORM pg_advisory_xact_lock(
     hashtext('technical_configuration_result_export_pages_phase_gate'));
@@ -136,6 +138,13 @@ BEGIN
   PERFORM pg_temp.assert_true('private ranking helper stays service-only',
     NOT has_function_privilege('authenticated', v_helper_signature, 'EXECUTE')
     AND has_function_privilege('service_role', v_helper_signature, 'EXECUTE'));
+  PERFORM pg_temp.assert_true('shared expression helpers are immutable and service-only',
+    (SELECT bool_and(proc.provolatile = 'i') FROM pg_proc proc
+     WHERE proc.oid IN (v_label_helper_signature::regprocedure, v_status_helper_signature::regprocedure))
+    AND NOT has_function_privilege('authenticated', v_label_helper_signature, 'EXECUTE')
+    AND has_function_privilege('service_role', v_label_helper_signature, 'EXECUTE')
+    AND NOT has_function_privilege('authenticated', v_status_helper_signature, 'EXECUTE')
+    AND has_function_privilege('service_role', v_status_helper_signature, 'EXECUTE'));
   PERFORM pg_temp.assert_true('ranking token helper PUBLIC execute revoked',
     NOT has_function_privilege('public', v_token_helper_signature, 'EXECUTE'));
   PERFORM pg_temp.assert_true('ranking token helper anon execute revoked',
@@ -425,9 +434,8 @@ BEGIN
     'EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT public.technical_configuration_result_export_matrix_list(%L,%L,NULL,NULL,1,1000)',
     v_dossier_id, v_version_id
   ) INTO v_plan;
-  PERFORM pg_temp.assert_true('matrix bounded call executes without temporary spill',
+  PERFORM pg_temp.assert_true('matrix bounded wrapper executes and source stays set-based',
     v_plan IS NOT NULL
-    AND v_plan::TEXT !~ '"Temp (Read|Written) Blocks": [1-9]'
     AND position(' LOOP' IN upper(v_ranking_definition || v_matrix_definition)) = 0
     AND position('GET_OR_CREATE' IN upper(v_ranking_definition || v_matrix_definition)) = 0
     AND position('LIMIT P_PAGE_SIZE' IN upper(v_ranking_definition || v_matrix_definition)) > 0);

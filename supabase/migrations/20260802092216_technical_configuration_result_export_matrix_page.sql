@@ -34,8 +34,11 @@ BEGIN
       option_row.id AS option_id,
       option_row.supplier_id,
       supplier.name AS supplier_name,
-      supplier.name || ' ' || chr(183) || ' '
-        || COALESCE(option_row.model, option_row.option_name) AS display_label,
+      public._technical_configuration_option_display_label(
+        supplier.name,
+        option_row.model,
+        option_row.option_name
+      ) AS display_label,
       option_row.model,
       option_row.manufacturer,
       option_row.option_name
@@ -146,16 +149,10 @@ BEGIN
             'technical_axis', assessment.technical_axis,
             'evidence_axis', assessment.evidence_axis,
             'assessment_notes', assessment.notes,
-            'conclusion', CASE
-              WHEN assessment.technical_axis IS NULL THEN 'not_evaluated'
-              WHEN assessment.technical_axis = 'not_applicable' THEN 'not_applicable'
-              WHEN assessment.technical_axis = 'fails' THEN 'fails'
-              WHEN assessment.technical_axis = 'unclear' THEN 'unclear'
-              WHEN assessment.evidence_axis IS NULL THEN 'not_evaluated'
-              WHEN assessment.evidence_axis IN ('partial', 'missing')
-                THEN 'insufficient_evidence'
-              ELSE assessment.technical_axis
-            END
+            'conclusion', public._technical_configuration_derived_status(
+              assessment.technical_axis,
+              assessment.evidence_axis
+            )
           )
     ORDER BY cell.criterion_ordinal, cell.option_ordinal
   ), '[]'::JSONB)

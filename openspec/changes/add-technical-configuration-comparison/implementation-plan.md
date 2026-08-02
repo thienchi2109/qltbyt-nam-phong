@@ -3029,6 +3029,8 @@ tokens without changing any revision, audit state or data row.
       algorithm.
 - [x] Re-source the P14A1 private snapshot token through the shared token helper
       so a ranking page performs no preliminary paged P12C1 full-universe scan.
+- [x] Share immutable option-display-label and derived-status expressions across
+      the active P12C1 ranking and P14A2 matrix definitions.
 - [x] Implement set-based read-only ranking and matrix RPCs over the P14A1
       snapshot helper with no get-or-create or per-cell query loop.
 - [x] Prove reference products and baseline-only evidence never enter option

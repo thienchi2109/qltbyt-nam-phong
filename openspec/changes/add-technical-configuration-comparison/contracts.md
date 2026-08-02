@@ -532,7 +532,9 @@ assessment_notes, conclusion }`. Each `document_links` item is exactly
 excerpt }`. Missing comparison sets, responses and assessments produce nullable
   scalar values; missing criterion citations produce `document_links: []`.
   `conclusion` is one of the exact P12C1-derived seven statuses. Reference
-  products and baseline-only evidence are excluded from option columns.
+  products and baseline-only evidence are excluded from option columns. The
+  ranking and matrix surfaces use the same private immutable derived-status and
+  option-display-label helpers so their precedence and labels cannot drift.
 - P14 export RPCs are side-effect-free. They never call comparison-set
   get-or-create, never create missing rows, never increment dossier/baseline/
   comparison/assessment revisions and never alter audit metadata. Missing

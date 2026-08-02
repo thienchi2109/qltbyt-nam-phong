@@ -52,6 +52,14 @@ const snapshotMigrationSource = readIfExists(SNAPSHOT_MIGRATION_PATH)
 const matrixMigrationSource = readIfExists(MATRIX_MIGRATION_PATH)
 const migrationSource = `${rankingMigrationSource}\n${snapshotMigrationSource}\n${matrixMigrationSource}`
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
+const optionDisplayLabelBlock = getFunctionBlock(
+  rankingMigrationSource,
+  "_technical_configuration_option_display_label"
+)
+const derivedStatusBlock = getFunctionBlock(
+  rankingMigrationSource,
+  "_technical_configuration_derived_status"
+)
 const rankingSnapshotBlock = getFunctionBlock(
   migrationSource,
   "_technical_configuration_reference_ranking_snapshot"
@@ -144,6 +152,39 @@ describe("P14A2 technical configuration result export page migration", () => {
     expect(exportRankingBlock).not.toContain("public.technical_configuration_manual_assessments")
   })
 
+  it("shares option labels and derived statuses across ranking and matrix surfaces", () => {
+    expect(optionDisplayLabelBlock).toContain(
+      "_technical_configuration_option_display_label(\n" +
+        "  p_supplier_name TEXT,\n" +
+        "  p_model TEXT,\n" +
+        "  p_option_name TEXT"
+    )
+    expect(optionDisplayLabelBlock).toContain("LANGUAGE sql\nIMMUTABLE")
+    expect(derivedStatusBlock).toContain(
+      "_technical_configuration_derived_status(\n" +
+        "  p_technical_axis TEXT,\n" +
+        "  p_evidence_axis TEXT"
+    )
+    expect(derivedStatusBlock).toContain("LANGUAGE sql\nIMMUTABLE")
+    for (const marker of [
+      "THEN 'not_evaluated'",
+      "THEN 'not_applicable'",
+      "THEN 'fails'",
+      "THEN 'unclear'",
+      "THEN 'insufficient_evidence'",
+      "ELSE p_technical_axis",
+    ]) {
+      expect(derivedStatusBlock).toContain(marker)
+    }
+    for (const functionBlock of [rankingSnapshotBlock, exportMatrixBlock]) {
+      expect(functionBlock).toContain("public._technical_configuration_option_display_label(")
+      expect(functionBlock).toContain("public._technical_configuration_derived_status(")
+      expect(functionBlock).not.toContain("supplier.name || ' ' || chr(183)")
+    }
+    expect(rankingSnapshotBlock).toContain("WHEN criterion.criterion_id IS NULL THEN NULL")
+    expect(exportMatrixBlock).not.toContain("WHEN assessment.technical_axis")
+  })
+
   it("reuses the exact ranking token without running the paged P12C1 RPC inside the snapshot", () => {
     expect(exportSnapshotBlock).toMatch(
       /v_ranking_snapshot_token :=\s+public\._technical_configuration_reference_ranking_token\(/
@@ -197,13 +238,9 @@ describe("P14A2 technical configuration result export page migration", () => {
       "LEFT JOIN public.technical_configuration_manual_assessments"
     )
     expect(exportMatrixBlock).toContain("COALESCE(evidence.document_links, '[]'::JSONB)")
-    expect(exportMatrixBlock).toContain("WHEN assessment.technical_axis IS NULL")
-    expect(exportMatrixBlock).toContain("THEN 'not_evaluated'")
-    expect(exportMatrixBlock).toContain("THEN 'not_applicable'")
-    expect(exportMatrixBlock).toContain("THEN 'fails'")
-    expect(exportMatrixBlock).toContain("THEN 'unclear'")
-    expect(exportMatrixBlock).toContain("THEN 'insufficient_evidence'")
-    expect(exportMatrixBlock).toContain("ELSE assessment.technical_axis")
+    expect(exportMatrixBlock).toContain(
+      "'conclusion', public._technical_configuration_derived_status("
+    )
     expect(
       getObjectKeys(
         exportMatrixBlock,
@@ -278,6 +315,9 @@ describe("P14A2 technical configuration result export page migration", () => {
     )
     expect(migrationSource).toContain("TO service_role;")
     for (const functionName of [
+      "_technical_configuration_option_display_label",
+      "_technical_configuration_derived_status",
+      "_technical_configuration_reference_ranking_snapshot",
       "technical_configuration_reference_ranking_list",
       "technical_configuration_result_export_ranking_list",
       "technical_configuration_result_export_matrix_list",
@@ -303,7 +343,7 @@ describe("P14A2 technical configuration result export page migration", () => {
       "matrix non-empty second page stays stable",
       "ranking page beyond end stays stable",
       "matrix page beyond end stays stable",
-      "matrix bounded call executes without temporary spill",
+      "matrix bounded wrapper executes and source stays set-based",
       "result export pages remain read-only",
       "P12C1 response remains backward compatible",
       "matrix PUBLIC execute revoked",
@@ -313,6 +353,7 @@ describe("P14A2 technical configuration result export page migration", () => {
       "ranking token helper anon execute revoked",
       "ranking token helper authenticated execute revoked",
       "ranking token helper service role execute granted",
+      "shared expression helpers are immutable and service-only",
       "raw admin role remains authorized",
     ]) {
       expect(phaseGateSource).toContain(marker)
@@ -321,5 +362,6 @@ describe("P14A2 technical configuration result export page migration", () => {
     expect(phaseGateSource).not.toContain(
       "EXPLAIN (FORMAT JSON) SELECT public.technical_configuration_result_export_matrix_list"
     )
+    expect(phaseGateSource).not.toContain('"Temp (Read|Written) Blocks"')
   })
 })
