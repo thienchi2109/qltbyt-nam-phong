@@ -186,8 +186,14 @@ workbook, UI or download.
 
 ### Planned Files
 
-- Create at execution time after migration-order inspection:
-  `supabase/migrations/<timestamp>_technical_configuration_result_export_pages.sql`
+- Create at execution time after migration-order and file-ceiling inspection:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_ranking_source.sql`
+- Create immediately after the ranking migration:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_snapshot_token_source.sql`
+- Create immediately after the snapshot-token migration:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_matrix_page.sql`
+- Create after live advisor feedback:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_helper_search_path.sql`
 - Create:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-pages-migration.test.ts`
 - Create:
@@ -196,6 +202,33 @@ workbook, UI or download.
 - Modify:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-rpc-whitelist.test.ts`
 - Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+
+### Locked Page Contracts
+
+- Both requests are exactly
+  `{ p_dossier_id, p_baseline_version_id, p_option_ids, p_criterion_ids,
+p_page, p_page_size }` and reuse P14A1 scope validation.
+- Ranking page size is 1-100. Its exact item is
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`.
+- Ranking counters/ranks are computed once over the complete P12C1
+  dossier/baseline universe, then filtered to the validated option scope and
+  paginated in P12C1 presentation order. Criterion scope does not redefine
+  ranking semantics.
+- Matrix page size is 1-1000. Cells are ordered by validated criterion
+  ordinality, then option ordinality. Each exact cell is
+  `{ group_id, group_name, group_order, criterion_id, criterion_code,
+criterion_title, requirement_text, criterion_order, option_id, supplier_id,
+supplier_name, display_label, model, manufacturer, option_name, response_text,
+supplementary_information, document_links, technical_axis, evidence_axis,
+assessment_notes, conclusion }`.
+- Each `document_links` item is exactly
+  `{ document_id, document_name, document_url, citation_id, page_section,
+excerpt }`. Missing rows return nullable scalar fields and `document_links: []`.
+- Both responses are exactly
+  `{ data, dossier_id, baseline_version_id, snapshot_token,
+ranking_snapshot_token, total, page, page_size }`.
 
 ### RED
 
@@ -213,9 +246,13 @@ workbook, UI or download.
 
 1. Add set-based ranking and matrix list RPCs over the P14A1 helper.
 2. Delegate ranking semantics to the P12C1 contract.
-3. Return only selected fields with bounded pages and deterministic keys.
-4. Add only the two P14A2 names to the manifest/allowlist.
-5. Run focused migration/whitelist tests and confirm green.
+3. Re-source the P14A1 private snapshot ranking token through the shared token
+   helper so ranking pages do not trigger a preliminary paged P12C1 scan.
+4. Share immutable option-display-label and derived-status helpers between the
+   active ranking and matrix definitions.
+5. Return only selected fields with bounded pages and deterministic keys.
+6. Add only the two P14A2 names to the manifest/allowlist.
+7. Run focused migration/whitelist tests and confirm green.
 
 ### Refactor And Gate
 
@@ -228,6 +265,50 @@ workbook, UI or download.
 
 **Deploy boundary:** two dormant read-only page RPCs; no adapter, collector,
 workbook, UI or download.
+
+### P14A2 Execution Evidence - 2026-08-02
+
+- Read-only Supabase MCP inspection confirmed live P14A1 migration
+  `20260802073104`, expected helper/function metadata and absence of both P14A2
+  RPCs before implementation.
+- Initial RED source/allowlist tests failed only because the page migrations,
+  phase gate and RPC names did not exist. Review RED then proved the snapshot
+  helper still invoked paged P12C1 before the export ranking source and that
+  the plan seam did not execute the function body; both regressions are now
+  locked by focused GREEN tests.
+- Ranking semantics live in one private set-returning source shared by the
+  backward-compatible P12C1 RPC and the scoped export page. The P14A1 private
+  snapshot is superseded without changing its signature and now obtains the
+  exact ranking token directly from the shared token helper. Matrix work is
+  set-based over P14A1 validated IDs and pages cells before evidence joins.
+  Private immutable helpers now keep option labels and seven-status precedence
+  identical across the active ranking and matrix definitions.
+- The implementation is split across four ordered migrations to preserve
+  applied P14A1 history and keep every source file below the mandatory
+  450-line ceiling. The fourth migration supersedes the already-applied helper
+  definitions by pinning `search_path = pg_catalog`; the first migration carries
+  the same setting for fresh databases.
+- The rollback-only phase gate covers non-empty second pages, repeated metadata
+  and tokens, complete ACLs, raw `admin` authorization and an actual
+  `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` wrapper-execution seam plus
+  source-level no-loop/get-or-create/page-limit guards.
+- Independent re-review resolved both initial Important findings and ended with
+  zero Critical/Important findings. PR review then correctly rejected the
+  outer-plan no-spill claim and identified shared-expression drift risk; RED
+  tests now lock the corrected evidence wording and shared helpers. The outer
+  PL/pgSQL plan still does not expose internal statement plan nodes or prove
+  their temporary-spill behavior.
+- Supabase MCP applied the four repository migrations as live versions
+  `20260802111235`, `20260802111352`, `20260802111437` and `20260802112335`.
+  The first live gate attempt correctly rolled back when its fixture violated
+  the deployed non-null `supplementary_information` contract; the corrected
+  fixture uses the column's empty-string default semantics.
+- The corrected rollback-only phase gate passed authorization, bounds, ranking,
+  matrix, token, source-plan and read-only assertions twice, including the
+  superseding helper `search_path` check. Post-gate fixture counts remain zero.
+- Security/performance advisors were rerun after the superseding migration. The
+  P14A2 helper search-path warning is resolved; remaining notices are pre-existing
+  baseline findings outside this leaf.
 
 ## P14A3 - Typed Export Adapters And Stable Dataset Collector
 

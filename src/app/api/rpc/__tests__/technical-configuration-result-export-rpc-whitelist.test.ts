@@ -9,7 +9,11 @@ import {
   RESULT_EXPORT_RPC_FUNCTIONS,
 } from "@/lib/technical-configuration-result-export-rpcs"
 
-const P14A1_RPC_FUNCTIONS = ["technical_configuration_result_export_manifest_get"] as const
+const P14A2_RPC_FUNCTIONS = [
+  "technical_configuration_result_export_manifest_get",
+  "technical_configuration_result_export_ranking_list",
+  "technical_configuration_result_export_matrix_list",
+] as const
 
 async function invokeRpcProxy(fn: string) {
   const request = new Request(`http://localhost/api/rpc/${fn}`, { method: "POST" })
@@ -17,20 +21,22 @@ async function invokeRpcProxy(fn: string) {
 }
 
 describe("technical configuration result export RPC whitelist", () => {
-  it("freezes exactly the P14A1 manifest RPC", () => {
+  it("freezes exactly the P14A1 manifest and P14A2 page RPCs", () => {
     expect(RESULT_EXPORT_RPC_FUNCTIONS).toEqual({
       getManifest: "technical_configuration_result_export_manifest_get",
+      listRanking: "technical_configuration_result_export_ranking_list",
+      listMatrix: "technical_configuration_result_export_matrix_list",
     })
-    expect(RESULT_EXPORT_RPC_FUNCTION_NAMES).toEqual(P14A1_RPC_FUNCTIONS)
+    expect(RESULT_EXPORT_RPC_FUNCTION_NAMES).toEqual(P14A2_RPC_FUNCTIONS)
   })
 
-  it("imports and spreads only the P14A1 manifest into the shared allowlist", () => {
+  it("imports and spreads only the P14A1/P14A2 result-export RPCs", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_result_export_"))
-    ).toEqual(P14A1_RPC_FUNCTIONS)
+    ).toEqual(P14A2_RPC_FUNCTIONS)
   })
 
-  it.each(P14A1_RPC_FUNCTIONS)('allows result export RPC "%s" through the proxy', async (fn) => {
+  it.each(P14A2_RPC_FUNCTIONS)('allows result export RPC "%s" through the proxy', async (fn) => {
     const response = await invokeRpcProxy(fn)
 
     expect(response.status).toBe(411)
