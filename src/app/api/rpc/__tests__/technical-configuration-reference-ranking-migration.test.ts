@@ -12,6 +12,14 @@ const PHASE_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_reference_ranking_phase_gate.sql"
 )
+const PERFORMANCE_PREFLIGHT_PATH = path.join(
+  REPO_ROOT,
+  "supabase/tests/technical_configuration_reference_ranking_performance_preflight.sql"
+)
+const PERFORMANCE_EVIDENCE_PATH = path.join(
+  REPO_ROOT,
+  "openspec/changes/add-technical-configuration-comparison/verification/P13A-P1-representative-ranking-plan.md"
+)
 
 function readIfExists(filePath: string): string {
   return existsSync(filePath) ? readFileSync(filePath, "utf8") : ""
@@ -39,6 +47,8 @@ function getSqlObjectKeys(source: string, startMarker: string, endMarker: string
 const migrationSource = readIfExists(MIGRATION_PATH)
 const functionBlock = getFunctionBlock(migrationSource)
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
+const performancePreflightSource = readIfExists(PERFORMANCE_PREFLIGHT_PATH)
+const performanceEvidenceSource = readIfExists(PERFORMANCE_EVIDENCE_PATH)
 
 describe("P12C1 technical configuration reference ranking migration", () => {
   it("sorts after the applied P12B2 dependency", () => {
@@ -176,6 +186,47 @@ describe("P12C1 technical configuration reference ranking migration", () => {
     expect(phaseGateSource).toContain("snapshot token ignores session timestamp formatting")
     expect(phaseGateSource).toContain("raw admin can read ranking")
     expect(phaseGateSource).toContain("denied role cannot read ranking")
+  })
+
+  it("ships a read-only representative-data preflight without fixture writes", () => {
+    expect(performancePreflightSource).toContain("BEGIN READ ONLY;")
+    expect(performancePreflightSource).toContain(
+      "-- P13A-P1 representative ranking scale preflight."
+    )
+    expect(performancePreflightSource).toContain("v_page_size CONSTANT INTEGER := 100")
+    expect(performancePreflightSource).toMatch(
+      /count\(\*\) FILTER \(\s*WHERE candidates\.option_count > 100\s*AND candidates\.criterion_count = 102/
+    )
+    expect(
+      performancePreflightSource.match(
+        /WHERE candidates\.option_count > 100\s*AND candidates\.criterion_count = 102/g
+      )
+    ).toHaveLength(1)
+    expect(
+      performancePreflightSource.match(/candidate_summary\.representative_candidate_count/g)
+    ).toHaveLength(2)
+    expect(performancePreflightSource).toContain("P13A-P1 representative scale unavailable")
+    expect(performancePreflightSource).not.toContain("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)")
+    expect(performancePreflightSource).not.toContain(
+      "technical_configuration_reference_ranking_list("
+    )
+    expect(performancePreflightSource).toContain("COMMIT;")
+    expect(performancePreflightSource).not.toMatch(
+      /\b(?:INSERT|UPDATE|DELETE|MERGE|TRUNCATE|COPY|CREATE|ALTER|DROP|GRANT|REVOKE|CALL|PERFORM)\b/i
+    )
+  })
+
+  it("records the exact representative-data blocker without inventing a query remediation", () => {
+    expect(performanceEvidenceSource).toContain("Status: P13A-P1 blocked")
+    expect(performanceEvidenceSource).toContain("max_options_per_dossier = 1")
+    expect(performanceEvidenceSource).toContain("max_criteria_per_baseline = 102")
+    expect(performanceEvidenceSource).toContain("representative_candidate_count = 0")
+    expect(performanceEvidenceSource).toContain(
+      "required option_count > 100 and criterion_count = 102 at page_size = 100"
+    )
+    expect(performanceEvidenceSource).toContain("No representative EXPLAIN was captured")
+    expect(performanceEvidenceSource).toContain("P13A-P2 is not instantiated")
+    expect(performanceEvidenceSource).toContain("No live write occurred")
   })
 
   it("documents forward-only rollback without editing applied history", () => {
