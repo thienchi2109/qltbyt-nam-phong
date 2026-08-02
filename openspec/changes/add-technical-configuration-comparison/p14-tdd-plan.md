@@ -315,11 +315,17 @@ workbook, UI or download.
 ### Planned Files
 
 - Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-types.ts`
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-decoders.ts`
+- Create:
   `src/app/(app)/technical-configurations/technical-configuration-result-export-rpc.ts`
 - Create:
   `src/app/(app)/technical-configurations/technical-configuration-result-export-data.ts`
 - Create:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-data.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-fixtures.ts`
 
 ### RED
 
@@ -351,6 +357,35 @@ workbook, UI or download.
 
 **Deploy boundary:** typed data contract only; no production caller, ExcelJS,
 UI or download.
+
+### P14A3 Execution Evidence - 2026-08-02
+
+- Read-only Supabase MCP inspection confirmed the applied P14A1/P14A2 live
+  migrations and all three export RPC signatures, `STABLE SECURITY DEFINER`
+  metadata, pinned `search_path`, authenticated-only Data API exposure and exact
+  public JSON keys. P14A3 adds no migration and performs no live DB write.
+- Initial RED failed because the planned adapter and collector modules did not
+  exist. The focused suite now covers exact/nullable wire decoding, typed
+  PT404/PT409/PT422/PT500 and sanitized HTTP 500 handling, malformed 2xx JSON,
+  malformed identity/selected-scope totals/tokens, exact bounded-page
+  cardinality, zero/one/many pages, duplicate or missing matrix keys, malformed
+  nested document links, final-manifest drift, custom and timeout cancellation
+  reason preservation, deep runtime freezing and requested-surface suppression.
+- The adapter calls the existing `callTechnicalConfigurationRpc()` seam and the
+  collector reuses `collectStableTechnicalConfigurationPages()`. No shared
+  `callRpc()` behavior, query key, hook, UI, ExcelJS, workbook or download seam
+  changed.
+- Approved file ownership extraction keeps each source below the repository
+  threshold: types `149`, decoders `348`, RPC adapter `130` and collector `242`
+  lines.
+- Ranking pages use fixed size `100`; matrix pages use fixed size `1000`.
+  Collection is sequential, validates dossier/baseline identity, page metadata,
+  manifest totals, both opaque tokens and deterministic keys, and only returns
+  the frozen dataset after the final manifest matches the first.
+- Focused P14A3 tests pass `29/29`; shared pagination and reference-ranking
+  regressions bring the focused total to `48/48`. Format, no-explicit-any,
+  diff-only dedupe and typecheck gates pass. React Doctor reports `100/100`, and
+  strict OpenSpec validation passes.
 
 ## P14B1 - Result Workbook Schema And Representative Fixtures
 
