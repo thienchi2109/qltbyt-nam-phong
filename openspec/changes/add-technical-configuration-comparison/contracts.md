@@ -328,6 +328,8 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P11B  | `technical_configuration_assessments_list`, `technical_configuration_assessment_upsert`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | P12B2 | `technical_configuration_evaluation_criteria_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | P12C1 | `technical_configuration_reference_ranking_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| P14A1 | `technical_configuration_result_export_manifest_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| P14A2 | `technical_configuration_result_export_ranking_list`, `technical_configuration_result_export_matrix_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
 that introduces an RPC also owns allowlisting only the names introduced by that
@@ -339,6 +341,10 @@ P12B2 owns its filtered-navigation RPC manifest/allowlist. P12C1 owns the
 ranking database function, dedicated manifest and final proxy allowlist
 integration in the same leaf, but exposes the function only after its migration
 and rollback-only gate pass.
+P14A1 owns the canonical export snapshot helper, manifest RPC, dedicated name
+manifest and proxy allowlist entry. P14A2 owns only the two bounded data RPCs
+that consume the P14A1 snapshot helper, plus their allowlist entries. P14A3 and
+all P14B/P14C leaves add no RPC or migration.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -477,6 +483,43 @@ exceeds_count, rank }`. `eligibility` is `eligible` or `incomplete`; `rank`
 - Invalid page arguments return `PT422/validation_error`; a missing or
   dossier-mismatched baseline returns `PT404/not_found`. Missing comparison sets
   and sparse assessments produce incomplete option rows without creating data.
+- `technical_configuration_result_export_manifest_get` request is exactly
+  `{ p_dossier_id, p_baseline_version_id, p_option_ids, p_criterion_ids }`.
+  The two ID arrays are nullable. Null means the complete canonical universe;
+  a non-null array is ordered, non-empty, unique and must belong to the exact
+  dossier/baseline scope. The response is
+  `{ data: { dossier, baseline_version, option_total, criterion_total,
+snapshot_token, ranking_snapshot_token } }`.
+- The P14A1 full `snapshot_token` is opaque, non-empty and covers every field
+  that can change visible workbook output: dossier/baseline identity, ordered
+  option/supplier identity, ordered criteria, comparison-set identity,
+  response text, supplementary information, option document metadata/URL,
+  option citations and manual-assessment axes/notes/revisions. The
+  `ranking_snapshot_token` is the exact token produced by the existing P12C1
+  ranking contract for the same complete dossier/baseline universe.
+- `technical_configuration_result_export_ranking_list` request extends the
+  manifest scope with `p_page`, `p_page_size`. It delegates ranking semantics to
+  the existing P12C1 contract and returns
+  `{ data, dossier_id, baseline_version_id, snapshot_token,
+ranking_snapshot_token, total, page, page_size }`. Page size is 1-100.
+- `technical_configuration_result_export_matrix_list` request extends the
+  manifest scope with `p_page`, `p_page_size`. It returns flattened canonical
+  `(criterion, option)` cells ordered by group/criterion then canonical option,
+  with `total`, `page`, `page_size`, exact scope IDs and the same two tokens.
+  Page size is 1-1000. Each cell contains criterion/group context, option
+  identity, nullable response, supplementary information, exact option
+  document/citation links for that criterion, nullable manual-assessment axes
+  and notes, and the derived seven-status conclusion. Reference products and
+  baseline-only evidence are excluded from option columns.
+- P14 export RPCs are side-effect-free. They never call comparison-set
+  get-or-create, never create missing rows, never increment dossier/baseline/
+  comparison/assessment revisions and never alter audit metadata. Missing
+  comparison sets, responses, documents, citations or assessments are
+  represented as empty/null output.
+- P14A3 reads manifest, sequentially collects every required ranking/matrix page,
+  validates exact metadata, totals, keys and both tokens, then reads manifest
+  again. It publishes no partial dataset and rejects the whole export if the
+  final manifest differs from the first.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy
@@ -649,6 +692,91 @@ working data outside the immutable baseline aggregate. Import files, parsed
 rows, previews and errors remain transient client state. A stale apply preserves
 that client state for refresh and re-preview.
 
+### Final Result Workbook Version 1
+
+P14 reuses `createExcelWorkbook()` and `downloadBlob()` from
+`src/lib/excel-workbook.ts`, the existing ExcelJS serialization pattern and
+focused workbook test style. It does not extend flat `exportToExcel()` with
+technical-configuration flags and does not add a second Blob-download helper.
+The result workbook is output-only and has no import/parser/apply contract.
+
+Content modes:
+
+| Mode                   | Visible sheets                              |
+| ---------------------- | ------------------------------------------- |
+| `full`                 | `Tổng quan`, `Xếp hạng`, `Ma trận chi tiết` |
+| `ranking_only`         | `Tổng quan`, `Xếp hạng`                     |
+| `detailed_matrix_only` | `Tổng quan`, `Ma trận chi tiết`             |
+
+Exactly one `_meta` sheet is always present and hidden. Matrix continuation
+sheets named `Ma trận chi tiết 2`, `Ma trận chi tiết 3` and so on are allowed
+only when required by Excel's physical column limit. They repeat the same four
+frozen context columns, headers, filters and styling; the renderer never
+truncates an option or applies a hidden business cap.
+
+`Tổng quan` contains:
+
+- merged report title and dossier name;
+- dossier code/ID, locked baseline version, lock date when available, export
+  scope, generated time and exporting user;
+- option/criterion totals in every mode;
+- eligible/incomplete totals, mandatory amber reference-ranking disclaimer and
+  top-ten dense-rank preview only when the selected mode includes `Xếp hạng`.
+
+`detailed_matrix_only` does not fetch or render ranking summary data in
+`Tổng quan`.
+
+`Xếp hạng` contains every option in the chosen option scope with identity,
+eligibility, incomplete count, the three ranking counters and nullable dense
+rank. It contains no weighted score, percentage, persisted award decision or
+reference-product row.
+
+`Ma trận chi tiết` freezes rows 1-5 and columns A-D. Columns A-D are exactly
+`STT`, `Nhóm tiêu chí`, `Mã tiêu chí`, `Yêu cầu cấu hình cơ sở`. Every option is
+a three-column group in this exact order:
+
+1. `Phản hồi nhà cung cấp`
+2. `Thông tin bổ sung / tài liệu`
+3. `Kết luận đánh giá`
+
+Supplementary/document cells preserve supplier text and render exact HTTP(S)
+document links/citation labels without affecting the conclusion. Conclusion
+cells use the existing seven-status derivation and restrained status fills.
+
+The approved visual contract is normative:
+
+- title fill `#166534`, white title text and green section/table headers;
+- thin gray borders, alternating white/light-gray rows, wrapped text and top
+  vertical alignment;
+- filter arrows, freeze panes and widths/heights suitable for long Vietnamese
+  technical text;
+- amber disclaimer, restrained green/red/gray/amber conclusion fills;
+- no chart, gradient, decorative card, score or percentage.
+
+`_meta` stores at least:
+
+- `template_kind=technical_configuration_result`
+- `template_version=1`
+- `dossier_id`
+- `baseline_version_id`
+- `snapshot_token`
+- `ranking_snapshot_token`
+- `content_mode`
+- `option_scope`
+- `criterion_scope`
+- ordered option IDs and criterion IDs for narrowed scopes
+- `generated_at`
+- `generated_by`
+
+The filename is deterministic and filesystem-safe:
+`Ket_qua_so_sanh_cau_hinh_<device-or-dossier>_<YYYY-MM-DD>.xlsx`.
+
+The export dialog opens before any file generation. Defaults are `full`, all
+options and all criteria. When pagination exists, current visible options,
+selected options and current criterion page are explicit alternatives with
+live counts; the UI never assumes current-page scope. Confirmation shows the
+resulting option x criterion count and visible-sheet count.
+
 ## Query And Performance Budgets
 
 - Dossier and entity lists use bounded pagination with a maximum page size of 100.
@@ -682,8 +810,8 @@ that client state for refresh and re-preview.
   phase-gates only the evidenced query/index remediation under the required
   approvals, then P13A-P1 reruns green before P13A-V performs final
   authorization, security and performance acceptance. P13A-V satisfies only
-  the database dependency; P13C starts only after P13A-V, P13B, P7A2 and P9A3
-  are all complete.
+  the database dependency; P13C starts only after P13A-V, P13B, P7A2, P9A3 and
+  P14C2 are all complete.
 
 ## Migration Order
 

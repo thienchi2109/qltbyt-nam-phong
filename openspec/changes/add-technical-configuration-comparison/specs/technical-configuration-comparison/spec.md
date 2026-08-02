@@ -725,3 +725,70 @@ Hệ thống SHALL ngăn ghi đè âm thầm khi dữ liệu làm việc đã th
 - **WHEN** dữ liệu đã được sửa từ tab hoặc session khác
 - **THEN** backend từ chối ghi đè
 - **AND** UI giữ nội dung chưa lưu để người dùng đối chiếu hoặc tải lại
+
+### Requirement: Final comparison result Excel export
+
+Hệ thống SHALL cho phép người dùng xuất kết quả cuối của một hồ sơ và phiên bản
+cơ sở ra workbook Excel theo phạm vi được xác nhận rõ ràng.
+
+#### Scenario: Ask for export content and scope
+
+- **WHEN** người dùng chọn `Xuất kết quả Excel`
+- **THEN** hệ thống mở dialog trước khi tạo file
+- **AND** cho chọn `Đầy đủ`, `Chỉ xếp hạng` hoặc `Chỉ ma trận chi tiết`
+- **AND** khi dữ liệu có phân trang, cho chọn rõ phạm vi phương án và tiêu chí
+
+#### Scenario: Default to the complete universe
+
+- **WHEN** dialog export mở lần đầu cho hồ sơ và phiên bản cơ sở hiện tại
+- **THEN** mặc định là toàn bộ phương án và toàn bộ tiêu chí
+- **AND** hệ thống không âm thầm dùng phương án hoặc trang tiêu chí đang hiển thị
+
+#### Scenario: Export a complete workbook
+
+- **WHEN** người dùng xác nhận nội dung `Đầy đủ`
+- **THEN** workbook có các sheet hiển thị `Tổng quan`, `Xếp hạng` và
+  `Ma trận chi tiết`
+- **AND** có một sheet `_meta` ẩn chứa version, scope và snapshot identity
+
+#### Scenario: Export only the requested result surface
+
+- **WHEN** người dùng chọn `Chỉ xếp hạng` hoặc `Chỉ ma trận chi tiết`
+- **THEN** workbook giữ `Tổng quan` và chỉ thêm sheet kết quả đã chọn
+- **AND** không tải hoặc render surface kết quả không thuộc lựa chọn
+
+#### Scenario: Preserve the approved workbook layout
+
+- **WHEN** workbook được tạo
+- **THEN** title, header, border, zebra row, wrap, filter, freeze pane, status
+  fill và disclaimer tuân theo P14 visual contract
+- **AND** không có chart, gradient, score, percentage hoặc quyết định lựa chọn
+  nhà cung cấp
+
+#### Scenario: Export a canonical stable snapshot
+
+- **WHEN** hệ thống thu nhiều page hoặc chunk để tạo workbook
+- **THEN** mọi response thuộc cùng dossier, baseline, scope, total và opaque
+  snapshot identity
+- **AND** hệ thống đọc lại manifest trước khi tạo file
+
+#### Scenario: Reject a changed export snapshot
+
+- **WHEN** option, criterion, response, supplementary information, document,
+  citation hoặc manual assessment thay đổi trong lúc export
+- **THEN** hệ thống hủy toàn bộ thao tác
+- **AND** không tải partial workbook
+- **AND** yêu cầu người dùng thử lại
+
+#### Scenario: Keep export read-only
+
+- **WHEN** export gặp option chưa có comparison set, response hoặc assessment
+- **THEN** hệ thống biểu diễn dữ liệu thiếu bằng empty/null và trạng thái hiện có
+- **AND** không tạo comparison set, không ghi dữ liệu và không tăng revision
+
+#### Scenario: Continue beyond one Excel matrix sheet
+
+- **WHEN** số option vượt giới hạn cột vật lý của một Excel worksheet
+- **THEN** hệ thống tạo các sheet `Ma trận chi tiết 2`,
+  `Ma trận chi tiết 3` tiếp theo với cùng context columns và style
+- **AND** không truncate hoặc đặt hidden cap lên tổng option
