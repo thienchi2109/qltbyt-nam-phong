@@ -5,7 +5,8 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 ## Execution Rules
 
 - Mỗi **leaf phase** (`P0`, `P1`, `P3A`...) tương ứng một GitHub issue, một branch, một PR và một phiên triển khai chính.
-- Các phase cha như `P3`, `P7`, `P8`, `P9`, `P10`, `P12`, `P13` chỉ dùng để nhóm roadmap, không phải đơn vị triển khai.
+- Các phase cha như `P3`, `P7`, `P8`, `P9`, `P10`, `P12`, `P13`, `P14`
+  chỉ dùng để nhóm roadmap, không phải đơn vị triển khai.
 - Không bắt đầu leaf phase khi dependency chưa được merge và xác minh trên `main`.
 - Trước khi sửa code, leaf phase phải có implementation plan TDD riêng với file path và test command chính xác theo code/live DB tại thời điểm đó.
 - Không gộp leaf phase hoặc mở rộng phạm vi nếu chưa được người dùng phê duyệt.
@@ -65,7 +66,14 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P13A-P2](./implementation-plan.md#phase-p13a-p2---conditional-ranking-query-remediation)                 | Remediation query/index ranking có điều kiện   | P13A-P1 fail, scope chính xác                    | TC-20 exact failed invariant                           |
 | [P13A-V](./implementation-plan.md#phase-p13a-v---final-database-security-and-performance-verification)    | Gate DB security/performance cuối              | P13A-P1 pass; hoặc P13A-P2 gated + P1 rerun pass | TC-02, final TC-20                                     |
 | [P13B](./implementation-plan.md#phase-p13b---ui-accessibility-and-regression-hardening)                   | Hardening UI, accessibility và regression      | P12C2                                            | TC-03, TC-04, TC-11, TC-13, TC-14, TC-17, TC-18, TC-20 |
-| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3                         | TC-19                                                  |
+| [P14A1](./implementation-plan.md#phase-p14a1---canonical-export-snapshot-manifest)                        | Manifest snapshot export canonical             | P12C1 merged/applied/gated                       | TC-21-S02, S06, S07, S08                               |
+| [P14A2](./implementation-plan.md#phase-p14a2---paginated-export-ranking-and-matrix-contracts)             | RPC export ranking/matrix phân trang           | P14A1 merged/applied/gated                       | TC-21-S03, S04, S06, S07, S08                          |
+| [P14A3](./implementation-plan.md#phase-p14a3---typed-export-adapters-and-stable-dataset-collector)        | Adapter typed và collector snapshot ổn định    | P14A2 merged/applied/gated                       | TC-21-S02, S04, S06, S07, S08                          |
+| [P14B1](./implementation-plan.md#phase-p14b1---result-workbook-schema-and-representative-fixtures)        | Schema workbook và fixture đại diện            | P14A3                                            | TC-21-S03, S04, S05, S09                               |
+| [P14B2](./implementation-plan.md#phase-p14b2---approved-exceljs-workbook-rendering)                       | Render ExcelJS đúng mockup đã duyệt            | P14B1                                            | TC-21-S03, S04, S05, S09                               |
+| [P14C1](./implementation-plan.md#phase-p14c1---export-scope-dialog-and-state-machine)                     | Dialog chọn nội dung và phạm vi export         | P14B2                                            | TC-21-S01, S02, S04                                    |
+| [P14C2](./implementation-plan.md#phase-p14c2---export-orchestration-download-and-workspace-activation)    | Mount trigger, orchestration và download       | P14C1                                            | TC-21                                                  |
+| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3, P14C2                  | TC-19                                                  |
 
 ## Phase P0 - Discovery And Contract Freeze
 
@@ -827,7 +835,8 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       trong leaf này; nếu có gap, tạo exact blocking fix leaf, dừng P13A-V và
       rerun từ đầu sau khi fix được phase-gated.
 - [ ] P13A-V.7 Accepted TC-02 + final TC-20 evidence chỉ thỏa dependency P13A của
-      P13C; P13C vẫn blocked cho đến khi P13B, P7A2 và P9A3 cũng hoàn tất.
+      P13C; P13C vẫn blocked cho đến khi P13B, P7A2, P9A3 và P14C2 cũng hoàn
+      tất.
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
@@ -845,6 +854,81 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 - [ ] P13B.8 Chạy full React Doctor command và browser screenshot/interaction verification.
 - [ ] P13B.9 Không sửa production code; mỗi gap tạo blocking fix leaf riêng rồi rerun P13B.
 
+## Phase P14A1 - Canonical Export Snapshot Manifest
+
+- [ ] P14A1.1 Khóa exact manifest request/response, canonical scope và hai opaque
+      snapshot token bằng RED migration/source tests.
+- [ ] P14A1.2 Thêm helper + manifest RPC read-only nhỏ nhất; không get-or-create,
+      không ghi row/revision/audit.
+- [ ] P14A1.3 Thêm đúng một RPC name vào dedicated manifest/proxy allowlist và
+      kiểm tra `admin/global`, denied roles, missing claims.
+- [ ] P14A1.4 Chỉ apply/rollback-only gate qua Supabase MCP sau explicit approval;
+      chạy security advisor và strict OpenSpec validation.
+
+## Phase P14A2 - Paginated Export Ranking And Matrix Contracts
+
+- [ ] P14A2.1 Khóa exact ranking/matrix payload, pagination, canonical order,
+      repeated scope/totals/tokens và empty/null semantics bằng RED tests.
+- [ ] P14A2.2 Reuse P12C1 ranking semantics; thêm set-based read-only matrix
+      contract, không tạo ranking algorithm hoặc query loop song song.
+- [ ] P14A2.3 Thêm hai RPC names vào manifest/allowlist và phase-gate
+      authorization, bounds, query plan sau explicit live approval.
+- [ ] P14A2.4 Xác minh không có client/UI/workbook/download trong leaf.
+
+## Phase P14A3 - Typed Export Adapters And Stable Dataset Collector
+
+- [ ] P14A3.1 Khóa exact wire decoding, typed errors, nullable fields và malformed
+      identity/total/token rejection.
+- [ ] P14A3.2 Thu tuần tự mọi required page, validate keys/totals/tokens, đọc lại
+      manifest và không publish partial dataset.
+- [ ] P14A3.3 Không fetch ranking hoặc matrix surface ngoài mode người dùng chọn.
+- [ ] P14A3.4 Không mount query/UI, không import ExcelJS và không download.
+
+## Phase P14B1 - Result Workbook Schema And Representative Fixtures
+
+- [ ] P14B1.1 Khóa ba content mode, visible sheet order, hidden `_meta`, bốn
+      context columns và ba cột cho mỗi option.
+- [ ] P14B1.2 Tạo output-only versioned workbook model, không parser/import/apply.
+- [ ] P14B1.3 Partition continuation matrix sheets theo giới hạn cột vật lý,
+      không truncate/hidden cap.
+- [ ] P14B1.4 Tạo fixture in-memory deterministic lớn hơn 100 options x 102
+      criteria; tuyệt đối không seed hoặc đọc/ghi live DB.
+
+## Phase P14B2 - Approved ExcelJS Workbook Rendering
+
+- [ ] P14B2.1 Khóa values, hidden state, links, filters, panes, dimensions,
+      borders/fills và continuation sheets bằng focused workbook tests.
+- [ ] P14B2.2 Reuse `createExcelWorkbook()` và lazy ExcelJS serialization;
+      không thêm cờ domain vào flat `exportToExcel()`.
+- [ ] P14B2.3 Render đúng hai workbook mockup đã duyệt với màu `#166534`,
+      zebra, wrap/top alignment, amber disclaimer và restrained conclusion
+      fills.
+- [ ] P14B2.4 Xác minh không chart, gradient, score, percentage, award decision,
+      mounted trigger hoặc download side effect.
+
+## Phase P14C1 - Export Scope Dialog And State Machine
+
+- [ ] P14C1.1 Khóa open/reset/confirm/cancel, content mode và option/criterion
+      scope bằng pure-state + React user-event RED tests.
+- [ ] P14C1.2 Mặc định toàn bộ option + toàn bộ criterion; không âm thầm dùng
+      selected options hoặc criterion page hiện tại.
+- [ ] P14C1.3 Khi source có pagination, bắt buộc người dùng xác nhận phạm vi rõ
+      ràng trước export.
+- [ ] P14C1.4 Giữ đúng Stitch dialog mockup đã duyệt, để dialog unmounted và
+      không cho nó biết RPC, ExcelJS hoặc Blob.
+
+## Phase P14C2 - Export Orchestration, Download And Workspace Activation
+
+- [ ] P14C2.1 Mount một action `Xuất kết quả Excel` trong evaluation workspace và
+      giữ nguyên ownership/pagination hiện tại.
+- [ ] P14C2.2 Orchestrate collector -> renderer -> shared `downloadBlob()`; chỉ
+      download một lần sau final manifest revalidation.
+- [ ] P14C2.3 Abort stale/context-switched work, không partial download và cho
+      retry explicit.
+- [ ] P14C2.4 Chạy standard TS/React gates, focused Excel/Equipment,
+      evaluation/ranking regressions, React Doctor và strict OpenSpec; không
+      thêm P13B real-browser gate.
+
 ## Phase P13C - Release, OpenSpec And AI Boundary Audit
 
 - [ ] P13C.1 Chạy full quality gates và `openspec validate ... --strict`.
@@ -854,4 +938,6 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 - [ ] P13C.5 Hoàn tất runbook, release notes, rollout và rollback instructions.
 - [ ] P13C.6 Trong future P13C, chỉ sau final acceptance mới archive OpenSpec
       change và lưu archived-state evidence.
-- [ ] P13C.7 Cập nhật OpenSpec tasks theo trạng thái landed và hoàn tất release review.
+- [ ] P13C.7 Xác minh P14A1-P14C2 đã landed và result workbook vẫn read-only,
+      snapshot-stable, không scoring/award semantics.
+- [ ] P13C.8 Cập nhật OpenSpec tasks theo trạng thái landed và hoàn tất release review.

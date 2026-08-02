@@ -22,6 +22,12 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Tách đánh giá thành hai trục độc lập: mức đáp ứng kỹ thuật và mức đầy đủ bằng chứng. Trạng thái tổng hợp được suy ra bằng quy tắc minh bạch và không cho sửa trực tiếp.
 - Cho phép lưu "Thông tin bổ sung" của nhà cung cấp; nội dung này vẫn hiển thị khi so sánh nhưng không làm thay đổi kết quả đáp ứng cấu hình cơ sở đã khóa.
 - Cung cấp xếp hạng tham khảo tùy chọn từ kết luận thủ công, cho phép đồng hạng và không xếp hạng chéo giữa các hồ sơ hoặc phiên bản cấu hình cơ sở.
+- Cho phép xuất kết quả cuối ra workbook Excel một chiều, gồm tổng quan, xếp hạng và ma trận chi tiết. Trước khi xuất, người dùng phải chọn nội dung và phạm vi phương án/tiêu chí; UI không được âm thầm giới hạn file theo option hoặc trang tiêu chí đang hiển thị.
+- Tái sử dụng hạ tầng Excel hiện có gồm `createExcelWorkbook()`, `downloadBlob()`, ExcelJS lazy loading và các pattern workbook đã được kiểm thử. Chỉ result dataset mapping, sheet composition, styling contract và export-scope dialog là domain-specific; không tạo helper workbook/download song song và không thêm cờ kỹ thuật-cấu-hình vào flat `exportToExcel()`.
+- Dùng read-only canonical export snapshot riêng để mọi page/chunk của workbook thuộc cùng một trạng thái dữ liệu. Export không tạo comparison set, không seed, không ghi live data và không tái tính kết luận ngoài contract đánh giá thủ công hiện có.
+- Gói delivery export này mang tên `P14`, độc lập với P13 đang defer và được
+  tách thành bảy leaf PR deploy-safe: P14A1, P14A2, P14A3, P14B1, P14B2,
+  P14C1 và P14C2.
 - Không đưa AI vào MVP: không có nút AI, API call, job, cache, quota, cột AI hoặc bảng AI chưa sử dụng. Mô hình dữ liệu giữ ID ổn định và tách rõ yêu cầu, phản hồi, bằng chứng, đánh giá để có thể bổ sung AI bằng một OpenSpec change riêng sau này.
 
 ## Impact
@@ -31,9 +37,10 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Anticipated affected code:
   - Route và UI mới dưới `src/app/(app)/technical-configurations/`
   - Data hooks, types và baseline/option Excel codec dành riêng cho module
+  - Read-only result-export RPCs, stable snapshot collector, workbook codec và export-scope dialog dành riêng cho module
   - Shared Excel primitives được trích từ pipeline Equipment với compatibility exports và regression coverage
   - Shared URL attachment primitives được trích xuất từ pattern Equipment khi triển khai
-  - Supabase migration mới cho hồ sơ, phiên bản cấu hình cơ sở, nhóm/tiêu chí, nhà cung cấp, phương án, phản hồi, URL tài liệu, trích dẫn và đánh giá thủ công
+  - Supabase migration mới cho hồ sơ, phiên bản cấu hình cơ sở, nhóm/tiêu chí, nhà cung cấp, phương án, phản hồi, URL tài liệu, trích dẫn, đánh giá thủ công và read-only canonical result-export snapshot
   - Sidebar/navigation và route authorization cho `admin/global`
 - Existing data:
   - Không migrate dữ liệu từ `thiet_bi`

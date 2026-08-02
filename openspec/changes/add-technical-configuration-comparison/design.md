@@ -557,9 +557,85 @@ shared rank. Semantics của `not_applicable` đã được normative contract v
 khóa, không phải một local P12C1 product gate.
 
 Không thêm numeric score, weighted score, percentage, persisted rank, award
-decision, export/print surface hoặc AI runtime trong P12C1/P12C2.
+decision, export/print surface hoặc AI runtime trong P12C1/P12C2. P14 sở hữu
+result-export surface riêng sau P12; P12 không được mở rộng ngược để gộp scope.
 
-### 12. Quyền truy cập và audit tối thiểu
+### 12. Xuất kết quả cuối ra Excel
+
+P14 thêm export một chiều cho kết quả so sánh và đánh giá cuối. Hành động
+`Xuất kết quả Excel` nằm trong workspace `So sánh & đánh giá`, nhưng click đầu
+tiên chỉ mở dialog cấu hình, chưa tải file. Dialog luôn cho chọn nội dung
+workbook; khi dữ liệu có phân trang, dialog bắt buộc cho chọn rõ phạm vi option
+và criterion. Giá trị mặc định là `Đầy đủ`, `Tất cả phương án` và `Tất cả tiêu
+chí`, không phải current page.
+
+Ba content mode là:
+
+1. `Đầy đủ`: `Tổng quan`, `Xếp hạng`, `Ma trận chi tiết`;
+2. `Chỉ xếp hạng`: `Tổng quan`, `Xếp hạng`;
+3. `Chỉ ma trận chi tiết`: `Tổng quan`, `Ma trận chi tiết`.
+
+Sheet `_meta` luôn tồn tại và luôn hidden. `Tổng quan` giữ metadata hồ sơ, phiên
+bản cơ sở, thời điểm/người xuất, phạm vi và option/criterion counts. Chỉ hai mode
+có `Xếp hạng` mới thêm eligible/incomplete totals, disclaimer và top-ten ranking
+preview; mode `Chỉ ma trận chi tiết` không tải hoặc render ranking summary.
+`Xếp hạng` giữ toàn bộ option trong phạm vi theo dense rank hiện có, không thêm
+score hoặc percentage. `Ma trận chi tiết` freeze hàng header và bốn cột
+`STT`, `Nhóm tiêu chí`, `Mã tiêu chí`, `Yêu cầu cấu hình cơ sở`; mỗi option dùng
+ba cột `Phản hồi nhà cung cấp`, `Thông tin bổ sung / tài liệu`,
+`Kết luận đánh giá`.
+
+Workbook dùng đúng visual contract đã duyệt trong Stitch: title fill xanh đậm
+`#166534`, chữ trắng, header xanh, border xám mảnh, zebra rows, wrap text,
+top alignment, filter, freeze panes, status fill tiết chế và disclaimer màu
+amber. File không chứa chart, dashboard card, gradient, hidden score hoặc
+decision lựa chọn nhà cung cấp. Nếu số option vượt giới hạn cột vật lý của Excel,
+renderer tạo continuation sheets `Ma trận chi tiết 2`, `Ma trận chi tiết 3`...
+với cùng frozen columns/header/style thay vì truncate hoặc đặt hidden cap.
+
+P14 reuse-first trên hạ tầng Excel hiện có:
+
+- dùng `createExcelWorkbook()` cho ExcelJS lazy loading và workbook creation;
+- dùng `downloadBlob()` cho object URL lifecycle/download cleanup;
+- tham chiếu baseline/option workbook codecs và Equipment export tests cho
+  workbook serialization, filename và regression pattern;
+- không thêm domain flags vào flat `exportToExcel()`;
+- không tạo helper workbook loading, Blob download hoặc ExcelJS import thứ hai.
+
+Chỉ result-export dataset model, sheet composition, style constants và formatter
+đặc thù mới thuộc P14B. P14B1 phải chạy semantic dedup review trước khi chốt file
+ownership; helper chỉ được nâng lên shared khi có ít nhất hai consumer cùng
+business contract, không chỉ vì code trông giống nhau.
+
+UI không dùng comparison matrix đang render, selected-option cache hoặc current
+criterion page làm canonical export dataset. P14A tạo read-only export snapshot
+contract bao phủ dossier/baseline identity, option/supplier identity,
+comparison sets, responses, supplementary information, option
+documents/citations và manual assessments. Manifest, ranking pages và matrix
+pages lặp lại cùng opaque `snapshot_token`; ranking pages còn lặp lại
+`ranking_snapshot_token` từ ranking contract hiện có.
+
+Client đọc manifest, thu tuần tự toàn bộ bounded pages/chunks của phạm vi đã
+chọn, kiểm tra exact IDs/counts/tokens, rồi đọc lại manifest trước khi tạo
+workbook. Bất kỳ token, total, key hoặc scope nào thay đổi đều hủy toàn bộ export
+và yêu cầu retry; không tạo partial workbook. Mọi RPC P14 đều read-only, không
+gọi get-or-create, không tăng revision và không đổi audit metadata.
+
+P14 được tách thành các leaf deploy-safe:
+
+- P14A1: snapshot manifest/helper read-only, chưa có UI;
+- P14A2: paginated ranking/matrix export reads, chưa có UI;
+- P14A3: typed adapter và stable collector, chưa có UI;
+- P14B1: workbook schema/model, chưa render/download;
+- P14B2: ExcelJS renderer/style đúng mockup, chưa mount trigger;
+- P14C1: dialog/state machine, chưa mount vào workspace;
+- P14C2: mount trigger, orchestration, download và end-to-end regression.
+
+P14 không phụ thuộc P13 đang defer và không thay đổi blocker P13A. Verification
+quy mô workbook dùng fixture in-memory lớn hơn 100 option x 102 criterion; không
+seed hoặc ghi live DB để test export.
+
+### 13. Quyền truy cập và audit tối thiểu
 
 Chỉ `admin/global` được thấy route, đọc hoặc thay đổi dữ liệu module.
 
@@ -572,7 +648,7 @@ Chỉ `admin/global` được thấy route, đọc hoặc thay đổi dữ liệ
 
 Mọi mutation phải gửi `p_expected_revision` và kiểm tra `revision BIGINT` của aggregate sở hữu để không ghi đè âm thầm khi hai tab/người dùng cùng sửa. Khi có conflict, UI giữ dữ liệu chưa lưu và yêu cầu tải lại trước khi ghi tiếp.
 
-### 13. Ranh giới mở rộng AI
+### 14. Ranh giới mở rộng AI
 
 AI là hướng scale sau MVP, không bị loại bỏ khỏi sản phẩm. MVP chuẩn bị dữ liệu bằng:
 
@@ -625,6 +701,10 @@ Trong tab `Cấu hình cơ sở`, editor ưu tiên danh sách nhóm/tiêu chí t
 - Builder reference: `6a623d7a26be4cfcad4faf9f31a1daf7`
 - Bulk text entry reference: `c6c13d5795e4431a84504e87f46f33c7`
 - Dossier list reference: `52a2a8c662904f62b43285a4294d2b8c`
+- P14 result-export project: `1463377740887387448`
+- P14 export-scope dialog: `4aaff09e4788412386ea8d4f1baa4da9`
+- P14 workbook overview/ranking: `d394c0dd25f146cf9423b8acf8eeaa86`
+- P14 detailed matrix: `45c3a6f4ac514212ba3259064ef19ea0`
 
 Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ chỉ là tài liệu tham khảo layout. Khi triển khai phải áp dụng scope MVP và thuật ngữ của change này.
 
@@ -640,6 +720,9 @@ Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ ch�
 - Xóa tài liệu đang được liên kết trong dữ liệu còn chỉnh sửa: yêu cầu xác nhận và nêu số liên kết bị ảnh hưởng.
 - Xóa hoặc sửa document metadata/URL thuộc phiên bản cơ sở đã khóa: từ chối trước khi áp dụng flow xác nhận xóa.
 - Hồ sơ đã archive: list mặc định không trả hồ sơ, get vẫn đọc được và mọi mutation con trả conflict `archived_dossier`.
+- Export snapshot thay đổi trong lúc thu page/chunk: hủy toàn bộ thao tác, không tải partial file và yêu cầu người dùng thử lại.
+- Export scope không còn hợp lệ do option/criterion bị xóa hoặc đổi hồ sơ/phiên bản: từ chối file thay vì âm thầm thu hẹp phạm vi.
+- Trình duyệt không thể tạo Blob hoặc download bị chặn: giữ dialog, hiển thị lỗi retry được và luôn giải phóng object URL đã tạo.
 
 `callRpc()` hiện có tiếp tục phục vụ các consumer hiện tại và không được đổi global trong change này. P3A tạo adapter typed riêng cho module, đọc payload `{ error: payload }` từ RPC proxy và bảo toàn HTTP status cùng `code`, `message`, `details`, `hint` để UI phân biệt lỗi quyền, không tìm thấy, conflict và validation.
 
@@ -653,6 +736,12 @@ Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ ch�
 - **Trích shared Excel primitives có thể ảnh hưởng Equipment:** P5A phải khóa template download, data export, import parsing và submit behavior bằng regression tests trước khi chuyển consumer; giữ compatibility exports và default `useBulkImportState` path.
 - **Trích shared attachment UI có thể ảnh hưởng Equipment:** giữ public behavior hiện tại và bổ sung regression tests cho Equipment trước khi thay consumer.
 - **AI compatibility có thể bị hiểu là AI đã sẵn sàng:** UI MVP không hiển thị affordance AI; design ghi rõ cần change riêng.
+- **Workbook nhiều option có thể vượt chiều rộng Excel:** renderer chia
+  continuation sheets theo giới hạn cột vật lý, giữ frozen context columns và
+  không truncate.
+- **Client export có thể ghép dữ liệu từ nhiều thời điểm:** P14 dùng canonical
+  snapshot token trên manifest/ranking/matrix, thu tuần tự và revalidate manifest
+  trước khi render.
 
 ## Migration Plan
 
@@ -661,7 +750,10 @@ Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ ch�
 3. P5A refactor shared Excel primitives với Equipment regression coverage; P5B thêm baseline codec; P5C thêm atomic import RPC; P5D mới kích hoạt import UI.
 4. Sau P5D và trước P7B1/P7B2, thêm shared URL attachment primitives rồi chuyển Equipment sang primitive đó với regression coverage; P7B1 thêm persistence trước khi P7B2 mở bề mặt tài liệu đầu tiên.
 5. Không backfill dữ liệu; hồ sơ được tạo mới hoàn toàn.
-6. Chỉ apply migration lên live Supabase sau khi người dùng cấp quyền rõ ràng cho thao tác live DB cụ thể.
+6. P14A1/P14A2 thêm read-only result-export RPCs trước; P14A3/P14B/P14C có thể
+   deploy dần nhưng nút export chỉ được mount ở P14C2 sau khi collector,
+   workbook renderer và dialog đều gated.
+7. Chỉ apply migration lên live Supabase sau khi người dùng cấp quyền rõ ràng cho thao tác live DB cụ thể.
 
 Rollback có thể gỡ route/navigation và migration mới mà không tác động dữ liệu Equipment. Việc xóa dữ liệu đã tạo trong module phải là quyết định migration riêng, không thực hiện tự động khi rollback UI.
 
@@ -675,3 +767,10 @@ Rollback có thể gỡ route/navigation và migration mới mà không tác đ�
   panel và hiển thị no-more-match state.
 - P12B2 giữ filter khi đổi option và resolve selection deterministic theo option
   mới.
+- P14 dùng đúng ba layout đã duyệt trong Stitch: P14C1 giữ dialog layout, còn
+  P14B2 giữ hai workbook layout/style làm normative workbook contract, không chỉ
+  làm tài liệu tham khảo.
+- P14 default export scope là toàn bộ option/criterion; current page và selected
+  options chỉ được dùng khi người dùng chọn rõ trong dialog.
+- P14 độc lập với P13 đang defer; fixture export quy mô lớn là in-memory và không
+  thay thế representative DB evidence của P13A.

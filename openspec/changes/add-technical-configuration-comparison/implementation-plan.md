@@ -29,7 +29,9 @@ Each leaf phase SHALL use:
 4. One main implementation session. Follow-up review fixes may continue in the same branch.
 5. One durable handoff note containing commit/PR/issue IDs, schema decisions and remaining risks.
 
-Parent labels such as `P3`, `P7`, `P8`, `P9`, `P10`, `P12` and `P13` group related work only. Their leaf phases (`P3A`, `P3B`...) are the actual delivery units.
+Parent labels such as `P3`, `P7`, `P8`, `P9`, `P10`, `P12`, `P13` and
+`P14` group related work only. Their leaf phases (`P3A`, `P3B`...) are the
+actual delivery units.
 
 Do not combine adjacent leaf phases merely because the implementation appears small. A leaf phase may be split further when discovery shows:
 
@@ -128,7 +130,8 @@ P12C1           -> P13A-P1
 P13A-P1         -> P13A-V
 P13A-P1 fail    -> P13A-P2 -> approved apply/gate -> rerun P13A-P1 green -> P13A-V
 P12C2           -> P13B
-P13A-V + P13B + P7A2 + P9A3 -> P13C
+P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14B1 -> P14B2 -> P14C1 -> P14C2
+P13A-V + P13B + P7A2 + P9A3 + P14C2 -> P13C
 ```
 
 `P5A` is technically independent after `P0`, but the default delivery order places it after `P4` so the completed baseline lifecycle remains the starting point for the P5A-P5D rollout. `P6A` is also technically independent after `P0`, but the default delivery order places it after `P5D`; `P6B` follows `P6A` and must land before the first document UI in `P7B2`. Neither P6 leaf blocks reference-product or supplier work that has no document UI.
@@ -167,6 +170,18 @@ set-based, read-only ranking contract; P12C2 adds only the explicit-request
 ranking UI over that contract. P12C1 cannot start until P12B2 is complete, and
 P12C2 cannot start until P12C1 is complete.
 
+P14 is independent of the deferred P13A/P13B hardening path and uses the strict
+delivery order
+`P14A1 -> P14A2 -> P14A3 -> P14B1 -> P14B2 -> P14C1 -> P14C2`.
+P14A1/P14A2 add only dormant, read-only export contracts; P14A3 completes a
+stable full-dataset collector without UI; P14B1/P14B2 build and render the
+workbook without mounting a trigger; P14C1 adds an unmounted export-scope state
+machine/dialog; only P14C2 activates download from the evaluation workspace.
+No P14 leaf seeds or writes live data for verification. Large-workbook coverage
+uses in-memory fixtures larger than 100 options x 102 criteria. P13C waits for
+P14C2 because final release evidence must include the approved result-export
+workflow, but P14 does not wait for P13A-P1, P13A-V or P13B.
+
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
@@ -193,6 +208,7 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                           |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                         |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
+| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14B1, P14B2, P14C1, P14C2                                                                                                                                                        |
 
 ## Shared Technical Constraints
 
@@ -2877,7 +2893,7 @@ satisfies only P13C's P13A dependency
 
 No release-blocking database authorization, integrity or performance gap
 remains; only P13C's P13A dependency is satisfied. P13C still requires P13B,
-P7A2 and P9A3.
+P7A2, P9A3 and P14C2.
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
@@ -2934,9 +2950,282 @@ P7A2 and P9A3.
 
 No release-blocking UI, accessibility or Equipment regression remains.
 
+> Shared P14 execution source:
+> [p14-tdd-plan.md](./p14-tdd-plan.md). Each leaf still refreshes exact
+> migration timestamps, current file paths and commands at its entry gate.
+
+## Phase P14A1 - Canonical Export Snapshot Manifest
+
+**Depends on:** P12C1 merged/applied/gated
+
+**Requirements:** TC-21-S02, TC-21-S06, TC-21-S07, TC-21-S08
+
+**Deploy boundary:** dormant read-only manifest RPC; no UI, workbook or download
+
+### Planned files
+
+- Create at execution time after migration-order inspection:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_manifest.sql`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-manifest-migration.test.ts`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-rpc-whitelist.test.ts`
+- Create:
+  `supabase/tests/technical_configuration_result_export_manifest_phase_gate.sql`
+- Create: `src/lib/technical-configuration-result-export-rpcs.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+
+### Tasks
+
+- [ ] Inspect current migrations, live functions/grants read-only and the P12C1
+      ranking snapshot contract before choosing the migration timestamp.
+- [ ] Write RED migration/source tests for the exact manifest request/response,
+      `admin/global` authorization, canonical ordered scope validation,
+      side-effect-free behavior and opaque full/ranking snapshot tokens.
+- [ ] Add the smallest shared SQL helper and manifest RPC needed to fingerprint
+      every workbook-visible source field without creating comparison sets or
+      missing rows.
+- [ ] Add only the P14A1 RPC name to the dedicated manifest and proxy allowlist.
+- [ ] Run migration contract tests, rollback-only phase gate after explicit live
+      approval, read-only security advisor and strict OpenSpec validation.
+
+### Exit gate
+
+The manifest RPC is merged, applied and phase-gated as a dormant read-only
+contract. It returns deterministic ordered scope metadata and both snapshot
+tokens without changing any revision, audit state or data row.
+
+## Phase P14A2 - Paginated Export Ranking And Matrix Contracts
+
+**Depends on:** P14A1 merged/applied/gated
+
+**Requirements:** TC-21-S03, TC-21-S04, TC-21-S06, TC-21-S07, TC-21-S08
+
+**Deploy boundary:** dormant bounded read-only data RPCs; no client, UI or workbook
+
+### Planned files
+
+- Create at execution time after migration-order inspection:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_pages.sql`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-pages-migration.test.ts`
+- Create:
+  `supabase/tests/technical_configuration_result_export_pages_phase_gate.sql`
+- Modify: `src/lib/technical-configuration-result-export-rpcs.ts`
+- Modify:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-rpc-whitelist.test.ts`
+- Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+
+### Tasks
+
+- [ ] Write RED SQL/source tests for exact ranking and flattened matrix payloads,
+      pagination bounds, canonical order, repeated scope/totals/tokens and
+      missing-data empty/null semantics.
+- [ ] Reuse P12C1 ranking semantics instead of implementing a second ranking
+      algorithm.
+- [ ] Implement set-based read-only ranking and matrix RPCs over the P14A1
+      snapshot helper with no get-or-create or per-cell query loop.
+- [ ] Prove reference products and baseline-only evidence never enter option
+      columns, and every returned cell belongs to the requested dossier,
+      baseline, option and criterion scope.
+- [ ] Apply and phase-gate only after explicit live DB approval; run focused
+      authorization, plan/bounds and advisor checks.
+
+### Exit gate
+
+Both dormant RPCs return complete bounded pages with canonical keys and the
+P14A1 snapshot identities. No UI can call them yet and no export file exists.
+
+## Phase P14A3 - Typed Export Adapters And Stable Dataset Collector
+
+**Depends on:** P14A2 merged/applied/gated
+
+**Requirements:** TC-21-S02, TC-21-S04, TC-21-S06, TC-21-S07, TC-21-S08
+
+**Deploy boundary:** client data contract only; no mounted query, UI, workbook or download
+
+### Planned files
+
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-rpc.ts`
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-data.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-data.test.ts`
+
+### Tasks
+
+- [ ] Write RED adapter tests for exact wire decoding, error taxonomy, nullable
+      fields and rejection of malformed identities/totals/tokens.
+- [ ] Write RED collector tests for all pages, deterministic key uniqueness,
+      complete-before-publish, requested-surface short-circuiting and final
+      manifest revalidation.
+- [ ] Implement module-local typed RPC adapters through the existing
+      technical-configuration RPC client; do not change shared `callRpc()`.
+- [ ] Collect pages sequentially, validate every response against the first
+      manifest and reject the entire dataset when the final manifest differs.
+- [ ] Prove `ranking_only` never fetches matrix pages and
+      `detailed_matrix_only` never fetches ranking pages.
+
+### Exit gate
+
+One typed function returns a complete immutable export dataset or one typed
+error. It never publishes partial rows and remains unreachable from production
+UI.
+
+## Phase P14B1 - Result Workbook Schema And Representative Fixtures
+
+**Depends on:** P14A3
+
+**Requirements:** TC-21-S03, TC-21-S04, TC-21-S05, TC-21-S09
+
+**Deploy boundary:** pure workbook model/fixtures; no ExcelJS rendering or download
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-result-excel-contract.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-fixtures.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-contract.test.ts`
+
+### Tasks
+
+- [ ] Write RED contract tests for the three content modes, visible sheet order,
+      hidden `_meta`, exact four matrix context columns and exact three-column
+      option groups.
+- [ ] Define one output-only versioned workbook model; do not add an import,
+      parser or apply contract.
+- [ ] Encode continuation-sheet planning from Excel's physical column limit;
+      never truncate or introduce a hidden option cap.
+- [ ] Add deterministic in-memory fixtures for empty/sparse/tied/missing-data
+      cases and more than 100 options x 102 criteria.
+- [ ] Keep fixture generation local to tests and free of seed/live DB access.
+
+### Exit gate
+
+The pure schema/model deterministically describes every required sheet and
+continuation partition for all modes, including the representative large
+fixture, without importing ExcelJS or producing a Blob.
+
+## Phase P14B2 - Approved ExcelJS Workbook Rendering
+
+**Depends on:** P14B1
+
+**Requirements:** TC-21-S03, TC-21-S04, TC-21-S05, TC-21-S09
+
+**Deploy boundary:** workbook creation API only; no mounted trigger or automatic download
+
+### Planned files
+
+- Create: `src/lib/technical-configuration-result-excel-export.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-export.test.ts`
+- Reuse unchanged unless a proven shared-contract gap exists:
+  `src/lib/excel-workbook.ts`
+
+### Tasks
+
+- [ ] Write RED focused workbook tests that inspect sheets, hidden state,
+      merged cells, values, hyperlinks, filters, panes, widths/heights, borders,
+      fills and representative continuation sheets.
+- [ ] Reuse `createExcelWorkbook()` and the existing lazy ExcelJS serialization
+      pattern; do not route the domain workbook through flat `exportToExcel()`.
+- [ ] Render the two approved workbook layouts from Stitch project
+      `1463377740887387448`: overview/ranking
+      `d394c0dd25f146cf9423b8acf8eeaa86` and detailed matrix
+      `45c3a6f4ac514212ba3259064ef19ea0`. P14C1 separately owns dialog
+      `4aaff09e4788412386ea8d4f1baa4da9`.
+- [ ] Lock `#166534` title/header styling, white title text, thin gray borders,
+      zebra rows, wrap/top alignment, filters, frozen panes, amber disclaimer
+      and restrained conclusion fills.
+- [ ] Assert no chart, gradient, score, percentage, award decision or truncated
+      option exists.
+
+### Exit gate
+
+The renderer returns a complete ExcelJS workbook matching the approved visual
+and data contract for every mode. No production component imports it yet and no
+download side effect occurs.
+
+## Phase P14C1 - Export Scope Dialog And State Machine
+
+**Depends on:** P14B2
+
+**Requirements:** TC-21-S01, TC-21-S02, TC-21-S04
+
+**Deploy boundary:** unmounted UI/state contract; no RPC collection or download
+
+### Planned files
+
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-state.ts`
+- Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationResultExportDialog.tsx`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-dialog.test.tsx`
+
+### Tasks
+
+- [ ] Write RED pure-state and React user-event tests for open/reset/confirm,
+      content mode, option scope, criterion scope, validation and cancellation.
+- [ ] Default every new dossier/baseline dialog session to all options and all
+      criteria, independent of current selected options or criterion page.
+- [ ] Ask for explicit scope whenever the source surfaces are paginated and
+      expose current selection/page only as deliberate alternatives.
+- [ ] Keep the dialog unaware of RPC collection, ExcelJS and Blob download.
+- [ ] Preserve the approved Stitch dialog layout and accessible labels/focus
+      behavior without mounting it into the evaluation workspace.
+
+### Exit gate
+
+The isolated dialog emits one validated export request and has no network,
+workbook or download side effect. Existing workspace UI remains unchanged.
+
+## Phase P14C2 - Export Orchestration, Download And Workspace Activation
+
+**Depends on:** P14C1
+
+**Requirements:** TC-21
+
+**Deploy boundary:** activates the user-visible Excel export workflow
+
+### Planned files
+
+- Create:
+  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationResultExport.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export.test.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-evaluation-workspace.test.tsx`
+
+### Tasks
+
+- [ ] Write RED React integration tests for mounted trigger, scope confirmation,
+      loading/success/error/retry, changed-snapshot abort, context switch,
+      requested-surface fetch suppression and no partial download.
+- [ ] Mount one `Xuất kết quả Excel` action in the evaluation workspace without
+      changing current matrix/ranking ownership or pagination behavior.
+- [ ] Orchestrate P14A3 collection then P14B2 rendering, serialize through the
+      existing ExcelJS pattern and call shared `downloadBlob()` exactly once
+      only after successful final manifest revalidation.
+- [ ] Cancel or ignore obsolete work after dossier/baseline changes and keep
+      retry explicit; never download a stale or partial workbook.
+- [ ] Run standard TypeScript/React gates, focused existing Excel/Equipment and
+      evaluation/ranking regressions, React Doctor and strict OpenSpec
+      validation. P14 does not add a P13B real-browser gate.
+
+### Exit gate
+
+The approved export action produces the requested complete workbook from one
+stable read-only snapshot, preserves all existing Excel and evaluation
+workflows and is independently deployable before deferred P13 hardening.
+
 ## Phase P13C - Release, OpenSpec And AI-Boundary Audit
 
-**Depends on:** P13A-V, P13B, P7A2, P9A3
+**Depends on:** P13A-V, P13B, P7A2, P9A3, P14C2
 **Requirements:** TC-19  
 **Deploy boundary:** release documentation and final acceptance only
 
@@ -2952,6 +3241,8 @@ No release-blocking UI, accessibility or Equipment regression remains.
 
 - [ ] Use the feature-baseline SHA from P0 to enumerate all feature commits/files and verify every leaf phase landed.
 - [ ] Confirm optional productivity leaves P7A1, P7A2 and P9A1-P9A3 are complete even though they are not on the manual-comparison critical path.
+- [ ] Confirm P14A1-P14C2 landed and the final result workbook contract remains
+      read-only, snapshot-stable and free of scoring/award semantics.
 - [ ] Aggregate preserved per-leaf `verify:no-explicit-any`, `verify:dedupe`, focused test and review evidence.
 - [ ] Run fresh full `typecheck` and all focused feature Vitest suites; do not claim a fresh P13 branch diff covers earlier merged leaf diffs.
 - [ ] Run `openspec validate add-technical-configuration-comparison --strict`.

@@ -107,7 +107,8 @@ P13A-P1 mandatory evidence
                                                   P13A-V DB/P13A --+
 P13B browser/E2E -----------------------------------------------+
 P7A2 reference workspace ---------------------------------------+--> P13C
-P9A3 import workspace ------------------------------------------+    release/acceptance/archive/AI audit
+P9A3 import workspace ------------------------------------------+
+P14C2 final-result Excel export --------------------------------+    release/acceptance/archive/AI audit
 ```
 
 - **Direct path:** P13A-P1 pass, P13A-P2 không được instantiate, P13A-V được
@@ -116,9 +117,9 @@ P9A3 import workspace ------------------------------------------+    release/acc
   P13A-P2 được apply/phase-gated và P13A-P1 rerun green.
 - **P13A path:** Accepted P13A-V evidence chỉ hoàn tất dependency DB/P13A của
   P13C.
-- **Final path:** P13C chỉ được unblock khi P13A-V, P13B, P7A2 và P9A3 đều hoàn
-  tất; P13C sau đó mới sở hữu release review, final acceptance, OpenSpec archive
-  và AI-boundary audit.
+- **Final path:** P13C chỉ được unblock khi P13A-V, P13B, P7A2, P9A3 và P14C2
+  đều hoàn tất; P13C sau đó mới sở hữu release review, final acceptance,
+  OpenSpec archive và AI-boundary audit.
 
 ## Live-write approval boundaries
 
