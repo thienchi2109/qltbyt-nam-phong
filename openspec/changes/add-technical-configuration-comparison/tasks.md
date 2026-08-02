@@ -775,6 +775,17 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       Supabase MCP; leaf này không apply migration và không sửa production code.
 - [ ] P13A-P1.6 Chạy focused TC-20 ranking performance assertions, lưu plan/result
       evidence và xác minh mọi scale seed đã được rollback.
+
+> **Execution status (2026-08-02): blocked before representative plan capture.**
+> Read-only discovery found `max_options_per_dossier = 1`,
+> `max_criteria_per_baseline = 102` and `representative_candidate_count = 0`.
+> The user cancelled production seeding before any live write. Exact evidence:
+> [P13A-P1 representative ranking plan](./verification/P13A-P1-representative-ranking-plan.md).
+> The non-seeded dataset blocker is tracked by
+> [GitHub issue #836](https://github.com/thienchi2109/qltbyt-nam-phong/issues/836).
+> P13A-P2 is not instantiated because no query/index invariant failed;
+> P13A-V remains blocked.
+
 - [ ] P13A-P1.7 Nếu tất cả assertion pass, bỏ qua P13A-P2 và unblock P13A-V; nếu
       fail, giữ P13A-P1 failed, ghi đúng query/index invariant tái lập được, chỉ
       instantiate P13A-P2 với scope đó và giữ P13A-V blocked.
