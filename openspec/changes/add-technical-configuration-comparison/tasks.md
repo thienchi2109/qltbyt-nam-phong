@@ -867,13 +867,14 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14A2 - Paginated Export Ranking And Matrix Contracts
 
-- [ ] P14A2.1 Khóa exact ranking/matrix payload, pagination, canonical order,
+- [x] P14A2.1 Khóa exact ranking/matrix payload, pagination, canonical order,
       repeated scope/totals/tokens và empty/null semantics bằng RED tests.
-- [ ] P14A2.2 Reuse P12C1 ranking semantics; thêm set-based read-only matrix
-      contract, không tạo ranking algorithm hoặc query loop song song.
+- [x] P14A2.2 Reuse P12C1 ranking semantics; thêm set-based read-only matrix
+      contract, không tạo ranking algorithm/query loop song song và không chạy
+      paged P12C1 lần hai chỉ để lấy ranking token.
 - [ ] P14A2.3 Thêm hai RPC names vào manifest/allowlist và phase-gate
       authorization, bounds, query plan sau explicit live approval.
-- [ ] P14A2.4 Xác minh không có client/UI/workbook/download trong leaf.
+- [x] P14A2.4 Xác minh không có client/UI/workbook/download trong leaf.
 
 ## Phase P14A3 - Typed Export Adapters And Stable Dataset Collector
 

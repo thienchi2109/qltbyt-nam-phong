@@ -3005,8 +3005,12 @@ tokens without changing any revision, audit state or data row.
 
 ### Planned files
 
-- Create at execution time after migration-order inspection:
-  `supabase/migrations/<timestamp>_technical_configuration_result_export_pages.sql`
+- Create at execution time after migration-order and file-ceiling inspection:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_ranking_source.sql`
+- Create immediately after the ranking migration:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_snapshot_token_source.sql`
+- Create immediately after the snapshot-token migration:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_matrix_page.sql`
 - Create:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-pages-migration.test.ts`
 - Create:
@@ -3018,14 +3022,16 @@ tokens without changing any revision, audit state or data row.
 
 ### Tasks
 
-- [ ] Write RED SQL/source tests for exact ranking and flattened matrix payloads,
+- [x] Write RED SQL/source tests for exact ranking and flattened matrix payloads,
       pagination bounds, canonical order, repeated scope/totals/tokens and
       missing-data empty/null semantics.
-- [ ] Reuse P12C1 ranking semantics instead of implementing a second ranking
+- [x] Reuse P12C1 ranking semantics instead of implementing a second ranking
       algorithm.
-- [ ] Implement set-based read-only ranking and matrix RPCs over the P14A1
+- [x] Re-source the P14A1 private snapshot token through the shared token helper
+      so a ranking page performs no preliminary paged P12C1 full-universe scan.
+- [x] Implement set-based read-only ranking and matrix RPCs over the P14A1
       snapshot helper with no get-or-create or per-cell query loop.
-- [ ] Prove reference products and baseline-only evidence never enter option
+- [x] Prove reference products and baseline-only evidence never enter option
       columns, and every returned cell belongs to the requested dossier,
       baseline, option and criterion scope.
 - [ ] Apply and phase-gate only after explicit live DB approval; run focused

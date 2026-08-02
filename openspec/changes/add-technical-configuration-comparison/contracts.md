@@ -503,21 +503,36 @@ snapshot_token, ranking_snapshot_token } }`.
   response text, supplementary information, option document metadata/URL,
   option citations and manual-assessment axes/notes/revisions. The
   `ranking_snapshot_token` is the exact token produced by the existing P12C1
-  ranking contract for the same complete dossier/baseline universe.
+  ranking contract for the same complete dossier/baseline universe. P14A2
+  sources that token directly from the shared private token helper; a ranking
+  page must not execute the public paged P12C1 RPC before computing its rows.
 - `technical_configuration_result_export_ranking_list` request extends the
   manifest scope with `p_page`, `p_page_size`. It delegates ranking semantics to
   the existing P12C1 contract and returns
   `{ data, dossier_id, baseline_version_id, snapshot_token,
-ranking_snapshot_token, total, page, page_size }`. Page size is 1-100.
+ranking_snapshot_token, total, page, page_size }`. Page size is 1-100. Each item
+  is exactly
+  `{ option_id, supplier_id, supplier_name, display_label, eligibility,
+incomplete_criterion_count, failed_count, insufficient_evidence_count,
+exceeds_count, rank }`. Ranking is computed over the complete P12C1
+  dossier/baseline universe before filtering to the validated option scope, so
+  selected exports preserve complete-universe rank and counters.
 - `technical_configuration_result_export_matrix_list` request extends the
   manifest scope with `p_page`, `p_page_size`. It returns flattened canonical
-  `(criterion, option)` cells ordered by group/criterion then canonical option,
+  `(criterion, option)` cells ordered by validated criterion ordinality then
+  validated option ordinality,
   with `total`, `page`, `page_size`, exact scope IDs and the same two tokens.
-  Page size is 1-1000. Each cell contains criterion/group context, option
-  identity, nullable response, supplementary information, exact option
-  document/citation links for that criterion, nullable manual-assessment axes
-  and notes, and the derived seven-status conclusion. Reference products and
-  baseline-only evidence are excluded from option columns.
+  Page size is 1-1000. Each cell is exactly
+  `{ group_id, group_name, group_order, criterion_id, criterion_code,
+criterion_title, requirement_text, criterion_order, option_id, supplier_id,
+supplier_name, display_label, model, manufacturer, option_name, response_text,
+supplementary_information, document_links, technical_axis, evidence_axis,
+assessment_notes, conclusion }`. Each `document_links` item is exactly
+  `{ document_id, document_name, document_url, citation_id, page_section,
+excerpt }`. Missing comparison sets, responses and assessments produce nullable
+  scalar values; missing criterion citations produce `document_links: []`.
+  `conclusion` is one of the exact P12C1-derived seven statuses. Reference
+  products and baseline-only evidence are excluded from option columns.
 - P14 export RPCs are side-effect-free. They never call comparison-set
   get-or-create, never create missing rows, never increment dossier/baseline/
   comparison/assessment revisions and never alter audit metadata. Missing
