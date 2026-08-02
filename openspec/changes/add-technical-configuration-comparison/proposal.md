@@ -26,7 +26,7 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Tái sử dụng hạ tầng Excel hiện có gồm `createExcelWorkbook()`, `downloadBlob()`, ExcelJS lazy loading và các pattern workbook đã được kiểm thử. Chỉ result dataset mapping, sheet composition, styling contract và export-scope dialog là domain-specific; không tạo helper workbook/download song song và không thêm cờ kỹ thuật-cấu-hình vào flat `exportToExcel()`.
 - Dùng read-only canonical export snapshot riêng để mọi page/chunk của workbook thuộc cùng một trạng thái dữ liệu. Export không tạo comparison set, không seed, không ghi live data và không tái tính kết luận ngoài contract đánh giá thủ công hiện có.
 - Gói delivery export này mang tên `P14`, độc lập với P13 đang defer và được
-  tách thành bảy leaf PR deploy-safe: P14A1, P14A2, P14A3, P14B1, P14B2,
+  tách thành tám leaf PR deploy-safe: P14A1, P14A2, P14A3, P14A4, P14B1, P14B2,
   P14C1 và P14C2.
 - Không đưa AI vào MVP: không có nút AI, API call, job, cache, quota, cột AI hoặc bảng AI chưa sử dụng. Mô hình dữ liệu giữ ID ổn định và tách rõ yêu cầu, phản hồi, bằng chứng, đánh giá để có thể bổ sung AI bằng một OpenSpec change riêng sau này.
 

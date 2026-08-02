@@ -1,15 +1,22 @@
 import { collectStableTechnicalConfigurationPages } from "./technical-configuration-pagination"
 import {
   getTechnicalConfigurationResultExportManifest,
+  listTechnicalConfigurationResultExportCriterionAxis,
   listTechnicalConfigurationResultExportMatrix,
+  listTechnicalConfigurationResultExportOptionAxis,
   listTechnicalConfigurationResultExportRanking,
   TechnicalConfigurationResultExportError,
 } from "./technical-configuration-result-export-rpc"
 import type {
+  TechnicalConfigurationResultExportCriterionAxisItemWire,
+  TechnicalConfigurationResultExportCriterionAxisPageWireResponse,
   TechnicalConfigurationResultExportDataset,
   TechnicalConfigurationResultExportManifestWire,
   TechnicalConfigurationResultExportMatrixCellWire,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
+  TechnicalConfigurationResultExportOptionAxisItemWire,
+  TechnicalConfigurationResultExportOptionAxisPageWireResponse,
+  TechnicalConfigurationResultExportPageWireResponse,
   TechnicalConfigurationResultExportRankingItemWire,
   TechnicalConfigurationResultExportRankingPageWireResponse,
   TechnicalConfigurationResultExportRequest,
@@ -18,12 +25,16 @@ import type {
 
 export type {
   TechnicalConfigurationResultExportDataset,
+  TechnicalConfigurationResultExportCriterionAxisItemWire,
+  TechnicalConfigurationResultExportCriterionAxisPageWireResponse,
   TechnicalConfigurationResultExportDocumentLinkWire,
   TechnicalConfigurationResultExportManifestWire,
   TechnicalConfigurationResultExportManifestWireResponse,
   TechnicalConfigurationResultExportMatrixCellWire,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
   TechnicalConfigurationResultExportMode,
+  TechnicalConfigurationResultExportOptionAxisItemWire,
+  TechnicalConfigurationResultExportOptionAxisPageWireResponse,
   TechnicalConfigurationResultExportPageRpcArgs,
   TechnicalConfigurationResultExportRankingItemWire,
   TechnicalConfigurationResultExportRankingPageWireResponse,
@@ -31,6 +42,7 @@ export type {
   TechnicalConfigurationResultExportScopeRpcArgs,
 } from "./technical-configuration-result-export-types"
 
+const AXIS_PAGE_SIZE = 100
 const RANKING_PAGE_SIZE = 100
 const MATRIX_PAGE_SIZE = 1000
 
@@ -66,6 +78,12 @@ function sameStringSet(actual: Iterable<string>, expected: readonly string[]) {
   )
 }
 
+function sameStringOrder(actual: readonly string[], expected: readonly string[]) {
+  return (
+    actual.length === expected.length && actual.every((value, index) => value === expected[index])
+  )
+}
+
 function sameManifest(
   first: TechnicalConfigurationResultExportManifestWire,
   final: TechnicalConfigurationResultExportManifestWire
@@ -97,7 +115,7 @@ function freezeManifest(manifest: TechnicalConfigurationResultExportManifestWire
   })
 }
 
-function freezeRankingItems(items: readonly TechnicalConfigurationResultExportRankingItemWire[]) {
+function freezeItems<TItem extends object>(items: readonly TItem[]) {
   for (const item of items) Object.freeze(item)
   return Object.freeze(items)
 }
@@ -109,6 +127,44 @@ function freezeMatrixItems(items: readonly TechnicalConfigurationResultExportMat
     Object.freeze(item)
   }
   return Object.freeze(items)
+}
+
+async function collectAxis<TItem extends object>(
+  loadPage: (page: number) => Promise<TechnicalConfigurationResultExportPageWireResponse<TItem>>,
+  manifest: TechnicalConfigurationResultExportManifestWire,
+  expectedTotal: number,
+  expectedIds: readonly string[] | null,
+  getItemKey: (item: TItem) => string,
+  label: string,
+  signal?: AbortSignal
+) {
+  try {
+    const { items } = await collectStableTechnicalConfigurationPages<
+      TItem,
+      TechnicalConfigurationResultExportPageWireResponse<TItem>
+    >({
+      loadPage: async (page) => {
+        const response = await loadPage(page)
+        if (response.total !== expectedTotal || !sameTokens(response, manifest)) {
+          throw snapshotChanged()
+        }
+        return response
+      },
+      snapshotError: `Result export ${label} snapshot changed.`,
+      getItemKey,
+      isSameSnapshot: (first, next) =>
+        first.snapshot_token === next.snapshot_token &&
+        first.ranking_snapshot_token === next.ranking_snapshot_token,
+    })
+    if (expectedIds !== null && !sameStringOrder(items.map(getItemKey), expectedIds)) {
+      throw snapshotChanged()
+    }
+    return freezeItems(items)
+  } catch (error) {
+    if (signal?.aborted) throw signal.reason
+    if (error instanceof TechnicalConfigurationResultExportError || isAbortError(error)) throw error
+    throw snapshotChanged()
+  }
 }
 
 async function collectRanking(
@@ -146,7 +202,7 @@ async function collectRanking(
     ) {
       throw snapshotChanged()
     }
-    return freezeRankingItems(items)
+    return freezeItems(items)
   } catch (error) {
     if (signal?.aborted) throw signal.reason
     if (error instanceof TechnicalConfigurationResultExportError || isAbortError(error)) throw error
@@ -221,6 +277,34 @@ export async function collectTechnicalConfigurationResultExportDataset(
   } satisfies TechnicalConfigurationResultExportScopeRpcArgs
   const firstManifest = (await getTechnicalConfigurationResultExportManifest(scope, request.signal))
     .data
+  const [optionAxis, criterionAxis] = await Promise.all([
+    collectAxis<TechnicalConfigurationResultExportOptionAxisItemWire>(
+      (page) =>
+        listTechnicalConfigurationResultExportOptionAxis(
+          { ...scope, p_page: page, p_page_size: AXIS_PAGE_SIZE },
+          request.signal
+        ),
+      firstManifest,
+      firstManifest.option_total,
+      scope.p_option_ids,
+      (item) => item.option_id,
+      "option axis",
+      request.signal
+    ),
+    collectAxis<TechnicalConfigurationResultExportCriterionAxisItemWire>(
+      (page) =>
+        listTechnicalConfigurationResultExportCriterionAxis(
+          { ...scope, p_page: page, p_page_size: AXIS_PAGE_SIZE },
+          request.signal
+        ),
+      firstManifest,
+      firstManifest.criterion_total,
+      scope.p_criterion_ids,
+      (item) => item.criterion_id,
+      "criterion axis",
+      request.signal
+    ),
+  ])
   const ranking =
     request.mode === "detailed_matrix_only"
       ? null
@@ -236,6 +320,8 @@ export async function collectTechnicalConfigurationResultExportDataset(
   return Object.freeze({
     mode: request.mode,
     manifest: freezeManifest(firstManifest),
+    optionAxis,
+    criterionAxis,
     ranking,
     matrix,
   }) as TechnicalConfigurationResultExportDataset

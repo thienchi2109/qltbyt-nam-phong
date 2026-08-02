@@ -59,6 +59,27 @@ export const rankingRows = OPTION_IDS.map((optionId, index) => ({
   rank: index === 0 ? 1 : null,
 }))
 
+export const optionAxisRows = OPTION_IDS.map((optionId, index) => ({
+  option_id: optionId,
+  supplier_id: SUPPLIER_IDS[index],
+  supplier_name: `Nhà cung cấp ${index + 1}`,
+  display_label: `Phương án ${index + 1}`,
+  model: index === 0 ? "Model A" : null,
+  manufacturer: index === 0 ? "Hãng A" : null,
+  option_name: index === 0 ? "Gói A" : null,
+}))
+
+export const criterionAxisRows = CRITERION_IDS.map((criterionId, index) => ({
+  group_id: GROUP_ID,
+  group_name: "Nhóm chung",
+  group_order: 1,
+  criterion_id: criterionId,
+  criterion_code: `TC-${index + 1}`,
+  criterion_title: `Tiêu chí ${index + 1}`,
+  requirement_text: `Yêu cầu ${index + 1}`,
+  criterion_order: index + 1,
+}))
+
 function createMatrixCell(criterionIndex: number, optionIndex: number) {
   return {
     group_id: GROUP_ID,
@@ -150,15 +171,23 @@ export function exportRequest(mode: TechnicalConfigurationResultExportMode = "fu
 export function createPagedHandler({
   manifest = manifestResponse,
   finalManifest = manifestResponse,
+  optionAxisPages = [optionAxisRows],
+  criterionAxisPages = [criterionAxisRows],
   rankingPages = [rankingRows],
   matrixPages = [matrixRows],
+  optionAxisPageOverrides = {},
+  criterionAxisPageOverrides = {},
   rankingPageOverrides = {},
   matrixPageOverrides = {},
 }: {
   manifest?: unknown
   finalManifest?: unknown
+  optionAxisPages?: unknown[][]
+  criterionAxisPages?: unknown[][]
   rankingPages?: unknown[][]
   matrixPages?: unknown[][]
+  optionAxisPageOverrides?: Record<number, Record<string, unknown>>
+  criterionAxisPageOverrides?: Record<number, Record<string, unknown>>
   rankingPageOverrides?: Record<number, Record<string, unknown>>
   matrixPageOverrides?: Record<number, Record<string, unknown>>
 } = {}) {
@@ -167,6 +196,34 @@ export function createPagedHandler({
     if (fn === RESULT_EXPORT_RPC_FUNCTIONS.getManifest) {
       manifestCalls += 1
       return jsonResponse(manifestCalls === 1 ? manifest : finalManifest)
+    }
+    if (fn === RESULT_EXPORT_RPC_FUNCTIONS.listOptionAxis) {
+      const page = Number(args.p_page)
+      return jsonResponse({
+        data: optionAxisPages[page - 1] ?? [],
+        dossier_id: DOSSIER_ID,
+        baseline_version_id: BASELINE_ID,
+        snapshot_token: "snapshot-v1",
+        ranking_snapshot_token: "ranking-v1",
+        total: optionAxisPages.flat().length,
+        page,
+        page_size: 100,
+        ...optionAxisPageOverrides[page],
+      })
+    }
+    if (fn === RESULT_EXPORT_RPC_FUNCTIONS.listCriterionAxis) {
+      const page = Number(args.p_page)
+      return jsonResponse({
+        data: criterionAxisPages[page - 1] ?? [],
+        dossier_id: DOSSIER_ID,
+        baseline_version_id: BASELINE_ID,
+        snapshot_token: "snapshot-v1",
+        ranking_snapshot_token: "ranking-v1",
+        total: criterionAxisPages.flat().length,
+        page,
+        page_size: 100,
+        ...criterionAxisPageOverrides[page],
+      })
     }
     if (fn === RESULT_EXPORT_RPC_FUNCTIONS.listRanking) {
       const page = Number(args.p_page)
@@ -219,6 +276,21 @@ export function createManyPageFixture() {
     display_label: `Phương án ${index + 1}`,
     rank: index + 1,
   }))
+  const optionAxis = optionIds.map((optionId, index) => ({
+    ...optionAxisRows[0],
+    option_id: optionId,
+    supplier_id: supplierIds[index],
+    supplier_name: `Nhà cung cấp ${index + 1}`,
+    display_label: `Phương án ${index + 1}`,
+  }))
+  const criterionAxis = criterionIds.map((criterionId, index) => ({
+    ...criterionAxisRows[0],
+    criterion_id: criterionId,
+    criterion_code: `TC-${index + 1}`,
+    criterion_title: `Tiêu chí ${index + 1}`,
+    requirement_text: `Yêu cầu ${index + 1}`,
+    criterion_order: index + 1,
+  }))
   const matrix = criterionIds.flatMap((criterionId, criterionIndex) =>
     optionIds.map((optionId, optionIndex) => ({
       ...matrixRows[0],
@@ -241,5 +313,5 @@ export function createManyPageFixture() {
       criterion_total: criterionIds.length,
     },
   }
-  return { optionIds, criterionIds, rankings, matrix, manifest }
+  return { optionIds, criterionIds, optionAxis, criterionAxis, rankings, matrix, manifest }
 }

@@ -69,7 +69,8 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P14A1](./implementation-plan.md#phase-p14a1---canonical-export-snapshot-manifest)                        | Manifest snapshot export canonical             | P12C1 merged/applied/gated                       | TC-21-S02, S06, S07, S08                               |
 | [P14A2](./implementation-plan.md#phase-p14a2---paginated-export-ranking-and-matrix-contracts)             | RPC export ranking/matrix phân trang           | P14A1 merged/applied/gated                       | TC-21-S03, S04, S06, S07, S08                          |
 | [P14A3](./implementation-plan.md#phase-p14a3---typed-export-adapters-and-stable-dataset-collector)        | Adapter typed và collector snapshot ổn định    | P14A2 merged/applied/gated                       | TC-21-S02, S04, S06, S07, S08                          |
-| [P14B1](./implementation-plan.md#phase-p14b1---result-workbook-schema-and-representative-fixtures)        | Schema workbook và fixture đại diện            | P14A3                                            | TC-21-S03, S04, S05, S09                               |
+| [P14A4](./implementation-plan.md#phase-p14a4---ordered-result-export-axes)                                | Trục option/criterion có thứ tự độc lập        | P14A3 merged/gated                               | TC-21-S03, S04, S06, S07, S08                          |
+| [P14B1](./implementation-plan.md#phase-p14b1---result-workbook-schema-and-representative-fixtures)        | Schema workbook và fixture đại diện            | P14A4 merged/applied/gated                       | TC-21-S03, S04, S05, S09                               |
 | [P14B2](./implementation-plan.md#phase-p14b2---approved-exceljs-workbook-rendering)                       | Render ExcelJS đúng mockup đã duyệt            | P14B1                                            | TC-21-S03, S04, S05, S09                               |
 | [P14C1](./implementation-plan.md#phase-p14c1---export-scope-dialog-and-state-machine)                     | Dialog chọn nội dung và phạm vi export         | P14B2                                            | TC-21-S01, S02, S04                                    |
 | [P14C2](./implementation-plan.md#phase-p14c2---export-orchestration-download-and-workspace-activation)    | Mount trigger, orchestration và download       | P14C1                                            | TC-21                                                  |
@@ -885,6 +886,21 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       manifest và không publish partial dataset.
 - [x] P14A3.3 Không fetch ranking hoặc matrix surface ngoài mode người dùng chọn.
 - [x] P14A3.4 Không mount query/UI, không import ExcelJS và không download.
+
+## Phase P14A4 - Ordered Result-Export Axes
+
+- [x] P14A4.1 Khóa exact option-axis/criterion-axis payload, page bounds,
+      canonical ordinality, repeated totals/tokens và authorization bằng RED
+      migration/source tests.
+- [x] P14A4.2 Expose descriptor đã nằm trong private full-token payload, giữ
+      public manifest exact shape và không duplicate matrix joins.
+- [x] P14A4.3 Thêm typed decoders/adapters, thu tuần tự từng axis, await đủ hai
+      axes và deep-freeze trước ranking/matrix; reject duplicate/missing/
+      reordered IDs hoặc drift.
+- [x] P14A4.4 Khóa deterministic `0 x 0`, `1 x 0`, `0 x 1`, normal `N x M`;
+      không seed, workbook, ExcelJS, UI, Blob/download hay parser/import/apply.
+- [ ] P14A4.5 Chỉ apply/phase-gate qua Supabase MCP sau fresh explicit approval;
+      chạy security advisor, semantic dedupe và strict OpenSpec validation.
 
 ## Phase P14B1 - Result Workbook Schema And Representative Fixtures
 

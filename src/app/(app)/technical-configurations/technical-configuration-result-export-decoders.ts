@@ -80,8 +80,8 @@ function invalidResponse(path: string): never {
     `Invalid result export response at ${path}.`
   )
 }
-
-function exactRecord(value: unknown, keys: readonly string[], path: string) {
+/** Decode an object with exactly the expected response keys. */
+export function exactRecord(value: unknown, keys: readonly string[], path: string) {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return invalidResponse(path)
   }
@@ -96,8 +96,8 @@ function exactRecord(value: unknown, keys: readonly string[], path: string) {
   }
   return record
 }
-
-function stringValue(value: unknown, path: string): string {
+/** Decode a required string response field. */
+export function stringValue(value: unknown, path: string): string {
   return typeof value === "string" ? value : invalidResponse(path)
 }
 
@@ -105,17 +105,17 @@ function nonEmptyString(value: unknown, path: string): string {
   const result = stringValue(value, path)
   return result.length > 0 ? result : invalidResponse(path)
 }
-
-function nullableString(value: unknown, path: string): string | null {
+/** Decode a nullable string response field. */
+export function nullableString(value: unknown, path: string): string | null {
   return value === null ? null : stringValue(value, path)
 }
-
-function uuidValue(value: unknown, path: string): string {
+/** Decode a UUID response field. */
+export function uuidValue(value: unknown, path: string): string {
   const result = stringValue(value, path)
   return UUID_PATTERN.test(result) ? result : invalidResponse(path)
 }
-
-function integerValue(value: unknown, path: string, minimum = 0): number {
+/** Decode a bounded safe-integer response field. */
+export function integerValue(value: unknown, path: string, minimum = 0): number {
   return Number.isSafeInteger(value) && Number(value) >= minimum
     ? Number(value)
     : invalidResponse(path)
