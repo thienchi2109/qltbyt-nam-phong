@@ -490,6 +490,13 @@ exceeds_count, rank }`. `eligibility` is `eligible` or `incomplete`; `rank`
   dossier/baseline scope. The response is
   `{ data: { dossier, baseline_version, option_total, criterion_total,
 snapshot_token, ranking_snapshot_token } }`.
+  `dossier` is exactly
+  `{ id, device_type_name, name, revision, archived_at }`.
+  `baseline_version` is exactly
+  `{ id, dossier_id, version_number, status, revision, locked_at }`.
+  The private P14A1 helper may additionally carry ordered option and criterion
+  IDs for P14A2 consumers, but the public manifest response exposes no extra
+  fields.
 - The P14A1 full `snapshot_token` is opaque, non-empty and covers every field
   that can change visible workbook output: dossier/baseline identity, ordered
   option/supplier identity, ordered criteria, comparison-set identity,
