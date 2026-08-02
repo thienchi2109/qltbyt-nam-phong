@@ -90,7 +90,7 @@ export function listTechnicalConfigurationResultExportRanking(
     (value) => {
       const page = decodePageMetadata(value, args, "ranking")
       return {
-        data: page.data.map(decodeRankingItem),
+        data: page.data.map((item, index) => decodeRankingItem(item, index)),
         dossier_id: page.dossierId,
         baseline_version_id: page.baselineId,
         snapshot_token: page.snapshotToken,
@@ -115,7 +115,7 @@ export function listTechnicalConfigurationResultExportMatrix(
     (value) => {
       const page = decodePageMetadata(value, args, "matrix")
       return {
-        data: page.data.map(decodeMatrixCell),
+        data: page.data.map((item, index) => decodeMatrixCell(item, index)),
         dossier_id: page.dossierId,
         baseline_version_id: page.baselineId,
         snapshot_token: page.snapshotToken,

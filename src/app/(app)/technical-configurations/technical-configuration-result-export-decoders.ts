@@ -86,8 +86,8 @@ function exactRecord(value: unknown, keys: readonly string[], path: string) {
     return invalidResponse(path)
   }
   const record = value as Record<string, unknown>
-  const actualKeys = Object.keys(record).sort()
-  const expectedKeys = [...keys].sort()
+  const actualKeys = Object.keys(record).sort((left, right) => left.localeCompare(right))
+  const expectedKeys = [...keys].sort((left, right) => left.localeCompare(right))
   if (
     actualKeys.length !== expectedKeys.length ||
     actualKeys.some((key, index) => key !== expectedKeys[index])
