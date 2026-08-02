@@ -197,6 +197,14 @@ describe("P12C1 technical configuration reference ranking migration", () => {
     expect(performancePreflightSource).toMatch(
       /count\(\*\) FILTER \(\s*WHERE candidates\.option_count > 100\s*AND candidates\.criterion_count = 102/
     )
+    expect(
+      performancePreflightSource.match(
+        /WHERE candidates\.option_count > 100\s*AND candidates\.criterion_count = 102/g
+      )
+    ).toHaveLength(1)
+    expect(
+      performancePreflightSource.match(/candidate_summary\.representative_candidate_count/g)
+    ).toHaveLength(2)
     expect(performancePreflightSource).toContain("P13A-P1 representative scale unavailable")
     expect(performancePreflightSource).not.toContain("EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)")
     expect(performancePreflightSource).not.toContain(

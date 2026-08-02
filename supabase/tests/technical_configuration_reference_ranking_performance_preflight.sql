@@ -37,12 +37,16 @@ BEGIN
     FROM criterion_counts
     LEFT JOIN option_counts
       ON option_counts.dossier_id = criterion_counts.dossier_id
-  )
-  SELECT
-    count(*) FILTER (
+  ),
+  candidate_summary AS (
+    SELECT count(*) FILTER (
       WHERE candidates.option_count > 100
         AND candidates.criterion_count = 102
-    ),
+    ) AS representative_candidate_count
+    FROM candidates
+  )
+  SELECT
+    candidate_summary.representative_candidate_count,
     jsonb_build_object(
       'dossier_total',
       (SELECT count(*) FROM public.technical_configuration_dossiers),
@@ -57,13 +61,10 @@ BEGIN
       'max_criteria_per_baseline',
       COALESCE((SELECT max(criterion_count) FROM criterion_counts), 0),
       'representative_candidate_count',
-      count(*) FILTER (
-        WHERE candidates.option_count > 100
-          AND candidates.criterion_count = 102
-      )
+      candidate_summary.representative_candidate_count
     )
   INTO v_candidate_count, v_observed
-  FROM candidates;
+  FROM candidate_summary;
 
   IF v_candidate_count = 0 THEN
     RAISE EXCEPTION
