@@ -3011,6 +3011,8 @@ tokens without changing any revision, audit state or data row.
   `supabase/migrations/<timestamp>_technical_configuration_result_export_snapshot_token_source.sql`
 - Create immediately after the snapshot-token migration:
   `supabase/migrations/<timestamp>_technical_configuration_result_export_matrix_page.sql`
+- Create after live advisor feedback:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_helper_search_path.sql`
 - Create:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-pages-migration.test.ts`
 - Create:
@@ -3031,12 +3033,14 @@ tokens without changing any revision, audit state or data row.
       so a ranking page performs no preliminary paged P12C1 full-universe scan.
 - [x] Share immutable option-display-label and derived-status expressions across
       the active P12C1 ranking and P14A2 matrix definitions.
+- [x] Pin both shared immutable helpers to `search_path = pg_catalog` in the
+      fresh-DB source and a live superseding migration.
 - [x] Implement set-based read-only ranking and matrix RPCs over the P14A1
       snapshot helper with no get-or-create or per-cell query loop.
 - [x] Prove reference products and baseline-only evidence never enter option
       columns, and every returned cell belongs to the requested dossier,
       baseline, option and criterion scope.
-- [ ] Apply and phase-gate only after explicit live DB approval; run focused
+- [x] Apply and phase-gate only after explicit live DB approval; run focused
       authorization, plan/bounds and advisor checks.
 
 ### Exit gate

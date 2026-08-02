@@ -192,6 +192,8 @@ workbook, UI or download.
   `supabase/migrations/<timestamp>_technical_configuration_result_export_snapshot_token_source.sql`
 - Create immediately after the snapshot-token migration:
   `supabase/migrations/<timestamp>_technical_configuration_result_export_matrix_page.sql`
+- Create after live advisor feedback:
+  `supabase/migrations/<timestamp>_technical_configuration_result_export_helper_search_path.sql`
 - Create:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-pages-migration.test.ts`
 - Create:
@@ -264,7 +266,7 @@ ranking_snapshot_token, total, page, page_size }`.
 **Deploy boundary:** two dormant read-only page RPCs; no adapter, collector,
 workbook, UI or download.
 
-### P14A2 Local Execution Evidence - 2026-08-02
+### P14A2 Execution Evidence - 2026-08-02
 
 - Read-only Supabase MCP inspection confirmed live P14A1 migration
   `20260802073104`, expected helper/function metadata and absence of both P14A2
@@ -281,9 +283,11 @@ workbook, UI or download.
   set-based over P14A1 validated IDs and pages cells before evidence joins.
   Private immutable helpers now keep option labels and seven-status precedence
   identical across the active ranking and matrix definitions.
-- The implementation is split across three ordered migrations to preserve
+- The implementation is split across four ordered migrations to preserve
   applied P14A1 history and keep every source file below the mandatory
-  450-line ceiling.
+  450-line ceiling. The fourth migration supersedes the already-applied helper
+  definitions by pinning `search_path = pg_catalog`; the first migration carries
+  the same setting for fresh databases.
 - The rollback-only phase gate covers non-empty second pages, repeated metadata
   and tokens, complete ACLs, raw `admin` authorization and an actual
   `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` wrapper-execution seam plus
@@ -294,8 +298,17 @@ workbook, UI or download.
   tests now lock the corrected evidence wording and shared helpers. The outer
   PL/pgSQL plan still does not expose internal statement plan nodes or prove
   their temporary-spill behavior.
-- Live apply, rollback-only execution and advisor evidence remain pending
-  explicit approval for that exact live DB write.
+- Supabase MCP applied the four repository migrations as live versions
+  `20260802111235`, `20260802111352`, `20260802111437` and `20260802112335`.
+  The first live gate attempt correctly rolled back when its fixture violated
+  the deployed non-null `supplementary_information` contract; the corrected
+  fixture uses the column's empty-string default semantics.
+- The corrected rollback-only phase gate passed authorization, bounds, ranking,
+  matrix, token, source-plan and read-only assertions twice, including the
+  superseding helper `search_path` check. Post-gate fixture counts remain zero.
+- Security/performance advisors were rerun after the superseding migration. The
+  P14A2 helper search-path warning is resolved; remaining notices are pre-existing
+  baseline findings outside this leaf.
 
 ## P14A3 - Typed Export Adapters And Stable Dataset Collector
 

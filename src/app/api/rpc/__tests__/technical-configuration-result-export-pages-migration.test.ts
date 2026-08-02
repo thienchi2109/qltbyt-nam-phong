@@ -11,9 +11,15 @@ const RANKING_MIGRATION_FILE =
 const SNAPSHOT_MIGRATION_FILE =
   "20260802092215_technical_configuration_result_export_snapshot_token_source.sql"
 const MATRIX_MIGRATION_FILE = "20260802092216_technical_configuration_result_export_matrix_page.sql"
+const HELPER_SEARCH_PATH_MIGRATION_FILE =
+  "20260802092217_technical_configuration_result_export_helper_search_path.sql"
 const RANKING_MIGRATION_PATH = path.join(MIGRATIONS_DIR, RANKING_MIGRATION_FILE)
 const SNAPSHOT_MIGRATION_PATH = path.join(MIGRATIONS_DIR, SNAPSHOT_MIGRATION_FILE)
 const MATRIX_MIGRATION_PATH = path.join(MIGRATIONS_DIR, MATRIX_MIGRATION_FILE)
+const HELPER_SEARCH_PATH_MIGRATION_PATH = path.join(
+  MIGRATIONS_DIR,
+  HELPER_SEARCH_PATH_MIGRATION_FILE
+)
 const PHASE_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_result_export_pages_phase_gate.sql"
@@ -50,7 +56,8 @@ function getObjectKeys(source: string, startMarker: string, endMarker: string): 
 const rankingMigrationSource = readIfExists(RANKING_MIGRATION_PATH)
 const snapshotMigrationSource = readIfExists(SNAPSHOT_MIGRATION_PATH)
 const matrixMigrationSource = readIfExists(MATRIX_MIGRATION_PATH)
-const migrationSource = `${rankingMigrationSource}\n${snapshotMigrationSource}\n${matrixMigrationSource}`
+const helperSearchPathMigrationSource = readIfExists(HELPER_SEARCH_PATH_MIGRATION_PATH)
+const migrationSource = `${rankingMigrationSource}\n${snapshotMigrationSource}\n${matrixMigrationSource}\n${helperSearchPathMigrationSource}`
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
 const optionDisplayLabelBlock = getFunctionBlock(
   rankingMigrationSource,
@@ -97,9 +104,13 @@ describe("P14A2 technical configuration result export page migration", () => {
     expect(RANKING_MIGRATION_FILE.localeCompare(LATEST_DEPENDENCY_MIGRATION)).toBeGreaterThan(0)
     expect(SNAPSHOT_MIGRATION_FILE.localeCompare(RANKING_MIGRATION_FILE)).toBeGreaterThan(0)
     expect(MATRIX_MIGRATION_FILE.localeCompare(SNAPSHOT_MIGRATION_FILE)).toBeGreaterThan(0)
+    expect(HELPER_SEARCH_PATH_MIGRATION_FILE.localeCompare(MATRIX_MIGRATION_FILE)).toBeGreaterThan(
+      0
+    )
     expect(rankingMigrationSource).not.toBe("")
     expect(snapshotMigrationSource).not.toBe("")
     expect(matrixMigrationSource).not.toBe("")
+    expect(helperSearchPathMigrationSource).not.toBe("")
     expect(phaseGateSource).toContain("BEGIN;")
     expect(phaseGateSource).toContain("ROLLBACK;")
     expect(phaseGateSource).not.toContain("COMMIT;")
@@ -160,12 +171,15 @@ describe("P14A2 technical configuration result export page migration", () => {
         "  p_option_name TEXT"
     )
     expect(optionDisplayLabelBlock).toContain("LANGUAGE sql\nIMMUTABLE")
+    expect(optionDisplayLabelBlock).toContain("SET search_path = pg_catalog")
     expect(derivedStatusBlock).toContain(
       "_technical_configuration_derived_status(\n" +
         "  p_technical_axis TEXT,\n" +
         "  p_evidence_axis TEXT"
     )
     expect(derivedStatusBlock).toContain("LANGUAGE sql\nIMMUTABLE")
+    expect(derivedStatusBlock).toContain("SET search_path = pg_catalog")
+    expect(helperSearchPathMigrationSource.match(/SET search_path = pg_catalog/g)).toHaveLength(2)
     for (const marker of [
       "THEN 'not_evaluated'",
       "THEN 'not_applicable'",

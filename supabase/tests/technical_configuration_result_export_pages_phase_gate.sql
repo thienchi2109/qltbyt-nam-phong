@@ -139,7 +139,8 @@ BEGIN
     NOT has_function_privilege('authenticated', v_helper_signature, 'EXECUTE')
     AND has_function_privilege('service_role', v_helper_signature, 'EXECUTE'));
   PERFORM pg_temp.assert_true('shared expression helpers are immutable and service-only',
-    (SELECT bool_and(proc.provolatile = 'i') FROM pg_proc proc
+    (SELECT bool_and(proc.provolatile = 'i' AND proc.proconfig = ARRAY['search_path=pg_catalog'])
+     FROM pg_proc proc
      WHERE proc.oid IN (v_label_helper_signature::regprocedure, v_status_helper_signature::regprocedure))
     AND NOT has_function_privilege('authenticated', v_label_helper_signature, 'EXECUTE')
     AND has_function_privilege('service_role', v_label_helper_signature, 'EXECUTE')
@@ -231,7 +232,7 @@ BEGIN
     ),
     (
       v_set_b_id, v_version_id, v_criterion_a_id, 'Option B response',
-      NULL, v_user_id, v_user_id
+      '', v_user_id, v_user_id
     );
   INSERT INTO public.technical_configuration_manual_assessments (
     comparison_set_id, baseline_version_id, criterion_id, technical_axis,

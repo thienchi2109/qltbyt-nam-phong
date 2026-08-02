@@ -11,6 +11,7 @@ CREATE OR REPLACE FUNCTION public._technical_configuration_option_display_label(
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
+SET search_path = pg_catalog
 AS $$
   SELECT p_supplier_name || ' ' || chr(183) || ' '
     || COALESCE(p_model, p_option_name);
@@ -23,6 +24,7 @@ CREATE OR REPLACE FUNCTION public._technical_configuration_derived_status(
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
+SET search_path = pg_catalog
 AS $$
   SELECT CASE
     WHEN p_technical_axis IS NULL THEN 'not_evaluated'
