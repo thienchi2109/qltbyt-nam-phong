@@ -781,6 +781,10 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 > `max_criteria_per_baseline = 102` and `representative_candidate_count = 0`.
 > The user cancelled production seeding before any live write. Exact evidence:
 > [P13A-P1 representative ranking plan](./verification/P13A-P1-representative-ranking-plan.md).
+> Issue #836 read-only discovery also found `0` Supabase development branches,
+> only two available VPS snapshots with `1` option and `102` criteria each, no
+> other local dump, no dump in `gdrive:qltbyt-backup/` and no GitHub Actions
+> artifact. No non-seeded source satisfies `>100 options x 102 criteria`.
 > The non-seeded dataset blocker is tracked by
 > [GitHub issue #836](https://github.com/thienchi2109/qltbyt-nam-phong/issues/836).
 > P13A-P2 is not instantiated because no query/index invariant failed;

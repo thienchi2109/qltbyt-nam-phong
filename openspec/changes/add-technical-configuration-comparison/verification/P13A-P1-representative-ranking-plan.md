@@ -56,6 +56,30 @@ The exact unmet invariant is:
 `representative_candidate_count = 0`, while P13A-P1 requires
 `option_count > 100` paired with `criterion_count = 102` and `page_size = 100`.
 
+## Non-seeded dataset source audit
+
+Issue #836 was investigated through read-only sources only. The audit did not
+create a Supabase branch, restore a dump, seed data or write to a database.
+
+| Source                               | Read-only evidence                                                                                                               | Representative candidate |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Live Supabase project                | `2` dossiers, `1` option, `102` criteria; the checked-in preflight failed with SQLSTATE `P0001`                                  | No                       |
+| Supabase development branches        | The project reported `0` existing branches                                                                                       | No source available      |
+| VPS snapshot `20260731T150001Z.dump` | Offline `pg_restore --data-only` inspection found `2` dossiers, `1` option, `1` baseline version, `4` groups and `102` criteria  | No                       |
+| VPS snapshot `20260801T150001Z.dump` | Offline `pg_restore --data-only` inspection found `2` dossiers, `1` option, `2` baseline versions, `8` groups and `102` criteria | No                       |
+| Other local snapshots                | A read-only filesystem search found no `.dump` files beyond the two snapshots above                                              | No source available      |
+| `gdrive:qltbyt-backup/`              | The configured rclone directory contained no dump files                                                                          | No source available      |
+| GitHub repository and Actions        | Actions reported `0` artifacts; `database/` contains migrations only                                                             | No source available      |
+
+Both available snapshots fail the upper-limit invariant from total option
+cardinality alone, so restoring either snapshot would not make representative
+plan capture possible. No restore was attempted.
+
+The exact blocker is the absence of an already-existing environment or snapshot
+where one dossier has more than `100` options and a paired baseline has exactly
+`102` criteria. P13A-P1 cannot proceed through the approved read-only,
+non-seeded path until such a source is made available.
+
 ## Plan result
 
 No representative EXPLAIN was captured. Running the plan against one option
@@ -82,5 +106,6 @@ data as a query remediation would exceed the approved P13A-P2 scope.
 The non-seeded representative-data blocker is tracked by
 [GitHub issue #836](https://github.com/thienchi2109/qltbyt-nam-phong/issues/836).
 
-No live write occurred. No migration, RPC, index or production remediation was
-created or applied.
+No live write occurred. No Supabase branch was created, and no dump restore or
+seed occurred. No migration, RPC, index or production remediation was created
+or applied.
