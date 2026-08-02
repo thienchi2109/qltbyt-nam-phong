@@ -856,13 +856,13 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14A1 - Canonical Export Snapshot Manifest
 
-- [ ] P14A1.1 Khóa exact manifest request/response, canonical scope và hai opaque
+- [x] P14A1.1 Khóa exact manifest request/response, canonical scope và hai opaque
       snapshot token bằng RED migration/source tests.
-- [ ] P14A1.2 Thêm helper + manifest RPC read-only nhỏ nhất; không get-or-create,
+- [x] P14A1.2 Thêm helper + manifest RPC read-only nhỏ nhất; không get-or-create,
       không ghi row/revision/audit.
-- [ ] P14A1.3 Thêm đúng một RPC name vào dedicated manifest/proxy allowlist và
+- [x] P14A1.3 Thêm đúng một RPC name vào dedicated manifest/proxy allowlist và
       kiểm tra `admin/global`, denied roles, missing claims.
-- [ ] P14A1.4 Chỉ apply/rollback-only gate qua Supabase MCP sau explicit approval;
+- [x] P14A1.4 Chỉ apply/rollback-only gate qua Supabase MCP sau explicit approval;
       chạy security advisor và strict OpenSpec validation.
 
 ## Phase P14A2 - Paginated Export Ranking And Matrix Contracts

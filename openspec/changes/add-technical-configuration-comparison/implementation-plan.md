@@ -2977,16 +2977,16 @@ No release-blocking UI, accessibility or Equipment regression remains.
 
 ### Tasks
 
-- [ ] Inspect current migrations, live functions/grants read-only and the P12C1
+- [x] Inspect current migrations, live functions/grants read-only and the P12C1
       ranking snapshot contract before choosing the migration timestamp.
-- [ ] Write RED migration/source tests for the exact manifest request/response,
+- [x] Write RED migration/source tests for the exact manifest request/response,
       `admin/global` authorization, canonical ordered scope validation,
       side-effect-free behavior and opaque full/ranking snapshot tokens.
-- [ ] Add the smallest shared SQL helper and manifest RPC needed to fingerprint
+- [x] Add the smallest shared SQL helper and manifest RPC needed to fingerprint
       every workbook-visible source field without creating comparison sets or
       missing rows.
-- [ ] Add only the P14A1 RPC name to the dedicated manifest and proxy allowlist.
-- [ ] Run migration contract tests, rollback-only phase gate after explicit live
+- [x] Add only the P14A1 RPC name to the dedicated manifest and proxy allowlist.
+- [x] Run migration contract tests, rollback-only phase gate after explicit live
       approval, read-only security advisor and strict OpenSpec validation.
 
 ### Exit gate

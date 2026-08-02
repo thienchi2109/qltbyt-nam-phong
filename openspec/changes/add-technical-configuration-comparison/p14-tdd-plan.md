@@ -102,6 +102,8 @@ with merged `main` evidence before its successor starts.
 
 ### Planned Files
 
+- Modify:
+  `openspec/changes/add-technical-configuration-comparison/contracts.md`
 - Create at execution time after migration-order inspection:
   `supabase/migrations/<timestamp>_technical_configuration_result_export_manifest.sql`
 - Create:
@@ -112,6 +114,23 @@ with merged `main` evidence before its successor starts.
   `supabase/tests/technical_configuration_result_export_manifest_phase_gate.sql`
 - Create: `src/lib/technical-configuration-result-export-rpcs.ts`
 - Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
+
+### Locked Manifest Contract
+
+- Request:
+  `{ p_dossier_id, p_baseline_version_id, p_option_ids, p_criterion_ids }`.
+- `p_option_ids` and `p_criterion_ids` are nullable. Non-null arrays are
+  ordered, non-empty, null-free, unique and must belong to the exact
+  dossier/baseline scope.
+- Response:
+  `{ data: { dossier, baseline_version, option_total, criterion_total,
+snapshot_token, ranking_snapshot_token } }`.
+- `dossier` is exactly
+  `{ id, device_type_name, name, revision, archived_at }`.
+- `baseline_version` is exactly
+  `{ id, dossier_id, version_number, status, revision, locked_at }`.
+- The private helper may additionally carry ordered option/criterion IDs for
+  P14A2 consumers, but the public manifest response exposes no extra fields.
 
 ### RED
 
@@ -145,6 +164,23 @@ with merged `main` evidence before its successor starts.
 
 **Deploy boundary:** dormant read-only manifest RPC; no page RPC, client,
 workbook, UI or download.
+
+### P14A1 Execution Evidence - 2026-08-02
+
+- RED migration/source coverage failed on missing volatility, canonical UTC
+  timestamps and runtime validation cases before the implementation fix.
+- Supabase MCP applied
+  `20260802054948_technical_configuration_result_export_manifest.sql` as live
+  migration `20260802073104`.
+- Live metadata confirms the helper, public manifest RPC and P12C1 ranking RPC
+  are `STABLE`, `SECURITY DEFINER` and pinned to
+  `search_path = public, pg_temp`; grants match the locked contract.
+- The rollback-only phase gate passed authorization, exact response shape,
+  ordered scopes, validation branches, canonical timestamp, token sensitivity
+  and side-effect checks. Post-gate fixture counts are zero.
+- Security/performance advisors were reviewed with no P14A1 blocker. Independent
+  re-review reached zero findings; required local gates and strict OpenSpec
+  validation passed.
 
 ## P14A2 - Paginated Export Ranking And Matrix Contracts
 
