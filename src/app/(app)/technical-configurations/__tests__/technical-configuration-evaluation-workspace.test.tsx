@@ -37,7 +37,10 @@ const mocks = vi.hoisted(() => ({
   refetchEvaluationCriteria: vi.fn(),
   refetchAssessment: vi.fn(),
   refetchComparisonSet: vi.fn(),
+  resetResultExport: vi.fn(),
+  retryResultExport: vi.fn(),
   save: vi.fn(),
+  startResultExport: vi.fn(),
   synchronizeVersion: vi.fn(),
 }))
 
@@ -87,6 +90,30 @@ vi.mock("../_hooks/useTechnicalConfigurationOptionListQuery", () => ({
       isError: false,
       refetch: vi.fn(),
     },
+  }),
+}))
+
+vi.mock("../_hooks/useTechnicalConfigurationResultExport", () => ({
+  useTechnicalConfigurationResultExport: () => ({
+    status: "idle",
+    error: null,
+    startExport: mocks.startResultExport,
+    retry: mocks.retryResultExport,
+    reset: mocks.resetResultExport,
+  }),
+}))
+
+vi.mock("next-auth/react", () => ({
+  useSession: () => ({
+    data: {
+      user: {
+        id: "user-1",
+        username: "admin",
+        full_name: "Nguyễn Văn A",
+        role: "admin",
+      },
+    },
+    status: "authenticated",
   }),
 }))
 
@@ -329,6 +356,38 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     expect(screen.getByText("0 / 2")).toBeInTheDocument()
     expect(screen.getByText("1 / 1")).toBeInTheDocument()
     expect(screen.queryByText("Đã đánh giá 2 / 3 tiêu chí")).not.toBeInTheDocument()
+  })
+
+  it("exports the active option and current criterion page without changing navigator state", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    expect(mocks.startResultExport).not.toHaveBeenCalled()
+    await user.click(screen.getByLabelText("Phương án đánh giá"))
+    await user.click(await screen.findByRole("option", { name: "Nhà cung cấp B · Model B" }))
+    await user.click(screen.getByRole("button", { name: "Trang tiếp theo" }))
+
+    expect(await screen.findByText("Trang 2/2")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Xuất kết quả Excel" }))
+
+    expect(screen.queryByRole("radio", { name: /đang hiển thị/ })).not.toBeInTheDocument()
+    await user.click(screen.getByRole("radio", { name: "1 phương án đã chọn" }))
+    await user.click(screen.getByRole("radio", { name: "Trang tiêu chí hiện tại · 1 tiêu chí" }))
+    await user.click(screen.getByRole("button", { name: "Xuất file .xlsx" }))
+
+    expect(mocks.startResultExport).toHaveBeenCalledWith({
+      mode: "full",
+      dossierId: "dossier-1",
+      baselineVersionId: "baseline-1",
+      optionIds: ["option-2"],
+      criterionIds: ["criterion-3"],
+    })
+    expect(screen.getByLabelText("Phương án đánh giá")).toHaveTextContent(
+      "Nhà cung cấp B · Model B"
+    )
+    expect(screen.getByText("Trang 2/2")).toBeInTheDocument()
+    expect(getCriterion("criterion-3")).toHaveAttribute("data-criterion-id", "criterion-3")
   })
 
   it("does not render false progress counters while complete assessments are loading", () => {

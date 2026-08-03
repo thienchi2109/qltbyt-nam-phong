@@ -791,11 +791,19 @@ or download side effect.
 - Create:
   `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationResultExport.ts`
 - Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationResultExportControl.tsx`
+- Create:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export.test.tsx`
 - Modify:
-  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
 - Modify:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-evaluation-workspace.test.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-state.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationResultExportDialog.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-dialog.test.tsx`
 
 ### RED
 
@@ -815,7 +823,9 @@ or download side effect.
 
 1. Implement one orchestration hook over P14A3 and P14B2.
 2. Mount one `Xuất kết quả Excel` action and the P14C1 dialog in
-   `TechnicalConfigurationEvaluationWorkspace`.
+   `TechnicalConfigurationEvaluationActiveWorkspace` through one extracted
+   leaf control so the active option and current criterion page remain owned by
+   the existing P12B2 navigator.
 3. Cancel or ignore obsolete work after context changes.
 4. Download only after complete collection, final manifest revalidation and
    successful serialization.

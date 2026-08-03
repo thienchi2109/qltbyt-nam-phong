@@ -138,6 +138,14 @@ function selectedOptionIds(
   return normalizedIds(state.optionScope === "current_page" ? page.currentIds : page.selectedIds)
 }
 
+/** Returns whether the current visible option IDs are a meaningful subset of the universe. */
+export function hasTechnicalConfigurationResultExportCurrentOptionPage(
+  context: TechnicalConfigurationResultExportContext
+): boolean {
+  const page = context.options.page
+  return Boolean(page && normalizedIds(page.currentIds).length < context.options.total)
+}
+
 function selectedCriterionIds(
   state: TechnicalConfigurationResultExportState
 ): readonly string[] | null {
@@ -168,7 +176,13 @@ export function getTechnicalConfigurationResultExportValidationError(
     return "invalid_totals"
   }
 
-  if (state.optionScope !== "all" && !state.context.options.page) {
+  if (
+    state.optionScope === "current_page" &&
+    !hasTechnicalConfigurationResultExportCurrentOptionPage(state.context)
+  ) {
+    return "unavailable_option_scope"
+  }
+  if (state.optionScope === "selected" && !state.context.options.page) {
     return "unavailable_option_scope"
   }
   if (state.optionScope === "current_page" && selectedOptionIds(state)?.length === 0) {

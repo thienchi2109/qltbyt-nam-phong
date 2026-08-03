@@ -16,6 +16,7 @@ import {
   createTechnicalConfigurationResultExportState,
   getTechnicalConfigurationResultExportSelectionSummary,
   getTechnicalConfigurationResultExportValidationError,
+  hasTechnicalConfigurationResultExportCurrentOptionPage,
   transitionTechnicalConfigurationResultExport,
   type TechnicalConfigurationResultExportContext,
   type TechnicalConfigurationResultExportCriterionScope,
@@ -90,6 +91,7 @@ function ResultExportDialogContent({
   }).state
   const validationError = getTechnicalConfigurationResultExportValidationError(state)
   const summary = getTechnicalConfigurationResultExportSelectionSummary(state)
+  const hasCurrentOptionPage = hasTechnicalConfigurationResultExportCurrentOptionPage(state.context)
 
   function synchronizeContext(current: TechnicalConfigurationResultExportState) {
     return transitionTechnicalConfigurationResultExport(current, {
@@ -200,27 +202,25 @@ function ResultExportDialogContent({
               title={`Tất cả ${state.context.options.total} phương án`}
               onChange={() => applyEvent({ type: "option_scope_changed", scope: "all" })}
             />
+            {hasCurrentOptionPage && optionPage ? (
+              <TechnicalConfigurationResultExportDialogChoice
+                id={`${baseId}-options-current`}
+                name={`${baseId}-options`}
+                value="current_page"
+                checked={state.optionScope === "current_page"}
+                title={`${optionPage.currentIds.length} phương án đang hiển thị`}
+                onChange={() => applyEvent({ type: "option_scope_changed", scope: "current_page" })}
+              />
+            ) : null}
             {optionPage ? (
-              <>
-                <TechnicalConfigurationResultExportDialogChoice
-                  id={`${baseId}-options-current`}
-                  name={`${baseId}-options`}
-                  value="current_page"
-                  checked={state.optionScope === "current_page"}
-                  title={`${optionPage.currentIds.length} phương án đang hiển thị`}
-                  onChange={() =>
-                    applyEvent({ type: "option_scope_changed", scope: "current_page" })
-                  }
-                />
-                <TechnicalConfigurationResultExportDialogChoice
-                  id={`${baseId}-options-selected`}
-                  name={`${baseId}-options`}
-                  value="selected"
-                  checked={state.optionScope === "selected"}
-                  title={`${optionPage.selectedIds.length} phương án đã chọn`}
-                  onChange={() => applyEvent({ type: "option_scope_changed", scope: "selected" })}
-                />
-              </>
+              <TechnicalConfigurationResultExportDialogChoice
+                id={`${baseId}-options-selected`}
+                name={`${baseId}-options`}
+                value="selected"
+                checked={state.optionScope === "selected"}
+                title={`${optionPage.selectedIds.length} phương án đã chọn`}
+                onChange={() => applyEvent({ type: "option_scope_changed", scope: "selected" })}
+              />
             ) : null}
           </div>
         </fieldset>

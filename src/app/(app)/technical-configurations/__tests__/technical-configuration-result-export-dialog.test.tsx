@@ -150,6 +150,38 @@ describe("technical configuration result export state", () => {
     expect(result.state.open).toBe(true)
   })
 
+  it("rejects a redundant current option page while preserving the selected scope", () => {
+    const context = createContext({
+      options: {
+        total: 2,
+        page: {
+          currentIds: ["option-1", "option-2"],
+          selectedIds: ["option-2"],
+        },
+      },
+    })
+    let state = transitionTechnicalConfigurationResultExport(
+      createTechnicalConfigurationResultExportState(context),
+      { type: "open" }
+    ).state
+    state = transitionTechnicalConfigurationResultExport(state, {
+      type: "option_scope_changed",
+      scope: "current_page",
+    }).state
+
+    expect(getTechnicalConfigurationResultExportValidationError(state)).toBe(
+      "unavailable_option_scope"
+    )
+
+    state = transitionTechnicalConfigurationResultExport(state, {
+      type: "option_scope_changed",
+      scope: "selected",
+    }).state
+    const result = transitionTechnicalConfigurationResultExport(state, { type: "confirm" })
+
+    expect(result.request?.optionIds).toEqual(["option-2"])
+  })
+
   it("resets content and scope when dossier or baseline identity changes", () => {
     let state = transitionTechnicalConfigurationResultExport(
       createTechnicalConfigurationResultExportState(createContext()),
@@ -285,6 +317,29 @@ describe("TechnicalConfigurationResultExportDialog", () => {
     expect(screen.queryByRole("radio", { name: /đang hiển thị/ })).not.toBeInTheDocument()
     expect(screen.queryByRole("radio", { name: /đã chọn/ })).not.toBeInTheDocument()
     expect(screen.queryByRole("radio", { name: /Trang tiêu chí hiện tại/ })).not.toBeInTheDocument()
+  })
+
+  it("hides a redundant current option page while keeping the active selected option", async () => {
+    const user = userEvent.setup()
+    render(
+      <DialogHarness
+        context={createContext({
+          options: {
+            total: 2,
+            page: {
+              currentIds: ["option-1", "option-2"],
+              selectedIds: ["option-2"],
+            },
+          },
+        })}
+        onConfirm={vi.fn()}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Mở xuất kết quả" }))
+
+    expect(screen.queryByRole("radio", { name: /đang hiển thị/ })).not.toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "1 phương án đã chọn" })).toBeInTheDocument()
   })
 
   it("disables confirmation and announces an empty selected scope", async () => {

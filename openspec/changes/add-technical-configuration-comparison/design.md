@@ -569,6 +569,14 @@ workbook; khi dữ liệu có phân trang, dialog bắt buộc cho chọn rõ ph
 và criterion. Giá trị mặc định là `Đầy đủ`, `Tất cả phương án` và `Tất cả tiêu
 chí`, không phải current page.
 
+P14C2 mount action qua một leaf control tại
+`TechnicalConfigurationEvaluationActiveWorkspace`, nơi navigator P12B2 đang sở
+hữu active option và current criterion page. Không lift, duplicate hoặc đồng bộ
+shadow navigator state lên parent workspace. Trong evaluation workspace,
+`selected` nghĩa là active option hiện tại; option `current_page` chỉ xuất hiện
+khi visible option IDs là một tập con thực sự của total option IDs. Criterion
+`current_page` luôn lấy từ `navigator.pageCriteria`.
+
 Ba content mode là:
 
 1. `Đầy đủ`: `Tổng quan`, `Xếp hạng`, `Ma trận chi tiết`;

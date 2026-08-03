@@ -29,6 +29,7 @@ import { TechnicalConfigurationEvaluationLoadError } from "./TechnicalConfigurat
 import { TechnicalConfigurationEvaluationNavigatorPane } from "./TechnicalConfigurationEvaluationNavigatorPane"
 import { TechnicalConfigurationEvaluationPanel } from "./TechnicalConfigurationEvaluationPanel"
 import { TechnicalConfigurationProgressSummary } from "./TechnicalConfigurationProgressSummary"
+import { TechnicalConfigurationResultExportControl } from "./TechnicalConfigurationResultExportControl"
 import { toTechnicalConfigurationSaveErrorMessage } from "./TechnicalConfigurationEvaluationWorkspaceUtils"
 
 type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
@@ -207,6 +208,16 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
 
   return (
     <section className="min-w-0 space-y-4" aria-label="Không gian đánh giá cấu hình kỹ thuật">
+      <TechnicalConfigurationResultExportControl
+        key={`${dossier.id}:${baselineVersionId}`}
+        dossierId={dossier.id}
+        baselineVersionId={baselineVersionId}
+        options={options}
+        baselineGroups={baselineGroups}
+        activeOptionId={navigator.activeSelectedOptionId}
+        currentCriteria={navigator.pageCriteria}
+      />
+
       <div className="flex flex-col gap-2 border-y py-3 sm:flex-row sm:items-center sm:justify-between">
         <Label htmlFor="technical-configuration-evaluation-option">Phương án đánh giá</Label>
         <Select

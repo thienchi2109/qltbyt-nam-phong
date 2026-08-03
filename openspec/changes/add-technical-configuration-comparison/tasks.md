@@ -951,13 +951,13 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14C2 - Export Orchestration, Download And Workspace Activation
 
-- [ ] P14C2.1 Mount một action `Xuất kết quả Excel` trong evaluation workspace và
-      giữ nguyên ownership/pagination hiện tại.
-- [ ] P14C2.2 Orchestrate collector -> renderer -> shared `downloadBlob()`; chỉ
+- [x] P14C2.1 Mount một action `Xuất kết quả Excel` tại active evaluation state
+      owner qua leaf control riêng và giữ nguyên ownership/pagination hiện tại.
+- [x] P14C2.2 Orchestrate collector -> renderer -> shared `downloadBlob()`; chỉ
       download một lần sau final manifest revalidation.
-- [ ] P14C2.3 Abort stale/context-switched work, không partial download và cho
+- [x] P14C2.3 Abort stale/context-switched work, không partial download và cho
       retry explicit.
-- [ ] P14C2.4 Chạy standard TS/React gates, focused Excel/Equipment,
+- [x] P14C2.4 Chạy standard TS/React gates, focused Excel/Equipment,
       evaluation/ranking regressions, React Doctor và strict OpenSpec; không
       thêm P13B real-browser gate.
 
