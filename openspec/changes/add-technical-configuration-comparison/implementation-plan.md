@@ -130,7 +130,7 @@ P12C1           -> P13A-P1
 P13A-P1         -> P13A-V
 P13A-P1 fail    -> P13A-P2 -> approved apply/gate -> rerun P13A-P1 green -> P13A-V
 P12C2           -> P13B
-P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14B1 -> P14B2 -> P14C1 -> P14C2
+P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B2 -> P14C1 -> P14C2
 P13A-V + P13B + P7A2 + P9A3 + P14C2 -> P13C
 ```
 
@@ -172,7 +172,7 @@ P12C2 cannot start until P12C1 is complete.
 
 P14 is independent of the deferred P13A/P13B hardening path and uses the strict
 delivery order
-`P14A1 -> P14A2 -> P14A3 -> P14B1 -> P14B2 -> P14C1 -> P14C2`.
+`P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B2 -> P14C1 -> P14C2`.
 P14A1/P14A2 add only dormant, read-only export contracts; P14A3 completes a
 stable full-dataset collector without UI; P14B1/P14B2 build and render the
 workbook without mounting a trigger; P14C1 adds an unmounted export-scope state
@@ -208,7 +208,7 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                           |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                         |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
-| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14B1, P14B2, P14C1, P14C2                                                                                                                                                        |
+| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14A4, P14B1, P14B2, P14C1, P14C2                                                                                                                                                 |
 
 ## Shared Technical Constraints
 
@@ -3091,9 +3091,73 @@ One typed function returns a complete immutable export dataset or one typed
 error. It never publishes partial rows and remains unreachable from production
 UI.
 
+## Phase P14A4 - Ordered Result-Export Axes
+
+**Depends on:** P14A3 merged/gated
+
+**Requirements:** TC-21-S03, TC-21-S04, TC-21-S06, TC-21-S07, TC-21-S08
+
+**Deploy boundary:** dormant bounded axes plus typed dataset fields; no workbook,
+UI or download
+
+### Planned files
+
+- Create:
+  `supabase/migrations/20260802161400_technical_configuration_result_export_snapshot_axes_source.sql`
+- Create:
+  `supabase/migrations/20260802161401_technical_configuration_result_export_axes.sql`
+- Create:
+  `supabase/tests/technical_configuration_result_export_axes_phase_gate.sql`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-axes-migration.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-axis-decoders.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-axes.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-rpc.test.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-types.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-rpc.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-data.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-decoders.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-data.test.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-fixtures.ts`
+- Modify: `src/lib/technical-configuration-result-export-rpcs.ts`
+- Modify:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-rpc-whitelist.test.ts`
+
+### Tasks
+
+- [x] Write RED migration/source tests for exact bounded option/criterion axis
+      contracts, canonical ordinality, repeated totals/tokens, authorization and
+      asymmetric empty dimensions.
+- [x] Expose the ordered descriptors already included in the private full-token
+      payload without changing the exact public manifest response.
+- [x] Add two set-based read-only page RPCs; do not derive axes from matrix
+      cells, duplicate matrix joins or add per-row queries.
+- [x] Add exact typed decoders/adapters and collect/freeze both complete axes
+      before any mode-specific ranking/matrix surface.
+- [x] Prove `0 x 0`, `1 x 0`, `0 x 1` and normal `N x M` datasets retain both
+      independent ordered dimensions and reject drift.
+- [x] Keep client fixtures deterministic/in-memory and SQL fixtures
+      rollback-only; require fresh explicit approval before any live migration
+      apply or phase-gate write.
+
+### Exit gate
+
+Every export dataset carries complete immutable ordered option and criterion
+descriptors consistent with the first/final manifest, including asymmetric empty
+matrix dimensions. No workbook or production UI consumes them yet.
+
 ## Phase P14B1 - Result Workbook Schema And Representative Fixtures
 
-**Depends on:** P14A3
+**Depends on:** P14A4 merged/applied/gated
 
 **Requirements:** TC-21-S03, TC-21-S04, TC-21-S05, TC-21-S09
 

@@ -5,6 +5,10 @@ import {
   TechnicalConfigurationRpcError,
 } from "./technical-configuration-rpc"
 import {
+  decodeCriterionAxisItem,
+  decodeOptionAxisItem,
+} from "./technical-configuration-result-export-axis-decoders"
+import {
   decodeManifest,
   decodeMatrixCell,
   decodePageMetadata,
@@ -13,9 +17,12 @@ import {
 } from "./technical-configuration-result-export-decoders"
 import type { TechnicalConfigurationResultExportErrorKind } from "./technical-configuration-result-export-decoders"
 import type {
+  TechnicalConfigurationResultExportCriterionAxisPageWireResponse,
   TechnicalConfigurationResultExportManifestWireResponse,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
+  TechnicalConfigurationResultExportOptionAxisPageWireResponse,
   TechnicalConfigurationResultExportPageRpcArgs,
+  TechnicalConfigurationResultExportPageWireResponse,
   TechnicalConfigurationResultExportRankingPageWireResponse,
   TechnicalConfigurationResultExportScopeRpcArgs,
 } from "./technical-configuration-result-export-types"
@@ -66,6 +73,33 @@ async function callResultExportRpc<T>(
   }
 }
 
+function listResultExportPage<TItem>(
+  fn: string,
+  args: TechnicalConfigurationResultExportPageRpcArgs,
+  path: string,
+  decodeItem: (value: unknown, index: number) => TItem,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationResultExportPageWireResponse<TItem>> {
+  return callResultExportRpc(
+    fn,
+    args,
+    (value) => {
+      const page = decodePageMetadata(value, args, path)
+      return {
+        data: page.data.map((item, index) => decodeItem(item, index)),
+        dossier_id: page.dossierId,
+        baseline_version_id: page.baselineId,
+        snapshot_token: page.snapshotToken,
+        ranking_snapshot_token: page.rankingSnapshotToken,
+        total: page.total,
+        page: page.page,
+        page_size: page.pageSize,
+      }
+    },
+    signal
+  )
+}
+
 /** Fetch and decode one stable result-export manifest. */
 export function getTechnicalConfigurationResultExportManifest(
   args: TechnicalConfigurationResultExportScopeRpcArgs,
@@ -84,22 +118,11 @@ export function listTechnicalConfigurationResultExportRanking(
   args: TechnicalConfigurationResultExportPageRpcArgs,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationResultExportRankingPageWireResponse> {
-  return callResultExportRpc(
+  return listResultExportPage(
     RESULT_EXPORT_RPC_FUNCTIONS.listRanking,
     args,
-    (value) => {
-      const page = decodePageMetadata(value, args, "ranking")
-      return {
-        data: page.data.map((item, index) => decodeRankingItem(item, index)),
-        dossier_id: page.dossierId,
-        baseline_version_id: page.baselineId,
-        snapshot_token: page.snapshotToken,
-        ranking_snapshot_token: page.rankingSnapshotToken,
-        total: page.total,
-        page: page.page,
-        page_size: page.pageSize,
-      }
-    },
+    "ranking",
+    decodeRankingItem,
     signal
   )
 }
@@ -109,22 +132,39 @@ export function listTechnicalConfigurationResultExportMatrix(
   args: TechnicalConfigurationResultExportPageRpcArgs,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationResultExportMatrixPageWireResponse> {
-  return callResultExportRpc(
+  return listResultExportPage(
     RESULT_EXPORT_RPC_FUNCTIONS.listMatrix,
     args,
-    (value) => {
-      const page = decodePageMetadata(value, args, "matrix")
-      return {
-        data: page.data.map((item, index) => decodeMatrixCell(item, index)),
-        dossier_id: page.dossierId,
-        baseline_version_id: page.baselineId,
-        snapshot_token: page.snapshotToken,
-        ranking_snapshot_token: page.rankingSnapshotToken,
-        total: page.total,
-        page: page.page,
-        page_size: page.pageSize,
-      }
-    },
+    "matrix",
+    decodeMatrixCell,
+    signal
+  )
+}
+
+/** Fetch and decode one bounded ordered option-axis page. */
+export function listTechnicalConfigurationResultExportOptionAxis(
+  args: TechnicalConfigurationResultExportPageRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationResultExportOptionAxisPageWireResponse> {
+  return listResultExportPage(
+    RESULT_EXPORT_RPC_FUNCTIONS.listOptionAxis,
+    args,
+    "option_axis",
+    decodeOptionAxisItem,
+    signal
+  )
+}
+
+/** Fetch and decode one bounded ordered criterion-axis page. */
+export function listTechnicalConfigurationResultExportCriterionAxis(
+  args: TechnicalConfigurationResultExportPageRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationResultExportCriterionAxisPageWireResponse> {
+  return listResultExportPage(
+    RESULT_EXPORT_RPC_FUNCTIONS.listCriterionAxis,
+    args,
+    "criterion_axis",
+    decodeCriterionAxisItem,
     signal
   )
 }

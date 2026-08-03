@@ -4,7 +4,7 @@
 > `superpowers:test-driven-development` for each behavior slice,
 > `code-deduplication` before adding reusable logic and
 > `superpowers:verification-before-completion` before any completion claim.
-> Execute P14A1, P14A2, P14A3, P14B1, P14B2, P14C1 and P14C2 as seven
+> Execute P14A1, P14A2, P14A3, P14A4, P14B1, P14B2, P14C1 and P14C2 as eight
 > sequential PRs. Do not combine leaves without explicit user approval.
 
 ## Goal
@@ -386,6 +386,136 @@ UI or download.
   regressions bring the focused total to `48/48`. Format, no-explicit-any,
   diff-only dedupe and typecheck gates pass. React Doctor reports `100/100`, and
   strict OpenSpec validation passes.
+
+## P14A4 - Ordered Result-Export Axes
+
+### Planned Files
+
+- Create:
+  `supabase/migrations/20260802161400_technical_configuration_result_export_snapshot_axes_source.sql`
+- Create:
+  `supabase/migrations/20260802161401_technical_configuration_result_export_axes.sql`
+- Create:
+  `supabase/tests/technical_configuration_result_export_axes_phase_gate.sql`
+- Create:
+  `supabase/tests/technical_configuration_result_export_axes_pagination_phase_gate.sql`
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-axes-migration.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-axis-decoders.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-axes.test.ts`
+- Create:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-rpc.test.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-types.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-rpc.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-data.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-decoders.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-data.test.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-fixtures.ts`
+- Modify: `src/lib/technical-configuration-result-export-rpcs.ts`
+- Modify:
+  `src/app/api/rpc/__tests__/technical-configuration-result-export-rpc-whitelist.test.ts`
+
+### RED
+
+1. Lock exact bounded option-axis and criterion-axis request/response contracts,
+   validated request ordinality, item keys and repeated snapshot identities.
+2. Prove the public manifest keeps its exact P14A1 shape while the private
+   snapshot exposes the already-hashed option/criterion descriptors to the two
+   new page RPCs.
+3. Reproduce `0 x 0`, `1 x 0`, `0 x 1` and normal `N x M` datasets without
+   deriving either axis from matrix cells.
+4. Reject duplicate/missing/reordered axis IDs, changed totals/tokens and
+   malformed descriptor fields before publishing the dataset.
+5. Keep client fixtures deterministic and in memory. The post-apply SQL gate
+   may create transaction-local deterministic rows but must roll back; do not
+   add persistent seed data or derive fixtures from live domain rows.
+
+### GREEN
+
+1. Add two `STABLE SECURITY DEFINER` page RPCs with page size `1-100`, pinned
+   `search_path`, existing global/admin guard and least-privilege grants.
+2. Page the ordered descriptor arrays already used by the P14A1 full snapshot
+   token; do not duplicate matrix joins or change public manifest keys.
+3. Add module-local exact decoders/adapters, collect each axis sequentially,
+   and await both independent axes before ranking/matrix surfaces.
+4. Return one deeply immutable complete dataset or one typed error.
+
+### Refactor And Gate
+
+1. Keep the near-threshold P14A3 decoder line count stable by exporting existing
+   primitives to a dedicated axis decoder. Extract the existing RPC-adapter
+   tests before adding axis coverage so the 450-line test ceiling is preserved.
+2. Run migration/source tests, focused adapter/collector regressions, semantic
+   dedupe, standard TypeScript gates and strict OpenSpec validation.
+3. Keep the primary runtime gate at the 450-line ceiling and use a separate
+   rollback-only pagination gate for valid page-2 coverage.
+4. Apply and run each live phase gate only after fresh explicit approval for the
+   exact Supabase MCP write.
+
+### Execution Evidence - 2026-08-02
+
+- Read-only Supabase inspection confirmed the deployed P14A2 snapshot helper is
+  `STABLE SECURITY DEFINER`, pins `search_path = public, pg_temp`, keeps the
+  private helper service-only and projects the exact public manifest keys.
+- RED review test:
+  `technical-configuration-result-export-axes-migration.test.ts` failed `1/6`
+  because the draft added `display_label` to the hashed snapshot payload.
+- GREEN keeps the pre-return P14A2 snapshot source byte-for-byte unchanged and
+  derives `display_label` through the existing immutable helper only in the
+  option-axis RPC.
+- Local gates passed: Prettier, no explicit `any`, diff-only dedupe, exported
+  TSDoc, typecheck, all seven P14 export files (`74/74`), React Doctor
+  (`100/100`), `git diff --check` and strict OpenSpec validation.
+- The rollback-only SQL phase gate now covers exact ACLs, missing/denied/global/
+  raw-admin roles, page bounds, ordered exact envelopes, repeated tokens,
+  `0 x 0`, `1 x 0`, `0 x 1`, normal `2 x 2` and before/after side-effect
+  counts.
+- On 2026-08-03, fresh explicit approval was received and both migrations were
+  applied through Supabase MCP as live ledger versions `20260803001344` and
+  `20260803001429`.
+- The first rollback-only phase-gate run failed RED with SQLSTATE `23505`
+  because its fixture created two draft baselines per dossier. A focused
+  regression failed `1/7`; the fixture now keeps one draft and one valid locked
+  baseline per dossier, and the focused test passes `7/7`.
+- The corrected live phase gate completed through its final `ROLLBACK`, covering
+  ACLs, authorization, bounds, exact order/envelopes/tokens, asymmetric
+  dimensions and side-effect counts. Follow-up inspection found zero residual
+  fixture rows.
+- Independent review found the primary gate did not exercise a valid page 2.
+  RED source coverage reported `2 failed / 7 passed` while the supplemental
+  gate was absent.
+  GREEN adds a 216-line rollback-only pagination gate and passes `9/9`, proving
+  page size `1`, pages `1` and `2`, requested `B -> A` ordering, exact total `2`
+  and repeated snapshot/ranking tokens for both axes.
+- Final review then found two source-test mutations still passed: a missing SQL
+  function terminator and `COMMIT;` appended after `ROLLBACK;`. Focused RED
+  reported `2 failed / 7 passed`; GREEN requires both function markers, rejects
+  `COMMIT;` and requires `ROLLBACK` as the final non-comment statement, passing
+  `9/9`.
+- On 2026-08-03, fresh explicit approval was received for the supplemental gate
+  with SHA256
+  `2c8c1ca3e31d0bae39c66d2a3d6b38876ab5c34d7bd87c4c8796ae3bde6ef594`.
+  It completed through `ROLLBACK`; follow-up counts were zero for dossiers,
+  versions, groups, criteria, suppliers and options, proving no gate-specific
+  persistent state. The rerun security advisor reported the same project-wide
+  baseline.
+- Security and performance advisors completed. They reported the existing
+  project-wide baseline, including the generic authenticated
+  `SECURITY DEFINER` advisory; P14A4 intentionally grants the guarded axis RPCs
+  to `authenticated`, while the private snapshot helper remains service-only.
+- Code Review Graph, GitNexus and exact repository searches found no existing
+  equivalent ordered-axis collector or order validator to reuse.
+
+**Deploy boundary:** dormant bounded read-only axes and typed dataset fields; no
+workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.
 
 ## P14B1 - Result Workbook Schema And Representative Fixtures
 

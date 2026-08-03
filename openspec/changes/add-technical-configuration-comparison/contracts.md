@@ -330,6 +330,7 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P12C1 | `technical_configuration_reference_ranking_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | P14A1 | `technical_configuration_result_export_manifest_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | P14A2 | `technical_configuration_result_export_ranking_list`, `technical_configuration_result_export_matrix_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| P14A4 | `technical_configuration_result_export_option_axis_list`, `technical_configuration_result_export_criterion_axis_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
 that introduces an RPC also owns allowlisting only the names introduced by that
@@ -343,8 +344,9 @@ integration in the same leaf, but exposes the function only after its migration
 and rollback-only gate pass.
 P14A1 owns the canonical export snapshot helper, manifest RPC, dedicated name
 manifest and proxy allowlist entry. P14A2 owns only the two bounded data RPCs
-that consume the P14A1 snapshot helper, plus their allowlist entries. P14A3 and
-all P14B/P14C leaves add no RPC or migration.
+that consume the P14A1 snapshot helper, plus their allowlist entries. P14A4 owns
+only the two bounded ordered-axis RPCs and their allowlist entries. P14A3 and all
+P14B/P14C leaves add no RPC or migration.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -494,9 +496,10 @@ snapshot_token, ranking_snapshot_token } }`.
   `{ id, device_type_name, name, revision, archived_at }`.
   `baseline_version` is exactly
   `{ id, dossier_id, version_number, status, revision, locked_at }`.
-  The private P14A1 helper may additionally carry ordered option and criterion
-  IDs for P14A2 consumers, but the public manifest response exposes no extra
-  fields.
+  The private P14A1 helper additionally carries ordered option and criterion IDs
+  for P14A2 consumers. P14A4 may also expose the already-hashed ordered option
+  and criterion descriptors inside the private helper, but the public manifest
+  response exposes no extra fields.
 - The P14A1 full `snapshot_token` is opaque, non-empty and covers every field
   that can change visible workbook output: dossier/baseline identity, ordered
   option/supplier identity, ordered criteria, comparison-set identity,
@@ -535,15 +538,34 @@ excerpt }`. Missing comparison sets, responses and assessments produce nullable
   products and baseline-only evidence are excluded from option columns. The
   ranking and matrix surfaces use the same private immutable derived-status and
   option-display-label helpers so their precedence and labels cannot drift.
+- `technical_configuration_result_export_option_axis_list` and
+  `technical_configuration_result_export_criterion_axis_list` extend the
+  manifest scope with `p_page`, `p_page_size`, where page size is `1-100`.
+  Each returns
+  `{ data, dossier_id, baseline_version_id, snapshot_token,
+ranking_snapshot_token, total, page, page_size }` in validated request
+  ordinality. Option items are exactly
+  `{ option_id, supplier_id, supplier_name, display_label, model, manufacturer,
+option_name }`. Criterion items are exactly
+  `{ group_id, group_name, group_order, criterion_id, criterion_code,
+criterion_title, requirement_text, criterion_order }`. Both surfaces page the
+  descriptor arrays already included in the full snapshot token payload and do
+  not reconstruct axes from matrix cells. `display_label` is derived by the
+  existing immutable label helper at the option-axis boundary, so the P14A2
+  snapshot-token payload stays byte-for-byte unchanged. The public manifest
+  keeps its exact P14A1 keys.
 - P14 export RPCs are side-effect-free. They never call comparison-set
   get-or-create, never create missing rows, never increment dossier/baseline/
   comparison/assessment revisions and never alter audit metadata. Missing
   comparison sets, responses, documents, citations or assessments are
   represented as empty/null output.
-- P14A3 reads manifest, sequentially collects every required ranking/matrix page,
-  validates exact metadata, totals, keys and both tokens, then reads manifest
-  again. It publishes no partial dataset and rejects the whole export if the
-  final manifest differs from the first.
+- P14A4 extends the P14A3 collector: it reads manifest, collects each axis's
+  pages sequentially while allowing the two independent axes to run in
+  parallel, waits for both complete axes before any required ranking/matrix
+  page, validates exact metadata, totals, ordered unique keys and both tokens,
+  then reads manifest again. It publishes no partial dataset and rejects the
+  whole export if the final manifest differs from the first. Independent axes
+  preserve valid `0 x 0`, `1 x 0`, `0 x 1` and normal `N x M` dimensions.
 - A successful mutation returns the new revision in `data`.
 
 ### Error Taxonomy

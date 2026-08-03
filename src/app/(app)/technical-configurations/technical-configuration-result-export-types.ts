@@ -46,6 +46,44 @@ export type TechnicalConfigurationResultExportManifestWireResponse = {
   readonly data: TechnicalConfigurationResultExportManifestWire
 }
 
+export type TechnicalConfigurationResultExportOptionAxisItemWire = {
+  readonly option_id: string
+  readonly supplier_id: string
+  readonly supplier_name: string
+  readonly display_label: string
+  readonly model: string | null
+  readonly manufacturer: string | null
+  readonly option_name: string | null
+}
+
+export type TechnicalConfigurationResultExportCriterionAxisItemWire = {
+  readonly group_id: string
+  readonly group_name: string
+  readonly group_order: number
+  readonly criterion_id: string
+  readonly criterion_code: string
+  readonly criterion_title: string | null
+  readonly requirement_text: string
+  readonly criterion_order: number
+}
+
+export type TechnicalConfigurationResultExportPageWireResponse<TItem> = {
+  readonly data: TItem[]
+  readonly dossier_id: string
+  readonly baseline_version_id: string
+  readonly snapshot_token: string
+  readonly ranking_snapshot_token: string
+  readonly total: number
+  readonly page: number
+  readonly page_size: number
+}
+
+export type TechnicalConfigurationResultExportOptionAxisPageWireResponse =
+  TechnicalConfigurationResultExportPageWireResponse<TechnicalConfigurationResultExportOptionAxisItemWire>
+
+export type TechnicalConfigurationResultExportCriterionAxisPageWireResponse =
+  TechnicalConfigurationResultExportPageWireResponse<TechnicalConfigurationResultExportCriterionAxisItemWire>
+
 export type TechnicalConfigurationResultExportRankingItemWire = {
   readonly option_id: string
   readonly supplier_id: string
@@ -59,16 +97,8 @@ export type TechnicalConfigurationResultExportRankingItemWire = {
   readonly rank: number | null
 }
 
-export type TechnicalConfigurationResultExportRankingPageWireResponse = {
-  readonly data: TechnicalConfigurationResultExportRankingItemWire[]
-  readonly dossier_id: string
-  readonly baseline_version_id: string
-  readonly snapshot_token: string
-  readonly ranking_snapshot_token: string
-  readonly total: number
-  readonly page: number
-  readonly page_size: number
-}
+export type TechnicalConfigurationResultExportRankingPageWireResponse =
+  TechnicalConfigurationResultExportPageWireResponse<TechnicalConfigurationResultExportRankingItemWire>
 
 export type TechnicalConfigurationResultExportDocumentLinkWire = {
   readonly document_id: string
@@ -104,16 +134,8 @@ export type TechnicalConfigurationResultExportMatrixCellWire = {
   readonly conclusion: TechnicalConfigurationDerivedStatus
 }
 
-export type TechnicalConfigurationResultExportMatrixPageWireResponse = {
-  readonly data: TechnicalConfigurationResultExportMatrixCellWire[]
-  readonly dossier_id: string
-  readonly baseline_version_id: string
-  readonly snapshot_token: string
-  readonly ranking_snapshot_token: string
-  readonly total: number
-  readonly page: number
-  readonly page_size: number
-}
+export type TechnicalConfigurationResultExportMatrixPageWireResponse =
+  TechnicalConfigurationResultExportPageWireResponse<TechnicalConfigurationResultExportMatrixCellWire>
 
 export type TechnicalConfigurationResultExportMode =
   "full" | "ranking_only" | "detailed_matrix_only"
@@ -129,6 +151,8 @@ export type TechnicalConfigurationResultExportRequest = {
 
 type ResultExportDatasetBase = {
   readonly manifest: TechnicalConfigurationResultExportManifestWire
+  readonly optionAxis: readonly TechnicalConfigurationResultExportOptionAxisItemWire[]
+  readonly criterionAxis: readonly TechnicalConfigurationResultExportCriterionAxisItemWire[]
 }
 
 export type TechnicalConfigurationResultExportDataset =
