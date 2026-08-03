@@ -3246,27 +3246,36 @@ contract; GREEN adds no ExcelJS, RPC, migration, DB, UI or download behavior.
 ### Planned files
 
 - Create: `src/lib/technical-configuration-result-excel-export.ts`
+- Create: `src/lib/technical-configuration-result-excel-styles.ts`
 - Create:
   `src/lib/__tests__/technical-configuration-result-excel-export.test.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-export-boundary.test.ts`
 - Reuse unchanged unless a proven shared-contract gap exists:
   `src/lib/excel-workbook.ts`
 
 ### Tasks
 
-- [ ] Write RED focused workbook tests that inspect sheets, hidden state,
+- [x] Write RED focused workbook tests that inspect sheets, hidden state,
       merged cells, values, hyperlinks, filters, panes, widths/heights, borders,
       fills and representative continuation sheets.
-- [ ] Reuse `createExcelWorkbook()` and the existing lazy ExcelJS serialization
+- [x] Reuse `createExcelWorkbook()` and the existing lazy ExcelJS serialization
       pattern; do not route the domain workbook through flat `exportToExcel()`.
-- [ ] Render the two approved workbook layouts from Stitch project
-      `1463377740887387448`: overview/ranking
+- [x] Use the two workbook screens from Stitch project `1463377740887387448`
+      as visual guidance while rendering the OpenSpec/P14B1F content contract:
+      overview/ranking
       `d394c0dd25f146cf9423b8acf8eeaa86` and detailed matrix
       `45c3a6f4ac514212ba3259064ef19ea0`. P14C1 separately owns dialog
       `4aaff09e4788412386ea8d4f1baa4da9`.
-- [ ] Lock `#166534` title/header styling, white title text, thin gray borders,
+- [x] Lock `#166534` title/header styling, white title text, thin gray borders,
       zebra rows, wrap/top alignment, filters, frozen panes, amber disclaimer
       and restrained conclusion fills.
-- [ ] Assert no chart, gradient, score, percentage, award decision or truncated
+- [x] Preserve every document citation label/URL in one supplementary cell;
+      make the first HTTP(S) URL clickable and keep later URLs visible text
+      because Excel supports one hyperlink target per cell.
+- [x] Serialize and reload the physical 16,384-column boundary, including the
+      continuation option's values, link fallback, merges and presentation.
+- [x] Assert no chart, gradient, score, percentage, award decision or truncated
       option exists.
 
 ### Exit gate

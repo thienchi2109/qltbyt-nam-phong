@@ -927,14 +927,15 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14B2 - Approved ExcelJS Workbook Rendering
 
-- [ ] P14B2.1 Khóa values, hidden state, links, filters, panes, dimensions,
-      borders/fills và continuation sheets bằng focused workbook tests.
-- [ ] P14B2.2 Reuse `createExcelWorkbook()` và lazy ExcelJS serialization;
+- [x] P14B2.1 Khóa values, exact `_meta`, hidden state, multi-link fallback,
+      filters, panes, dimensions, borders/fills và continuation round-trip bằng
+      focused workbook tests.
+- [x] P14B2.2 Reuse `createExcelWorkbook()` và lazy ExcelJS serialization;
       không thêm cờ domain vào flat `exportToExcel()`.
-- [ ] P14B2.3 Render đúng hai workbook mockup đã duyệt với màu `#166534`,
-      zebra, wrap/top alignment, amber disclaimer và restrained conclusion
-      fills.
-- [ ] P14B2.4 Xác minh không chart, gradient, score, percentage, award decision,
+- [x] P14B2.3 Dùng hai workbook screen Stitch làm visual guidance, giữ
+      OpenSpec/P14B1F làm chuẩn nội dung, với màu `#166534`, zebra, wrap/top
+      alignment, amber disclaimer và restrained conclusion fills.
+- [x] P14B2.4 Xác minh không chart, gradient, score, percentage, award decision,
       mounted trigger hoặc download side effect.
 
 ## Phase P14C1 - Export Scope Dialog And State Machine

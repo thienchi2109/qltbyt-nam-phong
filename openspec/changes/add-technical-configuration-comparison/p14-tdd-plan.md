@@ -677,8 +677,11 @@ no renderer or production caller.
 ### Planned Files
 
 - Create: `src/lib/technical-configuration-result-excel-export.ts`
+- Create: `src/lib/technical-configuration-result-excel-styles.ts`
 - Create:
   `src/lib/__tests__/technical-configuration-result-excel-export.test.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-export-boundary.test.ts`
 - Reuse unchanged unless a shared-contract gap is proven:
   `src/lib/excel-workbook.ts`
 
@@ -712,6 +715,33 @@ no renderer or production caller.
 
 **Deploy boundary:** workbook API exists but has no mounted production caller or
 download effect.
+
+### P14B2 Execution Evidence - 2026-08-03
+
+- The focused RED suite failed only because
+  `src/lib/technical-configuration-result-excel-export.ts` did not exist.
+- The renderer accepts only the output-only P14B1F workbook model, reuses
+  `createExcelWorkbook()`, returns a workbook or serialized bytes and does not
+  import `downloadBlob()`, UI, caller or orchestration code.
+- Semantic reuse discovery found no matching shared Excel style abstraction.
+  P14-specific visual tokens were extracted locally into
+  `technical-configuration-result-excel-styles.ts` to keep the renderer below
+  the repository's 350-line extraction threshold.
+- Focused renderer tests pass `6/6`; the combined P14/shared workbook,
+  baseline/option workbook and Equipment Excel regression set passes
+  `160 passed / 4 skipped` across `15` files.
+- All three modes serialize and reload before asserting sheet order/state,
+  primary presentation and exact `_meta` values. The physical-column boundary
+  test separately reloads the XFD continuation, preserving exact values, sheet
+  presentation and every ordered citation URL. The first HTTP(S) URL is
+  clickable and remaining URLs stay visible without adding columns/sheets or
+  truncating content.
+- Format, no-explicit-any, diff-only dedupe and typecheck gates pass. React
+  Doctor changed-scope scans the four changed source/test files with no
+  findings. The current React Doctor v0.9.3 full-scan syntax is `--scope full`;
+  its repo-wide baseline findings are outside this renderer-only phase.
+- Strict OpenSpec validation passes for
+  `add-technical-configuration-comparison`.
 
 ## P14C1 - Export Scope Dialog And State Machine
 

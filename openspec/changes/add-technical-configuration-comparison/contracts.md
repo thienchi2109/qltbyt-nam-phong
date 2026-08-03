@@ -785,9 +785,13 @@ a three-column group in this exact order:
 2. `Thông tin bổ sung / tài liệu`
 3. `Kết luận đánh giá`
 
-Supplementary/document cells preserve supplier text and render exact HTTP(S)
-document links/citation labels without affecting the conclusion. Conclusion
-cells use the existing seven-status derivation and restrained status fills.
+Supplementary/document cells preserve supplier text and render every exact
+HTTP(S) document URL/citation label in deterministic model order without
+affecting the conclusion. Because one Excel cell supports one hyperlink target,
+the first HTTP(S) document URL is clickable and later links remain complete
+visible text in that same cell; the renderer does not add a column/sheet or
+truncate a citation. Conclusion cells use the existing seven-status derivation
+and restrained status fills.
 
 The approved visual contract is normative:
 
