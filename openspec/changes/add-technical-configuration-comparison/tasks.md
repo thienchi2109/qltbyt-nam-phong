@@ -904,12 +904,12 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14B1 - Result Workbook Schema And Representative Fixtures
 
-- [ ] P14B1.1 Khóa ba content mode, visible sheet order, hidden `_meta`, bốn
+- [x] P14B1.1 Khóa ba content mode, visible sheet order, hidden `_meta`, bốn
       context columns và ba cột cho mỗi option.
-- [ ] P14B1.2 Tạo output-only versioned workbook model, không parser/import/apply.
-- [ ] P14B1.3 Partition continuation matrix sheets theo giới hạn cột vật lý,
+- [x] P14B1.2 Tạo output-only versioned workbook model, không parser/import/apply.
+- [x] P14B1.3 Partition continuation matrix sheets theo giới hạn cột vật lý,
       không truncate/hidden cap.
-- [ ] P14B1.4 Tạo fixture in-memory deterministic lớn hơn 100 options x 102
+- [x] P14B1.4 Tạo fixture in-memory deterministic lớn hơn 100 options x 102
       criteria; tuyệt đối không seed hoặc đọc/ghi live DB.
 
 ## Phase P14B2 - Approved ExcelJS Workbook Rendering

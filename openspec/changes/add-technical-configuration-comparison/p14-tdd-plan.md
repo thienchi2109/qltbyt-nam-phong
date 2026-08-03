@@ -521,6 +521,7 @@ workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.
 
 ### Planned Files
 
+- Create: `src/lib/technical-configuration-result-excel-contract-types.ts`
 - Create: `src/lib/technical-configuration-result-excel-contract.ts`
 - Create:
   `src/lib/__tests__/technical-configuration-result-excel-fixtures.ts`
@@ -550,7 +551,44 @@ workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.
 1. Compare baseline/option workbook contracts for naming/version conventions;
    share only generic contracts that are genuinely identical.
 2. Run standard TypeScript gates and focused pure tests.
-3. Validate OpenSpec strictly, review, merge and sync `main`.
+3. Validate OpenSpec strictly, review and open a non-draft PR. Merge and sync
+   `main` remain a separately approved follow-up.
+
+### Execution Evidence - 2026-08-03
+
+- The preserved pre-P14A4 stash was applied without dropping it. Its original
+  pure draft passed `11/11`, providing a recovery baseline before contract
+  changes.
+- RED added P14A4 ordered-axis ownership, narrowed-order and asymmetric
+  dimension coverage. The focused suite reported `2 failed / 10 passed`;
+  GREEN used `optionAxis` and `criterionAxis` as the independent ordered
+  sources and passed `12/12`.
+- Independent review required overview scope, a complete sparse `2 x 2`
+  fixture with one explicit `not_evaluated` cell, a true `2 of 3` narrowed
+  selection, the exact `5,460`-option boundary and independent deterministic
+  fixture construction.
+- Review-follow-up RED reported `1 failed / 11 passed`, only because overview
+  scope was absent. GREEN shares one pure scope builder between overview and
+  hidden `_meta` and passes `12/12`.
+- Final `mix-gpt-5.6` review found the narrowed test still mixed `2 x 2` axes
+  with a `3 x 3` manifest/ranking/matrix source, and missing-data coverage
+  nulled descriptors on matrix cells even though option headers own them.
+  RED reported `2 failed / 10 passed`; GREEN adds a consistent selected-scope
+  fixture, filters axes/ranking/matrix together, sets manifest totals to
+  `2 x 2` and covers nullable descriptors on `optionAxis`, passing `12/12`.
+- Boundary coverage proves one matrix sheet fits exactly `5,460` options in
+  `16,384` physical columns, while `5,461` options partition as `5,460 + 1`
+  without truncation. Empty coverage includes `0 x 0`, `1 x 0` and `0 x 1`.
+- Local gates passed: Prettier, no explicit `any`, diff-only dedupe, exported
+  TSDoc, typecheck, all eight P14 export files (`86/86`), React Doctor
+  (`100/100`), `git diff --check`, the output-only import boundary and strict
+  OpenSpec validation.
+- Code Review Graph, GitNexus and exact repository search found no equivalent
+  output-only result-workbook model or generic worksheet partition capability
+  to reuse. Existing baseline/option contracts own different templates; the
+  closest option path also owns ExcelJS/import parsing and is outside P14B1.
+- All fixtures remain deterministic and in-memory. No seed, live DB operation,
+  ExcelJS/rendering, Blob/download, UI or parser/import/apply work was added.
 
 **Deploy boundary:** pure model and test fixtures; no rendering or side effect.
 

@@ -3165,6 +3165,7 @@ matrix dimensions. No workbook or production UI consumes them yet.
 
 ### Planned files
 
+- Create: `src/lib/technical-configuration-result-excel-contract-types.ts`
 - Create: `src/lib/technical-configuration-result-excel-contract.ts`
 - Create:
   `src/lib/__tests__/technical-configuration-result-excel-fixtures.ts`
@@ -3173,16 +3174,16 @@ matrix dimensions. No workbook or production UI consumes them yet.
 
 ### Tasks
 
-- [ ] Write RED contract tests for the three content modes, visible sheet order,
+- [x] Write RED contract tests for the three content modes, visible sheet order,
       hidden `_meta`, exact four matrix context columns and exact three-column
       option groups.
-- [ ] Define one output-only versioned workbook model; do not add an import,
+- [x] Define one output-only versioned workbook model; do not add an import,
       parser or apply contract.
-- [ ] Encode continuation-sheet planning from Excel's physical column limit;
+- [x] Encode continuation-sheet planning from Excel's physical column limit;
       never truncate or introduce a hidden option cap.
-- [ ] Add deterministic in-memory fixtures for empty/sparse/tied/missing-data
+- [x] Add deterministic in-memory fixtures for empty/sparse/tied/missing-data
       cases and more than 100 options x 102 criteria.
-- [ ] Keep fixture generation local to tests and free of seed/live DB access.
+- [x] Keep fixture generation local to tests and free of seed/live DB access.
 
 ### Exit gate
 
