@@ -591,6 +591,12 @@ tiết` freeze hàng header và bốn cột `STT`, `Nhóm tiêu chí`, `Mã tiê
 `Yêu cầu cấu hình cơ sở`; mỗi option dùng ba cột `Phản hồi nhà cung cấp`,
 `Thông tin bổ sung / tài liệu`, `Kết luận đánh giá`.
 
+Nếu một ô `Thông tin bổ sung / tài liệu` có nhiều citation, renderer giữ toàn bộ
+label và HTTP(S) URL theo đúng thứ tự model. Do một ô Excel chỉ có một hyperlink
+target, URL HTTP(S) đầu tiên là clickable; các URL còn lại vẫn hiển thị đầy đủ
+dưới dạng text trong cùng ô. Renderer không thêm cột/sheet và không truncate
+citation để né giới hạn này.
+
 Workbook giữ visual direction từ Stitch: title fill xanh đậm `#166534`, chữ
 trắng, header xanh, border xám mảnh, zebra rows, wrap text, top alignment,
 filter, freeze panes, status fill tiết chế và disclaimer màu amber. OpenSpec và
