@@ -23,8 +23,8 @@ import {
   type TechnicalConfigurationResultExportOptionScope,
   type TechnicalConfigurationResultExportState,
   type TechnicalConfigurationResultExportValidationError,
-} from "../../technical-configuration-result-export-state"
-import type { TechnicalConfigurationResultExportMode } from "../../technical-configuration-result-export-types"
+} from "@/app/(app)/technical-configurations/technical-configuration-result-export-state"
+import type { TechnicalConfigurationResultExportMode } from "@/app/(app)/technical-configurations/technical-configuration-result-export-types"
 import { TechnicalConfigurationResultExportDialogChoice } from "./TechnicalConfigurationResultExportDialogChoice"
 
 /** Controlled P14C1 dialog props. The parent owns visibility and receives one request intent. */
@@ -74,7 +74,7 @@ function ResultExportDialogContent({
   context: TechnicalConfigurationResultExportContext
   onOpenChange: (open: boolean) => void
   onConfirm: (request: TechnicalConfigurationResultExportDialogRequest) => void
-  returnFocusRef: React.MutableRefObject<HTMLElement | null>
+  returnFocusRef: React.RefObject<HTMLElement | null>
 }>) {
   const baseId = React.useId()
   const firstModeRef = React.useRef<HTMLInputElement>(null)
