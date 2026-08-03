@@ -1,6 +1,5 @@
 -- P14A4 rollback-only ACL, authorization and ordered-axis runtime gate.
 BEGIN;
-
 CREATE FUNCTION pg_temp.assert_true(p_label TEXT, p_condition BOOLEAN)
 RETURNS VOID LANGUAGE plpgsql AS $gate$
 BEGIN
@@ -85,6 +84,7 @@ $gate$;
 DO $gate$
 DECLARE
   v_suffix TEXT := to_char(clock_timestamp(), 'YYYYMMDDHH24MISSMS');
+  v_locked_at TIMESTAMPTZ := clock_timestamp();
   v_user_id BIGINT;
   v_dossier_with_options_id UUID := gen_random_uuid();
   v_dossier_without_options_id UUID := gen_random_uuid();
@@ -161,24 +161,24 @@ BEGIN
       v_user_id
     );
   INSERT INTO public.technical_configuration_baseline_versions (
-    id, dossier_id, version_number, status, next_criterion_number, revision,
-    created_by, updated_by
+    id, dossier_id, version_number, status, locked_at, locked_by,
+    next_criterion_number, revision, created_by, updated_by
   ) VALUES
     (
-      v_normal_version_id, v_dossier_with_options_id, 1, 'draft', 3, 1,
-      v_user_id, v_user_id
+      v_normal_version_id, v_dossier_with_options_id, 1, 'draft', NULL, NULL,
+      3, 1, v_user_id, v_user_id
     ),
     (
-      v_no_criteria_version_id, v_dossier_with_options_id, 2, 'draft', 1, 1,
-      v_user_id, v_user_id
+      v_no_criteria_version_id, v_dossier_with_options_id, 2, 'locked',
+      v_locked_at, v_user_id, 1, 1, v_user_id, v_user_id
     ),
     (
-      v_one_criterion_version_id, v_dossier_without_options_id, 1, 'draft', 2, 1,
-      v_user_id, v_user_id
+      v_one_criterion_version_id, v_dossier_without_options_id, 1, 'draft',
+      NULL, NULL, 2, 1, v_user_id, v_user_id
     ),
     (
-      v_empty_version_id, v_dossier_without_options_id, 2, 'draft', 1, 1,
-      v_user_id, v_user_id
+      v_empty_version_id, v_dossier_without_options_id, 2, 'locked',
+      v_locked_at, v_user_id, 1, 1, v_user_id, v_user_id
     );
   INSERT INTO public.technical_configuration_baseline_groups (
     id, baseline_version_id, name, sort_order, created_by, updated_by

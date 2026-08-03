@@ -398,6 +398,8 @@ UI or download.
 - Create:
   `supabase/tests/technical_configuration_result_export_axes_phase_gate.sql`
 - Create:
+  `supabase/tests/technical_configuration_result_export_axes_pagination_phase_gate.sql`
+- Create:
   `src/app/api/rpc/__tests__/technical-configuration-result-export-axes-migration.test.ts`
 - Create:
   `src/app/(app)/technical-configurations/technical-configuration-result-export-axis-decoders.ts`
@@ -453,7 +455,9 @@ UI or download.
    tests before adding axis coverage so the 450-line test ceiling is preserved.
 2. Run migration/source tests, focused adapter/collector regressions, semantic
    dedupe, standard TypeScript gates and strict OpenSpec validation.
-3. Apply and run the live phase gate only after fresh explicit approval for the
+3. Keep the primary runtime gate at the 450-line ceiling and use a separate
+   rollback-only pagination gate for valid page-2 coverage.
+4. Apply and run each live phase gate only after fresh explicit approval for the
    exact Supabase MCP write.
 
 ### Execution Evidence - 2026-08-02
@@ -468,14 +472,47 @@ UI or download.
   derives `display_label` through the existing immutable helper only in the
   option-axis RPC.
 - Local gates passed: Prettier, no explicit `any`, diff-only dedupe, exported
-  TSDoc, typecheck, all seven P14 export files (`71/71`), React Doctor
+  TSDoc, typecheck, all seven P14 export files (`74/74`), React Doctor
   (`100/100`), `git diff --check` and strict OpenSpec validation.
 - The rollback-only SQL phase gate now covers exact ACLs, missing/denied/global/
   raw-admin roles, page bounds, ordered exact envelopes, repeated tokens,
   `0 x 0`, `1 x 0`, `0 x 1`, normal `2 x 2` and before/after side-effect
   counts.
-- No migration was applied and the SQL phase gate/security advisor were not run
-  against live Supabase; those remain blocked on fresh explicit approval.
+- On 2026-08-03, fresh explicit approval was received and both migrations were
+  applied through Supabase MCP as live ledger versions `20260803001344` and
+  `20260803001429`.
+- The first rollback-only phase-gate run failed RED with SQLSTATE `23505`
+  because its fixture created two draft baselines per dossier. A focused
+  regression failed `1/7`; the fixture now keeps one draft and one valid locked
+  baseline per dossier, and the focused test passes `7/7`.
+- The corrected live phase gate completed through its final `ROLLBACK`, covering
+  ACLs, authorization, bounds, exact order/envelopes/tokens, asymmetric
+  dimensions and side-effect counts. Follow-up inspection found zero residual
+  fixture rows.
+- Independent review found the primary gate did not exercise a valid page 2.
+  RED source coverage reported `2 failed / 7 passed` while the supplemental
+  gate was absent.
+  GREEN adds a 216-line rollback-only pagination gate and passes `9/9`, proving
+  page size `1`, pages `1` and `2`, requested `B -> A` ordering, exact total `2`
+  and repeated snapshot/ranking tokens for both axes.
+- Final review then found two source-test mutations still passed: a missing SQL
+  function terminator and `COMMIT;` appended after `ROLLBACK;`. Focused RED
+  reported `2 failed / 7 passed`; GREEN requires both function markers, rejects
+  `COMMIT;` and requires `ROLLBACK` as the final non-comment statement, passing
+  `9/9`.
+- On 2026-08-03, fresh explicit approval was received for the supplemental gate
+  with SHA256
+  `2c8c1ca3e31d0bae39c66d2a3d6b38876ab5c34d7bd87c4c8796ae3bde6ef594`.
+  It completed through `ROLLBACK`; follow-up counts were zero for dossiers,
+  versions, groups, criteria, suppliers and options, proving no gate-specific
+  persistent state. The rerun security advisor reported the same project-wide
+  baseline.
+- Security and performance advisors completed. They reported the existing
+  project-wide baseline, including the generic authenticated
+  `SECURITY DEFINER` advisory; P14A4 intentionally grants the guarded axis RPCs
+  to `authenticated`, while the private snapshot helper remains service-only.
+- Code Review Graph, GitNexus and exact repository searches found no existing
+  equivalent ordered-axis collector or order validator to reuse.
 
 **Deploy boundary:** dormant bounded read-only axes and typed dataset fields; no
 workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.

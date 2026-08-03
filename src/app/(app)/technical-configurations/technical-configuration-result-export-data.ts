@@ -9,13 +9,11 @@ import {
 } from "./technical-configuration-result-export-rpc"
 import type {
   TechnicalConfigurationResultExportCriterionAxisItemWire,
-  TechnicalConfigurationResultExportCriterionAxisPageWireResponse,
   TechnicalConfigurationResultExportDataset,
   TechnicalConfigurationResultExportManifestWire,
   TechnicalConfigurationResultExportMatrixCellWire,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
   TechnicalConfigurationResultExportOptionAxisItemWire,
-  TechnicalConfigurationResultExportOptionAxisPageWireResponse,
   TechnicalConfigurationResultExportPageWireResponse,
   TechnicalConfigurationResultExportRankingItemWire,
   TechnicalConfigurationResultExportRankingPageWireResponse,

@@ -86,7 +86,7 @@ function listResultExportPage<TItem>(
     (value) => {
       const page = decodePageMetadata(value, args, path)
       return {
-        data: page.data.map(decodeItem),
+        data: page.data.map((item, index) => decodeItem(item, index)),
         dossier_id: page.dossierId,
         baseline_version_id: page.baselineId,
         snapshot_token: page.snapshotToken,

@@ -899,7 +899,7 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       reordered IDs hoặc drift.
 - [x] P14A4.4 Khóa deterministic `0 x 0`, `1 x 0`, `0 x 1`, normal `N x M`;
       không seed, workbook, ExcelJS, UI, Blob/download hay parser/import/apply.
-- [ ] P14A4.5 Chỉ apply/phase-gate qua Supabase MCP sau fresh explicit approval;
+- [x] P14A4.5 Chỉ apply/phase-gate qua Supabase MCP sau fresh explicit approval;
       chạy security advisor, semantic dedupe và strict OpenSpec validation.
 
 ## Phase P14B1 - Result Workbook Schema And Representative Fixtures
