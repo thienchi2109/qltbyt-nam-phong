@@ -90,15 +90,37 @@ type MetadataKeysMatchContract = keyof ReturnType<
 const METADATA_KEYS_MATCH_CONTRACT: MetadataKeysMatchContract = true
 void METADATA_KEYS_MATCH_CONTRACT
 
-function createOverviewSheet(input: TechnicalConfigurationResultWorkbookBuildInput) {
+function createRankingRows(
+  ranking: readonly TechnicalConfigurationResultWorkbookRankingSourceRow[],
+  optionAxis: readonly TechnicalConfigurationResultWorkbookOptionSource[]
+) {
+  const optionById = new Map(optionAxis.map((option) => [option.option_id, option]))
+
+  return ranking.map((row) => {
+    const option = optionById.get(row.option_id)
+    if (!option) {
+      throw new Error(`Missing option descriptor for ranking option ${row.option_id}.`)
+    }
+
+    return {
+      ...row,
+      model: option.model,
+    }
+  })
+}
+
+function createOverviewSheet(
+  input: TechnicalConfigurationResultWorkbookBuildInput,
+  rankingRows: ReturnType<typeof createRankingRows> | null
+) {
   const rankingSummary =
-    input.ranking === null
+    rankingRows === null
       ? null
       : {
-          eligible_total: input.ranking.filter((row) => row.eligibility === "eligible").length,
-          incomplete_total: input.ranking.filter((row) => row.eligibility === "incomplete").length,
+          eligible_total: rankingRows.filter((row) => row.eligibility === "eligible").length,
+          incomplete_total: rankingRows.filter((row) => row.eligibility === "incomplete").length,
           reference_ranking_disclaimer: true as const,
-          top_ten: input.ranking.slice(0, 10),
+          top_ten: rankingRows.slice(0, 10),
         }
 
   return {
@@ -182,13 +204,15 @@ function createMatrixSheets(
 }
 
 function createRankingSheet(
-  ranking: readonly TechnicalConfigurationResultWorkbookRankingSourceRow[]
+  rankingRows: ReturnType<typeof createRankingRows>,
+  criterionTotal: number
 ) {
   return {
     kind: "ranking",
     name: "Xếp hạng",
     state: "visible",
-    rows: ranking,
+    criterion_total: criterionTotal,
+    rows: rankingRows,
   } as const
 }
 
@@ -215,9 +239,13 @@ export function createTechnicalConfigurationResultWorkbookModel(
   readonly template_version: typeof RESULT_WORKBOOK_TEMPLATE_VERSION
   readonly sheets: readonly ResultWorkbookSheet[]
 } {
-  const sheets: ResultWorkbookSheet[] = [createOverviewSheet(input)]
+  const rankingRows =
+    input.ranking === null ? null : createRankingRows(input.ranking, input.optionAxis)
+  const sheets: ResultWorkbookSheet[] = [createOverviewSheet(input, rankingRows)]
 
-  if (input.ranking !== null) sheets.push(createRankingSheet(input.ranking))
+  if (rankingRows !== null) {
+    sheets.push(createRankingSheet(rankingRows, input.manifest.criterion_total))
+  }
   if (input.matrix !== null) {
     sheets.push(...createMatrixSheets(input.optionAxis, input.criterionAxis, input.matrix))
   }

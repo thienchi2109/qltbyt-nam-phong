@@ -4,8 +4,8 @@
 > `superpowers:test-driven-development` for each behavior slice,
 > `code-deduplication` before adding reusable logic and
 > `superpowers:verification-before-completion` before any completion claim.
-> Execute P14A1, P14A2, P14A3, P14A4, P14B1, P14B2, P14C1 and P14C2 as eight
-> sequential PRs. Do not combine leaves without explicit user approval.
+> Execute P14A1, P14A2, P14A3, P14A4, P14B1, P14B1F, P14B2, P14C1 and P14C2
+> as nine sequential PRs. Do not combine leaves without explicit user approval.
 
 ## Goal
 
@@ -53,6 +53,12 @@ three approved Stitch layouts. This plan owns requirement `TC-21`.
   - `full`: `Tổng quan`, `Xếp hạng`, `Ma trận chi tiết`
   - `ranking_only`: `Tổng quan`, `Xếp hạng`
   - `detailed_matrix_only`: `Tổng quan`, `Ma trận chi tiết`
+- Ranking columns are exactly `Hạng`, `Mã PA`, `Nhà cung cấp`, `Model`,
+  `Trạng thái`, `Đã hoàn thiện`, `Chưa hoàn thiện`, `Ghi chú`.
+- `Đã hoàn thiện = criterion_total - incomplete_criterion_count`;
+  `Chưa hoàn thiện = incomplete_criterion_count`.
+- Ranking `Ghi chú` joins only non-zero `Không đạt`, `Thiếu bằng chứng` and
+  `Vượt yêu cầu` aggregate counts. It never aggregates `assessment_notes`.
 - Hidden `_meta` is always present.
 - Matrix columns A-D are `STT`, `Nhóm tiêu chí`, `Mã tiêu chí`,
   `Yêu cầu cấu hình cơ sở`.
@@ -76,7 +82,9 @@ P12C1
   -> P14A1
   -> P14A2
   -> P14A3
+  -> P14A4
   -> P14B1
+  -> P14B1F
   -> P14B2
   -> P14C1
   -> P14C2
@@ -88,15 +96,16 @@ with merged `main` evidence before its successor starts.
 
 ## Tracking Issues
 
-| Leaf  | GitHub issue                                                        |
-| ----- | ------------------------------------------------------------------- |
-| P14A1 | [#839](https://github.com/thienchi2109/qltbyt-nam-phong/issues/839) |
-| P14A2 | [#840](https://github.com/thienchi2109/qltbyt-nam-phong/issues/840) |
-| P14A3 | [#841](https://github.com/thienchi2109/qltbyt-nam-phong/issues/841) |
-| P14B1 | [#842](https://github.com/thienchi2109/qltbyt-nam-phong/issues/842) |
-| P14B2 | [#843](https://github.com/thienchi2109/qltbyt-nam-phong/issues/843) |
-| P14C1 | [#844](https://github.com/thienchi2109/qltbyt-nam-phong/issues/844) |
-| P14C2 | [#845](https://github.com/thienchi2109/qltbyt-nam-phong/issues/845) |
+| Leaf   | GitHub issue                                                        |
+| ------ | ------------------------------------------------------------------- |
+| P14A1  | [#839](https://github.com/thienchi2109/qltbyt-nam-phong/issues/839) |
+| P14A2  | [#840](https://github.com/thienchi2109/qltbyt-nam-phong/issues/840) |
+| P14A3  | [#841](https://github.com/thienchi2109/qltbyt-nam-phong/issues/841) |
+| P14B1  | [#842](https://github.com/thienchi2109/qltbyt-nam-phong/issues/842) |
+| P14B1F | [#853](https://github.com/thienchi2109/qltbyt-nam-phong/issues/853) |
+| P14B2  | [#843](https://github.com/thienchi2109/qltbyt-nam-phong/issues/843) |
+| P14C1  | [#844](https://github.com/thienchi2109/qltbyt-nam-phong/issues/844) |
+| P14C2  | [#845](https://github.com/thienchi2109/qltbyt-nam-phong/issues/845) |
 
 ## P14A1 - Canonical Export Snapshot Manifest
 
@@ -592,6 +601,77 @@ workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.
 
 **Deploy boundary:** pure model and test fixtures; no rendering or side effect.
 
+## P14B1F - Ranking Presentation Contract Repair
+
+### Planned Files
+
+- Modify: `src/lib/technical-configuration-result-excel-contract.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-ranking-contract.test.ts`
+- Modify P14 OpenSpec planning/tracking documents.
+- Read both required Stitch workbook screens directly. Treat layout/style as
+  guidance and OpenSpec/P14B1F as normative for ranking copy semantics.
+
+### RED
+
+1. Lock nullable `model` on ranking rows and overview top-ten in
+   `ranking_only`.
+2. Lock `criterion_total` on the ranking sheet.
+3. Lock narrowed ranking order after enrichment.
+4. Lock fail-closed behavior when a ranking row has no option descriptor.
+5. Run focused tests and prove every failure is the missing output contract.
+
+### GREEN
+
+1. Build one option lookup from the existing ordered `optionAxis`.
+2. Enrich ranking rows with `model` without changing the ranking source type.
+3. Reuse the same enriched rows for overview top-ten and the ranking sheet.
+4. Preserve `criterion_total` on the ranking sheet.
+5. Keep the change pure and free of ExcelJS, RPC, DB and side effects.
+
+### Refactor And Gate
+
+1. Confirm no equivalent descriptor-join helper exists before extracting one.
+2. Keep the existing contract test below the file-size threshold by using one
+   focused P14B1F test file.
+3. Preserve the Stitch layout/style direction, but use the OpenSpec/P14B1F
+   contract for `Đã hoàn thiện`, `Chưa hoàn thiện` and aggregate notes.
+4. Run standard TypeScript gates, complete P14 export tests, React Doctor,
+   strict OpenSpec and `git diff --check`.
+
+### Execution Evidence - 2026-08-03
+
+- Contract preflight found that P14B1 discarded `model` from `ranking_only` and
+  exposed no exact `Tiêu chí đạt` count because ranking data has no separate
+  `not_applicable` aggregate. P14B1F therefore owns the narrow descriptor join
+  and completion-copy contract without changing the ranking RPC.
+- RED added four focused tests. All four failed only because `model` and
+  `criterion_total` were absent and a missing option descriptor did not fail
+  closed. GREEN passed the new file `4/4` and the combined P14B1/P14B1F suite
+  `16/16`.
+- The implementation builds one lookup from ordered `optionAxis`, preserves
+  nullable `model`, reuses the same enriched ranking rows for overview top-ten
+  and ranking sheets, preserves exact narrowed order and throws a stable error
+  for a missing descriptor.
+- Code Review Graph, GitNexus and semantic repository search found no equivalent
+  descriptor-join helper to reuse. The production contract is 272 lines and the
+  focused test is 87 lines, below repository thresholds.
+- Shared Excel regressions passed six files with `111 passed / 4 skipped`; the
+  complete P14 export suite passed nine files `90/90`.
+- Format, explicit-any, diff-only dedupe, exported JSDoc, typecheck, React
+  Doctor (`100/100`), strict OpenSpec and `git diff --check` passed.
+- Stitch MCP read overview/ranking
+  `d394c0dd25f146cf9423b8acf8eeaa86` and detailed matrix
+  `45c3a6f4ac514212ba3259064ef19ea0` directly. The edit API generated updated
+  screen `590ab8a1e0ca40d1bd7fe0bb8a04cfca` instead of mutating the original
+  downloadable artifact. Per user direction, OpenSpec/P14B1F is normative for
+  content semantics and Stitch remains optional visual guidance.
+- No ExcelJS rendering, Blob/download, UI, orchestration, parser/import/apply,
+  seed, migration or live DB work was added.
+
+**Deploy boundary:** pure model repair plus normative OpenSpec copy contract;
+no renderer or production caller.
+
 ## P14B2 - Approved ExcelJS Workbook Rendering
 
 ### Planned Files
@@ -616,7 +696,8 @@ workbook model, ExcelJS, UI, Blob/download, parser/import/apply or seed.
 ### GREEN
 
 1. Build workbooks through `createExcelWorkbook()`.
-2. Render exactly from the P14B1 model and the two approved workbook layouts.
+2. Render exactly from the P14B1F-completed model and the two approved workbook
+   layouts.
 3. Use the existing lazy ExcelJS serialization pattern.
 4. Return the workbook/serialized bytes without calling `downloadBlob()`.
 5. Run focused workbook tests and confirm green.

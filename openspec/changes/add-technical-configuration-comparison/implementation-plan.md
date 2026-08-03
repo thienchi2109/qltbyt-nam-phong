@@ -130,7 +130,7 @@ P12C1           -> P13A-P1
 P13A-P1         -> P13A-V
 P13A-P1 fail    -> P13A-P2 -> approved apply/gate -> rerun P13A-P1 green -> P13A-V
 P12C2           -> P13B
-P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B2 -> P14C1 -> P14C2
+P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B1F -> P14B2 -> P14C1 -> P14C2
 P13A-V + P13B + P7A2 + P9A3 + P14C2 -> P13C
 ```
 
@@ -172,9 +172,10 @@ P12C2 cannot start until P12C1 is complete.
 
 P14 is independent of the deferred P13A/P13B hardening path and uses the strict
 delivery order
-`P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B2 -> P14C1 -> P14C2`.
+`P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B1F -> P14B2 -> P14C1 -> P14C2`.
 P14A1/P14A2 add only dormant, read-only export contracts; P14A3 completes a
-stable full-dataset collector without UI; P14B1/P14B2 build and render the
+stable full-dataset collector without UI; P14B1 defines the workbook model,
+P14B1F repairs ranking-visible presentation data/copy, and P14B2 renders the
 workbook without mounting a trigger; P14C1 adds an unmounted export-scope state
 machine/dialog; only P14C2 activates download from the evaluation workspace.
 No P14 leaf seeds or writes live data for verification. Large-workbook coverage
@@ -208,7 +209,7 @@ Requirement IDs are roadmap aliases. The authoritative requirement names and sce
 | TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                           |
 | TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                         |
 | TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
-| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14A4, P14B1, P14B2, P14C1, P14C2                                                                                                                                                 |
+| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14A4, P14B1, P14B1F, P14B2, P14C1, P14C2                                                                                                                                         |
 
 ## Shared Technical Constraints
 
@@ -3191,9 +3192,52 @@ The pure schema/model deterministically describes every required sheet and
 continuation partition for all modes, including the representative large
 fixture, without importing ExcelJS or producing a Blob.
 
-## Phase P14B2 - Approved ExcelJS Workbook Rendering
+## Phase P14B1F - Ranking Presentation Contract Repair
 
 **Depends on:** P14B1
+
+**Requirements:** TC-21-S03, TC-21-S05, TC-21-S09
+
+**Deploy boundary:** pure workbook-model repair and normative OpenSpec copy
+contract only; no ExcelJS rendering, RPC, DB or download
+
+### Planned files
+
+- Modify: `src/lib/technical-configuration-result-excel-contract.ts`
+- Create:
+  `src/lib/__tests__/technical-configuration-result-excel-ranking-contract.test.ts`
+- Modify P14 OpenSpec design, implementation, TDD and task tracking.
+- Read the required Stitch overview/ranking and detailed-matrix screens directly;
+  keep layout/style as guidance while OpenSpec owns copy semantics.
+
+### Tasks
+
+- [x] Write RED pure tests proving `ranking_only` drops `model`,
+      ranking sheets lack `criterion_total` and missing option descriptors do
+      not fail closed.
+- [x] Join ranking rows to the ordered `optionAxis` by `option_id`; preserve
+      nullable `model` on overview top-ten and ranking rows without changing
+      the source ranking/RPC contract.
+- [x] Preserve `criterion_total` on the ranking sheet and keep narrowed/tied
+      ranking order unchanged.
+- [x] Lock eight ranking columns with exact completion semantics:
+      `Đã hoàn thiện = criterion_total - incomplete_criterion_count` and
+      `Chưa hoàn thiện = incomplete_criterion_count`.
+- [x] Keep `Ghi chú` deterministic from aggregate failed/insufficient/exceeds
+      counts only; do not aggregate criterion-level notes or add score.
+- [x] Record the Stitch artifact limitation and the user-approved
+      OpenSpec-first fallback; retain the separate `Model` column and approved
+      visual direction without making screen copy a merge blocker.
+
+### Exit gate
+
+The output-only model contains every value needed for the approved ranking
+layout in all ranking-capable modes. Focused RED fails only on the missing pure
+contract; GREEN adds no ExcelJS, RPC, migration, DB, UI or download behavior.
+
+## Phase P14B2 - Approved ExcelJS Workbook Rendering
+
+**Depends on:** P14B1F
 
 **Requirements:** TC-21-S03, TC-21-S04, TC-21-S05, TC-21-S09
 

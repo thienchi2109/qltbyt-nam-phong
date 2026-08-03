@@ -580,18 +580,26 @@ bản cơ sở, thời điểm/người xuất, phạm vi và option/criterion c
 có `Xếp hạng` mới thêm eligible/incomplete totals, disclaimer và top-ten ranking
 preview; mode `Chỉ ma trận chi tiết` không tải hoặc render ranking summary.
 `Xếp hạng` giữ toàn bộ option trong phạm vi theo dense rank hiện có, không thêm
-score hoặc percentage. `Ma trận chi tiết` freeze hàng header và bốn cột
-`STT`, `Nhóm tiêu chí`, `Mã tiêu chí`, `Yêu cầu cấu hình cơ sở`; mỗi option dùng
-ba cột `Phản hồi nhà cung cấp`, `Thông tin bổ sung / tài liệu`,
-`Kết luận đánh giá`.
+score hoặc percentage. Tám cột xếp hạng là `Hạng`, `Mã PA`, `Nhà cung cấp`,
+`Model`, `Trạng thái`, `Đã hoàn thiện`, `Chưa hoàn thiện`, `Ghi chú`.
+`Đã hoàn thiện = criterion_total - incomplete_criterion_count`;
+`Chưa hoàn thiện = incomplete_criterion_count`. `Ghi chú` chỉ ghép deterministic
+các aggregate count khác `0` trong ba nhóm `Không đạt`, `Thiếu bằng chứng`,
+`Vượt yêu cầu`; không aggregate `assessment_notes` theo criterion. Cách đặt tên
+này không suy diễn `not_applicable` thành đạt và không thêm score. `Ma trận chi
+tiết` freeze hàng header và bốn cột `STT`, `Nhóm tiêu chí`, `Mã tiêu chí`,
+`Yêu cầu cấu hình cơ sở`; mỗi option dùng ba cột `Phản hồi nhà cung cấp`,
+`Thông tin bổ sung / tài liệu`, `Kết luận đánh giá`.
 
-Workbook dùng đúng visual contract đã duyệt trong Stitch: title fill xanh đậm
-`#166534`, chữ trắng, header xanh, border xám mảnh, zebra rows, wrap text,
-top alignment, filter, freeze panes, status fill tiết chế và disclaimer màu
-amber. File không chứa chart, dashboard card, gradient, hidden score hoặc
-decision lựa chọn nhà cung cấp. Nếu số option vượt giới hạn cột vật lý của Excel,
-renderer tạo continuation sheets `Ma trận chi tiết 2`, `Ma trận chi tiết 3`...
-với cùng frozen columns/header/style thay vì truncate hoặc đặt hidden cap.
+Workbook giữ visual direction từ Stitch: title fill xanh đậm `#166534`, chữ
+trắng, header xanh, border xám mảnh, zebra rows, wrap text, top alignment,
+filter, freeze panes, status fill tiết chế và disclaimer màu amber. OpenSpec và
+P14B1F output contract là nguồn chuẩn cho labels, values và semantics khi
+artifact Stitch khác biệt. File không chứa chart, dashboard card, gradient,
+hidden score hoặc decision lựa chọn nhà cung cấp. Nếu số option vượt giới hạn
+cột vật lý của Excel, renderer tạo continuation sheets `Ma trận chi tiết 2`,
+`Ma trận chi tiết 3`... với cùng frozen columns/header/style thay vì truncate
+hoặc đặt hidden cap.
 
 P14 reuse-first trên hạ tầng Excel hiện có:
 
@@ -627,6 +635,7 @@ P14 được tách thành các leaf deploy-safe:
 - P14A2: paginated ranking/matrix export reads, chưa có UI;
 - P14A3: typed adapter và stable collector, chưa có UI;
 - P14B1: workbook schema/model, chưa render/download;
+- P14B1F: repair ranking presentation data/copy trong pure model, chưa ExcelJS;
 - P14B2: ExcelJS renderer/style đúng mockup, chưa mount trigger;
 - P14C1: dialog/state machine, chưa mount vào workspace;
 - P14C2: mount trigger, orchestration, download và end-to-end regression.
@@ -704,9 +713,13 @@ Trong tab `Cấu hình cơ sở`, editor ưu tiên danh sách nhóm/tiêu chí t
 - P14 result-export project: `1463377740887387448`
 - P14 export-scope dialog: `4aaff09e4788412386ea8d4f1baa4da9`
 - P14 workbook overview/ranking: `d394c0dd25f146cf9423b8acf8eeaa86`
+- P14 workbook overview/ranking semantic update:
+  `590ab8a1e0ca40d1bd7fe0bb8a04cfca`
 - P14 detailed matrix: `45c3a6f4ac514212ba3259064ef19ea0`
 
-Các màn hình Stitch có nội dung AI hoặc semantics đấu thầu cũ chỉ là tài liệu tham khảo layout. Khi triển khai phải áp dụng scope MVP và thuật ngữ của change này.
+Các màn hình Stitch chỉ là tài liệu tham khảo layout/style. Khi generated
+artifact không mutate screen gốc hoặc copy mâu thuẫn với data contract, triển
+khai phải áp dụng scope MVP, thuật ngữ và semantics của OpenSpec/P14B1F.
 
 ## Error Handling
 
@@ -767,9 +780,9 @@ Rollback có thể gỡ route/navigation và migration mới mà không tác đ�
   panel và hiển thị no-more-match state.
 - P12B2 giữ filter khi đổi option và resolve selection deterministic theo option
   mới.
-- P14 dùng đúng ba layout đã duyệt trong Stitch: P14C1 giữ dialog layout, còn
-  P14B2 giữ hai workbook layout/style làm normative workbook contract, không chỉ
-  làm tài liệu tham khảo.
+- P14 dùng ba Stitch layout làm visual direction; OpenSpec/P14B1F là normative
+  contract cho workbook content, labels và semantics. P14C1 vẫn sở hữu dialog
+  riêng và ngoài P14B1F/P14B2.
 - P14 default export scope là toàn bộ option/criterion; current page và selected
   options chỉ được dùng khi người dùng chọn rõ trong dialog.
 - P14 độc lập với P13 đang defer; fixture export quy mô lớn là in-memory và không

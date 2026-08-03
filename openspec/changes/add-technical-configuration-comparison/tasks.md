@@ -71,7 +71,8 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P14A3](./implementation-plan.md#phase-p14a3---typed-export-adapters-and-stable-dataset-collector)        | Adapter typed và collector snapshot ổn định    | P14A2 merged/applied/gated                       | TC-21-S02, S04, S06, S07, S08                          |
 | [P14A4](./implementation-plan.md#phase-p14a4---ordered-result-export-axes)                                | Trục option/criterion có thứ tự độc lập        | P14A3 merged/applied/gated                       | TC-21-S03, S04, S06, S07, S08                          |
 | [P14B1](./implementation-plan.md#phase-p14b1---result-workbook-schema-and-representative-fixtures)        | Schema workbook và fixture đại diện            | P14A4 merged/applied/gated                       | TC-21-S03, S04, S05, S09                               |
-| [P14B2](./implementation-plan.md#phase-p14b2---approved-exceljs-workbook-rendering)                       | Render ExcelJS đúng mockup đã duyệt            | P14B1                                            | TC-21-S03, S04, S05, S09                               |
+| [P14B1F](./implementation-plan.md#phase-p14b1f---ranking-presentation-contract-repair)                    | Repair dữ liệu/copy ranking trong pure model   | P14B1                                            | TC-21-S03, S05, S09                                    |
+| [P14B2](./implementation-plan.md#phase-p14b2---approved-exceljs-workbook-rendering)                       | Render ExcelJS đúng mockup đã duyệt            | P14B1F                                           | TC-21-S03, S04, S05, S09                               |
 | [P14C1](./implementation-plan.md#phase-p14c1---export-scope-dialog-and-state-machine)                     | Dialog chọn nội dung và phạm vi export         | P14B2                                            | TC-21-S01, S02, S04                                    |
 | [P14C2](./implementation-plan.md#phase-p14c2---export-orchestration-download-and-workspace-activation)    | Mount trigger, orchestration và download       | P14C1                                            | TC-21                                                  |
 | [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3, P14C2                  | TC-19                                                  |
@@ -911,6 +912,18 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       không truncate/hidden cap.
 - [x] P14B1.4 Tạo fixture in-memory deterministic lớn hơn 100 options x 102
       criteria; tuyệt đối không seed hoặc đọc/ghi live DB.
+
+## Phase P14B1F - Ranking Presentation Contract Repair
+
+- [x] P14B1F.1 Khóa RED cho `model`, `criterion_total`, narrowed order và
+      missing option descriptor trong pure output model.
+- [x] P14B1F.2 Join ranking với ordered `optionAxis`; reuse cùng enriched rows
+      cho overview top-ten và ranking sheet.
+- [x] P14B1F.3 Khóa `Đã hoàn thiện` / `Chưa hoàn thiện` và deterministic
+      aggregate `Ghi chú`; không suy diễn `not_applicable` thành đạt.
+- [x] P14B1F.4 Ghi nhận Stitch tạo screen semantic mới thay vì mutate artifact
+      gốc; dùng OpenSpec/P14B1F làm chuẩn nội dung và giữ visual direction,
+      không ExcelJS, RPC/DB, UI hoặc download.
 
 ## Phase P14B2 - Approved ExcelJS Workbook Rendering
 
