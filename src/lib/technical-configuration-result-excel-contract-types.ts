@@ -48,31 +48,6 @@ export interface TechnicalConfigurationResultWorkbookDocumentLink {
   readonly excerpt: string | null
 }
 
-export interface TechnicalConfigurationResultWorkbookMatrixSourceCell {
-  readonly group_id: string
-  readonly group_name: string
-  readonly group_order: number
-  readonly criterion_id: string
-  readonly criterion_code: string
-  readonly criterion_title: string | null
-  readonly requirement_text: string
-  readonly criterion_order: number
-  readonly option_id: string
-  readonly supplier_id: string
-  readonly supplier_name: string
-  readonly display_label: string
-  readonly model: string | null
-  readonly manufacturer: string | null
-  readonly option_name: string | null
-  readonly response_text: string | null
-  readonly supplementary_information: string | null
-  readonly document_links: readonly TechnicalConfigurationResultWorkbookDocumentLink[]
-  readonly technical_axis: TechnicalConfigurationTechnicalAxis | null
-  readonly evidence_axis: TechnicalConfigurationEvidenceAxis | null
-  readonly assessment_notes: string | null
-  readonly conclusion: TechnicalConfigurationDerivedStatus
-}
-
 /** Ordered supplier-option descriptor from the stable P14A4 export dataset. */
 export interface TechnicalConfigurationResultWorkbookOptionSource {
   readonly option_id: string
@@ -94,6 +69,19 @@ export interface TechnicalConfigurationResultWorkbookCriterionSource {
   readonly criterion_title: string | null
   readonly requirement_text: string
   readonly criterion_order: number
+}
+
+export interface TechnicalConfigurationResultWorkbookMatrixSourceCell
+  extends
+    TechnicalConfigurationResultWorkbookCriterionSource,
+    TechnicalConfigurationResultWorkbookOptionSource {
+  readonly response_text: string | null
+  readonly supplementary_information: string | null
+  readonly document_links: readonly TechnicalConfigurationResultWorkbookDocumentLink[]
+  readonly technical_axis: TechnicalConfigurationTechnicalAxis | null
+  readonly evidence_axis: TechnicalConfigurationEvidenceAxis | null
+  readonly assessment_notes: string | null
+  readonly conclusion: TechnicalConfigurationDerivedStatus
 }
 
 interface TechnicalConfigurationResultWorkbookBuildContext {

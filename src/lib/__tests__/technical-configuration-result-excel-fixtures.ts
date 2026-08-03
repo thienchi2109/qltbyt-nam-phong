@@ -1,3 +1,5 @@
+import { RESULT_WORKBOOK_MAX_OPTIONS_PER_MATRIX_SHEET } from "@/lib/technical-configuration-result-excel-contract"
+
 import type {
   TechnicalConfigurationResultWorkbookBuildInput,
   TechnicalConfigurationResultWorkbookContentMode,
@@ -294,7 +296,7 @@ export function createRepresentativeLargeResultWorkbookFixture() {
 export function createMatrixBoundaryResultWorkbookFixture() {
   return createResultWorkbookFixture({
     mode: "detailed_matrix_only",
-    optionCount: 5_460,
+    optionCount: RESULT_WORKBOOK_MAX_OPTIONS_PER_MATRIX_SHEET,
     criterionCount: 1,
   })
 }
@@ -302,7 +304,7 @@ export function createMatrixBoundaryResultWorkbookFixture() {
 export function createContinuationResultWorkbookFixture() {
   return createResultWorkbookFixture({
     mode: "detailed_matrix_only",
-    optionCount: 5_461,
+    optionCount: RESULT_WORKBOOK_MAX_OPTIONS_PER_MATRIX_SHEET + 1,
     criterionCount: 1,
   })
 }

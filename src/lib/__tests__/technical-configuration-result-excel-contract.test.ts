@@ -126,7 +126,10 @@ describe("technical configuration result workbook contract", () => {
       criterion_total: criterionIds.length,
     })
     expect(ranking.rows).toHaveLength(optionIds.length)
-    expect(ranking.rows.map((row) => row.option_id)).toEqual(expect.arrayContaining(optionIds))
+    // Ranking preserves its caller-supplied order independently of the option axis.
+    expect(ranking.rows.map((row) => row.option_id)).toEqual(
+      fixture.ranking.map((row) => row.option_id)
+    )
     expect(fixture.matrix).toHaveLength(optionIds.length * criterionIds.length)
     expect(meta.metadata).toEqual({
       template_kind: "technical_configuration_result",
@@ -143,6 +146,7 @@ describe("technical configuration result workbook contract", () => {
       generated_at: "2026-08-02T12:34:56.000Z",
       generated_by: "Nguyen Van A",
     })
+    expect(Object.keys(meta.metadata)).toEqual([...RESULT_WORKBOOK_META_KEYS])
     expect(matrix.option_groups.map((option) => option.option_id)).toEqual(optionIds)
     expect(matrix.rows.map((criterion) => criterion.criterion_id)).toEqual(criterionIds)
   })

@@ -79,6 +79,17 @@ function createMetadata(input: TechnicalConfigurationResultWorkbookBuildInput) {
   } as const
 }
 
+type MetadataKeysMatchContract = keyof ReturnType<
+  typeof createMetadata
+> extends (typeof RESULT_WORKBOOK_META_KEYS)[number]
+  ? (typeof RESULT_WORKBOOK_META_KEYS)[number] extends keyof ReturnType<typeof createMetadata>
+    ? true
+    : false
+  : false
+
+const METADATA_KEYS_MATCH_CONTRACT: MetadataKeysMatchContract = true
+void METADATA_KEYS_MATCH_CONTRACT
+
 function createOverviewSheet(input: TechnicalConfigurationResultWorkbookBuildInput) {
   const rankingSummary =
     input.ranking === null
