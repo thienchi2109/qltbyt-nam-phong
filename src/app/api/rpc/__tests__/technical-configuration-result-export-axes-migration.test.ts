@@ -122,6 +122,7 @@ describe("P14A4 technical configuration result export axes migration", () => {
 
   it("sorts after every P14A2 migration and ships dedicated phase gates", () => {
     const orderedMigrations = readdirSync(MIGRATIONS_DIR).sort()
+    expect(orderedMigrations).toContain(LATEST_DEPENDENCY_MIGRATION)
     expect(orderedMigrations.indexOf(SNAPSHOT_AXES_MIGRATION_FILE)).toBeGreaterThan(
       orderedMigrations.indexOf(LATEST_DEPENDENCY_MIGRATION)
     )
