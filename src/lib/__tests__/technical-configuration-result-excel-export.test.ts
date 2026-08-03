@@ -144,6 +144,8 @@ describe("technical configuration result ExcelJS renderer", () => {
       1,
       "Không đạt: 1; Thiếu bằng chứng: 2",
     ])
+    expect(getPatternFill(overview.getCell("E17")).fgColor).toEqual({ argb: AMBER_FILL })
+    expect(getPatternFill(overview.getCell("E18")).fgColor).toEqual({ argb: MEETS_FILL })
 
     const ranking = getWorksheet(workbook, "Xếp hạng")
     expect(ranking.model.merges).toEqual(expect.arrayContaining(["A1:H2", "A3:H3"]))
@@ -165,11 +167,14 @@ describe("technical configuration result ExcelJS renderer", () => {
     expect(ranking.getColumn(3).width).toBe(28)
     expect(ranking.getColumn(8).width).toBe(32)
     expect(ranking.getRow(1).height).toBe(30)
+    expect(ranking.getRow(3).height).toBe(24)
     expect(ranking.getRow(5).height).toBe(36)
     expect(getPatternFill(ranking.getCell("A1")).fgColor).toEqual({ argb: TITLE_FILL })
     expect(ranking.getCell("A1").font).toMatchObject({ bold: true, color: { argb: "FFFFFFFF" } })
     expect(getPatternFill(ranking.getCell("A5")).fgColor).toEqual({ argb: HEADER_FILL })
     expect(getPatternFill(ranking.getCell("A7")).fgColor).toEqual({ argb: ZEBRA_FILL })
+    expect(getPatternFill(ranking.getCell("E6")).fgColor).toEqual({ argb: AMBER_FILL })
+    expect(getPatternFill(ranking.getCell("E7")).fgColor).toEqual({ argb: MEETS_FILL })
     expectStandardDataCell(ranking.getCell("C6"))
     expectNoForbiddenWorkbookContent(workbook)
   })
@@ -251,6 +256,8 @@ describe("technical configuration result ExcelJS renderer", () => {
     expect(getPatternFill(matrix.getCell("G6")).fgColor).toEqual({ argb: MEETS_FILL })
     expectStandardDataCell(matrix.getCell("F6"))
     expectNoForbiddenWorkbookContent(workbook)
+    expect(matrix.getRow(2).height).toBe(24)
+    expect(matrix.getRow(3).height).toBe(24)
   })
 
   it.each([

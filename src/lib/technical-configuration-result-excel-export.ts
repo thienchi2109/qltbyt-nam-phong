@@ -72,21 +72,23 @@ function rankingRowValues(row: RankingRow, criterionTotal: number) {
   ]
 }
 
-function styleRankingTable(worksheet: Worksheet, headerRowNumber: number, rowCount: number) {
+function styleRankingTable(
+  worksheet: Worksheet,
+  headerRowNumber: number,
+  rankingRows: readonly RankingRow[]
+) {
   const headerRow = worksheet.getRow(headerRowNumber)
   headerRow.height = 36
   headerRow.eachCell((cell) => applyResultExcelHeader(cell))
 
-  for (let index = 0; index < rowCount; index += 1) {
+  rankingRows.forEach((rankingRow, index) => {
     const row = worksheet.getRow(headerRowNumber + index + 1)
     row.height = 36
     row.eachCell({ includeEmpty: true }, (cell) => applyResultExcelDataCell(cell, index % 2 === 1))
     row.getCell(5).fill = resultExcelPatternFill(
-      row.getCell(5).value === "Đủ điều kiện"
-        ? RESULT_EXCEL_COLORS.green
-        : RESULT_EXCEL_COLORS.amber
+      rankingRow.eligibility === "eligible" ? RESULT_EXCEL_COLORS.green : RESULT_EXCEL_COLORS.amber
     )
-  }
+  })
 }
 
 function renderOverview(workbook: Workbook, sheet: OverviewSheetModel) {
@@ -153,7 +155,7 @@ function renderOverview(workbook: Workbook, sheet: OverviewSheetModel) {
     sheet.summary.ranking_summary.top_ten.forEach((row) => {
       worksheet.addRow(rankingRowValues(row, sheet.summary.criterion_total))
     })
-    styleRankingTable(worksheet, 16, sheet.summary.ranking_summary.top_ten.length)
+    styleRankingTable(worksheet, 16, sheet.summary.ranking_summary.top_ten)
     worksheet.autoFilter = {
       from: "A16",
       to: `H${Math.max(16, 16 + sheet.summary.ranking_summary.top_ten.length)}`,
@@ -170,9 +172,10 @@ function renderRanking(workbook: Workbook, sheet: RankingSheetModel, overview: O
   setResultExcelMergedHeading(worksheet, "A1:H2", "XẾP HẠNG PHƯƠNG ÁN", "title")
   setResultExcelMergedHeading(worksheet, "A3:H3", overview.summary.dossier.name, "header")
   worksheet.getRow(1).height = 30
+  worksheet.getRow(3).height = 24
   worksheet.getRow(5).values = [...RESULT_EXCEL_RANKING_HEADERS]
   sheet.rows.forEach((row) => worksheet.addRow(rankingRowValues(row, sheet.criterion_total)))
-  styleRankingTable(worksheet, 5, sheet.rows.length)
+  styleRankingTable(worksheet, 5, sheet.rows)
   configureResultExcelRankingColumns(worksheet)
   worksheet.autoFilter = { from: "A5", to: `H${Math.max(5, 5 + sheet.rows.length)}` }
   worksheet.views = [{ state: "frozen", ySplit: 5, topLeftCell: "A6", activeCell: "A6" }]
@@ -273,6 +276,8 @@ function renderMatrix(workbook: Workbook, sheet: MatrixSheetModel, overview: Ove
     worksheet.getColumn(7 + index * 3).width = 22
   })
   worksheet.getRow(1).height = 30
+  worksheet.getRow(2).height = 24
+  worksheet.getRow(3).height = 24
   worksheet.getRow(4).height = 24
   worksheet.getRow(5).height = 36
   worksheet.autoFilter = {
