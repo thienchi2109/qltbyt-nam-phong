@@ -1,8 +1,10 @@
 import "@testing-library/jest-dom"
+import type { ReactNode } from "react"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationEvaluationActiveWorkspace } from "../_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace"
+import type { TechnicalConfigurationComparisonResult } from "../comparison-types"
 import {
   createComparisonResult,
   createOption,
@@ -13,9 +15,54 @@ type MatrixState = ReturnType<
   typeof import("../_hooks/useTechnicalConfigurationComparisonMatrix").useTechnicalConfigurationComparisonMatrix
 >
 
-const mocks = vi.hoisted(() => ({
-  comparisonRequests: [] as Array<{ optionIds: string[]; page: number }>,
-}))
+type ComparisonRequest = { optionIds: string[]; page: number }
+
+const mocks = vi.hoisted(() => {
+  let comparisonRequests: ComparisonRequest[] = []
+  let page = 1
+  let panelResult: TechnicalConfigurationComparisonResult | undefined
+  let isTransitionPending = false
+  let isSaving = false
+
+  return {
+    recordComparisonRequest(request: ComparisonRequest) {
+      comparisonRequests = [...comparisonRequests, request]
+    },
+    getComparisonRequests() {
+      return comparisonRequests
+    },
+    getPage() {
+      return page
+    },
+    getPanelResult() {
+      return panelResult
+    },
+    getIsTransitionPending() {
+      return isTransitionPending
+    },
+    getIsSaving() {
+      return isSaving
+    },
+    setScenario(scenario: {
+      page?: number
+      panelResult?: TechnicalConfigurationComparisonResult
+      isTransitionPending?: boolean
+      isSaving?: boolean
+    }) {
+      page = scenario.page ?? page
+      if ("panelResult" in scenario) panelResult = scenario.panelResult
+      isTransitionPending = scenario.isTransitionPending ?? isTransitionPending
+      isSaving = scenario.isSaving ?? isSaving
+    },
+    reset() {
+      comparisonRequests = []
+      page = 1
+      panelResult = undefined
+      isTransitionPending = false
+      isSaving = false
+    },
+  }
+})
 
 vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
   useTechnicalConfigurationComparison: ({
@@ -25,10 +72,10 @@ vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
     optionIds: readonly string[]
     page: number
   }) => {
-    mocks.comparisonRequests.push({ optionIds: [...optionIds], page })
+    mocks.recordComparisonRequest({ optionIds: [...optionIds], page })
     return {
       comparisonQuery: {
-        data: undefined,
+        data: optionIds[0] ? mocks.getPanelResult() : undefined,
         isLoading: false,
         isError: false,
         error: null,
@@ -41,12 +88,12 @@ vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
 vi.mock("../_hooks/useTechnicalConfigurationEvaluationNavigator", () => ({
   useTechnicalConfigurationEvaluationNavigator: () => ({
     activeSelectedOptionId: "option-1",
-    currentCriterion: { canonicalPage: 1 },
-    criterionId: "criterion-1",
+    currentCriterion: { canonicalPage: mocks.getPage() },
+    criterionId: mocks.getPage() === 1 ? "criterion-1" : "criterion-3",
     selectedOption: createOption("option-1", "Nhà cung cấp A · Model A"),
     projection: [],
     statusFilter: "all",
-    isTransitionPending: false,
+    isTransitionPending: mocks.getIsTransitionPending(),
     criteriaQuery: {
       isLoading: false,
       isError: false,
@@ -65,7 +112,7 @@ vi.mock("../_hooks/useTechnicalConfigurationEvaluationDraft", () => ({
     comparisonSetQuery: { isLoading: false, isError: false, error: null },
     assessmentsByCriterionId: {},
     draft: null,
-    isSaving: false,
+    isSaving: mocks.getIsSaving(),
     isReady: false,
     error: null,
     discard: vi.fn(),
@@ -118,25 +165,35 @@ vi.mock("../_components/evaluation/TechnicalConfigurationResultExportControl", (
   TechnicalConfigurationResultExportControl: () => null,
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationSaveActions", () => ({
-  TechnicalConfigurationEvaluationSaveActions: () => null,
+  TechnicalConfigurationEvaluationSaveActions: ({ saving }: { saving: boolean }) => (
+    <div data-testid="save-actions-probe" data-saving={saving ? "true" : "false"} />
+  ),
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationPanel", () => ({
   TechnicalConfigurationEvaluationPanel: ({
     detail,
+    actions,
   }: {
     detail: { criterionCode: string } | null
-  }) => <div data-testid="evaluation-panel-probe">{detail?.criterionCode ?? "none"}</div>,
+    actions: ReactNode
+  }) => (
+    <>
+      <div data-testid="evaluation-panel-probe">{detail?.criterionCode ?? "none"}</div>
+      {actions}
+    </>
+  ),
 }))
 
 describe("technical configuration evaluation active workspace regressions", () => {
   beforeEach(() => {
-    mocks.comparisonRequests = []
+    mocks.reset()
   })
 
-  function renderWorkspace(matrixOptionId: string) {
-    const result = createComparisonResult(1, matrixOptionId)
+  function renderWorkspace(matrixOptionId: string, page = 2): void {
+    mocks.setScenario({ page })
+    const result = createComparisonResult(page, matrixOptionId)
     const matrix = {
-      page: 1,
+      page,
       comparison: {
         comparisonQuery: {
           data: result,
@@ -170,14 +227,29 @@ describe("technical configuration evaluation active workspace regressions", () =
   it("reuses the active matrix page for the open evaluation criterion", () => {
     renderWorkspace("option-1")
 
-    expect(mocks.comparisonRequests).toContainEqual({ optionIds: [], page: 1 })
-    expect(mocks.comparisonRequests).not.toContainEqual({ optionIds: ["option-1"], page: 1 })
-    expect(screen.getByTestId("evaluation-panel-probe")).toHaveTextContent("TC-01")
+    expect(mocks.getComparisonRequests()).toContainEqual({ optionIds: [], page: 2 })
+    expect(mocks.getComparisonRequests()).not.toContainEqual({
+      optionIds: ["option-1"],
+      page: 2,
+    })
+    expect(screen.getByTestId("evaluation-panel-probe")).toHaveTextContent("TC-03")
   })
 
   it("loads panel comparison data when the active supplier is not in the matrix result", () => {
+    mocks.setScenario({
+      page: 2,
+      panelResult: createComparisonResult(2, "option-1"),
+    })
     renderWorkspace("option-2")
 
-    expect(mocks.comparisonRequests).toContainEqual({ optionIds: ["option-1"], page: 1 })
+    expect(mocks.getComparisonRequests()).toContainEqual({ optionIds: ["option-1"], page: 2 })
+    expect(screen.getByTestId("evaluation-panel-probe")).toHaveTextContent("TC-03")
+  })
+
+  it("does not announce saving for a navigation-only transition", () => {
+    mocks.setScenario({ page: 2, isTransitionPending: true })
+    renderWorkspace("option-1")
+
+    expect(screen.getByTestId("save-actions-probe")).toHaveAttribute("data-saving", "false")
   })
 })

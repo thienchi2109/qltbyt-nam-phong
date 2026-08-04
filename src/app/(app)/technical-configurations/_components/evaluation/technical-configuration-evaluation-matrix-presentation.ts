@@ -21,7 +21,7 @@ type BuildTechnicalConfigurationEvaluationMatrixPresentationInput = Readonly<{
   statusFilter: TechnicalConfigurationEvaluationStatusFilter
 }>
 
-export type TechnicalConfigurationEvaluationMatrixPresentation = Readonly<{
+type TechnicalConfigurationEvaluationMatrixPresentation = Readonly<{
   progress: ReturnType<typeof buildTechnicalConfigurationEvaluationProgress>
   assessmentStatusByCriterionId: ReadonlyMap<string, TechnicalConfigurationDerivedStatus>
   matchingEvaluationCriterionIds: ReadonlySet<string> | undefined

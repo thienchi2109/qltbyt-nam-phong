@@ -58,11 +58,11 @@ describe("technical configuration evaluation matrix regressions", () => {
       />
     )
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Xem chi tiết TS-02 · Nhà cung cấp B · Phương án B",
-      })
-    )
+    const detailButton = screen.getByRole("button", {
+      name: "Xem chi tiết TS-02 · Nhà cung cấp B · Phương án B",
+    })
+    expect(detailButton.querySelector("div, p")).toBeNull()
+    await user.click(detailButton)
     expect(onOpenDetail).toHaveBeenCalledWith(
       expect.objectContaining({
         criterionCode: "TS-02",

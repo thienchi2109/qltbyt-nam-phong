@@ -288,7 +288,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         actions={
           <TechnicalConfigurationEvaluationSaveActions
             disabled={saveDisabled}
-            saving={isNavigationBlocked}
+            saving={evaluation.isSaving}
             onSave={() => void handleSave()}
             onSaveAndContinue={() => void handleSaveAndContinue()}
           />

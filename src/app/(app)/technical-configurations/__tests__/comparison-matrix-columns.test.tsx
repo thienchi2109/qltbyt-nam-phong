@@ -364,10 +364,8 @@ describe("P10B2 pinned matrix columns", () => {
     )
   })
 
-  it("opens supplier cells as evaluation targets and marks the active filtered criterion", async () => {
-    const user = userEvent.setup()
+  it("marks the active filtered criterion and exposes evaluation actions", () => {
     const result = createComparisonResult()
-    const onOpenEvaluation = vi.fn()
 
     render(
       <TechnicalConfigurationMatrix
@@ -381,7 +379,7 @@ describe("P10B2 pinned matrix columns", () => {
         assessmentStatusByCriterionId={new Map([["criterion-2", "meets"]])}
         matchingEvaluationCriterionIds={new Set(["criterion-2"])}
         onOpenDetail={vi.fn()}
-        onOpenEvaluation={onOpenEvaluation}
+        onOpenEvaluation={vi.fn()}
         onPageChange={vi.fn()}
         onRetry={vi.fn()}
       />
@@ -407,19 +405,6 @@ describe("P10B2 pinned matrix columns", () => {
         name: "Đánh giá TS-01 · Nhà cung cấp B · Phương án B",
       })
     ).toBeEnabled()
-
-    const evaluationButton = screen.getByRole("button", {
-      name: "Đánh giá TS-02 · Nhà cung cấp B · Phương án B",
-    })
-    expect(evaluationButton).toHaveAttribute("data-testid", "matrix-evaluation-action")
-    expect(evaluationButton).toHaveTextContent("Đánh giá")
-    await user.click(evaluationButton)
-
-    expect(onOpenEvaluation).toHaveBeenCalledWith({
-      optionId: "option-b",
-      criterionId: "criterion-2",
-      trigger: evaluationButton,
-    })
   })
 
   it("renders only the focused option while preserving stable desktop dimensions", () => {

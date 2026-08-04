@@ -180,14 +180,15 @@ export function TechnicalConfigurationMatrixRow({
                   isFilterMatch && "bg-primary/10"
                 )}
               >
-                <button
-                  type="button"
-                  className="space-y-2 rounded-sm text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
-                  onClick={() => onOpenDetail(detail)}
-                >
-                  {cellContent}
-                </button>
+                <div className="relative space-y-2">
+                  <div className="space-y-2">{cellContent}</div>
+                  <button
+                    type="button"
+                    className="absolute inset-0 rounded-sm outline-none transition-colors hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
+                    onClick={() => onOpenDetail(detail)}
+                  />
+                </div>
                 <Button
                   type="button"
                   variant="outline"
