@@ -1,11 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react"
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -20,12 +19,10 @@ type TechnicalConfigurationCriteriaSpreadsheetProps = Readonly<{
   disabled: boolean
   focusCriterionKey: string | null
   focusCriterionToken: number | null
-  focusAddCriterionToken: number | null
   recentlyAcceptedCriterionKeys: ReadonlySet<string>
   onCriterionTextChange: (criterionKey: string, field: CriterionTextField, value: string) => void
   onMoveCriterion: (criterionIndex: number, offset: -1 | 1) => void
   onDeleteCriterion: (criterionKey: string) => void
-  onAddCriterion: () => void
 }>
 
 const GRID_COLUMNS = "grid-cols-[3rem_7rem_minmax(12rem,0.8fr)_minmax(24rem,2fr)_9rem_7rem]"
@@ -38,15 +35,12 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   disabled,
   focusCriterionKey,
   focusCriterionToken,
-  focusAddCriterionToken,
   recentlyAcceptedCriterionKeys,
   onCriterionTextChange,
   onMoveCriterion,
   onDeleteCriterion,
-  onAddCriterion,
 }: TechnicalConfigurationCriteriaSpreadsheetProps) {
   const requirementRefs = React.useRef(new Map<string, HTMLTextAreaElement>())
-  const addCriterionRef = React.useRef<HTMLButtonElement>(null)
 
   React.useEffect(() => {
     if (!focusCriterionKey) return
@@ -57,12 +51,6 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [focusCriterionKey, focusCriterionToken])
-
-  React.useEffect(() => {
-    if (focusAddCriterionToken === null) return
-    const timeoutId = window.setTimeout(() => addCriterionRef.current?.focus(), 0)
-    return () => window.clearTimeout(timeoutId)
-  }, [focusAddCriterionToken])
 
   return (
     <section aria-label={`Danh sách tiêu chí nhóm ${groupIndex}`} className="min-w-0">
@@ -195,21 +183,6 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
             </div>
           )}
         </div>
-      </div>
-
-      <div className="flex justify-end pt-3">
-        <Button
-          ref={addCriterionRef}
-          type="button"
-          variant="outline"
-          size="sm"
-          disabled={disabled}
-          aria-label={`Thêm tiêu chí vào nhóm ${groupIndex}`}
-          onClick={onAddCriterion}
-        >
-          <Plus className="size-4" aria-hidden="true" />
-          Thêm tiêu chí
-        </Button>
       </div>
     </section>
   )

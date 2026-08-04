@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -145,7 +145,8 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-      expect(await screen.findByRole("tab", { name: /Nhóm 1.*2 lỗi/ })).toBeInTheDocument()
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+      expect(within(firstGroup).getByText("2 lỗi")).toBeInTheDocument()
       expect(screen.getByLabelText("Tên nhóm 1")).not.toHaveAttribute("aria-invalid", "true")
       expect(screen.queryByText("Tên nhóm là bắt buộc.")).not.toBeInTheDocument()
       expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).not.toHaveAttribute(
@@ -176,6 +177,26 @@ describe("technical configuration inline workflow", () => {
     }
   })
 
+  it("disables Save while a dirty draft is reloading", async () => {
+    const user = userEvent.setup()
+    const originalDirty = baseline.isDirty
+    const originalReloading = baseline.isReloading
+    baseline.isDirty = true
+    baseline.isReloading = true
+
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+      const saveButton = await screen.findByRole("button", { name: "Lưu" })
+      expect(saveButton).toBeDisabled()
+      await user.click(saveButton)
+      expect(baseline.onSave).not.toHaveBeenCalled()
+    } finally {
+      baseline.isDirty = originalDirty
+      baseline.isReloading = originalReloading
+    }
+  })
+
   it("preserves group buffers and treats clean-draft bulk input as unsafe", async () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
@@ -184,8 +205,10 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
 
-      await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 1")
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+      const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí 2" })
+      await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+      await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 1")
 
       expect(
         screen.getByText("Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.")
@@ -200,12 +223,12 @@ describe("technical configuration inline workflow", () => {
       ;(beforeUnloadHandler as EventListener)(unsafeEvent)
       expect(unsafeEvent.defaultPrevented).toBe(true)
 
-      await user.click(screen.getByRole("tab", { name: /Yêu cầu kỹ thuật/ }))
-      expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("")
-      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 2")
+      await user.click(within(secondGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+      expect(within(secondGroup).getByLabelText("Nội dung nhập nhanh")).toHaveValue("")
+      await user.type(within(secondGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 2")
 
-      await user.click(screen.getByRole("tab", { name: /Yêu cầu chung/ }))
-      expect(screen.getByLabelText("Nội dung nhập nhanh")).toHaveValue("Buffer nhóm 1")
+      await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+      expect(within(firstGroup).getByLabelText("Nội dung nhập nhanh")).toHaveValue("Buffer nhóm 1")
       expect(baseline.onSave).not.toHaveBeenCalled()
     } finally {
       addEventListener.mockRestore()
@@ -221,8 +244,9 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-      await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-      await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+      await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+      await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
 
       const pendingExplanation = screen.getByText(
         "Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu."
@@ -251,50 +275,29 @@ describe("technical configuration inline workflow", () => {
     }
   })
 
-  it("opens an overview criterion in row mode and focuses its requirement cell", async () => {
+  it("renders every group inline and keeps requirement cells directly focusable", async () => {
     const user = userEvent.setup()
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-    const groupTab = await screen.findByRole("tab", { name: /Yêu cầu chung/ })
-    const groupPanelId = groupTab.getAttribute("aria-controls")
-    expect(groupPanelId).toBeTruthy()
-    expect(document.getElementById(groupPanelId!)).toHaveAttribute("role", "tabpanel")
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí 2" })
+    expect(within(firstGroup).getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
 
-    const rowModeTab = screen.getByRole("tab", { name: "Chỉnh từng dòng" })
-    const rowPanelId = rowModeTab.getAttribute("aria-controls")
-    expect(rowPanelId).toBeTruthy()
-    expect(document.getElementById(rowPanelId!)).toHaveAttribute("role", "tabpanel")
-
-    await user.click(await screen.findByRole("tab", { name: "Xem tất cả nhóm" }))
-    await waitFor(() =>
-      expect(screen.getByRole("heading", { name: "Xem tất cả nhóm" })).toHaveFocus()
-    )
-
-    await user.click(
-      screen.getByRole("button", {
-        name: /Mới.*Áp lực.*Áp lực tối thiểu 3 bar.*Chưa lưu/,
-      })
-    )
-    expect(screen.getByRole("tab", { name: "Chỉnh từng dòng" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    )
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.1")).toHaveFocus()
+    const secondRequirement = within(secondGroup).getByLabelText("Nội dung yêu cầu 2.1")
+    await user.click(secondRequirement)
+    expect(secondRequirement).toHaveFocus()
   })
 
   it("returns from cancel to row mode and keeps focus on the bulk mode trigger", async () => {
     const user = userEvent.setup()
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-    const bulkModeTab = await screen.findByRole("tab", { name: "Nhập nhiều dòng" })
-    await user.click(bulkModeTab)
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Tiêu chí chưa nhận")
-    await user.click(screen.getByRole("button", { name: "Hủy nhập" }))
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+    await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Tiêu chí chưa nhận")
+    await user.click(within(firstGroup).getByRole("button", { name: "Hủy nhập" }))
 
-    expect(screen.getByRole("tab", { name: "Chỉnh từng dòng" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    )
-    expect(bulkModeTab).toHaveFocus()
+    expect(within(firstGroup).getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ })).toHaveFocus()
   })
 })

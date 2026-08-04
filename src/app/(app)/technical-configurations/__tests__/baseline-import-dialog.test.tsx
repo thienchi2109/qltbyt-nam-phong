@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { fireEvent, screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -122,9 +122,10 @@ describe("technical configuration baseline import dialog", () => {
 
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Nhập từ Excel" }))
-    fireEvent.change(screen.getByLabelText("Chọn template cấu hình cơ sở"), {
-      target: { files: [createBaselineImportFile()] },
-    })
+    await user.upload(
+      screen.getByLabelText("Chọn template cấu hình cơ sở"),
+      createBaselineImportFile()
+    )
 
     expect(
       await screen.findByRole("region", { name: "Xem trước cấu hình cơ sở" })
@@ -147,9 +148,10 @@ describe("technical configuration baseline import dialog", () => {
 
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Nhập từ Excel" }))
-    fireEvent.change(screen.getByLabelText("Chọn template cấu hình cơ sở"), {
-      target: { files: [createBaselineImportFile("invalid-template.xlsx")] },
-    })
+    await user.upload(
+      screen.getByLabelText("Chọn template cấu hình cơ sở"),
+      createBaselineImportFile("invalid-template.xlsx")
+    )
 
     expect(await screen.findByRole("alert", { name: "Lỗi nhập cấu hình cơ sở" })).toHaveTextContent(
       "Template không hợp lệ"
@@ -174,8 +176,9 @@ describe("technical configuration baseline import dialog", () => {
     mockVersions([createDraft()])
 
     renderTab()
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+    await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
 
     expect(screen.getByRole("button", { name: "Tải template Excel" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Nhập từ Excel" })).toBeDisabled()

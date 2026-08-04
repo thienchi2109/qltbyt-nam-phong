@@ -19,7 +19,6 @@ import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import { ALL_GROUPS_VALUE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationGroupNavigation"
 import type { useTechnicalConfigurationBulkEntrySessions } from "./useTechnicalConfigurationBulkEntrySessions"
 
 type BulkSessions = ReturnType<typeof useTechnicalConfigurationBulkEntrySessions>
@@ -66,7 +65,6 @@ export function useTechnicalConfigurationInlineEditor({
     previousGroupKeysRef.current = groupKeys
     bulkSessions.syncGroupKeys(groupKeys)
     setViewState((current) => {
-      if (current.activeValue === ALL_GROUPS_VALUE) return current
       if (groupKeys.includes(current.activeValue)) return current
       const previousIndex = previousGroupKeys.indexOf(current.activeValue)
       return {
@@ -112,7 +110,7 @@ export function useTechnicalConfigurationInlineEditor({
       activeValue: nextGroupKey ?? "",
       entryMode: "row",
       focusTarget: nextGroupKey
-        ? { kind: "group-tab", key: nextGroupKey, token: nextFocusToken() }
+        ? { kind: "group-disclosure", key: nextGroupKey, token: nextFocusToken() }
         : { kind: "add-group", token: nextFocusToken() },
     })
   }
@@ -148,18 +146,16 @@ export function useTechnicalConfigurationInlineEditor({
     }
     const nextFocusTarget: TechnicalConfigurationFocusTarget = nextCriterion
       ? { kind: "criterion", key: nextCriterion.key, token: nextFocusToken() }
-      : { kind: "add-criterion", token: nextFocusToken() }
+      : { kind: "add-criterion", key: groupKey, token: nextFocusToken() }
     setViewState((current) => ({ ...current, focusTarget: nextFocusTarget }))
   }
 
-  const navigate = (value: string) => {
-    if (value !== activeValue) bulkSessions.clearRecentHighlights()
-    setViewState((current) => ({ ...current, activeValue: value, focusTarget: null }))
-  }
-
-  const changeMode = (mode: TechnicalConfigurationEntryMode) => {
-    if (mode !== entryMode) bulkSessions.clearRecentHighlights()
-    const selectedGroup = draft?.groups.find((group) => group.key === activeValue)
+  const setGroupMode = (groupKey: string, mode: TechnicalConfigurationEntryMode): void => {
+    const selectedGroup = draft?.groups.find((group) => group.key === groupKey)
+    if (!selectedGroup) return
+    if (groupKey !== activeValue || mode !== entryMode) {
+      bulkSessions.clearRecentHighlights()
+    }
     const targetCriterion =
       selectedGroup?.criteria.find((criterion) => validation.criterionErrors[criterion.key]) ??
       selectedGroup?.criteria[0]
@@ -167,17 +163,17 @@ export function useTechnicalConfigurationInlineEditor({
       mode === "row"
         ? targetCriterion
           ? { kind: "criterion", key: targetCriterion.key, token: nextFocusToken() }
-          : { kind: "add-criterion", token: nextFocusToken() }
+          : { kind: "add-criterion", key: groupKey, token: nextFocusToken() }
         : { kind: "bulk-input", token: nextFocusToken() }
-    setViewState((current) => ({
-      ...current,
+    setViewState({
+      activeValue: groupKey,
       entryMode: mode,
       focusTarget: nextFocusTarget,
-    }))
+    })
   }
 
   const acceptBulk = () => {
-    if (!draft || activeValue === ALL_GROUPS_VALUE) return
+    if (!draft) return
     const session = bulkSessions.getSession(activeValue)
     if (!session.preview?.canAccept) return
     const currentGroup = draft.groups.find((group) => group.key === activeValue)
@@ -205,10 +201,10 @@ export function useTechnicalConfigurationInlineEditor({
   }
 
   const cancelBulk = () => {
-    if (activeValue !== ALL_GROUPS_VALUE) bulkSessions.clearSession(activeValue)
+    bulkSessions.clearSession(activeValue)
     const nextFocusTarget: TechnicalConfigurationFocusTarget = {
-      kind: "mode-tab",
-      mode: "bulk",
+      kind: "group-mode-action",
+      key: activeValue,
       token: nextFocusToken(),
     }
     setViewState((current) => ({
@@ -222,13 +218,12 @@ export function useTechnicalConfigurationInlineEditor({
     activeValue,
     entryMode,
     focusTarget,
-    bulkSession: bulkSessions.getSession(activeValue === ALL_GROUPS_VALUE ? "" : activeValue),
+    bulkSession: bulkSessions.getSession(activeValue),
     addGroup,
     deleteGroup,
     addCriterion,
     deleteCriterion,
-    navigate,
-    changeMode,
+    setGroupMode,
     acceptBulk,
     cancelBulk,
     prepareForReload: (firstGroupKey: string) =>
@@ -236,7 +231,7 @@ export function useTechnicalConfigurationInlineEditor({
         activeValue: firstGroupKey,
         entryMode: "row",
         focusTarget: firstGroupKey
-          ? { kind: "group-tab", key: firstGroupKey, token: nextFocusToken() }
+          ? { kind: "group-disclosure", key: firstGroupKey, token: nextFocusToken() }
           : { kind: "add-group", token: nextFocusToken() },
       }),
     setGroupName: (groupKey: string, name: string) => {
@@ -276,24 +271,11 @@ export function useTechnicalConfigurationInlineEditor({
       }
     },
     setBulkInput: (input: string) => {
-      if (activeValue !== ALL_GROUPS_VALUE) bulkSessions.setInput(activeValue, input)
+      bulkSessions.setInput(activeValue, input)
     },
     previewBulk: () => {
-      if (activeValue === ALL_GROUPS_VALUE) return
       const session = bulkSessions.getSession(activeValue)
       bulkSessions.setPreview(activeValue, parseTechnicalConfigurationBulkEntry(session.input))
-    },
-    activateOverviewCriterion: (groupKey: string, criterionKey: string) => {
-      bulkSessions.clearRecentHighlights()
-      setViewState({
-        activeValue: groupKey,
-        entryMode: "row",
-        focusTarget: {
-          kind: "criterion",
-          key: criterionKey,
-          token: nextFocusToken(),
-        },
-      })
     },
   }
 }

@@ -7,6 +7,8 @@ type TechnicalConfigurationBaselineEditorIconButtonProps = {
   title: string
   disabled: boolean
   destructive?: boolean
+  ariaDisabled?: boolean
+  ariaDescribedBy?: string
   onClick: () => void
   children: ReactNode
 }
@@ -17,6 +19,8 @@ export function TechnicalConfigurationBaselineEditorIconButton({
   title,
   disabled,
   destructive = false,
+  ariaDisabled,
+  ariaDescribedBy,
   onClick,
   children,
 }: Readonly<TechnicalConfigurationBaselineEditorIconButtonProps>) {
@@ -27,6 +31,8 @@ export function TechnicalConfigurationBaselineEditorIconButton({
       size="icon"
       className={destructive ? "text-destructive hover:text-destructive" : undefined}
       aria-label={label}
+      aria-disabled={ariaDisabled || undefined}
+      aria-describedby={ariaDescribedBy}
       title={title}
       disabled={disabled}
       onClick={onClick}

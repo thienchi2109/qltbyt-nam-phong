@@ -1,37 +1,28 @@
-import * as React from "react"
-import { ArrowDown, ArrowUp, LoaderCircle, Plus, Save, Trash2 } from "lucide-react"
+"use client"
 
+import * as React from "react"
+import { LoaderCircle, Plus, Save } from "lucide-react"
+
+import { TechnicalConfigurationBaselineGroupSection } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineGroupSection"
 import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
-import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-configurations/bulk-entry-utils"
+import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
+  TechnicalConfigurationBaselineEditorGroup,
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-import { TechnicalConfigurationAllGroupsOverview } from "./TechnicalConfigurationAllGroupsOverview"
-import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
-import { TechnicalConfigurationBulkEntryWorkbench } from "./TechnicalConfigurationBulkEntryWorkbench"
-import { TechnicalConfigurationCriteriaSpreadsheet } from "./TechnicalConfigurationCriteriaSpreadsheet"
-import {
-  ALL_GROUPS_VALUE,
-  getTechnicalConfigurationGroupTabId,
-  GROUP_WORKSPACE_PANEL_ID,
-} from "./TechnicalConfigurationGroupNavigation"
-import { TechnicalConfigurationGroupNavigator } from "./TechnicalConfigurationGroupNavigator"
 
 export type TechnicalConfigurationEntryMode = "row" | "bulk"
 export type TechnicalConfigurationFocusTarget =
   | { kind: "criterion"; key: string; token: number }
   | { kind: "group-name"; key: string; token: number }
-  | { kind: "group-tab"; key: string; token: number }
-  | { kind: "mode-tab"; mode: TechnicalConfigurationEntryMode; token: number }
+  | { kind: "group-disclosure"; key: string; token: number }
+  | { kind: "group-mode-action"; key: string; token: number }
   | { kind: "bulk-input"; token: number }
   | { kind: "add-group"; token: number }
-  | { kind: "add-criterion"; token: number }
+  | { kind: "add-criterion"; key: string; token: number }
   | null
 
 type CriterionTextField = "title" | "requirementText"
@@ -52,11 +43,10 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   status: TechnicalConfigurationBaselineEditorStatus
   activeValue: string
   entryMode: TechnicalConfigurationEntryMode
-  bulkSession: TechnicalConfigurationBulkEntrySession
+  getBulkSession: (groupKey: string) => TechnicalConfigurationBulkEntrySession
   focusTarget: TechnicalConfigurationFocusTarget
   recentlyAcceptedCriterionKeys: ReadonlySet<string>
-  onNavigate: (value: string) => void
-  onModeChange: (mode: TechnicalConfigurationEntryMode) => void
+  onGroupModeChange: (groupKey: string, mode: TechnicalConfigurationEntryMode) => void
   onAddGroup: () => void
   onGroupNameChange: (groupKey: string, name: string) => void
   onMoveGroup: (groupIndex: number, offset: -1 | 1) => void
@@ -74,13 +64,29 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   onBulkPreview: () => void
   onBulkCancel: () => void
   onBulkAccept: () => void
-  onOverviewCriterionActivate: (groupKey: string, criterionKey: string) => void
   onSave: () => void
 }>
 
 const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
 
-/** Composes the selected-group spreadsheet, inline bulk entry, and overview surfaces. */
+function getFocusTargetForGroup(
+  focusTarget: TechnicalConfigurationFocusTarget,
+  group: TechnicalConfigurationBaselineEditorGroup,
+  activeValue: string
+): TechnicalConfigurationFocusTarget | null {
+  if (!focusTarget || focusTarget.kind === "add-group") return null
+  if (focusTarget.kind === "criterion") {
+    return group.criteria.some((criterion) => criterion.key === focusTarget.key)
+      ? focusTarget
+      : null
+  }
+  if (focusTarget.kind === "bulk-input") {
+    return activeValue === group.key ? focusTarget : null
+  }
+  return focusTarget.key === group.key ? focusTarget : null
+}
+
+/** Composes all editable baseline groups in one definite-height hierarchy. */
 export function TechnicalConfigurationBaselineEditor({
   draft,
   validation,
@@ -88,11 +94,10 @@ export function TechnicalConfigurationBaselineEditor({
   status,
   activeValue,
   entryMode,
-  bulkSession,
+  getBulkSession,
   focusTarget,
   recentlyAcceptedCriterionKeys,
-  onNavigate,
-  onModeChange,
+  onGroupModeChange,
   onAddGroup,
   onGroupNameChange,
   onMoveGroup,
@@ -105,9 +110,8 @@ export function TechnicalConfigurationBaselineEditor({
   onBulkPreview,
   onBulkCancel,
   onBulkAccept,
-  onOverviewCriterionActivate,
   onSave,
-}: TechnicalConfigurationBaselineEditorProps) {
+}: TechnicalConfigurationBaselineEditorProps): React.JSX.Element {
   const {
     dirty: isDirty,
     saving: isSaving,
@@ -116,31 +120,45 @@ export function TechnicalConfigurationBaselineEditor({
     saveStatus,
     hasPendingBulkInput,
   } = status
-  const selectedGroupIndex = draft.groups.findIndex((group) => group.key === activeValue)
-  const selectedGroup = selectedGroupIndex >= 0 ? draft.groups[selectedGroupIndex] : null
-  const selectedGroupError = selectedGroup ? validation.groupErrors[selectedGroup.key] : undefined
-  const selectedGroupErrorId =
-    selectedGroup && selectedGroupError ? `baseline-group-${selectedGroup.key}-error` : undefined
-  const selectedGroupHasPendingInput = hasTechnicalConfigurationBulkEntryInput(bulkSession.input)
+  const groupKeys = React.useMemo(() => draft.groups.map((group) => group.key), [draft.groups])
+  const disclosure = useTechnicalConfigurationGroupDisclosure(groupKeys)
   const addGroupRef = React.useRef<HTMLButtonElement>(null)
-  const groupNameRef = React.useRef<HTMLInputElement>(null)
-  const rowModeRef = React.useRef<HTMLButtonElement>(null)
-  const bulkModeRef = React.useRef<HTMLButtonElement>(null)
 
   React.useEffect(() => {
     if (!focusTarget) return
-    if (focusTarget.kind === "add-group") addGroupRef.current?.focus()
-    else if (focusTarget.kind === "group-name" && focusTarget.key === selectedGroup?.key) {
-      groupNameRef.current?.focus()
-    } else if (focusTarget.kind === "mode-tab") {
-      const target = focusTarget.mode === "row" ? rowModeRef.current : bulkModeRef.current
-      target?.focus()
+    if (focusTarget.kind === "add-group") {
+      const timeoutId = window.setTimeout(() => {
+        addGroupRef.current?.scrollIntoView?.({ block: "nearest" })
+        addGroupRef.current?.focus()
+      }, 0)
+      return () => window.clearTimeout(timeoutId)
     }
-  }, [focusTarget, selectedGroup?.key])
+
+    let targetGroupKey: string | null = null
+    if (focusTarget.kind === "criterion") {
+      targetGroupKey =
+        draft.groups.find((group) =>
+          group.criteria.some((criterion) => criterion.key === focusTarget.key)
+        )?.key ?? null
+    } else if (focusTarget.kind === "bulk-input") {
+      targetGroupKey = activeValue
+    } else {
+      targetGroupKey = focusTarget.key
+    }
+
+    if (targetGroupKey) disclosure.expand(targetGroupKey)
+  }, [activeValue, disclosure.expand, draft.groups, focusTarget])
 
   return (
-    <section aria-label="Trình soạn cấu hình cơ sở">
-      <div className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+    <section
+      aria-label="Trình soạn cấu hình cơ sở"
+      data-testid="baseline-editor-workspace"
+      className="flex h-[70dvh] min-h-[28rem] max-h-[52rem] flex-col"
+    >
+      <div
+        data-testid="baseline-editor-toolbar"
+        className="flex shrink-0 flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between"
+      >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-lg font-semibold">Bản nháp cấu hình cơ sở</h2>
@@ -157,7 +175,74 @@ export function TechnicalConfigurationBaselineEditor({
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <Button
+          type="button"
+          disabled={isEditingDisabled || !isDirty || isSaving || isConflict || hasPendingBulkInput}
+          aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
+          onClick={onSave}
+        >
+          {isSaving ? (
+            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <Save className="size-4" aria-hidden="true" />
+          )}
+          {isSaving ? "Đang lưu..." : "Lưu"}
+        </Button>
+      </div>
+
+      <div
+        role="region"
+        aria-label="Các nhóm cấu hình cơ sở"
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
+        {draft.groups.length === 0 ? (
+          <p className="border-b px-4 py-10 text-center text-sm text-muted-foreground">
+            Chưa có nhóm tiêu chí.
+          </p>
+        ) : (
+          draft.groups.map((group, groupIndex) => {
+            const mode = activeValue === group.key && entryMode === "bulk" ? "bulk" : "row"
+            const summaryErrorCount =
+              (summaryValidation.groupErrors[group.key] ? 1 : 0) +
+              group.criteria.filter((criterion) => summaryValidation.criterionErrors[criterion.key])
+                .length
+
+            return (
+              <TechnicalConfigurationBaselineGroupSection
+                key={group.key}
+                group={group}
+                groupIndex={groupIndex}
+                groupCount={draft.groups.length}
+                expanded={disclosure.expandedGroupKeys.has(group.key)}
+                mode={mode}
+                bulkSession={getBulkSession(group.key)}
+                groupError={validation.groupErrors[group.key]}
+                criterionErrors={validation.criterionErrors}
+                summaryErrorCount={summaryErrorCount}
+                pendingInputDescriptionId={PENDING_BULK_STATUS_ID}
+                disabled={isEditingDisabled}
+                focusTarget={getFocusTargetForGroup(focusTarget, group, activeValue)}
+                recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
+                onExpandedChange={(expanded) => disclosure.setExpanded(group.key, expanded)}
+                onModeChange={onGroupModeChange}
+                onGroupNameChange={onGroupNameChange}
+                onMoveGroup={onMoveGroup}
+                onDeleteGroup={onDeleteGroup}
+                onCriterionTextChange={onCriterionTextChange}
+                onMoveCriterion={onMoveCriterion}
+                onDeleteCriterion={onDeleteCriterion}
+                onAddCriterion={onAddCriterion}
+                onBulkInputChange={onBulkInputChange}
+                onBulkPreview={onBulkPreview}
+                onBulkCancel={onBulkCancel}
+                onBulkAccept={onBulkAccept}
+              />
+            )
+          })
+        )}
+
+        <div className="flex justify-center px-3 py-4">
           <Button
             ref={addGroupRef}
             type="button"
@@ -168,168 +253,7 @@ export function TechnicalConfigurationBaselineEditor({
             <Plus className="size-4" aria-hidden="true" />
             Thêm nhóm
           </Button>
-          <Button
-            type="button"
-            disabled={!isDirty || isSaving || isConflict || hasPendingBulkInput}
-            aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
-            onClick={onSave}
-          >
-            {isSaving ? (
-              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <Save className="size-4" aria-hidden="true" />
-            )}
-            {isSaving ? "Đang lưu..." : "Lưu"}
-          </Button>
         </div>
-      </div>
-
-      <TechnicalConfigurationGroupNavigator
-        groups={draft.groups}
-        activeValue={activeValue}
-        validation={summaryValidation}
-        focusGroupRequest={
-          focusTarget?.kind === "group-tab"
-            ? { groupKey: focusTarget.key, token: focusTarget.token }
-            : null
-        }
-        onValueChange={onNavigate}
-      />
-
-      <div
-        id={GROUP_WORKSPACE_PANEL_ID}
-        role="tabpanel"
-        aria-labelledby={activeValue ? getTechnicalConfigurationGroupTabId(activeValue) : undefined}
-      >
-        {activeValue === ALL_GROUPS_VALUE ? (
-          <TechnicalConfigurationAllGroupsOverview
-            draft={draft}
-            validation={summaryValidation}
-            onCriterionActivate={onOverviewCriterionActivate}
-          />
-        ) : selectedGroup ? (
-          <Tabs
-            value={entryMode}
-            activationMode="manual"
-            className="py-5"
-            onValueChange={(value) => onModeChange(value as TechnicalConfigurationEntryMode)}
-          >
-            <div className="grid gap-4 border-b pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-              <div className="grid min-w-0 gap-3 sm:grid-cols-[2.5rem_minmax(0,1fr)_auto] sm:items-start">
-                <span className="flex size-10 items-center justify-center rounded-md border bg-muted text-sm font-semibold">
-                  {selectedGroupIndex + 1}
-                </span>
-                <div className="min-w-0">
-                  <label className="sr-only" htmlFor={`baseline-group-${selectedGroup.key}`}>
-                    Tên nhóm {selectedGroupIndex + 1}
-                  </label>
-                  <Input
-                    ref={groupNameRef}
-                    id={`baseline-group-${selectedGroup.key}`}
-                    aria-label={`Tên nhóm ${selectedGroupIndex + 1}`}
-                    value={selectedGroup.name}
-                    disabled={isEditingDisabled}
-                    aria-invalid={Boolean(selectedGroupError)}
-                    aria-describedby={selectedGroupErrorId}
-                    onChange={(event) => onGroupNameChange(selectedGroup.key, event.target.value)}
-                  />
-                  {selectedGroupError ? (
-                    <p id={selectedGroupErrorId} className="mt-1 text-sm text-destructive">
-                      {selectedGroupError}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex h-10 items-center gap-1">
-                  <IconButton
-                    label={`Di chuyển nhóm ${selectedGroupIndex + 1} lên`}
-                    title="Di chuyển lên"
-                    disabled={isEditingDisabled || selectedGroupIndex === 0}
-                    onClick={() => onMoveGroup(selectedGroupIndex, -1)}
-                  >
-                    <ArrowUp className="size-4" />
-                  </IconButton>
-                  <IconButton
-                    label={`Di chuyển nhóm ${selectedGroupIndex + 1} xuống`}
-                    title="Di chuyển xuống"
-                    disabled={isEditingDisabled || selectedGroupIndex === draft.groups.length - 1}
-                    onClick={() => onMoveGroup(selectedGroupIndex, 1)}
-                  >
-                    <ArrowDown className="size-4" />
-                  </IconButton>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive"
-                    aria-label={`Xóa nhóm ${selectedGroupIndex + 1}`}
-                    title="Xóa nhóm"
-                    disabled={isEditingDisabled}
-                    aria-disabled={selectedGroupHasPendingInput}
-                    aria-describedby={
-                      selectedGroupHasPendingInput ? PENDING_BULK_STATUS_ID : undefined
-                    }
-                    onClick={() => {
-                      if (!selectedGroupHasPendingInput) onDeleteGroup(selectedGroup.key)
-                    }}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <TabsList className="grid w-full grid-cols-2 lg:w-auto">
-                <TabsTrigger ref={rowModeRef} value="row">
-                  Chỉnh từng dòng
-                </TabsTrigger>
-                <TabsTrigger ref={bulkModeRef} value="bulk">
-                  Nhập nhiều dòng
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="row" className="mt-0 pt-5">
-              <TechnicalConfigurationCriteriaSpreadsheet
-                group={selectedGroup}
-                groupIndex={selectedGroupIndex + 1}
-                criterionErrors={validation.criterionErrors}
-                disabled={isEditingDisabled}
-                focusCriterionKey={focusTarget?.kind === "criterion" ? focusTarget.key : null}
-                focusCriterionToken={focusTarget?.kind === "criterion" ? focusTarget.token : null}
-                focusAddCriterionToken={
-                  focusTarget?.kind === "add-criterion" ? focusTarget.token : null
-                }
-                recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
-                onCriterionTextChange={(criterionKey, field, value) =>
-                  onCriterionTextChange(selectedGroup.key, criterionKey, field, value)
-                }
-                onMoveCriterion={(criterionIndex, offset) =>
-                  onMoveCriterion(selectedGroup.key, criterionIndex, offset)
-                }
-                onDeleteCriterion={(criterionKey) =>
-                  onDeleteCriterion(selectedGroup.key, criterionKey)
-                }
-                onAddCriterion={() => onAddCriterion(selectedGroup.key)}
-              />
-            </TabsContent>
-            <TabsContent value="bulk" className="mt-0">
-              <TechnicalConfigurationBulkEntryWorkbench
-                groupName={selectedGroup.name.trim() || `Nhóm ${selectedGroupIndex + 1}`}
-                existingCriterionCount={selectedGroup.criteria.length}
-                session={bulkSession}
-                disabled={isEditingDisabled}
-                focusInputToken={focusTarget?.kind === "bulk-input" ? focusTarget.token : null}
-                onInputChange={onBulkInputChange}
-                onPreview={onBulkPreview}
-                onCancel={onBulkCancel}
-                onAccept={onBulkAccept}
-              />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <div className="border-b py-12 text-center text-sm text-muted-foreground">
-            Chưa có nhóm cấu hình. Chọn Thêm nhóm để bắt đầu.
-          </div>
-        )}
       </div>
     </section>
   )
