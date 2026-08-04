@@ -143,7 +143,8 @@ export function hasTechnicalConfigurationResultExportCurrentOptionPage(
   context: TechnicalConfigurationResultExportContext
 ): boolean {
   const page = context.options.page
-  return Boolean(page && normalizedIds(page.currentIds).length < context.options.total)
+  const currentIdCount = page ? normalizedIds(page.currentIds).length : 0
+  return currentIdCount > 0 && currentIdCount < context.options.total
 }
 
 function selectedCriterionIds(
@@ -243,10 +244,23 @@ export function transitionTechnicalConfigurationResultExport(
     return { state: { ...state, criterionScope: event.scope }, request: null }
   }
   if (event.type === "context_changed") {
+    if (sameIdentity(state.context, event.context)) {
+      return {
+        state: {
+          ...state,
+          context: event.context,
+          optionScope:
+            state.optionScope === "current_page" &&
+            !hasTechnicalConfigurationResultExportCurrentOptionPage(event.context)
+              ? "all"
+              : state.optionScope,
+        },
+        request: null,
+      }
+    }
+
     return {
-      state: sameIdentity(state.context, event.context)
-        ? { ...state, context: event.context }
-        : defaultState(event.context, state.open),
+      state: defaultState(event.context, state.open),
       request: null,
     }
   }

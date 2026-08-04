@@ -89,6 +89,15 @@ function ResultExportDialogContent({
     type: "context_changed",
     context,
   }).state
+  React.useLayoutEffect(() => {
+    setStoredState((current) => {
+      if (current.context === context) return current
+      return transitionTechnicalConfigurationResultExport(current, {
+        type: "context_changed",
+        context,
+      }).state
+    })
+  }, [context])
   const validationError = getTechnicalConfigurationResultExportValidationError(state)
   const summary = getTechnicalConfigurationResultExportSelectionSummary(state)
   const hasCurrentOptionPage = hasTechnicalConfigurationResultExportCurrentOptionPage(state.context)

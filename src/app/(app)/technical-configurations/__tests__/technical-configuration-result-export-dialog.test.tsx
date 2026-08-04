@@ -342,6 +342,29 @@ describe("TechnicalConfigurationResultExportDialog", () => {
     expect(screen.getByRole("radio", { name: "1 phương án đã chọn" })).toBeInTheDocument()
   })
 
+  it("hides an empty current option page while keeping the active selected option", async () => {
+    const user = userEvent.setup()
+    render(
+      <DialogHarness
+        context={createContext({
+          options: {
+            total: 2,
+            page: {
+              currentIds: [],
+              selectedIds: ["option-2"],
+            },
+          },
+        })}
+        onConfirm={vi.fn()}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Mở xuất kết quả" }))
+
+    expect(screen.queryByRole("radio", { name: /đang hiển thị/ })).not.toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "1 phương án đã chọn" })).toBeInTheDocument()
+  })
+
   it("disables confirmation and announces an empty selected scope", async () => {
     const user = userEvent.setup()
     render(
@@ -406,6 +429,70 @@ describe("TechnicalConfigurationResultExportDialog", () => {
       dossierId: "dossier-1",
       baselineVersionId: "baseline-1",
       optionIds: ["option-4"],
+      criterionIds: null,
+    })
+  })
+
+  it("keeps the all-options fallback after a redundant current page becomes paginated again", async () => {
+    const user = userEvent.setup()
+    const onConfirm = vi.fn()
+    const { rerender } = render(
+      <TechnicalConfigurationResultExportDialog
+        open
+        context={createContext()}
+        onOpenChange={vi.fn()}
+        onConfirm={onConfirm}
+      />
+    )
+
+    await user.click(screen.getByRole("radio", { name: "3 phương án đang hiển thị" }))
+
+    rerender(
+      <TechnicalConfigurationResultExportDialog
+        open
+        context={createContext({
+          options: {
+            total: 3,
+            page: {
+              currentIds: ["option-1", "option-2", "option-3"],
+              selectedIds: ["option-2"],
+            },
+          },
+        })}
+        onOpenChange={vi.fn()}
+        onConfirm={onConfirm}
+      />
+    )
+
+    expect(screen.queryByRole("radio", { name: /đang hiển thị/ })).not.toBeInTheDocument()
+    expect(screen.getByRole("radio", { name: "Tất cả 3 phương án" })).toBeChecked()
+
+    rerender(
+      <TechnicalConfigurationResultExportDialog
+        open
+        context={createContext({
+          options: {
+            total: 4,
+            page: {
+              currentIds: ["option-1", "option-2", "option-3"],
+              selectedIds: ["option-2"],
+            },
+          },
+        })}
+        onOpenChange={vi.fn()}
+        onConfirm={onConfirm}
+      />
+    )
+
+    expect(screen.getByRole("radio", { name: "Tất cả 4 phương án" })).toBeChecked()
+    expect(screen.getByRole("radio", { name: "3 phương án đang hiển thị" })).not.toBeChecked()
+
+    await user.click(screen.getByRole("button", { name: "Xuất file .xlsx" }))
+    expect(onConfirm).toHaveBeenCalledWith({
+      mode: "full",
+      dossierId: "dossier-1",
+      baselineVersionId: "baseline-1",
+      optionIds: null,
       criterionIds: null,
     })
   })

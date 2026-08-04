@@ -105,7 +105,7 @@ export function TechnicalConfigurationResultExportControl({
   const generatedBy =
     session?.user.full_name?.trim() ||
     session?.user.name?.trim() ||
-    session?.user.username.trim() ||
+    session?.user.username?.trim() ||
     "Không xác định"
   const resultExport = useTechnicalConfigurationResultExport({
     dossierId,

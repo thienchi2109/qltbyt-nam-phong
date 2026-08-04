@@ -17,6 +17,15 @@ const mocks = vi.hoisted(() => ({
   collectDataset: vi.fn(),
   createModel: vi.fn(),
   downloadBlob: vi.fn(),
+  session: {
+    user: {
+      id: "user-1",
+      username: "admin" as string | null,
+      full_name: "Nguyễn Văn A" as string | null,
+      name: null as string | null,
+      role: "admin",
+    },
+  },
   serializeWorkbook: vi.fn(),
 }))
 
@@ -38,14 +47,7 @@ vi.mock("@/lib/excel-workbook", () => ({
 
 vi.mock("next-auth/react", () => ({
   useSession: () => ({
-    data: {
-      user: {
-        id: "user-1",
-        username: "admin",
-        full_name: "Nguyễn Văn A",
-        role: "admin",
-      },
-    },
+    data: mocks.session,
     status: "authenticated",
   }),
 }))
@@ -63,6 +65,29 @@ function createDeferred<T>() {
 function createDataset(
   deviceTypeName = "Máy siêu âm / Doppler"
 ): TechnicalConfigurationResultExportDataset {
+  const optionIdentity = {
+    option_id: "option-2",
+    supplier_id: "supplier-2",
+    supplier_name: "Nhà cung cấp A",
+    display_label: "Nhà cung cấp A · Model A",
+  } as const
+  const optionAxisItem = {
+    ...optionIdentity,
+    model: "Model A",
+    manufacturer: "Hãng A",
+    option_name: "Máy siêu âm",
+  } as const
+  const criterionAxisItem = {
+    group_id: "group-1",
+    group_name: "Nhóm tiêu chí 1",
+    group_order: 1,
+    criterion_id: "criterion-3",
+    criterion_code: "TC-003",
+    criterion_title: "Tiêu chí 3",
+    requirement_text: "Yêu cầu cấu hình 3",
+    criterion_order: 3,
+  } as const
+
   return {
     mode: "full",
     manifest: {
@@ -86,10 +111,32 @@ function createDataset(
       snapshot_token: "snapshot-1",
       ranking_snapshot_token: "ranking-snapshot-1",
     },
-    optionAxis: [],
-    criterionAxis: [],
-    ranking: [],
-    matrix: [],
+    optionAxis: [optionAxisItem],
+    criterionAxis: [criterionAxisItem],
+    ranking: [
+      {
+        ...optionIdentity,
+        eligibility: "eligible",
+        incomplete_criterion_count: 0,
+        failed_count: 0,
+        insufficient_evidence_count: 0,
+        exceeds_count: 1,
+        rank: 1,
+      },
+    ],
+    matrix: [
+      {
+        ...criterionAxisItem,
+        ...optionAxisItem,
+        response_text: "Đáp ứng",
+        supplementary_information: null,
+        document_links: [],
+        technical_axis: "meets",
+        evidence_axis: "complete",
+        assessment_notes: null,
+        conclusion: "meets",
+      },
+    ],
   }
 }
 
@@ -110,6 +157,19 @@ describe("useTechnicalConfigurationResultExport", () => {
       sheets: [],
     })
     mocks.serializeWorkbook.mockResolvedValue(new Uint8Array([1, 2, 3]).buffer)
+  })
+
+  it("uses an internally complete dataset for the successful export path", () => {
+    const dataset = createDataset()
+
+    expect(dataset.optionAxis.map((option) => option.option_id)).toEqual(["option-2"])
+    expect(dataset.criterionAxis.map((criterion) => criterion.criterion_id)).toEqual([
+      "criterion-3",
+    ])
+    expect(dataset.ranking.map((row) => row.option_id)).toEqual(["option-2"])
+    expect(dataset.matrix.map((cell) => [cell.option_id, cell.criterion_id])).toEqual([
+      ["option-2", "criterion-3"],
+    ])
   })
 
   it("does no work on mount, then serializes and downloads one complete stable dataset", async () => {
@@ -284,6 +344,9 @@ describe("useTechnicalConfigurationResultExport", () => {
 describe("TechnicalConfigurationResultExportControl", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.session.user.username = "admin"
+    mocks.session.user.full_name = "Nguyễn Văn A"
+    mocks.session.user.name = null
     mocks.createModel.mockReturnValue({
       template_kind: "technical_configuration_result",
       template_version: 1,
@@ -304,6 +367,21 @@ describe("TechnicalConfigurationResultExportControl", () => {
       />
     )
   }
+
+  it("falls back safely when every session display-name field is null", async () => {
+    const user = userEvent.setup()
+    mocks.session.user.username = null
+    mocks.session.user.full_name = null
+    mocks.session.user.name = null
+    mocks.collectDataset.mockResolvedValue(createDataset())
+    renderControl()
+
+    await user.click(screen.getByRole("button", { name: "Xuất kết quả Excel" }))
+    await user.click(screen.getByRole("button", { name: "Xuất file .xlsx" }))
+
+    await waitFor(() => expect(mocks.createModel).toHaveBeenCalledTimes(1))
+    expect(mocks.createModel.mock.calls[0]?.[0]?.generated_by).toBe("Không xác định")
+  })
 
   it("does not collect data on mount or dialog cancellation", async () => {
     const user = userEvent.setup()
