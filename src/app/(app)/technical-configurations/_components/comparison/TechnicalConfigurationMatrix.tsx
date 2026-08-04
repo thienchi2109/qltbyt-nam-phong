@@ -8,10 +8,14 @@ import {
 } from "@/app/(app)/technical-configurations/comparison-matrix-constants"
 import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technical-configurations/comparison-types"
 import { Button } from "@/components/ui/button"
+import type { TechnicalConfigurationDerivedStatus } from "@/lib/technical-configuration-evaluation"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 import { TechnicalConfigurationCriterionPagination } from "./TechnicalConfigurationCriterionPagination"
-import { TechnicalConfigurationMatrixRow } from "./TechnicalConfigurationMatrixRow"
+import {
+  TechnicalConfigurationMatrixRow,
+  type TechnicalConfigurationMatrixEvaluationTarget,
+} from "./TechnicalConfigurationMatrixRow"
 
 type TechnicalConfigurationMatrixProps = {
   hasRequest: boolean
@@ -25,6 +29,12 @@ type TechnicalConfigurationMatrixProps = {
   onRetry: () => void
   onPageChange: (page: number) => void
   onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
+  activeEvaluationOptionId?: string | null
+  activeEvaluationCriterionId?: string | null
+  assessmentStatusByCriterionId?: ReadonlyMap<string, TechnicalConfigurationDerivedStatus>
+  matchingEvaluationCriterionIds?: ReadonlySet<string>
+  evaluationDisabled?: boolean
+  onOpenEvaluation?: (target: TechnicalConfigurationMatrixEvaluationTarget) => void
 }
 
 type ComparisonCriterionRow = TechnicalConfigurationComparisonResult["data"]["criteria"][number]
@@ -75,6 +85,12 @@ export function TechnicalConfigurationMatrix({
   onRetry,
   onPageChange,
   onOpenDetail,
+  activeEvaluationOptionId = null,
+  activeEvaluationCriterionId = null,
+  assessmentStatusByCriterionId,
+  matchingEvaluationCriterionIds,
+  evaluationDisabled = false,
+  onOpenEvaluation,
 }: Readonly<TechnicalConfigurationMatrixProps>) {
   if (!hasRequest) {
     return (
@@ -114,6 +130,7 @@ export function TechnicalConfigurationMatrix({
               type="button"
               variant="outline"
               size="sm"
+              disabled={evaluationDisabled}
               onClick={() => onPageChange(result.page - 1)}
             >
               <ChevronLeft aria-hidden="true" />
@@ -215,6 +232,12 @@ export function TechnicalConfigurationMatrix({
                     new Map(row.optionValues.map((value) => [value.optionId, value]))
                   }
                   onOpenDetail={onOpenDetail}
+                  activeEvaluationOptionId={activeEvaluationOptionId}
+                  activeEvaluationCriterionId={activeEvaluationCriterionId}
+                  assessmentStatusByCriterionId={assessmentStatusByCriterionId}
+                  matchingEvaluationCriterionIds={matchingEvaluationCriterionIds}
+                  evaluationDisabled={evaluationDisabled}
+                  onOpenEvaluation={onOpenEvaluation}
                 />
               ))}
             </tbody>
@@ -227,6 +250,7 @@ export function TechnicalConfigurationMatrix({
         pageSize={result.pageSize}
         total={result.total}
         onPageChange={onPageChange}
+        disabled={evaluationDisabled}
       />
     </div>
   )

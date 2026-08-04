@@ -228,6 +228,7 @@ describe("P12A1 evaluation core composition", () => {
         "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx",
         "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane.tsx",
         "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationNavigator.ts",
+        "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationWorkspaceActions.ts",
       ].sort()
     )
   })
