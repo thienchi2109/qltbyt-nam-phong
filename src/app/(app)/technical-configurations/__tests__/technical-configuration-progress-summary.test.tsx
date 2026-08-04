@@ -24,7 +24,7 @@ const progress: TechnicalConfigurationEvaluationProgress = {
 }
 
 describe("P12B1 technical configuration progress summary", () => {
-  it("renders compact selected-option and group evaluated totals only", () => {
+  it("renders overall and group progress as compact KPI cards", () => {
     render(
       <TechnicalConfigurationProgressSummary
         progress={progress}
@@ -34,16 +34,23 @@ describe("P12B1 technical configuration progress summary", () => {
     )
 
     const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
-    const evaluatedOutput = within(summary).getByText("Đã đánh giá 4 / 6 tiêu chí")
+    const progressCards = within(summary).getAllByTestId("evaluation-progress-kpi-card")
+    expect(progressCards).toHaveLength(3)
+    for (const card of progressCards) {
+      expect(card.parentElement?.tagName).toBe("DL")
+      expect(Array.from(card.children, (child) => child.tagName)).toEqual(["DT", "DD"])
+    }
+
+    const evaluatedOutput = within(progressCards[0]!).getByText("4 / 6")
     expect(evaluatedOutput).toBeInTheDocument()
     expect(evaluatedOutput.tagName).toBe("OUTPUT")
+    expect(within(progressCards[0]!).getByText("Tổng tiến độ")).toBeInTheDocument()
+    expect(within(progressCards[0]!).getByText("tiêu chí đã đánh giá")).toBeInTheDocument()
 
-    const groupRows = within(summary).getAllByTestId("evaluation-progress-group")
-    expect(groupRows).toHaveLength(2)
-    expect(within(groupRows[0]!).getByText("Thông số chính")).toBeInTheDocument()
-    expect(within(groupRows[0]!).getByText("3 / 4")).toBeInTheDocument()
-    expect(within(groupRows[1]!).getByText("An toàn")).toBeInTheDocument()
-    expect(within(groupRows[1]!).getByText("1 / 2")).toBeInTheDocument()
+    expect(within(progressCards[1]!).getByText("Thông số chính")).toBeInTheDocument()
+    expect(within(progressCards[1]!).getByText("3 / 4")).toBeInTheDocument()
+    expect(within(progressCards[2]!).getByText("An toàn")).toBeInTheDocument()
+    expect(within(progressCards[2]!).getByText("1 / 2")).toBeInTheDocument()
 
     expect(within(summary).queryByRole("progressbar")).not.toBeInTheDocument()
     expect(within(summary).queryByText(/%/)).not.toBeInTheDocument()
@@ -70,7 +77,7 @@ describe("P12B1 technical configuration progress summary", () => {
     )
 
     expect(screen.getByText("Đang tải tiến độ đánh giá...")).toBeInTheDocument()
-    expect(screen.queryByText("Đã đánh giá 0 / 6 tiêu chí")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("evaluation-progress-kpi-card")).not.toBeInTheDocument()
 
     rerender(
       <TechnicalConfigurationProgressSummary
@@ -81,7 +88,7 @@ describe("P12B1 technical configuration progress summary", () => {
     )
 
     expect(screen.getByText("Chưa thể tính tiến độ đánh giá.")).toBeInTheDocument()
-    expect(screen.queryByText("Đã đánh giá 0 / 6 tiêu chí")).not.toBeInTheDocument()
+    expect(screen.queryByTestId("evaluation-progress-kpi-card")).not.toBeInTheDocument()
   })
 
   it("renders a truthful zero counter when the selected option has no comparison set", () => {
@@ -106,7 +113,7 @@ describe("P12B1 technical configuration progress summary", () => {
       />
     )
 
-    expect(screen.getByText("Đã đánh giá 0 / 6 tiêu chí")).toBeInTheDocument()
+    expect(screen.getByText("0 / 6")).toBeInTheDocument()
     expect(screen.getByText("0 / 4")).toBeInTheDocument()
     expect(screen.getByText("0 / 2")).toBeInTheDocument()
   })

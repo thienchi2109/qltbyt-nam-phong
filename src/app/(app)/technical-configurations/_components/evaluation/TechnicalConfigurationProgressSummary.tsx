@@ -1,3 +1,5 @@
+import { Card } from "@/components/ui/card"
+
 import type { TechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
 
 type TechnicalConfigurationProgressSummaryProps = {
@@ -14,7 +16,7 @@ export function TechnicalConfigurationProgressSummary({
 }: Readonly<TechnicalConfigurationProgressSummaryProps>) {
   if (isLoading) {
     return (
-      <section className="border-y py-3" aria-label="Tiến độ đánh giá">
+      <section className="rounded-lg border bg-muted/20 px-3 py-4" aria-label="Tiến độ đánh giá">
         <p className="text-sm text-muted-foreground" role="status">
           Đang tải tiến độ đánh giá...
         </p>
@@ -24,7 +26,10 @@ export function TechnicalConfigurationProgressSummary({
 
   if (isError) {
     return (
-      <section className="border-y py-3" aria-label="Tiến độ đánh giá">
+      <section
+        className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-4"
+        aria-label="Tiến độ đánh giá"
+      >
         <p className="text-sm text-destructive" role="alert">
           Chưa thể tính tiến độ đánh giá.
         </p>
@@ -33,33 +38,44 @@ export function TechnicalConfigurationProgressSummary({
   }
 
   return (
-    <section className="border-y py-3" aria-label="Tiến độ đánh giá">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-medium">Tiến độ đánh giá</h3>
-          <output className="text-sm tabular-nums text-muted-foreground">
-            Đã đánh giá {progress.evaluated} / {progress.total} tiêu chí
-          </output>
-        </div>
-        {progress.groups.length > 0 ? (
-          <dl className="grid gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-            {progress.groups.map((group) => (
-              <div
-                key={group.id}
-                className="flex min-w-0 items-baseline justify-between gap-3 text-sm"
-                data-testid="evaluation-progress-group"
-              >
-                <dt className="min-w-0 truncate text-muted-foreground" title={group.name}>
-                  {group.name}
-                </dt>
-                <dd className="shrink-0 tabular-nums font-medium">
-                  {group.evaluated} / {group.total}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-      </div>
+    <section className="space-y-3" aria-label="Tiến độ đánh giá">
+      <h3 className="text-sm font-semibold">Tiến độ đánh giá</h3>
+
+      <dl className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
+        <Card
+          className="flex min-h-24 flex-col justify-between gap-2 border-primary/30 bg-primary/5 p-3 shadow-none"
+          data-testid="evaluation-progress-kpi-card"
+        >
+          <dt className="text-xs font-medium text-muted-foreground">Tổng tiến độ</dt>
+          <dd className="flex flex-col gap-2">
+            <output className="text-xl font-semibold leading-none tabular-nums">
+              {progress.evaluated} / {progress.total}
+            </output>
+            <span className="text-xs text-muted-foreground">tiêu chí đã đánh giá</span>
+          </dd>
+        </Card>
+
+        {progress.groups.map((group) => (
+          <Card
+            key={group.id}
+            className="flex min-h-24 flex-col justify-between gap-2 p-3 shadow-none"
+            data-testid="evaluation-progress-kpi-card"
+          >
+            <dt
+              className="line-clamp-2 text-xs font-medium leading-4 text-muted-foreground"
+              title={group.name}
+            >
+              {group.name}
+            </dt>
+            <dd className="flex flex-col gap-2">
+              <span className="text-xl font-semibold leading-none tabular-nums">
+                {group.evaluated} / {group.total}
+              </span>
+              <span className="text-xs text-muted-foreground">tiêu chí đã đánh giá</span>
+            </dd>
+          </Card>
+        ))}
+      </dl>
     </section>
   )
 }
