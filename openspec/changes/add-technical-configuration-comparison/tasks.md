@@ -940,13 +940,13 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P14C1 - Export Scope Dialog And State Machine
 
-- [ ] P14C1.1 Khóa open/reset/confirm/cancel, content mode và option/criterion
+- [x] P14C1.1 Khóa open/reset/confirm/cancel, content mode và option/criterion
       scope bằng pure-state + React user-event RED tests.
-- [ ] P14C1.2 Mặc định toàn bộ option + toàn bộ criterion; không âm thầm dùng
+- [x] P14C1.2 Mặc định toàn bộ option + toàn bộ criterion; không âm thầm dùng
       selected options hoặc criterion page hiện tại.
-- [ ] P14C1.3 Khi source có pagination, bắt buộc người dùng xác nhận phạm vi rõ
+- [x] P14C1.3 Khi source có pagination, bắt buộc người dùng xác nhận phạm vi rõ
       ràng trước export.
-- [ ] P14C1.4 Giữ đúng Stitch dialog mockup đã duyệt, để dialog unmounted và
+- [x] P14C1.4 Giữ đúng Stitch dialog mockup đã duyệt, để dialog unmounted và
       không cho nó biết RPC, ExcelJS hoặc Blob.
 
 ## Phase P14C2 - Export Orchestration, Download And Workspace Activation
