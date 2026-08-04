@@ -3331,19 +3331,29 @@ workbook or download side effect. Existing workspace UI remains unchanged.
 - Create:
   `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationResultExport.ts`
 - Create:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationResultExportControl.tsx`
+- Create:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export.test.tsx`
 - Modify:
-  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationWorkspace.tsx`
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx`
 - Modify:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-evaluation-workspace.test.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/technical-configuration-result-export-state.ts`
+- Modify:
+  `src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationResultExportDialog.tsx`
+- Modify:
+  `src/app/(app)/technical-configurations/__tests__/technical-configuration-result-export-dialog.test.tsx`
 
 ### Tasks
 
 - [ ] Write RED React integration tests for mounted trigger, scope confirmation,
       loading/success/error/retry, changed-snapshot abort, context switch,
       requested-surface fetch suppression and no partial download.
-- [ ] Mount one `Xuất kết quả Excel` action in the evaluation workspace without
-      changing current matrix/ranking ownership or pagination behavior.
+- [ ] Mount one `Xuất kết quả Excel` action at the active evaluation state owner
+      through an extracted leaf control, without lifting or duplicating
+      navigator state or changing current matrix/ranking ownership and
+      pagination behavior.
 - [ ] Orchestrate P14A3 collection then P14B2 rendering, serialize through the
       existing ExcelJS pattern and call shared `downloadBlob()` exactly once
       only after successful final manifest revalidation.

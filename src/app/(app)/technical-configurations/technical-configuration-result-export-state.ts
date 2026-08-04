@@ -138,6 +138,15 @@ function selectedOptionIds(
   return normalizedIds(state.optionScope === "current_page" ? page.currentIds : page.selectedIds)
 }
 
+/** Returns whether the current visible option IDs are a meaningful subset of the universe. */
+export function hasTechnicalConfigurationResultExportCurrentOptionPage(
+  context: TechnicalConfigurationResultExportContext
+): boolean {
+  const page = context.options.page
+  const currentIdCount = page ? normalizedIds(page.currentIds).length : 0
+  return currentIdCount > 0 && currentIdCount < context.options.total
+}
+
 function selectedCriterionIds(
   state: TechnicalConfigurationResultExportState
 ): readonly string[] | null {
@@ -168,7 +177,13 @@ export function getTechnicalConfigurationResultExportValidationError(
     return "invalid_totals"
   }
 
-  if (state.optionScope !== "all" && !state.context.options.page) {
+  if (
+    state.optionScope === "current_page" &&
+    !hasTechnicalConfigurationResultExportCurrentOptionPage(state.context)
+  ) {
+    return "unavailable_option_scope"
+  }
+  if (state.optionScope === "selected" && !state.context.options.page) {
     return "unavailable_option_scope"
   }
   if (state.optionScope === "current_page" && selectedOptionIds(state)?.length === 0) {
@@ -229,10 +244,34 @@ export function transitionTechnicalConfigurationResultExport(
     return { state: { ...state, criterionScope: event.scope }, request: null }
   }
   if (event.type === "context_changed") {
+    if (sameIdentity(state.context, event.context)) {
+      let optionScope = state.optionScope
+      if (
+        (optionScope === "current_page" &&
+          !hasTechnicalConfigurationResultExportCurrentOptionPage(event.context)) ||
+        (optionScope === "selected" && !event.context.options.page)
+      ) {
+        optionScope = "all"
+      }
+
+      const criterionScope =
+        state.criterionScope === "current_page" && !event.context.criteria.page
+          ? "all"
+          : state.criterionScope
+
+      return {
+        state: {
+          ...state,
+          context: event.context,
+          optionScope,
+          criterionScope,
+        },
+        request: null,
+      }
+    }
+
     return {
-      state: sameIdentity(state.context, event.context)
-        ? { ...state, context: event.context }
-        : defaultState(event.context, state.open),
+      state: defaultState(event.context, state.open),
       request: null,
     }
   }

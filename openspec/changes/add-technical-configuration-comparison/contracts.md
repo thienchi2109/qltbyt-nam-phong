@@ -827,6 +827,14 @@ selected options and current criterion page are explicit alternatives with
 live counts; the UI never assumes current-page scope. Confirmation shows the
 resulting option x criterion count and visible-sheet count.
 
+In the evaluation workspace, the active evaluation option is the explicit
+`selected` option scope and the current criterion scope is derived from the
+existing navigator page. The option `current_page` alternative is shown only
+when current visible option IDs are a strict subset of the complete option
+universe; a complete unpaginated option list does not render a redundant
+current-page alternative. P14C2 reads this state at its existing owner and does
+not lift or duplicate navigator ownership.
+
 ## Query And Performance Budgets
 
 - Dossier and entity lists use bounded pagination with a maximum page size of 100.
