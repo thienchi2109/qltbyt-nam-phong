@@ -13,7 +13,7 @@ import {
 
 const rpc = getBaselineRpcMock()
 
-function findGroupSection(ordinal: number) {
+function findGroupSection(ordinal: number): Promise<HTMLElement> {
   return screen.findByRole("region", { name: `Nhóm tiêu chí ${ordinal}` })
 }
 

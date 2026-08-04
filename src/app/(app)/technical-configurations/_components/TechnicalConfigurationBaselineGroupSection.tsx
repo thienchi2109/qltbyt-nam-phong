@@ -63,7 +63,7 @@ export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
   onBulkAccept: () => void
 }>
 
-function focusElement(target: HTMLElement | null) {
+function focusElement(target: HTMLElement | null): void {
   target?.scrollIntoView?.({ block: "nearest" })
   target?.focus()
 }
@@ -96,7 +96,7 @@ export function TechnicalConfigurationBaselineGroupSection({
   onBulkPreview,
   onBulkCancel,
   onBulkAccept,
-}: TechnicalConfigurationBaselineGroupSectionProps) {
+}: TechnicalConfigurationBaselineGroupSectionProps): React.JSX.Element {
   const ordinal = groupIndex + 1
   const groupLabel = group.name.trim() || `Nhóm ${ordinal}`
   const groupErrorId = groupError ? `baseline-group-${group.key}-error` : undefined
@@ -123,7 +123,7 @@ export function TechnicalConfigurationBaselineGroupSection({
     return () => window.clearTimeout(timeoutId)
   }, [focusTarget, group.key])
 
-  const handleAddCriterion = () => {
+  const handleAddCriterion = (): void => {
     if (!expanded) onExpandedChange(true)
     onAddCriterion(group.key)
   }

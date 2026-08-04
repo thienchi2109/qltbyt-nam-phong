@@ -10,7 +10,7 @@ export type UseTechnicalConfigurationGroupDisclosureResult = {
 function removeMissingGroupKeys(
   collapsedGroupKeys: ReadonlySet<string>,
   groupKeys: readonly string[]
-) {
+): ReadonlySet<string> {
   const currentGroupKeys = new Set(groupKeys)
   const nextCollapsedGroupKeys = new Set(
     [...collapsedGroupKeys].filter((groupKey) => currentGroupKeys.has(groupKey))

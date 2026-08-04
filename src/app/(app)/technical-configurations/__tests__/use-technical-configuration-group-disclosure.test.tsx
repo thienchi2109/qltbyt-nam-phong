@@ -1,15 +1,15 @@
-import { useRef, useState } from "react"
+import { type ReactElement, useRef, useState } from "react"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it } from "vitest"
 
-import { useTechnicalConfigurationGroupDisclosure } from "../_hooks/useTechnicalConfigurationGroupDisclosure"
+import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 
 type DisclosureHarnessProps = {
   groupKeys: readonly string[]
 }
 
-function DisclosureHarness({ groupKeys }: DisclosureHarnessProps) {
+function DisclosureHarness({ groupKeys }: DisclosureHarnessProps): ReactElement {
   const [criterionRevision, setCriterionRevision] = useState(0)
   const disclosure = useTechnicalConfigurationGroupDisclosure(groupKeys)
   const initialCallbacks = useRef({

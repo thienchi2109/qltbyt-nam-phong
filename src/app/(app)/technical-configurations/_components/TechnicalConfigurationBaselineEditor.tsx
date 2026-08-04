@@ -73,7 +73,7 @@ function getFocusTargetForGroup(
   focusTarget: TechnicalConfigurationFocusTarget,
   group: TechnicalConfigurationBaselineEditorGroup,
   activeValue: string
-) {
+): TechnicalConfigurationFocusTarget | null {
   if (!focusTarget || focusTarget.kind === "add-group") return null
   if (focusTarget.kind === "criterion") {
     return group.criteria.some((criterion) => criterion.key === focusTarget.key)
@@ -111,7 +111,7 @@ export function TechnicalConfigurationBaselineEditor({
   onBulkCancel,
   onBulkAccept,
   onSave,
-}: TechnicalConfigurationBaselineEditorProps) {
+}: TechnicalConfigurationBaselineEditorProps): React.JSX.Element {
   const {
     dirty: isDirty,
     saving: isSaving,
@@ -177,7 +177,7 @@ export function TechnicalConfigurationBaselineEditor({
 
         <Button
           type="button"
-          disabled={!isDirty || isSaving || isConflict || hasPendingBulkInput}
+          disabled={isEditingDisabled || !isDirty || isSaving || isConflict || hasPendingBulkInput}
           aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
           onClick={onSave}
         >

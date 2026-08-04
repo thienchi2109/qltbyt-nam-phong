@@ -51,7 +51,10 @@ const emptyDraft: TechnicalConfigurationBaselineEditorDraft = {
 }
 
 const scrollIntoViewMock = vi.fn()
-const originalScrollIntoView = Element.prototype.scrollIntoView
+const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+  Element.prototype,
+  "scrollIntoView"
+)
 
 beforeEach(() => {
   scrollIntoViewMock.mockClear()
@@ -62,10 +65,11 @@ beforeEach(() => {
 })
 
 afterAll(() => {
-  Object.defineProperty(Element.prototype, "scrollIntoView", {
-    configurable: true,
-    value: originalScrollIntoView,
-  })
+  if (originalScrollIntoViewDescriptor) {
+    Object.defineProperty(Element.prototype, "scrollIntoView", originalScrollIntoViewDescriptor)
+  } else {
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView")
+  }
 })
 
 function EditorHarness({

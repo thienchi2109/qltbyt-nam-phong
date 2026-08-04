@@ -50,6 +50,11 @@ type RenderGroupSectionOptions = {
   bulkSession?: TechnicalConfigurationBulkEntrySession
 }
 
+type RenderGroupSectionResult = {
+  callbacks: Record<string, ReturnType<typeof vi.fn>>
+  events: string[]
+}
+
 function renderGroupSection({
   initialExpanded = true,
   initialMode = "row",
@@ -57,7 +62,7 @@ function renderGroupSection({
   disabled = false,
   groupError = "Tên nhóm là bắt buộc.",
   bulkSession = pendingBulkSession,
-}: RenderGroupSectionOptions = {}) {
+}: RenderGroupSectionOptions = {}): RenderGroupSectionResult {
   const events: string[] = []
   const callbacks = {
     onExpandedChange: vi.fn(),
@@ -75,7 +80,7 @@ function renderGroupSection({
     onBulkAccept: vi.fn(),
   }
 
-  function Harness() {
+  function Harness(): React.JSX.Element {
     const [expanded, setExpanded] = useState(initialExpanded)
     const [mode, setMode] = useState<TechnicalConfigurationEntryMode>(initialMode)
     const props: TechnicalConfigurationBaselineGroupSectionProps = {

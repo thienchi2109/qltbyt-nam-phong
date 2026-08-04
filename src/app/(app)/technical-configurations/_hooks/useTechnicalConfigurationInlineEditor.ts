@@ -150,7 +150,7 @@ export function useTechnicalConfigurationInlineEditor({
     setViewState((current) => ({ ...current, focusTarget: nextFocusTarget }))
   }
 
-  const setGroupMode = (groupKey: string, mode: TechnicalConfigurationEntryMode) => {
+  const setGroupMode = (groupKey: string, mode: TechnicalConfigurationEntryMode): void => {
     const selectedGroup = draft?.groups.find((group) => group.key === groupKey)
     if (!selectedGroup) return
     if (groupKey !== activeValue || mode !== entryMode) {

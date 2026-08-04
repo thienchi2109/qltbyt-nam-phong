@@ -177,6 +177,26 @@ describe("technical configuration inline workflow", () => {
     }
   })
 
+  it("disables Save while a dirty draft is reloading", async () => {
+    const user = userEvent.setup()
+    const originalDirty = baseline.isDirty
+    const originalReloading = baseline.isReloading
+    baseline.isDirty = true
+    baseline.isReloading = true
+
+    try {
+      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+      const saveButton = await screen.findByRole("button", { name: "Lưu" })
+      expect(saveButton).toBeDisabled()
+      await user.click(saveButton)
+      expect(baseline.onSave).not.toHaveBeenCalled()
+    } finally {
+      baseline.isDirty = originalDirty
+      baseline.isReloading = originalReloading
+    }
+  })
+
   it("preserves group buffers and treats clean-draft bulk input as unsafe", async () => {
     const user = userEvent.setup()
     const onDirtyChange = vi.fn()
