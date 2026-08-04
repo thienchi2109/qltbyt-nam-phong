@@ -216,6 +216,34 @@ describe("technical configuration result export state", () => {
     })
   })
 
+  it("falls back from page-bound scopes when same-identity context removes their pages", () => {
+    let state = transitionTechnicalConfigurationResultExport(
+      createTechnicalConfigurationResultExportState(createContext()),
+      { type: "open" }
+    ).state
+    state = transitionTechnicalConfigurationResultExport(state, {
+      type: "option_scope_changed",
+      scope: "selected",
+    }).state
+    state = transitionTechnicalConfigurationResultExport(state, {
+      type: "criterion_scope_changed",
+      scope: "current_page",
+    }).state
+
+    const result = transitionTechnicalConfigurationResultExport(state, {
+      type: "context_changed",
+      context: createContext({
+        options: { total: 126 },
+        criteria: { total: 102 },
+      }),
+    })
+
+    expect(result.state).toMatchObject({
+      optionScope: "all",
+      criterionScope: "all",
+    })
+  })
+
   it("cancels without a request and resets the next session", () => {
     let state = transitionTechnicalConfigurationResultExport(
       createTechnicalConfigurationResultExportState(createContext()),

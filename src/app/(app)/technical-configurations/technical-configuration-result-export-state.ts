@@ -245,15 +245,26 @@ export function transitionTechnicalConfigurationResultExport(
   }
   if (event.type === "context_changed") {
     if (sameIdentity(state.context, event.context)) {
+      let optionScope = state.optionScope
+      if (
+        (optionScope === "current_page" &&
+          !hasTechnicalConfigurationResultExportCurrentOptionPage(event.context)) ||
+        (optionScope === "selected" && !event.context.options.page)
+      ) {
+        optionScope = "all"
+      }
+
+      const criterionScope =
+        state.criterionScope === "current_page" && !event.context.criteria.page
+          ? "all"
+          : state.criterionScope
+
       return {
         state: {
           ...state,
           context: event.context,
-          optionScope:
-            state.optionScope === "current_page" &&
-            !hasTechnicalConfigurationResultExportCurrentOptionPage(event.context)
-              ? "all"
-              : state.optionScope,
+          optionScope,
+          criterionScope,
         },
         request: null,
       }
