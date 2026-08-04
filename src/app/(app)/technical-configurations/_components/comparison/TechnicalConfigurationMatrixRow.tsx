@@ -1,3 +1,5 @@
+import { ClipboardCheck } from "lucide-react"
+
 import {
   COMPARISON_MATRIX_LAYOUT,
   getPinnedComparisonOptionLeft,
@@ -7,9 +9,23 @@ import type {
   TechnicalConfigurationComparisonOptionValue,
   TechnicalConfigurationComparisonResult,
 } from "@/app/(app)/technical-configurations/comparison-types"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  TECHNICAL_CONFIGURATION_DERIVED_STATUS_LABELS,
+  type TechnicalConfigurationDerivedStatus,
+} from "@/lib/technical-configuration-evaluation"
+import { cn } from "@/lib/utils"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 import { createTechnicalConfigurationOptionCriterionDetail } from "./technical-configuration-criterion-detail"
+
+export type TechnicalConfigurationMatrixEvaluationTarget = {
+  optionId: string
+  criterionId: string
+  detail: TechnicalConfigurationCriterionDetail
+  trigger: HTMLElement
+}
 
 type TechnicalConfigurationMatrixRowProps = {
   row: TechnicalConfigurationComparisonResult["data"]["criteria"][number]
@@ -18,6 +34,12 @@ type TechnicalConfigurationMatrixRowProps = {
   pinnedOptionIds: readonly string[]
   valueByOptionId: ReadonlyMap<string, TechnicalConfigurationComparisonOptionValue>
   onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
+  activeEvaluationOptionId?: string | null
+  activeEvaluationCriterionId?: string | null
+  assessmentStatusByCriterionId?: ReadonlyMap<string, TechnicalConfigurationDerivedStatus>
+  matchingEvaluationCriterionIds?: ReadonlySet<string>
+  evaluationDisabled?: boolean
+  onOpenEvaluation?: (target: TechnicalConfigurationMatrixEvaluationTarget) => void
 }
 
 function formatEvidenceSummary(evidence: TechnicalConfigurationComparisonEvidence) {
@@ -33,6 +55,12 @@ export function TechnicalConfigurationMatrixRow({
   pinnedOptionIds,
   valueByOptionId,
   onOpenDetail,
+  activeEvaluationOptionId = null,
+  activeEvaluationCriterionId = null,
+  assessmentStatusByCriterionId,
+  matchingEvaluationCriterionIds,
+  evaluationDisabled = false,
+  onOpenEvaluation,
 }: Readonly<TechnicalConfigurationMatrixRowProps>) {
   const title = row.criterion.title ?? "Chưa có tiêu đề"
 
@@ -91,6 +119,48 @@ export function TechnicalConfigurationMatrixRow({
         })
         const pinnedIndex = pinnedOptionIds.indexOf(option.id)
         const isPinned = pinnedIndex >= 0
+        const isActiveEvaluationOption = option.id === activeEvaluationOptionId
+        const isActiveEvaluationTarget =
+          isActiveEvaluationOption && row.criterion.id === activeEvaluationCriterionId
+        const isFilterMatch =
+          isActiveEvaluationOption && Boolean(matchingEvaluationCriterionIds?.has(row.criterion.id))
+        const assessmentStatus =
+          assessmentStatusByCriterionId?.get(row.criterion.id) ?? "not_evaluated"
+        const cellContent = (
+          <>
+            {detail.responseText !== null ? (
+              <>
+                <p className="line-clamp-4 whitespace-pre-wrap break-words leading-5">
+                  {detail.responseText}
+                </p>
+                {detail.supplementaryInformation ? (
+                  <p className="text-xs font-medium text-foreground">Có thông tin bổ sung</p>
+                ) : null}
+              </>
+            ) : (
+              <p className="text-muted-foreground">Chưa có phản hồi</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              {formatEvidenceSummary(detail.evidence)}
+            </p>
+            {isActiveEvaluationOption ? (
+              <Badge
+                variant={
+                  assessmentStatus === "fails"
+                    ? "destructive"
+                    : assessmentStatus === "meets" || assessmentStatus === "exceeds"
+                      ? "secondary"
+                      : assessmentStatus === "not_evaluated"
+                        ? "muted"
+                        : "outline"
+                }
+                className="max-w-32 justify-center whitespace-normal text-center"
+              >
+                {TECHNICAL_CONFIGURATION_DERIVED_STATUS_LABELS[assessmentStatus]}
+              </Badge>
+            ) : null}
+          </>
+        )
 
         return (
           <td
@@ -99,33 +169,57 @@ export function TechnicalConfigurationMatrixRow({
             data-criterion-id={row.criterion.id}
             data-option-id={option.id}
             data-pinned={isPinned ? "true" : "false"}
-            className={`${COMPARISON_MATRIX_LAYOUT.optionWidthClass} border-b border-r bg-background p-0 ${
-              isPinned ? "sticky z-20" : ""
-            }`}
+            data-evaluation-active={isActiveEvaluationTarget ? "true" : "false"}
+            data-evaluation-column={isActiveEvaluationOption ? "true" : "false"}
+            data-filter-match={isFilterMatch ? "true" : "false"}
+            className={cn(
+              COMPARISON_MATRIX_LAYOUT.optionWidthClass,
+              "border-b border-r bg-background p-0",
+              isPinned && "sticky z-20",
+              isActiveEvaluationOption && "bg-primary/5",
+              isActiveEvaluationTarget && "ring-2 ring-inset ring-primary"
+            )}
             style={isPinned ? { left: getPinnedComparisonOptionLeft(pinnedIndex) } : undefined}
           >
-            <button
-              type="button"
-              className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
-              onClick={() => onOpenDetail(detail)}
-            >
-              {detail.responseText !== null ? (
-                <>
-                  <p className="line-clamp-4 whitespace-pre-wrap break-words leading-5">
-                    {detail.responseText}
-                  </p>
-                  {detail.supplementaryInformation ? (
-                    <p className="text-xs font-medium text-foreground">Có thông tin bổ sung</p>
-                  ) : null}
-                </>
-              ) : (
-                <p className="text-muted-foreground">Chưa có phản hồi</p>
-              )}
-              <p className="text-xs text-muted-foreground">
-                {formatEvidenceSummary(detail.evidence)}
-              </p>
-            </button>
+            {onOpenEvaluation ? (
+              <div
+                className={cn(
+                  "flex h-full flex-col gap-2 px-3 py-3",
+                  isFilterMatch && "bg-primary/10"
+                )}
+              >
+                {cellContent}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  data-testid="matrix-evaluation-action"
+                  className="mt-auto w-full"
+                  aria-label={`Đánh giá ${row.criterion.criterionCode} · ${option.displayLabel}`}
+                  disabled={evaluationDisabled}
+                  onClick={(event) =>
+                    onOpenEvaluation({
+                      optionId: option.id,
+                      criterionId: row.criterion.id,
+                      detail,
+                      trigger: event.currentTarget,
+                    })
+                  }
+                >
+                  <ClipboardCheck aria-hidden="true" />
+                  Đánh giá
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="h-full w-full space-y-2 px-3 py-3 text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
+                onClick={() => onOpenDetail(detail)}
+              >
+                {cellContent}
+              </button>
+            )}
           </td>
         )
       })}

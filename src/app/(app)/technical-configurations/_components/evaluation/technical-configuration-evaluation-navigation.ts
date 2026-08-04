@@ -104,6 +104,16 @@ export function getTechnicalConfigurationEvaluationPage({
   return projection.slice(start, start + pageSize)
 }
 
+/** Returns the filtered projection page containing a criterion. */
+export function getTechnicalConfigurationEvaluationProjectionPage(
+  projection: readonly TechnicalConfigurationEvaluationCriterionListItem[],
+  criterionId: string,
+  pageSize: number
+) {
+  const index = projection.findIndex((item) => item.criterion.id === criterionId)
+  return index >= 0 ? Math.floor(index / pageSize) + 1 : 1
+}
+
 /** Finds the first matching criterion after the saved canonical position without wrapping. */
 export function findNextTechnicalConfigurationEvaluationCriterion({
   projection,

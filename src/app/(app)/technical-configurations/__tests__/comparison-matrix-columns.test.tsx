@@ -364,6 +364,70 @@ describe("P10B2 pinned matrix columns", () => {
     )
   })
 
+  it("opens supplier cells as evaluation targets and marks the active filtered criterion", async () => {
+    const user = userEvent.setup()
+    const result = createComparisonResult()
+    const onOpenEvaluation = vi.fn()
+
+    render(
+      <TechnicalConfigurationMatrix
+        hasRequest
+        result={result}
+        visibleOptionIds={result.data.options.map((option) => option.id)}
+        pinnedOptionIds={[]}
+        focusedOptionId={null}
+        activeEvaluationOptionId="option-b"
+        activeEvaluationCriterionId="criterion-2"
+        assessmentStatusByCriterionId={new Map([["criterion-2", "meets"]])}
+        matchingEvaluationCriterionIds={new Set(["criterion-2"])}
+        onOpenDetail={vi.fn()}
+        onOpenEvaluation={onOpenEvaluation}
+        onPageChange={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    const evaluationCell = screen
+      .getAllByTestId("comparison-option-cell")
+      .find(
+        (cell) => cell.dataset.optionId === "option-b" && cell.dataset.criterionId === "criterion-2"
+      )
+    expect(evaluationCell).toHaveAttribute("data-evaluation-active", "true")
+    expect(evaluationCell).toHaveAttribute("data-filter-match", "true")
+    expect(evaluationCell).toHaveTextContent("Đạt")
+
+    const unmatchedEvaluationCell = screen
+      .getAllByTestId("comparison-option-cell")
+      .find(
+        (cell) => cell.dataset.optionId === "option-b" && cell.dataset.criterionId === "criterion-1"
+      )
+    expect(unmatchedEvaluationCell).toHaveAttribute("data-filter-match", "false")
+    expect(
+      screen.getByRole("button", {
+        name: "Đánh giá TS-01 · Nhà cung cấp B · Phương án B",
+      })
+    ).toBeEnabled()
+
+    const evaluationButton = screen.getByRole("button", {
+      name: "Đánh giá TS-02 · Nhà cung cấp B · Phương án B",
+    })
+    expect(evaluationButton).toHaveAttribute("data-testid", "matrix-evaluation-action")
+    expect(evaluationButton).toHaveTextContent("Đánh giá")
+    await user.click(evaluationButton)
+
+    expect(onOpenEvaluation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        optionId: "option-b",
+        criterionId: "criterion-2",
+        detail: expect.objectContaining({
+          criterionCode: "TS-02",
+          optionLabel: "Nhà cung cấp B · Phương án B",
+        }),
+        trigger: evaluationButton,
+      })
+    )
+  })
+
   it("renders only the focused option while preserving stable desktop dimensions", () => {
     const result = createManyOptionResult()
     render(

@@ -6,7 +6,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { TechnicalConfigurationDossierWire } from "../types"
 import { TechnicalConfigurationComparisonTab } from "../_components/comparison/TechnicalConfigurationComparisonTab"
-import type { TechnicalConfigurationCriterionDetail } from "../_components/comparison/TechnicalConfigurationCriterionPanel"
 
 const mocks = vi.hoisted(() => ({
   onDirtyChange: vi.fn(),
@@ -48,53 +47,6 @@ vi.mock("../_hooks/useTechnicalConfigurationComparisonMatrix", () => ({
   }),
 }))
 
-vi.mock("../_components/comparison/TechnicalConfigurationMatrixToolbar", () => ({
-  TechnicalConfigurationMatrixToolbar: () => <div>Matrix toolbar</div>,
-}))
-
-vi.mock("../_components/comparison/TechnicalConfigurationMatrix", () => ({
-  TechnicalConfigurationMatrix: ({
-    onOpenDetail,
-  }: {
-    onOpenDetail: (detail: TechnicalConfigurationCriterionDetail) => void
-  }) => (
-    <div>
-      <span>Matrix view</span>
-      <button
-        type="button"
-        onClick={() =>
-          onOpenDetail({
-            criterionCode: "TS-01",
-            criterionTitle: "Cấu hình chung",
-            optionLabel: null,
-            requirementText: "Yêu cầu cấu hình.",
-            responseText: null,
-            supplementaryInformation: null,
-            evidence: {
-              documentCount: 0,
-              citationCount: 0,
-              hasEvidence: false,
-            },
-            evidenceTarget: {
-              kind: "baseline",
-              baselineVersionId: "baseline-1",
-              criterionId: "criterion-1",
-            },
-          })
-        }
-      >
-        Mở chi tiết ma trận
-      </button>
-    </div>
-  ),
-}))
-
-vi.mock("../_components/comparison/TechnicalConfigurationCriterionPanel", () => ({
-  TechnicalConfigurationCriterionPanel: ({ open }: { open: boolean }) => (
-    <div data-testid="matrix-detail-state">{open ? "open" : "closed"}</div>
-  ),
-}))
-
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationWorkspace", () => ({
   TechnicalConfigurationEvaluationWorkspace: ({
     onDirtyChange,
@@ -106,6 +58,8 @@ vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationWorkspace", (
     onRevisionChange?: (revision: number) => void
   }) => (
     <div>
+      <span>Matrix toolbar</span>
+      <span>Matrix view</span>
       <span>Evaluation view</span>
       <button type="button" onClick={() => onDirtyChange?.(true)}>
         Mark evaluation dirty
@@ -145,56 +99,34 @@ function renderComparisonTab() {
   )
 }
 
-describe("P12A2 comparison evaluation mode", () => {
+describe("technical configuration unified comparison and evaluation workspace", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it("guards dirty internal mode changes and discards only after confirmation", async () => {
+  it("renders matrix and evaluation content together without internal mode tabs", () => {
+    renderComparisonTab()
+
+    expect(screen.getByText("Matrix toolbar")).toBeInTheDocument()
+    expect(screen.getByText("Matrix view")).toBeInTheDocument()
+    expect(screen.getByText("Evaluation view")).toBeInTheDocument()
+    expect(screen.queryByRole("tab", { name: "Ma trận" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("tab", { name: "Đánh giá" })).not.toBeInTheDocument()
+  })
+
+  it("forwards dirty, save-pending and revision state from the unified workspace", async () => {
     const user = userEvent.setup()
     renderComparisonTab()
 
-    expect(screen.getByText("Matrix view")).toBeInTheDocument()
-    await user.click(screen.getByRole("tab", { name: "Đánh giá" }))
     await user.click(screen.getByRole("button", { name: "Mark evaluation dirty" }))
     await waitFor(() => expect(mocks.onDirtyChange).toHaveBeenLastCalledWith(true))
 
-    await user.click(screen.getByRole("tab", { name: "Ma trận" }))
-    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
-    await user.click(screen.getByRole("button", { name: "Hủy" }))
-    expect(screen.getByRole("tab", { name: "Đánh giá" })).toHaveAttribute("data-state", "active")
-
-    await user.click(screen.getByRole("tab", { name: "Ma trận" }))
-    await user.click(screen.getByRole("button", { name: "Bỏ thay đổi" }))
-
-    expect(screen.getByRole("tab", { name: "Ma trận" })).toHaveAttribute("data-state", "active")
-    await waitFor(() => expect(mocks.onDirtyChange).toHaveBeenLastCalledWith(false))
-  })
-
-  it("hard-blocks mode changes during save and forwards workspace revision", async () => {
-    const user = userEvent.setup()
-    renderComparisonTab()
-
-    await user.click(screen.getByRole("tab", { name: "Đánh giá" }))
     await user.click(screen.getByRole("button", { name: "Bump evaluation revision" }))
     expect(mocks.onRevisionChange).toHaveBeenCalledWith(9)
 
     await user.click(screen.getByRole("button", { name: "Mark evaluation pending" }))
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Ma trận" })).toBeDisabled())
+    await waitFor(() => expect(mocks.onNavigationBlockedChange).toHaveBeenLastCalledWith(true))
     expect(mocks.onNavigationBlockedChange).toHaveBeenLastCalledWith(true)
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
-  })
-
-  it("does not reopen stale matrix detail after returning from evaluation mode", async () => {
-    const user = userEvent.setup()
-    renderComparisonTab()
-
-    await user.click(screen.getByRole("button", { name: "Mở chi tiết ma trận" }))
-    expect(screen.getByTestId("matrix-detail-state")).toHaveTextContent("open")
-
-    await user.click(screen.getByRole("tab", { name: "Đánh giá" }))
-    await user.click(screen.getByRole("tab", { name: "Ma trận" }))
-
-    expect(screen.getByTestId("matrix-detail-state")).toHaveTextContent("closed")
   })
 })
