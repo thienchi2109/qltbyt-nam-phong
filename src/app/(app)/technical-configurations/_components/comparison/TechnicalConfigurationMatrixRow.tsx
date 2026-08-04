@@ -19,11 +19,11 @@ import { cn } from "@/lib/utils"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 import { createTechnicalConfigurationOptionCriterionDetail } from "./technical-configuration-criterion-detail"
+import { TECHNICAL_CONFIGURATION_EVALUATION_STATUS_BADGE_VARIANTS } from "../evaluation/technical-configuration-evaluation-status-badge"
 
 export type TechnicalConfigurationMatrixEvaluationTarget = {
   optionId: string
   criterionId: string
-  detail: TechnicalConfigurationCriterionDetail
   trigger: HTMLElement
 }
 
@@ -145,15 +145,7 @@ export function TechnicalConfigurationMatrixRow({
             </p>
             {isActiveEvaluationOption ? (
               <Badge
-                variant={
-                  assessmentStatus === "fails"
-                    ? "destructive"
-                    : assessmentStatus === "meets" || assessmentStatus === "exceeds"
-                      ? "secondary"
-                      : assessmentStatus === "not_evaluated"
-                        ? "muted"
-                        : "outline"
-                }
+                variant={TECHNICAL_CONFIGURATION_EVALUATION_STATUS_BADGE_VARIANTS[assessmentStatus]}
                 className="max-w-32 justify-center whitespace-normal text-center"
               >
                 {TECHNICAL_CONFIGURATION_DERIVED_STATUS_LABELS[assessmentStatus]}
@@ -188,7 +180,14 @@ export function TechnicalConfigurationMatrixRow({
                   isFilterMatch && "bg-primary/10"
                 )}
               >
-                {cellContent}
+                <button
+                  type="button"
+                  className="space-y-2 rounded-sm text-left outline-none transition-colors hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
+                  aria-label={`Xem chi tiết ${row.criterion.criterionCode} · ${option.displayLabel}`}
+                  onClick={() => onOpenDetail(detail)}
+                >
+                  {cellContent}
+                </button>
                 <Button
                   type="button"
                   variant="outline"
@@ -201,7 +200,6 @@ export function TechnicalConfigurationMatrixRow({
                     onOpenEvaluation({
                       optionId: option.id,
                       criterionId: row.criterion.id,
-                      detail,
                       trigger: event.currentTarget,
                     })
                   }

@@ -130,6 +130,7 @@ export function TechnicalConfigurationMatrix({
               type="button"
               variant="outline"
               size="sm"
+              disabled={evaluationDisabled}
               onClick={() => onPageChange(result.page - 1)}
             >
               <ChevronLeft aria-hidden="true" />

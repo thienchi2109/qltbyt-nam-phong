@@ -62,15 +62,28 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
     baselineVersionId,
     pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
   })
+  const { comparisonQuery } = matrix.comparison
+  const matrixResult = comparisonQuery.data
+  const panelPage = navigator.currentCriterion?.canonicalPage ?? matrix.page
+  const canReuseMatrixResult =
+    panelPage === matrix.page &&
+    Boolean(
+      navigator.activeSelectedOptionId &&
+      matrixResult?.data.options.some((option) => option.id === navigator.activeSelectedOptionId)
+    )
   const panelComparison = useTechnicalConfigurationComparison({
     baselineVersionId,
-    optionIds: navigator.activeSelectedOptionId ? [navigator.activeSelectedOptionId] : [],
-    page: navigator.currentCriterion?.canonicalPage ?? matrix.page,
+    optionIds:
+      !canReuseMatrixResult && navigator.activeSelectedOptionId
+        ? [navigator.activeSelectedOptionId]
+        : [],
+    page: panelPage,
     pageSize: TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE,
   })
   const panelResult = panelComparison.comparisonQuery.data
+  const criterionResult = canReuseMatrixResult ? matrixResult : panelResult
   const currentRow =
-    panelResult?.data.criteria.find((row) => row.criterion.id === navigator.criterionId) ?? null
+    criterionResult?.data.criteria.find((row) => row.criterion.id === navigator.criterionId) ?? null
   const evaluation = useTechnicalConfigurationEvaluationDraft({
     optionId: navigator.activeSelectedOptionId,
     baselineVersionId,
@@ -170,8 +183,6 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
   const draft = evaluation.draft
   const saveDisabled =
     Boolean(dossier.archived_at) || !evaluation.isReady || !isDirty || isNavigationBlocked
-  const { comparisonQuery } = matrix.comparison
-  const matrixResult = comparisonQuery.data
   const hasMatrixRequest = matrix.baselineVersionId !== null && matrix.selectedOptionIds.length > 0
 
   return (

@@ -28,27 +28,29 @@ export function useTechnicalConfigurationEvaluationWorkspaceActions({
   isNavigationBlocked,
   evaluationReturnFocusRef,
 }: UseTechnicalConfigurationEvaluationWorkspaceActionsInput) {
+  const syncMatrixPage = React.useCallback(
+    (
+      criterion: ReturnType<typeof useTechnicalConfigurationEvaluationNavigator>["currentCriterion"]
+    ) => {
+      if (criterion && criterion.canonicalPage !== matrix.page) {
+        matrix.setPage(criterion.canonicalPage)
+      }
+    },
+    [matrix]
+  )
   const handleOptionChange = React.useCallback(
     (nextOptionId: string) => {
       if (isNavigationBlocked) return
-      navigator.changeOption(nextOptionId, requestNavigation, (nextCriterion) => {
-        if (nextCriterion && nextCriterion.canonicalPage !== matrix.page) {
-          matrix.setPage(nextCriterion.canonicalPage)
-        }
-      })
+      navigator.changeOption(nextOptionId, requestNavigation, syncMatrixPage)
     },
-    [isNavigationBlocked, matrix, navigator, requestNavigation]
+    [isNavigationBlocked, navigator, requestNavigation, syncMatrixPage]
   )
   const handleFilterChange = React.useCallback(
     (nextFilter: TechnicalConfigurationEvaluationStatusFilter) => {
       if (isNavigationBlocked) return
-      navigator.changeFilter(nextFilter, requestNavigation, (nextCriterion) => {
-        if (nextCriterion && nextCriterion.canonicalPage !== matrix.page) {
-          matrix.setPage(nextCriterion.canonicalPage)
-        }
-      })
+      navigator.changeFilter(nextFilter, requestNavigation, syncMatrixPage)
     },
-    [isNavigationBlocked, matrix, navigator, requestNavigation]
+    [isNavigationBlocked, navigator, requestNavigation, syncMatrixPage]
   )
   const handleOpenEvaluation = React.useCallback(
     (target: TechnicalConfigurationMatrixEvaluationTarget) => {
@@ -77,13 +79,11 @@ export function useTechnicalConfigurationEvaluationWorkspaceActions({
     try {
       await evaluation.save()
       const nextCriterion = await navigator.advanceAfterSave()
-      if (nextCriterion && nextCriterion.canonicalPage !== matrix.page) {
-        matrix.setPage(nextCriterion.canonicalPage)
-      }
+      syncMatrixPage(nextCriterion)
     } catch {
       // Failed saves intentionally remain on the current criterion.
     }
-  }, [evaluation, matrix, navigator])
+  }, [evaluation, navigator, syncMatrixPage])
   const handleRetryEvaluationData = React.useCallback(() => {
     if (evaluation.comparisonSetQuery.isError) void evaluation.comparisonSetQuery.refetch()
     if (evaluation.assessmentQuery.isError) void evaluation.assessmentQuery.refetch()

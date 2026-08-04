@@ -35,6 +35,7 @@ type TechnicalConfigurationEvaluationMatrixControlsProps = {
 }
 
 /** Keeps supplier targeting and save-next filtering visible above the unified matrix. */
+// react-doctor-disable-next-line react-doctor/no-many-boolean-props -- Query, navigation, and projection flags are independent states owned by separate hooks.
 export function TechnicalConfigurationEvaluationMatrixControls({
   options,
   activeOptionId,
@@ -99,16 +100,23 @@ export function TechnicalConfigurationEvaluationMatrixControls({
       {!isLoading && !isError && totalMatches === 0 ? (
         <Alert>
           <AlertTitle>Không có tiêu chí phù hợp</AlertTitle>
-          <AlertDescription>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled || statusFilter === "all"}
-              onClick={() => onStatusFilterChange("all")}
-            >
-              Xóa bộ lọc
-            </Button>
+          <AlertDescription className="space-y-3">
+            <p>
+              {statusFilter === "all"
+                ? "Phiên bản cấu hình này chưa có tiêu chí để đánh giá."
+                : "Không có tiêu chí nào khớp bộ lọc đang chọn."}
+            </p>
+            {statusFilter !== "all" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                onClick={() => onStatusFilterChange("all")}
+              >
+                Xóa bộ lọc
+              </Button>
+            ) : null}
           </AlertDescription>
         </Alert>
       ) : null}

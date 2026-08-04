@@ -233,14 +233,10 @@ export function useTechnicalConfigurationEvaluationNavigator({
 
       requestNavigation(() => {
         void startTransition(async () => {
-          const entries = await loadCriteria({
+          await loadCriteria({
             optionId: nextOptionId,
             baselineVersionId,
             statusFilter,
-          })
-          const nextProjection = buildTechnicalConfigurationEvaluationProjection({
-            groups: baselineGroups,
-            entries,
           })
 
           beforeOpen?.()
@@ -253,7 +249,6 @@ export function useTechnicalConfigurationEvaluationNavigator({
     },
     [
       activeSelectedOptionId,
-      baselineGroups,
       baselineVersionId,
       changeCriterion,
       loadCriteria,

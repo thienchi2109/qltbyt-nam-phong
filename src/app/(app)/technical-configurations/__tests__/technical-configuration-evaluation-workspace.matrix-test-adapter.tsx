@@ -34,24 +34,6 @@ export function TechnicalConfigurationEvaluationMatrixTestAdapter({
             onOpenEvaluation({
               optionId: activeEvaluationOptionId,
               criterionId: row.criterion.id,
-              detail: {
-                criterionCode: row.criterion.criterionCode,
-                criterionTitle: row.criterion.title,
-                optionLabel: result.data.options[0]?.displayLabel ?? null,
-                requirementText: row.requirementText,
-                responseText: null,
-                supplementaryInformation: null,
-                evidence: {
-                  documentCount: 0,
-                  citationCount: 0,
-                  hasEvidence: false,
-                },
-                evidenceTarget: {
-                  kind: "option",
-                  optionId: activeEvaluationOptionId,
-                  criterionId: row.criterion.id,
-                },
-              },
               trigger: event.currentTarget,
             })
           }

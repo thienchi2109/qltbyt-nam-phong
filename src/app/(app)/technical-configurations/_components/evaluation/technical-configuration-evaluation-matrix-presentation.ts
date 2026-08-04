@@ -21,13 +21,19 @@ type BuildTechnicalConfigurationEvaluationMatrixPresentationInput = Readonly<{
   statusFilter: TechnicalConfigurationEvaluationStatusFilter
 }>
 
+export type TechnicalConfigurationEvaluationMatrixPresentation = Readonly<{
+  progress: ReturnType<typeof buildTechnicalConfigurationEvaluationProgress>
+  assessmentStatusByCriterionId: ReadonlyMap<string, TechnicalConfigurationDerivedStatus>
+  matchingEvaluationCriterionIds: ReadonlySet<string> | undefined
+}>
+
 /** Derives all matrix-facing assessment presentation from one assessment snapshot. */
 export function buildTechnicalConfigurationEvaluationMatrixPresentation({
   groups,
   assessmentsByCriterionId,
   projection,
   statusFilter,
-}: BuildTechnicalConfigurationEvaluationMatrixPresentationInput) {
+}: BuildTechnicalConfigurationEvaluationMatrixPresentationInput): TechnicalConfigurationEvaluationMatrixPresentation {
   const assessments = Object.values(assessmentsByCriterionId)
   const assessmentStatusByCriterionId = new Map<string, TechnicalConfigurationDerivedStatus>()
 

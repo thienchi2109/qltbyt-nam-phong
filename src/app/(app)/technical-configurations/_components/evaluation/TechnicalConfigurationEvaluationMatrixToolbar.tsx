@@ -61,6 +61,10 @@ export function TechnicalConfigurationEvaluationMatrixToolbar({
         runContextChange(() => matrix.focusOption(id))
       }}
       onExitFocus={() => {
+        if (!matrix.visibleOptionIds.includes(activeOptionId)) {
+          runContextChange(() => matrix.exitFocusMode())
+          return
+        }
         if (!navigationBlocked) matrix.exitFocusMode()
       }}
     />

@@ -415,17 +415,11 @@ describe("P10B2 pinned matrix columns", () => {
     expect(evaluationButton).toHaveTextContent("Đánh giá")
     await user.click(evaluationButton)
 
-    expect(onOpenEvaluation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        optionId: "option-b",
-        criterionId: "criterion-2",
-        detail: expect.objectContaining({
-          criterionCode: "TS-02",
-          optionLabel: "Nhà cung cấp B · Phương án B",
-        }),
-        trigger: evaluationButton,
-      })
-    )
+    expect(onOpenEvaluation).toHaveBeenCalledWith({
+      optionId: "option-b",
+      criterionId: "criterion-2",
+      trigger: evaluationButton,
+    })
   })
 
   it("renders only the focused option while preserving stable desktop dimensions", () => {

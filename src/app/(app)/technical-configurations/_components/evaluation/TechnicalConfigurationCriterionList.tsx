@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils"
 
 import type { TechnicalConfigurationAssessmentWire } from "../../assessment-types"
 import type { TechnicalConfigurationEvaluationCriterionListItem } from "./technical-configuration-evaluation-navigation"
+import { TECHNICAL_CONFIGURATION_EVALUATION_STATUS_BADGE_VARIANTS } from "./technical-configuration-evaluation-status-badge"
 
 type TechnicalConfigurationCriterionListProps = {
   criteria: readonly TechnicalConfigurationEvaluationCriterionListItem[]
@@ -68,13 +69,6 @@ function getCriterionStatus(
   )
 }
 
-function getStatusVariant(status: TechnicalConfigurationDerivedStatus) {
-  if (status === "fails") return "destructive" as const
-  if (status === "meets" || status === "exceeds") return "secondary" as const
-  if (status === "not_evaluated") return "muted" as const
-  return "outline" as const
-}
-
 /** Renders the canonical criterion sequence with one compact manual-status badge per row. */
 export function TechnicalConfigurationCriterionList({
   criteria,
@@ -125,7 +119,7 @@ export function TechnicalConfigurationCriterionList({
                     </span>
                   </span>
                   <Badge
-                    variant={getStatusVariant(status)}
+                    variant={TECHNICAL_CONFIGURATION_EVALUATION_STATUS_BADGE_VARIANTS[status]}
                     className="max-w-32 justify-center whitespace-normal text-center"
                   >
                     {TECHNICAL_CONFIGURATION_DERIVED_STATUS_LABELS[status]}

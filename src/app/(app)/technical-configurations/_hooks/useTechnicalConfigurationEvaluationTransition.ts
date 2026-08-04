@@ -12,8 +12,8 @@ export function useTechnicalConfigurationEvaluationTransition() {
     transitionPendingRef.current = true
     setIsTransitionPending(true)
     return transition()
-      .catch(() => {
-        // Candidate load failures preserve the current navigation state.
+      .catch((error: unknown) => {
+        console.error("Technical configuration evaluation transition failed.", error)
       })
       .finally(() => {
         transitionPendingRef.current = false

@@ -20,6 +20,11 @@ export function TechnicalConfigurationEvaluationSaveActions({
 }: Readonly<TechnicalConfigurationEvaluationSaveActionsProps>) {
   return (
     <>
+      {saving ? (
+        <span className="sr-only" role="status">
+          Đang lưu đánh giá...
+        </span>
+      ) : null}
       <Button type="button" variant="outline" disabled={disabled} onClick={onSave}>
         {saving ? (
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />

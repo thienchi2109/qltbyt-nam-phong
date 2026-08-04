@@ -126,7 +126,6 @@ describe("technical configuration unified comparison and evaluation workspace", 
 
     await user.click(screen.getByRole("button", { name: "Mark evaluation pending" }))
     await waitFor(() => expect(mocks.onNavigationBlockedChange).toHaveBeenLastCalledWith(true))
-    expect(mocks.onNavigationBlockedChange).toHaveBeenLastCalledWith(true)
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
   })
 })

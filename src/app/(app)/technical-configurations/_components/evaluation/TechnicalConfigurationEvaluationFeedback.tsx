@@ -14,6 +14,7 @@ type TechnicalConfigurationEvaluationFeedbackProps = {
 }
 
 /** Renders asynchronous feedback for criterion details and saved assessments. */
+// react-doctor-disable-next-line react-doctor/no-many-boolean-props -- Panel visibility and the two independent query states retain their source ownership.
 export function TechnicalConfigurationEvaluationFeedback({
   isPanelOpen,
   isPanelLoading,
@@ -27,12 +28,15 @@ export function TechnicalConfigurationEvaluationFeedback({
   return (
     <>
       {isPanelLoading && isPanelOpen ? (
-        <div className="flex min-h-20 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div
+          className="flex min-h-20 items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
           Đang tải tiêu chí...
         </div>
       ) : null}
-      {isPanelError ? (
+      {isPanelOpen && isPanelError ? (
         <TechnicalConfigurationEvaluationLoadError
           title="Không thể tải tiêu chí đánh giá"
           error={panelError}
