@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -38,12 +38,10 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
         disabled={false}
         focusCriterionKey={null}
         focusCriterionToken={null}
-        focusAddCriterionToken={null}
         recentlyAcceptedCriterionKeys={new Set(["criterion-new"])}
         onCriterionTextChange={vi.fn()}
         onMoveCriterion={vi.fn()}
         onDeleteCriterion={vi.fn()}
-        onAddCriterion={vi.fn()}
       />
     )
 
@@ -63,12 +61,11 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
     )
   })
 
-  it("reports exact edit, move, delete, and add commands", async () => {
+  it("reports exact edit, move, and delete commands", async () => {
     const user = userEvent.setup()
     const onCriterionTextChange = vi.fn()
     const onMoveCriterion = vi.fn()
     const onDeleteCriterion = vi.fn()
-    const onAddCriterion = vi.fn()
 
     render(
       <TechnicalConfigurationCriteriaSpreadsheet
@@ -78,33 +75,28 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
         disabled={false}
         focusCriterionKey={null}
         focusCriterionToken={null}
-        focusAddCriterionToken={null}
         recentlyAcceptedCriterionKeys={new Set()}
         onCriterionTextChange={onCriterionTextChange}
         onMoveCriterion={onMoveCriterion}
         onDeleteCriterion={onDeleteCriterion}
-        onAddCriterion={onAddCriterion}
       />
     )
 
-    fireEvent.change(screen.getByLabelText("Tiêu đề tiêu chí 2.1"), {
-      target: { value: "Điện áp" },
-    })
-    expect(onCriterionTextChange).toHaveBeenLastCalledWith("criterion-1", "title", "Điện áp")
+    await user.type(screen.getByLabelText("Tiêu đề tiêu chí 2.1"), "X")
+    expect(onCriterionTextChange).toHaveBeenLastCalledWith("criterion-1", "title", "Nguồn điệnX")
 
-    fireEvent.change(screen.getByLabelText("Nội dung yêu cầu 2.1"), {
-      target: { value: "220V" },
-    })
-    expect(onCriterionTextChange).toHaveBeenLastCalledWith("criterion-1", "requirementText", "220V")
+    await user.type(screen.getByLabelText("Nội dung yêu cầu 2.1"), "Y")
+    expect(onCriterionTextChange).toHaveBeenLastCalledWith(
+      "criterion-1",
+      "requirementText",
+      "Nguồn điện ổn địnhY"
+    )
 
     await user.click(screen.getByRole("button", { name: "Di chuyển tiêu chí 2.2 lên" }))
     expect(onMoveCriterion).toHaveBeenCalledWith(1, -1)
 
     await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 2.1" }))
     expect(onDeleteCriterion).toHaveBeenCalledWith("criterion-1")
-
-    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 2" }))
-    expect(onAddCriterion).toHaveBeenCalledTimes(1)
   })
 
   it("focuses the requested requirement cell", async () => {
@@ -116,12 +108,10 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
         disabled={false}
         focusCriterionKey="criterion-new"
         focusCriterionToken={1}
-        focusAddCriterionToken={null}
         recentlyAcceptedCriterionKeys={new Set()}
         onCriterionTextChange={vi.fn()}
         onMoveCriterion={vi.fn()}
         onDeleteCriterion={vi.fn()}
-        onAddCriterion={vi.fn()}
       />
     )
 

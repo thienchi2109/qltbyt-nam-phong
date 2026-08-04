@@ -55,8 +55,12 @@ describe("technical configuration version workflow review regressions", () => {
     mockVersions([draft, locked])
 
     renderTab()
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Nội dung chưa áp dụng")
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+    await user.type(
+      within(firstGroup).getByLabelText("Nội dung nhập nhanh"),
+      "Nội dung chưa áp dụng"
+    )
     await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {

@@ -261,11 +261,10 @@ export function TechnicalConfigurationBaselineTab({
           }}
           activeValue={inlineEditor.activeValue}
           entryMode={inlineEditor.entryMode}
-          bulkSession={inlineEditor.bulkSession}
+          getBulkSession={bulkSessions.getSession}
           focusTarget={inlineEditor.focusTarget}
           recentlyAcceptedCriterionKeys={bulkSessions.recentlyAcceptedCriterionKeys}
-          onNavigate={inlineEditor.navigate}
-          onModeChange={inlineEditor.changeMode}
+          onGroupModeChange={inlineEditor.setGroupMode}
           onAddGroup={inlineEditor.addGroup}
           onGroupNameChange={inlineEditor.setGroupName}
           onMoveGroup={inlineEditor.moveGroup}
@@ -278,7 +277,6 @@ export function TechnicalConfigurationBaselineTab({
           onBulkPreview={inlineEditor.previewBulk}
           onBulkCancel={inlineEditor.cancelBulk}
           onBulkAccept={inlineEditor.acceptBulk}
-          onOverviewCriterionActivate={inlineEditor.activateOverviewCriterion}
           onSave={baseline.onSave}
         />
       ) : null}

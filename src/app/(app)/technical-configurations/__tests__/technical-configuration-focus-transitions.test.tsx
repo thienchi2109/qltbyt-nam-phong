@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -13,22 +13,27 @@ import {
 
 const rpc = getBaselineRpcMock()
 
+function findGroupSection(ordinal: number) {
+  return screen.findByRole("region", { name: `Nhóm tiêu chí ${ordinal}` })
+}
+
 describe("technical configuration focus transitions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     rpc.listVersions.mockResolvedValue(baselineVersionsResponse([createDraft()]))
   })
 
-  it("focuses the next group tab after deleting the selected group", async () => {
+  it("focuses the next group disclosure after deleting a group", async () => {
     const user = userEvent.setup()
     renderTab()
 
-    await user.click(await screen.findByRole("tab", { name: /Yêu cầu cấu hình cung cấp/ }))
-    await user.click(screen.getByRole("button", { name: "Xóa nhóm 2" }))
+    await user.click(await screen.findByRole("button", { name: "Xóa nhóm 2" }))
 
-    const nextGroupTab = screen.getByRole("tab", { name: /Yêu cầu kỹ thuật/ })
-    expect(nextGroupTab).toHaveAttribute("aria-selected", "true")
-    expect(nextGroupTab).toHaveFocus()
+    const nextGroupDisclosure = screen.getByRole("button", {
+      name: "Thu gọn nhóm 2: Yêu cầu kỹ thuật",
+    })
+    expect(nextGroupDisclosure).toHaveAttribute("aria-expanded", "true")
+    await waitFor(() => expect(nextGroupDisclosure).toHaveFocus())
   })
 
   it("focuses add criterion after deleting the final criterion", async () => {
@@ -82,8 +87,9 @@ describe("technical configuration focus transitions", () => {
     )
     renderTab()
 
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.click(screen.getByRole("tab", { name: "Chỉnh từng dòng" }))
+    const firstGroup = await findGroupSection(1)
+    await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+    await user.click(within(firstGroup).getByRole("button", { name: /Chỉnh từng dòng/ }))
 
     expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
   })
@@ -116,8 +122,10 @@ describe("technical configuration focus transitions", () => {
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
     await user.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }))
 
-    const firstGroupTab = await screen.findByRole("tab", { name: /Tên mới từ máy chủ/ })
-    await waitFor(() => expect(firstGroupTab).toHaveFocus())
+    const firstGroupDisclosure = await screen.findByRole("button", {
+      name: "Thu gọn nhóm 1: Tên mới từ máy chủ",
+    })
+    await waitFor(() => expect(firstGroupDisclosure).toHaveFocus())
 
     const reloadedNameInput = screen.getByDisplayValue("Tên mới từ máy chủ")
     await user.click(reloadedNameInput)
@@ -130,31 +138,15 @@ describe("technical configuration focus transitions", () => {
     const user = userEvent.setup()
     renderTab()
 
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.type(screen.getByLabelText("Nội dung nhập nhanh"), "Yêu cầu mới")
-    await user.click(screen.getByRole("button", { name: "Xem trước" }))
-    await user.click(screen.getByRole("button", { name: "Thêm vào bản nháp" }))
+    const firstGroup = await findGroupSection(1)
+    await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
+    await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Yêu cầu mới")
+    await user.click(within(firstGroup).getByRole("button", { name: "Xem trước" }))
+    await user.click(within(firstGroup).getByRole("button", { name: "Thêm vào bản nháp" }))
 
     expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
     await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 1.1" }))
 
     await waitFor(() => expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveFocus())
-  })
-
-  it("keeps focus on the activated group tab when bulk mode is preserved from overview", async () => {
-    const user = userEvent.setup()
-    renderTab()
-
-    await user.click(await screen.findByRole("tab", { name: "Nhập nhiều dòng" }))
-    await user.click(screen.getByRole("tab", { name: "Xem tất cả nhóm" }))
-
-    const targetGroupTab = screen.getByRole("tab", { name: /Yêu cầu cấu hình cung cấp/ })
-    await user.click(targetGroupTab)
-
-    expect(screen.getByRole("tab", { name: "Nhập nhiều dòng" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    )
-    expect(targetGroupTab).toHaveFocus()
   })
 })
