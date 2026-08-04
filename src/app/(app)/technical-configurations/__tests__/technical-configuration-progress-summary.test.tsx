@@ -23,6 +23,17 @@ const progress: TechnicalConfigurationEvaluationProgress = {
   ],
 }
 
+const fiveCardProgress: TechnicalConfigurationEvaluationProgress = {
+  ...progress,
+  total: 10,
+  evaluated: 7,
+  groups: [
+    ...progress.groups,
+    { id: "group-3", name: "Môi trường vận hành", total: 2, evaluated: 2 },
+    { id: "group-4", name: "Phụ kiện", total: 2, evaluated: 1 },
+  ],
+}
+
 describe("P12B1 technical configuration progress summary", () => {
   it("renders overall and group progress as compact KPI cards", () => {
     render(
@@ -36,16 +47,10 @@ describe("P12B1 technical configuration progress summary", () => {
     const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
     const progressCards = within(summary).getAllByTestId("evaluation-progress-kpi-card")
     expect(progressCards).toHaveLength(3)
-    for (const card of progressCards) {
-      expect(card.parentElement?.tagName).toBe("DL")
-      expect(Array.from(card.children, (child) => child.tagName)).toEqual(["DT", "DD"])
-    }
 
     const evaluatedOutput = within(progressCards[0]!).getByText("4 / 6")
     expect(evaluatedOutput).toBeInTheDocument()
-    expect(evaluatedOutput.tagName).toBe("OUTPUT")
     expect(within(progressCards[0]!).getByText("Tổng tiến độ")).toBeInTheDocument()
-    expect(within(progressCards[0]!).getByText("tiêu chí đã đánh giá")).toBeInTheDocument()
 
     expect(within(progressCards[1]!).getByText("Thông số chính")).toBeInTheDocument()
     expect(within(progressCards[1]!).getByText("3 / 4")).toBeInTheDocument()
@@ -65,6 +70,24 @@ describe("P12B1 technical configuration progress summary", () => {
     ]) {
       expect(within(summary).queryByText(statusLabel, { exact: true })).not.toBeInTheDocument()
     }
+  })
+
+  it("keeps five KPI cards balanced using the Repair Request responsive pattern", () => {
+    render(
+      <TechnicalConfigurationProgressSummary
+        progress={fiveCardProgress}
+        isLoading={false}
+        isError={false}
+      />
+    )
+
+    const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
+    const grid = within(summary).getByTestId("evaluation-progress-kpi-grid")
+    const progressCards = within(grid).getAllByTestId("evaluation-progress-kpi-card")
+
+    expect(grid).toHaveClass("grid-cols-2", "md:grid-cols-4", "xl:grid-cols-5")
+    expect(progressCards).toHaveLength(5)
+    expect(progressCards[0]).toHaveClass("col-span-2", "md:col-span-4", "xl:col-span-1")
   })
 
   it("does not render false all-unassessed counters while progress is loading or failed", () => {

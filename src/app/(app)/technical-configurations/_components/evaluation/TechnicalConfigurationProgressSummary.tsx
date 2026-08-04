@@ -1,4 +1,6 @@
-import { Card } from "@/components/ui/card"
+import { Layers, ListChecks } from "lucide-react"
+
+import { StatCard } from "@/components/ui/stat-card"
 
 import type { TechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
 
@@ -41,41 +43,38 @@ export function TechnicalConfigurationProgressSummary({
     <section className="space-y-3" aria-label="Tiến độ đánh giá">
       <h3 className="text-sm font-semibold">Tiến độ đánh giá</h3>
 
-      <dl className="grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:grid-cols-3 xl:grid-cols-4">
-        <Card
-          className="flex min-h-24 flex-col justify-between gap-2 border-primary/30 bg-primary/5 p-3 shadow-none"
+      <div
+        className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4 xl:grid-cols-5"
+        data-testid="evaluation-progress-kpi-grid"
+      >
+        <div
+          className="col-span-2 min-w-0 md:col-span-4 xl:col-span-1"
           data-testid="evaluation-progress-kpi-card"
         >
-          <dt className="text-xs font-medium text-muted-foreground">Tổng tiến độ</dt>
-          <dd className="flex flex-col gap-2">
-            <output className="text-xl font-semibold leading-none tabular-nums">
-              {progress.evaluated} / {progress.total}
-            </output>
-            <span className="text-xs text-muted-foreground">tiêu chí đã đánh giá</span>
-          </dd>
-        </Card>
+          <StatCard
+            className="h-full"
+            label="Tổng tiến độ"
+            value={`${progress.evaluated} / ${progress.total}`}
+            icon={<Layers className="size-5" aria-hidden="true" />}
+          />
+        </div>
 
         {progress.groups.map((group) => (
-          <Card
+          <div
             key={group.id}
-            className="flex min-h-24 flex-col justify-between gap-2 p-3 shadow-none"
+            className="min-w-0"
             data-testid="evaluation-progress-kpi-card"
+            title={group.name}
           >
-            <dt
-              className="line-clamp-2 text-xs font-medium leading-4 text-muted-foreground"
-              title={group.name}
-            >
-              {group.name}
-            </dt>
-            <dd className="flex flex-col gap-2">
-              <span className="text-xl font-semibold leading-none tabular-nums">
-                {group.evaluated} / {group.total}
-              </span>
-              <span className="text-xs text-muted-foreground">tiêu chí đã đánh giá</span>
-            </dd>
-          </Card>
+            <StatCard
+              className="h-full"
+              label={group.name}
+              value={`${group.evaluated} / ${group.total}`}
+              icon={<ListChecks className="size-5" aria-hidden="true" />}
+            />
+          </div>
         ))}
-      </dl>
+      </div>
     </section>
   )
 }
