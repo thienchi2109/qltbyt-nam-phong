@@ -172,4 +172,23 @@ describe("technical configuration workspace focus mode", () => {
     expect(await screen.findByText("Bố cục mặc định")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Cấu hình máy thở" })).toBeInTheDocument()
   })
+
+  it("keeps every non-baseline workspace vertically scrollable", async () => {
+    const user = userEvent.setup()
+    render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+
+    const tabs = [
+      { name: "Tài liệu & trích dẫn", content: "Tài liệu kiểm thử" },
+      { name: "Sản phẩm tham chiếu", content: "Sản phẩm tham chiếu kiểm thử" },
+      { name: "Phương án", content: "Phương án kiểm thử" },
+      { name: "So sánh & đánh giá", content: "So sánh kiểm thử" },
+    ]
+
+    for (const tab of tabs) {
+      await user.click(screen.getByRole("tab", { name: tab.name }))
+
+      const panel = screen.getByText(tab.content).closest('[role="tabpanel"]')
+      expect(panel).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+    }
+  })
 })
