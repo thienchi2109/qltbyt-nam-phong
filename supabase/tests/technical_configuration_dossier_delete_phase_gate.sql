@@ -418,7 +418,8 @@ BEGIN
   END IF;
 
   EXECUTE $plan$
-    EXPLAIN (FORMAT JSON)
+  -- Plan replica of technical_configuration_dossiers_list; keep it aligned with the deployed page-first shape checked above.
+  EXPLAIN (FORMAT JSON)
     WITH dossier_page AS MATERIALIZED (
       SELECT d.id, d.archived_at, d.updated_at
       FROM public.technical_configuration_dossiers d

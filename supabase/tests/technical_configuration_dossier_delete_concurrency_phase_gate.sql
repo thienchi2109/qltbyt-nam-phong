@@ -183,7 +183,7 @@ BEGIN
   PERFORM set_config('lock_timeout', '2s', true);
   BEGIN
     PERFORM public.technical_configuration_baseline_lock(v_version_id, 1);
-    RAISE EXCEPTION 'delete-first session B did not block on the dossier row';
+    RAISE EXCEPTION 'delete-first session B did not block; session A precondition may have expired';
   EXCEPTION
     WHEN SQLSTATE '55P03' THEN NULL;
   END;
@@ -315,7 +315,7 @@ BEGIN
   PERFORM set_config('lock_timeout', '2s', true);
   BEGIN
     PERFORM public.technical_configuration_dossiers_delete(v_dossier_id, 1);
-    RAISE EXCEPTION 'lock-first session B did not block on the dossier row';
+    RAISE EXCEPTION 'lock-first session B did not block; session A precondition may have expired';
   EXCEPTION
     WHEN SQLSTATE '55P03' THEN NULL;
   END;
