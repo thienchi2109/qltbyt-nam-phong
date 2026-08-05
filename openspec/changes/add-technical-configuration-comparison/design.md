@@ -50,6 +50,12 @@ Không thêm foreign key tới `thiet_bi`. Việc độc lập giúp cấu hình
 
 Archive là thao tác một chiều trong MVP. Hồ sơ active được phép chuyển sang archived qua contract `technical_configuration_dossiers_archive`. Sau khi hồ sơ đã archive, mọi mutation nhắm tới chính hồ sơ đó hoặc bất kỳ entity nào trong toàn bộ aggregate con phải gọi cùng archive guard và bị từ chối. Hồ sơ đã archive bị ẩn khỏi list mặc định nhưng vẫn đọc được qua get hoặc list có cờ gồm dữ liệu archive; không có RPC hoặc UI restore.
 
+P15 bổ sung hard-delete như một lifecycle khác, không thay thế archive. Hard-delete chỉ áp dụng cho hồ sơ active chưa từng có baseline version `locked`. Sau lần khóa đầu tiên, lịch sử hồ sơ được coi là có giá trị cần bảo toàn và `technical_configuration_dossiers_delete` luôn trả conflict `locked_dossier`, kể cả khi hồ sơ hiện có một draft mới.
+
+Delete RPC trước tiên dùng dossier revision guard hiện có để khóa aggregate root, sau đó kiểm tra sự tồn tại của baseline `locked` trong cùng transaction rồi mới xóa root. Baseline lock cũng khóa dossier row trước baseline row, nên hai thao tác được serialize: delete thắng thì baseline lock nhận `not_found`; baseline lock thắng thì delete nhận `locked_dossier`. Mọi foreign key con phải tiếp tục dùng cascade đã được kiểm chứng; P15 không thêm chuỗi delete thủ công hoặc xóa từng bảng từ client.
+
+Danh sách hồ sơ trả thêm `can_delete` bằng một biểu thức set-based dựa trên sự tồn tại của baseline `locked`; không gọi version-list theo từng row. Đây chỉ là affordance sớm cho UI. Delete RPC vẫn là authority cuối cùng để chống stale UI, direct-call bypass và race condition. Hồ sơ active vẫn được sửa `device_type_name`, `name` và `description` sau khi có baseline khóa vì metadata dossier nằm ngoài immutable baseline aggregate; update không được sửa nội dung hoặc trạng thái baseline.
+
 ### 2. Cấu hình cơ sở text-first với hai cấp
 
 Mỗi phiên bản cơ sở gồm các nhóm có thứ tự. Mỗi nhóm gồm các tiêu chí có:
@@ -702,7 +708,9 @@ Các quyết định trên là compatibility notes, không phải acceptance cri
 ### Danh sách hồ sơ
 
 - Bảng danh sách gọn, ưu tiên tên thiết bị, phiên bản cơ sở hiện hành, số nhà cung cấp/phương án, tiến độ đánh giá và thời điểm cập nhật.
-- Hành động chính: tạo hồ sơ, mở hồ sơ.
+- Hành động chính: tạo hồ sơ, mở hồ sơ và row-action menu cho sửa metadata/xóa.
+- Sửa metadata dùng lại side sheet explicit-save với dữ liệu hiện tại và dossier revision.
+- Xóa mở destructive confirmation nêu rõ tên hồ sơ và toàn bộ dữ liệu nháp/dữ liệu làm việc phụ thuộc sẽ bị xóa vĩnh viễn. Action bị vô hiệu hóa với lý do rõ ràng khi `can_delete=false`.
 - Không dùng landing page hoặc dashboard marketing.
 
 ### Chi tiết hồ sơ
@@ -747,6 +755,8 @@ khai phải áp dụng scope MVP, thuật ngữ và semantics của OpenSpec/P14
 - Xóa tài liệu đang được liên kết trong dữ liệu còn chỉnh sửa: yêu cầu xác nhận và nêu số liên kết bị ảnh hưởng.
 - Xóa hoặc sửa document metadata/URL thuộc phiên bản cơ sở đã khóa: từ chối trước khi áp dụng flow xác nhận xóa.
 - Hồ sơ đã archive: list mặc định không trả hồ sơ, get vẫn đọc được và mọi mutation con trả conflict `archived_dossier`.
+- Hard-delete hồ sơ đã có baseline khóa: từ chối `locked_dossier` trước `DELETE`; giữ nguyên root và toàn bộ descendants.
+- Hard-delete dùng revision cũ: từ chối `stale_revision`; UI giữ dialog/trạng thái hiện tại để người dùng tải lại.
 - Export snapshot thay đổi trong lúc thu page/chunk: hủy toàn bộ thao tác, không tải partial file và yêu cầu người dùng thử lại.
 - Export scope không còn hợp lệ do option/criterion bị xóa hoặc đổi hồ sơ/phiên bản: từ chối file thay vì âm thầm thu hẹp phạm vi.
 - Trình duyệt không thể tạo Blob hoặc download bị chặn: giữ dialog, hiển thị lỗi retry được và luôn giải phóng object URL đã tạo.
@@ -769,6 +779,10 @@ khai phải áp dụng scope MVP, thuật ngữ và semantics của OpenSpec/P14
 - **Client export có thể ghép dữ liệu từ nhiều thời điểm:** P14 dùng canonical
   snapshot token trên manifest/ranking/matrix, thu tuần tự và revalidate manifest
   trước khi render.
+- **Hard-delete làm mất toàn bộ dữ liệu chưa khóa:** đây là chủ đích cho hồ sơ
+  nháp/dữ liệu làm việc chưa tạo lịch sử khóa. Giảm rủi ro bằng backend guard
+  vĩnh viễn sau lần khóa đầu tiên, optimistic revision, destructive confirmation
+  và transaction/cascade verification; không cung cấp bulk delete.
 
 ## Migration Plan
 
@@ -780,7 +794,10 @@ khai phải áp dụng scope MVP, thuật ngữ và semantics của OpenSpec/P14
 6. P14A1/P14A2 thêm read-only result-export RPCs trước; P14A3/P14B/P14C có thể
    deploy dần nhưng nút export chỉ được mount ở P14C2 sau khi collector,
    workbook renderer và dialog đều gated.
-7. Chỉ apply migration lên live Supabase sau khi người dùng cấp quyền rõ ràng cho thao tác live DB cụ thể.
+7. P15A thêm additive hard-delete/list-eligibility contract nhưng chưa kích
+   hoạt UI/proxy; P15B thêm metadata edit độc lập; P15C chỉ mount delete action
+   sau khi P15A đã apply/gated và P15B đã landed.
+8. Chỉ apply migration lên live Supabase sau khi người dùng cấp quyền rõ ràng cho thao tác live DB cụ thể.
 
 Rollback có thể gỡ route/navigation và migration mới mà không tác động dữ liệu Equipment. Việc xóa dữ liệu đã tạo trong module phải là quyết định migration riêng, không thực hiện tự động khi rollback UI.
 

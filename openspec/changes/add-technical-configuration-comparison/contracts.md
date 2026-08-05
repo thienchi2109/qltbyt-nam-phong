@@ -12,13 +12,15 @@
 1. A dossier is the aggregate root and the single configuration lineage for one device type. There is no separate lineage table.
 2. A dossier has zero or more locked baseline versions and at most one editable draft.
 3. Archived dossiers are hidden from default lists, remain readable and reject every descendant mutation. MVP has no restore operation.
-4. Locked baseline-owned data is immutable for every role, including `global` and raw `admin`.
-5. Direct Data API access to module tables is denied. Reads and writes use guarded `SECURITY DEFINER` RPCs.
-6. Every editable aggregate has `revision BIGINT NOT NULL`. Every mutation requires `p_expected_revision`.
-7. Criterion codes are system-generated, unique per baseline version and stable across reorder/copy.
-8. Suppliers belong to one dossier and are shared only by options in that dossier.
-9. A dossier may contain unlimited options. One matrix request selects at most 8 options and reads at most 100 criteria.
-10. MVP adds no AI runtime table, column, RPC, job, cache, quota, API call or UI affordance.
+4. Active dossier metadata remains editable after a baseline is locked because dossier metadata is outside the immutable baseline aggregate.
+5. Hard-delete is allowed only for an active dossier that has never had a locked baseline. After the first lock, deletion is permanently denied; archive remains a separate one-way lifecycle.
+6. Locked baseline-owned data is immutable for every role, including `global` and raw `admin`.
+7. Direct Data API access to module tables is denied. Reads and writes use guarded `SECURITY DEFINER` RPCs.
+8. Every editable aggregate has `revision BIGINT NOT NULL`. Every mutation requires `p_expected_revision`.
+9. Criterion codes are system-generated, unique per baseline version and stable across reorder/copy.
+10. Suppliers belong to one dossier and are shared only by options in that dossier.
+11. A dossier may contain unlimited options. One matrix request selects at most 8 options and reads at most 100 criteria.
+12. MVP adds no AI runtime table, column, RPC, job, cache, quota, API call or UI affordance.
 
 ## Frontend Surface Ownership
 
@@ -134,6 +136,12 @@
   matrix, including the complete TC-18 ranking flow. P12A2/P12B1/P12B2 retain
   focused React/source regressions required by their own dependency and exit
   gates.
+- P15B owns the dossier metadata edit adapter, generalized create/edit form,
+  row-action surface and mutation-state hook. It does not consume
+  `can_delete` or expose the dormant P15A delete RPC.
+- P15C extends the P15B row-action owner with list eligibility, the guarded
+  delete adapter and one destructive confirmation dialog. It does not create a
+  second row-action/mutation owner or treat `can_delete` as authorization.
 - No P10B leaf renders response editors, copy controls, dirty drafts, save
   commands, assessment persistence, ranking or derived compliance.
 - P8B3 adds no RPC name, request/response shape, query key, migration, table,
@@ -143,28 +151,29 @@
 
 Each entity or schema alteration has one primary leaf owner. A later leaf may extend an existing copy/guard function only when its own entities require that extension.
 
-| Leaf  | Entity or alteration                          | Key ownership and cascade contract                                                                                            |
-| ----- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| P1    | `technical_configuration_dossiers`            | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                           |
-| P2    | `technical_configuration_baseline_versions`   | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision         |
-| P2    | `technical_configuration_baseline_groups`     | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction               |
-| P2    | `technical_configuration_baseline_criteria`   | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null |
-| P4    | baseline lifecycle alterations                | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                               |
-| P7A1  | `technical_configuration_reference_products`  | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                               |
-| P7A1  | `technical_configuration_reference_responses` | Unique reference product + criterion; cascade with reference product/version                                                  |
-| P7B1  | `technical_configuration_baseline_documents`  | FK exact baseline version; URL metadata only                                                                                  |
-| P7B1  | `technical_configuration_baseline_citations`  | FK baseline document + criterion in the same version                                                                          |
-| P7B1  | `technical_configuration_reference_documents` | FK reference product; URL metadata only                                                                                       |
-| P7B1  | `technical_configuration_reference_citations` | FK reference document + criterion in the reference product's version                                                          |
-| P8A1  | `technical_configuration_suppliers`           | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                 |
-| P8A2  | `technical_configuration_options`             | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                            |
-| P8A3  | `technical_configuration_comparison_sets`     | FK option + exact baseline version; one active response dataset per pair                                                      |
-| P8A3  | `technical_configuration_option_responses`    | Unique comparison set + criterion; response and supplementary text remain separate                                            |
-| P8A4  | nullable comparison-set read contract         | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects  |
-| P9B1  | `technical_configuration_option_documents`    | FK option; URL metadata shared by every baseline comparison for that option                                                   |
-| P9B1  | `technical_configuration_option_citations`    | FK option document + criterion through the matching option/baseline comparison set                                            |
-| P11B  | `technical_configuration_manual_assessments`  | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                           |
-| P12C1 | complete option ranking read contract         | Read-only set-based RPC over dossier options, exact baseline criteria and persisted manual assessments; no new table          |
+| Leaf  | Entity or alteration                           | Key ownership and cascade contract                                                                                                   |
+| ----- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| P1    | `technical_configuration_dossiers`             | UUID root; device type/name/description; archive and audit metadata; `revision`; no hard-delete RPC                                  |
+| P2    | `technical_configuration_baseline_versions`    | FK `dossier_id`; partial unique draft per dossier; sequential version number; `next_criterion_number`; audit/revision                |
+| P2    | `technical_configuration_baseline_groups`      | FK baseline version; ordered editable seed records; delete cascades only inside an editable version transaction                      |
+| P2    | `technical_configuration_baseline_criteria`    | FK group/version; system code unique per version; optional title; multiline text; order; `source_criterion_id` initially null        |
+| P4    | baseline lifecycle alterations                 | Adds lock metadata, `source_baseline_version_id`, copy/lock functions and locked mutation guard                                      |
+| P7A1  | `technical_configuration_reference_products`   | FK exact baseline version; zero-to-many; excluded from supplier/ranking domains                                                      |
+| P7A1  | `technical_configuration_reference_responses`  | Unique reference product + criterion; cascade with reference product/version                                                         |
+| P7B1  | `technical_configuration_baseline_documents`   | FK exact baseline version; URL metadata only                                                                                         |
+| P7B1  | `technical_configuration_baseline_citations`   | FK baseline document + criterion in the same version                                                                                 |
+| P7B1  | `technical_configuration_reference_documents`  | FK reference product; URL metadata only                                                                                              |
+| P7B1  | `technical_configuration_reference_citations`  | FK reference document + criterion in the reference product's version                                                                 |
+| P8A1  | `technical_configuration_suppliers`            | FK dossier; normalized name unique per dossier; delete cascades options and their descendants                                        |
+| P8A2  | `technical_configuration_options`              | FK supplier and dossier-consistent ownership; directly editable; delete cascades response datasets                                   |
+| P8A3  | `technical_configuration_comparison_sets`      | FK option + exact baseline version; one active response dataset per pair                                                             |
+| P8A3  | `technical_configuration_option_responses`     | Unique comparison set + criterion; response and supplementary text remain separate                                                   |
+| P8A4  | nullable comparison-set read contract          | Exact option + baseline lookup returns an existing snapshot or `data: null` without mutation, revision or audit side effects         |
+| P9B1  | `technical_configuration_option_documents`     | FK option; URL metadata shared by every baseline comparison for that option                                                          |
+| P9B1  | `technical_configuration_option_citations`     | FK option document + criterion through the matching option/baseline comparison set                                                   |
+| P11B  | `technical_configuration_manual_assessments`   | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                                  |
+| P12C1 | complete option ranking read contract          | Read-only set-based RPC over dossier options, exact baseline criteria and persisted manual assessments; no new table                 |
+| P15A  | dossier hard-delete and eligibility alteration | Adds guarded aggregate-root delete plus set-based `can_delete` to the dossier list; adds no table and relies on verified FK cascades |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
 
@@ -183,6 +192,13 @@ and `updated_at` identify the latest evaluator without duplicate
 - Archived: readable, excluded from default list and immutable.
 - Archive is one-way in MVP; no restore RPC exists.
 - `technical_configuration_dossiers_archive` increments dossier revision atomically.
+- Active metadata (`device_type_name`, `name`, `description`) remains editable
+  after baseline lock through the existing revision-guarded update RPC.
+- `can_delete=true` means the active dossier has no historical baseline with
+  `status='locked'`. It is a list affordance only; the delete RPC rechecks the
+  same condition under row lock.
+- A never-locked active dossier may be hard-deleted. An archived dossier or a
+  dossier that has ever had a locked baseline may not be hard-deleted.
 
 P1 creates `technical_configuration_dossiers` with:
 
@@ -223,6 +239,19 @@ technical_configuration_dossiers_archive(
 ```
 
 Create requires `p_expected_revision=0` and returns revision `1`. Update and archive require the current dossier revision and increment it atomically. P1 adds no hard-delete or restore RPC.
+
+P15A adds:
+
+```text
+technical_configuration_dossiers_delete(
+  p_id UUID,
+  p_expected_revision BIGINT
+)
+```
+
+The delete RPC removes the dossier aggregate root and relies only on the
+verified `ON DELETE CASCADE` foreign keys for descendants. It does not archive,
+restore or manually delete child tables.
 
 ### Baseline Version
 
@@ -283,8 +312,17 @@ Outside the RPC proxy, raw `admin` handling uses `isGlobalRole()`. SQL tests may
 - `_technical_configuration_require_global_user()` validates role and non-empty user ID claims, normalizes `admin` to global semantics and returns the actor ID.
 - `_technical_configuration_require_editable_dossier(p_dossier_id uuid, p_expected_revision bigint)` calls the role guard, locks the dossier, verifies existence, archive state and revision, then returns the actor ID.
 - P4 owns `_technical_configuration_require_editable_baseline_version(p_baseline_version_id uuid)`, which calls the dossier guard and raises `locked_version` when needed.
+- P15A delete calls `_technical_configuration_require_editable_dossier()` first,
+  then checks locked-baseline existence while retaining the dossier row lock.
+  It raises `locked_dossier` before deleting when any historical baseline is
+  locked.
 
 Every descendant mutation leaf must call the most specific applicable guard. A leaf may not duplicate or weaken these checks.
+
+Baseline lock and dossier delete both acquire the dossier row lock before their
+baseline-specific work. Concurrent operations therefore serialize: a completed
+delete makes the lock path return `not_found`, while a completed lock makes the
+delete path return `locked_dossier`.
 
 ### Table Exposure
 
@@ -295,6 +333,8 @@ REVOKE ALL ON TABLE public.<table_name> FROM anon, authenticated, public;
 ```
 
 Sequences receive no direct Data API grants. RPC execution is granted only as required, and every `SECURITY DEFINER` function sets `search_path = public, pg_temp`.
+P15A follows the existing dossier RPC boundary: revoke delete execution from
+`PUBLIC`, `anon` and `service_role`, then grant only to `authenticated`.
 
 ## RPC Contract
 
@@ -331,6 +371,7 @@ SQL parameters use `p_`-prefixed `snake_case`. Wire result fields use database `
 | P14A1 | `technical_configuration_result_export_manifest_get`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | P14A2 | `technical_configuration_result_export_ranking_list`, `technical_configuration_result_export_matrix_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | P14A4 | `technical_configuration_result_export_option_axis_list`, `technical_configuration_result_export_criterion_axis_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| P15A  | `technical_configuration_dossiers_delete`; additive `can_delete` response field on `technical_configuration_dossiers_list`                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 Except for the explicitly dormant P10A1/P10A2 and P11B/P11C splits, each leaf
 that introduces an RPC also owns allowlisting only the names introduced by that
@@ -347,6 +388,11 @@ manifest and proxy allowlist entry. P14A2 owns only the two bounded data RPCs
 that consume the P14A1 snapshot helper, plus their allowlist entries. P14A4 owns
 only the two bounded ordered-axis RPCs and their allowlist entries. P14A3 and all
 P14B/P14C leaves add no RPC or migration.
+P15A creates the delete RPC and list eligibility field but deliberately leaves
+the new RPC absent from every proxy allowlist/manifest. P15B reuses the existing
+P1 update RPC and adds no RPC name. P15C owns the delete RPC manifest, proxy
+allowlist entry, typed adapter and user-visible activation after P15A is applied
+and gated.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -355,6 +401,8 @@ existing plain-`Error` behavior.
 
 - List request: `p_page >= 1`, `1 <= p_page_size <= 100`, optional leaf-specific filters.
 - Dossier list defaults `p_include_archived=false`.
+- Each dossier list item includes `can_delete BOOLEAN NOT NULL`, computed from
+  active state and historical locked-baseline existence.
 - List response wire shape: `{ data, total, page, page_size }`.
 - Get/create/update/archive/copy/upsert response: `{ data }`.
 - Nullable comparison-set read request:
@@ -379,6 +427,9 @@ existing plain-`Error` behavior.
   claims or disallowed roles; `PT422/validation_error` for invalid arguments;
   `PT404/not_found` for missing, foreign or mixed-dossier identifiers.
 - Delete response: `{ data: { id, revision } }`.
+- Dossier hard-delete is the explicit exception:
+  `technical_configuration_dossiers_delete` returns `{ data: { id } }` because
+  the deleted aggregate has no persisted next revision.
 - Preview response: `{ data, errors }`; preview does not persist.
 - Baseline import preview/apply request: `p_baseline_version_id`, `p_template_metadata JSONB`, `p_rows JSONB`, `p_expected_revision`.
 - Baseline import apply response: `{ data }`, where `data` is the complete updated baseline snapshot and owning revision.
@@ -566,7 +617,8 @@ criterion_title, requirement_text, criterion_order }`. Both surfaces page the
   then reads manifest again. It publishes no partial dataset and rejects the
   whole export if the final manifest differs from the first. Independent axes
   preserve valid `0 x 0`, `1 x 0`, `0 x 1` and normal `N x M` dimensions.
-- A successful mutation returns the new revision in `data`.
+- A successful mutation returns the new revision in `data`, except dossier
+  hard-delete, which returns only the deleted `id`.
 
 ### Error Taxonomy
 
@@ -579,6 +631,7 @@ RPCs raise the SQLSTATE and machine message below. The proxy's `{ error: payload
 | `PT409`  | `stale_revision`       | P1           | `p_expected_revision` does not match current revision               |
 | `PT409`  | `archived_dossier`     | P1           | Mutation targets an archived dossier or descendant                  |
 | `PT409`  | `locked_version`       | P4           | Mutation targets locked baseline-owned data                         |
+| `PT409`  | `locked_dossier`       | P15A         | Hard-delete targets a dossier that has ever had a locked baseline   |
 | `PT409`  | `draft_already_exists` | P2           | Dossier already has an editable draft                               |
 | `PT422`  | `validation_error`     | P1           | Field, relationship, order, code or request-bound validation failed |
 | `PT422`  | `template_mismatch`    | P5C          | Workbook kind/version/metadata/shape does not match the contract    |
@@ -838,6 +891,9 @@ not lift or duplicate navigator ownership.
 ## Query And Performance Budgets
 
 - Dossier and entity lists use bounded pagination with a maximum page size of 100.
+- Dossier-list `can_delete` is computed in the list query with set-based
+  locked-baseline existence logic. It must not call the baseline-version list
+  or issue one baseline query per dossier row.
 - `technical_configuration_comparison_get` accepts 1-8 option IDs from one dossier and one baseline version.
 - It returns at most 100 ordered criteria per request and supports criterion pagination.
 - A ninth option remains available for another request; total dossier option count is unlimited.
@@ -868,8 +924,8 @@ not lift or duplicate navigator ownership.
   phase-gates only the evidenced query/index remediation under the required
   approvals, then P13A-P1 reruns green before P13A-V performs final
   authorization, security and performance acceptance. P13A-V satisfies only
-  the database dependency; P13C starts only after P13A-V, P13B, P7A2, P9A3 and
-  P14C2 are all complete.
+  the database dependency; P13C starts only after P13A-V, P13B, P7A2, P9A3,
+  P14C2 and P15C are all complete.
 
 ## Migration Order
 
@@ -892,11 +948,16 @@ not lift or duplicate navigator ownership.
 13. P12C1 adds the guarded, read-only reference-ranking RPC after P12B2. Apply
     requires explicit approval, then its rollback-only live phase gate requires
     a second explicit approval before P13A-P1 or P12C2 may depend on it.
+14. P15A adds the guarded dossier hard-delete RPC and replaces the dossier-list
+    definition with the additive set-based `can_delete` field. Its migration
+    timestamp must sort after every existing local migration that redefines the
+    dossier list, editable-dossier guard, baseline-lock function or the
+    dossier-row-first lock order used by baseline lock.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
 P5A, P5B, P5D, P9A1, P9A3, P9B2, P10A2, P11A, P11C, P11D, P12A1, P12A2,
-P12B1 and P12B2 create no technical-configuration persistence. P6A and P6B also create no
+P12B1, P12B2, P15B and P15C create no technical-configuration persistence. P6A and P6B also create no
 technical-configuration persistence; P6A lands after P5D, P6B follows it, and
 both land before the first document UI in P7B2. Migration timestamps are
 selected at leaf execution time after checking all local migrations touching

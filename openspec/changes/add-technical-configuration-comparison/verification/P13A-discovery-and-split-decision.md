@@ -90,8 +90,9 @@ reviewable cho ranking ở quy mô đã được phase gate dùng để kiểm t
 Agent-browser và E2E/real-browser verification thuộc **P13B**. P13A chỉ sở hữu DB
 prerequisite và không mở rộng sang desktop/mobile interaction coverage.
 P13A-V chỉ thỏa dependency **DB/P13A** của P13C; final P13C còn bắt buộc P13B,
-P7A2 và P9A3. P13C giữ ownership cho release, final acceptance, OpenSpec archive
-và AI-boundary audit; artifact này không archive OpenSpec change.
+P7A2, P9A3, P14C2 và P15C. P13C giữ ownership cho release, final acceptance,
+OpenSpec archive và AI-boundary audit; artifact này không archive OpenSpec
+change.
 
 ## Dependency DAG
 
@@ -117,8 +118,8 @@ P14C2 final-result Excel export --------------------------------+    release/acc
   P13A-P2 được apply/phase-gated và P13A-P1 rerun green.
 - **P13A path:** Accepted P13A-V evidence chỉ hoàn tất dependency DB/P13A của
   P13C.
-- **Final path:** P13C chỉ được unblock khi P13A-V, P13B, P7A2, P9A3 và P14C2
-  đều hoàn tất; P13C sau đó mới sở hữu release review, final acceptance,
+- **Final path:** P13C chỉ được unblock khi P13A-V, P13B, P7A2, P9A3, P14C2 và
+  P15C đều hoàn tất; P13C sau đó mới sở hữu release review, final acceptance,
   OpenSpec archive và AI-boundary audit.
 
 ## Live-write approval boundaries

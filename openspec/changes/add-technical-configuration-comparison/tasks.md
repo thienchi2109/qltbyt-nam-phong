@@ -5,7 +5,7 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 ## Execution Rules
 
 - Mỗi **leaf phase** (`P0`, `P1`, `P3A`...) tương ứng một GitHub issue, một branch, một PR và một phiên triển khai chính.
-- Các phase cha như `P3`, `P7`, `P8`, `P9`, `P10`, `P12`, `P13`, `P14`
+- Các phase cha như `P3`, `P7`, `P8`, `P9`, `P10`, `P12`, `P13`, `P14`, `P15`
   chỉ dùng để nhóm roadmap, không phải đơn vị triển khai.
 - Không bắt đầu leaf phase khi dependency chưa được merge và xác minh trên `main`.
 - Trước khi sửa code, leaf phase phải có implementation plan TDD riêng với file path và test command chính xác theo code/live DB tại thời điểm đó.
@@ -75,7 +75,10 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P14B2](./implementation-plan.md#phase-p14b2---approved-exceljs-workbook-rendering)                       | Render ExcelJS đúng mockup đã duyệt            | P14B1F                                           | TC-21-S03, S04, S05, S09                               |
 | [P14C1](./implementation-plan.md#phase-p14c1---export-scope-dialog-and-state-machine)                     | Dialog chọn nội dung và phạm vi export         | P14B2                                            | TC-21-S01, S02, S04                                    |
 | [P14C2](./implementation-plan.md#phase-p14c2---export-orchestration-download-and-workspace-activation)    | Mount trigger, orchestration và download       | P14C1                                            | TC-21                                                  |
-| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3, P14C2                  | TC-19                                                  |
+| [P15A](./implementation-plan.md#phase-p15a---dormant-dossier-hard-delete-contract)                        | Contract DB hard-delete dormant và can_delete  | P3A, P4                                          | TC-01, TC-02, TC-06, TC-20                             |
+| [P15B](./implementation-plan.md#phase-p15b---active-dossier-metadata-editing)                             | Sửa metadata hồ sơ active                      | P3A                                              | TC-01, TC-04, TC-20                                    |
+| [P15C](./implementation-plan.md#phase-p15c---guarded-dossier-delete-activation)                           | Kích hoạt hard-delete qua proxy và UI          | P15A applied/gated, P15B                         | TC-01, TC-02, TC-04, TC-06, TC-20                      |
+| [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3, P14C2, P15C            | TC-19                                                  |
 
 ## Phase P0 - Discovery And Contract Freeze
 
@@ -837,8 +840,8 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       trong leaf này; nếu có gap, tạo exact blocking fix leaf, dừng P13A-V và
       rerun từ đầu sau khi fix được phase-gated.
 - [ ] P13A-V.7 Accepted TC-02 + final TC-20 evidence chỉ thỏa dependency P13A của
-      P13C; P13C vẫn blocked cho đến khi P13B, P7A2, P9A3 và P14C2 cũng hoàn
-      tất.
+      P13C; P13C vẫn blocked cho đến khi P13B, P7A2, P9A3, P14C2 và P15C cũng
+      hoàn tất.
 
 ## Phase P13B - UI, Accessibility And Regression Hardening
 
@@ -961,6 +964,53 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       evaluation/ranking regressions, React Doctor và strict OpenSpec; không
       thêm P13B real-browser gate.
 
+## Phase P15A - Dormant Dossier Hard-Delete Contract
+
+- [ ] P15A.1 Rà migration order và live DB read-only cho dossier RPCs, grants,
+      baseline indexes và toàn bộ FK cascade.
+- [ ] P15A.2 Khóa RED cho signature delete, list `can_delete`, guard/row-lock
+      order, `locked_dossier` và trạng thái chưa allowlist.
+- [ ] P15A.3 Thêm migration additive tạo delete RPC và thay list RPC bằng
+      eligibility set-based, không thêm table/index suy đoán.
+- [ ] P15A.4 Thêm rollback-only SQL phase gate cho quyền, stale/archive,
+      never-locked cascade, locked-history retention và list/get disappearance.
+- [ ] P15A.5 Chạy two-session gate qua hai Supabase MCP sessions cho cả
+      delete-first và lock-first; đúng một thao tác commit và fixture được dọn.
+- [ ] P15A.6 Chỉ apply/gate live DB sau quyền ghi cụ thể; sau apply chạy security
+      và performance advisors.
+- [ ] P15A.7 Giữ delete RPC dormant: không manifest, không proxy, không adapter,
+      không UI.
+
+## Phase P15B - Active Dossier Metadata Editing
+
+- [ ] P15B.1 Khóa RED cho typed update adapter và row edit flow gồm prefill,
+      cancel/no mutation, explicit save, validation, error và stale revision.
+- [ ] P15B.2 Tổng quát hóa dossier form cho create/edit mà không nhân đôi schema
+      hoặc field definitions.
+- [ ] P15B.3 Thêm row-action component và action-state hook riêng; giữ client
+      chính dưới ngưỡng extract 350 dòng.
+- [ ] P15B.4 Adopt revision mới vào list/detail cache và giữ workspace đang mở
+      đồng bộ sau khi sửa.
+- [ ] P15B.5 Xác minh metadata vẫn sửa được sau baseline lock nhưng baseline,
+      archive và delete contracts không đổi.
+- [ ] P15B.6 Chạy TypeScript/React gates, focused RPC/form/shell tests, React
+      Doctor và strict OpenSpec.
+
+## Phase P15C - Guarded Dossier Delete Activation
+
+- [ ] P15C.1 Xác minh P15A đã apply/gated và P15B đã landed trước khi sửa
+      allowlist.
+- [ ] P15C.2 Khóa RED cho manifest/allowlist, action xóa visible-disabled kèm
+      giải thích khi `can_delete=false`, confirmation, no-preconfirm mutation,
+      conflicts, retry và page fallback.
+- [ ] P15C.3 Thêm typed delete contract/adapter và allowlist đúng một RPC P15A.
+- [ ] P15C.4 Mở rộng row actions bằng delete affordance và dialog cảnh báo vĩnh
+      viễn; archive vẫn là lifecycle riêng.
+- [ ] P15C.5 Sau success, cập nhật cache, clear workspace khớp và lùi trang khi
+      xóa item cuối của trang > 1; server error không được optimistic remove.
+- [ ] P15C.6 Chạy TypeScript/React gates, focused RPC/dialog/shell tests, React
+      Doctor, browser desktop/narrow và strict OpenSpec.
+
 ## Phase P13C - Release, OpenSpec And AI Boundary Audit
 
 - [ ] P13C.1 Chạy full quality gates và `openspec validate ... --strict`.
@@ -972,4 +1022,6 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       change và lưu archived-state evidence.
 - [ ] P13C.7 Xác minh P14A1-P14C2 đã landed và result workbook vẫn read-only,
       snapshot-stable, không scoring/award semantics.
-- [ ] P13C.8 Cập nhật OpenSpec tasks theo trạng thái landed và hoàn tất release review.
+- [ ] P13C.8 Xác minh P15A/P15B đã merge độc lập, P15A đã apply/gated, P15C chỉ
+      activate delete sau đó và locked-history dossier không thể hard-delete.
+- [ ] P13C.9 Cập nhật OpenSpec tasks theo trạng thái landed và hoàn tất release review.

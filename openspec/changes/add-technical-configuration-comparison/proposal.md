@@ -7,6 +7,9 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 ## What Changes
 
 - Thêm module "Phân tích cấu hình kỹ thuật" độc lập với `thiet_bi`; mỗi hồ sơ phân tích chỉ đại diện cho một loại thiết bị và một cấu hình cơ sở.
+- Cho phép sửa metadata của hồ sơ active gồm loại thiết bị, tên hồ sơ và mô tả bằng explicit save cùng optimistic revision guard; việc sửa metadata không thay đổi nội dung của các phiên bản cơ sở đã khóa.
+- Cho phép hard-delete vĩnh viễn một hồ sơ chỉ khi hồ sơ chưa từng có bất kỳ phiên bản cơ sở `locked` nào. Backend kiểm tra điều kiện dưới dossier row lock, xóa aggregate root cùng toàn bộ dữ liệu nháp/dữ liệu làm việc phụ thuộc qua cascade và từ chối fail-closed với `locked_dossier` sau lần khóa đầu tiên.
+- Giữ archive là lifecycle riêng: hồ sơ archived vẫn đọc được và bất biến như contract hiện tại; hard-delete không thay thế archive và không tạo restore.
 - Giới hạn toàn bộ module cho người dùng `admin/global`, sử dụng `isGlobalRole()` tại các biên ngoài RPC proxy và kiểm tra quyền tương ứng tại backend.
 - Cho phép xây dựng cấu hình cơ sở theo mô hình text-first gồm hai cấp `Nhóm cấu hình -> Tiêu chí`. Bản nháp mới có bốn nhóm gợi ý từ dữ liệu khảo sát: `Yêu cầu chung`, `Yêu cầu cấu hình cung cấp`, `Yêu cầu kỹ thuật` và `Yêu cầu khác`; đây là template mặc định có thể thêm, đổi tên, xóa và sắp xếp, không phải danh mục khóa cứng.
 - Giữ cấu trúc tiêu chí tối thiểu và ổn định thay vì cho tạo cột nội dung tùy ý. Người dùng có thể tạo không giới hạn số nhóm/tiêu chí theo quy tắc nghiệp vụ, nhập text nhiều dòng, nhập nhanh, sắp xếp và import template Excel chuẩn của hệ thống.
@@ -28,6 +31,10 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
 - Gói delivery export này mang tên `P14`, độc lập với P13 đang defer và được
   tách thành tám leaf PR deploy-safe: P14A1, P14A2, P14A3, P14A4, P14B1, P14B2,
   P14C1 và P14C2.
+- Gói lifecycle follow-up mang tên `P15` và được tách thành ba leaf deploy-safe:
+  P15A thêm contract DB hard-delete cùng eligibility read model nhưng chưa kích
+  hoạt UI/proxy; P15B chỉ thêm sửa metadata; P15C mới kích hoạt hard-delete qua
+  proxy, row actions và dialog xác nhận.
 - Không đưa AI vào MVP: không có nút AI, API call, job, cache, quota, cột AI hoặc bảng AI chưa sử dụng. Mô hình dữ liệu giữ ID ổn định và tách rõ yêu cầu, phản hồi, bằng chứng, đánh giá để có thể bổ sung AI bằng một OpenSpec change riêng sau này.
 
 ## Impact
@@ -36,11 +43,12 @@ Hệ thống cần một module độc lập để lập cấu hình kỹ thuậ
   - `technical-configuration-comparison` (new capability)
 - Anticipated affected code:
   - Route và UI mới dưới `src/app/(app)/technical-configurations/`
+  - Row actions, form sửa metadata và dialog hard-delete có xác nhận trên danh sách hồ sơ
   - Data hooks, types và baseline/option Excel codec dành riêng cho module
   - Read-only result-export RPCs, stable snapshot collector, workbook codec và export-scope dialog dành riêng cho module
   - Shared Excel primitives được trích từ pipeline Equipment với compatibility exports và regression coverage
   - Shared URL attachment primitives được trích xuất từ pattern Equipment khi triển khai
-  - Supabase migration mới cho hồ sơ, phiên bản cấu hình cơ sở, nhóm/tiêu chí, nhà cung cấp, phương án, phản hồi, URL tài liệu, trích dẫn, đánh giá thủ công và read-only canonical result-export snapshot
+  - Supabase migration mới cho hồ sơ, phiên bản cấu hình cơ sở, nhóm/tiêu chí, nhà cung cấp, phương án, phản hồi, URL tài liệu, trích dẫn, đánh giá thủ công, read-only canonical result-export snapshot và guarded hard-delete contract
   - Sidebar/navigation và route authorization cho `admin/global`
 - Existing data:
   - Không migrate dữ liệu từ `thiet_bi`
