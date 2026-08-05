@@ -245,21 +245,21 @@ export function TechnicalConfigurationWorkspaceShell({
             onToggleFocusMode={handleToggleBaselineFocusMode}
           />
         </TabsContent>
-        <TabsContent value="evidence" className="mt-3">
+        <TabsContent value="evidence" className="mt-3 min-h-0 flex-1 overflow-y-auto">
           <TechnicalConfigurationBaselineEvidence
             dossier={workspaceDossier}
             onDirtyChange={setIsEvidenceDirty}
             onNavigationBlockedChange={setIsEvidenceNavigationBlocked}
           />
         </TabsContent>
-        <TabsContent value="references" className="mt-3">
+        <TabsContent value="references" className="mt-3 min-h-0 flex-1 overflow-y-auto">
           <TechnicalConfigurationReferenceProducts
             dossier={workspaceDossier}
             onDirtyChange={setIsReferenceDirty}
             onNavigationBlockedChange={setIsReferenceNavigationBlocked}
           />
         </TabsContent>
-        <TabsContent value="options" className="mt-3">
+        <TabsContent value="options" className="mt-3 min-h-0 flex-1 overflow-y-auto">
           <TechnicalConfigurationSuppliers
             dossier={workspaceDossier}
             onDirtyChange={setIsOptionDirty}
@@ -267,7 +267,7 @@ export function TechnicalConfigurationWorkspaceShell({
             onRevisionChange={handleRevisionChange}
           />
         </TabsContent>
-        <TabsContent value="comparison" className="mt-3">
+        <TabsContent value="comparison" className="mt-3 min-h-0 flex-1 overflow-y-auto">
           <TechnicalConfigurationComparisonTab
             dossier={workspaceDossier}
             onDirtyChange={setIsComparisonDirty}
