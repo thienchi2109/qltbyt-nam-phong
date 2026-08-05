@@ -17,6 +17,7 @@ const CONCURRENCY_GATE_PATH = path.join(
 const ALLOWED_FUNCTIONS_PATH = path.join(REPO_ROOT, "src/app/api/rpc/[fn]/allowed-functions.ts")
 const RPC_MANIFESTS_DIR = path.join(REPO_ROOT, "src/lib")
 const DELETE_RPC_NAME = "technical_configuration_dossiers_delete"
+const LIST_PREDECESSOR_MIGRATION = "20260712112500_technical_configuration_dossier_foundation.sql"
 const ORDERING_MARKERS = [
   "CREATE OR REPLACE FUNCTION public.technical_configuration_dossiers_list",
   "CREATE OR REPLACE FUNCTION public._technical_configuration_require_editable_dossier",
@@ -37,6 +38,15 @@ function getDeleteMigrationFiles(): string[] {
 function getDeleteMigrationSource(): string {
   const migrationFile = getDeleteMigrationFiles()[0]
   return migrationFile ? readFileSync(path.join(MIGRATIONS_DIR, migrationFile), "utf8") : ""
+}
+
+function getMigrationTimestamp(fileName: string): number {
+  const match = /^(\d{14})_/.exec(fileName)
+  if (!match) {
+    throw new Error(`Migration file lacks a timestamp prefix: ${fileName}`)
+  }
+
+  return Number(match[1])
 }
 
 function getFunctionBlock(source: string, functionName: string): string {
@@ -70,9 +80,17 @@ describe("technical configuration dossier P15A delete migration", () => {
     })
 
     expect(predecessorFiles.length).toBeGreaterThan(0)
+    const migrationTimestamp = getMigrationTimestamp(migrationFile)
     for (const predecessorFile of predecessorFiles) {
-      expect(migrationFile.localeCompare(predecessorFile)).toBeGreaterThan(0)
+      expect(migrationTimestamp).toBeGreaterThan(getMigrationTimestamp(predecessorFile))
     }
+  })
+
+  it("documents the forward-only rollback source for the replaced list RPC", () => {
+    expect(migrationSource).toContain(`-- ${LIST_PREDECESSOR_MIGRATION}`)
+    expect(migrationSource).toContain(
+      "DROP FUNCTION public.technical_configuration_dossiers_delete(UUID, BIGINT)"
+    )
   })
 
   it("creates the exact dormant delete RPC with the fixed payload and security boundary", () => {
@@ -122,8 +140,14 @@ describe("technical configuration dossier P15A delete migration", () => {
   })
 
   it("adds non-null can_delete with set-based locked-history existence logic", () => {
+    expect(listBlock).toContain("WITH dossier_page AS MATERIALIZED")
+    expect(listBlock).toContain("locked_dossiers AS")
     expect(listBlock).toMatch(
-      /d\.archived_at IS NULL\s+AND NOT EXISTS \([\s\S]*FROM public\.technical_configuration_baseline_versions v[\s\S]*v\.dossier_id = d\.id[\s\S]*v\.status = 'locked'[\s\S]*\) AS can_delete/
+      /JOIN dossier_page page\s+ON page\.id = v\.dossier_id[\s\S]*WHERE v\.status = 'locked'/
+    )
+    expect(listBlock).toContain("LEFT JOIN locked_dossiers locked")
+    expect(listBlock).toMatch(
+      /page\.archived_at IS NULL\s+AND locked\.dossier_id IS NULL[\s\S]*AS can_delete/
     )
     expect(listBlock).toContain("'can_delete', p.can_delete")
     expect(listBlock).not.toContain("technical_configuration_baseline_versions_list")
@@ -152,11 +176,49 @@ describe("technical configuration dossier P15A delete migration", () => {
     expect(phaseGateSource).toContain("locked_dossier")
     expect(phaseGateSource).toContain("can_delete")
     expect(phaseGateSource).toContain(DELETE_RPC_NAME)
+    expect(phaseGateSource).toContain("pg_get_functiondef(")
+    expect(phaseGateSource).toContain("CREATE FUNCTION pg_temp.expect_list_can_delete")
+    expect(phaseGateSource).toContain("WITH dossier_page AS MATERIALIZED")
+    expect(phaseGateSource).toContain("JOIN dossier_page page")
+    expect(phaseGateSource).toContain("ON page.id = v.dossier_id")
+    expect(phaseGateSource).toContain("list presence failed: % missing")
+    expect(phaseGateSource).toContain("'draft dossier'")
+    expect(phaseGateSource).toContain("'locked dossier'")
+    expect(phaseGateSource).toContain("'archived dossier'")
+    expect(phaseGateSource).toContain(`'$.**."Parent Relationship" ? (@ == "SubPlan")'`)
+    expect(phaseGateSource).toContain(`'$.**."CTE Name" ? (@ == "dossier_page")'`)
+    expect(phaseGateSource).not.toContain(`'$.**."Join Type" ? (@ == "Left")'`)
+    expect(phaseGateSource).not.toMatch(
+      /INSERT INTO public\.technical_configuration_suppliers\s*\([^)]*\bnormalized_name\b/
+    )
 
+    expect(concurrencyGateSource).toContain("CREATE FUNCTION pg_temp.seed_concurrency_aggregate")
     expect(concurrencyGateSource).toContain("delete-first")
     expect(concurrencyGateSource).toContain("lock-first")
     expect(concurrencyGateSource).toContain("PT404")
     expect(concurrencyGateSource).toContain("PT409")
-    expect(concurrencyGateSource).toContain("cleanup")
+    expect(concurrencyGateSource.match(/'55P03'/g)).toHaveLength(2)
+    expect(concurrencyGateSource.match(/'lock_timeout'/g)).toHaveLength(4)
+    expect(concurrencyGateSource).not.toContain("FOR UPDATE;")
+    expect(concurrencyGateSource.match(/pg_advisory_xact_lock/g)).toHaveLength(2)
+    expect(concurrencyGateSource.match(/pg_try_advisory_lock/g)).toHaveLength(2)
+    expect(concurrencyGateSource.match(/pg_advisory_unlock/g)).toHaveLength(2)
+    expect(concurrencyGateSource.match(/FOR v_attempt IN 1\.\.600 LOOP/g)).toHaveLength(2)
+    expect(concurrencyGateSource).toMatch(
+      /DELETE-FIRST \/ SESSION A[\s\S]*technical_configuration_dossiers_delete\(v_dossier_id, 1\);[\s\S]*pg_advisory_xact_lock/
+    )
+    expect(concurrencyGateSource).toMatch(
+      /LOCK-FIRST \/ SESSION A[\s\S]*technical_configuration_baseline_lock\(v_version_id, 1\);[\s\S]*pg_advisory_xact_lock/
+    )
+    expect(concurrencyGateSource).toMatch(
+      /DELETE-FIRST ASSERT[\s\S]*technical_configuration_baseline_groups[\s\S]*technical_configuration_baseline_criteria/
+    )
+    expect(concurrencyGateSource).toMatch(
+      /LOCK-FIRST ASSERT[\s\S]*technical_configuration_baseline_groups[\s\S]*technical_configuration_baseline_criteria/
+    )
+    expect(concurrencyGateSource).toMatch(
+      /-- CLEANUP:[\s\S]*technical_configuration_dossiers[\s\S]*technical_configuration_baseline_versions[\s\S]*technical_configuration_baseline_groups[\s\S]*technical_configuration_baseline_criteria/
+    )
+    expect(concurrencyGateSource).toContain("cleanup failed: fixture residue remains")
   })
 })

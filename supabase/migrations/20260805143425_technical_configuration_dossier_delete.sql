@@ -1,3 +1,7 @@
+-- Purpose: add the dormant dossier hard-delete contract and additive can_delete field.
+-- Rollback (forward-only): restore technical_configuration_dossiers_list from
+-- 20260712112500_technical_configuration_dossier_foundation.sql, then
+-- DROP FUNCTION public.technical_configuration_dossiers_delete(UUID, BIGINT).
 BEGIN;
 
 CREATE OR REPLACE FUNCTION public.technical_configuration_dossiers_list(
@@ -23,7 +27,7 @@ BEGIN
     RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422';
   END IF;
 
-  WITH paged AS (
+  WITH dossier_page AS MATERIALIZED (
     SELECT
       d.id,
       d.device_type_name,
@@ -35,21 +39,30 @@ BEGIN
       d.created_at,
       d.created_by,
       d.updated_at,
-      d.updated_by,
-      (
-        d.archived_at IS NULL
-        AND NOT EXISTS (
-          SELECT 1
-          FROM public.technical_configuration_baseline_versions v
-          WHERE v.dossier_id = d.id
-            AND v.status = 'locked'
-        )
-      ) AS can_delete
+      d.updated_by
     FROM public.technical_configuration_dossiers d
     WHERE p_include_archived OR d.archived_at IS NULL
     ORDER BY d.updated_at DESC, d.id
     LIMIT p_page_size
     OFFSET (p_page - 1)::BIGINT * p_page_size
+  ),
+  locked_dossiers AS (
+    SELECT DISTINCT v.dossier_id
+    FROM public.technical_configuration_baseline_versions v
+    JOIN dossier_page page
+      ON page.id = v.dossier_id
+    WHERE v.status = 'locked'
+  ),
+  paged AS (
+    SELECT
+      page.*,
+      (
+        page.archived_at IS NULL
+        AND locked.dossier_id IS NULL
+      ) AS can_delete
+    FROM dossier_page page
+    LEFT JOIN locked_dossiers locked
+      ON locked.dossier_id = page.id
   )
   SELECT jsonb_build_object(
     'data',

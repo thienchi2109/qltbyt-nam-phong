@@ -48,6 +48,28 @@ BEGIN
 END;
 $gate$;
 
+CREATE FUNCTION pg_temp.expect_list_can_delete(
+  p_list JSONB, p_dossier_id UUID, p_expected BOOLEAN, p_label TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $gate$
+DECLARE
+  v_actual BOOLEAN;
+BEGIN
+  SELECT (item->>'can_delete')::BOOLEAN INTO v_actual
+  FROM jsonb_array_elements(p_list->'data') item
+  WHERE item->>'id' = p_dossier_id::TEXT;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'list presence failed: % missing', p_label;
+  END IF;
+  IF v_actual IS DISTINCT FROM p_expected THEN
+    RAISE EXCEPTION 'can_delete failed for %: expected %, got %',
+      p_label, p_expected, v_actual;
+  END IF;
+END;
+$gate$;
+
 CREATE FUNCTION pg_temp.seed_draft_aggregate(p_suffix TEXT, p_user_id BIGINT)
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -145,10 +167,9 @@ BEGIN
   ) RETURNING id INTO v_reference_citation;
 
   INSERT INTO public.technical_configuration_suppliers (
-    dossier_id, name, normalized_name, created_by, updated_by
+    dossier_id, name, created_by, updated_by
   ) VALUES (
-    v_dossier, 'P15A Supplier ' || p_suffix,
-    lower('P15A Supplier ' || p_suffix), p_user_id, p_user_id
+    v_dossier, 'P15A Supplier ' || p_suffix, p_user_id, p_user_id
   ) RETURNING id INTO v_supplier;
 
   INSERT INTO public.technical_configuration_options (
@@ -232,8 +253,8 @@ DECLARE
   v_locked_criterion UUID;
   v_response JSONB;
   v_list JSONB;
-  v_plan JSON;
-  v_can_delete BOOLEAN;
+  v_list_definition TEXT;
+  v_plan JSONB;
   v_count BIGINT;
   v_check RECORD;
 BEGIN
@@ -301,25 +322,20 @@ BEGIN
   ) RETURNING id INTO v_later_draft;
 
   PERFORM pg_temp.set_claims('global', v_user_id);
+  SELECT pg_get_functiondef(
+    'public.technical_configuration_dossiers_list(integer,integer,boolean)'::regprocedure
+  ) INTO v_list_definition;
+  IF position('WITH dossier_page AS MATERIALIZED' IN v_list_definition) = 0
+     OR position('locked_dossiers AS' IN v_list_definition) = 0
+     OR position('JOIN dossier_page page' IN v_list_definition) = 0
+     OR position('ON page.id = v.dossier_id' IN v_list_definition) = 0
+     OR position('LEFT JOIN locked_dossiers locked' IN v_list_definition) = 0 THEN
+    RAISE EXCEPTION 'list definition failed: missing set-based locked dossier join';
+  END IF;
   v_list := public.technical_configuration_dossiers_list(1, 100, true);
-  SELECT (item->>'can_delete')::BOOLEAN INTO v_can_delete
-  FROM jsonb_array_elements(v_list->'data') item
-  WHERE item->>'id' = v_draft_dossier::TEXT;
-  IF v_can_delete IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'can_delete failed: active draft-only dossier must be true';
-  END IF;
-  SELECT (item->>'can_delete')::BOOLEAN INTO v_can_delete
-  FROM jsonb_array_elements(v_list->'data') item
-  WHERE item->>'id' = v_locked_dossier::TEXT;
-  IF v_can_delete IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'can_delete failed: locked history with later draft must be false';
-  END IF;
-  SELECT (item->>'can_delete')::BOOLEAN INTO v_can_delete
-  FROM jsonb_array_elements(v_list->'data') item
-  WHERE item->>'id' = v_archived_dossier::TEXT;
-  IF v_can_delete IS DISTINCT FROM false THEN
-    RAISE EXCEPTION 'can_delete failed: archived dossier must be false';
-  END IF;
+  PERFORM pg_temp.expect_list_can_delete(v_list, v_draft_dossier, true, 'draft dossier');
+  PERFORM pg_temp.expect_list_can_delete(v_list, v_locked_dossier, false, 'locked dossier');
+  PERFORM pg_temp.expect_list_can_delete(v_list, v_archived_dossier, false, 'archived dossier');
 
   PERFORM pg_temp.set_claims('qltb_khoa', v_user_id);
   PERFORM pg_temp.expect_error(
@@ -403,20 +419,29 @@ BEGIN
 
   EXECUTE $plan$
     EXPLAIN (FORMAT JSON)
-    SELECT d.id, (
-      d.archived_at IS NULL
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.technical_configuration_baseline_versions v
-        WHERE v.dossier_id = d.id AND v.status = 'locked'
-      )
-    ) AS can_delete
-    FROM public.technical_configuration_dossiers d
-    ORDER BY d.updated_at DESC, d.id
-    LIMIT 100
+    WITH dossier_page AS MATERIALIZED (
+      SELECT d.id, d.archived_at, d.updated_at
+      FROM public.technical_configuration_dossiers d
+      ORDER BY d.updated_at DESC, d.id
+      LIMIT 100
+    ), locked_dossiers AS (
+      SELECT DISTINCT v.dossier_id
+      FROM public.technical_configuration_baseline_versions v
+      JOIN dossier_page page ON page.id = v.dossier_id
+      WHERE v.status = 'locked'
+    )
+    SELECT page.id,
+      page.archived_at IS NULL AND locked.dossier_id IS NULL AS can_delete
+    FROM dossier_page page
+    LEFT JOIN locked_dossiers locked ON locked.dossier_id = page.id
+    ORDER BY page.updated_at DESC, page.id
   $plan$ INTO v_plan;
-  IF v_plan IS NULL THEN
-    RAISE EXCEPTION 'set-based can_delete plan was not produced';
+  IF jsonb_path_exists(
+    v_plan, '$.**."Parent Relationship" ? (@ == "SubPlan")'
+  ) OR NOT jsonb_path_exists(
+    v_plan, '$.**."CTE Name" ? (@ == "dossier_page")'
+  ) THEN
+    RAISE EXCEPTION 'set-based can_delete plan expected a page CTE without a subplan';
   END IF;
 END;
 $gate$;
