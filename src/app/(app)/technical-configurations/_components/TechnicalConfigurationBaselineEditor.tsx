@@ -191,6 +191,7 @@ export function TechnicalConfigurationBaselineEditor({
                     size="icon"
                     className="size-9"
                     aria-label={isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
+                    aria-pressed={isFocusMode}
                     onClick={onToggleFocusMode}
                   >
                     {isFocusMode ? (

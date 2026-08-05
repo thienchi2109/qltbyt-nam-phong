@@ -180,14 +180,19 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
 
     const workspace = screen.getByTestId("baseline-editor-workspace")
     const requirement = screen.getByLabelText("Nội dung yêu cầu 1.1")
+    const focusButton = screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" })
 
     await user.type(requirement, " đã sửa")
-    await user.click(screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" }))
+    expect(focusButton).toHaveAttribute("aria-pressed", "false")
+    await user.click(focusButton)
 
     expect(screen.getByTestId("baseline-editor-workspace")).toBe(workspace)
     expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toBe(requirement)
     expect(requirement).toHaveValue("Nguồn điện ổn định đã sửa")
-    expect(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    )
   })
 
   it("collapses one group independently and restores its row content", async () => {

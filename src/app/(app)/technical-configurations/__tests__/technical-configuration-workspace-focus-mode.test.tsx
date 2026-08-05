@@ -37,6 +37,15 @@ vi.mock(
           <div role="region" aria-label="Các nhóm cấu hình cơ sở" tabIndex={0}>
             Danh sách tiêu chí
           </div>
+          <div
+            contentEditable="plaintext-only"
+            suppressContentEditableWarning
+            role="textbox"
+            aria-label="Ghi chú định dạng"
+            tabIndex={0}
+          >
+            Ghi chú
+          </div>
           <span>{isFocusMode ? "Đang tập trung chỉnh sửa" : "Bố cục mặc định"}</span>
           <button type="button" onClick={onToggleFocusMode}>
             {isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
@@ -135,6 +144,10 @@ describe("technical configuration workspace focus mode", () => {
     await user.click(screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" }))
     const draftInput = screen.getByLabelText("Nội dung bản nháp")
     await user.click(draftInput)
+    await user.keyboard("{Escape}")
+    expect(screen.getByText("Đang tập trung chỉnh sửa")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("textbox", { name: "Ghi chú định dạng" }))
     await user.keyboard("{Escape}")
     expect(screen.getByText("Đang tập trung chỉnh sửa")).toBeInTheDocument()
 

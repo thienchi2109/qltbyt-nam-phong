@@ -33,10 +33,11 @@ type WorkspaceRevisionOverride = {
 
 function shouldIgnoreFocusModeEscape(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false
+  if (target.closest('input, textarea, select, [role="dialog"], [role="alertdialog"]')) return true
+
+  const editableHost = target.closest<HTMLElement>("[contenteditable]")
   return Boolean(
-    target.closest(
-      'input, textarea, select, [contenteditable="true"], [role="dialog"], [role="alertdialog"]'
-    )
+    editableHost && (editableHost.isContentEditable || editableHost.contentEditable !== "false")
   )
 }
 
