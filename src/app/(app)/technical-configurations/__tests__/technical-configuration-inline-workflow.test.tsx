@@ -134,6 +134,33 @@ describe("technical configuration inline workflow", () => {
     expect(editor).toHaveClass("min-h-0", "flex-1")
   })
 
+  it("replaces the version toolbar with compact dossier context in focus mode", async () => {
+    const user = userEvent.setup()
+    const onToggleFocusMode = vi.fn()
+
+    render(
+      <TechnicalConfigurationBaselineTab
+        dossier={dossier}
+        isFocusMode
+        onDirtyChange={vi.fn()}
+        onToggleFocusMode={onToggleFocusMode}
+      />
+    )
+
+    expect(
+      await screen.findByRole("region", { name: "Ngữ cảnh cấu hình đang chỉnh sửa" })
+    ).toHaveTextContent("Cấu hình máy lọc thận")
+    expect(
+      screen.getByRole("region", { name: "Ngữ cảnh cấu hình đang chỉnh sửa" })
+    ).toHaveTextContent("Phiên bản 1 · Bản nháp")
+    expect(
+      screen.queryByRole("region", { name: "Lịch sử phiên bản cấu hình cơ sở" })
+    ).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" }))
+    expect(onToggleFocusMode).toHaveBeenCalledOnce()
+  })
+
   it("uses current-draft validation for summaries without exposing field errors before save", async () => {
     const originalDraft = baseline.editorDraft
     baseline.editorDraft = {

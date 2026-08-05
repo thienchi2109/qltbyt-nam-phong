@@ -76,9 +76,9 @@ export function TechnicalConfigurationVersionBar({
   }))
 
   return (
-    <section className="border-y py-4" aria-label="Lịch sử phiên bản cấu hình cơ sở">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0 space-y-3">
+    <section className="border-y py-2" aria-label="Lịch sử phiên bản cấu hình cơ sở">
+      <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center">
           <div className="flex flex-wrap items-center gap-2">
             <History className="size-4 text-muted-foreground" aria-hidden="true" />
             <strong className="text-sm font-semibold">
@@ -92,7 +92,7 @@ export function TechnicalConfigurationVersionBar({
           <SingleSelect
             value={selectedVersion.id}
             ariaLabel="Lịch sử phiên bản"
-            className="w-full sm:w-[280px]"
+            className="w-full shrink-0 sm:w-[280px]"
             disabled={isNavigationDisabled}
             onValueChange={onSelectVersion}
             options={versionOptions}
@@ -115,7 +115,7 @@ export function TechnicalConfigurationVersionBar({
           ) : null}
 
           {hasLockMetadata || hasLineage ? (
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
               {selectedVersion.status === "locked" && selectedVersion.locked_at ? (
                 <span>Khóa lúc {formatVietnamDateTime(selectedVersion.locked_at)}</span>
               ) : null}
@@ -129,7 +129,7 @@ export function TechnicalConfigurationVersionBar({
           ) : null}
         </div>
 
-        <div className="flex flex-col items-start gap-2 lg:items-end">
+        <div className="flex shrink-0 flex-col items-start gap-1 xl:items-end">
           {selectedVersion.status === "draft" ? (
             <>
               <div className="flex flex-wrap gap-2 lg:justify-end">

@@ -78,6 +78,7 @@ function EditorHarness({
   initialDraft?: TechnicalConfigurationBaselineEditorDraft
 }) {
   const [draft, setDraft] = useState(initialDraft)
+  const [isFocusMode, setIsFocusMode] = useState(false)
   const bulkSessions = useTechnicalConfigurationBulkEntrySessions()
   const inlineEditor = useTechnicalConfigurationInlineEditor({
     draft,
@@ -107,6 +108,7 @@ function EditorHarness({
           saveStatus: "idle",
           hasPendingBulkInput: bulkSessions.hasPendingInput,
         }}
+        isFocusMode={isFocusMode}
         activeValue={inlineEditor.activeValue}
         entryMode={inlineEditor.entryMode}
         getBulkSession={bulkSessions.getSession}
@@ -126,6 +128,7 @@ function EditorHarness({
         onBulkCancel={inlineEditor.cancelBulk}
         onBulkAccept={inlineEditor.acceptBulk}
         onSave={vi.fn()}
+        onToggleFocusMode={() => setIsFocusMode((current) => !current)}
       />
     </>
   )
@@ -169,6 +172,22 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     expect(scrollRegion).toHaveAttribute("tabindex", "0")
     expect(scrollRegion).not.toContainElement(saveButton)
     expect(workspace).toContainElement(saveButton)
+  })
+
+  it("toggles focus mode without replacing the editor or its draft", async () => {
+    const user = userEvent.setup()
+    render(<EditorHarness />)
+
+    const workspace = screen.getByTestId("baseline-editor-workspace")
+    const requirement = screen.getByLabelText("Nội dung yêu cầu 1.1")
+
+    await user.type(requirement, " đã sửa")
+    await user.click(screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" }))
+
+    expect(screen.getByTestId("baseline-editor-workspace")).toBe(workspace)
+    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toBe(requirement)
+    expect(requirement).toHaveValue("Nguồn điện ổn định đã sửa")
+    expect(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" })).toBeInTheDocument()
   })
 
   it("collapses one group independently and restores its row content", async () => {
