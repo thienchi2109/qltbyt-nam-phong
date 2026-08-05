@@ -199,7 +199,10 @@ export function TechnicalConfigurationBaselineTab({
   if (!selectedVersion) return null
 
   return (
-    <div className="space-y-4">
+    <div
+      data-testid="technical-configuration-baseline-tab"
+      className="flex min-h-0 flex-1 flex-col gap-4"
+    >
       <TechnicalConfigurationVersionBar
         versions={baseline.versions}
         selectedVersion={selectedVersion}

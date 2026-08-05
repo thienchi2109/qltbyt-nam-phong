@@ -89,6 +89,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 
 function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const pathname = usePathname()
+  const isTechnicalConfigurationsRoute = pathname.startsWith("/technical-configurations")
   const { status, update } = useSession()
   const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
@@ -157,6 +158,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
       <div
         className={cn(
           "grid min-h-screen w-full transition-all pt-14 pb-20 lg:pt-0 lg:pb-0",
+          isTechnicalConfigurationsRoute && "h-dvh overflow-hidden min-h-0",
           isSidebarOpen ? "lg:grid-cols-[220px_minmax(0,1fr)]" : "lg:grid-cols-[72px_minmax(0,1fr)]"
         )}
       >
@@ -192,7 +194,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
             </div>
           </div>
         </div>
-        <div className="flex min-w-0 flex-col">
+        <div className={cn("flex min-w-0 flex-col", isTechnicalConfigurationsRoute && "min-h-0")}>
           <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md lg:relative lg:z-auto lg:h-[60px] lg:px-6">
             <Button
               variant="outline"
@@ -287,8 +289,20 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex min-w-0 flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8">
-            <MainContentTransition className="min-w-0">{children}</MainContentTransition>
+          <main
+            className={cn(
+              "flex min-w-0 flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8",
+              isTechnicalConfigurationsRoute && "min-h-0 overflow-y-auto"
+            )}
+          >
+            <MainContentTransition
+              className={cn(
+                "min-w-0",
+                isTechnicalConfigurationsRoute && "flex min-h-0 flex-1 flex-col"
+              )}
+            >
+              {children}
+            </MainContentTransition>
           </main>
 
           <MobileFooterNav notificationCounts={notificationCounts} />

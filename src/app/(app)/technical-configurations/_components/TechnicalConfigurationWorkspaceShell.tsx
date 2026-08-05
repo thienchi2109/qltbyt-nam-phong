@@ -103,8 +103,11 @@ export function TechnicalConfigurationWorkspaceShell({
   )
 
   return (
-    <div className="w-full">
-      <header className="border-b pb-5">
+    <div
+      data-testid="technical-configuration-workspace"
+      className="flex min-h-0 w-full flex-1 flex-col"
+    >
+      <header className="shrink-0 border-b pb-5">
         <Button
           type="button"
           variant="ghost"
@@ -130,8 +133,12 @@ export function TechnicalConfigurationWorkspaceShell({
         </div>
       </header>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6">
-        <TabsList className="grid h-auto w-full grid-cols-1 gap-1 sm:grid-cols-5">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="mt-6 flex min-h-0 flex-1 flex-col"
+      >
+        <TabsList className="grid h-auto w-full shrink-0 grid-cols-1 gap-1 sm:grid-cols-5">
           <TabsTrigger
             value="baseline"
             className="min-h-10 gap-2"
@@ -174,7 +181,7 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="baseline" className="mt-6">
+        <TabsContent value="baseline" className="mt-6 flex min-h-0 flex-1 overflow-hidden">
           <TechnicalConfigurationBaselineTab
             dossier={workspaceDossier}
             onDirtyChange={setIsBaselineDirty}

@@ -153,7 +153,7 @@ export function TechnicalConfigurationBaselineEditor({
     <section
       aria-label="Trình soạn cấu hình cơ sở"
       data-testid="baseline-editor-workspace"
-      className="flex h-[70dvh] min-h-[28rem] max-h-[52rem] flex-col"
+      className="flex min-h-0 flex-1 flex-col"
     >
       <div
         data-testid="baseline-editor-toolbar"

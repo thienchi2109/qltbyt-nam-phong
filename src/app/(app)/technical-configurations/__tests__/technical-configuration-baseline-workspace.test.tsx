@@ -139,6 +139,24 @@ const dossier: TechnicalConfigurationDossierWire = {
 }
 
 describe("technical configuration baseline workspace integration", () => {
+  it("fills the available app height without moving the footer into the scroll area", async () => {
+    baselineTabMock.dirty = false
+
+    try {
+      render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+
+      const workspace = screen.getByTestId("technical-configuration-workspace")
+      const tabs = screen.getByRole("tablist").parentElement
+      const baselinePanel = await screen.findByRole("tabpanel", { name: "Cấu hình cơ sở" })
+
+      expect(workspace).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
+      expect(tabs).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
+      expect(baselinePanel).toHaveClass("flex", "min-h-0", "flex-1", "overflow-hidden")
+    } finally {
+      baselineTabMock.dirty = true
+    }
+  })
+
   it("uses an alert dialog before leaving a dirty dossier", async () => {
     const user = userEvent.setup()
     const onBack = vi.fn()

@@ -136,7 +136,7 @@ function getGroupSection(ordinal: number) {
 }
 
 describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
-  it("renders all groups expanded in a definite-height focusable scroll workspace", () => {
+  it("renders all groups expanded in a shrinkable focusable scroll workspace", () => {
     userEvent.setup()
     render(<EditorHarness />)
 
@@ -163,7 +163,8 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const scrollRegion = screen.getByRole("region", { name: "Các nhóm cấu hình cơ sở" })
     const saveButton = screen.getByRole("button", { name: "Lưu" })
 
-    expect(workspace).toHaveClass("h-[70dvh]", "min-h-[28rem]", "max-h-[52rem]")
+    expect(workspace).toHaveClass("min-h-0", "flex-1")
+    expect(workspace).not.toHaveClass("h-[70dvh]", "min-h-[28rem]", "max-h-[52rem]")
     expect(scrollRegion).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
     expect(scrollRegion).toHaveAttribute("tabindex", "0")
     expect(scrollRegion).not.toContainElement(saveButton)

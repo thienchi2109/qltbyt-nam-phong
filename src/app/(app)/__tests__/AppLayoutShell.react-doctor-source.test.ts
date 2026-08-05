@@ -35,8 +35,19 @@ describe("AppLayoutShell React Doctor source contract", () => {
 
     expect(source).toContain("lg:grid-cols-[220px_minmax(0,1fr)]")
     expect(source).toContain("lg:grid-cols-[72px_minmax(0,1fr)]")
-    expect(source).toContain('<div className="flex min-w-0 flex-col">')
-    expect(source).toContain('<main className="flex min-w-0 flex-1 flex-col')
-    expect(source).toContain('<MainContentTransition className="min-w-0">')
+    expect(source).toMatch(/<div\s+className=\{cn\(\s*"flex min-w-0 flex-col"/)
+    expect(source).toContain("<main")
+    expect(source).toMatch(/<main\s+className=\{cn\(\s*"flex min-w-0 flex-1 flex-col/)
+    expect(source).toContain("<MainContentTransition")
+    expect(source).toMatch(/<MainContentTransition\s+className=\{cn\(\s*"min-w-0"/)
+  })
+
+  it("contains technical configuration scrolling above the app footer", () => {
+    const source = readSource()
+
+    expect(source).toContain('pathname.startsWith("/technical-configurations")')
+    expect(source).toContain('"h-dvh overflow-hidden min-h-0"')
+    expect(source).toContain('"min-h-0 overflow-y-auto"')
+    expect(source).toContain('"flex min-h-0 flex-1 flex-col"')
   })
 })

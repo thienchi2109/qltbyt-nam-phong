@@ -124,6 +124,16 @@ describe("technical configuration inline workflow", () => {
     vi.clearAllMocks()
   })
 
+  it("keeps the baseline tab shrinkable so the group list owns vertical scrolling", async () => {
+    render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+
+    const baselineTab = await screen.findByTestId("technical-configuration-baseline-tab")
+    const editor = screen.getByTestId("baseline-editor-workspace")
+
+    expect(baselineTab).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
+    expect(editor).toHaveClass("min-h-0", "flex-1")
+  })
+
   it("uses current-draft validation for summaries without exposing field errors before save", async () => {
     const originalDraft = baseline.editorDraft
     baseline.editorDraft = {
