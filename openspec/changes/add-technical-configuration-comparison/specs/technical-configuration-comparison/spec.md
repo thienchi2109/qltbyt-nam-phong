@@ -23,6 +23,27 @@ Hệ thống SHALL cung cấp hồ sơ phân tích cấu hình kỹ thuật đ�
 - **AND** backend từ chối mọi mutation đối với hồ sơ, phiên bản cơ sở, nhóm, tiêu chí, sản phẩm tham chiếu, tài liệu, trích dẫn, nhà cung cấp, phương án, phản hồi và đánh giá thuộc hồ sơ đó
 - **AND** MVP không cung cấp thao tác restore
 
+#### Scenario: Edit active dossier metadata
+
+- **WHEN** người dùng `admin/global` mở thao tác sửa metadata của một hồ sơ active
+- **THEN** người dùng có thể sửa loại thiết bị, tên hồ sơ và mô tả rồi explicit save với dossier revision hiện tại
+- **AND** backend chưa nhận mutation trước khi người dùng bấm lưu
+- **AND** việc sửa metadata không thay đổi nội dung hoặc trạng thái của bất kỳ phiên bản cơ sở đã khóa nào
+
+#### Scenario: Permanently delete a never-locked dossier
+
+- **WHEN** người dùng `admin/global` xác nhận xóa một hồ sơ active chưa từng có bất kỳ phiên bản cơ sở `locked` nào
+- **THEN** backend hard-delete dossier aggregate root cùng toàn bộ dữ liệu nháp và dữ liệu làm việc phụ thuộc trong cùng transaction
+- **AND** hồ sơ không còn đọc được qua list/get và không được chuyển sang trạng thái archived
+- **AND** UI phải cảnh báo thao tác là vĩnh viễn và chỉ gửi mutation sau xác nhận rõ ràng
+
+#### Scenario: Reject deletion after the first locked baseline
+
+- **WHEN** UI hoặc caller trực tiếp yêu cầu hard-delete một hồ sơ đã có ít nhất một phiên bản cơ sở `locked`
+- **THEN** backend từ chối với conflict `locked_dossier`
+- **AND** dossier cùng toàn bộ dữ liệu con không thay đổi
+- **AND** hồ sơ không bao giờ trở lại trạng thái có thể hard-delete, kể cả khi sau đó có thêm một bản nháp mới
+
 ### Requirement: Global administrator access boundary
 
 Hệ thống SHALL chỉ cho phép người dùng có semantics `admin/global` truy cập và thay đổi dữ liệu của module.

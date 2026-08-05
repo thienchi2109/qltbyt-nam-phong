@@ -3,7 +3,7 @@
 ## Contract
 
 - Inventory source: requirement and scenario headings in [spec.md](./specs/technical-configuration-comparison/spec.md).
-- Scenario count: 103 normative scenarios plus 2 explicit P5 implementation
+- Scenario count: 106 normative scenarios plus 2 explicit P5 implementation
   regression obligations (`TC-05-S06`, `TC-05-S07`).
 - Every normative scenario has one row, one primary implementation leaf and one
   regression owner. The two named P5 implementation rows use the same ownership
@@ -23,6 +23,8 @@
 - [x] Every entity, RPC and error has one primary leaf owner in [contracts.md](./contracts.md).
 - [x] No unresolved placeholder remains in the P0 contract pack.
 - [x] Archive behavior is covered at P1 and must be rerun across every descendant mutation leaf.
+- [x] Hard-delete is permanently blocked after the first locked baseline and is
+      staged through dormant DB, independent metadata-edit and UI activation leaves.
 - [x] Criterion code generation, delete non-reuse, reorder, copy and Excel behavior have explicit owners.
 - [x] The option-nine boundary proves total options remain unlimited while one request selects at most eight.
 - [x] P10A1 performance verification uses 500 criteria, 50 total options and 8 selected options.
@@ -86,12 +88,22 @@ user-visible completion/regression owner. Representative workbook scale uses
 in-memory fixtures larger than 100 options x 102 criteria, never seed/live DB.
 P14 has no real-browser gate; P14C2 uses React integration and the approved
 Stitch layouts, while deferred P13B retains browser/accessibility ownership.
+TC-01-S04 is completed by P15B and rerun when P15C extends the same row-action
+surface. TC-01-S05 is staged: P15A owns the dormant authoritative delete
+contract and P15C is the single end-to-end completion owner after allowlist,
+confirmation and cache behavior are mounted. TC-01-S06 completes at P15A's
+guarded database boundary and reruns through P15C direct-error/UI integration.
+P15A and P15B may land independently; P15C requires both and must not activate
+the delete RPC before P15A is applied and phase-gated.
 
 | Scenario ID | Requirement / scenario                                                                                 | Primary leaf | Regression leaf | Test layer                            | Role / setup                                                                                                                                                                     | Expected result                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ----------- | ------------------------------------------------------------------------------------------------------ | ------------ | --------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TC-01-S01   | Independent technical configuration dossier / Create a dossier for one device type                     | P1           | P3A             | SQL + Vitest contract                 | global; người dùng có quyền tạo hồ sơ và nhập tên loại thiết bị cùng thông tin hồ sơ                                                                                             | hệ thống tạo một hồ sơ có ID ổn định cho đúng loại thiết bị đó; không yêu cầu chọn hoặc tạo bản ghi `thiet_bi`                                                                                                                                                                                                                                                                                                              |
 | TC-01-S02   | Independent technical configuration dossier / Prevent multiple device configurations in one dossier    | P1           | P3A             | SQL + Vitest contract                 | global; người dùng đang làm việc trong một hồ sơ                                                                                                                                 | mọi phiên bản cơ sở thuộc cùng một lineage cấu hình cho cùng loại thiết bị; hệ thống từ chối tạo lineage cấu hình cơ sở thứ hai hoặc thêm loại thiết bị thứ hai vào hồ sơ                                                                                                                                                                                                                                                   |
 | TC-01-S03   | Independent technical configuration dossier / Archive a dossier                                        | P1           | P13A-V          | SQL + Vitest contract                 | global; người dùng archive một hồ sơ                                                                                                                                             | hồ sơ bị ẩn khỏi danh sách mặc định nhưng vẫn đọc được khi truy cập trực tiếp hoặc yêu cầu gồm hồ sơ đã archive; backend từ chối mọi mutation đối với hồ sơ, phiên bản cơ sở, nhóm, tiêu chí, sản phẩm tham chiếu, tài liệu, trích dẫn, nhà cung cấp, phương án, phản hồi và đánh giá thuộc hồ sơ đó; MVP không cung cấp thao tác restore                                                                                   |
+| TC-01-S04   | Independent technical configuration dossier / Edit active dossier metadata                             | P15B         | P15C            | Vitest adapter + React integration    | global/admin; mở row action sửa trên hồ sơ active, thay đổi loại thiết bị/tên/mô tả và giữ revision hiện tại                                                                     | form được prefill; cancel không gọi backend; explicit save gọi update RPC đúng một lần, nhận revision mới và không thay đổi nội dung/trạng thái của baseline đã khóa                                                                                                                                                                                                                                                        |
+| TC-01-S05   | Independent technical configuration dossier / Permanently delete a never-locked dossier                | P15C         | P13C            | SQL gate + Vitest + React integration | global/admin; hồ sơ active chưa từng có baseline `locked`; P15A đã applied/gated; người dùng mở delete action                                                                    | UI cảnh báo xóa vĩnh viễn và không mutate trước confirm; backend xóa root cùng descendants qua cascade; list/get không còn hồ sơ, không archive; cache/workspace/page được reconcile chỉ sau success                                                                                                                                                                                                                        |
+| TC-01-S06   | Independent technical configuration dossier / Reject deletion after the first locked baseline          | P15A         | P15C            | SQL gate + Vitest integration         | global/admin hoặc direct caller; hồ sơ đã từng có ít nhất một baseline `locked`, kể cả hiện có draft mới                                                                         | delete trả `PT409/locked_dossier`; dossier và descendants không đổi; `can_delete=false`; UI giữ action xóa visible-disabled kèm giải thích accessible, không coi affordance là authority và vẫn giữ nguyên state nếu server từ chối                                                                                                                                                                                         |
 | TC-02-S01   | Global administrator access boundary / Global role accesses the module                                 | P1           | P13A-V          | SQL + Vitest contract                 | global; session có role `global`                                                                                                                                                 | người dùng được phép truy cập route và các operation đã định nghĩa của module                                                                                                                                                                                                                                                                                                                                               |
 | TC-02-S02   | Global administrator access boundary / Legacy admin role accesses the module                           | P1           | P13A-V          | SQL + Vitest contract                 | raw `admin`; dùng user ID hợp lệ của một global user                                                                                                                             | hệ thống dùng `isGlobalRole()` ngoài RPC proxy và áp dụng cùng quyền như `global`                                                                                                                                                                                                                                                                                                                                           |
 | TC-02-S03   | Global administrator access boundary / Other role calls the backend directly                           | P1           | P13A-V          | SQL + Vitest contract                 | role bị từ chối hoặc thiếu claim; gọi route, RPC hoặc data operation trực tiếp                                                                                                   | backend từ chối fail-closed; không trả dữ liệu hồ sơ trong response lỗi                                                                                                                                                                                                                                                                                                                                                     |
@@ -229,6 +241,14 @@ accessibility and screenshot matrix for the complete TC-18 flow.
 | P14C1 | open/reset/confirm/cancel; three content modes; all/current option and criterion scopes; paginated confirmation; dossier/baseline reset; focus/validation                    | pure state + React user-event tests; existing evaluation workspace regressions; standard TypeScript/React gates; React Doctor; strict OpenSpec                       | unmounted dialog emits one validated request, defaults to complete universe and has no RPC/ExcelJS/Blob side effect                  |
 | P14C2 | mounted trigger; requested-surface calls; loading/error/retry; stale/context switch; final manifest mismatch; serialize/download exactly once; no partial file               | collector + renderer + React integration; existing Excel/Equipment/evaluation/ranking regressions; standard TypeScript/React gates; React Doctor; strict OpenSpec    | user-visible export downloads only a complete stable workbook; P14 adds no real-browser gate and remains independent of deferred P13 |
 
+## P15 Leaf Acceptance Gates
+
+| Leaf | RED seams before implementation                                                                                     | Focused quality gate                                                                                                                                               | Exit evidence                                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| P15A | missing delete migration/RPC; list lacks `can_delete`; no locked-history, row-lock, cascade, grant or dormant proof | migration/source tests; rollback-only authorization/cascade gate; two-session delete-first/lock-first MCP gate after explicit approvals; advisors; strict OpenSpec | database contract is complete but delete remains absent from manifests, proxy allowlist, adapters and UI           |
+| P15B | no update adapter; create-only form; no row edit action; cancel/error/cache semantics untested                      | typed adapter plus form/shell React tests; standard TypeScript/React gates; React Doctor; strict OpenSpec                                                          | metadata edit is usable and independent of P15A; no delete name or action is exposed                               |
+| P15C | delete blocked by proxy; no delete types/adapter/dialog; eligibility, conflicts and page fallback untested          | allowlist/adapter/dialog/shell tests; standard TypeScript/React gates; React Doctor; desktop/narrow browser; OpenSpec                                              | guarded delete is user-visible only after P15A gate; archive remains separate and locked-history dossiers retained |
+
 ## Cross-Leaf Regression Obligations
 
 ### Archived Dossier Guard
@@ -240,6 +260,24 @@ must prove archived read access and zero side effects. P7A2 must cover TC-08-S01
 and TC-08-S02 as archived-dossier negative-test paths for reference-product and
 criterion-response authoring. P9A1 is codec-only and must prove that it adds no
 RPC, migration or mutation surface.
+P15A must prove the root delete rejects archived dossiers through the common
+guard. P15C reruns the same conflict through the typed adapter and leaves
+client cache/workspace state unchanged.
+
+### Guarded Dossier Hard Delete
+
+- P15A owns the authoritative eligibility check, dossier row lock, permanent
+  locked-history rejection and cascade proof. The list's `can_delete` field is
+  never authorization.
+- P15B must not import, allowlist or conditionally depend on the dormant delete
+  RPC; metadata editing remains independently deployable.
+- P15C may expose delete only after P15A is applied/gated. It must handle
+  `locked_dossier`, `stale_revision`, `archived_dossier` and `not_found`
+  without removing cache state before server success.
+- Baseline lock/delete concurrency remains dossier-row-first: delete-first
+  yields `not_found` to lock; lock-first yields `locked_dossier` to delete.
+- P15A acceptance requires an actual two-session interleaving gate for both
+  winner orders. Static function-definition inspection is insufficient.
 
 ### Criterion Codes
 
