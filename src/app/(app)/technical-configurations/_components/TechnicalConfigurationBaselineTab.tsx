@@ -23,15 +23,19 @@ import { TechnicalConfigurationVersionBar } from "./TechnicalConfigurationVersio
 
 type TechnicalConfigurationBaselineTabProps = {
   dossier: TechnicalConfigurationDossierWire
+  isFocusMode?: boolean
   onDirtyChange: (dirty: boolean) => void
   onNavigationBlockedChange?: (blocked: boolean) => void
+  onToggleFocusMode?: () => void
 }
 
 /** Composes baseline data state with transient spreadsheet interaction state. */
 export function TechnicalConfigurationBaselineTab({
   dossier,
+  isFocusMode = false,
   onDirtyChange,
   onNavigationBlockedChange,
+  onToggleFocusMode,
 }: Readonly<TechnicalConfigurationBaselineTabProps>) {
   const [isLockDialogOpen, setIsLockDialogOpen] = React.useState(false)
   const [hasUnresolvedImportState, setHasUnresolvedImportState] = React.useState(false)
@@ -201,33 +205,49 @@ export function TechnicalConfigurationBaselineTab({
   return (
     <div
       data-testid="technical-configuration-baseline-tab"
-      className="flex min-h-0 flex-1 flex-col gap-4"
+      className="flex min-h-0 flex-1 flex-col gap-3"
     >
-      <TechnicalConfigurationVersionBar
-        versions={baseline.versions}
-        selectedVersion={selectedVersion}
-        lockBlockedReason={lockBlockedReason}
-        status={{
-          hasDraft: baseline.hasDraft,
-          isCreating: baseline.isCreating,
-          isLocking: baseline.isLocking,
-          isCopying: baseline.isCopying,
-          isLoadingMoreVersions: baseline.isLoadingMoreVersions,
-          hasLoadMoreError: baseline.hasLoadMoreError,
-          isNavigationDisabled: baseline.isLifecycleBusy,
-          hasMoreVersions: baseline.hasMoreVersions,
-          isDownloadingTemplate: baselineImport.isDownloading,
-          isImportBusy: baselineImport.isPreviewing || baselineImport.isApplying,
-          isImportBlocked,
-        }}
-        onSelectVersion={handleSelectVersion}
-        onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
-        onRequestLock={() => setIsLockDialogOpen(true)}
-        onCreateBlank={baseline.onCreate}
-        onCopy={() => void handleCopy()}
-        onDownloadTemplate={() => void baselineImport.downloadTemplate()}
-        onRequestImport={baselineImport.openDialog}
-      />
+      <div className="shrink-0">
+        {isFocusMode ? (
+          <div
+            role="region"
+            aria-label="Ngữ cảnh cấu hình đang chỉnh sửa"
+            className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2 text-sm"
+          >
+            <strong className="truncate font-semibold">{dossier.name}</strong>
+            <span className="text-muted-foreground">
+              Phiên bản {selectedVersion.version_number} ·{" "}
+              {selectedVersion.status === "locked" ? "Đã khóa" : "Bản nháp"}
+            </span>
+          </div>
+        ) : (
+          <TechnicalConfigurationVersionBar
+            versions={baseline.versions}
+            selectedVersion={selectedVersion}
+            lockBlockedReason={lockBlockedReason}
+            status={{
+              hasDraft: baseline.hasDraft,
+              isCreating: baseline.isCreating,
+              isLocking: baseline.isLocking,
+              isCopying: baseline.isCopying,
+              isLoadingMoreVersions: baseline.isLoadingMoreVersions,
+              hasLoadMoreError: baseline.hasLoadMoreError,
+              isNavigationDisabled: baseline.isLifecycleBusy,
+              hasMoreVersions: baseline.hasMoreVersions,
+              isDownloadingTemplate: baselineImport.isDownloading,
+              isImportBusy: baselineImport.isPreviewing || baselineImport.isApplying,
+              isImportBlocked,
+            }}
+            onSelectVersion={handleSelectVersion}
+            onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
+            onRequestLock={() => setIsLockDialogOpen(true)}
+            onCreateBlank={baseline.onCreate}
+            onCopy={() => void handleCopy()}
+            onDownloadTemplate={() => void baselineImport.downloadTemplate()}
+            onRequestImport={baselineImport.openDialog}
+          />
+        )}
+      </div>
 
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}
@@ -262,6 +282,7 @@ export function TechnicalConfigurationBaselineTab({
             saveStatus: baseline.saveStatus,
             hasPendingBulkInput: bulkSessions.hasPendingInput,
           }}
+          isFocusMode={isFocusMode}
           activeValue={inlineEditor.activeValue}
           entryMode={inlineEditor.entryMode}
           getBulkSession={bulkSessions.getSession}
@@ -281,6 +302,7 @@ export function TechnicalConfigurationBaselineTab({
           onBulkCancel={inlineEditor.cancelBulk}
           onBulkAccept={inlineEditor.acceptBulk}
           onSave={baseline.onSave}
+          onToggleFocusMode={onToggleFocusMode}
         />
       ) : null}
 

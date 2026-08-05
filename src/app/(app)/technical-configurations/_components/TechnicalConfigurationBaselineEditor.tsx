@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { LoaderCircle, Plus, Save } from "lucide-react"
+import { LoaderCircle, Maximize2, Minimize2, Plus, Save } from "lucide-react"
 
 import { TechnicalConfigurationBaselineGroupSection } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineGroupSection"
 import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
@@ -13,6 +13,7 @@ import type {
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 export type TechnicalConfigurationEntryMode = "row" | "bulk"
 export type TechnicalConfigurationFocusTarget =
@@ -41,6 +42,7 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   validation: TechnicalConfigurationBaselineEditorValidation
   summaryValidation: TechnicalConfigurationBaselineEditorValidation
   status: TechnicalConfigurationBaselineEditorStatus
+  isFocusMode: boolean
   activeValue: string
   entryMode: TechnicalConfigurationEntryMode
   getBulkSession: (groupKey: string) => TechnicalConfigurationBulkEntrySession
@@ -65,6 +67,7 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   onBulkCancel: () => void
   onBulkAccept: () => void
   onSave: () => void
+  onToggleFocusMode?: () => void
 }>
 
 const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
@@ -92,6 +95,7 @@ export function TechnicalConfigurationBaselineEditor({
   validation,
   summaryValidation,
   status,
+  isFocusMode,
   activeValue,
   entryMode,
   getBulkSession,
@@ -111,6 +115,7 @@ export function TechnicalConfigurationBaselineEditor({
   onBulkCancel,
   onBulkAccept,
   onSave,
+  onToggleFocusMode,
 }: TechnicalConfigurationBaselineEditorProps): React.JSX.Element {
   const {
     dirty: isDirty,
@@ -157,11 +162,11 @@ export function TechnicalConfigurationBaselineEditor({
     >
       <div
         data-testid="baseline-editor-toolbar"
-        className="flex shrink-0 flex-col gap-3 border-b pb-4 sm:flex-row sm:items-center sm:justify-between"
+        className="flex shrink-0 flex-col gap-2 border-b pb-3 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-semibold">Bản nháp cấu hình cơ sở</h2>
+            <h2 className="text-base font-semibold">Bản nháp cấu hình cơ sở</h2>
             <Badge variant="secondary">Bản nháp</Badge>
           </div>
           {hasPendingBulkInput ? (
@@ -175,19 +180,51 @@ export function TechnicalConfigurationBaselineEditor({
           ) : null}
         </div>
 
-        <Button
-          type="button"
-          disabled={isEditingDisabled || !isDirty || isSaving || isConflict || hasPendingBulkInput}
-          aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
-          onClick={onSave}
-        >
-          {isSaving ? (
-            <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Save className="size-4" aria-hidden="true" />
-          )}
-          {isSaving ? "Đang lưu..." : "Lưu"}
-        </Button>
+        <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+          {onToggleFocusMode ? (
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9"
+                    aria-label={isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
+                    aria-pressed={isFocusMode}
+                    onClick={onToggleFocusMode}
+                  >
+                    {isFocusMode ? (
+                      <Minimize2 className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Maximize2 className="size-4" aria-hidden="true" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : null}
+
+          <Button
+            type="button"
+            className="h-9"
+            disabled={
+              isEditingDisabled || !isDirty || isSaving || isConflict || hasPendingBulkInput
+            }
+            aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
+            onClick={onSave}
+          >
+            {isSaving ? (
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Save className="size-4" aria-hidden="true" />
+            )}
+            {isSaving ? "Đang lưu..." : "Lưu"}
+          </Button>
+        </div>
       </div>
 
       <div

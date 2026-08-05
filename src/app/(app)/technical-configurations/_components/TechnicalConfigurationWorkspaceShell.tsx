@@ -12,6 +12,7 @@ import {
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 import { useTechnicalConfigurationGuardedNavigation } from "../_hooks/useTechnicalConfigurationGuardedNavigation"
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
@@ -28,6 +29,16 @@ type TechnicalConfigurationWorkspaceShellProps = {
 type WorkspaceRevisionOverride = {
   dossierId: string
   revision: number
+}
+
+function shouldIgnoreFocusModeEscape(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false
+  if (target.closest('input, textarea, select, [role="dialog"], [role="alertdialog"]')) return true
+
+  const editableHost = target.closest<HTMLElement>("[contenteditable]")
+  return Boolean(
+    editableHost && (editableHost.isContentEditable || editableHost.contentEditable !== "false")
+  )
 }
 
 /** Renders the dossier workspace tabs available in the current delivery phase. */
@@ -49,6 +60,10 @@ export function TechnicalConfigurationWorkspaceShell({
   const [isOptionNavigationBlocked, setIsOptionNavigationBlocked] = React.useState(false)
   const [isComparisonDirty, setIsComparisonDirty] = React.useState(false)
   const [isComparisonNavigationBlocked, setIsComparisonNavigationBlocked] = React.useState(false)
+  const [focusedBaselineDossierId, setFocusedBaselineDossierId] = React.useState<string | null>(
+    null
+  )
+  const isBaselineFocusMode = activeTab === "baseline" && focusedBaselineDossierId === dossier.id
   const isDirty =
     isBaselineDirty || isEvidenceDirty || isReferenceDirty || isOptionDirty || isComparisonDirty
   const isNavigationBlocked =
@@ -97,21 +112,51 @@ export function TechnicalConfigurationWorkspaceShell({
   const handleTabChange = React.useCallback(
     (nextTab: string) => {
       if (nextTab === activeTab) return
-      requestNavigation(() => setActiveTab(nextTab))
+      requestNavigation(() => {
+        setFocusedBaselineDossierId(null)
+        setActiveTab(nextTab)
+      })
     },
     [activeTab, requestNavigation]
   )
 
+  const handleToggleBaselineFocusMode = React.useCallback(() => {
+    setFocusedBaselineDossierId((current) => (current === dossier.id ? null : dossier.id))
+  }, [dossier.id])
+
+  React.useEffect(() => {
+    if (!isBaselineFocusMode) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key !== "Escape" ||
+        event.defaultPrevented ||
+        shouldIgnoreFocusModeEscape(event.target)
+      ) {
+        return
+      }
+      setFocusedBaselineDossierId(null)
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [isBaselineFocusMode])
+
   return (
     <div
       data-testid="technical-configuration-workspace"
-      className="flex min-h-0 w-full flex-1 flex-col"
+      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
     >
-      <header className="shrink-0 border-b pb-5">
+      <header
+        hidden={isBaselineFocusMode}
+        aria-hidden={isBaselineFocusMode || undefined}
+        className="shrink-0 border-b pb-3"
+      >
         <Button
           type="button"
           variant="ghost"
-          className="-ml-3"
+          size="sm"
+          className="-ml-2"
           disabled={isNavigationBlocked}
           onClick={handleBack}
         >
@@ -119,13 +164,13 @@ export function TechnicalConfigurationWorkspaceShell({
           Danh sách hồ sơ
         </Button>
 
-        <div className="mt-4 flex min-w-0 items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-md border bg-muted">
-            <ClipboardList className="size-5" aria-hidden="true" />
+        <div className="mt-2 flex min-w-0 items-center gap-3">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
+            <ClipboardList className="size-4" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <h1 className="break-words text-2xl font-semibold">{dossier.name}</h1>
-            <p className="mt-1 break-words text-sm text-muted-foreground">
+            <h1 className="break-words text-xl font-semibold">{dossier.name}</h1>
+            <p className="break-words text-sm text-muted-foreground">
               {dossier.device_type_name}
               {dossier.description ? ` · ${dossier.description}` : ""}
             </p>
@@ -136,12 +181,16 @@ export function TechnicalConfigurationWorkspaceShell({
       <Tabs
         value={activeTab}
         onValueChange={handleTabChange}
-        className="mt-6 flex min-h-0 flex-1 flex-col"
+        className={cn("flex min-h-0 flex-1 flex-col", isBaselineFocusMode ? "mt-0" : "mt-3")}
       >
-        <TabsList className="grid h-auto w-full shrink-0 grid-cols-1 gap-1 sm:grid-cols-5">
+        <TabsList
+          hidden={isBaselineFocusMode}
+          aria-hidden={isBaselineFocusMode || undefined}
+          className="grid h-auto w-full shrink-0 grid-cols-1 gap-1 sm:grid-cols-5"
+        >
           <TabsTrigger
             value="baseline"
-            className="min-h-10 gap-2"
+            className="min-h-9 gap-2"
             disabled={isNavigationBlocked && activeTab !== "baseline"}
           >
             <ListChecks className="size-4" aria-hidden="true" />
@@ -149,7 +198,7 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
           <TabsTrigger
             value="evidence"
-            className="min-h-10 gap-2"
+            className="min-h-9 gap-2"
             disabled={isNavigationBlocked && activeTab !== "evidence"}
           >
             <FileText className="size-4" aria-hidden="true" />
@@ -157,7 +206,7 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
           <TabsTrigger
             value="references"
-            className="min-h-10 gap-2"
+            className="min-h-9 gap-2"
             disabled={isNavigationBlocked && activeTab !== "references"}
           >
             <LibraryBig className="size-4" aria-hidden="true" />
@@ -165,7 +214,7 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
           <TabsTrigger
             value="options"
-            className="min-h-10 gap-2"
+            className="min-h-9 gap-2"
             disabled={isNavigationBlocked && activeTab !== "options"}
           >
             <PackageSearch className="size-4" aria-hidden="true" />
@@ -173,7 +222,7 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
           <TabsTrigger
             value="comparison"
-            className="min-h-10 gap-2"
+            className="min-h-9 gap-2"
             disabled={isNavigationBlocked && activeTab !== "comparison"}
           >
             <GitCompareArrows className="size-4" aria-hidden="true" />
@@ -181,28 +230,36 @@ export function TechnicalConfigurationWorkspaceShell({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="baseline" className="mt-6 flex min-h-0 flex-1 overflow-hidden">
+        <TabsContent
+          value="baseline"
+          className={cn(
+            "flex min-h-0 flex-1 overflow-hidden",
+            isBaselineFocusMode ? "mt-0" : "mt-3"
+          )}
+        >
           <TechnicalConfigurationBaselineTab
             dossier={workspaceDossier}
+            isFocusMode={isBaselineFocusMode}
             onDirtyChange={setIsBaselineDirty}
             onNavigationBlockedChange={setIsBaselineNavigationBlocked}
+            onToggleFocusMode={handleToggleBaselineFocusMode}
           />
         </TabsContent>
-        <TabsContent value="evidence" className="mt-6">
+        <TabsContent value="evidence" className="mt-3">
           <TechnicalConfigurationBaselineEvidence
             dossier={workspaceDossier}
             onDirtyChange={setIsEvidenceDirty}
             onNavigationBlockedChange={setIsEvidenceNavigationBlocked}
           />
         </TabsContent>
-        <TabsContent value="references" className="mt-6">
+        <TabsContent value="references" className="mt-3">
           <TechnicalConfigurationReferenceProducts
             dossier={workspaceDossier}
             onDirtyChange={setIsReferenceDirty}
             onNavigationBlockedChange={setIsReferenceNavigationBlocked}
           />
         </TabsContent>
-        <TabsContent value="options" className="mt-6">
+        <TabsContent value="options" className="mt-3">
           <TechnicalConfigurationSuppliers
             dossier={workspaceDossier}
             onDirtyChange={setIsOptionDirty}
@@ -210,7 +267,7 @@ export function TechnicalConfigurationWorkspaceShell({
             onRevisionChange={handleRevisionChange}
           />
         </TabsContent>
-        <TabsContent value="comparison" className="mt-6">
+        <TabsContent value="comparison" className="mt-3">
           <TechnicalConfigurationComparisonTab
             dossier={workspaceDossier}
             onDirtyChange={setIsComparisonDirty}
