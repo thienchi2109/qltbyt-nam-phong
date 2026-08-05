@@ -292,7 +292,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
           <main
             className={cn(
               "flex min-w-0 flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8",
-              isTechnicalConfigurationsRoute && "min-h-0 overflow-y-auto"
+              isTechnicalConfigurationsRoute && "min-h-0 overflow-hidden"
             )}
           >
             <MainContentTransition

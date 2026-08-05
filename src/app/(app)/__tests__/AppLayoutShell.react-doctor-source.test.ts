@@ -42,12 +42,13 @@ describe("AppLayoutShell React Doctor source contract", () => {
     expect(source).toMatch(/<MainContentTransition\s+className=\{cn\(\s*"min-w-0"/)
   })
 
-  it("contains technical configuration scrolling above the app footer", () => {
+  it("keeps technical configuration scrolling inside the criteria list", () => {
     const source = readSource()
 
     expect(source).toContain('pathname.startsWith("/technical-configurations")')
     expect(source).toContain('"h-dvh overflow-hidden min-h-0"')
-    expect(source).toContain('"min-h-0 overflow-y-auto"')
+    expect(source).toContain('"min-h-0 overflow-hidden"')
+    expect(source).not.toContain('"min-h-0 overflow-y-auto"')
     expect(source).toContain('"flex min-h-0 flex-1 flex-col"')
   })
 })
