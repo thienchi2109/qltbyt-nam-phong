@@ -165,7 +165,7 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
 
     expect(workspace).toHaveClass("min-h-0", "flex-1")
     expect(workspace).not.toHaveClass("h-[70dvh]", "min-h-[28rem]", "max-h-[52rem]")
-    expect(scrollRegion).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+    expect(scrollRegion).toHaveClass("relative", "min-h-0", "flex-1", "overflow-y-auto")
     expect(scrollRegion).toHaveAttribute("tabindex", "0")
     expect(scrollRegion).not.toContainElement(saveButton)
     expect(workspace).toContainElement(saveButton)

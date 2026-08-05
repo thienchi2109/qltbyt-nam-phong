@@ -194,7 +194,7 @@ export function TechnicalConfigurationBaselineEditor({
         role="region"
         aria-label="Các nhóm cấu hình cơ sở"
         tabIndex={0}
-        className="min-h-0 flex-1 overflow-y-auto"
+        className="relative min-h-0 flex-1 overflow-y-auto"
       >
         {draft.groups.length === 0 ? (
           <p className="border-b px-4 py-10 text-center text-sm text-muted-foreground">
