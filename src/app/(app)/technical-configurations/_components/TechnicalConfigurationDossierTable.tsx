@@ -13,14 +13,17 @@ import {
 import { formatVietnamDateTime } from "@/lib/vietnam-date-format"
 
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import { TechnicalConfigurationDossierRowActions } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierRowActions"
 
 type TechnicalConfigurationDossierTableProps = {
   dossiers: TechnicalConfigurationDossierWire[]
   isLoading: boolean
+  isActionPending: boolean
   openingDossierId: string | null
   page: number
   pageSize: number
   total: number
+  onEdit: (dossier: TechnicalConfigurationDossierWire) => void
   onOpen: (id: string) => void
   onPageChange: (page: number) => void
 }
@@ -29,10 +32,12 @@ type TechnicalConfigurationDossierTableProps = {
 export function TechnicalConfigurationDossierTable({
   dossiers,
   isLoading,
+  isActionPending,
   openingDossierId,
   page,
   pageSize,
   total,
+  onEdit,
   onOpen,
   onPageChange,
 }: Readonly<TechnicalConfigurationDossierTableProps>) {
@@ -81,7 +86,7 @@ export function TechnicalConfigurationDossierTable({
               <TableHead>Hồ sơ</TableHead>
               <TableHead>Loại thiết bị</TableHead>
               <TableHead>Cập nhật</TableHead>
-              <TableHead className="w-24 text-right">Thao tác</TableHead>
+              <TableHead className="w-36 text-right">Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -101,21 +106,28 @@ export function TechnicalConfigurationDossierTable({
                     {formatVietnamDateTime(dossier.updated_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={openingDossierId !== null}
-                      aria-label={`Mở ${dossier.name}`}
-                      onClick={() => onOpen(dossier.id)}
-                    >
-                      {isOpening ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                      ) : (
-                        <ArrowRight className="size-4" aria-hidden="true" />
-                      )}
-                      Mở
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <TechnicalConfigurationDossierRowActions
+                        dossier={dossier}
+                        disabled={openingDossierId !== null || isActionPending}
+                        onEdit={onEdit}
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={openingDossierId !== null || isActionPending}
+                        aria-label={`Mở ${dossier.name}`}
+                        onClick={() => onOpen(dossier.id)}
+                      >
+                        {isOpening ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <ArrowRight className="size-4" aria-hidden="true" />
+                        )}
+                        Mở
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               )

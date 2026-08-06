@@ -3,6 +3,7 @@ import type {
   TechnicalConfigurationDossierGetRpcArgs,
   TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
+  TechnicalConfigurationDossierUpdateRpcArgs,
   TechnicalConfigurationDossierWireResponse,
 } from "./types"
 
@@ -117,4 +118,12 @@ export function createTechnicalConfigurationDossier(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierWireResponse> {
   return callTechnicalConfigurationRpc("technical_configuration_dossiers_create", args, { signal })
+}
+
+/** Updates active dossier metadata with the caller's current revision. */
+export function updateTechnicalConfigurationDossier(
+  args: TechnicalConfigurationDossierUpdateRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationDossierWireResponse> {
+  return callTechnicalConfigurationRpc("technical_configuration_dossiers_update", args, { signal })
 }

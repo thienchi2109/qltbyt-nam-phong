@@ -12,6 +12,11 @@ import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfig
 import { TechnicalConfigurationDossierTable } from "./_components/TechnicalConfigurationDossierTable"
 import { TechnicalConfigurationWorkspaceShell } from "./_components/TechnicalConfigurationWorkspaceShell"
 import {
+  isStaleRevisionError,
+  isStaleRevisionRefreshError,
+  useTechnicalConfigurationDossierActions,
+} from "./_hooks/useTechnicalConfigurationDossierActions"
+import {
   createTechnicalConfigurationDossier,
   getTechnicalConfigurationDossier,
   listTechnicalConfigurationDossiers,
@@ -35,6 +40,18 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
 }
 
+function getDossierUpdateErrorMessage(error: unknown): string {
+  if (isStaleRevisionRefreshError(error)) {
+    return "Không thể nạp dữ liệu hồ sơ mới nhất sau khi phát hiện xung đột. Kiểm tra kết nối và thử lại."
+  }
+
+  if (isStaleRevisionError(error)) {
+    return "Hồ sơ đã được cập nhật ở phiên khác. Dữ liệu mới nhất đã được nạp; kiểm tra và lưu lại để thử lại."
+  }
+
+  return getErrorMessage(error, "Không thể cập nhật hồ sơ.")
+}
+
 /** Orchestrates dossier listing, creation, and workspace selection for global roles. */
 export function TechnicalConfigurationsClient({
   role,
@@ -47,12 +64,13 @@ export function TechnicalConfigurationsClient({
   const [openDossierError, setOpenDossierError] = React.useState<unknown>(null)
   const [selectedDossier, setSelectedDossier] =
     React.useState<TechnicalConfigurationDossierWire | null>(null)
+  const dossierListQueryKey = [
+    ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+    { page, pageSize: DOSSIER_PAGE_SIZE },
+  ] as const
 
   const dossierListQuery = useQuery({
-    queryKey: [
-      ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
-      { page, pageSize: DOSSIER_PAGE_SIZE },
-    ],
+    queryKey: dossierListQueryKey,
     queryFn: ({ signal }) =>
       listTechnicalConfigurationDossiers(
         {
@@ -64,6 +82,10 @@ export function TechnicalConfigurationsClient({
       ),
     enabled: canAccess,
     staleTime: 30_000,
+  })
+  const dossierActions = useTechnicalConfigurationDossierActions({
+    listQueryKey: dossierListQueryKey,
+    onSelectedDossierChange: setSelectedDossier,
   })
 
   const createDossierMutation = useMutation({
@@ -80,7 +102,7 @@ export function TechnicalConfigurationsClient({
 
   const handleCreateOpenChange = React.useCallback(
     (open: boolean) => {
-      if (open && openingDossierId) {
+      if (open && (openingDossierId || dossierActions.editTarget)) {
         return
       }
 
@@ -89,7 +111,7 @@ export function TechnicalConfigurationsClient({
       }
       setIsCreateOpen(open)
     },
-    [createDossierMutation, openingDossierId]
+    [createDossierMutation, dossierActions.editTarget, openingDossierId]
   )
 
   const handleCreate = React.useCallback(
@@ -172,7 +194,11 @@ export function TechnicalConfigurationsClient({
         </div>
         <Button
           className="w-full sm:w-auto"
-          disabled={openingDossierId !== null}
+          disabled={
+            openingDossierId !== null ||
+            dossierActions.isUpdating ||
+            dossierActions.editTarget !== null
+          }
           onClick={() => handleCreateOpenChange(true)}
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -212,10 +238,12 @@ export function TechnicalConfigurationsClient({
           <TechnicalConfigurationDossierTable
             dossiers={dossierListQuery.data?.data ?? []}
             isLoading={dossierListQuery.isLoading}
+            isActionPending={dossierActions.isUpdating}
             openingDossierId={openingDossierId}
             page={dossierListQuery.data?.page ?? page}
             pageSize={dossierListQuery.data?.page_size ?? DOSSIER_PAGE_SIZE}
             total={dossierListQuery.data?.total ?? 0}
+            onEdit={dossierActions.openEdit}
             onOpen={(id) => void handleOpen(id)}
             onPageChange={setPage}
           />
@@ -223,6 +251,7 @@ export function TechnicalConfigurationsClient({
       </section>
 
       <TechnicalConfigurationDossierForm
+        mode="create"
         open={isCreateOpen}
         isSubmitting={createDossierMutation.isPending}
         errorMessage={
@@ -233,6 +262,21 @@ export function TechnicalConfigurationsClient({
         onOpenChange={handleCreateOpenChange}
         onSubmit={handleCreate}
       />
+      {dossierActions.editTarget ? (
+        <TechnicalConfigurationDossierForm
+          mode="edit"
+          dossier={dossierActions.editTarget}
+          open
+          isSubmitting={dossierActions.isUpdating}
+          errorMessage={
+            dossierActions.updateError
+              ? getDossierUpdateErrorMessage(dossierActions.updateError)
+              : null
+          }
+          onOpenChange={dossierActions.handleEditOpenChange}
+          onSubmit={dossierActions.submitEdit}
+        />
+      ) : null}
     </div>
   )
 }
