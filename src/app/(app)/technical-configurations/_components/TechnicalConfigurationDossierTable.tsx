@@ -1,5 +1,6 @@
-import { ArrowRight, ChevronLeft, ChevronRight, FileText, Loader2 } from "lucide-react"
+import { ArrowRight, FileText, Loader2 } from "lucide-react"
 
+import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
@@ -18,18 +19,23 @@ import type {
 } from "@/app/(app)/technical-configurations/types"
 import { TechnicalConfigurationDossierRowActions } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierRowActions"
 
+type TechnicalConfigurationDossierPagination = {
+  page: number
+  pageCount: number
+  canPreviousPage: boolean
+  canNextPage: boolean
+  onPageChange: (page: number) => void
+}
+
 type TechnicalConfigurationDossierTableProps = {
   dossiers: TechnicalConfigurationDossierListItemWire[]
   isLoading: boolean
   isActionPending: boolean
   openingDossierId: string | null
-  page: number
-  pageSize: number
-  total: number
+  pagination: TechnicalConfigurationDossierPagination
   onDelete: (dossier: TechnicalConfigurationDossierListItemWire) => void
   onEdit: (dossier: TechnicalConfigurationDossierWire) => void
   onOpen: (id: string) => void
-  onPageChange: (page: number) => void
 }
 
 /** Renders the paginated dossier list and open actions. */
@@ -38,16 +44,11 @@ export function TechnicalConfigurationDossierTable({
   isLoading,
   isActionPending,
   openingDossierId,
-  page,
-  pageSize,
-  total,
+  pagination,
   onDelete,
   onEdit,
   onOpen,
-  onPageChange,
 }: Readonly<TechnicalConfigurationDossierTableProps>) {
-  const pageCount = Math.max(1, Math.ceil(total / pageSize))
-
   if (isLoading) {
     return (
       <div className="space-y-3" aria-label="Đang tải hồ sơ cấu hình">
@@ -67,17 +68,6 @@ export function TechnicalConfigurationDossierTable({
         <p className="mt-1 text-sm text-muted-foreground">
           Tạo hồ sơ đầu tiên để bắt đầu không gian làm việc.
         </p>
-        {page > 1 ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-5"
-            onClick={() => onPageChange(page - 1)}
-          >
-            <ChevronLeft className="size-4" aria-hidden="true" />
-            Quay lại trang trước
-          </Button>
-        ) : null}
       </div>
     )
   }
@@ -142,36 +132,18 @@ export function TechnicalConfigurationDossierTable({
         </Table>
       </div>
 
-      {pageCount > 1 ? (
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">
-            Trang {page} / {pageCount}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Trang trước"
-              title="Trang trước"
-              disabled={page <= 1}
-              onClick={() => onPageChange(page - 1)}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              aria-label="Trang sau"
-              title="Trang sau"
-              disabled={page >= pageCount}
-              onClick={() => onPageChange(page + 1)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </div>
-        </div>
+      {pagination.pageCount > 1 ? (
+        <DataTablePagination.Navigation
+          currentPage={pagination.page}
+          totalPages={pagination.pageCount}
+          canPreviousPage={pagination.canPreviousPage}
+          canNextPage={pagination.canNextPage}
+          onFirstPage={() => pagination.onPageChange(1)}
+          onPreviousPage={() => pagination.onPageChange(pagination.page - 1)}
+          onNextPage={() => pagination.onPageChange(pagination.page + 1)}
+          onLastPage={() => pagination.onPageChange(pagination.pageCount)}
+          className="sm:justify-between"
+        />
       ) : null}
     </div>
   )
