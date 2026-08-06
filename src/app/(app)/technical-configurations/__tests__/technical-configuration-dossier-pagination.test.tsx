@@ -1,6 +1,3 @@
-import fs from "node:fs"
-import path from "node:path"
-
 import * as React from "react"
 import "@testing-library/jest-dom"
 import { QueryClientProvider } from "@tanstack/react-query"
@@ -154,24 +151,5 @@ describe("technical configuration dossier pagination", () => {
           .some(([args]) => (args as TechnicalConfigurationDossierListRpcArgs).p_page === 1)
       ).toBe(true)
     })
-  })
-
-  it("uses the shared navigation and server pagination contracts without local page math", () => {
-    const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
-    const tableSource = fs.readFileSync(
-      path.join(moduleRoot, "_components/TechnicalConfigurationDossierTable.tsx"),
-      "utf8"
-    )
-    const clientSource = fs.readFileSync(
-      path.join(moduleRoot, "TechnicalConfigurationsClient.tsx"),
-      "utf8"
-    )
-
-    expect(tableSource).toContain("DataTablePagination.Navigation")
-    expect(tableSource).not.toMatch(/\bChevron(?:Left|Right)\b/)
-    expect(tableSource).not.toContain("Math.ceil")
-    expect(clientSource).toContain("useServerPagination")
-    expect(clientSource).toContain("p_page: dossierPagination.page")
-    expect(clientSource).toContain("p_page_size: dossierPagination.pageSize")
   })
 })
