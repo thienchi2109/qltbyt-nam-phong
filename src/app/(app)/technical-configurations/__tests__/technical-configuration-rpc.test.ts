@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
+  TechnicalConfigurationDossierUpdateRpcArgs,
 } from "../types"
 import * as rpcModule from "../technical-configuration-rpc"
 
@@ -20,6 +21,10 @@ type RpcModuleContract = {
   ) => Promise<TechnicalConfigurationDossierListWireResponse>
   createTechnicalConfigurationDossier?: (
     args: TechnicalConfigurationDossierCreateRpcArgs,
+    signal?: AbortSignal
+  ) => Promise<unknown>
+  updateTechnicalConfigurationDossier?: (
+    args: TechnicalConfigurationDossierUpdateRpcArgs,
     signal?: AbortSignal
   ) => Promise<unknown>
 }
@@ -107,6 +112,36 @@ describe("technical configuration RPC adapter", () => {
           p_description: null,
           p_expected_revision: 0,
         }),
+      })
+    )
+  })
+
+  it("posts the selected dossier and current revision through the update RPC", async () => {
+    expect(rpc.updateTechnicalConfigurationDossier).toEqual(expect.any(Function))
+    if (!rpc.updateTechnicalConfigurationDossier) return
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { id: "dossier-1", revision: 8 } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const args: TechnicalConfigurationDossierUpdateRpcArgs = {
+      p_id: "dossier-1",
+      p_device_type_name: "Máy siêu âm tim",
+      p_name: "Cấu hình máy siêu âm tim",
+      p_description: "Metadata đã cập nhật",
+      p_expected_revision: 7,
+    }
+
+    await rpc.updateTechnicalConfigurationDossier(args)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/rpc/technical_configuration_dossiers_update",
+      expect.objectContaining({
+        body: JSON.stringify(args),
       })
     )
   })
