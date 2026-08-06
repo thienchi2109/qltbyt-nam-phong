@@ -7,6 +7,8 @@ const REPO_ROOT = process.cwd()
 const MIGRATIONS_DIR = path.join(REPO_ROOT, "supabase/migrations")
 const MIGRATION_FILE = "20260806031201_technical_configuration_dossier_delete_audit.sql"
 const MIGRATION_PATH = path.join(MIGRATIONS_DIR, MIGRATION_FILE)
+const MIGRATION_MARKER = "-- P15A2: dossier hard-delete audit hardening"
+const AUDIT_HELPER_PREDECESSOR = "2025-09-29/20250925_audit_logs_v2_entities_and_helper.sql"
 const AUDIT_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_dossier_delete_audit_phase_gate.sql"
@@ -27,6 +29,8 @@ const ORDERING_MARKERS = [
   "CREATE OR REPLACE FUNCTION public.technical_configuration_baseline_lock",
   "CREATE OR REPLACE FUNCTION public.audit_log(",
 ] as const
+const AUDIT_HELPER_SIGNATURE =
+  /CREATE OR REPLACE FUNCTION public\.audit_log\(\s*p_action_type TEXT,\s*p_entity_type TEXT DEFAULT NULL(?:::TEXT)?,\s*p_entity_id BIGINT DEFAULT NULL(?:::BIGINT)?,\s*p_entity_label TEXT DEFAULT NULL(?:::TEXT)?,\s*p_action_details JSONB DEFAULT NULL(?:::JSONB)?\s*\)/
 
 function readIfExists(filePath: string): string {
   return existsSync(filePath) ? readFileSync(filePath, "utf8") : ""
@@ -76,6 +80,7 @@ describe("technical configuration dossier P15A2 delete audit migration", () => {
       .sort()
 
     expect(matchingFiles).toEqual([MIGRATION_FILE])
+    expect(migrationSource).toContain(MIGRATION_MARKER)
 
     const predecessorFiles = migrationFiles.filter((file) => {
       if (file === MIGRATION_FILE) {
@@ -87,7 +92,10 @@ describe("technical configuration dossier P15A2 delete audit migration", () => {
     })
 
     expect(predecessorFiles.length).toBeGreaterThan(0)
-    expect(predecessorFiles).toContain("2025-09-29/20250925_audit_logs_v2_entities_and_helper.sql")
+    expect(predecessorFiles).toContain(AUDIT_HELPER_PREDECESSOR)
+    expect(readFileSync(path.join(MIGRATIONS_DIR, AUDIT_HELPER_PREDECESSOR), "utf8")).toMatch(
+      AUDIT_HELPER_SIGNATURE
+    )
     const migrationTimestamp = getMigrationTimestamp(MIGRATION_FILE)
     for (const predecessorFile of predecessorFiles) {
       expect(migrationTimestamp).toBeGreaterThan(getMigrationTimestamp(predecessorFile))

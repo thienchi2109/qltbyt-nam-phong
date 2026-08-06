@@ -1,3 +1,4 @@
+-- P15A2: dossier hard-delete audit hardening
 -- Purpose: add fail-closed audit evidence to the dormant P15A dossier hard-delete.
 -- Rollback (forward-only): restore technical_configuration_dossiers_delete from
 -- 20260805143425_technical_configuration_dossier_delete.sql.

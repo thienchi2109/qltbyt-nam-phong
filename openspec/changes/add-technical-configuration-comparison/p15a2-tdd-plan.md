@@ -1,9 +1,9 @@
 # P15A2 TDD Plan - Dossier Delete Audit Hardening
 
 > **For agentic workers:** Execute test-first with
-> `superpowers:test-driven-development`, `karpathy-coding-heuristics` and
-> `supabase-postgres-best-practices`. Use Supabase MCP for every live DB
-> operation. Do not run the forced-failure gate on live DB.
+> `supabase-postgres-best-practices`, `superpowers:test-driven-development` and
+> `karpathy-coding-heuristics`. Use Supabase MCP for every live DB operation. Do
+> not run the forced-failure gate on live DB.
 
 ## Goal
 
@@ -25,6 +25,14 @@ or proxy exposure.
 - The local migration timestamp sorts after every delete/guard/baseline-lock
   predecessor and every migration that defines the exact audit helper overload.
 - If any evidence differs, stop and repair that prerequisite in its own leaf.
+
+## Pre-Implementation Discovery
+
+- [ ] Recall AgentMemory for prior P15A/P15B decisions.
+- [ ] Use Code Review Graph minimal context before broad source reading.
+- [ ] Use GitNexus impact analysis after narrowing indexed symbols, then
+      backstop SQL relationships with exact search and live Supabase MCP
+      read-only inspection.
 
 ## Frozen Audit Contract
 
@@ -105,7 +113,8 @@ delete_kind: "hard"`
 - [ ] Run P15A/P15A2 source tests, proxy whitelist regression and all five P15B
       metadata-edit suites.
 - [ ] Run React Doctor, strict OpenSpec validation and `git diff --check`.
-- [ ] Run Code Review Graph changed-file analysis and GitNexus impact analysis.
+- [ ] Rerun Code Review Graph changed-file analysis and GitNexus impact analysis
+      against the completed diff.
 - [ ] Request focused subagent review, fix actionable findings and rerun affected
       gates.
 - [ ] Commit with hooks enabled, push and open the Issue #869 PR.

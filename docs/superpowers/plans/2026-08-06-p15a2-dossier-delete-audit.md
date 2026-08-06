@@ -10,6 +10,15 @@
 
 ---
 
+## Pre-Implementation Discovery
+
+- [ ] Recall AgentMemory for the P15A/P15B boundary and prior live-gate
+      decisions.
+- [ ] Use Code Review Graph minimal context before broad source reading.
+- [ ] Use GitNexus impact analysis after narrowing indexed symbols; backstop SQL
+      function relationships with exact search and live Supabase MCP read-only
+      inspection.
+
 ## Chunk 1: Freeze The P15A2 Contract
 
 ### Task 1: Add OpenSpec ownership and dependency
@@ -129,7 +138,8 @@
 
 ### Task 6: Review and publish
 
-- [ ] Run Code Review Graph changed-file detection and GitNexus impact analysis.
+- [ ] Rerun Code Review Graph changed-file detection and GitNexus impact
+      analysis against the completed diff.
 - [ ] Dispatch a focused subagent code review.
 - [ ] Fix actionable findings and rerun affected gates.
 - [ ] Commit all final changes with hooks enabled.
