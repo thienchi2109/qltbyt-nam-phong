@@ -11,7 +11,11 @@ import { isGlobalRole } from "@/lib/rbac"
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
 import { TechnicalConfigurationDossierTable } from "./_components/TechnicalConfigurationDossierTable"
 import { TechnicalConfigurationWorkspaceShell } from "./_components/TechnicalConfigurationWorkspaceShell"
-import { useTechnicalConfigurationDossierActions } from "./_hooks/useTechnicalConfigurationDossierActions"
+import {
+  isStaleRevisionError,
+  isStaleRevisionRefreshError,
+  useTechnicalConfigurationDossierActions,
+} from "./_hooks/useTechnicalConfigurationDossierActions"
 import {
   createTechnicalConfigurationDossier,
   getTechnicalConfigurationDossier,
@@ -37,7 +41,11 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 function getDossierUpdateErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message === "stale_revision") {
+  if (isStaleRevisionRefreshError(error)) {
+    return "Không thể nạp dữ liệu hồ sơ mới nhất sau khi phát hiện xung đột. Kiểm tra kết nối và thử lại."
+  }
+
+  if (isStaleRevisionError(error)) {
     return "Hồ sơ đã được cập nhật ở phiên khác. Dữ liệu mới nhất đã được nạp; kiểm tra và lưu lại để thử lại."
   }
 
@@ -186,7 +194,11 @@ export function TechnicalConfigurationsClient({
         </div>
         <Button
           className="w-full sm:w-auto"
-          disabled={openingDossierId !== null || dossierActions.isUpdating}
+          disabled={
+            openingDossierId !== null ||
+            dossierActions.isUpdating ||
+            dossierActions.editTarget !== null
+          }
           onClick={() => handleCreateOpenChange(true)}
         >
           <Plus className="size-4" aria-hidden="true" />

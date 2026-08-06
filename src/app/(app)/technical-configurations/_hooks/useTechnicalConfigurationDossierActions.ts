@@ -25,6 +25,9 @@ type UseTechnicalConfigurationDossierActionsOptions = {
   >
 }
 
+const STALE_REVISION_ERROR_CODE = "stale_revision"
+const STALE_REVISION_REFRESH_ERROR_CODE = "stale_revision_refresh_failed"
+
 function mergeDossier<T extends TechnicalConfigurationDossierWire>(
   current: T,
   updated: TechnicalConfigurationDossierWire
@@ -58,8 +61,14 @@ function mergeDossierIntoQueryCaches(
   )
 }
 
-function isStaleRevisionError(error: unknown) {
-  return error instanceof Error && error.message === "stale_revision"
+/** Identifies the optimistic-concurrency error returned by the dossier update RPC. */
+export function isStaleRevisionError(error: unknown) {
+  return error instanceof Error && error.message === STALE_REVISION_ERROR_CODE
+}
+
+/** Identifies a failed refresh while recovering from a stale dossier revision. */
+export function isStaleRevisionRefreshError(error: unknown) {
+  return error instanceof Error && error.message === STALE_REVISION_REFRESH_ERROR_CODE
 }
 
 /** Owns active dossier metadata edit state, mutation, and cache reconciliation. */
@@ -69,12 +78,17 @@ export function useTechnicalConfigurationDossierActions({
 }: UseTechnicalConfigurationDossierActionsOptions) {
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = React.useState<TechnicalConfigurationDossierWire | null>(null)
+  const [updateErrorOverride, setUpdateErrorOverride] = React.useState<Error | null>(null)
 
   const updateMutation = useMutation({
     mutationFn: updateTechnicalConfigurationDossier,
+    onMutate: () => {
+      setUpdateErrorOverride(null)
+    },
     onSuccess: async (response) => {
       const updatedDossier = response.data
 
+      setUpdateErrorOverride(null)
       mergeDossierIntoQueryCaches(queryClient, listQueryKey, updatedDossier)
       onSelectedDossierChange((current) =>
         current?.id === updatedDossier.id ? mergeDossier(current, updatedDossier) : current
@@ -92,15 +106,21 @@ export function useTechnicalConfigurationDossierActions({
 
       try {
         const response = await getTechnicalConfigurationDossier(args.p_id)
+        const retryTarget = {
+          ...response.data,
+          device_type_name: args.p_device_type_name,
+          name: args.p_name,
+          description: args.p_description,
+        }
         mergeDossierIntoQueryCaches(queryClient, listQueryKey, response.data)
         onSelectedDossierChange((current) =>
           current?.id === response.data.id ? mergeDossier(current, response.data) : current
         )
         setEditTarget((current) =>
-          current?.id === response.data.id ? mergeDossier(current, response.data) : current
+          current?.id === response.data.id ? mergeDossier(current, retryTarget) : current
         )
       } catch {
-        // Keep the original stale-revision error and locally edited form values.
+        setUpdateErrorOverride(new Error(STALE_REVISION_REFRESH_ERROR_CODE))
       }
     },
   })
@@ -108,6 +128,7 @@ export function useTechnicalConfigurationDossierActions({
   const openEdit = React.useCallback(
     (dossier: TechnicalConfigurationDossierWire) => {
       updateMutation.reset()
+      setUpdateErrorOverride(null)
       setEditTarget(dossier)
     },
     [updateMutation]
@@ -119,6 +140,7 @@ export function useTechnicalConfigurationDossierActions({
         return
       }
 
+      setUpdateErrorOverride(null)
       setEditTarget(null)
     },
     [updateMutation.isPending]
@@ -134,7 +156,7 @@ export function useTechnicalConfigurationDossierActions({
   return {
     editTarget,
     isUpdating: updateMutation.isPending,
-    updateError: updateMutation.isError ? updateMutation.error : null,
+    updateError: updateErrorOverride ?? (updateMutation.isError ? updateMutation.error : null),
     openEdit,
     handleEditOpenChange,
     submitEdit,

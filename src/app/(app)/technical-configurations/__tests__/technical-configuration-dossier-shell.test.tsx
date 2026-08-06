@@ -295,6 +295,7 @@ describe("technical configuration dossier shell", () => {
 
     render(
       <TechnicalConfigurationDossierForm
+        mode="create"
         open
         isSubmitting
         errorMessage={null}

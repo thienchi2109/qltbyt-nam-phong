@@ -70,6 +70,8 @@ const defaultList: TechnicalConfigurationDossierListWireResponse = {
 }
 const STALE_REVISION_MESSAGE =
   "Hồ sơ đã được cập nhật ở phiên khác. Dữ liệu mới nhất đã được nạp; kiểm tra và lưu lại để thử lại."
+const STALE_REVISION_REFRESH_FAILED_MESSAGE =
+  "Không thể nạp dữ liệu hồ sơ mới nhất sau khi phát hiện xung đột. Kiểm tra kết nối và thử lại."
 
 function createQueryClient() {
   return new QueryClient({
@@ -130,11 +132,13 @@ describe("technical configuration dossier actions", () => {
     const user = userEvent.setup()
     renderClient()
 
+    const createButton = await screen.findByRole("button", { name: "Tạo hồ sơ" })
     await openEditAction(user, dossierTwo)
 
     expect(screen.getByRole("heading", { name: "Sửa metadata hồ sơ" })).toBeInTheDocument()
     expect(screen.getByLabelText("Loại thiết bị")).toHaveValue("Máy X-quang")
     expect(screen.getByLabelText("Tên hồ sơ")).toHaveValue("Cấu hình máy X-quang")
+    expect(createButton).toBeDisabled()
     expect(mocks.updateDossier).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole("button", { name: "Hủy" }))
@@ -180,6 +184,24 @@ describe("technical configuration dossier actions", () => {
     expect(screen.getByLabelText("Tên hồ sơ")).toHaveValue("Tên chưa được lưu")
     expect(screen.getByText(dossierOne.name)).toBeInTheDocument()
     expect(mocks.updateDossier).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports a stale refresh failure without claiming that latest data was loaded", async () => {
+    const user = userEvent.setup()
+    mocks.updateDossier.mockRejectedValueOnce(new Error("stale_revision"))
+    mocks.getDossier.mockRejectedValueOnce(new Error("Mất kết nối"))
+    renderClient()
+
+    await openEditAction(user, dossierOne)
+    await user.clear(screen.getByLabelText("Tên hồ sơ"))
+    await user.type(screen.getByLabelText("Tên hồ sơ"), "Tên chưa được lưu")
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+
+    expect(await screen.findByText(STALE_REVISION_REFRESH_FAILED_MESSAGE)).toBeInTheDocument()
+    expect(screen.queryByText(STALE_REVISION_MESSAGE)).not.toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Sửa metadata hồ sơ" })).toBeInTheDocument()
+    expect(screen.getByLabelText("Tên hồ sơ")).toHaveValue("Tên chưa được lưu")
+    expect(mocks.getDossier).toHaveBeenCalledWith(dossierOne.id)
   })
 
   it("keeps edited values visible after stale revision and retries explicitly", async () => {
