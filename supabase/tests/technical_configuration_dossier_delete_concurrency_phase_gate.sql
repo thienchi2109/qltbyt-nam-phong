@@ -400,7 +400,7 @@ BEGIN
     AND al.entity_type = 'technical_configuration_dossier'
     AND al.action_details->>'dossier_id' = v_dossier_id::TEXT;
   IF v_audit_count <> 0 THEN
-    RAISE EXCEPTION 'lock-first produced no delete audit: found %', v_audit_count;
+    RAISE EXCEPTION 'lock-first unexpectedly produced % delete audit(s)', v_audit_count;
   END IF;
 END;
 $gate$;

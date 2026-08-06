@@ -22,15 +22,15 @@ const CONCURRENCY_GATE_PATH = path.join(
   "supabase/tests/technical_configuration_dossier_delete_concurrency_phase_gate.sql"
 )
 const DELETE_RPC_NAME = "technical_configuration_dossiers_delete"
-const ORDERING_MARKERS = [
-  `CREATE OR REPLACE FUNCTION public.${DELETE_RPC_NAME}`,
-  "CREATE OR REPLACE FUNCTION public._technical_configuration_require_editable_dossier",
-  "CREATE OR REPLACE FUNCTION public._technical_configuration_require_editable_baseline_version",
-  "CREATE OR REPLACE FUNCTION public.technical_configuration_baseline_lock",
-  "CREATE OR REPLACE FUNCTION public.audit_log(",
+const ORDERING_FUNCTION_NAMES = [
+  DELETE_RPC_NAME,
+  "_technical_configuration_require_editable_dossier",
+  "_technical_configuration_require_editable_baseline_version",
+  "technical_configuration_baseline_lock",
+  "audit_log",
 ] as const
-const AUDIT_HELPER_SIGNATURE =
-  /CREATE OR REPLACE FUNCTION public\.audit_log\(\s*p_action_type TEXT,\s*p_entity_type TEXT DEFAULT NULL(?:::TEXT)?,\s*p_entity_id BIGINT DEFAULT NULL(?:::BIGINT)?,\s*p_entity_label TEXT DEFAULT NULL(?:::TEXT)?,\s*p_action_details JSONB DEFAULT NULL(?:::JSONB)?\s*\)/
+const AUDIT_HELPER_DECLARATION =
+  /(?:^|;)\s*CREATE OR REPLACE FUNCTION public\.audit_log\(\s*p_action_type TEXT,\s*p_entity_type TEXT DEFAULT NULL(?:::TEXT)?,\s*p_entity_id BIGINT DEFAULT NULL(?:::BIGINT)?,\s*p_entity_label TEXT DEFAULT NULL(?:::TEXT)?,\s*p_action_details JSONB DEFAULT NULL(?:::JSONB)?\s*\)\s*RETURNS BOOLEAN\b(?!\s*\[)/
 
 function readIfExists(filePath: string): string {
   return existsSync(filePath) ? readFileSync(filePath, "utf8") : ""
@@ -56,6 +56,99 @@ function getMigrationTimestamp(filePath: string): number {
   }
 
   return Number(match[1].length === 8 ? `${match[1]}000000` : match[1])
+}
+
+function maskSqlSpan(source: string): string {
+  return source.replace(/[^\n]/g, " ")
+}
+
+function stripSqlCommentsAndLiterals(source: string): string {
+  let sanitized = ""
+  let cursor = 0
+
+  while (cursor < source.length) {
+    if (source.startsWith("--", cursor)) {
+      const lineEnd = source.indexOf("\n", cursor)
+      const end = lineEnd < 0 ? source.length : lineEnd
+      sanitized += maskSqlSpan(source.slice(cursor, end))
+      cursor = end
+      continue
+    }
+
+    if (source.startsWith("/*", cursor)) {
+      let depth = 1
+      let end = cursor + 2
+      while (end < source.length && depth > 0) {
+        if (source.startsWith("/*", end)) {
+          depth += 1
+          end += 2
+        } else if (source.startsWith("*/", end)) {
+          depth -= 1
+          end += 2
+        } else {
+          end += 1
+        }
+      }
+      sanitized += maskSqlSpan(source.slice(cursor, end))
+      cursor = end
+      continue
+    }
+
+    if (source[cursor] === "'" || source[cursor] === '"') {
+      const quote = source[cursor]
+      const escapePrefix = source[cursor - 1]
+      const prefixBoundary = source[cursor - 2]
+      const usesBackslashEscapes =
+        quote === "'" &&
+        (escapePrefix === "E" || escapePrefix === "e") &&
+        (cursor < 2 || !/[A-Za-z0-9_$]/.test(prefixBoundary))
+      let end = cursor + 1
+      while (end < source.length) {
+        if (source[end] === quote && source[end + 1] === quote) {
+          end += 2
+        } else if (usesBackslashEscapes && source[end] === "\\") {
+          end += 2
+        } else if (source[end] === quote) {
+          end += 1
+          break
+        } else {
+          end += 1
+        }
+      }
+      sanitized += maskSqlSpan(source.slice(cursor, end))
+      cursor = end
+      continue
+    }
+
+    if (source[cursor] === "$") {
+      const delimiter = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(source.slice(cursor))?.[0]
+      if (delimiter) {
+        const closingStart = source.indexOf(delimiter, cursor + delimiter.length)
+        const end = closingStart < 0 ? source.length : closingStart + delimiter.length
+        sanitized += maskSqlSpan(source.slice(cursor, end))
+        cursor = end
+        continue
+      }
+    }
+
+    sanitized += source[cursor]
+    cursor += 1
+  }
+
+  return sanitized
+}
+
+function hasExecutableAuditHelperDeclaration(source: string): boolean {
+  return AUDIT_HELPER_DECLARATION.test(stripSqlCommentsAndLiterals(source))
+}
+
+function hasExecutableFunctionDeclaration(source: string, functionName: string): boolean {
+  const escapedFunctionName = functionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const declaration = new RegExp(
+    `(?:^|;)\\s*CREATE\\s+OR\\s+REPLACE\\s+FUNCTION\\s+public\\.${escapedFunctionName}\\s*\\(`,
+    "i"
+  )
+  return declaration.test(stripSqlCommentsAndLiterals(source))
 }
 
 function getFunctionBlock(source: string, functionName: string): string {
@@ -88,18 +181,109 @@ describe("technical configuration dossier P15A2 delete audit migration", () => {
       }
 
       const source = readFileSync(path.join(MIGRATIONS_DIR, file), "utf8")
-      return ORDERING_MARKERS.some((marker) => source.includes(marker))
+      return ORDERING_FUNCTION_NAMES.some((functionName) =>
+        hasExecutableFunctionDeclaration(source, functionName)
+      )
     })
 
     expect(predecessorFiles.length).toBeGreaterThan(0)
     expect(predecessorFiles).toContain(AUDIT_HELPER_PREDECESSOR)
-    expect(readFileSync(path.join(MIGRATIONS_DIR, AUDIT_HELPER_PREDECESSOR), "utf8")).toMatch(
-      AUDIT_HELPER_SIGNATURE
-    )
+    expect(
+      hasExecutableAuditHelperDeclaration(
+        readFileSync(path.join(MIGRATIONS_DIR, AUDIT_HELPER_PREDECESSOR), "utf8")
+      )
+    ).toBe(true)
+    const declarationDecoys = `
+      -- CREATE OR REPLACE FUNCTION public.audit_log(
+      --   p_action_type TEXT,
+      --   p_entity_type TEXT DEFAULT NULL,
+      --   p_entity_id BIGINT DEFAULT NULL,
+      --   p_entity_label TEXT DEFAULT NULL,
+      --   p_action_details JSONB DEFAULT NULL
+      -- ) RETURNS BOOLEAN
+      SELECT $decoy$
+        CREATE OR REPLACE FUNCTION public.audit_log(
+          p_action_type TEXT,
+          p_entity_type TEXT DEFAULT NULL,
+          p_entity_id BIGINT DEFAULT NULL,
+          p_entity_label TEXT DEFAULT NULL,
+          p_action_details JSONB DEFAULT NULL
+        ) RETURNS BOOLEAN
+      $decoy$;
+    `
+    expect(hasExecutableAuditHelperDeclaration(declarationDecoys)).toBe(false)
+    expect(
+      hasExecutableAuditHelperDeclaration(String.raw`
+        SELECT E'ignored\' CREATE OR REPLACE FUNCTION public.audit_log(
+          p_action_type TEXT,
+          p_entity_type TEXT DEFAULT NULL,
+          p_entity_id BIGINT DEFAULT NULL,
+          p_entity_label TEXT DEFAULT NULL,
+          p_action_details JSONB DEFAULT NULL
+        ) RETURNS BOOLEAN';
+      `)
+    ).toBe(false)
+    expect(
+      hasExecutableAuditHelperDeclaration(`
+        CREATE OR REPLACE FUNCTION public.audit_log(
+          p_action_type TEXT,
+          p_entity_type TEXT DEFAULT NULL,
+          p_entity_id BIGINT DEFAULT NULL,
+          p_entity_label TEXT DEFAULT NULL,
+          p_action_details JSONB DEFAULT NULL
+        )
+        RETURNS BOOLEAN[]
+        LANGUAGE sql
+        AS $$ SELECT ARRAY[TRUE]; $$;
+      `)
+    ).toBe(false)
+    expect(
+      hasExecutableAuditHelperDeclaration(`
+        SELECT '\\';
+        CREATE OR REPLACE FUNCTION public.audit_log(
+          p_action_type TEXT,
+          p_entity_type TEXT DEFAULT NULL,
+          p_entity_id BIGINT DEFAULT NULL,
+          p_entity_label TEXT DEFAULT NULL,
+          p_action_details JSONB DEFAULT NULL
+        )
+        RETURNS BOOLEAN
+        LANGUAGE plpgsql
+        AS $$ BEGIN RETURN TRUE; END; $$;
+      `)
+    ).toBe(true)
     const migrationTimestamp = getMigrationTimestamp(MIGRATION_FILE)
     for (const predecessorFile of predecessorFiles) {
       expect(migrationTimestamp).toBeGreaterThan(getMigrationTimestamp(predecessorFile))
     }
+  })
+
+  it("detects executable predecessor declarations instead of raw SQL text", () => {
+    expect(
+      hasExecutableFunctionDeclaration(
+        `
+          -- CREATE OR REPLACE FUNCTION public.${DELETE_RPC_NAME}(p_id UUID)
+          SELECT $decoy$
+            CREATE OR REPLACE FUNCTION public.${DELETE_RPC_NAME}(p_id UUID)
+          $decoy$;
+        `,
+        DELETE_RPC_NAME
+      )
+    ).toBe(false)
+    expect(
+      hasExecutableFunctionDeclaration(
+        `
+          create or replace function public.${DELETE_RPC_NAME} (
+            p_id uuid,
+            p_expected_revision bigint
+          )
+          returns jsonb
+          language sql
+          as $$ select '{}'::jsonb; $$;
+        `,
+        DELETE_RPC_NAME
+      )
+    ).toBe(true)
   })
 
   it("preserves the P15A signature, response, security boundary, and grants", () => {
@@ -207,7 +391,7 @@ describe("technical configuration dossier P15A2 delete audit migration", () => {
     expect(gateSource).toContain("technical_configuration_dossier_delete")
     expect(gateSource).toContain("action_details->>'dossier_id'")
     expect(gateSource).toContain("delete-first produced exactly one delete audit")
-    expect(gateSource).toContain("lock-first produced no delete audit")
+    expect(gateSource).toContain("lock-first unexpectedly produced % delete audit(s)")
     expect(gateSource).toMatch(/DELETE FROM public\.audit_logs[\s\S]*action_details->>'dossier_id'/)
     expect(gateSource).toContain("audit residue")
   })
