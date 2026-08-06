@@ -109,10 +109,9 @@ async function openEditAction(
   await screen.findByText(dossier.name)
   await user.click(
     screen.getByRole("button", {
-      name: `Hành động cho ${dossier.name}`,
+      name: `Sửa metadata ${dossier.name}`,
     })
   )
-  await user.click(await screen.findByRole("menuitem", { name: "Sửa metadata" }))
 }
 
 describe("technical configuration dossier actions", () => {

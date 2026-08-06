@@ -30,6 +30,11 @@ vi.mock("../technical-configuration-rpc", () => ({
   deleteTechnicalConfigurationDossier: (...args: unknown[]) => mocks.deleteDossier(...args),
 }))
 
+vi.mock("@/components/ui/tooltip", async () => {
+  const { tooltipMockModule } = await import("@/test-utils/tooltip-mock-module")
+  return tooltipMockModule
+})
+
 const deletableDossier: TechnicalConfigurationDossierListItemWire = {
   id: "dossier-1",
   device_type_name: "Máy siêu âm",
@@ -80,30 +85,56 @@ function renderClient() {
   return queryClient
 }
 
-async function openRowActions(
+async function openDeleteDialog(
   user: ReturnType<typeof userEvent.setup>,
   dossier: TechnicalConfigurationDossierListItemWire
 ) {
   await screen.findByText(dossier.name)
   await user.click(
     screen.getByRole("button", {
-      name: `Hành động cho ${dossier.name}`,
+      name: `Xóa vĩnh viễn ${dossier.name}`,
     })
   )
-}
-
-async function openDeleteDialog(
-  user: ReturnType<typeof userEvent.setup>,
-  dossier: TechnicalConfigurationDossierListItemWire
-) {
-  await openRowActions(user, dossier)
-  await user.click(await screen.findByRole("menuitem", { name: "Xóa vĩnh viễn" }))
 }
 
 describe("technical configuration dossier delete actions", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     mocks.listDossiers.mockResolvedValue(defaultList)
+  })
+
+  it("shows open, edit and delete as always-visible icon actions with tooltips", async () => {
+    const user = userEvent.setup()
+    renderClient()
+
+    await screen.findByText(deletableDossier.name)
+    const openAction = screen.getByRole("button", {
+      name: `Mở ${deletableDossier.name}`,
+    })
+    const editAction = screen.getByRole("button", {
+      name: `Sửa metadata ${deletableDossier.name}`,
+    })
+    const deleteAction = screen.getByRole("button", {
+      name: `Xóa vĩnh viễn ${deletableDossier.name}`,
+    })
+
+    expect(
+      screen.queryByRole("button", {
+        name: `Hành động cho ${deletableDossier.name}`,
+      })
+    ).not.toBeInTheDocument()
+    expect(openAction).toHaveTextContent("")
+    expect(editAction).toHaveTextContent("")
+    expect(deleteAction).toHaveTextContent("")
+
+    await user.hover(openAction)
+    expect(await screen.findByRole("tooltip", { name: "Mở hồ sơ" })).toBeInTheDocument()
+
+    await user.hover(editAction)
+    expect(await screen.findByRole("tooltip", { name: "Sửa metadata" })).toBeInTheDocument()
+
+    await user.hover(deleteAction)
+    expect(await screen.findByRole("tooltip", { name: "Xóa vĩnh viễn" })).toBeInTheDocument()
   })
 
   it("keeps an ineligible delete visible with an accessible reason and leaves edit available", async () => {
@@ -121,26 +152,26 @@ describe("technical configuration dossier delete actions", () => {
     renderClient()
 
     await screen.findByText(lockedDossier.name)
-    const actionTrigger = screen.getByRole("button", {
-      name: `Hành động cho ${lockedDossier.name}`,
+    const deleteAction = screen.getByRole("button", {
+      name: `Xóa vĩnh viễn ${lockedDossier.name}`,
     })
-    actionTrigger.focus()
-    await user.keyboard("{Enter}")
-
-    const deleteAction = screen.getByRole("menuitem", { name: "Xóa vĩnh viễn" })
-    await user.keyboard("{ArrowDown}")
+    await user.click(deleteAction)
     expect(deleteAction).toHaveFocus()
     expect(deleteAction).toHaveAttribute("aria-disabled", "true")
-    expect(deleteAction).toHaveAttribute("title", LOCKED_DELETE_REASON)
     expect(deleteAction).toHaveAccessibleDescription(LOCKED_DELETE_REASON)
 
+    expect(await screen.findByRole("tooltip", { name: LOCKED_DELETE_REASON })).toBeInTheDocument()
     await user.keyboard("{Enter}")
     await user.keyboard(" ")
 
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     expect(mocks.deleteDossier).not.toHaveBeenCalled()
 
-    await user.keyboard("{ArrowUp}{Enter}")
+    await user.click(
+      screen.getByRole("button", {
+        name: `Sửa metadata ${lockedDossier.name}`,
+      })
+    )
     expect(screen.getByRole("heading", { name: "Sửa metadata hồ sơ" })).toBeInTheDocument()
   })
 

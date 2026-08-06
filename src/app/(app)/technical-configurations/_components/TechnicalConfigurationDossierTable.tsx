@@ -1,7 +1,6 @@
-import { ArrowRight, FileText, Loader2 } from "lucide-react"
+import { FileText } from "lucide-react"
 
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
-import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
@@ -101,29 +100,14 @@ export function TechnicalConfigurationDossierTable({
                     {formatVietnamDateTime(dossier.updated_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <TechnicalConfigurationDossierRowActions
-                        dossier={dossier}
-                        disabled={openingDossierId !== null || isActionPending}
-                        onDelete={onDelete}
-                        onEdit={onEdit}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={openingDossierId !== null || isActionPending}
-                        aria-label={`Mở ${dossier.name}`}
-                        onClick={() => onOpen(dossier.id)}
-                      >
-                        {isOpening ? (
-                          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                        ) : (
-                          <ArrowRight className="size-4" aria-hidden="true" />
-                        )}
-                        Mở
-                      </Button>
-                    </div>
+                    <TechnicalConfigurationDossierRowActions
+                      dossier={dossier}
+                      disabled={openingDossierId !== null || isActionPending}
+                      isOpening={isOpening}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      onOpen={onOpen}
+                    />
                   </TableCell>
                 </TableRow>
               )

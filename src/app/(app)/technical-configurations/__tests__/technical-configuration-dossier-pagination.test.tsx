@@ -133,10 +133,9 @@ describe("technical configuration dossier pagination", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: `Hành động cho ${pageDossiers[2].name}`,
+        name: `Xóa vĩnh viễn ${pageDossiers[2].name}`,
       })
     )
-    await user.click(await screen.findByRole("menuitem", { name: "Xóa vĩnh viễn" }))
     await user.click(screen.getByRole("button", { name: "Xóa vĩnh viễn" }))
 
     expect(mocks.deleteDossier).toHaveBeenCalledWith({
