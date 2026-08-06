@@ -3,7 +3,8 @@
 > **For agentic workers:** Execute test-first with
 > `superpowers:test-driven-development`, `karpathy-coding-heuristics`,
 > `next-best-practices`, `vercel-react-best-practices` and
-> `code-deduplication`. Do not edit or reapply the P15A migration in this leaf.
+> `code-deduplication`. Do not edit or reapply the P15A/P15A2 migrations in
+> this leaf.
 
 ## Goal
 
@@ -16,12 +17,15 @@ after an authoritative server success.
 
 ## Hard Entry Gate
 
-- P15A is merged, applied and its rollback-only SQL phase gate is green.
+- P15A2 is merged and applied after P15A.
+- The P15A2 success-path audit gate and updated two-session concurrency gate are
+  green on live after their separate explicit authorizations.
 - P15B is merged and its metadata edit regressions are green.
-- Live read-only inspection confirms the exact P15A function signature, grants,
-  `can_delete` response and migration version.
-- If any P15A evidence is missing or differs from the frozen contract, stop and
-  fix P15A through its own follow-up leaf instead of widening P15C.
+- Live read-only inspection confirms the exact P15A2 function signature, grants,
+  fail-closed audit definition, `can_delete` response and migration versions.
+- If any P15A/P15A2 evidence is missing or differs from the frozen contract,
+  stop and fix the database boundary through its own follow-up leaf instead of
+  widening P15C.
 
 ## Frozen Product And Client Contract
 
@@ -119,8 +123,9 @@ after an authoritative server success.
 
 ## Chunk 4: Regression, Refactor And Visual Gate
 
-- [ ] Rerun P15A migration-source and whitelist tests to prove proxy activation
-      matches the deployed DB signature without changing its SQL contract.
+- [ ] Rerun P15A/P15A2 migration-source and whitelist tests to prove proxy
+      activation matches the deployed DB signature without changing its SQL
+      contract.
 - [ ] Rerun P15B form/edit tests to prove delete integration did not couple or
       regress metadata editing.
 - [ ] Use `code-deduplication` for mutation-state, page-fallback and destructive

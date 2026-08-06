@@ -76,8 +76,9 @@ Chi tiết phạm vi, dependency, file ownership, TDD gate và điểm dừng c�
 | [P14C1](./implementation-plan.md#phase-p14c1---export-scope-dialog-and-state-machine)                     | Dialog chọn nội dung và phạm vi export         | P14B2                                            | TC-21-S01, S02, S04                                    |
 | [P14C2](./implementation-plan.md#phase-p14c2---export-orchestration-download-and-workspace-activation)    | Mount trigger, orchestration và download       | P14C1                                            | TC-21                                                  |
 | [P15A](./implementation-plan.md#phase-p15a---dormant-dossier-hard-delete-contract)                        | Contract DB hard-delete dormant và can_delete  | P3A, P4                                          | TC-01, TC-02, TC-06, TC-20                             |
+| [P15A2](./implementation-plan.md#phase-p15a2---dossier-delete-audit-hardening)                            | Audit fail-closed cho hard-delete dormant      | P15A applied/gated                               | TC-01, TC-02, TC-20                                    |
 | [P15B](./implementation-plan.md#phase-p15b---active-dossier-metadata-editing)                             | Sửa metadata hồ sơ active                      | P3A                                              | TC-01, TC-04, TC-20                                    |
-| [P15C](./implementation-plan.md#phase-p15c---guarded-dossier-delete-activation)                           | Kích hoạt hard-delete qua proxy và UI          | P15A applied/gated, P15B                         | TC-01, TC-02, TC-04, TC-06, TC-20                      |
+| [P15C](./implementation-plan.md#phase-p15c---guarded-dossier-delete-activation)                           | Kích hoạt hard-delete qua proxy và UI          | P15A2 applied/gated, P15B                        | TC-01, TC-02, TC-04, TC-06, TC-20                      |
 | [P13C](./implementation-plan.md#phase-p13c---release-openspec-and-ai-boundary-audit)                      | Release, OpenSpec và audit AI boundary         | P13A-V, P13B, P7A2, P9A3, P14C2, P15C            | TC-19                                                  |
 
 ## Phase P0 - Discovery And Contract Freeze
@@ -981,6 +982,22 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 - [ ] P15A.7 Giữ delete RPC dormant: không manifest, không proxy, không adapter,
       không UI.
 
+## Phase P15A2 - Dossier Delete Audit Hardening
+
+- [ ] P15A2.1 Khóa RED cho migration order gồm exact `audit_log` overload,
+      boundary P15A, audit payload, fail-closed error và audit-before-delete.
+- [ ] P15A2.2 Thay đúng delete RPC, snapshot root dưới dossier lock và gọi audit
+      trước root delete; `FALSE` hoặc `NULL` đều trả `PT500/audit_log_failed`.
+- [ ] P15A2.3 Thêm rollback-only success gate không thay shared helper và tách
+      isolated forced-failure gate; không chạy helper-replacement gate trên
+      live DB.
+- [ ] P15A2.4 Cập nhật two-session gate: delete-first có đúng một audit,
+      lock-first có zero audit, cleanup theo token và zero residue.
+- [ ] P15A2.5 Chỉ apply migration, chạy success-path audit gate và concurrency
+      gate live sau các quyền ghi riêng; sau apply chạy advisors.
+- [ ] P15A2.6 Giữ RPC dormant và block P15C cho đến khi P15A2 merge,
+      apply và live gates pass.
+
 ## Phase P15B - Active Dossier Metadata Editing
 
 - [ ] P15B.1 Khóa RED cho typed update adapter và row edit flow gồm prefill,
@@ -998,7 +1015,8 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
 
 ## Phase P15C - Guarded Dossier Delete Activation
 
-- [ ] P15C.1 Xác minh P15A đã apply/gated và P15B đã landed trước khi sửa
+- [ ] P15C.1 Xác minh P15A2 đã merge/applied, success-path audit và updated
+      concurrency gates đã pass, đồng thời P15B đã landed trước khi sửa
       allowlist.
 - [ ] P15C.2 Khóa RED cho manifest/allowlist, action xóa visible-disabled kèm
       giải thích khi `can_delete=false`, confirmation, no-preconfirm mutation,
@@ -1022,6 +1040,6 @@ p_baseline_version_id, p_page, p_page_size)` read-only, set-based cho toàn
       change và lưu archived-state evidence.
 - [ ] P13C.7 Xác minh P14A1-P14C2 đã landed và result workbook vẫn read-only,
       snapshot-stable, không scoring/award semantics.
-- [ ] P13C.8 Xác minh P15A/P15B đã merge độc lập, P15A đã apply/gated, P15C chỉ
+- [ ] P13C.8 Xác minh P15A/P15B đã merge độc lập, P15A2 đã apply/gated, P15C chỉ
       activate delete sau đó và locked-history dossier không thể hard-delete.
 - [ ] P13C.9 Cập nhật OpenSpec tasks theo trạng thái landed và hoàn tất release review.

@@ -1,5 +1,6 @@
 -- supabase/tests/technical_configuration_dossier_delete_concurrency_phase_gate.sql
--- Purpose: prove dossier-row-first serialization between P15A delete and P4 baseline lock.
+-- Purpose: prove P15A2 audit-aware concurrency and dossier-row-first serialization
+-- between dossier delete and P4 baseline lock.
 -- Run the labeled blocks through two concurrent Supabase MCP sessions after live apply approval.
 -- Do not run this file as one sequential script.
 -- Replace <RUN_TOKEN> globally with one unique token before running any block.
@@ -213,6 +214,7 @@ DECLARE
   v_version_id UUID := md5('p15a-delete-first-version:<RUN_TOKEN>')::UUID;
   v_group_id UUID := md5('p15a-delete-first-group:<RUN_TOKEN>')::UUID;
   v_criterion_id UUID := md5('p15a-delete-first-criterion:<RUN_TOKEN>')::UUID;
+  v_audit_count BIGINT;
 BEGIN
   IF EXISTS (
     SELECT 1 FROM public.technical_configuration_dossiers WHERE id = v_dossier_id
@@ -224,6 +226,18 @@ BEGIN
     SELECT 1 FROM public.technical_configuration_baseline_criteria WHERE id = v_criterion_id
   ) THEN
     RAISE EXCEPTION 'delete-first assertion failed: aggregate survived';
+  END IF;
+
+  SELECT count(*)
+  INTO v_audit_count
+  FROM public.audit_logs al
+  WHERE al.action_type = 'technical_configuration_dossier_delete'
+    AND al.entity_type = 'technical_configuration_dossier'
+    AND al.action_details->>'dossier_id' = v_dossier_id::TEXT;
+  IF v_audit_count <> 1 THEN
+    RAISE EXCEPTION
+      'delete-first produced exactly one delete audit: expected 1, got %',
+      v_audit_count;
   END IF;
 END;
 $gate$;
@@ -346,6 +360,7 @@ DECLARE
   v_group_id UUID := md5('p15a-lock-first-group:<RUN_TOKEN>')::UUID;
   v_criterion_id UUID := md5('p15a-lock-first-criterion:<RUN_TOKEN>')::UUID;
   v_count BIGINT;
+  v_audit_count BIGINT;
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -377,6 +392,16 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'lock-first assertion failed: descendants changed';
   END IF;
+
+  SELECT count(*)
+  INTO v_audit_count
+  FROM public.audit_logs al
+  WHERE al.action_type = 'technical_configuration_dossier_delete'
+    AND al.entity_type = 'technical_configuration_dossier'
+    AND al.action_details->>'dossier_id' = v_dossier_id::TEXT;
+  IF v_audit_count <> 0 THEN
+    RAISE EXCEPTION 'lock-first unexpectedly produced % delete audit(s)', v_audit_count;
+  END IF;
 END;
 $gate$;
 
@@ -392,6 +417,14 @@ DECLARE
   v_lock_first_group UUID := md5('p15a-lock-first-group:<RUN_TOKEN>')::UUID;
   v_lock_first_criterion UUID := md5('p15a-lock-first-criterion:<RUN_TOKEN>')::UUID;
 BEGIN
+  DELETE FROM public.audit_logs al
+  WHERE al.action_type = 'technical_configuration_dossier_delete'
+    AND al.entity_type = 'technical_configuration_dossier'
+    AND al.action_details->>'dossier_id' IN (
+      v_delete_first_dossier::TEXT,
+      v_lock_first_dossier::TEXT
+    );
+
   DELETE FROM public.technical_configuration_dossiers d
   WHERE d.id IN (v_delete_first_dossier, v_lock_first_dossier);
 
@@ -411,8 +444,18 @@ BEGIN
     SELECT 1
     FROM public.technical_configuration_baseline_criteria c
     WHERE c.id IN (v_delete_first_criterion, v_lock_first_criterion)
+  ) OR EXISTS (
+    SELECT 1
+    FROM public.audit_logs al
+    WHERE al.action_type = 'technical_configuration_dossier_delete'
+      AND al.entity_type = 'technical_configuration_dossier'
+      AND al.action_details->>'dossier_id' IN (
+        v_delete_first_dossier::TEXT,
+        v_lock_first_dossier::TEXT
+      )
   ) THEN
-    RAISE EXCEPTION 'cleanup failed: fixture residue remains';
+    RAISE EXCEPTION
+      'cleanup failed: fixture residue remains or audit residue remains';
   END IF;
 END;
 $gate$;
