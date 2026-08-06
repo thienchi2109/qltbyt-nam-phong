@@ -12,8 +12,8 @@ import type {
   TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
-} from "../types"
-import { TechnicalConfigurationsClient } from "../TechnicalConfigurationsClient"
+} from "@/app/(app)/technical-configurations/types"
+import { TechnicalConfigurationsClient } from "@/app/(app)/technical-configurations/TechnicalConfigurationsClient"
 import {
   createQueryClient,
   dossier as baseDossier,
@@ -53,7 +53,7 @@ const pageDossiers: Record<number, TechnicalConfigurationDossierListItemWire> = 
   },
 }
 
-function renderClient() {
+function renderClient(): void {
   const queryClient = createQueryClient()
 
   render(
@@ -63,7 +63,7 @@ function renderClient() {
   )
 }
 
-function expectListCall(call: number, page: number) {
+function expectListCall(call: number, page: number): void {
   expect(mocks.listDossiers).toHaveBeenNthCalledWith(
     call,
     {
