@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   getDossier: vi.fn(),
   createDossier: vi.fn(),
   updateDossier: vi.fn(),
+  deleteDossier: vi.fn(),
   pageRole: "global",
 }))
 
@@ -51,6 +52,7 @@ vi.mock("../technical-configuration-rpc", () => ({
   getTechnicalConfigurationDossier: (...args: unknown[]) => mocks.getDossier(...args),
   createTechnicalConfigurationDossier: (...args: unknown[]) => mocks.createDossier(...args),
   updateTechnicalConfigurationDossier: (...args: unknown[]) => mocks.updateDossier(...args),
+  deleteTechnicalConfigurationDossier: (...args: unknown[]) => mocks.deleteDossier(...args),
 }))
 
 type TechnicalConfigurationsClientContract = React.ComponentType<{

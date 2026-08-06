@@ -153,18 +153,22 @@ describe("technical configuration dossier P15A delete migration", () => {
     expect(listBlock).not.toContain("technical_configuration_baseline_versions_list")
   })
 
-  it("keeps the delete RPC absent from the proxy allowlist and RPC manifests", () => {
-    expect(readFileSync(ALLOWED_FUNCTIONS_PATH, "utf8")).not.toContain(DELETE_RPC_NAME)
+  it("activates the delete RPC only through the dedicated P15C manifest", () => {
+    const allowedFunctionsSource = readFileSync(ALLOWED_FUNCTIONS_PATH, "utf8")
+    expect(allowedFunctionsSource).toContain(
+      'import { DOSSIER_DELETE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-dossier-rpcs"'
+    )
+    expect(allowedFunctionsSource).toContain("...DOSSIER_DELETE_RPC_FUNCTION_NAMES")
 
     const manifestFiles = readdirSync(RPC_MANIFESTS_DIR).filter(
       (file) => file.startsWith("technical-configuration") && file.endsWith("-rpcs.ts")
     )
     expect(manifestFiles.length).toBeGreaterThan(0)
 
-    for (const manifestFile of manifestFiles) {
-      const manifestSource = readFileSync(path.join(RPC_MANIFESTS_DIR, manifestFile), "utf8")
-      expect(manifestSource).not.toContain(DELETE_RPC_NAME)
-    }
+    const owningManifests = manifestFiles.filter((manifestFile) =>
+      readFileSync(path.join(RPC_MANIFESTS_DIR, manifestFile), "utf8").includes(DELETE_RPC_NAME)
+    )
+    expect(owningManifests).toEqual(["technical-configuration-dossier-rpcs.ts"])
   })
 
   it("ships rollback-only runtime and two-session concurrency gates", () => {

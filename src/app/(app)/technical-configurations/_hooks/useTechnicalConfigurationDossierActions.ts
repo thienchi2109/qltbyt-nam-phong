@@ -4,6 +4,7 @@ import * as React from "react"
 import { type QueryClient, type QueryKey, useMutation, useQueryClient } from "@tanstack/react-query"
 
 import {
+  deleteTechnicalConfigurationDossier,
   getTechnicalConfigurationDossier,
   updateTechnicalConfigurationDossier,
 } from "../technical-configuration-rpc"
@@ -12,6 +13,7 @@ import {
   technicalConfigurationDossierDetailQueryKey,
 } from "../technical-configuration-query-keys"
 import type {
+  TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
   TechnicalConfigurationDossierWire,
@@ -20,6 +22,8 @@ import type {
 
 type UseTechnicalConfigurationDossierActionsOptions = {
   listQueryKey: QueryKey
+  page: number
+  onPageChange: (page: number) => void
   onSelectedDossierChange: React.Dispatch<
     React.SetStateAction<TechnicalConfigurationDossierWire | null>
   >
@@ -71,13 +75,18 @@ export function isStaleRevisionRefreshError(error: unknown) {
   return error instanceof Error && error.message === STALE_REVISION_REFRESH_ERROR_CODE
 }
 
-/** Owns active dossier metadata edit state, mutation, and cache reconciliation. */
+/** Owns dossier metadata edit/delete state, mutations, and cache reconciliation. */
 export function useTechnicalConfigurationDossierActions({
   listQueryKey,
+  page,
+  onPageChange,
   onSelectedDossierChange,
 }: UseTechnicalConfigurationDossierActionsOptions) {
   const queryClient = useQueryClient()
+  const deleteInFlightRef = React.useRef(false)
   const [editTarget, setEditTarget] = React.useState<TechnicalConfigurationDossierWire | null>(null)
+  const [deleteTarget, setDeleteTarget] =
+    React.useState<TechnicalConfigurationDossierListItemWire | null>(null)
   const [updateErrorOverride, setUpdateErrorOverride] = React.useState<Error | null>(null)
 
   const updateMutation = useMutation({
@@ -125,6 +134,46 @@ export function useTechnicalConfigurationDossierActions({
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: deleteTechnicalConfigurationDossier,
+    onSuccess: async (response) => {
+      const deletedId = response.data.id
+      let shouldMoveToPreviousPage = false
+
+      queryClient.setQueryData<TechnicalConfigurationDossierListWireResponse>(
+        listQueryKey,
+        (current) => {
+          if (!current) return current
+
+          const data = current.data.filter((dossier) => dossier.id !== deletedId)
+          if (data.length === current.data.length) return current
+
+          shouldMoveToPreviousPage = page > 1 && data.length === 0
+
+          return {
+            ...current,
+            data,
+            total: Math.max(0, current.total - 1),
+          }
+        }
+      )
+      queryClient.removeQueries({
+        queryKey: technicalConfigurationDossierDetailQueryKey(deletedId),
+        exact: true,
+      })
+      onSelectedDossierChange((current) => (current?.id === deletedId ? null : current))
+      setDeleteTarget((current) => (current?.id === deletedId ? null : current))
+
+      if (shouldMoveToPreviousPage) {
+        onPageChange(page - 1)
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+      })
+    },
+  })
+
   const openEdit = React.useCallback(
     (dossier: TechnicalConfigurationDossierWire) => {
       updateMutation.reset()
@@ -132,6 +181,16 @@ export function useTechnicalConfigurationDossierActions({
       setEditTarget(dossier)
     },
     [updateMutation]
+  )
+
+  const openDelete = React.useCallback(
+    (dossier: TechnicalConfigurationDossierListItemWire) => {
+      if (!dossier.can_delete || deleteInFlightRef.current || deleteMutation.isPending) return
+
+      deleteMutation.reset()
+      setDeleteTarget(dossier)
+    },
+    [deleteMutation]
   )
 
   const handleEditOpenChange = React.useCallback(
@@ -153,12 +212,42 @@ export function useTechnicalConfigurationDossierActions({
     [updateMutation]
   )
 
+  const handleDeleteOpenChange = React.useCallback(
+    (open: boolean) => {
+      if (open || deleteInFlightRef.current || deleteMutation.isPending) return
+
+      deleteMutation.reset()
+      setDeleteTarget(null)
+    },
+    [deleteMutation]
+  )
+
+  const submitDelete = React.useCallback(async () => {
+    if (!deleteTarget || deleteInFlightRef.current || deleteMutation.isPending) return
+
+    deleteInFlightRef.current = true
+    try {
+      await deleteMutation.mutateAsync({
+        p_id: deleteTarget.id,
+        p_expected_revision: deleteTarget.revision,
+      })
+    } finally {
+      deleteInFlightRef.current = false
+    }
+  }, [deleteMutation, deleteTarget])
+
   return {
+    deleteError: deleteMutation.isError ? deleteMutation.error : null,
+    deleteTarget,
     editTarget,
+    isDeleting: deleteMutation.isPending,
     isUpdating: updateMutation.isPending,
+    openDelete,
     updateError: updateErrorOverride ?? (updateMutation.isError ? updateMutation.error : null),
     openEdit,
+    handleDeleteOpenChange,
     handleEditOpenChange,
+    submitDelete,
     submitEdit,
   }
 }

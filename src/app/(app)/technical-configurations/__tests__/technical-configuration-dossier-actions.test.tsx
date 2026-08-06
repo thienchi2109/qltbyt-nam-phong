@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type {
+  TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierWire,
   TechnicalConfigurationDossierWireResponse,
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   listDossiers: vi.fn(),
   getDossier: vi.fn(),
   createDossier: vi.fn(),
+  deleteDossier: vi.fn(),
   updateDossier: vi.fn(),
 }))
 
@@ -28,6 +30,7 @@ vi.mock("../technical-configuration-rpc", () => ({
   listTechnicalConfigurationDossiers: (...args: unknown[]) => mocks.listDossiers(...args),
   getTechnicalConfigurationDossier: (...args: unknown[]) => mocks.getDossier(...args),
   createTechnicalConfigurationDossier: (...args: unknown[]) => mocks.createDossier(...args),
+  deleteTechnicalConfigurationDossier: (...args: unknown[]) => mocks.deleteDossier(...args),
   updateTechnicalConfigurationDossier: (...args: unknown[]) => mocks.updateDossier(...args),
 }))
 
@@ -39,7 +42,7 @@ const TechnicalConfigurationsClient = (
   clientModule as { TechnicalConfigurationsClient?: TechnicalConfigurationsClientContract }
 ).TechnicalConfigurationsClient
 
-const dossierOne: TechnicalConfigurationDossierWire = {
+const dossierOne: TechnicalConfigurationDossierListItemWire = {
   id: "dossier-1",
   device_type_name: "Máy siêu âm",
   name: "Cấu hình máy siêu âm",
@@ -51,9 +54,10 @@ const dossierOne: TechnicalConfigurationDossierWire = {
   created_by: 1,
   updated_at: "2026-07-13T00:00:00.000Z",
   updated_by: 1,
+  can_delete: true,
 }
 
-const dossierTwo: TechnicalConfigurationDossierWire = {
+const dossierTwo: TechnicalConfigurationDossierListItemWire = {
   ...dossierOne,
   id: "dossier-2",
   device_type_name: "Máy X-quang",

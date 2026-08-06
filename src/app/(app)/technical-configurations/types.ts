@@ -12,8 +12,12 @@ export interface TechnicalConfigurationDossierWire {
   updated_by: number
 }
 
+export interface TechnicalConfigurationDossierListItemWire extends TechnicalConfigurationDossierWire {
+  can_delete: boolean
+}
+
 export interface TechnicalConfigurationDossierListWireResponse {
-  data: TechnicalConfigurationDossierWire[]
+  data: TechnicalConfigurationDossierListItemWire[]
   total: number
   page: number
   page_size: number
@@ -46,6 +50,17 @@ export interface TechnicalConfigurationDossierUpdateRpcArgs {
   p_name: string
   p_description: string | null
   p_expected_revision: number
+}
+
+export interface TechnicalConfigurationDossierDeleteRpcArgs {
+  p_id: string
+  p_expected_revision: number
+}
+
+export interface TechnicalConfigurationDossierDeleteWireResponse {
+  data: {
+    id: string
+  }
 }
 
 export interface TechnicalConfigurationDossierArchiveRpcArgs {

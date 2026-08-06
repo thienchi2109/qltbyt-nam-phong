@@ -1,5 +1,9 @@
+import { DOSSIER_DELETE_RPC_FUNCTIONS } from "@/lib/technical-configuration-dossier-rpcs"
+
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
+  TechnicalConfigurationDossierDeleteRpcArgs,
+  TechnicalConfigurationDossierDeleteWireResponse,
   TechnicalConfigurationDossierGetRpcArgs,
   TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
@@ -126,4 +130,12 @@ export function updateTechnicalConfigurationDossier(
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierWireResponse> {
   return callTechnicalConfigurationRpc("technical_configuration_dossiers_update", args, { signal })
+}
+
+/** Permanently deletes an eligible dossier after explicit destructive confirmation. */
+export function deleteTechnicalConfigurationDossier(
+  args: TechnicalConfigurationDossierDeleteRpcArgs,
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationDossierDeleteWireResponse> {
+  return callTechnicalConfigurationRpc(DOSSIER_DELETE_RPC_FUNCTIONS.deleteDossier, args, { signal })
 }

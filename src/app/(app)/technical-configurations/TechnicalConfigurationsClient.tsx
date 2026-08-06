@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { isGlobalRole } from "@/lib/rbac"
 
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
+import { TechnicalConfigurationDossierDeleteDialog } from "./_components/TechnicalConfigurationDossierDeleteDialog"
 import { TechnicalConfigurationDossierTable } from "./_components/TechnicalConfigurationDossierTable"
 import { TechnicalConfigurationWorkspaceShell } from "./_components/TechnicalConfigurationWorkspaceShell"
 import {
@@ -52,7 +53,26 @@ function getDossierUpdateErrorMessage(error: unknown): string {
   return getErrorMessage(error, "Không thể cập nhật hồ sơ.")
 }
 
-/** Orchestrates dossier listing, creation, and workspace selection for global roles. */
+function getDossierDeleteErrorMessage(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return "Không thể xóa hồ sơ."
+  }
+
+  switch (error.message) {
+    case "locked_dossier":
+      return "Hồ sơ đã có baseline khóa nên được bảo toàn vĩnh viễn."
+    case "stale_revision":
+      return "Hồ sơ đã được cập nhật ở phiên khác. Đóng xác nhận, tải lại danh sách và thử lại."
+    case "archived_dossier":
+      return "Hồ sơ đã được lưu trữ nên không thể xóa vĩnh viễn."
+    case "not_found":
+      return "Không còn tìm thấy hồ sơ này."
+    default:
+      return getErrorMessage(error, "Không thể xóa hồ sơ.")
+  }
+}
+
+/** Orchestrates dossier listing, lifecycle actions, and workspace selection for global roles. */
 export function TechnicalConfigurationsClient({
   role,
 }: Readonly<TechnicalConfigurationsClientProps>) {
@@ -85,6 +105,8 @@ export function TechnicalConfigurationsClient({
   })
   const dossierActions = useTechnicalConfigurationDossierActions({
     listQueryKey: dossierListQueryKey,
+    page,
+    onPageChange: setPage,
     onSelectedDossierChange: setSelectedDossier,
   })
 
@@ -196,7 +218,9 @@ export function TechnicalConfigurationsClient({
           className="w-full sm:w-auto"
           disabled={
             openingDossierId !== null ||
+            dossierActions.isDeleting ||
             dossierActions.isUpdating ||
+            dossierActions.deleteTarget !== null ||
             dossierActions.editTarget !== null
           }
           onClick={() => handleCreateOpenChange(true)}
@@ -238,11 +262,12 @@ export function TechnicalConfigurationsClient({
           <TechnicalConfigurationDossierTable
             dossiers={dossierListQuery.data?.data ?? []}
             isLoading={dossierListQuery.isLoading}
-            isActionPending={dossierActions.isUpdating}
+            isActionPending={dossierActions.isDeleting || dossierActions.isUpdating}
             openingDossierId={openingDossierId}
             page={dossierListQuery.data?.page ?? page}
             pageSize={dossierListQuery.data?.page_size ?? DOSSIER_PAGE_SIZE}
             total={dossierListQuery.data?.total ?? 0}
+            onDelete={dossierActions.openDelete}
             onEdit={dossierActions.openEdit}
             onOpen={(id) => void handleOpen(id)}
             onPageChange={setPage}
@@ -277,6 +302,19 @@ export function TechnicalConfigurationsClient({
           onSubmit={dossierActions.submitEdit}
         />
       ) : null}
+      <TechnicalConfigurationDossierDeleteDialog
+        dossier={dossierActions.deleteTarget}
+        isPending={dossierActions.isDeleting}
+        errorMessage={
+          dossierActions.deleteError
+            ? getDossierDeleteErrorMessage(dossierActions.deleteError)
+            : null
+        }
+        onOpenChange={dossierActions.handleDeleteOpenChange}
+        onConfirm={() => {
+          void dossierActions.submitDelete().catch(() => undefined)
+        }}
+      />
     </div>
   )
 }

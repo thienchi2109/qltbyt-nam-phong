@@ -74,65 +74,78 @@ after an authoritative server success.
 - Modify:
   `src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-shell.test.tsx`
 
+Approved scope refinements:
+
+- Keep `can_delete` list-only through
+  `TechnicalConfigurationDossierListItemWire`.
+- Add focused delete action/cache tests and a shared test harness so changed
+  files remain below the repository line limits.
+- Split the P15C dossier whitelist contract into
+  `technical-configuration-dossier-delete-rpc-whitelist.test.ts`.
+- Reuse `DestructiveConfirmDialog`; do not change the shared RPC transport.
+- Browser verification was explicitly waived on 2026-08-06 and replaced with
+  focused `@testing-library/user-event` coverage.
+
 ## Chunk 1: RED - Proxy Manifest And Typed Adapter
 
-- [ ] Add whitelist tests that require a dedicated dossier RPC manifest and one
+- [x] Add whitelist tests that require a dedicated dossier RPC manifest and one
       new allowed function.
-- [ ] Prove no other dossier/archive/baseline name is added accidentally.
-- [ ] Add type/adapter tests for `can_delete`, exact delete args and
+- [x] Prove no other dossier/archive/baseline name is added accidentally.
+- [x] Add type/adapter tests for `can_delete`, exact delete args and
       `{ data: { id } }`.
-- [ ] Prove typed error preservation for every authoritative conflict.
-- [ ] Run:
-      `rtk node scripts/npm-run.js run test -- src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts 'src/app/(app)/technical-configurations/__tests__/technical-configuration-rpc.test.ts'`.
-- [ ] Confirm RED because the manifest, allowlist entry, types and adapter are
+- [x] Prove typed error preservation for every authoritative conflict.
+- [x] Run the dedicated dossier whitelist test plus
+      `technical-configuration-rpc.test.ts`.
+- [x] Confirm RED because the manifest, allowlist entry, types and adapter are
       missing.
-- [ ] Add the smallest manifest/allowlist/type/adapter implementation.
-- [ ] Rerun and confirm GREEN.
+- [x] Add the smallest manifest/allowlist/type/adapter implementation.
+- [x] Rerun and confirm GREEN.
 
 ## Chunk 2: RED/GREEN - Destructive Confirmation Dialog
 
-- [ ] Add user-event tests for open, cancel, close, confirm, pending, error and
+- [x] Add user-event tests for open, cancel, close, confirm, pending, error and
       retry.
-- [ ] Assert the dossier name is visible and the copy states deletion is
+- [x] Assert the dossier name is visible and the copy states deletion is
       permanent.
-- [ ] Assert no backend callback before explicit confirm.
-- [ ] Assert pending prevents duplicate submit and unsafe close.
-- [ ] Assert server error keeps the dialog open and does not claim deletion.
-- [ ] Build one focused dialog component using existing alert-dialog primitives
+- [x] Assert no backend callback before explicit confirm.
+- [x] Assert pending prevents duplicate submit and unsafe close.
+- [x] Assert server error keeps the dialog open and does not claim deletion.
+- [x] Build one focused dialog component using existing alert-dialog primitives
       and lucide destructive-action icons.
-- [ ] Keep query/mutation/cache knowledge outside the dialog.
-- [ ] Run:
+- [x] Keep query/mutation/cache knowledge outside the dialog.
+- [x] Run:
       `rtk node scripts/npm-run.js run test -- 'src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-delete-dialog.test.tsx'`.
 
 ## Chunk 3: RED/GREEN - Row Eligibility And Authoritative Mutation
 
-- [ ] Extend shell tests for `can_delete=true` action availability and
+- [x] Extend shell tests for `can_delete=true` action availability and
       `can_delete=false` visible-disabled behavior with accessible explanation.
-- [ ] Keep the edit action independently available and cover no mutation before
+- [x] Keep the edit action independently available and cover no mutation before
       confirmation, success removal, changed eligibility, `locked_dossier`,
       stale, archived, not-found and network errors.
-- [ ] Extend the P15B action-state hook instead of creating a second competing
+- [x] Extend the P15B action-state hook instead of creating a second competing
       mutation owner.
-- [ ] Send the current row revision at confirmation time.
-- [ ] Do not optimistic-remove the dossier.
-- [ ] After success, atomically reconcile: - matching list cache item removal - dossier query-root invalidation - selected/open workspace reset when IDs match - previous-page fallback when the current non-first page becomes empty
-- [ ] Ignore or cancel obsolete completion after route/unmount/target change
-      according to existing TanStack Query patterns.
-- [ ] Run:
+- [x] Send the current row revision at confirmation time.
+- [x] Do not optimistic-remove the dossier.
+- [x] After success, atomically reconcile: - matching list cache item removal - dossier query-root invalidation - selected/open workspace reset when IDs match - previous-page fallback when the current non-first page becomes empty
+- [x] Prevent target changes and unsafe close while pending. Preserve
+      authoritative cache reconciliation if the route unmounts after the server
+      accepts the delete; local state updates are scoped to the mounted owner.
+- [x] Run:
       `rtk node scripts/npm-run.js run test -- 'src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-shell.test.tsx'`.
 
 ## Chunk 4: Regression, Refactor And Visual Gate
 
-- [ ] Rerun P15A/P15A2 migration-source and whitelist tests to prove proxy
+- [x] Rerun P15A/P15A2 migration-source and whitelist tests to prove proxy
       activation matches the deployed DB signature without changing its SQL
       contract.
-- [ ] Rerun P15B form/edit tests to prove delete integration did not couple or
+- [x] Rerun P15B form/edit tests to prove delete integration did not couple or
       regress metadata editing.
-- [ ] Use `code-deduplication` for mutation-state, page-fallback and destructive
+- [x] Use `code-deduplication` for mutation-state, page-fallback and destructive
       dialog patterns.
-- [ ] Recheck `TechnicalConfigurationsClient.tsx` and extracted action files
+- [x] Recheck `TechnicalConfigurationsClient.tsx` and extracted action files
       against the 350/450-line limits.
-- [ ] Run in repository order through one context-mode batch.
+- [x] Run in repository order through one context-mode batch.
 
   ```bash
   rtk node scripts/npm-run.js run format:check
@@ -144,9 +157,30 @@ after an authoritative server success.
   rtk openspec validate add-technical-configuration-comparison --strict
   ```
 
-- [ ] Run browser verification at desktop and narrow widths for menu placement,
-      dialog focus, text fit, pending/error states and post-delete navigation.
-- [ ] Request code review, triage findings and rerun affected gates.
+- [x] Browser verification omitted by explicit user instruction on 2026-08-06;
+      focused dialog/action `user-event` tests cover interaction, pending and
+      error states instead.
+- [x] Request code review, triage findings and rerun affected gates.
+
+## Verification Evidence
+
+- Chunk 1 RED: 8 expected failures for the missing manifest, allowlist, types
+  and adapter.
+- Chunk 2 RED: 5 expected failures before the dossier delete dialog existed.
+- Chunk 3 RED: 11 expected failures before row eligibility and action ownership
+  were implemented.
+- Focused regression pack: 12 files, 156 tests passed.
+- `format:check`, `verify:no-explicit-any`, `verify:dedupe` and `typecheck`
+  passed.
+- React Doctor diff scan: 92/100, no issues.
+- Strict OpenSpec validation passed.
+- Maximum changed TypeScript/React file length: 348 lines.
+- Initial subagent review found a same-tick duplicate-delete race, missing
+  post-unmount authoritative-cache coverage and missing locked-action keyboard
+  coverage. All three were fixed test-first; re-review returned zero findings.
+- No browser test and no live database write were performed.
+- Shared dossier pagination reuse was intentionally deferred to follow-up
+  Issue #871.
 
 ## Exit Gate
 

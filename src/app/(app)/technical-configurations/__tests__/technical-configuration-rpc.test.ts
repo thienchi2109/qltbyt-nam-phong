@@ -5,6 +5,9 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
+  TechnicalConfigurationDossierDeleteRpcArgs,
+  TechnicalConfigurationDossierDeleteWireResponse,
+  TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
 } from "../types"
@@ -27,6 +30,10 @@ type RpcModuleContract = {
     args: TechnicalConfigurationDossierUpdateRpcArgs,
     signal?: AbortSignal
   ) => Promise<unknown>
+  deleteTechnicalConfigurationDossier?: (
+    args: TechnicalConfigurationDossierDeleteRpcArgs,
+    signal?: AbortSignal
+  ) => Promise<TechnicalConfigurationDossierDeleteWireResponse>
 }
 
 const rpc = rpcModule as RpcModuleContract
@@ -49,9 +56,23 @@ describe("technical configuration RPC adapter", () => {
     expect(rpc.listTechnicalConfigurationDossiers).toEqual(expect.any(Function))
     if (!rpc.listTechnicalConfigurationDossiers) return
 
+    const dossier: TechnicalConfigurationDossierListItemWire = {
+      id: "dossier-1",
+      device_type_name: "Máy siêu âm",
+      name: "Cấu hình máy siêu âm",
+      description: null,
+      revision: 3,
+      archived_at: null,
+      archived_by: null,
+      created_at: "2026-08-06T00:00:00.000Z",
+      created_by: 1,
+      updated_at: "2026-08-06T00:00:00.000Z",
+      updated_by: 1,
+      can_delete: true,
+    }
     const response: TechnicalConfigurationDossierListWireResponse = {
-      data: [],
-      total: 0,
+      data: [dossier],
+      total: 1,
       page: 2,
       page_size: 10,
     }
@@ -82,6 +103,76 @@ describe("technical configuration RPC adapter", () => {
         }),
       })
     )
+  })
+
+  it("posts the selected dossier revision through the dedicated delete RPC", async () => {
+    expect(rpc.deleteTechnicalConfigurationDossier).toEqual(expect.any(Function))
+    if (!rpc.deleteTechnicalConfigurationDossier) return
+
+    const response: TechnicalConfigurationDossierDeleteWireResponse = {
+      data: { id: "dossier-1" },
+    }
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const args: TechnicalConfigurationDossierDeleteRpcArgs = {
+      p_id: "dossier-1",
+      p_expected_revision: 7,
+    }
+
+    await expect(rpc.deleteTechnicalConfigurationDossier(args)).resolves.toEqual(response)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/rpc/technical_configuration_dossiers_delete",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(args),
+      })
+    )
+  })
+
+  it.each([
+    ["locked_dossier", 409],
+    ["stale_revision", 409],
+    ["archived_dossier", 409],
+    ["not_found", 404],
+  ] as const)("preserves the authoritative %s delete conflict", async (message, status) => {
+    expect(rpc.deleteTechnicalConfigurationDossier).toEqual(expect.any(Function))
+    if (!rpc.deleteTechnicalConfigurationDossier) return
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: status === 404 ? "PT404" : "PT409",
+              message,
+            },
+          }),
+          {
+            status,
+            headers: { "Content-Type": "application/json" },
+          }
+        )
+      )
+    )
+
+    await expect(
+      rpc.deleteTechnicalConfigurationDossier({
+        p_id: "dossier-1",
+        p_expected_revision: 7,
+      })
+    ).rejects.toMatchObject({
+      name: "TechnicalConfigurationRpcError",
+      status,
+      code: status === 404 ? "PT404" : "PT409",
+      message,
+    })
   })
 
   it("forces dossier creation to use the frozen expected revision", async () => {

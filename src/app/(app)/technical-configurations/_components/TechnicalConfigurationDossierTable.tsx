@@ -12,17 +12,21 @@ import {
 } from "@/components/ui/table"
 import { formatVietnamDateTime } from "@/lib/vietnam-date-format"
 
-import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import type {
+  TechnicalConfigurationDossierListItemWire,
+  TechnicalConfigurationDossierWire,
+} from "@/app/(app)/technical-configurations/types"
 import { TechnicalConfigurationDossierRowActions } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierRowActions"
 
 type TechnicalConfigurationDossierTableProps = {
-  dossiers: TechnicalConfigurationDossierWire[]
+  dossiers: TechnicalConfigurationDossierListItemWire[]
   isLoading: boolean
   isActionPending: boolean
   openingDossierId: string | null
   page: number
   pageSize: number
   total: number
+  onDelete: (dossier: TechnicalConfigurationDossierListItemWire) => void
   onEdit: (dossier: TechnicalConfigurationDossierWire) => void
   onOpen: (id: string) => void
   onPageChange: (page: number) => void
@@ -37,6 +41,7 @@ export function TechnicalConfigurationDossierTable({
   page,
   pageSize,
   total,
+  onDelete,
   onEdit,
   onOpen,
   onPageChange,
@@ -110,6 +115,7 @@ export function TechnicalConfigurationDossierTable({
                       <TechnicalConfigurationDossierRowActions
                         dossier={dossier}
                         disabled={openingDossierId !== null || isActionPending}
+                        onDelete={onDelete}
                         onEdit={onEdit}
                       />
                       <Button
