@@ -132,8 +132,9 @@ P13A-P1 fail    -> P13A-P2 -> approved apply/gate -> rerun P13A-P1 green -> P13A
 P12C2           -> P13B
 P12C1           -> P14A1 -> P14A2 -> P14A3 -> P14A4 -> P14B1 -> P14B1F -> P14B2 -> P14C1 -> P14C2
 P3A + P4        -> P15A
+P15A            -> P15A2
 P3A             -> P15B
-P15A + P15B     -> P15C
+P15A2 + P15B    -> P15C
 P13A-V + P13B + P7A2 + P9A3 + P14C2 + P15C -> P13C
 ```
 
@@ -186,41 +187,44 @@ uses in-memory fixtures larger than 100 options x 102 criteria. P13C waits for
 P14C2 because final release evidence must include the approved result-export
 workflow, but P14 does not wait for P13A-P1, P13A-V or P13B.
 
-P15 is a lifecycle follow-up with two independently deployable prerequisites.
+P15 is a lifecycle follow-up with two independently deployable product
+prerequisites and one database hardening leaf.
 P15A adds only the dormant database hard-delete contract and additive
-`can_delete` list field after P3A/P4. P15B independently activates metadata
-editing through the existing P1 update RPC after P3A. P15C starts only after
-both leaves are merged and P15A is applied/gated; it then allowlists and mounts
-hard-delete through the row-action surface introduced by P15B. P13C waits for
-P15C so final acceptance includes the complete dossier lifecycle.
+`can_delete` list field after P3A/P4. P15A2 then adds fail-closed audit evidence
+without exposing the dormant RPC. P15B independently activates metadata editing
+through the existing P1 update RPC after P3A. P15C starts only after P15B is
+merged and P15A2 is merged, applied and its success-path audit plus updated
+concurrency gates pass; it then allowlists and mounts hard-delete through the
+row-action surface introduced by P15B. P13C waits for P15C so final acceptance
+includes the complete dossier lifecycle.
 
 ## Requirement Traceability
 
 Requirement IDs are roadmap aliases. The authoritative requirement names and scenarios remain in the OpenSpec delta.
 
-| ID    | Requirement                                     | Primary phases                                                                                                                                                                                                           |
-| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| TC-01 | Independent technical configuration dossier     | P0, P1, P15A, P15B, P15C                                                                                                                                                                                                 |
-| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P15C, P13A-V                                                                                                                                                                                        |
-| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                                                                                         |
-| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2, P12B1, P12B2, P15B, P15C                                                                                                                    |
-| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                                                                                   |
-| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2, P15A, P15C                                                                                                                                                                                   |
-| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                                                                                           |
-| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                                                                                           |
-| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                                                                                 |
-| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                                                                                         |
-| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                                                                                         |
-| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                                                                                   |
-| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                                                                                          |
-| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                                         |
-| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                                                                                     |
-| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                                         |
-| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                                                                          |
-| TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                                             |
-| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                                           |
-| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P15A, P15B, P15C, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
-| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14A4, P14B1, P14B1F, P14B2, P14C1, P14C2                                                                                                                                                           |
+| ID    | Requirement                                     | Primary phases                                                                                                                                                                                                                  |
+| ----- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-01 | Independent technical configuration dossier     | P0, P1, P15A, P15A2, P15B, P15C                                                                                                                                                                                                 |
+| TC-02 | Global administrator access boundary            | Every DB phase, P3A, P15A2, P15C, P13A-V                                                                                                                                                                                        |
+| TC-03 | Flexible two-level baseline authoring           | P0, P2, P3B, P3C                                                                                                                                                                                                                |
+| TC-04 | Explicit save for editable workflows            | P3A, P3B, P3C, P7A2, P7B2, P8A4, P8B1, P8B2, P8B3, P9A3, P9B2, P12A1, P12A2, P12B1, P12B2, P15B, P15C                                                                                                                           |
+| TC-05 | Standard baseline Excel template                | P0, P5A, P5B, P5C, P5D                                                                                                                                                                                                          |
+| TC-06 | Immutable locked baseline versions              | P4, P7A1, P7A2, P7B1, P7B2, P15A, P15C                                                                                                                                                                                          |
+| TC-07 | Historical baseline linkage                     | P4, P8A3, P8A4                                                                                                                                                                                                                  |
+| TC-08 | Optional reference products                     | P0, P7A1, P7A2                                                                                                                                                                                                                  |
+| TC-09 | Multiple supplier configuration options         | P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3                                                                                                                                                                                        |
+| TC-10 | Standard supplier option Excel template         | P9A1, P9A2, P9A3                                                                                                                                                                                                                |
+| TC-11 | URL-only document profiles                      | P6A, P6B, P7B1, P7B2, P9B1, P9B2                                                                                                                                                                                                |
+| TC-12 | Criterion-level document citations              | P7B1, P7B2, P9B1, P9B2                                                                                                                                                                                                          |
+| TC-13 | Scan-friendly comparison matrix                 | P10A1, P10A2, P10B1, P10B2, P10B3, P12A1, P12A2                                                                                                                                                                                 |
+| TC-14 | Per-option manual evaluation workflow           | P11D, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                                                |
+| TC-15 | Separate manual evaluation axes                 | P11A, P11B, P11C, P11D, P12A1, P12A2                                                                                                                                                                                            |
+| TC-16 | Transparent derived overall status              | P11A, P12A1, P12A2, P12B1, P12B2                                                                                                                                                                                                |
+| TC-17 | Non-scoring supplementary information           | P8A3, P8A4, P8B2, P8B3, P10A1, P10A2, P10B1, P12A1, P12A2, P13B                                                                                                                                                                 |
+| TC-18 | Optional transparent reference ranking          | P12C1, P12C2                                                                                                                                                                                                                    |
+| TC-19 | AI-ready data boundaries without MVP AI runtime | P0, P1, P11A, P11B, P11C, P13C                                                                                                                                                                                                  |
+| TC-20 | Optimistic conflict protection                  | P0, P1, P2, P3B, P4, P5C, P5D, P7A1, P7A2, P7B1, P7B2, P8A1, P8A2, P8A3, P8A4, P8B1, P8B2, P8B3, P9A2, P9A3, P9B1, P9B2, P11B, P11C, P12A1, P12A2, P12B2, P15A, P15A2, P15B, P15C, P13A-P1, P13A-P2 (conditional), P13A-V, P13B |
+| TC-21 | Final comparison result Excel export            | P14A1, P14A2, P14A3, P14A4, P14B1, P14B1F, P14B2, P14C1, P14C2                                                                                                                                                                  |
 
 ## Shared Technical Constraints
 
@@ -3434,6 +3438,55 @@ The database can safely delete only a never-locked active dossier and reports
 set-based eligibility, while the deployed application has no route through
 which a browser can invoke the new mutation.
 
+## Phase P15A2 - Dossier Delete Audit Hardening
+
+**Detailed TDD plan:** [P15A2 - Dossier Delete Audit Hardening](./p15a2-tdd-plan.md)
+**Tracking issue:** [#869](https://github.com/thienchi2109/qltbyt-nam-phong/issues/869)
+
+**Depends on:** P15A applied/gated
+**Requirements:** TC-01, TC-02, TC-20
+**Deploy boundary:** database-only replacement of the dormant delete RPC; no
+proxy allowlist, client adapter or user-visible action
+
+### Planned files
+
+- Create:
+  `src/app/api/rpc/__tests__/technical-configuration-dossier-delete-audit-migration.test.ts`
+- Create after migration-order inspection:
+  `supabase/migrations/<timestamp>_technical_configuration_dossier_delete_audit.sql`
+- Create:
+  `supabase/tests/technical_configuration_dossier_delete_audit_phase_gate.sql`
+- Create:
+  `supabase/tests/technical_configuration_dossier_delete_audit_failure_phase_gate.sql`
+- Modify:
+  `supabase/tests/technical_configuration_dossier_delete_concurrency_phase_gate.sql`
+- Modify P15 contracts, acceptance matrix and P15C hard entry gate.
+
+### Tasks
+
+- [ ] Write RED source tests for migration order, the unchanged P15A boundary,
+      exact audit payload, fail-closed error and audit-before-delete ordering.
+- [ ] Replace only `technical_configuration_dossiers_delete(UUID, BIGINT)`,
+      preserving guard/lock order, eligibility errors, response and grants.
+- [ ] Snapshot locked dossier metadata and call
+      `public.audit_log(TEXT, TEXT, BIGINT, TEXT, JSONB)` before the root delete.
+- [ ] Raise exact `PT500/audit_log_failed` when the helper result is distinct
+      from `TRUE`.
+- [ ] Add a rollback-only success proof without shared-helper replacement and a
+      separate isolated forced-failure proof. The helper replacement is
+      forbidden on live DB.
+- [ ] Update the existing two-session gate to assert exactly one delete audit
+      for delete-first, zero for lock-first, token-scoped cleanup and zero
+      dossier/audit residue.
+- [ ] Apply and run the live success-path audit and updated concurrency gates
+      only after separate explicit authorizations.
+
+### Exit gate
+
+Every successful hard-delete records the frozen forensic audit snapshot, every
+audit failure rolls back the delete, the P15A concurrency contract remains
+intact and the RPC is still dormant behind the proxy boundary.
+
 ## Phase P15B - Active Dossier Metadata Editing
 
 **Detailed TDD plan:** [P15B - Active Dossier Metadata Editing](./p15b-tdd-plan.md)
@@ -3492,7 +3545,7 @@ revision protection. No P15 delete RPC is allowlisted or visible.
 **Detailed TDD plan:** [P15C - Guarded Dossier Delete Activation](./p15c-tdd-plan.md)
 **Tracking issue:** [#865](https://github.com/thienchi2109/qltbyt-nam-phong/issues/865)
 
-**Depends on:** P15A applied/gated, P15B  
+**Depends on:** P15A2 applied/gated, P15B
 **Requirements:** TC-01, TC-02, TC-04, TC-06, TC-20  
 **Deploy boundary:** activates hard-delete in proxy/client/list UI only after
 the dormant database contract and metadata row-action surface are available
@@ -3526,8 +3579,9 @@ the dormant database contract and metadata row-action surface are available
 
 ### Tasks
 
-- [ ] Verify P15A is applied and its rollback-only phase gate is green before
-      adding the delete name to the proxy boundary.
+- [ ] Verify P15A2 is merged/applied and its success-path audit plus updated
+      two-session concurrency gates are green before adding the delete name to
+      the proxy boundary.
 - [ ] Write RED allowlist, adapter and React tests for `can_delete`, a visible
       disabled locked-row delete action with accessible explanation, explicit
       destructive confirmation,

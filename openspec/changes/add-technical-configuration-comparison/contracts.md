@@ -139,6 +139,8 @@
 - P15B owns the dossier metadata edit adapter, generalized create/edit form,
   row-action surface and mutation-state hook. It does not consume
   `can_delete` or expose the dormant P15A delete RPC.
+- P15A2 is database-only audit hardening. It changes no frontend owner, proxy
+  manifest, adapter, query key or user-visible behavior.
 - P15C extends the P15B row-action owner with list eligibility, the guarded
   delete adapter and one destructive confirmation dialog. It does not create a
   second row-action/mutation owner or treat `can_delete` as authorization.
@@ -174,6 +176,7 @@ Each entity or schema alteration has one primary leaf owner. A later leaf may ex
 | P11B  | `technical_configuration_manual_assessments`   | Unique comparison set + criterion; canonical two axes, notes, audit metadata and row-level revision                                  |
 | P12C1 | complete option ranking read contract          | Read-only set-based RPC over dossier options, exact baseline criteria and persisted manual assessments; no new table                 |
 | P15A  | dossier hard-delete and eligibility alteration | Adds guarded aggregate-root delete plus set-based `can_delete` to the dossier list; adds no table and relies on verified FK cascades |
+| P15A2 | dossier hard-delete audit alteration           | Replaces only the dormant delete RPC to write fail-closed audit evidence before the root delete; adds no table or proxy exposure     |
 
 All tables include UUID primary keys and the audit columns required by `design.md`. Foreign keys must prevent cross-dossier and cross-version relationships even when a caller bypasses the UI.
 
@@ -253,6 +256,25 @@ The delete RPC removes the dossier aggregate root and relies only on the
 verified `ON DELETE CASCADE` foreign keys for descendants. It does not archive,
 restore or manually delete child tables.
 
+P15A2 preserves that contract and adds one audit event after eligibility checks
+while the dossier row lock is retained and before the root delete:
+
+```text
+action_type  = technical_configuration_dossier_delete
+entity_type  = technical_configuration_dossier
+entity_id    = NULL
+entity_label = dossier name
+action_details = dossier_id, device_type_name, name, description, revision,
+                 delete_kind: "hard"
+```
+
+The shared audit `entity_id` remains `BIGINT`; dossier UUID identity is forensic
+JSONB evidence and is verified through
+`action_details->>'dossier_id' = <uuid>::text`, not an indexed entity lookup.
+Existing 365-day audit retention remains unchanged. Any audit helper result
+distinct from `TRUE` raises exact `PT500/audit_log_failed` and rolls back the
+delete.
+
 ### Baseline Version
 
 - States: `draft`, `locked`.
@@ -316,6 +338,9 @@ Outside the RPC proxy, raw `admin` handling uses `isGlobalRole()`. SQL tests may
   then checks locked-baseline existence while retaining the dossier row lock.
   It raises `locked_dossier` before deleting when any historical baseline is
   locked.
+- P15A2 snapshots the locked dossier root only after those checks, calls the
+  exact `public.audit_log(TEXT, TEXT, BIGINT, TEXT, JSONB)` overload, requires
+  `IS DISTINCT FROM TRUE` fail-closed handling, then deletes the aggregate root.
 
 Every descendant mutation leaf must call the most specific applicable guard. A leaf may not duplicate or weaken these checks.
 
@@ -391,8 +416,8 @@ P14B/P14C leaves add no RPC or migration.
 P15A creates the delete RPC and list eligibility field but deliberately leaves
 the new RPC absent from every proxy allowlist/manifest. P15B reuses the existing
 P1 update RPC and adds no RPC name. P15C owns the delete RPC manifest, proxy
-allowlist entry, typed adapter and user-visible activation after P15A is applied
-and gated.
+allowlist entry, typed adapter and user-visible activation only after P15A2 is
+merged, applied and its success-path audit plus updated concurrency gates pass.
 P3A owns the module-local typed client used by all module RPCs. Shared
 `callRpc()` remains unchanged because its current consumers depend on the
 existing plain-`Error` behavior.
@@ -953,6 +978,9 @@ not lift or duplicate navigator ownership.
     timestamp must sort after every existing local migration that redefines the
     dossier list, editable-dossier guard, baseline-lock function or the
     dossier-row-first lock order used by baseline lock.
+15. P15A2 replaces only the delete RPC with fail-closed audit evidence. Its
+    migration timestamp must also sort after every local definition of
+    `public.audit_log(TEXT, TEXT, BIGINT, TEXT, JSONB)`.
 
 The numbered sequence above describes persistence-object and migration-definition order only; it does not override leaf delivery dependencies. P7B1 is still delivered after P7A2.
 
