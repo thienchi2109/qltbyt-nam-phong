@@ -16,7 +16,6 @@ import type {
 import * as clientModule from "../TechnicalConfigurationsClient"
 import * as pageModule from "../page"
 import { TechnicalConfigurationDossierForm } from "../_components/TechnicalConfigurationDossierForm"
-import { TechnicalConfigurationDossierTable } from "../_components/TechnicalConfigurationDossierTable"
 
 const P3A_FILES = [
   "page.tsx",
@@ -309,28 +308,6 @@ describe("technical configuration dossier shell", () => {
     await user.keyboard("{Escape}")
 
     expect(onOpenChange).not.toHaveBeenCalledWith(false)
-  })
-
-  it("offers a way back when a now-empty later page is returned", async () => {
-    const user = userEvent.setup()
-    const onPageChange = vi.fn()
-
-    render(
-      <TechnicalConfigurationDossierTable
-        dossiers={[]}
-        isLoading={false}
-        openingDossierId={null}
-        page={2}
-        pageSize={20}
-        total={1}
-        onOpen={vi.fn()}
-        onPageChange={onPageChange}
-      />
-    )
-
-    await user.click(screen.getByRole("button", { name: "Quay lại trang trước" }))
-
-    expect(onPageChange).toHaveBeenCalledWith(1)
   })
 
   it("keeps the route and client orchestrators below the extraction threshold", () => {

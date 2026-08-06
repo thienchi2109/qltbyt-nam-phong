@@ -6,6 +6,7 @@ import { AlertCircle, ListChecks, Plus, RefreshCw, ShieldAlert } from "lucide-re
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { useServerPagination } from "@/hooks/useServerPagination"
 import { isGlobalRole } from "@/lib/rbac"
 
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
@@ -78,15 +79,28 @@ export function TechnicalConfigurationsClient({
 }: Readonly<TechnicalConfigurationsClientProps>) {
   const queryClient = useQueryClient()
   const canAccess = isGlobalRole(role)
-  const [page, setPage] = React.useState(1)
+  const [dossierTotalCount, setDossierTotalCount] = React.useState(0)
+  const dossierPagination = useServerPagination({
+    totalCount: dossierTotalCount,
+    initialPageSize: DOSSIER_PAGE_SIZE,
+  })
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [openingDossierId, setOpeningDossierId] = React.useState<string | null>(null)
   const [openDossierError, setOpenDossierError] = React.useState<unknown>(null)
   const [selectedDossier, setSelectedDossier] =
     React.useState<TechnicalConfigurationDossierWire | null>(null)
+  const handleDossierPageChange = React.useCallback(
+    (nextPage: number) => {
+      dossierPagination.setPagination((current) => ({
+        ...current,
+        pageIndex: Math.max(0, nextPage - 1),
+      }))
+    },
+    [dossierPagination.setPagination]
+  )
   const dossierListQueryKey = [
     ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
-    { page, pageSize: DOSSIER_PAGE_SIZE },
+    { page: dossierPagination.page, pageSize: dossierPagination.pageSize },
   ] as const
 
   const dossierListQuery = useQuery({
@@ -94,8 +108,8 @@ export function TechnicalConfigurationsClient({
     queryFn: ({ signal }) =>
       listTechnicalConfigurationDossiers(
         {
-          p_page: page,
-          p_page_size: DOSSIER_PAGE_SIZE,
+          p_page: dossierPagination.page,
+          p_page_size: dossierPagination.pageSize,
           p_include_archived: false,
         },
         signal
@@ -103,10 +117,16 @@ export function TechnicalConfigurationsClient({
     enabled: canAccess,
     staleTime: 30_000,
   })
+  const resolvedDossierTotal = dossierListQuery.data?.total
+  React.useEffect(() => {
+    if (resolvedDossierTotal === undefined) return
+    setDossierTotalCount(resolvedDossierTotal)
+  }, [resolvedDossierTotal])
+
   const dossierActions = useTechnicalConfigurationDossierActions({
     listQueryKey: dossierListQueryKey,
-    page,
-    onPageChange: setPage,
+    page: dossierPagination.page,
+    onPageChange: handleDossierPageChange,
     onSelectedDossierChange: setSelectedDossier,
   })
 
@@ -264,13 +284,16 @@ export function TechnicalConfigurationsClient({
             isLoading={dossierListQuery.isLoading}
             isActionPending={dossierActions.isDeleting || dossierActions.isUpdating}
             openingDossierId={openingDossierId}
-            page={dossierListQuery.data?.page ?? page}
-            pageSize={dossierListQuery.data?.page_size ?? DOSSIER_PAGE_SIZE}
-            total={dossierListQuery.data?.total ?? 0}
+            pagination={{
+              page: dossierPagination.page,
+              pageCount: dossierPagination.pageCount,
+              canPreviousPage: dossierPagination.canPreviousPage,
+              canNextPage: dossierPagination.canNextPage,
+              onPageChange: handleDossierPageChange,
+            }}
             onDelete={dossierActions.openDelete}
             onEdit={dossierActions.openEdit}
             onOpen={(id) => void handleOpen(id)}
-            onPageChange={setPage}
           />
         ) : null}
       </section>
