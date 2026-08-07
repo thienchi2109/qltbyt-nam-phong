@@ -58,13 +58,13 @@ describe("NextAuthSessionProvider", () => {
       </NextAuthSessionProvider>
     )
 
-    expect(mocks.SessionProvider).toHaveBeenCalledWith(
+    expect(mocks.SessionProvider).toHaveBeenCalledOnce()
+    expect(mocks.SessionProvider.mock.calls[0]?.[0]).toEqual(
       expect.objectContaining({
         session: null,
         refetchInterval: 60,
         refetchOnWindowFocus: true,
-      }),
-      expect.anything()
+      })
     )
   })
 

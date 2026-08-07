@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("server-only", () => ({}))
+
 const requestHeadersState = vi.hoisted(() => ({
   values: new Map<string, string>(),
 }))
@@ -44,14 +46,18 @@ const supabaseClient = vi.hoisted(() => ({
 
     if (fn === "auth_login_throttle_record_failure") {
       return {
-        data: supabaseState.throttleRecordFailureError ? null : supabaseState.throttleRecordFailureData,
+        data: supabaseState.throttleRecordFailureError
+          ? null
+          : supabaseState.throttleRecordFailureData,
         error: supabaseState.throttleRecordFailureError,
       }
     }
 
     if (fn === "auth_login_throttle_record_success") {
       return {
-        data: supabaseState.throttleRecordSuccessError ? null : supabaseState.throttleRecordSuccessData,
+        data: supabaseState.throttleRecordSuccessError
+          ? null
+          : supabaseState.throttleRecordSuccessData,
         error: supabaseState.throttleRecordSuccessError,
       }
     }
@@ -103,9 +109,7 @@ type DeferredRpcResult = {
 
 function getAuthorizeHandler(): AuthorizeFn {
   const provider = authOptions.providers.find(
-    (
-      candidate
-    ): candidate is { options?: { authorize?: AuthorizeFn } } =>
+    (candidate): candidate is { options?: { authorize?: AuthorizeFn } } =>
       "options" in candidate && typeof candidate.options?.authorize === "function"
   )
 
@@ -137,7 +141,7 @@ function getSignOutEventHandler(): SignOutEvent {
 function authLifecycleLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthLifecycleLog[] {
   return infoSpy.mock.calls
     .map(([message]) => (typeof message === "string" ? message : ""))
-    .filter((message) => message.includes("\"scope\":\"auth.lifecycle\""))
+    .filter((message) => message.includes('"scope":"auth.lifecycle"'))
     .map((message) => JSON.parse(message) as AuthLifecycleLog)
 }
 
@@ -190,12 +194,14 @@ describe("authOptions authorize + auth lifecycle events", () => {
     supabaseState.authRpcRows = []
     supabaseState.authRpcError = null
     supabaseState.auditRpcError = null
-    supabaseState.throttleCheckRows = [{
-      allowed: true,
-      blocked_until: null,
-      retry_after_seconds: 0,
-      blocked_scope: null,
-    }]
+    supabaseState.throttleCheckRows = [
+      {
+        allowed: true,
+        blocked_until: null,
+        retry_after_seconds: 0,
+        blocked_scope: null,
+      },
+    ]
     supabaseState.throttleCheckError = null
     supabaseState.throttleRecordFailureData = true
     supabaseState.throttleRecordFailureError = null
@@ -217,10 +223,13 @@ describe("authOptions authorize + auth lifecycle events", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "")
 
     const authorize = getAuthorizeHandler()
-    const result = await authorize({
-      username: "NQMinh",
-      password: "super-secret",
-    }, buildAuthorizeRequest())
+    const result = await authorize(
+      {
+        username: "NQMinh",
+        password: "super-secret",
+      },
+      buildAuthorizeRequest()
+    )
 
     expect(result).toBeNull()
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
@@ -242,10 +251,13 @@ describe("authOptions authorize + auth lifecycle events", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
 
     const authorize = getAuthorizeHandler()
-    const result = await authorize({
-      username: "NQMinh",
-      password: "super-secret",
-    }, buildAuthorizeRequest())
+    const result = await authorize(
+      {
+        username: "NQMinh",
+        password: "super-secret",
+      },
+      buildAuthorizeRequest()
+    )
 
     expect(result).toBeNull()
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
@@ -260,25 +272,30 @@ describe("authOptions authorize + auth lifecycle events", () => {
       }),
     ])
     expect(supabaseState.rpcCalls).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ fn: "authenticate_user_dual_mode" }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ fn: "authenticate_user_dual_mode" })])
     )
     expect(JSON.stringify(authLifecycleLogs(consoleInfoSpy))).not.toContain("super-secret")
   })
 
   it("emits tenant_inactive when rpc auth says tenant is inactive", async () => {
-    supabaseState.authRpcRows = [{
-      is_authenticated: false,
-      authentication_mode: "tenant_inactive",
-    }]
+    supabaseState.authRpcRows = [
+      {
+        is_authenticated: false,
+        authentication_mode: "tenant_inactive",
+      },
+    ]
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "LOCKED.USER",
-      password: "secret",
-    }, buildAuthorizeRequest())).rejects.toThrow("tenant_inactive")
+    await expect(
+      authorize(
+        {
+          username: "LOCKED.USER",
+          password: "secret",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("tenant_inactive")
 
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
       expect.objectContaining({
@@ -306,10 +323,15 @@ describe("authOptions authorize + auth lifecycle events", () => {
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "secret",
-    }, buildAuthorizeRequest())).rejects.toThrow("database exploded")
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "secret",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("database exploded")
 
     expect(authLifecycleLogs(consoleInfoSpy)).toEqual([
       expect.objectContaining({
@@ -328,18 +350,25 @@ describe("authOptions authorize + auth lifecycle events", () => {
   })
 
   it("keeps authorize outcome stable when the auth audit sink insert fails", async () => {
-    supabaseState.authRpcRows = [{
-      is_authenticated: false,
-      authentication_mode: "tenant_inactive",
-    }]
+    supabaseState.authRpcRows = [
+      {
+        is_authenticated: false,
+        authentication_mode: "tenant_inactive",
+      },
+    ]
     supabaseState.auditRpcError = { message: "audit insert failed" }
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "LOCKED.USER",
-      password: "secret",
-    }, buildAuthorizeRequest())).rejects.toThrow("tenant_inactive")
+    await expect(
+      authorize(
+        {
+          username: "LOCKED.USER",
+          password: "secret",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("tenant_inactive")
 
     expect(supabaseState.rpcCalls).toEqual(
       expect.arrayContaining([
@@ -351,19 +380,26 @@ describe("authOptions authorize + auth lifecycle events", () => {
   })
 
   it("blocks credentials before password verification when login throttle denies the request", async () => {
-    supabaseState.throttleCheckRows = [{
-      allowed: false,
-      blocked_until: "2026-05-04T03:30:00.000Z",
-      retry_after_seconds: 1800,
-      blocked_scope: "username_ip",
-    }]
+    supabaseState.throttleCheckRows = [
+      {
+        allowed: false,
+        blocked_until: "2026-05-04T03:30:00.000Z",
+        retry_after_seconds: 1800,
+        blocked_scope: "username_ip",
+      },
+    ]
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "LOCKED.USER",
-      password: "secret",
-    }, buildAuthorizeRequest())).rejects.toThrow("rate_limited")
+    await expect(
+      authorize(
+        {
+          username: "LOCKED.USER",
+          password: "secret",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("rate_limited")
 
     expect(supabaseState.rpcCalls).toEqual(
       expect.arrayContaining([
@@ -391,19 +427,22 @@ describe("authOptions authorize + auth lifecycle events", () => {
       ])
     )
     expect(supabaseState.rpcCalls).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ fn: "authenticate_user_dual_mode" }),
-      ])
+      expect.arrayContaining([expect.objectContaining({ fn: "authenticate_user_dual_mode" })])
     )
   })
 
   it("records throttle failure after invalid credentials", async () => {
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "wrong-password",
-    }, buildAuthorizeRequest())).rejects.toThrow("invalid_credentials")
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "wrong-password",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("invalid_credentials")
 
     expect(supabaseState.rpcCalls).toEqual(
       expect.arrayContaining([
@@ -423,10 +462,15 @@ describe("authOptions authorize + auth lifecycle events", () => {
     supabaseState.throttleRecordFailureData = false
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "wrong-password",
-    }, buildAuthorizeRequest())).rejects.toThrow("invalid_credentials")
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "wrong-password",
+        },
+        buildAuthorizeRequest()
+      )
+    ).rejects.toThrow("invalid_credentials")
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       "Login throttle failure record failed",
@@ -437,23 +481,30 @@ describe("authOptions authorize + auth lifecycle events", () => {
   })
 
   it("resets the username throttle bucket after successful credentials", async () => {
-    supabaseState.authRpcRows = [{
-      is_authenticated: true,
-      user_id: 42,
-      username: "NQMinh",
-      full_name: "Nguyen Quang Minh",
-      role: "to_qltb",
-      khoa_phong: "CNTT",
-      don_vi: 17,
-      authentication_mode: "hashed",
-    }]
+    supabaseState.authRpcRows = [
+      {
+        is_authenticated: true,
+        user_id: 42,
+        username: "NQMinh",
+        full_name: "Nguyen Quang Minh",
+        role: "to_qltb",
+        khoa_phong: "CNTT",
+        don_vi: 17,
+        authentication_mode: "hashed",
+      },
+    ]
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "correct-password",
-    }, buildAuthorizeRequest())).resolves.toEqual(
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "correct-password",
+        },
+        buildAuthorizeRequest()
+      )
+    ).resolves.toEqual(
       expect.objectContaining({
         id: "42",
         username: "NQMinh",
@@ -476,22 +527,29 @@ describe("authOptions authorize + auth lifecycle events", () => {
 
   it("warns when throttle success reset returns false", async () => {
     supabaseState.throttleRecordSuccessData = false
-    supabaseState.authRpcRows = [{
-      is_authenticated: true,
-      user_id: 42,
-      username: "NQMinh",
-      full_name: "Nguyen Quang Minh",
-      role: "to_qltb",
-      khoa_phong: "CNTT",
-      don_vi: 17,
-      authentication_mode: "hashed",
-    }]
+    supabaseState.authRpcRows = [
+      {
+        is_authenticated: true,
+        user_id: 42,
+        username: "NQMinh",
+        full_name: "Nguyen Quang Minh",
+        role: "to_qltb",
+        khoa_phong: "CNTT",
+        don_vi: 17,
+        authentication_mode: "hashed",
+      },
+    ]
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "correct-password",
-    }, buildAuthorizeRequest())).resolves.toEqual(
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "correct-password",
+        },
+        buildAuthorizeRequest()
+      )
+    ).resolves.toEqual(
       expect.objectContaining({
         id: "42",
         username: "NQMinh",
@@ -508,20 +566,27 @@ describe("authOptions authorize + auth lifecycle events", () => {
 
   it("fails open when login throttle check is unavailable", async () => {
     supabaseState.throttleCheckError = { message: "throttle unavailable" }
-    supabaseState.authRpcRows = [{
-      is_authenticated: true,
-      user_id: 42,
-      username: "NQMinh",
-      role: "to_qltb",
-      authentication_mode: "hashed",
-    }]
+    supabaseState.authRpcRows = [
+      {
+        is_authenticated: true,
+        user_id: 42,
+        username: "NQMinh",
+        role: "to_qltb",
+        authentication_mode: "hashed",
+      },
+    ]
 
     const authorize = getAuthorizeHandler()
 
-    await expect(authorize({
-      username: "NQMinh",
-      password: "correct-password",
-    }, buildAuthorizeRequest())).resolves.toEqual(
+    await expect(
+      authorize(
+        {
+          username: "NQMinh",
+          password: "correct-password",
+        },
+        buildAuthorizeRequest()
+      )
+    ).resolves.toEqual(
       expect.objectContaining({
         id: "42",
         username: "NQMinh",

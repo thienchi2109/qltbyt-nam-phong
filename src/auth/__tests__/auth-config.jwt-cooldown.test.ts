@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("server-only", () => ({}))
+
 // Build a Supabase mock that records profile refresh RPC calls.
 type ProfileRow = {
   password_changed_at: string | null
@@ -143,14 +145,14 @@ function profileRefreshRpcCalls(): typeof supabaseState.rpcCalls {
 function authJwtTelemetryLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthJwtTelemetryLog[] {
   return infoSpy.mock.calls
     .map(([message]) => (typeof message === "string" ? message : ""))
-    .filter((message) => message.includes("\"scope\":\"auth.jwt\""))
+    .filter((message) => message.includes('"scope":"auth.jwt"'))
     .map((message) => JSON.parse(message) as AuthJwtTelemetryLog)
 }
 
 function authLifecycleLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthLifecycleLog[] {
   return infoSpy.mock.calls
     .map(([message]) => (typeof message === "string" ? message : ""))
-    .filter((message) => message.includes("\"scope\":\"auth.lifecycle\""))
+    .filter((message) => message.includes('"scope":"auth.lifecycle"'))
     .map((message) => JSON.parse(message) as AuthLifecycleLog)
 }
 
@@ -245,11 +247,13 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("force-refreshes when trigger === 'update' even within cooldown", async () => {
     const now = Date.now()
-    supabaseState.profileRpcRows = [{
-      ...profileRowDefault,
-      current_don_vi: 99,
-      don_vi: 99,
-    }]
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        current_don_vi: 99,
+        don_vi: 99,
+      },
+    ]
     const token = {
       ...baseToken,
       loginTime: now - 10_000,
@@ -277,10 +281,12 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     const now = Date.now()
     const loginTime = now - 60 * 60_000 // 1h ago
     const passwordChangedAt = new Date(now - 5 * 60_000).toISOString() // 5min ago
-    supabaseState.profileRpcRows = [{
-      ...profileRowDefault,
-      password_changed_at: passwordChangedAt,
-    }]
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        password_changed_at: passwordChangedAt,
+      },
+    ]
 
     const token = {
       ...baseToken,
@@ -336,10 +342,12 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("preserves pending_signout_reason when update-trigger invalidation would otherwise empty the token", async () => {
     const now = Date.now()
-    supabaseState.profileRpcRows = [{
-      ...profileRowDefault,
-      password_changed_at: new Date(now - 5_000).toISOString(),
-    }]
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        password_changed_at: new Date(now - 5_000).toISOString(),
+      },
+    ]
 
     const result = await runJwt({
       token: {
@@ -394,10 +402,12 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
   it("keeps JWT invalidation behavior stable when auth audit persistence fails", async () => {
     const now = Date.now()
-    supabaseState.profileRpcRows = [{
-      ...profileRowDefault,
-      password_changed_at: new Date(now - 5_000).toISOString(),
-    }]
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        password_changed_at: new Date(now - 5_000).toISOString(),
+      },
+    ]
     supabaseState.auditRpcError = { message: "audit insert failed" }
 
     const result = await runJwt({
@@ -568,7 +578,7 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     }
 
     for (let index = 0; index < callbackCount; index += 1) {
-      token = await runJwt({ token }) as JwtArgs["token"]
+      token = (await runJwt({ token })) as JwtArgs["token"]
       vi.advanceTimersByTime(2_000)
     }
 
@@ -601,10 +611,12 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
       trigger: "update",
     })
 
-    supabaseState.profileRpcRows = [{
-      ...profileRowDefault,
-      password_changed_at: new Date(now - 5_000).toISOString(),
-    }]
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        password_changed_at: new Date(now - 5_000).toISOString(),
+      },
+    ]
     await runJwt({
       token: {
         ...baseToken,
