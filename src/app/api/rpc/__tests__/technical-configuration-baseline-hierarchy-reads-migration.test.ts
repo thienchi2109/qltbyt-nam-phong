@@ -287,13 +287,13 @@ describe("technical configuration baseline P1C hierarchy read migration", () => 
       }
     })
 
-    it("marks P1C.1 through P1C.4 complete without advancing later leaves", () => {
+    it("marks P1C.1 through P1C.4 complete without advancing P1E", () => {
       const tasksSource = readFileSync(TASKS_PATH, "utf8")
 
       for (const task of ["P1C.1", "P1C.2", "P1C.3", "P1C.4"]) {
         expect(tasksSource).toContain(`- [x] ${task}`)
       }
-      expect(tasksSource).toContain("- [ ] P1D.1")
+      expect(tasksSource).toContain("- [ ] P1E.1")
     })
   })
 })

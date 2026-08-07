@@ -98,11 +98,11 @@ Depends on: P1C.
 Deploy boundary: copy and lock preserve hierarchy, but no subgroup mutation path or
 production UI exists yet.
 
-- [ ] P1D.1 Write snapshot round-trip tests for draft retrieval, immutable locked
+- [x] P1D.1 Write snapshot round-trip tests for draft retrieval, immutable locked
       versions, canonical mixed ordering, and subgroup identity.
-- [ ] P1D.2 Extend copy and lock snapshot operations to preserve subgroups and stable
+- [x] P1D.2 Extend copy and lock snapshot operations to preserve subgroups and stable
       criterion identity.
-- [ ] P1D.3 Prove copied and locked snapshots preserve direct criteria before complete
+- [x] P1D.3 Prove copied and locked snapshots preserve direct criteria before complete
       subgroup blocks without duplicating criterion IDs.
 
 ## Phase P1E - Draft Hierarchy Mutation Primitives
