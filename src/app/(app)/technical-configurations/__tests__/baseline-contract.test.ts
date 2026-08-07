@@ -1,9 +1,16 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
 
 import { technicalConfigurationBaselineRpc } from "../_hooks/useTechnicalConfigurationBaseline"
 import { callTechnicalConfigurationRpc } from "../technical-configuration-rpc"
+
+const baselineTypesSource = readFileSync(
+  resolve(process.cwd(), "src/app/(app)/technical-configurations/baseline-types.ts"),
+  "utf8"
+)
 
 vi.mock("../technical-configuration-rpc", () => ({
   callTechnicalConfigurationRpc: vi.fn(),
@@ -51,6 +58,12 @@ describe("technical configuration baseline RPC contract", () => {
       previewImport: "technical_configuration_baseline_import_preview",
       applyImport: "technical_configuration_baseline_import_apply",
     })
+  })
+
+  it("keeps group mutation responses scalar-only", () => {
+    expect(baselineTypesSource).toMatch(
+      /TechnicalConfigurationBaselineGroupMutationWire extends Omit<\s*TechnicalConfigurationBaselineGroupWire,\s*"criteria" \| "subgroups"\s*>/
+    )
   })
 
   it("passes snake_case arguments through the module-local typed adapter", async () => {

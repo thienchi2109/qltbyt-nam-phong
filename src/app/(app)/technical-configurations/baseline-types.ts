@@ -132,7 +132,7 @@ export interface TechnicalConfigurationBaselineDecodedVersionsListWireResponse {
 
 export interface TechnicalConfigurationBaselineGroupMutationWire extends Omit<
   TechnicalConfigurationBaselineGroupWire,
-  "criteria"
+  "criteria" | "subgroups"
 > {
   revision: number
 }
