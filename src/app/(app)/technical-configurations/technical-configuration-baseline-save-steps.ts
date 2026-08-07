@@ -306,7 +306,11 @@ function replaceWireGroup(
 ): void {
   draft.groups = draft.groups.map((item) =>
     item.id === group.id
-      ? { ...toTechnicalConfigurationBaselineWireGroup(group), criteria: item.criteria }
+      ? {
+          ...toTechnicalConfigurationBaselineWireGroup(group),
+          criteria: item.criteria,
+          ...(item.subgroups === undefined ? {} : { subgroups: item.subgroups }),
+        }
       : item
   )
 }

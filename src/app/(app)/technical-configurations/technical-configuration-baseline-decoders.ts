@@ -11,8 +11,20 @@ import type {
   TechnicalConfigurationBaselineStatus,
 } from "./baseline-types"
 
+interface HierarchyIdentityState {
+  criterionIds: Set<string>
+  groupIds: Set<string>
+  subgroupIds: Set<string>
+}
+
 function invalidResponse(path: string): never {
   throw new Error(`invalid_response:${path}`)
+}
+
+function claimIdentity(id: string, identities: Set<string>, path: string): string {
+  if (identities.has(id)) invalidResponse(path)
+  identities.add(id)
+  return id
 }
 
 function recordAt(value: unknown, path: string): Record<string, unknown> {
@@ -69,9 +81,15 @@ function decodeCriterion(
   path: string,
   baselineVersionId: string,
   groupId: string,
-  subgroupId: string | null
+  subgroupId: string | null,
+  identities: HierarchyIdentityState
 ): TechnicalConfigurationBaselineDecodedCriterion {
   const record = recordAt(value, path)
+  const criterionId = claimIdentity(
+    stringAt(record, "id", path),
+    identities.criterionIds,
+    `${path}.id`
+  )
   const decodedSubgroupId =
     record.subgroup_id === undefined ? null : nullableStringAt(record, "subgroup_id", path)
   if (
@@ -83,7 +101,7 @@ function decodeCriterion(
   }
 
   return {
-    id: stringAt(record, "id", path),
+    id: criterionId,
     baseline_version_id: baselineVersionId,
     group_id: groupId,
     subgroup_id: decodedSubgroupId,
@@ -103,10 +121,15 @@ function decodeSubgroup(
   value: unknown,
   path: string,
   baselineVersionId: string,
-  groupId: string
+  groupId: string,
+  identities: HierarchyIdentityState
 ): TechnicalConfigurationBaselineDecodedSubgroup {
   const record = recordAt(value, path)
-  const subgroupId = stringAt(record, "id", path)
+  const subgroupId = claimIdentity(
+    stringAt(record, "id", path),
+    identities.subgroupIds,
+    `${path}.id`
+  )
   if (
     stringAt(record, "baseline_version_id", path) !== baselineVersionId ||
     stringAt(record, "group_id", path) !== groupId
@@ -131,7 +154,8 @@ function decodeSubgroup(
         `${path}.criteria[${index}]`,
         baselineVersionId,
         groupId,
-        subgroupId
+        subgroupId,
+        identities
       )
     ),
   }
@@ -140,10 +164,11 @@ function decodeSubgroup(
 function decodeGroup(
   value: unknown,
   path: string,
-  baselineVersionId: string
+  baselineVersionId: string,
+  identities: HierarchyIdentityState
 ): TechnicalConfigurationBaselineDecodedGroup {
   const record = recordAt(value, path)
-  const groupId = stringAt(record, "id", path)
+  const groupId = claimIdentity(stringAt(record, "id", path), identities.groupIds, `${path}.id`)
   if (stringAt(record, "baseline_version_id", path) !== baselineVersionId) {
     invalidResponse(`${path}.scope`)
   }
@@ -161,10 +186,23 @@ function decodeGroup(
     updated_at: stringAt(record, "updated_at", path),
     updated_by: numberAt(record, "updated_by", path),
     criteria: record.criteria.map((criterion, index) =>
-      decodeCriterion(criterion, `${path}.criteria[${index}]`, baselineVersionId, groupId, null)
+      decodeCriterion(
+        criterion,
+        `${path}.criteria[${index}]`,
+        baselineVersionId,
+        groupId,
+        null,
+        identities
+      )
     ),
     subgroups: subgroups.map((subgroup, index) =>
-      decodeSubgroup(subgroup, `${path}.subgroups[${index}]`, baselineVersionId, groupId)
+      decodeSubgroup(
+        subgroup,
+        `${path}.subgroups[${index}]`,
+        baselineVersionId,
+        groupId,
+        identities
+      )
     ),
   }
 }
@@ -177,6 +215,11 @@ export function decodeTechnicalConfigurationBaselineDraftWire(
   const record = recordAt(value, path)
   const baselineVersionId = stringAt(record, "id", path)
   if (!Array.isArray(record.groups)) invalidResponse(`${path}.groups`)
+  const identities: HierarchyIdentityState = {
+    criterionIds: new Set(),
+    groupIds: new Set(),
+    subgroupIds: new Set(),
+  }
 
   return {
     id: baselineVersionId,
@@ -194,7 +237,7 @@ export function decodeTechnicalConfigurationBaselineDraftWire(
     updated_at: stringAt(record, "updated_at", path),
     updated_by: numberAt(record, "updated_by", path),
     groups: record.groups.map((group, index) =>
-      decodeGroup(group, `${path}.groups[${index}]`, baselineVersionId)
+      decodeGroup(group, `${path}.groups[${index}]`, baselineVersionId, identities)
     ),
   }
 }

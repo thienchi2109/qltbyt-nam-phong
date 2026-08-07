@@ -215,4 +215,60 @@ describe("technical configuration baseline hierarchy decoders", () => {
       })
     ).toThrow("invalid_response")
   })
+
+  it.each([
+    {
+      name: "duplicate group identity",
+      groups: [group(), group()],
+    },
+    {
+      name: "duplicate subgroup identity across groups",
+      groups: [
+        group({
+          criteria: [],
+          subgroups: [subgroup()],
+        }),
+        group({
+          id: "group-2",
+          criteria: [],
+          subgroups: [
+            subgroup({
+              group_id: "group-2",
+              criteria: [
+                criterion({
+                  id: "criterion-subgroup-2",
+                  group_id: "group-2",
+                  subgroup_id: "subgroup-1",
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    },
+    {
+      name: "duplicate criterion identity across direct and subgroup scopes",
+      groups: [
+        group({
+          criteria: [criterion({ id: "criterion-duplicate" })],
+          subgroups: [
+            subgroup({
+              criteria: [
+                criterion({
+                  id: "criterion-duplicate",
+                  subgroup_id: "subgroup-1",
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    },
+  ])("rejects conflicting persisted identities: $name", ({ groups }) => {
+    expect(() =>
+      decodeTechnicalConfigurationBaselineDraftWireResponse({
+        data: draft({ groups }),
+      })
+    ).toThrow("invalid_response")
+  })
 })

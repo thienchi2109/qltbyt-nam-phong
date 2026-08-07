@@ -111,6 +111,43 @@ function createRpc() {
 }
 
 describe("technical configuration baseline save runner", () => {
+  it("preserves future subgroup snapshots while saving a direct group change", async () => {
+    const baseDraft = createDraft()
+    baseDraft.groups[0].subgroups = [
+      {
+        id: "subgroup-1",
+        baseline_version_id: baseDraft.id,
+        group_id: baseDraft.groups[0].id,
+        name: "Điện nguồn",
+        sort_order: 1,
+        created_at: timestamp,
+        created_by: 1,
+        updated_at: timestamp,
+        updated_by: 1,
+        criteria: [
+          {
+            ...baseDraft.groups[0].criteria[0],
+            id: "criterion-subgroup-1",
+            criterion_code: "TC-0002",
+            subgroup_id: "subgroup-1",
+          },
+        ],
+      },
+    ]
+    const editorDraft = toTechnicalConfigurationBaselineEditorDraft(baseDraft)
+    editorDraft.groups[0].name = "Yêu cầu kỹ thuật cập nhật"
+    const rpc = createRpc()
+    rpc.updateGroup.mockResolvedValue({ data: groupMutation(5) })
+
+    const result = await saveTechnicalConfigurationBaselineEditorDraft({
+      baseDraft,
+      editorDraft,
+      rpc,
+    })
+
+    expect(result.baseDraft.groups[0].subgroups).toEqual(baseDraft.groups[0].subgroups)
+  })
+
   it("chains P2 revisions and maps created IDs before reordering", async () => {
     const baseDraft = createDraft()
     const editorDraft = toTechnicalConfigurationBaselineEditorDraft(baseDraft)
