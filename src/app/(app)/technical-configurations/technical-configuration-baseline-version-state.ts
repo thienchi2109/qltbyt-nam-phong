@@ -1,6 +1,13 @@
 import type { InfiniteData } from "@tanstack/react-query"
 
+import {
+  decodeTechnicalConfigurationBaselineDraftCreateWireResponse,
+  decodeTechnicalConfigurationBaselineDraftWire,
+  decodeTechnicalConfigurationBaselineVersionsListWireResponse,
+} from "./technical-configuration-baseline-decoders"
 import type {
+  TechnicalConfigurationBaselineDecodedDraft,
+  TechnicalConfigurationBaselineDecodedVersionsListWireResponse,
   TechnicalConfigurationBaselineDraftCreateWireResponse,
   TechnicalConfigurationBaselineDraftWire,
   TechnicalConfigurationBaselineVersionsListWireResponse,
@@ -9,10 +16,10 @@ import type {
 /** Maximum number of baseline versions requested per history page. */
 export const BASELINE_VERSION_PAGE_SIZE = 100
 /** Stable empty value used when version history has not loaded. */
-export const EMPTY_BASELINE_VERSIONS: TechnicalConfigurationBaselineDraftWire[] = []
+export const EMPTY_BASELINE_VERSIONS: TechnicalConfigurationBaselineDecodedDraft[] = []
 
 export type TechnicalConfigurationBaselineVersionPages = InfiniteData<
-  TechnicalConfigurationBaselineVersionsListWireResponse,
+  TechnicalConfigurationBaselineDecodedVersionsListWireResponse,
   number
 >
 
@@ -53,19 +60,26 @@ export function getTechnicalConfigurationBaselineQueryError(
 export function validateTechnicalConfigurationBaselineVersionPage(
   response: TechnicalConfigurationBaselineVersionsListWireResponse,
   precedingPages: TechnicalConfigurationBaselineVersionsListWireResponse[] = []
-): TechnicalConfigurationBaselineVersionsListWireResponse {
-  const pageStartOffset = (response.page - 1) * response.page_size
-  const loadedVersionIds = new Set(
-    [...precedingPages, response].flatMap((page) => page.data.map((version) => version.id))
+): TechnicalConfigurationBaselineDecodedVersionsListWireResponse {
+  const decodedResponse = decodeTechnicalConfigurationBaselineVersionsListWireResponse(response)
+  const decodedPrecedingPages = precedingPages.map((page) =>
+    decodeTechnicalConfigurationBaselineVersionsListWireResponse(page)
   )
-  const reachedReportedEnd = response.page * response.page_size >= response.total
+  const pageStartOffset = (decodedResponse.page - 1) * decodedResponse.page_size
+  const loadedVersionIds = new Set(
+    [...decodedPrecedingPages, decodedResponse].flatMap((page) =>
+      page.data.map((version) => version.id)
+    )
+  )
+  const reachedReportedEnd =
+    decodedResponse.page * decodedResponse.page_size >= decodedResponse.total
   if (
-    (response.data.length === 0 && pageStartOffset < response.total) ||
-    (reachedReportedEnd && loadedVersionIds.size < response.total)
+    (decodedResponse.data.length === 0 && pageStartOffset < decodedResponse.total) ||
+    (reachedReportedEnd && loadedVersionIds.size < decodedResponse.total)
   ) {
     throw new Error(BASELINE_VERSION_HISTORY_INCOMPLETE)
   }
-  return response
+  return decodedResponse
 }
 
 /** Returns the first-draft creation error visible to the empty state. */
@@ -84,17 +98,18 @@ export function getTechnicalConfigurationBaselineCreateError(
 /** Separates a newly created version snapshot from its dossier revision metadata. */
 export function splitTechnicalConfigurationBaselineCreatedVersion(
   data: TechnicalConfigurationBaselineDraftCreateWireResponse["data"]
-): { version: TechnicalConfigurationBaselineDraftWire; dossierRevision: number } {
-  const { dossier_revision: dossierRevision, ...version } = data
+): { version: TechnicalConfigurationBaselineDecodedDraft; dossierRevision: number } {
+  const decoded = decodeTechnicalConfigurationBaselineDraftCreateWireResponse({ data })
+  const { dossier_revision: dossierRevision, ...version } = decoded.data
   return { version, dossierRevision }
 }
 
 /** Flattens paginated history into unique versions ordered newest first. */
 export function flattenTechnicalConfigurationBaselineVersionPages(
   data: TechnicalConfigurationBaselineVersionPages | undefined
-): TechnicalConfigurationBaselineDraftWire[] {
+): TechnicalConfigurationBaselineDecodedDraft[] {
   if (!data) return EMPTY_BASELINE_VERSIONS
-  const versions = new Map<string, TechnicalConfigurationBaselineDraftWire>()
+  const versions = new Map<string, TechnicalConfigurationBaselineDecodedDraft>()
   for (const page of data.pages) {
     for (const version of page.data) {
       if (!versions.has(version.id)) versions.set(version.id, version)
@@ -143,7 +158,8 @@ export function getTechnicalConfigurationBaselineNextPage(
 export function toTechnicalConfigurationBaselineVersionPages(
   response: TechnicalConfigurationBaselineVersionsListWireResponse
 ): TechnicalConfigurationBaselineVersionPages {
-  return { pages: [response], pageParams: [response.page] }
+  const decodedResponse = decodeTechnicalConfigurationBaselineVersionsListWireResponse(response)
+  return { pages: [decodedResponse], pageParams: [decodedResponse.page] }
 }
 
 /** Reconciles a refreshed first page with already loaded offset-based history. */
@@ -151,37 +167,38 @@ export function replaceTechnicalConfigurationBaselineFirstPageInPages(
   current: TechnicalConfigurationBaselineVersionPages | undefined,
   response: TechnicalConfigurationBaselineVersionsListWireResponse
 ): TechnicalConfigurationBaselineVersionPages {
+  const decodedResponse = decodeTechnicalConfigurationBaselineVersionsListWireResponse(response)
   if (!current || current.pages.length === 0) {
-    return toTechnicalConfigurationBaselineVersionPages(response)
+    return toTechnicalConfigurationBaselineVersionPages(decodedResponse)
   }
 
-  const versions = new Map<string, TechnicalConfigurationBaselineDraftWire>()
-  for (const version of response.data) versions.set(version.id, version)
+  const versions = new Map<string, TechnicalConfigurationBaselineDecodedDraft>()
+  for (const version of decodedResponse.data) versions.set(version.id, version)
   for (const page of current.pages) {
     for (const version of page.data) {
       if (!versions.has(version.id)) versions.set(version.id, version)
     }
   }
 
-  const loadedCapacity = current.pages.length * response.page_size
+  const loadedCapacity = current.pages.length * decodedResponse.page_size
   const reconciledVersions = [...versions.values()]
     .toSorted((left, right) => right.version_number - left.version_number)
-    .slice(0, Math.min(response.total, loadedCapacity))
+    .slice(0, Math.min(decodedResponse.total, loadedCapacity))
 
   if (reconciledVersions.length === 0) {
-    return toTechnicalConfigurationBaselineVersionPages(response)
+    return toTechnicalConfigurationBaselineVersionPages(decodedResponse)
   }
 
   const pages = Array.from(
-    { length: Math.ceil(reconciledVersions.length / response.page_size) },
+    { length: Math.ceil(reconciledVersions.length / decodedResponse.page_size) },
     (_, pageIndex) => ({
       data: reconciledVersions.slice(
-        pageIndex * response.page_size,
-        (pageIndex + 1) * response.page_size
+        pageIndex * decodedResponse.page_size,
+        (pageIndex + 1) * decodedResponse.page_size
       ),
-      total: response.total,
+      total: decodedResponse.total,
       page: pageIndex + 1,
-      page_size: response.page_size,
+      page_size: decodedResponse.page_size,
     })
   )
 
@@ -197,20 +214,23 @@ export function replaceTechnicalConfigurationBaselineVersionInPages(
   current: TechnicalConfigurationBaselineVersionPages | undefined,
   version: TechnicalConfigurationBaselineDraftWire
 ): TechnicalConfigurationBaselineVersionPages {
+  const decodedVersion = decodeTechnicalConfigurationBaselineDraftWire(version)
   if (!current || current.pages.length === 0) {
     return toTechnicalConfigurationBaselineVersionPages({
-      data: [version],
+      data: [decodedVersion],
       total: 1,
       page: 1,
       page_size: BASELINE_VERSION_PAGE_SIZE,
     })
   }
-  const exists = current.pages.some((page) => page.data.some((item) => item.id === version.id))
+  const exists = current.pages.some((page) =>
+    page.data.some((item) => item.id === decodedVersion.id)
+  )
   const pages = current.pages.map((page, pageIndex) => {
-    const data = page.data.map((item) => (item.id === version.id ? version : item))
+    const data = page.data.map((item) => (item.id === decodedVersion.id ? decodedVersion : item))
     return {
       ...page,
-      data: !exists && pageIndex === 0 ? [version, ...data] : data,
+      data: !exists && pageIndex === 0 ? [decodedVersion, ...data] : data,
       total: exists ? page.total : page.total + 1,
     }
   })

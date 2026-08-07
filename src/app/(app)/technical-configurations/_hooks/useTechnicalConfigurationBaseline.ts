@@ -4,6 +4,11 @@ import {
   callTechnicalConfigurationRpc,
   getTechnicalConfigurationDossier,
 } from "../technical-configuration-rpc"
+import {
+  decodeTechnicalConfigurationBaselineDraftCreateWireResponse,
+  decodeTechnicalConfigurationBaselineDraftWireResponse,
+  decodeTechnicalConfigurationBaselineVersionsListWireResponse,
+} from "../technical-configuration-baseline-decoders"
 import type {
   TechnicalConfigurationBaselineBulkPreviewRpcArgs,
   TechnicalConfigurationBaselineBulkPreviewWireResponse,
@@ -15,9 +20,7 @@ import type {
   TechnicalConfigurationBaselineCriterionWireResponse,
   TechnicalConfigurationBaselineDeleteWireResponse,
   TechnicalConfigurationBaselineDraftCreateRpcArgs,
-  TechnicalConfigurationBaselineDraftCreateWireResponse,
   TechnicalConfigurationBaselineDraftGetRpcArgs,
-  TechnicalConfigurationBaselineDraftWireResponse,
   TechnicalConfigurationBaselineGroupCreateRpcArgs,
   TechnicalConfigurationBaselineGroupDeleteRpcArgs,
   TechnicalConfigurationBaselineGroupsReorderRpcArgs,
@@ -27,7 +30,6 @@ import type {
   TechnicalConfigurationBaselineImportRpcArgs,
   TechnicalConfigurationBaselineLockRpcArgs,
   TechnicalConfigurationBaselineVersionsListRpcArgs,
-  TechnicalConfigurationBaselineVersionsListWireResponse,
 } from "../baseline-types"
 
 /** Typed client wrappers for baseline draft and lifecycle RPCs. */
@@ -36,34 +38,29 @@ export const technicalConfigurationBaselineRpc = {
     return getTechnicalConfigurationDossier(dossierId)
   },
   createDraft(args: TechnicalConfigurationBaselineDraftCreateRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
-      BASELINE_RPC_FUNCTIONS.createDraft,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.createDraft, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftCreateWireResponse)
   },
   getDraft(args: TechnicalConfigurationBaselineDraftGetRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
-      BASELINE_RPC_FUNCTIONS.getDraft,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.getDraft, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
   listVersions(args: TechnicalConfigurationBaselineVersionsListRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineVersionsListWireResponse>(
-      BASELINE_RPC_FUNCTIONS.listVersions,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.listVersions, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineVersionsListWireResponse)
   },
   lockVersion(args: TechnicalConfigurationBaselineLockRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
-      BASELINE_RPC_FUNCTIONS.lockVersion,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.lockVersion, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
   copyVersion(args: TechnicalConfigurationBaselineCopyRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftCreateWireResponse>(
-      BASELINE_RPC_FUNCTIONS.copyVersion,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.copyVersion, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftCreateWireResponse)
   },
   createGroup(args: TechnicalConfigurationBaselineGroupCreateRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineGroupWireResponse>(
@@ -84,10 +81,9 @@ export const technicalConfigurationBaselineRpc = {
     )
   },
   reorderGroups(args: TechnicalConfigurationBaselineGroupsReorderRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
-      BASELINE_RPC_FUNCTIONS.reorderGroups,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.reorderGroups, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
   createCriterion(args: TechnicalConfigurationBaselineCriterionCreateRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineCriterionWireResponse>(
@@ -108,10 +104,9 @@ export const technicalConfigurationBaselineRpc = {
     )
   },
   reorderCriteria(args: TechnicalConfigurationBaselineCriteriaReorderRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
-      BASELINE_RPC_FUNCTIONS.reorderCriteria,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.reorderCriteria, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
   previewBulk(args: TechnicalConfigurationBaselineBulkPreviewRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>(
@@ -126,10 +121,9 @@ export const technicalConfigurationBaselineRpc = {
     )
   },
   applyImport(args: TechnicalConfigurationBaselineImportRpcArgs) {
-    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDraftWireResponse>(
-      BASELINE_RPC_FUNCTIONS.applyImport,
-      { ...args }
-    )
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.applyImport, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
 }
 

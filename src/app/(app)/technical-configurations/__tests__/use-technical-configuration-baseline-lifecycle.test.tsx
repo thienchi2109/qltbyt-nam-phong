@@ -10,11 +10,14 @@ import {
   getBaselineEditorRpcMock,
   renderBaselineEditor,
 } from "./use-technical-configuration-baseline-editor-fixtures"
+import {
+  expectLegacyBaselineVersionsNormalized,
+  withBaselineVersionId,
+} from "./technical-configuration-baseline-test-helpers"
 
 const rpc = getBaselineEditorRpcMock()
 const locked = {
-  ...draft,
-  id: "locked-1",
+  ...withBaselineVersionId(draft, "locked-1"),
   version_number: 2,
   status: "locked" as const,
   locked_at: "2026-07-14T08:30:00.000Z",
@@ -70,7 +73,7 @@ describe("useTechnicalConfigurationBaselineEditor lifecycle safety", () => {
     expect(result.current.editorDraft?.groups[0]?.criteria[0]?.requirementText).toBe(
       "Nguồn điện dự phòng"
     )
-    expect(result.current.versions).toEqual([draft])
+    expectLegacyBaselineVersionsNormalized(result.current.versions, [draft])
   })
 
   it("localizes an incomplete initial history page as a query error", async () => {
@@ -177,8 +180,7 @@ describe("useTechnicalConfigurationBaselineEditor lifecycle safety", () => {
 
   it("recovers a concurrent copy race by loading the existing draft", async () => {
     const existingDraft = {
-      ...draft,
-      id: "existing-draft",
+      ...withBaselineVersionId(draft, "existing-draft"),
       version_number: 3,
     }
     rpc.listVersions
@@ -198,8 +200,7 @@ describe("useTechnicalConfigurationBaselineEditor lifecycle safety", () => {
     })
     rpc.createDraft.mockResolvedValue({
       data: {
-        ...draft,
-        id: "next-draft",
+        ...withBaselineVersionId(draft, "next-draft"),
         version_number: 4,
         dossier_revision: 5,
       },

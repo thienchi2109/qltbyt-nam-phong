@@ -11,6 +11,7 @@ export interface TechnicalConfigurationBaselineCriterionWire {
   id: string
   baseline_version_id: string
   group_id: string
+  subgroup_id?: string | null
   criterion_code: string
   title: string | null
   requirement_text: string
@@ -20,6 +21,19 @@ export interface TechnicalConfigurationBaselineCriterionWire {
   created_by: number
   updated_at: string
   updated_by: number
+}
+
+export interface TechnicalConfigurationBaselineSubgroupWire {
+  id: string
+  baseline_version_id: string
+  group_id: string
+  name: string
+  sort_order: number
+  created_at: string
+  created_by: number
+  updated_at: string
+  updated_by: number
+  criteria: TechnicalConfigurationBaselineCriterionWire[]
 }
 
 export interface TechnicalConfigurationBaselineGroupWire {
@@ -32,6 +46,7 @@ export interface TechnicalConfigurationBaselineGroupWire {
   updated_at: string
   updated_by: number
   criteria: TechnicalConfigurationBaselineCriterionWire[]
+  subgroups?: TechnicalConfigurationBaselineSubgroupWire[]
 }
 
 export interface TechnicalConfigurationBaselineDraftWire {
@@ -52,8 +67,41 @@ export interface TechnicalConfigurationBaselineDraftWire {
   groups: TechnicalConfigurationBaselineGroupWire[]
 }
 
+export interface TechnicalConfigurationBaselineDecodedCriterion extends Omit<
+  TechnicalConfigurationBaselineCriterionWire,
+  "subgroup_id"
+> {
+  subgroup_id: string | null
+}
+
+export interface TechnicalConfigurationBaselineDecodedSubgroup extends Omit<
+  TechnicalConfigurationBaselineSubgroupWire,
+  "criteria"
+> {
+  criteria: TechnicalConfigurationBaselineDecodedCriterion[]
+}
+
+export interface TechnicalConfigurationBaselineDecodedGroup extends Omit<
+  TechnicalConfigurationBaselineGroupWire,
+  "criteria" | "subgroups"
+> {
+  criteria: TechnicalConfigurationBaselineDecodedCriterion[]
+  subgroups: TechnicalConfigurationBaselineDecodedSubgroup[]
+}
+
+export interface TechnicalConfigurationBaselineDecodedDraft extends Omit<
+  TechnicalConfigurationBaselineDraftWire,
+  "groups"
+> {
+  groups: TechnicalConfigurationBaselineDecodedGroup[]
+}
+
 export interface TechnicalConfigurationBaselineDraftWireResponse {
   data: TechnicalConfigurationBaselineDraftWire
+}
+
+export interface TechnicalConfigurationBaselineDecodedDraftWireResponse {
+  data: TechnicalConfigurationBaselineDecodedDraft
 }
 
 export interface TechnicalConfigurationBaselineDraftCreateWireResponse {
@@ -62,8 +110,21 @@ export interface TechnicalConfigurationBaselineDraftCreateWireResponse {
   }
 }
 
+export interface TechnicalConfigurationBaselineDecodedDraftCreateWireResponse {
+  data: TechnicalConfigurationBaselineDecodedDraft & {
+    dossier_revision: number
+  }
+}
+
 export interface TechnicalConfigurationBaselineVersionsListWireResponse {
   data: TechnicalConfigurationBaselineDraftWire[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface TechnicalConfigurationBaselineDecodedVersionsListWireResponse {
+  data: TechnicalConfigurationBaselineDecodedDraft[]
   total: number
   page: number
   page_size: number

@@ -69,11 +69,11 @@ Depends on: P1A schema merged or represented in generated type fixtures.
 Deploy boundary: clients accept both old responses without subgroup fields and future
 responses with subgroup arrays; no producer or UI behavior changes.
 
-- [ ] P1B.1 Write failing decoder/editor-state tests for optional subgroup arrays,
+- [x] P1B.1 Write failing decoder/editor-state tests for optional subgroup arrays,
       direct criteria, subgroup criteria, and invalid cross-scope ownership.
-- [ ] P1B.2 Extend wire types, decoders, query cache models, and generated Supabase
+- [x] P1B.2 Extend wire types, decoders, query cache models, and generated Supabase
       types without requiring subgroup fields from old RPC responses.
-- [ ] P1B.3 Keep all current baseline, comparison, evaluation, and export tests green
+- [x] P1B.3 Keep all current baseline, comparison, evaluation, and export tests green
       with legacy two-level fixtures.
 
 ## Phase P1C - Hierarchy-Aware Read Snapshots

@@ -9,6 +9,24 @@ vi.mock("../technical-configuration-rpc", () => ({
   callTechnicalConfigurationRpc: vi.fn(),
 }))
 
+const legacyDraft = {
+  id: "draft-1",
+  dossier_id: "dossier-1",
+  version_number: 1,
+  status: "draft",
+  source_baseline_version_id: null,
+  source_version_number: null,
+  next_criterion_number: 1,
+  revision: 4,
+  locked_at: null,
+  locked_by: null,
+  created_at: "2026-08-07T00:00:00.000Z",
+  created_by: 1,
+  updated_at: "2026-08-07T00:00:00.000Z",
+  updated_by: 1,
+  groups: [],
+} as const
+
 describe("technical configuration baseline RPC contract", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -36,7 +54,21 @@ describe("technical configuration baseline RPC contract", () => {
   })
 
   it("passes snake_case arguments through the module-local typed adapter", async () => {
-    vi.mocked(callTechnicalConfigurationRpc).mockResolvedValue({ data: { id: "draft-1" } })
+    vi.mocked(callTechnicalConfigurationRpc)
+      .mockResolvedValueOnce({
+        data: { ...legacyDraft, dossier_revision: 4 },
+      })
+      .mockResolvedValueOnce({ data: { id: "criterion-1" } })
+      .mockResolvedValueOnce({
+        data: [legacyDraft],
+        total: 1,
+        page: 2,
+        page_size: 25,
+      })
+      .mockResolvedValueOnce({ data: legacyDraft })
+      .mockResolvedValueOnce({
+        data: { ...legacyDraft, dossier_revision: 6 },
+      })
 
     await technicalConfigurationBaselineRpc.createDraft({
       p_dossier_id: "dossier-1",
@@ -127,7 +159,9 @@ describe("technical configuration baseline RPC contract", () => {
   })
 
   it("passes the same canonical import contract to preview and apply", async () => {
-    vi.mocked(callTechnicalConfigurationRpc).mockResolvedValue({ data: {}, errors: [] })
+    vi.mocked(callTechnicalConfigurationRpc)
+      .mockResolvedValueOnce({ data: {}, errors: [] })
+      .mockResolvedValueOnce({ data: legacyDraft })
     const args = {
       p_baseline_version_id: "draft-1",
       p_template_metadata: {

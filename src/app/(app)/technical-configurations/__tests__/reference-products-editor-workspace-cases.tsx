@@ -12,6 +12,7 @@ import {
   type BaselineVersionRpcMocks,
   type ReferenceProductRpcMocks,
 } from "./reference-products-fixtures"
+import { withBaselineVersionId } from "./technical-configuration-baseline-test-helpers"
 
 type RegisterReferenceProductEditorWorkspaceTestsArgs = {
   baselineRpc: BaselineVersionRpcMocks
@@ -334,8 +335,7 @@ export function registerReferenceProductEditorWorkspaceTests({
     it("resets search and selection when returning to a baseline version", async () => {
       const user = userEvent.setup()
       const lockedVersion = {
-        ...baselineVersion,
-        id: "version-2",
+        ...withBaselineVersionId(baselineVersion, "version-2"),
         version_number: 2,
         status: "locked" as const,
         locked_at: "2026-07-18T00:00:00.000Z",

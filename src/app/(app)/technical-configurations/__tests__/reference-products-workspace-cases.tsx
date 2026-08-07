@@ -14,6 +14,7 @@ import {
   type BaselineVersionRpcMocks,
   type ReferenceProductRpcMocks,
 } from "./reference-products-fixtures"
+import { withBaselineVersionId } from "./technical-configuration-baseline-test-helpers"
 
 type RegisterReferenceProductWorkspaceTestsArgs = {
   baselineRpc: BaselineVersionRpcMocks
@@ -71,8 +72,7 @@ export function registerReferenceProductWorkspaceTests({
       const user = userEvent.setup()
       const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
       const lockedVersion = {
-        ...baselineVersion,
-        id: "version-2",
+        ...withBaselineVersionId(baselineVersion, "version-2"),
         version_number: 2,
         status: "locked" as const,
         locked_at: "2026-07-18T00:00:00.000Z",
@@ -129,8 +129,7 @@ export function registerReferenceProductWorkspaceTests({
         index === 0
           ? currentVersion
           : {
-              ...baselineVersion,
-              id: `version-${101 - index}`,
+              ...withBaselineVersionId(baselineVersion, `version-${101 - index}`),
               version_number: 101 - index,
               status: "locked" as const,
               locked_at: "2026-07-17T01:00:00.000Z",
@@ -138,8 +137,7 @@ export function registerReferenceProductWorkspaceTests({
             }
       )
       const olderVersion = {
-        ...baselineVersion,
-        id: "version-older",
+        ...withBaselineVersionId(baselineVersion, "version-older"),
         version_number: 1,
         status: "locked" as const,
         locked_at: "2026-07-17T01:00:00.000Z",
@@ -229,8 +227,7 @@ export function registerReferenceProductWorkspaceTests({
     it("preserves a dirty draft when the versions query selects a newer draft", async () => {
       const user = userEvent.setup()
       const newerVersion = {
-        ...baselineVersion,
-        id: "version-2",
+        ...withBaselineVersionId(baselineVersion, "version-2"),
         version_number: 2,
         revision: baselineVersion.revision + 1,
       }

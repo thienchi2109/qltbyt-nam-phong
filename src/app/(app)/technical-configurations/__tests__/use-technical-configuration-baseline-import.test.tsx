@@ -24,6 +24,7 @@ import {
   mockVersions,
   renderTab,
 } from "./technical-configuration-baseline-tab-fixtures"
+import { expectLegacyBaselineVersionNormalized } from "./technical-configuration-baseline-test-helpers"
 
 const rpc = getBaselineRpcMock()
 const codec = getBaselineImportCodecMock()
@@ -112,7 +113,7 @@ describe("useTechnicalConfigurationBaselineImport workflow", () => {
     const cachedVersions = queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(
       technicalConfigurationBaselineVersionsQueryKey(dossier.id)
     )
-    expect(cachedVersions?.pages[0].data[0]).toEqual(imported)
+    expectLegacyBaselineVersionNormalized(cachedVersions?.pages[0].data[0], imported)
     expect(rpc.getDossier).toHaveBeenCalledWith(dossier.id)
     expect(
       queryClient.getQueryData(technicalConfigurationDossierDetailQueryKey(dossier.id))
@@ -211,7 +212,7 @@ describe("useTechnicalConfigurationBaselineImport workflow", () => {
     const cachedVersions = queryClient.getQueryData<TechnicalConfigurationBaselineVersionPages>(
       technicalConfigurationBaselineVersionsQueryKey(dossier.id)
     )
-    expect(cachedVersions?.pages[0].data[0]).toEqual(refreshed)
+    expectLegacyBaselineVersionNormalized(cachedVersions?.pages[0].data[0], refreshed)
     expect(rpc.applyImport).toHaveBeenCalledTimes(1)
   })
 

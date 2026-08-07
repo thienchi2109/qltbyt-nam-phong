@@ -8,6 +8,10 @@ import {
   getBaselineEditorRpcMock,
   renderBaselineEditor,
 } from "./use-technical-configuration-baseline-editor-fixtures"
+import {
+  expectLegacyBaselineVersionsNormalized,
+  withBaselineVersionId,
+} from "./technical-configuration-baseline-test-helpers"
 
 const rpc = getBaselineEditorRpcMock()
 
@@ -68,8 +72,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
 
   it("loads older version-history pages on demand", async () => {
     const versions = Array.from({ length: 101 }, (_, index) => ({
-      ...draft,
-      id: `version-${101 - index}`,
+      ...withBaselineVersionId(draft, `version-${101 - index}`),
       version_number: 101 - index,
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
@@ -85,14 +88,16 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
 
     const { result } = renderBaselineEditor()
 
-    await waitFor(() => expect(result.current.versions).toEqual(versions.slice(0, 100)))
+    await waitFor(() =>
+      expectLegacyBaselineVersionsNormalized(result.current.versions, versions.slice(0, 100))
+    )
     expect(result.current.hasMoreVersions).toBe(true)
 
     await act(async () => {
       await result.current.onLoadMoreVersions()
     })
 
-    await waitFor(() => expect(result.current.versions).toEqual(versions))
+    await waitFor(() => expectLegacyBaselineVersionsNormalized(result.current.versions, versions))
     expect(result.current.hasMoreVersions).toBe(false)
     expect(rpc.listVersions).toHaveBeenLastCalledWith({
       p_dossier_id: dossier.id,
@@ -104,8 +109,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
   it("recovers when a concurrent insert shifts offset pages during load more", async () => {
     const createVersions = (highestVersion: number, count: number) =>
       Array.from({ length: count }, (_, index) => ({
-        ...draft,
-        id: `version-${highestVersion - index}`,
+        ...withBaselineVersionId(draft, `version-${highestVersion - index}`),
         version_number: highestVersion - index,
         status: "locked" as const,
         locked_at: "2026-07-14T08:30:00.000Z",
@@ -165,8 +169,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
 
   it("keeps a selected page-2 locked version when refreshing page 1", async () => {
     const createVersion = (versionNumber: number) => ({
-      ...draft,
-      id: `version-${versionNumber}`,
+      ...withBaselineVersionId(draft, `version-${versionNumber}`),
       version_number: versionNumber,
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
@@ -241,8 +244,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
 
   it("classifies stale draft creation as a recoverable conflict", async () => {
     const locked = {
-      ...draft,
-      id: "locked-1",
+      ...withBaselineVersionId(draft, "locked-1"),
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
       locked_by: 42,
@@ -273,8 +275,7 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
 
   it("surfaces a failed history refresh after stale draft creation", async () => {
     const locked = {
-      ...draft,
-      id: "locked-1",
+      ...withBaselineVersionId(draft, "locked-1"),
       status: "locked" as const,
       locked_at: "2026-07-14T08:30:00.000Z",
       locked_by: 42,
