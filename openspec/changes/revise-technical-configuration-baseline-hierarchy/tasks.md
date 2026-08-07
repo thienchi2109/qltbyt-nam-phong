@@ -33,15 +33,15 @@
 
 Deploy boundary: documentation and issue planning only; no runtime change.
 
-- [ ] P0.1 Confirm `add-technical-configuration-comparison` is the landed mainline
+- [x] P0.1 Confirm `add-technical-configuration-comparison` is the landed mainline
       baseline and record requirement/code drift since this proposal.
-- [ ] P0.2 Inspect live hierarchy tables, functions, grants, policies, indexes, and
+- [x] P0.2 Inspect live hierarchy tables, functions, grants, policies, indexes, and
       representative counts through read-only Supabase MCP.
-- [ ] P0.3 Re-run Code Review Graph and GitNexus impact for baseline snapshot, copy,
+- [x] P0.3 Re-run Code Review Graph and GitNexus impact for baseline snapshot, copy,
       lock, import, comparison, evaluation, progress, and result export.
-- [ ] P0.4 Create one issue per leaf below with exact dependencies, estimated
+- [x] P0.4 Create one issue per leaf below with exact dependencies, estimated
       hand-written/generated diff sizes, test commands, deploy checks, and rollback notes.
-- [ ] P0.5 Lock explicit file-byte and meaningful-row limits before P3B, and split any
+- [x] P0.5 Lock explicit file-byte and meaningful-row limits before P3B, and split any
       leaf whose hand-written estimate exceeds the review target when a deploy-safe split
       exists.
 
