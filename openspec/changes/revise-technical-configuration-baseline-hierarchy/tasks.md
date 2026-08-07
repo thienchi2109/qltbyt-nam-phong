@@ -83,12 +83,12 @@ Depends on: P1A applied and phase-gated, plus P1B deployed.
 Deploy boundary: read responses may include subgroup arrays; all deployed consumers
 already tolerate both shapes. Existing writes and UI remain two-level.
 
-- [ ] P1C.1 Write SQL/RPC contract tests for canonical section/subgroup/criterion order
+- [x] P1C.1 Write SQL/RPC contract tests for canonical section/subgroup/criterion order
       and direct criteria.
-- [ ] P1C.2 Extend baseline snapshot, draft get, version list/detail, history, and
+- [x] P1C.2 Extend baseline snapshot, draft get, version list/detail, history, and
       evidence ownership reads to return the hierarchy.
-- [ ] P1C.3 Preserve bounded pagination and avoid N+1 subgroup/criterion reads.
-- [ ] P1C.4 Verify legacy drafts and locked versions return empty subgroup arrays
+- [x] P1C.3 Preserve bounded pagination and avoid N+1 subgroup/criterion reads.
+- [x] P1C.4 Verify legacy drafts and locked versions return empty subgroup arrays
       without behavior regressions.
 
 ## Phase P1D - Hierarchy Copy And Lock Snapshots
