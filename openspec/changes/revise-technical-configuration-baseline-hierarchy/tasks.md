@@ -20,6 +20,8 @@
   baseline, comparison, evaluation, and export readers are all hierarchy-aware.
 - Production controls that can create subgroup data remain unmounted until the
   server-side activation leaf is deployed.
+- Every leaf commits and pushes through enabled Lefthook gates. Do not bypass staged
+  Prettier, diff-aware verification, or pre-push typecheck.
 - Database writes and migration application require explicit user authorization for
   that specific operation.
 - Preserve criterion IDs and codes across every migration, move, import, copy, and
@@ -331,8 +333,9 @@ Depends on: P3D, P4C, P5B, P5C, P5D.
 Deploy boundary: subgroup mutation RPCs and XLSX v2 apply become callable only after
 all readers are hierarchy-aware; production UI controls remain unmounted.
 
-- [ ] P6A.1 Run formatting, `verify:no-explicit-any`, `verify:dedupe`, typecheck,
-      focused tests, full technical-configuration regressions, and React Doctor.
+- [ ] P6A.1 Run strict OpenSpec validation, formatting, `verify:no-explicit-any`,
+      `verify:dedupe`, typecheck, focused tests, full technical-configuration regressions,
+      and React Doctor.
 - [ ] P6A.2 Browser-test both downloads, round-trip import, invalid hierarchy,
       destructive replacement, hierarchy authoring, aggregate evaluation, comparison, and
       result export while activation remains off.
@@ -368,5 +371,9 @@ Deploy boundary: controlled acceptance and closeout only.
       verification.
 - [ ] P6C.2 Confirm legacy workbook compatibility and document the compatibility
       window plus recovery steps.
-- [ ] P6C.3 Complete independent review, user acceptance, issue closure, merge, remote
-      sync, and OpenSpec archive only after every leaf is verified.
+- [ ] P6C.3 Require independent specification review approval and user acceptance,
+      close completed issues, merge verified PRs, and archive the OpenSpec change only
+      after deployment.
+- [ ] P6C.4 Run `git pull --rebase`, push any remaining closeout commit, confirm status
+      is up to date with origin, clear stale stashes, prune remote branches, and record
+      the final handoff.

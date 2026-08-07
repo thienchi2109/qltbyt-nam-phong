@@ -58,6 +58,15 @@ nhóm con tùy chọn và tiêu chí đánh giá.
 - **THEN** hệ thống giữ nguyên criterion ID và `criterion_code`
 - **AND** giữ nguyên citation, option response và assessment đã liên kết
 
+#### Scenario: Generate stable criterion codes
+
+- **WHEN** người dùng thêm tiêu chí thủ công, qua nhập nhanh hoặc bằng dòng XLSX mới
+- **THEN** hệ thống tự sinh mã kế tiếp theo dạng `TC-0001`, `TC-0002` trong phạm vi
+  baseline version
+- **AND** người dùng không nhập hoặc sửa mã
+- **AND** reorder và move không đổi mã, copy giữ nguyên mã và hệ thống không tái sử
+  dụng số của tiêu chí đã xóa
+
 #### Scenario: Keep content columns stable
 
 - **WHEN** người dùng mô tả yêu cầu kỹ thuật
@@ -199,6 +208,7 @@ chí hậu duệ mà không tạo assessment riêng cho structural row.
 #### Scenario: Show an all-not-applicable aggregate
 
 - **WHEN** mọi tiêu chí hậu duệ đều `not_applicable`
+- **AND** có ít nhất một tiêu chí hậu duệ
 - **THEN** structural row hiển thị `Không áp dụng`
 
 #### Scenario: Show a passing aggregate
