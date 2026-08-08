@@ -58,6 +58,26 @@ function getFunctionBlock(migrationSource: string, functionName: string): string
   return migrationSource.slice(start, end + 4)
 }
 
+function getFunctionBlocks(migrationSource: string, functionName: string): string[] {
+  const marker = `CREATE OR REPLACE FUNCTION public.${functionName}`
+  const blocks: string[] = []
+  let offset = 0
+
+  while (offset < migrationSource.length) {
+    const start = migrationSource.indexOf(marker, offset)
+    if (start < 0) {
+      break
+    }
+
+    const end = migrationSource.indexOf("\n$$;", start)
+    expect(end).toBeGreaterThan(start)
+    blocks.push(migrationSource.slice(start, end + 4))
+    offset = end + 4
+  }
+
+  return blocks
+}
+
 describe("technical configuration migration test helpers", () => {
   it("reads the final applied function definition from concatenated migrations", () => {
     const migrationSource = `
@@ -168,9 +188,14 @@ describe("technical configuration baseline P4 locking migration", () => {
     const baselineSource = getBaselineMigrationSource()
 
     for (const functionName of BASELINE_MUTATION_FUNCTIONS) {
-      expect(getFunctionBlock(baselineSource, functionName)).toContain(
-        "_technical_configuration_require_editable_baseline_version"
-      )
+      const blocks = getFunctionBlocks(baselineSource, functionName)
+      expect(blocks.length).toBeGreaterThan(0)
+
+      for (const block of blocks) {
+        expect(block).toMatch(
+          /_technical_configuration_(require_editable_baseline_version|baseline_hierarchy_context)/
+        )
+      }
     }
   })
 

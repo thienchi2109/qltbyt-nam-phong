@@ -301,13 +301,13 @@ describe("technical configuration baseline P1D hierarchy snapshot migration", ()
       )
     })
 
-    it("marks P1D complete without advancing P1E", () => {
+    it("keeps P1D complete after P1E advances", () => {
       const tasksSource = readFileSync(TASKS_PATH, "utf8")
 
       for (const task of ["P1D.1", "P1D.2", "P1D.3"]) {
         expect(tasksSource).toContain(`- [x] ${task}`)
       }
-      expect(tasksSource).toContain("- [ ] P1E.1")
+      expect(tasksSource).toContain("- [x] P1E.1")
     })
   })
 })

@@ -112,13 +112,13 @@ Depends on: P1D.
 Deploy boundary: hierarchy mutation RPCs exist but remain ungranted or absent from the
 RPC allowlist; legacy group/criterion operations remain valid.
 
-- [ ] P1E.1 Write failing tests for subgroup create/update/delete/reorder and criterion
+- [x] P1E.1 Write failing tests for subgroup create/update/delete/reorder and criterion
       moves between direct and subgroup ownership.
-- [ ] P1E.2 Add guarded subgroup mutations and hierarchy-aware criterion mutation/
+- [x] P1E.2 Add guarded subgroup mutations and hierarchy-aware criterion mutation/
       reorder contracts with optimistic revision protection.
-- [ ] P1E.3 Preserve criterion IDs/codes and normalize direct criteria before subgroup
+- [x] P1E.3 Preserve criterion IDs/codes and normalize direct criteria before subgroup
       blocks after every structural mutation.
-- [ ] P1E.4 Keep subgroup mutation functions ungranted/unallowlisted until P6A and prove
+- [x] P1E.4 Keep subgroup mutation functions ungranted/unallowlisted until P6A and prove
       locked versions, foreign-scope IDs, unsupported depth, and partial failures are
       rejected atomically.
 
