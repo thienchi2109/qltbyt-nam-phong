@@ -146,15 +146,15 @@ Depends on: P2A.
 Deploy boundary: server keeps legacy apply working and can validate the new payload,
 but rejects XLSX v2 apply as not activated until P6A.
 
-- [ ] P2B.1 Write failing apply tests for complete create/update/move/delete/reorder
+- [x] P2B.1 Write failing apply tests for complete create/update/move/delete/reorder
       reconciliation and exact preview/apply parity.
-- [ ] P2B.2 Extend atomic apply to reconcile sections, subgroups, direct criteria, and
+- [x] P2B.2 Extend atomic apply to reconcile sections, subgroups, direct criteria, and
       subgroup criteria in dependency-safe order.
-- [ ] P2B.3 Preserve compatible IDs/codes, advance `next_criterion_number` only for new
+- [x] P2B.3 Preserve compatible IDs/codes, advance `next_criterion_number` only for new
       criteria, and increment revision exactly once.
-- [ ] P2B.4 Prove stale conflicts, tampering, validation errors, and injected failures
+- [x] P2B.4 Prove stale conflicts, tampering, validation errors, and injected failures
       roll back the full transaction.
-- [ ] P2B.5 Prove legacy apply remains available while XLSX v2 apply fails closed with
+- [x] P2B.5 Prove legacy apply remains available while XLSX v2 apply fails closed with
       a stable not-activated error before P6A.
 
 ## Phase P3A - XLSX V2 Workbook Model And Export Codec

@@ -17,6 +17,7 @@ export const BASELINE_RPC_FUNCTIONS = {
   previewImport: "technical_configuration_baseline_import_preview",
   previewHierarchyImport: "technical_configuration_baseline_import_preview_v2",
   applyImport: "technical_configuration_baseline_import_apply",
+  applyHierarchyImport: "technical_configuration_baseline_import_apply_v2",
 } as const
 
 /** Ordered baseline RPC names for allowlists and contract iteration. */
