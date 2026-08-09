@@ -164,12 +164,12 @@ Depends on: P2B.
 Deploy boundary: library/test capability only; production buttons still use the
 existing workbook generator.
 
-- [ ] P3A.1 Write workbook tests for `Nhập cấu hình`, `Hướng dẫn & Ví dụ`, `_meta`,
+- [x] P3A.1 Write workbook tests for `Nhập cấu hình`, `Hướng dẫn & Ví dụ`, `_meta`,
       two visible editable columns, hidden identity, Unicode, multiline text, styles, and
       frozen header.
-- [ ] P3A.2 Generate current-data and blank-template workbook models without browser
+- [x] P3A.2 Generate current-data and blank-template workbook models without browser
       download integration.
-- [ ] P3A.3 Prove generated visible content maps structural names or criterion
+- [x] P3A.3 Prove generated visible content maps structural names or criterion
       `requirement_text` while carrying stable identity and existing title data only in
       hidden round-trip fields.
 
