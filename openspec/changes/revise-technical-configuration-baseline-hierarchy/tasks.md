@@ -129,14 +129,14 @@ Depends on: P1E.
 Deploy boundary: new preview/version contracts are available but no production
 download action emits the new workbook yet; legacy import remains unchanged.
 
-- [ ] P2A.1 Write validator tests for Roman sections, one positive-integer subgroup
+- [x] P2A.1 Write validator tests for Roman sections, one positive-integer subgroup
       level, blank-STT criteria, direct criteria before subgroups, blank rows, normalized
       order, unsupported nonblank markers, and physical-row errors.
-- [ ] P2A.2 Add a versioned server validator that normalizes complete hierarchical rows
+- [x] P2A.2 Add a versioned server validator that normalizes complete hierarchical rows
       and validates hidden identity as untrusted input.
-- [ ] P2A.3 Extend authoritative preview with section/subgroup/criterion counts and
+- [x] P2A.3 Extend authoritative preview with section/subgroup/criterion counts and
       create/update/move/delete effects by entity kind.
-- [ ] P2A.4 Reject content before a section, unsupported `1.1` depth, empty content,
+- [x] P2A.4 Reject content before a section, unsupported `1.1` depth, empty content,
       foreign identity, stale metadata, and malformed rows without mutation.
 
 ## Phase P2B - Atomic Hierarchical Import Apply

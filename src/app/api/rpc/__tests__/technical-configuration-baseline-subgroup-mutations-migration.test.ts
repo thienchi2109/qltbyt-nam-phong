@@ -283,13 +283,13 @@ describe("technical configuration baseline P1E hierarchy mutation migration", ()
       expect(phaseGateSource).toContain("SET CONSTRAINTS ALL IMMEDIATE;")
     })
 
-    it("marks P1E complete without advancing P2A", () => {
+    it("keeps completed hierarchy phases aligned without advancing P2B", () => {
       const tasksSource = readFileSync(TASKS_PATH, "utf8")
 
-      for (const task of ["P1E.1", "P1E.2", "P1E.3", "P1E.4"]) {
+      for (const task of ["P1E.1", "P1E.2", "P1E.3", "P1E.4", "P2A.1", "P2A.2", "P2A.3", "P2A.4"]) {
         expect(tasksSource).toContain(`- [x] ${task}`)
       }
-      expect(tasksSource).toContain("- [ ] P2A.1")
+      expect(tasksSource).toContain("- [ ] P2B.1")
     })
   })
 })

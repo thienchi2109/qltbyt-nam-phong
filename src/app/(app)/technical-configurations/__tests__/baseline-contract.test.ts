@@ -56,6 +56,7 @@ describe("technical configuration baseline RPC contract", () => {
       reorderCriteria: "technical_configuration_baseline_criteria_reorder",
       previewBulk: "technical_configuration_baseline_bulk_preview",
       previewImport: "technical_configuration_baseline_import_preview",
+      previewHierarchyImport: "technical_configuration_baseline_import_preview_v2",
       applyImport: "technical_configuration_baseline_import_apply",
     })
   })
