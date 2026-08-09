@@ -124,8 +124,9 @@ covers:
 - legacy/public/internal privilege contracts;
 - legacy function body hashes.
 
-Both gates use `BEGIN`/`ROLLBACK`. They are committed for a separately authorized
-post-migration run and are not executed against live Supabase in this phase.
+Both gates use `BEGIN`/`ROLLBACK`. After explicit authorization on 2026-08-09,
+the migration was applied through Supabase MCP as live version `20260809085349`;
+the functional and security gates passed without leaving fixture data or triggers.
 
 ## Verification
 
@@ -144,6 +145,6 @@ Required before handoff:
 
 ## Completion Boundary
 
-P2B is ready for the user's next-step decision only when all local gates pass, the
-independent review has zero findings, the branch is pushed, legacy behavior is still
-locked, and live Supabase remains unchanged.
+P2B is complete when all local gates pass, the independent review has zero findings,
+the branch is pushed, legacy behavior remains locked, and the separately authorized
+live migration plus rollback-only phase gates pass.
