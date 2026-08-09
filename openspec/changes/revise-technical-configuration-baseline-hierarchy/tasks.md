@@ -180,12 +180,12 @@ Depends on: P3A.
 Deploy boundary: compatible parser capability exists in libraries/tests; production
 download and import paths remain unchanged.
 
-- [ ] P3B.1 Parse XLSX only, infer row kind from `STT`, normalize canonical order, and
+- [x] P3B.1 Parse XLSX only, infer row kind from `STT`, normalize canonical order, and
       reject unsupported markers with physical-row errors.
-- [ ] P3B.2 Preserve the title of identity-matched criteria, assign no title to new
+- [x] P3B.2 Preserve the title of identity-matched criteria, assign no title to new
       XLSX v2 criteria, and validate hidden identity as untrusted input.
-- [ ] P3B.3 Enforce the P0 file-byte and meaningful-row limits without truncation.
-- [ ] P3B.4 Keep the legacy canonical workbook parser read-compatible and cover
+- [x] P3B.3 Enforce the P0 file-byte and meaningful-row limits without truncation.
+- [x] P3B.4 Keep the legacy canonical workbook parser read-compatible and cover
       round-trip, missing identity, reordered, inserted, deleted, and moved rows.
 
 ## Phase P3C - Download Actions

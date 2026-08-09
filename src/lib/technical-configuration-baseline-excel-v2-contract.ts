@@ -183,7 +183,8 @@ export const BASELINE_WORKBOOK_V2_INSTRUCTION_ROWS = [
   },
 ] as const
 
-function toRomanOrdinal(value: number): string {
+/** Converts a positive canonical order into its Roman worksheet marker. */
+export function toTechnicalConfigurationBaselineRomanOrdinal(value: number): string {
   const parts = [
     [1000, "M"],
     [900, "CM"],
@@ -235,7 +236,7 @@ function createCurrentDataRows(
   return groups.flatMap((group, groupIndex) => [
     {
       kind: "section" as const,
-      stt: toRomanOrdinal(groupIndex + 1),
+      stt: toTechnicalConfigurationBaselineRomanOrdinal(groupIndex + 1),
       content: group.name,
       main_section_id: group.id,
       subgroup_id: null,
