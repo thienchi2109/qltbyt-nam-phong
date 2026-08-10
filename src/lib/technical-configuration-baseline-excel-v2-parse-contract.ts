@@ -105,6 +105,7 @@ export interface TechnicalConfigurationBaselineWorkbookV2ParseResult {
 
 export interface TechnicalConfigurationBaselineWorkbookLegacyParseResult extends TechnicalConfigurationBaselineWorkbookParseResult {
   format: "legacy"
+  row_numbers: number[]
 }
 
 export type TechnicalConfigurationBaselineWorkbookCompatibleParseResult =

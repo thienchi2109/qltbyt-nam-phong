@@ -41,6 +41,8 @@ const rpc = vi.hoisted(() => ({
   previewBulk: vi.fn(),
   previewImport: vi.fn(),
   applyImport: vi.fn(),
+  previewHierarchyImport: vi.fn(),
+  applyHierarchyImport: vi.fn(),
 }))
 
 vi.mock("@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaseline", () => ({

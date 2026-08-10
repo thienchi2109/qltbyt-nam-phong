@@ -28,6 +28,20 @@ const EMPTY_HIERARCHY = {
   criteria: [],
 } as const
 
+const LEGACY_EXISTING_HIERARCHY = {
+  ...EXISTING_HIERARCHY,
+  criteria: [
+    ...EXISTING_HIERARCHY.criteria,
+    {
+      id: "legacy-criterion",
+      criterion_code: "TC-0007",
+      title: "Môi trường hoạt động",
+      group_id: "legacy-group",
+      subgroup_id: null,
+    },
+  ],
+}
+
 async function createMeaningfulRowsFile(rowCount: number): Promise<File> {
   const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
     createTechnicalConfigurationBaselineWorkbookV2Model({
@@ -215,30 +229,64 @@ describe("technical configuration baseline XLSX parser limits and compatibility"
   it("keeps the canonical v1 workbook parser read-compatible without inventing subgroups", async () => {
     const workbook = await createCsvDerivedWorkbook()
     const bytes = await workbook.xlsx.writeBuffer()
-    const existingHierarchy = {
-      ...EXISTING_HIERARCHY,
-      criteria: [
-        ...EXISTING_HIERARCHY.criteria,
-        {
-          id: "legacy-criterion",
-          criterion_code: "TC-0007",
-          title: "Môi trường hoạt động",
-          group_id: "legacy-group",
-          subgroup_id: null,
-        },
-      ],
-    }
 
     const result = await parseTechnicalConfigurationBaselineWorkbookFile(
       toUploadedFile(bytes, "legacy-baseline.XLSX"),
-      { existingHierarchy }
+      { existingHierarchy: LEGACY_EXISTING_HIERARCHY }
     )
 
     expect(result).toEqual({
       format: "legacy",
+      row_numbers: [2, 3, 4, 5],
       metadata: LEGACY_METADATA,
       rows: CSV_DERIVED_ROWS,
     })
     expect(result.rows.every((row) => !("subgroup_order" in row))).toBe(true)
+  })
+
+  it("preserves physical row numbers for compatible legacy workbooks with gaps", async () => {
+    const criterion = CSV_DERIVED_ROWS[1]
+    const workbook = await createTechnicalConfigurationBaselineWorkbook({
+      metadata: LEGACY_METADATA,
+      rows: [CSV_DERIVED_ROWS[0], criterion, criterion],
+    })
+    const baseline = workbook.getWorksheet("Baseline")!
+    baseline.getRow(3).eachCell({ includeEmpty: true }, (cell) => {
+      cell.value = null
+    })
+    const bytes = await workbook.xlsx.writeBuffer()
+
+    const result = await parseTechnicalConfigurationBaselineWorkbookFile(
+      toUploadedFile(bytes, "legacy-with-gap.xlsx"),
+      { existingHierarchy: LEGACY_EXISTING_HIERARCHY }
+    )
+
+    expect(result.format).toBe("legacy")
+    if (result.format === "legacy") {
+      expect(result.row_numbers).toEqual([2, 4])
+    }
+  })
+
+  it("excludes whitespace-only legacy rows from compatible physical row numbers", async () => {
+    const criterion = CSV_DERIVED_ROWS[1]
+    const workbook = await createTechnicalConfigurationBaselineWorkbook({
+      metadata: LEGACY_METADATA,
+      rows: [CSV_DERIVED_ROWS[0], criterion, criterion],
+    })
+    const baseline = workbook.getWorksheet("Baseline")!
+    baseline.getRow(3).eachCell({ includeEmpty: true }, (cell) => {
+      cell.value = "   "
+    })
+    const bytes = await workbook.xlsx.writeBuffer()
+
+    const result = await parseTechnicalConfigurationBaselineWorkbookFile(
+      toUploadedFile(bytes, "legacy-with-whitespace-gap.xlsx"),
+      { existingHierarchy: LEGACY_EXISTING_HIERARCHY }
+    )
+
+    expect(result.format).toBe("legacy")
+    if (result.format === "legacy") {
+      expect(result.row_numbers).toEqual([2, 4])
+    }
   })
 })

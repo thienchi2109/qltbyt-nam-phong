@@ -31,6 +31,10 @@ import type {
   TechnicalConfigurationBaselineLockRpcArgs,
   TechnicalConfigurationBaselineVersionsListRpcArgs,
 } from "../baseline-types"
+import type {
+  TechnicalConfigurationBaselineHierarchyImportPreviewWireResponse,
+  TechnicalConfigurationBaselineHierarchyImportRpcArgs,
+} from "../technical-configuration-baseline-hierarchy-import-types"
 
 /** Typed client wrappers for baseline draft and lifecycle RPCs. */
 export const technicalConfigurationBaselineRpc = {
@@ -120,8 +124,19 @@ export const technicalConfigurationBaselineRpc = {
       { ...args }
     )
   },
+  previewHierarchyImport(args: TechnicalConfigurationBaselineHierarchyImportRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineHierarchyImportPreviewWireResponse>(
+      BASELINE_RPC_FUNCTIONS.previewHierarchyImport,
+      { ...args }
+    )
+  },
   applyImport(args: TechnicalConfigurationBaselineImportRpcArgs) {
     return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.applyImport, {
+      ...args,
+    }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
+  },
+  applyHierarchyImport(args: TechnicalConfigurationBaselineHierarchyImportRpcArgs) {
+    return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.applyHierarchyImport, {
       ...args,
     }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
