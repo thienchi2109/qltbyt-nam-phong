@@ -212,6 +212,7 @@ export function useTechnicalConfigurationBaselineHierarchyImport({
         if (attempt === parseAttemptRef.current) {
           setIsParsing(false)
           setIsPreviewing(false)
+          if (fileInputRef.current) fileInputRef.current.value = ""
         }
       }
     },

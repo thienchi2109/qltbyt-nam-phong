@@ -59,7 +59,7 @@ async function prepareConfirmedPreview(user: ReturnType<typeof userEvent.setup>)
 
 describe("technical configuration hierarchy import review regressions", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     compatibleParser.parseFile.mockResolvedValue(createV2ParseResult())
     hierarchyImportRpc.previewHierarchyImport.mockResolvedValue(
       createAuthoritativeHierarchyPreview()
@@ -72,10 +72,22 @@ describe("technical configuration hierarchy import review regressions", () => {
   it("keeps preview-conflict evidence until the replacement preview succeeds", async () => {
     const user = userEvent.setup()
     const onConflict = vi.fn().mockResolvedValue(undefined)
-    const replacementParsed = createV2ParseResult()
-    replacementParsed.metadata.baseline_revision = 12
-    const replacementPreview = createAuthoritativeHierarchyPreview()
-    replacementPreview.data.metadata = replacementParsed.metadata
+    const replacementParsedFixture = createV2ParseResult()
+    const replacementParsed = {
+      ...replacementParsedFixture,
+      metadata: {
+        ...replacementParsedFixture.metadata,
+        baseline_revision: 12,
+      },
+    }
+    const replacementPreviewFixture = createAuthoritativeHierarchyPreview()
+    const replacementPreview = {
+      ...replacementPreviewFixture,
+      data: {
+        ...replacementPreviewFixture.data,
+        metadata: replacementParsed.metadata,
+      },
+    }
     const pendingPreview = deferred<typeof replacementPreview>()
     hierarchyImportRpc.previewHierarchyImport
       .mockRejectedValueOnce(
@@ -145,26 +157,36 @@ describe("technical configuration hierarchy import review regressions", () => {
       />
     )
 
-    const replacementParsed = createV2ParseResult()
-    replacementParsed.metadata.baseline_revision = 12
-    const invalidPreview = createAuthoritativeHierarchyPreview()
-    invalidPreview.data.metadata = replacementParsed.metadata
-    invalidPreview.data.effects = null
-    invalidPreview.errors = [
-      {
-        row: 27,
-        code: "empty_content",
-        column: "content",
-        message: "Nội dung bắt buộc không được để trống.",
+    const replacementParsedFixture = createV2ParseResult()
+    const replacementParsed = {
+      ...replacementParsedFixture,
+      metadata: {
+        ...replacementParsedFixture.metadata,
+        baseline_revision: 12,
       },
-    ]
+    }
+    const invalidPreviewFixture = createAuthoritativeHierarchyPreview()
+    const invalidPreview = {
+      ...invalidPreviewFixture,
+      data: {
+        ...invalidPreviewFixture.data,
+        metadata: replacementParsed.metadata,
+        effects: null,
+      },
+      errors: [
+        {
+          row: 27,
+          code: "empty_content",
+          column: "content",
+          message: "Nội dung bắt buộc không được để trống.",
+        },
+      ],
+    }
     compatibleParser.parseFile.mockResolvedValueOnce(replacementParsed)
     hierarchyImportRpc.previewHierarchyImport.mockResolvedValueOnce(invalidPreview)
 
-    await user.upload(
-      screen.getByLabelText("Chọn workbook cấu hình phân cấp"),
-      createHierarchyImportFile("invalid-replacement.xlsx")
-    )
+    const fileInput = screen.getByLabelText("Chọn workbook cấu hình phân cấp")
+    await user.upload(fileInput, createHierarchyImportFile("invalid-replacement.xlsx"))
 
     expect(
       await screen.findByRole("alert", { name: "Lỗi nhập cấu hình phân cấp" })
@@ -173,6 +195,30 @@ describe("technical configuration hierarchy import review regressions", () => {
     expect(screen.getByText("Mục chính từ máy chủ")).toBeInTheDocument()
     expect(screen.queryByText("invalid-replacement.xlsx")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Áp dụng thay thế toàn bộ" })).toBeDisabled()
+    expect((fileInput as HTMLInputElement).value).toBe("")
+  })
+
+  it("clears the native file input after a parse failure so the same file can be retried", async () => {
+    const user = userEvent.setup()
+    const file = createHierarchyImportFile("retry-same-file.xlsx")
+    compatibleParser.parseFile
+      .mockRejectedValueOnce(new Error("workbook parse failed"))
+      .mockResolvedValueOnce(createV2ParseResult())
+    render(<HierarchyImportHarness />)
+
+    await user.click(screen.getByRole("button", { name: "Nhập cấu hình phân cấp" }))
+    const fileInput = screen.getByLabelText("Chọn workbook cấu hình phân cấp")
+    await user.upload(fileInput, file)
+
+    expect(
+      await screen.findByRole("alert", { name: "Lỗi nhập cấu hình phân cấp" })
+    ).toHaveTextContent("workbook parse failed")
+    expect((fileInput as HTMLInputElement).value).toBe("")
+
+    await user.upload(fileInput, file)
+
+    await screen.findByRole("group", { name: "Xác nhận thay thế toàn bộ cấu hình" })
+    expect(compatibleParser.parseFile).toHaveBeenCalledTimes(2)
   })
 
   it("announces the destructive apply operation separately from previewing", async () => {
