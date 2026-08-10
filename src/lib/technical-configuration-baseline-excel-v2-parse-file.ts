@@ -6,6 +6,7 @@ import {
   BASELINE_WORKBOOK_TEMPLATE_KIND,
   BASELINE_WORKBOOK_TEMPLATE_VERSION,
 } from "@/lib/technical-configuration-baseline-excel-contract"
+import { getBaselineWorkbookDataRowNumbers } from "@/lib/technical-configuration-baseline-excel-rows"
 import { BASELINE_WORKBOOK_V2_TEMPLATE_VERSION } from "@/lib/technical-configuration-baseline-excel-v2-contract"
 import { parseTechnicalConfigurationBaselineWorkbook } from "@/lib/technical-configuration-baseline-excel-parse"
 import {
@@ -120,6 +121,7 @@ export async function parseTechnicalConfigurationBaselineWorkbookFile(
   )
   return {
     format: "legacy",
+    row_numbers: legacySheet ? getBaselineWorkbookDataRowNumbers(legacySheet) : [],
     ...legacy,
   }
 }

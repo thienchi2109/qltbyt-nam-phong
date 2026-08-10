@@ -119,21 +119,6 @@ function collectUnsupportedCellIssues(
   return issues
 }
 
-/** Returns physical worksheet row numbers that contain Baseline data. */
-export function getBaselineWorkbookDataRowNumbers(worksheet: Worksheet): number[] {
-  const rowNumbers: number[] = []
-
-  for (let rowNumber = 2; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
-    const hasData = BASELINE_WORKBOOK_COLUMNS.some((_, index) => {
-      const value = worksheet.getRow(rowNumber).getCell(index + 1).value
-      return value !== null && value !== undefined && value !== ""
-    })
-    if (hasData) rowNumbers.push(rowNumber)
-  }
-
-  return rowNumbers
-}
-
 /** Rejects unsupported Excel cell value shapes before JSON conversion. */
 export function validateBaselineWorkbookCellValues(
   worksheet: Worksheet

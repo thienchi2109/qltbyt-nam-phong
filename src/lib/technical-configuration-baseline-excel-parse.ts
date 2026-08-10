@@ -9,7 +9,6 @@ import {
   type TechnicalConfigurationBaselineWorkbookRow,
 } from "@/lib/technical-configuration-baseline-excel-contract"
 import {
-  getBaselineWorkbookDataRowNumbers,
   normalizeBaselineWorkbookText,
   parseBaselineWorkbookMetadata,
   throwIfBaselineWorkbookIssues,
@@ -20,6 +19,7 @@ import {
   validateBaselineWorkbookStructure,
   type TechnicalConfigurationBaselineWorkbookIssue,
 } from "@/lib/technical-configuration-baseline-excel-validation"
+import { getBaselineWorkbookJsonRowNumbers } from "@/lib/technical-configuration-baseline-excel-rows"
 import { worksheetToJson, type ExcelWorkbook } from "@/lib/excel-workbook"
 
 export {
@@ -214,7 +214,7 @@ async function parseRows(
 }> {
   const issues: TechnicalConfigurationBaselineWorkbookIssue[] = []
   const rawRows = await worksheetToJson(worksheet)
-  const rowNumbers = getBaselineWorkbookDataRowNumbers(worksheet)
+  const rowNumbers = getBaselineWorkbookJsonRowNumbers(worksheet)
   const rowEntries: Array<{ row: Record<string, unknown>; rowNumber: number }> = []
   rawRows.forEach((row, index) => {
     const hasMeaningfulValue = Object.values(row).some(

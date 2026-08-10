@@ -211,15 +211,15 @@ Depends on: P3B, P3C, and P2B.
 Deploy boundary: end-to-end XLSX v2 import is wired and tested but remains unreachable
 on the production baseline screen.
 
-- [ ] P3D.1 Restrict file selection to `.xlsx` and route both legacy and v2 workbooks
+- [x] P3D.1 Restrict file selection to `.xlsx` and route both legacy and v2 workbooks
       through the compatible parser boundary.
-- [ ] P3D.2 Render authoritative hierarchy and create/update/move/delete preview counts
+- [x] P3D.2 Render authoritative hierarchy and create/update/move/delete preview counts
       with actionable physical-row errors.
-- [ ] P3D.3 Replace row-count-only confirmation with explicit full-replacement and
+- [x] P3D.3 Replace row-count-only confirmation with explicit full-replacement and
       deletion wording.
-- [ ] P3D.4 Preserve file, normalized rows, and preview across revision conflicts until
+- [x] P3D.4 Preserve file, normalized rows, and preview across revision conflicts until
       reset or successful re-preview.
-- [ ] P3D.5 Add no-persistence-before-confirm, destructive-preview, success/cache,
+- [x] P3D.5 Add no-persistence-before-confirm, destructive-preview, success/cache,
       locked-target, stale-conflict, and large-preview tests.
 
 ## Phase P4A - Hierarchical Editor State
