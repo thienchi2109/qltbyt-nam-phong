@@ -195,13 +195,13 @@ Depends on: P3A.
 Deploy boundary: both download actions are wired and tested but are not mounted on the
 production baseline screen.
 
-- [ ] P3C.1 Add `Tải cấu hình hiện tại` using complete hierarchy and stable hidden
+- [x] P3C.1 Add `Tải cấu hình hiện tại` using complete hierarchy and stable hidden
       identity.
-- [ ] P3C.2 Add `Tải mẫu trống` with an empty input sheet and examples only on the
+- [x] P3C.2 Add `Tải mẫu trống` with an empty input sheet and examples only on the
       instruction sheet.
-- [ ] P3C.3 Keep actions draft-only, preserve conflict/dirty guards, and provide
+- [x] P3C.3 Keep actions draft-only, preserve conflict/dirty guards, and provide
       deterministic filenames.
-- [ ] P3C.4 Add user-event and generated-workbook delegation tests, including proof
+- [x] P3C.4 Add user-event and generated-workbook delegation tests, including proof
       that the new actions remain unreachable on the production screen.
 
 ## Phase P3D - Hierarchical Import UX
