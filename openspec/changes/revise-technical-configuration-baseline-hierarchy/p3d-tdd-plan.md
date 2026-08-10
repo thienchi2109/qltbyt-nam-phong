@@ -15,8 +15,9 @@ remain unreachable from the production baseline screen until P6B.
   `main`;
 - GitNexus matched `b959e1b8` at preflight and was reindexed against the final
   staged P3D diff before review;
-- no migration, generated database type, Supabase CLI command, or live database
-  read/write is needed for this client-only leaf.
+- this client-only leaf adds no migration, generated database type, Supabase CLI
+  command, or live database write; its server-authoritative preview may invoke
+  the existing read-only RPC path.
 
 ## Scope Decisions
 

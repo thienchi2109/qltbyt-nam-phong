@@ -208,8 +208,9 @@ production baseline screen.
 
 Depends on: P3B, P3C, and P2B.
 
-Deploy boundary: end-to-end XLSX v2 import is wired and tested but remains unreachable
-on the production baseline screen.
+Deploy boundary: the dormant XLSX v2 preview and client apply contract are wired and
+tested, while production apply remains unreachable and fail-closed on the baseline
+screen.
 
 - [x] P3D.1 Restrict file selection to `.xlsx` and route both legacy and v2 workbooks
       through the compatible parser boundary.

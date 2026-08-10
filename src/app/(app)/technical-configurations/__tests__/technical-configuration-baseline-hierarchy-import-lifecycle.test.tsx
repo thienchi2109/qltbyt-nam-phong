@@ -60,7 +60,7 @@ async function prepareConfirmedPreview(user: ReturnType<typeof userEvent.setup>)
 
 describe("technical configuration baseline hierarchy import lifecycle", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     compatibleParser.parseFile.mockResolvedValue(createV2ParseResult())
     hierarchyImportRpc.previewHierarchyImport.mockResolvedValue(createHierarchyPreview())
     hierarchyImportRpc.applyHierarchyImport.mockResolvedValue({
@@ -262,13 +262,26 @@ describe("technical configuration baseline hierarchy import lifecycle", () => {
     const user = userEvent.setup()
     const onConflict = vi.fn().mockResolvedValue(undefined)
     const oldPreview = createAuthoritativeHierarchyPreview()
-    const refreshedParsed = createV2ParseResult()
-    refreshedParsed.metadata.baseline_revision = 12
-    const refreshedPreview = createAuthoritativeHierarchyPreview()
-    refreshedPreview.data.metadata = refreshedParsed.metadata
-    const refreshedGroup = refreshedPreview.data.rows[0]
-    if (refreshedGroup?.row_type === "GROUP") {
-      refreshedGroup.group_name = "Mục chính revision 12"
+    const refreshedParsedFixture = createV2ParseResult()
+    const refreshedParsed = {
+      ...refreshedParsedFixture,
+      metadata: {
+        ...refreshedParsedFixture.metadata,
+        baseline_revision: 12,
+      },
+    }
+    const refreshedPreviewFixture = createAuthoritativeHierarchyPreview()
+    const refreshedPreview = {
+      ...refreshedPreviewFixture,
+      data: {
+        ...refreshedPreviewFixture.data,
+        metadata: refreshedParsed.metadata,
+        rows: refreshedPreviewFixture.data.rows.map((row, index) =>
+          index === 0 && row.row_type === "GROUP"
+            ? { ...row, group_name: "Mục chính revision 12" }
+            : row
+        ),
+      },
     }
     const pendingPreview = deferred<typeof refreshedPreview>()
     hierarchyImportRpc.previewHierarchyImport
