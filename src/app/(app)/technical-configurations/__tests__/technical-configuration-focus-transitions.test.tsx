@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationRpcError } from "@/app/(app)/technical-configurations/technical-configuration-rpc"
+import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import {
   baselineVersionsResponse,
   createDraft,
@@ -14,7 +15,9 @@ import {
 const rpc = getBaselineRpcMock()
 
 function findGroupSection(ordinal: number): Promise<HTMLElement> {
-  return screen.findByRole("region", { name: `Nhóm tiêu chí ${ordinal}` })
+  return screen.findByRole("region", {
+    name: `Nhóm tiêu chí ${formatTechnicalConfigurationBaselineSectionOrdinal(ordinal)}`,
+  })
 }
 
 describe("technical configuration focus transitions", () => {
@@ -27,10 +30,10 @@ describe("technical configuration focus transitions", () => {
     const user = userEvent.setup()
     renderTab()
 
-    await user.click(await screen.findByRole("button", { name: "Xóa nhóm 2" }))
+    await user.click(await screen.findByRole("button", { name: "Xóa nhóm II" }))
 
     const nextGroupDisclosure = screen.getByRole("button", {
-      name: "Thu gọn nhóm 2: Yêu cầu kỹ thuật",
+      name: "Thu gọn nhóm II: Yêu cầu kỹ thuật",
     })
     expect(nextGroupDisclosure).toHaveAttribute("aria-expanded", "true")
     await waitFor(() => expect(nextGroupDisclosure).toHaveFocus())
@@ -40,8 +43,10 @@ describe("technical configuration focus transitions", () => {
     const user = userEvent.setup()
     renderTab()
 
-    await user.click(await screen.findByRole("button", { name: "Xóa tiêu chí 1.1" }))
-    expect(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" })).toHaveFocus()
+    await user.click(
+      await screen.findByRole("button", { name: "Xóa tiêu chí trực tiếp 1 của nhóm I" })
+    )
+    expect(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm I" })).toHaveFocus()
   })
 
   it("focuses add group after deleting the final group", async () => {
@@ -54,7 +59,7 @@ describe("technical configuration focus transitions", () => {
     )
     renderTab()
 
-    await user.click(await screen.findByRole("button", { name: "Xóa nhóm 1" }))
+    await user.click(await screen.findByRole("button", { name: "Xóa nhóm I" }))
     expect(screen.getByRole("button", { name: "Thêm nhóm" })).toHaveFocus()
   })
 
@@ -91,7 +96,7 @@ describe("technical configuration focus transitions", () => {
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     await user.click(within(firstGroup).getByRole("button", { name: /Chỉnh từng dòng/ }))
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
+    expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm I")).toHaveFocus()
   })
 
   it("focuses the first server group after a successful conflict reload", async () => {
@@ -123,7 +128,7 @@ describe("technical configuration focus transitions", () => {
     await user.click(await screen.findByRole("button", { name: "Bỏ thay đổi" }))
 
     const firstGroupDisclosure = await screen.findByRole("button", {
-      name: "Thu gọn nhóm 1: Tên mới từ máy chủ",
+      name: "Thu gọn nhóm I: Tên mới từ máy chủ",
     })
     await waitFor(() => expect(firstGroupDisclosure).toHaveFocus())
 
@@ -144,9 +149,13 @@ describe("technical configuration focus transitions", () => {
     await user.click(within(firstGroup).getByRole("button", { name: "Xem trước" }))
     await user.click(within(firstGroup).getByRole("button", { name: "Thêm vào bản nháp" }))
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.2")).toHaveFocus()
-    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 1.1" }))
+    expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm I")).toHaveFocus()
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí trực tiếp 1 của nhóm I" }))
 
-    await waitFor(() => expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveFocus())
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+      ).toHaveFocus()
+    )
   })
 })

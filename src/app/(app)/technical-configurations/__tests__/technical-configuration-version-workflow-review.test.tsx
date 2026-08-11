@@ -33,7 +33,9 @@ describe("technical configuration version workflow review regressions", () => {
     mockVersions([draft, locked])
 
     renderTab()
-    const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
+    const requirement = await screen.findByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I"
+    )
     await user.clear(requirement)
     await user.type(requirement, "Nội dung đang sửa")
     await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
@@ -55,7 +57,7 @@ describe("technical configuration version workflow review regressions", () => {
     mockVersions([draft, locked])
 
     renderTab()
-    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     await user.type(
       within(firstGroup).getByLabelText("Nội dung nhập nhanh"),
@@ -257,7 +259,9 @@ describe("technical configuration version workflow review regressions", () => {
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Khởi tạo cấu hình cơ sở" }))
 
-    expect(await screen.findByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(
+      await screen.findByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+    ).toBeInTheDocument()
     expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))

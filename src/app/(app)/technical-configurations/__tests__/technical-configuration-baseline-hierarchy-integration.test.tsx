@@ -31,16 +31,16 @@ describe("technical configuration baseline hierarchy integration", () => {
     expect(screen.getByDisplayValue("Yêu cầu cấu hình cung cấp")).toBeInTheDocument()
     expect(screen.getAllByRole("region", { name: /Nhóm tiêu chí/ })).toHaveLength(4)
     expect(
-      screen.getByRole("button", { name: "Thu gọn nhóm 3: Yêu cầu kỹ thuật" })
+      screen.getByRole("button", { name: "Thu gọn nhóm III: Yêu cầu kỹ thuật" })
     ).toHaveAttribute("aria-expanded", "true")
 
-    const requirement = screen.getByLabelText("Nội dung yêu cầu 1.1")
+    const requirement = screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
     await user.clear(requirement)
     await user.type(requirement, "Nguồn điện ổn định\n220V - 50Hz")
-    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
-    await user.click(screen.getByRole("button", { name: "Di chuyển nhóm 4 lên" }))
+    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm I" }))
+    await user.click(screen.getByRole("button", { name: "Di chuyển nhóm IV lên" }))
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveValue(
+    expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")).toHaveValue(
       "Nguồn điện ổn định\n220V - 50Hz"
     )
     expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument()
@@ -49,7 +49,7 @@ describe("technical configuration baseline hierarchy integration", () => {
     expect(rpc.reorderGroups).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole("button", { name: "Thêm nhóm" }))
-    expect(screen.getByLabelText("Tên nhóm 5")).toHaveFocus()
+    expect(screen.getByLabelText("Tên nhóm V")).toHaveFocus()
   })
 
   it("keeps bulk preview and accept local until explicit save", async () => {
@@ -70,7 +70,7 @@ describe("technical configuration baseline hierarchy integration", () => {
       })
     renderTab()
 
-    const secondGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 2" })
+    const secondGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí II" })
     await user.click(within(secondGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     await user.type(
@@ -125,11 +125,11 @@ describe("technical configuration baseline hierarchy integration", () => {
     renderTab()
 
     await user.click(await screen.findByRole("button", { name: "Thêm nhóm" }))
-    await user.type(screen.getByLabelText("Tên nhóm 5"), "Nhóm mới")
+    await user.type(screen.getByLabelText("Tên nhóm V"), "Nhóm mới")
     await user.click(screen.getByRole("button", { name: "Lưu" }))
 
     expect(await screen.findByText("Đã lưu")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Thu gọn nhóm 5: Nhóm mới" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Thu gọn nhóm V: Nhóm mới" })).toHaveAttribute(
       "aria-expanded",
       "true"
     )
@@ -140,7 +140,7 @@ describe("technical configuration baseline hierarchy integration", () => {
     const user = userEvent.setup()
     const { container } = renderTab()
 
-    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     await user.type(
       within(firstGroup).getByLabelText("Nội dung nhập nhanh"),
@@ -151,10 +151,10 @@ describe("technical configuration baseline hierarchy integration", () => {
 
     expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
 
-    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
+    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm I" }))
     expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
 
-    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 1.1" }))
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí trực tiếp 1 của nhóm I" }))
     expect(container.querySelectorAll('[data-recently-accepted="true"]')).toHaveLength(2)
   })
 })

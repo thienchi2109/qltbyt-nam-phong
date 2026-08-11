@@ -4,6 +4,7 @@ import * as React from "react"
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -41,6 +42,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   onDeleteCriterion,
 }: TechnicalConfigurationCriteriaSpreadsheetProps) {
   const requirementRefs = React.useRef(new Map<string, HTMLTextAreaElement>())
+  const sectionOrdinal = formatTechnicalConfigurationBaselineSectionOrdinal(groupIndex)
 
   React.useEffect(() => {
     if (!focusCriterionKey) return
@@ -53,7 +55,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   }, [focusCriterionKey, focusCriterionToken])
 
   return (
-    <section aria-label={`Danh sách tiêu chí nhóm ${groupIndex}`} className="min-w-0">
+    <section aria-label={`Danh sách tiêu chí trực tiếp nhóm ${sectionOrdinal}`} className="min-w-0">
       <div className="overflow-x-auto border-y">
         <div className="min-w-[960px]">
           <div
@@ -74,7 +76,8 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
           ) : (
             <div className="divide-y">
               {group.criteria.map((criterion, criterionIndex) => {
-                const criterionNumber = `${groupIndex}.${criterionIndex + 1}`
+                const criterionOrdinal = criterionIndex + 1
+                const criterionLabel = `tiêu chí trực tiếp ${criterionOrdinal} của nhóm ${sectionOrdinal}`
                 const error = criterionErrors[criterion.key]
                 const errorId = error ? `baseline-requirement-error-${criterion.key}` : undefined
                 const isRecent = recentlyAcceptedCriterionKeys.has(criterion.key)
@@ -98,11 +101,11 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                     </div>
                     <div className="px-2 py-2">
                       <label className="sr-only" htmlFor={`baseline-title-${criterion.key}`}>
-                        Tiêu đề tiêu chí {criterionNumber}
+                        Tiêu đề {criterionLabel}
                       </label>
                       <Input
                         id={`baseline-title-${criterion.key}`}
-                        aria-label={`Tiêu đề tiêu chí ${criterionNumber}`}
+                        aria-label={`Tiêu đề ${criterionLabel}`}
                         placeholder="Không bắt buộc"
                         value={criterion.title}
                         disabled={disabled}
@@ -113,7 +116,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                     </div>
                     <div className="px-2 py-2">
                       <label className="sr-only" htmlFor={`baseline-requirement-${criterion.key}`}>
-                        Nội dung yêu cầu {criterionNumber}
+                        Nội dung yêu cầu {criterionLabel}
                       </label>
                       <Textarea
                         ref={(node) => {
@@ -121,7 +124,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                           else requirementRefs.current.delete(criterion.key)
                         }}
                         id={`baseline-requirement-${criterion.key}`}
-                        aria-label={`Nội dung yêu cầu ${criterionNumber}`}
+                        aria-label={`Nội dung yêu cầu ${criterionLabel}`}
                         className="min-h-20 resize-y whitespace-pre-wrap"
                         value={criterion.requirementText}
                         disabled={disabled}
@@ -152,7 +155,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                     </div>
                     <div className="flex items-center justify-center gap-1 px-2 py-2">
                       <IconButton
-                        label={`Di chuyển tiêu chí ${criterionNumber} lên`}
+                        label={`Di chuyển ${criterionLabel} lên`}
                         title="Di chuyển lên"
                         disabled={disabled || criterionIndex === 0}
                         onClick={() => onMoveCriterion(criterionIndex, -1)}
@@ -160,7 +163,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                         <ArrowUp className="size-4" />
                       </IconButton>
                       <IconButton
-                        label={`Di chuyển tiêu chí ${criterionNumber} xuống`}
+                        label={`Di chuyển ${criterionLabel} xuống`}
                         title="Di chuyển xuống"
                         disabled={disabled || criterionIndex === group.criteria.length - 1}
                         onClick={() => onMoveCriterion(criterionIndex, 1)}
@@ -168,7 +171,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                         <ArrowDown className="size-4" />
                       </IconButton>
                       <IconButton
-                        label={`Xóa tiêu chí ${criterionNumber}`}
+                        label={`Xóa ${criterionLabel}`}
                         title="Xóa tiêu chí"
                         disabled={disabled}
                         destructive

@@ -51,7 +51,7 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
     expect(screen.getByText("Trạng thái")).toBeInTheDocument()
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText("Mới")).toBeInTheDocument()
-    const requirement = screen.getByLabelText("Nội dung yêu cầu 2.2")
+    const requirement = screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm II")
     const error = screen.getByText("Nội dung yêu cầu là bắt buộc.")
     expect(error).toHaveAttribute("id", "baseline-requirement-error-criterion-new")
     expect(requirement).toHaveAttribute("aria-describedby", error.id)
@@ -82,20 +82,24 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
       />
     )
 
-    await user.type(screen.getByLabelText("Tiêu đề tiêu chí 2.1"), "X")
+    await user.type(screen.getByLabelText("Tiêu đề tiêu chí trực tiếp 1 của nhóm II"), "X")
     expect(onCriterionTextChange).toHaveBeenLastCalledWith("criterion-1", "title", "Nguồn điệnX")
 
-    await user.type(screen.getByLabelText("Nội dung yêu cầu 2.1"), "Y")
+    await user.type(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm II"), "Y")
     expect(onCriterionTextChange).toHaveBeenLastCalledWith(
       "criterion-1",
       "requirementText",
       "Nguồn điện ổn địnhY"
     )
 
-    await user.click(screen.getByRole("button", { name: "Di chuyển tiêu chí 2.2 lên" }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Di chuyển tiêu chí trực tiếp 2 của nhóm II lên",
+      })
+    )
     expect(onMoveCriterion).toHaveBeenCalledWith(1, -1)
 
-    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 2.1" }))
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí trực tiếp 1 của nhóm II" }))
     expect(onDeleteCriterion).toHaveBeenCalledWith("criterion-1")
   })
 
@@ -115,6 +119,10 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
       />
     )
 
-    await waitFor(() => expect(screen.getByLabelText("Nội dung yêu cầu 2.2")).toHaveFocus())
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm II")
+      ).toHaveFocus()
+    )
   })
 })

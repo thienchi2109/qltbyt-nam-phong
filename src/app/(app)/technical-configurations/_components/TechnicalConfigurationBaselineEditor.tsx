@@ -72,6 +72,39 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
 
 const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
 
+function groupContainsCriterion(
+  group: TechnicalConfigurationBaselineEditorGroup,
+  criterionKey: string
+): boolean {
+  if (group.criteria.some((criterion) => criterion.key === criterionKey)) return true
+
+  for (const subgroup of group.subgroups ?? []) {
+    if (subgroup.criteria.some((criterion) => criterion.key === criterionKey)) return true
+  }
+
+  return false
+}
+
+function countGroupValidationErrors(
+  group: TechnicalConfigurationBaselineEditorGroup,
+  validation: TechnicalConfigurationBaselineEditorValidation
+): number {
+  let count = validation.groupErrors[group.key] ? 1 : 0
+
+  for (const criterion of group.criteria) {
+    if (validation.criterionErrors[criterion.key]) count += 1
+  }
+
+  for (const subgroup of group.subgroups ?? []) {
+    if (validation.subgroupErrors?.[subgroup.key]) count += 1
+    for (const criterion of subgroup.criteria) {
+      if (validation.criterionErrors[criterion.key]) count += 1
+    }
+  }
+
+  return count
+}
+
 function getFocusTargetForGroup(
   focusTarget: TechnicalConfigurationFocusTarget,
   group: TechnicalConfigurationBaselineEditorGroup,
@@ -79,9 +112,7 @@ function getFocusTargetForGroup(
 ): TechnicalConfigurationFocusTarget | null {
   if (!focusTarget || focusTarget.kind === "add-group") return null
   if (focusTarget.kind === "criterion") {
-    return group.criteria.some((criterion) => criterion.key === focusTarget.key)
-      ? focusTarget
-      : null
+    return groupContainsCriterion(group, focusTarget.key) ? focusTarget : null
   }
   if (focusTarget.kind === "bulk-input") {
     return activeValue === group.key ? focusTarget : null
@@ -142,9 +173,7 @@ export function TechnicalConfigurationBaselineEditor({
     let targetGroupKey: string | null = null
     if (focusTarget.kind === "criterion") {
       targetGroupKey =
-        draft.groups.find((group) =>
-          group.criteria.some((criterion) => criterion.key === focusTarget.key)
-        )?.key ?? null
+        draft.groups.find((group) => groupContainsCriterion(group, focusTarget.key))?.key ?? null
     } else if (focusTarget.kind === "bulk-input") {
       targetGroupKey = activeValue
     } else {
@@ -240,10 +269,7 @@ export function TechnicalConfigurationBaselineEditor({
         ) : (
           draft.groups.map((group, groupIndex) => {
             const mode = activeValue === group.key && entryMode === "bulk" ? "bulk" : "row"
-            const summaryErrorCount =
-              (summaryValidation.groupErrors[group.key] ? 1 : 0) +
-              group.criteria.filter((criterion) => summaryValidation.criterionErrors[criterion.key])
-                .length
+            const summaryErrorCount = countGroupValidationErrors(group, summaryValidation)
 
             return (
               <TechnicalConfigurationBaselineGroupSection
@@ -255,6 +281,7 @@ export function TechnicalConfigurationBaselineEditor({
                 mode={mode}
                 bulkSession={getBulkSession(group.key)}
                 groupError={validation.groupErrors[group.key]}
+                subgroupErrors={validation.subgroupErrors ?? {}}
                 criterionErrors={validation.criterionErrors}
                 summaryErrorCount={summaryErrorCount}
                 pendingInputDescriptionId={PENDING_BULK_STATUS_ID}

@@ -7,6 +7,7 @@ import { TechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-conf
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
 import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 
 const serverDraft: TechnicalConfigurationBaselineEditorDraft = {
   id: "draft-1",
@@ -135,7 +136,9 @@ function EditorHarness({
 }
 
 function getGroupSection(ordinal: number) {
-  return screen.getByRole("region", { name: `Nhóm tiêu chí ${ordinal}` })
+  return screen.getByRole("region", {
+    name: `Nhóm tiêu chí ${formatTechnicalConfigurationBaselineSectionOrdinal(ordinal)}`,
+  })
 }
 
 describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
@@ -143,23 +146,27 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     userEvent.setup()
     render(<EditorHarness />)
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.1")).toBeInTheDocument()
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument()
-    expect(screen.queryByText("Xem tất cả nhóm")).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Thu gọn nhóm 1: Nhóm A" })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    )
-    expect(screen.getByRole("button", { name: "Thu gọn nhóm 2: Nhóm B" })).toHaveAttribute(
-      "aria-expanded",
-      "true"
-    )
     expect(
-      screen.getByRole("button", { name: "Nhập nhiều dòng cho nhóm 1: Nhóm A" })
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
     ).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: "Nhập nhiều dòng cho nhóm 2: Nhóm B" })
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm II")
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("tab")).not.toBeInTheDocument()
+    expect(screen.queryByText("Xem tất cả nhóm")).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Thu gọn nhóm I: Nhóm A" })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    )
+    expect(screen.getByRole("button", { name: "Thu gọn nhóm II: Nhóm B" })).toHaveAttribute(
+      "aria-expanded",
+      "true"
+    )
+    expect(
+      screen.getByRole("button", { name: "Nhập nhiều dòng cho nhóm I: Nhóm A" })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole("button", { name: "Nhập nhiều dòng cho nhóm II: Nhóm B" })
     ).toBeInTheDocument()
 
     const workspace = screen.getByTestId("baseline-editor-workspace")
@@ -179,7 +186,7 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     render(<EditorHarness />)
 
     const workspace = screen.getByTestId("baseline-editor-workspace")
-    const requirement = screen.getByLabelText("Nội dung yêu cầu 1.1")
+    const requirement = screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
     const focusButton = screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" })
 
     await user.type(requirement, " đã sửa")
@@ -187,7 +194,9 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     await user.click(focusButton)
 
     expect(screen.getByTestId("baseline-editor-workspace")).toBe(workspace)
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toBe(requirement)
+    expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")).toBe(
+      requirement
+    )
     expect(requirement).toHaveValue("Nguồn điện ổn định đã sửa")
     expect(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" })).toHaveAttribute(
       "aria-pressed",
@@ -199,14 +208,20 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const user = userEvent.setup()
     render(<EditorHarness />)
 
-    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm 1: Nhóm A" }))
+    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm I: Nhóm A" }))
 
-    expect(screen.queryByLabelText("Nội dung yêu cầu 1.1")).not.toBeInTheDocument()
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.1")).toBeInTheDocument()
+    expect(
+      screen.queryByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm II")
+    ).toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: "Mở rộng nhóm 1: Nhóm A" }))
+    await user.click(screen.getByRole("button", { name: "Mở rộng nhóm I: Nhóm A" }))
 
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+    ).toBeInTheDocument()
   })
 
   it("keeps Add group available for an empty draft", () => {
@@ -224,9 +239,9 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
 
     await user.click(screen.getByRole("button", { name: "Thêm nhóm" }))
 
-    const groupName = await screen.findByRole("textbox", { name: "Tên nhóm 3" })
+    const groupName = await screen.findByRole("textbox", { name: "Tên nhóm III" })
     await waitFor(() => expect(groupName).toHaveFocus())
-    expect(screen.getByRole("button", { name: /Thu gọn nhóm 3/ })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: /Thu gọn nhóm III/ })).toHaveAttribute(
       "aria-expanded",
       "true"
     )
@@ -237,14 +252,16 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const user = userEvent.setup()
     render(<EditorHarness />)
 
-    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm 1: Nhóm A" }))
+    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm I: Nhóm A" }))
     await user.click(
-      within(getGroupSection(1)).getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" })
+      within(getGroupSection(1)).getByRole("button", { name: "Thêm tiêu chí vào nhóm I" })
     )
 
-    const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.2")
+    const requirement = await screen.findByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm I"
+    )
     await waitFor(() => expect(requirement).toHaveFocus())
-    expect(screen.getByRole("button", { name: "Thu gọn nhóm 1: Nhóm A" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Thu gọn nhóm I: Nhóm A" })).toHaveAttribute(
       "aria-expanded",
       "true"
     )
@@ -278,7 +295,9 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     await user.click(within(getGroupSection(1)).getByRole("button", { name: "Xem trước" }))
     await user.click(within(getGroupSection(1)).getByRole("button", { name: "Thêm vào bản nháp" }))
 
-    const newRequirement = await screen.findByLabelText("Nội dung yêu cầu 1.2")
+    const newRequirement = await screen.findByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm I"
+    )
     await waitFor(() => expect(newRequirement).toHaveFocus())
     expect(
       screen
@@ -291,9 +310,9 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const user = userEvent.setup()
     render(<EditorHarness />)
 
-    await user.click(within(getGroupSection(1)).getByRole("button", { name: "Xóa nhóm 1" }))
+    await user.click(within(getGroupSection(1)).getByRole("button", { name: "Xóa nhóm I" }))
     const remainingDisclosure = screen.getByRole("button", {
-      name: "Thu gọn nhóm 1: Nhóm B",
+      name: "Thu gọn nhóm I: Nhóm B",
     })
     await waitFor(() => expect(remainingDisclosure).toHaveFocus())
 

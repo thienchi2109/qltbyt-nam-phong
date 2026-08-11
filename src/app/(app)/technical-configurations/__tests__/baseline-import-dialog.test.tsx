@@ -176,7 +176,7 @@ describe("technical configuration baseline import dialog", () => {
     mockVersions([createDraft()])
 
     renderTab()
-    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
 

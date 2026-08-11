@@ -15,10 +15,13 @@ import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
+import { TechnicalConfigurationBaselineSubgroupSection } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineSubgroupSection"
 import { TechnicalConfigurationBulkEntryWorkbench } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBulkEntryWorkbench"
 import { TechnicalConfigurationCriteriaSpreadsheet } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCriteriaSpreadsheet"
 import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
+import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -28,6 +31,7 @@ import { Input } from "@/components/ui/input"
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 
 type CriterionTextField = "title" | "requirementText"
+const EMPTY_SUBGROUPS: TechnicalConfigurationBaselineEditorGroup["subgroups"] = []
 
 export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
   group: TechnicalConfigurationBaselineEditorGroup
@@ -37,6 +41,7 @@ export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
   mode: TechnicalConfigurationEntryMode
   bulkSession: TechnicalConfigurationBulkEntrySession
   groupError?: string
+  subgroupErrors: Record<string, string>
   criterionErrors: Record<string, string>
   summaryErrorCount: number
   pendingInputDescriptionId?: string
@@ -77,6 +82,7 @@ export function TechnicalConfigurationBaselineGroupSection({
   mode,
   bulkSession,
   groupError,
+  subgroupErrors,
   criterionErrors,
   summaryErrorCount,
   pendingInputDescriptionId,
@@ -98,14 +104,44 @@ export function TechnicalConfigurationBaselineGroupSection({
   onBulkAccept,
 }: TechnicalConfigurationBaselineGroupSectionProps): React.JSX.Element {
   const ordinal = groupIndex + 1
-  const groupLabel = group.name.trim() || `Nhóm ${ordinal}`
+  const sectionOrdinal = formatTechnicalConfigurationBaselineSectionOrdinal(ordinal)
+  const groupLabel = group.name.trim() || `Nhóm ${sectionOrdinal}`
   const groupErrorId = groupError ? `baseline-group-${group.key}-error` : undefined
   const hasPendingBulkInput = hasTechnicalConfigurationBulkEntryInput(bulkSession.input)
   const modeActionLabel = mode === "row" ? "Nhập nhiều dòng" : "Chỉnh từng dòng"
+  const subgroups = group.subgroups ?? EMPTY_SUBGROUPS
+  const subgroupKeys = React.useMemo(() => subgroups.map((subgroup) => subgroup.key), [subgroups])
+  const {
+    expandedGroupKeys: expandedSubgroupKeys,
+    setExpanded: setSubgroupExpanded,
+    expand: expandSubgroup,
+  } = useTechnicalConfigurationGroupDisclosure(subgroupKeys)
+  const targetSubgroupKey =
+    focusTarget?.kind === "criterion"
+      ? (subgroups.find((subgroup) =>
+          subgroup.criteria.some((criterion) => criterion.key === focusTarget.key)
+        )?.key ?? null)
+      : null
+  const targetSubgroupFocusRequest =
+    targetSubgroupKey && focusTarget?.kind === "criterion"
+      ? `${focusTarget.key}:${focusTarget.token}`
+      : null
+  const handledSubgroupFocusRequestRef = React.useRef<string | null>(null)
+  const totalCriterionCount =
+    group.criteria.length +
+    subgroups.reduce((count, subgroup) => count + subgroup.criteria.length, 0)
   const disclosureRef = React.useRef<HTMLButtonElement>(null)
   const groupNameRef = React.useRef<HTMLInputElement>(null)
   const modeActionRef = React.useRef<HTMLButtonElement>(null)
   const addCriterionRef = React.useRef<HTMLButtonElement>(null)
+
+  React.useEffect(() => {
+    if (!targetSubgroupKey || !targetSubgroupFocusRequest) return
+    if (handledSubgroupFocusRequestRef.current === targetSubgroupFocusRequest) return
+
+    handledSubgroupFocusRequestRef.current = targetSubgroupFocusRequest
+    expandSubgroup(targetSubgroupKey)
+  }, [expandSubgroup, targetSubgroupFocusRequest, targetSubgroupKey])
 
   React.useEffect(() => {
     if (!focusTarget) return
@@ -130,7 +166,7 @@ export function TechnicalConfigurationBaselineGroupSection({
 
   return (
     <Collapsible open={expanded} onOpenChange={onExpandedChange}>
-      <section className="border-b" aria-label={`Nhóm tiêu chí ${ordinal}`}>
+      <section className="border-b" aria-label={`Nhóm tiêu chí ${sectionOrdinal}`}>
         <div className="grid gap-3 bg-muted/30 px-3 py-3 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-start">
           <div className="flex items-center gap-2">
             <CollapsibleTrigger asChild>
@@ -139,7 +175,7 @@ export function TechnicalConfigurationBaselineGroupSection({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label={`${expanded ? "Thu gọn" : "Mở rộng"} nhóm ${ordinal}: ${groupLabel}`}
+                aria-label={`${expanded ? "Thu gọn" : "Mở rộng"} nhóm ${sectionOrdinal}: ${groupLabel}`}
                 title={expanded ? "Thu gọn nhóm" : "Mở rộng nhóm"}
               >
                 <ChevronDown
@@ -149,18 +185,18 @@ export function TechnicalConfigurationBaselineGroupSection({
               </Button>
             </CollapsibleTrigger>
             <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background text-sm font-semibold">
-              {ordinal}
+              {sectionOrdinal}
             </span>
           </div>
 
           <div className="min-w-0">
             <label className="sr-only" htmlFor={`baseline-group-${group.key}`}>
-              Tên nhóm {ordinal}
+              Tên nhóm {sectionOrdinal}
             </label>
             <Input
               ref={groupNameRef}
               id={`baseline-group-${group.key}`}
-              aria-label={`Tên nhóm ${ordinal}`}
+              aria-label={`Tên nhóm ${sectionOrdinal}`}
               value={group.name}
               disabled={disabled}
               aria-invalid={Boolean(groupError)}
@@ -173,7 +209,7 @@ export function TechnicalConfigurationBaselineGroupSection({
               </p>
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">{group.criteria.length} tiêu chí</Badge>
+              <Badge variant="secondary">{totalCriterionCount} tiêu chí</Badge>
               {summaryErrorCount > 0 ? (
                 <Badge variant="destructive">{summaryErrorCount} lỗi</Badge>
               ) : null}
@@ -190,7 +226,7 @@ export function TechnicalConfigurationBaselineGroupSection({
               variant="outline"
               size="sm"
               disabled={disabled}
-              aria-label={`${modeActionLabel} cho nhóm ${ordinal}: ${groupLabel}`}
+              aria-label={`${modeActionLabel} cho nhóm ${sectionOrdinal}: ${groupLabel}`}
               onClick={() => onModeChange(group.key, mode === "row" ? "bulk" : "row")}
             >
               {mode === "row" ? (
@@ -206,14 +242,14 @@ export function TechnicalConfigurationBaselineGroupSection({
               variant="outline"
               size="sm"
               disabled={disabled}
-              aria-label={`Thêm tiêu chí vào nhóm ${ordinal}`}
+              aria-label={`Thêm tiêu chí vào nhóm ${sectionOrdinal}`}
               onClick={handleAddCriterion}
             >
               <Plus className="size-4" aria-hidden="true" />
               Thêm tiêu chí
             </Button>
             <IconButton
-              label={`Di chuyển nhóm ${ordinal} lên`}
+              label={`Di chuyển nhóm ${sectionOrdinal} lên`}
               title="Di chuyển lên"
               disabled={disabled || groupIndex === 0}
               onClick={() => onMoveGroup(groupIndex, -1)}
@@ -221,7 +257,7 @@ export function TechnicalConfigurationBaselineGroupSection({
               <ArrowUp className="size-4" />
             </IconButton>
             <IconButton
-              label={`Di chuyển nhóm ${ordinal} xuống`}
+              label={`Di chuyển nhóm ${sectionOrdinal} xuống`}
               title="Di chuyển xuống"
               disabled={disabled || groupIndex === groupCount - 1}
               onClick={() => onMoveGroup(groupIndex, 1)}
@@ -229,7 +265,7 @@ export function TechnicalConfigurationBaselineGroupSection({
               <ArrowDown className="size-4" />
             </IconButton>
             <IconButton
-              label={`Xóa nhóm ${ordinal}`}
+              label={`Xóa nhóm ${sectionOrdinal}`}
               title="Xóa nhóm"
               disabled={disabled}
               ariaDisabled={hasPendingBulkInput}
@@ -245,7 +281,7 @@ export function TechnicalConfigurationBaselineGroupSection({
         </div>
 
         <CollapsibleContent>
-          <div role="region" aria-label={`Nội dung nhóm ${ordinal}`} className="py-4">
+          <div role="region" aria-label={`Nội dung nhóm ${sectionOrdinal}`} className="py-4">
             {mode === "row" ? (
               <TechnicalConfigurationCriteriaSpreadsheet
                 group={group}
@@ -276,6 +312,19 @@ export function TechnicalConfigurationBaselineGroupSection({
                 onAccept={onBulkAccept}
               />
             )}
+            {subgroups.map((subgroup, subgroupIndex) => (
+              <TechnicalConfigurationBaselineSubgroupSection
+                key={subgroup.key}
+                subgroup={subgroup}
+                sectionOrdinal={sectionOrdinal}
+                subgroupIndex={subgroupIndex}
+                expanded={expandedSubgroupKeys.has(subgroup.key)}
+                subgroupError={subgroupErrors[subgroup.key]}
+                criterionErrors={criterionErrors}
+                focusTarget={focusTarget}
+                onExpandedChange={(expanded) => setSubgroupExpanded(subgroup.key, expanded)}
+              />
+            ))}
           </div>
         </CollapsibleContent>
       </section>

@@ -212,8 +212,11 @@ describe("technical configuration baseline tab", () => {
     const nameInput = await screen.findByDisplayValue("Yêu cầu chung")
     await user.clear(nameInput)
     await user.type(nameInput, "Tên nhóm đã được lưu")
-    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 1" }))
-    await user.type(screen.getByLabelText("Nội dung yêu cầu 1.2"), "Giá trị chưa lưu")
+    await user.click(screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm I" }))
+    await user.type(
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm I"),
+      "Giá trị chưa lưu"
+    )
     await user.click(screen.getByRole("button", { name: "Lưu" }))
 
     expect(await screen.findByText("Không thể lưu cấu hình cơ sở.")).toBeInTheDocument()

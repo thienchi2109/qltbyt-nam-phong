@@ -182,14 +182,13 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
       expect(within(firstGroup).getByText("2 lỗi")).toBeInTheDocument()
-      expect(screen.getByLabelText("Tên nhóm 1")).not.toHaveAttribute("aria-invalid", "true")
+      expect(screen.getByLabelText("Tên nhóm I")).not.toHaveAttribute("aria-invalid", "true")
       expect(screen.queryByText("Tên nhóm là bắt buộc.")).not.toBeInTheDocument()
-      expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).not.toHaveAttribute(
-        "aria-invalid",
-        "true"
-      )
+      expect(
+        screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+      ).not.toHaveAttribute("aria-invalid", "true")
     } finally {
       baseline.editorDraft = originalDraft
     }
@@ -205,7 +204,7 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-      const groupInput = await screen.findByLabelText("Tên nhóm 1")
+      const groupInput = await screen.findByLabelText("Tên nhóm I")
       const groupError = screen.getByText("Tên nhóm là bắt buộc.")
       expect(groupError).toHaveAttribute("id")
       expect(groupInput).toHaveAttribute("aria-describedby", groupError.id)
@@ -242,8 +241,8 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
 
-      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
-      const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí 2" })
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
+      const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
       await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
       await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer nhóm 1")
 
@@ -281,14 +280,14 @@ describe("technical configuration inline workflow", () => {
     try {
       render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+      const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
       await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
       await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Buffer chưa xử lý")
 
       const pendingExplanation = screen.getByText(
         "Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu."
       )
-      const deleteButton = screen.getByRole("button", { name: "Xóa nhóm 1" })
+      const deleteButton = screen.getByRole("button", { name: "Xóa nhóm I" })
       expect(deleteButton).not.toBeDisabled()
       expect(deleteButton).toHaveAttribute("aria-disabled", "true")
       expect(deleteButton).toHaveAttribute("aria-describedby", pendingExplanation.id)
@@ -316,11 +315,15 @@ describe("technical configuration inline workflow", () => {
     const user = userEvent.setup()
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
-    const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí 2" })
-    expect(within(firstGroup).getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
+    const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
+    expect(
+      within(firstGroup).getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+    ).toBeInTheDocument()
 
-    const secondRequirement = within(secondGroup).getByLabelText("Nội dung yêu cầu 2.1")
+    const secondRequirement = within(secondGroup).getByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm II"
+    )
     await user.click(secondRequirement)
     expect(secondRequirement).toHaveFocus()
   })
@@ -329,12 +332,14 @@ describe("technical configuration inline workflow", () => {
     const user = userEvent.setup()
     render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
 
-    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí 1" })
+    const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
     await user.type(within(firstGroup).getByLabelText("Nội dung nhập nhanh"), "Tiêu chí chưa nhận")
     await user.click(within(firstGroup).getByRole("button", { name: "Hủy nhập" }))
 
-    expect(within(firstGroup).getByLabelText("Nội dung yêu cầu 1.1")).toBeInTheDocument()
+    expect(
+      within(firstGroup).getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
+    ).toBeInTheDocument()
     expect(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ })).toHaveFocus()
   })
 })

@@ -135,9 +135,9 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     renderGroupSection()
 
     const disclosure = screen.getByRole("button", {
-      name: "Thu gọn nhóm 2: Yêu cầu kỹ thuật",
+      name: "Thu gọn nhóm II: Yêu cầu kỹ thuật",
     })
-    const nameInput = screen.getByRole("textbox", { name: "Tên nhóm 2" })
+    const nameInput = screen.getByRole("textbox", { name: "Tên nhóm II" })
 
     expect(disclosure).toHaveAttribute("aria-expanded", "true")
     expect(nameInput).toHaveValue("Yêu cầu kỹ thuật")
@@ -152,10 +152,10 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     const user = userEvent.setup()
     const { callbacks } = renderGroupSection()
 
-    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm 2: Yêu cầu kỹ thuật" }))
+    await user.click(screen.getByRole("button", { name: "Thu gọn nhóm II: Yêu cầu kỹ thuật" }))
 
     expect(callbacks.onExpandedChange).toHaveBeenCalledWith(false)
-    expect(screen.queryByRole("region", { name: "Nội dung nhóm 2" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("region", { name: "Nội dung nhóm II" })).not.toBeInTheDocument()
     expect(screen.getByText("2 tiêu chí")).toBeInTheDocument()
     expect(screen.getByText("2 lỗi")).toBeInTheDocument()
     expect(screen.getByText("Có nội dung nhập nhiều dòng")).toBeInTheDocument()
@@ -166,7 +166,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     const { callbacks } = renderGroupSection()
 
     await user.tab()
-    expect(screen.getByRole("button", { name: /Thu gọn nhóm 2/ })).toHaveFocus()
+    expect(screen.getByRole("button", { name: /Thu gọn nhóm II/ })).toHaveFocus()
 
     await user.keyboard("{Enter}")
     expect(callbacks.onExpandedChange).toHaveBeenLastCalledWith(false)
@@ -179,16 +179,16 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     const user = userEvent.setup()
     const { callbacks } = renderGroupSection({ groupError: undefined })
 
-    expect(screen.getByRole("region", { name: "Nội dung nhóm 2" })).toBeInTheDocument()
-    expect(screen.getByLabelText("Nội dung yêu cầu 2.2")).toHaveAccessibleDescription(
-      "Nội dung yêu cầu là bắt buộc."
-    )
+    expect(screen.getByRole("region", { name: "Nội dung nhóm II" })).toBeInTheDocument()
+    expect(
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm II")
+    ).toHaveAccessibleDescription("Nội dung yêu cầu là bắt buộc.")
     expect(screen.getByTestId("criterion-row-criterion-1")).toHaveAttribute(
       "data-recently-accepted",
       "true"
     )
 
-    const titleInput = screen.getByLabelText("Tiêu đề tiêu chí 2.1")
+    const titleInput = screen.getByLabelText("Tiêu đề tiêu chí trực tiếp 1 của nhóm II")
     await user.type(titleInput, "X")
     expect(callbacks.onCriterionTextChange).toHaveBeenLastCalledWith(
       "group-2",
@@ -197,10 +197,12 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
       "Nguồn điệnX"
     )
 
-    await user.click(screen.getByRole("button", { name: "Di chuyển tiêu chí 2.1 xuống" }))
+    await user.click(
+      screen.getByRole("button", { name: "Di chuyển tiêu chí trực tiếp 1 của nhóm II xuống" })
+    )
     expect(callbacks.onMoveCriterion).toHaveBeenCalledWith("group-2", 0, 1)
 
-    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí 2.2" }))
+    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí trực tiếp 2 của nhóm II" }))
     expect(callbacks.onDeleteCriterion).toHaveBeenCalledWith("group-2", "criterion-2")
   })
 
@@ -230,7 +232,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     const user = userEvent.setup()
     const { callbacks } = renderGroupSection({ groupError: undefined })
 
-    const deleteButton = screen.getByRole("button", { name: "Xóa nhóm 2" })
+    const deleteButton = screen.getByRole("button", { name: "Xóa nhóm II" })
     expect(deleteButton).not.toBeDisabled()
     expect(deleteButton).toHaveAttribute("aria-disabled", "true")
     expect(deleteButton).toHaveAttribute("aria-describedby", "pending-bulk-status")
@@ -246,7 +248,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
       groupError: undefined,
     })
 
-    const addButtons = screen.getAllByRole("button", { name: "Thêm tiêu chí vào nhóm 2" })
+    const addButtons = screen.getAllByRole("button", { name: "Thêm tiêu chí vào nhóm II" })
     expect(addButtons).toHaveLength(1)
     await user.click(addButtons[0])
 
@@ -263,7 +265,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
         key: "group-2",
         token: 1,
       } as TechnicalConfigurationFocusTarget,
-      target: () => screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm 2" }),
+      target: () => screen.getByRole("button", { name: "Thêm tiêu chí vào nhóm II" }),
     },
     {
       name: "group disclosure",
@@ -272,7 +274,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
         key: "group-2",
         token: 2,
       } as TechnicalConfigurationFocusTarget,
-      target: () => screen.getByRole("button", { name: /Thu gọn nhóm 2/ }),
+      target: () => screen.getByRole("button", { name: /Thu gọn nhóm II/ }),
     },
     {
       name: "group mode action",
@@ -290,7 +292,7 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
         key: "group-2",
         token: 4,
       } as TechnicalConfigurationFocusTarget,
-      target: () => screen.getByRole("textbox", { name: "Tên nhóm 2" }),
+      target: () => screen.getByRole("textbox", { name: "Tên nhóm II" }),
     },
   ])("focuses the $name target", async ({ focusTarget, target }) => {
     userEvent.setup()
@@ -303,10 +305,10 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     userEvent.setup()
     renderGroupSection({ disabled: true })
 
-    expect(screen.getByRole("textbox", { name: "Tên nhóm 2" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Di chuyển nhóm 2 lên" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Di chuyển nhóm 2 xuống" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Xóa nhóm 2" })).toBeDisabled()
+    expect(screen.getByRole("textbox", { name: "Tên nhóm II" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Di chuyển nhóm II lên" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Di chuyển nhóm II xuống" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Xóa nhóm II" })).toBeDisabled()
     expect(screen.getByText("Tên nhóm là bắt buộc.")).toHaveAttribute(
       "id",
       "baseline-group-group-2-error"

@@ -247,13 +247,13 @@ Depends on: P4A.
 Deploy boundary: hierarchy is readable and collapsible; structural creation/reorder
 controls remain absent; P4C wires them without mounting them on the production screen.
 
-- [ ] P4B.1 Render sections, subgroups, direct criteria, and subgroup criteria in one
+- [x] P4B.1 Render sections, subgroups, direct criteria, and subgroup criteria in one
       canonical hierarchy.
-- [ ] P4B.2 Make structural rows independently collapsible and accessible without
+- [x] P4B.2 Make structural rows independently collapsible and accessible without
       response or assessment controls.
-- [ ] P4B.3 Preserve existing definite-height scrolling, focus, pending multiline
+- [x] P4B.3 Preserve existing definite-height scrolling, focus, pending multiline
       buffers, validation association, and file-size ceilings.
-- [ ] P4B.4 Add hierarchy rendering, collapse, keyboard, focus, and responsive tests.
+- [x] P4B.4 Add hierarchy rendering, collapse, keyboard, focus, and responsive tests.
 
 ## Phase P4C - Hierarchical Authoring Controls
 

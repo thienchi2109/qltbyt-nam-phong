@@ -92,7 +92,9 @@ describe("technical configuration baseline locking and history", () => {
     )
 
     renderTab()
-    const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
+    const requirement = await screen.findByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I"
+    )
     expect(requirement).toHaveValue("Dòng 1\nDòng 2")
 
     await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
@@ -118,7 +120,7 @@ describe("technical configuration baseline locking and history", () => {
     )
 
     renderTab()
-    await screen.findByLabelText("Nội dung yêu cầu 1.1")
+    await screen.findByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
     await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
@@ -169,7 +171,9 @@ describe("technical configuration baseline locking and history", () => {
       })
     )
     expect(await screen.findByText("Phiên bản 2")).toBeInTheDocument()
-    expect(screen.getByLabelText("Nội dung yêu cầu 1.1")).toHaveValue("Dòng 1\nDòng 2")
+    expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")).toHaveValue(
+      "Dòng 1\nDòng 2"
+    )
     expect(
       queryClient.getQueryData<{
         data: typeof dossier
@@ -203,7 +207,9 @@ describe("technical configuration baseline locking and history", () => {
     const nativeConfirm = vi.spyOn(window, "confirm").mockReturnValue(false)
 
     renderTab()
-    const requirement = await screen.findByLabelText("Nội dung yêu cầu 1.1")
+    const requirement = await screen.findByLabelText(
+      "Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I"
+    )
     await user.clear(requirement)
     await user.type(requirement, "Nội dung đang sửa")
     await selectBaselineVersion(user, "Phiên bản 1 · Đã khóa")
