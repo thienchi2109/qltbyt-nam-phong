@@ -1,6 +1,12 @@
 import type { TechnicalConfigurationBaselineDraftWire } from "./baseline-types"
 import { normalizeTechnicalConfigurationBulkEntryText } from "./bulk-entry-utils"
 
+export {
+  cloneTechnicalConfigurationBaselineDraft,
+  cloneTechnicalConfigurationBaselineEditorDraft,
+  isTechnicalConfigurationBaselineEditorDirty,
+} from "./technical-configuration-baseline-editor-snapshot"
+
 export interface TechnicalConfigurationBaselineEditorCriterion {
   key: string
   id: string | null
@@ -9,11 +15,19 @@ export interface TechnicalConfigurationBaselineEditorCriterion {
   requirementText: string
 }
 
+export interface TechnicalConfigurationBaselineEditorSubgroup {
+  key: string
+  id: string | null
+  name: string
+  criteria: TechnicalConfigurationBaselineEditorCriterion[]
+}
+
 export interface TechnicalConfigurationBaselineEditorGroup {
   key: string
   id: string | null
   name: string
   criteria: TechnicalConfigurationBaselineEditorCriterion[]
+  subgroups: TechnicalConfigurationBaselineEditorSubgroup[]
 }
 
 export interface TechnicalConfigurationBaselineEditorDraft {
@@ -26,6 +40,7 @@ export interface TechnicalConfigurationBaselineEditorDraft {
 
 export interface TechnicalConfigurationBaselineEditorValidation {
   groupErrors: Record<string, string>
+  subgroupErrors?: Record<string, string>
   criterionErrors: Record<string, string>
 }
 
@@ -49,12 +64,12 @@ export function toTechnicalConfigurationBaselineEditorDraft(
       key: group.id,
       id: group.id,
       name: group.name,
-      criteria: group.criteria.map((criterion) => ({
-        key: criterion.id,
-        id: criterion.id,
-        criterionCode: criterion.criterion_code,
-        title: criterion.title ?? "",
-        requirementText: criterion.requirement_text,
+      criteria: group.criteria.map(toTechnicalConfigurationBaselineEditorCriterion),
+      subgroups: (group.subgroups ?? []).map((subgroup) => ({
+        key: subgroup.id,
+        id: subgroup.id,
+        name: subgroup.name,
+        criteria: subgroup.criteria.map(toTechnicalConfigurationBaselineEditorCriterion),
       })),
     })),
   }
@@ -62,14 +77,14 @@ export function toTechnicalConfigurationBaselineEditorDraft(
 
 /** Creates one unsaved group row. */
 export function createTechnicalConfigurationBaselineEditorGroup(
-  key = createEditorKey("group")
+  key = createTechnicalConfigurationBaselineEditorKey("group")
 ): TechnicalConfigurationBaselineEditorGroup {
-  return { key, id: null, name: "", criteria: [] }
+  return { key, id: null, name: "", criteria: [], subgroups: [] }
 }
 
 /** Creates one unsaved criterion row. */
 export function createTechnicalConfigurationBaselineEditorCriterion(
-  key = createEditorKey("criterion")
+  key = createTechnicalConfigurationBaselineEditorKey("criterion")
 ): TechnicalConfigurationBaselineEditorCriterion {
   return {
     key,
@@ -186,7 +201,9 @@ export function validateTechnicalConfigurationBaselineEditorDraft(
   draft: TechnicalConfigurationBaselineEditorDraft
 ): TechnicalConfigurationBaselineEditorValidation {
   const groupErrors: Record<string, string> = {}
+  const subgroupErrors: Record<string, string> = {}
   const criterionErrors: Record<string, string> = {}
+  let hasSubgroups = false
 
   for (const group of draft.groups) {
     if (!group.name.trim()) {
@@ -198,66 +215,41 @@ export function validateTechnicalConfigurationBaselineEditorDraft(
         criterionErrors[criterion.key] = "Nội dung yêu cầu là bắt buộc."
       }
     }
+
+    for (const subgroup of group.subgroups ?? []) {
+      hasSubgroups = true
+      if (!subgroup.name.trim()) {
+        subgroupErrors[subgroup.key] = "Tên nhóm con là bắt buộc."
+      }
+
+      for (const criterion of subgroup.criteria) {
+        if (!criterion.requirementText.trim()) {
+          criterionErrors[criterion.key] = "Nội dung yêu cầu là bắt buộc."
+        }
+      }
+    }
   }
 
-  return { groupErrors, criterionErrors }
+  return hasSubgroups
+    ? { groupErrors, subgroupErrors, criterionErrors }
+    : { groupErrors, criterionErrors }
 }
 
-/** Clones the persisted draft tree used by resumable save progress. */
-export function cloneTechnicalConfigurationBaselineDraft(
-  draft: TechnicalConfigurationBaselineDraftWire
-): TechnicalConfigurationBaselineDraftWire {
-  return cloneTechnicalConfigurationBaselineTree(draft)
-}
-
-/** Clones the editable tree so failed-save progress never aliases caller state. */
-export function cloneTechnicalConfigurationBaselineEditorDraft(
-  draft: TechnicalConfigurationBaselineEditorDraft
-): TechnicalConfigurationBaselineEditorDraft {
-  return cloneTechnicalConfigurationBaselineTree(draft)
-}
-
-function cloneTechnicalConfigurationBaselineTree<
-  TCriterion extends object,
-  TGroup extends { criteria: TCriterion[] },
-  TDraft extends { groups: TGroup[] },
->(draft: TDraft): TDraft {
-  return {
-    ...draft,
-    groups: draft.groups.map((group) => ({
-      ...group,
-      criteria: group.criteria.map((criterion) => ({ ...criterion })),
-    })),
-  }
-}
-
-/** Compares editable values and order while ignoring client-only row keys. */
-export function isTechnicalConfigurationBaselineEditorDirty(
-  baseDraft: TechnicalConfigurationBaselineDraftWire | null,
-  editorDraft: TechnicalConfigurationBaselineEditorDraft | null
-): boolean {
-  if (!baseDraft || !editorDraft) return false
-  if (baseDraft.groups.length !== editorDraft.groups.length) return true
-
-  return baseDraft.groups.some((group, groupIndex) => {
-    const editorGroup = editorDraft.groups[groupIndex]
-    if (!editorGroup || group.id !== editorGroup.id || group.name !== editorGroup.name) return true
-    if (group.criteria.length !== editorGroup.criteria.length) return true
-
-    return group.criteria.some((criterion, criterionIndex) => {
-      const editorCriterion = editorGroup.criteria[criterionIndex]
-      return (
-        !editorCriterion ||
-        criterion.id !== editorCriterion.id ||
-        (criterion.title ?? "") !== editorCriterion.title ||
-        criterion.requirement_text !== editorCriterion.requirementText
-      )
-    })
-  })
-}
-
-function createEditorKey(prefix: string): string {
+/** Creates a stable client-side key for a new editor item. */
+export function createTechnicalConfigurationBaselineEditorKey(prefix: string): string {
   return `${prefix}-${globalThis.crypto.randomUUID()}`
+}
+
+function toTechnicalConfigurationBaselineEditorCriterion(
+  criterion: TechnicalConfigurationBaselineDraftWire["groups"][number]["criteria"][number]
+): TechnicalConfigurationBaselineEditorCriterion {
+  return {
+    key: criterion.id,
+    id: criterion.id,
+    criterionCode: criterion.criterion_code,
+    title: criterion.title ?? "",
+    requirementText: criterion.requirement_text,
+  }
 }
 
 function updateTechnicalConfigurationBaselineEditorGroup(

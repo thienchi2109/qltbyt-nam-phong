@@ -230,14 +230,14 @@ Depends on: P1E.
 Deploy boundary: pure state/model support only; current production editor rendering
 remains unchanged.
 
-- [ ] P4A.1 Write pure failing tests for section/subgroup/direct-criterion/
+- [x] P4A.1 Write pure failing tests for section/subgroup/direct-criterion/
       subgroup-criterion creation, move, reorder, delete, validation, clone, and dirty
       comparison.
-- [ ] P4A.2 Extend editor state and save mappers while preserving legacy two-level
+- [x] P4A.2 Extend editor state and save mappers while preserving legacy two-level
       drafts.
-- [ ] P4A.3 Keep criterion identity stable when moving between direct and subgroup
+- [x] P4A.3 Keep criterion identity stable when moving between direct and subgroup
       ownership.
-- [ ] P4A.4 Normalize direct criteria before subgroup blocks and preserve complete
+- [x] P4A.4 Normalize direct criteria before subgroup blocks and preserve complete
       subgroup blocks during moves and reorder.
 
 ## Phase P4B - Subgroup Presentation

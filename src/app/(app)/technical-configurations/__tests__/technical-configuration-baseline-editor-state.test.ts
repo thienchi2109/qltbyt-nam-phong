@@ -81,6 +81,7 @@ describe("technical configuration baseline editor state", () => {
               requirementText: "Dòng 1\nDòng 2",
             },
           ],
+          subgroups: [],
         },
       ],
     })
@@ -92,6 +93,7 @@ describe("technical configuration baseline editor state", () => {
       id: null,
       name: "",
       criteria: [],
+      subgroups: [],
     })
     expect(createTechnicalConfigurationBaselineEditorCriterion("new-criterion-1")).toEqual({
       key: "new-criterion-1",
