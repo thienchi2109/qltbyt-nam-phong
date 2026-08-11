@@ -1,11 +1,34 @@
 "use client"
 
 import * as React from "react"
+import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 
-import type { TechnicalConfigurationBaselineEditorCriterion } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type {
+  TechnicalConfigurationBaselineEditorCriterion,
+  TechnicalConfigurationBaselineEditorCriterionOwner,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+
+import { TechnicalConfigurationBaselineCriterionOwnerSelect } from "./TechnicalConfigurationBaselineCriterionOwnerSelect"
+import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
+import type { TechnicalConfigurationBaselineCriterionOwnerOption } from "./TechnicalConfigurationBaselineHierarchyAuthoring"
+
+type CriterionTextField = "title" | "requirementText"
+
+type SubgroupCriteriaAuthoring = Readonly<{
+  owner: TechnicalConfigurationBaselineEditorCriterionOwner
+  ownerOptions: readonly TechnicalConfigurationBaselineCriterionOwnerOption[]
+  disabled: boolean
+  onCriterionTextChange: (criterionKey: string, field: CriterionTextField, value: string) => void
+  onMoveCriterion: (criterionIndex: number, offset: -1 | 1) => void
+  onMoveCriterionToOwner: (
+    criterionKey: string,
+    owner: TechnicalConfigurationBaselineEditorCriterionOwner
+  ) => void
+  onDeleteCriterion: (criterionKey: string) => void
+}>
 
 type TechnicalConfigurationBaselineSubgroupCriteriaProps = Readonly<{
   criteria: readonly TechnicalConfigurationBaselineEditorCriterion[]
@@ -14,10 +37,13 @@ type TechnicalConfigurationBaselineSubgroupCriteriaProps = Readonly<{
   criterionErrors: Record<string, string>
   focusCriterionKey: string | null
   focusCriterionToken: number | null
+  authoring?: SubgroupCriteriaAuthoring
 }>
 
 const RESPONSIVE_COLUMNS =
   "grid-cols-1 md:grid-cols-2 xl:grid-cols-[3rem_7rem_minmax(0,0.8fr)_minmax(0,2fr)_7rem]"
+const AUTHORING_RESPONSIVE_COLUMNS =
+  "grid-cols-1 md:grid-cols-2 xl:grid-cols-[3rem_7rem_minmax(0,0.8fr)_minmax(0,2fr)_minmax(0,1fr)_7rem_7rem]"
 
 /** Presents subgroup criteria without mounting the P4C authoring controls. */
 export function TechnicalConfigurationBaselineSubgroupCriteria({
@@ -27,9 +53,11 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
   criterionErrors,
   focusCriterionKey,
   focusCriterionToken,
+  authoring,
 }: TechnicalConfigurationBaselineSubgroupCriteriaProps): React.JSX.Element {
   const requirementRefs = React.useRef(new Map<string, HTMLTextAreaElement>())
   const subgroupContext = `nhóm con ${subgroupOrdinal}, nhóm ${sectionOrdinal}`
+  const columns = authoring ? AUTHORING_RESPONSIVE_COLUMNS : RESPONSIVE_COLUMNS
 
   React.useEffect(() => {
     if (!focusCriterionKey) return
@@ -61,7 +89,7 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
               <div
                 key={criterion.key}
                 data-testid="baseline-subgroup-criterion-grid"
-                className={`grid ${RESPONSIVE_COLUMNS} min-w-0 items-start gap-3 bg-background px-3 py-3 md:gap-0 md:px-0 md:py-0`}
+                className={`grid ${columns} min-w-0 items-start gap-3 bg-background px-3 py-3 md:gap-0 md:px-0 md:py-0`}
               >
                 <span className="text-sm font-medium md:px-3 md:py-4 md:text-center">
                   <span className="mr-2 text-xs text-muted-foreground">STT</span>
@@ -82,7 +110,11 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
                     id={`baseline-subgroup-title-${criterion.key}`}
                     aria-label={`Tiêu đề ${criterionLabel}`}
                     value={criterion.title}
-                    readOnly
+                    readOnly={!authoring}
+                    disabled={authoring?.disabled}
+                    onChange={(event) =>
+                      authoring?.onCriterionTextChange(criterion.key, "title", event.target.value)
+                    }
                   />
                 </div>
                 <div className="min-w-0 md:px-2 md:py-2">
@@ -101,9 +133,17 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
                     aria-label={`Nội dung yêu cầu ${criterionLabel}`}
                     className="min-h-20 resize-y whitespace-pre-wrap"
                     value={criterion.requirementText}
-                    readOnly
+                    readOnly={!authoring}
+                    disabled={authoring?.disabled}
                     aria-invalid={Boolean(error)}
                     aria-describedby={errorId}
+                    onChange={(event) =>
+                      authoring?.onCriterionTextChange(
+                        criterion.key,
+                        "requirementText",
+                        event.target.value
+                      )
+                    }
                   />
                   {error ? (
                     <p id={errorId} className="mt-1 text-sm text-destructive">
@@ -111,6 +151,20 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
                     </p>
                   ) : null}
                 </div>
+                {authoring ? (
+                  <div className="min-w-0 md:px-2 md:py-2">
+                    <span className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Vị trí
+                    </span>
+                    <TechnicalConfigurationBaselineCriterionOwnerSelect
+                      label={`Chuyển ${criterionLabel}`}
+                      owner={authoring.owner}
+                      options={authoring.ownerOptions}
+                      disabled={authoring.disabled}
+                      onMove={(owner) => authoring.onMoveCriterionToOwner(criterion.key, owner)}
+                    />
+                  </div>
+                ) : null}
                 <div className="md:px-3 md:py-3">
                   <span className="mb-1 block text-xs font-medium text-muted-foreground">
                     Trạng thái
@@ -119,6 +173,35 @@ export function TechnicalConfigurationBaselineSubgroupCriteria({
                     {error ? "Có lỗi" : "Hợp lệ"}
                   </Badge>
                 </div>
+                {authoring ? (
+                  <div className="flex items-center gap-1 md:justify-center md:px-2 md:py-2">
+                    <IconButton
+                      label={`Di chuyển ${criterionLabel} lên`}
+                      title="Di chuyển lên"
+                      disabled={authoring.disabled || criterionIndex === 0}
+                      onClick={() => authoring.onMoveCriterion(criterionIndex, -1)}
+                    >
+                      <ArrowUp className="size-4" />
+                    </IconButton>
+                    <IconButton
+                      label={`Di chuyển ${criterionLabel} xuống`}
+                      title="Di chuyển xuống"
+                      disabled={authoring.disabled || criterionIndex === criteria.length - 1}
+                      onClick={() => authoring.onMoveCriterion(criterionIndex, 1)}
+                    >
+                      <ArrowDown className="size-4" />
+                    </IconButton>
+                    <IconButton
+                      label={`Xóa ${criterionLabel}`}
+                      title="Xóa tiêu chí"
+                      disabled={authoring.disabled}
+                      destructive
+                      onClick={() => authoring.onDeleteCriterion(criterion.key)}
+                    >
+                      <Trash2 className="size-4" />
+                    </IconButton>
+                  </div>
+                ) : null}
               </div>
             )
           })}

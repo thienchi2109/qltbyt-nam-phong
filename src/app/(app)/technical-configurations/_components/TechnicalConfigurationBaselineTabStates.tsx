@@ -1,6 +1,9 @@
 import { AlertCircle, FileLock2, ListPlus, RefreshCw } from "lucide-react"
 
-import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
+import type {
+  TechnicalConfigurationBaselineCriterionWire,
+  TechnicalConfigurationBaselineDraftWire,
+} from "@/app/(app)/technical-configurations/baseline-types"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -54,6 +57,24 @@ export function TechnicalConfigurationBaselineMissingState({
   )
 }
 
+function TechnicalConfigurationBaselineLockedCriterion({
+  criterion,
+}: Readonly<{ criterion: TechnicalConfigurationBaselineCriterionWire }>) {
+  return (
+    <article className="grid gap-2 py-4 sm:grid-cols-[110px_1fr]">
+      <Badge variant="outline" className="w-fit">
+        {criterion.criterion_code}
+      </Badge>
+      <div className="min-w-0">
+        {criterion.title ? <h4 className="text-sm font-medium">{criterion.title}</h4> : null}
+        <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+          {criterion.requirement_text}
+        </p>
+      </div>
+    </article>
+  )
+}
+
 /** Shows the complete read-only content for a locked baseline version. */
 export function TechnicalConfigurationBaselineLockedState({
   version,
@@ -75,21 +96,34 @@ export function TechnicalConfigurationBaselineLockedState({
           <h3 className="text-sm font-semibold">{group.name}</h3>
           <div className="mt-3 divide-y">
             {group.criteria.map((criterion) => (
-              <article key={criterion.id} className="grid gap-2 py-4 sm:grid-cols-[110px_1fr]">
-                <Badge variant="outline" className="w-fit">
-                  {criterion.criterion_code}
-                </Badge>
-                <div className="min-w-0">
-                  {criterion.title ? (
-                    <h4 className="text-sm font-medium">{criterion.title}</h4>
-                  ) : null}
-                  <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
-                    {criterion.requirement_text}
-                  </p>
-                </div>
-              </article>
+              <TechnicalConfigurationBaselineLockedCriterion
+                key={criterion.id}
+                criterion={criterion}
+              />
             ))}
           </div>
+          {(group.subgroups ?? []).map((subgroup, subgroupIndex) => (
+            <section
+              key={subgroup.id}
+              aria-label={`Nhóm con ${subgroupIndex + 1}: ${subgroup.name}`}
+              className="border-t py-4"
+            >
+              <div className="flex items-center gap-2">
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold">
+                  {subgroupIndex + 1}
+                </span>
+                <h4 className="text-sm font-semibold">{subgroup.name}</h4>
+              </div>
+              <div className="mt-2 divide-y">
+                {subgroup.criteria.map((criterion) => (
+                  <TechnicalConfigurationBaselineLockedCriterion
+                    key={criterion.id}
+                    criterion={criterion}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
         </section>
       ))}
     </section>

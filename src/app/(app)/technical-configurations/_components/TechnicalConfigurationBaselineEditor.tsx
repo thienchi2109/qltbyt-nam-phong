@@ -8,23 +8,25 @@ import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technic
 import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
-  TechnicalConfigurationBaselineEditorGroup,
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
+import {
+  getTechnicalConfigurationBaselineCriterionOwnerOptions,
+  type TechnicalConfigurationBaselineHierarchyAuthoring,
+} from "./TechnicalConfigurationBaselineHierarchyAuthoring"
+import {
+  countTechnicalConfigurationGroupValidationErrors,
+  getTechnicalConfigurationFocusTargetGroupKey,
+  getTechnicalConfigurationFocusTargetForGroup,
+  type TechnicalConfigurationFocusTarget,
+} from "./TechnicalConfigurationBaselineEditorUtils"
+
 export type TechnicalConfigurationEntryMode = "row" | "bulk"
-export type TechnicalConfigurationFocusTarget =
-  | { kind: "criterion"; key: string; token: number }
-  | { kind: "group-name"; key: string; token: number }
-  | { kind: "group-disclosure"; key: string; token: number }
-  | { kind: "group-mode-action"; key: string; token: number }
-  | { kind: "bulk-input"; token: number }
-  | { kind: "add-group"; token: number }
-  | { kind: "add-criterion"; key: string; token: number }
-  | null
+export type { TechnicalConfigurationFocusTarget } from "./TechnicalConfigurationBaselineEditorUtils"
 
 type CriterionTextField = "title" | "requirementText"
 
@@ -68,57 +70,10 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   onBulkAccept: () => void
   onSave: () => void
   onToggleFocusMode?: () => void
+  hierarchyAuthoring?: TechnicalConfigurationBaselineHierarchyAuthoring
 }>
 
 const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
-
-function groupContainsCriterion(
-  group: TechnicalConfigurationBaselineEditorGroup,
-  criterionKey: string
-): boolean {
-  if (group.criteria.some((criterion) => criterion.key === criterionKey)) return true
-
-  for (const subgroup of group.subgroups ?? []) {
-    if (subgroup.criteria.some((criterion) => criterion.key === criterionKey)) return true
-  }
-
-  return false
-}
-
-function countGroupValidationErrors(
-  group: TechnicalConfigurationBaselineEditorGroup,
-  validation: TechnicalConfigurationBaselineEditorValidation
-): number {
-  let count = validation.groupErrors[group.key] ? 1 : 0
-
-  for (const criterion of group.criteria) {
-    if (validation.criterionErrors[criterion.key]) count += 1
-  }
-
-  for (const subgroup of group.subgroups ?? []) {
-    if (validation.subgroupErrors?.[subgroup.key]) count += 1
-    for (const criterion of subgroup.criteria) {
-      if (validation.criterionErrors[criterion.key]) count += 1
-    }
-  }
-
-  return count
-}
-
-function getFocusTargetForGroup(
-  focusTarget: TechnicalConfigurationFocusTarget,
-  group: TechnicalConfigurationBaselineEditorGroup,
-  activeValue: string
-): TechnicalConfigurationFocusTarget | null {
-  if (!focusTarget || focusTarget.kind === "add-group") return null
-  if (focusTarget.kind === "criterion") {
-    return groupContainsCriterion(group, focusTarget.key) ? focusTarget : null
-  }
-  if (focusTarget.kind === "bulk-input") {
-    return activeValue === group.key ? focusTarget : null
-  }
-  return focusTarget.key === group.key ? focusTarget : null
-}
 
 /** Composes all editable baseline groups in one definite-height hierarchy. */
 export function TechnicalConfigurationBaselineEditor({
@@ -147,6 +102,7 @@ export function TechnicalConfigurationBaselineEditor({
   onBulkAccept,
   onSave,
   onToggleFocusMode,
+  hierarchyAuthoring,
 }: TechnicalConfigurationBaselineEditorProps): React.JSX.Element {
   const {
     dirty: isDirty,
@@ -157,6 +113,10 @@ export function TechnicalConfigurationBaselineEditor({
     hasPendingBulkInput,
   } = status
   const groupKeys = React.useMemo(() => draft.groups.map((group) => group.key), [draft.groups])
+  const ownerOptions = React.useMemo(
+    () => getTechnicalConfigurationBaselineCriterionOwnerOptions(draft),
+    [draft]
+  )
   const disclosure = useTechnicalConfigurationGroupDisclosure(groupKeys)
   const addGroupRef = React.useRef<HTMLButtonElement>(null)
 
@@ -170,15 +130,11 @@ export function TechnicalConfigurationBaselineEditor({
       return () => window.clearTimeout(timeoutId)
     }
 
-    let targetGroupKey: string | null = null
-    if (focusTarget.kind === "criterion") {
-      targetGroupKey =
-        draft.groups.find((group) => groupContainsCriterion(group, focusTarget.key))?.key ?? null
-    } else if (focusTarget.kind === "bulk-input") {
-      targetGroupKey = activeValue
-    } else {
-      targetGroupKey = focusTarget.key
-    }
+    const targetGroupKey = getTechnicalConfigurationFocusTargetGroupKey(
+      focusTarget,
+      draft.groups,
+      activeValue
+    )
 
     if (targetGroupKey) disclosure.expand(targetGroupKey)
   }, [activeValue, disclosure.expand, draft.groups, focusTarget])
@@ -269,7 +225,10 @@ export function TechnicalConfigurationBaselineEditor({
         ) : (
           draft.groups.map((group, groupIndex) => {
             const mode = activeValue === group.key && entryMode === "bulk" ? "bulk" : "row"
-            const summaryErrorCount = countGroupValidationErrors(group, summaryValidation)
+            const summaryErrorCount = countTechnicalConfigurationGroupValidationErrors(
+              group,
+              summaryValidation
+            )
 
             return (
               <TechnicalConfigurationBaselineGroupSection
@@ -286,8 +245,14 @@ export function TechnicalConfigurationBaselineEditor({
                 summaryErrorCount={summaryErrorCount}
                 pendingInputDescriptionId={PENDING_BULK_STATUS_ID}
                 disabled={isEditingDisabled}
-                focusTarget={getFocusTargetForGroup(focusTarget, group, activeValue)}
+                focusTarget={getTechnicalConfigurationFocusTargetForGroup(
+                  focusTarget,
+                  group,
+                  activeValue
+                )}
                 recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
+                ownerOptions={ownerOptions}
+                hierarchyAuthoring={hierarchyAuthoring}
                 onExpandedChange={(expanded) => disclosure.setExpanded(group.key, expanded)}
                 onModeChange={onGroupModeChange}
                 onGroupNameChange={onGroupNameChange}

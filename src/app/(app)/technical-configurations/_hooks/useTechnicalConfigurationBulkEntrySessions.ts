@@ -11,14 +11,14 @@ export interface TechnicalConfigurationBulkEntrySession {
 }
 
 export interface TechnicalConfigurationBulkEntrySessionsApi {
-  readonly getSession: (groupKey: string) => TechnicalConfigurationBulkEntrySession
-  readonly setInput: (groupKey: string, input: string) => void
+  readonly getSession: (ownerKey: string) => TechnicalConfigurationBulkEntrySession
+  readonly setInput: (ownerKey: string, input: string) => void
   readonly setPreview: (
-    groupKey: string,
+    ownerKey: string,
     preview: TechnicalConfigurationBulkEntryPreview | null
   ) => void
-  readonly clearSession: (groupKey: string) => void
-  readonly syncGroupKeys: (groupKeys: readonly string[]) => void
+  readonly clearSession: (ownerKey: string) => void
+  readonly syncOwnerKeys: (ownerKeys: readonly string[]) => void
   readonly setRecentlyAccepted: (criterionKeys: readonly string[]) => void
   readonly clearRecentHighlights: () => void
   readonly clearAll: () => void
@@ -31,9 +31,9 @@ const EMPTY_SESSION: TechnicalConfigurationBulkEntrySession = Object.freeze({
   preview: null,
 })
 
-/** Manages transient bulk-entry buffers and accepted-row highlights per group. */
+/** Manages transient bulk-entry buffers and accepted-row highlights per criterion owner. */
 export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigurationBulkEntrySessionsApi {
-  const [sessionsByGroup, setSessionsByGroup] = React.useState<
+  const [sessionsByOwner, setSessionsByOwner] = React.useState<
     Record<string, TechnicalConfigurationBulkEntrySession>
   >({})
   const [recentlyAcceptedCriterionKeys, setRecentlyAcceptedCriterionKeys] = React.useState<
@@ -41,23 +41,23 @@ export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigura
   >(() => new Set())
 
   const getSession = React.useCallback(
-    (groupKey: string) => sessionsByGroup[groupKey] ?? EMPTY_SESSION,
-    [sessionsByGroup]
+    (ownerKey: string) => sessionsByOwner[ownerKey] ?? EMPTY_SESSION,
+    [sessionsByOwner]
   )
 
-  const setInput = React.useCallback((groupKey: string, input: string) => {
-    setSessionsByGroup((current) => ({
+  const setInput = React.useCallback((ownerKey: string, input: string) => {
+    setSessionsByOwner((current) => ({
       ...current,
-      [groupKey]: { input, preview: null },
+      [ownerKey]: { input, preview: null },
     }))
   }, [])
 
   const setPreview = React.useCallback(
-    (groupKey: string, preview: TechnicalConfigurationBulkEntryPreview | null) => {
-      setSessionsByGroup((current) => ({
+    (ownerKey: string, preview: TechnicalConfigurationBulkEntryPreview | null) => {
+      setSessionsByOwner((current) => ({
         ...current,
-        [groupKey]: {
-          input: current[groupKey]?.input ?? "",
+        [ownerKey]: {
+          input: current[ownerKey]?.input ?? "",
           preview,
         },
       }))
@@ -65,20 +65,20 @@ export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigura
     []
   )
 
-  const clearSession = React.useCallback((groupKey: string) => {
-    setSessionsByGroup((current) => {
-      if (!(groupKey in current)) return current
+  const clearSession = React.useCallback((ownerKey: string) => {
+    setSessionsByOwner((current) => {
+      if (!(ownerKey in current)) return current
       const next = { ...current }
-      delete next[groupKey]
+      delete next[ownerKey]
       return next
     })
   }, [])
 
-  const syncGroupKeys = React.useCallback((groupKeys: readonly string[]) => {
-    const allowedKeys = new Set(groupKeys)
-    setSessionsByGroup((current) => {
+  const syncOwnerKeys = React.useCallback((ownerKeys: readonly string[]) => {
+    const allowedKeys = new Set(ownerKeys)
+    setSessionsByOwner((current) => {
       const next = Object.fromEntries(
-        Object.entries(current).filter(([groupKey]) => allowedKeys.has(groupKey))
+        Object.entries(current).filter(([ownerKey]) => allowedKeys.has(ownerKey))
       )
       return Object.keys(next).length === Object.keys(current).length ? current : next
     })
@@ -93,16 +93,16 @@ export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigura
   }, [])
 
   const clearAll = React.useCallback(() => {
-    setSessionsByGroup({})
+    setSessionsByOwner({})
     setRecentlyAcceptedCriterionKeys(new Set())
   }, [])
 
   const hasPendingInput = React.useMemo(
     () =>
-      Object.values(sessionsByGroup).some((session) =>
+      Object.values(sessionsByOwner).some((session) =>
         hasTechnicalConfigurationBulkEntryInput(session.input)
       ),
-    [sessionsByGroup]
+    [sessionsByOwner]
   )
 
   return {
@@ -110,7 +110,7 @@ export function useTechnicalConfigurationBulkEntrySessions(): TechnicalConfigura
     setInput,
     setPreview,
     clearSession,
-    syncGroupKeys,
+    syncOwnerKeys,
     setRecentlyAccepted,
     clearRecentHighlights,
     clearAll,

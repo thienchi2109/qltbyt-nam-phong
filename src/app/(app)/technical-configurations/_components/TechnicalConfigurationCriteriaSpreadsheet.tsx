@@ -3,13 +3,18 @@
 import * as React from "react"
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react"
 
-import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type {
+  TechnicalConfigurationBaselineEditorCriterionOwner,
+  TechnicalConfigurationBaselineEditorGroup,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 
+import { TechnicalConfigurationBaselineCriterionOwnerSelect } from "./TechnicalConfigurationBaselineCriterionOwnerSelect"
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
+import type { TechnicalConfigurationBaselineCriterionOwnerOption } from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 
 type CriterionTextField = "title" | "requirementText"
 
@@ -24,9 +29,16 @@ type TechnicalConfigurationCriteriaSpreadsheetProps = Readonly<{
   onCriterionTextChange: (criterionKey: string, field: CriterionTextField, value: string) => void
   onMoveCriterion: (criterionIndex: number, offset: -1 | 1) => void
   onDeleteCriterion: (criterionKey: string) => void
+  ownerOptions?: readonly TechnicalConfigurationBaselineCriterionOwnerOption[]
+  onMoveCriterionToOwner?: (
+    criterionKey: string,
+    owner: TechnicalConfigurationBaselineEditorCriterionOwner
+  ) => void
 }>
 
 const GRID_COLUMNS = "grid-cols-[3rem_7rem_minmax(12rem,0.8fr)_minmax(24rem,2fr)_9rem_7rem]"
+const AUTHORING_GRID_COLUMNS =
+  "grid-cols-[3rem_7rem_minmax(12rem,0.8fr)_minmax(24rem,2fr)_12rem_9rem_7rem]"
 
 /** Renders editable criteria for one selected group in a stable spreadsheet grid. */
 export function TechnicalConfigurationCriteriaSpreadsheet({
@@ -40,9 +52,17 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   onCriterionTextChange,
   onMoveCriterion,
   onDeleteCriterion,
+  ownerOptions,
+  onMoveCriterionToOwner,
 }: TechnicalConfigurationCriteriaSpreadsheetProps) {
   const requirementRefs = React.useRef(new Map<string, HTMLTextAreaElement>())
   const sectionOrdinal = formatTechnicalConfigurationBaselineSectionOrdinal(groupIndex)
+  const currentOwner: TechnicalConfigurationBaselineEditorCriterionOwner = {
+    groupKey: group.key,
+    subgroupKey: null,
+  }
+  const showsOwnerSelect = Boolean(ownerOptions && onMoveCriterionToOwner)
+  const gridColumns = showsOwnerSelect ? AUTHORING_GRID_COLUMNS : GRID_COLUMNS
 
   React.useEffect(() => {
     if (!focusCriterionKey) return
@@ -57,14 +77,15 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
   return (
     <section aria-label={`Danh sách tiêu chí trực tiếp nhóm ${sectionOrdinal}`} className="min-w-0">
       <div className="overflow-x-auto border-y">
-        <div className="min-w-[960px]">
+        <div className={showsOwnerSelect ? "min-w-[1152px]" : "min-w-[960px]"}>
           <div
-            className={`sticky top-0 z-10 grid ${GRID_COLUMNS} border-b bg-muted/95 text-xs font-semibold text-muted-foreground`}
+            className={`sticky top-0 z-10 grid ${gridColumns} border-b bg-muted/95 text-xs font-semibold text-muted-foreground`}
           >
             <span className="px-3 py-2.5 text-center">STT</span>
             <span className="px-3 py-2.5">Mã</span>
             <span className="px-3 py-2.5">Tiêu đề</span>
             <span className="px-3 py-2.5">Nội dung yêu cầu</span>
+            {showsOwnerSelect ? <span className="px-3 py-2.5">Vị trí</span> : null}
             <span className="px-3 py-2.5">Trạng thái</span>
             <span className="px-3 py-2.5 text-center">Thao tác</span>
           </div>
@@ -87,7 +108,7 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                     key={criterion.key}
                     data-testid={`criterion-row-${criterion.key}`}
                     data-recently-accepted={isRecent ? "true" : undefined}
-                    className={`grid ${GRID_COLUMNS} items-start transition-colors ${
+                    className={`grid ${gridColumns} items-start transition-colors ${
                       isRecent ? "bg-emerald-50/70" : "bg-background"
                     }`}
                   >
@@ -144,6 +165,17 @@ export function TechnicalConfigurationCriteriaSpreadsheet({
                         </p>
                       ) : null}
                     </div>
+                    {ownerOptions && onMoveCriterionToOwner ? (
+                      <div className="px-2 py-2">
+                        <TechnicalConfigurationBaselineCriterionOwnerSelect
+                          label={`Chuyển ${criterionLabel}`}
+                          owner={currentOwner}
+                          options={ownerOptions}
+                          disabled={disabled}
+                          onMove={(owner) => onMoveCriterionToOwner(criterion.key, owner)}
+                        />
+                      </div>
+                    ) : null}
                     <div className="px-3 py-3">
                       {error ? (
                         <Badge variant="destructive">Có lỗi</Badge>

@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest"
 
 vi.mock("server-only", () => ({}))
 
-import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
+import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
+import { TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS } from "@/app/(app)/technical-configurations/technical-configuration-baseline-hierarchy-rpcs"
 import { POST } from "@/app/api/rpc/[fn]/route"
 import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
 import {
@@ -121,6 +122,13 @@ describe("technical configuration baseline RPC whitelist", () => {
 
     expect(response.status).toBe(411)
     await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
+  it("keeps P1E hierarchy authoring mutations dormant until P6A", () => {
+    for (const fn of Object.values(TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS)) {
+      expect(ALLOWED_FUNCTIONS.has(fn)).toBe(false)
+      expect(SERVICE_ROLE_RPC_FUNCTIONS.has(fn)).toBe(false)
+    }
   })
 })
 

@@ -71,12 +71,19 @@ export function TechnicalConfigurationBaselineTab({
     }
     if (
       Object.keys(summaryValidation.groupErrors).length > 0 ||
+      Object.keys(summaryValidation.subgroupErrors ?? {}).length > 0 ||
       Object.keys(summaryValidation.criterionErrors).length > 0
     ) {
       return "Sửa các lỗi nội dung trước khi khóa phiên bản."
     }
     if (draft.groups.length < 1) return "Cần ít nhất một nhóm trước khi khóa phiên bản."
-    if (!draft.groups.some((group) => group.criteria.length > 0)) {
+    if (
+      !draft.groups.some(
+        (group) =>
+          group.criteria.length > 0 ||
+          group.subgroups.some((subgroup) => subgroup.criteria.length > 0)
+      )
+    ) {
       return "Cần ít nhất một tiêu chí có nội dung trước khi khóa phiên bản."
     }
     return null

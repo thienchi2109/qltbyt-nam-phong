@@ -15,14 +15,17 @@ import {
   toTechnicalConfigurationBaselineWireGroup,
 } from "./technical-configuration-baseline-save-mappers"
 
-type RunStep = <T>(request: () => Promise<T>, apply: (response: T) => void) => Promise<void>
+export type TechnicalConfigurationBaselineRunSaveStep = <T>(
+  request: () => Promise<T>,
+  apply: (response: T) => void
+) => Promise<void>
 type EditorGroup = TechnicalConfigurationBaselineEditorProgress["editorDraft"]["groups"][number]
 
 /** Runs ordered P2 mutations while applying each successful revision to resumable progress. */
 export async function runTechnicalConfigurationBaselineSaveSteps(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   await deleteRemovedGroups(progress, rpc, run)
   await deleteRemovedCriteria(progress, rpc, run)
@@ -33,10 +36,11 @@ export async function runTechnicalConfigurationBaselineSaveSteps(
   await reorderCriteria(progress, rpc, run)
 }
 
-async function deleteRemovedGroups(
+/** Deletes persisted groups omitted from the editor draft. */
+export async function deleteRemovedGroups(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of [...progress.baseDraft.groups]) {
     if (progress.editorDraft.groups.some((item) => item.id === group.id)) continue
@@ -60,7 +64,7 @@ async function deleteRemovedGroups(
 async function deleteRemovedCriteria(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of [...progress.baseDraft.groups]) {
     const editorGroup = progress.editorDraft.groups.find((item) => item.id === group.id)
@@ -87,10 +91,11 @@ async function deleteRemovedCriteria(
   }
 }
 
-async function createNewGroups(
+/** Creates draft groups and adopts their server-assigned identities. */
+export async function createNewGroups(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of progress.editorDraft.groups) {
     if (group.id) continue
@@ -112,10 +117,11 @@ async function createNewGroups(
   }
 }
 
-async function updateExistingGroups(
+/** Persists edits to groups that already exist on the server. */
+export async function updateExistingGroups(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of progress.editorDraft.groups) {
     if (!group.id) continue
@@ -141,7 +147,7 @@ async function updateExistingGroups(
 async function createAndUpdateCriteria(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of progress.editorDraft.groups) {
     if (!group.id) continue
@@ -154,7 +160,7 @@ async function createNewCriteria(
   group: EditorGroup,
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const criterion of group.criteria) {
     if (criterion.id) continue
@@ -186,7 +192,7 @@ async function updateExistingCriteria(
   group: EditorGroup,
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const criterion of group.criteria) {
     if (!criterion.id) continue
@@ -216,10 +222,11 @@ async function updateExistingCriteria(
   }
 }
 
-async function reorderGroups(
+/** Persists group ordering when the draft differs from the server snapshot. */
+export async function reorderGroups(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   const editorGroupIds = progress.editorDraft.groups.map((group) => group.id as string)
   if (
@@ -247,7 +254,7 @@ async function reorderGroups(
 async function reorderCriteria(
   progress: TechnicalConfigurationBaselineEditorProgress,
   rpc: TechnicalConfigurationBaselineEditorRpc,
-  run: RunStep
+  run: TechnicalConfigurationBaselineRunSaveStep
 ): Promise<void> {
   for (const group of progress.editorDraft.groups) {
     const groupId = group.id as string
