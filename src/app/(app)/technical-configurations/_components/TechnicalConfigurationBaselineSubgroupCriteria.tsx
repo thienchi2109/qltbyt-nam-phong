@@ -45,7 +45,7 @@ const RESPONSIVE_COLUMNS =
 const AUTHORING_RESPONSIVE_COLUMNS =
   "grid-cols-1 md:grid-cols-2 xl:grid-cols-[3rem_7rem_minmax(0,0.8fr)_minmax(0,2fr)_minmax(0,1fr)_7rem_7rem]"
 
-/** Presents subgroup criteria without mounting the P4C authoring controls. */
+/** Presents subgroup criteria with optional P4C authoring controls. */
 export function TechnicalConfigurationBaselineSubgroupCriteria({
   criteria,
   sectionOrdinal,

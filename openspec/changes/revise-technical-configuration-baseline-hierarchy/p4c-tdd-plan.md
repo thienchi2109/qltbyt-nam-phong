@@ -165,16 +165,20 @@ Run through context-mode in repository order:
 
 ```bash
 node scripts/npm-run.js run format:check
+node scripts/npm-run.js run verify:ts-docstrings
 node scripts/npm-run.js run verify:no-explicit-any
 node scripts/npm-run.js run verify:dedupe
 node scripts/npm-run.js run typecheck
 node scripts/npm-run.js exec vitest run \
   'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-controls.test.tsx' \
-  'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-entry.test.tsx' \
+  'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-entry.test.ts' \
   'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-save.test.ts' \
+  'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-tab-workflow.test.tsx' \
   'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-tab.test.tsx'
 node scripts/npm-run.js exec vitest run \
   'src/app/(app)/technical-configurations'
+node scripts/npm-run.js exec vitest run \
+  'src/app/api/rpc/__tests__/technical-configuration-rpc-whitelist.test.ts'
 node scripts/npm-run.js run react-doctor
 openspec validate revise-technical-configuration-baseline-hierarchy --strict
 ```
@@ -189,6 +193,8 @@ Also verify:
   after reindexing the implemented branch;
 - semantic deduplication against existing editor controls, disclosure, bulk-entry,
   focus, ordinal, operation-lock, and conflict/reload helpers;
+- `next-best-practices` followed by `react-best-practices` for the final
+  Next.js/React diff review;
 - touched source-file line counts and responsive/accessibility regressions;
 - `mix-gpt-5.6-sol` at the highest available reasoning level until the reviewer
   reports `Zero findings`.

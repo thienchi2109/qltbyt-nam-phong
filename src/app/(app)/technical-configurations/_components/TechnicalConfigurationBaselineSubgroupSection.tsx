@@ -48,7 +48,7 @@ type TechnicalConfigurationBaselineSubgroupSectionProps = Readonly<{
   onExpandedChange: (expanded: boolean) => void
 }>
 
-/** Renders one presentation-only subgroup structural row and its criteria. */
+/** Renders one subgroup row with optional P4C authoring controls. */
 export function TechnicalConfigurationBaselineSubgroupSection({
   groupKey,
   subgroup,

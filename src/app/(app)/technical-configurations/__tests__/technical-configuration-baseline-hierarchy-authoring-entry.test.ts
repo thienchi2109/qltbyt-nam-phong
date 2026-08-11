@@ -138,6 +138,23 @@ describe("technical configuration baseline hierarchy authoring entry", () => {
     })
   })
 
+  it("uses group-scoped focus targets for direct-owner bulk transitions", async () => {
+    const { result } = renderHierarchyEditor()
+    await waitFor(() => expect(result.current.editor.activeValue).toBe("section-a"))
+
+    act(() => result.current.editor.hierarchyAuthoring.onOwnerModeChange("section-a", "bulk"))
+    expect(result.current.editor.focusTarget).toMatchObject({
+      kind: "bulk-input",
+      key: "section-a",
+    })
+
+    act(() => result.current.editor.hierarchyAuthoring.onBulkCancel("section-a"))
+    expect(result.current.editor.focusTarget).toMatchObject({
+      kind: "group-mode-action",
+      key: "section-a",
+    })
+  })
+
   it("removes only the deleted subgroup buffer during owner synchronization", async () => {
     const { result, rerender } = renderHierarchyEditor()
     await waitFor(() => expect(result.current.editor.activeValue).toBe("section-a"))

@@ -33,6 +33,7 @@ export const group: TechnicalConfigurationBaselineEditorGroup = {
       requirementText: "",
     },
   ],
+  subgroups: [],
 }
 
 export const pendingBulkSession: TechnicalConfigurationBulkEntrySession = {

@@ -1,4 +1,7 @@
-import type { TechnicalConfigurationBaselineHierarchyAuthoring } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineHierarchyAuthoring"
+import {
+  getTechnicalConfigurationBaselineCriterionOwnerKey,
+  type TechnicalConfigurationBaselineHierarchyAuthoring,
+} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineHierarchyAuthoring"
 import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
@@ -40,10 +43,6 @@ type UseTechnicalConfigurationHierarchyAuthoringOptions = Readonly<{
   transitionView: (transition: ViewTransition) => void
   nextFocusToken: () => number
 }>
-
-function ownerKey(owner: TechnicalConfigurationBaselineEditorCriterionOwner): string {
-  return owner.subgroupKey ?? owner.groupKey
-}
 
 /** Owns subgroup CRUD, criterion ownership, and subgroup-scoped entry transitions. */
 export function useTechnicalConfigurationHierarchyAuthoring({
@@ -98,7 +97,7 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     const criterion = getTechnicalConfigurationBaselineEditorOwnerCriteria(nextDraft, owner).at(-1)
     updateDraft(nextDraft)
     transitionView({
-      activeValue: ownerKey(owner),
+      activeValue: getTechnicalConfigurationBaselineCriterionOwnerKey(owner),
       entryMode: "row",
       focusTarget: criterion
         ? { kind: "criterion", key: criterion.key, token: nextFocusToken() }
@@ -123,7 +122,7 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     updateDraft(nextDraft)
     bulkSessions.clearRecentHighlights()
     transitionView({
-      activeValue: ownerKey(owner),
+      activeValue: getTechnicalConfigurationBaselineCriterionOwnerKey(owner),
       entryMode: "row",
       focusTarget: nextCriterion
         ? { kind: "criterion", key: nextCriterion.key, token: nextFocusToken() }
@@ -141,23 +140,34 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     const criteria = getTechnicalConfigurationBaselineEditorOwnerCriteria(draft, owner)
     const targetCriterion =
       criteria.find((criterion) => validation.criterionErrors[criterion.key]) ?? criteria[0]
+    let focusTarget: TechnicalConfigurationFocusTarget
+    if (mode === "bulk") {
+      focusTarget = {
+        kind: owner.subgroupKey ? "subgroup-bulk-input" : "bulk-input",
+        key: nextOwnerKey,
+        token: nextFocusToken(),
+      }
+    } else if (targetCriterion) {
+      focusTarget = { kind: "criterion", key: targetCriterion.key, token: nextFocusToken() }
+    } else if (owner.subgroupKey) {
+      focusTarget = {
+        kind: "add-subgroup-criterion",
+        key: nextOwnerKey,
+        token: nextFocusToken(),
+      }
+    } else {
+      focusTarget = { kind: "add-criterion", key: owner.groupKey, token: nextFocusToken() }
+    }
     transitionView({
       activeValue: nextOwnerKey,
       entryMode: mode,
-      focusTarget:
-        mode === "bulk"
-          ? { kind: "subgroup-bulk-input", key: nextOwnerKey, token: nextFocusToken() }
-          : targetCriterion
-            ? { kind: "criterion", key: targetCriterion.key, token: nextFocusToken() }
-            : owner.subgroupKey
-              ? { kind: "add-subgroup-criterion", key: nextOwnerKey, token: nextFocusToken() }
-              : { kind: "add-criterion", key: owner.groupKey, token: nextFocusToken() },
+      focusTarget,
     })
   }
 
   const onBulkAccept = (owner: TechnicalConfigurationBaselineEditorCriterionOwner) => {
     if (!draft) return
-    const key = ownerKey(owner)
+    const key = getTechnicalConfigurationBaselineCriterionOwnerKey(owner)
     const session = bulkSessions.getSession(key)
     if (!session.preview?.canAccept) return
     const previousKeys = new Set(
@@ -182,7 +192,11 @@ export function useTechnicalConfigurationHierarchyAuthoring({
       entryMode: "row",
       focusTarget: acceptedCriteria[0]
         ? { kind: "criterion", key: acceptedCriteria[0].key, token: nextFocusToken() }
-        : { kind: "subgroup-mode-action", key, token: nextFocusToken() },
+        : {
+            kind: owner.subgroupKey ? "subgroup-mode-action" : "group-mode-action",
+            key,
+            token: nextFocusToken(),
+          },
     })
   }
 
@@ -239,7 +253,7 @@ export function useTechnicalConfigurationHierarchyAuthoring({
         )
       )
       transitionView({
-        activeValue: ownerKey(targetOwner),
+        activeValue: getTechnicalConfigurationBaselineCriterionOwnerKey(targetOwner),
         entryMode: "row",
         focusTarget: { kind: "criterion", key: criterionKey, token: nextFocusToken() },
       })
@@ -253,10 +267,15 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     },
     onBulkCancel: (key) => {
       bulkSessions.clearSession(key)
+      const owner = findOwner(draft, key)
       transitionView({
         activeValue: key,
         entryMode: "row",
-        focusTarget: { kind: "subgroup-mode-action", key, token: nextFocusToken() },
+        focusTarget: {
+          kind: owner?.subgroupKey ? "subgroup-mode-action" : "group-mode-action",
+          key,
+          token: nextFocusToken(),
+        },
       })
     },
     onBulkAccept,

@@ -57,9 +57,13 @@ export function TechnicalConfigurationBaselineMissingState({
   )
 }
 
+interface TechnicalConfigurationBaselineLockedCriterionProps {
+  criterion: TechnicalConfigurationBaselineCriterionWire
+}
+
 function TechnicalConfigurationBaselineLockedCriterion({
   criterion,
-}: Readonly<{ criterion: TechnicalConfigurationBaselineCriterionWire }>) {
+}: TechnicalConfigurationBaselineLockedCriterionProps): React.JSX.Element {
   return (
     <article className="grid gap-2 py-4 sm:grid-cols-[110px_1fr]">
       <Badge variant="outline" className="w-fit">

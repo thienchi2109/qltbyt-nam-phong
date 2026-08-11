@@ -14,6 +14,11 @@ import {
   toTechnicalConfigurationBaselineWireCriterion,
   toTechnicalConfigurationBaselineWireGroup,
 } from "./technical-configuration-baseline-save-mappers"
+import {
+  sameOrder,
+  updateNextCriterionNumber,
+  updateRevision,
+} from "./technical-configuration-baseline-save-support"
 
 export type TechnicalConfigurationBaselineRunSaveStep = <T>(
   request: () => Promise<T>,
@@ -181,7 +186,7 @@ async function createNewCriteria(
         findWireGroup(progress.baseDraft, group.id as string).criteria.push(
           toTechnicalConfigurationBaselineWireCriterion(response.data)
         )
-        updateNextCriterionNumber(progress.baseDraft, response.data.criterion_code)
+        updateNextCriterionNumber(progress, response.data.criterion_code)
         updateRevision(progress, response.data.revision)
       }
     )
@@ -279,14 +284,6 @@ async function reorderCriteria(
   }
 }
 
-function updateRevision(
-  progress: TechnicalConfigurationBaselineEditorProgress,
-  revision: number
-): void {
-  progress.baseDraft.revision = revision
-  progress.editorDraft.revision = revision
-}
-
 function findWireGroup(
   draft: TechnicalConfigurationBaselineDraftWire,
   groupId: string
@@ -331,18 +328,4 @@ function replaceWireCriterion(
       item.id === criterion.id ? toTechnicalConfigurationBaselineWireCriterion(criterion) : item
     )
   }
-}
-
-function updateNextCriterionNumber(
-  draft: TechnicalConfigurationBaselineDraftWire,
-  criterionCode: string
-): void {
-  const sequence = Number.parseInt(criterionCode.replace(/^TC-/, ""), 10)
-  if (Number.isFinite(sequence)) {
-    draft.next_criterion_number = Math.max(draft.next_criterion_number, sequence + 1)
-  }
-}
-
-function sameOrder(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((item, index) => item === right[index])
 }

@@ -68,7 +68,7 @@ export function TechnicalConfigurationBaselineGroupContent({
 }: TechnicalConfigurationBaselineGroupContentProps): React.JSX.Element {
   return (
     <CollapsibleContent>
-      <div role="region" aria-label={`Nội dung nhóm ${sectionOrdinal}`} className="py-4">
+      <section aria-label={`Nội dung nhóm ${sectionOrdinal}`} className="py-4">
         {mode === "row" ? (
           <TechnicalConfigurationCriteriaSpreadsheet
             group={group}
@@ -129,7 +129,7 @@ export function TechnicalConfigurationBaselineGroupContent({
             onExpandedChange={(expanded) => onSubgroupExpandedChange(subgroup.key, expanded)}
           />
         ))}
-      </div>
+      </section>
     </CollapsibleContent>
   )
 }

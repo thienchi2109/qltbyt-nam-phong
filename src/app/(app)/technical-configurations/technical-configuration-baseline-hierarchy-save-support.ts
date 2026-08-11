@@ -7,6 +7,7 @@ import type {
 import { cloneTechnicalConfigurationBaselineDraft } from "./technical-configuration-baseline-editor-state"
 import type { TechnicalConfigurationBaselineEditorProgress } from "./technical-configuration-baseline-save"
 import { toTechnicalConfigurationBaselineWireCriterion } from "./technical-configuration-baseline-save-mappers"
+import { updateRevision } from "./technical-configuration-baseline-save-support"
 
 export type HierarchyEditorGroup =
   TechnicalConfigurationBaselineEditorProgress["editorDraft"]["groups"][number]
@@ -178,34 +179,6 @@ export function adoptSnapshot(
 ): void {
   progress.baseDraft = cloneTechnicalConfigurationBaselineDraft(snapshot)
   updateRevision(progress, snapshot.revision)
-}
-
-/** Updates only the revision carried by the mutable save snapshot. */
-export function updateRevision(
-  progress: TechnicalConfigurationBaselineEditorProgress,
-  revision: number
-): void {
-  progress.baseDraft.revision = revision
-  progress.editorDraft.revision = revision
-}
-
-/** Updates the next criterion sequence number in the mutable save snapshot. */
-export function updateNextCriterionNumber(
-  progress: TechnicalConfigurationBaselineEditorProgress,
-  criterionCode: string
-): void {
-  const sequence = Number.parseInt(criterionCode.replace(/^TC-/, ""), 10)
-  if (Number.isFinite(sequence)) {
-    progress.baseDraft.next_criterion_number = Math.max(
-      progress.baseDraft.next_criterion_number,
-      sequence + 1
-    )
-  }
-}
-
-/** Compares two ID sequences without reordering either input. */
-export function sameOrder(left: readonly string[], right: readonly string[]): boolean {
-  return left.length === right.length && left.every((item, index) => item === right[index])
 }
 
 /** Narrows nullable persisted IDs to strings. */

@@ -1,4 +1,7 @@
-/* eslint-disable react-doctor/async-await-in-loop -- Revision-chained mutations must run sequentially. */
+/*
+ * Revision-chained mutations must run sequentially because each RPC consumes
+ * the revision returned by the previous mutation.
+ */
 
 import type {
   TechnicalConfigurationBaselineEditorProgress,
@@ -26,14 +29,16 @@ import {
   replaceWireCriterion,
   replaceWireSubgroup,
   sameCriterionOwner,
-  sameOrder,
   toWireSubgroup,
-  updateNextCriterionNumber,
-  updateRevision,
   type HierarchyEditorCriterionLocation,
   type HierarchyEditorGroup,
   type HierarchyEditorSubgroup,
 } from "./technical-configuration-baseline-hierarchy-save-support"
+import {
+  sameOrder,
+  updateNextCriterionNumber,
+  updateRevision,
+} from "./technical-configuration-baseline-save-support"
 
 /** Runs the dormant P1E hierarchy mutation sequence with resumable progress. */
 export async function runTechnicalConfigurationBaselineHierarchySaveSteps(

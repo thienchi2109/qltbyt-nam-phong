@@ -90,6 +90,11 @@ describe("technical configuration baseline hierarchy save", () => {
         p_expected_revision: 5,
       })
     )
+    expect(rpc.reorderSubgroups).toHaveBeenLastCalledWith({
+      p_group_id: "group-1",
+      p_subgroup_ids: ["subgroup-4", "subgroup-1", "subgroup-2"],
+      p_expected_revision: 6,
+    })
     expect(result.editorDraft.groups[0].subgroups[0].criteria[0]).toMatchObject({
       id: "criterion-4",
       criterionCode: "TC-0004",
