@@ -46,7 +46,7 @@ describe("useTechnicalConfigurationBulkEntrySessions", () => {
     act(() => {
       result.current.setInput("group-1", "Yêu cầu 1")
       result.current.setInput("group-2", "Yêu cầu 2")
-      result.current.syncGroupKeys(["group-1"])
+      result.current.syncOwnerKeys(["group-1"])
     })
 
     expect(result.current.getSession("group-1")).toEqual({

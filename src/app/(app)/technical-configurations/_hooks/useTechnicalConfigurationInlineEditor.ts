@@ -20,6 +20,7 @@ import type {
   TechnicalConfigurationFocusTarget,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
 import type { useTechnicalConfigurationBulkEntrySessions } from "./useTechnicalConfigurationBulkEntrySessions"
+import { useTechnicalConfigurationHierarchyAuthoring } from "./useTechnicalConfigurationHierarchyAuthoring"
 
 type BulkSessions = ReturnType<typeof useTechnicalConfigurationBulkEntrySessions>
 
@@ -50,30 +51,34 @@ export function useTechnicalConfigurationInlineEditor({
     entryMode: "row",
     focusTarget: null,
   })
-  const previousGroupKeysRef = React.useRef<readonly string[]>([])
+  const previousOwnerKeysRef = React.useRef<readonly string[]>([])
   const focusTokenRef = React.useRef(0)
   const { activeValue, entryMode, focusTarget } = viewState
 
-  const nextFocusToken = () => {
+  const nextFocusToken = React.useCallback(() => {
     focusTokenRef.current += 1
     return focusTokenRef.current
-  }
+  }, [])
 
   React.useEffect(() => {
-    const groupKeys = draft?.groups.map((group) => group.key) ?? []
-    const previousGroupKeys = previousGroupKeysRef.current
-    previousGroupKeysRef.current = groupKeys
-    bulkSessions.syncGroupKeys(groupKeys)
+    const ownerKeys =
+      draft?.groups.flatMap((group) => [
+        group.key,
+        ...(group.subgroups ?? []).map((subgroup) => subgroup.key),
+      ]) ?? []
+    const previousOwnerKeys = previousOwnerKeysRef.current
+    previousOwnerKeysRef.current = ownerKeys
+    bulkSessions.syncOwnerKeys(ownerKeys)
     setViewState((current) => {
-      if (groupKeys.includes(current.activeValue)) return current
-      const previousIndex = previousGroupKeys.indexOf(current.activeValue)
+      if (ownerKeys.includes(current.activeValue)) return current
+      const previousIndex = previousOwnerKeys.indexOf(current.activeValue)
       return {
         ...current,
-        activeValue: groupKeys[previousIndex] ?? groupKeys[0] ?? "",
+        activeValue: ownerKeys[previousIndex] ?? ownerKeys[0] ?? "",
         focusTarget: current.activeValue ? null : current.focusTarget,
       }
     })
-  }, [draft?.groups, bulkSessions.syncGroupKeys])
+  }, [draft?.groups, bulkSessions.syncOwnerKeys])
 
   React.useEffect(() => {
     if (saveStatus === "saved") bulkSessions.clearRecentHighlights()
@@ -85,6 +90,22 @@ export function useTechnicalConfigurationInlineEditor({
     },
     [onEditorChange]
   )
+  const transitionView = React.useCallback(
+    (transition: Partial<TechnicalConfigurationEditorViewState>) => {
+      setViewState((current) => ({ ...current, ...transition }))
+    },
+    []
+  )
+  const hierarchyAuthoring = useTechnicalConfigurationHierarchyAuthoring({
+    draft,
+    validation,
+    activeValue,
+    entryMode,
+    bulkSessions,
+    updateDraft,
+    transitionView,
+    nextFocusToken,
+  })
 
   const addGroup = () => {
     if (!draft) return
@@ -218,6 +239,7 @@ export function useTechnicalConfigurationInlineEditor({
     activeValue,
     entryMode,
     focusTarget,
+    hierarchyAuthoring,
     bulkSession: bulkSessions.getSession(activeValue),
     addGroup,
     deleteGroup,

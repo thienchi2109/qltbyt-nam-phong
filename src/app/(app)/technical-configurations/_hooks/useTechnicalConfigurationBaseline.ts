@@ -35,6 +35,18 @@ import type {
   TechnicalConfigurationBaselineHierarchyImportPreviewWireResponse,
   TechnicalConfigurationBaselineHierarchyImportRpcArgs,
 } from "../technical-configuration-baseline-hierarchy-import-types"
+import type {
+  TechnicalConfigurationBaselineHierarchyCriteriaReorderRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionCreateRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionMoveRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionWireResponse,
+  TechnicalConfigurationBaselineSubgroupCreateRpcArgs,
+  TechnicalConfigurationBaselineSubgroupDeleteRpcArgs,
+  TechnicalConfigurationBaselineSubgroupsReorderRpcArgs,
+  TechnicalConfigurationBaselineSubgroupUpdateRpcArgs,
+  TechnicalConfigurationBaselineSubgroupWireResponse,
+} from "../technical-configuration-baseline-hierarchy-mutation-types"
+import { TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS } from "../technical-configuration-baseline-hierarchy-rpcs"
 
 /** Typed client wrappers for baseline draft and lifecycle RPCs. */
 export const technicalConfigurationBaselineRpc = {
@@ -111,6 +123,48 @@ export const technicalConfigurationBaselineRpc = {
     return callTechnicalConfigurationRpc<unknown>(BASELINE_RPC_FUNCTIONS.reorderCriteria, {
       ...args,
     }).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
+  },
+  createSubgroup(args: TechnicalConfigurationBaselineSubgroupCreateRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineSubgroupWireResponse>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.createSubgroup,
+      { ...args }
+    )
+  },
+  updateSubgroup(args: TechnicalConfigurationBaselineSubgroupUpdateRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineSubgroupWireResponse>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.updateSubgroup,
+      { ...args }
+    )
+  },
+  deleteSubgroup(args: TechnicalConfigurationBaselineSubgroupDeleteRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineDeleteWireResponse>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.deleteSubgroup,
+      { ...args }
+    )
+  },
+  reorderSubgroups(args: TechnicalConfigurationBaselineSubgroupsReorderRpcArgs) {
+    return callTechnicalConfigurationRpc<unknown>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.reorderSubgroups,
+      { ...args }
+    ).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
+  },
+  createHierarchyCriterion(args: TechnicalConfigurationBaselineHierarchyCriterionCreateRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineHierarchyCriterionWireResponse>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.createCriterion,
+      { ...args }
+    )
+  },
+  moveHierarchyCriterion(args: TechnicalConfigurationBaselineHierarchyCriterionMoveRpcArgs) {
+    return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineHierarchyCriterionWireResponse>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.moveCriterion,
+      { ...args }
+    )
+  },
+  reorderHierarchyCriteria(args: TechnicalConfigurationBaselineHierarchyCriteriaReorderRpcArgs) {
+    return callTechnicalConfigurationRpc<unknown>(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.reorderCriteria,
+      { ...args }
+    ).then(decodeTechnicalConfigurationBaselineDraftWireResponse)
   },
   previewBulk(args: TechnicalConfigurationBaselineBulkPreviewRpcArgs) {
     return callTechnicalConfigurationRpc<TechnicalConfigurationBaselineBulkPreviewWireResponse>(

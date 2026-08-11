@@ -16,6 +16,7 @@ describe("technical configuration workspace shell source boundaries", () => {
       "_components/TechnicalConfigurationOptionResponses.tsx",
       "_components/TechnicalConfigurationBaselineTabStates.tsx",
       "_components/TechnicalConfigurationBaselineEditor.tsx",
+      "_components/TechnicalConfigurationBaselineGroupSection.tsx",
       "_components/TechnicalConfigurationCriteriaSpreadsheet.tsx",
       "_components/TechnicalConfigurationBulkEntryWorkbench.tsx",
       "_components/TechnicalConfigurationAllGroupsOverview.tsx",

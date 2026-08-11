@@ -1,133 +1,13 @@
-import { useState } from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
+import type { TechnicalConfigurationFocusTarget } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
 import {
-  TechnicalConfigurationBaselineGroupSection,
-  type TechnicalConfigurationBaselineGroupSectionProps,
-} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineGroupSection"
-import type {
-  TechnicalConfigurationEntryMode,
-  TechnicalConfigurationFocusTarget,
-} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
-import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-
-const group: TechnicalConfigurationBaselineEditorGroup = {
-  key: "group-2",
-  id: "group-2",
-  name: "Yêu cầu kỹ thuật",
-  criteria: [
-    {
-      key: "criterion-1",
-      id: "criterion-1",
-      criterionCode: "TC-0001",
-      title: "Nguồn điện",
-      requirementText: "Nguồn điện ổn định",
-    },
-    {
-      key: "criterion-2",
-      id: "criterion-2",
-      criterionCode: "TC-0002",
-      title: "Áp lực",
-      requirementText: "",
-    },
-  ],
-}
-
-const pendingBulkSession: TechnicalConfigurationBulkEntrySession = {
-  input: "Yêu cầu thứ nhất\nYêu cầu thứ hai",
-  preview: null,
-}
-
-type RenderGroupSectionOptions = {
-  initialExpanded?: boolean
-  initialMode?: TechnicalConfigurationEntryMode
-  focusTarget?: TechnicalConfigurationFocusTarget
-  disabled?: boolean
-  groupError?: string
-  bulkSession?: TechnicalConfigurationBulkEntrySession
-}
-
-type RenderGroupSectionResult = {
-  callbacks: Record<string, ReturnType<typeof vi.fn>>
-  events: string[]
-}
-
-function renderGroupSection({
-  initialExpanded = true,
-  initialMode = "row",
-  focusTarget = null,
-  disabled = false,
-  groupError = "Tên nhóm là bắt buộc.",
-  bulkSession = pendingBulkSession,
-}: RenderGroupSectionOptions = {}): RenderGroupSectionResult {
-  const events: string[] = []
-  const callbacks = {
-    onExpandedChange: vi.fn(),
-    onModeChange: vi.fn(),
-    onGroupNameChange: vi.fn(),
-    onMoveGroup: vi.fn(),
-    onDeleteGroup: vi.fn(),
-    onCriterionTextChange: vi.fn(),
-    onMoveCriterion: vi.fn(),
-    onDeleteCriterion: vi.fn(),
-    onAddCriterion: vi.fn(),
-    onBulkInputChange: vi.fn(),
-    onBulkPreview: vi.fn(),
-    onBulkCancel: vi.fn(),
-    onBulkAccept: vi.fn(),
-  }
-
-  function Harness(): React.JSX.Element {
-    const [expanded, setExpanded] = useState(initialExpanded)
-    const [mode, setMode] = useState<TechnicalConfigurationEntryMode>(initialMode)
-    const props: TechnicalConfigurationBaselineGroupSectionProps = {
-      group,
-      groupIndex: 1,
-      groupCount: 3,
-      expanded,
-      mode,
-      bulkSession,
-      groupError,
-      criterionErrors: { "criterion-2": "Nội dung yêu cầu là bắt buộc." },
-      summaryErrorCount: 2,
-      pendingInputDescriptionId: "pending-bulk-status",
-      disabled,
-      focusTarget,
-      recentlyAcceptedCriterionKeys: new Set(["criterion-1"]),
-      onExpandedChange: (nextExpanded) => {
-        events.push(`expanded:${nextExpanded}`)
-        callbacks.onExpandedChange(nextExpanded)
-        setExpanded(nextExpanded)
-      },
-      onModeChange: (groupKey, nextMode) => {
-        callbacks.onModeChange(groupKey, nextMode)
-        setMode(nextMode)
-      },
-      onGroupNameChange: callbacks.onGroupNameChange,
-      onMoveGroup: callbacks.onMoveGroup,
-      onDeleteGroup: callbacks.onDeleteGroup,
-      onCriterionTextChange: callbacks.onCriterionTextChange,
-      onMoveCriterion: callbacks.onMoveCriterion,
-      onDeleteCriterion: callbacks.onDeleteCriterion,
-      onAddCriterion: (groupKey) => {
-        events.push(`add:${groupKey}`)
-        callbacks.onAddCriterion(groupKey)
-      },
-      onBulkInputChange: callbacks.onBulkInputChange,
-      onBulkPreview: callbacks.onBulkPreview,
-      onBulkCancel: callbacks.onBulkCancel,
-      onBulkAccept: callbacks.onBulkAccept,
-    }
-
-    return <TechnicalConfigurationBaselineGroupSection {...props} />
-  }
-
-  render(<Harness />)
-  return { callbacks, events }
-}
+  group,
+  pendingBulkSession,
+  renderGroupSection,
+} from "./technical-configuration-baseline-group-section-fixtures"
 
 describe("TechnicalConfigurationBaselineGroupSection", () => {
   it("renders an expanded editable header with counts, validation, and pending status", () => {
@@ -231,6 +111,54 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
   it("keeps delete focusable but blocks it while the group has pending input", async () => {
     const user = userEvent.setup()
     const { callbacks } = renderGroupSection({ groupError: undefined })
+
+    const deleteButton = screen.getByRole("button", { name: "Xóa nhóm II" })
+    expect(deleteButton).not.toBeDisabled()
+    expect(deleteButton).toHaveAttribute("aria-disabled", "true")
+    expect(deleteButton).toHaveAttribute("aria-describedby", "pending-bulk-status")
+
+    await user.click(deleteButton)
+    expect(callbacks.onDeleteGroup).not.toHaveBeenCalled()
+  })
+
+  it("blocks parent deletion while a subgroup has pending multiline input", async () => {
+    const user = userEvent.setup()
+    const subgroupKey = "subgroup-1"
+    const { callbacks } = renderGroupSection({
+      groupValue: {
+        ...group,
+        subgroups: [
+          {
+            key: subgroupKey,
+            id: subgroupKey,
+            name: "Hạ tầng",
+            criteria: [],
+          },
+        ],
+      },
+      groupError: undefined,
+      bulkSession: { input: "", preview: null },
+      hierarchyAuthoring: {
+        activeOwnerKey: subgroupKey,
+        entryMode: "bulk",
+        getBulkSession: (ownerKey) =>
+          ownerKey === subgroupKey ? pendingBulkSession : { input: "", preview: null },
+        onOwnerModeChange: vi.fn(),
+        onAddSubgroup: vi.fn(),
+        onSubgroupNameChange: vi.fn(),
+        onMoveSubgroup: vi.fn(),
+        onDeleteSubgroup: vi.fn(),
+        onCriterionTextChange: vi.fn(),
+        onMoveCriterionWithinOwner: vi.fn(),
+        onMoveCriterionToOwner: vi.fn(),
+        onDeleteCriterion: vi.fn(),
+        onAddCriterion: vi.fn(),
+        onBulkInputChange: vi.fn(),
+        onBulkPreview: vi.fn(),
+        onBulkCancel: vi.fn(),
+        onBulkAccept: vi.fn(),
+      },
+    })
 
     const deleteButton = screen.getByRole("button", { name: "Xóa nhóm II" })
     expect(deleteButton).not.toBeDisabled()

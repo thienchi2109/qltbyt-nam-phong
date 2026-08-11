@@ -18,6 +18,25 @@ import {
   cloneTechnicalConfigurationBaselineEditorDraft,
   validateTechnicalConfigurationBaselineEditorDraft,
 } from "./technical-configuration-baseline-editor-state"
+import type {
+  TechnicalConfigurationBaselineHierarchyCriteriaReorderRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionCreateRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionMoveRpcArgs,
+  TechnicalConfigurationBaselineHierarchyCriterionWireResponse,
+  TechnicalConfigurationBaselineHierarchyDeleteWireResponse,
+  TechnicalConfigurationBaselineHierarchyReorderWireResponse,
+  TechnicalConfigurationBaselineSubgroupCreateRpcArgs,
+  TechnicalConfigurationBaselineSubgroupDeleteRpcArgs,
+  TechnicalConfigurationBaselineSubgroupsReorderRpcArgs,
+  TechnicalConfigurationBaselineSubgroupUpdateRpcArgs,
+  TechnicalConfigurationBaselineSubgroupWireResponse,
+} from "./technical-configuration-baseline-hierarchy-mutation-types"
+import { runTechnicalConfigurationBaselineHierarchySaveSteps } from "./technical-configuration-baseline-hierarchy-save-steps"
+import {
+  getEditorCriterionLocations,
+  getWireCriterionLocations,
+  sameCriterionOwner,
+} from "./technical-configuration-baseline-hierarchy-save-support"
 import { runTechnicalConfigurationBaselineSaveSteps } from "./technical-configuration-baseline-save-steps"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
@@ -55,6 +74,27 @@ export interface TechnicalConfigurationBaselineEditorRpc {
   reorderCriteria(
     args: TechnicalConfigurationBaselineCriteriaReorderRpcArgs
   ): Promise<TechnicalConfigurationBaselineDraftWireResponse>
+  createSubgroup(
+    args: TechnicalConfigurationBaselineSubgroupCreateRpcArgs
+  ): Promise<TechnicalConfigurationBaselineSubgroupWireResponse>
+  updateSubgroup(
+    args: TechnicalConfigurationBaselineSubgroupUpdateRpcArgs
+  ): Promise<TechnicalConfigurationBaselineSubgroupWireResponse>
+  deleteSubgroup(
+    args: TechnicalConfigurationBaselineSubgroupDeleteRpcArgs
+  ): Promise<TechnicalConfigurationBaselineHierarchyDeleteWireResponse>
+  reorderSubgroups(
+    args: TechnicalConfigurationBaselineSubgroupsReorderRpcArgs
+  ): Promise<TechnicalConfigurationBaselineHierarchyReorderWireResponse>
+  createHierarchyCriterion(
+    args: TechnicalConfigurationBaselineHierarchyCriterionCreateRpcArgs
+  ): Promise<TechnicalConfigurationBaselineHierarchyCriterionWireResponse>
+  moveHierarchyCriterion(
+    args: TechnicalConfigurationBaselineHierarchyCriterionMoveRpcArgs
+  ): Promise<TechnicalConfigurationBaselineHierarchyCriterionWireResponse>
+  reorderHierarchyCriteria(
+    args: TechnicalConfigurationBaselineHierarchyCriteriaReorderRpcArgs
+  ): Promise<TechnicalConfigurationBaselineHierarchyReorderWireResponse>
 }
 
 /** Carries resumable local and server progress after a multi-RPC explicit save fails. */
@@ -96,6 +136,7 @@ export async function saveTechnicalConfigurationBaselineEditorDraft({
   const validation = validateTechnicalConfigurationBaselineEditorDraft(editorDraft)
   if (
     Object.keys(validation.groupErrors).length ||
+    Object.keys(validation.subgroupErrors ?? {}).length ||
     Object.keys(validation.criterionErrors).length
   ) {
     throw new BaselineEditorValidationFailure(validation)
@@ -110,10 +151,31 @@ export async function saveTechnicalConfigurationBaselineEditorDraft({
     }
   }
 
-  await runTechnicalConfigurationBaselineSaveSteps(progress, rpc, run)
+  const hasHierarchy =
+    progress.baseDraft.groups.some((group) => (group.subgroups?.length ?? 0) > 0) ||
+    progress.editorDraft.groups.some((group) => group.subgroups.length > 0) ||
+    hasCriterionOwnerChanges(progress)
+
+  if (hasHierarchy) {
+    await runTechnicalConfigurationBaselineHierarchySaveSteps(progress, rpc, run)
+  } else {
+    await runTechnicalConfigurationBaselineSaveSteps(progress, rpc, run)
+  }
 
   progress.editorDraft.revision = progress.baseDraft.revision
   return cloneProgress(progress)
+}
+
+function hasCriterionOwnerChanges(progress: TechnicalConfigurationBaselineEditorProgress): boolean {
+  const wireLocations = new Map(
+    getWireCriterionLocations(progress).map((location) => [location.criterion.id, location])
+  )
+
+  return getEditorCriterionLocations(progress).some((editorLocation) => {
+    if (!editorLocation.criterion.id) return false
+    const wireLocation = wireLocations.get(editorLocation.criterion.id)
+    return wireLocation ? !sameCriterionOwner(wireLocation, editorLocation) : false
+  })
 }
 
 function cloneProgress(

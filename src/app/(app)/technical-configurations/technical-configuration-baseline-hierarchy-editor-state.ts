@@ -4,6 +4,7 @@ import {
   createTechnicalConfigurationBaselineEditorKey,
   moveTechnicalConfigurationBaselineEditorItem,
 } from "./technical-configuration-baseline-editor-state"
+import { normalizeTechnicalConfigurationBulkEntryText } from "./bulk-entry-utils"
 import type {
   TechnicalConfigurationBaselineEditorCriterion,
   TechnicalConfigurationBaselineEditorDraft,
@@ -43,6 +44,24 @@ export function appendTechnicalConfigurationBaselineEditorSubgroup(
   }))
 }
 
+/** Replaces one subgroup name without mutating the editor tree. */
+export function setTechnicalConfigurationBaselineEditorSubgroupName(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  subgroupKey: string,
+  name: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateGroup(draft, groupKey, (group) => {
+    const currentSubgroups = group.subgroups ?? []
+    const subgroupIndex = currentSubgroups.findIndex((subgroup) => subgroup.key === subgroupKey)
+    if (subgroupIndex < 0) return group
+
+    const subgroups = [...currentSubgroups]
+    subgroups[subgroupIndex] = { ...subgroups[subgroupIndex], name }
+    return { ...group, subgroups }
+  })
+}
+
 /** Appends one criterion to either a direct section owner or a subgroup owner. */
 export function appendTechnicalConfigurationBaselineEditorCriterionToOwner(
   draft: TechnicalConfigurationBaselineEditorDraft,
@@ -50,6 +69,44 @@ export function appendTechnicalConfigurationBaselineEditorCriterionToOwner(
   criterion = createTechnicalConfigurationBaselineEditorCriterion()
 ): TechnicalConfigurationBaselineEditorDraft {
   return updateOwnerCriteria(draft, owner, (criteria) => [...criteria, criterion])
+}
+
+/** Appends normalized unsaved criteria to a direct or subgroup owner. */
+export function appendTechnicalConfigurationBaselineEditorCriteriaToOwner(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  owner: TechnicalConfigurationBaselineEditorCriterionOwner,
+  requirementTexts: readonly string[]
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateOwnerCriteria(draft, owner, (criteria) => [
+    ...criteria,
+    ...requirementTexts.map((requirementText) => ({
+      ...createTechnicalConfigurationBaselineEditorCriterion(),
+      requirementText: normalizeTechnicalConfigurationBulkEntryText(requirementText),
+    })),
+  ])
+}
+
+/** Replaces one criterion field inside a direct or subgroup owner. */
+export function setTechnicalConfigurationBaselineEditorCriterionTextInOwner(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  owner: TechnicalConfigurationBaselineEditorCriterionOwner,
+  criterionKey: string,
+  field: "title" | "requirementText",
+  value: string
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateOwnerCriteria(draft, owner, (criteria) =>
+    criteria.map((criterion) =>
+      criterion.key === criterionKey ? { ...criterion, [field]: value } : criterion
+    )
+  )
+}
+
+/** Reads the current criteria for a direct or subgroup owner. */
+export function getTechnicalConfigurationBaselineEditorOwnerCriteria(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  owner: TechnicalConfigurationBaselineEditorCriterionOwner
+): readonly TechnicalConfigurationBaselineEditorCriterion[] {
+  return getOwnerCriteria(draft, owner) ?? []
 }
 
 /** Moves one section by a single stable position. */

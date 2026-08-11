@@ -262,12 +262,12 @@ Depends on: P4B and P1E.
 Deploy boundary: complete subgroup authoring is wired against already-deployed
 mutation paths but remains hidden on the production baseline screen until P6A.
 
-- [ ] P4C.1 Add subgroup create/rename/delete/reorder and criterion move controls.
-- [ ] P4C.2 Support direct and subgroup-scoped single-row and multiline criterion entry.
-- [ ] P4C.3 Normalize Roman and decimal display ordinals after every structural edit.
-- [ ] P4C.4 Preserve explicit Save, dirty navigation, conflict recovery, lock blocking,
+- [x] P4C.1 Add subgroup create/rename/delete/reorder and criterion move controls.
+- [x] P4C.2 Support direct and subgroup-scoped single-row and multiline criterion entry.
+- [x] P4C.3 Normalize Roman and decimal display ordinals after every structural edit.
+- [x] P4C.4 Preserve explicit Save, dirty navigation, conflict recovery, lock blocking,
       and reload semantics.
-- [ ] P4C.5 Add user-event workflow and save-resume regression tests.
+- [x] P4C.5 Add user-event workflow and save-resume regression tests.
 
 ## Phase P5A - Aggregate Status Model
 

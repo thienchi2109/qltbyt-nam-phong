@@ -11,67 +11,23 @@ import {
   Trash2,
 } from "lucide-react"
 
-import type {
-  TechnicalConfigurationEntryMode,
-  TechnicalConfigurationFocusTarget,
-} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import { TechnicalConfigurationBaselineSubgroupSection } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineSubgroupSection"
-import { TechnicalConfigurationBulkEntryWorkbench } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBulkEntryWorkbench"
-import { TechnicalConfigurationCriteriaSpreadsheet } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCriteriaSpreadsheet"
-import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Input } from "@/components/ui/input"
 
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
+import { focusTechnicalConfigurationBaselineElement } from "./TechnicalConfigurationBaselineFocus"
+import { TechnicalConfigurationBaselineGroupContent } from "./TechnicalConfigurationBaselineGroupContent"
+import type { TechnicalConfigurationBaselineGroupSectionProps } from "./TechnicalConfigurationBaselineGroupSectionTypes"
 
-type CriterionTextField = "title" | "requirementText"
 const EMPTY_SUBGROUPS: TechnicalConfigurationBaselineEditorGroup["subgroups"] = []
 
-export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
-  group: TechnicalConfigurationBaselineEditorGroup
-  groupIndex: number
-  groupCount: number
-  expanded: boolean
-  mode: TechnicalConfigurationEntryMode
-  bulkSession: TechnicalConfigurationBulkEntrySession
-  groupError?: string
-  subgroupErrors: Record<string, string>
-  criterionErrors: Record<string, string>
-  summaryErrorCount: number
-  pendingInputDescriptionId?: string
-  disabled: boolean
-  focusTarget: TechnicalConfigurationFocusTarget
-  recentlyAcceptedCriterionKeys: ReadonlySet<string>
-  onExpandedChange: (expanded: boolean) => void
-  onModeChange: (groupKey: string, mode: TechnicalConfigurationEntryMode) => void
-  onGroupNameChange: (groupKey: string, name: string) => void
-  onMoveGroup: (groupIndex: number, offset: -1 | 1) => void
-  onDeleteGroup: (groupKey: string) => void
-  onCriterionTextChange: (
-    groupKey: string,
-    criterionKey: string,
-    field: CriterionTextField,
-    value: string
-  ) => void
-  onMoveCriterion: (groupKey: string, criterionIndex: number, offset: -1 | 1) => void
-  onDeleteCriterion: (groupKey: string, criterionKey: string) => void
-  onAddCriterion: (groupKey: string) => void
-  onBulkInputChange: (input: string) => void
-  onBulkPreview: () => void
-  onBulkCancel: () => void
-  onBulkAccept: () => void
-}>
-
-function focusElement(target: HTMLElement | null): void {
-  target?.scrollIntoView?.({ block: "nearest" })
-  target?.focus()
-}
+export type { TechnicalConfigurationBaselineGroupSectionProps } from "./TechnicalConfigurationBaselineGroupSectionTypes"
 
 /** Renders one editable, independently collapsible baseline criterion group. */
 export function TechnicalConfigurationBaselineGroupSection({
@@ -89,6 +45,8 @@ export function TechnicalConfigurationBaselineGroupSection({
   disabled,
   focusTarget,
   recentlyAcceptedCriterionKeys,
+  ownerOptions,
+  hierarchyAuthoring,
   onExpandedChange,
   onModeChange,
   onGroupNameChange,
@@ -107,9 +65,17 @@ export function TechnicalConfigurationBaselineGroupSection({
   const sectionOrdinal = formatTechnicalConfigurationBaselineSectionOrdinal(ordinal)
   const groupLabel = group.name.trim() || `Nhóm ${sectionOrdinal}`
   const groupErrorId = groupError ? `baseline-group-${group.key}-error` : undefined
-  const hasPendingBulkInput = hasTechnicalConfigurationBulkEntryInput(bulkSession.input)
   const modeActionLabel = mode === "row" ? "Nhập nhiều dòng" : "Chỉnh từng dòng"
   const subgroups = group.subgroups ?? EMPTY_SUBGROUPS
+  const hasPendingBulkInput =
+    hasTechnicalConfigurationBulkEntryInput(bulkSession.input) ||
+    (hierarchyAuthoring?.getBulkSession
+      ? subgroups.some((subgroup) =>
+          hasTechnicalConfigurationBulkEntryInput(
+            hierarchyAuthoring.getBulkSession(subgroup.key).input
+          )
+        )
+      : false)
   const subgroupKeys = React.useMemo(() => subgroups.map((subgroup) => subgroup.key), [subgroups])
   const {
     expandedGroupKeys: expandedSubgroupKeys,
@@ -134,6 +100,7 @@ export function TechnicalConfigurationBaselineGroupSection({
   const groupNameRef = React.useRef<HTMLInputElement>(null)
   const modeActionRef = React.useRef<HTMLButtonElement>(null)
   const addCriterionRef = React.useRef<HTMLButtonElement>(null)
+  const addSubgroupRef = React.useRef<HTMLButtonElement>(null)
 
   React.useEffect(() => {
     if (!targetSubgroupKey || !targetSubgroupFocusRequest) return
@@ -147,13 +114,15 @@ export function TechnicalConfigurationBaselineGroupSection({
     if (!focusTarget) return
     const timeoutId = window.setTimeout(() => {
       if (focusTarget.kind === "group-name" && focusTarget.key === group.key) {
-        focusElement(groupNameRef.current)
+        focusTechnicalConfigurationBaselineElement(groupNameRef.current)
       } else if (focusTarget.kind === "group-disclosure" && focusTarget.key === group.key) {
-        focusElement(disclosureRef.current)
+        focusTechnicalConfigurationBaselineElement(disclosureRef.current)
       } else if (focusTarget.kind === "group-mode-action" && focusTarget.key === group.key) {
-        focusElement(modeActionRef.current)
+        focusTechnicalConfigurationBaselineElement(modeActionRef.current)
       } else if (focusTarget.kind === "add-criterion" && focusTarget.key === group.key) {
-        focusElement(addCriterionRef.current)
+        focusTechnicalConfigurationBaselineElement(addCriterionRef.current)
+      } else if (focusTarget.kind === "add-subgroup" && focusTarget.key === group.key) {
+        focusTechnicalConfigurationBaselineElement(addSubgroupRef.current)
       }
     }, 0)
     return () => window.clearTimeout(timeoutId)
@@ -248,6 +217,20 @@ export function TechnicalConfigurationBaselineGroupSection({
               <Plus className="size-4" aria-hidden="true" />
               Thêm tiêu chí
             </Button>
+            {hierarchyAuthoring ? (
+              <Button
+                ref={addSubgroupRef}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={disabled}
+                aria-label={`Thêm nhóm con vào nhóm ${sectionOrdinal}`}
+                onClick={() => hierarchyAuthoring.onAddSubgroup(group.key)}
+              >
+                <Plus className="size-4" aria-hidden="true" />
+                Thêm nhóm con
+              </Button>
+            ) : null}
             <IconButton
               label={`Di chuyển nhóm ${sectionOrdinal} lên`}
               title="Di chuyển lên"
@@ -280,53 +263,32 @@ export function TechnicalConfigurationBaselineGroupSection({
           </div>
         </div>
 
-        <CollapsibleContent>
-          <div role="region" aria-label={`Nội dung nhóm ${sectionOrdinal}`} className="py-4">
-            {mode === "row" ? (
-              <TechnicalConfigurationCriteriaSpreadsheet
-                group={group}
-                groupIndex={ordinal}
-                criterionErrors={criterionErrors}
-                disabled={disabled}
-                focusCriterionKey={focusTarget?.kind === "criterion" ? focusTarget.key : null}
-                focusCriterionToken={focusTarget?.kind === "criterion" ? focusTarget.token : null}
-                recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
-                onCriterionTextChange={(criterionKey, field, value) =>
-                  onCriterionTextChange(group.key, criterionKey, field, value)
-                }
-                onMoveCriterion={(criterionIndex, offset) =>
-                  onMoveCriterion(group.key, criterionIndex, offset)
-                }
-                onDeleteCriterion={(criterionKey) => onDeleteCriterion(group.key, criterionKey)}
-              />
-            ) : (
-              <TechnicalConfigurationBulkEntryWorkbench
-                groupName={groupLabel}
-                existingCriterionCount={group.criteria.length}
-                session={bulkSession}
-                disabled={disabled}
-                focusInputToken={focusTarget?.kind === "bulk-input" ? focusTarget.token : null}
-                onInputChange={onBulkInputChange}
-                onPreview={onBulkPreview}
-                onCancel={onBulkCancel}
-                onAccept={onBulkAccept}
-              />
-            )}
-            {subgroups.map((subgroup, subgroupIndex) => (
-              <TechnicalConfigurationBaselineSubgroupSection
-                key={subgroup.key}
-                subgroup={subgroup}
-                sectionOrdinal={sectionOrdinal}
-                subgroupIndex={subgroupIndex}
-                expanded={expandedSubgroupKeys.has(subgroup.key)}
-                subgroupError={subgroupErrors[subgroup.key]}
-                criterionErrors={criterionErrors}
-                focusTarget={focusTarget}
-                onExpandedChange={(expanded) => setSubgroupExpanded(subgroup.key, expanded)}
-              />
-            ))}
-          </div>
-        </CollapsibleContent>
+        <TechnicalConfigurationBaselineGroupContent
+          group={group}
+          ordinal={ordinal}
+          sectionOrdinal={sectionOrdinal}
+          groupLabel={groupLabel}
+          mode={mode}
+          bulkSession={bulkSession}
+          subgroups={subgroups}
+          expandedSubgroupKeys={expandedSubgroupKeys}
+          subgroupErrors={subgroupErrors}
+          criterionErrors={criterionErrors}
+          disabled={disabled}
+          focusTarget={focusTarget}
+          recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
+          ownerOptions={ownerOptions}
+          hierarchyAuthoring={hierarchyAuthoring}
+          pendingInputDescriptionId={pendingInputDescriptionId}
+          onCriterionTextChange={onCriterionTextChange}
+          onMoveCriterion={onMoveCriterion}
+          onDeleteCriterion={onDeleteCriterion}
+          onBulkInputChange={onBulkInputChange}
+          onBulkPreview={onBulkPreview}
+          onBulkCancel={onBulkCancel}
+          onBulkAccept={onBulkAccept}
+          onSubgroupExpandedChange={setSubgroupExpanded}
+        />
       </section>
     </Collapsible>
   )
