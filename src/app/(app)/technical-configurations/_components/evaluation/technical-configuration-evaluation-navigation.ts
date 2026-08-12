@@ -1,69 +1,39 @@
-import type {
-  TechnicalConfigurationBaselineCriterionWire,
-  TechnicalConfigurationBaselineGroupWire,
-} from "../../baseline-types"
 import type { TechnicalConfigurationEvaluationCriterionWire } from "../../assessment-types"
+import type { TechnicalConfigurationBaselineGroupWire } from "../../baseline-types"
+import {
+  flattenTechnicalConfigurationEvaluationLeaves,
+  type TechnicalConfigurationEvaluationHierarchyLeaf,
+} from "./technical-configuration-evaluation-hierarchy"
 
-export type TechnicalConfigurationEvaluationCriterionListItem = {
-  group: {
-    id: string
-    name: string
-    sortOrder: number
+export type TechnicalConfigurationEvaluationCriterionListItem =
+  TechnicalConfigurationEvaluationHierarchyLeaf & {
+    canonicalIndex: number
+    canonicalPage: number
   }
-  criterion: {
-    id: string
-    criterionCode: string
-    title: string | null
-    sortOrder: number
-  }
-  canonicalIndex: number
-  canonicalPage: number
-}
 
 function toProjectionItem({
-  group,
-  criterion,
+  leaf,
   canonicalIndex,
   canonicalPage,
 }: {
-  group: TechnicalConfigurationBaselineGroupWire
-  criterion: TechnicalConfigurationBaselineCriterionWire
+  leaf: Omit<TechnicalConfigurationEvaluationHierarchyLeaf, "canonicalIndex">
   canonicalIndex: number
   canonicalPage: number
 }): TechnicalConfigurationEvaluationCriterionListItem {
   return {
-    group: {
-      id: group.id,
-      name: group.name,
-      sortOrder: group.sort_order,
-    },
-    criterion: {
-      id: criterion.id,
-      criterionCode: criterion.criterion_code,
-      title: criterion.title,
-      sortOrder: criterion.sort_order,
-    },
+    ...leaf,
     canonicalIndex,
     canonicalPage,
   }
 }
 
-function buildBaselineCriterionIndex(groups: readonly TechnicalConfigurationBaselineGroupWire[]) {
-  const criteria = new Map<
-    string,
-    {
-      group: TechnicalConfigurationBaselineGroupWire
-      criterion: TechnicalConfigurationBaselineCriterionWire
-    }
-  >()
-
-  for (const group of groups) {
-    for (const criterion of group.criteria) {
-      criteria.set(criterion.id, { group, criterion })
-    }
-  }
-
-  return criteria
+function buildProjectionLeafIndex(groups: readonly TechnicalConfigurationBaselineGroupWire[]) {
+  return new Map(
+    flattenTechnicalConfigurationEvaluationLeaves(groups).map((leaf) => {
+      const { canonicalIndex: _canonicalIndex, ...projectionLeaf } = leaf
+      return [leaf.criterion.id, projectionLeaf] as const
+    })
+  )
 }
 
 /** Maps exact server-filtered IDs to baseline display rows without re-filtering locally. */
@@ -74,14 +44,14 @@ export function buildTechnicalConfigurationEvaluationProjection({
   groups: readonly TechnicalConfigurationBaselineGroupWire[]
   entries: readonly TechnicalConfigurationEvaluationCriterionWire[]
 }): TechnicalConfigurationEvaluationCriterionListItem[] {
-  const criteriaById = buildBaselineCriterionIndex(groups)
+  const leavesById = buildProjectionLeafIndex(groups)
 
   return entries.flatMap((entry) => {
-    const baselineCriterion = criteriaById.get(entry.criterion_id)
-    return baselineCriterion
+    const leaf = leavesById.get(entry.criterion_id)
+    return leaf
       ? [
           toProjectionItem({
-            ...baselineCriterion,
+            leaf,
             canonicalIndex: entry.canonical_index,
             canonicalPage: entry.canonical_page,
           }),
@@ -127,20 +97,15 @@ export function findTechnicalConfigurationEvaluationCriterion({
 }): TechnicalConfigurationEvaluationCriterionListItem | null {
   if (!criterionId) return null
 
-  let canonicalIndex = 0
-  for (const group of groups) {
-    for (const criterion of group.criteria) {
-      canonicalIndex += 1
-      if (criterion.id === criterionId) {
-        return toProjectionItem({
-          group,
-          criterion,
-          canonicalIndex,
-          canonicalPage: Math.ceil(canonicalIndex / pageSize),
-        })
-      }
-    }
-  }
+  const leaf = flattenTechnicalConfigurationEvaluationLeaves(groups).find(
+    (item) => item.criterion.id === criterionId
+  )
+  if (!leaf) return null
 
-  return null
+  const { canonicalIndex, ...projectionLeaf } = leaf
+  return toProjectionItem({
+    leaf: projectionLeaf,
+    canonicalIndex,
+    canonicalPage: Math.ceil(canonicalIndex / pageSize),
+  })
 }

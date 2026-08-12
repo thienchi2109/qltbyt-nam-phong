@@ -225,6 +225,26 @@ chí hậu duệ mà không tạo assessment riêng cho structural row.
   status
 - **AND** có thể mở structural row để xem các tiêu chí tạo nên kết quả
 
+#### Scenario: Keep aggregate independent from presentation state
+
+- **WHEN** người dùng đổi filter, transport page, comparison page hoặc thu gọn structural
+  row
+- **THEN** aggregate status/counts vẫn lấy từ authoritative complete assessment cache
+  trên toàn bộ descendant leaf criteria của baseline
+- **AND** unsaved assessment draft không thay đổi aggregate
+- **AND** full progress/summary vẫn hiển thị empty section/subgroup với descendant
+  counts bằng `0`
+
+#### Scenario: Adopt only authoritative complete assessment state
+
+- **WHEN** lưu assessment thành công
+- **THEN** known-complete cache được cập nhật theo criterion ID trước aggregate refresh
+- **AND** known-empty comparison set vừa được tạo có thể được seed bằng assessment đã lưu
+- **AND** cache unavailable/failed của comparison set đã tồn tại không được coi là
+  authoritative từ một assessment riêng lẻ
+- **AND** filtered-navigation refresh failure hiển thị lỗi có thể retry mà không làm
+  hỏng aggregate authoritative hiện có
+
 #### Scenario: Count each criterion once
 
 - **WHEN** hệ thống tính progress, filter totals, aggregate hoặc ranking input
@@ -254,6 +274,54 @@ evaluation và result export.
 - **WHEN** người dùng dùng evaluation navigator, filter hoặc `Lưu & tiếp tục`
 - **THEN** selection và navigation chỉ đi qua leaf criteria
 - **AND** structural rows vẫn hiển thị aggregate status và descendant progress
+
+#### Scenario: Preserve canonical evaluation leaf order
+
+- **WHEN** evaluation read contract liệt kê direct criteria và subgroup criteria
+- **THEN** thứ tự canonical dùng main-section `sort_order`, main-section ID,
+  direct-before-subgroup discriminator, subgroup `sort_order`, subgroup ID, criterion
+  `sort_order`, criterion ID
+- **AND** `canonical_index` được tính trên toàn bộ leaf universe trước status filter
+- **AND** `canonical_page` dùng comparison page size `50`
+- **AND** filtered page và JSON aggregate đều được sắp theo `canonical_index`
+- **AND** transport page size vẫn bị chặn ở tối đa `100`
+
+#### Scenario: Render page-local evaluation headings
+
+- **WHEN** navigator hiển thị một filtered presentation page
+- **THEN** chỉ section/subgroup ancestors của leaf criteria trên page đó được hiển thị
+- **AND** empty structures chỉ xuất hiện trong full progress/summary, không tạo orphan
+  navigator heading
+- **AND** legacy two-level baseline vẫn hiển thị criteria như direct children
+
+#### Scenario: Consume one prebuilt evaluation hierarchy row union
+
+- **WHEN** evaluation presentation nhận canonical leaves của filtered page hiện tại
+- **THEN** presentation layer chỉ dựng một ordered section/subgroup/criterion row union
+- **AND** navigator pane chuyển tiếp readonly row union đó cho criterion renderer
+- **AND** criterion renderer render/filter trực tiếp row union đã nhận, không flatten
+  hoặc dựng lại hierarchy từ leaf projection
+- **AND** controlled expanded-ID input và expansion-change callback vẫn hỗ trợ
+  auto-expand ancestors của selected hidden leaf
+
+#### Scenario: Collapse evaluation presentation locally
+
+- **WHEN** structural rows được mở mặc định và người dùng thu gọn một row
+- **THEN** chỉ descendant presentation rows bị ẩn
+- **AND** leaf totals, filter totals, pagination, selection, save/save-next, dirty guard,
+  denominator, ranking và score không đổi
+- **AND** navigation tự mở ancestors trước khi chọn một hidden leaf
+- **AND** structural rows không selectable và không có assessment control
+
+#### Scenario: Keep adjacent P5C surfaces unchanged
+
+- **WHEN** P5C hierarchy/progress được triển khai
+- **THEN** comparison behavior và result-export contract không thay đổi
+- **AND** criterion assessment persistence không thay đổi
+- **AND** hai stale phase-gate tests
+  `technical-configuration-baseline-hierarchy-apply-migration.test.ts` và
+  `technical-configuration-baseline-subgroup-mutations-migration.test.ts` do Issue
+  #903 theo dõi không thuộc scope P5C
 
 #### Scenario: Preserve hierarchy in final export
 

@@ -150,6 +150,37 @@ do not expose response or assessment controls.
 Progress, filtering, ranking inputs, and denominators count each leaf criterion exactly
 once. Structural rows never create synthetic criteria or duplicate descendant counts.
 
+Evaluation owns a separate presentation row model. One evaluation-specific canonical
+leaf flattener is the only baseline-to-leaf traversal used by evaluation projection,
+legacy fallback, navigator rows, progress, and aggregate inputs. Its canonical tuple is:
+
+1. main-section `sort_order`;
+2. main-section ID;
+3. direct criterion before subgroup criterion;
+4. subgroup `sort_order` for subgroup criteria;
+5. subgroup ID for subgroup criteria;
+6. criterion `sort_order`;
+7. criterion ID.
+
+Legacy two-level snapshots are normalized as direct criteria and remain supported.
+Navigator heading rows wrap only leaf criteria visible on the current filtered
+presentation page. Empty sections and subgroups remain visible in the complete
+progress/summary surface, but do not create orphan navigator headings.
+
+The navigator/presentation layer constructs that page-local section/subgroup/criterion
+row union exactly once from the canonical leaf page. The navigator pane forwards the
+readonly row union and expansion controls; the criterion list renders and filters that
+union directly. It does not flatten leaves or rebuild hierarchy independently. This
+keeps the active workspace, controlled ancestor expansion, and local collapse on one
+presentation contract instead of allowing competing row projections.
+
+Structural rows start expanded. Collapse/expand is local presentation state only:
+collapsing hides descendant presentation rows without changing leaf totals, filter
+totals, pagination, selected criterion, save/save-next, dirty guards, denominator,
+ranking, or score. When filter, page navigation, direct selection, or
+`Lưu & tiếp tục` selects a leaf hidden by local collapse state, its section and subgroup
+ancestors expand before focus moves to that leaf.
+
 ### 4. Aggregate status is transparent and fail-fast
 
 A subgroup aggregates only its direct leaf criteria. A main section aggregates:
@@ -175,6 +206,51 @@ status with a new structural `Vượt yêu cầu` state.
 The aggregate changes immediately after a successful assessment result is adopted
 into the authoritative complete cache. Unsaved local assessment drafts do not mutate
 the persisted aggregate.
+
+Aggregate status and counts always derive from the complete baseline descendant
+universe and the authoritative complete assessment cache. Active filters, transport
+pages, comparison pages, navigator collapse state, and unsaved drafts never change the
+aggregate input.
+
+Complete-cache adoption distinguishes three states:
+
+- a known-complete cache, including a successfully loaded empty map, receives the saved
+  assessment by criterion ID before aggregate refresh;
+- a known-empty comparison set created by the current save is seeded with the saved
+  assessment;
+- an unavailable, loading, or failed cache for an existing comparison set is never
+  promoted to authoritative from one saved assessment.
+
+If filtered-navigation refresh fails after persistence succeeds, the UI keeps the
+already authoritative aggregate when one exists, exposes an actionable retry state for
+the failed filtered read, and never replaces the aggregate with a partial cache.
+
+### 4A. Upgrade the evaluation read contract before hierarchy UI
+
+P5C owns a superseding
+`technical_configuration_evaluation_criteria_list(UUID, UUID, TEXT, INTEGER, INTEGER)`
+definition. It preserves the existing signature, JSON response shape, accepted
+filters, JWT/auth guards, `SECURITY DEFINER` and `search_path`, grants, assessment
+persistence, and transport page-size bound of `100`.
+
+The RPC computes `canonical_index` over the complete baseline leaf universe before
+applying the status filter. It uses the evaluation canonical tuple defined above,
+derives `canonical_page` with the comparison criterion page size `50`, and orders both
+the filtered transport page and JSON aggregation by `canonical_index`. Deterministic ID
+ties are part of the contract, not an implementation detail.
+
+The read-contract migration is deploy-safe before subgroup data or evaluation UI
+activation. The hierarchy UI depends on that migration being present and applied in
+the target environment. Creating the local migration does not authorize applying it to
+live Supabase; live application requires a separate explicit user approval. Migration
+source tests inspect the superseding file directly. Query plans are inspected with
+`EXPLAIN` before any index is proposed; P5C does not add speculative indexes.
+
+P5C adds its own hierarchy-order and security phase gates. The stale
+`technical-configuration-baseline-hierarchy-apply-migration.test.ts` and
+`technical-configuration-baseline-subgroup-mutations-migration.test.ts` assertions
+remain owned by Issue #903 and are reported separately rather than changed to satisfy
+P5C.
 
 ### 5. Introduce a user-facing baseline XLSX contract
 
@@ -321,11 +397,14 @@ Deployment order follows expand/migrate/contract principles:
 4. deploy hidden/library-only workbook and aggregate models;
 5. wire subgroup-producing authoring/import UI without mounting it on production
    screens;
-6. update baseline, comparison, evaluation, and export readers in separate leaves;
-7. enable server-side subgroup mutations and XLSX v2 apply only after every production
+6. update baseline and comparison readers in separate leaves;
+7. deploy the hierarchy-aware evaluation criteria read contract before activating the
+   evaluation hierarchy UI;
+8. update evaluation/progress and result export in separate leaves;
+9. enable server-side subgroup mutations and XLSX v2 apply only after every production
    reader is hierarchy-aware;
-8. mount subgroup-producing production controls in a later UI-only leaf;
-9. remove compatibility behavior only in a later explicit change.
+10. mount subgroup-producing production controls in a later UI-only leaf;
+11. remove compatibility behavior only in a later explicit change.
 
 No leaf may require an unmerged next PR to restore the existing user workflow. New
 controls remain absent or disabled until all dependencies needed by that control are
@@ -362,12 +441,14 @@ already deployed.
 5. Release new workbook codec with legacy read compatibility, wire the new download
    and import actions without mounting them on production screens.
 6. Wire hierarchy-aware baseline authoring without enabling subgroup creation.
-7. Update aggregate models, comparison, evaluation, progress, and export in separate
-   leaves.
-8. Run cross-surface regression, then enable server-side subgroup writes.
-9. Mount XLSX v2 import/download and subgroup authoring in a UI-only activation leaf.
-10. Run representative browser and authorized live-database acceptance.
-11. Keep rollback forward-compatible; do not drop populated hierarchy data.
+7. Update aggregate models and comparison in separate leaves.
+8. Deploy the hierarchy-aware evaluation criteria read contract, then update
+   evaluation/progress without changing comparison or result export.
+9. Update result export in its own leaf.
+10. Run cross-surface regression, then enable server-side subgroup writes.
+11. Mount XLSX v2 import/download and subgroup authoring in a UI-only activation leaf.
+12. Run representative browser and authorized live-database acceptance.
+13. Keep rollback forward-compatible; do not drop populated hierarchy data.
 
 ## Open Questions
 

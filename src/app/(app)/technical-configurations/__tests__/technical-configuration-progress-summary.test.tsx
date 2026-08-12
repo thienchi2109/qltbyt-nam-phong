@@ -5,6 +5,16 @@ import { describe, expect, it } from "vitest"
 import { TechnicalConfigurationProgressSummary } from "@/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationProgressSummary"
 import type { TechnicalConfigurationEvaluationProgress } from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
 
+const emptyStatusCounts = {
+  not_evaluated: 0,
+  not_applicable: 0,
+  fails: 0,
+  unclear: 0,
+  insufficient_evidence: 0,
+  exceeds: 0,
+  meets: 0,
+} as const
+
 const progress: TechnicalConfigurationEvaluationProgress = {
   total: 6,
   evaluated: 4,
@@ -21,6 +31,61 @@ const progress: TechnicalConfigurationEvaluationProgress = {
     { id: "group-1", name: "Thông số chính", total: 4, evaluated: 3 },
     { id: "group-2", name: "An toàn", total: 2, evaluated: 1 },
   ],
+  hierarchy: [
+    {
+      id: "group-1",
+      name: "Thông số chính",
+      sortOrder: 1,
+      total: 4,
+      evaluated: 3,
+      status: "failed",
+      statusCounts: {
+        ...emptyStatusCounts,
+        not_evaluated: 1,
+        fails: 1,
+        insufficient_evidence: 1,
+        meets: 1,
+      },
+      subgroups: [
+        {
+          id: "subgroup-1",
+          name: "Hiệu năng",
+          sortOrder: 1,
+          total: 2,
+          evaluated: 1,
+          status: "in_progress",
+          statusCounts: {
+            ...emptyStatusCounts,
+            not_evaluated: 1,
+            meets: 1,
+          },
+        },
+        {
+          id: "subgroup-empty",
+          name: "Nhóm trống",
+          sortOrder: 2,
+          total: 0,
+          evaluated: 0,
+          status: "no_criteria",
+          statusCounts: emptyStatusCounts,
+        },
+      ],
+    },
+    {
+      id: "group-2",
+      name: "An toàn",
+      sortOrder: 2,
+      total: 2,
+      evaluated: 1,
+      status: "needs_clarification",
+      statusCounts: {
+        ...emptyStatusCounts,
+        not_evaluated: 1,
+        unclear: 1,
+      },
+      subgroups: [],
+    },
+  ],
 }
 
 const fiveCardProgress: TechnicalConfigurationEvaluationProgress = {
@@ -35,7 +100,7 @@ const fiveCardProgress: TechnicalConfigurationEvaluationProgress = {
 }
 
 describe("P12B1 technical configuration progress summary", () => {
-  it("renders overall and group progress as compact KPI cards", () => {
+  it("renders overall KPI cards and exact section/subgroup aggregates", () => {
     render(
       <TechnicalConfigurationProgressSummary
         progress={progress}
@@ -57,18 +122,43 @@ describe("P12B1 technical configuration progress summary", () => {
     expect(within(progressCards[2]!).getByText("An toàn")).toBeInTheDocument()
     expect(within(progressCards[2]!).getByText("1 / 2")).toBeInTheDocument()
 
+    const overallCounts = within(summary).getByTestId("evaluation-progress-status-counts-overall")
+    expect(within(overallCounts).getByText("Chưa đánh giá: 2")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Không áp dụng: 1")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Không đạt: 1")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Chưa đủ bằng chứng: 1")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Đạt: 1")).toBeInTheDocument()
+
     expect(within(summary).queryByRole("progressbar")).not.toBeInTheDocument()
     expect(within(summary).queryByText(/%/)).not.toBeInTheDocument()
-    for (const statusLabel of [
-      "Chưa đánh giá",
-      "Không áp dụng",
-      "Không đạt",
-      "Chưa rõ",
-      "Chưa đủ bằng chứng",
-      "Vượt yêu cầu",
-      "Đạt",
-    ]) {
-      expect(within(summary).queryByText(statusLabel, { exact: true })).not.toBeInTheDocument()
+    const mainSection = within(summary).getByTestId("evaluation-progress-section-group-1")
+    const performanceSubgroup = within(summary).getByTestId(
+      "evaluation-progress-subgroup-subgroup-1"
+    )
+    const emptySubgroup = within(summary).getByTestId("evaluation-progress-subgroup-subgroup-empty")
+    const sectionCounts = within(mainSection).getByTestId(
+      "evaluation-progress-section-status-counts-group-1"
+    )
+    const subgroupCounts = within(performanceSubgroup).getByTestId(
+      "evaluation-progress-subgroup-status-counts-subgroup-1"
+    )
+    const emptySubgroupCounts = within(emptySubgroup).getByTestId(
+      "evaluation-progress-subgroup-status-counts-subgroup-empty"
+    )
+    expect(within(mainSection).getByText("Không đạt", { exact: true })).toBeInTheDocument()
+    expect(within(mainSection).getByText("3 / 4 tiêu chí")).toBeInTheDocument()
+    expect(within(sectionCounts).getByText("Không đạt: 1")).toBeInTheDocument()
+    expect(within(sectionCounts).getByText("Đạt: 1")).toBeInTheDocument()
+    expect(within(performanceSubgroup).getByText("Đang đánh giá")).toBeInTheDocument()
+    expect(within(performanceSubgroup).getByText("1 / 2 tiêu chí")).toBeInTheDocument()
+    expect(within(subgroupCounts).getByText("Chưa đánh giá: 1")).toBeInTheDocument()
+    expect(within(subgroupCounts).getByText("Đạt: 1")).toBeInTheDocument()
+    expect(within(emptySubgroup).getByText("Chưa có tiêu chí")).toBeInTheDocument()
+    expect(within(emptySubgroup).getByText("0 / 0 tiêu chí")).toBeInTheDocument()
+    for (const count of Object.values(emptyStatusCounts)) {
+      expect(within(emptySubgroupCounts).getAllByText(new RegExp(`: ${count}$`))).not.toHaveLength(
+        0
+      )
     }
   })
 

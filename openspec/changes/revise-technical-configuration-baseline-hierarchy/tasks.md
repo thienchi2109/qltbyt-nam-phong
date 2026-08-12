@@ -299,18 +299,56 @@ unchanged until their own leaves.
 
 Depends on: P1C, P5A, and the parent evaluation workflow being stable on `main`.
 
-Deploy boundary: evaluation navigator and summaries become hierarchy-aware without
-changing criterion assessment persistence.
+Deploy boundary: P5C0 is a read-only RPC replacement that is safe before subgroup
+data or UI activation. The P5C UI leaf depends on that contract being represented
+locally and applied in each target environment as appropriate. Criterion assessment
+persistence, comparison, and result export remain unchanged.
 
-- [ ] P5C.1 Show aggregate status/counts on sections and subgroups.
-- [ ] P5C.2 Add the evaluation-specific hierarchy row model and render section/subgroup
-      rows around leaf criteria.
-- [ ] P5C.3 Keep selection, filters, pagination, save, and `Lưu & tiếp tục` restricted
-      to leaf criteria.
-- [ ] P5C.4 Preserve complete-cache adoption and fail-fast aggregate refresh after a
-      successful save.
-- [ ] P5C.5 Add mixed-status, empty-aggregate, filtered navigation, dirty-cancel,
-      save-next, and >100-criterion regressions.
+- [x] P5C.0 Replace `technical_configuration_evaluation_criteria_list` without changing
+      its signature, response shape, filters, grants, auth guards, assessment
+      persistence, comparison, or result export. Compute the canonical leaf tuple as
+      section `sort_order`, section ID, direct-before-subgroup discriminator, subgroup
+      `sort_order`, subgroup ID, criterion `sort_order`, criterion ID; compute
+      `canonical_index` across the complete leaf universe before filtering, derive
+      `canonical_page` with comparison page size `50`, order filtered pages and JSON
+      aggregation by `canonical_index`, and keep transport page size bounded at `100`.
+- [x] P5C.1 Add one evaluation-specific canonical leaf flattener reused by projection,
+      legacy fallback, hierarchy rows, progress, and aggregate inputs so subgroup leaves
+      cannot be dropped by independent loops.
+- [x] P5C.2 Show authoritative aggregate status/counts for sections and subgroups over
+      the complete baseline descendant universe, independent of active filter/page.
+      Include empty structures in the full progress/summary surface.
+- [x] P5C.3 Construct the current filtered presentation page's hierarchy row union once
+      at the navigator/presentation boundary, pass the readonly rows through the
+      navigator pane, and render them directly in the criterion list without rebuilding
+      hierarchy from a leaf projection. Show only ancestor section/subgroup headings,
+      keep structural rows non-selectable and assessment-free, and preserve legacy
+      two-level fixtures.
+- [x] P5C.4 Default structural rows to expanded. Keep collapse/expand as local
+      presentation state only, auto-expand ancestors when navigation selects a hidden
+      leaf, and prove collapse cannot change totals, filters, pagination, selection,
+      save/save-next, dirty guards, denominator, ranking, or score.
+- [x] P5C.5 Preserve authoritative complete-cache adoption before aggregate refresh:
+      merge into a known-complete cache, seed a known-empty newly created comparison
+      set, and never mark an unavailable or failed existing cache as authoritative from
+      one saved row. Keep filtered-navigation refresh failures fail-fast/actionable
+      without corrupting the aggregate.
+- [x] P5C.6 Add dedicated mixed-status, empty-aggregate, filtered navigation,
+      collapse/auto-expand, dirty-cancel, save-next, cache-refetch-failure, legacy, and >100-criterion regressions. The large fixture MUST cross canonical boundaries
+      `50/51` and `100/101`; the existing large workspace suite's 21 cases MUST pass
+      unchanged and its file MUST NOT be enlarged.
+- [ ] P5C.7 Run migration source-contract tests against the superseding migration,
+      both new P5C executable phase gates, required repository gates, focused and broad
+      regressions, and OpenSpec strict. Inspect `EXPLAIN` before adding any index,
+      enforce changed-file scope guards, repeat review to zero actionable findings, and
+      keep
+      `technical-configuration-baseline-hierarchy-apply-migration.test.ts` plus
+      `technical-configuration-baseline-subgroup-mutations-migration.test.ts`, the two
+      stale phase-gate tests tracked by Issue #903, outside P5C.
+
+P5C.7 status: local source-contract, repository, regression, scope, graph, and review
+gates are complete. The two executable SQL phase gates remain pending until the local
+migration is applied to a target environment with separate live-write authorization.
 
 ## Phase P5D - Hierarchy-Aware Result Export
 

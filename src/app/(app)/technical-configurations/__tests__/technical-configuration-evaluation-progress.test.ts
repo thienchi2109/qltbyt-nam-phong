@@ -1,101 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import type {
-  TechnicalConfigurationDerivedStatus,
-  TechnicalConfigurationEvidenceAxis,
-  TechnicalConfigurationTechnicalAxis,
-} from "@/lib/technical-configuration-evaluation"
+import { buildTechnicalConfigurationEvaluationProgress } from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
 import {
-  buildTechnicalConfigurationEvaluationProgress,
-  type TechnicalConfigurationEvaluationProgress,
-} from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
-import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
-import type {
-  TechnicalConfigurationBaselineCriterionWire,
-  TechnicalConfigurationBaselineGroupWire,
-} from "@/app/(app)/technical-configurations/baseline-types"
-
-const STATUS_AXES: Record<
-  TechnicalConfigurationDerivedStatus,
-  readonly [TechnicalConfigurationTechnicalAxis | null, TechnicalConfigurationEvidenceAxis | null]
-> = {
-  not_evaluated: [null, null],
-  not_applicable: ["not_applicable", null],
-  fails: ["fails", null],
-  unclear: ["unclear", null],
-  insufficient_evidence: ["meets", "partial"],
-  exceeds: ["exceeds", "complete"],
-  meets: ["meets", "complete"],
-}
-
-function createCriterion(
-  groupId: string,
-  index: number
-): TechnicalConfigurationBaselineCriterionWire {
-  const id = `${groupId}-criterion-${index}`
-  return {
-    id,
-    baseline_version_id: "baseline-1",
-    group_id: groupId,
-    criterion_code: `TC-${index.toString().padStart(3, "0")}`,
-    title: `Tiêu chí ${index}`,
-    requirement_text: `Yêu cầu ${index}`,
-    sort_order: index,
-    source_criterion_id: null,
-    created_at: "2026-07-30T00:00:00.000Z",
-    created_by: 1,
-    updated_at: "2026-07-30T00:00:00.000Z",
-    updated_by: 1,
-  }
-}
-
-function createGroup(
-  id: string,
-  name: string,
-  criterionCount: number
-): TechnicalConfigurationBaselineGroupWire {
-  return {
-    id,
-    baseline_version_id: "baseline-1",
-    name,
-    sort_order: Number(id.replace(/\D/g, "")) || 1,
-    created_at: "2026-07-30T00:00:00.000Z",
-    created_by: 1,
-    updated_at: "2026-07-30T00:00:00.000Z",
-    updated_by: 1,
-    criteria: Array.from({ length: criterionCount }, (_, index) => createCriterion(id, index + 1)),
-  }
-}
-
-function createAssessment(
-  criterionId: string,
-  status: TechnicalConfigurationDerivedStatus,
-  optionId = "option-1"
-): TechnicalConfigurationAssessmentWire {
-  const [technicalAxis, evidenceAxis] = STATUS_AXES[status]
-  return {
-    id: `${optionId}-${criterionId}`,
-    comparison_set_id: `comparison-set-${optionId}`,
-    baseline_version_id: "baseline-1",
-    criterion_id: criterionId,
-    technical_axis: technicalAxis,
-    evidence_axis: evidenceAxis,
-    notes: "",
-    revision: 1,
-    created_by: 1,
-    created_at: "2026-07-30T00:00:00.000Z",
-    updated_by: 1,
-    updated_at: "2026-07-30T00:00:00.000Z",
-  }
-}
-
-function expectReconciledTotals(progress: TechnicalConfigurationEvaluationProgress): void {
-  expect(progress.groups.reduce((sum, group) => sum + group.total, 0)).toBe(progress.total)
-  expect(progress.groups.reduce((sum, group) => sum + group.evaluated, 0)).toBe(progress.evaluated)
-  expect(Object.values(progress.statusCounts).reduce((sum, count) => sum + count, 0)).toBe(
-    progress.total
-  )
-}
+  createAssessment,
+  createCriterion,
+  createGroup,
+  expectReconciledTotals,
+} from "./technical-configuration-evaluation-progress.test-support"
 
 describe("P12B1 selected-option evaluation progress", () => {
   it("returns a stable zero model for an empty criterion universe", () => {
@@ -104,7 +15,7 @@ describe("P12B1 selected-option evaluation progress", () => {
       assessments: [],
     })
 
-    expect(progress).toEqual({
+    expect(progress).toMatchObject({
       total: 0,
       evaluated: 0,
       statusCounts: {
@@ -139,7 +50,7 @@ describe("P12B1 selected-option evaluation progress", () => {
 
     const progress = buildTechnicalConfigurationEvaluationProgress({ groups, assessments })
 
-    expect(progress).toEqual({
+    expect(progress).toMatchObject({
       total: 9,
       evaluated: 7,
       statusCounts: {
@@ -186,6 +97,165 @@ describe("P12B1 selected-option evaluation progress", () => {
       { id: "group-1", name: "Nhóm một", total: 60, evaluated: 60 },
       { id: "group-2", name: "Nhóm hai", total: 55, evaluated: 40 },
     ])
+    expectReconciledTotals(progress)
+  })
+
+  it("counts subgroup-exclusive criteria in full-universe progress", () => {
+    const group = createGroup("group-1", "Thông số chính", 1)
+    const subgroupCriterion = {
+      ...createCriterion(group.id, 2),
+      subgroup_id: "subgroup-1",
+    }
+    group.subgroups = [
+      {
+        id: "subgroup-1",
+        baseline_version_id: group.baseline_version_id,
+        group_id: group.id,
+        name: "Nhóm con",
+        sort_order: 1,
+        created_at: group.created_at,
+        created_by: group.created_by,
+        updated_at: group.updated_at,
+        updated_by: group.updated_by,
+        criteria: [subgroupCriterion],
+      },
+    ]
+
+    const progress = buildTechnicalConfigurationEvaluationProgress({
+      groups: [group],
+      assessments: [createAssessment(subgroupCriterion.id, "fails")],
+    })
+
+    expect(progress).toMatchObject({
+      total: 2,
+      evaluated: 1,
+      statusCounts: {
+        not_evaluated: 1,
+        fails: 1,
+      },
+      groups: [{ id: group.id, total: 2, evaluated: 1 }],
+    })
+  })
+
+  it("exposes mixed and empty section and subgroup aggregates", () => {
+    const group = createGroup("group-1", "Thông số chính", 1)
+    const subgroupCriterion = {
+      ...createCriterion(group.id, 2),
+      subgroup_id: "subgroup-mixed",
+    }
+    group.subgroups = [
+      {
+        id: "subgroup-empty",
+        baseline_version_id: group.baseline_version_id,
+        group_id: group.id,
+        name: "Nhóm trống",
+        sort_order: 1,
+        created_at: group.created_at,
+        created_by: group.created_by,
+        updated_at: group.updated_at,
+        updated_by: group.updated_by,
+        criteria: [],
+      },
+      {
+        id: "subgroup-mixed",
+        baseline_version_id: group.baseline_version_id,
+        group_id: group.id,
+        name: "Nhóm hỗn hợp",
+        sort_order: 2,
+        created_at: group.created_at,
+        created_by: group.created_by,
+        updated_at: group.updated_at,
+        updated_by: group.updated_by,
+        criteria: [subgroupCriterion],
+      },
+    ]
+
+    const progress = buildTechnicalConfigurationEvaluationProgress({
+      groups: [group, createGroup("group-2", "Nhóm trống", 0)],
+      assessments: [
+        createAssessment(group.criteria[0].id, "meets"),
+        createAssessment(subgroupCriterion.id, "fails"),
+      ],
+    })
+
+    expect(progress.hierarchy).toEqual([
+      expect.objectContaining({
+        id: "group-1",
+        total: 2,
+        evaluated: 2,
+        status: "failed",
+        subgroups: [
+          expect.objectContaining({
+            id: "subgroup-empty",
+            total: 0,
+            evaluated: 0,
+            status: "no_criteria",
+          }),
+          expect.objectContaining({
+            id: "subgroup-mixed",
+            total: 1,
+            evaluated: 1,
+            status: "failed",
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        id: "group-2",
+        total: 0,
+        evaluated: 0,
+        status: "no_criteria",
+        subgroups: [],
+      }),
+    ])
+  })
+
+  it("counts more than 100 mixed direct and subgroup leaves exactly once", () => {
+    const group = createGroup("group-1", "Thông số chính", 51)
+    const subgroupCriteria = Array.from({ length: 55 }, (_, index) => ({
+      ...createCriterion(group.id, index + 52),
+      subgroup_id: "subgroup-1",
+    }))
+    group.subgroups = [
+      {
+        id: "subgroup-1",
+        baseline_version_id: group.baseline_version_id,
+        group_id: group.id,
+        name: "Nhóm con",
+        sort_order: 1,
+        created_at: group.created_at,
+        created_by: group.created_by,
+        updated_at: group.updated_at,
+        updated_by: group.updated_by,
+        criteria: subgroupCriteria,
+      },
+    ]
+    const assessedCriteria = [...group.criteria, ...subgroupCriteria].slice(0, 101)
+
+    const progress = buildTechnicalConfigurationEvaluationProgress({
+      groups: [group],
+      assessments: assessedCriteria.map((criterion) => createAssessment(criterion.id, "meets")),
+    })
+
+    expect(progress).toMatchObject({
+      total: 106,
+      evaluated: 101,
+      statusCounts: { meets: 101, not_evaluated: 5 },
+      groups: [{ id: "group-1", total: 106, evaluated: 101 }],
+      hierarchy: [
+        expect.objectContaining({
+          id: "group-1",
+          total: 106,
+          evaluated: 101,
+          subgroups: [
+            expect.objectContaining({
+              id: "subgroup-1",
+              total: 55,
+              evaluated: 50,
+            }),
+          ],
+        }),
+      ],
+    })
     expectReconciledTotals(progress)
   })
 

@@ -2,12 +2,18 @@
 
 import { type QueryClient, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 
+import {
+  adoptCompleteAssessment,
+  ASSESSMENT_COLLECTION_PAGE_SIZE,
+  collectTechnicalConfigurationAssessments,
+  loadKnownAbsentCompleteAssessments,
+  type TechnicalConfigurationCompleteAssessmentMap,
+} from "./TechnicalConfigurationAssessmentCompleteCache"
 import { useTechnicalConfigurationOptionResponsesQuery } from "./useTechnicalConfigurationOptionResponsesQuery"
 import type {
   TechnicalConfigurationAssessmentListWireResponse,
   TechnicalConfigurationAssessmentSaveResult,
   TechnicalConfigurationAssessmentUpsertInput,
-  TechnicalConfigurationAssessmentWire,
 } from "../assessment-types"
 import {
   listTechnicalConfigurationAssessments,
@@ -20,11 +26,7 @@ import {
   technicalConfigurationEvaluationCriteriaQueryKeyPrefix,
   technicalConfigurationReferenceRankingQueryKey,
 } from "../technical-configuration-query-keys"
-import { collectStableTechnicalConfigurationPages } from "../technical-configuration-pagination"
 import type { TechnicalConfigurationComparisonSetWire } from "../supplier-option-types"
-
-const ASSESSMENT_COLLECTION_PAGE_SIZE = 100
-const ASSESSMENT_PAGINATION_SNAPSHOT_ERROR = "Assessment pagination snapshot changed during load."
 
 interface TechnicalConfigurationAssessmentContext {
   optionId: string
@@ -57,35 +59,6 @@ function isValidAssessmentPage(page: number, pageSize: number): boolean {
     pageSize >= 1 &&
     pageSize <= 100
   )
-}
-
-async function collectTechnicalConfigurationAssessments(
-  comparisonSetId: string,
-  signal?: AbortSignal
-): Promise<Readonly<Record<string, TechnicalConfigurationAssessmentWire>>> {
-  const { items } = await collectStableTechnicalConfigurationPages<
-    TechnicalConfigurationAssessmentWire,
-    TechnicalConfigurationAssessmentListWireResponse
-  >({
-    loadPage: async (page) => {
-      const response = await listTechnicalConfigurationAssessments(
-        {
-          p_comparison_set_id: comparisonSetId,
-          p_page: page,
-          p_page_size: ASSESSMENT_COLLECTION_PAGE_SIZE,
-        },
-        signal
-      )
-      if (response.page !== page || response.page_size !== ASSESSMENT_COLLECTION_PAGE_SIZE) {
-        throw new Error(ASSESSMENT_PAGINATION_SNAPSHOT_ERROR)
-      }
-      return response
-    },
-    snapshotError: ASSESSMENT_PAGINATION_SNAPSHOT_ERROR,
-    getItemKey: (item) => item.criterion_id,
-  })
-
-  return Object.fromEntries(items.map((item) => [item.criterion_id, item]))
 }
 
 function acquireAssessmentComparisonSet({
@@ -142,27 +115,6 @@ function acquireAssessmentComparisonSet({
   return acquisition
 }
 
-function adoptCompleteAssessment(
-  queryClient: QueryClient,
-  comparisonSetId: string,
-  assessment: TechnicalConfigurationAssessmentWire
-): void {
-  const completeQueryKey = [
-    ...technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSetId),
-    "complete",
-  ] as const
-  queryClient.setQueryData<Readonly<Record<string, TechnicalConfigurationAssessmentWire>>>(
-    completeQueryKey,
-    (current) =>
-      current
-        ? {
-            ...current,
-            [assessment.criterion_id]: assessment,
-          }
-        : current
-  )
-}
-
 /** Exposes the dormant P11C assessment data contract without mounting assessment UI. */
 export function useTechnicalConfigurationAssessments(
   input: UseTechnicalConfigurationAssessmentsInput
@@ -212,9 +164,7 @@ export function useTechnicalConfigurationAssessments(
     retry: false,
     refetchOnWindowFocus: false,
   })
-  const completeAssessmentsQuery = useQuery<
-    Readonly<Record<string, TechnicalConfigurationAssessmentWire>>
-  >({
+  const completeAssessmentsQuery = useQuery<TechnicalConfigurationCompleteAssessmentMap>({
     queryKey: completeQueryKey,
     queryFn: ({ signal }) => {
       if (!completeQueryEnabled) {
@@ -240,10 +190,13 @@ export function useTechnicalConfigurationAssessments(
         throw new Error("technical_configuration_assessment_context_unavailable")
       }
 
-      const cachedComparisonSet =
-        queryClient.getQueryData<TechnicalConfigurationComparisonSetWire | null>(
+      const comparisonSetState =
+        queryClient.getQueryState<TechnicalConfigurationComparisonSetWire | null>(
           comparisonSetQueryKey
         )
+      const cachedComparisonSet = comparisonSetState?.data
+      const comparisonSetWasKnownAbsent =
+        comparisonSetState?.status === "success" && cachedComparisonSet === null
       const comparisonSet = await acquireAssessmentComparisonSet({
         queryClient,
         comparisonSetQueryKey,
@@ -254,6 +207,9 @@ export function useTechnicalConfigurationAssessments(
       if (!cachedComparisonSet) {
         onComparisonSetReady?.(comparisonSet)
       }
+      const knownAbsentSnapshot = comparisonSetWasKnownAbsent
+        ? loadKnownAbsentCompleteAssessments(queryClient, comparisonSet.id)
+        : null
 
       const response = await upsertTechnicalConfigurationAssessment({
         p_comparison_set_id: comparisonSet.id,
@@ -264,33 +220,43 @@ export function useTechnicalConfigurationAssessments(
         p_expected_revision: input.expectedRevision,
       })
 
+      if (knownAbsentSnapshot) {
+        void knownAbsentSnapshot
+          .then((isAuthoritative) => {
+            if (isAuthoritative) {
+              adoptCompleteAssessment(queryClient, comparisonSet.id, response.data)
+            }
+            return queryClient.invalidateQueries({
+              queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
+            })
+          })
+          .catch(() => undefined)
+      } else {
+        adoptCompleteAssessment(queryClient, comparisonSet.id, response.data)
+        void queryClient
+          .invalidateQueries({
+            queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
+          })
+          .catch(() => undefined)
+      }
       return { comparisonSet, assessment: response.data }
     },
-    onSuccess: async ({ comparisonSet, assessment }) => {
-      adoptCompleteAssessment(queryClient, comparisonSet.id, assessment)
-      const invalidations = [
-        queryClient.invalidateQueries({
-          queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
-        }),
-      ]
+    onSuccess: async ({ comparisonSet }) => {
       let rankingQueryKey: ReturnType<
         typeof technicalConfigurationReferenceRankingQueryKey
       > | null = null
       if (baselineVersionId) {
-        invalidations.push(
-          queryClient.invalidateQueries({
-            queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(
-              optionId,
-              baselineVersionId
-            ),
-          })
-        )
+        await queryClient.invalidateQueries({
+          queryKey: technicalConfigurationEvaluationCriteriaQueryKeyPrefix(
+            optionId,
+            baselineVersionId
+          ),
+        })
         rankingQueryKey = technicalConfigurationReferenceRankingQueryKey({
           dossierId: comparisonSet.dossier_id,
           baselineVersionId,
         })
       }
-      await Promise.all(invalidations)
       if (rankingQueryKey) {
         void queryClient
           .resetQueries({

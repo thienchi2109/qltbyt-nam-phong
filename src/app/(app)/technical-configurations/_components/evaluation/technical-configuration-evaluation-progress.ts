@@ -2,9 +2,18 @@ import {
   deriveTechnicalConfigurationEvaluationStatus,
   type TechnicalConfigurationDerivedStatus,
 } from "@/lib/technical-configuration-evaluation"
+import {
+  buildTechnicalConfigurationHierarchyAggregateStatus,
+  type TechnicalConfigurationAggregateStatus,
+  type TechnicalConfigurationDerivedStatusCounts,
+} from "@/lib/technical-configuration-hierarchy-aggregate-status"
 
 import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
 import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
+import {
+  buildTechnicalConfigurationEvaluationHierarchySections,
+  flattenTechnicalConfigurationEvaluationLeaves,
+} from "./technical-configuration-evaluation-hierarchy"
 
 /** Compact progress for one canonical baseline group. */
 export type TechnicalConfigurationEvaluationGroupProgress = Readonly<{
@@ -14,12 +23,34 @@ export type TechnicalConfigurationEvaluationGroupProgress = Readonly<{
   evaluated: number
 }>
 
+export type TechnicalConfigurationEvaluationSubgroupAggregateProgress = Readonly<{
+  id: string
+  name: string
+  sortOrder: number
+  total: number
+  evaluated: number
+  status: TechnicalConfigurationAggregateStatus
+  statusCounts: TechnicalConfigurationDerivedStatusCounts
+}>
+
+export type TechnicalConfigurationEvaluationSectionAggregateProgress = Readonly<{
+  id: string
+  name: string
+  sortOrder: number
+  total: number
+  evaluated: number
+  status: TechnicalConfigurationAggregateStatus
+  statusCounts: TechnicalConfigurationDerivedStatusCounts
+  subgroups: readonly TechnicalConfigurationEvaluationSubgroupAggregateProgress[]
+}>
+
 /** Full-universe progress for the currently selected option. */
 export type TechnicalConfigurationEvaluationProgress = Readonly<{
   total: number
   evaluated: number
   statusCounts: Readonly<Record<TechnicalConfigurationDerivedStatus, number>>
   groups: readonly TechnicalConfigurationEvaluationGroupProgress[]
+  hierarchy: readonly TechnicalConfigurationEvaluationSectionAggregateProgress[]
 }>
 
 type BuildTechnicalConfigurationEvaluationProgressInput = Readonly<{
@@ -27,16 +58,10 @@ type BuildTechnicalConfigurationEvaluationProgressInput = Readonly<{
   assessments: readonly TechnicalConfigurationAssessmentWire[]
 }>
 
-function createEmptyStatusCounts(): Record<TechnicalConfigurationDerivedStatus, number> {
-  return {
-    not_evaluated: 0,
-    not_applicable: 0,
-    fails: 0,
-    unclear: 0,
-    insufficient_evidence: 0,
-    exceeds: 0,
-    meets: 0,
-  }
+function countEvaluated(statusCounts: TechnicalConfigurationDerivedStatusCounts): number {
+  return (
+    Object.values(statusCounts).reduce((sum, count) => sum + count, 0) - statusCounts.not_evaluated
+  )
 }
 
 /** Reconciles complete assessments by criterion ID against one locked baseline universe. */
@@ -44,43 +69,71 @@ export function buildTechnicalConfigurationEvaluationProgress({
   groups,
   assessments,
 }: BuildTechnicalConfigurationEvaluationProgressInput): TechnicalConfigurationEvaluationProgress {
+  const leaves = flattenTechnicalConfigurationEvaluationLeaves(groups)
+  const hierarchySections = buildTechnicalConfigurationEvaluationHierarchySections(groups, leaves)
   const assessmentsByCriterionId = new Map(
-    assessments.map((assessment) => [assessment.criterion_id, assessment])
+    assessments.map((assessment) => [assessment.criterion_id, assessment] as const)
   )
-  let statusCounts = createEmptyStatusCounts()
-  let evaluated = 0
-
-  const groupProgress = groups.map((group) => {
-    let groupEvaluated = 0
-
-    for (const criterion of group.criteria) {
-      const assessment = assessmentsByCriterionId.get(criterion.id)
-      const status = deriveTechnicalConfigurationEvaluationStatus(
-        assessment?.technical_axis,
-        assessment?.evidence_axis
-      )
-      statusCounts = {
-        ...statusCounts,
-        [status]: statusCounts[status] + 1,
-      }
-      if (status !== "not_evaluated") {
-        evaluated += 1
-        groupEvaluated += 1
-      }
-    }
+  const statusByCriterionId = new Map(
+    leaves.map((leaf) => {
+      const assessment = assessmentsByCriterionId.get(leaf.criterion.id)
+      return [
+        leaf.criterion.id,
+        deriveTechnicalConfigurationEvaluationStatus(
+          assessment?.technical_axis,
+          assessment?.evidence_axis
+        ),
+      ] as const
+    })
+  )
+  const aggregate = buildTechnicalConfigurationHierarchyAggregateStatus({
+    sections: hierarchySections,
+    statusByCriterionId,
+  })
+  const sectionById = new Map(aggregate.sections.map((section) => [section.id, section]))
+  const hierarchy = hierarchySections.map((section) => {
+    const sectionAggregate = sectionById.get(section.id)
+    if (!sectionAggregate) throw new Error(`Missing aggregate section ${section.id}`)
+    const subgroupById = new Map(
+      sectionAggregate.subgroups.map((subgroup) => [subgroup.id, subgroup])
+    )
 
     return {
-      id: group.id,
-      name: group.name,
-      total: group.criteria.length,
-      evaluated: groupEvaluated,
+      id: section.id,
+      name: section.name,
+      sortOrder: section.sortOrder,
+      total: sectionAggregate.descendantCount,
+      evaluated: countEvaluated(sectionAggregate.statusCounts),
+      status: sectionAggregate.status,
+      statusCounts: sectionAggregate.statusCounts,
+      subgroups: section.subgroups.map((subgroup) => {
+        const subgroupAggregate = subgroupById.get(subgroup.id)
+        if (!subgroupAggregate) {
+          throw new Error(`Missing aggregate subgroup ${subgroup.id}`)
+        }
+        return {
+          id: subgroup.id,
+          name: subgroup.name,
+          sortOrder: subgroup.sortOrder,
+          total: subgroupAggregate.descendantCount,
+          evaluated: countEvaluated(subgroupAggregate.statusCounts),
+          status: subgroupAggregate.status,
+          statusCounts: subgroupAggregate.statusCounts,
+        }
+      }),
     }
   })
 
   return {
-    total: groupProgress.reduce((sum, group) => sum + group.total, 0),
-    evaluated,
-    statusCounts,
-    groups: groupProgress,
+    total: aggregate.criterionIds.length,
+    evaluated: countEvaluated(aggregate.statusCounts),
+    statusCounts: aggregate.statusCounts,
+    groups: hierarchy.map((section) => ({
+      id: section.id,
+      name: section.name,
+      total: section.total,
+      evaluated: section.evaluated,
+    })),
+    hierarchy,
   }
 }
