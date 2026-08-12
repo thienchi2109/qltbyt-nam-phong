@@ -9,7 +9,7 @@ function expectEmptyAggregate(
     | ReturnType<
         typeof buildTechnicalConfigurationHierarchyAggregateStatus
       >["sections"][number]["subgroups"][number]
-) {
+): void {
   expect(aggregate).toMatchObject({
     status: "no_criteria",
     descendantCriterionIds: [],

@@ -34,7 +34,9 @@ const SINGLE_STATUS_EXPECTED_AGGREGATE = {
   TechnicalConfigurationAggregateStatus
 >
 
-function buildSingleSectionModel(statuses: readonly TechnicalConfigurationDerivedStatus[]) {
+function buildSingleSectionModel(
+  statuses: readonly TechnicalConfigurationDerivedStatus[]
+): ReturnType<typeof buildTechnicalConfigurationHierarchyAggregateStatus> {
   const criterionIds = statuses.map((_, index) => `criterion-${index + 1}`)
 
   return buildTechnicalConfigurationHierarchyAggregateStatus({

@@ -116,11 +116,13 @@ function buildLeafCriteria(
 function countLeafStatuses(
   leafCriteria: readonly TechnicalConfigurationAggregateLeafCriterion[]
 ): Record<TechnicalConfigurationDerivedStatus, number> {
-  const statusCounts = createEmptyStatusCounts()
-  for (const criterion of leafCriteria) {
-    statusCounts[criterion.status] += 1
-  }
-  return statusCounts
+  return leafCriteria.reduce(
+    (statusCounts, criterion) => ({
+      ...statusCounts,
+      [criterion.status]: statusCounts[criterion.status] + 1,
+    }),
+    createEmptyStatusCounts()
+  )
 }
 
 function deriveAggregateStatus(
