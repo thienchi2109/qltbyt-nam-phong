@@ -275,11 +275,11 @@ Depends on: the parent change's canonical derived criterion status contract.
 
 Deploy boundary: pure model and tests only; no production surface changes.
 
-- [ ] P5A.1 Write exhaustive tests for fail-fast `failed`, incomplete
+- [x] P5A.1 Write exhaustive tests for fail-fast `failed`, incomplete
       `not_evaluated`, review-required statuses, zero descendants, all-not-applicable,
       pass, and exact descendant counts.
-- [ ] P5A.2 Implement subgroup and section rollups over unique leaf criterion IDs.
-- [ ] P5A.3 Prove structural rows never change progress denominators, filter totals,
+- [x] P5A.2 Implement subgroup and section rollups over unique leaf criterion IDs.
+- [x] P5A.3 Prove structural rows never change progress denominators, filter totals,
       ranking inputs, or score.
 
 ## Phase P5B - Comparison Hierarchy
