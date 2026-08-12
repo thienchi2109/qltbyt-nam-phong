@@ -6,12 +6,18 @@ import {
   COMPARISON_MATRIX_LAYOUT,
   getPinnedComparisonOptionLeft,
 } from "@/app/(app)/technical-configurations/comparison-matrix-constants"
+import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationComparisonResult } from "@/app/(app)/technical-configurations/comparison-types"
+import {
+  buildTechnicalConfigurationComparisonHierarchyRows,
+  type TechnicalConfigurationComparisonHierarchyRow,
+} from "@/app/(app)/technical-configurations/technical-configuration-comparison-hierarchy"
 import { Button } from "@/components/ui/button"
 import type { TechnicalConfigurationDerivedStatus } from "@/lib/technical-configuration-evaluation"
 
 import type { TechnicalConfigurationCriterionDetail } from "./TechnicalConfigurationCriterionPanel"
 import { TechnicalConfigurationCriterionPagination } from "./TechnicalConfigurationCriterionPagination"
+import { TechnicalConfigurationMatrixHeadingRow } from "./TechnicalConfigurationMatrixHeadingRow"
 import {
   TechnicalConfigurationMatrixRow,
   type TechnicalConfigurationMatrixEvaluationTarget,
@@ -20,6 +26,7 @@ import {
 type TechnicalConfigurationMatrixProps = {
   hasRequest: boolean
   result?: TechnicalConfigurationComparisonResult
+  baselineGroups?: readonly TechnicalConfigurationBaselineGroupWire[]
   visibleOptionIds?: readonly string[]
   pinnedOptionIds?: readonly string[]
   focusedOptionId?: string | null
@@ -37,30 +44,6 @@ type TechnicalConfigurationMatrixProps = {
   onOpenEvaluation?: (target: TechnicalConfigurationMatrixEvaluationTarget) => void
 }
 
-type ComparisonCriterionRow = TechnicalConfigurationComparisonResult["data"]["criteria"][number]
-
-type ComparisonCriterionGroup = {
-  id: string
-  name: string
-  rows: ComparisonCriterionRow[]
-}
-
-function groupCriterionRows(criteria: readonly ComparisonCriterionRow[]) {
-  const groups: ComparisonCriterionGroup[] = []
-
-  for (const row of criteria) {
-    const currentGroup = groups[groups.length - 1]
-
-    if (currentGroup?.id === row.group.id) {
-      currentGroup.rows.push(row)
-    } else {
-      groups.push({ id: row.group.id, name: row.group.name, rows: [row] })
-    }
-  }
-
-  return groups
-}
-
 function MatrixState({ children, role }: { children: React.ReactNode; role?: "alert" | "status" }) {
   return (
     <div
@@ -76,6 +59,7 @@ function MatrixState({ children, role }: { children: React.ReactNode; role?: "al
 export function TechnicalConfigurationMatrix({
   hasRequest,
   result,
+  baselineGroups,
   visibleOptionIds,
   pinnedOptionIds = [],
   focusedOptionId = null,
@@ -163,7 +147,15 @@ export function TechnicalConfigurationMatrix({
       renderedPinnedOptionIds.push(option.id)
     }
   }
-  const criterionGroups = groupCriterionRows(criteria)
+  const hierarchyRows = buildTechnicalConfigurationComparisonHierarchyRows(baselineGroups, criteria)
+  const sectionBodies: TechnicalConfigurationComparisonHierarchyRow[][] = []
+  for (const row of hierarchyRows) {
+    if (row.kind === "section") {
+      sectionBodies.push([row])
+    } else {
+      sectionBodies[sectionBodies.length - 1]?.push(row)
+    }
+  }
   return (
     <div className="space-y-3">
       <div
@@ -210,36 +202,38 @@ export function TechnicalConfigurationMatrix({
               })}
             </tr>
           </thead>
-          {criterionGroups.map((group) => (
-            <tbody key={group.id} data-testid="comparison-group-body">
-              <tr>
-                <th
-                  className="border-b bg-muted/70 px-3 py-2 text-xs font-semibold uppercase text-muted-foreground"
-                  colSpan={renderedOptions.length + 2}
-                  scope="rowgroup"
-                >
-                  {group.name}
-                </th>
-              </tr>
-              {group.rows.map((row) => (
-                <TechnicalConfigurationMatrixRow
-                  key={row.criterion.id}
-                  row={row}
-                  options={renderedOptions}
-                  baselineVersionId={result.data.baselineVersion.id}
-                  pinnedOptionIds={renderedPinnedOptionIds}
-                  valueByOptionId={
-                    new Map(row.optionValues.map((value) => [value.optionId, value]))
-                  }
-                  onOpenDetail={onOpenDetail}
-                  activeEvaluationOptionId={activeEvaluationOptionId}
-                  activeEvaluationCriterionId={activeEvaluationCriterionId}
-                  assessmentStatusByCriterionId={assessmentStatusByCriterionId}
-                  matchingEvaluationCriterionIds={matchingEvaluationCriterionIds}
-                  evaluationDisabled={evaluationDisabled}
-                  onOpenEvaluation={onOpenEvaluation}
-                />
-              ))}
+          {sectionBodies.map((sectionRows) => (
+            <tbody
+              key={sectionRows[0]?.kind === "section" ? sectionRows[0].id : "comparison-section"}
+              data-testid="comparison-group-body"
+            >
+              {sectionRows.map((row) =>
+                row.kind === "criterion" ? (
+                  <TechnicalConfigurationMatrixRow
+                    key={row.row.criterion.id}
+                    row={row.row}
+                    options={renderedOptions}
+                    baselineVersionId={result.data.baselineVersion.id}
+                    pinnedOptionIds={renderedPinnedOptionIds}
+                    valueByOptionId={
+                      new Map(row.row.optionValues.map((value) => [value.optionId, value]))
+                    }
+                    onOpenDetail={onOpenDetail}
+                    activeEvaluationOptionId={activeEvaluationOptionId}
+                    activeEvaluationCriterionId={activeEvaluationCriterionId}
+                    assessmentStatusByCriterionId={assessmentStatusByCriterionId}
+                    matchingEvaluationCriterionIds={matchingEvaluationCriterionIds}
+                    evaluationDisabled={evaluationDisabled}
+                    onOpenEvaluation={onOpenEvaluation}
+                  />
+                ) : (
+                  <TechnicalConfigurationMatrixHeadingRow
+                    key={`${row.kind}-${row.id}`}
+                    row={row}
+                    columnCount={renderedOptions.length + 2}
+                  />
+                )
+              )}
             </tbody>
           ))}
         </table>

@@ -289,10 +289,10 @@ Depends on: P1C and P5A.
 Deploy boundary: comparison becomes hierarchy-aware; evaluation and result export are
 unchanged until their own leaves.
 
-- [ ] P5B.1 Extend comparison row models with section and subgroup heading rows.
-- [ ] P5B.2 Keep option cells, evidence inspection, paging, pinning, focus mode, and
+- [x] P5B.1 Extend comparison row models with section and subgroup heading rows.
+- [x] P5B.2 Keep option cells, evidence inspection, paging, pinning, focus mode, and
       detail actions criterion-only.
-- [ ] P5B.3 Add direct/subgroup criteria, many-option, pagination, and evidence
+- [x] P5B.3 Add direct/subgroup criteria, many-option, pagination, and evidence
       regression tests.
 
 ## Phase P5C - Evaluation Hierarchy And Progress

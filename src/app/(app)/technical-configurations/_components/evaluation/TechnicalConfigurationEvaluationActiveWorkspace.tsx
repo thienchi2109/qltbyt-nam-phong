@@ -231,6 +231,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
       <TechnicalConfigurationMatrix
         hasRequest={hasMatrixRequest}
         result={matrixResult}
+        baselineGroups={baselineGroups}
         visibleOptionIds={matrix.visibleOptionIds}
         pinnedOptionIds={matrix.pinnedOptionIds}
         focusedOptionId={matrix.focusedOptionId}
