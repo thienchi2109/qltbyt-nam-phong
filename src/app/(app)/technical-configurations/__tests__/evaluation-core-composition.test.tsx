@@ -8,6 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { TechnicalConfigurationAssessmentControls } from "../_components/evaluation/TechnicalConfigurationAssessmentControls"
 import { TechnicalConfigurationCriterionList } from "../_components/evaluation/TechnicalConfigurationCriterionList"
 import { TechnicalConfigurationEvaluationPanel } from "../_components/evaluation/TechnicalConfigurationEvaluationPanel"
+import { buildTechnicalConfigurationEvaluationHierarchyRows } from "../_components/evaluation/technical-configuration-evaluation-hierarchy"
 import type { TechnicalConfigurationCriterionDetail } from "../_components/comparison/TechnicalConfigurationCriterionPanel"
 import { assessment } from "./assessment-test-fixtures"
 import { createComparisonResult } from "./comparison-matrix-test-fixtures"
@@ -59,14 +60,29 @@ afterAll(() => {
 })
 
 describe("P12A1 evaluation core composition", () => {
-  it("orders criteria canonically and renders only the current derived-status badge", async () => {
+  it("renders a prebuilt canonical criterion sequence with only the current status badge", async () => {
     const user = userEvent.setup()
     const onSelectCriterion = vi.fn()
     const comparison = createComparisonResult()
+    const canonicalCriteria = [...comparison.data.criteria]
+      .sort(
+        (left, right) =>
+          left.group.sortOrder - right.group.sortOrder ||
+          left.group.id.localeCompare(right.group.id) ||
+          left.criterion.sortOrder - right.criterion.sortOrder ||
+          left.criterion.id.localeCompare(right.criterion.id)
+      )
+      .map((row, index) => ({
+        ...row,
+        canonicalIndex: index + 1,
+        canonicalPage: 1,
+      }))
+    const rows = buildTechnicalConfigurationEvaluationHierarchyRows(canonicalCriteria)
 
     render(
       <TechnicalConfigurationCriterionList
-        criteria={comparison.data.criteria}
+        rows={rows}
+        hierarchyProgress={null}
         assessmentsByCriterionId={{
           "criterion-2": {
             ...assessment,
@@ -227,6 +243,7 @@ describe("P12A1 evaluation core composition", () => {
       [
         "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationActiveWorkspace.tsx",
         "src/app/(app)/technical-configurations/_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane.tsx",
+        "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationHierarchyPresentation.ts",
         "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationNavigator.ts",
         "src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationEvaluationWorkspaceActions.ts",
       ].sort()

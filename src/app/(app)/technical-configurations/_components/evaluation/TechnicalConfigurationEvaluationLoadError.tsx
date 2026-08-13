@@ -9,7 +9,7 @@ type TechnicalConfigurationEvaluationLoadErrorProps = {
   title: string
   error: unknown
   fallback: string
-  onRetry: () => void
+  onRetry?: () => void
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
@@ -29,10 +29,12 @@ export function TechnicalConfigurationEvaluationLoadError({
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription className="space-y-3">
         <p>{toErrorMessage(error, fallback)}</p>
-        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-          <RefreshCw className="size-4" aria-hidden="true" />
-          Thử lại
-        </Button>
+        {onRetry ? (
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            <RefreshCw className="size-4" aria-hidden="true" />
+            Thử lại
+          </Button>
+        ) : null}
       </AlertDescription>
     </Alert>
   )

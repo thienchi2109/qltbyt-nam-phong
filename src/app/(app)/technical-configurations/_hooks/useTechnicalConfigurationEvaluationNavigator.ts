@@ -6,43 +6,22 @@ import type {
   TechnicalConfigurationEvaluationCriterionWire,
   TechnicalConfigurationEvaluationStatusFilter,
 } from "../assessment-types"
-import type { TechnicalConfigurationBaselineGroupWire } from "../baseline-types"
-import type { TechnicalConfigurationOptionWire } from "../supplier-option-types"
 import {
   buildTechnicalConfigurationEvaluationProjection,
   findNextTechnicalConfigurationEvaluationCriterion,
-  findTechnicalConfigurationEvaluationCriterion,
 } from "../_components/evaluation/technical-configuration-evaluation-navigation"
 import { useTechnicalConfigurationEvaluationCriteria } from "./useTechnicalConfigurationEvaluationCriteria"
+import {
+  resolveTechnicalConfigurationEvaluationContextCriterion,
+  resolveTechnicalConfigurationEvaluationTargetCriterion,
+  type TechnicalConfigurationEvaluationCriterionCommit,
+  type TechnicalConfigurationEvaluationRequestNavigation,
+  type UseTechnicalConfigurationEvaluationNavigatorInput,
+  useTechnicalConfigurationEvaluationHierarchyPresentation,
+} from "./useTechnicalConfigurationEvaluationHierarchyPresentation"
 import { useTechnicalConfigurationEvaluationTransition } from "./useTechnicalConfigurationEvaluationTransition"
 
-type RequestNavigation = (navigate: () => void) => void
-type EvaluationProjectionItem = ReturnType<
-  typeof buildTechnicalConfigurationEvaluationProjection
->[number]
-type OnCriterionCommit = (criterion: EvaluationProjectionItem | null) => void
-
-function resolveContextCriterion(
-  projection: readonly EvaluationProjectionItem[],
-  criterionId: string | null,
-  canonicalPage: number
-) {
-  return (
-    (criterionId ? projection.find((item) => item.criterion.id === criterionId) : undefined) ??
-    projection.find((item) => item.canonicalPage === canonicalPage) ??
-    (criterionId ? projection[0] : undefined) ??
-    null
-  )
-}
-
-type UseTechnicalConfigurationEvaluationNavigatorInput = {
-  options: readonly TechnicalConfigurationOptionWire[]
-  baselineGroups: readonly TechnicalConfigurationBaselineGroupWire[]
-  baselineVersionId: string
-  pageSize: number
-}
-
-/** Owns P12B2 option, filter, canonical page, selection and no-more-match state. */
+/** Coordinates filtered leaf selection, canonical paging, and guarded evaluation navigation. */
 export function useTechnicalConfigurationEvaluationNavigator({
   options,
   baselineGroups,
@@ -74,17 +53,22 @@ export function useTechnicalConfigurationEvaluationNavigator({
       }),
     [baselineGroups, criteriaQuery.data]
   )
+  const { hierarchyRows, expandedRowIds, onExpandedRowIdsChange, expandCriterionAncestors } =
+    useTechnicalConfigurationEvaluationHierarchyPresentation(projection, canonicalPage)
   const criterionId =
     requestedCriterionId ??
     projection.find((item) => item.canonicalPage === canonicalPage)?.criterion.id ??
     null
-  const currentCriterion =
-    projection.find((item) => item.criterion.id === criterionId) ??
-    findTechnicalConfigurationEvaluationCriterion({
-      groups: baselineGroups,
-      criterionId,
-      pageSize,
-    })
+  const currentCriterion = React.useMemo(
+    () =>
+      resolveTechnicalConfigurationEvaluationTargetCriterion(
+        projection,
+        baselineGroups,
+        criterionId,
+        pageSize
+      ),
+    [baselineGroups, criterionId, pageSize, projection]
+  )
   const isCurrentCriterionFilteredOut =
     criterionId !== null &&
     !criteriaQuery.isLoading &&
@@ -94,8 +78,8 @@ export function useTechnicalConfigurationEvaluationNavigator({
   const changeFilter = React.useCallback(
     (
       nextFilter: TechnicalConfigurationEvaluationStatusFilter,
-      requestNavigation: RequestNavigation,
-      onCriterionCommit?: OnCriterionCommit
+      requestNavigation: TechnicalConfigurationEvaluationRequestNavigation,
+      onCriterionCommit?: TechnicalConfigurationEvaluationCriterionCommit
     ) => {
       if (nextFilter === statusFilter || !activeSelectedOptionId || transitionPendingRef.current) {
         return
@@ -113,9 +97,14 @@ export function useTechnicalConfigurationEvaluationNavigator({
         })
         const currentRemainsVisible =
           criterionId !== null && nextProjection.some((item) => item.criterion.id === criterionId)
-        const nextCriterion = resolveContextCriterion(nextProjection, criterionId, canonicalPage)
+        const nextCriterion = resolveTechnicalConfigurationEvaluationContextCriterion(
+          nextProjection,
+          criterionId,
+          canonicalPage
+        )
         const nextCriterionId = nextCriterion?.criterion.id ?? null
         const commit = () => {
+          expandCriterionAncestors(nextCriterion)
           setStatusFilter(nextFilter)
           if (nextCriterion) setCanonicalPage(nextCriterion.canonicalPage)
           setRequestedCriterionId(nextCriterionId)
@@ -138,6 +127,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
       canonicalPage,
       criterionId,
       loadCriteria,
+      expandCriterionAncestors,
       startTransition,
       statusFilter,
       transitionPendingRef,
@@ -147,8 +137,8 @@ export function useTechnicalConfigurationEvaluationNavigator({
   const changeOption = React.useCallback(
     (
       nextOptionId: string,
-      requestNavigation: RequestNavigation,
-      onCriterionCommit?: OnCriterionCommit
+      requestNavigation: TechnicalConfigurationEvaluationRequestNavigation,
+      onCriterionCommit?: TechnicalConfigurationEvaluationCriterionCommit
     ) => {
       if (nextOptionId === activeSelectedOptionId || transitionPendingRef.current) return
 
@@ -163,9 +153,14 @@ export function useTechnicalConfigurationEvaluationNavigator({
             groups: baselineGroups,
             entries,
           })
-          const nextCriterion = resolveContextCriterion(nextProjection, criterionId, canonicalPage)
+          const nextCriterion = resolveTechnicalConfigurationEvaluationContextCriterion(
+            nextProjection,
+            criterionId,
+            canonicalPage
+          )
           const nextCriterionId = nextCriterion?.criterion.id ?? null
 
+          expandCriterionAncestors(nextCriterion)
           setSelectedOptionId(nextOptionId)
           if (nextCriterion) setCanonicalPage(nextCriterion.canonicalPage)
           setRequestedCriterionId(nextCriterionId)
@@ -182,6 +177,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
       canonicalPage,
       criterionId,
       loadCriteria,
+      expandCriterionAncestors,
       startTransition,
       statusFilter,
       transitionPendingRef,
@@ -189,7 +185,11 @@ export function useTechnicalConfigurationEvaluationNavigator({
   )
 
   const changePage = React.useCallback(
-    (nextPage: number, requestNavigation: RequestNavigation, onCommit?: () => void) => {
+    (
+      nextPage: number,
+      requestNavigation: TechnicalConfigurationEvaluationRequestNavigation,
+      onCommit?: () => void
+    ) => {
       requestNavigation(() => {
         setCanonicalPage(nextPage)
         setRequestedCriterionId(null)
@@ -202,8 +202,20 @@ export function useTechnicalConfigurationEvaluationNavigator({
   )
 
   const changeCriterion = React.useCallback(
-    (nextCriterionId: string, requestNavigation: RequestNavigation, beforeOpen?: () => void) => {
+    (
+      nextCriterionId: string,
+      requestNavigation: TechnicalConfigurationEvaluationRequestNavigation,
+      beforeOpen?: () => void
+    ) => {
       const navigate = () => {
+        expandCriterionAncestors(
+          resolveTechnicalConfigurationEvaluationTargetCriterion(
+            projection,
+            baselineGroups,
+            nextCriterionId,
+            pageSize
+          )
+        )
         beforeOpen?.()
         setRequestedCriterionId(nextCriterionId)
         setIsPanelOpen(true)
@@ -215,14 +227,14 @@ export function useTechnicalConfigurationEvaluationNavigator({
       }
       requestNavigation(navigate)
     },
-    [criterionId]
+    [baselineGroups, criterionId, expandCriterionAncestors, pageSize, projection]
   )
 
   const changeTarget = React.useCallback(
     (
       nextOptionId: string,
       nextCriterionId: string,
-      requestNavigation: RequestNavigation,
+      requestNavigation: TechnicalConfigurationEvaluationRequestNavigation,
       beforeOpen?: () => void
     ) => {
       if (transitionPendingRef.current) return
@@ -239,6 +251,14 @@ export function useTechnicalConfigurationEvaluationNavigator({
             statusFilter,
           })
 
+          expandCriterionAncestors(
+            resolveTechnicalConfigurationEvaluationTargetCriterion(
+              projection,
+              baselineGroups,
+              nextCriterionId,
+              pageSize
+            )
+          )
           beforeOpen?.()
           setSelectedOptionId(nextOptionId)
           setRequestedCriterionId(nextCriterionId)
@@ -251,7 +271,11 @@ export function useTechnicalConfigurationEvaluationNavigator({
       activeSelectedOptionId,
       baselineVersionId,
       changeCriterion,
+      baselineGroups,
+      expandCriterionAncestors,
       loadCriteria,
+      pageSize,
+      projection,
       startTransition,
       statusFilter,
       transitionPendingRef,
@@ -283,6 +307,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
         return
       }
 
+      expandCriterionAncestors(transitionResult.nextCriterion)
       setCanonicalPage(transitionResult.nextCriterion.canonicalPage)
       setRequestedCriterionId(transitionResult.nextCriterion.criterion.id)
       setIsPanelOpen(true)
@@ -294,6 +319,7 @@ export function useTechnicalConfigurationEvaluationNavigator({
     baselineGroups,
     baselineVersionId,
     currentCriterion,
+    expandCriterionAncestors,
     loadCriteria,
     startTransition,
     statusFilter,
@@ -304,6 +330,9 @@ export function useTechnicalConfigurationEvaluationNavigator({
     activeSelectedOptionId,
     statusFilter,
     projection,
+    hierarchyRows,
+    expandedRowIds,
+    onExpandedRowIdsChange,
     criterionId,
     currentCriterion,
     isPanelOpen,

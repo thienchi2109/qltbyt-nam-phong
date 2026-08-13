@@ -24,6 +24,7 @@ import { buildTechnicalConfigurationEvaluationMatrixPresentation } from "./techn
 import { TechnicalConfigurationEvaluationFeedback } from "./TechnicalConfigurationEvaluationFeedback"
 import { TechnicalConfigurationEvaluationMatrixControls } from "./TechnicalConfigurationEvaluationMatrixControls"
 import { TechnicalConfigurationEvaluationMatrixToolbar } from "./TechnicalConfigurationEvaluationMatrixToolbar"
+import { TechnicalConfigurationEvaluationNavigatorPane } from "./TechnicalConfigurationEvaluationNavigatorPane"
 import { TechnicalConfigurationEvaluationPanel } from "./TechnicalConfigurationEvaluationPanel"
 import { TechnicalConfigurationProgressSummary } from "./TechnicalConfigurationProgressSummary"
 import { TechnicalConfigurationResultExportControl } from "./TechnicalConfigurationResultExportControl"
@@ -101,6 +102,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
       onDiscard: evaluation.discard,
     })
   const hasEvaluationReadError = comparisonSetQuery.isError || assessmentQuery.isError
+  const isEvaluationReadLoading = comparisonSetQuery.isLoading || assessmentQuery.isLoading
   const evaluationReadError = comparisonSetQuery.isError
     ? comparisonSetQuery.error
     : assessmentQuery.error
@@ -224,8 +226,41 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
 
       <TechnicalConfigurationProgressSummary
         progress={matrixPresentation.progress}
-        isLoading={comparisonSetQuery.isLoading || assessmentQuery.isLoading}
+        isLoading={isEvaluationReadLoading}
         isError={hasEvaluationReadError}
+      />
+
+      <TechnicalConfigurationEvaluationNavigatorPane
+        statusFilter={navigator.statusFilter}
+        onStatusFilterChange={handleFilterChange}
+        criteria={navigator.hierarchyRows}
+        progress={matrixPresentation.progress}
+        assessmentsByCriterionId={evaluation.assessmentsByCriterionId}
+        currentCriterionId={navigator.criterionId}
+        onSelectCriterion={(criterionId) => {
+          navigator.changeCriterion(criterionId, requestNavigation, () => {
+            evaluationReturnFocusRef.current =
+              document.activeElement instanceof HTMLElement ? document.activeElement : null
+          })
+        }}
+        listOnly
+        page={matrix.page}
+        pageSize={TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE}
+        total={navigator.projection.length}
+        onPageChange={handleMatrixPageChange}
+        disabled={isNavigationBlocked}
+        isLoading={
+          navigator.criteriaQuery.isLoading ||
+          navigator.isTransitionPending ||
+          isEvaluationReadLoading
+        }
+        isError={navigator.criteriaQuery.isError || hasEvaluationReadError}
+        error={hasEvaluationReadError ? evaluationReadError : navigator.criteriaQuery.error}
+        onRetry={handleRetryEvaluationData}
+        isCurrentCriterionFilteredOut={navigator.isCurrentCriterionFilteredOut}
+        hasNoMoreMatches={navigator.hasNoMoreMatches}
+        expandedRowIds={navigator.expandedRowIds}
+        onExpandedRowIdsChange={navigator.onExpandedRowIdsChange}
       />
 
       <TechnicalConfigurationMatrix
