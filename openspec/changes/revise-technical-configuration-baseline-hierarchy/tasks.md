@@ -334,9 +334,10 @@ persistence, comparison, and result export remain unchanged.
       one saved row. Keep filtered-navigation refresh failures fail fast and actionable
       without corrupting the aggregate.
 - [x] P5C.6 Add dedicated mixed-status, empty-aggregate, filtered navigation,
-      collapse/auto-expand, dirty-cancel, save-next, cache-refetch-failure, legacy, and >100-criterion regressions. The large fixture MUST cross canonical boundaries
-      `50/51` and `100/101`; the existing large workspace suite's 21 cases MUST pass
-      unchanged and its file MUST NOT be enlarged.
+      collapse/auto-expand, dirty-cancel, save-next, cache-refetch-failure, legacy,
+      and >100-criterion regressions. The large fixture MUST cross canonical
+      boundaries `50/51` and `100/101`; the existing large workspace suite's 21
+      cases MUST pass unchanged and its file MUST NOT be enlarged.
 - [x] P5C.7 Run migration source-contract tests against the superseding migration,
       both new P5C executable phase gates, required repository gates, focused and broad
       regressions, and OpenSpec strict. Inspect `EXPLAIN` before adding any index,
