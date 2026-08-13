@@ -173,8 +173,8 @@ openspec validate revise-technical-configuration-baseline-hierarchy --strict
       browser omission, and authorized server activation evidence are complete.
 - [x] Resolve Issue #903 if both stale assertions are fully covered by this PR.
 - [x] Update Issue #892 only if its authorized executable phase gates are completed.
-- [ ] Commit with Lefthook enabled, pull with rebase, push the branch, and verify it is
+- [x] Commit with Lefthook enabled, pull with rebase, push the branch, and verify it is
       up to date with origin.
-- [ ] Open a PR to `main` that closes #894 and, if fully resolved, #903.
-- [ ] Report verification, live DB actions, residual risks, and review status before
+- [x] Open a PR to `main` that closes #894 and, if fully resolved, #903.
+- [x] Report verification, live DB actions, residual risks, and review status before
       merge. Do not merge without the user's next instruction.
