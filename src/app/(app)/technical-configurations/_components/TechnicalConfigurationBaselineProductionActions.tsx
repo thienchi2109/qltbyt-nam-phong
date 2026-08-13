@@ -1,5 +1,6 @@
 "use client"
 
+import type * as React from "react"
 import { Upload } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDecodedDraft } from "../baseline-types"
@@ -24,7 +25,7 @@ export function TechnicalConfigurationBaselineProductionActions({
   disabled,
   disabledMessage,
   onRequestHierarchyImport,
-}: TechnicalConfigurationBaselineProductionActionsProps) {
+}: TechnicalConfigurationBaselineProductionActionsProps): React.JSX.Element | null {
   if (version.status !== "draft") return null
 
   const actionsDisabled = disabled || dirty || conflict

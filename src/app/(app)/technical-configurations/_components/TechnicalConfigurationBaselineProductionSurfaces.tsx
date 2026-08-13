@@ -1,5 +1,7 @@
 "use client"
 
+import type * as React from "react"
+
 import type { UseTechnicalConfigurationBaselineHierarchyImportResult } from "../_hooks/useTechnicalConfigurationBaselineHierarchyImport"
 import type { UseTechnicalConfigurationBaselineImportResult } from "../_hooks/useTechnicalConfigurationBaselineImport"
 import type { TechnicalConfigurationBaselineDecodedDraft } from "../baseline-types"
@@ -31,7 +33,7 @@ export function TechnicalConfigurationBaselineProductionSurfaces({
   legacyImport,
   hierarchyImport,
   onRequestHierarchyImport,
-}: TechnicalConfigurationBaselineProductionSurfacesProps) {
+}: TechnicalConfigurationBaselineProductionSurfacesProps): React.JSX.Element {
   return (
     <>
       {!isFocusMode && version ? (

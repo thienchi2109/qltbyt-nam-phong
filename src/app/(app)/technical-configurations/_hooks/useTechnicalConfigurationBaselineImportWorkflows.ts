@@ -1,9 +1,18 @@
 import * as React from "react"
 
-import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
+import type {
+  TechnicalConfigurationBaselineDecodedDraft,
+  TechnicalConfigurationBaselineDraftWire,
+} from "../baseline-types"
 import { decodeTechnicalConfigurationBaselineDraftWire } from "../technical-configuration-baseline-decoders"
-import { useTechnicalConfigurationBaselineHierarchyImport } from "./useTechnicalConfigurationBaselineHierarchyImport"
-import { useTechnicalConfigurationBaselineImport } from "./useTechnicalConfigurationBaselineImport"
+import {
+  useTechnicalConfigurationBaselineHierarchyImport,
+  type UseTechnicalConfigurationBaselineHierarchyImportResult,
+} from "./useTechnicalConfigurationBaselineHierarchyImport"
+import {
+  useTechnicalConfigurationBaselineImport,
+  type UseTechnicalConfigurationBaselineImportResult,
+} from "./useTechnicalConfigurationBaselineImport"
 
 type UseTechnicalConfigurationBaselineImportWorkflowsOptions = Readonly<{
   dossierId: string
@@ -14,6 +23,17 @@ type UseTechnicalConfigurationBaselineImportWorkflowsOptions = Readonly<{
   onUnresolvedStateChange: (unresolved: boolean) => void
 }>
 
+export type UseTechnicalConfigurationBaselineImportWorkflowsResult = Readonly<{
+  decodedVersion: TechnicalConfigurationBaselineDecodedDraft | null
+  legacyImport: UseTechnicalConfigurationBaselineImportResult
+  hierarchyImport: UseTechnicalConfigurationBaselineHierarchyImportResult
+  isApplying: boolean
+  operationError: string | null
+  reset: () => void
+  openLegacyImport: () => void
+  openHierarchyImport: () => void
+}>
+
 /** Composes legacy and hierarchy import lifecycles without conflating their state. */
 export function useTechnicalConfigurationBaselineImportWorkflows({
   dossierId,
@@ -22,7 +42,7 @@ export function useTechnicalConfigurationBaselineImportWorkflows({
   onApplied,
   onConflict,
   onUnresolvedStateChange,
-}: UseTechnicalConfigurationBaselineImportWorkflowsOptions) {
+}: UseTechnicalConfigurationBaselineImportWorkflowsOptions): UseTechnicalConfigurationBaselineImportWorkflowsResult {
   const unresolvedRef = React.useRef({ hierarchy: false, legacy: false })
   const decodedVersion = React.useMemo(
     () =>

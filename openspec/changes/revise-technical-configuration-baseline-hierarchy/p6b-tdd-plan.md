@@ -82,16 +82,16 @@ UI, Vitest, Testing Library, OpenSpec.
 
 ### Task 1: Draft And Locked Visibility
 
-- [ ] Update the production-isolation regression first.
-- [ ] Render the production baseline tab with a clean draft and assert:
+- [x] Update the production-isolation regression first.
+- [x] Render the production baseline tab with a clean draft and assert:
   - `Tải cấu hình hiện tại` is visible and enabled;
   - `Tải mẫu trống` is visible and enabled;
   - the legacy import command remains visible;
   - `Nhập cấu hình phân cấp` is visible;
   - subgroup authoring controls are reachable through the existing editor.
-- [ ] Render a locked version and assert all draft-only download/import/authoring
+- [x] Render a locked version and assert all draft-only download/import/authoring
       controls are absent while the locked read surface remains.
-- [ ] Run the focused test and confirm RED because P6B controls are not mounted.
+- [x] Run the focused test and confirm RED because P6B controls are not mounted.
 
 Run:
 
@@ -104,46 +104,46 @@ Expected: FAIL only on new production-activation assertions.
 
 ### Task 2: Coexistence, Blocking, Accessibility, And Responsive Layout
 
-- [ ] Add RED assertions that the legacy and XLSX v2 import commands open different
+- [x] Add RED assertions that the legacy and XLSX v2 import commands open different
       labelled dialogs and remain independently discoverable by role/name.
-- [ ] Assert an unresolved workflow from either dialog blocks version adoption,
+- [x] Assert an unresolved workflow from either dialog blocks version adoption,
       reload, copy, lock, and navigation until reset or successful completion.
-- [ ] Assert the XLSX v2 dialog keeps the existing explicit replacement checkbox;
+- [x] Assert the XLSX v2 dialog keeps the existing explicit replacement checkbox;
       apply remains disabled before confirmation, for invalid previews, and for stale
       previews.
-- [ ] Assert accessible action grouping, non-duplicated control names, visible busy
+- [x] Assert accessible action grouping, non-duplicated control names, visible busy
       status/error announcements, and keyboard-focusable commands.
-- [ ] Assert the production action container wraps on narrow widths and does not
+- [x] Assert the production action container wraps on narrow widths and does not
       rely on fixed-width buttons or clipped overflow.
-- [ ] Run the focused tests and confirm RED for missing production composition.
+- [x] Run the focused tests and confirm RED for missing production composition.
 
 ## Chunk 2: GREEN Minimal Production Wiring
 
 ### Task 3: Compose Existing Import Workflows
 
-- [ ] Implement
+- [x] Implement
       `useTechnicalConfigurationBaselineImportWorkflows.ts`.
-- [ ] Instantiate `useTechnicalConfigurationBaselineImport` unchanged for legacy
+- [x] Instantiate `useTechnicalConfigurationBaselineImport` unchanged for legacy
       compatibility.
-- [ ] Instantiate `useTechnicalConfigurationBaselineHierarchyImport` unchanged for
+- [x] Instantiate `useTechnicalConfigurationBaselineHierarchyImport` unchanged for
       XLSX v2 preview/apply.
-- [ ] Track legacy and hierarchy unresolved states independently; derive one
+- [x] Track legacy and hierarchy unresolved states independently; derive one
       `hasUnresolvedImportState` boolean so one workflow closing cannot clear the
       other's blocking state.
-- [ ] Return only both workflows and the aggregate guard needed by the tab.
-- [ ] Run the focused RED tests and make only this composition slice GREEN.
+- [x] Return only both workflows and the aggregate guard needed by the tab.
+- [x] Run the focused RED tests and make only this composition slice GREEN.
 
 ### Task 4: Mount Production Actions And Dialogs
 
-- [ ] Implement
+- [x] Implement
       `TechnicalConfigurationBaselineProductionActions.tsx`.
-- [ ] Reuse `TechnicalConfigurationBaselineDownloadActions` for both download
+- [x] Reuse `TechnicalConfigurationBaselineDownloadActions` for both download
       intents; do not duplicate workbook generation or download state.
-- [ ] Add one hierarchy import button with a Lucide icon, descriptive accessible
+- [x] Add one hierarchy import button with a Lucide icon, descriptive accessible
       name, and a responsive wrapping layout. Do not duplicate or relocate the legacy
       `Tải template Excel` / import commands already rendered by
       `TechnicalConfigurationVersionBar`.
-- [ ] In `TechnicalConfigurationBaselineTab.tsx`:
+- [x] In `TechnicalConfigurationBaselineTab.tsx`:
   - replace the single legacy import hook with the dual-import workflow hook;
   - include aggregate unresolved state in external-draft replacement,
     `isUnsafeToLeave`, reload, copy, lock, and navigation guards;
@@ -151,21 +151,21 @@ Expected: FAIL only on new production-activation assertions.
   - pass the existing `inlineEditor.hierarchyAuthoring` to
     `TechnicalConfigurationBaselineEditor`;
   - keep focus mode, summary, Save, scroll ownership, and version behavior intact.
-- [ ] Keep the tab below the 350-line extraction threshold.
-- [ ] Run the focused production activation tests and confirm GREEN.
+- [x] Keep the tab below the 350-line extraction threshold.
+- [x] Run the focused production activation tests and confirm GREEN.
 
 ### Task 5: Preserve Dormant Contract Regressions
 
-- [ ] Run the existing P3C download tests and prove current-data/blank-template
+- [x] Run the existing P3C download tests and prove current-data/blank-template
       identity, dirty/conflict guards, duplicate-download prevention, and locked
       visibility remain unchanged.
-- [ ] Run the existing P3D hierarchy import tests and prove legacy parsing,
+- [x] Run the existing P3D hierarchy import tests and prove legacy parsing,
       authoritative preview, destructive confirmation, stale evidence, recovery,
       pagination, and apply lifecycle remain unchanged.
-- [ ] Run the existing P4C authoring tests and prove subgroup CRUD/reorder,
+- [x] Run the existing P4C authoring tests and prove subgroup CRUD/reorder,
       criterion movement, owner-scoped entry, focus, responsive controls, save/resume,
       conflict, and lock guards remain unchanged.
-- [ ] Run baseline legacy import tests to prove the compatibility path remains
+- [x] Run baseline legacy import tests to prove the compatibility path remains
       callable from production.
 
 Focused command:
@@ -188,11 +188,11 @@ node scripts/npm-run.js exec vitest run \
 
 ### Task 6: Cross-Surface Regression
 
-- [ ] Run the complete technical-configuration test directory.
-- [ ] Explicitly inspect failures for evaluation hierarchy/progress, comparison
+- [x] Run the complete technical-configuration test directory.
+- [x] Explicitly inspect failures for evaluation hierarchy/progress, comparison
       hierarchy, result export, version navigation, focus mode, inline editing, copy,
       lock, and reload behavior.
-- [ ] Do not change those surfaces merely to make unrelated assertions pass; prove
+- [x] Do not change those surfaces merely to make unrelated assertions pass; prove
       any baseline failure against `32e2937c` and file a follow-up issue if needed.
 
 Run:
@@ -204,7 +204,9 @@ node scripts/npm-run.js exec vitest run \
 
 ### Task 7: Required Gates
 
-- [ ] Run the repository verification chain in the mandated order through one
+- [x] Invoke `react-best-practices` before running the TypeScript/React verification
+      chain.
+- [x] Run the repository verification chain in the mandated order through one
       `ctx_batch_execute` call:
 
 ```bash
@@ -220,22 +222,25 @@ openspec validate revise-technical-configuration-baseline-hierarchy --strict
 git diff --check
 ```
 
-- [ ] Run the `code-deduplication` semantic check before commit because P6B creates
+- [x] Run the `code-deduplication` semantic check before commit because P6B creates
       a composition hook/component.
-- [ ] Use Code Review Graph change detection and GitNexus `detect_changes`; inspect
+- [x] Before symbol edits, use Code Review Graph for broad discovery, then GitNexus
+      impact analysis; inspect and report every HIGH or CRITICAL risk result. Repeat
+      change detection after implementation.
+- [x] Use Code Review Graph change detection and GitNexus `detect_changes`; inspect
       every high-risk symbol/process.
-- [ ] Record browser testing as skipped, not passed.
+- [x] Record browser testing as skipped, not passed.
 
 ### Task 8: Review, OpenSpec Status, Commit, Push, And PR
 
-- [ ] Request independent specification review, then code-quality review.
-- [ ] Fix and re-review until both report zero actionable findings.
-- [ ] Mark P6B.1 and P6B.3 complete in `tasks.md`; leave P6B.2 unchecked with the
+- [x] Request independent specification review, then code-quality review.
+- [x] Fix and re-review until both report zero actionable findings.
+- [x] Mark P6B.1 and P6B.3 complete in `tasks.md`; leave P6B.2 unchecked with the
       explicit credential/user-instruction note.
 - [ ] Commit through enabled Lefthook hooks.
 - [ ] Run `git pull --rebase`, push the branch, and verify it is up to date with
       origin.
-- [ ] Open a PR into `main` that links and closes #909, lists verification counts,
+- [x] Open a PR into `main` that links and closes #909, lists verification counts,
       states that browser tests were skipped, and confirms no live DB write occurred.
 - [ ] Stop before merge and report the PR for user review.
 

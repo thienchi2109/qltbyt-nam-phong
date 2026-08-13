@@ -25,7 +25,7 @@ export function TechnicalConfigurationBaselineDownloadActions({
   conflict,
   disabled: externallyDisabled = false,
   disabledMessage = null,
-}: Readonly<TechnicalConfigurationBaselineDownloadActionsProps>) {
+}: Readonly<TechnicalConfigurationBaselineDownloadActionsProps>): React.JSX.Element | null {
   const [downloadingIntent, setDownloadingIntent] =
     React.useState<TechnicalConfigurationBaselineDownloadIntent | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -40,7 +40,9 @@ export function TechnicalConfigurationBaselineDownloadActions({
       : disabledMessage
   const disabled = Boolean(externallyDisabled || guardMessage || downloadingIntent)
 
-  async function handleDownload(intent: TechnicalConfigurationBaselineDownloadIntent) {
+  async function handleDownload(
+    intent: TechnicalConfigurationBaselineDownloadIntent
+  ): Promise<void> {
     if (disabled || downloadingRef.current) return
     downloadingRef.current = true
     setDownloadingIntent(intent)

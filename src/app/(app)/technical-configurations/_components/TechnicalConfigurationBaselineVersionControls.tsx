@@ -1,3 +1,5 @@
+import type * as React from "react"
+
 import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
 
 import {
@@ -36,11 +38,10 @@ export function TechnicalConfigurationBaselineVersionControls({
   onCopy,
   onDownloadTemplate,
   onRequestImport,
-}: TechnicalConfigurationBaselineVersionControlsProps) {
+}: TechnicalConfigurationBaselineVersionControlsProps): React.JSX.Element {
   if (isFocusMode) {
     return (
-      <div
-        role="region"
+      <section
         aria-label="Ngữ cảnh cấu hình đang chỉnh sửa"
         className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2 text-sm"
       >
@@ -49,7 +50,7 @@ export function TechnicalConfigurationBaselineVersionControls({
           Phiên bản {selectedVersion.version_number} ·{" "}
           {selectedVersion.status === "locked" ? "Đã khóa" : "Bản nháp"}
         </span>
-      </div>
+      </section>
     )
   }
 
