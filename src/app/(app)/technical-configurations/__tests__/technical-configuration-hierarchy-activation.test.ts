@@ -13,11 +13,44 @@ const ACTIVATION_GATE_PATH = path.resolve(
   process.cwd(),
   "supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate.sql"
 )
-const LATEST_READER_MIGRATION =
-  "20260812140500_technical_configuration_evaluation_hierarchy_order.sql"
+const FUNCTION_DEFINITION_PATTERN = /CREATE OR REPLACE FUNCTION public\.([a-z0-9_]+)\s*\(/gi
 const INTERNAL_APPLY_FUNCTION = "_technical_configuration_baseline_import_apply_v2"
 const PUBLIC_APPLY_FUNCTION = "technical_configuration_baseline_import_apply_v2"
 const APPLY_SIGNATURE = "(UUID, JSONB, JSONB, BIGINT)"
+
+function isHierarchyDependentReader(fn: string) {
+  return (
+    fn === "_technical_configuration_baseline_snapshot" ||
+    /^technical_configuration_baseline(?:_.+)?_(?:get|list)$/.test(fn) ||
+    /^technical_configuration_comparison(?:_.+)?_(?:get|list)$/.test(fn) ||
+    /^technical_configuration_(?:assessments?|evaluation)(?:_.+)?_(?:get|list)$/.test(fn) ||
+    /^technical_configuration_result_export(?:_.+)?_(?:get|list)$/.test(fn)
+  )
+}
+
+function containsHierarchyDependentReader(source: string) {
+  return Array.from(source.matchAll(FUNCTION_DEFINITION_PATTERN), ([, fn]) => fn).some(
+    (fn) => fn !== undefined && isHierarchyDependentReader(fn)
+  )
+}
+
+function findLatestHierarchyReaderMigration() {
+  const files = readdirSync(MIGRATIONS_DIR)
+    .filter((file) => file.endsWith(".sql") && !file.endsWith(ACTIVATION_SUFFIX))
+    .filter((file) => {
+      const source = readFileSync(path.join(MIGRATIONS_DIR, file), "utf8")
+
+      return containsHierarchyDependentReader(source)
+    })
+    .sort()
+  const file = files.at(-1)
+
+  if (!file) {
+    throw new Error("Hierarchy-aware reader migration is missing")
+  }
+
+  return file
+}
 
 function readActivationMigration() {
   const files = readdirSync(MIGRATIONS_DIR)
@@ -37,6 +70,26 @@ function readActivationMigration() {
 }
 
 describe("technical configuration P6A hierarchy server activation", () => {
+  it("tracks migrations for every hierarchy-dependent production reader surface", () => {
+    const readerFunctions = [
+      "_technical_configuration_baseline_snapshot",
+      "technical_configuration_baseline_versions_list",
+      "technical_configuration_comparison_get",
+      "technical_configuration_assessments_list",
+      "technical_configuration_evaluation_criteria_list",
+      "technical_configuration_result_export_manifest_get",
+      "technical_configuration_result_export_matrix_list",
+    ]
+
+    for (const fn of readerFunctions) {
+      expect(isHierarchyDependentReader(fn)).toBe(true)
+    }
+    expect(isHierarchyDependentReader(PUBLIC_APPLY_FUNCTION)).toBe(false)
+    expect(isHierarchyDependentReader("technical_configuration_baseline_subgroup_create")).toBe(
+      false
+    )
+  })
+
   it("allowlists the complete seven-RPC hierarchy authoring manifest for authenticated use", () => {
     const authoringFunctions = Object.values(
       TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS
@@ -51,8 +104,9 @@ describe("technical configuration P6A hierarchy server activation", () => {
 
   it("ships a superseding migration that activates v2 apply without exposing its internal worker", () => {
     const activation = readActivationMigration()
+    const latestReaderMigration = findLatestHierarchyReaderMigration()
 
-    expect(activation.file.localeCompare(LATEST_READER_MIGRATION)).toBeGreaterThan(0)
+    expect(activation.file.localeCompare(latestReaderMigration)).toBeGreaterThan(0)
     expect(activation.source).toContain(
       `CREATE OR REPLACE FUNCTION public.${PUBLIC_APPLY_FUNCTION}(`
     )
