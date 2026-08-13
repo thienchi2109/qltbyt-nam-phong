@@ -337,7 +337,7 @@ persistence, comparison, and result export remain unchanged.
       collapse/auto-expand, dirty-cancel, save-next, cache-refetch-failure, legacy, and >100-criterion regressions. The large fixture MUST cross canonical boundaries
       `50/51` and `100/101`; the existing large workspace suite's 21 cases MUST pass
       unchanged and its file MUST NOT be enlarged.
-- [ ] P5C.7 Run migration source-contract tests against the superseding migration,
+- [x] P5C.7 Run migration source-contract tests against the superseding migration,
       both new P5C executable phase gates, required repository gates, focused and broad
       regressions, and OpenSpec strict. Inspect `EXPLAIN` before adding any index,
       enforce changed-file scope guards, repeat review to zero actionable findings, and
@@ -346,9 +346,10 @@ persistence, comparison, and result export remain unchanged.
       `technical-configuration-baseline-subgroup-mutations-migration.test.ts`, the two
       stale phase-gate tests tracked by Issue #903, outside P5C.
 
-P5C.7 status: local source-contract, repository, regression, scope, graph, and review
-gates are complete. The two executable SQL phase gates remain pending until the local
-migration is applied to a target environment with separate live-write authorization.
+P5C.7 status: complete. The migration was applied to the target environment, both
+rollback-only executable SQL phase gates passed, and post-gate verification found no
+P5C0 fixture residue. Local source-contract, repository, regression, scope, graph,
+review, and OpenSpec strict gates are complete.
 
 ## Phase P5D - Hierarchy-Aware Result Export
 
