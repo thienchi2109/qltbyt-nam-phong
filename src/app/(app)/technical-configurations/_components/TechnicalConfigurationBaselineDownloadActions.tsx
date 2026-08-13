@@ -37,7 +37,10 @@ export function TechnicalConfigurationBaselineDownloadActions({
     ? "Tải lại dữ liệu từ máy chủ trước khi tải tệp Excel."
     : dirty
       ? "Lưu thay đổi trước khi tải tệp Excel."
-      : disabledMessage
+      : (disabledMessage ??
+        (externallyDisabled
+          ? "Chờ thao tác hiện tại hoàn tất trước khi dùng công cụ Excel."
+          : null))
   const disabled = Boolean(externallyDisabled || guardMessage || downloadingIntent)
 
   async function handleDownload(
