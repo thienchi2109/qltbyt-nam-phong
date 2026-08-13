@@ -20,6 +20,7 @@ import {
   manifestResponse,
   OPTION_IDS,
   optionAxisRows,
+  resultExportHierarchySnapshot,
 } from "./technical-configuration-result-export-fixtures"
 
 afterEach(() => vi.unstubAllGlobals())
@@ -52,6 +53,26 @@ function createDeferred() {
     resolve = done
   })
   return { promise, resolve }
+}
+
+function createHierarchySnapshot(
+  criterionAxis: readonly (typeof criterionAxisRows)[number][] = criterionAxisRows
+) {
+  const criterionIds = new Set(criterionAxis.map((criterion) => criterion.criterion_id))
+  const group = resultExportHierarchySnapshot.baselineGroups[0]
+  return {
+    ...resultExportHierarchySnapshot,
+    baselineGroups: [
+      {
+        ...group,
+        criteria: group.criteria.filter((criterion) => criterionIds.has(criterion.id)),
+      },
+    ],
+  }
+}
+
+function collectDataset(request = exportRequest(), hierarchySnapshot = createHierarchySnapshot()) {
+  return collectTechnicalConfigurationResultExportDataset(request, hierarchySnapshot)
 }
 
 describe("P14A4 result export axis adapters", () => {
@@ -127,7 +148,7 @@ describe("P14A4 stable ordered axes collector", () => {
       return fallback(call)
     })
 
-    const result = collectTechnicalConfigurationResultExportDataset(exportRequest())
+    const result = collectDataset()
     await vi.waitFor(() => expect([optionStarted, criterionStarted]).toEqual([true, true]))
 
     optionGate.resolve()
@@ -151,11 +172,14 @@ describe("P14A4 stable ordered axes collector", () => {
       })
     )
 
-    const dataset = await collectTechnicalConfigurationResultExportDataset({
-      ...exportRequest(),
-      optionIds: fixture.optionIds,
-      criterionIds: fixture.criterionIds,
-    })
+    const dataset = await collectDataset(
+      {
+        ...exportRequest(),
+        optionIds: fixture.optionIds,
+        criterionIds: fixture.criterionIds,
+      },
+      fixture.hierarchySnapshot
+    )
 
     expect(dataset.optionAxis.map((item) => item.option_id)).toEqual(fixture.optionIds)
     expect(dataset.criterionAxis.map((item) => item.criterion_id)).toEqual(fixture.criterionIds)
@@ -220,11 +244,15 @@ describe("P14A4 stable ordered axes collector", () => {
         })
       )
 
-      const dataset = await collectTechnicalConfigurationResultExportDataset({
-        ...exportRequest("detailed_matrix_only"),
-        optionIds: optionTotal === 0 ? null : optionAxis.map((item) => item.option_id),
-        criterionIds: criterionTotal === 0 ? null : criterionAxis.map((item) => item.criterion_id),
-      })
+      const dataset = await collectDataset(
+        {
+          ...exportRequest("detailed_matrix_only"),
+          optionIds: optionTotal === 0 ? null : optionAxis.map((item) => item.option_id),
+          criterionIds:
+            criterionTotal === 0 ? null : criterionAxis.map((item) => item.criterion_id),
+        },
+        createHierarchySnapshot(criterionAxis)
+      )
 
       expect(dataset.optionAxis).toEqual(optionAxis)
       expect(dataset.criterionAxis).toEqual(criterionAxis)
@@ -246,9 +274,7 @@ describe("P14A4 stable ordered axes collector", () => {
     async ({ pages }) => {
       installRpcMock(createPagedHandler(pages))
 
-      await expect(
-        collectTechnicalConfigurationResultExportDataset(exportRequest("ranking_only"))
-      ).rejects.toMatchObject({
+      await expect(collectDataset(exportRequest("ranking_only"))).rejects.toMatchObject({
         name: "TechnicalConfigurationResultExportError",
         kind: "snapshot_changed",
       })
@@ -258,7 +284,7 @@ describe("P14A4 stable ordered axes collector", () => {
   it("deep-freezes both axes and their descriptor rows", async () => {
     installRpcMock(createPagedHandler())
 
-    const dataset = await collectTechnicalConfigurationResultExportDataset(exportRequest())
+    const dataset = await collectDataset()
 
     expect(Object.isFrozen(dataset.optionAxis)).toBe(true)
     expect(Object.isFrozen(dataset.criterionAxis)).toBe(true)

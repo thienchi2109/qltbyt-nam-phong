@@ -124,6 +124,7 @@ function createDataset(
         rank: 1,
       },
     ],
+    hierarchyRows: [{ kind: "criterion", criterion: criterionAxisItem }],
     matrix: [
       {
         ...criterionAxisItem,
@@ -140,6 +141,8 @@ function createDataset(
   }
 }
 
+const baselineGroups = createBaselineGroups()
+const baselineRevision = 3
 const request: TechnicalConfigurationResultExportDialogRequest = {
   mode: "full",
   dossierId: "dossier-1",
@@ -179,6 +182,8 @@ describe("useTechnicalConfigurationResultExport", () => {
       useTechnicalConfigurationResultExport({
         dossierId: "dossier-1",
         baselineVersionId: "baseline-1",
+        baselineRevision,
+        baselineGroups,
         generatedBy: "Nguyễn Văn A",
       })
     )
@@ -196,10 +201,13 @@ describe("useTechnicalConfigurationResultExport", () => {
       await exportPromise
     })
 
-    expect(mocks.collectDataset).toHaveBeenCalledWith({
-      ...request,
-      signal: expect.any(AbortSignal),
-    })
+    expect(mocks.collectDataset).toHaveBeenCalledWith(
+      {
+        ...request,
+        signal: expect.any(AbortSignal),
+      },
+      { baselineRevision, baselineGroups }
+    )
     expect(mocks.createModel).toHaveBeenCalledWith({
       ...createDataset(),
       option_ids: ["option-2"],
@@ -223,6 +231,8 @@ describe("useTechnicalConfigurationResultExport", () => {
       useTechnicalConfigurationResultExport({
         dossierId: "dossier-1",
         baselineVersionId: "baseline-1",
+        baselineRevision,
+        baselineGroups,
         generatedBy: "Nguyễn Văn A",
       })
     )
@@ -248,6 +258,8 @@ describe("useTechnicalConfigurationResultExport", () => {
       useTechnicalConfigurationResultExport({
         dossierId: "dossier-1",
         baselineVersionId: "baseline-1",
+        baselineRevision,
+        baselineGroups,
         generatedBy: "Nguyễn Văn A",
       })
     )
@@ -263,10 +275,14 @@ describe("useTechnicalConfigurationResultExport", () => {
       await result.current.retry()
     })
 
-    expect(mocks.collectDataset).toHaveBeenNthCalledWith(2, {
-      ...request,
-      signal: expect.any(AbortSignal),
-    })
+    expect(mocks.collectDataset).toHaveBeenNthCalledWith(
+      2,
+      {
+        ...request,
+        signal: expect.any(AbortSignal),
+      },
+      { baselineRevision, baselineGroups }
+    )
     expect(mocks.downloadBlob).toHaveBeenCalledTimes(1)
     expect(result.current.status).toBe("success")
   })
@@ -282,6 +298,8 @@ describe("useTechnicalConfigurationResultExport", () => {
       useTechnicalConfigurationResultExport({
         dossierId: "dossier-1",
         baselineVersionId: "baseline-1",
+        baselineRevision,
+        baselineGroups,
         generatedBy: "Nguyễn Văn A",
       })
     )
@@ -312,6 +330,8 @@ describe("useTechnicalConfigurationResultExport", () => {
         useTechnicalConfigurationResultExport({
           dossierId,
           baselineVersionId,
+          baselineRevision,
+          baselineGroups,
           generatedBy: "Nguyễn Văn A",
         }),
       {
@@ -360,8 +380,9 @@ describe("TechnicalConfigurationResultExportControl", () => {
       <TechnicalConfigurationResultExportControl
         dossierId="dossier-1"
         baselineVersionId="baseline-1"
+        baselineRevision={baselineRevision}
         options={[createOption("option-1", "Nhà cung cấp A · Model A")]}
-        baselineGroups={createBaselineGroups()}
+        baselineGroups={baselineGroups}
         activeOptionId="option-1"
         currentCriteria={[{ criterion: { id: "criterion-1" } }]}
       />

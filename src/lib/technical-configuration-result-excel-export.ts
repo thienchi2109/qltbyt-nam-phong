@@ -10,6 +10,7 @@ import {
   TECHNICAL_CONFIGURATION_DERIVED_STATUS_LABELS,
   type TechnicalConfigurationDerivedStatus,
 } from "@/lib/technical-configuration-evaluation"
+import { renderTechnicalConfigurationResultStructuralRow } from "@/lib/technical-configuration-result-excel-hierarchy"
 import {
   RESULT_EXCEL_COLORS,
   RESULT_EXCEL_RANKING_HEADERS,
@@ -32,6 +33,7 @@ type RankingSheetModel = Extract<
 type MatrixSheetModel = Extract<TechnicalConfigurationResultWorkbookSheetModel, { kind: "matrix" }>
 type MetaSheetModel = Extract<TechnicalConfigurationResultWorkbookSheetModel, { kind: "meta" }>
 type RankingRow = RankingSheetModel["rows"][number]
+type MatrixCriterionRow = Extract<MatrixSheetModel["rows"][number], { kind: "criterion" }>
 
 const STATUS_FILLS = {
   not_evaluated: RESULT_EXCEL_COLORS.gray,
@@ -188,7 +190,7 @@ function formatOptionGroup(option: MatrixSheetModel["option_groups"][number]) {
     .join(" - ")
 }
 
-function formatSupplementaryCell(row: MatrixSheetModel["rows"][number], optionIndex: number) {
+function formatSupplementaryCell(row: MatrixCriterionRow, optionIndex: number) {
   const value = row.option_values[optionIndex]
   const linkLines = value.document_links.map((link) => {
     const location = link.page_section ? ` (${link.page_section})` : ""
@@ -210,6 +212,7 @@ function renderMatrix(workbook: Workbook, sheet: MatrixSheetModel, overview: Ove
   worksheet.state = sheet.state
   const lastColumn = 4 + sheet.option_groups.length * 3
   const lastColumnLetter = worksheet.getColumn(lastColumn).letter
+  const criterionCount = sheet.rows.filter((row) => row.kind === "criterion").length
   setResultExcelMergedHeading(
     worksheet,
     `A1:${lastColumnLetter}1`,
@@ -225,7 +228,7 @@ function renderMatrix(workbook: Workbook, sheet: MatrixSheetModel, overview: Ove
   setResultExcelMergedHeading(
     worksheet,
     `A3:${lastColumnLetter}3`,
-    `${sheet.option_groups.length} phương án | ${sheet.rows.length} tiêu chí`,
+    `${sheet.option_groups.length} phương án | ${criterionCount} tiêu chí`,
     "header"
   )
   setResultExcelMergedHeading(worksheet, "A4:D4", "TIÊU CHÍ CƠ SỞ", "header")
@@ -242,6 +245,10 @@ function renderMatrix(workbook: Workbook, sheet: MatrixSheetModel, overview: Ove
   worksheet.getRow(5).eachCell((cell) => applyResultExcelHeader(cell))
 
   sheet.rows.forEach((row, rowIndex) => {
+    if (row.kind !== "criterion") {
+      renderTechnicalConfigurationResultStructuralRow(worksheet, row, rowIndex, lastColumn)
+      return
+    }
     const values: Array<number | string | { text: string; hyperlink: string; tooltip: string }> = [
       row.stt,
       row.group_name,

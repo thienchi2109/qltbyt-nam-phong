@@ -1,6 +1,7 @@
 import type {
   TechnicalConfigurationResultWorkbookBuildInput,
   TechnicalConfigurationResultWorkbookCriterionSource,
+  TechnicalConfigurationResultWorkbookHierarchySourceRow,
   TechnicalConfigurationResultWorkbookMatrixSourceCell,
   TechnicalConfigurationResultWorkbookOptionSource,
   TechnicalConfigurationResultWorkbookRankingSourceRow,
@@ -146,7 +147,7 @@ function matrixCellKey(criterionId: string, optionId: string) {
 
 function createMatrixSheets(
   optionAxis: readonly TechnicalConfigurationResultWorkbookOptionSource[],
-  criterionAxis: readonly TechnicalConfigurationResultWorkbookCriterionSource[],
+  hierarchyRows: readonly TechnicalConfigurationResultWorkbookHierarchySourceRow[],
   matrix: readonly TechnicalConfigurationResultWorkbookMatrixSourceCell[]
 ) {
   const cells = new Map<string, TechnicalConfigurationResultWorkbookMatrixSourceCell>()
@@ -169,38 +170,73 @@ function createMatrixSheets(
             )
         )
 
-  return optionPartitions.map((partition, partitionIndex) => ({
-    kind: "matrix" as const,
-    name: partitionIndex === 0 ? "Ma trận chi tiết" : `Ma trận chi tiết ${partitionIndex + 1}`,
-    state: "visible" as const,
-    context_columns: RESULT_WORKBOOK_MATRIX_CONTEXT_COLUMNS,
-    option_columns: RESULT_WORKBOOK_OPTION_COLUMNS,
-    option_groups: partition,
-    rows: criterionAxis.map((criterion, criterionIndex) => ({
-      stt: criterionIndex + 1,
-      group_id: criterion.group_id,
-      group_name: criterion.group_name,
-      group_order: criterion.group_order,
-      criterion_id: criterion.criterion_id,
-      criterion_code: criterion.criterion_code,
-      criterion_title: criterion.criterion_title,
-      requirement_text: criterion.requirement_text,
-      criterion_order: criterion.criterion_order,
-      option_values: partition.map((option) => {
-        const cell = cells.get(matrixCellKey(criterion.criterion_id, option.option_id))
+  return optionPartitions.map((partition, partitionIndex) => {
+    let criterionIndex = 0
+    const rows = hierarchyRows.map((row) => {
+      if (row.kind !== "criterion") {
+        const aggregateByOptionId = new Map(
+          row.optionAggregates.map((aggregate) => [aggregate.optionId, aggregate])
+        )
         return {
-          option_id: option.option_id,
-          response_text: cell?.response_text ?? null,
-          supplementary_information: cell?.supplementary_information ?? null,
-          document_links: cell?.document_links ?? [],
-          technical_axis: cell?.technical_axis ?? null,
-          evidence_axis: cell?.evidence_axis ?? null,
-          assessment_notes: cell?.assessment_notes ?? null,
-          conclusion: cell?.conclusion ?? "not_evaluated",
+          kind: row.kind,
+          id: row.id,
+          ...(row.kind === "subgroup" ? { section_id: row.sectionId } : {}),
+          name: row.name,
+          sort_order: row.sortOrder,
+          option_aggregates: partition.map((option) => {
+            const aggregate = aggregateByOptionId.get(option.option_id)
+            if (!aggregate) {
+              throw new Error(`Missing structural aggregate for option ${option.option_id}.`)
+            }
+            return {
+              option_id: aggregate.optionId,
+              status: aggregate.status,
+              descendant_count: aggregate.descendantCount,
+              status_counts: aggregate.statusCounts,
+            }
+          }),
         }
-      }),
-    })),
-  }))
+      }
+
+      criterionIndex += 1
+      const criterion: TechnicalConfigurationResultWorkbookCriterionSource = row.criterion
+      return {
+        kind: "criterion" as const,
+        stt: criterionIndex,
+        group_id: criterion.group_id,
+        group_name: criterion.group_name,
+        group_order: criterion.group_order,
+        criterion_id: criterion.criterion_id,
+        criterion_code: criterion.criterion_code,
+        criterion_title: criterion.criterion_title,
+        requirement_text: criterion.requirement_text,
+        criterion_order: criterion.criterion_order,
+        option_values: partition.map((option) => {
+          const cell = cells.get(matrixCellKey(criterion.criterion_id, option.option_id))
+          return {
+            option_id: option.option_id,
+            response_text: cell?.response_text ?? null,
+            supplementary_information: cell?.supplementary_information ?? null,
+            document_links: cell?.document_links ?? [],
+            technical_axis: cell?.technical_axis ?? null,
+            evidence_axis: cell?.evidence_axis ?? null,
+            assessment_notes: cell?.assessment_notes ?? null,
+            conclusion: cell?.conclusion ?? "not_evaluated",
+          }
+        }),
+      }
+    })
+
+    return {
+      kind: "matrix" as const,
+      name: partitionIndex === 0 ? "Ma trận chi tiết" : `Ma trận chi tiết ${partitionIndex + 1}`,
+      state: "visible" as const,
+      context_columns: RESULT_WORKBOOK_MATRIX_CONTEXT_COLUMNS,
+      option_columns: RESULT_WORKBOOK_OPTION_COLUMNS,
+      option_groups: partition,
+      rows,
+    }
+  })
 }
 
 function createRankingSheet(
@@ -247,7 +283,7 @@ export function createTechnicalConfigurationResultWorkbookModel(
     sheets.push(createRankingSheet(rankingRows, input.manifest.criterion_total))
   }
   if (input.matrix !== null) {
-    sheets.push(...createMatrixSheets(input.optionAxis, input.criterionAxis, input.matrix))
+    sheets.push(...createMatrixSheets(input.optionAxis, input.hierarchyRows, input.matrix))
   }
 
   sheets.push(createMetaSheet(input))

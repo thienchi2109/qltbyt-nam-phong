@@ -3,8 +3,15 @@ import type {
   TechnicalConfigurationEvidenceAxis,
   TechnicalConfigurationTechnicalAxis,
 } from "@/lib/technical-configuration-evaluation"
+import type {
+  TechnicalConfigurationAggregateStatus,
+  TechnicalConfigurationDerivedStatusCounts,
+} from "@/lib/technical-configuration-hierarchy-aggregate-status"
 
-import type { TechnicalConfigurationBaselineStatus } from "./baseline-types"
+import type {
+  TechnicalConfigurationBaselineGroupWire,
+  TechnicalConfigurationBaselineStatus,
+} from "./baseline-types"
 import type { TechnicalConfigurationReferenceRankingEligibility } from "./reference-ranking-types"
 
 export type TechnicalConfigurationResultExportScopeRpcArgs = {
@@ -137,6 +144,34 @@ export type TechnicalConfigurationResultExportMatrixCellWire = {
 export type TechnicalConfigurationResultExportMatrixPageWireResponse =
   TechnicalConfigurationResultExportPageWireResponse<TechnicalConfigurationResultExportMatrixCellWire>
 
+export type TechnicalConfigurationResultExportStructuralAggregate = Readonly<{
+  optionId: string
+  status: TechnicalConfigurationAggregateStatus
+  descendantCount: number
+  statusCounts: TechnicalConfigurationDerivedStatusCounts
+}>
+
+export type TechnicalConfigurationResultExportHierarchyRow =
+  | Readonly<{
+      kind: "section"
+      id: string
+      name: string
+      sortOrder: number
+      optionAggregates: readonly TechnicalConfigurationResultExportStructuralAggregate[]
+    }>
+  | Readonly<{
+      kind: "subgroup"
+      id: string
+      sectionId: string
+      name: string
+      sortOrder: number
+      optionAggregates: readonly TechnicalConfigurationResultExportStructuralAggregate[]
+    }>
+  | Readonly<{
+      kind: "criterion"
+      criterion: TechnicalConfigurationResultExportCriterionAxisItemWire
+    }>
+
 export type TechnicalConfigurationResultExportMode =
   "full" | "ranking_only" | "detailed_matrix_only"
 
@@ -149,6 +184,11 @@ export type TechnicalConfigurationResultExportRequest = {
   readonly signal?: AbortSignal
 }
 
+export type TechnicalConfigurationResultExportHierarchySnapshot = Readonly<{
+  baselineRevision: number
+  baselineGroups: readonly TechnicalConfigurationBaselineGroupWire[]
+}>
+
 type ResultExportDatasetBase = {
   readonly manifest: TechnicalConfigurationResultExportManifestWire
   readonly optionAxis: readonly TechnicalConfigurationResultExportOptionAxisItemWire[]
@@ -160,14 +200,17 @@ export type TechnicalConfigurationResultExportDataset =
       readonly mode: "full"
       readonly ranking: readonly TechnicalConfigurationResultExportRankingItemWire[]
       readonly matrix: readonly TechnicalConfigurationResultExportMatrixCellWire[]
+      readonly hierarchyRows: readonly TechnicalConfigurationResultExportHierarchyRow[]
     })
   | (ResultExportDatasetBase & {
       readonly mode: "ranking_only"
       readonly ranking: readonly TechnicalConfigurationResultExportRankingItemWire[]
       readonly matrix: null
+      readonly hierarchyRows: null
     })
   | (ResultExportDatasetBase & {
       readonly mode: "detailed_matrix_only"
       readonly ranking: null
       readonly matrix: readonly TechnicalConfigurationResultExportMatrixCellWire[]
+      readonly hierarchyRows: readonly TechnicalConfigurationResultExportHierarchyRow[]
     })

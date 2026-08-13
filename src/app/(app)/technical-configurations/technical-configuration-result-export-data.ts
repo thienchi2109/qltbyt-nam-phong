@@ -1,5 +1,9 @@
 import { collectStableTechnicalConfigurationPages } from "./technical-configuration-pagination"
 import {
+  buildTechnicalConfigurationResultExportHierarchy,
+  freezeTechnicalConfigurationResultExportHierarchy,
+} from "./technical-configuration-result-export-hierarchy"
+import {
   getTechnicalConfigurationResultExportManifest,
   listTechnicalConfigurationResultExportCriterionAxis,
   listTechnicalConfigurationResultExportMatrix,
@@ -10,6 +14,7 @@ import {
 import type {
   TechnicalConfigurationResultExportCriterionAxisItemWire,
   TechnicalConfigurationResultExportDataset,
+  TechnicalConfigurationResultExportHierarchySnapshot,
   TechnicalConfigurationResultExportManifestWire,
   TechnicalConfigurationResultExportMatrixCellWire,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
@@ -31,6 +36,7 @@ export type {
   TechnicalConfigurationResultExportMatrixCellWire,
   TechnicalConfigurationResultExportMatrixPageWireResponse,
   TechnicalConfigurationResultExportMode,
+  TechnicalConfigurationResultExportHierarchySnapshot,
   TechnicalConfigurationResultExportOptionAxisItemWire,
   TechnicalConfigurationResultExportOptionAxisPageWireResponse,
   TechnicalConfigurationResultExportPageRpcArgs,
@@ -263,9 +269,10 @@ async function collectMatrix(
   }
 }
 
-/** Collects one complete stable result-export dataset without mounting UI state. */
+/** Collects a snapshot-consistent result-export dataset for the supplied hierarchy. */
 export async function collectTechnicalConfigurationResultExportDataset(
-  request: TechnicalConfigurationResultExportRequest
+  request: TechnicalConfigurationResultExportRequest,
+  hierarchySnapshot: TechnicalConfigurationResultExportHierarchySnapshot
 ): Promise<TechnicalConfigurationResultExportDataset> {
   const scope = {
     p_dossier_id: request.dossierId,
@@ -275,6 +282,9 @@ export async function collectTechnicalConfigurationResultExportDataset(
   } satisfies TechnicalConfigurationResultExportScopeRpcArgs
   const firstManifest = (await getTechnicalConfigurationResultExportManifest(scope, request.signal))
     .data
+  if (hierarchySnapshot.baselineRevision !== firstManifest.baseline_version.revision) {
+    throw snapshotChanged()
+  }
   const [optionAxis, criterionAxis] = await Promise.all([
     collectAxis<TechnicalConfigurationResultExportOptionAxisItemWire>(
       (page) =>
@@ -314,6 +324,19 @@ export async function collectTechnicalConfigurationResultExportDataset(
   const finalManifest = (await getTechnicalConfigurationResultExportManifest(scope, request.signal))
     .data
   if (!sameManifest(firstManifest, finalManifest)) throw snapshotChanged()
+  const hierarchyRows =
+    matrix === null
+      ? null
+      : freezeTechnicalConfigurationResultExportHierarchy(
+          buildTechnicalConfigurationResultExportHierarchy({
+            baselineVersionId: request.baselineVersionId,
+            baselineGroups: hierarchySnapshot.baselineGroups,
+            optionAxis,
+            criterionAxis,
+            matrix,
+            criterionIds: request.criterionIds,
+          })
+        )
 
   return Object.freeze({
     mode: request.mode,
@@ -322,5 +345,6 @@ export async function collectTechnicalConfigurationResultExportDataset(
     criterionAxis,
     ranking,
     matrix,
+    hierarchyRows,
   }) as TechnicalConfigurationResultExportDataset
 }

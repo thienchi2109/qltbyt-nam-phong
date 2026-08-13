@@ -107,6 +107,18 @@ function createMatrixCell(
   }
 }
 
+function createPassedStatusCounts(meets: number) {
+  return {
+    not_evaluated: 0,
+    not_applicable: 0,
+    fails: 0,
+    unclear: 0,
+    insufficient_evidence: 0,
+    exceeds: 0,
+    meets,
+  } as const
+}
+
 export function createResultWorkbookFixture({
   mode = "full",
   optionCount,
@@ -133,6 +145,30 @@ export function createResultWorkbookFixture({
       return matrixFactory?.(cell, criterionIndex, optionIndex) ?? cell
     })
   )
+  const hierarchyRows = criterionAxis.flatMap((criterion, criterionIndex) => {
+    const previousCriterion = criterionAxis[criterionIndex - 1]
+    const groupCriteria = criterionAxis.filter(
+      (candidate) => candidate.group_id === criterion.group_id
+    )
+    const section =
+      previousCriterion?.group_id === criterion.group_id
+        ? []
+        : [
+            {
+              kind: "section" as const,
+              id: criterion.group_id,
+              name: criterion.group_name,
+              sortOrder: criterion.group_order,
+              optionAggregates: optionAxis.map((option) => ({
+                optionId: option.option_id,
+                status: "passed" as const,
+                descendantCount: groupCriteria.length,
+                statusCounts: createPassedStatusCounts(groupCriteria.length),
+              })),
+            },
+          ]
+    return [...section, { kind: "criterion" as const, criterion }]
+  })
   const manifest = {
     dossier: {
       id: DOSSIER_ID,
@@ -161,12 +197,65 @@ export function createResultWorkbookFixture({
 
   switch (mode) {
     case "full":
-      return { ...context, mode, ranking, matrix }
+      return { ...context, mode, ranking, matrix, hierarchyRows }
     case "ranking_only":
-      return { ...context, mode, ranking, matrix: null }
+      return { ...context, mode, ranking, matrix: null, hierarchyRows: null }
     case "detailed_matrix_only":
-      return { ...context, mode, ranking: null, matrix }
+      return { ...context, mode, ranking: null, matrix, hierarchyRows }
   }
+}
+
+export function createHierarchicalResultWorkbookFixture() {
+  const fixture = createResultWorkbookFixture({
+    mode: "detailed_matrix_only",
+    optionCount: 1,
+    criterionCount: 2,
+  })
+  if (fixture.matrix === null) {
+    throw new Error("Expected a detailed matrix fixture.")
+  }
+  const [firstCriterion, secondCriterion] = fixture.criterionAxis
+  const option = fixture.optionAxis[0]
+  if (!firstCriterion || !secondCriterion || !option) {
+    throw new Error("Expected representative hierarchy axes.")
+  }
+
+  return {
+    ...fixture,
+    hierarchyRows: [
+      {
+        kind: "section",
+        id: firstCriterion.group_id,
+        name: firstCriterion.group_name,
+        sortOrder: firstCriterion.group_order,
+        optionAggregates: [
+          {
+            optionId: option.option_id,
+            status: "passed",
+            descendantCount: 2,
+            statusCounts: createPassedStatusCounts(2),
+          },
+        ],
+      },
+      { kind: "criterion", criterion: firstCriterion },
+      {
+        kind: "subgroup",
+        id: indexedUuid(65, 0),
+        sectionId: firstCriterion.group_id,
+        name: "Phan nhom 1",
+        sortOrder: 1,
+        optionAggregates: [
+          {
+            optionId: option.option_id,
+            status: "passed",
+            descendantCount: 1,
+            statusCounts: createPassedStatusCounts(1),
+          },
+        ],
+      },
+      { kind: "criterion", criterion: secondCriterion },
+    ],
+  } as const
 }
 
 export function createNarrowedResultWorkbookFixture() {
@@ -184,6 +273,9 @@ export function createNarrowedResultWorkbookFixture() {
   const criterionIds = criterionAxis.map((criterion) => criterion.criterion_id)
   const optionIdSet = new Set(optionIds)
   const criterionIdSet = new Set(criterionIds)
+  const hierarchyRows = fixture.hierarchyRows.filter(
+    (row) => row.kind !== "criterion" || criterionIdSet.has(row.criterion.criterion_id)
+  )
 
   return {
     ...fixture,
@@ -196,6 +288,7 @@ export function createNarrowedResultWorkbookFixture() {
     criterionAxis,
     option_ids: optionIds,
     criterion_ids: criterionIds,
+    hierarchyRows,
     ranking: fixture.ranking.filter((row) => optionIdSet.has(row.option_id)),
     matrix: fixture.matrix.filter(
       (cell) => optionIdSet.has(cell.option_id) && criterionIdSet.has(cell.criterion_id)

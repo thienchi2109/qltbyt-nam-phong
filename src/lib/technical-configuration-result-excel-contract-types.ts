@@ -3,6 +3,10 @@ import type {
   TechnicalConfigurationEvidenceAxis,
   TechnicalConfigurationTechnicalAxis,
 } from "@/lib/technical-configuration-evaluation"
+import type {
+  TechnicalConfigurationAggregateStatus,
+  TechnicalConfigurationDerivedStatusCounts,
+} from "@/lib/technical-configuration-hierarchy-aggregate-status"
 
 export type TechnicalConfigurationResultWorkbookContentMode =
   "full" | "ranking_only" | "detailed_matrix_only"
@@ -71,6 +75,34 @@ export interface TechnicalConfigurationResultWorkbookCriterionSource {
   readonly criterion_order: number
 }
 
+export interface TechnicalConfigurationResultWorkbookStructuralAggregateSource {
+  readonly optionId: string
+  readonly status: TechnicalConfigurationAggregateStatus
+  readonly descendantCount: number
+  readonly statusCounts: TechnicalConfigurationDerivedStatusCounts
+}
+
+export type TechnicalConfigurationResultWorkbookHierarchySourceRow =
+  | Readonly<{
+      kind: "section"
+      id: string
+      name: string
+      sortOrder: number
+      optionAggregates: readonly TechnicalConfigurationResultWorkbookStructuralAggregateSource[]
+    }>
+  | Readonly<{
+      kind: "subgroup"
+      id: string
+      sectionId: string
+      name: string
+      sortOrder: number
+      optionAggregates: readonly TechnicalConfigurationResultWorkbookStructuralAggregateSource[]
+    }>
+  | Readonly<{
+      kind: "criterion"
+      criterion: TechnicalConfigurationResultWorkbookCriterionSource
+    }>
+
 export interface TechnicalConfigurationResultWorkbookMatrixSourceCell
   extends
     TechnicalConfigurationResultWorkbookCriterionSource,
@@ -102,15 +134,18 @@ export type TechnicalConfigurationResultWorkbookBuildInput =
           readonly mode: "full"
           readonly ranking: readonly TechnicalConfigurationResultWorkbookRankingSourceRow[]
           readonly matrix: readonly TechnicalConfigurationResultWorkbookMatrixSourceCell[]
+          readonly hierarchyRows: readonly TechnicalConfigurationResultWorkbookHierarchySourceRow[]
         }
       | {
           readonly mode: "ranking_only"
           readonly ranking: readonly TechnicalConfigurationResultWorkbookRankingSourceRow[]
           readonly matrix: null
+          readonly hierarchyRows: null
         }
       | {
           readonly mode: "detailed_matrix_only"
           readonly ranking: null
           readonly matrix: readonly TechnicalConfigurationResultWorkbookMatrixSourceCell[]
+          readonly hierarchyRows: readonly TechnicalConfigurationResultWorkbookHierarchySourceRow[]
         }
     )

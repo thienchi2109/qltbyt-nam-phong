@@ -34,6 +34,7 @@ import { toTechnicalConfigurationSaveErrorMessage } from "./TechnicalConfigurati
 type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
   dossier: TechnicalConfigurationDossierWire
   baselineVersionId: string
+  baselineRevision: number
   baselineGroups: TechnicalConfigurationBaselineGroupWire[]
   options: TechnicalConfigurationOptionWire[]
   matrix: ReturnType<typeof useTechnicalConfigurationComparisonMatrix>
@@ -46,6 +47,7 @@ type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
 export function TechnicalConfigurationEvaluationActiveWorkspace({
   dossier,
   baselineVersionId,
+  baselineRevision,
   baselineGroups,
   options,
   matrix,
@@ -201,6 +203,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
           key={`${dossier.id}:${baselineVersionId}`}
           dossierId={dossier.id}
           baselineVersionId={baselineVersionId}
+          baselineRevision={baselineRevision}
           options={matrix.selectedOptions}
           baselineGroups={baselineGroups}
           activeOptionId={navigator.activeSelectedOptionId}

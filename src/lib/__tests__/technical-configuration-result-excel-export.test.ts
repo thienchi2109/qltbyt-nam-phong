@@ -7,7 +7,10 @@ import {
   createTechnicalConfigurationResultWorkbook,
   serializeTechnicalConfigurationResultWorkbook,
 } from "@/lib/technical-configuration-result-excel-export"
-import { createResultWorkbookFixture } from "@/lib/__tests__/technical-configuration-result-excel-fixtures"
+import {
+  createHierarchicalResultWorkbookFixture,
+  createResultWorkbookFixture,
+} from "@/lib/__tests__/technical-configuration-result-excel-fixtures"
 
 const TITLE_FILL = "FF166534"
 const HEADER_FILL = "FF2E7D32"
@@ -229,7 +232,15 @@ describe("technical configuration result ExcelJS renderer", () => {
       "Thông tin bổ sung / tài liệu",
       "Kết luận đánh giá",
     ])
-    expect(matrix.getRow(6).values).toEqual([
+    expect(matrix.getRow(6).values.slice(1, 6)).toEqual([
+      "",
+      "Nhom tieu chi 1",
+      "",
+      "",
+      "Đạt | 1 tiêu chí | Đạt: 1",
+    ])
+    expect(matrix.model.merges).toEqual(expect.arrayContaining(["E6:G6"]))
+    expect(matrix.getRow(7).values).toEqual([
       undefined,
       1,
       "Nhom tieu chi 1",
@@ -244,20 +255,58 @@ describe("technical configuration result ExcelJS renderer", () => {
       "Đạt",
     ])
     expect(matrix.views[0]).toMatchObject({ state: "frozen", xSplit: 4, ySplit: 5 })
-    expect(matrix.autoFilter).toEqual({ from: "A5", to: "G6" })
+    expect(matrix.autoFilter).toEqual({ from: "A5", to: "G7" })
     expect(matrix.getColumn(1).width).toBe(8)
     expect(matrix.getColumn(4).width).toBe(42)
     expect(matrix.getColumn(6).width).toBe(40)
     expect(matrix.getRow(1).height).toBe(30)
     expect(matrix.getRow(5).height).toBe(36)
-    expect(matrix.getRow(6).height).toBe(60)
+    expect(matrix.getRow(7).height).toBe(60)
     expect(getPatternFill(matrix.getCell("A1")).fgColor).toEqual({ argb: TITLE_FILL })
     expect(getPatternFill(matrix.getCell("A5")).fgColor).toEqual({ argb: HEADER_FILL })
-    expect(getPatternFill(matrix.getCell("G6")).fgColor).toEqual({ argb: MEETS_FILL })
-    expectStandardDataCell(matrix.getCell("F6"))
+    expect(getPatternFill(matrix.getCell("G7")).fgColor).toEqual({ argb: MEETS_FILL })
+    expectStandardDataCell(matrix.getCell("F7"))
     expectNoForbiddenWorkbookContent(workbook)
     expect(matrix.getRow(2).height).toBe(24)
     expect(matrix.getRow(3).height).toBe(24)
+  })
+
+  it("renders hierarchy aggregates as merged summaries without response or assessment cells", async () => {
+    const model = createTechnicalConfigurationResultWorkbookModel(
+      createHierarchicalResultWorkbookFixture()
+    )
+    const workbook = await createTechnicalConfigurationResultWorkbook(model)
+    const matrix = getWorksheet(workbook, "Ma trận chi tiết")
+
+    expect(matrix.model.merges).toEqual(expect.arrayContaining(["E6:G6", "E8:G8"]))
+    expect(matrix.getRow(6).values.slice(1, 6)).toEqual([
+      "",
+      "Nhom tieu chi 1",
+      "",
+      "",
+      "Đạt | 2 tiêu chí | Đạt: 2",
+    ])
+    expect(matrix.getRow(8).values.slice(1, 6)).toEqual([
+      "",
+      "Phan nhom 1",
+      "",
+      "",
+      "Đạt | 1 tiêu chí | Đạt: 1",
+    ])
+    expect(matrix.getCell("F6").master.address).toBe("E6")
+    expect(matrix.getCell("G6").master.address).toBe("E6")
+    expect(matrix.getCell("F8").master.address).toBe("E8")
+    expect(matrix.getCell("G8").master.address).toBe("E8")
+    expect(matrix.getCell("B6").font).toMatchObject({ bold: true })
+    expect(matrix.getCell("B6").alignment.indent).toBeFalsy()
+    expect(matrix.getCell("B8").font).toMatchObject({ bold: true })
+    expect(matrix.getCell("B8").alignment.indent).toBe(1)
+    expect(matrix.getRow(7).values).toEqual(
+      expect.arrayContaining(["TC-001", "Phan hoi 1-1", "Đạt"])
+    )
+    expect(matrix.getRow(9).values).toEqual(
+      expect.arrayContaining(["TC-002", "Phan hoi 2-1", "Đạt"])
+    )
   })
 
   it.each([
@@ -296,9 +345,9 @@ describe("technical configuration result ExcelJS renderer", () => {
           expect.arrayContaining(["A1:G1", "A2:G2", "A3:G3", "A4:D4", "E4:G4"])
         )
         expect(matrix.views[0]).toMatchObject({ state: "frozen", xSplit: 4, ySplit: 5 })
-        expect(matrix.autoFilter).toBe("A5:G6")
+        expect(matrix.autoFilter).toBe("A5:G7")
         expect(matrix.getColumn(6).width).toBe(40)
-        expectStandardDataCell(matrix.getCell("F6"))
+        expectStandardDataCell(matrix.getCell("F7"))
       }
 
       const meta = getWorksheet(workbook, "_meta")
