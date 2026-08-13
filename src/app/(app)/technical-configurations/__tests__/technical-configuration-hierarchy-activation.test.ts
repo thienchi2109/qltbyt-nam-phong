@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest"
 
 import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS } from "@/app/(app)/technical-configurations/technical-configuration-baseline-hierarchy-rpcs"
+import { ASSESSMENT_RPC_FUNCTIONS } from "@/lib/technical-configuration-assessment-rpcs"
 import { BASELINE_RPC_FUNCTIONS } from "@/lib/technical-configuration-baseline-rpcs"
+import { COMPARISON_READ_RPC_FUNCTIONS } from "@/lib/technical-configuration-comparison-rpcs"
+import { DOCUMENT_RPC_FUNCTIONS } from "@/lib/technical-configuration-document-rpcs"
+import { RESULT_EXPORT_RPC_FUNCTIONS } from "@/lib/technical-configuration-result-export-rpcs"
 
 const MIGRATIONS_DIR = path.resolve(process.cwd(), "supabase/migrations")
 const ACTIVATION_SUFFIX = "_technical_configuration_baseline_hierarchy_server_activation.sql"
@@ -13,24 +17,24 @@ const ACTIVATION_GATE_PATH = path.resolve(
   process.cwd(),
   "supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate.sql"
 )
-const FUNCTION_DEFINITION_PATTERN = /CREATE OR REPLACE FUNCTION public\.([a-z0-9_]+)\s*\(/gi
+const FUNCTION_DEFINITION_PATTERN = /CREATE(?: OR REPLACE)? FUNCTION public\.([a-z0-9_]+)\s*\(/gi
 const INTERNAL_APPLY_FUNCTION = "_technical_configuration_baseline_import_apply_v2"
 const PUBLIC_APPLY_FUNCTION = "technical_configuration_baseline_import_apply_v2"
 const APPLY_SIGNATURE = "(UUID, JSONB, JSONB, BIGINT)"
-
-function isHierarchyDependentReader(fn: string) {
-  return (
-    fn === "_technical_configuration_baseline_snapshot" ||
-    /^technical_configuration_baseline(?:_.+)?_(?:get|list)$/.test(fn) ||
-    /^technical_configuration_comparison(?:_.+)?_(?:get|list)$/.test(fn) ||
-    /^technical_configuration_(?:assessments?|evaluation)(?:_.+)?_(?:get|list)$/.test(fn) ||
-    /^technical_configuration_result_export(?:_.+)?_(?:get|list)$/.test(fn)
-  )
-}
+const HIERARCHY_DEPENDENT_READER_FUNCTIONS = new Set([
+  "_technical_configuration_baseline_snapshot",
+  BASELINE_RPC_FUNCTIONS.getDraft,
+  BASELINE_RPC_FUNCTIONS.listVersions,
+  DOCUMENT_RPC_FUNCTIONS.listBaselineDocuments,
+  COMPARISON_READ_RPC_FUNCTIONS.getComparison,
+  ASSESSMENT_RPC_FUNCTIONS.listAssessments,
+  ASSESSMENT_RPC_FUNCTIONS.listEvaluationCriteria,
+  ...Object.values(RESULT_EXPORT_RPC_FUNCTIONS),
+])
 
 function containsHierarchyDependentReader(source: string) {
   return Array.from(source.matchAll(FUNCTION_DEFINITION_PATTERN), ([, fn]) => fn).some(
-    (fn) => fn !== undefined && isHierarchyDependentReader(fn)
+    (fn) => fn !== undefined && HIERARCHY_DEPENDENT_READER_FUNCTIONS.has(fn)
   )
 }
 
@@ -70,23 +74,19 @@ function readActivationMigration() {
 }
 
 describe("technical configuration P6A hierarchy server activation", () => {
-  it("tracks migrations for every hierarchy-dependent production reader surface", () => {
-    const readerFunctions = [
-      "_technical_configuration_baseline_snapshot",
-      "technical_configuration_baseline_versions_list",
-      "technical_configuration_comparison_get",
-      "technical_configuration_assessments_list",
-      "technical_configuration_evaluation_criteria_list",
-      "technical_configuration_result_export_manifest_get",
-      "technical_configuration_result_export_matrix_list",
-    ]
-
-    for (const fn of readerFunctions) {
-      expect(isHierarchyDependentReader(fn)).toBe(true)
+  it("tracks the canonical hierarchy-dependent production reader manifest", () => {
+    expect(HIERARCHY_DEPENDENT_READER_FUNCTIONS).toContain(
+      COMPARISON_READ_RPC_FUNCTIONS.getComparison
+    )
+    expect(HIERARCHY_DEPENDENT_READER_FUNCTIONS).toContain(
+      ASSESSMENT_RPC_FUNCTIONS.listEvaluationCriteria
+    )
+    for (const fn of Object.values(RESULT_EXPORT_RPC_FUNCTIONS)) {
+      expect(HIERARCHY_DEPENDENT_READER_FUNCTIONS).toContain(fn)
     }
-    expect(isHierarchyDependentReader(PUBLIC_APPLY_FUNCTION)).toBe(false)
-    expect(isHierarchyDependentReader("technical_configuration_baseline_subgroup_create")).toBe(
-      false
+    expect(HIERARCHY_DEPENDENT_READER_FUNCTIONS).not.toContain(PUBLIC_APPLY_FUNCTION)
+    expect(HIERARCHY_DEPENDENT_READER_FUNCTIONS).not.toContain(
+      TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS.createSubgroup
     )
   })
 
