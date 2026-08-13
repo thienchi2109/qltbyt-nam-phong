@@ -7,7 +7,7 @@ import {
   ASSESSMENT_COLLECTION_PAGE_SIZE,
   collectTechnicalConfigurationAssessments,
   loadKnownAbsentCompleteAssessments,
-  selectNewestCompleteAssessmentSnapshot,
+  loadNewestCompleteAssessmentSnapshot,
   type TechnicalConfigurationCompleteAssessmentMap,
 } from "./TechnicalConfigurationAssessmentCompleteCache"
 import { useTechnicalConfigurationOptionResponsesQuery } from "./useTechnicalConfigurationOptionResponsesQuery"
@@ -167,24 +167,23 @@ export function useTechnicalConfigurationAssessments(
   })
   const completeAssessmentsQuery = useQuery<TechnicalConfigurationCompleteAssessmentMap>({
     queryKey: completeQueryKey,
-    queryFn: ({ signal }) => {
+    queryFn: async ({ signal }) => {
       if (!completeQueryEnabled) {
         return Promise.reject(
           new Error("Technical configuration assessment collection query is disabled")
         )
       }
 
-      return collectTechnicalConfigurationAssessments(comparisonSetId, signal)
+      return loadNewestCompleteAssessmentSnapshot({
+        queryClient,
+        queryKey: completeQueryKey,
+        load: () => collectTechnicalConfigurationAssessments(comparisonSetId, signal),
+      })
     },
     enabled: completeQueryEnabled,
     staleTime: 30_000,
     retry: false,
     refetchOnWindowFocus: false,
-    structuralSharing: (current, incoming) =>
-      selectNewestCompleteAssessmentSnapshot(
-        current as TechnicalConfigurationCompleteAssessmentMap | undefined,
-        incoming as TechnicalConfigurationCompleteAssessmentMap
-      ),
   })
   const upsertAssessment = useMutation<
     TechnicalConfigurationAssessmentSaveResult,

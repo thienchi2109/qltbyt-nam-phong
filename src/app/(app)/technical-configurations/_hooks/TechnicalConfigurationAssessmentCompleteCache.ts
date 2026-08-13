@@ -17,17 +17,42 @@ export type TechnicalConfigurationCompleteAssessmentMap = Readonly<
   Record<string, TechnicalConfigurationAssessmentWire>
 >
 
-/** Preserves assessments that are newer than an incoming complete snapshot. */
+/** Loads an authoritative snapshot while preserving assessments written during the request. */
+export async function loadNewestCompleteAssessmentSnapshot({
+  queryClient,
+  queryKey,
+  load,
+}: {
+  queryClient: QueryClient
+  queryKey: readonly unknown[]
+  load: () => Promise<TechnicalConfigurationCompleteAssessmentMap>
+}): Promise<TechnicalConfigurationCompleteAssessmentMap> {
+  const requestStart =
+    queryClient.getQueryData<TechnicalConfigurationCompleteAssessmentMap>(queryKey)
+  const incoming = await load()
+  const current = queryClient.getQueryData<TechnicalConfigurationCompleteAssessmentMap>(queryKey)
+  return selectNewestCompleteAssessmentSnapshot(current, incoming, requestStart)
+}
+
+/** Preserves only assessments written after an incoming complete snapshot started loading. */
 export function selectNewestCompleteAssessmentSnapshot(
   current: TechnicalConfigurationCompleteAssessmentMap | undefined,
-  incoming: TechnicalConfigurationCompleteAssessmentMap
+  incoming: TechnicalConfigurationCompleteAssessmentMap,
+  requestStart: TechnicalConfigurationCompleteAssessmentMap | undefined
 ): TechnicalConfigurationCompleteAssessmentMap {
   if (current === undefined) return incoming
 
   return Object.values(current).reduce<TechnicalConfigurationCompleteAssessmentMap>(
     (merged, assessment) => {
       const incomingAssessment = incoming[assessment.criterion_id]
-      if (!incomingAssessment || assessment.revision > incomingAssessment.revision) {
+      const requestStartAssessment = requestStart?.[assessment.criterion_id]
+      const wasWrittenDuringRequest =
+        requestStartAssessment === undefined ||
+        assessment.revision > requestStartAssessment.revision
+      if (
+        (incomingAssessment && assessment.revision > incomingAssessment.revision) ||
+        (!incomingAssessment && wasWrittenDuringRequest)
+      ) {
         return {
           ...merged,
           [assessment.criterion_id]: assessment,
@@ -108,14 +133,14 @@ export async function loadKnownAbsentCompleteAssessments(
   try {
     await queryClient.fetchQuery<TechnicalConfigurationCompleteAssessmentMap>({
       queryKey: completeQueryKey,
-      queryFn: ({ signal }) => collectTechnicalConfigurationAssessments(comparisonSetId, signal),
+      queryFn: ({ signal }) =>
+        loadNewestCompleteAssessmentSnapshot({
+          queryClient,
+          queryKey: completeQueryKey,
+          load: () => collectTechnicalConfigurationAssessments(comparisonSetId, signal),
+        }),
       staleTime: 30_000,
       retry: false,
-      structuralSharing: (current, incoming) =>
-        selectNewestCompleteAssessmentSnapshot(
-          current as TechnicalConfigurationCompleteAssessmentMap | undefined,
-          incoming as TechnicalConfigurationCompleteAssessmentMap
-        ),
     })
     return true
   } catch {
