@@ -237,8 +237,8 @@ git diff --check
 - [x] Fix and re-review until both report zero actionable findings.
 - [x] Mark P6B.1 and P6B.3 complete in `tasks.md`; leave P6B.2 unchecked with the
       explicit credential/user-instruction note.
-- [ ] Commit through enabled Lefthook hooks.
-- [ ] Run `git pull --rebase`, push the branch, and verify it is up to date with
+- [x] Commit through enabled Lefthook hooks.
+- [x] Run `git pull --rebase`, push the branch, and verify it is up to date with
       origin.
 - [x] Open a PR into `main` that links and closes #909, lists verification counts,
       states that browser tests were skipped, and confirms no live DB write occurred.
