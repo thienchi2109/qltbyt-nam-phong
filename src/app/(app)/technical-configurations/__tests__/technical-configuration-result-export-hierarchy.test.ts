@@ -331,12 +331,13 @@ describe("technical configuration result export hierarchy projection", () => {
 
   it("fails closed for duplicate or inconsistent baseline ownership", () => {
     const input = hierarchyInput()
-    const duplicate = {
-      ...input.baselineGroups[0].criteria[0],
-      group_id: "group-b",
-    }
-    const malformedGroups = input.baselineGroups.map((group, index) =>
-      index === 0 ? { ...group, criteria: [...group.criteria, duplicate] } : group
+    const sourceGroup = input.baselineGroups.find((group) => group.criteria.length > 0)
+    const duplicate = sourceGroup?.criteria[0]
+    if (!sourceGroup || !duplicate) throw new Error("Expected a direct criterion to duplicate.")
+    const malformedGroups = input.baselineGroups.map((group) =>
+      group.id === sourceGroup.id
+        ? { ...group, criteria: [...group.criteria, { ...duplicate }] }
+        : group
     )
 
     expect(() =>
@@ -344,7 +345,7 @@ describe("technical configuration result export hierarchy projection", () => {
         ...input,
         baselineGroups: malformedGroups,
       })
-    ).toThrow(/hierarchy/i)
+    ).toThrow(/criterion criterion-direct-a2/i)
   })
 
   it("fails closed when the criterion axis requirement differs from the baseline", () => {

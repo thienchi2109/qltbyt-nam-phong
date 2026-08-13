@@ -158,6 +158,23 @@ describe("technical configuration result workbook contract", () => {
         .filter((row) => row.kind === "criterion")
         .map((row) => row.criterion.criterion_id)
     )
+    const section = matrix.rows.find((row) => row.kind === "section")
+    if (!section || section.kind !== "section") {
+      throw new Error("Expected a narrowed section row.")
+    }
+    expect(
+      section.option_aggregates.map((aggregate) => ({
+        optionId: aggregate.option_id,
+        descendantCount: aggregate.descendant_count,
+        meets: aggregate.status_counts.meets,
+      }))
+    ).toEqual(
+      optionIds.map((optionId) => ({
+        optionId,
+        descendantCount: criterionIds.length,
+        meets: criterionIds.length,
+      }))
+    )
   })
 
   it("builds overview, ranking and matrix row models without rendering", () => {

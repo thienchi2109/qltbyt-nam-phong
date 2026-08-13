@@ -273,9 +273,27 @@ export function createNarrowedResultWorkbookFixture() {
   const criterionIds = criterionAxis.map((criterion) => criterion.criterion_id)
   const optionIdSet = new Set(optionIds)
   const criterionIdSet = new Set(criterionIds)
-  const hierarchyRows = fixture.hierarchyRows.filter(
-    (row) => row.kind !== "criterion" || criterionIdSet.has(row.criterion.criterion_id)
-  )
+  const groupIdSet = new Set(criterionAxis.map((criterion) => criterion.group_id))
+  const hierarchyRows = fixture.hierarchyRows.flatMap((row) => {
+    if (row.kind === "criterion") {
+      return criterionIdSet.has(row.criterion.criterion_id) ? [row] : []
+    }
+    if (row.kind === "subgroup" || !groupIdSet.has(row.id)) return []
+    const descendantCount = criterionAxis.filter(
+      (criterion) => criterion.group_id === row.id
+    ).length
+    return [
+      {
+        ...row,
+        optionAggregates: optionAxis.map((option) => ({
+          optionId: option.option_id,
+          status: "passed" as const,
+          descendantCount,
+          statusCounts: createPassedStatusCounts(descendantCount),
+        })),
+      },
+    ]
+  })
 
   return {
     ...fixture,

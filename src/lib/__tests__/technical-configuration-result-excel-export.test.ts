@@ -10,6 +10,7 @@ import {
 import {
   createHierarchicalResultWorkbookFixture,
   createResultWorkbookFixture,
+  createSingleOptionEmptyCriteriaResultWorkbookFixture,
 } from "@/lib/__tests__/technical-configuration-result-excel-fixtures"
 
 const TITLE_FILL = "FF166534"
@@ -307,6 +308,44 @@ describe("technical configuration result ExcelJS renderer", () => {
     expect(matrix.getRow(9).values).toEqual(
       expect.arrayContaining(["TC-002", "Phan hoi 2-1", "Đạt"])
     )
+  })
+
+  it("omits a redundant zero count from no-criteria structural summaries", async () => {
+    const fixture = createSingleOptionEmptyCriteriaResultWorkbookFixture()
+    const option = fixture.optionAxis[0]
+    if (!option) throw new Error("Expected one option.")
+    const model = createTechnicalConfigurationResultWorkbookModel({
+      ...fixture,
+      hierarchyRows: [
+        {
+          kind: "section",
+          id: "section-empty",
+          name: "Nhom chua co tieu chi",
+          sortOrder: 1,
+          optionAggregates: [
+            {
+              optionId: option.option_id,
+              status: "no_criteria",
+              descendantCount: 0,
+              statusCounts: {
+                not_evaluated: 0,
+                not_applicable: 0,
+                fails: 0,
+                unclear: 0,
+                insufficient_evidence: 0,
+                exceeds: 0,
+                meets: 0,
+              },
+            },
+          ],
+        },
+      ],
+    })
+
+    const workbook = await createTechnicalConfigurationResultWorkbook(model)
+    const matrix = getWorksheet(workbook, "Ma trận chi tiết")
+
+    expect(matrix.getCell("E6").value).toBe("Chưa có tiêu chí")
   })
 
   it.each([

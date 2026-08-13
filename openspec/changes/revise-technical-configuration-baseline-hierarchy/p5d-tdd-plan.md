@@ -242,11 +242,22 @@ Context Mode, Code Review Graph, GitNexus, OpenSpec.
   - SonarCloud reported `typescript:S3776` on the hierarchy candidate collector; direct
     and subgroup ownership collection were extracted into one-pass helpers, then the
     hierarchy/export and broad suites plus React Doctor were rerun to GREEN.
-- Focused P5D: 11 files, 69 tests passed.
+- Cubic review follow-up:
+  - fixed the narrowed workbook fixture so section aggregates are recomputed from the
+    retained criterion set;
+  - fixed the duplicate-criterion regression so it duplicates a real direct criterion;
+  - fixed `no_criteria` rendering so it does not append the contradictory
+    `0 tiêu chí` count;
+  - retained the revision-based snapshot identity because baseline groups are immutable
+    content of that revision and P5D explicitly preserves the identity contract;
+  - retained the defensive subgroup tracker reset because canonical leaves always place
+    direct criteria before subgroup blocks, while arbitrary noncanonical input should
+    re-emit a subgroup heading after an interruption.
+- Complete result-export suite: 13 files, 102 tests passed.
 - P5A aggregate: 2 files, 27 tests passed.
 - P5C hierarchy/progress/workspace: 9 files, 63 tests passed.
 - Result-export RPC/migration source contracts: 4 files, 34 tests passed.
-- Broad technical-configuration app/lib suite: 121 files, 1006 tests passed.
+- Broad technical-configuration app/lib suite: 121 files, 1007 tests passed.
 - The two stale Issue #903 phase gates reproduce separately: 2 failed, 18 passed. P5D
   does not modify those tests, migrations, RPC activation, or OpenSpec phase history.
 - React Doctor: 100/100, no findings.

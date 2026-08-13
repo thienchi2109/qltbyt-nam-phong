@@ -38,7 +38,7 @@ function formatStatusCounts(aggregate: StructuralAggregate) {
 function formatAggregate(aggregate: StructuralAggregate) {
   return [
     TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[aggregate.status],
-    `${aggregate.descendant_count} tiêu chí`,
+    aggregate.descendant_count > 0 ? `${aggregate.descendant_count} tiêu chí` : "",
     formatStatusCounts(aggregate),
   ]
     .filter(Boolean)
