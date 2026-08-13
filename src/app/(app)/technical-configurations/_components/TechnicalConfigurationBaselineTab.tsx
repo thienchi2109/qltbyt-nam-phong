@@ -1,17 +1,19 @@
 import * as React from "react"
 
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
-import { useTechnicalConfigurationBaselineImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImport"
+import { useTechnicalConfigurationBaselineImportWorkflows } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImportWorkflows"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
+import { getTechnicalConfigurationBaselineLockBlockedReason } from "@/app/(app)/technical-configurations/TechnicalConfigurationBaselineLockReason"
 import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
-import { TechnicalConfigurationBaselineImportDialog } from "./TechnicalConfigurationBaselineImportDialog"
+import { TechnicalConfigurationBaselineProductionSurfaces } from "./TechnicalConfigurationBaselineProductionSurfaces"
+import { TechnicalConfigurationBaselineVersionControls } from "./TechnicalConfigurationBaselineVersionControls"
 import { TechnicalConfigurationLockDialog } from "./TechnicalConfigurationLockDialog"
 import {
   TechnicalConfigurationBaselineLoadingState,
@@ -19,7 +21,6 @@ import {
   TechnicalConfigurationBaselineMissingState,
   TechnicalConfigurationBaselineQueryError,
 } from "./TechnicalConfigurationBaselineTabStates"
-import { TechnicalConfigurationVersionBar } from "./TechnicalConfigurationVersionBar"
 
 type TechnicalConfigurationBaselineTabProps = {
   dossier: TechnicalConfigurationDossierWire
@@ -48,8 +49,12 @@ export function TechnicalConfigurationBaselineTab({
   })
   const draft = baseline.editorDraft
   const selectedVersion = baseline.selectedVersion
-  const isImportBlocked = baseline.isDirty || bulkSessions.hasPendingInput
-  const baselineImport = useTechnicalConfigurationBaselineImport({
+  const isImportBlocked =
+    baseline.isDirty ||
+    baseline.isConflict ||
+    baseline.isLifecycleBusy ||
+    bulkSessions.hasPendingInput
+  const imports = useTechnicalConfigurationBaselineImportWorkflows({
     dossierId: dossier.id,
     selectedVersion,
     isBlocked: isImportBlocked,
@@ -61,41 +66,15 @@ export function TechnicalConfigurationBaselineTab({
     () => (draft ? validateTechnicalConfigurationBaselineEditorDraft(draft) : baseline.validation),
     [baseline.validation, draft]
   )
-  const lockBlockedReason = React.useMemo(() => {
-    if (!draft || selectedVersion?.status !== "draft") return null
-    if (baseline.isConflict) return "Tải lại dữ liệu từ máy chủ trước khi khóa phiên bản."
-    if (baseline.isDirty) return "Lưu thay đổi trước khi khóa phiên bản."
-    if (bulkSessions.hasPendingInput) return "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi khóa."
-    if (baselineImport.hasUnresolvedState) {
-      return "Hoàn tất hoặc hủy nhập Excel trước khi khóa phiên bản."
-    }
-    if (
-      Object.keys(summaryValidation.groupErrors).length > 0 ||
-      Object.keys(summaryValidation.subgroupErrors ?? {}).length > 0 ||
-      Object.keys(summaryValidation.criterionErrors).length > 0
-    ) {
-      return "Sửa các lỗi nội dung trước khi khóa phiên bản."
-    }
-    if (draft.groups.length < 1) return "Cần ít nhất một nhóm trước khi khóa phiên bản."
-    if (
-      !draft.groups.some(
-        (group) =>
-          group.criteria.length > 0 ||
-          group.subgroups.some((subgroup) => subgroup.criteria.length > 0)
-      )
-    ) {
-      return "Cần ít nhất một tiêu chí có nội dung trước khi khóa phiên bản."
-    }
-    return null
-  }, [
-    baseline.isConflict,
-    baseline.isDirty,
-    baselineImport.hasUnresolvedState,
-    bulkSessions.hasPendingInput,
+  const lockBlockedReason = getTechnicalConfigurationBaselineLockBlockedReason({
     draft,
-    selectedVersion?.status,
-    summaryValidation,
-  ])
+    isSelectedDraft: selectedVersion?.status === "draft",
+    isConflict: baseline.isConflict,
+    isDirty: baseline.isDirty,
+    hasPendingBulkInput: bulkSessions.hasPendingInput,
+    hasUnresolvedImportState,
+    validation: summaryValidation,
+  })
   const inlineEditor = useTechnicalConfigurationInlineEditor({
     draft,
     validation: summaryValidation,
@@ -104,7 +83,7 @@ export function TechnicalConfigurationBaselineTab({
     onEditorChange: baseline.onEditorChange,
   })
   const isUnsafeToLeave =
-    baseline.isDirty || bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState
+    baseline.isDirty || bulkSessions.hasPendingInput || hasUnresolvedImportState
   const reportWorkspaceState = React.useCallback(
     (dirty: boolean, navigationBlocked: boolean) => {
       onDirtyChange(dirty)
@@ -113,9 +92,9 @@ export function TechnicalConfigurationBaselineTab({
     [onDirtyChange, onNavigationBlockedChange]
   )
   React.useEffect(() => {
-    reportWorkspaceState(isUnsafeToLeave, baselineImport.isApplying)
+    reportWorkspaceState(isUnsafeToLeave, imports.isApplying)
     return () => reportWorkspaceState(false, false)
-  }, [baselineImport.isApplying, isUnsafeToLeave, reportWorkspaceState])
+  }, [imports.isApplying, isUnsafeToLeave, reportWorkspaceState])
 
   useTechnicalConfigurationBeforeUnloadGuard(isUnsafeToLeave)
 
@@ -132,7 +111,7 @@ export function TechnicalConfigurationBaselineTab({
   }
 
   const handleReloadFromServer = () => {
-    if (bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState) return
+    if (bulkSessions.hasPendingInput || hasUnresolvedImportState) return
     if (selectedVersion?.status === "locked") {
       void baseline.onRefreshVersions().catch(() => undefined)
       return
@@ -153,7 +132,7 @@ export function TechnicalConfigurationBaselineTab({
 
     const selectVersion = () => {
       bulkSessions.clearAll()
-      baselineImport.reset()
+      imports.reset()
       baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
       inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
     }
@@ -215,64 +194,66 @@ export function TechnicalConfigurationBaselineTab({
       className="flex min-h-0 flex-1 flex-col gap-3"
     >
       <div className="shrink-0">
-        {isFocusMode ? (
-          <div
-            role="region"
-            aria-label="Ngữ cảnh cấu hình đang chỉnh sửa"
-            className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2 text-sm"
-          >
-            <strong className="truncate font-semibold">{dossier.name}</strong>
-            <span className="text-muted-foreground">
-              Phiên bản {selectedVersion.version_number} ·{" "}
-              {selectedVersion.status === "locked" ? "Đã khóa" : "Bản nháp"}
-            </span>
-          </div>
-        ) : (
-          <TechnicalConfigurationVersionBar
-            versions={baseline.versions}
-            selectedVersion={selectedVersion}
-            lockBlockedReason={lockBlockedReason}
-            status={{
-              hasDraft: baseline.hasDraft,
-              isCreating: baseline.isCreating,
-              isLocking: baseline.isLocking,
-              isCopying: baseline.isCopying,
-              isLoadingMoreVersions: baseline.isLoadingMoreVersions,
-              hasLoadMoreError: baseline.hasLoadMoreError,
-              isNavigationDisabled: baseline.isLifecycleBusy,
-              hasMoreVersions: baseline.hasMoreVersions,
-              isDownloadingTemplate: baselineImport.isDownloading,
-              isImportBusy: baselineImport.isPreviewing || baselineImport.isApplying,
-              isImportBlocked,
-            }}
-            onSelectVersion={handleSelectVersion}
-            onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
-            onRequestLock={() => setIsLockDialogOpen(true)}
-            onCreateBlank={baseline.onCreate}
-            onCopy={() => void handleCopy()}
-            onDownloadTemplate={() => void baselineImport.downloadTemplate()}
-            onRequestImport={baselineImport.openDialog}
-          />
-        )}
+        <TechnicalConfigurationBaselineVersionControls
+          dossierName={dossier.name}
+          isFocusMode={isFocusMode}
+          versions={baseline.versions}
+          selectedVersion={selectedVersion}
+          lockBlockedReason={lockBlockedReason}
+          status={{
+            hasDraft: baseline.hasDraft,
+            isCreating: baseline.isCreating,
+            isLocking: baseline.isLocking,
+            isCopying: baseline.isCopying,
+            isLoadingMoreVersions: baseline.isLoadingMoreVersions,
+            hasLoadMoreError: baseline.hasLoadMoreError,
+            isNavigationDisabled: baseline.isLifecycleBusy,
+            hasMoreVersions: baseline.hasMoreVersions,
+            isDownloadingTemplate: imports.legacyImport.isDownloading,
+            isImportBusy: imports.legacyImport.isPreviewing || imports.legacyImport.isApplying,
+            isImportBlocked,
+          }}
+          onSelectVersion={handleSelectVersion}
+          onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
+          onRequestLock={() => setIsLockDialogOpen(true)}
+          onCreateBlank={baseline.onCreate}
+          onCopy={() => void handleCopy()}
+          onDownloadTemplate={() => void imports.legacyImport.downloadTemplate()}
+          onRequestImport={imports.openLegacyImport}
+        />
       </div>
+
+      <TechnicalConfigurationBaselineProductionSurfaces
+        isFocusMode={isFocusMode}
+        version={imports.decodedVersion}
+        dirty={baseline.isDirty}
+        conflict={baseline.isConflict}
+        disabled={baseline.isLifecycleBusy || bulkSessions.hasPendingInput}
+        disabledMessage={
+          bulkSessions.hasPendingInput
+            ? "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
+            : null
+        }
+        legacyImport={imports.legacyImport}
+        hierarchyImport={imports.hierarchyImport}
+        onRequestHierarchyImport={imports.openHierarchyImport}
+      />
 
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}
         isReloading={baseline.isReloading}
-        isReloadBlocked={bulkSessions.hasPendingInput || baselineImport.hasUnresolvedState}
+        isReloadBlocked={bulkSessions.hasPendingInput || hasUnresolvedImportState}
         pendingInputDescriptionId={
           bulkSessions.hasPendingInput ? "technical-configuration-pending-bulk-status" : undefined
         }
         saveError={
-          baselineImport.operationError ??
+          imports.operationError ??
           baseline.createError ??
           baseline.saveError ??
           baseline.lifecycleError
         }
         onReload={handleReloadFromServer}
       />
-
-      <TechnicalConfigurationBaselineImportDialog workflow={baselineImport} />
 
       {selectedVersion.status === "locked" ? (
         <TechnicalConfigurationBaselineLockedState version={selectedVersion} />
@@ -310,6 +291,7 @@ export function TechnicalConfigurationBaselineTab({
           onBulkAccept={inlineEditor.acceptBulk}
           onSave={baseline.onSave}
           onToggleFocusMode={onToggleFocusMode}
+          hierarchyAuthoring={inlineEditor.hierarchyAuthoring}
         />
       ) : null}
 
@@ -322,7 +304,6 @@ export function TechnicalConfigurationBaselineTab({
           onConfirm={() => void handleConfirmLock()}
         />
       ) : null}
-
       {discardConfirmationDialog}
     </div>
   )

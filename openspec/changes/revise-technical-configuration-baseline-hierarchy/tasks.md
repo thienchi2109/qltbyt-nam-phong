@@ -415,12 +415,16 @@ Depends on: P6A.
 Deploy boundary: UI-only activation mounts both XLSX v2 download/import and subgroup
 authoring after the server activation is already deployed.
 
-- [ ] P6B.1 Mount `Tải cấu hình hiện tại`, `Tải mẫu trống`, XLSX v2 import, and subgroup
+- [x] P6B.1 Mount `Tải cấu hình hiện tại`, `Tải mẫu trống`, XLSX v2 import, and subgroup
       authoring controls in the production baseline screen.
 - [ ] P6B.2 Browser-test the complete production route with direct-only, subgroup-only,
       and mixed sections plus failure rollback and stale-revision recovery.
-- [ ] P6B.3 Verify the previous legacy workbook import path remains available during
+- [x] P6B.3 Verify the previous legacy workbook import path remains available during
       the compatibility window.
+
+Browser execution note (2026-08-13): P6B.2 remains incomplete because browser testing
+was explicitly skipped due to unavailable production credentials. Production component
+integration coverage and the complete technical-configuration regression suite passed.
 
 ## Phase P6C - Authorized Live Acceptance And Closeout
 

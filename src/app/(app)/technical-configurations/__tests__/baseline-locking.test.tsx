@@ -246,7 +246,7 @@ describe("technical configuration baseline locking and history", () => {
     expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Tải thêm phiên bản" })).toBeDisabled()
 
-    pending.resolve({ data: groupMutation(5, "Yêu cầu kỹ thuật chung") })
+    pending.resolve({ data: groupMutation(5, "Yêu cầu kỹ thuật chung", draft.id) })
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeEnabled()
     )

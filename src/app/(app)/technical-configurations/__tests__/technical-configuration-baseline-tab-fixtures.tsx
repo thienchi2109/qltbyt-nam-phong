@@ -247,11 +247,12 @@ export function mockVersions(versions: TechnicalConfigurationBaselineDraftWire[]
 
 export function groupMutation(
   revision: number,
-  name: string
+  name: string,
+  baselineVersionId = "draft-1"
 ): TechnicalConfigurationBaselineGroupMutationWire {
   return {
     id: "group-1",
-    baseline_version_id: "draft-1",
+    baseline_version_id: baselineVersionId,
     name,
     sort_order: 1,
     created_at: timestamp,

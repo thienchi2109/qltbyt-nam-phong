@@ -298,11 +298,14 @@ describe("technical configuration baseline download actions", () => {
     expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
   })
 
-  it("keeps both new actions unreachable on the production baseline screen", async () => {
+  it("mounts both XLSX v2 actions on the production baseline screen", async () => {
     renderTab()
 
     expect(await screen.findByRole("button", { name: "Tải template Excel" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Tải cấu hình hiện tại" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
+    expect(screen.getByRole("group", { name: "Công cụ cấu hình phân cấp" })).toHaveClass(
+      "flex-wrap"
+    )
+    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
   })
 })
