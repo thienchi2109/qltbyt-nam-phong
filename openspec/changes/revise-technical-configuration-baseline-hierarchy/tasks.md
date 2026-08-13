@@ -380,18 +380,33 @@ Depends on: P3D, P4C, P5B, P5C, P5D.
 Deploy boundary: subgroup mutation RPCs and XLSX v2 apply become callable only after
 all readers are hierarchy-aware; production UI controls remain unmounted.
 
-- [ ] P6A.1 Run strict OpenSpec validation, formatting, `verify:no-explicit-any`,
+- [x] P6A.1 Run strict OpenSpec validation, formatting, `verify:no-explicit-any`,
       `verify:dedupe`, typecheck, focused tests, full technical-configuration regressions,
       and React Doctor.
 - [ ] P6A.2 Browser-test both downloads, round-trip import, invalid hierarchy,
       destructive replacement, hierarchy authoring, aggregate evaluation, comparison, and
       result export while activation remains off.
-- [ ] P6A.3 Exercise representative small, example-sized, and safety-bound XLSX files
+- [x] P6A.3 Exercise representative small, example-sized, and safety-bound XLSX files
       without hard-coded business row counts.
-- [ ] P6A.4 After explicit authorization, grant/allowlist subgroup mutations and enable
+- [x] P6A.4 After explicit authorization, grant/allowlist subgroup mutations and enable
       XLSX v2 apply, then prove no production reader can observe unsupported hierarchy.
 - [ ] P6A.5 Verify accessibility, narrow/wide layouts, long Vietnamese text, console
       errors, and non-overlapping controls.
+
+Browser execution note (2026-08-13): P6A.2 and the browser-dependent portions of P6A.5
+were explicitly skipped by user instruction. Production-isolation component tests still
+prove the two XLSX v2 downloads and hierarchy import remain unmounted.
+
+P6A.4 status: complete. Local migration `20260813105912` was applied through Supabase
+MCP as live migration `20260813132516`; the P6A activation gate and both pending P5C
+rollback-only gates passed. Live inspection confirmed authenticated-only execution for
+the public apply wrapper and seven hierarchy authoring RPCs, no direct execution for the
+internal apply worker, hardened search paths, and reviewed advisor output. The activation
+gate also exercised all seven authoring RPCs as database role `authenticated`: missing
+claims and non-global claims returned `42501`, while raw `admin` claims reached the
+target `PT404` guard. The activation-related authenticated `SECURITY DEFINER` warnings
+are expected for guarded RPCs; the remaining notices are existing baseline items outside
+P6A scope.
 
 ## Phase P6B - Production UI Activation
 

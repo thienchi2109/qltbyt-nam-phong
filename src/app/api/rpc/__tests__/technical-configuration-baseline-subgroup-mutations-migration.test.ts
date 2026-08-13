@@ -241,7 +241,7 @@ describe("technical configuration baseline P1E hierarchy mutation migration", ()
       }
     })
 
-    it("keeps every new contract unavailable until the P6A activation leaf", () => {
+    it("keeps the P1E migration ungranted and registers every contract for P6A activation", () => {
       const allowlistSource = readFileSync(ALLOWLIST_PATH, "utf8")
 
       for (const [name, signature] of NEW_RPC_SIGNATURES) {
@@ -256,7 +256,7 @@ describe("technical configuration baseline P1E hierarchy mutation migration", ()
         expect(p1eMigrationSource).not.toContain(
           `GRANT EXECUTE ON FUNCTION public.${name}(${sqlSignature})`
         )
-        expect(allowlistSource).not.toContain(name)
+        expect(allowlistSource).toContain(name)
       }
     })
 
@@ -283,13 +283,27 @@ describe("technical configuration baseline P1E hierarchy mutation migration", ()
       expect(phaseGateSource).toContain("SET CONSTRAINTS ALL IMMEDIATE;")
     })
 
-    it("keeps completed hierarchy phases aligned without advancing P2B", () => {
+    it("keeps completed hierarchy phases aligned through P6A verification", () => {
       const tasksSource = readFileSync(TASKS_PATH, "utf8")
 
-      for (const task of ["P1E.1", "P1E.2", "P1E.3", "P1E.4", "P2A.1", "P2A.2", "P2A.3", "P2A.4"]) {
+      for (const task of [
+        "P1E.1",
+        "P1E.2",
+        "P1E.3",
+        "P1E.4",
+        "P2A.1",
+        "P2A.2",
+        "P2A.3",
+        "P2A.4",
+        "P2B.1",
+        "P2B.2",
+        "P2B.3",
+        "P2B.4",
+        "P2B.5",
+        "P6A.1",
+      ]) {
         expect(tasksSource).toContain(`- [x] ${task}`)
       }
-      expect(tasksSource).toContain("- [ ] P2B.1")
     })
   })
 })
