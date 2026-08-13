@@ -238,7 +238,10 @@ Context Mode, Code Review Graph, GitNexus, OpenSpec.
     `Tất cả 4 tiêu chí` after reusing the canonical hierarchy flatten helper;
   - `evaluation-core-composition` failed when P5D imported pure hierarchy logic from the
     evaluation component directory, then passed after moving the implementation to the
-    feature root and retaining a compatibility re-export.
+    feature root and retaining a compatibility re-export;
+  - SonarCloud reported `typescript:S3776` on the hierarchy candidate collector; direct
+    and subgroup ownership collection were extracted into one-pass helpers, then the
+    hierarchy/export and broad suites plus React Doctor were rerun to GREEN.
 - Focused P5D: 11 files, 69 tests passed.
 - P5A aggregate: 2 files, 27 tests passed.
 - P5C hierarchy/progress/workspace: 9 files, 63 tests passed.
@@ -250,7 +253,7 @@ Context Mode, Code Review Graph, GitNexus, OpenSpec.
 - OpenSpec strict: valid.
 - Code Review Graph and reindexed GitNexus reviewed the final diff; `AGENTS.md` and
   `CLAUDE.md` were restored after each GitNexus reindex.
-- Independent final review: zero actionable findings.
+- Independent final review, including the Sonar follow-up: zero actionable findings.
 - Scope audit: no comparison files, SQL, migrations, live DB writes, or production
   mutation paths changed.
 - Pull request: #907 targets `main`; no merge/land was performed in this session.

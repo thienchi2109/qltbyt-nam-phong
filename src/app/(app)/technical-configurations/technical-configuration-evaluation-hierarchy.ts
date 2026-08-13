@@ -122,26 +122,42 @@ function toCriterion(
   }
 }
 
+function collectDirectCandidates(
+  group: TechnicalConfigurationBaselineGroupWire
+): HierarchyLeafCandidate[] {
+  const candidates: HierarchyLeafCandidate[] = []
+
+  for (const criterion of group.criteria) {
+    if (criterion.group_id !== group.id || criterion.subgroup_id != null) continue
+    candidates.push({ group, criterion })
+  }
+
+  return candidates
+}
+
+function collectSubgroupCandidates(
+  group: TechnicalConfigurationBaselineGroupWire
+): HierarchyLeafCandidate[] {
+  const candidates: HierarchyLeafCandidate[] = []
+
+  for (const subgroup of group.subgroups ?? []) {
+    if (subgroup.group_id !== group.id) continue
+    for (const criterion of subgroup.criteria) {
+      if (criterion.group_id !== group.id || criterion.subgroup_id !== subgroup.id) continue
+      candidates.push({ group, subgroup, criterion })
+    }
+  }
+
+  return candidates
+}
+
 function collectCandidates(
   groups: readonly TechnicalConfigurationBaselineGroupWire[]
 ): HierarchyLeafCandidate[] {
   const candidates: HierarchyLeafCandidate[] = []
 
   for (const group of groups) {
-    for (const criterion of group.criteria) {
-      if (criterion.group_id !== group.id || criterion.subgroup_id != null) continue
-      candidates.push({ group, criterion })
-    }
-
-    for (const subgroup of group.subgroups ?? []) {
-      if (subgroup.group_id !== group.id) continue
-      for (const criterion of subgroup.criteria) {
-        if (criterion.group_id !== group.id || criterion.subgroup_id !== subgroup.id) {
-          continue
-        }
-        candidates.push({ group, subgroup, criterion })
-      }
-    }
+    candidates.push(...collectDirectCandidates(group), ...collectSubgroupCandidates(group))
   }
 
   return candidates
