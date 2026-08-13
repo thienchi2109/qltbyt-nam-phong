@@ -7,6 +7,7 @@ import {
   ASSESSMENT_COLLECTION_PAGE_SIZE,
   collectTechnicalConfigurationAssessments,
   loadKnownAbsentCompleteAssessments,
+  selectNewestCompleteAssessmentSnapshot,
   type TechnicalConfigurationCompleteAssessmentMap,
 } from "./TechnicalConfigurationAssessmentCompleteCache"
 import { useTechnicalConfigurationOptionResponsesQuery } from "./useTechnicalConfigurationOptionResponsesQuery"
@@ -179,6 +180,11 @@ export function useTechnicalConfigurationAssessments(
     staleTime: 30_000,
     retry: false,
     refetchOnWindowFocus: false,
+    structuralSharing: (current, incoming) =>
+      selectNewestCompleteAssessmentSnapshot(
+        current as TechnicalConfigurationCompleteAssessmentMap | undefined,
+        incoming as TechnicalConfigurationCompleteAssessmentMap
+      ),
   })
   const upsertAssessment = useMutation<
     TechnicalConfigurationAssessmentSaveResult,
@@ -221,14 +227,13 @@ export function useTechnicalConfigurationAssessments(
       })
 
       if (knownAbsentSnapshot) {
-        void knownAbsentSnapshot
-          .then((isAuthoritative) => {
-            if (isAuthoritative) {
-              adoptCompleteAssessment(queryClient, comparisonSet.id, response.data)
-            }
-            return queryClient.invalidateQueries({
-              queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
-            })
+        const isAuthoritative = await knownAbsentSnapshot
+        if (isAuthoritative) {
+          adoptCompleteAssessment(queryClient, comparisonSet.id, response.data)
+        }
+        await queryClient
+          .invalidateQueries({
+            queryKey: technicalConfigurationAssessmentsQueryKeyPrefix(comparisonSet.id),
           })
           .catch(() => undefined)
       } else {

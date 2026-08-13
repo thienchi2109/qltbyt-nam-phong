@@ -245,6 +245,21 @@ describe("P5C evaluation hierarchy navigator presentation", () => {
     expect(result.current.hasNoMoreMatches).toBe(false)
   })
 
+  it("keeps the canonical fallback criterion stable across unrelated rerenders", () => {
+    const { result, rerender } = renderNavigator()
+
+    act(() => {
+      result.current.changeCriterion("criterion-2", (commit) => commit())
+    })
+    criteriaMocks.data = [entries[0]]
+    rerender()
+    const fallbackCriterion = result.current.currentCriterion
+
+    expect(fallbackCriterion?.criterion.id).toBe("criterion-2")
+    rerender()
+    expect(result.current.currentCriterion).toBe(fallbackCriterion)
+  })
+
   it("keeps legacy direct-only rows unchanged", () => {
     const { result } = renderNavigator(createBaselineGroups())
 

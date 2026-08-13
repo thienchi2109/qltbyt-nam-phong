@@ -17,6 +17,28 @@ export type TechnicalConfigurationCompleteAssessmentMap = Readonly<
   Record<string, TechnicalConfigurationAssessmentWire>
 >
 
+/** Preserves assessments that are newer than an incoming complete snapshot. */
+export function selectNewestCompleteAssessmentSnapshot(
+  current: TechnicalConfigurationCompleteAssessmentMap | undefined,
+  incoming: TechnicalConfigurationCompleteAssessmentMap
+): TechnicalConfigurationCompleteAssessmentMap {
+  if (current === undefined) return incoming
+
+  return Object.values(current).reduce<TechnicalConfigurationCompleteAssessmentMap>(
+    (merged, assessment) => {
+      const incomingAssessment = incoming[assessment.criterion_id]
+      if (!incomingAssessment || assessment.revision > incomingAssessment.revision) {
+        return {
+          ...merged,
+          [assessment.criterion_id]: assessment,
+        }
+      }
+      return merged
+    },
+    incoming
+  )
+}
+
 /** Collects a stable complete assessment snapshot keyed by criterion ID. */
 export async function collectTechnicalConfigurationAssessments(
   comparisonSetId: string,
@@ -59,13 +81,16 @@ export function adoptCompleteAssessment(
   ] as const
   queryClient.setQueryData<TechnicalConfigurationCompleteAssessmentMap>(
     completeQueryKey,
-    (current) =>
-      current !== undefined
-        ? {
-            ...current,
-            [assessment.criterion_id]: assessment,
-          }
-        : undefined
+    (current) => {
+      if (current === undefined) return undefined
+      const cachedAssessment = current[assessment.criterion_id]
+      if (cachedAssessment && cachedAssessment.revision > assessment.revision) return current
+
+      return {
+        ...current,
+        [assessment.criterion_id]: assessment,
+      }
+    }
   )
 }
 
@@ -81,11 +106,16 @@ export async function loadKnownAbsentCompleteAssessments(
   if (queryClient.getQueryData(completeQueryKey) !== undefined) return true
 
   try {
-    await queryClient.fetchQuery({
+    await queryClient.fetchQuery<TechnicalConfigurationCompleteAssessmentMap>({
       queryKey: completeQueryKey,
       queryFn: ({ signal }) => collectTechnicalConfigurationAssessments(comparisonSetId, signal),
       staleTime: 30_000,
       retry: false,
+      structuralSharing: (current, incoming) =>
+        selectNewestCompleteAssessmentSnapshot(
+          current as TechnicalConfigurationCompleteAssessmentMap | undefined,
+          incoming as TechnicalConfigurationCompleteAssessmentMap
+        ),
     })
     return true
   } catch {

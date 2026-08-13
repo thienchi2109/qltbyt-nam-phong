@@ -152,7 +152,7 @@ describe("P5C authoritative assessment cache adoption", () => {
     })
   })
 
-  it("seeds a delayed known-absent snapshot before aggregate refresh without delaying save", async () => {
+  it("waits for a delayed known-absent snapshot before completing the save and refreshing aggregates", async () => {
     const listDeferred = createDeferred<typeof assessmentListResponse>()
     mocks.readComparisonSet.mockResolvedValue(null)
     mocks.getOrCreateComparisonSet.mockResolvedValue(comparisonSet)
@@ -181,24 +181,78 @@ describe("P5C authoritative assessment cache adoption", () => {
     const { result } = renderAssessmentsHook(queryClient)
 
     await waitFor(() => expect(result.current.comparisonSetQuery.isSuccess).toBe(true))
-    await expect(
-      act(async () => result.current.upsertAssessment.mutateAsync(assessmentUpsertInput))
-    ).resolves.toEqual({ comparisonSet, assessment: savedAssessment })
+    let saveSettled = false
+    let savePromise!: Promise<unknown>
+    await act(async () => {
+      savePromise = result.current.upsertAssessment
+        .mutateAsync(assessmentUpsertInput)
+        .finally(() => {
+          saveSettled = true
+        })
+      await Promise.resolve()
+    })
 
     expect(queryClient.getQueryData(completeQueryKey())).toBeUndefined()
     expect(assessmentInvalidationSnapshots).toEqual([])
+    expect(saveSettled).toBe(false)
 
-    listDeferred.resolve({ ...assessmentListResponse, data: [], total: 0, page_size: 100 })
+    await act(async () => {
+      listDeferred.resolve({ ...assessmentListResponse, data: [], total: 0, page_size: 100 })
+      await savePromise
+    })
 
-    await waitFor(() =>
-      expect(assessmentInvalidationSnapshots).toEqual([
-        {
-          [criterionId]: savedAssessment,
-        },
-      ])
-    )
+    expect(assessmentInvalidationSnapshots).toEqual([
+      {
+        [criterionId]: savedAssessment,
+      },
+    ])
     expect(queryClient.getQueryData(completeQueryKey())).toEqual({
       [criterionId]: savedAssessment,
+    })
+  })
+
+  it("does not replace a newer cached revision when an older known-absent save settles later", async () => {
+    const listDeferred = createDeferred<typeof assessmentListResponse>()
+    const upsertDeferred = createDeferred<{ data: typeof savedAssessment }>()
+    const newerAssessment = {
+      ...savedAssessment,
+      revision: savedAssessment.revision + 1,
+      notes: "newer save",
+    }
+    mocks.readComparisonSet.mockResolvedValue(null)
+    mocks.getOrCreateComparisonSet.mockResolvedValue(comparisonSet)
+    mocks.callRpc.mockImplementation((fn: string) => {
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.listAssessments) {
+        return listDeferred.promise
+      }
+      if (fn === ASSESSMENT_RPC_FUNCTIONS.upsertAssessment) {
+        return upsertDeferred.promise
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+    const queryClient = createAssessmentTestQueryClient()
+    pinAssessmentCache(queryClient)
+    vi.spyOn(queryClient, "invalidateQueries").mockResolvedValue()
+    const { result } = renderAssessmentsHook(queryClient)
+
+    await waitFor(() => expect(result.current.comparisonSetQuery.isSuccess).toBe(true))
+    let savePromise!: Promise<unknown>
+    await act(async () => {
+      savePromise = result.current.upsertAssessment.mutateAsync(assessmentUpsertInput)
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      queryClient.setQueryData(completeQueryKey(), {
+        [criterionId]: newerAssessment,
+      })
+      listDeferred.resolve({ ...assessmentListResponse, data: [], total: 0, page_size: 100 })
+      upsertDeferred.resolve({ data: savedAssessment })
+      await savePromise
+    })
+
+    expect(queryClient.getQueryData(completeQueryKey())).toEqual({
+      [criterionId]: newerAssessment,
     })
   })
 

@@ -20,9 +20,9 @@ const progress: TechnicalConfigurationEvaluationProgress = {
   evaluated: 4,
   statusCounts: {
     not_evaluated: 2,
-    not_applicable: 1,
+    not_applicable: 0,
     fails: 1,
-    unclear: 0,
+    unclear: 1,
     insufficient_evidence: 1,
     exceeds: 0,
     meets: 1,
@@ -124,8 +124,9 @@ describe("P12B1 technical configuration progress summary", () => {
 
     const overallCounts = within(summary).getByTestId("evaluation-progress-status-counts-overall")
     expect(within(overallCounts).getByText("Chưa đánh giá: 2")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Không áp dụng: 1")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Không áp dụng: 0")).toBeInTheDocument()
     expect(within(overallCounts).getByText("Không đạt: 1")).toBeInTheDocument()
+    expect(within(overallCounts).getByText("Chưa rõ: 1")).toBeInTheDocument()
     expect(within(overallCounts).getByText("Chưa đủ bằng chứng: 1")).toBeInTheDocument()
     expect(within(overallCounts).getByText("Đạt: 1")).toBeInTheDocument()
 

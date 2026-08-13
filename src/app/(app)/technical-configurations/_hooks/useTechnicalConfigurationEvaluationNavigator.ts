@@ -59,11 +59,15 @@ export function useTechnicalConfigurationEvaluationNavigator({
     requestedCriterionId ??
     projection.find((item) => item.canonicalPage === canonicalPage)?.criterion.id ??
     null
-  const currentCriterion = resolveTechnicalConfigurationEvaluationTargetCriterion(
-    projection,
-    baselineGroups,
-    criterionId,
-    pageSize
+  const currentCriterion = React.useMemo(
+    () =>
+      resolveTechnicalConfigurationEvaluationTargetCriterion(
+        projection,
+        baselineGroups,
+        criterionId,
+        pageSize
+      ),
+    [baselineGroups, criterionId, pageSize, projection]
   )
   const isCurrentCriterionFilteredOut =
     criterionId !== null &&

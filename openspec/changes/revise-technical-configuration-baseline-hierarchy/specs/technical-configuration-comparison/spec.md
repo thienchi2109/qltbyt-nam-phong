@@ -318,10 +318,6 @@ evaluation và result export.
 - **WHEN** P5C hierarchy/progress được triển khai
 - **THEN** comparison behavior và result-export contract không thay đổi
 - **AND** criterion assessment persistence không thay đổi
-- **AND** hai stale phase-gate tests
-  `technical-configuration-baseline-hierarchy-apply-migration.test.ts` và
-  `technical-configuration-baseline-subgroup-mutations-migration.test.ts` do Issue
-  #903 theo dõi không thuộc scope P5C
 
 #### Scenario: Preserve hierarchy in final export
 

@@ -74,18 +74,25 @@ export function TechnicalConfigurationEvaluationNavigatorPane({
           disabled={disabled}
         />
       )}
-      {!listOnly && isLoading ? (
-        <div className="flex min-h-24 items-center justify-center gap-2 text-sm text-muted-foreground">
+      {isLoading ? (
+        <div
+          className="flex min-h-24 items-center justify-center gap-2 text-sm text-muted-foreground"
+          role="status"
+        >
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Đang lọc tiêu chí...
+          {listOnly ? "Đang tải tiêu chí đánh giá..." : "Đang lọc tiêu chí..."}
         </div>
       ) : null}
-      {!listOnly && isError ? (
+      {isError ? (
         <TechnicalConfigurationEvaluationLoadError
-          title="Không thể lọc tiêu chí đánh giá"
+          title={listOnly ? "Không thể tải tiêu chí đánh giá" : "Không thể lọc tiêu chí đánh giá"}
           error={error}
-          fallback="Không thể tải danh sách tiêu chí đã lọc."
-          onRetry={onRetry}
+          fallback={
+            listOnly
+              ? "Không thể tải danh sách tiêu chí đánh giá."
+              : "Không thể tải danh sách tiêu chí đã lọc."
+          }
+          onRetry={listOnly ? undefined : onRetry}
         />
       ) : null}
       {!listOnly && !isLoading && !isError && total === 0 ? (

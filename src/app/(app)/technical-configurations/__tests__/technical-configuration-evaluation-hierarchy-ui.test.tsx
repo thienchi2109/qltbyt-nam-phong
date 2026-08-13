@@ -185,6 +185,7 @@ describe("P5C evaluation hierarchy presentation", () => {
     const sectionCounts = within(sectionRow).getByTestId(
       "evaluation-hierarchy-section-status-counts-group-main"
     )
+    expect(sectionRow.querySelector("div")).toBeNull()
     expect(within(sectionRow).getByText("Không đạt", { exact: true })).toBeInTheDocument()
     expect(within(sectionCounts).getByText("Không đạt: 1")).toBeInTheDocument()
     expect(within(sectionCounts).getByText("Đạt: 1")).toBeInTheDocument()
@@ -194,6 +195,7 @@ describe("P5C evaluation hierarchy presentation", () => {
     const subgroupCounts = within(subgroupRow).getByTestId(
       "evaluation-hierarchy-subgroup-status-counts-subgroup-performance"
     )
+    expect(subgroupRow.querySelector("div")).toBeNull()
     expect(within(subgroupRow).getByText("Đạt", { exact: true })).toBeInTheDocument()
     expect(within(subgroupCounts).getByText("Đạt: 1")).toBeInTheDocument()
     expect(within(subgroupCounts).getByText("Không đạt: 0")).toBeInTheDocument()

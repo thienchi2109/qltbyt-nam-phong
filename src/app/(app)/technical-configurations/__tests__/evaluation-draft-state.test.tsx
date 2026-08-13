@@ -229,7 +229,7 @@ describe("P12A1 evaluation draft state", () => {
     expect(onDossierRevisionChange).not.toHaveBeenCalled()
   })
 
-  it("keeps the first-save draft while the newly created comparison set starts loading", async () => {
+  it("keeps the first-save draft while the newly created comparison-set snapshot loads", async () => {
     const onDossierRevisionChange = vi.fn()
     let resolveAssessmentList!: (value: TechnicalConfigurationAssessmentListWireResponse) => void
     const pendingAssessmentList = new Promise<TechnicalConfigurationAssessmentListWireResponse>(
@@ -260,8 +260,32 @@ describe("P12A1 evaluation draft state", () => {
       result.current.setNotes("Đánh giá lần đầu.")
     })
 
+    let savePromise!: Promise<void>
     await act(async () => {
-      await result.current.save()
+      savePromise = result.current.save()
+      await Promise.resolve()
+    })
+
+    expect(result.current.draft).toMatchObject({
+      criterionId,
+      technicalAxis: "exceeds",
+      evidenceAxis: "complete",
+      notes: "Đánh giá lần đầu.",
+      expectedAssessmentRevision: 0,
+      expectedDossierRevision: 6,
+      isDirty: true,
+    })
+    expect(result.current.isSaving).toBe(true)
+    expect(onDossierRevisionChange).toHaveBeenCalledWith(7)
+
+    await act(async () => {
+      resolveAssessmentList({
+        data: [savedAssessment],
+        total: 1,
+        page: 1,
+        page_size: 100,
+      })
+      await savePromise
     })
 
     expect(result.current.draft).toMatchObject({
@@ -291,16 +315,6 @@ describe("P12A1 evaluation draft state", () => {
       },
       { signal: undefined }
     )
-
-    await act(async () => {
-      resolveAssessmentList({
-        data: [savedAssessment],
-        total: 1,
-        page: 1,
-        page_size: 100,
-      })
-      await pendingAssessmentList
-    })
   })
 
   it("propagates the acquired comparison-set revision when assessment upsert fails", async () => {

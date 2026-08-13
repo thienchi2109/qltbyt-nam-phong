@@ -299,7 +299,7 @@ unchanged until their own leaves.
 
 Depends on: P1C, P5A, and the parent evaluation workflow being stable on `main`.
 
-Deploy boundary: P5C0 is a read-only RPC replacement that is safe before subgroup
+Deploy boundary: P5C.0 is a read-only RPC replacement that is safe before subgroup
 data or UI activation. The P5C UI leaf depends on that contract being represented
 locally and applied in each target environment as appropriate. Criterion assessment
 persistence, comparison, and result export remain unchanged.
@@ -331,7 +331,7 @@ persistence, comparison, and result export remain unchanged.
 - [x] P5C.5 Preserve authoritative complete-cache adoption before aggregate refresh:
       merge into a known-complete cache, seed a known-empty newly created comparison
       set, and never mark an unavailable or failed existing cache as authoritative from
-      one saved row. Keep filtered-navigation refresh failures fail-fast/actionable
+      one saved row. Keep filtered-navigation refresh failures fail fast and actionable
       without corrupting the aggregate.
 - [x] P5C.6 Add dedicated mixed-status, empty-aggregate, filtered navigation,
       collapse/auto-expand, dirty-cancel, save-next, cache-refetch-failure, legacy, and >100-criterion regressions. The large fixture MUST cross canonical boundaries
@@ -340,11 +340,10 @@ persistence, comparison, and result export remain unchanged.
 - [x] P5C.7 Run migration source-contract tests against the superseding migration,
       both new P5C executable phase gates, required repository gates, focused and broad
       regressions, and OpenSpec strict. Inspect `EXPLAIN` before adding any index,
-      enforce changed-file scope guards, repeat review to zero actionable findings, and
-      keep
-      `technical-configuration-baseline-hierarchy-apply-migration.test.ts` plus
-      `technical-configuration-baseline-subgroup-mutations-migration.test.ts`, the two
-      stale phase-gate tests tracked by Issue #903, outside P5C.
+      enforce changed-file scope guards, and repeat review to zero actionable findings.
+      Keep the two stale phase-gate tests tracked by Issue #903 outside P5C:
+      `technical-configuration-baseline-hierarchy-apply-migration.test.ts` and
+      `technical-configuration-baseline-subgroup-mutations-migration.test.ts`.
 
 P5C.7 status: complete. The migration was applied to the target environment, both
 rollback-only executable SQL phase gates passed, and post-gate verification found no

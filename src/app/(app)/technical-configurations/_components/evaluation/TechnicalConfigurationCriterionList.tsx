@@ -134,8 +134,10 @@ export function TechnicalConfigurationCriterionList({
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span className="break-words">{hierarchyRow.name}</span>
                     {progress ? (
-                      <Badge variant="outline">
-                        {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[progress.status]}
+                      <Badge asChild variant="outline">
+                        <span>
+                          {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[progress.status]}
+                        </span>
                       </Badge>
                     ) : null}
                   </span>
@@ -175,8 +177,10 @@ export function TechnicalConfigurationCriterionList({
                 <span className="flex flex-wrap items-center justify-between gap-2">
                   <span className="break-words">{hierarchyRow.name}</span>
                   {progress ? (
-                    <Badge variant="outline">
-                      {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[progress.status]}
+                    <Badge asChild variant="outline">
+                      <span>
+                        {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[progress.status]}
+                      </span>
                     </Badge>
                   ) : null}
                 </span>

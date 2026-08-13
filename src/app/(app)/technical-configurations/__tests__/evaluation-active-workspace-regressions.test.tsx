@@ -16,6 +16,15 @@ type MatrixState = ReturnType<
 >
 
 type ComparisonRequest = { optionIds: string[]; page: number }
+type NavigatorPaneProps = {
+  criteria: readonly unknown[]
+  progress: unknown
+  listOnly?: boolean
+  isLoading: boolean
+  isError: boolean
+  expandedRowIds?: ReadonlySet<string>
+  onExpandedRowIdsChange?: (rowIds: ReadonlySet<string>) => void
+}
 
 const mocks = vi.hoisted(() => {
   let comparisonRequests: ComparisonRequest[] = []
@@ -23,6 +32,12 @@ const mocks = vi.hoisted(() => {
   let panelResult: TechnicalConfigurationComparisonResult | undefined
   let isTransitionPending = false
   let isSaving = false
+  let isAssessmentLoading = false
+  let assessmentError: Error | null = null
+  let navigatorPaneProps: NavigatorPaneProps | null = null
+  const hierarchyRows = [{ kind: "section", id: "group-1", name: "Thông số chính" }]
+  const expandedRowIds = new Set(["group-1"])
+  const onExpandedRowIdsChange = vi.fn()
 
   return {
     recordComparisonRequest(request: ComparisonRequest) {
@@ -43,16 +58,41 @@ const mocks = vi.hoisted(() => {
     getIsSaving() {
       return isSaving
     },
+    getIsAssessmentLoading() {
+      return isAssessmentLoading
+    },
+    getAssessmentError() {
+      return assessmentError
+    },
+    getHierarchyRows() {
+      return hierarchyRows
+    },
+    getExpandedRowIds() {
+      return expandedRowIds
+    },
+    getOnExpandedRowIdsChange() {
+      return onExpandedRowIdsChange
+    },
+    recordNavigatorPaneProps(props: NavigatorPaneProps) {
+      navigatorPaneProps = props
+    },
+    getNavigatorPaneProps() {
+      return navigatorPaneProps
+    },
     setScenario(scenario: {
       page?: number
       panelResult?: TechnicalConfigurationComparisonResult
       isTransitionPending?: boolean
       isSaving?: boolean
+      isAssessmentLoading?: boolean
+      assessmentError?: Error | null
     }) {
       page = scenario.page ?? page
       if ("panelResult" in scenario) panelResult = scenario.panelResult
       isTransitionPending = scenario.isTransitionPending ?? isTransitionPending
       isSaving = scenario.isSaving ?? isSaving
+      isAssessmentLoading = scenario.isAssessmentLoading ?? isAssessmentLoading
+      if ("assessmentError" in scenario) assessmentError = scenario.assessmentError ?? null
     },
     reset() {
       comparisonRequests = []
@@ -60,6 +100,10 @@ const mocks = vi.hoisted(() => {
       panelResult = undefined
       isTransitionPending = false
       isSaving = false
+      isAssessmentLoading = false
+      assessmentError = null
+      navigatorPaneProps = null
+      onExpandedRowIdsChange.mockReset()
     },
   }
 })
@@ -92,6 +136,9 @@ vi.mock("../_hooks/useTechnicalConfigurationEvaluationNavigator", () => ({
     criterionId: mocks.getPage() === 1 ? "criterion-1" : "criterion-3",
     selectedOption: createOption("option-1", "Nhà cung cấp A · Model A"),
     projection: [],
+    hierarchyRows: mocks.getHierarchyRows(),
+    expandedRowIds: mocks.getExpandedRowIds(),
+    onExpandedRowIdsChange: mocks.getOnExpandedRowIdsChange(),
     statusFilter: "all",
     isTransitionPending: mocks.getIsTransitionPending(),
     criteriaQuery: {
@@ -103,12 +150,17 @@ vi.mock("../_hooks/useTechnicalConfigurationEvaluationNavigator", () => ({
     isCurrentCriterionFilteredOut: false,
     hasNoMoreMatches: false,
     isPanelOpen: true,
+    changeCriterion: vi.fn(),
   }),
 }))
 
 vi.mock("../_hooks/useTechnicalConfigurationEvaluationDraft", () => ({
   useTechnicalConfigurationEvaluationDraft: () => ({
-    assessmentQuery: { isLoading: false, isError: false, error: null },
+    assessmentQuery: {
+      isLoading: mocks.getIsAssessmentLoading(),
+      isError: mocks.getAssessmentError() !== null,
+      error: mocks.getAssessmentError(),
+    },
     comparisonSetQuery: { isLoading: false, isError: false, error: null },
     assessmentsByCriterionId: {},
     draft: null,
@@ -160,6 +212,12 @@ vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationMatrixToolbar
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationProgressSummary", () => ({
   TechnicalConfigurationProgressSummary: () => null,
+}))
+vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane", () => ({
+  TechnicalConfigurationEvaluationNavigatorPane: (props: NavigatorPaneProps) => {
+    mocks.recordNavigatorPaneProps(props)
+    return <div data-testid="navigator-pane-probe" />
+  },
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationResultExportControl", () => ({
   TechnicalConfigurationResultExportControl: () => null,
@@ -251,5 +309,43 @@ describe("technical configuration evaluation active workspace regressions", () =
     renderWorkspace("option-1")
 
     expect(screen.getByTestId("save-actions-probe")).toHaveAttribute("data-saving", "false")
+  })
+
+  it("passes page-local hierarchy rows and controlled expansion to the navigator pane", () => {
+    renderWorkspace("option-1")
+
+    const props = mocks.getNavigatorPaneProps()
+    expect(props).not.toBeNull()
+    expect(props?.criteria).toBe(mocks.getHierarchyRows())
+    expect(props?.progress).toBeDefined()
+    expect(props?.listOnly).toBe(true)
+    expect(props?.expandedRowIds).toBe(mocks.getExpandedRowIds())
+    expect(props?.onExpandedRowIdsChange).toBe(mocks.getOnExpandedRowIdsChange())
+  })
+
+  it.each([
+    {
+      label: "loading",
+      scenario: { isAssessmentLoading: true, assessmentError: null },
+      expectedLoading: true,
+      expectedError: false,
+    },
+    {
+      label: "error",
+      scenario: {
+        isAssessmentLoading: false,
+        assessmentError: new Error("assessment read failed"),
+      },
+      expectedLoading: false,
+      expectedError: true,
+    },
+  ])("routes assessment cache $label state into the hierarchy navigator", (state) => {
+    mocks.setScenario(state.scenario)
+    renderWorkspace("option-1")
+
+    expect(mocks.getNavigatorPaneProps()).toMatchObject({
+      isLoading: state.expectedLoading,
+      isError: state.expectedError,
+    })
   })
 })
