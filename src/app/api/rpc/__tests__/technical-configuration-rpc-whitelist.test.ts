@@ -3,9 +3,12 @@ import { describe, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
 
 import { ALLOWED_FUNCTIONS, SERVICE_ROLE_RPC_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
-import { TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS } from "@/app/(app)/technical-configurations/technical-configuration-baseline-hierarchy-rpcs"
 import { POST } from "@/app/api/rpc/[fn]/route"
-import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+import {
+  BASELINE_RPC_FUNCTION_NAMES,
+  TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPC_NAMES,
+  TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS,
+} from "@/lib/technical-configuration-baseline-rpcs"
 import {
   COMPARISON_READ_RPC_FUNCTION_NAMES,
   COMPARISON_READ_RPC_FUNCTIONS,
@@ -56,6 +59,7 @@ const P7A1_REFERENCE_RPC_FUNCTIONS = [
 
 const BASELINE_RPC_FUNCTIONS = [
   ...BASELINE_RPC_FUNCTION_NAMES,
+  ...TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPC_NAMES,
   ...BASELINE_DOCUMENT_RPC_FUNCTIONS,
 ] as const
 
@@ -111,7 +115,7 @@ describe("technical configuration baseline RPC whitelist", () => {
     ])
   })
 
-  it("allowlists exactly the existing baseline RPCs plus six P7B1 baseline names", () => {
+  it("allowlists exactly the activated baseline RPCs plus six P7B1 baseline names", () => {
     expect(
       [...ALLOWED_FUNCTIONS].filter((fn) => fn.startsWith("technical_configuration_baseline_"))
     ).toEqual(BASELINE_RPC_FUNCTIONS)
@@ -124,9 +128,9 @@ describe("technical configuration baseline RPC whitelist", () => {
     await expect(response.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
-  it("keeps P1E hierarchy authoring mutations dormant until P6A", () => {
+  it("allows P6A hierarchy authoring mutations through the authenticated proxy only", () => {
     for (const fn of Object.values(TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS)) {
-      expect(ALLOWED_FUNCTIONS.has(fn)).toBe(false)
+      expect(ALLOWED_FUNCTIONS.has(fn)).toBe(true)
       expect(SERVICE_ROLE_RPC_FUNCTIONS.has(fn)).toBe(false)
     }
   })

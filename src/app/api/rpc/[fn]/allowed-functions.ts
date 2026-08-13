@@ -1,5 +1,8 @@
 import { ASSESSMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-assessment-rpcs"
-import { BASELINE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-baseline-rpcs"
+import {
+  BASELINE_RPC_FUNCTION_NAMES,
+  TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPC_NAMES,
+} from "@/lib/technical-configuration-baseline-rpcs"
 import { COMPARISON_READ_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-comparison-rpcs"
 import { DOSSIER_DELETE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-dossier-rpcs"
 import { DOCUMENT_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-document-rpcs"
@@ -109,6 +112,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "technical_configuration_dossiers_archive",
   ...DOSSIER_DELETE_RPC_FUNCTION_NAMES,
   ...BASELINE_RPC_FUNCTION_NAMES,
+  ...TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPC_NAMES,
   ...REFERENCE_PRODUCT_RPC_FUNCTION_NAMES,
   ...DOCUMENT_RPC_FUNCTION_NAMES,
   ...SUPPLIER_RPC_FUNCTION_NAMES,

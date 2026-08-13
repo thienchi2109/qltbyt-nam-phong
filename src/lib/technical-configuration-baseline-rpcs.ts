@@ -22,3 +22,19 @@ export const BASELINE_RPC_FUNCTIONS = {
 
 /** Ordered baseline RPC names for allowlists and contract iteration. */
 export const BASELINE_RPC_FUNCTION_NAMES = Object.values(BASELINE_RPC_FUNCTIONS)
+
+/** Hierarchy authoring RPCs activated on the server in P6A. */
+export const TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS = {
+  createSubgroup: "technical_configuration_baseline_subgroup_create",
+  updateSubgroup: "technical_configuration_baseline_subgroup_update",
+  deleteSubgroup: "technical_configuration_baseline_subgroup_delete",
+  reorderSubgroups: "technical_configuration_baseline_subgroups_reorder",
+  createCriterion: "technical_configuration_baseline_hierarchy_criterion_create",
+  moveCriterion: "technical_configuration_baseline_hierarchy_criterion_move",
+  reorderCriteria: "technical_configuration_baseline_hierarchy_criteria_reorder",
+} as const
+
+/** Ordered hierarchy authoring RPC names for the production proxy allowlist. */
+export const TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPC_NAMES = Object.values(
+  TECHNICAL_CONFIGURATION_BASELINE_HIERARCHY_AUTHORING_RPCS
+)

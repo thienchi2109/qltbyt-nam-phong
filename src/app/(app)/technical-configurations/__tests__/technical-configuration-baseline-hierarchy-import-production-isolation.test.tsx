@@ -24,7 +24,10 @@ describe("technical configuration hierarchy import production isolation", () => 
     renderTab()
 
     expect(await screen.findByRole("button", { name: "Tải template Excel" })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Tải cấu hình hiện tại" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Nhập cấu hình phân cấp" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Thêm nhóm con/i })).not.toBeInTheDocument()
     expect(
       screen.queryByRole("dialog", { name: "Nhập cấu hình phân cấp từ Excel" })
     ).not.toBeInTheDocument()

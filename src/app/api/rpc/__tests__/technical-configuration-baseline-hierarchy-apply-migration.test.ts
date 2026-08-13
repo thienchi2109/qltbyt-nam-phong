@@ -198,7 +198,7 @@ describe("technical configuration baseline P2B hierarchy apply migration", () =>
     )
   })
 
-  it("locks internal/public privileges and registers only the guarded v2 RPC", () => {
+  it("locks historical P2B privileges while the dormant client path remains registered", () => {
     const migration = readSingleMigration(APPLY_SUFFIX).source
     const signature = "(UUID, JSONB, JSONB, BIGINT)"
 
@@ -216,7 +216,7 @@ describe("technical configuration baseline P2B hierarchy apply migration", () =>
     )
     expect(BASELINE_RPC_FUNCTIONS.applyImport).toBe(LEGACY_APPLY_FUNCTION)
     expect(BASELINE_RPC_FUNCTIONS.applyHierarchyImport).toBe(PUBLIC_APPLY_FUNCTION)
-    expect(readFileSync(BASELINE_HOOK_PATH, "utf8")).not.toContain("applyHierarchyImport")
+    expect(readFileSync(BASELINE_HOOK_PATH, "utf8")).toContain("applyHierarchyImport")
   })
 
   it("ships rollback-only functional and security phase gates for every P2B failure mode", () => {
