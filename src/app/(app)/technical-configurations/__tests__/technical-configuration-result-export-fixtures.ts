@@ -80,6 +80,38 @@ export const criterionAxisRows = CRITERION_IDS.map((criterionId, index) => ({
   criterion_order: index + 1,
 }))
 
+export const resultExportHierarchySnapshot = {
+  baselineRevision: manifestResponse.data.baseline_version.revision,
+  baselineGroups: [
+    {
+      id: GROUP_ID,
+      baseline_version_id: BASELINE_ID,
+      name: "Nhóm chung",
+      sort_order: 1,
+      created_at: "2026-08-01T02:03:04.000Z",
+      created_by: 1,
+      updated_at: "2026-08-01T02:03:04.000Z",
+      updated_by: 1,
+      criteria: CRITERION_IDS.map((criterionId, index) => ({
+        id: criterionId,
+        baseline_version_id: BASELINE_ID,
+        group_id: GROUP_ID,
+        subgroup_id: null,
+        criterion_code: `TC-${index + 1}`,
+        title: `Tiêu chí ${index + 1}`,
+        requirement_text: `Yêu cầu ${index + 1}`,
+        sort_order: index + 1,
+        source_criterion_id: null,
+        created_at: "2026-08-01T02:03:04.000Z",
+        created_by: 1,
+        updated_at: "2026-08-01T02:03:04.000Z",
+        updated_by: 1,
+      })),
+      subgroups: [],
+    },
+  ],
+} as const
+
 function createMatrixCell(criterionIndex: number, optionIndex: number) {
   return {
     group_id: GROUP_ID,
@@ -313,5 +345,30 @@ export function createManyPageFixture() {
       criterion_total: criterionIds.length,
     },
   }
-  return { optionIds, criterionIds, optionAxis, criterionAxis, rankings, matrix, manifest }
+  const hierarchySnapshot = {
+    ...resultExportHierarchySnapshot,
+    baselineGroups: [
+      {
+        ...resultExportHierarchySnapshot.baselineGroups[0],
+        criteria: criterionAxis.map((criterion) => ({
+          ...resultExportHierarchySnapshot.baselineGroups[0].criteria[0],
+          id: criterion.criterion_id,
+          criterion_code: criterion.criterion_code,
+          title: criterion.criterion_title,
+          requirement_text: criterion.requirement_text,
+          sort_order: criterion.criterion_order,
+        })),
+      },
+    ],
+  }
+  return {
+    optionIds,
+    criterionIds,
+    optionAxis,
+    criterionAxis,
+    rankings,
+    matrix,
+    manifest,
+    hierarchySnapshot,
+  }
 }

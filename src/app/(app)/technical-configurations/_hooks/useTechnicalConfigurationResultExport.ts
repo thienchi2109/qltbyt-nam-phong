@@ -8,6 +8,7 @@ import {
   type TechnicalConfigurationResultExportErrorKind,
 } from "../technical-configuration-result-export-decoders"
 import type { TechnicalConfigurationResultExportDialogRequest } from "../technical-configuration-result-export-state"
+import type { TechnicalConfigurationBaselineGroupWire } from "../baseline-types"
 import { downloadBlob } from "@/lib/excel-workbook"
 import {
   createTechnicalConfigurationResultWorkbookModel,
@@ -83,13 +84,17 @@ function createResultWorkbookFilename(
 export function useTechnicalConfigurationResultExport({
   dossierId,
   baselineVersionId,
+  baselineRevision,
+  baselineGroups,
   generatedBy,
 }: Readonly<{
   dossierId: string
   baselineVersionId: string
+  baselineRevision: number
+  baselineGroups: readonly TechnicalConfigurationBaselineGroupWire[]
   generatedBy: string
 }>) {
-  const identityKey = JSON.stringify([dossierId, baselineVersionId])
+  const identityKey = JSON.stringify([dossierId, baselineVersionId, baselineRevision])
   const [storedState, setStoredState] = React.useState<ResultExportState>(() =>
     idleState(identityKey)
   )
@@ -118,10 +123,13 @@ export function useTechnicalConfigurationResultExport({
       setStoredState({ identityKey, status: "loading", error: null })
 
       try {
-        const dataset = await collectTechnicalConfigurationResultExportDataset({
-          ...request,
-          signal: abortController.signal,
-        })
+        const dataset = await collectTechnicalConfigurationResultExportDataset(
+          {
+            ...request,
+            signal: abortController.signal,
+          },
+          { baselineRevision, baselineGroups }
+        )
         if (runIdRef.current !== runId || abortController.signal.aborted) return
 
         const generatedAt = new Date().toISOString()
@@ -158,7 +166,7 @@ export function useTechnicalConfigurationResultExport({
         }
       }
     },
-    [generatedBy, identityKey]
+    [baselineGroups, baselineRevision, generatedBy, identityKey]
   )
 
   const retry = React.useCallback(() => {

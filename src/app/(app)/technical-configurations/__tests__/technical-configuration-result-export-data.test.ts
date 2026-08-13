@@ -14,6 +14,7 @@ import {
   matrixRows,
   OPTION_IDS,
   rankingRows,
+  resultExportHierarchySnapshot,
 } from "./technical-configuration-result-export-fixtures"
 
 afterEach(() => vi.unstubAllGlobals())
@@ -36,12 +37,19 @@ function startPendingCollection(
     return pendingRpcResponse(requestSignal)
   })
   return {
-    result: collectTechnicalConfigurationResultExportDataset({
+    result: collectDataset({
       ...exportRequest(mode),
       signal,
     }),
     waitUntilActive: () => vi.waitFor(() => expect(activeSignal).toBe(signal)),
   }
+}
+
+function collectDataset(
+  request = exportRequest(),
+  hierarchySnapshot = resultExportHierarchySnapshot
+) {
+  return collectTechnicalConfigurationResultExportDataset(request, hierarchySnapshot)
 }
 
 describe("P14A3 stable result export dataset collector", () => {
@@ -58,11 +66,14 @@ describe("P14A3 stable result export dataset collector", () => {
       })
     )
 
-    const dataset = await collectTechnicalConfigurationResultExportDataset({
-      ...exportRequest(),
-      optionIds: fixture.optionIds,
-      criterionIds: fixture.criterionIds,
-    })
+    const dataset = await collectDataset(
+      {
+        ...exportRequest(),
+        optionIds: fixture.optionIds,
+        criterionIds: fixture.criterionIds,
+      },
+      fixture.hierarchySnapshot
+    )
 
     expect(dataset.ranking).toHaveLength(101)
     expect(dataset.matrix).toHaveLength(1010)
@@ -90,7 +101,7 @@ describe("P14A3 stable result export dataset collector", () => {
   it("deep-freezes collected rows and nested document links", async () => {
     installRpcMock(createPagedHandler())
 
-    const dataset = await collectTechnicalConfigurationResultExportDataset(exportRequest())
+    const dataset = await collectDataset()
 
     expect(dataset.mode).toBe("full")
     if (dataset.mode !== "full") throw new Error("Expected a full export dataset.")
@@ -100,6 +111,35 @@ describe("P14A3 stable result export dataset collector", () => {
       expect(Object.isFrozen(cell.document_links)).toBe(true)
       for (const link of cell.document_links) expect(Object.isFrozen(link)).toBe(true)
     }
+    expect(dataset.hierarchyRows).not.toBeNull()
+    if (!dataset.hierarchyRows) throw new Error("Expected hierarchy rows.")
+    expect(Object.isFrozen(dataset.hierarchyRows)).toBe(true)
+    for (const row of dataset.hierarchyRows) {
+      expect(Object.isFrozen(row)).toBe(true)
+      if (row.kind === "criterion") {
+        expect(Object.isFrozen(row.criterion)).toBe(true)
+        continue
+      }
+      expect(Object.isFrozen(row.optionAggregates)).toBe(true)
+      for (const aggregate of row.optionAggregates) {
+        expect(Object.isFrozen(aggregate)).toBe(true)
+        expect(Object.isFrozen(aggregate.statusCounts)).toBe(true)
+      }
+    }
+  })
+
+  it("rejects a baseline hierarchy revision that does not match the export manifest", async () => {
+    installRpcMock(createPagedHandler())
+
+    await expect(
+      collectDataset(exportRequest(), {
+        ...resultExportHierarchySnapshot,
+        baselineRevision: resultExportHierarchySnapshot.baselineRevision + 1,
+      })
+    ).rejects.toMatchObject({
+      name: "TechnicalConfigurationResultExportError",
+      kind: "snapshot_changed",
+    })
   })
 
   it("collects a zero-cell matrix when one selected dimension is empty", async () => {
@@ -116,7 +156,7 @@ describe("P14A3 stable result export dataset collector", () => {
     )
 
     await expect(
-      collectTechnicalConfigurationResultExportDataset({
+      collectDataset({
         ...exportRequest(),
         optionIds: null,
       })
@@ -148,10 +188,12 @@ describe("P14A3 stable result export dataset collector", () => {
   ] as const)("never fetches an unrequested surface in $mode mode", async ({ mode, expected }) => {
     const { calls } = installRpcMock(createPagedHandler())
 
-    const dataset = await collectTechnicalConfigurationResultExportDataset(exportRequest(mode))
+    const dataset = await collectDataset(exportRequest(mode))
 
     expect(dataset.mode).toBe(mode)
     expect(calls.map(({ fn }) => fn)).toEqual(expected)
+    if (mode === "ranking_only") expect(dataset.hierarchyRows).toBeNull()
+    else expect(dataset.hierarchyRows).toEqual(expect.any(Array))
   })
 
   it.each([
@@ -271,9 +313,7 @@ describe("P14A3 stable result export dataset collector", () => {
   ] as const)("rejects the whole dataset on $name", async ({ handler, kind }) => {
     installRpcMock(handler)
 
-    await expect(
-      collectTechnicalConfigurationResultExportDataset(exportRequest())
-    ).rejects.toMatchObject({
+    await expect(collectDataset()).rejects.toMatchObject({
       name: "TechnicalConfigurationResultExportError",
       kind,
     })

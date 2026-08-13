@@ -20,6 +20,7 @@ import {
   createContinuationResultWorkbookFixture,
   createEmptyResultWorkbookFixture,
   createEmptyOptionsSingleCriterionResultWorkbookFixture,
+  createHierarchicalResultWorkbookFixture,
   createMatrixBoundaryResultWorkbookFixture,
   createMissingDataResultWorkbookFixture,
   createNarrowedResultWorkbookFixture,
@@ -148,7 +149,32 @@ describe("technical configuration result workbook contract", () => {
     })
     expect(Object.keys(meta.metadata)).toEqual([...RESULT_WORKBOOK_META_KEYS])
     expect(matrix.option_groups.map((option) => option.option_id)).toEqual(optionIds)
-    expect(matrix.rows.map((criterion) => criterion.criterion_id)).toEqual(criterionIds)
+    expect(
+      matrix.rows
+        .filter((row) => row.kind === "criterion")
+        .map((criterion) => criterion.criterion_id)
+    ).toEqual(
+      fixture.hierarchyRows
+        .filter((row) => row.kind === "criterion")
+        .map((row) => row.criterion.criterion_id)
+    )
+    const section = matrix.rows.find((row) => row.kind === "section")
+    if (!section || section.kind !== "section") {
+      throw new Error("Expected a narrowed section row.")
+    }
+    expect(
+      section.option_aggregates.map((aggregate) => ({
+        optionId: aggregate.option_id,
+        descendantCount: aggregate.descendant_count,
+        meets: aggregate.status_counts.meets,
+      }))
+    ).toEqual(
+      optionIds.map((optionId) => ({
+        optionId,
+        descendantCount: criterionIds.length,
+        meets: criterionIds.length,
+      }))
+    )
   })
 
   it("builds overview, ranking and matrix row models without rendering", () => {
@@ -181,18 +207,52 @@ describe("technical configuration result workbook contract", () => {
     })
     expect(matrix.context_columns).toEqual(RESULT_WORKBOOK_MATRIX_CONTEXT_COLUMNS)
     expect(matrix.option_columns).toEqual(RESULT_WORKBOOK_OPTION_COLUMNS)
-    expect(matrix.rows).toHaveLength(2)
-    expect(matrix.rows[0]).toMatchObject({
+    const criterionRows = matrix.rows.filter((row) => row.kind === "criterion")
+    expect(matrix.rows).toHaveLength(3)
+    expect(criterionRows[0]).toMatchObject({
+      kind: "criterion",
       stt: 1,
       criterion_code: "TC-001",
       requirement_text: "Yeu cau cau hinh 1",
     })
-    expect(matrix.rows.every((row) => row.option_values.length === 2)).toBe(true)
+    expect(criterionRows.every((row) => row.option_values.length === 2)).toBe(true)
     expect(
-      matrix.rows
+      criterionRows
         .flatMap((row) => row.option_values)
         .filter((value) => value.conclusion === "not_evaluated")
     ).toHaveLength(1)
+  })
+
+  it("models canonical section, subgroup and criterion rows without synthetic cells", () => {
+    const workbook = createTechnicalConfigurationResultWorkbookModel(
+      createHierarchicalResultWorkbookFixture()
+    )
+    const matrix = getSheet(workbook, "matrix")
+
+    expect(
+      matrix.rows.map((row) =>
+        row.kind === "criterion" ? [row.kind, row.criterion_id] : [row.kind, row.id]
+      )
+    ).toEqual([
+      ["section", "00000060-0000-4000-8000-000000000001"],
+      ["criterion", "00000050-0000-4000-8000-000000000001"],
+      ["subgroup", "00000065-0000-4000-8000-000000000001"],
+      ["criterion", "00000050-0000-4000-8000-000000000002"],
+    ])
+    expect(matrix.rows[0]).toMatchObject({
+      kind: "section",
+      name: "Nhom tieu chi 1",
+      option_aggregates: [
+        {
+          status: "passed",
+          descendant_count: 2,
+          status_counts: { meets: 2 },
+        },
+      ],
+    })
+    expect(matrix.rows[0]).not.toHaveProperty("option_values")
+    expect(matrix.rows[1]).toHaveProperty("option_values")
+    expect(matrix.rows[1]).not.toHaveProperty("option_aggregates")
   })
 
   it("keeps an empty requested matrix sheet and omits unrequested ranking summary", () => {
@@ -230,7 +290,10 @@ describe("technical configuration result workbook contract", () => {
     })
     expect(getSheet(singleCriterion, "matrix")).toMatchObject({
       option_groups: [],
-      rows: [{ criterion_code: "TC-001", option_values: [] }],
+      rows: [
+        { kind: "section", option_aggregates: [] },
+        { kind: "criterion", criterion_code: "TC-001", option_values: [] },
+      ],
     })
   })
 
@@ -256,7 +319,8 @@ describe("technical configuration result workbook contract", () => {
       manufacturer: null,
       option_name: null,
     })
-    expect(missingMatrix.rows[0].option_values[0]).toMatchObject({
+    const missingCriterion = missingMatrix.rows.find((row) => row.kind === "criterion")
+    expect(missingCriterion?.option_values[0]).toMatchObject({
       response_text: null,
       supplementary_information: null,
       technical_axis: null,
@@ -290,6 +354,22 @@ describe("technical configuration result workbook contract", () => {
     expect(matrices.map((sheet) => sheet.name)).toEqual(["Ma trận chi tiết", "Ma trận chi tiết 2"])
     expect(matrices.map((sheet) => sheet.option_groups.length)).toEqual([5_460, 1])
     expect(matrices.flatMap((sheet) => sheet.option_groups)).toHaveLength(5_461)
+    expect(
+      matrices.map((sheet) =>
+        sheet.rows.map((row) =>
+          row.kind === "criterion" ? [row.kind, row.criterion_id] : [row.kind, row.id]
+        )
+      )
+    ).toEqual([expect.any(Array), expect.any(Array)])
+    expect(
+      matrices[0]?.rows.map((row) =>
+        row.kind === "criterion" ? [row.kind, row.criterion_id] : [row.kind, row.id]
+      )
+    ).toEqual(
+      matrices[1]?.rows.map((row) =>
+        row.kind === "criterion" ? [row.kind, row.criterion_id] : [row.kind, row.id]
+      )
+    )
     expect(matrices.every((sheet) => sheet.context_columns.length === 4)).toBe(true)
     expect(
       matrices.every(
@@ -313,8 +393,10 @@ describe("technical configuration result workbook contract", () => {
     expect(firstFixture.manifest.criterion_total).toBe(102)
     expect(firstFixture.matrix).toHaveLength(101 * 102)
     expect(matrix.option_groups).toHaveLength(101)
-    expect(matrix.rows).toHaveLength(102)
-    expect(matrix.rows.every((row) => row.option_values.length === 101)).toBe(true)
+    const criterionRows = matrix.rows.filter((row) => row.kind === "criterion")
+    expect(matrix.rows).toHaveLength(113)
+    expect(criterionRows).toHaveLength(102)
+    expect(criterionRows.every((row) => row.option_values.length === 101)).toBe(true)
     expect(first).toEqual(second)
   })
 })

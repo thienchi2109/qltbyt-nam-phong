@@ -358,13 +358,20 @@ Depends on: P5B, P5C, and the parent result-export contract.
 Deploy boundary: result workbooks add hierarchy while preserving existing snapshot,
 scope, partitioning, and read-only contracts.
 
-- [ ] P5D.1 Extend result dataset and workbook contracts with structural rows and
+- [x] P5D.1 Extend result dataset and workbook contracts with structural rows and
       aggregate summaries.
-- [ ] P5D.2 Render sections, subgroups, and criteria in canonical order without
+- [x] P5D.2 Render sections, subgroups, and criteria in canonical order without
       synthetic response or assessment cells.
-- [ ] P5D.3 Preserve snapshot identity, matrix partitioning, ranking semantics, missing
+- [x] P5D.3 Preserve snapshot identity, matrix partitioning, ranking semantics, missing
       data, and no-write behavior.
-- [ ] P5D.4 Add renderer, contract, large-matrix, and legacy no-subgroup regressions.
+- [x] P5D.4 Add renderer, contract, large-matrix, and legacy no-subgroup regressions.
+
+Verification evidence (2026-08-13): focused P5D `69/69`, P5A aggregate `27/27`,
+P5C hierarchy/progress/workspace `63/63`, result-export RPC/migration source contracts
+`34/34`, and broad technical-configuration regressions `1006/1006` all pass. React
+Doctor reports `100/100`; OpenSpec strict validation passes; final review reports zero
+actionable findings. The two unchanged stale phase-gate failures tracked by Issue #903
+reproduce separately and remain outside P5D.
 
 ## Phase P6A - Cross-Surface Regression And Server Activation
 

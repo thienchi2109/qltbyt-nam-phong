@@ -84,18 +84,18 @@ describe("technical configuration result ExcelJS renderer boundary", () => {
     expect(first.getCell(4, 16_382).value).toContain(
       `Phuong an ${RESULT_WORKBOOK_MAX_OPTIONS_PER_MATRIX_SHEET}`
     )
-    expect(first.getCell(6, 16_382).value).toBe(
+    expect(first.getCell(7, 16_382).value).toBe(
       `Phan hoi 1-${RESULT_WORKBOOK_MAX_OPTIONS_PER_MATRIX_SHEET}`
     )
     expect(second.getCell("E4").value).toContain(`Phuong an ${finalOptionIndex + 1}`)
-    expect(second.getCell("E6").value).toBe("Phản hồi phương án cuối")
-    expect(second.getCell("F6").value).toEqual({
+    expect(second.getCell("E7").value).toBe("Phản hồi phương án cuối")
+    expect(second.getCell("F7").value).toEqual({
       text:
         `Tài liệu phương án cuối\n[CIT-A] Tài liệu A (trang 1) - ${FIRST_DOCUMENT_URL}` +
         `\n[CIT-B] Tài liệu B (trang 2) - ${SECOND_DOCUMENT_URL}`,
       hyperlink: FIRST_DOCUMENT_URL,
     })
-    expect(second.getCell("G6").value).toBe("Không đạt")
+    expect(second.getCell("G7").value).toBe("Không đạt")
 
     for (const worksheet of [first, second]) {
       expect(worksheet.views[0]).toMatchObject({ state: "frozen", xSplit: 4, ySplit: 5 })
@@ -113,8 +113,8 @@ describe("technical configuration result ExcelJS renderer boundary", () => {
       })
     }
     expect(second.getColumn(6).width).toBe(40)
-    expect(second.getRow(6).height).toBe(60)
-    expect(getPatternFill(second.getCell("G6").fill).fgColor).toEqual({
+    expect(second.getRow(7).height).toBe(60)
+    expect(getPatternFill(second.getCell("G7").fill).fgColor).toEqual({
       argb: FAILS_FILL,
     })
     expect(loaded.getWorksheet("_meta")?.state).toBe("hidden")

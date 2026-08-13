@@ -17,6 +17,7 @@ import type {
   TechnicalConfigurationResultExportContext,
   TechnicalConfigurationResultExportDialogRequest,
 } from "../../technical-configuration-result-export-state"
+import { flattenTechnicalConfigurationEvaluationLeaves } from "../../technical-configuration-evaluation-hierarchy"
 import { TechnicalConfigurationResultExportDialog } from "./TechnicalConfigurationResultExportDialog"
 
 type CurrentCriterion = Readonly<{
@@ -26,6 +27,7 @@ type CurrentCriterion = Readonly<{
 type TechnicalConfigurationResultExportControlProps = Readonly<{
   dossierId: string
   baselineVersionId: string
+  baselineRevision: number
   options: readonly TechnicalConfigurationOptionWire[]
   baselineGroups: readonly TechnicalConfigurationBaselineGroupWire[]
   activeOptionId: string
@@ -75,6 +77,7 @@ function errorCopy(
 export function TechnicalConfigurationResultExportControl({
   dossierId,
   baselineVersionId,
+  baselineRevision,
   options,
   baselineGroups,
   activeOptionId,
@@ -95,7 +98,7 @@ export function TechnicalConfigurationResultExportControl({
         },
       },
       criteria: {
-        total: baselineGroups.reduce((total, group) => total + group.criteria.length, 0),
+        total: flattenTechnicalConfigurationEvaluationLeaves(baselineGroups).length,
         page: {
           currentIds: currentCriteria.map((item) => item.criterion.id),
         },
@@ -110,6 +113,8 @@ export function TechnicalConfigurationResultExportControl({
   const resultExport = useTechnicalConfigurationResultExport({
     dossierId,
     baselineVersionId,
+    baselineRevision,
+    baselineGroups,
     generatedBy,
   })
   const isLoading = resultExport.status === "loading"

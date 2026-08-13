@@ -63,6 +63,7 @@ export function TechnicalConfigurationEvaluationWorkspace({
         <TechnicalConfigurationEvaluationActiveWorkspace
           dossier={dossier}
           baselineVersionId={selectedVersion.id}
+          baselineRevision={selectedVersion.revision}
           baselineGroups={selectedVersion.groups}
           options={evaluationOptions}
           matrix={matrix}
