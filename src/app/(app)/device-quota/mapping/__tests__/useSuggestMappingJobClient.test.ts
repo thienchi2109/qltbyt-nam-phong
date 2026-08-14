@@ -4,7 +4,7 @@ import {
   getJobResult,
   waitForNextJobTick,
   type SuggestionJob,
-} from "../_hooks/useSuggestMappingJobClient"
+} from "../../_hooks/useSuggestMappingJobClient"
 
 describe("useSuggestMappingJobClient", () => {
   afterEach(() => {

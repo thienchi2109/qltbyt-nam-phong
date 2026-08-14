@@ -11,7 +11,7 @@ vi.mock("@/lib/rpc-client", () => ({
 const fetchMock = vi.fn()
 vi.stubGlobal("fetch", fetchMock)
 
-import { useSuggestMapping } from "../_hooks/useSuggestMapping"
+import { useSuggestMapping } from "../../_hooks/useSuggestMapping"
 
 function createWrapper() {
   const queryClient = new QueryClient({
@@ -53,8 +53,8 @@ function setupAsyncPipeline() {
           },
           requestId: "req-job",
         }),
-        { status: 202, headers: { "Content-Type": "application/json" } },
-      ),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
     )
     .mockResolvedValueOnce(
       new Response(
@@ -69,8 +69,8 @@ function setupAsyncPipeline() {
           processed: 1,
           requestId: "req-process-1",
         }),
-        { status: 202, headers: { "Content-Type": "application/json" } },
-      ),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
     )
     .mockResolvedValueOnce(
       new Response(
@@ -86,8 +86,8 @@ function setupAsyncPipeline() {
           processed: 1,
           requestId: "req-process-2",
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
     )
 }
 
@@ -100,16 +100,16 @@ describe("useSuggestMapping async jobs", () => {
   test("creates an async suggestion job and transitions into processing immediately", async () => {
     let resolveJob!: (value: Response) => void
     fetchMock.mockImplementationOnce(
-      () => new Promise<Response>((resolve) => {
-        resolveJob = resolve
-      }),
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveJob = resolve
+        })
     )
     fetchMock.mockImplementationOnce(() => new Promise<Response>(() => undefined))
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("starting-job")
@@ -126,8 +126,8 @@ describe("useSuggestMapping async jobs", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
     })
 
@@ -141,17 +141,16 @@ describe("useSuggestMapping async jobs", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ donViId: 1 }),
-      }),
+      })
     )
   })
 
   test("processes and polls an async job until success", async () => {
     setupAsyncPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -162,17 +161,17 @@ describe("useSuggestMapping async jobs", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/api/device-quota/mapping/suggest/jobs",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/api/device-quota/mapping/suggest/jobs/job-1/process",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
       "/api/device-quota/mapping/suggest/jobs/job-1/process",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     )
   })
 
@@ -189,19 +188,19 @@ describe("useSuggestMapping async jobs", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockImplementationOnce(
-        () => new Promise<Response>((resolve) => {
-          resolveProcess = resolve
-        }),
+        () =>
+          new Promise<Response>((resolve) => {
+            resolveProcess = resolve
+          })
       )
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("processing")
@@ -222,8 +221,8 @@ describe("useSuggestMapping async jobs", () => {
             },
             processed: 1,
           }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
     })
 
@@ -245,8 +244,8 @@ describe("useSuggestMapping async jobs", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockResolvedValueOnce(
         new Response(
@@ -261,8 +260,8 @@ describe("useSuggestMapping async jobs", () => {
             },
             processed: 0,
           }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockResolvedValueOnce(
         new Response(
@@ -274,8 +273,8 @@ describe("useSuggestMapping async jobs", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockResolvedValueOnce(
         new Response(
@@ -290,14 +289,13 @@ describe("useSuggestMapping async jobs", () => {
             },
             processed: 1,
           }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("error")
@@ -315,7 +313,7 @@ describe("useSuggestMapping async jobs", () => {
     expect(result.current.result).toEqual(PREVIEW_RESULT)
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/device-quota/mapping/suggest/jobs/job-1/retry",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     )
   })
 
@@ -331,8 +329,8 @@ describe("useSuggestMapping async jobs", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockResolvedValueOnce(
         new Response(
@@ -347,14 +345,13 @@ describe("useSuggestMapping async jobs", () => {
             },
             processed: 0,
           }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
       )
 
     const { result, rerender } = renderHook(
-      ({ donViId }: { donViId: number }) =>
-        useSuggestMapping({ donViId, enabled: true }),
-      { initialProps: { donViId: 1 }, wrapper: createWrapper() },
+      ({ donViId }: { donViId: number }) => useSuggestMapping({ donViId, enabled: true }),
+      { initialProps: { donViId: 1 }, wrapper: createWrapper() }
     )
 
     await waitFor(() => {

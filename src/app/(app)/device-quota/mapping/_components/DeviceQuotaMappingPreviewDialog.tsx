@@ -21,7 +21,7 @@ import {
   MappingPreviewLoadingState,
   MappingPreviewEquipmentItem,
   type EquipmentPreviewItem,
-} from "./MappingPreviewPrimitives"
+} from "../../_components/mapping-preview/MappingPreviewPrimitives"
 
 // ============================================
 // Types

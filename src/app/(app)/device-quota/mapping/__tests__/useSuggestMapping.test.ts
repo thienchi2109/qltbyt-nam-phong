@@ -8,7 +8,7 @@ vi.mock("@/lib/rpc-client", () => ({
 }))
 const fetchMock = vi.fn()
 vi.stubGlobal("fetch", fetchMock)
-import { useSuggestMapping } from "../_hooks/useSuggestMapping"
+import { useSuggestMapping } from "../../_hooks/useSuggestMapping"
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { mutations: { retry: false } },
@@ -58,8 +58,8 @@ function setupSuccessfulPipeline(result = PREVIEW_RESULT) {
             totalUniqueNames: 3,
           },
         }),
-        { status: 202, headers: { "Content-Type": "application/json" } },
-      ),
+        { status: 202, headers: { "Content-Type": "application/json" } }
+      )
     )
     .mockResolvedValueOnce(
       new Response(
@@ -72,8 +72,8 @@ function setupSuccessfulPipeline(result = PREVIEW_RESULT) {
             totalUniqueNames: 3,
           },
         }),
-        { status: 200, headers: { "Content-Type": "application/json" } },
-      ),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
     )
 }
 
@@ -84,10 +84,9 @@ describe("useSuggestMapping", () => {
   })
 
   test("stays idle when not enabled", () => {
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: false }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: false }), {
+      wrapper: createWrapper(),
+    })
 
     expect(result.current.status).toBe("idle")
     expect(result.current.result).toBeNull()
@@ -96,10 +95,9 @@ describe("useSuggestMapping", () => {
   })
 
   test("stays idle when donViId is null", () => {
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: null, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: null, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     expect(result.current.status).toBe("idle")
     expect(callRpcMock).not.toHaveBeenCalled()
@@ -110,10 +108,9 @@ describe("useSuggestMapping", () => {
     vi.stubEnv("NEXT_PUBLIC_DEVICE_QUOTA_SUGGESTION_ASYNC_JOBS", "false")
     setupSuccessfulPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -126,22 +123,21 @@ describe("useSuggestMapping", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ donViId: 1 }),
-      }),
+      })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/api/device-quota/mapping/suggest/jobs/job-1/process",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({ method: "POST" })
     )
   })
 
   test("merges results into groups by nhom_id", async () => {
     setupSuccessfulPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -150,12 +146,12 @@ describe("useSuggestMapping", () => {
     const res = result.current.result!
     expect(res.groups).toHaveLength(2)
 
-    const group1 = res.groups.find(g => g.nhom_id === 10)!
+    const group1 = res.groups.find((g) => g.nhom_id === 10)!
     expect(group1.nhom_label).toBe("Máy thở chức năng cao")
     expect(group1.nhom_code).toBe("A.01")
     expect(group1.device_ids).toEqual([1, 2, 3])
 
-    const group2 = res.groups.find(g => g.nhom_id === 20)!
+    const group2 = res.groups.find((g) => g.nhom_id === 20)!
     expect(group2.nhom_label).toBe("Bơm tiêm điện tự động")
     expect(group2.device_ids).toEqual([4, 5])
   })
@@ -163,10 +159,9 @@ describe("useSuggestMapping", () => {
   test("separates unmatched devices", async () => {
     setupSuccessfulPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -181,10 +176,9 @@ describe("useSuggestMapping", () => {
   test("tracks total and matched device counts", async () => {
     setupSuccessfulPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -198,10 +192,9 @@ describe("useSuggestMapping", () => {
   test("sets error status on network error", async () => {
     fetchMock.mockRejectedValue(new Error("Network error"))
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("error")
@@ -222,20 +215,19 @@ describe("useSuggestMapping", () => {
               totalUniqueNames: 3,
             },
           }),
-          { status: 202, headers: { "Content-Type": "application/json" } },
-        ),
+          { status: 202, headers: { "Content-Type": "application/json" } }
+        )
       )
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ error: "Preview failed", requestId: "req-err" }), {
           status: 500,
           headers: { "Content-Type": "application/json" },
-        }),
+        })
       )
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("error")
@@ -247,10 +239,9 @@ describe("useSuggestMapping", () => {
   test("reset clears result and returns to idle", async () => {
     setupSuccessfulPipeline()
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -288,10 +279,9 @@ describe("useSuggestMapping", () => {
     }
     setupSuccessfulPipeline(serverResult)
 
-    const { result } = renderHook(() =>
-      useSuggestMapping({ donViId: 1, enabled: true }),
-      { wrapper: createWrapper() }
-    )
+    const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => {
       expect(result.current.status).toBe("done")
@@ -306,8 +296,7 @@ describe("useSuggestMapping", () => {
 
     const wrapper = createWrapper()
     const { result, rerender } = renderHook(
-      ({ enabled }: { enabled: boolean }) =>
-        useSuggestMapping({ donViId: 1, enabled }),
+      ({ enabled }: { enabled: boolean }) => useSuggestMapping({ donViId: 1, enabled }),
       { initialProps: { enabled: true }, wrapper }
     )
 
@@ -342,12 +331,13 @@ describe("useSuggestMapping", () => {
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
 
-      const { result } = renderHook(() =>
-        useSuggestMapping({ donViId: 42, enabled: true }),
-        { wrapper: createWrapper() }
-      )
+      const { result } = renderHook(() => useSuggestMapping({ donViId: 42, enabled: true }), {
+        wrapper: createWrapper(),
+      })
 
-      await waitFor(() => { expect(result.current.status).toBe("done") })
+      await waitFor(() => {
+        expect(result.current.status).toBe("done")
+      })
 
       const mappings = [
         { nhom_id: 10, thiet_bi_ids: [1, 2, 3] },
@@ -377,17 +367,20 @@ describe("useSuggestMapping", () => {
       let resolveSave: (value: unknown) => void
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "dinh_muc_thiet_bi_link_batch") {
-          return new Promise((resolve) => { resolveSave = resolve })
+          return new Promise((resolve) => {
+            resolveSave = resolve
+          })
         }
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
 
-      const { result } = renderHook(() =>
-        useSuggestMapping({ donViId: 1, enabled: true }),
-        { wrapper: createWrapper() }
-      )
+      const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+        wrapper: createWrapper(),
+      })
 
-      await waitFor(() => { expect(result.current.status).toBe("done") })
+      await waitFor(() => {
+        expect(result.current.status).toBe("done")
+      })
       expect(result.current.saveStatus).toBe("idle")
 
       act(() => {
@@ -414,12 +407,13 @@ describe("useSuggestMapping", () => {
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
 
-      const { result } = renderHook(() =>
-        useSuggestMapping({ donViId: 1, enabled: true }),
-        { wrapper: createWrapper() }
-      )
+      const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+        wrapper: createWrapper(),
+      })
 
-      await waitFor(() => { expect(result.current.status).toBe("done") })
+      await waitFor(() => {
+        expect(result.current.status).toBe("done")
+      })
 
       await act(async () => {
         result.current.saveBatch([{ nhom_id: 10, thiet_bi_ids: [1] }])
@@ -435,16 +429,18 @@ describe("useSuggestMapping", () => {
     test("sets saveError on RPC failure", async () => {
       setupSuccessfulPipeline()
       callRpcMock.mockImplementation(({ fn }: { fn: string }) => {
-        if (fn === "dinh_muc_thiet_bi_link_batch") return Promise.reject(new Error("Permission denied"))
+        if (fn === "dinh_muc_thiet_bi_link_batch")
+          return Promise.reject(new Error("Permission denied"))
         return Promise.reject(new Error(`Unknown RPC: ${fn}`))
       })
 
-      const { result } = renderHook(() =>
-        useSuggestMapping({ donViId: 1, enabled: true }),
-        { wrapper: createWrapper() }
-      )
+      const { result } = renderHook(() => useSuggestMapping({ donViId: 1, enabled: true }), {
+        wrapper: createWrapper(),
+      })
 
-      await waitFor(() => { expect(result.current.status).toBe("done") })
+      await waitFor(() => {
+        expect(result.current.status).toBe("done")
+      })
 
       await act(async () => {
         result.current.saveBatch([{ nhom_id: 10, thiet_bi_ids: [1] }])

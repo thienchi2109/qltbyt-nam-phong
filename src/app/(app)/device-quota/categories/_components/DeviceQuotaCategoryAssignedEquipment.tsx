@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils"
 import {
   MappingPreviewLoadingState,
   type EquipmentPreviewItem,
-} from "@/app/(app)/device-quota/mapping/_components/MappingPreviewPrimitives"
+} from "@/app/(app)/device-quota/_components/mapping-preview/MappingPreviewPrimitives"
 import { deviceQuotaCategoryAssignedEquipmentQueryOptions } from "../_queries/deviceQuotaCategoryAssignedEquipmentQuery"
 
 // ============================================

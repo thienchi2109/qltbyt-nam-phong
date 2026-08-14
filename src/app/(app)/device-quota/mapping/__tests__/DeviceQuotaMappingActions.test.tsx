@@ -1,16 +1,16 @@
-import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import React from "react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { DeviceQuotaMappingActions } from '../_components/DeviceQuotaMappingActions'
-import type { DeviceQuotaMappingContextValue } from '../_components/DeviceQuotaMappingContext'
-import { useDeviceQuotaMappingContext } from '../_hooks/useDeviceQuotaMappingContext'
+import { DeviceQuotaMappingActions } from "../_components/DeviceQuotaMappingActions"
+import type { DeviceQuotaMappingContextValue } from "../_components/DeviceQuotaMappingContext"
+import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 
-vi.mock('../_hooks/useDeviceQuotaMappingContext', () => ({
+vi.mock("../_hooks/useDeviceQuotaMappingContext", () => ({
   useDeviceQuotaMappingContext: vi.fn(),
 }))
 
-vi.mock('../_components/DeviceQuotaMappingPreviewDialog', () => ({
+vi.mock("../_components/DeviceQuotaMappingPreviewDialog", () => ({
   DeviceQuotaMappingPreviewDialog: ({
     open,
     onConfirm,
@@ -24,24 +24,16 @@ vi.mock('../_components/DeviceQuotaMappingPreviewDialog', () => ({
   }) =>
     open ? (
       <div data-testid="mapping-preview-dialog">
-        <div data-testid="linking-state">
-          {isLinking ? 'linking' : 'idle'}
-        </div>
+        <div data-testid="linking-state">{isLinking ? "linking" : "idle"}</div>
         <div>{targetCategory?.ten_nhom}</div>
         <button onClick={() => onConfirm([101, 102])}>Xác nhận preview</button>
       </div>
     ) : null,
 }))
 
-vi.mock('../_components/SuggestedMappingPreviewDialog', () => ({
-  SuggestedMappingPreviewDialog: ({
-    open,
-  }: {
-    open: boolean
-  }) =>
-    open ? (
-      <div data-testid="suggested-mapping-dialog">Suggested dialog</div>
-    ) : null,
+vi.mock("../../_components/suggested-mapping/SuggestedMappingPreviewDialog", () => ({
+  SuggestedMappingPreviewDialog: ({ open }: { open: boolean }) =>
+    open ? <div data-testid="suggested-mapping-dialog">Suggested dialog</div> : null,
 }))
 
 const mockUseContext = vi.mocked(useDeviceQuotaMappingContext)
@@ -55,8 +47,8 @@ const makeContext = (overrides: Record<string, unknown> = {}) => ({
     {
       id: 5,
       parent_id: null,
-      ma_nhom: 'A',
-      ten_nhom: 'Nhóm A',
+      ma_nhom: "A",
+      ten_nhom: "Nhóm A",
       phan_loai: null,
       level: 1,
       so_luong_hien_co: 0,
@@ -65,43 +57,41 @@ const makeContext = (overrides: Record<string, unknown> = {}) => ({
   linkEquipment: { mutate },
   isLinking: false,
   donViId: 1,
-  user: { id: '1', username: 'admin', role: 'admin' },
+  user: { id: "1", username: "admin", role: "admin" },
   ...overrides,
 })
 
-describe('DeviceQuotaMappingActions', () => {
+describe("DeviceQuotaMappingActions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('keeps the preview open while linking and closes it only after success', () => {
+  it("keeps the preview open while linking and closes it only after success", () => {
     const context = makeContext()
-    mockUseContext.mockImplementation(
-      () => context as unknown as DeviceQuotaMappingContextValue
-    )
+    mockUseContext.mockImplementation(() => context as unknown as DeviceQuotaMappingContextValue)
 
     const { rerender } = render(<DeviceQuotaMappingActions />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Phân loại' }))
-    expect(screen.getByTestId('mapping-preview-dialog')).toBeInTheDocument()
-    expect(screen.getByTestId('linking-state')).toHaveTextContent('idle')
+    fireEvent.click(screen.getByRole("button", { name: "Phân loại" }))
+    expect(screen.getByTestId("mapping-preview-dialog")).toBeInTheDocument()
+    expect(screen.getByTestId("linking-state")).toHaveTextContent("idle")
 
-    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận preview' }))
+    fireEvent.click(screen.getByRole("button", { name: "Xác nhận preview" }))
 
     expect(mutate).toHaveBeenCalledTimes(1)
     expect(mutate).toHaveBeenCalledWith(
       { thiet_bi_ids: [101, 102], nhom_id: 5 },
       expect.objectContaining({ onSuccess: expect.any(Function) })
     )
-    expect(screen.getByTestId('mapping-preview-dialog')).toBeInTheDocument()
+    expect(screen.getByTestId("mapping-preview-dialog")).toBeInTheDocument()
 
     context.isLinking = true
     rerender(<DeviceQuotaMappingActions />)
-    expect(screen.getByTestId('linking-state')).toHaveTextContent('linking')
+    expect(screen.getByTestId("linking-state")).toHaveTextContent("linking")
 
     const [, options] = mutate.mock.calls[0] as [
       { thiet_bi_ids: number[]; nhom_id: number },
-      { onSuccess: () => void }
+      { onSuccess: () => void },
     ]
     context.isLinking = false
     act(() => {
@@ -109,10 +99,10 @@ describe('DeviceQuotaMappingActions', () => {
     })
     rerender(<DeviceQuotaMappingActions />)
 
-    expect(screen.queryByTestId('mapping-preview-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId("mapping-preview-dialog")).not.toBeInTheDocument()
   })
 
-  it('does not open the preview when the selected category no longer exists', () => {
+  it("does not open the preview when the selected category no longer exists", () => {
     mockUseContext.mockImplementation(
       () =>
         makeContext({
@@ -123,12 +113,12 @@ describe('DeviceQuotaMappingActions', () => {
 
     render(<DeviceQuotaMappingActions />)
 
-    const classifyButton = screen.getByRole('button', { name: 'Phân loại' })
+    const classifyButton = screen.getByRole("button", { name: "Phân loại" })
     expect(classifyButton).toBeDisabled()
 
     fireEvent.click(classifyButton)
 
-    expect(screen.queryByTestId('mapping-preview-dialog')).not.toBeInTheDocument()
+    expect(screen.queryByTestId("mapping-preview-dialog")).not.toBeInTheDocument()
   })
 
   it('shows "Gợi ý phân loại" button when donViId is set, even without equipment selection', () => {
@@ -142,7 +132,7 @@ describe('DeviceQuotaMappingActions', () => {
 
     render(<DeviceQuotaMappingActions />)
 
-    expect(screen.getByRole('button', { name: /gợi ý phân loại/i })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Gợi ý phân loại" })).toBeInTheDocument()
   })
 
   it('opens suggested mapping dialog when "Gợi ý phân loại" button is clicked', () => {
@@ -156,9 +146,9 @@ describe('DeviceQuotaMappingActions', () => {
 
     render(<DeviceQuotaMappingActions />)
 
-    fireEvent.click(screen.getByRole('button', { name: /gợi ý phân loại/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Gợi ý phân loại" }))
 
-    expect(screen.getByTestId('suggested-mapping-dialog')).toBeInTheDocument()
+    expect(screen.getByTestId("suggested-mapping-dialog")).toBeInTheDocument()
   })
 
   it('does not show "Gợi ý phân loại" button when donViId is null', () => {
@@ -173,6 +163,6 @@ describe('DeviceQuotaMappingActions', () => {
 
     render(<DeviceQuotaMappingActions />)
 
-    expect(screen.queryByRole('button', { name: /gợi ý phân loại/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Gợi ý phân loại" })).not.toBeInTheDocument()
   })
 })

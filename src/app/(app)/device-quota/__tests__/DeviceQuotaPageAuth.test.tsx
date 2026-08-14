@@ -22,6 +22,13 @@ vi.mock("@/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryCont
   ),
 }))
 
+vi.mock("@/app/(app)/device-quota/categories/_hooks/useDeviceQuotaCategoryContext", () => ({
+  useDeviceQuotaCategoryContext: () => ({
+    donViId: 1,
+    user: { role: "admin" },
+  }),
+}))
+
 vi.mock("@/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryToolbar", () => ({
   DeviceQuotaCategoryToolbar: () => <div data-testid="categories-toolbar">Toolbar</div>,
 }))

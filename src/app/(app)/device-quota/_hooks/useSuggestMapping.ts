@@ -38,12 +38,7 @@ export interface SuggestMappingResult {
   matchedDevices: number
 }
 
-export type SuggestMappingStatus =
-  | "idle"
-  | "starting-job"
-  | "processing"
-  | "done"
-  | "error"
+export type SuggestMappingStatus = "idle" | "starting-job" | "processing" | "done" | "error"
 
 export type SaveStatus = "idle" | "saving" | "saved" | "save-error"
 
@@ -111,7 +106,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
 
       throw new DOMException("Aborted", "AbortError")
     },
-    [updateJobProgress],
+    [updateJobProgress]
   )
 
   const mutation = useMutation({
@@ -200,7 +195,7 @@ export function useSuggestMapping({ donViId, enabled }: UseSuggestMappingOptions
     (mappings: SaveMapping[]) => {
       saveMutation.mutate(mappings)
     },
-    [saveMutation],
+    [saveMutation]
   )
 
   const reset = useCallback(() => {

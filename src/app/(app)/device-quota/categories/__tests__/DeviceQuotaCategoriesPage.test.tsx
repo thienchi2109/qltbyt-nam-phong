@@ -38,6 +38,23 @@ vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <button type="button">Chọn đơn vị</button>,
 }))
 
+vi.mock("../../_components/suggested-mapping/SuggestedMappingPreviewDialog", () => ({
+  SuggestedMappingPreviewDialog: ({
+    open,
+    donViId,
+    userRole,
+  }: {
+    open: boolean
+    donViId: number | null
+    userRole: string | null
+  }) =>
+    open ? (
+      <div data-testid="suggested-mapping-dialog">
+        {donViId}:{userRole}
+      </div>
+    ) : null,
+}))
+
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
@@ -122,6 +139,31 @@ describe("DeviceQuotaCategoriesPage", () => {
     })
   })
 
+  it("opens facility-wide suggestions for a regional leader without category detail or CRUD access", async () => {
+    const user = userEvent.setup()
+    mockUseSession.mockReturnValue({
+      data: { user: { role: "regional_leader", don_vi: null } },
+      status: "authenticated",
+    })
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: 7,
+      showSelector: true,
+    })
+    mockCallRpc.mockResolvedValue([])
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    const suggestionButton = await screen.findByRole("button", {
+      name: "Gợi ý phân loại hàng loạt",
+    })
+    expect(screen.queryByRole("button", { name: "Tạo danh mục" })).not.toBeInTheDocument()
+    expect(screen.queryByTestId("device-quota-category-detail-pane")).not.toBeInTheDocument()
+
+    await user.click(suggestionButton)
+
+    expect(screen.getByTestId("suggested-mapping-dialog")).toHaveTextContent("7:regional_leader")
+  })
+
   it("renders tenant selection for privileged users without a persisted facility", async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: "admin", don_vi: null } },
@@ -135,6 +177,9 @@ describe("DeviceQuotaCategoriesPage", () => {
     render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
 
     expect(await screen.findByRole("button", { name: "Chọn đơn vị" })).toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Gợi ý phân loại hàng loạt" })
+    ).not.toBeInTheDocument()
     expect(mockCallRpc).not.toHaveBeenCalled()
   })
 

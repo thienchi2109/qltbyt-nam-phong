@@ -101,14 +101,14 @@
 
 **Purpose:** Add the existing facility-wide suggestion workflow to the unified workspace before removing its old page surface.
 
-- [ ] 4.1 Re-run suggestion characterization tests before moving its trigger.
-- [ ] 4.2 Add the existing facility-wide suggestion trigger to the unified page-level action area without coupling it to selected-category state.
-- [ ] 4.3 Continue opening the existing `SuggestedMappingPreviewDialog`.
-- [ ] 4.4 Preserve `regional_leader` preview-only behavior and all existing mutation-role guards.
-- [ ] 4.5 Preserve group/device-name exclusions, unmatched results, disclaimer, retry behavior, and `dinh_muc_thiet_bi_link_batch` payload semantics.
-- [ ] 4.6 Expose the suggestion entry inside Categories to every role that currently receives it on Mapping, without coupling visibility to category CRUD access.
-- [ ] 4.7 Move any suggestion components or hooks required by Categories to route-agnostic ownership without changing dialog, job, API, retry, preview-only, exclusion, or batch-apply behavior.
-- [ ] 4.8 Prove with shared behavior tests that Categories preserves the current Mapping suggestion workflow before navigation cutover.
+- [x] 4.1 Re-run suggestion characterization tests before moving its trigger.
+- [x] 4.2 Add the existing facility-wide suggestion trigger to the unified page-level action area without coupling it to selected-category state.
+- [x] 4.3 Continue opening the existing `SuggestedMappingPreviewDialog`.
+- [x] 4.4 Preserve `regional_leader` preview-only behavior and all existing mutation-role guards.
+- [x] 4.5 Preserve group/device-name exclusions, unmatched results, disclaimer, retry behavior, and `dinh_muc_thiet_bi_link_batch` payload semantics.
+- [x] 4.6 Expose the suggestion entry inside Categories to every role that currently receives it on Mapping, without coupling visibility to category CRUD access.
+- [x] 4.7 Move any suggestion components or hooks required by Categories to route-agnostic ownership without changing dialog, job, API, retry, preview-only, exclusion, or batch-apply behavior.
+- [x] 4.8 Prove with shared behavior tests that Categories preserves the current Mapping suggestion workflow before navigation cutover.
 - [ ] 4.9 Run and record focused production smoke checks from the Categories route for an authorized manual assignment with exact selected-category reconciliation, an authorized suggestion preview/apply flow, and `regional_leader` preview-only behavior with no category detail or mutation access. Block Phase 5 until all checks pass.
 
 **Deploy-safe boundary:** The suggestion implementation remains the same component and orchestration. Mapping remains available only as a temporary fallback while the Categories entry is smoke-tested.

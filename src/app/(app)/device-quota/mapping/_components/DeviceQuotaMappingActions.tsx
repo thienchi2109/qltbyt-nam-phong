@@ -1,13 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Sparkles } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
 import { DeviceQuotaManualMappingPreviewTrigger } from "../../_components/manual-mapping/DeviceQuotaManualMappingPreviewTrigger"
+import { canShowDeviceQuotaSuggestedMappingAction } from "../../_components/suggested-mapping/DeviceQuotaSuggestedMappingAccess"
+import { DeviceQuotaSuggestedMappingAction } from "../../_components/suggested-mapping/DeviceQuotaSuggestedMappingAction"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import { DeviceQuotaMappingPreviewDialog } from "./DeviceQuotaMappingPreviewDialog"
-import { SuggestedMappingPreviewDialog } from "./SuggestedMappingPreviewDialog"
 
 /**
  * Action bar for bulk mapping operations.
@@ -28,11 +26,9 @@ export function DeviceQuotaMappingActions() {
   } = useDeviceQuotaMappingContext()
 
   const [showPreview, setShowPreview] = React.useState(false)
-  const [showSuggested, setShowSuggested] = React.useState(false)
 
   const selectedCount = selectedEquipmentIds.size
   const canLink = selectedCount > 0 && selectedCategoryId !== null
-  const hasFacility = donViId !== null
 
   // Derive the target category object from allCategories
   const targetCategory = React.useMemo(
@@ -59,8 +55,7 @@ export function DeviceQuotaMappingActions() {
 
   // Keep mounted while dialog is open so .mutate() onSuccess can close it cleanly
   // (context-level onSuccess clears selection before .mutate() onSuccess fires)
-  const showSuggestButton =
-    hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role))
+  const showSuggestButton = canShowDeviceQuotaSuggestedMappingAction(donViId, user?.role ?? null)
   if (selectedCount === 0 && !showPreview && !showSuggestButton) {
     return null
   }
@@ -82,18 +77,7 @@ export function DeviceQuotaMappingActions() {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {showSuggestButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="touch-target-sm group"
-                onClick={() => setShowSuggested(true)}
-                title="Sử dụng AI để gợi ý - tốn tài nguyên server, chỉ dùng khi cần"
-              >
-                <Sparkles className="size-4 text-amber-500 group-hover:animate-pulse" />
-                Gợi ý phân loại
-              </Button>
-            )}
+            <DeviceQuotaSuggestedMappingAction donViId={donViId} userRole={user?.role ?? null} />
 
             {selectedCount > 0 && (
               <DeviceQuotaManualMappingPreviewTrigger
@@ -114,13 +98,6 @@ export function DeviceQuotaMappingActions() {
         onConfirm={handleConfirm}
         isLinking={isLinking}
         donViId={donViId}
-      />
-
-      <SuggestedMappingPreviewDialog
-        open={showSuggested}
-        onOpenChange={setShowSuggested}
-        donViId={donViId}
-        userRole={user?.role ?? null}
       />
     </>
   )

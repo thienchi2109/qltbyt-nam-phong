@@ -9,12 +9,14 @@ import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/Authen
 import { TenantSelector } from "@/components/shared/TenantSelector"
 import { Card, CardContent } from "@/components/ui/card"
 import { canAccessDeviceQuotaModule, isEquipmentManagerRole } from "@/lib/rbac"
+import { DeviceQuotaSuggestedMappingAction } from "../_components/suggested-mapping/DeviceQuotaSuggestedMappingAction"
 import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
 import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToolbar"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
 import { DeviceQuotaCategoryDialog } from "./_components/DeviceQuotaCategoryDialog"
 import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCategoryDeleteDialog"
 import { DeviceQuotaCategoryImportDialog } from "./_components/DeviceQuotaCategoryImportDialog"
+import { useDeviceQuotaCategoryContext } from "./_hooks/useDeviceQuotaCategoryContext"
 
 /** Renders the permission-gated Device Quota categories workspace. */
 export default function DeviceQuotaCategoriesPage() {
@@ -78,9 +80,7 @@ function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageCon
                 Quản lý tiêu chuẩn, định mức trang thiết bị y tế theo quy định
               </p>
             </div>
-            <fieldset disabled={isAssignmentActive} className="min-w-0 border-0 p-0">
-              <TenantSelector hideAllOption />
-            </fieldset>
+            <DeviceQuotaCategoriesPageActions isAssignmentActive={isAssignmentActive} />
           </div>
           <DeviceQuotaCategoryToolbar />
         </div>
@@ -96,5 +96,24 @@ function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageCon
         )}
       </div>
     </DeviceQuotaCategoryProvider>
+  )
+}
+
+function DeviceQuotaCategoriesPageActions({
+  isAssignmentActive,
+}: Readonly<{ isAssignmentActive: boolean }>) {
+  const { donViId, user } = useDeviceQuotaCategoryContext()
+
+  return (
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
+      <DeviceQuotaSuggestedMappingAction
+        donViId={donViId}
+        userRole={user?.role ?? null}
+        label="Gợi ý phân loại hàng loạt"
+      />
+      <fieldset disabled={isAssignmentActive} className="min-w-0 border-0 p-0">
+        <TenantSelector hideAllOption />
+      </fieldset>
+    </div>
   )
 }

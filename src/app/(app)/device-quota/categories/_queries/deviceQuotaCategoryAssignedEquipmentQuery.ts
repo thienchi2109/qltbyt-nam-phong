@@ -1,7 +1,7 @@
 import { queryOptions } from "@tanstack/react-query"
 
 import { callRpc } from "@/lib/rpc-client"
-import type { EquipmentPreviewItem } from "../../mapping/_components/MappingPreviewPrimitives"
+import type { EquipmentPreviewItem } from "../../_components/mapping-preview/MappingPreviewPrimitives"
 
 /** Returns the exact assigned-equipment cache key for a category and tenant. */
 export function deviceQuotaCategoryAssignedEquipmentQueryKey(

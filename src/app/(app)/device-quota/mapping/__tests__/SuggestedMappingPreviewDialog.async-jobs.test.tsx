@@ -20,7 +20,7 @@ beforeAll(() => {
 })
 
 const mockUseSuggestMapping = vi.fn()
-vi.mock("../_hooks/useSuggestMapping", () => ({
+vi.mock("../../_hooks/useSuggestMapping", () => ({
   useSuggestMapping: (...args: unknown[]) => mockUseSuggestMapping(...args),
 }))
 
@@ -29,28 +29,28 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
 }))
 
-import type { SuggestMappingStatus, SaveStatus } from "../_hooks/useSuggestMapping"
-import { SuggestedMappingPreviewDialog } from "../_components/SuggestedMappingPreviewDialog"
+import type { SuggestMappingStatus, SaveStatus } from "../../_hooks/useSuggestMapping"
+import { SuggestedMappingPreviewDialog } from "../../_components/suggested-mapping/SuggestedMappingPreviewDialog"
 
 function renderWithQueryClient(ui: React.ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
-  return render(
-    React.createElement(QueryClientProvider, { client: queryClient }, ui),
-  )
+  return render(React.createElement(QueryClientProvider, { client: queryClient }, ui))
 }
 
-function setupHook(overrides: {
-  canRetry?: boolean
-  error?: string | null
-  processedUniqueNames?: number
-  progress?: number
-  retryFailedJob?: () => void
-  saveStatus?: SaveStatus
-  status?: SuggestMappingStatus
-  totalUniqueNames?: number
-} = {}) {
+function setupHook(
+  overrides: {
+    canRetry?: boolean
+    error?: string | null
+    processedUniqueNames?: number
+    progress?: number
+    retryFailedJob?: () => void
+    saveStatus?: SaveStatus
+    status?: SuggestMappingStatus
+    totalUniqueNames?: number
+  } = {}
+) {
   const reset = vi.fn()
   const saveBatch = vi.fn()
   mockUseSuggestMapping.mockReturnValue({
@@ -83,10 +83,10 @@ describe("SuggestedMappingPreviewDialog async job UX", () => {
     renderWithQueryClient(
       <SuggestedMappingPreviewDialog
         open={true}
-        onOpenChange={() => { }}
+        onOpenChange={() => {}}
         donViId={1}
         userRole="admin"
-      />,
+      />
     )
 
     expect(screen.getByText(/đang chuẩn bị gợi ý/i)).toBeInTheDocument()
@@ -104,10 +104,10 @@ describe("SuggestedMappingPreviewDialog async job UX", () => {
     renderWithQueryClient(
       <SuggestedMappingPreviewDialog
         open={true}
-        onOpenChange={() => { }}
+        onOpenChange={() => {}}
         donViId={1}
         userRole="admin"
-      />,
+      />
     )
 
     expect(screen.getByText(/đang xử lý gợi ý/i)).toBeInTheDocument()
@@ -126,10 +126,10 @@ describe("SuggestedMappingPreviewDialog async job UX", () => {
     renderWithQueryClient(
       <SuggestedMappingPreviewDialog
         open={true}
-        onOpenChange={() => { }}
+        onOpenChange={() => {}}
         donViId={1}
         userRole="admin"
-      />,
+      />
     )
 
     fireEvent.click(screen.getByRole("button", { name: /thử lại/i }))

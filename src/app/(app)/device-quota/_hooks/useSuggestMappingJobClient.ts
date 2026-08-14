@@ -67,7 +67,7 @@ function isSuggestMappingResult(value: unknown): value is SuggestMappingResult {
 async function postJson(
   url: string,
   body: Record<string, unknown>,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<unknown> {
   const response = await fetch(url, {
     method: "POST",
@@ -130,7 +130,7 @@ export function waitForNextJobTick(signal: AbortSignal): Promise<void> {
 /** Creates or reuses a server-side suggestion job for one facility. */
 export async function createSuggestionJobRequest(
   donViId: number,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<SuggestionJob> {
   const payload = await postJson("/api/device-quota/mapping/suggest/jobs", { donViId }, signal)
   return getRouteJob(payload)
@@ -139,12 +139,12 @@ export async function createSuggestionJobRequest(
 /** Advances one bounded processing slice for an existing suggestion job. */
 export async function processSuggestionJobRequest(
   jobId: string,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<SuggestionJob> {
   const payload = await postJson(
     `/api/device-quota/mapping/suggest/jobs/${encodeURIComponent(jobId)}/process`,
     { limit: 2 },
-    signal,
+    signal
   )
   return getRouteJob(payload)
 }
@@ -152,12 +152,12 @@ export async function processSuggestionJobRequest(
 /** Retries a failed suggestion job so the UI can resume polling. */
 export async function retrySuggestionJobRequest(
   jobId: string,
-  signal: AbortSignal,
+  signal: AbortSignal
 ): Promise<SuggestionJob> {
   const payload = await postJson(
     `/api/device-quota/mapping/suggest/jobs/${encodeURIComponent(jobId)}/retry`,
     {},
-    signal,
+    signal
   )
   return getRouteJob(payload)
 }
