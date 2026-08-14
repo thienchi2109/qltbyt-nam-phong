@@ -132,6 +132,10 @@ The assigned-equipment surface may use its existing horizontal overflow contract
 
 At narrower desktop and mobile breakpoints, the layout may reduce the split or use the existing stacked/drawer pattern, but it must not restore single-line name truncation as the only inspection mechanism.
 
+The current Categories and Mapping compositions both consume the shared `40-60` split-pane option. Phase 1 must therefore add a non-breaking `46-54` option or a Categories-scoped override rather than redefining `40-60` globally. This keeps the legacy Mapping layout unchanged until its planned cutover.
+
+The Phase 1 result is the canonical category-pane contract for the unified workspace. Later phases may extract its shell, but they must retain the same category tree, category-row rendering, width allocation, full-text affordance, and regression coverage. Adding assignment mode changes only the right work surface; it must not replace the corrected category pane.
+
 ### 7. Keep data ownership local and avoid semantic duplication
 
 The implementation should consolidate existing category and mapping components around one workspace owner rather than copying hooks into a third route.
@@ -154,20 +158,22 @@ Source files must remain below the repository's 450-line hard ceiling. The works
   - Mitigation: place it in the page-level action area with facility-wide wording and keep it outside category-specific controls.
 - Parent-category aggregate counts can be confused with directly assigned equipment.
   - Mitigation: label direct parent assignments separately and keep aggregate quota/count presentation distinct.
+- A later workspace refactor could accidentally discard the Phase 1 readability fix by rebuilding the category pane.
+  - Mitigation: treat the Phase 1 layout and long-name tests as canonical merge gates through assignment integration, navigation cutover, and cleanup.
 
 ## Migration and Rollout
 
 Delivery is split into small, independently deployable PRs:
 
 1. **Characterization baseline:** tests and visual references only.
-2. **Category readability:** ship the 46% category pane and long-name behavior on the current Categories page.
+2. **Category readability:** ship the canonical 46% category pane and long-name behavior on the current Categories page without changing the shared `40-60` Mapping layout.
 3. **Route-agnostic mapping components:** refactor the current Mapping page without changing its behavior.
 4. **Unified manual assignment:** add the complete category-first manual flow to Categories while keeping the legacy Mapping tab and route as a fallback.
 5. **Suggestion entry preservation:** expose the existing suggestion dialog from Categories while keeping the old Mapping surface available.
 6. **Navigation cutover:** make Categories canonical for equipment-manager roles and redirect only those roles after both workflows are proven.
 7. **Cleanup:** remove redundant page composition after cutover stability is confirmed.
 
-Each phase must pass focused tests and preserve all production workflows available before that phase. No PR may expose an incomplete assignment mode.
+Each phase must pass focused tests and preserve all production workflows available before that phase. No PR may expose an incomplete assignment mode, replace the corrected category pane, or remove its Phase 1 regression coverage.
 
 Rollback is phase-local:
 

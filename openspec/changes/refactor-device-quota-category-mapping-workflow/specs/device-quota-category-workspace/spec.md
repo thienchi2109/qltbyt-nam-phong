@@ -188,6 +188,14 @@ The category pane SHALL allocate sufficient horizontal space to category names a
 - **AND** code, classification, usage/progress, indentation, and row actions remain readable and non-overlapping
 - **AND** pointer hover and keyboard focus can reveal the complete category name through a visible full-text affordance
 
+#### Scenario: workspace switches between detail and assignment modes
+
+- **GIVEN** the corrected category pane is visible with a selected category
+- **WHEN** the right work surface switches between detail and manual assignment modes
+- **THEN** the category pane retains the same width allocation and category-row rendering
+- **AND** the selected category and full-text affordance remain visible
+- **AND** no replacement category tree is rendered
+
 #### Scenario: workspace renders below wide-desktop width
 
 - **GIVEN** the viewport cannot support the wide-desktop split
