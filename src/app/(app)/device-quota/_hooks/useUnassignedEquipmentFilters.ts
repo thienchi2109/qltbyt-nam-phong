@@ -33,6 +33,7 @@ interface UseUnassignedEquipmentFiltersReturn {
   resetAllFilters: () => void
 }
 
+/** Provides debounced search and faceted-filter state for unassigned equipment. */
 export function useUnassignedEquipmentFilters(): UseUnassignedEquipmentFiltersReturn {
   const [searchTerm, setSearchTerm] = React.useState("")
   const debouncedSearch = useDebounce(searchTerm, 300)

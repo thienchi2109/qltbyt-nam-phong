@@ -45,12 +45,12 @@
 
 **Purpose:** Prepare reusable frontend ownership while preserving the existing Mapping page.
 
-- [ ] 2.1 Run code-deduplication discovery before creating or moving shared hooks, utilities, or split-pane components.
-- [ ] 2.2 Extract or adapt the unassigned-equipment filters, pagination, page-only selection, and manual preview trigger so they do not depend on Mapping page composition.
-- [ ] 2.3 Keep the existing `/device-quota/mapping` page as the active consumer of the refactored components.
-- [ ] 2.4 Preserve current query keys, mutation payloads, selection semantics, tenant scope, role behavior, and visible labels.
-- [ ] 2.5 Keep new and modified source files below the repository file-size ceilings.
-- [ ] 2.6 Prove with existing and focused tests that the Mapping page behaves identically after the refactor.
+- [x] 2.1 Run code-deduplication discovery before creating or moving shared hooks, utilities, or split-pane components.
+- [x] 2.2 Extract or adapt the unassigned-equipment filters, pagination, page-only selection, and manual preview trigger so they do not depend on Mapping page composition.
+- [x] 2.3 Keep the existing `/device-quota/mapping` page as the active consumer of the refactored components.
+- [x] 2.4 Preserve current query keys, mutation payloads, selection semantics, tenant scope, role behavior, and visible labels.
+- [x] 2.5 Keep new and modified source files below the repository file-size ceilings.
+- [x] 2.6 Prove with existing and focused tests that the Mapping page behaves identically after the refactor.
 
 **Deploy-safe boundary:** Internal frontend refactor only. Both top-level tabs, routes, and user workflows remain unchanged.
 

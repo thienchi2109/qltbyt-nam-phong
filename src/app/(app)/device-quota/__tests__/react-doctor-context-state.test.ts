@@ -113,7 +113,7 @@ describe("device quota context React Doctor state guards", () => {
 
   it("keeps mapping effects to at most one state mutation per effect", () => {
     const source = readSource(
-      "src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext.tsx"
+      "src/app/(app)/device-quota/_hooks/useDeviceQuotaManualMappingEquipment.ts"
     )
     const effectBodies = extractEffectBodies(source)
 

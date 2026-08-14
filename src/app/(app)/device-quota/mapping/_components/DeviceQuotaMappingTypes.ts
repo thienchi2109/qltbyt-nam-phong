@@ -1,29 +1,10 @@
 import type { useServerPagination } from "@/hooks/useServerPagination"
-import type { useUnassignedEquipmentFilters } from "@/app/(app)/device-quota/mapping/_hooks/useUnassignedEquipmentFilters"
+import type { useUnassignedEquipmentFilters } from "@/app/(app)/device-quota/_hooks/useUnassignedEquipmentFilters"
 import type { useLinkEquipmentMutation } from "./DeviceQuotaMappingMutations"
-
-export interface UnassignedEquipmentRow {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  model: string | null
-  serial: string | null
-  hang_san_xuat: string | null
-  khoa_phong_quan_ly: string | null
-  tinh_trang: string | null
-  total_count: number
-}
-
-export interface UnassignedEquipment {
-  id: number
-  ma_thiet_bi: string
-  ten_thiet_bi: string
-  model: string | null
-  serial: string | null
-  hang_san_xuat: string | null
-  khoa_phong_quan_ly: string | null
-  tinh_trang: string | null
-}
+import type {
+  FilterOptions,
+  UnassignedEquipment,
+} from "@/app/(app)/device-quota/_components/manual-mapping/DeviceQuotaManualMappingTypes"
 
 export interface Category {
   id: number
@@ -33,13 +14,6 @@ export interface Category {
   phan_loai: string | null
   level: number
   so_luong_hien_co: number
-}
-
-export interface FilterOptions {
-  departments: string[]
-  users: string[]
-  locations: string[]
-  fundingSources: string[]
 }
 
 export interface AuthUser {
@@ -76,3 +50,9 @@ export interface DeviceQuotaMappingContextValue {
   isLinking: boolean
   refetch: () => void
 }
+
+export type {
+  FilterOptions,
+  UnassignedEquipment,
+  UnassignedEquipmentRow,
+} from "@/app/(app)/device-quota/_components/manual-mapping/DeviceQuotaManualMappingTypes"

@@ -1,9 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { Link, Sparkles } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { isEquipmentManagerRole, isRegionalLeaderRole } from "@/lib/rbac"
+import { DeviceQuotaManualMappingPreviewTrigger } from "../../_components/manual-mapping/DeviceQuotaManualMappingPreviewTrigger"
 import { useDeviceQuotaMappingContext } from "../_hooks/useDeviceQuotaMappingContext"
 import { DeviceQuotaMappingPreviewDialog } from "./DeviceQuotaMappingPreviewDialog"
 import { SuggestedMappingPreviewDialog } from "./SuggestedMappingPreviewDialog"
@@ -58,7 +59,8 @@ export function DeviceQuotaMappingActions() {
 
   // Keep mounted while dialog is open so .mutate() onSuccess can close it cleanly
   // (context-level onSuccess clears selection before .mutate() onSuccess fires)
-  const showSuggestButton = hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role))
+  const showSuggestButton =
+    hasFacility && (isEquipmentManagerRole(user?.role) || isRegionalLeaderRole(user?.role))
   if (selectedCount === 0 && !showPreview && !showSuggestButton) {
     return null
   }
@@ -70,9 +72,7 @@ export function DeviceQuotaMappingActions() {
           {/* Selected count / scope info */}
           <div className="flex items-center gap-2">
             {selectedCount > 0 ? (
-              <span className="text-sm font-medium">
-                {selectedCount} thiết bị đã chọn
-              </span>
+              <span className="text-sm font-medium">{selectedCount} thiết bị đã chọn</span>
             ) : (
               <span className="text-xs text-muted-foreground">
                 Áp dụng cho toàn bộ thiết bị chưa gán của đơn vị hiện tại
@@ -96,15 +96,11 @@ export function DeviceQuotaMappingActions() {
             )}
 
             {selectedCount > 0 && (
-              <Button
-                onClick={handleOpenPreview}
-                disabled={!canOpenPreview || isLinking}
-                size="sm"
-                className="touch-target-sm"
-              >
-                <Link className="size-4" />
-                {isLinking ? "Đang xử lý..." : "Phân loại"}
-              </Button>
+              <DeviceQuotaManualMappingPreviewTrigger
+                canOpenPreview={canOpenPreview}
+                isLinking={isLinking}
+                onOpenPreview={handleOpenPreview}
+              />
             )}
           </div>
         </div>

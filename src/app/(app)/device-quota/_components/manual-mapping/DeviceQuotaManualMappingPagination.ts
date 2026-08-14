@@ -10,6 +10,7 @@ export interface GetNextPaginationTotalCountParams {
   page: number
 }
 
+/** Preserves the current server-count behavior while recovering invalid pages. */
 export function getNextPaginationTotalCount({
   donViId,
   equipmentRawData,
