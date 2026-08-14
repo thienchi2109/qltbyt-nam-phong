@@ -4,7 +4,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-type DeviceQuotaSplitPaneRatio = "50-50" | "40-60"
+type DeviceQuotaSplitPaneRatio = "50-50" | "40-60" | "46-54"
 
 interface DeviceQuotaSplitPaneProps {
   leftPanel: React.ReactNode
@@ -18,8 +18,10 @@ interface DeviceQuotaSplitPaneProps {
 const RATIO_CLASSES: Record<DeviceQuotaSplitPaneRatio, string> = {
   "50-50": "lg:grid-cols-2",
   "40-60": "lg:grid-cols-[minmax(320px,40%)_minmax(0,60%)]",
+  "46-54": "xl:grid-cols-[minmax(560px,46fr)_minmax(0,54fr)]",
 }
 
+/** Renders a responsive two-pane layout for device quota workspaces. */
 export function DeviceQuotaSplitPane({
   leftPanel,
   rightPanel,
@@ -31,11 +33,7 @@ export function DeviceQuotaSplitPane({
   return (
     <div
       data-testid="device-quota-split-pane"
-      className={cn(
-        "grid grid-cols-1 gap-6 min-h-[600px]",
-        RATIO_CLASSES[ratio],
-        className
-      )}
+      className={cn("grid grid-cols-1 gap-6 min-h-[600px]", RATIO_CLASSES[ratio], className)}
     >
       <div
         className={cn(

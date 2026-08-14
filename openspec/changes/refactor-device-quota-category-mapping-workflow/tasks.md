@@ -28,14 +28,14 @@
 
 **Purpose:** Deliver the long-name readability fix independently before workflow consolidation.
 
-- [ ] 1.1 Add a failing regression test for the new 46% / 54% wide-desktop split contract.
-- [ ] 1.2 Add a non-breaking `46-54` split-pane option or Categories-scoped override. Do not redefine the existing shared `40-60` option because both current Categories and Mapping compositions consume it.
-- [ ] 1.3 Change the current Categories wide-desktop allocation to approximately 46% category pane and 54% detail pane.
-- [ ] 1.4 Give code, classification, usage/progress, and row actions bounded widths while allowing the category name to consume flexible space.
-- [ ] 1.5 Preserve two-line category names and add a failing `user-event` test that opens the complete value by pointer hover and keyboard focus.
-- [ ] 1.6 Verify wrapping does not overlap indentation, progress data, menus, or adjacent rows.
-- [ ] 1.7 Preserve horizontal scrolling and minimum table width in the assigned-equipment pane.
-- [ ] 1.8 Verify 1440x900, 1920x1080, narrower desktop, and mobile layouts.
+- [x] 1.1 Add a failing regression test for the new 46% / 54% wide-desktop split contract.
+- [x] 1.2 Add a non-breaking `46-54` split-pane option or Categories-scoped override. Do not redefine the existing shared `40-60` option because both current Categories and Mapping compositions consume it.
+- [x] 1.3 Change the current Categories wide-desktop allocation to approximately 46% category pane and 54% detail pane.
+- [x] 1.4 Give code, classification, usage/progress, and row actions bounded widths while allowing the category name to consume flexible space.
+- [x] 1.5 Preserve two-line category names and add a failing `user-event` test that opens the complete value by pointer hover and keyboard focus.
+- [x] 1.6 Verify wrapping does not overlap indentation, progress data, menus, or adjacent rows.
+- [x] 1.7 Preserve horizontal scrolling and minimum table width in the assigned-equipment pane.
+- [x] 1.8 Verify 1440x900, 1920x1080, narrower desktop, and mobile layouts.
 
 **Deploy-safe boundary:** Existing Categories behavior is unchanged except for layout and full-text readability. Mapping and suggestion workflows are untouched.
 

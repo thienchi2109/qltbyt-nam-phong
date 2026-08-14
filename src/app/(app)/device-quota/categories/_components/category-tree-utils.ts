@@ -5,21 +5,23 @@ import type { CategoryListItem } from "../_types/categories"
 // ============================================
 
 /** Shared grid template for column alignment across header, group rows, and child rows */
-export const CATEGORY_GRID_COLS = "grid grid-cols-[minmax(0,1fr)_5rem_12rem_2rem] gap-x-4 items-center"
+export const CATEGORY_GRID_COLS =
+  "grid grid-cols-[minmax(0,1fr)_4.5rem_9rem_2rem] gap-x-3 items-center"
 
+/** Classification badge styles keyed by category classification code. */
 export const CLASSIFICATION_STYLES: Record<string, { className: string; label: string }> = {
-  A: { className: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300", label: "Loại A" },
-  B: { className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300", label: "Loại B" },
+  A: {
+    className: "bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300",
+    label: "Loại A",
+  },
+  B: {
+    className: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+    label: "Loại B",
+  },
 }
 
-export const SKELETON_KEYS = [
-  "skel-1",
-  "skel-2",
-  "skel-3",
-  "skel-4",
-  "skel-5",
-  "skel-6",
-] as const
+/** Stable row keys used by the category-tree loading skeleton. */
+export const SKELETON_KEYS = ["skel-1", "skel-2", "skel-3", "skel-4", "skel-5", "skel-6"] as const
 
 // ============================================
 // Helpers
@@ -69,9 +71,7 @@ export function groupByRoot(categories: CategoryListItem[]) {
  * Algorithm: the input list is depth-first ordered by sort_path,
  * so iterating in reverse guarantees children are processed before parents.
  */
-export function buildAggregatedCounts(
-  categories: CategoryListItem[]
-): Map<number, number> {
+export function buildAggregatedCounts(categories: CategoryListItem[]): Map<number, number> {
   const totals = new Map<number, number>()
 
   // Seed each node with its own direct count
@@ -83,10 +83,7 @@ export function buildAggregatedCounts(
   for (let i = categories.length - 1; i >= 0; i--) {
     const cat = categories[i]
     if (cat.parent_id !== null && totals.has(cat.parent_id)) {
-      totals.set(
-        cat.parent_id,
-        (totals.get(cat.parent_id) ?? 0) + (totals.get(cat.id) ?? 0)
-      )
+      totals.set(cat.parent_id, (totals.get(cat.parent_id) ?? 0) + (totals.get(cat.id) ?? 0))
     }
   }
 
@@ -97,9 +94,7 @@ export function buildAggregatedCounts(
  * Identify leaf categories — nodes that have no children in the list.
  * A node is a leaf if no other category has parent_id === node.id.
  */
-export function getLeafIds(
-  categories: CategoryListItem[]
-): Set<number> {
+export function getLeafIds(categories: CategoryListItem[]): Set<number> {
   const parentIds = new Set<number>()
   for (const cat of categories) {
     if (cat.parent_id !== null) {
