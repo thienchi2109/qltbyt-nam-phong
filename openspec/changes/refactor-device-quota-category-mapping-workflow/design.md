@@ -199,7 +199,7 @@ No phase requires data rollback because all existing RPCs and API routes remain 
 - Role matrix:
   - equipment-manager roles receive the unified Categories workspace and manager controls;
   - `regional_leader` retains Mapping and preview-only suggestions;
-  - another non-manager role retains current Mapping access without category CRUD.
+  - restricted non-manager roles retain their current denial from the Device Quota module.
 - Parent and leaf categories:
   - both remain valid manual targets;
   - parent detail renders direct assignments separately from aggregate descendant state.

@@ -12,13 +12,13 @@
 
 **Purpose:** Lock current behavior before production refactors.
 
-- [ ] 0.1 Add or update page-level tests that characterize the current Categories master-detail behavior.
-- [ ] 0.2 Characterize the current Mapping manual-selection, preview-cancel, preview-confirm, success, and error behavior.
-- [ ] 0.3 Characterize the current facility-wide suggestion trigger, role behavior, grouped preview, unmatched section, exclusions, retry, and batch apply behavior.
-- [ ] 0.4 Preserve the existing `CategoryActionMenu` deferred dropdown-to-dialog regression coverage.
-- [ ] 0.5 Characterize the role matrix: equipment-manager access to both current tabs, `regional_leader` Mapping access and preview-only suggestions, and another non-manager Mapping role.
-- [ ] 0.6 Characterize parent and leaf categories as valid targets in the current Mapping tree and record the current leaf-only Categories detail presentation.
-- [ ] 0.7 Record focused desktop screenshots or equivalent visual baselines for the current Categories and Mapping pages.
+- [x] 0.1 Add or update page-level tests that characterize the current Categories master-detail behavior.
+- [x] 0.2 Characterize the current Mapping manual-selection, preview-cancel, preview-confirm, success, and error behavior.
+- [x] 0.3 Characterize the current facility-wide suggestion trigger, role behavior, grouped preview, unmatched section, exclusions, retry, and batch apply behavior.
+- [x] 0.4 Preserve the existing `CategoryActionMenu` deferred dropdown-to-dialog regression coverage.
+- [x] 0.5 Characterize the role matrix: equipment-manager access to both current tabs, `regional_leader` Mapping access and preview-only suggestions, and a restricted non-manager role that remains outside the module.
+- [x] 0.6 Characterize parent and leaf categories as valid targets in the current Mapping tree and record the current leaf-only Categories detail presentation.
+- [x] 0.7 Record focused desktop screenshots or equivalent visual baselines for the current Categories and Mapping pages.
 
 **Deploy-safe boundary:** Tests and reference artifacts only; no production behavior changes.
 

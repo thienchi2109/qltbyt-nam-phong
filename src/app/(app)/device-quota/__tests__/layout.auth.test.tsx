@@ -18,6 +18,10 @@ vi.mock("next/navigation", () => ({
   redirect: (path: string) => mocks.redirect(path),
 }))
 
+vi.mock("@/auth/config", () => ({
+  authOptions: {},
+}))
+
 vi.mock("@/app/(app)/device-quota/_components/DeviceQuotaSubNav", () => ({
   DeviceQuotaSubNav: () => <div data-testid="device-quota-subnav" />,
 }))
@@ -33,9 +37,9 @@ describe("DeviceQuotaLayout auth gate", () => {
   it("redirects unauthenticated requests to the login page", async () => {
     mocks.getServerSession.mockResolvedValue(null)
 
-    await expect(
-      DeviceQuotaLayout({ children: <div>Protected Child</div> })
-    ).rejects.toThrow("NEXT_REDIRECT:/")
+    await expect(DeviceQuotaLayout({ children: <div>Protected Child</div> })).rejects.toThrow(
+      "NEXT_REDIRECT:/"
+    )
 
     expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
     expect(mocks.redirect).toHaveBeenCalledWith("/")
@@ -50,27 +54,30 @@ describe("DeviceQuotaLayout auth gate", () => {
         },
       })
 
-      await expect(
-        DeviceQuotaLayout({ children: <div>Protected Child</div> })
-      ).rejects.toThrow("NEXT_REDIRECT:/dashboard")
+      await expect(DeviceQuotaLayout({ children: <div>Protected Child</div> })).rejects.toThrow(
+        "NEXT_REDIRECT:/dashboard"
+      )
 
       expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
       expect(mocks.redirect).toHaveBeenCalledWith("/dashboard")
     }
   )
 
-  it("renders the device quota layout for allowed roles", async () => {
-    mocks.getServerSession.mockResolvedValue({
-      user: {
-        role: "to_qltb",
-      },
-    })
+  it.each(["global", "admin", "regional_leader", "to_qltb"])(
+    "renders the device quota layout for allowed role %s",
+    async (role) => {
+      mocks.getServerSession.mockResolvedValue({
+        user: {
+          role,
+        },
+      })
 
-    render(await DeviceQuotaLayout({ children: <div>Protected Child</div> }))
+      render(await DeviceQuotaLayout({ children: <div>Protected Child</div> }))
 
-    expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
-    expect(mocks.redirect).not.toHaveBeenCalled()
-    expect(screen.getByTestId("device-quota-subnav")).toBeInTheDocument()
-    expect(screen.getByText("Protected Child")).toBeInTheDocument()
-  })
+      expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
+      expect(mocks.redirect).not.toHaveBeenCalled()
+      expect(screen.getByTestId("device-quota-subnav")).toBeInTheDocument()
+      expect(screen.getByText("Protected Child")).toBeInTheDocument()
+    }
+  )
 })
