@@ -438,10 +438,10 @@ Deploy boundary: controlled acceptance and closeout only.
       verification.
 - [x] P6C.2 Confirm XLSX v2 production acceptance and document rollback plus recovery
       steps for the retired legacy UI path.
-- [ ] P6C.3 Require independent specification review approval and user acceptance,
+- [x] P6C.3 Require independent specification review approval and user acceptance,
       close completed issues, merge verified PRs, and archive the OpenSpec change only
       after deployment.
-- [ ] P6C.4 Run `git pull --rebase`, push any remaining closeout commit, confirm status
+- [x] P6C.4 Run `git pull --rebase`, push any remaining closeout commit, confirm status
       is up to date with origin, clear stale stashes, prune remote branches, and record
       the final handoff.
 
@@ -463,8 +463,10 @@ acceptance, PR #913 squash-merged into `main` as `f8fe17f2` at
 `2026-08-14T06:18:29Z`. The hierarchy delta was transferred exactly into active
 parent change `add-technical-configuration-comparison` before this follow-up was
 archived with `--skip-specs`, preventing both spec loss and double application.
-P6C.3/P6C.4 remain unchecked until the archive PR merges, closes Issue #896, and
-the final `main` synchronization and handoff complete.
+Archive PR #914 squash-merged into `main` as `aaae364c` at
+`2026-08-14T07:17:27Z`, all required checks passed, Issue #896 closed, local
+`main` synchronized with `origin/main`, stale remote branches were pruned, and
+the final handoff was recorded. P6C.3 and P6C.4 are complete.
 
 P1A.1-P1A.5 were reconciled as complete from merged PR #897, closed Issue #876,
 and the committed migration/test/plan artifacts. P6A.2, P6A.5, and P6B.2 remain
