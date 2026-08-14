@@ -25,8 +25,17 @@ beforeAll(() => {
 })
 
 const mockUseSession = vi.fn()
+const mockUseTenantSelection = vi.fn()
 vi.mock("next-auth/react", () => ({
   useSession: () => mockUseSession(),
+}))
+
+vi.mock("@/contexts/TenantSelectionContext", () => ({
+  useTenantSelection: () => mockUseTenantSelection(),
+}))
+
+vi.mock("@/components/shared/TenantSelector", () => ({
+  TenantSelector: () => <button type="button">Chọn đơn vị</button>,
 }))
 
 vi.mock("next/navigation", () => ({
@@ -55,11 +64,15 @@ const createWrapper = () => {
 describe("DeviceQuotaCategoriesPage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: null,
+      showSelector: false,
+    })
   })
 
   it("shows the restricted access state for authenticated users without category management permission", () => {
     mockUseSession.mockReturnValue({
-      data: { user: { role: "regional_leader", don_vi: "1" } },
+      data: { user: { role: "technician", don_vi: "1" } },
       status: "authenticated",
     })
 
@@ -70,6 +83,58 @@ describe("DeviceQuotaCategoriesPage", () => {
       screen.getByText(/chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị/i)
     ).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Tạo danh mục" })).not.toBeInTheDocument()
+    expect(mockCallRpc).not.toHaveBeenCalled()
+  })
+
+  it("admits regional leaders as read-only users without category detail or CRUD access", async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: "regional_leader", don_vi: "1" } },
+      status: "authenticated",
+    })
+    mockCallRpc.mockResolvedValue([
+      {
+        id: 1,
+        parent_id: null,
+        ma_nhom: "G1",
+        ten_nhom: "Nhóm chẩn đoán hình ảnh",
+        phan_loai: "A",
+        don_vi_tinh: null,
+        thu_tu_hien_thi: 1,
+        level: 1,
+        so_luong_hien_co: 1,
+        so_luong_toi_da: 10,
+        so_luong_toi_thieu: null,
+        mo_ta: null,
+      },
+    ])
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    expect(await screen.findByTestId("device-quota-categories-workspace")).toBeInTheDocument()
+    expect(screen.queryByText("Truy cập bị hạn chế")).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Tạo danh mục" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Thao tác danh mục/i })).not.toBeInTheDocument()
+    expect(screen.queryByTestId("device-quota-category-detail-pane")).not.toBeInTheDocument()
+    expect(mockCallRpc).toHaveBeenCalledTimes(1)
+    expect(mockCallRpc).toHaveBeenCalledWith({
+      fn: "dinh_muc_nhom_list",
+      args: { p_don_vi: 1 },
+    })
+  })
+
+  it("renders tenant selection for privileged users without a persisted facility", async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: "admin", don_vi: null } },
+      status: "authenticated",
+    })
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: null,
+      showSelector: true,
+    })
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    expect(await screen.findByRole("button", { name: "Chọn đơn vị" })).toBeInTheDocument()
     expect(mockCallRpc).not.toHaveBeenCalled()
   })
 
@@ -94,6 +159,26 @@ describe("DeviceQuotaCategoriesPage", () => {
     })
   })
 
+  it("uses the privileged tenant selection instead of the session tenant", async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: "admin", don_vi: null } },
+      status: "authenticated",
+    })
+    mockUseTenantSelection.mockReturnValue({
+      selectedFacilityId: 9,
+      showSelector: true,
+    })
+    mockCallRpc.mockResolvedValue([])
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    expect(await screen.findByText("Chưa có danh mục nào")).toBeInTheDocument()
+    expect(mockCallRpc).toHaveBeenCalledWith({
+      fn: "dinh_muc_nhom_list",
+      args: { p_don_vi: 9 },
+    })
+  })
+
   it("uses the full app-shell content width without a centered route container", async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: "admin", don_vi: "1" } },
@@ -112,7 +197,7 @@ describe("DeviceQuotaCategoriesPage", () => {
     expect(await screen.findByText("Chưa có danh mục nào")).toBeInTheDocument()
   })
 
-  it("keeps page-level selection in the master-detail pane and shows equipment only for leaves", async () => {
+  it("keeps page-level selection and fetches direct assignments for parent categories", async () => {
     const user = userEvent.setup()
     mockUseSession.mockReturnValue({
       data: { user: { role: "admin", don_vi: "1" } },
@@ -162,6 +247,18 @@ describe("DeviceQuotaCategoriesPage", () => {
           tinh_trang: "Hoạt động",
         },
       ])
+      .mockResolvedValueOnce([
+        {
+          id: 102,
+          ma_thiet_bi: "TB-PARENT",
+          ten_thiet_bi: "Thiết bị gán trực tiếp cho nhóm cha",
+          model: null,
+          serial: null,
+          hang_san_xuat: null,
+          khoa_phong_quan_ly: "Khoa CĐHA",
+          tinh_trang: "Hoạt động",
+        },
+      ])
 
     render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
 
@@ -185,10 +282,12 @@ describe("DeviceQuotaCategoriesPage", () => {
         name: "Nhóm chẩn đoán hình ảnh",
       })
     ).toBeInTheDocument()
-    expect(
-      within(detailPane).getByText("Chọn một danh mục con để xem danh sách thiết bị được gán")
-    ).toBeInTheDocument()
     expect(within(detailPane).queryByText("TB-001")).not.toBeInTheDocument()
+    expect(await within(detailPane).findByText("TB-PARENT")).toBeInTheDocument()
+    expect(mockCallRpc).toHaveBeenLastCalledWith({
+      fn: "dinh_muc_thiet_bi_by_nhom",
+      args: { p_nhom_id: 1, p_don_vi: 1 },
+    })
   })
 
   it("opens and closes the create category dialog from the toolbar", async () => {

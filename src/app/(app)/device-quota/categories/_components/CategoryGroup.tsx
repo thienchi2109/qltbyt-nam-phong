@@ -40,8 +40,11 @@ function categorySelectLabel(
 
 interface CategoryChildRowProps {
   category: CategoryListItem
-  onEdit: (category: CategoryListItem) => void
-  onDelete: (category: CategoryListItem) => void
+  actions?: {
+    onEdit: (category: CategoryListItem) => void
+    onDelete: (category: CategoryListItem) => void
+  }
+  selectionDisabled: boolean
   isMutating: boolean
   aggregatedCount: number
   aggregatedQuota: AggregatedQuota | undefined
@@ -52,8 +55,8 @@ interface CategoryChildRowProps {
 
 const CategoryChildRow = React.memo(function CategoryChildRow({
   category,
-  onEdit,
-  onDelete,
+  actions,
+  selectionDisabled,
   isMutating,
   aggregatedCount,
   aggregatedQuota,
@@ -89,6 +92,7 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
             aria-label={selectLabel}
             aria-pressed={isSelected}
             onClick={selectCategory}
+            disabled={selectionDisabled}
             className={cn(
               "min-w-0 rounded-sm bg-transparent p-0 text-left text-foreground",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -137,13 +141,15 @@ const CategoryChildRow = React.memo(function CategoryChildRow({
       </div>
 
       {/* Column 4: Actions */}
-      <CategoryActionMenu
-        category={category}
-        disabled={isMutating}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        className="opacity-100 transition-opacity focus-visible:opacity-100"
-      />
+      {actions && (
+        <CategoryActionMenu
+          category={category}
+          disabled={isMutating}
+          onEdit={actions.onEdit}
+          onDelete={actions.onDelete}
+          className="opacity-100 transition-opacity focus-visible:opacity-100"
+        />
+      )}
     </div>
   )
 })
@@ -163,6 +169,8 @@ interface CategoryGroupProps {
   leafIds: Set<number>
   selectedCategoryId: number | null
   onSelectCategory: (category: CategoryListItem) => void
+  canManageCategories: boolean
+  selectionDisabled: boolean
 }
 
 /** Renders a root category group with selectable semantic rows and action controls. */
@@ -177,6 +185,8 @@ const CategoryGroup = React.memo(function CategoryGroup({
   leafIds,
   selectedCategoryId,
   onSelectCategory,
+  canManageCategories,
+  selectionDisabled,
 }: CategoryGroupProps) {
   const [isCollapsed, setIsCollapsed] = React.useState(false)
   const classStyle = CLASSIFICATION_STYLES[root.phan_loai || ""] ?? null
@@ -191,6 +201,10 @@ const CategoryGroup = React.memo(function CategoryGroup({
   const rootSelectLabel = categorySelectLabel(root, classStyle?.label ?? null, rootQuotaText)
   const rootSelected = selectedCategoryId === root.id
   const toggleLabel = `${isCollapsed ? "Mở rộng" : "Thu gọn"} nhóm ${root.ma_nhom}: ${root.ten_nhom}`
+  const categoryActions = React.useMemo(
+    () => (canManageCategories ? { onEdit, onDelete } : undefined),
+    [canManageCategories, onDelete, onEdit]
+  )
 
   const selectRoot = () => onSelectCategory(root)
 
@@ -231,6 +245,7 @@ const CategoryGroup = React.memo(function CategoryGroup({
                   aria-label={rootSelectLabel}
                   aria-pressed={rootSelected}
                   onClick={selectRoot}
+                  disabled={selectionDisabled}
                   className="min-w-0 flex-1 rounded-sm bg-transparent p-0 text-left text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="flex min-w-0 items-start gap-2">
@@ -269,12 +284,14 @@ const CategoryGroup = React.memo(function CategoryGroup({
           </div>
 
           {/* Column 4: Actions */}
-          <CategoryActionMenu
-            category={root}
-            disabled={mutatingCategoryId === root.id}
-            onEdit={onEdit}
-            onDelete={onDelete}
-          />
+          {canManageCategories && (
+            <CategoryActionMenu
+              category={root}
+              disabled={mutatingCategoryId === root.id}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          )}
         </div>
 
         {/* Children */}
@@ -284,8 +301,8 @@ const CategoryGroup = React.memo(function CategoryGroup({
               <div key={child.id}>
                 <CategoryChildRow
                   category={child}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
+                  actions={categoryActions}
+                  selectionDisabled={selectionDisabled}
                   isMutating={mutatingCategoryId === child.id}
                   aggregatedCount={aggregatedCounts.get(child.id) ?? child.so_luong_hien_co}
                   aggregatedQuota={aggregatedQuotas.get(child.id)}

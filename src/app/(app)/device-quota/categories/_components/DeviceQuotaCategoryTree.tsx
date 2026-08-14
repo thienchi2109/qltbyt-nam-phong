@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeviceQuotaSplitPane } from "../../_components/DeviceQuotaSplitPane"
-import type { CategoryListItem } from "../_types/categories"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
+import { useDeviceQuotaCategoryWorkspaceState } from "../_hooks/useDeviceQuotaCategoryWorkspaceState"
 import {
   CATEGORY_GRID_COLS,
   groupByRoot,
@@ -16,32 +16,34 @@ import {
   getLeafIds,
 } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
+import { DeviceQuotaCategoryAssignmentPane } from "./DeviceQuotaCategoryAssignmentPane"
 import { DeviceQuotaCategoryDetailPane } from "./DeviceQuotaCategoryDetailPane"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
 
-function findDefaultCategory(
-  categories: CategoryListItem[],
-  aggregatedCounts: Map<number, number>,
-  leafIds: Set<number>
-) {
-  return (
-    categories.find(
-      (category) =>
-        leafIds.has(category.id) &&
-        (aggregatedCounts.get(category.id) ?? category.so_luong_hien_co) > 0
-    ) ??
-    categories.find((category) => leafIds.has(category.id)) ??
-    categories.find((category) => category.level === 1) ??
-    null
-  )
+const RESTRICTED_DETAIL_PANE = (
+  <Card className="h-full">
+    <CardContent className="flex min-h-[18rem] items-center justify-center text-sm text-muted-foreground">
+      Bạn không có quyền xem chi tiết danh mục
+    </CardContent>
+  </Card>
+)
+
+interface DeviceQuotaCategoryTreeProps {
+  onAssignmentActiveChange?: (isActive: boolean) => void
 }
 
 /** Renders the device quota category tree and detail pane. */
-export function DeviceQuotaCategoryTree() {
+export function DeviceQuotaCategoryTree({
+  onAssignmentActiveChange,
+}: DeviceQuotaCategoryTreeProps = {}) {
   const {
     categories,
     allCategories,
     donViId,
+    isFacilitySelected,
+    canManageCategories,
+    canInspectCategoryDetail,
+    canAssignManually,
     isLoading,
     searchTerm,
     openCreateDialog,
@@ -63,33 +65,34 @@ export function DeviceQuotaCategoryTree() {
   )
 
   const leafIds = React.useMemo(() => getLeafIds(allCategories), [allCategories])
-
-  const [explicitSelectedCategoryId, setExplicitSelectedCategoryId] = React.useState<number | null>(
-    null
-  )
-
-  const defaultCategory = React.useMemo(
-    () => findDefaultCategory(categories, aggregatedCounts, leafIds),
-    [aggregatedCounts, categories, leafIds]
-  )
-
-  const explicitSelectedCategory = React.useMemo(
-    () => categories.find((category) => category.id === explicitSelectedCategoryId) ?? null,
-    [categories, explicitSelectedCategoryId]
-  )
-
-  const selectedCategory = explicitSelectedCategory ?? defaultCategory
-  const selectedCategoryId = selectedCategory?.id ?? null
-
-  const handleSelectCategory = React.useCallback((category: CategoryListItem) => {
-    setExplicitSelectedCategoryId(category.id)
-  }, [])
+  const workspace = useDeviceQuotaCategoryWorkspaceState({
+    categories,
+    allCategories,
+    aggregatedCounts,
+    leafIds,
+  })
+  const selectedCategory = workspace.selectedCategory
 
   const rootCount = roots.length
   const selectedCount = selectedCategory
     ? (aggregatedCounts.get(selectedCategory.id) ?? selectedCategory.so_luong_hien_co)
     : 0
   const selectedQuota = selectedCategory ? aggregatedQuotas.get(selectedCategory.id) : undefined
+  const startAssignment = React.useCallback(() => {
+    workspace.startAssignment()
+    onAssignmentActiveChange?.(true)
+  }, [onAssignmentActiveChange, workspace.startAssignment])
+  const cancelAssignment = React.useCallback(() => {
+    workspace.cancelAssignment()
+    onAssignmentActiveChange?.(false)
+  }, [onAssignmentActiveChange, workspace.cancelAssignment])
+  const completeAssignment = React.useCallback(
+    (confirmedIds: number[]) => {
+      workspace.completeAssignment(confirmedIds)
+      onAssignmentActiveChange?.(false)
+    },
+    [onAssignmentActiveChange, workspace.completeAssignment]
+  )
 
   const navigationPane = (
     <Card className="h-full flex flex-col" data-testid="device-quota-category-nav-pane">
@@ -108,7 +111,11 @@ export function DeviceQuotaCategoryTree() {
         {isLoading ? (
           <CategoryTreeSkeleton />
         ) : roots.length === 0 ? (
-          <CategoryTreeEmpty onCreate={openCreateDialog} hasSearch={searchTerm.length > 0} />
+          <CategoryTreeEmpty
+            onCreate={openCreateDialog}
+            hasSearch={searchTerm.length > 0}
+            canCreate={canManageCategories}
+          />
         ) : (
           <div className="space-y-3">
             {/* Column header */}
@@ -137,8 +144,10 @@ export function DeviceQuotaCategoryTree() {
                     aggregatedCounts={aggregatedCounts}
                     aggregatedQuotas={aggregatedQuotas}
                     leafIds={leafIds}
-                    selectedCategoryId={selectedCategory?.id ?? null}
-                    onSelectCategory={handleSelectCategory}
+                    selectedCategoryId={workspace.selectedCategoryId}
+                    onSelectCategory={workspace.selectCategory}
+                    canManageCategories={canManageCategories}
+                    selectionDisabled={workspace.mode === "assign"}
                   />
                 </li>
               ))}
@@ -149,19 +158,37 @@ export function DeviceQuotaCategoryTree() {
     </Card>
   )
 
+  const detailPane = (
+    <DeviceQuotaCategoryDetailPane
+      category={selectedCategory}
+      allCategories={allCategories}
+      aggregatedCount={selectedCount}
+      aggregatedQuota={selectedQuota}
+      isLeaf={selectedCategory ? leafIds.has(selectedCategory.id) : false}
+      donViId={donViId}
+      canAssign={canAssignManually}
+      onStartAssignment={startAssignment}
+      reconciledEquipmentIds={workspace.reconciledEquipmentIds}
+    />
+  )
+
+  const assignmentPane =
+    selectedCategory && workspace.mode === "assign" ? (
+      <DeviceQuotaCategoryAssignmentPane
+        category={selectedCategory}
+        donViId={donViId}
+        isFacilitySelected={isFacilitySelected}
+        onCancel={cancelAssignment}
+        onReconciled={completeAssignment}
+      />
+    ) : null
+
   return (
     <DeviceQuotaSplitPane
       ratio="46-54"
       leftPanel={navigationPane}
       rightPanel={
-        <DeviceQuotaCategoryDetailPane
-          category={selectedCategory}
-          allCategories={allCategories}
-          aggregatedCount={selectedCount}
-          aggregatedQuota={selectedQuota}
-          isLeaf={selectedCategory ? leafIds.has(selectedCategory.id) : false}
-          donViId={donViId}
-        />
+        canInspectCategoryDetail ? (assignmentPane ?? detailPane) : RESTRICTED_DETAIL_PANE
       }
       leftClassName="lg:overflow-x-hidden"
     />

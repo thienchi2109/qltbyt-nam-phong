@@ -76,22 +76,22 @@
 
 **Purpose:** Add the complete category-first manual workflow for every role currently authorized to perform manual mapping while retaining Mapping only as a temporary fallback.
 
-- [ ] 3.1 Add failing `user-event` coverage for category selection → assignment mode → equipment selection → preview cancel.
-- [ ] 3.2 Add failing `user-event` coverage for category selection → assignment mode → preview confirm → return to the same category detail.
-- [ ] 3.3 Introduce a focused workspace owner for selected category and `detail` / `assign` mode without merging unrelated server-state hooks.
-- [ ] 3.4 Reuse the existing Categories tree, category-row rendering, Phase 1 split-pane contract, detail pane, assigned-equipment query, tenant selection, and category CRUD dialogs.
-- [ ] 3.5 Keep the Phase 1 layout and long-name regression suites unchanged and passing in both `detail` and `assign` modes; switching modes may replace only the right work surface.
-- [ ] 3.6 Embed the Phase 2 manual mapping components in the right-pane assignment mode for roles already authorized to perform manual mapping.
-- [ ] 3.7 Replace the Categories manager-only page-entry guard with a Device Quota access guard that admits roles already authorized for Mapping, then render the category hierarchy as read-only context and keep category detail, create, edit, delete, and import controls unavailable unless the current role already has those permissions.
-- [ ] 3.8 Add role-matrix coverage proving Mapping-only roles do not fetch or render quota or assigned-equipment detail and receive only their existing manual-mapping and suggestion capabilities.
-- [ ] 3.9 Preserve parent and leaf categories as valid assignment targets.
-- [ ] 3.10 Show direct parent assignments with `dinh_muc_thiet_bi_by_nhom` separately from aggregate descendant counts and quota for roles authorized to inspect category detail.
-- [ ] 3.11 Preserve the selected category while entering assignment mode and opening or cancelling the manual preview.
-- [ ] 3.12 On a nonzero `dinh_muc_thiet_bi_link` result, invalidate existing unassigned, filter-option, category-list, and compliance queries.
-- [ ] 3.13 Await an exact `dinh_muc_thiet_bi_by_nhom` refetch for the selected category and tenant, or keep detail loading until it resolves.
-- [ ] 3.14 Return to the same category detail, clear stale manual selection, and distinguish only confirmed IDs present in the refreshed result.
-- [ ] 3.15 Add deferred-query regression coverage proving stale cached detail is not presented as reconciled before the exact refetch completes.
-- [ ] 3.16 Define and test full success, count-based partial success, zero affected, and error feedback without inventing failed-item reasons.
+- [x] 3.1 Add failing `user-event` coverage for category selection → assignment mode → equipment selection → preview cancel.
+- [x] 3.2 Add failing `user-event` coverage for category selection → assignment mode → preview confirm → return to the same category detail.
+- [x] 3.3 Introduce a focused workspace owner for selected category and `detail` / `assign` mode without merging unrelated server-state hooks.
+- [x] 3.4 Reuse the existing Categories tree, category-row rendering, Phase 1 split-pane contract, detail pane, assigned-equipment query, tenant selection, and category CRUD dialogs.
+- [x] 3.5 Keep the Phase 1 layout and long-name regression suites unchanged and passing in both `detail` and `assign` modes; switching modes may replace only the right work surface.
+- [x] 3.6 Embed the Phase 2 manual mapping components in the right-pane assignment mode for roles already authorized to perform manual mapping.
+- [x] 3.7 Replace the Categories manager-only page-entry guard with a Device Quota access guard that admits roles already authorized for Mapping, then render the category hierarchy as read-only context and keep category detail, create, edit, delete, and import controls unavailable unless the current role already has those permissions.
+- [x] 3.8 Add role-matrix coverage proving Mapping-only roles do not fetch or render quota or assigned-equipment detail and receive only their existing manual-mapping and suggestion capabilities.
+- [x] 3.9 Preserve parent and leaf categories as valid assignment targets.
+- [x] 3.10 Show direct parent assignments with `dinh_muc_thiet_bi_by_nhom` separately from aggregate descendant counts and quota for roles authorized to inspect category detail.
+- [x] 3.11 Preserve the selected category while entering assignment mode and opening or cancelling the manual preview.
+- [x] 3.12 On a nonzero `dinh_muc_thiet_bi_link` result, invalidate existing unassigned, filter-option, category-list, and compliance queries.
+- [x] 3.13 Await an exact `dinh_muc_thiet_bi_by_nhom` refetch for the selected category and tenant, or keep detail loading until it resolves.
+- [x] 3.14 Return to the same category detail, clear stale manual selection, and distinguish only confirmed IDs present in the refreshed result.
+- [x] 3.15 Add deferred-query regression coverage proving stale cached detail is not presented as reconciled before the exact refetch completes.
+- [x] 3.16 Define and test full success, count-based partial success, zero affected, and error feedback without inventing failed-item reasons.
 
 **Deploy-safe boundary:** Categories gains a complete permission-aware manual assignment path, but the existing Mapping tab and route remain available temporarily. Suggestions remain on their existing surface until Phase 4.
 

@@ -2,10 +2,13 @@
 
 import * as React from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { useSession } from "next-auth/react"
 
 import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
+import {
+  useDeviceQuotaCategoryAccess,
+  type DeviceQuotaCategoryUser,
+} from "../_hooks/useDeviceQuotaCategoryAccess"
 import { filterCategoriesWithAncestorsAndDescendants } from "../_utils/filterCategoriesWithAncestorsAndDescendants"
 import type {
   CategoryDeleteState,
@@ -18,19 +21,14 @@ import {
   useUpdateMutation,
 } from "./DeviceQuotaCategoryMutations"
 
-interface AuthUser {
-  id: string
-  username: string
-  full_name?: string | null
-  role: string
-  don_vi?: string | null
-  dia_ban_id?: number | null
-}
-
 interface CategoryContextValue {
   // User/Auth
-  user: AuthUser | null
+  user: DeviceQuotaCategoryUser | null
   donViId: number | null
+  isFacilitySelected: boolean
+  canManageCategories: boolean
+  canInspectCategoryDetail: boolean
+  canAssignManually: boolean
 
   // Data — `categories` is search-filtered, `allCategories` is the full set
   categories: CategoryListItem[]
@@ -70,6 +68,7 @@ interface CategoryContextValue {
 }
 
 // ============================================
+/** Shares category data, permissions, tenant scope, dialogs, and CRUD mutations. */
 const DeviceQuotaCategoryContext = React.createContext<CategoryContextValue | null>(null)
 
 // ============================================
@@ -107,10 +106,7 @@ const initialCategoryUiState: CategoryUiState = {
   searchTerm: "",
 }
 
-function categoryUiStateReducer(
-  state: CategoryUiState,
-  action: CategoryUiAction
-): CategoryUiState {
+function categoryUiStateReducer(state: CategoryUiState, action: CategoryUiAction): CategoryUiState {
   switch (action.type) {
     case "open-create-dialog":
       return { ...state, dialogState: { mode: "create" } }
@@ -133,31 +129,28 @@ function categoryUiStateReducer(
   }
 }
 
+/** Provides category server state and manager-only UI actions to the workspace. */
 export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryProviderProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const { data: session } = useSession()
-  const user = session?.user as AuthUser | null
-
-  const donViId = user?.don_vi ? parseInt(user.don_vi, 10) : null
+  const {
+    user,
+    donViId,
+    isFacilitySelected,
+    canManageCategories,
+    canInspectCategoryDetail,
+    canAssignManually,
+  } = useDeviceQuotaCategoryAccess()
 
   const [uiState, dispatchUiState] = React.useReducer(
     categoryUiStateReducer,
     initialCategoryUiState
   )
-  const {
-    dialogState,
-    mutatingCategoryId,
-    categoryToDelete,
-    isImportDialogOpen,
-    searchTerm,
-  } = uiState
+  const { dialogState, mutatingCategoryId, categoryToDelete, isImportDialogOpen, searchTerm } =
+    uiState
 
   // Single query — fetch ALL categories once (< 500 items, no pagination needed)
-  const {
-    data: allCategoriesData,
-    isLoading,
-  } = useQuery({
+  const { data: allCategoriesData, isLoading } = useQuery({
     queryKey: ["dinh_muc_nhom_list", { donViId }],
     queryFn: async () => {
       const result = await callRpc<CategoryListItem[]>({
@@ -166,7 +159,7 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
       })
       return result || []
     },
-    enabled: !!donViId,
+    enabled: isFacilitySelected && donViId !== null,
     staleTime: 60000,
     gcTime: 10 * 60 * 1000,
   })
@@ -230,25 +223,11 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     dispatchUiState({ type: "set-mutating-category", id })
   }, [])
 
-  const createMutation = useCreateMutation(
-    toast,
-    closeDialog,
-    donViId
-  )
+  const createMutation = useCreateMutation(toast, closeDialog, donViId)
 
-  const updateMutation = useUpdateMutation(
-    toast,
-    closeDialog,
-    setMutatingCategoryId,
-    donViId
-  )
+  const updateMutation = useUpdateMutation(toast, closeDialog, setMutatingCategoryId, donViId)
 
-  const deleteMutation = useDeleteMutation(
-    toast,
-    closeDeleteDialog,
-    setMutatingCategoryId,
-    donViId
-  )
+  const deleteMutation = useDeleteMutation(toast, closeDeleteDialog, setMutatingCategoryId, donViId)
 
   const getDescendantIds = React.useCallback(
     (parentId: number) => {
@@ -274,6 +253,10 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     () => ({
       user,
       donViId,
+      isFacilitySelected,
+      canManageCategories,
+      canInspectCategoryDetail,
+      canAssignManually,
       categories,
       allCategories,
       isLoading,
@@ -298,6 +281,10 @@ export function DeviceQuotaCategoryProvider({ children }: DeviceQuotaCategoryPro
     [
       user,
       donViId,
+      isFacilitySelected,
+      canManageCategories,
+      canInspectCategoryDetail,
+      canAssignManually,
       categories,
       allCategories,
       isLoading,

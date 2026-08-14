@@ -2,22 +2,14 @@
 
 import * as React from "react"
 
-import { Layers } from "lucide-react"
+import { ListPlus } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import type { CategoryListItem } from "../_types/categories"
-import {
-  CLASSIFICATION_STYLES,
-  type AggregatedQuota,
-} from "./category-tree-utils"
+import { CLASSIFICATION_STYLES, type AggregatedQuota } from "./category-tree-utils"
 import { DeviceQuotaCategoryAssignedEquipment } from "./DeviceQuotaCategoryAssignedEquipment"
 import { QuotaProgressBar } from "./QuotaProgressBar"
 
@@ -28,12 +20,12 @@ interface DeviceQuotaCategoryDetailPaneProps {
   aggregatedQuota: AggregatedQuota | undefined
   isLeaf: boolean
   donViId: number | null
+  canAssign: boolean
+  onStartAssignment: () => void
+  reconciledEquipmentIds?: Set<number>
 }
 
-function buildCategoryPath(
-  category: CategoryListItem,
-  allCategories: CategoryListItem[]
-) {
+function buildCategoryPath(category: CategoryListItem, allCategories: CategoryListItem[]) {
   const byId = new Map(allCategories.map((item) => [item.id, item]))
   const path: CategoryListItem[] = []
   let current: CategoryListItem | undefined = category
@@ -54,13 +46,13 @@ export function DeviceQuotaCategoryDetailPane({
   aggregatedQuota,
   isLeaf,
   donViId,
+  canAssign,
+  onStartAssignment,
+  reconciledEquipmentIds,
 }: DeviceQuotaCategoryDetailPaneProps) {
   if (!category) {
     return (
-      <Card
-        data-testid="device-quota-category-detail-pane"
-        className="h-full"
-      >
+      <Card data-testid="device-quota-category-detail-pane" className="h-full">
         <CardContent className="flex min-h-[18rem] items-center justify-center text-sm text-muted-foreground">
           Chọn một danh mục để xem thiết bị được gán
         </CardContent>
@@ -92,10 +84,7 @@ export function DeviceQuotaCategoryDetailPane({
               {category.ma_nhom}
             </Badge>
             {classStyle && (
-              <Badge
-                variant="outline"
-                className={cn("text-xs font-medium", classStyle.className)}
-              >
+              <Badge variant="outline" className={cn("text-xs font-medium", classStyle.className)}>
                 {classStyle.label}
               </Badge>
             )}
@@ -109,10 +98,7 @@ export function DeviceQuotaCategoryDetailPane({
             {category.ten_nhom}
           </CardTitle>
           {category.mo_ta && (
-            <p
-              className="line-clamp-2 text-sm text-muted-foreground"
-              title={category.mo_ta}
-            >
+            <p className="line-clamp-2 text-sm text-muted-foreground" title={category.mo_ta}>
               {category.mo_ta}
             </p>
           )}
@@ -122,18 +108,23 @@ export function DeviceQuotaCategoryDetailPane({
         </div>
       </CardHeader>
       <CardContent className="min-h-0 flex-1 overflow-y-auto pt-0">
-        {isLeaf ? (
-          <DeviceQuotaCategoryAssignedEquipment
-            nhomId={category.id}
-            donViId={donViId}
-            variant="panel"
-          />
-        ) : (
-          <div className="flex min-h-[12rem] flex-col items-center justify-center gap-2 rounded-md border border-dashed bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-            <Layers className="size-5" aria-hidden="true" />
-            <span>Chọn một danh mục con để xem danh sách thiết bị được gán</span>
-          </div>
-        )}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-sm font-medium">
+            {isLeaf ? "Thiết bị được gán" : "Thiết bị gán trực tiếp"}
+          </h3>
+          {canAssign && (
+            <Button size="sm" onClick={onStartAssignment}>
+              <ListPlus className="size-4" />
+              Phân loại thiết bị
+            </Button>
+          )}
+        </div>
+        <DeviceQuotaCategoryAssignedEquipment
+          nhomId={category.id}
+          donViId={donViId}
+          variant="panel"
+          reconciledEquipmentIds={reconciledEquipmentIds}
+        />
       </CardContent>
     </Card>
   )

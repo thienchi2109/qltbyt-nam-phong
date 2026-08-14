@@ -9,8 +9,9 @@ import { useToast } from "@/hooks/use-toast"
 import { downloadCategoryImportTemplate } from "@/lib/category-excel"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 
+/** Renders category search and permission-gated manager actions. */
 export function DeviceQuotaCategoryToolbar() {
-  const { openCreateDialog, openImportDialog, searchTerm, setSearchTerm } =
+  const { canManageCategories, openCreateDialog, openImportDialog, searchTerm, setSearchTerm } =
     useDeviceQuotaCategoryContext()
   const { toast } = useToast()
   const [isDownloading, setIsDownloading] = React.useState(false)
@@ -31,22 +32,13 @@ export function DeviceQuotaCategoryToolbar() {
     }
   }
 
-  const actions = (
+  const actions = canManageCategories ? (
     <>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleDownloadTemplate}
-        disabled={isDownloading}
-      >
+      <Button variant="outline" size="sm" onClick={handleDownloadTemplate} disabled={isDownloading}>
         <Download className="mr-2 size-4" />
         {isDownloading ? "Đang tải..." : "Tải mẫu Excel"}
       </Button>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={openImportDialog}
-      >
+      <Button variant="outline" size="sm" onClick={openImportDialog}>
         <Upload className="mr-2 size-4" />
         Nhập từ Excel
       </Button>
@@ -55,7 +47,7 @@ export function DeviceQuotaCategoryToolbar() {
         Tạo danh mục
       </Button>
     </>
-  )
+  ) : undefined
 
   return (
     <ListFilterSearchCard

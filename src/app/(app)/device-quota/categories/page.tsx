@@ -6,8 +6,9 @@ import { AlertTriangle, Shield } from "lucide-react"
 
 import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
 import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
+import { TenantSelector } from "@/components/shared/TenantSelector"
 import { Card, CardContent } from "@/components/ui/card"
-import { isEquipmentManagerRole } from "@/lib/rbac"
+import { canAccessDeviceQuotaModule, isEquipmentManagerRole } from "@/lib/rbac"
 import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
 import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToolbar"
 import { DeviceQuotaCategoryTree } from "./_components/DeviceQuotaCategoryTree"
@@ -31,8 +32,10 @@ type DeviceQuotaCategoriesPageContentProps = {
 function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageContentProps) {
   const userRole = user.role
   const canManageCategories = isEquipmentManagerRole(userRole)
+  const canAccessWorkspace = canAccessDeviceQuotaModule(userRole)
+  const [isAssignmentActive, setIsAssignmentActive] = React.useState(false)
 
-  if (!canManageCategories) {
+  if (!canAccessWorkspace) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card className="max-w-md mx-auto">
@@ -68,20 +71,29 @@ function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageCon
         className="min-w-0 w-full max-w-none space-y-6 py-6"
       >
         <div className="flex flex-col gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold">Tiêu chuẩn, định mức sử dụng thiết bị y tế</h1>
-            <p className="text-sm text-muted-foreground">
-              Quản lý tiêu chuẩn, định mức trang thiết bị y tế theo quy định
-            </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">Tiêu chuẩn, định mức sử dụng thiết bị y tế</h1>
+              <p className="text-sm text-muted-foreground">
+                Quản lý tiêu chuẩn, định mức trang thiết bị y tế theo quy định
+              </p>
+            </div>
+            <fieldset disabled={isAssignmentActive} className="min-w-0 border-0 p-0">
+              <TenantSelector hideAllOption />
+            </fieldset>
           </div>
           <DeviceQuotaCategoryToolbar />
         </div>
 
-        <DeviceQuotaCategoryTree />
+        <DeviceQuotaCategoryTree onAssignmentActiveChange={setIsAssignmentActive} />
 
-        <DeviceQuotaCategoryDialog />
-        <DeviceQuotaCategoryDeleteDialog />
-        <DeviceQuotaCategoryImportDialog />
+        {canManageCategories && (
+          <>
+            <DeviceQuotaCategoryDialog />
+            <DeviceQuotaCategoryDeleteDialog />
+            <DeviceQuotaCategoryImportDialog />
+          </>
+        )}
       </div>
     </DeviceQuotaCategoryProvider>
   )

@@ -41,6 +41,13 @@ const basePagination = {
   canNextPage: false,
 }
 
+const managerContextAccess = {
+  isFacilitySelected: true,
+  canManageCategories: true,
+  canInspectCategoryDetail: true,
+  canAssignManually: true,
+}
+
 describe("DeviceQuotaCategoryTree", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -52,6 +59,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: [],
       allCategories: [],
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 0,
@@ -75,6 +83,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: [],
       allCategories: [],
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 0,
@@ -124,6 +133,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -152,6 +162,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -175,6 +186,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -227,6 +239,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -284,6 +297,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -336,6 +350,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -409,6 +424,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: [],
       allCategories: [],
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 0,
@@ -450,6 +466,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -499,6 +516,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -599,6 +617,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: threeLevelTree,
       allCategories: threeLevelTree,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -671,6 +690,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories,
       allCategories: categories,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -743,7 +763,7 @@ describe("DeviceQuotaCategoryTree", () => {
     expect(within(detailPane).getByText("Empty Leaf B")).toBeInTheDocument()
   })
 
-  it("intermediate node is selectable but does not render inline equipment", () => {
+  it("shows intermediate direct assignments in detail without rendering equipment inline", () => {
     renderWithThreeLevelTree()
 
     const navPane = screen.getByTestId("device-quota-category-nav-pane")
@@ -754,10 +774,8 @@ describe("DeviceQuotaCategoryTree", () => {
 
     expect(intermediate).toHaveAttribute("aria-pressed", "true")
     expect(within(navPane).queryByTestId(/assigned-equipment-panel-/)).not.toBeInTheDocument()
-    expect(within(detailPane).queryByTestId("assigned-equipment-panel-2")).not.toBeInTheDocument()
-    expect(
-      within(detailPane).getByText("Chọn một danh mục con để xem danh sách thiết bị được gán")
-    ).toBeInTheDocument()
+    expect(within(detailPane).getByTestId("assigned-equipment-panel-2")).toBeInTheDocument()
+    expect(within(detailPane).getByText("Thiết bị gán trực tiếp")).toBeInTheDocument()
   })
 
   it("zero-count leaf is still selectable for scanning its empty assignment state", () => {
@@ -779,6 +797,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: filteredCategories,
       allCategories: threeLevelTree, // full tree with all leaves
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -821,6 +840,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: singleLevel,
       allCategories: singleLevel,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -857,6 +877,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: singleLevelZero,
       allCategories: singleLevelZero,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -900,6 +921,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: rootWithChild,
       allCategories: rootWithChild,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
@@ -936,6 +958,7 @@ describe("DeviceQuotaCategoryTree", () => {
     mockUseContext.mockReturnValue({
       categories: singleLevel,
       allCategories: singleLevel,
+      ...managerContextAccess,
       donViId: 1,
       isLoading: false,
       totalRootCount: 1,
