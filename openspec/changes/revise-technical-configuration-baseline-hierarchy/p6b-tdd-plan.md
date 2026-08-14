@@ -10,17 +10,19 @@
 
 **Base:** clean `main` at `32e2937ceaba9822c8c5f55ee9733aeb7c619910`
 
+**Follow-up:** Issue #911 on `feat/911-replace-legacy-excel-actions` supersedes the
+temporary legacy production-UI coexistence described in the original P6B plan.
+
 **Goal:** Mount the already-tested XLSX v2 download/import and hierarchy-authoring
-capabilities on the production baseline screen while preserving legacy import,
-destructive replacement safeguards, accessibility, responsive layout, and every
-existing evaluation/comparison/result-export contract.
+capabilities on the production baseline screen while retiring the legacy download/import
+actions, preserving destructive replacement safeguards, accessibility, responsive
+layout, and every existing evaluation/comparison/result-export contract.
 
 **Architecture:** Keep P6B UI-only. Reuse the P3C download component, P3D hierarchy
 import hook/dialog, and the P4C `inlineEditor.hierarchyAuthoring` capability without
-changing their server contracts. Extract only the dual-import workflow composition
-from the 328-line `TechnicalConfigurationBaselineTab` so the owner remains below the
-350-line extraction threshold and both import workflows contribute independently to
-dirty, reload, navigation, copy, lock, and version-change blocking.
+changing their server contracts. Mount the three XLSX v2 actions in the version bar,
+use the hierarchy import hook directly, and remove the client-only legacy workflow
+composition while keeping the owner below the 350-line extraction threshold.
 
 **Tech Stack:** Next.js App Router, React, TypeScript, TanStack Query, shadcn/Radix
 UI, Vitest, Testing Library, OpenSpec.
@@ -33,8 +35,8 @@ UI, Vitest, Testing Library, OpenSpec.
   allowlists, grants, policies, or migrations.
 - Do not perform any live database write. A newly discovered live-write need is a
   blocker that requires explicit user permission and Supabase MCP.
-- Keep the legacy baseline workbook import workflow mounted for the compatibility
-  window.
+- Remove the legacy baseline workbook production actions and their unreachable client
+  hook/dialog composition. Keep shared parser and server compatibility contracts.
 - New XLSX v2 downloads and hierarchy import are draft-only. Locked baselines stay
   read-only.
 - Reuse the existing authoritative preview, replacement checkbox, deletion counts,
@@ -51,17 +53,12 @@ UI, Vitest, Testing Library, OpenSpec.
 - Create
   `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineProductionActions.tsx`
   to render the two XLSX v2 downloads plus the hierarchy import command in a
-  wrapping, keyboard-accessible action group. The existing legacy download/import
-  commands remain owned by `TechnicalConfigurationVersionBar`.
-- Create
-  `src/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImportWorkflows.ts`
-  to compose only the legacy and hierarchy import workflows while retaining
-  independent unresolved-state flags.
+  wrapping, keyboard-accessible action group owned by
+  `TechnicalConfigurationVersionBar`.
 - Modify
   `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab.tsx`
-  only to consume the extracted workflow/action composition, pass hierarchy
-  authoring to the editor, aggregate navigation/reload/lock guards, and mount both
-  dialogs.
+  to use the hierarchy import hook directly, pass hierarchy authoring to the editor,
+  preserve navigation/reload/lock guards, and mount only the hierarchy import dialog.
 - Replace the stale absence contract in
   `technical-configuration-baseline-hierarchy-import-production-isolation.test.tsx`
   with focused production activation coverage. This is the only existing
@@ -71,8 +68,8 @@ UI, Vitest, Testing Library, OpenSpec.
   `technical-configuration-baseline-download-actions.test.tsx` to assert that the
   existing download component is mounted by the production baseline screen.
 - Add a separate focused production workflow test only if activation visibility,
-  dual-import blocking, and destructive-state assertions cannot remain clear in
-  that file without approaching the extraction threshold.
+  navigation blocking, and destructive-state assertions cannot remain clear in that
+  file without approaching the extraction threshold.
 - Modify
   `openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md`
   only after verification, marking P6B.1 and P6B.3 complete. Leave P6B.2 unchecked
@@ -86,7 +83,7 @@ UI, Vitest, Testing Library, OpenSpec.
 - [x] Render the production baseline tab with a clean draft and assert:
   - `Tải cấu hình hiện tại` is visible and enabled;
   - `Tải mẫu trống` is visible and enabled;
-  - the legacy import command remains visible;
+  - the legacy `Tải template Excel` and `Nhập từ Excel` commands are absent;
   - `Nhập cấu hình phân cấp` is visible;
   - subgroup authoring controls are reachable through the existing editor.
 - [x] Render a locked version and assert all draft-only download/import/authoring
@@ -102,12 +99,12 @@ node scripts/npm-run.js exec vitest run \
 
 Expected: FAIL only on new production-activation assertions.
 
-### Task 2: Coexistence, Blocking, Accessibility, And Responsive Layout
+### Task 2: Replacement, Blocking, Accessibility, And Responsive Layout
 
-- [x] Add RED assertions that the legacy and XLSX v2 import commands open different
-      labelled dialogs and remain independently discoverable by role/name.
-- [x] Assert an unresolved workflow from either dialog blocks version adoption,
-      reload, copy, lock, and navigation until reset or successful completion.
+- [x] Add RED assertions that the three XLSX v2 actions replace both legacy commands
+      inside the version-bar action region.
+- [x] Assert an unresolved hierarchy import blocks version adoption, reload, copy,
+      lock, and navigation until reset or successful completion.
 - [x] Assert the XLSX v2 dialog keeps the existing explicit replacement checkbox;
       apply remains disabled before confirmation, for invalid previews, and for stale
       previews.
@@ -119,19 +116,15 @@ Expected: FAIL only on new production-activation assertions.
 
 ## Chunk 2: GREEN Minimal Production Wiring
 
-### Task 3: Compose Existing Import Workflows
+### Task 3: Retire The Legacy Client Workflow
 
-- [x] Implement
-      `useTechnicalConfigurationBaselineImportWorkflows.ts`.
-- [x] Instantiate `useTechnicalConfigurationBaselineImport` unchanged for legacy
-      compatibility.
-- [x] Instantiate `useTechnicalConfigurationBaselineHierarchyImport` unchanged for
-      XLSX v2 preview/apply.
-- [x] Track legacy and hierarchy unresolved states independently; derive one
-      `hasUnresolvedImportState` boolean so one workflow closing cannot clear the
-      other's blocking state.
-- [x] Return only both workflows and the aggregate guard needed by the tab.
-- [x] Run the focused RED tests and make only this composition slice GREEN.
+- [x] Use `useTechnicalConfigurationBaselineHierarchyImport` directly for XLSX v2
+      preview/apply.
+- [x] Preserve hierarchy unresolved state in external-draft replacement,
+      `isUnsafeToLeave`, reload, copy, lock, and navigation guards.
+- [x] Remove the unreachable legacy import hook, dialog, preview component, dual
+      workflow composition, and their UI-only tests.
+- [x] Keep the shared parser, RPC, decoder, and editor bridge contracts unchanged.
 
 ### Task 4: Mount Production Actions And Dialogs
 
@@ -140,14 +133,13 @@ Expected: FAIL only on new production-activation assertions.
 - [x] Reuse `TechnicalConfigurationBaselineDownloadActions` for both download
       intents; do not duplicate workbook generation or download state.
 - [x] Add one hierarchy import button with a Lucide icon, descriptive accessible
-      name, and a responsive wrapping layout. Do not duplicate or relocate the legacy
-      `Tải template Excel` / import commands already rendered by
-      `TechnicalConfigurationVersionBar`.
+      name, and a responsive wrapping layout. Mount all three XLSX v2 commands in
+      `TechnicalConfigurationVersionBar` where the legacy commands previously lived.
 - [x] In `TechnicalConfigurationBaselineTab.tsx`:
-  - replace the single legacy import hook with the dual-import workflow hook;
-  - include aggregate unresolved state in external-draft replacement,
+  - use the hierarchy import hook directly;
+  - include hierarchy unresolved state in external-draft replacement,
     `isUnsafeToLeave`, reload, copy, lock, and navigation guards;
-  - mount both import dialogs;
+  - mount only the hierarchy import dialog;
   - pass the existing `inlineEditor.hierarchyAuthoring` to
     `TechnicalConfigurationBaselineEditor`;
   - keep focus mode, summary, Save, scroll ownership, and version behavior intact.
@@ -165,8 +157,8 @@ Expected: FAIL only on new production-activation assertions.
 - [x] Run the existing P4C authoring tests and prove subgroup CRUD/reorder,
       criterion movement, owner-scoped entry, focus, responsive controls, save/resume,
       conflict, and lock guards remain unchanged.
-- [x] Run baseline legacy import tests to prove the compatibility path remains
-      callable from production.
+- [x] Run the shared legacy workbook parser tests to prove compatible files remain
+      readable by the retained XLSX v2 parser contract without exposing duplicate UI.
 
 Focused command:
 
@@ -180,8 +172,7 @@ node scripts/npm-run.js exec vitest run \
   "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-controls.test.tsx" \
   "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-entry.test.ts" \
   "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-workflow.test.tsx" \
-  "src/app/(app)/technical-configurations/__tests__/baseline-import-dialog.test.tsx" \
-  "src/app/(app)/technical-configurations/__tests__/use-technical-configuration-baseline-import.test.tsx"
+  "src/lib/__tests__/technical-configuration-baseline-excel.test.ts"
 ```
 
 ## Chunk 3: Broad Regression And Closeout
@@ -222,8 +213,8 @@ openspec validate revise-technical-configuration-baseline-hierarchy --strict
 git diff --check
 ```
 
-- [x] Run the `code-deduplication` semantic check before commit because P6B creates
-      a composition hook/component.
+- [x] Run the `code-deduplication` semantic check before commit for the reused XLSX
+      v2 action component and direct hierarchy-hook composition.
 - [x] Before symbol edits, use Code Review Graph for broad discovery, then GitNexus
       impact analysis; inspect and report every HIGH or CRITICAL risk result. Repeat
       change detection after implementation.
@@ -240,15 +231,15 @@ git diff --check
 - [x] Commit through enabled Lefthook hooks.
 - [x] Run `git pull --rebase`, push the branch, and verify it is up to date with
       origin.
-- [x] Open a PR into `main` that links and closes #909, lists verification counts,
+- [x] Open a PR into `main` that links and closes #911, lists verification counts,
       states that browser tests were skipped, and confirms no live DB write occurred.
 - [ ] Stop before merge and report the PR for user review.
 
 ## Completion Boundary
 
-P6B is ready for review only when production component tests prove both workbook
-paths coexist, XLSX v2 replacement remains explicitly destructive, hierarchy
-authoring is mounted for drafts, locked versions remain read-only, broad
+P6B is ready for review only when production component tests prove the three XLSX v2
+actions replace the retired legacy production path, XLSX v2 replacement remains
+explicitly destructive, hierarchy authoring is mounted for drafts, locked versions remain read-only, broad
 evaluation/comparison/export regressions pass, all required gates pass, independent
 review reaches zero findings, and the pushed PR is open against `main`. Merge,
 live acceptance, issue closure, and OpenSpec archival remain P6C/user-owned.

@@ -419,8 +419,9 @@ authoring after the server activation is already deployed.
       authoring controls in the production baseline screen.
 - [ ] P6B.2 Browser-test the complete production route with direct-only, subgroup-only,
       and mixed sections plus failure rollback and stale-revision recovery.
-- [x] P6B.3 Verify the previous legacy workbook import path remains available during
-      the compatibility window.
+- [x] P6B.3 Retire the legacy workbook download/import production actions after user
+      acceptance, place the three XLSX v2 actions in the version bar, and retain only
+      shared parser/server compatibility contracts.
 
 Browser execution note (2026-08-13): P6B.2 remains incomplete because browser testing
 was explicitly skipped due to unavailable production credentials. Production component
@@ -435,8 +436,8 @@ Deploy boundary: controlled acceptance and closeout only.
 - [ ] P6C.1 With explicit authorization, run post-migration live smoke checks,
       security advisors, performance advisors, and representative draft import/copy/lock
       verification.
-- [ ] P6C.2 Confirm legacy workbook compatibility and document the compatibility
-      window plus recovery steps.
+- [ ] P6C.2 Confirm XLSX v2 production acceptance and document rollback plus recovery
+      steps for the retired legacy UI path.
 - [ ] P6C.3 Require independent specification review approval and user acceptance,
       close completed issues, merge verified PRs, and archive the OpenSpec change only
       after deployment.

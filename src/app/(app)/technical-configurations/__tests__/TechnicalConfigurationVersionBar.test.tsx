@@ -20,9 +20,7 @@ const idleStatus = {
   hasLoadMoreError: false,
   isNavigationDisabled: false,
   hasMoreVersions: false,
-  isDownloadingTemplate: false,
   isImportBusy: false,
-  isImportBlocked: false,
 }
 
 describe("TechnicalConfigurationVersionBar", () => {
@@ -42,8 +40,7 @@ describe("TechnicalConfigurationVersionBar", () => {
         onRequestLock={vi.fn()}
         onCreateBlank={vi.fn()}
         onCopy={vi.fn()}
-        onDownloadTemplate={vi.fn()}
-        onRequestImport={vi.fn()}
+        spreadsheetActions={null}
       />
     )
 
@@ -71,8 +68,7 @@ describe("TechnicalConfigurationVersionBar", () => {
         onRequestLock={vi.fn()}
         onCreateBlank={vi.fn()}
         onCopy={vi.fn()}
-        onDownloadTemplate={vi.fn()}
-        onRequestImport={vi.fn()}
+        spreadsheetActions={null}
       />
     )
 
