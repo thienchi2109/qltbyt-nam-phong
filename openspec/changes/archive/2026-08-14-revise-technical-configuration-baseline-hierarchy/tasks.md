@@ -52,14 +52,14 @@ Depends on: P0.
 Deploy boundary: schema expands, but all existing RPC responses and application
 behavior remain unchanged.
 
-- [ ] P1A.1 Write migration contract tests for an ordered subgroup entity and nullable
+- [x] P1A.1 Write migration contract tests for an ordered subgroup entity and nullable
       criterion subgroup ownership.
-- [ ] P1A.2 Add subgroup storage, indexes, constraints, audit ownership, deny-by-default
+- [x] P1A.2 Add subgroup storage, indexes, constraints, audit ownership, deny-by-default
       grants, and nullable criterion `subgroup_id`.
-- [ ] P1A.3 Keep every existing criterion as a direct main-section child with unchanged
+- [x] P1A.3 Keep every existing criterion as a direct main-section child with unchanged
       ID, code, order, citation, response, and assessment linkage.
-- [ ] P1A.4 Add rollback guidance that never drops populated hierarchy data.
-- [ ] P1A.5 After explicit authorization, apply and run security/performance advisors
+- [x] P1A.4 Add rollback guidance that never drops populated hierarchy data.
+- [x] P1A.5 After explicit authorization, apply and run security/performance advisors
       plus read-only smoke queries.
 
 ## Phase P1B - Backward-Compatible Client Domain Types
@@ -457,6 +457,16 @@ separate read-only query at `2026-08-14T05:47:00.193085Z` independently confirme
 the aggregate preflight counts and absence of P6C subgroup/criterion markers.
 Security and performance advisors were rerun and reported only pre-existing
 findings; P6C made no persistent schema change. P6C.1 and P6C.2 are complete.
-Browser credentials remain unavailable, and P6C.3/P6C.4 remain unchecked until
-final zero-finding review, user acceptance, merge, deployment, issue closeout,
-archive, and final `main` synchronization.
+Browser credentials remain unavailable. After final zero-finding review and user
+acceptance, PR #913 squash-merged into `main` as `f8fe17f2` at
+`2026-08-14T06:17:21Z`, and its Vercel deployment completed at
+`2026-08-14T06:18:29Z`. The hierarchy delta was transferred exactly into active
+parent change `add-technical-configuration-comparison` before this follow-up was
+archived with `--skip-specs`, preventing both spec loss and double application.
+P6C.3/P6C.4 remain unchecked until the archive PR merges, closes Issue #896, and
+the final `main` synchronization and handoff complete.
+
+P1A.1-P1A.5 were reconciled as complete from merged PR #897, closed Issue #876,
+and the committed migration/test/plan artifacts. P6A.2, P6A.5, and P6B.2 remain
+intentionally unchecked because browser credentials were unavailable; the P6C
+acceptance report records the compensating coverage.
