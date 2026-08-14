@@ -55,9 +55,9 @@ export function DeviceQuotaCategoryAssignmentPane({
   return (
     <div
       data-testid="device-quota-category-assignment-pane"
-      className="flex min-h-0 flex-col gap-3"
+      className="flex h-full min-h-0 flex-col gap-3 overflow-hidden"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b pb-3">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b pb-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground">Phân loại thiết bị vào danh mục</p>
           <h2 className="truncate text-base font-semibold" title={category.ten_nhom}>
@@ -70,7 +70,7 @@ export function DeviceQuotaCategoryAssignmentPane({
         </Button>
       </div>
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <DeviceQuotaManualMappingEquipmentList
           unassignedEquipment={manualMapping.unassignedEquipment}
           totalEquipmentCount={manualMapping.totalEquipmentCount}
@@ -86,7 +86,10 @@ export function DeviceQuotaCategoryAssignmentPane({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t pt-3">
+      <div
+        data-testid="device-quota-category-assignment-actions"
+        className="flex shrink-0 items-center justify-between gap-3 border-t pt-3"
+      >
         <span className="text-sm font-medium">{selectedCount} thiết bị đã chọn</span>
         <DeviceQuotaManualMappingPreviewTrigger
           canOpenPreview={selectedCount > 0}

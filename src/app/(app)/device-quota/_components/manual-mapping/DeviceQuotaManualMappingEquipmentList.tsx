@@ -98,7 +98,7 @@ export function DeviceQuotaManualMappingEquipmentList({
   ) : undefined
 
   return (
-    <Card className="flex flex-col h-full">
+    <Card className="flex h-full min-h-0 flex-col overflow-hidden">
       <CardHeader className="pb-4">
         <ListFilterSearchCard
           surface="plain"
@@ -114,7 +114,10 @@ export function DeviceQuotaManualMappingEquipmentList({
         />
       </CardHeader>
 
-      <CardContent className="flex-1 overflow-y-auto">
+      <CardContent
+        data-testid="device-quota-manual-mapping-scroll"
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
         {!isFacilitySelected ? (
           <FacilitySelectionEmptyState />
         ) : isLoading ? (

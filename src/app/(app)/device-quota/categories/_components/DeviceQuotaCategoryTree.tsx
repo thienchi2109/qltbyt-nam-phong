@@ -191,6 +191,9 @@ export function DeviceQuotaCategoryTree({
         canInspectCategoryDetail ? (assignmentPane ?? detailPane) : RESTRICTED_DETAIL_PANE
       }
       leftClassName="lg:overflow-x-hidden"
+      rightClassName={
+        workspace.mode === "assign" ? "lg:h-[calc(100vh-12rem)] lg:overflow-hidden" : undefined
+      }
     />
   )
 }

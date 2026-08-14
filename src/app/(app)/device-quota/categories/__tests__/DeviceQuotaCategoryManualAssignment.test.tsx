@@ -243,6 +243,24 @@ describe("DeviceQuota Categories manual assignment", () => {
     })
   })
 
+  it("keeps assignment actions visible while only the equipment rows scroll", async () => {
+    setupRpc()
+    const user = userEvent.setup()
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    await user.click(await screen.findByRole("button", { name: "Phân loại thiết bị" }))
+
+    const pane = screen.getByTestId("device-quota-category-assignment-pane")
+    const scrollRegion = screen.getByTestId("device-quota-manual-mapping-scroll")
+    const actions = screen.getByTestId("device-quota-category-assignment-actions")
+
+    expect(pane).toHaveClass("h-full", "overflow-hidden")
+    expect(pane.parentElement).toHaveClass("lg:h-[calc(100vh-12rem)]", "lg:overflow-hidden")
+    expect(scrollRegion).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+    expect(scrollRegion).not.toContainElement(actions)
+  })
+
   it("preserves the selected category and equipment selection when preview is cancelled", async () => {
     setupRpc()
     const user = await enterAssignmentAndOpenPreview()
