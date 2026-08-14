@@ -188,6 +188,7 @@ When saving memories, include likely future lookup terms in `concepts`: repo nam
   - keep changes surgical and tightly scoped
   - define concrete verification before claiming success
 - Treat `karpathy-coding-heuristics` as a supporting heuristic layer. It does not override repo-specific rules, security constraints, or stricter required skills such as `next-best-practices`, `vercel-react-best-practices`, debugging, TDD, or verification workflows.
+- When spawning a subagent to review completed implementation changes, always use the custom Codex agent `post_implementation_reviewer` without a full-history fork. Pass it the fixed point/base ref and the originating issue, specification, or acceptance criteria.
 
 ## MCP Tools
 
