@@ -151,12 +151,19 @@
 
 ## Phase 7 - Final Verification and Rollout Closeout
 
-- [ ] 7.1 Run `openspec validate refactor-device-quota-category-mapping-workflow --strict`.
-- [ ] 7.2 Run `node scripts/npm-run.js run format:check`.
-- [ ] 7.3 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 7.4 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 7.5 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 7.6 Run focused Categories, manual preview, suggestion, permission-matrix, route-removal, navigation, wide-workspace, and long-name Vitest suites.
-- [ ] 7.7 Run `node scripts/npm-run.js run react-doctor`.
-- [ ] 7.8 Perform manual desktop and mobile smoke checks for the full-width workspace, category browsing, manual assignment, result verification, Mapping route removal, and facility-wide suggestion entry.
-- [ ] 7.9 Confirm the cumulative implementation diff contains no SQL migration, RPC allowlist change, generated DB type change, or backend suggestion change.
+- [x] 7.1 Run `openspec validate refactor-device-quota-category-mapping-workflow --strict`.
+- [x] 7.2 Run `node scripts/npm-run.js run format:check`.
+- [x] 7.3 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [x] 7.4 Run `node scripts/npm-run.js run verify:dedupe`.
+- [x] 7.5 Run `node scripts/npm-run.js run typecheck`.
+- [x] 7.6 Run focused Categories, manual preview, suggestion, permission-matrix, route-removal, navigation, wide-workspace, and long-name Vitest suites.
+- [x] 7.7 Run `node scripts/npm-run.js run react-doctor`.
+- [x] 7.8 Record authenticated desktop/mobile browser smoke as skipped by user because credentials are unavailable; instead verify the full-width workspace, category browsing, manual assignment, result verification, and facility-wide suggestion entry through focused Vitest coverage, and verify `/device-quota/mapping` returns the standard `404` response without a `Location` header through route-removal regression and runtime HTTP smoke.
+- [x] 7.9 Confirm the cumulative implementation diff contains no SQL migration, RPC allowlist change, generated DB type change, or backend suggestion change.
+
+Closeout evidence recorded on 2026-08-14:
+
+- Focused Vitest passed 51 files and 381 tests across the Device Quota frontend, suggestion API compatibility coverage, and shared navigation.
+- The authenticated browser smoke was skipped as directed. An isolated Webpack runtime HTTP smoke returned `404` with no `Location` header for `/device-quota/mapping`.
+- The required React Doctor command completed; because the implementation was already on `main`, a cumulative scan from `3b0f1024` was also run and reported no findings across 58 changed files.
+- The cumulative 82-file diff contains no SQL migration, API backend, RPC allowlist, generated DB type, or backend suggestion implementation change.
