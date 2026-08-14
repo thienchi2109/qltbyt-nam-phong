@@ -13,8 +13,9 @@ import dynamic from "next/dynamic"
 import { Filter, PlusCircle, Settings, ScanLine } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
+import { HeroActionDropdown } from "@/components/ui/heroui/HeroActionDropdown"
 import { EquipmentToolbarDesktopFilters } from "./equipment-toolbar-layout"
-import { EquipmentHeroButton, EquipmentHeroDropdown } from "./heroui-pilot/controls"
+import { EquipmentHeroButton } from "./heroui-pilot/controls"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
 
@@ -169,7 +170,7 @@ export function EquipmentToolbar({
           )}
         </EquipmentHeroButton>
 
-        <EquipmentHeroDropdown
+        <HeroActionDropdown
           ariaLabel="Tùy chọn"
           placement="bottom start"
           trigger={
@@ -193,7 +194,7 @@ export function EquipmentToolbar({
     () => (
       <>
         {canCreateEquipment && (
-          <EquipmentHeroDropdown
+          <HeroActionDropdown
             ariaLabel="Thêm thiết bị"
             trigger={
               <>
@@ -219,7 +220,7 @@ export function EquipmentToolbar({
           />
         )}
 
-        <EquipmentHeroDropdown
+        <HeroActionDropdown
           ariaLabel="Tùy chọn"
           trigger={
             <>

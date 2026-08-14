@@ -1,14 +1,13 @@
 import "@testing-library/jest-dom"
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { TechnicalConfigurationBaselineDownloadActions } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDownloadActions"
-import type { TechnicalConfigurationBaselineDecodedDraft } from "@/app/(app)/technical-configurations/baseline-types"
-
 import {
+  chooseExcelAction,
   createHierarchicalDraft,
   readBlobBytes,
+  renderBaselineProductionActions,
 } from "./technical-configuration-baseline-download-actions-fixtures"
 import {
   baselineVersionsResponse,
@@ -43,28 +42,8 @@ vi.mock("@/lib/excel-workbook", async (importOriginal) => {
 
 const rpc = getBaselineRpcMock()
 
-function renderActions({
-  version = createHierarchicalDraft(),
-  dirty = false,
-  conflict = false,
-  disabled = false,
-  disabledMessage = null,
-}: {
-  version?: TechnicalConfigurationBaselineDecodedDraft
-  dirty?: boolean
-  conflict?: boolean
-  disabled?: boolean
-  disabledMessage?: string | null
-} = {}) {
-  return render(
-    <TechnicalConfigurationBaselineDownloadActions
-      version={version}
-      dirty={dirty}
-      conflict={conflict}
-      disabled={disabled}
-      disabledMessage={disabledMessage}
-    />
-  )
+async function waitForExcelActionToFinish(): Promise<void> {
+  await waitFor(() => expect(screen.getByRole("button", { name: "Công cụ Excel" })).toBeEnabled())
 }
 
 describe("technical configuration baseline download actions", () => {
@@ -78,9 +57,11 @@ describe("technical configuration baseline download actions", () => {
 
   it("downloads the complete current hierarchy with stable hidden identity", async () => {
     const user = userEvent.setup()
-    renderActions()
+    const download = deferred<Uint8Array>()
+    workbookCodec.serializeWorkbook.mockReturnValue(download.promise)
+    renderBaselineProductionActions()
 
-    await user.click(screen.getByRole("button", { name: "Tải cấu hình hiện tại" }))
+    await chooseExcelAction(user, "Tải cấu hình hiện tại")
 
     await waitFor(() => expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(1))
     const model = workbookCodec.serializeWorkbook.mock.calls[0]?.[0]
@@ -165,6 +146,10 @@ describe("technical configuration baseline download actions", () => {
         },
       ],
     })
+    await act(async () => {
+      download.resolve(new Uint8Array([1, 2, 3]))
+      await download.promise
+    })
     expect(workbookCodec.downloadBlob).toHaveBeenCalledTimes(1)
     expect(workbookCodec.downloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -174,13 +159,16 @@ describe("technical configuration baseline download actions", () => {
     )
     const downloadedBlob = workbookCodec.downloadBlob.mock.calls[0]?.[0] as Blob
     await expect(readBlobBytes(downloadedBlob)).resolves.toEqual([1, 2, 3])
+    await waitForExcelActionToFinish()
   })
 
   it("downloads a blank input sheet with examples only on the instruction sheet", async () => {
     const user = userEvent.setup()
-    renderActions()
+    const download = deferred<Uint8Array>()
+    workbookCodec.serializeWorkbook.mockReturnValue(download.promise)
+    renderBaselineProductionActions()
 
-    await user.click(screen.getByRole("button", { name: "Tải mẫu trống" }))
+    await chooseExcelAction(user, "Tải mẫu trống")
 
     await waitFor(() => expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(1))
     const model = workbookCodec.serializeWorkbook.mock.calls[0]?.[0]
@@ -210,6 +198,10 @@ describe("technical configuration baseline download actions", () => {
         },
       ],
     })
+    await act(async () => {
+      download.resolve(new Uint8Array([1, 2, 3]))
+      await download.promise
+    })
     expect(workbookCodec.downloadBlob).toHaveBeenCalledTimes(1)
     expect(workbookCodec.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
@@ -217,6 +209,7 @@ describe("technical configuration baseline download actions", () => {
     )
     const downloadedBlob = workbookCodec.downloadBlob.mock.calls[0]?.[0] as Blob
     await expect(readBlobBytes(downloadedBlob)).resolves.toEqual([1, 2, 3])
+    await waitForExcelActionToFinish()
   })
 
   it("serializes only one delegated download at a time and recovers after failure", async () => {
@@ -226,18 +219,17 @@ describe("technical configuration baseline download actions", () => {
     workbookCodec.serializeWorkbook
       .mockReturnValueOnce(firstDownload.promise)
       .mockReturnValueOnce(retryDownload.promise)
-    renderActions()
+    renderBaselineProductionActions()
 
-    const currentDownload = screen.getByRole("button", { name: "Tải cấu hình hiện tại" })
-    const blankDownload = screen.getByRole("button", { name: "Tải mẫu trống" })
-    act(() => {
-      currentDownload.click()
-      blankDownload.click()
-    })
+    const excelTrigger = screen.getByRole("button", { name: "Công cụ Excel" })
+    await chooseExcelAction(user, "Tải cấu hình hiện tại")
 
-    expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole("button", { name: "Đang tải cấu hình..." })).toBeDisabled()
-    expect(blankDownload).toBeDisabled()
+    await waitFor(() => expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(1))
+    expect(excelTrigger).toBeDisabled()
+    expect(excelTrigger).toHaveTextContent("Đang tạo Excel...")
+    expect(excelTrigger).toHaveAccessibleName("Đang tạo Excel")
+    await user.click(excelTrigger)
+    expect(screen.queryByRole("menuitem", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
 
     await act(async () => {
       firstDownload.reject(new Error("serialize_failed"))
@@ -245,16 +237,18 @@ describe("technical configuration baseline download actions", () => {
     })
 
     expect(screen.getByRole("alert")).toHaveTextContent("Không thể tạo tệp Excel cấu hình cơ sở.")
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
-    expect(blankDownload).toBeEnabled()
+    expect(excelTrigger).toBeEnabled()
+    expect(excelTrigger).toHaveTextContent("Excel")
+    expect(excelTrigger).toHaveAccessibleName("Công cụ Excel")
 
-    await user.click(blankDownload)
-    expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(2)
-    expect(screen.getByRole("button", { name: "Đang tải mẫu..." })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeDisabled()
+    await chooseExcelAction(user, "Tải mẫu trống")
+    await waitFor(() => expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(2))
+    expect(excelTrigger).toBeDisabled()
+    expect(excelTrigger).toHaveTextContent("Đang tạo Excel...")
+    expect(excelTrigger).toHaveAccessibleName("Đang tạo Excel")
 
     act(() => {
-      currentDownload.click()
+      excelTrigger.click()
     })
     expect(workbookCodec.serializeWorkbook).toHaveBeenCalledTimes(2)
 
@@ -268,24 +262,23 @@ describe("technical configuration baseline download actions", () => {
       expect.any(Blob),
       "Mau_Cau_Hinh_Co_So_Trong_Phien_Ban_7.xlsx"
     )
+    await waitForExcelActionToFinish()
   })
 
   it.each([
     { dirty: true, conflict: false, guard: "dirty" },
     { dirty: false, conflict: true, guard: "conflict" },
   ])(
-    "keeps both actions disabled while the $guard guard is active",
+    "keeps the Excel dropdown disabled while the $guard guard is active",
     async ({ dirty, conflict }) => {
       const user = userEvent.setup()
-      renderActions({ dirty, conflict })
+      renderBaselineProductionActions({ dirty, conflict })
 
-      const currentDownload = screen.getByRole("button", { name: "Tải cấu hình hiện tại" })
-      const blankDownload = screen.getByRole("button", { name: "Tải mẫu trống" })
-      expect(currentDownload).toBeDisabled()
-      expect(blankDownload).toBeDisabled()
+      const excelTrigger = screen.getByRole("button", { name: "Công cụ Excel" })
+      expect(excelTrigger).toBeDisabled()
 
-      await user.click(currentDownload)
-      await user.click(blankDownload)
+      await user.click(excelTrigger)
+      expect(screen.queryByRole("menuitem")).not.toBeInTheDocument()
       expect(workbookCodec.serializeWorkbook).not.toHaveBeenCalled()
       expect(workbookCodec.downloadBlob).not.toHaveBeenCalled()
     }
@@ -294,25 +287,29 @@ describe("technical configuration baseline download actions", () => {
   it("renders the supplied explanation while external state disables both actions", () => {
     const disabledMessage = "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
 
-    renderActions({ disabled: true, disabledMessage })
+    renderBaselineProductionActions({ disabled: true, disabledMessage })
 
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Công cụ Excel" })).toBeDisabled()
     expect(screen.getByText(disabledMessage)).toBeInTheDocument()
   })
 
   it("explains lifecycle blocking when no specific external message is available", () => {
-    renderActions({ disabled: true })
+    renderBaselineProductionActions({ disabled: true })
 
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Công cụ Excel" })).toBeDisabled()
     expect(
       screen.getByText("Chờ thao tác hiện tại hoàn tất trước khi dùng công cụ Excel.")
     ).toBeInTheDocument()
   })
 
+  it("keeps the authoritative disabled state when its explanation is empty", () => {
+    renderBaselineProductionActions({ disabled: true, disabledMessage: "" })
+
+    expect(screen.getByRole("button", { name: "Công cụ Excel" })).toBeDisabled()
+  })
+
   it("does not render download actions for a locked baseline", () => {
-    renderActions({
+    renderBaselineProductionActions({
       version: createHierarchicalDraft({
         status: "locked",
         locked_at: "2026-08-10T00:00:00.000Z",
@@ -320,20 +317,26 @@ describe("technical configuration baseline download actions", () => {
       }),
     })
 
-    expect(screen.queryByRole("button", { name: "Tải cấu hình hiện tại" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Công cụ Excel" })).not.toBeInTheDocument()
   })
 
-  it("mounts both XLSX v2 actions on the production baseline screen", async () => {
+  it("mounts the unified XLSX v2 dropdown on the production baseline screen", async () => {
+    const user = userEvent.setup()
     renderTab()
 
     const actionGroup = await screen.findByRole("group", {
       name: "Công cụ cấu hình phân cấp",
     })
-    expect(actionGroup).toHaveClass("flex-wrap")
+    expect(actionGroup).toHaveClass("flex-col")
     expect(screen.queryByRole("button", { name: "Tải template Excel" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
-    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
+    const excelTrigger = screen.getByRole("button", { name: "Công cụ Excel" })
+    expect(excelTrigger).toBeEnabled()
+    expect(excelTrigger).toHaveTextContent("Excel")
+
+    await user.click(excelTrigger)
+    expect(screen.getByRole("menuitem", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
+    expect(screen.getByRole("menuitem", { name: "Tải mẫu trống" })).toBeEnabled()
+    expect(screen.getByRole("menuitem", { name: "Nhập cấu hình phân cấp" })).toBeEnabled()
   })
 })

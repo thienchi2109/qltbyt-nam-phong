@@ -1,9 +1,56 @@
+import { createElement } from "react"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+
+import { TechnicalConfigurationBaselineProductionActions } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineProductionActions"
 import type {
   TechnicalConfigurationBaselineDecodedDraft,
   TechnicalConfigurationBaselineDraftWire,
 } from "@/app/(app)/technical-configurations/baseline-types"
 
 import { createDraft } from "./technical-configuration-baseline-tab-fixtures"
+
+type ExcelActionUser = {
+  click: (element: Element) => Promise<void>
+}
+
+/** Selects a deferred action from the production Excel dropdown. */
+export async function chooseExcelAction(user: ExcelActionUser, actionName: string): Promise<void> {
+  await user.click(screen.getByRole("button", { name: "Công cụ Excel" }))
+  fireEvent.click(await screen.findByRole("menuitem", { name: actionName }))
+  await waitFor(() => {
+    if (screen.queryByRole("menuitem", { name: actionName })) {
+      throw new Error("Excel action menu is still open")
+    }
+  })
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0))
+  })
+}
+
+export function renderBaselineProductionActions({
+  version = createHierarchicalDraft(),
+  dirty = false,
+  conflict = false,
+  disabled = false,
+  disabledMessage = null,
+}: {
+  version?: TechnicalConfigurationBaselineDecodedDraft
+  dirty?: boolean
+  conflict?: boolean
+  disabled?: boolean
+  disabledMessage?: string | null
+} = {}) {
+  return render(
+    createElement(TechnicalConfigurationBaselineProductionActions, {
+      version,
+      dirty,
+      conflict,
+      disabled,
+      disabledMessage,
+      onRequestHierarchyImport: () => undefined,
+    })
+  )
+}
 
 export function readBlobBytes(blob: Blob): Promise<number[]> {
   return new Promise((resolve, reject) => {

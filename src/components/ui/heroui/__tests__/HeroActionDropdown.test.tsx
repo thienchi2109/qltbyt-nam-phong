@@ -4,7 +4,7 @@ import "@testing-library/jest-dom"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import { describe, expect, it, vi } from "vitest"
 
-import { EquipmentHeroDropdown } from "../controls"
+import { HeroActionDropdown } from "../HeroActionDropdown"
 
 vi.mock("@heroui/react", () => {
   interface DropdownState {
@@ -42,14 +42,24 @@ vi.mock("@heroui/react", () => {
     DropdownTrigger: ({
       children,
       className,
+      isDisabled,
+      "aria-label": ariaLabel,
     }: {
       children: React.ReactNode
       className?: string
+      isDisabled?: boolean
+      "aria-label"?: string
     }) => {
       const { setOpen } = useDropdownState()
 
       return (
-        <button className={className} type="button" onClick={() => setOpen(true)}>
+        <button
+          aria-label={ariaLabel}
+          className={className}
+          disabled={isDisabled}
+          type="button"
+          onClick={() => setOpen(true)}
+        >
           {children}
         </button>
       )
@@ -113,7 +123,7 @@ vi.mock("@heroui/react", () => {
   }
 })
 
-describe("EquipmentHeroDropdown", () => {
+describe("HeroActionDropdown", () => {
   it("defers item actions until after the HeroUI source menu closes", async () => {
     vi.useFakeTimers()
     document.body.style.pointerEvents = ""
@@ -122,7 +132,7 @@ describe("EquipmentHeroDropdown", () => {
 
     try {
       render(
-        <EquipmentHeroDropdown
+        <HeroActionDropdown
           ariaLabel="Tác vụ kiểm thử"
           items={[
             {
@@ -159,7 +169,7 @@ describe("EquipmentHeroDropdown", () => {
     const onAction = vi.fn()
 
     render(
-      <EquipmentHeroDropdown
+      <HeroActionDropdown
         ariaLabel="Tác vụ kiểm thử"
         items={[
           {
@@ -178,5 +188,28 @@ describe("EquipmentHeroDropdown", () => {
 
     expect(await screen.findByRole("menuitem", { name: "Đang tải..." })).toBeDisabled()
     expect(onAction).not.toHaveBeenCalled()
+  })
+
+  it("keeps a disabled trigger from opening the menu", () => {
+    render(
+      <HeroActionDropdown
+        ariaLabel="Tác vụ kiểm thử"
+        disabled
+        items={[
+          {
+            id: "open-dialog",
+            label: "Mở hộp thoại",
+            textValue: "Mở hộp thoại",
+            onAction: vi.fn(),
+          },
+        ]}
+        trigger="Tác vụ kiểm thử"
+      />
+    )
+
+    const trigger = screen.getByRole("button", { name: "Tác vụ kiểm thử" })
+    expect(trigger).toBeDisabled()
+    fireEvent.click(trigger)
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument()
   })
 })
