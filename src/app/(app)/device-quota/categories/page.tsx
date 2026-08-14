@@ -15,6 +15,7 @@ import { DeviceQuotaCategoryDialog } from "./_components/DeviceQuotaCategoryDial
 import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCategoryDeleteDialog"
 import { DeviceQuotaCategoryImportDialog } from "./_components/DeviceQuotaCategoryImportDialog"
 
+/** Renders the permission-gated Device Quota categories workspace. */
 export default function DeviceQuotaCategoriesPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
@@ -27,9 +28,7 @@ type DeviceQuotaCategoriesPageContentProps = {
   user: Session["user"]
 }
 
-function DeviceQuotaCategoriesPageContent({
-  user,
-}: DeviceQuotaCategoriesPageContentProps) {
+function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageContentProps) {
   const userRole = user.role
   const canManageCategories = isEquipmentManagerRole(userRole)
 
@@ -45,12 +44,10 @@ function DeviceQuotaCategoriesPageContent({
                 </div>
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                  Truy cập bị hạn chế
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900 mb-2">Truy cập bị hạn chế</h2>
                 <p className="text-gray-600 text-sm">
-                  Tính năng &quot;Tiêu chuẩn, định mức sử dụng thiết bị y tế&quot; chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị.
-                  Bạn không có quyền truy cập vào trang này.
+                  Tính năng &quot;Tiêu chuẩn, định mức sử dụng thiết bị y tế&quot; chỉ dành cho quản
+                  trị viên hoặc bộ phận quản lý thiết bị. Bạn không có quyền truy cập vào trang này.
                 </p>
               </div>
               <div className="flex items-center justify-center text-xs text-gray-500 mt-4">
@@ -66,7 +63,10 @@ function DeviceQuotaCategoriesPageContent({
 
   return (
     <DeviceQuotaCategoryProvider>
-      <div className="container mx-auto py-6 space-y-6">
+      <div
+        data-testid="device-quota-categories-workspace"
+        className="min-w-0 w-full max-w-none space-y-6 py-6"
+      >
         <div className="flex flex-col gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Tiêu chuẩn, định mức sử dụng thiết bị y tế</h1>

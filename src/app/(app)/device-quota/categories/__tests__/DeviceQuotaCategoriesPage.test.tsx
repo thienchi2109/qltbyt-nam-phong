@@ -94,6 +94,24 @@ describe("DeviceQuotaCategoriesPage", () => {
     })
   })
 
+  it("uses the full app-shell content width without a centered route container", async () => {
+    mockUseSession.mockReturnValue({
+      data: { user: { role: "admin", don_vi: "1" } },
+      status: "authenticated",
+    })
+
+    mockCallRpc.mockResolvedValue([])
+
+    render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
+
+    const workspace = screen.getByTestId("device-quota-categories-workspace")
+
+    expect(workspace).toHaveClass("min-w-0", "w-full", "max-w-none", "space-y-6", "py-6")
+    expect(workspace).not.toHaveClass("container")
+    expect(workspace).not.toHaveClass("mx-auto")
+    expect(await screen.findByText("Chưa có danh mục nào")).toBeInTheDocument()
+  })
+
   it("keeps page-level selection in the master-detail pane and shows equipment only for leaves", async () => {
     const user = userEvent.setup()
     mockUseSession.mockReturnValue({

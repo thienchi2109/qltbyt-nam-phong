@@ -62,11 +62,11 @@
 
 **Purpose:** Expand the future canonical Categories workspace before adding more controls, without changing current workflows.
 
-- [ ] 2.7 Add failing layout coverage proving the Categories page uses the full content width available inside the application shell at wide desktop viewports.
-- [ ] 2.8 Replace the Categories route-local centered `container` maximum width with a full-width workspace shell and responsive horizontal gutters.
-- [ ] 2.9 Keep the Phase 1 `46-54` split, long-name behavior, and right-pane horizontal overflow unchanged inside the expanded outer shell.
-- [ ] 2.10 Keep the width change scoped to Categories; do not widen the global application shell, Mapping, or unrelated Device Quota routes.
-- [ ] 2.11 Verify 1440x900, 1920x1080, narrower desktop, and mobile layouts without overlapping controls or excessive side whitespace.
+- [x] 2.7 Add failing layout coverage proving the Categories page uses the full content width available inside the application shell at wide desktop viewports.
+- [x] 2.8 Replace the Categories route-local centered `container` maximum width with a full-width workspace shell and responsive horizontal gutters.
+- [x] 2.9 Keep the Phase 1 `46-54` split, long-name behavior, and right-pane horizontal overflow unchanged inside the expanded outer shell.
+- [x] 2.10 Keep the width change scoped to Categories; do not widen the global application shell, Mapping, or unrelated Device Quota routes.
+- [x] 2.11 Verify 1440x900, 1920x1080, narrower desktop, and mobile layouts without overlapping controls or excessive side whitespace.
 
 **Deploy-safe boundary:** Categories layout only. Category behavior, Mapping, suggestions, navigation, permissions, and data contracts remain unchanged.
 
