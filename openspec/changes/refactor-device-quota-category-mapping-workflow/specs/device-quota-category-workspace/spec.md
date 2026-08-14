@@ -4,7 +4,7 @@
 
 ### Requirement: Unified Device Quota workspace navigation
 
-The application SHALL expose one top-level Device Quota workspace for category management, assigned-equipment inspection, and manual equipment assignment to equipment-manager roles. `/device-quota/categories` SHALL be canonical for those roles. Roles that currently have Mapping access without category-management access SHALL retain `/device-quota/mapping` and SHALL NOT gain category-management controls.
+The application SHALL expose one top-level Device Quota workspace at `/device-quota/categories` for every role currently authorized to use Categories or Mapping. The workspace SHALL preserve each role's existing category-detail, category-management, manual-mapping, suggestion-preview, and suggestion-apply permissions. After final cleanup, `/device-quota/mapping` SHALL be removed completely and SHALL NOT redirect to the unified workspace.
 
 #### Scenario: user opens the canonical workspace
 
@@ -13,37 +13,50 @@ The application SHALL expose one top-level Device Quota workspace for category m
 - **THEN** it presents one `Danh mục & phân loại` entry for category and manual assignment work
 - **AND** the workspace loads from `/device-quota/categories`
 
-#### Scenario: equipment manager follows a legacy Mapping link
+#### Scenario: mapping-only user opens the unified workspace
 
-- **GIVEN** an equipment-manager user or saved bookmark requests `/device-quota/mapping`
-- **WHEN** the route resolves
-- **THEN** the application redirects to `/device-quota/categories`
-- **AND** the user remains inside the same authenticated and tenant-scoped Device Quota boundary
-
-#### Scenario: mapping-only user opens Device Quota
-
-- **GIVEN** a user currently allowed to access Mapping but not Categories
+- **GIVEN** a user currently allowed to access Mapping but not category management
 - **WHEN** the module navigation and route resolve
-- **THEN** the user retains the `Phân loại` entry and `/device-quota/mapping` workflow
+- **THEN** the user receives the `Danh mục & phân loại` entry and `/device-quota/categories` workspace
+- **AND** the category hierarchy is available as read-only assignment context
+- **AND** the user retains only the manual-mapping and suggestion actions allowed by current permissions
+- **AND** the user does not receive quota or assigned-equipment detail unless current permissions already allow it
 - **AND** the user does not receive category create, edit, delete, or import controls
 
-#### Scenario: regional leader keeps suggestion preview access
+#### Scenario: regional leader keeps suggestion preview access in Categories
 
 - **GIVEN** the current user has the `regional_leader` role
 - **WHEN** the user opens Device Quota
-- **THEN** `/device-quota/mapping` remains reachable
+- **THEN** the workspace loads from `/device-quota/categories`
 - **AND** the existing preview-only suggestion workflow remains available
+- **AND** quota detail, assigned-equipment detail, manual and batch mutation actions, and category-management controls remain unavailable
+
+#### Scenario: user follows a removed Mapping link
+
+- **GIVEN** navigation cutover and Mapping cleanup are complete
+- **WHEN** any user or saved bookmark requests `/device-quota/mapping`
+- **THEN** the route uses the application's standard not-found behavior
+- **AND** it does not render legacy Mapping UI
+- **AND** it does not redirect to `/device-quota/categories`
 
 ### Requirement: Category-first master-detail workspace
 
-The workspace SHALL render one category hierarchy as the stable navigation context and SHALL render the selected category's quota and assigned-equipment detail in the adjacent work surface.
+The workspace SHALL render one category hierarchy as the stable navigation context. It SHALL render the selected category's quota and assigned-equipment detail in the adjacent work surface only for roles whose current permissions already allow that detail.
 
 #### Scenario: user selects a category
 
-- **GIVEN** the category hierarchy contains selectable categories
+- **GIVEN** a user authorized to inspect category detail sees a hierarchy containing selectable categories
 - **WHEN** the user selects a category with pointer or keyboard interaction
 - **THEN** the category remains visibly selected in the hierarchy
 - **AND** the adjacent detail pane shows that category's quota and assigned equipment
+
+#### Scenario: mapping-only user selects category context
+
+- **GIVEN** a user is authorized for Mapping but not category detail
+- **WHEN** the user selects or navigates the read-only category hierarchy
+- **THEN** the workspace does not fetch or render quota or assigned-equipment detail
+- **AND** the user receives only manual-mapping or suggestion controls allowed by current permissions
+- **AND** category selection does not grant a new `dinh_muc_thiet_bi_by_nhom` read path
 
 #### Scenario: user opens a category row action
 
@@ -54,7 +67,7 @@ The workspace SHALL render one category hierarchy as the stable navigation conte
 
 #### Scenario: user selects a parent category
 
-- **GIVEN** a parent category has aggregate descendant counts and may also have directly assigned equipment
+- **GIVEN** a user authorized to inspect category detail selects a parent category that has aggregate descendant counts and may also have directly assigned equipment
 - **WHEN** the user selects that parent category
 - **THEN** the detail pane presents aggregate quota/count information separately from equipment assigned directly to the parent
 - **AND** the direct equipment list uses the existing selected-category detail contract
@@ -136,7 +149,7 @@ After a nonzero manual assignment result, the workspace SHALL reconcile unassign
 
 ### Requirement: Facility-wide suggestion workflow preservation
 
-The application SHALL preserve the existing facility-wide suggested-mapping workflow as an independent page-level action that is not scoped to the selected category.
+The application SHALL preserve the existing facility-wide suggested-mapping workflow as an independent page-level Categories action that is not scoped to the selected category. Route consolidation SHALL NOT change its dialog, async job, API, retry, exclusion, unmatched-result, permission, preview-only, or batch-apply behavior.
 
 #### Scenario: authorized user opens facility-wide suggestions
 
@@ -203,6 +216,32 @@ The category pane SHALL allocate sufficient horizontal space to category names a
 - **THEN** category and equipment controls remain usable without incoherent overlap
 - **AND** single-line truncation is not the only way to inspect the complete category name
 
+### Requirement: Wide unified workspace content area
+
+The unified Categories workspace SHALL use the full content width available inside the application shell on wide desktop viewports. It SHALL retain responsive horizontal gutters and SHALL NOT change the width contract of unrelated routes.
+
+#### Scenario: workspace renders on wide desktop
+
+- **GIVEN** the application shell provides width beyond the current centered Categories container
+- **WHEN** `/device-quota/categories` renders
+- **THEN** the workspace expands across the available app-shell content area
+- **AND** no route-local centered maximum-width container leaves large unused columns on both sides
+- **AND** the internal category/detail split remains approximately `46-54`
+
+#### Scenario: expanded workspace preserves equipment usability
+
+- **GIVEN** the full-width workspace contains a wide assigned or unassigned equipment table
+- **WHEN** the detail or assignment surface renders
+- **THEN** the right pane preserves its minimum-width and horizontal-overflow behavior
+- **AND** expanding the outer shell does not overlap category, filter, pagination, preview, or row-action controls
+
+#### Scenario: width change remains route-scoped
+
+- **GIVEN** another Device Quota route renders
+- **WHEN** the Categories workspace width change is deployed
+- **THEN** the unrelated route keeps its existing outer width behavior
+- **AND** the global application shell is not widened as a side effect
+
 ### Requirement: Existing data-contract preservation
 
 The unified workspace SHALL reuse existing frontend API and RPC contracts and SHALL NOT require a database migration, schema change, new RPC, or suggestion API contract change.
@@ -215,4 +254,5 @@ The unified workspace SHALL reuse existing frontend API and RPC contracts and SH
 - **AND** assigned-equipment detail uses `dinh_muc_thiet_bi_by_nhom`
 - **AND** manual assignment uses the existing unassigned-equipment queries and `dinh_muc_thiet_bi_link`
 - **AND** suggested mapping continues to use the existing suggestion routes and `dinh_muc_thiet_bi_link_batch`
+- **AND** removing the Mapping page does not remove or rename `/api/device-quota/mapping/suggest/**`
 - **AND** no SQL migration, RPC allowlist change, or generated database contract change is present

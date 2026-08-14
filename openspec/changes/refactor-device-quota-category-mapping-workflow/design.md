@@ -16,12 +16,16 @@ The approved Stitch direction, **Danh mục & Phân loại (Unified Workspace)**
 ### Goals
 
 - Give users one category-first workspace for category management, result inspection, and manual equipment assignment.
+- Make that workspace the only Device Quota category/mapping page for every role currently authorized to use either workflow.
 - Keep category context visible and stable throughout manual assignment.
 - Make successful assignments verifiable without changing routes or searching the hierarchy again.
+- Use the full content width available inside the application shell on wide desktop viewports.
 - Improve long Vietnamese category-name readability as a P0 part of the consolidation.
-- Preserve current role, tenant, pagination, filtering, preview, and mutation behavior.
-- Preserve the current distinction between category-manager access and mapping-only access.
+- Preserve current role, tenant, category-detail visibility, pagination, filtering, preview, and mutation behavior.
+- Preserve the current distinction between category-manager permissions and mapping-only permissions inside the unified workspace.
 - Preserve parent-category assignment as an allowed manual mapping target.
+- Preserve the facility-wide suggestion workflow as an independent action before removing its old page surface.
+- Remove the `/device-quota/mapping` page route after all of its user-facing capabilities are proven in Categories.
 - Keep the change frontend-only and reuse existing data contracts.
 
 ### Non-Goals
@@ -31,24 +35,29 @@ The approved Stitch direction, **Danh mục & Phân loại (Unified Workspace)**
 - Do not add server-side `Còn thiếu` / `Đã đủ` category filtering in the first implementation.
 - Do not change category CRUD, Excel import/template behavior, quota calculation, or compliance rules.
 - Do not broaden category CRUD or category-import permissions to roles that currently have Mapping-only access.
+- Do not broaden manual-assignment, suggestion-preview, or suggestion-apply permissions while consolidating routes.
 - Do not redesign unrelated Device Quota tabs such as Tổng quan or Quyết định.
 - Do not introduce a generic cross-module split-pane framework unless existing shared primitives already satisfy the requirement.
 
 ## Decisions
 
-### 1. Use a role-aware canonical route
+### 1. Use one permission-aware canonical route and remove Mapping
 
 `/device-quota/categories` remains the canonical workspace route because it already owns category CRUD, the category tree, quota detail, and assigned-equipment inspection.
 
-For roles accepted by `isEquipmentManagerRole`, the top-level module navigation will expose one entry labelled **Danh mục & phân loại** instead of separate **Phân loại** and **Danh mục** entries. Requests from these roles to `/device-quota/mapping` will redirect to `/device-quota/categories` so their existing bookmarks and internal links do not become dead ends.
+Every role currently authorized to use either Categories or Mapping will enter through one top-level navigation entry labelled **Danh mục & phân loại** and load `/device-quota/categories`.
 
-Roles that currently have Mapping access but fail the Categories manager guard keep `/device-quota/mapping` and its existing **Phân loại** navigation entry. This includes the `regional_leader` preview-only suggestion path. The change must not expose category CRUD, import, delete, or other manager-only controls to these roles.
+The unified route is permission-aware rather than manager-only. Its page-entry guard will admit roles already authorized for Mapping, while detail and action guards continue enforcing existing permissions. Roles that currently fail the Categories manager guard may use the category hierarchy as read-only context and receive only the manual-mapping and suggestion actions already allowed by their existing authorization. They must not gain quota or assigned-equipment detail access merely because the route moved to Categories. This includes preserving `regional_leader` preview-only suggestion behavior. Category detail, create, edit, delete, import, and any other manager-only controls remain unavailable to those roles unless their current authorization already permits them.
 
-This is a role-aware route-composition change only. Authentication, tenant selection, mutation authorization, and current role boundaries remain intact.
+After manual mapping and facility-wide suggestions are both proven in Categories, navigation and internal links will stop exposing Mapping. The final cleanup removes `src/app/(app)/device-quota/mapping/page.tsx` and its route-specific composition. Direct requests to `/device-quota/mapping` then use the application's standard not-found behavior; no compatibility redirect remains.
+
+This changes route composition, not authentication or role definitions. Tenant selection, mutation authorization, preview/apply restrictions, and all current permission boundaries remain intact.
 
 ### 2. Use one category tree as the stable context
 
-The Categories tree remains the single hierarchy rendered in the workspace. Selecting a category updates the right detail pane exactly as it does today.
+The Categories tree remains the single hierarchy rendered in the workspace. For roles already authorized to inspect Categories detail, selecting a category updates the right detail pane exactly as it does today.
+
+For roles whose current access is limited to Mapping, category selection provides only the read-only hierarchy context and existing authorized mapping controls. The unified workspace must not fetch or render quota or assigned-equipment detail for those roles unless the current authorization already permits that data.
 
 Manual assignment starts from a selected category. The left pane remains visible and the selected row remains highlighted while the right pane switches to assignment mode. This removes the need to render a second selectable category tree.
 
@@ -112,9 +121,13 @@ Implementation must preserve:
 - the review disclaimer and batch confirmation;
 - the `dinh_muc_thiet_bi_link_batch` payload and result handling.
 
-The safest implementation is to continue opening the existing `SuggestedMappingPreviewDialog` from the unified page header without modifying its internal orchestration.
+The safest implementation is to continue opening the existing `SuggestedMappingPreviewDialog` from the unified page header without modifying its internal orchestration. Any suggestion components or hooks still owned by the Mapping route must move to route-agnostic ownership before that route is deleted; moving ownership must not change the dialog, async job, API, retry, exclusion, preview-only, or batch-apply contracts.
 
-### 6. Make category names readable before adding more controls
+### 6. Use the available workspace width and keep category names readable
+
+On wide desktop layouts, the Categories page shell will use the full content width available inside the application shell instead of a centered route-local `container` maximum width. The workspace keeps responsive horizontal gutters, but it must not leave large unused columns on both sides when the app shell has room for the category and equipment surfaces.
+
+This width change is scoped to the unified Categories workspace. It must not widen unrelated Device Quota pages or redefine the global application shell.
 
 Long-name readability is a core acceptance criterion, not follow-up polish.
 
@@ -132,7 +145,7 @@ The assigned-equipment surface may use its existing horizontal overflow contract
 
 At narrower desktop and mobile breakpoints, the layout may reduce the split or use the existing stacked/drawer pattern, but it must not restore single-line name truncation as the only inspection mechanism.
 
-The current Categories and Mapping compositions both consume the shared `40-60` split-pane option. Phase 1 must therefore add a non-breaking `46-54` option or a Categories-scoped override rather than redefining `40-60` globally. This keeps the legacy Mapping layout unchanged until its planned cutover.
+The current Categories and Mapping compositions both consume the shared `40-60` split-pane option. Phase 1 therefore added a non-breaking `46-54` option rather than redefining `40-60` globally. The full-width workspace phase retains that internal `46-54` contract while expanding the outer Categories content area.
 
 The Phase 1 result is the canonical category-pane contract for the unified workspace. Later phases may extract its shell, but they must retain the same category tree, category-row rendering, width allocation, full-text affordance, and regression coverage. Adding assignment mode changes only the right work surface; it must not replace the corrected category pane.
 
@@ -150,8 +163,12 @@ Source files must remain below the repository's 450-line hard ceiling. The works
   - Mitigation: preserve the current right-pane horizontal scroll and minimum table width.
 - Combining two contexts can create a large provider with intertwined state.
   - Mitigation: keep server state in existing focused hooks and introduce only a small workspace mode/category-selection owner.
-- Redirecting the old route could break tests or internal links that expect Mapping page content.
-  - Mitigation: redirect only equipment-manager roles, retain Mapping for mapping-only roles, add role-matrix route coverage, and update manager-facing links in the same cutover phase.
+- Rendering the unified route for roles without category-management access could accidentally expose manager-only controls.
+  - Mitigation: keep authorization checks at existing detail and action boundaries and add role-matrix coverage proving no new quota/assigned-equipment detail reads, category CRUD, manual mapping, suggestion preview, or suggestion apply access.
+- Removing the Mapping route will intentionally break stale external bookmarks.
+  - Mitigation: update all in-repo navigation and links before cleanup, verify no active workflow depends on the page route, and accept standard not-found behavior as the explicit product decision.
+- Expanding the outer workspace can create overly wide rows or remove useful mobile gutters.
+  - Mitigation: scope the change to Categories, retain responsive horizontal padding, keep the internal `46-54` split, and preserve right-pane overflow constraints.
 - Returning immediately to detail may race query invalidation and briefly show stale data.
   - Mitigation: await the exact selected category and tenant refetch or hold detail in loading state before presenting reconciliation as complete.
 - Visual proximity could make the global suggestion action look category-scoped.
@@ -168,19 +185,22 @@ Delivery is split into small, independently deployable PRs:
 1. **Characterization baseline:** tests and visual references only.
 2. **Category readability:** ship the canonical 46% category pane and long-name behavior on the current Categories page without changing the shared `40-60` Mapping layout.
 3. **Route-agnostic mapping components:** refactor the current Mapping page without changing its behavior.
-4. **Unified manual assignment:** add the complete category-first manual flow to Categories while keeping the legacy Mapping tab and route as a fallback.
-5. **Suggestion entry preservation:** expose the existing suggestion dialog from Categories while keeping the old Mapping surface available.
-6. **Navigation cutover:** make Categories canonical for equipment-manager roles and redirect only those roles after both workflows are proven.
-7. **Cleanup:** remove redundant page composition after cutover stability is confirmed.
+4. **Wide unified workspace:** expand the Categories outer content area while preserving the canonical `46-54` split and responsive behavior.
+5. **Unified manual assignment:** add the complete category-first manual flow to Categories while keeping Mapping only as a temporary deploy-safe fallback.
+6. **Suggestion entry preservation:** expose the unchanged facility-wide suggestion workflow from Categories for every currently authorized role.
+7. **Navigation cutover:** make Categories canonical for every role currently authorized to use Categories or Mapping after both workflows are proven.
+8. **Route removal and cleanup:** delete the Mapping page route and redundant route-specific composition without removing manual-mapping or suggestion capabilities.
 
 Each phase must pass focused tests and preserve all production workflows available before that phase. No PR may expose an incomplete assignment mode, replace the corrected category pane, or remove its Phase 1 regression coverage.
 
 Rollback is phase-local:
 
 - readability and component-refactor phases can revert without route changes;
-- the unified manual workflow can be disabled by retaining the legacy Mapping fallback;
+- the wide-workspace phase can revert without workflow changes;
+- the unified manual and suggestion entries can revert while Mapping remains available before final cleanup;
 - navigation cutover can revert to the two-tab layout without data changes;
-- cleanup happens only after the fallback is no longer required.
+- route removal happens only after no authorized role or active capability depends on Mapping;
+- after route removal, rollback requires redeploying the previous frontend composition rather than relying on a permanent compatibility route.
 
 No phase requires data rollback because all existing RPCs and API routes remain backward compatible.
 
@@ -197,8 +217,10 @@ No phase requires data rollback because all existing RPCs and API routes remain 
   - confirm assignment;
   - return to the same category and observe refreshed results.
 - Role matrix:
-  - equipment-manager roles receive the unified Categories workspace and manager controls;
-  - `regional_leader` retains Mapping and preview-only suggestions;
+  - every role currently authorized for Categories or Mapping receives the unified Categories workspace;
+  - equipment-manager roles retain manager controls;
+  - mapping-only roles retain only their existing category-detail, manual, and suggestion permissions;
+  - `regional_leader` retains preview-only suggestions inside Categories without gaining category detail or mutation access;
   - restricted non-manager roles retain their current denial from the Device Quota module.
 - Parent and leaf categories:
   - both remain valid manual targets;
@@ -208,7 +230,8 @@ No phase requires data rollback because all existing RPCs and API routes remain 
   - cover full, partial-count, zero-affected, and error outcomes.
 - Characterize and preserve the global suggestion trigger, grouped preview, unmatched section, exclusions, permissions, and batch apply behavior.
 - Verify long names wrap to two lines, expose full text with `user-event` hover and keyboard focus, and do not collide with actions or usage data.
-- Verify the wide-desktop split and right-pane horizontal overflow at 1440x900 and 1920x1080 representative viewports.
+- Verify the full-width Categories shell, wide-desktop split, responsive gutters, and right-pane horizontal overflow at 1440x900 and 1920x1080 representative viewports.
+- Verify no navigation entry, internal link, route-specific component, or focused test still depends on `/device-quota/mapping` after cleanup, and that direct requests use standard not-found behavior.
 - Run repository TypeScript/React gates in required order:
   - `format:check`;
   - `verify:no-explicit-any`;
