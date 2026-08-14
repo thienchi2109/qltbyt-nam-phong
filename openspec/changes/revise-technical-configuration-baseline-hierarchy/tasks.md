@@ -433,10 +433,10 @@ Depends on: P6B.
 
 Deploy boundary: controlled acceptance and closeout only.
 
-- [ ] P6C.1 With explicit authorization, run post-migration live smoke checks,
+- [x] P6C.1 With explicit authorization, run post-migration live smoke checks,
       security advisors, performance advisors, and representative draft import/copy/lock
       verification.
-- [ ] P6C.2 Confirm XLSX v2 production acceptance and document rollback plus recovery
+- [x] P6C.2 Confirm XLSX v2 production acceptance and document rollback plus recovery
       steps for the retired legacy UI path.
 - [ ] P6C.3 Require independent specification review approval and user acceptance,
       close completed issues, merge verified PRs, and archive the OpenSpec change only
@@ -444,3 +444,19 @@ Deploy boundary: controlled acceptance and closeout only.
 - [ ] P6C.4 Run `git pull --rebase`, push any remaining closeout commit, confirm status
       is up to date with origin, clear stale stashes, prune remote branches, and record
       the final handoff.
+
+P6C execution note (2026-08-14): the TDD plan, rollback-only Supabase MCP smoke
+script, acceptance/recovery report, focused and broad regressions, repository
+gates, and lifecycle-corrected independent zero-finding review are prepared. Three
+authorized diagnostics rolled back safely and proved the original fixture failed
+at the copy RPC because it attempted to copy a draft. The corrected authorized
+smoke applied and locked the source before copying, passed import/copy/lock
+assertions at `2026-08-14T05:46:47.762817Z`, forced rollback, and internally
+confirmed exact source-snapshot restoration plus zero copied-version residue. A
+separate read-only query at `2026-08-14T05:47:00.193085Z` independently confirmed
+the aggregate preflight counts and absence of P6C subgroup/criterion markers.
+Security and performance advisors were rerun and reported only pre-existing
+findings; P6C made no persistent schema change. P6C.1 and P6C.2 are complete.
+Browser credentials remain unavailable, and P6C.3/P6C.4 remain unchecked until
+final zero-finding review, user acceptance, merge, deployment, issue closeout,
+archive, and final `main` synchronization.
