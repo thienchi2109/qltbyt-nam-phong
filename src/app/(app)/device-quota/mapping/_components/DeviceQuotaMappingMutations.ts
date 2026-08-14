@@ -1,8 +1,7 @@
 "use client"
 
-import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query"
+import type { QueryClient } from "@tanstack/react-query"
 
-import { useToast } from "@/hooks/use-toast"
 import { callRpc } from "@/lib/rpc-client"
 
 export type LinkEquipmentVariables = {
@@ -32,32 +31,4 @@ export function invalidateDeviceQuotaLinkQueries(queryClient: QueryClient) {
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_nhom_list"] }),
     queryClient.invalidateQueries({ queryKey: ["dinh_muc_compliance_summary"] }),
   ])
-}
-
-/** Preserves the legacy Mapping mutation behavior on its fallback route. */
-export function useLinkEquipmentMutation(
-  toast: ReturnType<typeof useToast>["toast"],
-  clearSelection: () => void,
-  donViId: number | null
-) {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: (data: LinkEquipmentVariables) => linkDeviceQuotaEquipment(data, donViId),
-    onSuccess: (_, variables) => {
-      toast({
-        title: "Thành công",
-        description: `Đã gán ${variables.thiet_bi_ids.length} thiết bị vào nhóm định mức.`,
-      })
-      clearSelection()
-      void invalidateDeviceQuotaLinkQueries(queryClient)
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Lỗi gán thiết bị",
-        description: error.message,
-      })
-    },
-  })
 }

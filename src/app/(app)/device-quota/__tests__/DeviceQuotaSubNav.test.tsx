@@ -32,15 +32,4 @@ describe("DeviceQuotaSubNav", () => {
     expect(screen.queryByRole("link", { name: "Phân loại" })).not.toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Danh mục" })).not.toBeInTheDocument()
   })
-
-  it("does not expose the Mapping rollback route when it is loaded directly", () => {
-    mocks.usePathname.mockReturnValue("/device-quota/mapping")
-
-    render(<DeviceQuotaSubNav />)
-
-    expect(screen.queryByRole("link", { name: "Phân loại" })).not.toBeInTheDocument()
-    expect(screen.getByRole("link", { name: "Danh mục & phân loại" })).not.toHaveAttribute(
-      "aria-current"
-    )
-  })
 })

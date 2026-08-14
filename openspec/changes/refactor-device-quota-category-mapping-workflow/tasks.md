@@ -137,13 +137,13 @@
 
 **Purpose:** Delete the Mapping page route only after its manual and suggestion capabilities are proven in Categories.
 
-- [ ] 6.1 Delete `src/app/(app)/device-quota/mapping/page.tsx` and all route-specific composition that has no active consumer.
-- [ ] 6.2 Do not add a redirect or compatibility page; verify direct `/device-quota/mapping` requests use standard not-found behavior.
-- [ ] 6.3 Retain route-agnostic manual-mapping and suggestion components still used by Categories.
-- [ ] 6.4 Remove obsolete Mapping page tests only when equivalent permission-aware Categories coverage exists.
-- [ ] 6.5 Retain the Phase 1 split-pane, long-name, manual-mapping, and suggestion regression suites as canonical coverage through cleanup.
-- [ ] 6.6 Verify no navigation, internal link, route-specific import, or focused test still expects the removed Mapping page.
-- [ ] 6.7 Confirm suggestion orchestration, `/api/device-quota/mapping/suggest/**`, job-store, provider, RPC, preview-only, and batch-apply behavior remain unchanged.
+- [x] 6.1 Delete `src/app/(app)/device-quota/mapping/page.tsx` and all route-specific composition that has no active consumer.
+- [x] 6.2 Do not add a redirect or compatibility page; verify direct `/device-quota/mapping` requests use standard not-found behavior.
+- [x] 6.3 Retain route-agnostic manual-mapping and suggestion components still used by Categories.
+- [x] 6.4 Remove obsolete Mapping page tests only when equivalent permission-aware Categories coverage exists.
+- [x] 6.5 Retain the Phase 1 split-pane, long-name, manual-mapping, and suggestion regression suites as canonical coverage through cleanup.
+- [x] 6.6 Verify no navigation, internal link, route-specific import, or focused test still expects the removed Mapping page.
+- [x] 6.7 Confirm suggestion orchestration, `/api/device-quota/mapping/suggest/**`, job-store, provider, RPC, preview-only, and batch-apply behavior remain unchanged.
 
 **Deploy-safe boundary:** Page-route and dead frontend composition cleanup only. All user capabilities already run from Categories, and backend/API contracts remain unchanged.
 

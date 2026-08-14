@@ -95,28 +95,6 @@ vi.mock("@/app/(app)/device-quota/decisions/_components/DeviceQuotaDecisionDialo
   DeviceQuotaDecisionDialog: () => <div data-testid="decisions-dialog">Dialog</div>,
 }))
 
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingContext", () => ({
-  DeviceQuotaMappingProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="mapping-provider">{children}</div>
-  ),
-}))
-
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaUnassignedList", () => ({
-  DeviceQuotaUnassignedList: () => <div data-testid="mapping-unassigned-list">Unassigned</div>,
-}))
-
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaCategoryTree", () => ({
-  DeviceQuotaCategoryTree: () => <div data-testid="mapping-category-tree">Tree</div>,
-}))
-
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingActions", () => ({
-  DeviceQuotaMappingActions: () => <div data-testid="mapping-actions">Actions</div>,
-}))
-
-vi.mock("@/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingGuide", () => ({
-  DeviceQuotaMappingGuide: () => <div data-testid="mapping-guide">Guide</div>,
-}))
-
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <div data-testid="tenant-selector">Tenant selector</div>,
 }))
@@ -124,7 +102,6 @@ vi.mock("@/components/shared/TenantSelector", () => ({
 import DeviceQuotaCategoriesPage from "@/app/(app)/device-quota/categories/page"
 import DeviceQuotaDashboardPage from "@/app/(app)/device-quota/dashboard/page"
 import DeviceQuotaDecisionsPage from "@/app/(app)/device-quota/decisions/page"
-import DeviceQuotaMappingPage from "@/app/(app)/device-quota/mapping/page"
 
 type SessionState = {
   status: "loading" | "unauthenticated" | "authenticated"
@@ -159,12 +136,6 @@ const pageCases = [
     Page: DeviceQuotaDecisionsPage,
     protectedTestId: "decisions-table",
     fallbackTestId: "device-quota-decisions-auth-fallback",
-  },
-  {
-    name: "mapping",
-    Page: DeviceQuotaMappingPage,
-    protectedTestId: "mapping-unassigned-list",
-    fallbackTestId: "authenticated-page-spinner-fallback",
   },
 ] as const
 

@@ -13,6 +13,7 @@ vi.mock("@/components/shared/ListFilterSearchCard", () => ({
     searchValue,
     onSearchChange,
     searchPlaceholder,
+    searchDisabled,
     filterControls,
   }: ListFilterSearchCardProps) => (
     <section>
@@ -20,6 +21,7 @@ vi.mock("@/components/shared/ListFilterSearchCard", () => ({
         <input
           aria-label={searchPlaceholder}
           defaultValue={searchValue}
+          disabled={searchDisabled}
           onChange={(event) => onSearchChange(event.target.value)}
         />
       ) : null}
@@ -87,6 +89,51 @@ const equipment = [
   },
 ]
 
+type EquipmentListProps = React.ComponentProps<typeof DeviceQuotaManualMappingEquipmentList>
+
+function createEquipmentListProps(overrides: Partial<EquipmentListProps> = {}): EquipmentListProps {
+  return {
+    unassignedEquipment: equipment,
+    totalEquipmentCount: 40,
+    selectedEquipmentIds: new Set([10]),
+    toggleEquipmentSelection: vi.fn(),
+    selectAllEquipment: vi.fn(),
+    deselectPageEquipment: vi.fn(),
+    filters: {
+      searchTerm: "",
+      setSearchTerm: vi.fn(),
+      debouncedSearch: "",
+      selectedDepartments: [],
+      setSelectedDepartments: vi.fn(),
+      selectedUsers: [],
+      setSelectedUsers: vi.fn(),
+      selectedLocations: [],
+      setSelectedLocations: vi.fn(),
+      selectedFundingSources: [],
+      setSelectedFundingSources: vi.fn(),
+      activeFilterCount: 0,
+      hasActiveFilters: false,
+      resetAllFilters: vi.fn(),
+    },
+    filterOptions: {
+      departments: ["Khoa hồi sức"],
+      users: [],
+      locations: [],
+      fundingSources: [],
+    },
+    pagination: {
+      pagination: { pageIndex: 0, pageSize: 20 },
+      pageCount: 2,
+      canPreviousPage: false,
+      canNextPage: true,
+      setPagination: vi.fn(),
+    },
+    isLoading: false,
+    isFacilitySelected: true,
+    ...overrides,
+  }
+}
+
 describe("route-agnostic manual mapping components", () => {
   it("drives filters, pagination, row selection, and page-only selection through props", async () => {
     const user = userEvent.setup()
@@ -97,45 +144,20 @@ describe("route-agnostic manual mapping components", () => {
     const deselectPageEquipment = vi.fn()
     const setPagination = vi.fn()
 
-    const props = {
-      unassignedEquipment: equipment,
-      totalEquipmentCount: 40,
-      selectedEquipmentIds: new Set([10]),
+    const props = createEquipmentListProps({
       toggleEquipmentSelection,
       selectAllEquipment,
       deselectPageEquipment,
       filters: {
-        searchTerm: "",
+        ...createEquipmentListProps().filters,
         setSearchTerm,
-        debouncedSearch: "",
-        selectedDepartments: [] as string[],
         setSelectedDepartments,
-        selectedUsers: [] as string[],
-        setSelectedUsers: vi.fn(),
-        selectedLocations: [] as string[],
-        setSelectedLocations: vi.fn(),
-        selectedFundingSources: [] as string[],
-        setSelectedFundingSources: vi.fn(),
-        activeFilterCount: 0,
-        hasActiveFilters: false,
-        resetAllFilters: vi.fn(),
-      },
-      filterOptions: {
-        departments: ["Khoa hồi sức"],
-        users: [],
-        locations: [],
-        fundingSources: [],
       },
       pagination: {
-        pagination: { pageIndex: 0, pageSize: 20 },
-        pageCount: 2,
-        canPreviousPage: false,
-        canNextPage: true,
+        ...createEquipmentListProps().pagination,
         setPagination,
       },
-      isLoading: false,
-      isFacilitySelected: true,
-    }
+    })
 
     const { rerender } = render(<DeviceQuotaManualMappingEquipmentList {...props} />)
 
@@ -159,6 +181,77 @@ describe("route-agnostic manual mapping components", () => {
     await user.click(screen.getByRole("checkbox"))
 
     expect(deselectPageEquipment).toHaveBeenCalledTimes(1)
+  })
+
+  it("shows the facility-selection state and disables search until a facility is selected", () => {
+    render(
+      <DeviceQuotaManualMappingEquipmentList
+        {...createEquipmentListProps({
+          unassignedEquipment: [],
+          totalEquipmentCount: 0,
+          isFacilitySelected: false,
+        })}
+      />
+    )
+
+    expect(screen.getByRole("textbox", { name: "Chọn cơ sở để tìm kiếm..." })).toBeDisabled()
+    expect(screen.getByText("Chọn cơ sở")).toBeInTheDocument()
+    expect(
+      screen.queryByText("Tất cả thiết bị đã được phân loại vào các nhóm định mức.")
+    ).not.toBeInTheDocument()
+  })
+
+  it("distinguishes filtered-empty results from the completed assignment state", () => {
+    const { rerender } = render(
+      <DeviceQuotaManualMappingEquipmentList
+        {...createEquipmentListProps({
+          unassignedEquipment: [],
+          totalEquipmentCount: 0,
+          filters: {
+            ...createEquipmentListProps().filters,
+            debouncedSearch: "zzz",
+          },
+        })}
+      />
+    )
+
+    expect(screen.getByText("Không có kết quả phù hợp")).toBeInTheDocument()
+    expect(screen.queryByText("Hoàn thành phân loại")).not.toBeInTheDocument()
+
+    rerender(
+      <DeviceQuotaManualMappingEquipmentList
+        {...createEquipmentListProps({
+          unassignedEquipment: [],
+          totalEquipmentCount: 0,
+        })}
+      />
+    )
+
+    expect(screen.getByText("Hoàn thành phân loại")).toBeInTheDocument()
+  })
+
+  it("exposes each equipment row as one keyboard-toggle button", async () => {
+    const user = userEvent.setup()
+    const toggleEquipmentSelection = vi.fn()
+
+    render(
+      <DeviceQuotaManualMappingEquipmentList
+        {...createEquipmentListProps({
+          unassignedEquipment: [equipment[0]],
+          totalEquipmentCount: 1,
+          selectedEquipmentIds: new Set(),
+          toggleEquipmentSelection,
+        })}
+      />
+    )
+
+    const rowButton = screen.getByRole("button", { name: /Máy thở/i })
+    expect(rowButton).toHaveAttribute("aria-pressed", "false")
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1)
+
+    await user.click(rowButton)
+
+    expect(toggleEquipmentSelection).toHaveBeenCalledWith(10)
   })
 
   it("opens the manual preview through an explicit callback", async () => {

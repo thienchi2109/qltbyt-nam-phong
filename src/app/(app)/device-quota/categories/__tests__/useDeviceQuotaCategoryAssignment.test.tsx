@@ -106,6 +106,10 @@ describe("useDeviceQuotaCategoryAssignment", () => {
     )
     expect(clearEquipmentSelection).toHaveBeenCalledTimes(1)
     expect(onReconciled).toHaveBeenCalledWith([101])
+    expect(mockToast).toHaveBeenCalledWith({
+      title: "Thành công",
+      description: "Đã gán 1 thiết bị vào nhóm định mức.",
+    })
   })
 
   it("reconciles against the tenant captured when the assignment starts", async () => {

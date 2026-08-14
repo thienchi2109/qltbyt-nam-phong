@@ -2,33 +2,23 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const readSource = (file: string) =>
-  readFileSync(join(process.cwd(), file), "utf8")
+const readSource = (file: string) => readFileSync(join(process.cwd(), file), "utf8")
 
 const expectInvalidatesQueryKey = (source: string, queryKey: string) => {
   expect(source).toMatch(
-    new RegExp(
-      String.raw`invalidateQueries\(\{\s*queryKey:\s*\[["']${queryKey}["']\]`
-    )
+    new RegExp(String.raw`invalidateQueries\(\{\s*queryKey:\s*\[["']${queryKey}["']\]`)
   )
 }
 
 const extractFunctionSource = (source: string, functionName: string) => {
-  const functionPattern = new RegExp(
-    String.raw`(?:export\s+)?function\s+${functionName}\b`
-  )
+  const functionPattern = new RegExp(String.raw`(?:export\s+)?function\s+${functionName}\b`)
   const match = functionPattern.exec(source)
   expect(match?.index, `${functionName} should exist`).toBeGreaterThanOrEqual(0)
 
   const start = match?.index ?? 0
-  const nextFunctionOffset = source
-    .slice(start + 1)
-    .search(/\n(?:export\s+)?function\s+/)
+  const nextFunctionOffset = source.slice(start + 1).search(/\n(?:export\s+)?function\s+/)
 
-  return source.slice(
-    start,
-    nextFunctionOffset === -1 ? undefined : start + 1 + nextFunctionOffset
-  )
+  return source.slice(start, nextFunctionOffset === -1 ? undefined : start + 1 + nextFunctionOffset)
 }
 
 const expectMutationOwnsInvalidation = (
@@ -52,9 +42,7 @@ const expectMutationOwnsInvalidation = (
 }
 
 const expectInvalidatesRepairKeysAll = (functionSource: string) => {
-  expect(functionSource).toContain(
-    "queryClient.invalidateQueries({ queryKey: repairKeys.all })"
-  )
+  expect(functionSource).toContain("queryClient.invalidateQueries({ queryKey: repairKeys.all })")
 }
 
 describe("React Doctor P0 mutation invalidation audit", () => {
@@ -78,9 +66,7 @@ describe("React Doctor P0 mutation invalidation audit", () => {
       "useApproveMutation",
       "useCompleteMutation",
     ]) {
-      expectMutationOwnsInvalidation(source, mutation, queryKeys, [
-        expectInvalidatesRepairKeysAll,
-      ])
+      expectMutationOwnsInvalidation(source, mutation, queryKeys, [expectInvalidatesRepairKeysAll])
     }
   })
 
@@ -89,16 +75,9 @@ describe("React Doctor P0 mutation invalidation audit", () => {
       "src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryMutations.ts"
     )
 
-    const queryKeys = [
-      "dinh_muc_nhom_list",
-      "dinh_muc_compliance_summary",
-    ]
+    const queryKeys = ["dinh_muc_nhom_list", "dinh_muc_compliance_summary"]
 
-    for (const mutation of [
-      "useCreateMutation",
-      "useUpdateMutation",
-      "useDeleteMutation",
-    ]) {
+    for (const mutation of ["useCreateMutation", "useUpdateMutation", "useDeleteMutation"]) {
       expectMutationOwnsInvalidation(source, mutation, queryKeys)
     }
   })
@@ -108,10 +87,7 @@ describe("React Doctor P0 mutation invalidation audit", () => {
       "src/app/(app)/device-quota/decisions/_components/DeviceQuotaDecisionMutations.ts"
     )
 
-    const queryKeys = [
-      "dinh_muc_quyet_dinh_list",
-      "dinh_muc_compliance_summary",
-    ]
+    const queryKeys = ["dinh_muc_quyet_dinh_list", "dinh_muc_compliance_summary"]
 
     for (const mutation of [
       "useCreateMutation",
@@ -123,12 +99,12 @@ describe("React Doctor P0 mutation invalidation audit", () => {
     }
   })
 
-  it("keeps device-quota mapping mutations wired to unassigned and compliance invalidation", () => {
+  it("keeps device-quota mapping helpers wired to unassigned and compliance invalidation", () => {
     const source = readSource(
       "src/app/(app)/device-quota/mapping/_components/DeviceQuotaMappingMutations.ts"
     )
 
-    expectMutationOwnsInvalidation(source, "useLinkEquipmentMutation", [
+    expectMutationOwnsInvalidation(source, "invalidateDeviceQuotaLinkQueries", [
       "dinh_muc_thiet_bi_unassigned",
       "dinh_muc_thiet_bi_unassigned_filter_options",
       "dinh_muc_nhom_list",
