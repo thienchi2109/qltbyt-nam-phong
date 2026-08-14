@@ -264,14 +264,27 @@ Review must repeat until zero findings remain.
 
 ## Merge And Deployment Blockers
 
-Current phase boundaries:
+Completed outcome:
 
 - P6C.1: complete after the authorized rollback-only smoke and advisor reruns;
 - P6C.2: complete after passing XLSX v2 acceptance and recording rollback and
   recovery evidence;
-- P6C.3: independent zero-finding review, user acceptance, merge, deployment, issue
-  closeout, and OpenSpec archive;
-- P6C.4: post-merge `main` pull/rebase, push/status verification, stash cleanup,
-  remote prune, and final handoff.
+- P6C.3: final independent review returned zero findings, the user accepted the
+  merge, PR #913 squash-merged as `f8fe17f2`, its Vercel deployment completed,
+  and the change was moved to the archive after its specification delta was
+  preserved in the active parent change; archive PR merge and Issue #896 closure
+  remain pending;
+- P6C.4: archive-branch commit/push, upstream verification, archive PR merge, final
+  `main` synchronization, cleanup, and handoff remain pending.
 
-This branch and PR are intentionally reported before merge.
+Before archive, the exact normalized requirement blocks for structured three-level
+authoring, XLSX v2, hierarchical aggregate evaluation, and hierarchy-aware
+surfaces were copied into active parent
+`add-technical-configuration-comparison`. Hash comparison confirmed all four
+blocks matched, the retired two-level requirement was absent, and no duplicate
+requirement names remained. Archive then used `--skip-specs` only to avoid
+applying the already-preserved delta twice.
+
+P6A.2, P6A.5, and P6B.2 remain intentionally unchecked because browser
+credentials were unavailable. Their exception and compensating verification are
+recorded above.

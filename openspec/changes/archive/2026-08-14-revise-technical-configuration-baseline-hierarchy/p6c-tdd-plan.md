@@ -217,5 +217,5 @@ git diff --check
 - [ ] Commit with Lefthook enabled, push the branch, and open a PR to `main`.
 - [ ] Report focused, broad, gates, React Doctor, OpenSpec strict, advisor, live
       smoke, and review evidence before merge.
-- [ ] Leave P6C.3/P6C.4, issue closure, OpenSpec archive, merge, deployment, branch
-      cleanup, and final `main` synchronization pending for explicit user acceptance.
+- [x] Keep P6C.3/P6C.4 and Issue #896 closure pending until the archive PR merges
+      and final `main` synchronization completes.

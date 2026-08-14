@@ -5,20 +5,54 @@ import { describe, expect, it } from "vitest"
 const REPO_ROOT = path.resolve(process.cwd())
 const CHANGE_DIR = path.join(
   REPO_ROOT,
+  "openspec/changes/archive/2026-08-14-revise-technical-configuration-baseline-hierarchy"
+)
+const ACTIVE_CHANGE_DIR = path.join(
+  REPO_ROOT,
   "openspec/changes/revise-technical-configuration-baseline-hierarchy"
+)
+const PARENT_SPEC_PATH = path.join(
+  REPO_ROOT,
+  "openspec/changes/add-technical-configuration-comparison/specs/technical-configuration-comparison/spec.md"
 )
 const SMOKE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_baseline_hierarchy_p6c_live_acceptance.sql"
 )
 const REPORT_PATH = path.join(CHANGE_DIR, "p6c-live-acceptance.md")
+const ARCHIVED_SPEC_PATH = path.join(CHANGE_DIR, "specs/technical-configuration-comparison/spec.md")
+const HIERARCHY_REQUIREMENT_NAMES = [
+  "Structured three-level baseline authoring",
+  "Standard baseline Excel template",
+  "Hierarchical aggregate evaluation status",
+  "Hierarchy-aware technical configuration surfaces",
+] as const
 
 function readIfExists(filePath: string): string {
   return existsSync(filePath) ? readFileSync(filePath, "utf8") : ""
 }
 
+function readRequirementBlocks(source: string): Array<{ name: string; block: string }> {
+  const matches = [...source.matchAll(/^### Requirement: (.+)$/gm)]
+
+  return matches.map((match, index) => {
+    const start = match.index ?? 0
+    const end = matches[index + 1]?.index ?? source.length
+
+    return {
+      name: match[1],
+      block: source
+        .slice(start, end)
+        .replace(/^## (?:ADDED|MODIFIED|REMOVED|RENAMED) Requirements\s*$/gm, "")
+        .trim(),
+    }
+  })
+}
+
 const smokeSource = readIfExists(SMOKE_PATH)
 const reportSource = readIfExists(REPORT_PATH)
+const archivedSpecSource = readIfExists(ARCHIVED_SPEC_PATH)
+const parentSpecSource = readIfExists(PARENT_SPEC_PATH)
 const residueMarker = "-- P6C_POST_ROLLBACK_FIXTURE_CHECK"
 const residueBlock = smokeSource.slice(smokeSource.indexOf(residueMarker))
 const sourceRestorationMarker = "-- P6C_POST_ROLLBACK_SOURCE_RESTORATION_CHECK"
@@ -106,6 +140,7 @@ describe("P6C hierarchy live acceptance closeout", () => {
 
   it("records the authorization, acceptance, recovery, and review evidence", () => {
     expect(existsSync(REPORT_PATH)).toBe(true)
+    expect(existsSync(ACTIVE_CHANGE_DIR)).toBe(false)
     expect(reportSource).toContain("Issue #896")
     expect(reportSource).toContain("4f2be3bd")
     expect(reportSource).toContain("## Live Write Authorization")
@@ -120,5 +155,41 @@ describe("P6C hierarchy live acceptance closeout", () => {
     expect(reportSource).toContain("never drop populated hierarchy data")
     expect(reportSource).toContain("## Independent Review")
     expect(reportSource).toContain("## Merge And Deployment Blockers")
+  })
+
+  it("preserves the archived hierarchy deltas in the active parent change", () => {
+    expect(existsSync(ARCHIVED_SPEC_PATH)).toBe(true)
+    expect(existsSync(PARENT_SPEC_PATH)).toBe(true)
+    const archivedBlocks = readRequirementBlocks(archivedSpecSource)
+    const parentBlocks = readRequirementBlocks(parentSpecSource)
+    const parentNames = parentBlocks.map(({ name }) => name)
+
+    expect(parentNames).not.toContain("Flexible two-level baseline authoring")
+    expect(new Set(parentNames).size).toBe(parentNames.length)
+    expect(
+      parentNames.filter((name) =>
+        HIERARCHY_REQUIREMENT_NAMES.includes(name as (typeof HIERARCHY_REQUIREMENT_NAMES)[number])
+      )
+    ).toEqual(HIERARCHY_REQUIREMENT_NAMES)
+
+    for (const requirementName of HIERARCHY_REQUIREMENT_NAMES) {
+      expect(parentBlocks.find(({ name }) => name === requirementName)?.block).toBe(
+        archivedBlocks.find(({ name }) => name === requirementName)?.block
+      )
+    }
+
+    expect(
+      archivedBlocks.filter(({ name }) =>
+        HIERARCHY_REQUIREMENT_NAMES.includes(name as (typeof HIERARCHY_REQUIREMENT_NAMES)[number])
+      )
+    ).toHaveLength(HIERARCHY_REQUIREMENT_NAMES.length)
+    expect(
+      parentBlocks.filter(({ name }) =>
+        HIERARCHY_REQUIREMENT_NAMES.includes(name as (typeof HIERARCHY_REQUIREMENT_NAMES)[number])
+      )
+    ).toHaveLength(HIERARCHY_REQUIREMENT_NAMES.length)
+    expect(archivedBlocks.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(HIERARCHY_REQUIREMENT_NAMES)
+    )
   })
 })
