@@ -47,16 +47,22 @@ function renderActions({
   version = createHierarchicalDraft(),
   dirty = false,
   conflict = false,
+  disabled = false,
+  disabledMessage = null,
 }: {
   version?: TechnicalConfigurationBaselineDecodedDraft
   dirty?: boolean
   conflict?: boolean
+  disabled?: boolean
+  disabledMessage?: string | null
 } = {}) {
   return render(
     <TechnicalConfigurationBaselineDownloadActions
       version={version}
       dirty={dirty}
       conflict={conflict}
+      disabled={disabled}
+      disabledMessage={disabledMessage}
     />
   )
 }
@@ -285,6 +291,26 @@ describe("technical configuration baseline download actions", () => {
     }
   )
 
+  it("renders the supplied explanation while external state disables both actions", () => {
+    const disabledMessage = "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
+
+    renderActions({ disabled: true, disabledMessage })
+
+    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeDisabled()
+    expect(screen.getByText(disabledMessage)).toBeInTheDocument()
+  })
+
+  it("explains lifecycle blocking when no specific external message is available", () => {
+    renderActions({ disabled: true })
+
+    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeDisabled()
+    expect(
+      screen.getByText("Chờ thao tác hiện tại hoàn tất trước khi dùng công cụ Excel.")
+    ).toBeInTheDocument()
+  })
+
   it("does not render download actions for a locked baseline", () => {
     renderActions({
       version: createHierarchicalDraft({
@@ -298,11 +324,14 @@ describe("technical configuration baseline download actions", () => {
     expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
   })
 
-  it("keeps both new actions unreachable on the production baseline screen", async () => {
+  it("mounts both XLSX v2 actions on the production baseline screen", async () => {
     renderTab()
 
     expect(await screen.findByRole("button", { name: "Tải template Excel" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Tải cấu hình hiện tại" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Tải mẫu trống" })).not.toBeInTheDocument()
+    expect(screen.getByRole("group", { name: "Công cụ cấu hình phân cấp" })).toHaveClass(
+      "flex-wrap"
+    )
+    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
+    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
   })
 })

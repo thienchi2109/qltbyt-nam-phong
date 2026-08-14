@@ -19,7 +19,7 @@ import {
 
 import { TechnicalConfigurationBaselineHierarchyImportPreview } from "./TechnicalConfigurationBaselineHierarchyImportPreview"
 
-/** Renders the dormant hierarchy-import dialog without production mounting. */
+/** Renders the production hierarchy-import dialog with destructive replacement confirmation. */
 export function TechnicalConfigurationBaselineHierarchyImportDialog({
   workflow,
 }: Readonly<{

@@ -14,14 +14,18 @@ type TechnicalConfigurationBaselineDownloadActionsProps = {
   version: TechnicalConfigurationBaselineDecodedDraft
   dirty: boolean
   conflict: boolean
+  disabled?: boolean
+  disabledMessage?: string | null
 }
 
-/** Renders the draft-only XLSX v2 download actions without mounting them in production. */
+/** Renders production draft-only XLSX v2 download actions. */
 export function TechnicalConfigurationBaselineDownloadActions({
   version,
   dirty,
   conflict,
-}: Readonly<TechnicalConfigurationBaselineDownloadActionsProps>) {
+  disabled: externallyDisabled = false,
+  disabledMessage = null,
+}: Readonly<TechnicalConfigurationBaselineDownloadActionsProps>): React.JSX.Element | null {
   const [downloadingIntent, setDownloadingIntent] =
     React.useState<TechnicalConfigurationBaselineDownloadIntent | null>(null)
   const [error, setError] = React.useState<string | null>(null)
@@ -33,10 +37,15 @@ export function TechnicalConfigurationBaselineDownloadActions({
     ? "Tải lại dữ liệu từ máy chủ trước khi tải tệp Excel."
     : dirty
       ? "Lưu thay đổi trước khi tải tệp Excel."
-      : null
-  const disabled = Boolean(guardMessage || downloadingIntent)
+      : (disabledMessage ??
+        (externallyDisabled
+          ? "Chờ thao tác hiện tại hoàn tất trước khi dùng công cụ Excel."
+          : null))
+  const disabled = Boolean(externallyDisabled || guardMessage || downloadingIntent)
 
-  async function handleDownload(intent: TechnicalConfigurationBaselineDownloadIntent) {
+  async function handleDownload(
+    intent: TechnicalConfigurationBaselineDownloadIntent
+  ): Promise<void> {
     if (disabled || downloadingRef.current) return
     downloadingRef.current = true
     setDownloadingIntent(intent)

@@ -6,23 +6,25 @@ import { Button } from "@/components/ui/button"
 import { SingleSelect } from "@/components/ui/heroui/SingleSelect"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 
+export type TechnicalConfigurationVersionBarStatus = Readonly<{
+  hasDraft: boolean
+  isCreating: boolean
+  isLocking: boolean
+  isCopying: boolean
+  isLoadingMoreVersions: boolean
+  hasLoadMoreError: boolean
+  isNavigationDisabled: boolean
+  hasMoreVersions: boolean
+  isDownloadingTemplate: boolean
+  isImportBusy: boolean
+  isImportBlocked: boolean
+}>
+
 type TechnicalConfigurationVersionBarProps = {
   versions: TechnicalConfigurationBaselineDraftWire[]
   selectedVersion: TechnicalConfigurationBaselineDraftWire
   lockBlockedReason: string | null
-  status: {
-    hasDraft: boolean
-    isCreating: boolean
-    isLocking: boolean
-    isCopying: boolean
-    isLoadingMoreVersions: boolean
-    hasLoadMoreError: boolean
-    isNavigationDisabled: boolean
-    hasMoreVersions: boolean
-    isDownloadingTemplate: boolean
-    isImportBusy: boolean
-    isImportBlocked: boolean
-  }
+  status: TechnicalConfigurationVersionBarStatus
   onSelectVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
   onRequestLock: () => void

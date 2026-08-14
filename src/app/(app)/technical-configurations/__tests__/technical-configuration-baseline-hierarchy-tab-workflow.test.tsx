@@ -54,7 +54,7 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     rpc.getDossier.mockResolvedValue({ data: dossier })
   })
 
-  it("keeps production authoring hidden and allows locking a subgroup-only criterion draft", async () => {
+  it("mounts production authoring and allows locking a subgroup-only criterion draft", async () => {
     const user = userEvent.setup()
     const draft = createSubgroupOnlyDraft()
     mockVersions([draft])
@@ -62,9 +62,9 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
 
     renderTab()
 
-    expect(await screen.findByText("Hạ tầng")).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /Thêm nhóm con/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole("combobox", { name: /Chuyển tiêu chí/i })).not.toBeInTheDocument()
+    expect(await screen.findByDisplayValue("Hạ tầng")).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /Thêm nhóm con/i })).not.toHaveLength(0)
+    expect(screen.getByRole("combobox", { name: /Chuyển tiêu chí/i })).toBeInTheDocument()
 
     const lockButton = screen.getByRole("button", { name: "Khóa phiên bản" })
     expect(lockButton).toBeEnabled()
@@ -117,7 +117,7 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     )
 
     renderTab()
-    await screen.findByText("Hạ tầng")
+    await screen.findByDisplayValue("Hạ tầng")
     await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
