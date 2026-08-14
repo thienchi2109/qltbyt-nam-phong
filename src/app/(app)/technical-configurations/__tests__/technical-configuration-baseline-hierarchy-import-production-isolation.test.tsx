@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom"
 
-import { act, screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -44,15 +44,18 @@ describe("technical configuration hierarchy production activation", () => {
     rpc.previewHierarchyImport.mockResolvedValue(createHierarchyPreview())
   })
 
-  it("mounts hierarchy workflows while preserving the legacy import path", async () => {
+  it("replaces legacy Excel actions with XLSX v2 controls in the version bar", async () => {
     const user = userEvent.setup()
     renderTab()
 
-    expect(await screen.findByRole("button", { name: "Tải template Excel" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Nhập từ Excel" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
-    expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
-    expect(screen.getByRole("button", { name: "Nhập cấu hình phân cấp" })).toBeEnabled()
+    const versionBar = await screen.findByRole("region", {
+      name: "Lịch sử phiên bản cấu hình cơ sở",
+    })
+    expect(screen.queryByRole("button", { name: "Tải template Excel" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
+    expect(within(versionBar).getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
+    expect(within(versionBar).getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
+    expect(within(versionBar).getByRole("button", { name: "Nhập cấu hình phân cấp" })).toBeEnabled()
     expect(screen.getAllByRole("button", { name: /Thêm nhóm con/i })).not.toHaveLength(0)
     expect(
       screen.queryByRole("dialog", { name: "Nhập cấu hình phân cấp từ Excel" })

@@ -1,18 +1,20 @@
 import * as React from "react"
 
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
-import { useTechnicalConfigurationBaselineImportWorkflows } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineImportWorkflows"
+import { useTechnicalConfigurationBaselineHierarchyImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineHierarchyImport"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationDiscardConfirmation } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationDiscardConfirmation"
 import { useTechnicalConfigurationInlineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationInlineEditor"
 import { getTechnicalConfigurationBaselineLockBlockedReason } from "@/app/(app)/technical-configurations/TechnicalConfigurationBaselineLockReason"
+import { decodeTechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/technical-configuration-baseline-decoders"
 import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
-import { TechnicalConfigurationBaselineProductionSurfaces } from "./TechnicalConfigurationBaselineProductionSurfaces"
+import { TechnicalConfigurationBaselineHierarchyImportDialog } from "./TechnicalConfigurationBaselineHierarchyImportDialog"
+import { TechnicalConfigurationBaselineProductionActions } from "./TechnicalConfigurationBaselineProductionActions"
 import { TechnicalConfigurationBaselineVersionControls } from "./TechnicalConfigurationBaselineVersionControls"
 import { TechnicalConfigurationLockDialog } from "./TechnicalConfigurationLockDialog"
 import {
@@ -49,19 +51,27 @@ export function TechnicalConfigurationBaselineTab({
   })
   const draft = baseline.editorDraft
   const selectedVersion = baseline.selectedVersion
+  const decodedVersion = React.useMemo(
+    () =>
+      selectedVersion
+        ? decodeTechnicalConfigurationBaselineDraftWire(selectedVersion, "selectedVersion")
+        : null,
+    [selectedVersion]
+  )
   const isImportBlocked =
     baseline.isDirty ||
     baseline.isConflict ||
     baseline.isLifecycleBusy ||
     bulkSessions.hasPendingInput
-  const imports = useTechnicalConfigurationBaselineImportWorkflows({
-    dossierId: dossier.id,
-    selectedVersion,
+  const hierarchyImport = useTechnicalConfigurationBaselineHierarchyImport({
+    selectedVersion: decodedVersion,
     isBlocked: isImportBlocked,
     onApplied: baseline.onAdoptImportSnapshot,
     onConflict: baseline.onRefreshImportConflict,
     onUnresolvedStateChange: setHasUnresolvedImportState,
   })
+  const isHierarchyImportBusy =
+    hierarchyImport.isParsing || hierarchyImport.isPreviewing || hierarchyImport.isApplying
   const summaryValidation = React.useMemo(
     () => (draft ? validateTechnicalConfigurationBaselineEditorDraft(draft) : baseline.validation),
     [baseline.validation, draft]
@@ -92,9 +102,9 @@ export function TechnicalConfigurationBaselineTab({
     [onDirtyChange, onNavigationBlockedChange]
   )
   React.useEffect(() => {
-    reportWorkspaceState(isUnsafeToLeave, imports.isApplying)
+    reportWorkspaceState(isUnsafeToLeave, hierarchyImport.isApplying)
     return () => reportWorkspaceState(false, false)
-  }, [imports.isApplying, isUnsafeToLeave, reportWorkspaceState])
+  }, [hierarchyImport.isApplying, isUnsafeToLeave, reportWorkspaceState])
 
   useTechnicalConfigurationBeforeUnloadGuard(isUnsafeToLeave)
 
@@ -132,7 +142,7 @@ export function TechnicalConfigurationBaselineTab({
 
     const selectVersion = () => {
       bulkSessions.clearAll()
-      imports.reset()
+      hierarchyImport.reset()
       baseline.onSelectVersion(versionId, { force: isUnsafeToLeave })
       inlineEditor.prepareForReload(nextVersion.groups[0]?.id ?? "")
     }
@@ -209,35 +219,35 @@ export function TechnicalConfigurationBaselineTab({
             hasLoadMoreError: baseline.hasLoadMoreError,
             isNavigationDisabled: baseline.isLifecycleBusy,
             hasMoreVersions: baseline.hasMoreVersions,
-            isDownloadingTemplate: imports.legacyImport.isDownloading,
-            isImportBusy: imports.legacyImport.isPreviewing || imports.legacyImport.isApplying,
-            isImportBlocked,
+            isImportBusy: isHierarchyImportBusy,
           }}
           onSelectVersion={handleSelectVersion}
           onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
           onRequestLock={() => setIsLockDialogOpen(true)}
           onCreateBlank={baseline.onCreate}
           onCopy={() => void handleCopy()}
-          onDownloadTemplate={() => void imports.legacyImport.downloadTemplate()}
-          onRequestImport={imports.openLegacyImport}
+          spreadsheetActions={
+            decodedVersion ? (
+              <TechnicalConfigurationBaselineProductionActions
+                version={decodedVersion}
+                dirty={baseline.isDirty}
+                conflict={baseline.isConflict}
+                disabled={
+                  baseline.isLifecycleBusy || bulkSessions.hasPendingInput || isHierarchyImportBusy
+                }
+                disabledMessage={
+                  bulkSessions.hasPendingInput
+                    ? "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
+                    : null
+                }
+                onRequestHierarchyImport={hierarchyImport.openDialog}
+              />
+            ) : null
+          }
         />
       </div>
 
-      <TechnicalConfigurationBaselineProductionSurfaces
-        isFocusMode={isFocusMode}
-        version={imports.decodedVersion}
-        dirty={baseline.isDirty}
-        conflict={baseline.isConflict}
-        disabled={baseline.isLifecycleBusy || bulkSessions.hasPendingInput}
-        disabledMessage={
-          bulkSessions.hasPendingInput
-            ? "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
-            : null
-        }
-        legacyImport={imports.legacyImport}
-        hierarchyImport={imports.hierarchyImport}
-        onRequestHierarchyImport={imports.openHierarchyImport}
-      />
+      <TechnicalConfigurationBaselineHierarchyImportDialog workflow={hierarchyImport} />
 
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}
@@ -247,7 +257,7 @@ export function TechnicalConfigurationBaselineTab({
           bulkSessions.hasPendingInput ? "technical-configuration-pending-bulk-status" : undefined
         }
         saveError={
-          imports.operationError ??
+          hierarchyImport.operationError ??
           baseline.createError ??
           baseline.saveError ??
           baseline.lifecycleError

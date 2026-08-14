@@ -327,10 +327,12 @@ describe("technical configuration baseline download actions", () => {
   it("mounts both XLSX v2 actions on the production baseline screen", async () => {
     renderTab()
 
-    expect(await screen.findByRole("button", { name: "Tải template Excel" })).toBeInTheDocument()
-    expect(screen.getByRole("group", { name: "Công cụ cấu hình phân cấp" })).toHaveClass(
-      "flex-wrap"
-    )
+    const actionGroup = await screen.findByRole("group", {
+      name: "Công cụ cấu hình phân cấp",
+    })
+    expect(actionGroup).toHaveClass("flex-wrap")
+    expect(screen.queryByRole("button", { name: "Tải template Excel" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
     expect(screen.getByRole("button", { name: "Tải mẫu trống" })).toBeEnabled()
   })

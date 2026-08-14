@@ -1,4 +1,5 @@
-import { ChevronDown, Copy, Download, FilePlus2, History, LockKeyhole, Upload } from "lucide-react"
+import type * as React from "react"
+import { ChevronDown, Copy, FilePlus2, History, LockKeyhole } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { Badge } from "@/components/ui/badge"
@@ -15,9 +16,7 @@ export type TechnicalConfigurationVersionBarStatus = Readonly<{
   hasLoadMoreError: boolean
   isNavigationDisabled: boolean
   hasMoreVersions: boolean
-  isDownloadingTemplate: boolean
   isImportBusy: boolean
-  isImportBlocked: boolean
 }>
 
 type TechnicalConfigurationVersionBarProps = {
@@ -30,8 +29,7 @@ type TechnicalConfigurationVersionBarProps = {
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
-  onDownloadTemplate: () => void
-  onRequestImport: () => void
+  spreadsheetActions: React.ReactNode
 }
 
 /** Renders baseline version selection, lifecycle metadata, and valid actions. */
@@ -45,8 +43,7 @@ export function TechnicalConfigurationVersionBar({
   onRequestLock,
   onCreateBlank,
   onCopy,
-  onDownloadTemplate,
-  onRequestImport,
+  spreadsheetActions,
 }: Readonly<TechnicalConfigurationVersionBarProps>) {
   const {
     hasDraft,
@@ -57,9 +54,7 @@ export function TechnicalConfigurationVersionBar({
     hasLoadMoreError,
     isNavigationDisabled,
     hasMoreVersions,
-    isDownloadingTemplate,
     isImportBusy,
-    isImportBlocked,
   } = status
   const areActionsDisabled = isNavigationDisabled || isImportBusy
   const hasLockMetadata =
@@ -135,24 +130,7 @@ export function TechnicalConfigurationVersionBar({
           {selectedVersion.status === "draft" ? (
             <>
               <div className="flex flex-wrap gap-2 lg:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={areActionsDisabled || isImportBlocked || isDownloadingTemplate}
-                  onClick={onDownloadTemplate}
-                >
-                  <Download className="size-4" aria-hidden="true" />
-                  {isDownloadingTemplate ? "Đang tạo template..." : "Tải template Excel"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={areActionsDisabled || isImportBlocked}
-                  onClick={onRequestImport}
-                >
-                  <Upload className="size-4" aria-hidden="true" />
-                  Nhập từ Excel
-                </Button>
+                {spreadsheetActions}
                 <Button
                   type="button"
                   variant="destructive"

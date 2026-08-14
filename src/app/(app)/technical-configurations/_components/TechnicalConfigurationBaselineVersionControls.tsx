@@ -19,8 +19,7 @@ type TechnicalConfigurationBaselineVersionControlsProps = Readonly<{
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
-  onDownloadTemplate: () => void
-  onRequestImport: () => void
+  spreadsheetActions: React.ReactNode
 }>
 
 /** Renders the compact focus context or the full baseline version controls. */
@@ -36,8 +35,7 @@ export function TechnicalConfigurationBaselineVersionControls({
   onRequestLock,
   onCreateBlank,
   onCopy,
-  onDownloadTemplate,
-  onRequestImport,
+  spreadsheetActions,
 }: TechnicalConfigurationBaselineVersionControlsProps): React.JSX.Element {
   if (isFocusMode) {
     return (
@@ -65,8 +63,7 @@ export function TechnicalConfigurationBaselineVersionControls({
       onRequestLock={onRequestLock}
       onCreateBlank={onCreateBlank}
       onCopy={onCopy}
-      onDownloadTemplate={onDownloadTemplate}
-      onRequestImport={onRequestImport}
+      spreadsheetActions={spreadsheetActions}
     />
   )
 }
