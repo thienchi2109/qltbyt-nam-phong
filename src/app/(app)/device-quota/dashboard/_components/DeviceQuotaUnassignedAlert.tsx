@@ -9,6 +9,7 @@ import { useDeviceQuotaDashboardContext } from "../_hooks/useDeviceQuotaDashboar
 
 const STORAGE_KEY_PREFIX = "device-quota-unassigned-dismissed"
 
+/** Links tenant-scoped unassigned equipment to the canonical Categories workspace. */
 export function DeviceQuotaUnassignedAlert() {
   const { complianceSummary, donViId } = useDeviceQuotaDashboardContext()
   const [isDismissed, setIsDismissed] = React.useState(false)
@@ -44,14 +45,8 @@ export function DeviceQuotaUnassignedAlert() {
           Có <strong>{unassignedCount}</strong> thiết bị chưa được phân loại định mức.
         </span>
         <div className="flex items-center gap-2">
-          <Button
-            asChild
-            size="sm"
-            className="bg-amber-600 text-white hover:bg-amber-700"
-          >
-            <Link href="/device-quota/mapping">
-              Phân loại ngay
-            </Link>
+          <Button asChild size="sm" className="bg-amber-600 text-white hover:bg-amber-700">
+            <Link href="/device-quota/categories">Phân loại ngay</Link>
           </Button>
           <Button
             variant="ghost"

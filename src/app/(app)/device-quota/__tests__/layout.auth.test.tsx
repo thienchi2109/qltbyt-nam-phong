@@ -16,14 +16,11 @@ vi.mock("next-auth", () => ({
 
 vi.mock("next/navigation", () => ({
   redirect: (path: string) => mocks.redirect(path),
+  usePathname: () => "/device-quota/categories",
 }))
 
 vi.mock("@/auth/config", () => ({
   authOptions: {},
-}))
-
-vi.mock("@/app/(app)/device-quota/_components/DeviceQuotaSubNav", () => ({
-  DeviceQuotaSubNav: () => <div data-testid="device-quota-subnav" />,
 }))
 
 import DeviceQuotaLayout from "@/app/(app)/device-quota/layout"
@@ -76,7 +73,12 @@ describe("DeviceQuotaLayout auth gate", () => {
 
       expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
       expect(mocks.redirect).not.toHaveBeenCalled()
-      expect(screen.getByTestId("device-quota-subnav")).toBeInTheDocument()
+      expect(screen.getByRole("link", { name: "Danh mục & phân loại" })).toHaveAttribute(
+        "href",
+        "/device-quota/categories"
+      )
+      expect(screen.queryByRole("link", { name: "Phân loại" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("link", { name: "Danh mục" })).not.toBeInTheDocument()
       expect(screen.getByText("Protected Child")).toBeInTheDocument()
     }
   )

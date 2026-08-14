@@ -6,57 +6,41 @@ import { DeviceQuotaSubNav } from "@/app/(app)/device-quota/_components/DeviceQu
 
 const mocks = vi.hoisted(() => ({
   usePathname: vi.fn(),
-  useSession: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
   usePathname: () => mocks.usePathname(),
 }))
 
-vi.mock("next-auth/react", () => ({
-  useSession: () => mocks.useSession(),
-}))
-
-describe("DeviceQuotaSubNav role matrix", () => {
+describe("DeviceQuotaSubNav", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.usePathname.mockReturnValue("/device-quota/mapping")
+    mocks.usePathname.mockReturnValue("/device-quota/categories")
   })
 
-  it.each(["global", "admin", "to_qltb"])(
-    "shows both current Mapping and Categories tabs for equipment-manager role %s",
-    (role) => {
-      mocks.useSession.mockReturnValue({
-        status: "authenticated",
-        data: { user: { role, don_vi: "1" } },
-      })
+  it("shows one canonical Categories workspace entry", () => {
+    render(<DeviceQuotaSubNav />)
 
-      render(<DeviceQuotaSubNav />)
+    expect(screen.getByRole("link", { name: "Danh mục & phân loại" })).toHaveAttribute(
+      "href",
+      "/device-quota/categories"
+    )
+    expect(screen.getByRole("link", { name: "Danh mục & phân loại" })).toHaveAttribute(
+      "aria-current",
+      "page"
+    )
+    expect(screen.queryByRole("link", { name: "Phân loại" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("link", { name: "Danh mục" })).not.toBeInTheDocument()
+  })
 
-      expect(screen.getByRole("link", { name: "Phân loại" })).toHaveAttribute(
-        "href",
-        "/device-quota/mapping"
-      )
-      expect(screen.getByRole("link", { name: "Danh mục" })).toHaveAttribute(
-        "href",
-        "/device-quota/categories"
-      )
-    }
-  )
-
-  it("keeps regional_leader on Mapping without exposing Categories", () => {
-    mocks.useSession.mockReturnValue({
-      status: "authenticated",
-      data: { user: { role: "regional_leader", don_vi: "1" } },
-    })
+  it("does not expose the Mapping rollback route when it is loaded directly", () => {
+    mocks.usePathname.mockReturnValue("/device-quota/mapping")
 
     render(<DeviceQuotaSubNav />)
 
-    expect(screen.getByRole("link", { name: "Phân loại" })).toHaveAttribute(
-      "href",
-      "/device-quota/mapping"
+    expect(screen.queryByRole("link", { name: "Phân loại" })).not.toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Danh mục & phân loại" })).not.toHaveAttribute(
+      "aria-current"
     )
-    expect(screen.getByRole("link", { name: "Phân loại" })).toHaveAttribute("aria-current", "page")
-    expect(screen.queryByRole("link", { name: "Danh mục" })).not.toBeInTheDocument()
   })
 })

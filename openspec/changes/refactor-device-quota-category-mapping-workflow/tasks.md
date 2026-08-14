@@ -109,7 +109,7 @@
 - [x] 4.6 Expose the suggestion entry inside Categories to every role that currently receives it on Mapping, without coupling visibility to category CRUD access.
 - [x] 4.7 Move any suggestion components or hooks required by Categories to route-agnostic ownership without changing dialog, job, API, retry, preview-only, exclusion, or batch-apply behavior.
 - [x] 4.8 Prove with shared behavior tests that Categories preserves the current Mapping suggestion workflow before navigation cutover.
-- [ ] 4.9 Run and record focused production smoke checks from the Categories route for an authorized manual assignment with exact selected-category reconciliation, an authorized suggestion preview/apply flow, and `regional_leader` preview-only behavior with no category detail or mutation access. Block Phase 5 until all checks pass.
+- [x] 4.9 Run and record focused production smoke checks from the Categories route for an authorized manual assignment with exact selected-category reconciliation, an authorized suggestion preview/apply flow, and `regional_leader` preview-only behavior with no category detail or mutation access. Block Phase 5 until all checks pass. **User-waived on 2026-08-14 because browser credentials are unavailable; no production smoke was executed.**
 
 **Deploy-safe boundary:** The suggestion implementation remains the same component and orchestration. Mapping remains available only as a temporary fallback while the Categories entry is smoke-tested.
 
@@ -119,15 +119,15 @@
 
 **Purpose:** Make the proven unified workspace canonical in a small route/navigation-only PR.
 
-- [ ] 5.1 For every role currently authorized to use Categories or Mapping, replace separate module tabs with one `Danh mục & phân loại` navigation entry.
-- [ ] 5.2 Keep `/device-quota/categories` as the only canonical workspace route for those roles.
-- [ ] 5.3 Update every in-repo navigation target and internal link that points to the Mapping page.
-- [ ] 5.4 Keep Mapping route code only as a short-lived rollback surface until Phase 6; do not expose it in navigation or new links.
-- [ ] 5.5 Preserve existing role-specific visibility and mutation guards inside the permission-aware Categories workspace.
-- [ ] 5.6 Add route/navigation tests for an equipment manager, `regional_leader`, and another non-manager role.
-- [ ] 5.7 Verify manager-only category CRUD controls remain unavailable to mapping-only roles.
-- [ ] 5.8 Verify category CRUD, manual assignment, and facility-wide suggestions remain reachable for their existing authorized roles after cutover.
-- [ ] 5.9 After navigation cutover, run and record the same role-matrix production smoke checks through the canonical `Danh mục & phân loại` entry. Block Phase 6 route deletion until all checks pass.
+- [x] 5.1 For every role currently authorized to use Categories or Mapping, replace separate module tabs with one `Danh mục & phân loại` navigation entry.
+- [x] 5.2 Keep `/device-quota/categories` as the only canonical workspace route for those roles.
+- [x] 5.3 Update every in-repo navigation target and internal link that points to the Mapping page.
+- [x] 5.4 Keep Mapping route code only as a short-lived rollback surface until Phase 6; do not expose it in navigation or new links.
+- [x] 5.5 Preserve existing role-specific visibility and mutation guards inside the permission-aware Categories workspace.
+- [x] 5.6 Add route/navigation tests for an equipment manager, `regional_leader`, and another non-manager role.
+- [x] 5.7 Verify manager-only category CRUD controls remain unavailable to mapping-only roles.
+- [x] 5.8 Verify category CRUD, manual assignment, and facility-wide suggestions remain reachable for their existing authorized roles after cutover.
+- [x] 5.9 After navigation cutover, run and record the same role-matrix production smoke checks through the canonical `Danh mục & phân loại` entry. Block Phase 6 route deletion until all checks pass. **User-waived on 2026-08-14 because browser credentials are unavailable; no production smoke was executed.**
 
 **Deploy-safe boundary:** Navigation and routing change only after both manual assignment and suggestion workflows are already proven on Categories.
 
