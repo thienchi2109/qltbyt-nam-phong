@@ -272,10 +272,11 @@ Completed outcome:
 - P6C.3: final independent review returned zero findings, the user accepted the
   merge, PR #913 squash-merged as `f8fe17f2`, its Vercel deployment completed,
   and the change was moved to the archive after its specification delta was
-  preserved in the active parent change; archive PR merge and Issue #896 closure
-  remain pending;
-- P6C.4: archive-branch commit/push, upstream verification, archive PR merge, final
-  `main` synchronization, cleanup, and handoff remain pending.
+  preserved in the active parent change; archive PR #914 then squash-merged as
+  `aaae364c` at `2026-08-14T07:17:27Z` and closed Issue #896;
+- P6C.4: archive-branch commit/push, upstream verification, archive PR merge,
+  final `main` synchronization, stale-branch pruning, stash verification, and
+  handoff are complete.
 
 Before archive, the exact normalized requirement blocks for structured three-level
 authoring, XLSX v2, hierarchical aggregate evaluation, and hierarchy-aware
