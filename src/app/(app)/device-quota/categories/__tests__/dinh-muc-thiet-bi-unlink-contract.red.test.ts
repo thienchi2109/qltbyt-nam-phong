@@ -118,22 +118,39 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
   it("runs claim, role, and category guards before the equipment mutation", () => {
     const { normalizedFunction } = readLatestUnlinkMigration()
     const mutationIndex = normalizedFunction.search(/UPDATE public\.thiet_bi\b/i)
-    const guardPatterns = [
-      /Missing role claim/i,
-      /Missing user_id claim/i,
-      /v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)/i,
-      /NULLIF\(current_setting\('request\.jwt\.claims', true\)::json->>'user_id', ''\)/i,
+    const failClosedGuards = [
+      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+RAISE EXCEPTION\s+'Missing role claim'[\s\S]*?END IF;/i,
+      /IF\s+v_user_id\s+IS NULL\s+THEN\s+RAISE EXCEPTION\s+'Missing user_id claim'[\s\S]*?END IF;/i,
+      /IF\s+v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i,
     ]
+    const normalizedUserIdClaim = normalizedFunction.match(
+      /v_user_id[\s\S]*?NULLIF\(current_setting\('request\.jwt\.claims', true\)::json->>'user_id', ''\)/i
+    )
+    const tenantClaim = normalizedFunction.match(
+      /v_don_vi[\s\S]*?current_setting\('request\.jwt\.claims', true\)::json->>'don_vi'/i
+    )
+    const effectiveTenantBinding = normalizedFunction.match(
+      /IF\s+(?:v_role\s*=\s*'to_qltb'|v_role\s+NOT IN\s*\('global',\s*'admin'\))\s+THEN\s+p_don_vi\s*:=\s*NULLIF\(v_don_vi,\s*''\)::BIGINT\s*;[\s\S]*?END IF;/i
+    )
+    const effectiveTenantRequired = normalizedFunction.match(
+      /IF\s+p_don_vi\s+IS NULL\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i
+    )
     const categoryGuard = normalizedFunction.match(
       /IF\s+NOT\s+EXISTS\s*\(\s*SELECT[\s\S]*?FROM public\.nhom_thiet_bi(?:\s+(?:AS\s+)?[a-z_][a-z0-9_]*)?\s+WHERE[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*p_nhom_id[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?don_vi_id\s*=\s*p_don_vi[\s\S]*?\)\s+THEN\s+RAISE EXCEPTION\s+'[^']*(?:category|nhóm)[^']*'[\s\S]*?END IF;/i
     )
 
     expect(mutationIndex).toBeGreaterThan(-1)
-    for (const pattern of guardPatterns) {
-      const guardIndex = normalizedFunction.search(pattern)
-      expect(guardIndex).toBeGreaterThan(-1)
-      expect(guardIndex).toBeLessThan(mutationIndex)
+    for (const guard of failClosedGuards) {
+      const matchedGuard = normalizedFunction.match(guard)
+      expect(matchedGuard).not.toBeNull()
+      expect(matchedGuard!.index).toBeLessThan(mutationIndex)
     }
+    expect(normalizedUserIdClaim).not.toBeNull()
+    expect(tenantClaim).not.toBeNull()
+    expect(effectiveTenantBinding).not.toBeNull()
+    expect(effectiveTenantRequired).not.toBeNull()
+    expect(effectiveTenantBinding!.index).toBeLessThan(effectiveTenantRequired!.index!)
+    expect(effectiveTenantRequired!.index).toBeLessThan(mutationIndex)
     expect(categoryGuard).not.toBeNull()
     expect(categoryGuard!.index).toBeLessThan(mutationIndex)
   })
@@ -169,8 +186,8 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     const affectedCte = updateCte![1]
     const auditIndex = normalizedFunction.search(/INSERT INTO public\.thiet_bi_nhom_audit_log/i)
     const auditSql = normalizedFunction.slice(auditIndex)
-    const auditUsesAffectedIds = new RegExp(
-      `INSERT INTO public\\.thiet_bi_nhom_audit_log\\s*\\(\\s*don_vi_id\\s*,\\s*thiet_bi_ids\\s*,[\\s\\S]*?\\)\\s*SELECT\\s+p_don_vi\\s*,\\s*ARRAY_AGG\\(\\s*(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)[\\s\\S]*?FROM\\s+${affectedCte}\\b`,
+    const auditUsesAffectedProvenance = new RegExp(
+      `INSERT INTO public\\.thiet_bi_nhom_audit_log\\s*\\(\\s*don_vi_id\\s*,\\s*thiet_bi_ids\\s*,\\s*nhom_thiet_bi_id\\s*,\\s*action\\s*,\\s*performed_by\\s*,\\s*performed_at\\s*,\\s*metadata\\s*\\)\\s*SELECT\\s+p_don_vi\\s*,\\s*ARRAY_AGG\\(\\s*(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)\\s*,\\s*p_nhom_id\\s*,\\s*'unlink'\\s*,\\s*v_user_id(?:::BIGINT)?\\s*,\\s*(?:NOW\\(\\)|CURRENT_TIMESTAMP)\\s*,\\s*jsonb_build_object\\([\\s\\S]*?'previous_nhom_id'\\s*,\\s*p_nhom_id[\\s\\S]*?\\)\\s+FROM\\s+${affectedCte}\\b(?:\\s+(?:AS\\s+)?[a-z_][a-z0-9_]*)?\\s+HAVING\\s+COUNT\\(\\s*\\*\\s*\\)\\s*>\\s*0`,
       "i"
     ).test(normalizedFunction)
     const countUsesAffectedIds = new RegExp(
@@ -186,11 +203,9 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
 
     expect(auditIndex).toBeGreaterThan(updateCte!.index!)
     expect(returnedIdsComeFromConstrainedUpdate).not.toBeNull()
-    expect(auditUsesAffectedIds).toBe(true)
+    expect(auditUsesAffectedProvenance).toBe(true)
     expect(countUsesAffectedIds).toBe(true)
-    expect(auditSql).toContain("'unlink'")
-    expect(auditSql).toContain("performed_by")
-    expect(auditSql).toContain("previous_nhom_id")
+    expect(auditSql).not.toMatch(/\bthiet_bi_ids\s*,[\s\S]*?p_thiet_bi_ids/i)
     expect(normalizedFunction).toContain("RETURN v_affected_count")
   })
 

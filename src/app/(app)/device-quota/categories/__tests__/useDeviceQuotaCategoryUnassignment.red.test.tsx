@@ -1,4 +1,3 @@
-import { type QueryClient, type UseMutationResult } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -6,7 +5,10 @@ import type { EquipmentPreviewItem } from "@/app/(app)/device-quota/_components/
 import { callRpc } from "@/lib/rpc-client"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import type { CategoryListItem } from "../_types/categories"
-import * as categoryAssignmentHooks from "../_hooks/useDeviceQuotaCategoryAssignment"
+import {
+  runUnassignment,
+  useUnassignmentUnderTest,
+} from "./DeviceQuotaCategoryUnassignmentHookHarness"
 import {
   AFFECTED_QUERY_KEYS,
   AFFECTED_SEEDED_QUERY_KEYS,
@@ -17,10 +19,12 @@ import {
   equipment,
   FILTER_OPTIONS_KEY,
   FILTERED_CATEGORY_LIST_KEY,
+  FILTERED_UNASSIGNED_KEY,
   OTHER_TENANT_CATEGORY_LIST_KEY,
   SEEDED_CACHE_KEYS,
   seedVisibleCaches,
-  type UnassignmentVariables,
+  STALE_ONLY_CACHE_KEYS,
+  startDelayedExpandedReads,
   UNASSIGNED_KEY,
   VARIABLES,
 } from "./DeviceQuotaCategoryUnassignmentTestSupport"
@@ -36,38 +40,6 @@ vi.mock("@/lib/rpc-client", () => ({
 }))
 
 const mockCallRpc = vi.mocked(callRpc)
-
-type UseDeviceQuotaCategoryUnassignment = () => UseMutationResult<
-  number,
-  Error,
-  UnassignmentVariables,
-  unknown
->
-
-const useUnassignmentCandidate = (
-  categoryAssignmentHooks as typeof categoryAssignmentHooks & {
-    useDeviceQuotaCategoryUnassignment?: UseDeviceQuotaCategoryUnassignment
-  }
-).useDeviceQuotaCategoryUnassignment
-
-function useUnassignmentUnderTest() {
-  if (!useUnassignmentCandidate) {
-    throw new Error("Phase 0 RED: useDeviceQuotaCategoryUnassignment has not been implemented")
-  }
-  return useUnassignmentCandidate()
-}
-
-async function runUnassignment(queryClient: QueryClient) {
-  const rendered = renderHook(() => useUnassignmentUnderTest(), {
-    wrapper: createReactQueryWrapper(queryClient),
-  })
-
-  await act(async () => {
-    await rendered.result.current.mutateAsync(VARIABLES)
-  })
-
-  return rendered
-}
 
 describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   beforeEach(() => {
@@ -95,6 +67,11 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   it("cancels matching reads before patching visible caches and avoids immediate reads", async () => {
     const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
+    const delayedReads = startDelayedExpandedReads(queryClient)
+    await waitFor(() => {
+      expect(queryClient.getQueryState(FILTERED_CATEGORY_LIST_KEY)?.fetchStatus).toBe("fetching")
+      expect(queryClient.getQueryState(FILTERED_UNASSIGNED_KEY)?.fetchStatus).toBe("fetching")
+    })
     const assignedBefore = queryClient.getQueryData<EquipmentPreviewItem[]>(ASSIGNED_KEY)!
     const primaryCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)!
     const filteredCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(
@@ -103,6 +80,9 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     const otherTenantCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(
       OTHER_TENANT_CATEGORY_LIST_KEY
     )!
+    const staleOnlyCachesBefore = STALE_ONLY_CACHE_KEYS.map(
+      (queryKey) => [queryKey, queryClient.getQueryData(queryKey)] as const
+    )
     const cancelQueries = vi.spyOn(queryClient, "cancelQueries")
     const setQueryData = vi.spyOn(queryClient, "setQueryData")
     const setQueriesData = vi.spyOn(queryClient, "setQueriesData")
@@ -151,6 +131,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
         })
       )
     }
+    expect(cancelQueries.mock.calls.some(([filters]) => filters.exact === true)).toBe(false)
     const cacheWriteOrders = [
       ...setQueryData.mock.invocationCallOrder,
       ...setQueriesData.mock.invocationCallOrder,
@@ -176,6 +157,13 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     expect(queryClient.getQueryData(OTHER_TENANT_CATEGORY_LIST_KEY)).toBe(
       otherTenantCategoriesBefore
     )
+    await delayedReads.settle()
+    for (const [queryKey, before] of staleOnlyCachesBefore) {
+      expect(queryClient.getQueryData(queryKey)).toBe(before)
+    }
+    expect(
+      queryClient.getQueryData<CategoryListItem[]>(FILTERED_CATEGORY_LIST_KEY)?.[1]
+    ).toMatchObject({ id: 5, so_luong_hien_co: 2 })
     for (const queryKey of AFFECTED_SEEDED_QUERY_KEYS) {
       expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
     }
@@ -218,17 +206,28 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   it("removes a stale assigned row without decrementing count when zero rows are affected", async () => {
     const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
+    const delayedReads = startDelayedExpandedReads(queryClient)
+    await waitFor(() => {
+      expect(queryClient.getQueryState(FILTERED_CATEGORY_LIST_KEY)?.fetchStatus).toBe("fetching")
+      expect(queryClient.getQueryState(FILTERED_UNASSIGNED_KEY)?.fetchStatus).toBe("fetching")
+    })
     const assignedBefore = queryClient.getQueryData<EquipmentPreviewItem[]>(ASSIGNED_KEY)!
     const primaryCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)!
     const filteredCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(
       FILTERED_CATEGORY_LIST_KEY
     )!
+    const staleOnlyCachesBefore = STALE_ONLY_CACHE_KEYS.map(
+      (queryKey) => [queryKey, queryClient.getQueryData(queryKey)] as const
+    )
+    const cancelQueries = vi.spyOn(queryClient, "cancelQueries")
+    const setQueryData = vi.spyOn(queryClient, "setQueryData")
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
     const fetchQuery = vi.spyOn(queryClient, "fetchQuery")
     const refetchQueries = vi.spyOn(queryClient, "refetchQueries")
     mockCallRpc.mockResolvedValue(0)
 
     await runUnassignment(queryClient)
+    await delayedReads.settle()
 
     const assignedAfter = queryClient.getQueryData<EquipmentPreviewItem[]>(ASSIGNED_KEY)!
     expect(assignedAfter).not.toBe(assignedBefore)
@@ -236,6 +235,20 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     expect(queryClient.getQueryData(CATEGORY_LIST_KEY)).toBe(primaryCategoriesBefore)
     expect(queryClient.getQueryData(FILTERED_CATEGORY_LIST_KEY)).toBe(filteredCategoriesBefore)
     expect(primaryCategoriesBefore[1]).toMatchObject({ id: 5, so_luong_hien_co: 3 })
+    for (const [queryKey, before] of staleOnlyCachesBefore) {
+      expect(queryClient.getQueryData(queryKey)).toBe(before)
+    }
+    for (const queryKey of AFFECTED_QUERY_KEYS) {
+      expect(cancelQueries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey,
+        })
+      )
+    }
+    expect(cancelQueries.mock.calls.some(([filters]) => filters.exact === true)).toBe(false)
+    expect(Math.max(...cancelQueries.mock.invocationCallOrder)).toBeLessThan(
+      Math.min(...setQueryData.mock.invocationCallOrder)
+    )
     expect(invalidateQueries).toHaveBeenCalledWith(
       expect.objectContaining({
         queryKey: ASSIGNED_KEY,
@@ -251,6 +264,9 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     expect(queryClient.getQueryState(ASSIGNED_KEY)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(CATEGORY_LIST_KEY)?.isInvalidated).toBe(true)
     expect(queryClient.getQueryState(FILTERED_CATEGORY_LIST_KEY)?.isInvalidated).toBe(true)
+    for (const queryKey of STALE_ONLY_CACHE_KEYS) {
+      expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(false)
+    }
     expect(fetchQuery).not.toHaveBeenCalled()
     expect(refetchQueries).not.toHaveBeenCalled()
     expect(mockCallRpc).toHaveBeenCalledTimes(1)
@@ -260,6 +276,10 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
         description: expect.stringMatching(/không còn thuộc danh mục/i),
       })
     )
+    expect(mockToast).toHaveBeenCalledTimes(1)
+    expect(mockToast.mock.calls[0]?.[0]).not.toMatchObject({
+      variant: "destructive",
+    })
   })
 
   it("leaves caches unchanged and reports the mutation error", async () => {

@@ -153,11 +153,15 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
     expect(onContainerPointerDown).not.toHaveBeenCalled()
     const dialog = screen.getByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
 
     action.focus()
     await user.keyboard("{Enter}")
 
     expect(onContainerKeyDown).not.toHaveBeenCalled()
+    expect(await screen.findByRole("alertdialog")).toBeInTheDocument()
   })
 
   it("cancels without sending an unassignment request", async () => {

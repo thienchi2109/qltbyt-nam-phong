@@ -18,6 +18,19 @@ export const FILTERED_CATEGORY_LIST_KEY = [
 ] as const
 export const OTHER_TENANT_CATEGORY_LIST_KEY = ["dinh_muc_nhom_list", { donViId: 8 }] as const
 export const UNASSIGNED_KEY = ["dinh_muc_thiet_bi_unassigned", { donViId: 7 }] as const
+export const FILTERED_UNASSIGNED_KEY = [
+  "dinh_muc_thiet_bi_unassigned",
+  {
+    donViId: 7,
+    search: "máy",
+    departments: [3],
+    users: [4],
+    locations: [5],
+    fundingSources: [6],
+    page: 2,
+    pageSize: 20,
+  },
+] as const
 export const FILTER_OPTIONS_KEY = [
   "dinh_muc_thiet_bi_unassigned_filter_options",
   { donViId: 7 },
@@ -35,6 +48,13 @@ export const AFFECTED_SEEDED_QUERY_KEYS = [
   CATEGORY_LIST_KEY,
   FILTERED_CATEGORY_LIST_KEY,
   UNASSIGNED_KEY,
+  FILTERED_UNASSIGNED_KEY,
+  FILTER_OPTIONS_KEY,
+  COMPLIANCE_KEY,
+] as const
+export const STALE_ONLY_CACHE_KEYS = [
+  UNASSIGNED_KEY,
+  FILTERED_UNASSIGNED_KEY,
   FILTER_OPTIONS_KEY,
   COMPLIANCE_KEY,
 ] as const
@@ -60,6 +80,14 @@ export const equipment: EquipmentPreviewItem = {
   tinh_trang: "Hoạt động",
 }
 Object.freeze(equipment)
+
+const unassignedEquipment: EquipmentPreviewItem = {
+  ...equipment,
+  id: 202,
+  ma_thiet_bi: "TB-202",
+  ten_thiet_bi: "Máy siêu âm",
+}
+Object.freeze(unassignedEquipment)
 
 const parentCategory: CategoryListItem = {
   id: 1,
@@ -117,12 +145,52 @@ export function seedVisibleCaches(queryClient: QueryClient) {
     Object.freeze([parentCategory, category, siblingCategory])
   )
   queryClient.setQueryData(OTHER_TENANT_CATEGORY_LIST_KEY, Object.freeze([otherTenantCategory]))
-  queryClient.setQueryData(UNASSIGNED_KEY, Object.freeze([]))
+  queryClient.setQueryData(UNASSIGNED_KEY, Object.freeze([unassignedEquipment]))
+  queryClient.setQueryData(FILTERED_UNASSIGNED_KEY, Object.freeze([unassignedEquipment]))
   queryClient.setQueryData(FILTER_OPTIONS_KEY, Object.freeze([]))
   queryClient.setQueryData(
     COMPLIANCE_KEY,
     Object.freeze([Object.freeze({ nhom_id: 5, so_luong_hien_co: 3 })])
   )
+}
+
+export function startDelayedExpandedReads(queryClient: QueryClient) {
+  const categoriesBefore = queryClient.getQueryData<CategoryListItem[]>(FILTERED_CATEGORY_LIST_KEY)!
+  const unassignedBefore =
+    queryClient.getQueryData<EquipmentPreviewItem[]>(FILTERED_UNASSIGNED_KEY)!
+  queryClient.setQueryData(FILTERED_CATEGORY_LIST_KEY, categoriesBefore, {
+    updatedAt: 1,
+  })
+  queryClient.setQueryData(FILTERED_UNASSIGNED_KEY, unassignedBefore, {
+    updatedAt: 1,
+  })
+
+  const delayedCategories = createDeferred<CategoryListItem[]>()
+  const delayedUnassigned = createDeferred<EquipmentPreviewItem[]>()
+  const categoryRead = queryClient
+    .fetchQuery({
+      queryKey: FILTERED_CATEGORY_LIST_KEY,
+      queryFn: () => delayedCategories.promise,
+      staleTime: 0,
+    })
+    .catch(() => undefined)
+  const unassignedRead = queryClient
+    .fetchQuery({
+      queryKey: FILTERED_UNASSIGNED_KEY,
+      queryFn: () => delayedUnassigned.promise,
+      staleTime: 0,
+    })
+    .catch(() => undefined)
+
+  return {
+    async settle() {
+      delayedCategories.resolve(
+        categoriesBefore.map((item) => (item.id === 5 ? { ...item, so_luong_hien_co: 99 } : item))
+      )
+      delayedUnassigned.resolve([equipment])
+      await Promise.all([categoryRead, unassignedRead])
+    },
+  }
 }
 
 export function createDeferred<T>() {
