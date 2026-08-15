@@ -19,25 +19,25 @@
 **Purpose:** Lock current behavior and expose the missing unlink workflow without
 changing production behavior.
 
-- [ ] 0.1 Reconfirm the latest local and live definitions, grants, audit constraints,
+- [x] 0.1 Reconfirm the latest local and live definitions, grants, audit constraints,
       and callers of `dinh_muc_thiet_bi_unlink`.
-- [ ] 0.2 Reconfirm the latest local migration touching the unlink RPC before choosing
+- [x] 0.2 Reconfirm the latest local migration touching the unlink RPC before choosing
       a new migration timestamp.
-- [ ] 0.3 Add failing assigned-equipment component tests for a trailing `X` action,
+- [x] 0.3 Add failing assigned-equipment component tests for a trailing `X` action,
       exact `Bỏ khỏi danh mục` accessible name and tooltip, and row-event isolation.
-- [ ] 0.4 Add failing interaction tests for confirmation cancel and confirm paths.
-- [ ] 0.5 Add failing role-matrix tests proving only `global`, `admin`, and
+- [x] 0.4 Add failing interaction tests for confirmation cancel and confirm paths.
+- [x] 0.5 Add failing role-matrix tests proving only `global`, `admin`, and
       `to_qltb` receive the action.
-- [ ] 0.6 Add failing parent-category coverage proving only direct assignments expose
+- [x] 0.6 Add failing parent-category coverage proving only direct assignments expose
       the action.
-- [ ] 0.7 Add failing mutation-hook tests for one RPC call, expected-category
+- [x] 0.7 Add failing mutation-hook tests for one RPC call, expected-category
       arguments, targeted in-flight query cancellation, cache patching, delayed stale
       responses, zero affected without count decrement, error, and no immediate read
       refetch.
-- [ ] 0.8 Add failing SQL/source-contract tests for the expected-category predicate,
+- [x] 0.8 Add failing SQL/source-contract tests for the expected-category predicate,
       direct-RPC role rejection, missing claims, distinct category/equipment tenant
       failures, `user_id`, search path, audit, grants, and unsafe-overload removal.
-- [ ] 0.9 Run the focused RED suites and record the expected failures before
+- [x] 0.9 Run the focused RED suites and record the expected failures before
       implementation.
 
 **Review boundary:** Tests and characterization only. No runtime behavior, migration,
