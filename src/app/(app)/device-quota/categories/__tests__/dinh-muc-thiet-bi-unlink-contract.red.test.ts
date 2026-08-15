@@ -27,7 +27,7 @@ function stripSqlComments(source: string) {
 function normalizeUnlinkSignature(argumentsSql: string) {
   return argumentsSql
     .split(",")
-    .map((argument) => argument.match(/\bBIGINT(?:\[\])?\b/i)?.[0].toUpperCase() ?? "")
+    .map((argument) => argument.match(/\bBIGINT(?:\[\])?/i)?.[0].toUpperCase() ?? "")
     .join(",")
 }
 

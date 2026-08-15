@@ -48,21 +48,21 @@ or live database change.
 **Purpose:** Make the server mutation safe against stale-category races while
 preserving tenant isolation and auditability.
 
-- [ ] 1.1 Create a correctly ordered Supabase migration after the latest local
+- [x] 1.1 Create a correctly ordered Supabase migration after the latest local
       definition of `dinh_muc_thiet_bi_unlink`.
-- [ ] 1.2 Add the three-argument expected-category overload using existing
+- [x] 1.2 Add the three-argument expected-category overload using existing
       `SECURITY DEFINER`, JWT, role normalization, and fail-closed patterns.
-- [ ] 1.3 Restrict the update predicate to equipment ID, facility, and the expected
+- [x] 1.3 Restrict the update predicate to equipment ID, facility, and the expected
       current category.
-- [ ] 1.4 Preserve affected-count return semantics and write a complete `unlink`
+- [x] 1.4 Preserve affected-count return semantics and write a complete `unlink`
       audit record for confirmed IDs.
-- [ ] 1.5 Set `search_path = public, pg_temp`, revoke `public`/`anon`, and grant only
+- [x] 1.5 Set `search_path = public, pg_temp`, revoke `public`/`anon`, and grant only
       required execution to `authenticated`.
-- [ ] 1.6 Revoke and remove the old two-argument overload so callers cannot bypass
+- [x] 1.6 Revoke and remove the old two-argument overload so callers cannot bypass
       the concurrency guard.
-- [ ] 1.7 Update RPC allowlist/source-contract tests without broadening the allowed
+- [x] 1.7 Update RPC allowlist/source-contract tests without broadening the allowed
       function surface.
-- [ ] 1.8 Run focused migration and RPC tests until the Phase 0 SQL RED cases pass.
+- [x] 1.8 Run focused migration and RPC tests until the Phase 0 SQL RED cases pass.
 
 **Deploy-safe boundary:** Repository contains the hardened database contract, but no
 frontend action calls it yet. Live apply remains a separately approved operation.
