@@ -5,7 +5,6 @@ import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { EquipmentPreviewItem } from "@/app/(app)/device-quota/_components/mapping-preview/MappingPreviewPrimitives"
-import { TooltipProvider } from "@/components/ui/tooltip"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
 import { DeviceQuotaCategoryAssignedEquipment } from "../_components/DeviceQuotaCategoryAssignedEquipment"
@@ -22,17 +21,6 @@ type UnassignmentRequest = {
   expectedCategoryId: number
   donViId: number
 }
-
-type UnassignmentCandidateProps = React.ComponentProps<
-  typeof DeviceQuotaCategoryAssignedEquipment
-> & {
-  canUnassign: boolean
-  categoryName: string
-  onUnassign: (request: UnassignmentRequest) => void | Promise<void>
-}
-
-const AssignedEquipmentWithUnassignment =
-  DeviceQuotaCategoryAssignedEquipment as React.ComponentType<UnassignmentCandidateProps>
 
 const assignedEquipment: EquipmentPreviewItem = {
   id: 101,
@@ -56,11 +44,7 @@ function createDeferred() {
 
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={0}>{children}</TooltipProvider>
-      </QueryClientProvider>
-    )
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   }
 }
 
@@ -70,12 +54,14 @@ function renderSubject({
   onContainerPointerDown = vi.fn(),
   onContainerKeyDown = vi.fn(),
   onUnassign = vi.fn(),
+  includeUnassignmentProps = true,
 }: {
   role?: string | null
   onContainerClick?: () => void
   onContainerPointerDown?: () => void
   onContainerKeyDown?: () => void
   onUnassign?: (request: UnassignmentRequest) => void | Promise<void>
+  includeUnassignmentProps?: boolean
 } = {}) {
   mockCallRpc.mockResolvedValue([assignedEquipment])
   const queryClient = new QueryClient({
@@ -84,18 +70,22 @@ function renderSubject({
     },
   })
 
-  render(
+  const renderResult = render(
     <div
       onClick={onContainerClick}
       onPointerDown={onContainerPointerDown}
       onKeyDown={onContainerKeyDown}
     >
-      <AssignedEquipmentWithUnassignment
+      <DeviceQuotaCategoryAssignedEquipment
         nhomId={42}
         donViId={7}
-        canUnassign={isEquipmentManagerRole(role)}
-        categoryName="Chẩn đoán hình ảnh"
-        onUnassign={onUnassign}
+        {...(includeUnassignmentProps
+          ? {
+              canUnassign: isEquipmentManagerRole(role),
+              categoryName: "Chẩn đoán hình ảnh",
+              onUnassign,
+            }
+          : {})}
       />
     </div>,
     { wrapper: createWrapper(queryClient) }
@@ -107,6 +97,7 @@ function renderSubject({
     onContainerKeyDown,
     onUnassign,
     queryClient,
+    ...renderResult,
   }
 }
 
@@ -136,11 +127,21 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
   it.each(["regional_leader", "qltb_khoa", "technician", "user", null])(
     "does not expose the unlink action for the %s role",
     async (role) => {
-      renderSubject({ role })
+      const unauthorized = renderSubject({ role })
 
       await screen.findByText(assignedEquipment.ma_thiet_bi)
 
       expect(screen.queryByRole("button", { name: "Bỏ khỏi danh mục" })).not.toBeInTheDocument()
+      expect(screen.queryByRole("columnheader", { name: "Hành động" })).not.toBeInTheDocument()
+      expect(unauthorized.container.innerHTML).not.toContain("Bỏ khỏi danh mục")
+
+      const unauthorizedMarkup = unauthorized.container.innerHTML
+      unauthorized.unmount()
+
+      const readOnlyBaseline = renderSubject({ role, includeUnassignmentProps: false })
+      await screen.findByText(assignedEquipment.ma_thiet_bi)
+
+      expect(readOnlyBaseline.container.innerHTML).toBe(unauthorizedMarkup)
     }
   )
 
@@ -159,24 +160,48 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
     const onContainerClick = vi.fn()
     const onContainerPointerDown = vi.fn()
     const onContainerKeyDown = vi.fn()
-    renderSubject({ onContainerClick, onContainerPointerDown, onContainerKeyDown })
+    const { onUnassign } = renderSubject({
+      onContainerClick,
+      onContainerPointerDown,
+      onContainerKeyDown,
+    })
     const action = await getUnassignmentButton()
 
     await user.click(action)
 
-    expect(onContainerClick).not.toHaveBeenCalled()
-    expect(onContainerPointerDown).not.toHaveBeenCalled()
     const dialog = screen.getByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
     await waitFor(() => {
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     })
+    expect(onContainerClick).not.toHaveBeenCalled()
+    expect(onContainerPointerDown).not.toHaveBeenCalled()
+    expect(onContainerKeyDown).not.toHaveBeenCalled()
 
     action.focus()
     await user.keyboard("{Enter}")
 
-    expect(onContainerKeyDown).not.toHaveBeenCalled()
     expect(await screen.findByRole("alertdialog")).toBeInTheDocument()
+    await user.keyboard("{Escape}")
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
+    expect(onContainerClick).not.toHaveBeenCalled()
+    expect(onContainerPointerDown).not.toHaveBeenCalled()
+    expect(onContainerKeyDown).not.toHaveBeenCalled()
+
+    await user.click(action)
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Bỏ khỏi danh mục",
+      })
+    )
+    await waitFor(() => {
+      expect(onUnassign).toHaveBeenCalledTimes(1)
+    })
+    expect(onContainerClick).not.toHaveBeenCalled()
+    expect(onContainerPointerDown).not.toHaveBeenCalled()
+    expect(onContainerKeyDown).not.toHaveBeenCalled()
   })
 
   it("cancels without sending an unassignment request", async () => {
@@ -185,7 +210,24 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
     const { queryClient } = renderSubject({ onUnassign })
     const action = await getUnassignmentButton()
     const assignedQueryKey = deviceQuotaCategoryAssignedEquipmentQueryKey(42, 7)
-    const cachedEquipment = queryClient.getQueryData(assignedQueryKey)
+    const categoryListKey = ["dinh_muc_nhom_list", { donViId: 7 }] as const
+    queryClient.setQueryData(categoryListKey, [
+      {
+        id: 42,
+        ten_nhom: "Chẩn đoán hình ảnh",
+        so_luong_hien_co: 1,
+      },
+    ])
+    const cacheSnapshot = structuredClone({
+      assigned: queryClient.getQueryData(assignedQueryKey),
+      categories: queryClient.getQueryData(categoryListKey),
+      assignedInvalidated: queryClient.getQueryState(assignedQueryKey)?.isInvalidated,
+      categoriesInvalidated: queryClient.getQueryState(categoryListKey)?.isInvalidated,
+    })
+    const setQueryDataSpy = vi.spyOn(queryClient, "setQueryData")
+    const setQueriesDataSpy = vi.spyOn(queryClient, "setQueriesData")
+    const invalidateQueriesSpy = vi.spyOn(queryClient, "invalidateQueries")
+    const cancelQueriesSpy = vi.spyOn(queryClient, "cancelQueries")
 
     await user.click(action)
 
@@ -199,7 +241,16 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     })
     expect(onUnassign).not.toHaveBeenCalled()
-    expect(queryClient.getQueryData(assignedQueryKey)).toBe(cachedEquipment)
+    expect({
+      assigned: queryClient.getQueryData(assignedQueryKey),
+      categories: queryClient.getQueryData(categoryListKey),
+      assignedInvalidated: queryClient.getQueryState(assignedQueryKey)?.isInvalidated,
+      categoriesInvalidated: queryClient.getQueryState(categoryListKey)?.isInvalidated,
+    }).toEqual(cacheSnapshot)
+    expect(setQueryDataSpy).not.toHaveBeenCalled()
+    expect(setQueriesDataSpy).not.toHaveBeenCalled()
+    expect(invalidateQueriesSpy).not.toHaveBeenCalled()
+    expect(cancelQueriesSpy).not.toHaveBeenCalled()
     expect(action).toHaveFocus()
   })
 

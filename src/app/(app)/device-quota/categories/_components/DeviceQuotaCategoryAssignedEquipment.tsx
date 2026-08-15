@@ -7,7 +7,7 @@ import { AlertCircle, PackageOpen, X } from "lucide-react"
 import { DestructiveConfirmDialog } from "@/components/shared/DestructiveConfirmDialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import {
   MappingPreviewLoadingState,
@@ -94,7 +94,12 @@ function EquipmentUnassignmentAction({
   }, [isPending, item.id, unassignment])
 
   return (
-    <>
+    <div
+      className="inline-flex"
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -105,12 +110,7 @@ function EquipmentUnassignmentAction({
             className="size-8 text-muted-foreground hover:text-destructive"
             aria-label="Bỏ khỏi danh mục"
             disabled={isPending}
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation()
-              setIsOpen(true)
-            }}
-            onKeyDown={(event) => event.stopPropagation()}
+            onClick={() => setIsOpen(true)}
           >
             <X className="size-4" aria-hidden="true" />
           </Button>
@@ -131,7 +131,7 @@ function EquipmentUnassignmentAction({
         isPending={isPending}
         onConfirm={handleConfirm}
       />
-    </>
+    </div>
   )
 }
 
@@ -222,72 +222,74 @@ export function DeviceQuotaCategoryAssignedEquipment({
       : undefined
 
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-md border border-border/50 bg-muted/30",
-        isPanel ? "border-l-0" : "ml-6 mt-1 mb-2 border-l-2 border-l-primary/20"
-      )}
-    >
-      {isLoading ? (
-        <div className="p-3">
-          <MappingPreviewLoadingState count={2} />
-        </div>
-      ) : isError ? (
-        <div className="flex items-center justify-center gap-2 py-6 text-sm text-destructive">
-          <AlertCircle className="size-4" />
-          <span>Không thể tải danh sách thiết bị được gán</span>
-        </div>
-      ) : !equipment || equipment.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
-          <PackageOpen className="size-4" />
-          <span>Chưa có thiết bị nào được gán</span>
-        </div>
-      ) : (
-        <div
-          data-testid="assigned-equipment-table-scroll"
-          className={cn(isPanel && "overflow-x-auto")}
-        >
-          <table className={cn("w-full text-left", isPanel && "min-w-[760px]")}>
-            <thead>
-              <tr className="border-b text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Mã TB
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Tên thiết bị
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Model
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Serial
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Khoa phòng
-                </th>
-                <th scope="col" className="px-3 py-1.5 font-medium">
-                  Tình trạng
-                </th>
-                {unassignment ? (
-                  <th scope="col" className="w-10 px-2 py-1.5 text-right font-medium">
-                    <span className="sr-only">Hành động</span>
+    <TooltipProvider delayDuration={0}>
+      <div
+        className={cn(
+          "overflow-hidden rounded-md border border-border/50 bg-muted/30",
+          isPanel ? "border-l-0" : "ml-6 mt-1 mb-2 border-l-2 border-l-primary/20"
+        )}
+      >
+        {isLoading ? (
+          <div className="p-3">
+            <MappingPreviewLoadingState count={2} />
+          </div>
+        ) : isError ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-destructive">
+            <AlertCircle className="size-4" />
+            <span>Không thể tải danh sách thiết bị được gán</span>
+          </div>
+        ) : !equipment || equipment.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+            <PackageOpen className="size-4" />
+            <span>Chưa có thiết bị nào được gán</span>
+          </div>
+        ) : (
+          <div
+            data-testid="assigned-equipment-table-scroll"
+            className={cn(isPanel && "overflow-x-auto")}
+          >
+            <table className={cn("w-full text-left", isPanel && "min-w-[760px]")}>
+              <thead>
+                <tr className="border-b text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Mã TB
                   </th>
-                ) : null}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/30">
-              {equipment.map((item) => (
-                <EquipmentRow
-                  key={item.id}
-                  item={item}
-                  isReconciled={reconciledEquipmentIds.has(item.id)}
-                  unassignment={unassignment}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Tên thiết bị
+                  </th>
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Model
+                  </th>
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Serial
+                  </th>
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Khoa phòng
+                  </th>
+                  <th scope="col" className="px-3 py-1.5 font-medium">
+                    Tình trạng
+                  </th>
+                  {unassignment ? (
+                    <th scope="col" className="w-10 px-2 py-1.5 text-right font-medium">
+                      <span className="sr-only">Hành động</span>
+                    </th>
+                  ) : null}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {equipment.map((item) => (
+                  <EquipmentRow
+                    key={item.id}
+                    item={item}
+                    isReconciled={reconciledEquipmentIds.has(item.id)}
+                    unassignment={unassignment}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </TooltipProvider>
   )
 }
