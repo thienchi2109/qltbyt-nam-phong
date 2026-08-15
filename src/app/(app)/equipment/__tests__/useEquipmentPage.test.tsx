@@ -1,3 +1,5 @@
+import type { ReactNode } from "react"
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { renderHook, waitFor, act } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -143,6 +145,10 @@ vi.mock("@/lib/rbac", () => ({
   isEquipmentManagerRole: () => false,
 }))
 
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: vi.fn().mockResolvedValue({}),
+}))
+
 vi.mock("@/app/(app)/equipment/_hooks/useEquipmentAuth", () => ({
   useEquipmentAuth: () => state.auth,
 }))
@@ -176,6 +182,29 @@ vi.mock("@/app/(app)/equipment/_hooks/useEquipmentRouteSync", () => ({
 }))
 
 import { useEquipmentPage } from "@/app/(app)/equipment/use-equipment-page"
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+}
+
+function createWrapper(queryClient: QueryClient) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  }
+}
+
+function renderEquipmentPageHook() {
+  const queryClient = createQueryClient()
+  return renderHook(() => useEquipmentPage(), {
+    wrapper: createWrapper(queryClient),
+  })
+}
 
 function createAuthState(overrides?: Partial<AuthState>): AuthState {
   return {
@@ -299,7 +328,7 @@ describe("useEquipmentPage tenant switching", () => {
   })
 
   it("does not reset filters when tenant changes because provider handles tenant-scoped state", async () => {
-    const { rerender } = renderHook(() => useEquipmentPage())
+    const { rerender } = renderEquipmentPageHook()
 
     act(() => {
       if (!state.auth || !state.data) {
@@ -332,7 +361,7 @@ describe("useEquipmentPage tenant switching", () => {
       shouldFetchData: false,
     })
 
-    renderHook(() => useEquipmentPage())
+    renderEquipmentPageHook()
 
     expect(mocks.useEquipmentRouteSync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -343,7 +372,7 @@ describe("useEquipmentPage tenant switching", () => {
   })
 
   it("resets pagination in the same action when filters change", () => {
-    const { result } = renderHook(() => useEquipmentPage())
+    const { result } = renderEquipmentPageHook()
 
     act(() => {
       result.current.setColumnFilters([{ id: "tinh_trang_hien_tai", value: ["Chờ sửa chữa"] }])
@@ -365,7 +394,7 @@ describe("useEquipmentPage tenant switching", () => {
   })
 
   it("resets pagination when route search params hydrate the search filter", () => {
-    renderHook(() => useEquipmentPage())
+    renderEquipmentPageHook()
 
     const routeSyncArgs = mocks.useEquipmentRouteSync.mock.calls[0][0] as {
       onSearchParamHydrated: (value: string) => void
@@ -395,7 +424,7 @@ describe("useEquipmentPage tenant switching", () => {
     ]
     state.data = createDataState({ departmentDistribution })
 
-    const { result } = renderHook(() => useEquipmentPage())
+    const { result } = renderEquipmentPageHook()
 
     expect(result.current.departmentDistribution).toEqual(departmentDistribution)
   })

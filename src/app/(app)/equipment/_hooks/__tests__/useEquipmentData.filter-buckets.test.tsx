@@ -114,7 +114,7 @@ describe("useEquipmentData filter bucket query", () => {
 
     await waitFor(() => expect(getBucketCalls()).toHaveLength(1))
 
-    expect(getBucketCalls()[0]?.args).toMatchObject({
+    expect(getBucketCalls()[0]?.args).toEqual({
       p_q: "monitor",
       p_don_vi: 42,
       p_khoa_phong_array: ["ICU"],
@@ -166,6 +166,7 @@ describe("useEquipmentData filter bucket query", () => {
       page: 0,
       size: 20,
       sort: "id.asc",
+      liquidationLast: true,
     })
     expect(distributionKeyParams).toEqual(sharedKeyParams)
     expect(bucketKeyParams).toEqual(sharedKeyParams)
@@ -247,6 +248,7 @@ describe("useEquipmentData filter bucket query", () => {
       page: 0,
       size: 20,
       sort: "id.asc",
+      liquidationLast: true,
     })
     expect(distributionKeyParams).toEqual(sharedKeyParams)
     expect(bucketKeyParams).toEqual(sharedKeyParams)
@@ -262,8 +264,14 @@ describe("useEquipmentData filter bucket query", () => {
       p_nguon_kinh_phi_array: null,
     }
 
-    expect(getRpcCall("equipment_list_enhanced")?.args).toMatchObject(emptyRpcFilters)
-    expect(getRpcCall("equipment_department_distribution")?.args).toMatchObject(emptyRpcFilters)
-    expect(getRpcCall("equipment_filter_buckets")?.args).toMatchObject(emptyRpcFilters)
+    expect(getRpcCall("equipment_list_enhanced")?.args).toEqual({
+      ...emptyRpcFilters,
+      p_sort: "id.asc",
+      p_page: 1,
+      p_page_size: 20,
+      p_liquidation_last: true,
+    })
+    expect(getRpcCall("equipment_department_distribution")?.args).toEqual(emptyRpcFilters)
+    expect(getRpcCall("equipment_filter_buckets")?.args).toEqual(emptyRpcFilters)
   })
 })
