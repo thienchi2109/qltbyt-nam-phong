@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -9,27 +9,31 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -37,8 +41,8 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
@@ -46,174 +50,192 @@ vi.mock('ai', async () => {
   }
 })
 
-import { simulateReadableStream } from 'ai'
+import { simulateReadableStream } from "ai"
 
-import { POST } from '../route'
-import {
-  makeChatModel,
-  makeReadyStreamTextResult,
-} from './stream-text-result-test-helpers'
+import { AI_RATE_LIMIT_WINDOW_MS } from "@/lib/ai/limits"
+
+import { POST } from "../route"
+import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Xin chao' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Xin chao" }],
+  },
+]
+
+const EQUIPMENT_LOOKUP_MESSAGES = [
+  {
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Tra cứu thông tin thiết bị monitor CMS8000" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/chat error safety — non-stream contract', () => {
+describe("/api/chat error safety — non-stream contract", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-2.5-flash"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
     reserveUsageMock.mockResolvedValue({
       allowed: true,
-      reservationId: '00000000-0000-4000-8000-000000000484',
+      reservationId: "00000000-0000-4000-8000-000000000484",
     })
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
-  it('returns text/plain for privileged user with tools but no facility (undefined)', async () => {
+  it("returns text/plain for privileged user with tools but no facility (undefined)", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: undefined },
+      user: { id: "u1", role: "global", don_vi: undefined },
     })
 
     const res = await POST(
       buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
-      }) as never,
+        messages: EQUIPMENT_LOOKUP_MESSAGES,
+        requestedTools: ["equipmentLookup"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.')
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(text).toBe(
+      "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns text/plain for privileged user with tools but facility null', async () => {
+  it("returns text/plain for privileged user with tools but facility null", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+      user: { id: "u1", role: "global", don_vi: null },
     })
 
     const res = await POST(
       buildRequest({
-        messages: VALID_MESSAGES,
-        requestedTools: ['equipmentLookup'],
+        messages: EQUIPMENT_LOOKUP_MESSAGES,
+        requestedTools: ["equipmentLookup"],
         selectedFacilityId: null,
-      }) as never,
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.')
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(text).toBe(
+      "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
+    )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns text/plain 429 when rate-limited', async () => {
+  it("returns structured JSON 429 when rate-limited", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'admin', don_vi: 2 },
+      user: { id: "u1", role: "admin", don_vi: 2 },
     })
     reserveUsageMock.mockResolvedValue({
       allowed: false,
-      reason: 'rate_limit',
-      message: 'Too many requests. Please try again later.',
+      reason: "rate_limit",
+      message: "Too many requests. Please try again later.",
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
-    const text = await res.text()
+    const body = await res.json()
 
     expect(res.status).toBe(429)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Too many requests. Please try again later.')
+    expect(res.headers.get("content-type")).toContain("application/json")
+    expect(res.headers.get("retry-after")).toBe(
+      String(Math.max(1, Math.ceil(AI_RATE_LIMIT_WINDOW_MS / 1000)))
+    )
+    expect(body).toEqual({
+      error: {
+        code: "ai_usage_limited",
+        reason: "rate_limit",
+        message: "Too many requests. Please try again later.",
+        retryAfterMs: AI_RATE_LIMIT_WINDOW_MS,
+      },
+    })
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns text/plain for all non-stream error statuses', async () => {
+  it("returns text/plain for all non-stream error statuses", async () => {
     // 401 - no session
     getServerSessionMock.mockResolvedValue(null)
     const res401 = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     expect(res401.status).toBe(401)
-    expect(res401.headers.get('content-type')).toContain('text/plain')
+    expect(res401.headers.get("content-type")).toContain("text/plain")
 
     // 403 - invalid role
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'auditor' } })
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "auditor" } })
     const res403 = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     expect(res403.status).toBe(403)
-    expect(res403.headers.get('content-type')).toContain('text/plain')
+    expect(res403.headers.get("content-type")).toContain("text/plain")
 
     // 400 - malformed payload
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } })
     const res400 = await POST(buildRequest({}) as never)
     expect(res400.status).toBe(400)
-    expect(res400.headers.get('content-type')).toContain('text/plain')
+    expect(res400.headers.get("content-type")).toContain("text/plain")
   })
 })
 
-describe('/api/chat error safety — sanitization', () => {
+describe("/api/chat error safety — sanitization", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'admin', don_vi: 2 },
+      user: { id: "u1", role: "admin", don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-2.5-flash"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
     reserveUsageMock.mockResolvedValue({
       allowed: true,
-      reservationId: '00000000-0000-4000-8000-000000000484',
+      reservationId: "00000000-0000-4000-8000-000000000484",
     })
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
   })
 
-  it('sanitizes pre-stream errors containing API keys', async () => {
+  it("sanitizes pre-stream errors containing API keys", async () => {
     streamTextMock.mockImplementation(() => {
-      throw new Error('Connection failed: API_KEY=sk-abc123xyz provider error')
+      throw new Error("Connection failed: API_KEY=sk-abc123xyz provider error")
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(500)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).not.toContain('sk-')
-    expect(text).not.toContain('API_KEY')
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(text).not.toContain("sk-")
+    expect(text).not.toContain("API_KEY")
   })
 
-  it('sanitizes pre-stream errors containing file paths', async () => {
+  it("sanitizes pre-stream errors containing file paths", async () => {
     streamTextMock.mockImplementation(() => {
-      throw new Error('Error at C:\\Users\\dev\\node_modules\\ai\\src\\index.ts:42')
+      throw new Error("Error at C:\\Users\\dev\\node_modules\\ai\\src\\index.ts:42")
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(500)
-    expect(text).not.toContain('C:\\Users')
-    expect(text).not.toContain('node_modules')
+    expect(text).not.toContain("C:\\Users")
+    expect(text).not.toContain("node_modules")
   })
 
-  it('keeps non-quota provider error parts on the stream path instead of failing preflight', async () => {
+  it("keeps non-quota provider error parts on the stream path instead of failing preflight", async () => {
     const toUIMessageStreamMock = vi.fn(() =>
       simulateReadableStream({
-        chunks: [
-          { type: 'start' },
-          { type: 'finish', finishReason: 'stop' },
-        ],
-      }),
+        chunks: [{ type: "start" }, { type: "finish", finishReason: "stop" }],
+      })
     )
 
     streamTextMock.mockReturnValue({
@@ -221,10 +243,10 @@ describe('/api/chat error safety — sanitization', () => {
         [Symbol.asyncIterator]() {
           let index = 0
           const parts = [
-            { type: 'start' },
+            { type: "start" },
             {
-              type: 'error',
-              error: new Error('User location is not supported for the API use.'),
+              type: "error",
+              error: new Error("User location is not supported for the API use."),
             },
           ]
 
@@ -252,7 +274,7 @@ describe('/api/chat error safety — sanitization', () => {
     expect(toUIMessageStreamMock).toHaveBeenCalledOnce()
   })
 
-  it('passes onError callback to toUIMessageStream', async () => {
+  it("passes onError callback to toUIMessageStream", async () => {
     let capturedOnError: unknown = undefined
     streamTextMock.mockReturnValue({
       fullStream: {
@@ -265,7 +287,7 @@ describe('/api/chat error safety — sanitization', () => {
               }
 
               done = true
-              return { done: false, value: { type: 'start-step' } }
+              return { done: false, value: { type: "start-step" } }
             },
             async return() {
               return { done: true, value: undefined }
@@ -276,10 +298,7 @@ describe('/api/chat error safety — sanitization', () => {
       toUIMessageStream: (opts?: { onError?: unknown }) => {
         capturedOnError = opts?.onError
         return simulateReadableStream({
-          chunks: [
-            { type: 'start' },
-            { type: 'finish', finishReason: 'stop' },
-          ],
+          chunks: [{ type: "start" }, { type: "finish", finishReason: "stop" }],
         })
       },
       steps: Promise.resolve([]),
@@ -287,26 +306,26 @@ describe('/api/chat error safety — sanitization', () => {
 
     await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
-    expect(capturedOnError).toBeTypeOf('function')
+    expect(capturedOnError).toBeTypeOf("function")
   })
 
-  it('returns generic message even for clean-looking provider errors (deny-by-default)', async () => {
+  it("returns generic message even for clean-looking provider errors (deny-by-default)", async () => {
     streamTextMock.mockImplementation(() => {
-      throw new Error('Model overloaded, please retry')
+      throw new Error("Model overloaded, please retry")
     })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(500)
-    expect(text).toBe('Đã xảy ra lỗi. Vui lòng thử lại.')
-    expect(text).not.toContain('Model overloaded')
+    expect(text).toBe("Đã xảy ra lỗi. Vui lòng thử lại.")
+    expect(text).not.toContain("Model overloaded")
   })
 
-  it('returns a clear quota message for provider quota exceeded errors', async () => {
+  it("returns a clear quota message for provider quota exceeded errors", async () => {
     streamTextMock.mockImplementation(() => {
       throw new Error(
-        'responseBody: {"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.1-flash-lite-preview Please retry in 16.292864906s."}}',
+        'responseBody: {"error":{"code":429,"message":"You exceeded your current quota. Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-3.1-flash-lite-preview Please retry in 16.292864906s."}}'
       )
     })
 
@@ -315,9 +334,9 @@ describe('/api/chat error safety — sanitization', () => {
 
     expect(res.status).toBe(500)
     expect(text).toBe(
-      'Model AI đang vượt hạn mức sử dụng của nhà cung cấp. Vui lòng chờ khoảng 17 giây rồi thử lại.',
+      "Model AI đang vượt hạn mức sử dụng của nhà cung cấp. Vui lòng chờ khoảng 17 giây rồi thử lại."
     )
-    expect(text).not.toContain('generativelanguage.googleapis.com')
-    expect(text).not.toContain('gemini-3.1-flash-lite-preview')
+    expect(text).not.toContain("generativelanguage.googleapis.com")
+    expect(text).not.toContain("gemini-3.1-flash-lite-preview")
   })
 })
