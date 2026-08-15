@@ -1,13 +1,28 @@
-import * as React from "react"
-import { QueryClient, QueryClientProvider, type UseMutationResult } from "@tanstack/react-query"
+import { type QueryClient, type UseMutationResult } from "@tanstack/react-query"
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { EquipmentPreviewItem } from "@/app/(app)/device-quota/_components/mapping-preview/MappingPreviewPrimitives"
 import { callRpc } from "@/lib/rpc-client"
+import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import type { CategoryListItem } from "../_types/categories"
 import * as categoryAssignmentHooks from "../_hooks/useDeviceQuotaCategoryAssignment"
-import { deviceQuotaCategoryAssignedEquipmentQueryKey } from "../_queries/deviceQuotaCategoryAssignedEquipmentQuery"
+import {
+  AFFECTED_QUERY_KEYS,
+  ASSIGNED_KEY,
+  CATEGORY_LIST_KEY,
+  COMPLIANCE_KEY,
+  createDeferred,
+  equipment,
+  FILTER_OPTIONS_KEY,
+  FILTERED_CATEGORY_LIST_KEY,
+  OTHER_TENANT_CATEGORY_LIST_KEY,
+  SEEDED_CACHE_KEYS,
+  seedVisibleCaches,
+  type UnassignmentVariables,
+  UNASSIGNED_KEY,
+  VARIABLES,
+} from "./DeviceQuotaCategoryUnassignmentTestSupport"
 
 const mockToast = vi.fn()
 
@@ -20,12 +35,6 @@ vi.mock("@/lib/rpc-client", () => ({
 }))
 
 const mockCallRpc = vi.mocked(callRpc)
-
-type UnassignmentVariables = {
-  thiet_bi_ids: [number]
-  nhom_id: number
-  donViId: number
-}
 
 type UseDeviceQuotaCategoryUnassignment = () => UseMutationResult<
   number,
@@ -40,43 +49,6 @@ const useUnassignmentCandidate = (
   }
 ).useDeviceQuotaCategoryUnassignment
 
-const ASSIGNED_KEY = deviceQuotaCategoryAssignedEquipmentQueryKey(5, 7)
-const CATEGORY_LIST_KEY = ["dinh_muc_nhom_list", { donViId: 7 }] as const
-const UNASSIGNED_KEY = ["dinh_muc_thiet_bi_unassigned", { donViId: 7 }] as const
-const FILTER_OPTIONS_KEY = ["dinh_muc_thiet_bi_unassigned_filter_options", { donViId: 7 }] as const
-const COMPLIANCE_KEY = ["dinh_muc_compliance_summary", { donViId: 7 }] as const
-const VARIABLES: UnassignmentVariables = {
-  thiet_bi_ids: [101],
-  nhom_id: 5,
-  donViId: 7,
-}
-
-const equipment: EquipmentPreviewItem = {
-  id: 101,
-  ma_thiet_bi: "TB-001",
-  ten_thiet_bi: "Máy X quang",
-  model: null,
-  serial: null,
-  hang_san_xuat: null,
-  khoa_phong_quan_ly: null,
-  tinh_trang: "Hoạt động",
-}
-
-const category: CategoryListItem = {
-  id: 5,
-  parent_id: null,
-  ma_nhom: "CĐHA",
-  ten_nhom: "Chẩn đoán hình ảnh",
-  phan_loai: "A",
-  don_vi_tinh: null,
-  thu_tu_hien_thi: 1,
-  level: 1,
-  so_luong_hien_co: 3,
-  so_luong_toi_da: 5,
-  so_luong_toi_thieu: 2,
-  mo_ta: null,
-}
-
 function useUnassignmentUnderTest() {
   if (!useUnassignmentCandidate) {
     throw new Error("Phase 0 RED: useDeviceQuotaCategoryUnassignment has not been implemented")
@@ -84,40 +56,9 @@ function useUnassignmentUnderTest() {
   return useUnassignmentCandidate()
 }
 
-function createQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: { retry: false, staleTime: 5 * 60 * 1000 },
-      mutations: { retry: false },
-    },
-  })
-}
-
-function createWrapper(queryClient: QueryClient) {
-  return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  }
-}
-
-function seedVisibleCaches(queryClient: QueryClient) {
-  queryClient.setQueryData(ASSIGNED_KEY, [equipment])
-  queryClient.setQueryData(CATEGORY_LIST_KEY, [category])
-  queryClient.setQueryData(UNASSIGNED_KEY, [])
-  queryClient.setQueryData(FILTER_OPTIONS_KEY, [])
-  queryClient.setQueryData(COMPLIANCE_KEY, [{ nhom_id: 5, so_luong_hien_co: 3 }])
-}
-
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((promiseResolve) => {
-    resolve = promiseResolve
-  })
-  return { promise, resolve }
-}
-
 async function runUnassignment(queryClient: QueryClient) {
   const rendered = renderHook(() => useUnassignmentUnderTest(), {
-    wrapper: createWrapper(queryClient),
+    wrapper: createReactQueryWrapper(queryClient),
   })
 
   await act(async () => {
@@ -133,7 +74,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   })
 
   it("sends one unlink RPC with the equipment, expected category, and captured tenant", async () => {
-    const queryClient = createQueryClient()
+    const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
     mockCallRpc.mockResolvedValue(1)
 
@@ -151,44 +92,67 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   })
 
   it("cancels matching reads before patching visible caches and avoids immediate reads", async () => {
-    const queryClient = createQueryClient()
+    const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
+    const primaryCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)!
+    const filteredCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(
+      FILTERED_CATEGORY_LIST_KEY
+    )!
+    const otherTenantCategoriesBefore = queryClient.getQueryData<CategoryListItem[]>(
+      OTHER_TENANT_CATEGORY_LIST_KEY
+    )!
     const cancelQueries = vi.spyOn(queryClient, "cancelQueries")
     const setQueryData = vi.spyOn(queryClient, "setQueryData")
+    const setQueriesData = vi.spyOn(queryClient, "setQueriesData")
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
     const fetchQuery = vi.spyOn(queryClient, "fetchQuery")
     const refetchQueries = vi.spyOn(queryClient, "refetchQueries")
     mockCallRpc.mockResolvedValue(1)
 
     await runUnassignment(queryClient)
 
-    for (const queryKey of [
-      ASSIGNED_KEY,
-      CATEGORY_LIST_KEY,
-      UNASSIGNED_KEY,
-      FILTER_OPTIONS_KEY,
-      COMPLIANCE_KEY,
-    ]) {
+    for (const queryKey of AFFECTED_QUERY_KEYS) {
       expect(cancelQueries).toHaveBeenCalledWith(
         expect.objectContaining({
           queryKey,
         })
       )
+      expect(invalidateQueries).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queryKey,
+          refetchType: "none",
+        })
+      )
     }
+    const cacheWriteOrders = [
+      ...setQueryData.mock.invocationCallOrder,
+      ...setQueriesData.mock.invocationCallOrder,
+    ]
     expect(Math.max(...cancelQueries.mock.invocationCallOrder)).toBeLessThan(
-      Math.min(...setQueryData.mock.invocationCallOrder)
+      Math.min(...cacheWriteOrders)
     )
     expect(queryClient.getQueryData(ASSIGNED_KEY)).toEqual([])
-    expect(queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)?.[0]).toMatchObject({
-      id: 5,
-      so_luong_hien_co: 2,
-    })
+    for (const [queryKey, before] of [
+      [CATEGORY_LIST_KEY, primaryCategoriesBefore],
+      [FILTERED_CATEGORY_LIST_KEY, filteredCategoriesBefore],
+    ] as const) {
+      const after = queryClient.getQueryData<CategoryListItem[]>(queryKey)!
+      expect(after).not.toBe(before)
+      expect(after[0]).toBe(before[0])
+      expect(after[1]).not.toBe(before[1])
+      expect(after[1]).toMatchObject({ id: 5, so_luong_hien_co: 2 })
+      expect(after[2]).toBe(before[2])
+    }
+    expect(queryClient.getQueryData(OTHER_TENANT_CATEGORY_LIST_KEY)).toBe(
+      otherTenantCategoriesBefore
+    )
     expect(fetchQuery).not.toHaveBeenCalled()
     expect(refetchQueries).not.toHaveBeenCalled()
     expect(mockCallRpc).toHaveBeenCalledTimes(1)
   })
 
   it("prevents a delayed pre-mutation assigned read from restoring the removed row", async () => {
-    const queryClient = createQueryClient()
+    const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
     const delayedAssignedRead = createDeferred<EquipmentPreviewItem[]>()
     await queryClient.invalidateQueries({
@@ -218,7 +182,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   })
 
   it("removes a stale assigned row without decrementing count when zero rows are affected", async () => {
-    const queryClient = createQueryClient()
+    const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
     const fetchQuery = vi.spyOn(queryClient, "fetchQuery")
@@ -227,7 +191,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     await runUnassignment(queryClient)
 
     expect(queryClient.getQueryData(ASSIGNED_KEY)).toEqual([])
-    expect(queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)?.[0]).toMatchObject({
+    expect(queryClient.getQueryData<CategoryListItem[]>(CATEGORY_LIST_KEY)?.[1]).toMatchObject({
       id: 5,
       so_luong_hien_co: 3,
     })
@@ -248,14 +212,21 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
   })
 
   it("leaves caches unchanged and reports the mutation error", async () => {
-    const queryClient = createQueryClient()
+    const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
-    const assignedBefore = queryClient.getQueryData(ASSIGNED_KEY)
-    const categoriesBefore = queryClient.getQueryData(CATEGORY_LIST_KEY)
+    const cachesBefore = SEEDED_CACHE_KEYS.map(
+      (queryKey) => [queryKey, queryClient.getQueryData(queryKey)] as const
+    )
+    const cancelQueries = vi.spyOn(queryClient, "cancelQueries")
+    const setQueryData = vi.spyOn(queryClient, "setQueryData")
+    const setQueriesData = vi.spyOn(queryClient, "setQueriesData")
+    const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
+    const fetchQuery = vi.spyOn(queryClient, "fetchQuery")
+    const refetchQueries = vi.spyOn(queryClient, "refetchQueries")
     mockCallRpc.mockRejectedValue(new Error("unlink denied"))
 
     const rendered = renderHook(() => useUnassignmentUnderTest(), {
-      wrapper: createWrapper(queryClient),
+      wrapper: createReactQueryWrapper(queryClient),
     })
 
     await expect(
@@ -264,13 +235,22 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
       })
     ).rejects.toThrow("unlink denied")
 
-    expect(queryClient.getQueryData(ASSIGNED_KEY)).toBe(assignedBefore)
-    expect(queryClient.getQueryData(CATEGORY_LIST_KEY)).toBe(categoriesBefore)
+    for (const [queryKey, before] of cachesBefore) {
+      expect(queryClient.getQueryData(queryKey)).toBe(before)
+    }
+    expect(cancelQueries).not.toHaveBeenCalled()
+    expect(setQueryData).not.toHaveBeenCalled()
+    expect(setQueriesData).not.toHaveBeenCalled()
+    expect(invalidateQueries).not.toHaveBeenCalled()
+    expect(fetchQuery).not.toHaveBeenCalled()
+    expect(refetchQueries).not.toHaveBeenCalled()
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         variant: "destructive",
-        description: "unlink denied",
+        title: "Không thể bỏ thiết bị khỏi danh mục",
+        description: expect.stringMatching(/Vui lòng thử lại/i),
       })
     )
+    expect(JSON.stringify(mockToast.mock.calls)).not.toContain("unlink denied")
   })
 })

@@ -63,18 +63,24 @@ function createWrapper() {
 function renderSubject({
   role = "global",
   onContainerClick = vi.fn(),
+  onContainerPointerDown = vi.fn(),
   onContainerKeyDown = vi.fn(),
   onUnassign = vi.fn(),
 }: {
   role?: string | null
   onContainerClick?: () => void
+  onContainerPointerDown?: () => void
   onContainerKeyDown?: () => void
   onUnassign?: (request: UnassignmentRequest) => void | Promise<void>
 } = {}) {
   mockCallRpc.mockResolvedValue([assignedEquipment])
 
   render(
-    <div onClick={onContainerClick} onKeyDown={onContainerKeyDown}>
+    <div
+      onClick={onContainerClick}
+      onPointerDown={onContainerPointerDown}
+      onKeyDown={onContainerKeyDown}
+    >
       <AssignedEquipmentWithUnassignment
         nhomId={42}
         donViId={7}
@@ -86,7 +92,7 @@ function renderSubject({
     { wrapper: createWrapper() }
   )
 
-  return { onContainerClick, onContainerKeyDown, onUnassign }
+  return { onContainerClick, onContainerPointerDown, onContainerKeyDown, onUnassign }
 }
 
 async function getUnassignmentButton() {
@@ -136,13 +142,15 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
   it("isolates pointer and keyboard action events from the containing row", async () => {
     const user = userEvent.setup()
     const onContainerClick = vi.fn()
+    const onContainerPointerDown = vi.fn()
     const onContainerKeyDown = vi.fn()
-    renderSubject({ onContainerClick, onContainerKeyDown })
+    renderSubject({ onContainerClick, onContainerPointerDown, onContainerKeyDown })
     const action = await getUnassignmentButton()
 
     await user.click(action)
 
     expect(onContainerClick).not.toHaveBeenCalled()
+    expect(onContainerPointerDown).not.toHaveBeenCalled()
     const dialog = screen.getByRole("alertdialog")
     await user.click(within(dialog).getByRole("button", { name: "Hủy" }))
 
