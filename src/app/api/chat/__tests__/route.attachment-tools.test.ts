@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
+
+vi.mock("@/lib/ai/intent-routing", () => ({
+  routeChatIntent: ({ requestedTools }: { requestedTools: string[] }) => ({
+    kind: "proceed",
+    requestedTools,
+  }),
+}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -9,27 +16,31 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -37,8 +48,8 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
@@ -46,47 +57,44 @@ vi.mock('ai', async () => {
   }
 })
 
-import { POST } from '../route'
-import {
-  makeChatModel,
-  makeReadyStreamTextResult,
-} from './stream-text-result-test-helpers'
+import { POST } from "../route"
+import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Xin chao' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Xin chao" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/chat attachmentLookup tool', () => {
+describe("/api/chat attachmentLookup tool", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
+      user: { id: "u1", role: "to_qltb", don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-3-flash-preview'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-3-flash-preview"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
-  it('accepts attachmentLookup when explicitly requested', async () => {
+  it("accepts attachmentLookup when explicitly requested", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['attachmentLookup'],
-      }) as never,
+        requestedTools: ["attachmentLookup"],
+      }) as never
     )
 
     expect(res.status).toBe(200)
@@ -95,68 +103,62 @@ describe('/api/chat attachmentLookup tool', () => {
     const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
       tools?: Record<string, unknown>
     }
-    expect(streamArgs?.tools).toHaveProperty('attachmentLookup')
+    expect(streamArgs?.tools).toHaveProperty("attachmentLookup")
   })
 
-  it('blocks attachmentLookup without facility context for privileged role', async () => {
+  it("blocks attachmentLookup without facility context for privileged role", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+      user: { id: "u1", role: "global", don_vi: null },
     })
 
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['attachmentLookup'],
-      }) as never,
+        requestedTools: ["attachmentLookup"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
+      "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 })
 
-describe('attachmentLookup contract shape', () => {
-  it('maps to ai_attachment_metadata RPC', async () => {
-    const { getToolRpcMapping } = await import('@/lib/ai/tools/registry')
+describe("attachmentLookup contract shape", () => {
+  it("maps to ai_attachment_metadata RPC", async () => {
+    const { getToolRpcMapping } = await import("@/lib/ai/tools/registry")
     const mapping = getToolRpcMapping()
-    expect(mapping.attachmentLookup).toBe('ai_attachment_metadata')
+    expect(mapping.attachmentLookup).toBe("ai_attachment_metadata")
   })
 
-  it('input schema only accepts thiet_bi_id', async () => {
-    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
-      '@/lib/ai/tools/registry'
-    )
+  it("input schema only accepts thiet_bi_id", async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import("@/lib/ai/tools/registry")
     const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
     expect(def).toBeDefined()
 
-    const schema = def.inputSchema as import('zod').ZodObject<Record<string, unknown>>
+    const schema = def.inputSchema as import("zod").ZodObject<Record<string, unknown>>
     const keys = Object.keys(schema.shape)
-    expect(keys).toEqual(['p_thiet_bi_id'])
+    expect(keys).toEqual(["p_thiet_bi_id"])
   })
 
-  it('description reflects normalized access contract', async () => {
-    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
-      '@/lib/ai/tools/registry'
-    )
+  it("description reflects normalized access contract", async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import("@/lib/ai/tools/registry")
     const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
 
     // Must mention normalized/access contract, not just "external links"
-    expect(def.description).toContain('metadata')
-    expect(def.description).toContain('access')
+    expect(def.description).toContain("metadata")
+    expect(def.description).toContain("access")
     // Must NOT reference internal column names or storage internals
-    expect(def.description).not.toContain('duong_dan_luu_tru')
-    expect(def.description).not.toContain('bucket')
-    expect(def.description).not.toContain('storage_key')
+    expect(def.description).not.toContain("duong_dan_luu_tru")
+    expect(def.description).not.toContain("bucket")
+    expect(def.description).not.toContain("storage_key")
   })
 
-  it('rejects unknown input fields via strict schema', async () => {
-    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import(
-      '@/lib/ai/tools/registry'
-    )
+  it("rejects unknown input fields via strict schema", async () => {
+    const { READ_ONLY_TOOL_DEFINITIONS_FOR_TEST } = await import("@/lib/ai/tools/registry")
     const def = READ_ONLY_TOOL_DEFINITIONS_FOR_TEST.attachmentLookup
     const schema = def.inputSchema
 

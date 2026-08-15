@@ -1,9 +1,16 @@
-import { readFileSync, readdirSync } from 'node:fs'
-import path from 'node:path'
+import { readFileSync, readdirSync } from "node:fs"
+import path from "node:path"
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
+
+vi.mock("@/lib/ai/intent-routing", () => ({
+  routeChatIntent: ({ requestedTools }: { requestedTools: string[] }) => ({
+    kind: "proceed",
+    requestedTools,
+  }),
+}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -12,27 +19,31 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -40,8 +51,8 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
@@ -49,47 +60,44 @@ vi.mock('ai', async () => {
   }
 })
 
-import { POST } from '../route'
-import {
-  makeChatModel,
-  makeReadyStreamTextResult,
-} from './stream-text-result-test-helpers'
+import { POST } from "../route"
+import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Thiết bị này có trong định mức không?' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Thiết bị này có trong định mức không?" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/chat quota tools', () => {
+describe("/api/chat quota tools", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
+      user: { id: "u1", role: "to_qltb", don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-3-flash-preview'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V2')
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-3-flash-preview"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V2")
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
-  it('accepts deviceQuotaLookup when explicitly requested', async () => {
+  it("accepts deviceQuotaLookup when explicitly requested", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['deviceQuotaLookup'],
-      }) as never,
+        requestedTools: ["deviceQuotaLookup"],
+      }) as never
     )
 
     expect(res.status).toBe(200)
@@ -98,15 +106,15 @@ describe('/api/chat quota tools', () => {
     const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
       tools?: Record<string, unknown>
     }
-    expect(streamArgs?.tools).toHaveProperty('deviceQuotaLookup')
+    expect(streamArgs?.tools).toHaveProperty("deviceQuotaLookup")
   })
 
-  it('accepts quotaComplianceSummary when explicitly requested', async () => {
+  it("accepts quotaComplianceSummary when explicitly requested", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['quotaComplianceSummary'],
-      }) as never,
+        requestedTools: ["quotaComplianceSummary"],
+      }) as never
     )
 
     expect(res.status).toBe(200)
@@ -115,85 +123,83 @@ describe('/api/chat quota tools', () => {
     const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
       tools?: Record<string, unknown>
     }
-    expect(streamArgs?.tools).toHaveProperty('quotaComplianceSummary')
+    expect(streamArgs?.tools).toHaveProperty("quotaComplianceSummary")
   })
 
-  it('blocks deviceQuotaLookup without facility for privileged role', async () => {
+  it("blocks deviceQuotaLookup without facility for privileged role", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+      user: { id: "u1", role: "global", don_vi: null },
     })
 
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['deviceQuotaLookup'],
-      }) as never,
+        requestedTools: ["deviceQuotaLookup"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
+      "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('blocks quotaComplianceSummary without facility for privileged role', async () => {
+  it("blocks quotaComplianceSummary without facility for privileged role", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'global', don_vi: null },
+      user: { id: "u1", role: "global", don_vi: null },
     })
 
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['quotaComplianceSummary'],
-      }) as never,
+        requestedTools: ["quotaComplianceSummary"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
     expect(text).toBe(
-      'Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu.',
+      "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
     )
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('quota summary migration rejects mismatched p_don_vi for local users', () => {
+  it("quota summary migration rejects mismatched p_don_vi for local users", () => {
     const migrationPath = path.resolve(
       process.cwd(),
-      'supabase/migrations/20260310174500_add_ai_quota_compliance_summary_rpc.sql',
+      "supabase/migrations/20260310174500_add_ai_quota_compliance_summary_rpc.sql"
     )
-    const migrationSource = readFileSync(migrationPath, 'utf8')
+    const migrationSource = readFileSync(migrationPath, "utf8")
 
     expect(migrationSource).toContain(
-      "IF p_don_vi IS NOT NULL AND p_don_vi IS DISTINCT FROM v_don_vi THEN",
+      "IF p_don_vi IS NOT NULL AND p_don_vi IS DISTINCT FROM v_don_vi THEN"
     )
     expect(migrationSource).toContain("RAISE EXCEPTION 'don_vi claim mismatch'")
   })
 
-  it('device quota lookup migration returns insufficientEvidence when category metadata is missing', () => {
+  it("device quota lookup migration returns insufficientEvidence when category metadata is missing", () => {
     const migrationPath = path.resolve(
       process.cwd(),
-      'supabase/migrations/20260310174000_add_ai_device_quota_lookup_rpc.sql',
+      "supabase/migrations/20260310174000_add_ai_device_quota_lookup_rpc.sql"
     )
-    const migrationSource = readFileSync(migrationPath, 'utf8')
+    const migrationSource = readFileSync(migrationPath, "utf8")
 
-    expect(migrationSource).toContain('IF NOT FOUND THEN')
+    expect(migrationSource).toContain("IF NOT FOUND THEN")
     expect(migrationSource).toContain("'status', 'insufficientEvidence'")
-    expect(migrationSource).toContain(
-      "'reason', 'Category metadata not found for equipment group'",
-    )
+    expect(migrationSource).toContain("'reason', 'Category metadata not found for equipment group'")
   })
 
-  it('has a patch migration that keeps active decision context for notMapped devices', () => {
+  it("has a patch migration that keeps active decision context for notMapped devices", () => {
     const migrationPath = path.resolve(
       process.cwd(),
-      'supabase/migrations/20260314123500_fix_ai_device_quota_lookup_notmapped_decision_context.sql',
+      "supabase/migrations/20260314123500_fix_ai_device_quota_lookup_notmapped_decision_context.sql"
     )
-    const migrationSource = readFileSync(migrationPath, 'utf8')
+    const migrationSource = readFileSync(migrationPath, "utf8")
 
     const notMappedBranch = migrationSource.match(
-      /IF v_equip_nhom_id IS NULL THEN[\s\S]*?RETURN jsonb_build_object\(([\s\S]*?)\);\s*END IF;/,
+      /IF v_equip_nhom_id IS NULL THEN[\s\S]*?RETURN jsonb_build_object\(([\s\S]*?)\);\s*END IF;/
     )?.[0]
 
     expect(notMappedBranch).toBeTruthy()
@@ -201,28 +207,24 @@ describe('/api/chat quota tools', () => {
     expect(notMappedBranch).toContain("'decision', jsonb_build_object(")
     expect(notMappedBranch).toContain("'evidence_status', 'partial'")
     expect(notMappedBranch).not.toContain(
-      "'reason', 'No active quota decision found for this facility'",
+      "'reason', 'No active quota decision found for this facility'"
     )
   })
 
-  it('has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0', () => {
-    const migrationsDir = path.resolve(process.cwd(), 'supabase/migrations')
+  it("has a migration that enforces so_luong_toi_thieu as NOT NULL DEFAULT 0", () => {
+    const migrationsDir = path.resolve(process.cwd(), "supabase/migrations")
     const migrationFile = readdirSync(migrationsDir).find((file: string) =>
-      file.includes('so_luong_toi_thieu_not_null'),
+      file.includes("so_luong_toi_thieu_not_null")
     )
 
     expect(migrationFile).toBeTruthy()
 
-    const migrationSource = readFileSync(path.join(migrationsDir, migrationFile!), 'utf8')
-    expect(migrationSource).toContain('UPDATE public.chi_tiet_dinh_muc')
-    expect(migrationSource).toContain('SET so_luong_toi_thieu = 0')
-    expect(migrationSource).toContain('WHERE so_luong_toi_thieu IS NULL;')
-    expect(migrationSource).toContain('ALTER TABLE public.chi_tiet_dinh_muc')
-    expect(migrationSource).toContain(
-      'ALTER COLUMN so_luong_toi_thieu SET DEFAULT 0;',
-    )
-    expect(migrationSource).toContain(
-      'ALTER COLUMN so_luong_toi_thieu SET NOT NULL;',
-    )
+    const migrationSource = readFileSync(path.join(migrationsDir, migrationFile!), "utf8")
+    expect(migrationSource).toContain("UPDATE public.chi_tiet_dinh_muc")
+    expect(migrationSource).toContain("SET so_luong_toi_thieu = 0")
+    expect(migrationSource).toContain("WHERE so_luong_toi_thieu IS NULL;")
+    expect(migrationSource).toContain("ALTER TABLE public.chi_tiet_dinh_muc")
+    expect(migrationSource).toContain("ALTER COLUMN so_luong_toi_thieu SET DEFAULT 0;")
+    expect(migrationSource).toContain("ALTER COLUMN so_luong_toi_thieu SET NOT NULL;")
   })
 })

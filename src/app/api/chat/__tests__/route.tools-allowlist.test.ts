@@ -1,6 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
+
+vi.mock("@/lib/ai/intent-routing", () => ({
+  routeChatIntent: ({ requestedTools }: { requestedTools: string[] }) => ({
+    kind: "proceed",
+    requestedTools,
+  }),
+}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -9,27 +16,31 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -37,8 +48,8 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
@@ -46,61 +57,58 @@ vi.mock('ai', async () => {
   }
 })
 
-import { POST } from '../route'
-import {
-  makeChatModel,
-  makeReadyStreamTextResult,
-} from './stream-text-result-test-helpers'
+import { POST } from "../route"
+import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Xin chao' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Xin chao" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/chat tools allowlist policy', () => {
+describe("/api/chat tools allowlist policy", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'to_qltb', don_vi: 2 },
+      user: { id: "u1", role: "to_qltb", don_vi: 2 },
     })
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-2.5-flash"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
-  it('blocks unknown tool names', async () => {
+  it("blocks unknown tool names", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['toolDoesNotExist'],
-      }) as never,
+        requestedTools: ["toolDoesNotExist"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Unknown tool requested: toolDoesNotExist')
+    expect(text).toBe("Unknown tool requested: toolDoesNotExist")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('allows query_database when it is explicitly requested for the rollout path', async () => {
+  it("allows query_database when it is explicitly requested for the rollout path", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['query_database'],
-      }) as never,
+        requestedTools: ["query_database"],
+      }) as never
     )
 
     expect(res.status).toBe(200)
@@ -109,65 +117,63 @@ describe('/api/chat tools allowlist policy', () => {
     const streamArgs = streamTextMock.mock.calls[0]?.[0] as {
       tools?: Record<string, unknown>
     }
-    expect(streamArgs.tools).toHaveProperty('query_database')
+    expect(streamArgs.tools).toHaveProperty("query_database")
   })
 
-  it('blocks queryDatabase before rollout', async () => {
+  it("blocks queryDatabase before rollout", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['queryDatabase'],
-      }) as never,
+        requestedTools: ["queryDatabase"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Unknown tool requested: queryDatabase')
+    expect(text).toBe("Unknown tool requested: queryDatabase")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('blocks known tools that are not in the v1 allowlist', async () => {
+  it("blocks known tools that are not in the v1 allowlist", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['systemDiagnostics'],
-      }) as never,
+        requestedTools: ["systemDiagnostics"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Tool is not allowed in v1: systemDiagnostics')
+    expect(text).toBe("Tool is not allowed in v1: systemDiagnostics")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('blocks write-intent tool names', async () => {
+  it("blocks write-intent tool names", async () => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
-        requestedTools: ['repairRequestCreate'],
-      }) as never,
+        requestedTools: ["repairRequestCreate"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe(
-      'Write-intent tool names are blocked: repairRequestCreate',
-    )
+    expect(text).toBe("Write-intent tool names are blocked: repairRequestCreate")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
   it.each([
-    'equipmentLookup',
-    'maintenanceSummary',
-    'maintenancePlanLookup',
-    'repairSummary',
-    'usageHistory',
+    "equipmentLookup",
+    "maintenanceSummary",
+    "maintenancePlanLookup",
+    "repairSummary",
+    "usageHistory",
   ])('allows shipped tool "%s" when explicitly requested', async (toolName) => {
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
         requestedTools: [toolName],
-      }) as never,
+      }) as never
     )
 
     expect(res.status).toBe(200)
@@ -179,13 +185,19 @@ describe('/api/chat tools allowlist policy', () => {
     expect(streamArgs?.tools).toHaveProperty(toolName)
   })
 
-  it('allows all four shipped tools requested together', async () => {
-    const allTools = ['equipmentLookup', 'maintenanceSummary', 'maintenancePlanLookup', 'repairSummary', 'usageHistory']
+  it("allows all four shipped tools requested together", async () => {
+    const allTools = [
+      "equipmentLookup",
+      "maintenanceSummary",
+      "maintenancePlanLookup",
+      "repairSummary",
+      "usageHistory",
+    ]
     const res = await POST(
       buildRequest({
         messages: VALID_MESSAGES,
         requestedTools: allTools,
-      }) as never,
+      }) as never
     )
 
     expect(res.status).toBe(200)
