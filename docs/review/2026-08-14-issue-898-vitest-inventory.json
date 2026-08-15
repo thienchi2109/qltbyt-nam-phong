@@ -1,0 +1,2042 @@
+{
+  "collectedAt": "2026-08-15T02:21:19.948Z",
+  "commands": [
+    "CI=1 node scripts/npm-run.js npx vitest run --shard=1/4 --reporter=json --outputFile=/tmp/issue-898-8221f73e/shard-1.json --no-color",
+    "CI=1 node scripts/npm-run.js npx vitest run --shard=2/4 --reporter=json --outputFile=/tmp/issue-898-8221f73e/shard-2.json --no-color",
+    "CI=1 node scripts/npm-run.js npx vitest run --shard=3/4 --reporter=json --outputFile=/tmp/issue-898-8221f73e/shard-3.json --no-color",
+    "CI=1 node scripts/npm-run.js npx vitest run --shard=4/4 --reporter=json --outputFile=/tmp/issue-898-8221f73e/shard-4.json --no-color"
+  ],
+  "commit": "8221f73e5b36b0fc2f19fe929cb5412140aa538b",
+  "environment": {
+    "node": "v20.20.2",
+    "vitest": "4.1.10"
+  },
+  "failedFiles": [
+    "src/__tests__/react-doctor-p4-knip-exports.source.test.ts",
+    "src/__tests__/react-doctor-p4-knip-files-config.source.test.ts",
+    "src/__tests__/react-doctor-p4-knip-types.source.test.ts",
+    "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+    "src/app/(app)/__tests__/layout.auth.test.tsx",
+    "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+    "src/app/(app)/equipment/_hooks/__tests__/useEquipmentData.filter-buckets.test.tsx",
+    "src/app/(app)/repair-requests/__tests__/RepairRequestsCreateSheetShell.test.tsx",
+    "src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx",
+    "src/app/(app)/transfers/__tests__/TransfersKpi.test.tsx",
+    "src/app/__tests__/page.authenticated-redirect.test.tsx",
+    "src/app/api/chat/__tests__/route.attachment-tools.test.ts",
+    "src/app/api/chat/__tests__/route.draft-output.test.ts",
+    "src/app/api/chat/__tests__/route.error-safety.test.ts",
+    "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+    "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+    "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+    "src/app/api/chat/__tests__/route.troubleshooting.test.ts",
+    "src/app/api/chat/__tests__/route.usage-tools.test.ts",
+    "src/app/api/rpc/__tests__/rpc-jwt-skew.unit.test.ts",
+    "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-reads-migration.test.ts",
+    "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-snapshots-migration.test.ts",
+    "src/app/api/rpc/__tests__/technical-configuration-baseline-subgroup-mutations-migration.test.ts",
+    "src/app/api/tenants/__tests__/tenant-routes.test.ts",
+    "src/components/__tests__/qr-action-sheet.test.tsx",
+    "src/components/__tests__/usage-history-tab.loadmore.test.tsx",
+    "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+    "src/components/assistant/__tests__/AssistantPanel.ui.test.tsx",
+    "src/components/assistant/__tests__/AssistantTriggerButton.test.tsx",
+    "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+    "src/components/shared/__tests__/FloatingActionButton.test.tsx",
+    "src/lib/__tests__/repair-request-deep-link.adoption.test.ts",
+    "src/lib/ai/__tests__/intent-routing.test.ts",
+    "src/lib/ai/tools/__tests__/migration-gate.test.ts"
+  ],
+  "failures": [
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/__tests__/page.authenticated-redirect.test.tsx",
+      "kind": "suite-load",
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "shard": 1,
+      "signature": {
+        "hash": "a677cfe069f91056",
+        "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+      },
+      "test": "[suite load]",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "a677cfe069f91056",
+          "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "cc1ac7875e34db7e",
+        "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'AssistantTriggerButton'"
+      },
+      "test": "Layout: Assistant Structural Integration imports AssistantTriggerButton via next/dynamic",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "cc1ac7875e34db7e",
+          "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'AssistantTriggerButton'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "c0ffcfa7c85b7c59",
+        "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'AssistantPanel'"
+      },
+      "test": "Layout: Assistant Structural Integration imports AssistantPanel via next/dynamic",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "c0ffcfa7c85b7c59",
+          "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'AssistantPanel'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "789e683001b5e288",
+        "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'ssr: false'"
+      },
+      "test": "Layout: Assistant Structural Integration uses ssr: false for assistant lazy-loads",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "789e683001b5e288",
+          "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'ssr: false'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "5f8d06debbec4dcb",
+        "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'isAssistantOpen'"
+      },
+      "test": "Layout: Assistant Structural Integration manages isAssistantOpen state",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "5f8d06debbec4dcb",
+          "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'isAssistantOpen'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "ca98f78066c73118",
+        "summary": "AssertionError: expected -1 to be greater than -1"
+      },
+      "test": "Layout: Assistant Structural Integration renders assistant after MobileFooterNav",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "ca98f78066c73118",
+          "summary": "AssertionError: expected -1 to be greater than -1"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantPanel.ui.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "7971967df2434c87",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | data-testid=\"assistant-dialog\" | > | <div | class=\"max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0 bg-[hsl(var(--assistant-bg))] backdrop-blur-xl border border-[hsl(var(--assistant-border))]\" | data-show-close-button=\"false\" | data-testid=\"assistant-panel\" | > | <div> | <div | class=\"flex items-center justify-be"
+      },
+      "test": "AssistantPanel renders the composer input area",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7971967df2434c87",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | data-testid=\"assistant-dialog\" | > | <div | class=\"max-w-4xl h-[90vh] flex flex-col overflow-hidden p-0 bg-[hsl(var(--assistant-bg))] backdrop-blur-xl border border-[hsl(var(--assistant-border))]\" | data-show-close-button=\"false\" | data-testid=\"assistant-panel\" | > | <div> | <div | class=\"flex items-center justify-be"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/shared/__tests__/FloatingActionButton.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "0bfc41303e2c8b09",
+        "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+      },
+      "test": "FloatingActionButton renders the shared mobile page FAB contract",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "0bfc41303e2c8b09",
+          "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/shared/__tests__/FloatingActionButton.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "0bfc41303e2c8b09",
+        "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+      },
+      "test": "FloatingActionButton renders the assistant FAB at the same size on its higher mobile tier",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "0bfc41303e2c8b09",
+          "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/transfers/__tests__/TransfersKpi.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 1,
+      "signature": {
+        "hash": "1ffd591d9ab426c2",
+        "summary": "TestingLibraryElementError: Unable to find an element with the text: Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <button | data-testid=\"overdue-transfer-action\" | type=\"button\" | > | Open overdue transfer | </button> | <div | class=\"space-y-6\" | > | <div | cla"
+      },
+      "test": "Transfers KPI renders page title above KpiStatusBar and card content",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "1ffd591d9ab426c2",
+          "summary": "TestingLibraryElementError: Unable to find an element with the text: Theo dõi và xử lý yêu cầu luân chuyển theo từng loại hình. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <button | data-testid=\"overdue-transfer-action\" | type=\"button\" | > | Open overdue transfer | </button> | <div | class=\"space-y-6\" | > | <div | cla"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.attachment-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat attachmentLookup tool accepts attachmentLookup when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.attachment-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat attachmentLookup tool blocks attachmentLookup without facility context for privileged role",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.draft-output.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "38a51153606e1b52",
+        "summary": "AssertionError: expected 'v2.6.1' to be 'v2.5.1' // Object.is equality"
+      },
+      "test": "repairRequestDraft safety system prompt version is v2.5.1",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "38a51153606e1b52",
+          "summary": "AssertionError: expected 'v2.6.1' to be 'v2.5.1' // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.error-safety.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat error safety — non-stream contract returns text/plain for privileged user with tools but no facility (undefined)",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.error-safety.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat error safety — non-stream contract returns text/plain for privileged user with tools but facility null",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.error-safety.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 1,
+      "signature": {
+        "hash": "f2dc72eb4784c33b",
+        "summary": "AssertionError: expected 'application/json; charset=utf-8' to contain 'text/plain'"
+      },
+      "test": "/api/chat error safety — non-stream contract returns text/plain 429 when rate-limited",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "f2dc72eb4784c33b",
+          "summary": "AssertionError: expected 'application/json; charset=utf-8' to contain 'text/plain'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/api/rpc/__tests__/rpc-jwt-skew.unit.test.ts",
+      "kind": "test",
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "shard": 1,
+      "signature": {
+        "hash": "b4cfeb3942fb23bd",
+        "summary": "AssertionError: expected 400 to be 500 // Object.is equality"
+      },
+      "test": "RPC proxy JWT signing rejects sessions without an app role before signing a Supabase JWT",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "b4cfeb3942fb23bd",
+          "summary": "AssertionError: expected 400 to be 500 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-snapshots-migration.test.ts",
+      "kind": "test",
+      "ownerIssue": 925,
+      "rootCause": "Phase-ledger readers still target the pre-archive OpenSpec path",
+      "shard": 1,
+      "signature": {
+        "hash": "fc117fed022780ee",
+        "summary": "Error: ENOENT: no such file or directory, open '<repo>/openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md'"
+      },
+      "test": "technical configuration baseline P1D hierarchy snapshot migration hierarchy copy and lock contracts keeps P1D complete after P1E advances",
+      "historical": {
+        "commit": "fe63808f",
+        "signatureReproduced": false,
+        "status": "not-reproduced",
+        "testStillFails": false
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/lib/ai/tools/__tests__/migration-gate.test.ts",
+      "kind": "suite-load",
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "shard": 1,
+      "signature": {
+        "hash": "a677cfe069f91056",
+        "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+      },
+      "test": "[suite load]",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "a677cfe069f91056",
+          "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/__tests__/react-doctor-p4-knip-exports.source.test.ts",
+      "kind": "test",
+      "ownerIssue": 924,
+      "rootCause": "React Doctor and Knip source-contract baselines no longer match tracked findings",
+      "shard": 2,
+      "signature": {
+        "hash": "fd2c4920c725c762",
+        "summary": "AssertionError: src/components/ui/sheet.tsx still re-exports SheetFooter: expected '\"use client\"/n/nimport * as React fro…' not to match //bexport/s*/{[^}]*/bSheetFooter/b[^}…/s"
+      },
+      "test": "React Doctor P4 knip/exports cleanup removes the current unused named export surface",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fd2c4920c725c762",
+          "summary": "AssertionError: src/components/ui/sheet.tsx still re-exports SheetFooter: expected '\"use client\"/n/nimport * as React fro…' not to match //bexport/s*/{[^}]*/bSheetFooter/b[^}…/s"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/__tests__/react-doctor-p4-knip-files-config.source.test.ts",
+      "kind": "test",
+      "ownerIssue": 924,
+      "rootCause": "React Doctor and Knip source-contract baselines no longer match tracked findings",
+      "shard": 2,
+      "signature": {
+        "hash": "1ea0dc1134de7a24",
+        "summary": "Error: ENOENT: no such file or directory, open '<repo>/react-doctor.config.json'"
+      },
+      "test": "React Doctor P4 knip/files config ignores intentional Phase 1 typecheck guards and active Edge Function files",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "1ea0dc1134de7a24",
+          "summary": "Error: ENOENT: no such file or directory, open '<repo>/react-doctor.config.json'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/__tests__/react-doctor-p4-knip-types.source.test.ts",
+      "kind": "test",
+      "ownerIssue": 924,
+      "rootCause": "React Doctor and Knip source-contract baselines no longer match tracked findings",
+      "shard": 2,
+      "signature": {
+        "hash": "7f2074c2fbc7e602",
+        "summary": "AssertionError: expected [ { …(2) }, { …(2) }, { …(2) }, …(85) ] to deeply equal []"
+      },
+      "test": "React Doctor P4 knip/types cleanup has no actionable unused exported type findings",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7373473602b3283a",
+          "summary": "AssertionError: expected [ { …(2) }, { …(2) }, { …(2) }, …(58) ] to deeply equal []"
+        },
+        "signatureReproduced": false,
+        "status": "changed-signature",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/__tests__/qr-action-sheet.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "72cef1825746d60f",
+        "summary": "TestingLibraryElementError: Unable to find an element with the text: Đang tìm kiếm thiết bị.... This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | data-testid=\"sheet\" | > | <div | data-testid=\"sheet-content\" | > | <div | data-testid=\"sheet-header\" | > | <div | class=\"flex items-center justify-between\" | > | <div | cla"
+      },
+      "test": "QRActionSheet Rendering should show loading state while fetching equipment",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "72cef1825746d60f",
+          "summary": "TestingLibraryElementError: Unable to find an element with the text: Đang tìm kiếm thiết bị.... This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | data-testid=\"sheet\" | > | <div | data-testid=\"sheet-content\" | > | <div | data-testid=\"sheet-header\" | > | <div | class=\"flex items-center justify-between\" | > | <div | cla"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "runtime-defect",
+      "file": "src/components/__tests__/usage-history-tab.loadmore.test.tsx",
+      "kind": "test",
+      "ownerIssue": 921,
+      "rootCause": "Deleted usage logs remain in accumulated infinite-query pages",
+      "shard": 2,
+      "signature": {
+        "hash": "589ffee0f45eab28",
+        "summary": "AssertionError: expected <td …(1)></td> to be null | Ignored nodes: comments, script, style | <html> | <head /> | <body | style=\"\" | > | <div> | <div | class=\"space-y-4\" | > | <div | class=\"flex flex-col sm:flex-row flex-wrap gap-2\" | > | <button | class=\"inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-n"
+      },
+      "test": "UsageHistoryTab load more removes deleted historical logs from accumulated pages",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "589ffee0f45eab28",
+          "summary": "AssertionError: expected <td …(1)></td> to be null | Ignored nodes: comments, script, style | <html> | <head /> | <body | style=\"\" | > | <div> | <div | class=\"space-y-4\" | > | <div | class=\"flex flex-col sm:flex-row flex-wrap gap-2\" | > | <button | class=\"inline-flex items-center justify-center whitespace-nowrap text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-n"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer renders textarea with the batch 3 placeholder",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer calls onInputChange when typing",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer disables composer when not ready",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer calls onSend on Enter key (without Shift)",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer does NOT call onSend on Shift+Enter",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 2,
+      "signature": {
+        "hash": "072abe50c51c1828",
+        "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+      },
+      "test": "AssistantComposer disables textarea when streaming",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "072abe50c51c1828",
+          "summary": "TestingLibraryElementError: Unable to find an element with the placeholder text of: Hỏi AI về thiết bị, bảo trì... | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"px-4 py-3 border-t border-[hsl(var(--assistant-border))] shrink-0\" | > | <div | class=\"flex items-end gap-2\" | > | <textarea | aria-label=\"Nhập câu hỏi cho trợ lý AI\" | class=\"flex-1 resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm leading-relaxed focus-visible:outline-none focus-visi"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "cf0f0077208932d6",
+        "summary": "Error: Unable to find an element with the text: /Tạo yêu cầu sửa chữa/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | clas"
+      },
+      "test": "RecentActivitiesCard renders timeline entries with action labels and actor names",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "cf0f0077208932d6",
+          "summary": "Error: Unable to find an element with the text: /Tạo yêu cầu sửa chữa/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | clas"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "abadf1b1a671460e",
+        "summary": "Error: Unable to find role=\"button\" and name \"Tất cả\" | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucide-activity size-6 text-white\" | fill=\"none\" | height=\"24\" | stroke=\"current"
+      },
+      "test": "RecentActivitiesCard renders only category chips that have data",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "abadf1b1a671460e",
+          "summary": "Error: Unable to find role=\"button\" and name \"Tất cả\" | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucide-activity size-6 text-white\" | fill=\"none\" | height=\"24\" | stroke=\"current"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "cf0f0077208932d6",
+        "summary": "Error: Unable to find an element with the text: /Tạo yêu cầu sửa chữa/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | clas"
+      },
+      "test": "RecentActivitiesCard filters timeline entries when a category chip is selected",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "cf0f0077208932d6",
+          "summary": "Error: Unable to find an element with the text: /Tạo yêu cầu sửa chữa/. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | clas"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "c225e21009091582",
+        "summary": "Error: Unable to find an element with the text: Sửa chữa. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-grad"
+      },
+      "test": "RecentActivitiesCard shows category badges and falls back unknown actions to Khác",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "c225e21009091582",
+          "summary": "Error: Unable to find an element with the text: Sửa chữa. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-grad"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "763526f87d397780",
+        "summary": "Error: Unable to find role=\"button\" and name \"Sửa chữa\" | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucide-activity size-6 text-white\" | fill=\"none\" | height=\"24\" | stroke=\"curre"
+      },
+      "test": "RecentActivitiesCard falls back to all activities immediately when the selected category disappears",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "763526f87d397780",
+          "summary": "Error: Unable to find role=\"button\" and name \"Sửa chữa\" | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucide-activity size-6 text-white\" | fill=\"none\" | height=\"24\" | stroke=\"curre"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "6d08a7c90a5d2347",
+        "summary": "Error: Unable to find an element with the text: YCSC-20260410-001. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-"
+      },
+      "test": "RecentActivitiesCard renders entity labels in detail rows",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "6d08a7c90a5d2347",
+          "summary": "Error: Unable to find an element with the text: YCSC-20260410-001. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "9a2860b6d8dab864",
+        "summary": "Error: Unable to find an element with the text: Bệnh viện Quận 1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3"
+      },
+      "test": "RecentActivitiesCard renders facility name for multi-tenant entries",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "9a2860b6d8dab864",
+          "summary": "Error: Unable to find an element with the text: Bệnh viện Quận 1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "89c65a48c2608899",
+        "summary": "Error: Unable to find an element with the text: /trước/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-grad"
+      },
+      "test": "RecentActivitiesCard uses relative time format (feeds show '... trước')",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "89c65a48c2608899",
+          "summary": "Error: Unable to find an element with the text: /trước/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible. | Ignored nodes: comments, script, style | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-grad"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx",
+      "kind": "test",
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "shard": 2,
+      "signature": {
+        "hash": "d607091f1398a64b",
+        "summary": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ ObjectContaining{…} ] | Number of calls: 0 | Ignored nodes: comments, script, style | <html> | <head /> | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucid"
+      },
+      "test": "RecentActivitiesCard shows an error state and toast when the RPC fails",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "d607091f1398a64b",
+          "summary": "AssertionError: expected \"vi.fn()\" to be called with arguments: [ ObjectContaining{…} ] | Number of calls: 0 | Ignored nodes: comments, script, style | <html> | <head /> | <body> | <div> | <div | class=\"rounded-lg border bg-card text-card-foreground shadow-sm\" | > | <div | class=\"flex flex-col gap-y-1.5 p-6 pb-4 md:p-8 md:pb-6\" | > | <div | class=\"flex items-center gap-4\" | > | <div | class=\"p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg\" | > | <svg | class=\"lucide lucid"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.usage-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 2,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat usageHistory tool accepts usageHistory when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.usage-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 2,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat usageHistory tool blocks usageHistory without facility context for privileged role",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/api/tenants/__tests__/tenant-routes.test.ts",
+      "kind": "test",
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "shard": 2,
+      "signature": {
+        "hash": "53bede0a37b78317",
+        "summary": "Error: SUPABASE_JWT_SECRET is not set"
+      },
+      "test": "tenant routes switches tenant for an authenticated global admin",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "53bede0a37b78317",
+          "summary": "Error: SUPABASE_JWT_SECRET is not set"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/lib/__tests__/repair-request-deep-link.adoption.test.ts",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 3,
+      "signature": {
+        "hash": "8a2a17e972dbd101",
+        "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'buildRepairRequestCreateIntentHref'"
+      },
+      "test": "repair request create-intent source adoption QR scanner uses the shared create-intent helper instead of a hardcoded repair href",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "8a2a17e972dbd101",
+          "summary": "AssertionError: expected 'import * as React from \"react\"/nimpor…' to contain 'buildRepairRequestCreateIntentHref'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/components/assistant/__tests__/AssistantTriggerButton.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 3,
+      "signature": {
+        "hash": "0bfc41303e2c8b09",
+        "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+      },
+      "test": "AssistantTriggerButton has fixed positioning and rounded-full shape",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "0bfc41303e2c8b09",
+          "summary": "AssertionError: expected 'fixed inline-flex size-14 items-cente…' to contain 'h-14'"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/lib/ai/__tests__/intent-routing.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "1f1df4e760b7035c",
+        "summary": "AssertionError: expected { kind: 'proceed', requestedTools: [] } to deeply equal { kind: 'proceed', …(1) }"
+      },
+      "test": "routeChatIntent Issue #273 — curated precedence hardening keeps generic non-reporting prompts on the fail-closed non-SQL path",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "1f1df4e760b7035c",
+          "summary": "AssertionError: expected { kind: 'proceed', requestedTools: [] } to deeply equal { kind: 'proceed', …(1) }"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/lib/ai/__tests__/intent-routing.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "1f1df4e760b7035c",
+        "summary": "AssertionError: expected { kind: 'proceed', requestedTools: [] } to deeply equal { kind: 'proceed', …(1) }"
+      },
+      "test": "routeChatIntent Issue #272 — query_database curated-first fallback holds query_database out of generic prompts when the request is not a reporting fallback",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "1f1df4e760b7035c",
+          "summary": "AssertionError: expected { kind: 'proceed', requestedTools: [] } to deeply equal { kind: 'proceed', …(1) }"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/repair-requests/__tests__/RepairRequestsCreateSheetShell.test.tsx",
+      "kind": "test",
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "shard": 3,
+      "signature": {
+        "hash": "8dc07b77e9052199",
+        "summary": "TestingLibraryElementError: Unable to find an accessible element with the role \"button\" and name `/chọn ngày/i` | Here are the accessible roles: | heading: | Name \"Tạo yêu cầu sửa chữa\": | <h2 /> | -------------------------------------------------- | paragraph: | Name \"\": | <p /> | -------------------------------------------------- | button: | Name \"close shared sheet\": | <button | type=\"button\" | /> | Name \"Ngày mong muốn hoàn thành (nếu có)\": | <button | class=\"w-full justify-start text-left f"
+      },
+      "test": "RepairRequestsCreateSheet shell marks the calendar trigger as a non-submit button inside the form",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "8dc07b77e9052199",
+          "summary": "TestingLibraryElementError: Unable to find an accessible element with the role \"button\" and name `/chọn ngày/i` | Here are the accessible roles: | heading: | Name \"Tạo yêu cầu sửa chữa\": | <h2 /> | -------------------------------------------------- | paragraph: | Name \"\": | <p /> | -------------------------------------------------- | button: | Name \"close shared sheet\": | <button | type=\"button\" | /> | Name \"Ngày mong muốn hoàn thành (nếu có)\": | <button | class=\"w-full justify-start text-left f"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat quota tools accepts deviceQuotaLookup when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat quota tools accepts quotaComplianceSummary when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat quota tools blocks deviceQuotaLookup without facility for privileged role",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat quota tools blocks quotaComplianceSummary without facility for privileged role",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.troubleshooting.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 3,
+      "signature": {
+        "hash": "38a51153606e1b52",
+        "summary": "AssertionError: expected 'v2.6.1' to be 'v2.5.1' // Object.is equality"
+      },
+      "test": "troubleshooting draft safety system prompt version is v2.5.1",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "38a51153606e1b52",
+          "summary": "AssertionError: expected 'v2.6.1' to be 'v2.5.1' // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/api/rpc/__tests__/technical-configuration-baseline-subgroup-mutations-migration.test.ts",
+      "kind": "test",
+      "ownerIssue": 925,
+      "rootCause": "Phase-ledger readers still target the pre-archive OpenSpec path",
+      "shard": 3,
+      "signature": {
+        "hash": "fc117fed022780ee",
+        "summary": "Error: ENOENT: no such file or directory, open '<repo>/openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md'"
+      },
+      "test": "technical configuration baseline P1E hierarchy mutation migration guarded hierarchy mutation contracts keeps completed hierarchy phases aligned through P6A verification",
+      "historical": {
+        "commit": "fe63808f",
+        "signatureReproduced": false,
+        "status": "not-reproduced",
+        "testStillFails": false
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/_hooks/__tests__/useEquipmentData.filter-buckets.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 3,
+      "signature": {
+        "hash": "43bbcb09703c2eeb",
+        "summary": "AssertionError: expected { tenant: 'tenant-42', …(14) } to deeply equal { tenant: 'tenant-42', …(13) }"
+      },
+      "test": "useEquipmentData filter bucket query keys list, distribution, and bucket data by their current cache scopes",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "43bbcb09703c2eeb",
+          "summary": "AssertionError: expected { tenant: 'tenant-42', …(14) } to deeply equal { tenant: 'tenant-42', …(13) }"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/_hooks/__tests__/useEquipmentData.filter-buckets.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 3,
+      "signature": {
+        "hash": "43bbcb09703c2eeb",
+        "summary": "AssertionError: expected { tenant: 'tenant-42', …(14) } to deeply equal { tenant: 'tenant-42', …(13) }"
+      },
+      "test": "useEquipmentData filter bucket query normalizes empty filters across list, distribution, and bucket query scopes",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "43bbcb09703c2eeb",
+          "summary": "AssertionError: expected { tenant: 'tenant-42', …(14) } to deeply equal { tenant: 'tenant-42', …(13) }"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/(app)/__tests__/layout.auth.test.tsx",
+      "kind": "suite-load",
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "a677cfe069f91056",
+        "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+      },
+      "test": "[suite load]",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "a677cfe069f91056",
+          "summary": "This module cannot be imported from a Client Component module. It should only be used from a Server Component."
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "66cca0c24a27504f",
+        "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+      },
+      "test": "useEquipmentPage tenant switching does not reset filters when tenant changes because provider handles tenant-scoped state",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "66cca0c24a27504f",
+          "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "66cca0c24a27504f",
+        "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+      },
+      "test": "useEquipmentPage tenant switching does not mark route sync data as ready when the equipment query is disabled",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "66cca0c24a27504f",
+          "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "66cca0c24a27504f",
+        "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+      },
+      "test": "useEquipmentPage tenant switching resets pagination in the same action when filters change",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "66cca0c24a27504f",
+          "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "66cca0c24a27504f",
+        "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+      },
+      "test": "useEquipmentPage tenant switching resets pagination when route search params hydrate the search filter",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "66cca0c24a27504f",
+          "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx",
+      "kind": "test",
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "shard": 4,
+      "signature": {
+        "hash": "66cca0c24a27504f",
+        "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+      },
+      "test": "useEquipmentPage tenant switching exposes department distribution from equipment data",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "66cca0c24a27504f",
+          "summary": "Error: No QueryClient set, use QueryClientProvider to set one"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "async-or-mock-isolation",
+      "file": "src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx",
+      "kind": "test",
+      "ownerIssue": 922,
+      "rootCause": "Reference-ranking failure reproduces intermittently between standalone and shard runs",
+      "shard": 4,
+      "signature": {
+        "hash": "9acaaf66fce8c35f",
+        "summary": "AssertionError: expected undefined to deeply equal { data: [ { …(10) }, …(100) ], …(4) }"
+      },
+      "test": "P12C1 complete reference ranking collector hook collects every page with fixed page size 100 before publishing",
+      "historical": {
+        "commit": "fe63808f",
+        "signatureReproduced": false,
+        "status": "not-reproduced",
+        "testStillFails": false
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat tenant policy returns guidance when privileged role has no facility for tool \"equipmentLookup\"",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat tenant policy returns guidance when privileged role has no facility for tool \"maintenanceSummary\"",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat tenant policy returns guidance when privileged role has no facility for tool \"maintenancePlanLookup\"",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat tenant policy returns guidance when privileged role has no facility for tool \"repairSummary\"",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "fe36626c46c902c2",
+        "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+      },
+      "test": "/api/chat tenant policy returns guidance when privileged role has no facility for tool \"usageHistory\"",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "fe36626c46c902c2",
+          "summary": "AssertionError: expected 200 to be 400 // Object.is equality"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tenant policy allows privileged roles to run tools when selected facility is provided",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+      "kind": "test",
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tenant policy treats raw admin session role as privileged for facility-scoped tool execution",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows shipped tool \"equipmentLookup\" when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows shipped tool \"maintenanceSummary\" when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows shipped tool \"maintenancePlanLookup\" when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows shipped tool \"repairSummary\" when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows shipped tool \"usageHistory\" when explicitly requested",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "stale-expectation-or-source-contract",
+      "file": "src/app/api/chat/__tests__/route.tools-allowlist.test.ts",
+      "kind": "test",
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "shard": 4,
+      "signature": {
+        "hash": "7ad30d3053c1ab10",
+        "summary": "TypeError: Cannot convert undefined or null to object"
+      },
+      "test": "/api/chat tools allowlist policy allows all four shipped tools requested together",
+      "historical": {
+        "commit": "fe63808f",
+        "signature": {
+          "hash": "7ad30d3053c1ab10",
+          "summary": "TypeError: Cannot convert undefined or null to object"
+        },
+        "signatureReproduced": true,
+        "status": "reproduced",
+        "testStillFails": true
+      }
+    },
+    {
+      "classification": "environment-or-configuration",
+      "file": "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-reads-migration.test.ts",
+      "kind": "test",
+      "ownerIssue": 925,
+      "rootCause": "Phase-ledger readers still target the pre-archive OpenSpec path",
+      "shard": 4,
+      "signature": {
+        "hash": "fc117fed022780ee",
+        "summary": "Error: ENOENT: no such file or directory, open '<repo>/openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md'"
+      },
+      "test": "technical configuration baseline P1C hierarchy read migration hierarchy-aware read contracts keeps P1C complete after P1E advances",
+      "historical": {
+        "commit": "fe63808f",
+        "signatureReproduced": false,
+        "status": "not-reproduced",
+        "testStillFails": false
+      }
+    }
+  ],
+  "historical": {
+    "command": "CI=1 node scripts/npm-run.js npx vitest run 'src/__tests__/react-doctor-p4-knip-exports.source.test.ts' 'src/__tests__/react-doctor-p4-knip-files-config.source.test.ts' 'src/__tests__/react-doctor-p4-knip-types.source.test.ts' 'src/app/(app)/__tests__/layout.assistant-integration.test.tsx' 'src/app/(app)/__tests__/layout.auth.test.tsx' 'src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx' 'src/app/(app)/equipment/_hooks/__tests__/useEquipmentData.filter-buckets.test.tsx' 'src/app/(app)/repair-requests/__tests__/RepairRequestsCreateSheetShell.test.tsx' 'src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx' 'src/app/(app)/transfers/__tests__/TransfersKpi.test.tsx' 'src/app/__tests__/page.authenticated-redirect.test.tsx' 'src/app/api/chat/__tests__/route.attachment-tools.test.ts' 'src/app/api/chat/__tests__/route.draft-output.test.ts' 'src/app/api/chat/__tests__/route.error-safety.test.ts' 'src/app/api/chat/__tests__/route.quota-tools.test.ts' 'src/app/api/chat/__tests__/route.tenant-policy.test.ts' 'src/app/api/chat/__tests__/route.tools-allowlist.test.ts' 'src/app/api/chat/__tests__/route.troubleshooting.test.ts' 'src/app/api/chat/__tests__/route.usage-tools.test.ts' 'src/app/api/rpc/__tests__/rpc-jwt-skew.unit.test.ts' 'src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-reads-migration.test.ts' 'src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-snapshots-migration.test.ts' 'src/app/api/rpc/__tests__/technical-configuration-baseline-subgroup-mutations-migration.test.ts' 'src/app/api/tenants/__tests__/tenant-routes.test.ts' 'src/components/__tests__/qr-action-sheet.test.tsx' 'src/components/__tests__/usage-history-tab.loadmore.test.tsx' 'src/components/assistant/__tests__/AssistantComposer.test.tsx' 'src/components/assistant/__tests__/AssistantPanel.ui.test.tsx' 'src/components/assistant/__tests__/AssistantTriggerButton.test.tsx' 'src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx' 'src/components/shared/__tests__/FloatingActionButton.test.tsx' 'src/lib/__tests__/repair-request-deep-link.adoption.test.ts' 'src/lib/ai/__tests__/intent-routing.test.ts' 'src/lib/ai/tools/__tests__/migration-gate.test.ts' --reporter=json --outputFile=/tmp/issue-898-fe63808f/current-failing-files.json --no-color",
+    "changedSignatureTests": 1,
+    "commit": "fe63808f",
+    "currentTestsStillFail": 69,
+    "failedFiles": 30,
+    "failedTests": 69,
+    "reproducedCurrentFailedTests": 68,
+    "suiteLoadFailures": 3,
+    "targetedFiles": 34,
+    "totalTests": 273
+  },
+  "issue": 898,
+  "rawReportDir": "/tmp/issue-898-8221f73e",
+  "referenceRanking": {
+    "commands": [
+      "CI=1 node scripts/npm-run.js npx vitest run 'src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx' --reporter=json --outputFile=/tmp/issue-898-8221f73e/reference-ranking-1.json --no-color",
+      "CI=1 node scripts/npm-run.js npx vitest run 'src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx' --reporter=json --outputFile=/tmp/issue-898-8221f73e/reference-ranking-2.json --no-color",
+      "CI=1 node scripts/npm-run.js npx vitest run 'src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx' --reporter=json --outputFile=/tmp/issue-898-8221f73e/reference-ranking-3.json --no-color"
+    ],
+    "shard": 4,
+    "shardComplete": true,
+    "shardPassed": false,
+    "standalonePasses": 3,
+    "standaloneRuns": [
+      {
+        "complete": true,
+        "passed": true,
+        "reportPath": "/tmp/issue-898-8221f73e/reference-ranking-1.json",
+        "run": 1,
+        "tests": 16
+      },
+      {
+        "complete": true,
+        "passed": true,
+        "reportPath": "/tmp/issue-898-8221f73e/reference-ranking-2.json",
+        "run": 2,
+        "tests": 16
+      },
+      {
+        "complete": true,
+        "passed": true,
+        "reportPath": "/tmp/issue-898-8221f73e/reference-ranking-3.json",
+        "run": 3,
+        "tests": 16
+      }
+    ],
+    "testsPerRun": 16
+  },
+  "schemaVersion": 1,
+  "shards": [
+    {
+      "failedFiles": 11,
+      "failedTests": 17,
+      "pendingTests": 0,
+      "passedFiles": 153,
+      "passedTests": 1192,
+      "shard": 1,
+      "success": false,
+      "testFiles": 164,
+      "totalTests": 1209
+    },
+    {
+      "failedFiles": 9,
+      "failedTests": 23,
+      "pendingTests": 0,
+      "passedFiles": 155,
+      "passedTests": 1057,
+      "shard": 2,
+      "success": false,
+      "testFiles": 164,
+      "totalTests": 1080
+    },
+    {
+      "failedFiles": 8,
+      "failedTests": 13,
+      "pendingTests": 0,
+      "passedFiles": 155,
+      "passedTests": 1306,
+      "shard": 3,
+      "success": false,
+      "testFiles": 163,
+      "totalTests": 1319
+    },
+    {
+      "failedFiles": 6,
+      "failedTests": 20,
+      "pendingTests": 4,
+      "passedFiles": 157,
+      "passedTests": 1337,
+      "shard": 4,
+      "success": false,
+      "testFiles": 163,
+      "totalTests": 1361
+    }
+  ],
+  "totals": {
+    "failedFiles": 34,
+    "failedTests": 73,
+    "pendingTests": 4,
+    "passedFiles": 620,
+    "passedTests": 4892,
+    "shards": 4,
+    "suiteLoadFailures": 3,
+    "testFiles": 654,
+    "totalTests": 4969
+  },
+  "unownedFailures": [],
+  "workstreams": [
+    {
+      "batch": "A",
+      "classification": "stale-expectation-or-source-contract",
+      "files": [
+        "src/app/api/chat/__tests__/route.attachment-tools.test.ts",
+        "src/app/api/chat/__tests__/route.usage-tools.test.ts",
+        "src/app/api/chat/__tests__/route.quota-tools.test.ts",
+        "src/app/api/chat/__tests__/route.tools-allowlist.test.ts"
+      ],
+      "ownerIssue": 916,
+      "rootCause": "AI tool registry, availability, and request-fixture contract drift",
+      "title": "AI attachment, usage, quota, and tool allowlist contracts",
+      "failedFiles": 4,
+      "failedTests": 14,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "B",
+      "classification": "stale-expectation-or-source-contract",
+      "files": [
+        "src/app/api/chat/__tests__/route.tenant-policy.test.ts",
+        "src/app/api/chat/__tests__/route.error-safety.test.ts",
+        "src/lib/ai/__tests__/intent-routing.test.ts",
+        "src/app/api/chat/__tests__/route.draft-output.test.ts",
+        "src/app/api/chat/__tests__/route.troubleshooting.test.ts"
+      ],
+      "ownerIssue": 917,
+      "rootCause": "AI policy, status, content-type, intent, and prompt-version contract drift",
+      "title": "AI tenant policy, error safety, intent, and prompt-version contracts",
+      "failedFiles": 5,
+      "failedTests": 14,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "C",
+      "classification": "environment-or-configuration",
+      "files": [
+        "src/app/__tests__/page.authenticated-redirect.test.tsx",
+        "src/app/(app)/__tests__/layout.auth.test.tsx",
+        "src/app/api/rpc/__tests__/rpc-jwt-skew.unit.test.ts",
+        "src/app/api/tenants/__tests__/tenant-routes.test.ts",
+        "src/lib/ai/tools/__tests__/migration-gate.test.ts"
+      ],
+      "ownerIssue": 918,
+      "rootCause": "Local server-only, auth, JWT status, environment, and module-load harness drift",
+      "title": "Server-only, auth layout, JWT skew, tenant env, and AI migration-gate suites",
+      "failedFiles": 5,
+      "failedTests": 2,
+      "suiteLoadFailures": 3
+    },
+    {
+      "batch": "D",
+      "classification": "stale-expectation-or-source-contract",
+      "files": [
+        "src/app/(app)/equipment/_hooks/__tests__/useEquipmentData.filter-buckets.test.tsx",
+        "src/app/(app)/equipment/__tests__/useEquipmentPage.test.tsx"
+      ],
+      "ownerIssue": 919,
+      "rootCause": "Equipment query parameter, cache-scope, and QueryClient harness drift",
+      "title": "Equipment filter-bucket and page query contracts",
+      "failedFiles": 2,
+      "failedTests": 7,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "E",
+      "classification": "async-or-mock-isolation",
+      "files": ["src/components/dashboard/__tests__/RecentActivitiesCard.test.tsx"],
+      "ownerIssue": 920,
+      "rootCause": "Recent activity hook/mock shape and async state transformation drift",
+      "title": "RecentActivitiesCard data and state contracts",
+      "failedFiles": 1,
+      "failedTests": 9,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "F",
+      "classification": "runtime-defect",
+      "files": ["src/components/__tests__/usage-history-tab.loadmore.test.tsx"],
+      "ownerIssue": 921,
+      "rootCause": "Deleted usage logs remain in accumulated infinite-query pages",
+      "title": "Usage-history load-more deletion behavior",
+      "failedFiles": 1,
+      "failedTests": 1,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "G",
+      "classification": "async-or-mock-isolation",
+      "files": ["src/app/(app)/technical-configurations/__tests__/reference-ranking-hook.test.tsx"],
+      "ownerIssue": 922,
+      "rootCause": "Reference-ranking failure reproduces intermittently between standalone and shard runs",
+      "title": "Reference-ranking determinism characterization",
+      "failedFiles": 1,
+      "failedTests": 1,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "H",
+      "classification": "stale-expectation-or-source-contract",
+      "files": [
+        "src/app/(app)/__tests__/layout.assistant-integration.test.tsx",
+        "src/components/assistant/__tests__/AssistantPanel.ui.test.tsx",
+        "src/components/assistant/__tests__/AssistantComposer.test.tsx",
+        "src/components/assistant/__tests__/AssistantTriggerButton.test.tsx",
+        "src/components/shared/__tests__/FloatingActionButton.test.tsx",
+        "src/lib/__tests__/repair-request-deep-link.adoption.test.ts",
+        "src/app/(app)/repair-requests/__tests__/RepairRequestsCreateSheetShell.test.tsx",
+        "src/app/(app)/transfers/__tests__/TransfersKpi.test.tsx",
+        "src/components/__tests__/qr-action-sheet.test.tsx"
+      ],
+      "ownerIssue": 923,
+      "rootCause": "Assistant shell and UI source-contract expectations lag production components",
+      "title": "Assistant shell and stale UI source contracts",
+      "failedFiles": 9,
+      "failedTests": 19,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "I",
+      "classification": "stale-expectation-or-source-contract",
+      "files": [
+        "src/__tests__/react-doctor-p4-knip-exports.source.test.ts",
+        "src/__tests__/react-doctor-p4-knip-files-config.source.test.ts",
+        "src/__tests__/react-doctor-p4-knip-types.source.test.ts"
+      ],
+      "ownerIssue": 924,
+      "rootCause": "React Doctor and Knip source-contract baselines no longer match tracked findings",
+      "title": "React Doctor and Knip source-contract baselines",
+      "failedFiles": 3,
+      "failedTests": 3,
+      "suiteLoadFailures": 0
+    },
+    {
+      "batch": "J",
+      "classification": "environment-or-configuration",
+      "files": [
+        "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-snapshots-migration.test.ts",
+        "src/app/api/rpc/__tests__/technical-configuration-baseline-subgroup-mutations-migration.test.ts",
+        "src/app/api/rpc/__tests__/technical-configuration-baseline-hierarchy-reads-migration.test.ts"
+      ],
+      "ownerIssue": 925,
+      "rootCause": "Phase-ledger readers still target the pre-archive OpenSpec path",
+      "title": "Archived OpenSpec phase-ledger paths",
+      "failedFiles": 3,
+      "failedTests": 3,
+      "suiteLoadFailures": 0
+    }
+  ]
+}
