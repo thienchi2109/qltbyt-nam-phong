@@ -10,7 +10,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { cn } from "@/lib/utils"
 import type { CategoryListItem } from "../_types/categories"
 import { CLASSIFICATION_STYLES, type AggregatedQuota } from "./category-tree-utils"
-import { DeviceQuotaCategoryAssignedEquipment } from "./DeviceQuotaCategoryAssignedEquipment"
+import {
+  DeviceQuotaCategoryAssignedEquipment,
+  type DeviceQuotaCategoryUnassignmentRequest,
+} from "./DeviceQuotaCategoryAssignedEquipment"
 import { QuotaProgressBar } from "./QuotaProgressBar"
 
 interface DeviceQuotaCategoryDetailPaneProps {
@@ -23,6 +26,8 @@ interface DeviceQuotaCategoryDetailPaneProps {
   canAssign: boolean
   onStartAssignment: () => void
   reconciledEquipmentIds?: Set<number>
+  canUnassign?: boolean
+  onUnassign?: (request: DeviceQuotaCategoryUnassignmentRequest) => void | Promise<void>
 }
 
 function buildCategoryPath(category: CategoryListItem, allCategories: CategoryListItem[]) {
@@ -49,6 +54,8 @@ export function DeviceQuotaCategoryDetailPane({
   canAssign,
   onStartAssignment,
   reconciledEquipmentIds,
+  canUnassign = false,
+  onUnassign,
 }: DeviceQuotaCategoryDetailPaneProps) {
   if (!category) {
     return (
@@ -124,6 +131,9 @@ export function DeviceQuotaCategoryDetailPane({
           donViId={donViId}
           variant="panel"
           reconciledEquipmentIds={reconciledEquipmentIds}
+          canUnassign={canUnassign}
+          categoryName={category.ten_nhom}
+          onUnassign={onUnassign}
         />
       </CardContent>
     </Card>

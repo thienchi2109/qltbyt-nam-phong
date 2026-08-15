@@ -72,19 +72,19 @@ frontend action calls it yet. Live apply remains a separately approved operation
 **Purpose:** Add reusable, testable UI pieces without enabling incomplete mutation
 behavior.
 
-- [ ] 2.1 Run React and code-deduplication guidance before creating new UI or hooks.
-- [ ] 2.2 Add the trailing Lucide `X` icon button with the exact tooltip and
+- [x] 2.1 Run React and code-deduplication guidance before creating new UI or hooks.
+- [x] 2.2 Add the trailing Lucide `X` icon button with the exact tooltip and
       accessible label `Bỏ khỏi danh mục` to authorized assigned-equipment rows.
-- [ ] 2.3 Stop pointer and keyboard action events from selecting or activating the
+- [x] 2.3 Stop pointer and keyboard action events from selecting or activating the
       containing row.
-- [ ] 2.4 Add a focused confirmation dialog showing equipment and selected-category
+- [x] 2.4 Add a focused confirmation dialog showing equipment and selected-category
       identity.
-- [ ] 2.5 Implement cancel, close, focus-return, disabled, and pending states without
+- [x] 2.5 Implement cancel, close, focus-return, disabled, and pending states without
       a stuck overlay or pointer lock.
-- [ ] 2.6 Keep unauthorized and read-only role output byte-for-byte free of the
+- [x] 2.6 Keep unauthorized and read-only role output byte-for-byte free of the
       unlink command.
-- [ ] 2.7 Keep parent detail scoped to equipment assigned directly to that parent.
-- [ ] 2.8 Pass focused component and role tests before wiring the production
+- [x] 2.7 Keep parent detail scoped to equipment assigned directly to that parent.
+- [x] 2.8 Pass focused component and role tests before wiring the production
       mutation.
 
 **Review boundary:** UI composition and interaction contract are reviewable

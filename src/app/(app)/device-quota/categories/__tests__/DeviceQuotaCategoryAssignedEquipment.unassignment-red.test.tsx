@@ -9,6 +9,7 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { isEquipmentManagerRole } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
 import { DeviceQuotaCategoryAssignedEquipment } from "../_components/DeviceQuotaCategoryAssignedEquipment"
+import { deviceQuotaCategoryAssignedEquipmentQueryKey } from "../_queries/deviceQuotaCategoryAssignedEquipmentQuery"
 
 vi.mock("@/lib/rpc-client", () => ({
   callRpc: vi.fn(),
@@ -44,13 +45,16 @@ const assignedEquipment: EquipmentPreviewItem = {
   tinh_trang: "Hoạt động",
 }
 
-function createWrapper() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
+function createDeferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((promiseResolve) => {
+    resolve = promiseResolve
   })
 
+  return { promise, resolve }
+}
+
+function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
       <QueryClientProvider client={queryClient}>
@@ -74,6 +78,11 @@ function renderSubject({
   onUnassign?: (request: UnassignmentRequest) => void | Promise<void>
 } = {}) {
   mockCallRpc.mockResolvedValue([assignedEquipment])
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+    },
+  })
 
   render(
     <div
@@ -89,10 +98,16 @@ function renderSubject({
         onUnassign={onUnassign}
       />
     </div>,
-    { wrapper: createWrapper() }
+    { wrapper: createWrapper(queryClient) }
   )
 
-  return { onContainerClick, onContainerPointerDown, onContainerKeyDown, onUnassign }
+  return {
+    onContainerClick,
+    onContainerPointerDown,
+    onContainerKeyDown,
+    onUnassign,
+    queryClient,
+  }
 }
 
 async function getUnassignmentButton() {
@@ -167,8 +182,10 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
   it("cancels without sending an unassignment request", async () => {
     const user = userEvent.setup()
     const onUnassign = vi.fn()
-    renderSubject({ onUnassign })
+    const { queryClient } = renderSubject({ onUnassign })
     const action = await getUnassignmentButton()
+    const assignedQueryKey = deviceQuotaCategoryAssignedEquipmentQueryKey(42, 7)
+    const cachedEquipment = queryClient.getQueryData(assignedQueryKey)
 
     await user.click(action)
 
@@ -182,6 +199,26 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
     })
     expect(onUnassign).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(assignedQueryKey)).toBe(cachedEquipment)
+    expect(action).toHaveFocus()
+  })
+
+  it("closes without mutation on Escape and returns focus to the row action", async () => {
+    const user = userEvent.setup()
+    const onUnassign = vi.fn()
+    renderSubject({ onUnassign })
+    const action = await getUnassignmentButton()
+
+    await user.click(action)
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+
+    await user.keyboard("{Escape}")
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
+    expect(onUnassign).not.toHaveBeenCalled()
+    expect(action).toHaveFocus()
   })
 
   it("confirms exactly one equipment/category/tenant unassignment request", async () => {
@@ -202,5 +239,32 @@ describe("DeviceQuotaCategoryAssignedEquipment category unassignment RED contrac
       expectedCategoryId: 42,
       donViId: 7,
     })
+  })
+
+  it("disables the row action and dialog controls while confirmation is pending", async () => {
+    const user = userEvent.setup()
+    const deferred = createDeferred()
+    const onUnassign = vi.fn(() => deferred.promise)
+    renderSubject({ onUnassign })
+    const action = await getUnassignmentButton()
+
+    await user.click(action)
+    const dialog = screen.getByRole("alertdialog")
+    const cancel = within(dialog).getByRole("button", { name: "Hủy" })
+    const confirm = within(dialog).getByRole("button", { name: "Bỏ khỏi danh mục" })
+
+    await user.click(confirm)
+
+    expect(onUnassign).toHaveBeenCalledTimes(1)
+    expect(action).toBeDisabled()
+    expect(cancel).toBeDisabled()
+    expect(confirm).toBeDisabled()
+
+    deferred.resolve()
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
+    expect(action).toHaveFocus()
   })
 })
