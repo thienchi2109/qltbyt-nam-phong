@@ -239,7 +239,7 @@ function DeviceQuotaMappingPreviewDialogContent({
   }, [equipmentList, excludedIds, onConfirm])
 
   return (
-    <DialogContent className="max-w-2xl">
+    <DialogContent className="max-w-2xl md:w-[calc(100%-2rem)] md:max-w-4xl">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <CheckCircle2 className="size-5 text-primary" />
@@ -252,7 +252,11 @@ function DeviceQuotaMappingPreviewDialogContent({
       <MappingPreviewCountBadge count={activeCount} label="thiết bị đã chọn" />
 
       {/* Mapping diagram */}
-      <div ref={containerRef} className="relative flex flex-row items-start gap-6 min-h-[200px]">
+      <div
+        ref={containerRef}
+        data-testid="device-quota-mapping-preview-layout"
+        className="relative flex flex-row items-start gap-6 min-h-[200px] md:min-w-0"
+      >
         {/* Category card (left) */}
         <div ref={categoryRef} className="flex-shrink-0 self-center hidden md:block">
           <CategoryCard category={targetCategory} />
@@ -276,7 +280,8 @@ function DeviceQuotaMappingPreviewDialogContent({
         {/* Equipment list (right) */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto max-h-[350px] space-y-2 relative z-10"
+          data-testid="device-quota-mapping-preview-equipment-list"
+          className="relative z-10 max-h-[350px] flex-1 space-y-2 overflow-y-auto md:min-w-0 md:[&_p]:break-words md:[&_p]:overflow-visible md:[&_p]:text-clip md:[&_p]:whitespace-normal"
         >
           {isLoading ? (
             <MappingPreviewLoadingState />

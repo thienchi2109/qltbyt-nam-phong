@@ -6,6 +6,14 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 
 import DeviceQuotaCategoriesPage from "../page"
 import { callRpc } from "@/lib/rpc-client"
+import {
+  assignedEquipment,
+  categories,
+  category,
+  secondAssignedEquipment,
+  secondUnassignedEquipment,
+  unassignedEquipment,
+} from "./DeviceQuotaCategoryManualAssignmentFixtures"
 
 const mockUseSession = vi.fn()
 const mockToast = vi.fn()
@@ -79,80 +87,6 @@ function createDeferred<T>(): Deferred<T> {
     resolve = promiseResolve
   })
   return { promise, resolve }
-}
-
-const category = {
-  id: 2,
-  parent_id: 1,
-  ma_nhom: "G1.1",
-  ten_nhom: "Máy X quang",
-  phan_loai: "A",
-  don_vi_tinh: "Cái",
-  thu_tu_hien_thi: 2,
-  level: 2,
-  so_luong_hien_co: 0,
-  so_luong_toi_da: 4,
-  so_luong_toi_thieu: null,
-  mo_ta: null,
-}
-
-const categories = [
-  {
-    ...category,
-    id: 1,
-    parent_id: null,
-    ma_nhom: "G1",
-    ten_nhom: "Nhóm chẩn đoán hình ảnh",
-    don_vi_tinh: null,
-    thu_tu_hien_thi: 1,
-    level: 1,
-    so_luong_toi_da: 10,
-  },
-  category,
-]
-
-const unassignedEquipment = [
-  {
-    id: 101,
-    ma_thiet_bi: "TB-001",
-    ten_thiet_bi: "Máy X quang chưa phân loại",
-    model: "OEC 9900",
-    serial: "SN12345",
-    hang_san_xuat: "GE Healthcare",
-    khoa_phong_quan_ly: "Khoa CĐHA",
-    tinh_trang: "Hoạt động",
-    total_count: 1,
-  },
-]
-
-const secondUnassignedEquipment = {
-  ...unassignedEquipment[0],
-  id: 102,
-  ma_thiet_bi: "TB-002",
-  ten_thiet_bi: "Máy X quang chưa phân loại thứ hai",
-  serial: "SN67890",
-  total_count: 2,
-}
-
-const assignedEquipment = [
-  {
-    id: 101,
-    ma_thiet_bi: "TB-001",
-    ten_thiet_bi: "Máy X quang chưa phân loại",
-    model: "OEC 9900",
-    serial: "SN12345",
-    hang_san_xuat: "GE Healthcare",
-    khoa_phong_quan_ly: "Khoa CĐHA",
-    tinh_trang: "Hoạt động",
-  },
-]
-
-const secondAssignedEquipment = {
-  ...assignedEquipment[0],
-  id: 102,
-  ma_thiet_bi: "TB-002",
-  ten_thiet_bi: "Máy X quang chưa phân loại thứ hai",
-  serial: "SN67890",
 }
 
 function createWrapper() {
@@ -259,6 +193,32 @@ describe("DeviceQuota Categories manual assignment", () => {
     expect(pane.parentElement).toHaveClass("lg:h-[calc(100vh-12rem)]", "lg:overflow-hidden")
     expect(scrollRegion).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
     expect(scrollRegion).not.toContainElement(actions)
+  })
+
+  it("keeps the desktop preview contained and shows the full equipment name", async () => {
+    const longEquipmentName =
+      "Bảng điều khiển monitor trung tâm, 24 kênh, có 16 máy monitor theo dõi liên tục"
+    setupRpc({
+      previewResult: [{ ...assignedEquipment[0], ten_thiet_bi: longEquipmentName }],
+    })
+
+    await enterAssignmentAndOpenPreview()
+
+    expect(screen.getByRole("dialog", { name: "Xác nhận phân loại thiết bị" })).toHaveClass(
+      "max-w-2xl",
+      "md:w-[calc(100%-2rem)]",
+      "md:max-w-4xl"
+    )
+    expect(screen.getByTestId("device-quota-mapping-preview-layout")).toHaveClass("md:min-w-0")
+    const equipmentList = screen.getByTestId("device-quota-mapping-preview-equipment-list")
+    expect(equipmentList).toHaveClass(
+      "md:min-w-0",
+      "md:[&_p]:overflow-visible",
+      "md:[&_p]:text-clip",
+      "md:[&_p]:whitespace-normal",
+      "md:[&_p]:break-words"
+    )
+    expect(screen.getByText(longEquipmentName)).toBeVisible()
   })
 
   it("preserves the selected category and equipment selection when preview is cancelled", async () => {
