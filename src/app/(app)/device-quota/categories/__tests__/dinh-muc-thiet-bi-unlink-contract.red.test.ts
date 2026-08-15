@@ -215,6 +215,7 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     expect(effectiveTenantBinding).not.toBeNull()
     expect(effectiveTenantRequired).not.toBeNull()
     expect(categoryGuard).not.toBeNull()
+    expect(categoryGuard![0]).toMatch(/\bFOR (?:SHARE|UPDATE)\b/i)
     expect(categoryWhereClause).toBeDefined()
     expect(appRoleClaim!.index).toBeLessThan(fallbackRoleClaim!.index!)
     expect(fallbackRoleClaim!.index).toBeLessThan(roleGuard!.index!)

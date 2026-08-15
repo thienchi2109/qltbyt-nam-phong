@@ -71,6 +71,7 @@ BEGIN
     FROM public.nhom_thiet_bi AS category
     WHERE category.id = p_nhom_id
       AND category.don_vi_id = p_don_vi
+    FOR SHARE
   ) THEN
     RAISE EXCEPTION 'Category is outside the tenant scope'
       USING errcode = '42501';
