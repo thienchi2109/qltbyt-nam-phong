@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DeviceQuotaSplitPane } from "../../_components/DeviceQuotaSplitPane"
+import { useDeviceQuotaCategoryUnassignment } from "../_hooks/useDeviceQuotaCategoryAssignment"
 import { useDeviceQuotaCategoryContext } from "../_hooks/useDeviceQuotaCategoryContext"
 import { useDeviceQuotaCategoryWorkspaceState } from "../_hooks/useDeviceQuotaCategoryWorkspaceState"
 import {
@@ -17,6 +18,7 @@ import {
 } from "./category-tree-utils"
 import { CategoryGroup } from "./CategoryGroup"
 import { DeviceQuotaCategoryAssignmentPane } from "./DeviceQuotaCategoryAssignmentPane"
+import type { DeviceQuotaCategoryUnassignmentRequest } from "./DeviceQuotaCategoryAssignedEquipment"
 import { DeviceQuotaCategoryDetailPane } from "./DeviceQuotaCategoryDetailPane"
 import { CategoryTreeSkeleton, CategoryTreeEmpty } from "./CategoryTreeStates"
 
@@ -72,6 +74,7 @@ export function DeviceQuotaCategoryTree({
     leafIds,
   })
   const selectedCategory = workspace.selectedCategory
+  const { mutateAsync: unassignEquipment } = useDeviceQuotaCategoryUnassignment()
 
   const rootCount = roots.length
   const selectedCount = selectedCategory
@@ -92,6 +95,16 @@ export function DeviceQuotaCategoryTree({
       onAssignmentActiveChange?.(false)
     },
     [onAssignmentActiveChange, workspace.completeAssignment]
+  )
+  const handleUnassign = React.useCallback(
+    async (request: DeviceQuotaCategoryUnassignmentRequest) => {
+      await unassignEquipment({
+        thiet_bi_ids: [request.equipmentId],
+        nhom_id: request.expectedCategoryId,
+        donViId: request.donViId,
+      })
+    },
+    [unassignEquipment]
   )
 
   const navigationPane = (
@@ -169,6 +182,8 @@ export function DeviceQuotaCategoryTree({
       canAssign={canAssignManually}
       onStartAssignment={startAssignment}
       reconciledEquipmentIds={workspace.reconciledEquipmentIds}
+      canUnassign={canManageCategories && donViId !== null}
+      onUnassign={handleUnassign}
     />
   )
 

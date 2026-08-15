@@ -96,30 +96,30 @@ complete.
 **Purpose:** Complete the user workflow with one required mutation request and no
 unnecessary immediate read request.
 
-- [ ] 3.1 Add a typed unlink mutation helper that sends one equipment ID, expected
+- [x] 3.1 Add a typed unlink mutation helper that sends one equipment ID, expected
       category ID, and captured facility ID.
-- [ ] 3.2 Add a focused `useMutation` hook with per-row pending state and translated
+- [x] 3.2 Add a focused `useMutation` hook with per-row pending state and translated
       error feedback.
-- [ ] 3.3 Before reconciling a resolved mutation, cancel matching in-flight assigned,
+- [x] 3.3 Before reconciling a resolved mutation, cancel matching in-flight assigned,
       category-list, unassigned, filter-option, and compliance queries for the
       captured scope without starting new requests.
-- [ ] 3.4 On affected count one, remove the row from the exact assigned-equipment
+- [x] 3.4 On affected count one, remove the row from the exact assigned-equipment
       cache with an immutable `setQueryData` update.
-- [ ] 3.5 Use targeted `setQueriesData` to decrement only the selected category's
+- [x] 3.5 Use targeted `setQueriesData` to decrement only the selected category's
       direct cached count, clamped at zero.
-- [ ] 3.6 Reuse existing aggregate-count helpers so ancestor totals recalculate from
+- [x] 3.6 Reuse existing aggregate-count helpers so ancestor totals recalculate from
       the patched full tree; do not decrement ancestors directly.
-- [ ] 3.7 Mark assigned, category-list, unassigned, filter-option, and compliance
+- [x] 3.7 Mark assigned, category-list, unassigned, filter-option, and compliance
       queries stale with `refetchType: "none"`.
-- [ ] 3.8 Prove no assigned-detail, category-list, unassigned, or compliance read RPC
+- [x] 3.8 Prove no assigned-detail, category-list, unassigned, or compliance read RPC
       is sent on the immediate success path.
-- [ ] 3.9 On affected count zero, remove only the provably stale assigned row, leave
+- [x] 3.9 On affected count zero, remove only the provably stale assigned row, leave
       the unconfirmed category count unchanged, mark assigned/category-list queries
       stale with no immediate refetch, and show stale-state feedback.
-- [ ] 3.10 Leave caches unchanged on thrown mutation errors.
-- [ ] 3.11 Wire confirmation to the mutation, but keep the action unavailable to
+- [x] 3.10 Leave caches unchanged on thrown mutation errors.
+- [x] 3.11 Wire confirmation to the mutation, but keep the action unavailable to
       deployed users until the Phase 6 backend prerequisite is verified.
-- [ ] 3.12 Pass the complete Phase 0 component and hook RED suites.
+- [x] 3.12 Pass the complete Phase 0 component and hook RED suites.
 
 **Review boundary:** Repository behavior is feature-complete but MUST remain
 undeployed or disabled until Phase 6 verifies the hardened live RPC.

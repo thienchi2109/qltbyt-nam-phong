@@ -141,6 +141,10 @@ export function seedVisibleCaches(queryClient: QueryClient) {
   const otherTenantCategory = { ...category, so_luong_hien_co: 99 }
   Object.freeze(otherTenantCategory)
 
+  for (const queryKey of AFFECTED_QUERY_KEYS) {
+    queryClient.setQueryDefaults([queryKey[0]], { gcTime: Infinity })
+  }
+
   queryClient.setQueryData(ASSIGNED_KEY, Object.freeze([equipment]))
   queryClient.setQueryData(
     CATEGORY_LIST_KEY,
