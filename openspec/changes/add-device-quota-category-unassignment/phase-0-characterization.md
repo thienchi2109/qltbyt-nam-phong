@@ -94,15 +94,36 @@ Result: 4 files failed as expected, with 18 failing tests and 6 passing
 baseline/negative-control tests.
 
 - Seven assigned-equipment tests fail because the authorized trailing action,
-  tooltip, event isolation, and confirmation dialog do not exist. Five unauthorized
-  role cases pass because the current read-only component exposes no action.
-- The parent-category test fails because the direct-assignment panel does not yet
-  receive the authorized `canUnassign` contract.
-- All five mutation tests fail with
+  tooltip, event isolation, and confirmation dialog do not exist:
+  - `shows the trailing Lucide X action for the global role`;
+  - `shows the trailing Lucide X action for the admin role`;
+  - `shows the trailing Lucide X action for the to_qltb role`;
+  - `shows the exact Bỏ khỏi danh mục tooltip`;
+  - `isolates pointer and keyboard action events from the containing row`;
+  - `cancels without sending an unassignment request`;
+  - `confirms exactly one equipment/category/tenant unassignment request`.
+    Five unauthorized role cases pass because the current read-only component exposes
+    no action.
+- The parent-category test
+  `keeps parent-category unlink actions scoped to equipment assigned directly to that parent`
+  fails because the direct-assignment panel does not yet receive the authorized
+  `canUnassign` contract.
+- The mutation tests
+  `sends one unlink RPC with the equipment, expected category, and captured tenant`,
+  `cancels matching reads before patching visible caches and avoids immediate reads`,
+  `prevents a delayed pre-mutation assigned read from restoring the removed row`,
+  `removes a stale assigned row without decrementing count when zero rows are affected`,
+  and `leaves caches unchanged and reports the mutation error` fail with
   `Phase 0 RED: useDeviceQuotaCategoryUnassignment has not been implemented`.
   The delayed-response harness was separately verified to reach an in-flight read
   before failing on the missing hook.
-- All five SQL/source-contract tests fail against
+- The SQL/source-contract tests
+  `uses the latest correctly ordered three-argument expected-category overload`,
+  `runs claim, role, and category guards before the equipment mutation`,
+  `rejects cross-tenant categories but returns zero for tenant-scoped equipment misses`,
+  `audits IDs returned by the constrained update and returns their affected count`,
+  and `preserves security definer and exposes only the hardened authenticated overload`
+  fail against
   `20260201_device_quota_rpc_mapping.sql`: the latest definition is still the unsafe
   two-argument overload and lacks the expected-category predicate, fail-closed claim
   messages, category rejection, tenant-scoped zero-row update, `pg_temp` search path,

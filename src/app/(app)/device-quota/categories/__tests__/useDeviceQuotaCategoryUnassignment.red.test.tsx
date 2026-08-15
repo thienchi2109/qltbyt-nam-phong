@@ -6,6 +6,7 @@ import { callRpc } from "@/lib/rpc-client"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import type { CategoryListItem } from "../_types/categories"
 import {
+  expectTenantCategoryListUpdater,
   expectTenantScopedCancellations,
   runUnassignment,
   useUnassignmentUnderTest,
@@ -133,6 +134,12 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
       )
     }
     expectTenantScopedCancellations(cancelQueries.mock.calls)
+    expect(setQueryData).toHaveBeenCalledWith(ASSIGNED_KEY, expect.any(Function))
+    expect(setQueriesData).toHaveBeenCalledWith(
+      expect.objectContaining({ queryKey: CATEGORY_LIST_KEY }),
+      expect.any(Function)
+    )
+    expectTenantCategoryListUpdater(setQueriesData.mock.calls)
     const cacheWriteOrders = [
       ...setQueryData.mock.invocationCallOrder,
       ...setQueriesData.mock.invocationCallOrder,

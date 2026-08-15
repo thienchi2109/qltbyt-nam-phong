@@ -32,7 +32,7 @@ function normalizeUnlinkSignature(argumentsSql: string) {
 }
 
 function getFinalUnlinkSignatures(migrationSql: string) {
-  const signatures = new Set(["BIGINT[],BIGINT"])
+  const signatures = new Set<string>()
   const executableSql = stripSqlComments(migrationSql)
   const statements = Array.from(
     executableSql.matchAll(
@@ -51,6 +51,19 @@ function getFinalUnlinkSignatures(migrationSql: string) {
   }
 
   return [...signatures].sort()
+}
+
+function getUnlinkPrivilegeActions(normalizedMigration: string) {
+  return Array.from(
+    normalizedMigration.matchAll(
+      /\b(GRANT\s+EXECUTE|REVOKE\s+(?:ALL|EXECUTE))\s+ON\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink\s*\(\s*BIGINT\[\]\s*,\s*BIGINT\s*,\s*BIGINT\s*\)\s+(?:TO|FROM)\s+([^;]+);/gi
+    ),
+    (match) => ({
+      action: match[1].toUpperCase().startsWith("GRANT") ? "GRANT" : "REVOKE",
+      index: match.index,
+      roles: match[2].split(",").map((role) => role.trim().toLowerCase()),
+    })
+  )
 }
 
 function extractLatestFunctionDefinition(source: string) {
@@ -96,24 +109,48 @@ function readAffectedMutationStatement(normalizedBody: string) {
   }
 }
 
+function expectConjunctivePredicates(whereClause: string, predicates: RegExp[]) {
+  expect(whereClause).not.toMatch(/\bOR\b/i)
+  const conjuncts = whereClause.split(/\bAND\b/i)
+  expect(conjuncts.length).toBeGreaterThanOrEqual(predicates.length)
+  for (const predicate of predicates) {
+    expect(conjuncts.some((conjunct) => predicate.test(conjunct))).toBe(true)
+  }
+}
+
+function getDataMutationOperations(normalizedBody: string) {
+  return Array.from(
+    normalizedBody.matchAll(
+      /\b(UPDATE|INSERT\s+INTO|DELETE\s+FROM|MERGE\s+INTO|TRUNCATE(?:\s+TABLE)?)\s+((?:public\.)?[a-z_][a-z0-9_]*)\b/gi
+    ),
+    (match) => `${match[1].replace(/\s+/g, " ").toUpperCase()} ${match[2].toLowerCase()}`
+  )
+}
+
 function readLatestUnlinkMigration() {
   const migrationsDir = path.resolve(process.cwd(), "supabase/migrations")
-  const matches = findMigrationFiles(migrationsDir)
-    .filter((file) =>
-      /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink/i.test(
-        stripSqlComments(readFileSync(file, "utf8"))
-      )
-    )
+  const migrations = findMigrationFiles(migrationsDir)
     .sort()
+    .map((file) => ({ file, sql: readFileSync(file, "utf8") }))
+  const relevantMigrations = migrations.filter(({ sql }) =>
+    /\b(?:CREATE(?:\s+OR\s+REPLACE)?|DROP)\s+FUNCTION\b[\s\S]*?public\.dinh_muc_thiet_bi_unlink|(?:GRANT|REVOKE)[\s\S]*?public\.dinh_muc_thiet_bi_unlink/i.test(
+      stripSqlComments(sql)
+    )
+  )
+  const definitionMigrations = relevantMigrations.filter(({ sql }) =>
+    /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink/i.test(
+      stripSqlComments(sql)
+    )
+  )
 
-  expect(matches.length).toBeGreaterThan(0)
-  const migrationPath = matches.at(-1)!
-  const migrationSql = readFileSync(migrationPath, "utf8")
-  const { functionBody, functionSql } = extractLatestFunctionDefinition(migrationSql)
+  expect(definitionMigrations.length).toBeGreaterThan(0)
+  const latestDefinition = definitionMigrations.at(-1)!
+  const migrationSql = relevantMigrations.map(({ sql }) => sql).join("\n")
+  const { functionBody, functionSql } = extractLatestFunctionDefinition(latestDefinition.sql)
 
   return {
     migrationSql,
-    migrationPath: path.relative(process.cwd(), migrationPath),
+    migrationPath: path.relative(process.cwd(), latestDefinition.file),
     normalizedBody: normalizeSql(functionBody),
     normalizedFunction: normalizeSql(functionSql),
     normalizedMigration: normalizeSql(migrationSql),
@@ -146,23 +183,26 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
       /v_don_vi\s+TEXT\s*:=\s*current_setting\('request\.jwt\.claims', true\)::json->>'don_vi'/i
     )
     const roleGuard = normalizedFunction.match(
-      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+RAISE EXCEPTION\s+'Missing role claim'[\s\S]*?END IF;/i
+      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+RAISE EXCEPTION\s+'Missing role claim'\s+USING\s+errcode\s*=\s*'42501'\s*;\s*END IF;/i
     )
     const userIdGuard = normalizedFunction.match(
-      /IF\s+v_user_id\s+IS NULL\s+THEN\s+RAISE EXCEPTION\s+'Missing user_id claim'[\s\S]*?END IF;/i
+      /IF\s+v_user_id\s+IS NULL\s+THEN\s+RAISE EXCEPTION\s+'Missing user_id claim'\s+USING\s+errcode\s*=\s*'42501'\s*;\s*END IF;/i
     )
     const authorizationGuard = normalizedFunction.match(
-      /IF\s+v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i
+      /IF\s+v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)\s+THEN\s+RAISE EXCEPTION[^;]*\s+USING\s+errcode\s*=\s*'42501'\s*;\s*END IF;/i
     )
     const effectiveTenantBinding = normalizedFunction.match(
       /IF\s+(?:v_role\s*=\s*'to_qltb'|v_role\s+NOT IN\s*\('global',\s*'admin'\))\s+THEN\s+p_don_vi\s*:=\s*NULLIF\(v_don_vi,\s*''\)::BIGINT\s*;[\s\S]*?END IF;/i
     )
     const effectiveTenantRequired = normalizedFunction.match(
-      /IF\s+p_don_vi\s+IS NULL\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i
+      /IF\s+p_don_vi\s+IS NULL\s+THEN\s+RAISE EXCEPTION[^;]*\s+USING\s+errcode\s*=\s*'42501'\s*;\s*END IF;/i
     )
     const categoryGuard = normalizedFunction.match(
-      /IF\s+NOT\s+EXISTS\s*\(\s*SELECT[\s\S]*?FROM public\.nhom_thiet_bi(?:\s+(?:AS\s+)?[a-z_][a-z0-9_]*)?\s+WHERE[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*p_nhom_id[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?don_vi_id\s*=\s*p_don_vi[\s\S]*?\)\s+THEN\s+RAISE EXCEPTION\s+'[^']*(?:category|nhóm)[^']*'[\s\S]*?END IF;/i
+      /IF\s+NOT\s+EXISTS\s*\(\s*SELECT[\s\S]*?FROM public\.nhom_thiet_bi(?:\s+(?:AS\s+)?[a-z_][a-z0-9_]*)?\s+WHERE[\s\S]*?\)\s+THEN\s+RAISE EXCEPTION\s+'[^']*(?:category|nhóm)[^']*'\s+USING\s+errcode\s*=\s*'42501'\s*;\s*END IF;/i
     )
+    const categoryWhereClause = categoryGuard?.[0].match(
+      /\bWHERE\b([\s\S]*?)\)\s+THEN\s+RAISE EXCEPTION/i
+    )?.[1]
 
     expect(mutationIndex).toBeGreaterThan(-1)
     expect(appRoleClaim).not.toBeNull()
@@ -174,6 +214,8 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     expect(authorizationGuard).not.toBeNull()
     expect(effectiveTenantBinding).not.toBeNull()
     expect(effectiveTenantRequired).not.toBeNull()
+    expect(categoryGuard).not.toBeNull()
+    expect(categoryWhereClause).toBeDefined()
     expect(appRoleClaim!.index).toBeLessThan(fallbackRoleClaim!.index!)
     expect(fallbackRoleClaim!.index).toBeLessThan(roleGuard!.index!)
     expect(roleGuard!.index).toBeLessThan(authorizationGuard!.index!)
@@ -182,14 +224,27 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     expect(authorizationGuard!.index).toBeLessThan(mutationIndex)
     expect(tenantClaim!.index).toBeLessThan(effectiveTenantBinding!.index!)
     expect(effectiveTenantBinding!.index).toBeLessThan(effectiveTenantRequired!.index!)
-    expect(effectiveTenantRequired!.index).toBeLessThan(mutationIndex)
-    expect(categoryGuard).not.toBeNull()
+    for (const sessionStep of [
+      roleGuard,
+      userIdGuard,
+      authorizationGuard,
+      effectiveTenantBinding,
+      effectiveTenantRequired,
+    ]) {
+      expect(sessionStep!.index).toBeLessThan(categoryGuard!.index!)
+    }
     expect(categoryGuard!.index).toBeLessThan(mutationIndex)
+    expectConjunctivePredicates(categoryWhereClause!, [
+      /(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*p_nhom_id/i,
+      /(?:[a-z_][a-z0-9_]*\.)?don_vi_id\s*=\s*p_don_vi/i,
+    ])
   })
 
   it("rejects cross-tenant categories but returns zero for tenant-scoped equipment misses", () => {
     const { normalizedBody } = readLatestUnlinkMigration()
     const { statement } = readAffectedMutationStatement(normalizedBody)
+    const statementIndex = normalizedBody.indexOf(statement)
+    const preMutationBody = normalizedBody.slice(0, statementIndex)
     const updateStatements = statement.match(/UPDATE public\.thiet_bi\b/gi) ?? []
     const updateClause = statement.match(
       /UPDATE public\.thiet_bi\b[\s\S]*?RETURNING\s+(?:[a-z_][a-z0-9_]*\.)?id/i
@@ -204,10 +259,16 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     expect(updateClause![0]).toMatch(/\bSET\s+(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*NULL/i)
     const whereClause = updateClause![0].match(/\bWHERE\b([\s\S]*?)\bRETURNING\b/i)?.[1]
     expect(whereClause).toBeDefined()
-    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*ANY\(p_thiet_bi_ids\)/i)
-    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?don_vi\s*=\s*p_don_vi/i)
-    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*p_nhom_id/i)
+    expectConjunctivePredicates(whereClause!, [
+      /(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*ANY\(p_thiet_bi_ids\)/i,
+      /(?:[a-z_][a-z0-9_]*\.)?don_vi\s*=\s*p_don_vi/i,
+      /(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*p_nhom_id/i,
+    ])
     expect(exceptionMessages.some((message) => /category|nhóm/i.test(message))).toBe(true)
+    expect(preMutationBody).not.toMatch(/\bFROM\s+(?:public\.)?thiet_bi\b/i)
+    expect(preMutationBody).not.toMatch(
+      /RAISE EXCEPTION\s+'[^']*(?:equipment|thiết bị|thiet bi)[^']*'/i
+    )
     expect(normalizedBody.slice(normalizedBody.indexOf(statement) + statement.length)).not.toMatch(
       /RAISE EXCEPTION/i
     )
@@ -235,6 +296,10 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     )
 
     expect(auditStatements).toHaveLength(1)
+    expect(getDataMutationOperations(normalizedBody)).toEqual([
+      "UPDATE public.thiet_bi",
+      "INSERT INTO public.thiet_bi_nhom_audit_log",
+    ])
     expect(auditIndex).toBeGreaterThan(statement.search(/UPDATE public\.thiet_bi\b/i))
     expect(returnedIdsComeFromConstrainedUpdate).not.toBeNull()
     expect(auditUsesAffectedProvenance).toBe(true)
@@ -244,22 +309,32 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
 
   it("preserves security definer and exposes only the hardened authenticated overload", () => {
     const { migrationSql, normalizedFunction, normalizedMigration } = readLatestUnlinkMigration()
-    const revokeStatements =
-      normalizedMigration
-        .match(
-          /REVOKE ALL ON FUNCTION public\.dinh_muc_thiet_bi_unlink\(BIGINT\[\], BIGINT, BIGINT\)[^;]*;/gi
-        )
-        ?.join(" ") ?? ""
-    const grantStatements =
-      normalizedMigration.match(
-        /GRANT EXECUTE ON FUNCTION public\.dinh_muc_thiet_bi_unlink\(BIGINT\[\], BIGINT, BIGINT\)[^;]*;/gi
-      ) ?? []
+    const privilegeActions = getUnlinkPrivilegeActions(normalizedMigration)
+    const hardenedDefinitions = Array.from(
+      normalizedMigration.matchAll(
+        /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink\s*\(\s*p_thiet_bi_ids BIGINT\[\],\s*p_nhom_id BIGINT,\s*p_don_vi BIGINT DEFAULT NULL\s*\)/gi
+      )
+    )
+    const latestDefinitionIndex = hardenedDefinitions.at(-1)?.index ?? -1
+    const finalActionFor = (role: string) =>
+      privilegeActions.filter((action) => action.roles.includes(role)).at(-1)
+    const publicAction = finalActionFor("public")
+    const anonAction = finalActionFor("anon")
+    const authenticatedAction = finalActionFor("authenticated")
+    const grantedRolesAfterLatestDefinition = privilegeActions
+      .filter((action) => action.action === "GRANT" && action.index > latestDefinitionIndex)
+      .flatMap((action) => action.roles)
 
     expect(normalizedFunction).toContain("SECURITY DEFINER")
     expect(normalizedFunction).toContain("SET search_path = public, pg_temp")
-    expect(revokeStatements).toMatch(/\bPUBLIC\b/i)
-    expect(revokeStatements).toMatch(/\banon\b/i)
-    expect(grantStatements).toEqual([expect.stringMatching(/\bTO authenticated\s*;/i)])
+    expect(latestDefinitionIndex).toBeGreaterThan(-1)
+    expect(publicAction).toMatchObject({ action: "REVOKE" })
+    expect(anonAction).toMatchObject({ action: "REVOKE" })
+    expect(authenticatedAction).toMatchObject({ action: "GRANT" })
+    expect(publicAction!.index).toBeGreaterThan(latestDefinitionIndex)
+    expect(anonAction!.index).toBeGreaterThan(latestDefinitionIndex)
+    expect(authenticatedAction!.index).toBeGreaterThan(latestDefinitionIndex)
+    expect([...new Set(grantedRolesAfterLatestDefinition)]).toEqual(["authenticated"])
     expect(normalizedMigration).toMatch(
       /REVOKE (?:ALL|EXECUTE) ON FUNCTION public\.dinh_muc_thiet_bi_unlink\(BIGINT\[\], BIGINT\)[^;]*authenticated[^;]*;/i
     )
