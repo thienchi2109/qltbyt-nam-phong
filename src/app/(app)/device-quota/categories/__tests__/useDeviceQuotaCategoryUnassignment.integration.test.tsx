@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from "@testing-library/react"
-import { useQuery } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { EquipmentPreviewItem } from "@/app/(app)/device-quota/_components/mapping-preview/MappingPreviewPrimitives"
+import { useDeviceQuotaManualMappingEquipment } from "@/app/(app)/device-quota/_hooks/useDeviceQuotaManualMappingEquipment"
 import { callRpc } from "@/lib/rpc-client"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import { deviceQuotaCategoryAssignedEquipmentQueryKey } from "../_queries/deviceQuotaCategoryAssignedEquipmentQuery"
@@ -11,7 +11,6 @@ import {
   ASSIGNED_KEY,
   equipment,
   seedVisibleCaches,
-  UNASSIGNED_KEY,
 } from "./DeviceQuotaCategoryUnassignmentTestSupport"
 
 const mockToast = vi.fn()
@@ -52,34 +51,67 @@ describe("useDeviceQuotaCategoryUnassignment integration", () => {
   it("refetches an inactive stale query when its consuming surface later mounts", async () => {
     const queryClient = createTestQueryClient()
     seedVisibleCaches(queryClient)
-    mockCallRpc.mockResolvedValueOnce(1).mockResolvedValueOnce([equipment])
-
-    await runUnassignment(queryClient)
-
-    expect(queryClient.getQueryState(UNASSIGNED_KEY)?.isInvalidated).toBe(true)
-    expect(mockCallRpc).toHaveBeenCalledTimes(1)
-
-    const rendered = renderHook(
-      () =>
-        useQuery({
-          queryKey: UNASSIGNED_KEY,
-          queryFn: () =>
-            callRpc<EquipmentPreviewItem[]>({
-              fn: "dinh_muc_thiet_bi_unassigned",
-              args: { p_don_vi: 7 },
-            }),
-          staleTime: Infinity,
-        }),
-      { wrapper: createReactQueryWrapper(queryClient) }
-    )
+    const equipmentQueryKey = [
+      "dinh_muc_thiet_bi_unassigned",
+      {
+        donViId: 7,
+        search: "",
+        departments: [],
+        users: [],
+        locations: [],
+        fundingSources: [],
+        page: 1,
+        pageSize: 20,
+      },
+    ] as const
+    mockCallRpc.mockImplementation(({ fn }) => {
+      if (fn === "dinh_muc_thiet_bi_unlink") return Promise.resolve(1)
+      if (fn === "dinh_muc_thiet_bi_unassigned_filter_options") {
+        return Promise.resolve({
+          departments: [],
+          users: [],
+          locations: [],
+          fundingSources: [],
+        })
+      }
+      if (fn === "dinh_muc_thiet_bi_unassigned") {
+        return Promise.resolve([{ ...equipment, total_count: 1 }])
+      }
+      return Promise.resolve([])
+    })
+    const wrapper = createReactQueryWrapper(queryClient)
+    const firstConsumer = renderHook(() => useDeviceQuotaManualMappingEquipment({ donViId: 7 }), {
+      wrapper,
+    })
 
     await waitFor(() => {
-      expect(rendered.result.current.data).toEqual([equipment])
+      expect(firstConsumer.result.current.unassignedEquipment).toEqual([equipment])
     })
-    expect(queryClient.getQueryState(UNASSIGNED_KEY)?.isInvalidated).toBe(false)
     expect(
       mockCallRpc.mock.calls.filter(([request]) => request.fn === "dinh_muc_thiet_bi_unassigned")
     ).toHaveLength(1)
-    expect(mockCallRpc).toHaveBeenCalledTimes(2)
+    firstConsumer.unmount()
+
+    await runUnassignment(queryClient)
+
+    expect(queryClient.getQueryState(equipmentQueryKey)?.isInvalidated).toBe(true)
+    expect(
+      mockCallRpc.mock.calls.filter(([request]) => request.fn === "dinh_muc_thiet_bi_unassigned")
+    ).toHaveLength(1)
+    expect(
+      mockCallRpc.mock.calls.filter(([request]) => request.fn === "dinh_muc_thiet_bi_unlink")
+    ).toHaveLength(1)
+
+    const secondConsumer = renderHook(() => useDeviceQuotaManualMappingEquipment({ donViId: 7 }), {
+      wrapper,
+    })
+
+    await waitFor(() => {
+      expect(secondConsumer.result.current.unassignedEquipment).toEqual([equipment])
+      expect(
+        mockCallRpc.mock.calls.filter(([request]) => request.fn === "dinh_muc_thiet_bi_unassigned")
+      ).toHaveLength(2)
+    })
+    expect(queryClient.getQueryState(equipmentQueryKey)?.isInvalidated).toBe(false)
   })
 })

@@ -54,7 +54,7 @@ const categories: CategoryListItem[] = [
     don_vi_tinh: null,
     thu_tu_hien_thi: 1,
     level: 1,
-    so_luong_hien_co: 2,
+    so_luong_hien_co: 1,
     so_luong_toi_da: 10,
     so_luong_toi_thieu: 1,
     mo_ta: null,
@@ -63,11 +63,25 @@ const categories: CategoryListItem[] = [
     id: 2,
     parent_id: 1,
     ma_nhom: "G1.1",
+    ten_nhom: "Nhóm máy chẩn đoán",
+    phan_loai: "A",
+    don_vi_tinh: null,
+    thu_tu_hien_thi: 2,
+    level: 2,
+    so_luong_hien_co: 2,
+    so_luong_toi_da: 6,
+    so_luong_toi_thieu: 1,
+    mo_ta: null,
+  },
+  {
+    id: 3,
+    parent_id: 2,
+    ma_nhom: "G1.1.1",
     ten_nhom: "Máy X quang",
     phan_loai: "A",
     don_vi_tinh: "Cái",
-    thu_tu_hien_thi: 2,
-    level: 2,
+    thu_tu_hien_thi: 3,
+    level: 3,
     so_luong_hien_co: 1,
     so_luong_toi_da: 4,
     so_luong_toi_thieu: 1,
@@ -174,7 +188,7 @@ describe("DeviceQuotaCategoriesPage unassignment integration", () => {
       "dinh_muc_nhom_list",
       { donViId: 1 },
     ])
-    expect(cachedCategories?.find((category) => category.id === 2)).toMatchObject({
+    expect(cachedCategories?.find((category) => category.id === 3)).toMatchObject({
       so_luong_hien_co: 0,
       so_luong_toi_thieu: 1,
     })
@@ -203,27 +217,28 @@ describe("DeviceQuotaCategoriesPage unassignment integration", () => {
     const navigationPane = screen.getByTestId("device-quota-category-nav-pane")
     await user.click(
       within(navigationPane).getByRole("button", {
-        name: /^Chọn danh mục G1: Nhóm chẩn đoán hình ảnh\b/,
+        name: /^Chọn danh mục G1\.1: Nhóm máy chẩn đoán\b/,
       })
     )
 
     const detailPane = screen.getByTestId("device-quota-category-detail-pane")
     expect(await within(detailPane).findByText("TB-PARENT")).toBeInTheDocument()
-    expect(within(detailPane).getByText("3/14")).toBeInTheDocument()
+    expect(within(detailPane).getByText("3/10")).toBeInTheDocument()
 
     await confirmVisibleUnassignment()
 
     await waitFor(() => {
       expect(within(detailPane).queryByText("TB-PARENT")).not.toBeInTheDocument()
-      expect(within(detailPane).getByText("2/14")).toBeInTheDocument()
+      expect(within(detailPane).getByText("2/10")).toBeInTheDocument()
     })
 
     const cachedCategories = queryClient.getQueryData<CategoryListItem[]>([
       "dinh_muc_nhom_list",
       { donViId: 1 },
     ])
+    expect(cachedCategories?.find((category) => category.id === 2)?.so_luong_hien_co).toBe(1)
     expect(cachedCategories?.find((category) => category.id === 1)?.so_luong_hien_co).toBe(1)
-    expect(buildAggregatedCounts(cachedCategories ?? []).get(1)).toBe(2)
+    expect(buildAggregatedCounts(cachedCategories ?? []).get(1)).toBe(3)
     expect(getRpcCalls("dinh_muc_thiet_bi_unlink")).toHaveLength(1)
     expect(getRpcCalls("dinh_muc_nhom_list")).toHaveLength(1)
     expect(getRpcCalls("dinh_muc_thiet_bi_by_nhom")).toHaveLength(2)
