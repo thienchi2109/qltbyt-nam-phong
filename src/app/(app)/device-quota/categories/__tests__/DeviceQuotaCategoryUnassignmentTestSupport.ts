@@ -131,6 +131,12 @@ const siblingCategory: CategoryListItem = {
 }
 Object.freeze(siblingCategory)
 
+const zeroCountCategory: CategoryListItem = {
+  ...category,
+  so_luong_hien_co: 0,
+}
+Object.freeze(zeroCountCategory)
+
 export function seedVisibleCaches(queryClient: QueryClient) {
   const otherTenantCategory = { ...category, so_luong_hien_co: 99 }
   Object.freeze(otherTenantCategory)
@@ -142,7 +148,7 @@ export function seedVisibleCaches(queryClient: QueryClient) {
   )
   queryClient.setQueryData(
     FILTERED_CATEGORY_LIST_KEY,
-    Object.freeze([parentCategory, category, siblingCategory])
+    Object.freeze([parentCategory, zeroCountCategory, siblingCategory])
   )
   queryClient.setQueryData(OTHER_TENANT_CATEGORY_LIST_KEY, Object.freeze([otherTenantCategory]))
   queryClient.setQueryData(UNASSIGNED_KEY, Object.freeze([unassignedEquipment]))

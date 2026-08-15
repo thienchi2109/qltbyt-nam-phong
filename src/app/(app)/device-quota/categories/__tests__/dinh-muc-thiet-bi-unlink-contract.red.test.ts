@@ -81,6 +81,21 @@ function extractLatestFunctionDefinition(source: string) {
   }
 }
 
+function readAffectedMutationStatement(normalizedBody: string) {
+  const statementStart = normalizedBody.match(
+    /WITH\s+([a-z_][a-z0-9_]*)\s+AS\s*\(\s*UPDATE public\.thiet_bi\b/i
+  )
+  expect(statementStart).not.toBeNull()
+
+  const statementEnd = normalizedBody.indexOf(";", statementStart!.index)
+  expect(statementEnd).toBeGreaterThan(statementStart!.index!)
+
+  return {
+    affectedCte: statementStart![1],
+    statement: normalizedBody.slice(statementStart!.index, statementEnd + 1),
+  }
+}
+
 function readLatestUnlinkMigration() {
   const migrationsDir = path.resolve(process.cwd(), "supabase/migrations")
   const matches = findMigrationFiles(migrationsDir)
@@ -118,16 +133,26 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
   it("runs claim, role, and category guards before the equipment mutation", () => {
     const { normalizedFunction } = readLatestUnlinkMigration()
     const mutationIndex = normalizedFunction.search(/UPDATE public\.thiet_bi\b/i)
-    const failClosedGuards = [
-      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+RAISE EXCEPTION\s+'Missing role claim'[\s\S]*?END IF;/i,
-      /IF\s+v_user_id\s+IS NULL\s+THEN\s+RAISE EXCEPTION\s+'Missing user_id claim'[\s\S]*?END IF;/i,
-      /IF\s+v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i,
-    ]
-    const normalizedUserIdClaim = normalizedFunction.match(
-      /v_user_id[\s\S]*?NULLIF\(current_setting\('request\.jwt\.claims', true\)::json->>'user_id', ''\)/i
+    const appRoleClaim = normalizedFunction.match(
+      /v_role\s+TEXT\s*:=\s*current_setting\('request\.jwt\.claims', true\)::json->>'app_role'/i
+    )
+    const fallbackRoleClaim = normalizedFunction.match(
+      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+v_role\s*:=\s*current_setting\('request\.jwt\.claims', true\)::json->>'role'\s*;[\s\S]*?END IF;/i
+    )
+    const userIdClaim = normalizedFunction.match(
+      /v_user_id\s+TEXT\s*:=\s*NULLIF\(current_setting\('request\.jwt\.claims', true\)::json->>'user_id', ''\)/i
     )
     const tenantClaim = normalizedFunction.match(
-      /v_don_vi[\s\S]*?current_setting\('request\.jwt\.claims', true\)::json->>'don_vi'/i
+      /v_don_vi\s+TEXT\s*:=\s*current_setting\('request\.jwt\.claims', true\)::json->>'don_vi'/i
+    )
+    const roleGuard = normalizedFunction.match(
+      /IF\s+v_role\s+IS NULL\s+OR\s+v_role\s*=\s*''\s+THEN\s+RAISE EXCEPTION\s+'Missing role claim'[\s\S]*?END IF;/i
+    )
+    const userIdGuard = normalizedFunction.match(
+      /IF\s+v_user_id\s+IS NULL\s+THEN\s+RAISE EXCEPTION\s+'Missing user_id claim'[\s\S]*?END IF;/i
+    )
+    const authorizationGuard = normalizedFunction.match(
+      /IF\s+v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)\s+THEN\s+RAISE EXCEPTION[\s\S]*?END IF;/i
     )
     const effectiveTenantBinding = normalizedFunction.match(
       /IF\s+(?:v_role\s*=\s*'to_qltb'|v_role\s+NOT IN\s*\('global',\s*'admin'\))\s+THEN\s+p_don_vi\s*:=\s*NULLIF\(v_don_vi,\s*''\)::BIGINT\s*;[\s\S]*?END IF;/i
@@ -140,72 +165,80 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     )
 
     expect(mutationIndex).toBeGreaterThan(-1)
-    for (const guard of failClosedGuards) {
-      const matchedGuard = normalizedFunction.match(guard)
-      expect(matchedGuard).not.toBeNull()
-      expect(matchedGuard!.index).toBeLessThan(mutationIndex)
-    }
-    expect(normalizedUserIdClaim).not.toBeNull()
+    expect(appRoleClaim).not.toBeNull()
+    expect(fallbackRoleClaim).not.toBeNull()
+    expect(userIdClaim).not.toBeNull()
     expect(tenantClaim).not.toBeNull()
+    expect(roleGuard).not.toBeNull()
+    expect(userIdGuard).not.toBeNull()
+    expect(authorizationGuard).not.toBeNull()
     expect(effectiveTenantBinding).not.toBeNull()
     expect(effectiveTenantRequired).not.toBeNull()
+    expect(appRoleClaim!.index).toBeLessThan(fallbackRoleClaim!.index!)
+    expect(fallbackRoleClaim!.index).toBeLessThan(roleGuard!.index!)
+    expect(roleGuard!.index).toBeLessThan(authorizationGuard!.index!)
+    expect(userIdClaim!.index).toBeLessThan(userIdGuard!.index!)
+    expect(userIdGuard!.index).toBeLessThan(mutationIndex)
+    expect(authorizationGuard!.index).toBeLessThan(mutationIndex)
+    expect(tenantClaim!.index).toBeLessThan(effectiveTenantBinding!.index!)
     expect(effectiveTenantBinding!.index).toBeLessThan(effectiveTenantRequired!.index!)
     expect(effectiveTenantRequired!.index).toBeLessThan(mutationIndex)
     expect(categoryGuard).not.toBeNull()
     expect(categoryGuard!.index).toBeLessThan(mutationIndex)
   })
 
-  it("uses one tenant- and expected-category-scoped update with distinct scope failures", () => {
+  it("rejects cross-tenant categories but returns zero for tenant-scoped equipment misses", () => {
     const { normalizedBody } = readLatestUnlinkMigration()
-    const updateStatements = normalizedBody.match(/UPDATE public\.thiet_bi\b[\s\S]*?;/gi) ?? []
+    const { statement } = readAffectedMutationStatement(normalizedBody)
+    const updateStatements = statement.match(/UPDATE public\.thiet_bi\b/gi) ?? []
+    const updateClause = statement.match(
+      /UPDATE public\.thiet_bi\b[\s\S]*?RETURNING\s+(?:[a-z_][a-z0-9_]*\.)?id/i
+    )
     const exceptionMessages = Array.from(
       normalizedBody.matchAll(/RAISE EXCEPTION\s+'([^']+)'/gi),
       (match) => match[1]
     )
 
     expect(updateStatements).toHaveLength(1)
-    expect(updateStatements[0]).toMatch(
-      /\bSET\s+(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*NULL/i
-    )
-    const whereClause = updateStatements[0].match(/\bWHERE\b([\s\S]*?)\bRETURNING\b/i)?.[1]
+    expect(updateClause).not.toBeNull()
+    expect(updateClause![0]).toMatch(/\bSET\s+(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*NULL/i)
+    const whereClause = updateClause![0].match(/\bWHERE\b([\s\S]*?)\bRETURNING\b/i)?.[1]
     expect(whereClause).toBeDefined()
     expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*ANY\(p_thiet_bi_ids\)/i)
     expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?don_vi\s*=\s*p_don_vi/i)
     expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*p_nhom_id/i)
     expect(exceptionMessages.some((message) => /category|nhóm/i.test(message))).toBe(true)
-    expect(exceptionMessages.some((message) => /equipment|thiết bị/i.test(message))).toBe(true)
+    expect(normalizedBody.slice(normalizedBody.indexOf(statement) + statement.length)).not.toMatch(
+      /RAISE EXCEPTION/i
+    )
+    expect(normalizedBody).toContain("RETURN v_affected_count")
   })
 
   it("audits IDs returned by the constrained update and returns their affected count", () => {
-    const { normalizedFunction } = readLatestUnlinkMigration()
-    const updateCte = normalizedFunction.match(
-      /WITH\s+([a-z_][a-z0-9_]*)\s+AS\s*\(\s*UPDATE public\.thiet_bi\b[\s\S]*?RETURNING\s+(?:[a-z_][a-z0-9_]*\.)?id\s*\)/i
-    )
-
-    expect(updateCte).not.toBeNull()
-    const affectedCte = updateCte![1]
-    const auditIndex = normalizedFunction.search(/INSERT INTO public\.thiet_bi_nhom_audit_log/i)
-    const auditSql = normalizedFunction.slice(auditIndex)
+    const { normalizedBody, normalizedFunction } = readLatestUnlinkMigration()
+    const { affectedCte, statement } = readAffectedMutationStatement(normalizedBody)
+    const auditStatements = statement.match(/INSERT INTO public\.thiet_bi_nhom_audit_log\b/gi) ?? []
+    const auditIndex = statement.search(/INSERT INTO public\.thiet_bi_nhom_audit_log/i)
     const auditUsesAffectedProvenance = new RegExp(
       `INSERT INTO public\\.thiet_bi_nhom_audit_log\\s*\\(\\s*don_vi_id\\s*,\\s*thiet_bi_ids\\s*,\\s*nhom_thiet_bi_id\\s*,\\s*action\\s*,\\s*performed_by\\s*,\\s*performed_at\\s*,\\s*metadata\\s*\\)\\s*SELECT\\s+p_don_vi\\s*,\\s*ARRAY_AGG\\(\\s*(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)\\s*,\\s*p_nhom_id\\s*,\\s*'unlink'\\s*,\\s*v_user_id(?:::BIGINT)?\\s*,\\s*(?:NOW\\(\\)|CURRENT_TIMESTAMP)\\s*,\\s*jsonb_build_object\\([\\s\\S]*?'previous_nhom_id'\\s*,\\s*p_nhom_id[\\s\\S]*?\\)\\s+FROM\\s+${affectedCte}\\b(?:\\s+(?:AS\\s+)?[a-z_][a-z0-9_]*)?\\s+HAVING\\s+COUNT\\(\\s*\\*\\s*\\)\\s*>\\s*0`,
       "i"
-    ).test(normalizedFunction)
+    ).test(statement)
     const countUsesAffectedIds = new RegExp(
       `SELECT\\s+COUNT\\(\\s*(?:\\*|(?:[a-z_][a-z0-9_]*\\.)?id)\\s*\\)(?:::[a-z_][a-z0-9_]*)?\\s+INTO\\s+v_affected_count\\s+FROM\\s+${affectedCte}\\b`,
       "i"
-    ).test(normalizedFunction)
-    const returnedIdsComeFromConstrainedUpdate = normalizedFunction.match(
+    ).test(statement)
+    const returnedIdsComeFromConstrainedUpdate = statement.match(
       new RegExp(
         `WITH\\s+${affectedCte}\\s+AS\\s*\\(\\s*UPDATE public\\.thiet_bi\\b[\\s\\S]*?\\bWHERE\\b[\\s\\S]*?nhom_thiet_bi_id\\s*=\\s*p_nhom_id[\\s\\S]*?RETURNING\\s+(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)`,
         "i"
       )
     )
 
-    expect(auditIndex).toBeGreaterThan(updateCte!.index!)
+    expect(auditStatements).toHaveLength(1)
+    expect(auditIndex).toBeGreaterThan(statement.search(/UPDATE public\.thiet_bi\b/i))
     expect(returnedIdsComeFromConstrainedUpdate).not.toBeNull()
     expect(auditUsesAffectedProvenance).toBe(true)
     expect(countUsesAffectedIds).toBe(true)
-    expect(auditSql).not.toMatch(/\bthiet_bi_ids\s*,[\s\S]*?p_thiet_bi_ids/i)
     expect(normalizedFunction).toContain("RETURN v_affected_count")
   })
 

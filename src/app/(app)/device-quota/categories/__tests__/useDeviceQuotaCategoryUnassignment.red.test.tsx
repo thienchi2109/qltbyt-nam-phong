@@ -6,6 +6,7 @@ import { callRpc } from "@/lib/rpc-client"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import type { CategoryListItem } from "../_types/categories"
 import {
+  expectTenantScopedCancellations,
   runUnassignment,
   useUnassignmentUnderTest,
 } from "./DeviceQuotaCategoryUnassignmentHookHarness"
@@ -131,7 +132,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
         })
       )
     }
-    expect(cancelQueries.mock.calls.some(([filters]) => filters.exact === true)).toBe(false)
+    expectTenantScopedCancellations(cancelQueries.mock.calls)
     const cacheWriteOrders = [
       ...setQueryData.mock.invocationCallOrder,
       ...setQueriesData.mock.invocationCallOrder,
@@ -142,17 +143,19 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     const assignedAfter = queryClient.getQueryData<EquipmentPreviewItem[]>(ASSIGNED_KEY)!
     expect(assignedAfter).not.toBe(assignedBefore)
     expect(assignedAfter).toEqual([])
-    for (const [queryKey, before] of [
-      [CATEGORY_LIST_KEY, primaryCategoriesBefore],
-      [FILTERED_CATEGORY_LIST_KEY, filteredCategoriesBefore],
+    for (const [queryKey, before, expectedBefore, expectedAfter] of [
+      [CATEGORY_LIST_KEY, primaryCategoriesBefore, 3, 2],
+      [FILTERED_CATEGORY_LIST_KEY, filteredCategoriesBefore, 0, 0],
     ] as const) {
       const after = queryClient.getQueryData<CategoryListItem[]>(queryKey)!
-      expect(after).not.toBe(before)
+      if (expectedBefore !== expectedAfter) {
+        expect(after).not.toBe(before)
+        expect(after[1]).not.toBe(before[1])
+      }
       expect(after[0]).toBe(before[0])
-      expect(after[1]).not.toBe(before[1])
-      expect(after[1]).toMatchObject({ id: 5, so_luong_hien_co: 2 })
+      expect(after[1]).toMatchObject({ id: 5, so_luong_hien_co: expectedAfter })
       expect(after[2]).toBe(before[2])
-      expect(before[1]).toMatchObject({ id: 5, so_luong_hien_co: 3 })
+      expect(before[1]).toMatchObject({ id: 5, so_luong_hien_co: expectedBefore })
     }
     expect(queryClient.getQueryData(OTHER_TENANT_CATEGORY_LIST_KEY)).toBe(
       otherTenantCategoriesBefore
@@ -163,7 +166,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
     }
     expect(
       queryClient.getQueryData<CategoryListItem[]>(FILTERED_CATEGORY_LIST_KEY)?.[1]
-    ).toMatchObject({ id: 5, so_luong_hien_co: 2 })
+    ).toMatchObject({ id: 5, so_luong_hien_co: 0 })
     for (const queryKey of AFFECTED_SEEDED_QUERY_KEYS) {
       expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(true)
     }
@@ -245,7 +248,7 @@ describe("useDeviceQuotaCategoryUnassignment RED contract", () => {
         })
       )
     }
-    expect(cancelQueries.mock.calls.some(([filters]) => filters.exact === true)).toBe(false)
+    expectTenantScopedCancellations(cancelQueries.mock.calls)
     expect(Math.max(...cancelQueries.mock.invocationCallOrder)).toBeLessThan(
       Math.min(...setQueryData.mock.invocationCallOrder)
     )

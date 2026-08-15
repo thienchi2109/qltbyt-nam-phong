@@ -1,5 +1,6 @@
 import { type QueryClient, type UseMutationResult } from "@tanstack/react-query"
 import { act, renderHook } from "@testing-library/react"
+import { expect } from "vitest"
 
 import { createReactQueryWrapper } from "@/test-utils/react-query"
 import * as categoryAssignmentHooks from "../_hooks/useDeviceQuotaCategoryAssignment"
@@ -35,4 +36,15 @@ export async function runUnassignment(queryClient: QueryClient) {
   })
 
   return rendered
+}
+
+export function expectTenantScopedCancellations(calls: ReadonlyArray<readonly unknown[]>) {
+  for (const [candidate] of calls) {
+    const filters = candidate as {
+      exact?: boolean
+      queryKey?: readonly unknown[]
+    }
+    expect(filters.exact).not.toBe(true)
+    expect(filters.queryKey?.[1]).toMatchObject({ donViId: 7 })
+  }
 }

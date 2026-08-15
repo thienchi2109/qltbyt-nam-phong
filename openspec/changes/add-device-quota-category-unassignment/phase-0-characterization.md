@@ -82,7 +82,7 @@ The Phase 0 suites intentionally describe behavior that does not exist yet:
 - `dinh-muc-thiet-bi-unlink-contract.red.test.ts`
   - hardened three-argument signature and expected-category predicate;
   - direct-RPC role rejection and fail-closed JWT claims;
-  - distinct category/equipment tenant failures;
+  - cross-tenant category rejection and tenant-scoped equipment zero-row behavior;
   - safe search path, audit, grants, and unsafe-overload removal.
 
 Exact failing test names and observed failure reasons are recorded after the focused
@@ -105,8 +105,8 @@ baseline/negative-control tests.
 - All five SQL/source-contract tests fail against
   `20260201_device_quota_rpc_mapping.sql`: the latest definition is still the unsafe
   two-argument overload and lacks the expected-category predicate, fail-closed claim
-  messages, distinct category/equipment checks, `pg_temp` search path, explicit
-  revokes, and old-overload removal.
+  messages, category rejection, tenant-scoped zero-row update, `pg_temp` search path,
+  explicit revokes, and old-overload removal.
 - No transform error, timeout, or unrelated regression remained after correcting the
   delayed-response test harness.
 
