@@ -190,6 +190,13 @@ When saving memories, include likely future lookup terms in `concepts`: repo nam
 - Treat `karpathy-coding-heuristics` as a supporting heuristic layer. It does not override repo-specific rules, security constraints, or stricter required skills such as `next-best-practices`, `vercel-react-best-practices`, debugging, TDD, or verification workflows.
 - When spawning a subagent to review completed implementation changes, always use the custom Codex agent `post_implementation_reviewer` without a full-history fork. Pass it the fixed point/base ref and the originating issue, specification, or acceptance criteria.
 
+### Grill Skills
+
+- `grill-with-docs` is user-invoked only. Use it when the user explicitly wants to stress-test a repo-scoped plan or design before implementation, especially when domain terms should be clarified in `CONTEXT.md` or durable trade-offs may need ADRs.
+- Load and follow both `grilling` and `domain-modeling`; investigate code and environmental facts instead of asking the user to retrieve them.
+- Use plain `grilling` when repository docs are unnecessary, and use `wayfinder` when the work is too large to settle in one agent session.
+- Do not start implementation until the decision frontier is empty and the user explicitly confirms shared understanding.
+
 ## MCP Tools
 
 **Code Search:** `mcp__filesystem-with-morph__warpgrep_codebase_search` (NEVER grep/ripgrep)

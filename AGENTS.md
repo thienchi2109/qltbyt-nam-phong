@@ -170,6 +170,13 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 - If a required skill is unavailable in the current session, state that explicitly and proceed with the closest available fallback guidance.
 - When spawning a subagent to review completed implementation changes, always use the custom agent `post_implementation_reviewer` without a full-history fork. Pass it the fixed point/base ref and the originating issue, specification, or acceptance criteria.
 
+### Grill Skills
+
+- `grill-with-docs` is user-invoked only. Use it when the user explicitly wants to stress-test a repo-scoped plan or design before implementation, especially when domain terms should be clarified in `CONTEXT.md` or durable trade-offs may need ADRs.
+- Load and follow both `grilling` and `domain-modeling`; investigate code and environmental facts instead of asking the user to retrieve them.
+- Use plain `grilling` when repository docs are unnecessary, and use `wayfinder` when the work is too large to settle in one agent session.
+- Do not start implementation until the decision frontier is empty and the user explicitly confirms shared understanding.
+
 ## AgentMemory Global Memory Convention
 
 `agentmemory` is the default long-term memory source for this repo and for global Codex workflow. Do not use Memori MCP or the markdown store under `/root/.codex/memories` for routine recall/save.
