@@ -1,11 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from "vitest"
+
+vi.mock("server-only", () => ({}))
 
 import {
   getMigrationStatusMap,
   PENDING_TOOL_NAMES,
   READ_ONLY_TOOL_DEFINITIONS_FOR_TEST,
   type MigrationStatus,
-} from '../registry'
+} from "../registry"
 
 // ---------------------------------------------------------------------------
 // The exact migration-status map that MUST hold for all read-only / RPC tools.
@@ -14,27 +16,27 @@ import {
 
 const EXPECTED_MIGRATION_MAP: Record<string, MigrationStatus> = {
   // Pass 1 — migrated in Batch 2
-  categorySuggestion: 'migrated',
-  departmentList: 'migrated',
+  categorySuggestion: "migrated",
+  departmentList: "migrated",
 
   // Pending — not yet migrated to envelope contract
-  equipmentLookup: 'pending',
-  maintenanceSummary: 'pending',
-  maintenancePlanLookup: 'pending',
-  repairSummary: 'pending',
-  usageHistory: 'pending',
-  attachmentLookup: 'pending',
-  deviceQuotaLookup: 'pending',
-  quotaComplianceSummary: 'pending',
+  equipmentLookup: "pending",
+  maintenanceSummary: "pending",
+  maintenancePlanLookup: "pending",
+  repairSummary: "pending",
+  usageHistory: "pending",
+  attachmentLookup: "pending",
+  deviceQuotaLookup: "pending",
+  quotaComplianceSummary: "pending",
 }
 
-describe('migration gate', () => {
-  it('locks the exact migrationStatus for every read-only / RPC tool', () => {
+describe("migration gate", () => {
+  it("locks the exact migrationStatus for every read-only / RPC tool", () => {
     const actual = getMigrationStatusMap()
     expect(actual).toEqual(EXPECTED_MIGRATION_MAP)
   })
 
-  it('migrationStatus map covers every registered read-only tool', () => {
+  it("migrationStatus map covers every registered read-only tool", () => {
     const map = getMigrationStatusMap()
     const toolNames = Object.keys(map).sort()
 
@@ -45,17 +47,17 @@ describe('migration gate', () => {
   it('PENDING_TOOL_NAMES matches tools with status "pending"', () => {
     const map = getMigrationStatusMap()
     const expected = Object.entries(map)
-      .filter(([, status]) => status === 'pending')
+      .filter(([, status]) => status === "pending")
       .map(([name]) => name)
       .sort()
 
     expect([...PENDING_TOOL_NAMES].sort()).toEqual(expected)
   })
 
-  it('every migrated read-only tool has a modelBudget', () => {
+  it("every migrated read-only tool has a modelBudget", () => {
     const map = getMigrationStatusMap()
     const migratedTools = Object.entries(map)
-      .filter(([, status]) => status === 'migrated')
+      .filter(([, status]) => status === "migrated")
       .map(([name]) => name)
 
     for (const toolName of migratedTools) {

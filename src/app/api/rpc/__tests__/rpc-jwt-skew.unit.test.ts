@@ -1,66 +1,66 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
 const getServerSessionMock = vi.fn()
 const jwtSignMock = vi.fn()
 const fetchMock = vi.fn()
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('jsonwebtoken', () => ({
+vi.mock("jsonwebtoken", () => ({
   default: {
     sign: (...args: unknown[]) => jwtSignMock(...args),
   },
 }))
 
-import { POST } from '../[fn]/route'
+import { POST } from "../[fn]/route"
 
 function buildRequest(body: Record<string, unknown>) {
   const encodedBody = JSON.stringify(body)
-  return new Request('http://localhost/api/rpc/ai_equipment_lookup', {
-    method: 'POST',
+  return new Request("http://localhost/api/rpc/ai_equipment_lookup", {
+    method: "POST",
     headers: {
-      'content-type': 'application/json',
-      'content-length': String(Buffer.byteLength(encodedBody)),
+      "content-type": "application/json",
+      "content-length": String(Buffer.byteLength(encodedBody)),
     },
     body: encodedBody,
   })
 }
 
-describe('RPC proxy JWT signing', () => {
+describe("RPC proxy JWT signing", () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-03-14T00:00:00.000Z'))
+    vi.setSystemTime(new Date("2026-03-14T00:00:00.000Z"))
 
-    vi.stubEnv('SUPABASE_JWT_SECRET', 'test-secret')
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
-    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key')
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-secret")
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co")
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
 
     getServerSessionMock.mockReset()
     jwtSignMock.mockReset()
     fetchMock.mockReset()
 
-    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal("fetch", fetchMock)
 
     getServerSessionMock.mockResolvedValue({
       user: {
-        id: '31',
-        role: 'to_qltb',
+        id: "31",
+        role: "to_qltb",
         don_vi: 17,
         dia_ban_id: 10,
-        khoa_phong: 'ICU',
+        khoa_phong: "ICU",
       },
     })
 
-    jwtSignMock.mockReturnValue('signed-jwt')
+    jwtSignMock.mockReturnValue("signed-jwt")
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ data: [] }), {
         status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
+        headers: { "content-type": "application/json" },
+      })
     )
   })
 
@@ -70,9 +70,9 @@ describe('RPC proxy JWT signing', () => {
     vi.unstubAllGlobals()
   })
 
-  it('backdates JWT iat slightly to tolerate small clock skew with Supabase', async () => {
-    const res = await POST(buildRequest({ query: 'SpO2' }) as never, {
-      params: Promise.resolve({ fn: 'ai_equipment_lookup' }),
+  it("backdates JWT iat slightly to tolerate small clock skew with Supabase", async () => {
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
     })
 
     expect(res.status).toBe(200)
@@ -84,17 +84,17 @@ describe('RPC proxy JWT signing', () => {
       Record<string, unknown>,
     ]
 
-    expect(secret).toBe('test-secret')
-    expect(options).toMatchObject({ algorithm: 'HS256' })
-    expect(options).not.toHaveProperty('expiresIn')
+    expect(secret).toBe("test-secret")
+    expect(options).toMatchObject({ algorithm: "HS256" })
+    expect(options).not.toHaveProperty("expiresIn")
     expect(claims).toMatchObject({
-      role: 'authenticated',
-      app_role: 'to_qltb',
-      don_vi: '17',
-      user_id: '31',
-      dia_ban: '10',
-      khoa_phong: 'ICU',
-      sub: '31',
+      role: "authenticated",
+      app_role: "to_qltb",
+      don_vi: "17",
+      user_id: "31",
+      dia_ban: "10",
+      khoa_phong: "ICU",
+      sub: "31",
     })
     const now = Math.floor(Date.now() / 1000)
     expect(claims.iat).toBe(now - 60)
@@ -102,32 +102,33 @@ describe('RPC proxy JWT signing', () => {
     expect(claims.exp).toBe(now + 120)
   })
 
-  it('rejects sessions without an app role before signing a Supabase JWT', async () => {
+  it("rejects sessions without a role claim before signing a Supabase JWT", async () => {
     getServerSessionMock.mockResolvedValue({
       user: {
-        id: '31',
-        role: '',
+        id: "31",
         don_vi: 17,
+        dia_ban_id: 10,
+        khoa_phong: "ICU",
       },
     })
 
-    const res = await POST(buildRequest({ query: 'SpO2' }) as never, {
-      params: Promise.resolve({ fn: 'ai_equipment_lookup' }),
+    const res = await POST(buildRequest({ query: "SpO2" }) as never, {
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
     })
 
-    expect(res.status).toBe(500)
+    expect(res.status).toBe(400)
     await expect(res.json()).resolves.toEqual({
-      error: 'Cannot mint Supabase RPC JWT without app_role',
+      error: "Invalid session claims",
     })
     expect(jwtSignMock).not.toHaveBeenCalled()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('preserves explicit zero-valued session claims when proxying RPC requests', async () => {
+  it("preserves explicit zero-valued session claims when proxying RPC requests", async () => {
     getServerSessionMock.mockResolvedValue({
       user: {
         id: 0,
-        role: 'to_qltb',
+        role: "to_qltb",
         don_vi: 0,
         dia_ban_id: 0,
         khoa_phong: 0,
@@ -135,18 +136,18 @@ describe('RPC proxy JWT signing', () => {
     })
 
     const res = await POST(buildRequest({ p_don_vi: 999, p_dia_ban: 888 }) as never, {
-      params: Promise.resolve({ fn: 'ai_equipment_lookup' }),
+      params: Promise.resolve({ fn: "ai_equipment_lookup" }),
     })
 
     expect(res.status).toBe(200)
 
     const [claims] = jwtSignMock.mock.calls[0] as [Record<string, unknown>]
     expect(claims).toMatchObject({
-      sub: '0',
-      user_id: '0',
-      don_vi: '0',
-      dia_ban: '0',
-      khoa_phong: '0',
+      sub: "0",
+      user_id: "0",
+      don_vi: "0",
+      dia_ban: "0",
+      khoa_phong: "0",
     })
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]

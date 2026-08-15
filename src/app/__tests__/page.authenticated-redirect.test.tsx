@@ -3,6 +3,8 @@ import "@testing-library/jest-dom"
 import { render, screen } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+vi.mock("server-only", () => ({}))
+
 const mocks = vi.hoisted(() => ({
   getServerSession: vi.fn(),
   redirect: vi.fn((path: string) => {

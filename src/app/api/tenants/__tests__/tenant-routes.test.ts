@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const getServerSessionMock = vi.fn()
 const createClientMock = vi.fn()
+const jwtSignMock = vi.fn()
+const fetchMock = vi.fn()
 
 vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
@@ -13,6 +15,12 @@ vi.mock("@/auth/config", () => ({
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: (...args: unknown[]) => createClientMock(...args),
+}))
+
+vi.mock("jsonwebtoken", () => ({
+  default: {
+    sign: (...args: unknown[]) => jwtSignMock(...args),
+  },
 }))
 
 function buildRequest(body: unknown) {
@@ -79,46 +87,6 @@ function createClientForNonGlobalMemberships(
   }
 }
 
-function createClientForSwitch() {
-  const updateEqMock = vi.fn().mockResolvedValue({ error: null })
-  const donViSingleMock = vi.fn().mockResolvedValue({ data: { id: 17, active: true }, error: null })
-  const membershipSingleMock = vi.fn().mockResolvedValue({ data: { user_id: "1" }, error: null })
-
-  createClientMock.mockReturnValue({
-    from: vi.fn((table: string) => {
-      if (table === "don_vi") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: donViSingleMock,
-            })),
-          })),
-        }
-      }
-
-      if (table === "user_don_vi_memberships") {
-        return {
-          select: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              single: membershipSingleMock,
-            })),
-          })),
-        }
-      }
-
-      if (table === "nhan_vien") {
-        return {
-          update: vi.fn(() => ({
-            eq: updateEqMock,
-          })),
-        }
-      }
-
-      throw new Error(`Unexpected table: ${table}`)
-    }),
-  })
-}
-
 describe("tenant routes", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -126,15 +94,23 @@ describe("tenant routes", () => {
     vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "test-anon-key")
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
+  })
+
   it("returns 401 for tenant switch when unauthenticated", async () => {
     getServerSessionMock.mockResolvedValue(null)
+    const fetchSpy = vi.spyOn(globalThis, "fetch")
 
     const { POST } = await import("../switch/route")
     const response = await POST(buildRequest({ don_vi: 17 }))
 
     expect(response.status).toBe(401)
     await expect(response.json()).resolves.toEqual({ ok: false })
-    expect(createClientMock).not.toHaveBeenCalled()
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchSpy).not.toHaveBeenCalled()
   })
 
   it("maps active tenants for memberships when the user is global", async () => {
@@ -156,10 +132,7 @@ describe("tenant routes", () => {
         { don_vi: 18, name: "Khoa Y", code: "Y" },
       ],
     })
-    expect(createClientMock).toHaveBeenCalledWith(
-      "https://test.supabase.co",
-      "test-anon-key",
-    )
+    expect(createClientMock).toHaveBeenCalledWith("https://test.supabase.co", "test-anon-key")
   })
 
   it("maps memberships for a non-global user when Supabase returns embedded tenant rows", async () => {
@@ -217,16 +190,40 @@ describe("tenant routes", () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "1", role: "admin" },
     })
-    createClientForSwitch()
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    vi.stubGlobal("fetch", fetchMock)
+    jwtSignMock.mockReturnValue("signed-jwt")
+    fetchMock.mockResolvedValue(new Response(null, { status: 200 }))
 
     const { POST } = await import("../switch/route")
     const response = await POST(buildRequest({ don_vi: 17 }))
 
     expect(response.status).toBe(200)
     await expect(response.json()).resolves.toEqual({ ok: true })
-    expect(createClientMock).toHaveBeenCalledWith(
-      "https://test.supabase.co",
-      "test-anon-key",
+    expect(jwtSignMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        app_role: "global",
+        sub: "1",
+        user_id: "1",
+      }),
+      "test-jwt-secret",
+      { algorithm: "HS256" }
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://test.supabase.co/rest/v1/rpc/user_set_current_don_vi",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer signed-jwt",
+          Accept: "application/json",
+          apikey: "test-anon-key",
+        },
+        body: JSON.stringify({
+          p_user_id: 1,
+          p_don_vi: 17,
+        }),
+      }
     )
   })
 })
