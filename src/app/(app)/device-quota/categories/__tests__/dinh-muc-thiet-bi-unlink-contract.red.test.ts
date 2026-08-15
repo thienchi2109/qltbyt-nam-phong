@@ -15,26 +15,64 @@ function findMigrationFiles(directory: string): string[] {
 }
 
 function normalizeSql(source: string) {
-  return source.replace(/\s+/g, " ").trim()
+  return stripSqlComments(source).replace(/\s+/g, " ").trim()
+}
+
+function stripSqlComments(source: string) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (comment) => " ".repeat(comment.length))
+    .replace(/--[^\n]*/g, (comment) => " ".repeat(comment.length))
+}
+
+function normalizeUnlinkSignature(argumentsSql: string) {
+  return argumentsSql
+    .split(",")
+    .map((argument) => argument.match(/\bBIGINT(?:\[\])?\b/i)?.[0].toUpperCase() ?? "")
+    .join(",")
+}
+
+function getFinalUnlinkSignatures(migrationSql: string) {
+  const signatures = new Set(["BIGINT[],BIGINT"])
+  const executableSql = stripSqlComments(migrationSql)
+  const statements = Array.from(
+    executableSql.matchAll(
+      /(CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION|DROP\s+FUNCTION(?:\s+IF\s+EXISTS)?)\s+public\.dinh_muc_thiet_bi_unlink\s*\(([^)]*)\)/gi
+    )
+  )
+
+  expect(statements.length).toBeGreaterThan(0)
+  for (const [, operation, argumentsSql] of statements) {
+    const signature = normalizeUnlinkSignature(argumentsSql)
+    if (operation.toUpperCase().startsWith("DROP")) {
+      signatures.delete(signature)
+    } else {
+      signatures.add(signature)
+    }
+  }
+
+  return [...signatures].sort()
 }
 
 function extractLatestFunctionDefinition(source: string) {
+  const executableSql = stripSqlComments(source)
   const starts = Array.from(
-    source.matchAll(/CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink\s*\(/gi)
+    executableSql.matchAll(
+      /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink\s*\(/gi
+    )
   )
   expect(starts.length).toBeGreaterThan(0)
 
   const start = starts.at(-1)!.index
-  const sourceFromFunction = source.slice(start)
+  const sourceFromFunction = executableSql.slice(start)
   const openingDelimiter = sourceFromFunction.match(/\bAS\s+(\$[a-zA-Z0-9_]*\$)/i)
   expect(openingDelimiter).not.toBeNull()
 
   const delimiter = openingDelimiter![1]
   const bodyStart = start + openingDelimiter!.index! + openingDelimiter![0].length
-  const bodyEnd = source.indexOf(delimiter, bodyStart)
+  const bodyEnd = executableSql.indexOf(delimiter, bodyStart)
   expect(bodyEnd).toBeGreaterThan(bodyStart)
 
-  const statementEnd = source.indexOf(";", bodyEnd + delimiter.length)
+  const statementEnd = executableSql.indexOf(";", bodyEnd + delimiter.length)
   expect(statementEnd).toBeGreaterThan(bodyEnd)
 
   return {
@@ -47,8 +85,8 @@ function readLatestUnlinkMigration() {
   const migrationsDir = path.resolve(process.cwd(), "supabase/migrations")
   const matches = findMigrationFiles(migrationsDir)
     .filter((file) =>
-      /CREATE\s+OR\s+REPLACE\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink/i.test(
-        readFileSync(file, "utf8")
+      /CREATE(?:\s+OR\s+REPLACE)?\s+FUNCTION\s+public\.dinh_muc_thiet_bi_unlink/i.test(
+        stripSqlComments(readFileSync(file, "utf8"))
       )
     )
     .sort()
@@ -59,6 +97,7 @@ function readLatestUnlinkMigration() {
   const { functionBody, functionSql } = extractLatestFunctionDefinition(migrationSql)
 
   return {
+    migrationSql,
     migrationPath: path.relative(process.cwd(), migrationPath),
     normalizedBody: normalizeSql(functionBody),
     normalizedFunction: normalizeSql(functionSql),
@@ -84,8 +123,10 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
       /Missing user_id claim/i,
       /v_role\s+NOT IN\s*\('global',\s*'admin',\s*'to_qltb'\)/i,
       /NULLIF\(current_setting\('request\.jwt\.claims', true\)::json->>'user_id', ''\)/i,
-      /FROM public\.nhom_thiet_bi[\s\S]*id\s*=\s*p_nhom_id[\s\S]*don_vi_id\s*=\s*p_don_vi/i,
     ]
+    const categoryGuard = normalizedFunction.match(
+      /IF\s+NOT\s+EXISTS\s*\(\s*SELECT[\s\S]*?FROM public\.nhom_thiet_bi(?:\s+(?:AS\s+)?[a-z_][a-z0-9_]*)?\s+WHERE[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*p_nhom_id[\s\S]*?(?:[a-z_][a-z0-9_]*\.)?don_vi_id\s*=\s*p_don_vi[\s\S]*?\)\s+THEN\s+RAISE EXCEPTION\s+'[^']*(?:category|nhóm)[^']*'[\s\S]*?END IF;/i
+    )
 
     expect(mutationIndex).toBeGreaterThan(-1)
     for (const pattern of guardPatterns) {
@@ -93,6 +134,8 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
       expect(guardIndex).toBeGreaterThan(-1)
       expect(guardIndex).toBeLessThan(mutationIndex)
     }
+    expect(categoryGuard).not.toBeNull()
+    expect(categoryGuard!.index).toBeLessThan(mutationIndex)
   })
 
   it("uses one tenant- and expected-category-scoped update with distinct scope failures", () => {
@@ -104,9 +147,14 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     )
 
     expect(updateStatements).toHaveLength(1)
-    expect(updateStatements[0]).toMatch(/(?:tb\.)?id\s*=\s*ANY\(p_thiet_bi_ids\)/i)
-    expect(updateStatements[0]).toMatch(/(?:tb\.)?don_vi\s*=\s*p_don_vi/i)
-    expect(updateStatements[0]).toMatch(/(?:tb\.)?nhom_thiet_bi_id\s*=\s*p_nhom_id/i)
+    expect(updateStatements[0]).toMatch(
+      /\bSET\s+(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*NULL/i
+    )
+    const whereClause = updateStatements[0].match(/\bWHERE\b([\s\S]*?)\bRETURNING\b/i)?.[1]
+    expect(whereClause).toBeDefined()
+    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?id\s*=\s*ANY\(p_thiet_bi_ids\)/i)
+    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?don_vi\s*=\s*p_don_vi/i)
+    expect(whereClause).toMatch(/(?:[a-z_][a-z0-9_]*\.)?nhom_thiet_bi_id\s*=\s*p_nhom_id/i)
     expect(exceptionMessages.some((message) => /category|nhóm/i.test(message))).toBe(true)
     expect(exceptionMessages.some((message) => /equipment|thiết bị/i.test(message))).toBe(true)
   })
@@ -121,21 +169,25 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     const affectedCte = updateCte![1]
     const auditIndex = normalizedFunction.search(/INSERT INTO public\.thiet_bi_nhom_audit_log/i)
     const auditSql = normalizedFunction.slice(auditIndex)
-    const directAuditUse =
-      new RegExp(`FROM ${affectedCte}\\b`, "i").test(auditSql) &&
-      /ARRAY_AGG\(\s*(?:[a-z_][a-z0-9_]*\.)?id\s*\)/i.test(auditSql)
-    const affectedIdsCapture = normalizedFunction.match(
+    const auditUsesAffectedIds = new RegExp(
+      `INSERT INTO public\\.thiet_bi_nhom_audit_log\\s*\\(\\s*don_vi_id\\s*,\\s*thiet_bi_ids\\s*,[\\s\\S]*?\\)\\s*SELECT\\s+p_don_vi\\s*,\\s*ARRAY_AGG\\(\\s*(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)[\\s\\S]*?FROM\\s+${affectedCte}\\b`,
+      "i"
+    ).test(normalizedFunction)
+    const countUsesAffectedIds = new RegExp(
+      `SELECT\\s+COUNT\\(\\s*(?:\\*|(?:[a-z_][a-z0-9_]*\\.)?id)\\s*\\)(?:::[a-z_][a-z0-9_]*)?\\s+INTO\\s+v_affected_count\\s+FROM\\s+${affectedCte}\\b`,
+      "i"
+    ).test(normalizedFunction)
+    const returnedIdsComeFromConstrainedUpdate = normalizedFunction.match(
       new RegExp(
-        `SELECT[\\s\\S]*?ARRAY_AGG\\(\\s*(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)[\\s\\S]*?INTO\\s+(v_[a-z_][a-z0-9_]*)[\\s\\S]*?FROM\\s+${affectedCte}\\b`,
+        `WITH\\s+${affectedCte}\\s+AS\\s*\\(\\s*UPDATE public\\.thiet_bi\\b[\\s\\S]*?\\bWHERE\\b[\\s\\S]*?nhom_thiet_bi_id\\s*=\\s*p_nhom_id[\\s\\S]*?RETURNING\\s+(?:[a-z_][a-z0-9_]*\\.)?id\\s*\\)`,
         "i"
       )
     )
-    const capturedAuditUse =
-      affectedIdsCapture !== null &&
-      new RegExp(`\\b${affectedIdsCapture[1]}\\b`, "i").test(auditSql)
 
     expect(auditIndex).toBeGreaterThan(updateCte!.index!)
-    expect(directAuditUse || capturedAuditUse).toBe(true)
+    expect(returnedIdsComeFromConstrainedUpdate).not.toBeNull()
+    expect(auditUsesAffectedIds).toBe(true)
+    expect(countUsesAffectedIds).toBe(true)
     expect(auditSql).toContain("'unlink'")
     expect(auditSql).toContain("performed_by")
     expect(auditSql).toContain("previous_nhom_id")
@@ -143,7 +195,7 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
   })
 
   it("preserves security definer and exposes only the hardened authenticated overload", () => {
-    const { normalizedFunction, normalizedMigration } = readLatestUnlinkMigration()
+    const { migrationSql, normalizedFunction, normalizedMigration } = readLatestUnlinkMigration()
     const revokeStatements =
       normalizedMigration
         .match(
@@ -166,8 +218,6 @@ describe("dinh_muc_thiet_bi_unlink hardened source contract RED baseline", () =>
     expect(normalizedMigration).toContain(
       "DROP FUNCTION IF EXISTS public.dinh_muc_thiet_bi_unlink(BIGINT[], BIGINT)"
     )
-    expect(normalizedMigration).not.toMatch(
-      /CREATE OR REPLACE FUNCTION public\.dinh_muc_thiet_bi_unlink\s*\(\s*p_thiet_bi_ids BIGINT\[\],\s*p_don_vi BIGINT/i
-    )
+    expect(getFinalUnlinkSignatures(migrationSql)).toEqual(["BIGINT[],BIGINT,BIGINT"])
   })
 })

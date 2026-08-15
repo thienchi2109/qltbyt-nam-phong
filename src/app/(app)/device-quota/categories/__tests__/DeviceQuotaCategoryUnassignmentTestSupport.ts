@@ -30,9 +30,16 @@ export const AFFECTED_QUERY_KEYS = [
   FILTER_OPTIONS_KEY,
   COMPLIANCE_KEY,
 ] as const
-export const SEEDED_CACHE_KEYS = [
-  ...AFFECTED_QUERY_KEYS,
+export const AFFECTED_SEEDED_QUERY_KEYS = [
+  ASSIGNED_KEY,
+  CATEGORY_LIST_KEY,
   FILTERED_CATEGORY_LIST_KEY,
+  UNASSIGNED_KEY,
+  FILTER_OPTIONS_KEY,
+  COMPLIANCE_KEY,
+] as const
+export const SEEDED_CACHE_KEYS = [
+  ...AFFECTED_SEEDED_QUERY_KEYS,
   OTHER_TENANT_CATEGORY_LIST_KEY,
 ] as const
 
@@ -52,6 +59,7 @@ export const equipment: EquipmentPreviewItem = {
   khoa_phong_quan_ly: null,
   tinh_trang: "Hoạt động",
 }
+Object.freeze(equipment)
 
 const parentCategory: CategoryListItem = {
   id: 1,
@@ -67,6 +75,7 @@ const parentCategory: CategoryListItem = {
   so_luong_toi_thieu: 5,
   mo_ta: null,
 }
+Object.freeze(parentCategory)
 
 const category: CategoryListItem = {
   id: 5,
@@ -82,6 +91,7 @@ const category: CategoryListItem = {
   so_luong_toi_thieu: 2,
   mo_ta: null,
 }
+Object.freeze(category)
 
 const siblingCategory: CategoryListItem = {
   ...category,
@@ -91,15 +101,28 @@ const siblingCategory: CategoryListItem = {
   thu_tu_hien_thi: 3,
   so_luong_hien_co: 7,
 }
+Object.freeze(siblingCategory)
 
 export function seedVisibleCaches(queryClient: QueryClient) {
-  queryClient.setQueryData(ASSIGNED_KEY, [equipment])
-  queryClient.setQueryData(CATEGORY_LIST_KEY, [parentCategory, category, siblingCategory])
-  queryClient.setQueryData(FILTERED_CATEGORY_LIST_KEY, [parentCategory, category, siblingCategory])
-  queryClient.setQueryData(OTHER_TENANT_CATEGORY_LIST_KEY, [{ ...category, so_luong_hien_co: 99 }])
-  queryClient.setQueryData(UNASSIGNED_KEY, [])
-  queryClient.setQueryData(FILTER_OPTIONS_KEY, [])
-  queryClient.setQueryData(COMPLIANCE_KEY, [{ nhom_id: 5, so_luong_hien_co: 3 }])
+  const otherTenantCategory = { ...category, so_luong_hien_co: 99 }
+  Object.freeze(otherTenantCategory)
+
+  queryClient.setQueryData(ASSIGNED_KEY, Object.freeze([equipment]))
+  queryClient.setQueryData(
+    CATEGORY_LIST_KEY,
+    Object.freeze([parentCategory, category, siblingCategory])
+  )
+  queryClient.setQueryData(
+    FILTERED_CATEGORY_LIST_KEY,
+    Object.freeze([parentCategory, category, siblingCategory])
+  )
+  queryClient.setQueryData(OTHER_TENANT_CATEGORY_LIST_KEY, Object.freeze([otherTenantCategory]))
+  queryClient.setQueryData(UNASSIGNED_KEY, Object.freeze([]))
+  queryClient.setQueryData(FILTER_OPTIONS_KEY, Object.freeze([]))
+  queryClient.setQueryData(
+    COMPLIANCE_KEY,
+    Object.freeze([Object.freeze({ nhom_id: 5, so_luong_hien_co: 3 })])
+  )
 }
 
 export function createDeferred<T>() {
