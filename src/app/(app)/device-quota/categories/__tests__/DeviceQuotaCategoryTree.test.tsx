@@ -11,6 +11,10 @@ vi.mock("../_hooks/useDeviceQuotaCategoryContext", () => ({
   useDeviceQuotaCategoryContext: vi.fn(),
 }))
 
+vi.mock("../_hooks/useDeviceQuotaCategoryAssignment", () => ({
+  useDeviceQuotaCategoryUnassignment: () => ({ mutateAsync: vi.fn() }),
+}))
+
 // Mock the assigned-equipment panel to isolate tree tests from RPC fetching
 vi.mock("../_components/DeviceQuotaCategoryAssignedEquipment", () => ({
   DeviceQuotaCategoryAssignedEquipment: ({

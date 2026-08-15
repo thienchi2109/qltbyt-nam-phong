@@ -129,23 +129,23 @@ undeployed or disabled until Phase 6 verifies the hardened live RPC.
 **Purpose:** Prove the workflow remains correct across roles, hierarchy levels,
 query lifecycles, and existing assignment behavior.
 
-- [ ] 4.1 Add page-level user-event coverage for leaf-category unlink confirmation,
+- [x] 4.1 Add page-level user-event coverage for leaf-category unlink confirmation,
       success feedback, row removal, and count update.
-- [ ] 4.2 Add parent-category coverage proving direct count and aggregate ancestor
+- [x] 4.2 Add parent-category coverage proving direct count and aggregate ancestor
       count update exactly once.
-- [ ] 4.3 Add stale-row concurrency coverage proving a concurrently moved assignment
+- [x] 4.3 Add stale-row concurrency coverage proving a concurrently moved assignment
       remains intact.
-- [ ] 4.4 Add under-minimum coverage proving unlink is allowed and cached category
+- [x] 4.4 Add under-minimum coverage proving unlink is allowed and cached category
       state reflects the reduced count.
-- [ ] 4.5 Add request-count assertions proving one mutation and zero immediate read
+- [x] 4.5 Add request-count assertions proving one mutation and zero immediate read
       refetches on success.
-- [ ] 4.6 Add delayed-response race coverage proving a read started before mutation
+- [x] 4.6 Add delayed-response race coverage proving a read started before mutation
       cannot overwrite the confirmed cache patch.
-- [ ] 4.7 Prove stale inactive queries refetch when their consuming surface later
+- [x] 4.7 Prove stale inactive queries refetch when their consuming surface later
       mounts or normal freshness policy requires it.
-- [ ] 4.8 Re-run existing manual assignment, category tree aggregation,
+- [x] 4.8 Re-run existing manual assignment, category tree aggregation,
       assigned-equipment, role-matrix, and RPC whitelist suites.
-- [ ] 4.9 Inspect query logs or focused mocks for duplicate/repetitive calls and
+- [x] 4.9 Inspect query logs or focused mocks for duplicate/repetitive calls and
       document the result.
 
 **Review boundary:** No new feature scope. This phase owns integration evidence and
