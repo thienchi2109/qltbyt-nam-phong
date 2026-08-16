@@ -22,7 +22,7 @@
 | 5.5  | A superset of the Phase 0-4 focused matrix passed: 17 files and 141 tests.                                            |
 | 5.6  | React Doctor scanned 19 changed files with score `100/100` and no findings.                                           |
 | 5.7  | Strict OpenSpec validation passed.                                                                                    |
-| 5.8  | Initial independent review findings were remediated; full re-review is pending.                                       |
+| 5.8  | The custom `post_implementation_reviewer` returned exact result `Zero findings` after remediation.                    |
 | 5.9  | The diff contains only issue-owned implementation, tests, one ordered migration, and approved OpenSpec documentation. |
 | 5.10 | Rollback readiness and backend-before-frontend deployment order are recorded below.                                   |
 
@@ -43,6 +43,10 @@ the same expected-category unlink and cache-reconciliation contract.
   moved to a module-prefixed support file, and the large cache reconciliation
   assertion moved into the existing hook harness. All changed source and test
   files remain below the repository extraction threshold.
+
+The full re-review used fixed base
+`e53ff980b16b5099b38d83974fde382296a349f8` and reviewed implementation head
+`e81c139e91d7005dbdefa7c0694711b40238ce7a`.
 
 ## Migration and Rollout Readiness
 

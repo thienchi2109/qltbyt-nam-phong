@@ -163,7 +163,7 @@ before any live write or frontend deployment.
 - [x] 5.5 Run all focused Vitest suites owned by Phases 0-4.
 - [x] 5.6 Run `node scripts/npm-run.js run react-doctor`.
 - [x] 5.7 Run `openspec validate add-device-quota-category-unassignment --strict`.
-- [ ] 5.8 Run the custom `post_implementation_reviewer` against the fixed base ref
+- [x] 5.8 Run the custom `post_implementation_reviewer` against the fixed base ref
       and Wayfinder decision #929; resolve valid findings and repeat until zero
       findings remain.
 - [x] 5.9 Verify the final diff contains only issue-owned implementation, tests,
