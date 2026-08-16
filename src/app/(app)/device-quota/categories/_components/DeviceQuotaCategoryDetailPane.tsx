@@ -57,6 +57,8 @@ export function DeviceQuotaCategoryDetailPane({
   canUnassign = false,
   onUnassign,
 }: DeviceQuotaCategoryDetailPaneProps) {
+  const categoryHeadingRef = React.useRef<HTMLDivElement>(null)
+
   if (!category) {
     return (
       <Card data-testid="device-quota-category-detail-pane" className="h-full">
@@ -97,8 +99,10 @@ export function DeviceQuotaCategoryDetailPane({
             )}
           </div>
           <CardTitle
+            ref={categoryHeadingRef}
             role="heading"
             aria-level={2}
+            tabIndex={-1}
             className="line-clamp-3 text-xl leading-snug"
             title={category.ten_nhom}
           >
@@ -134,6 +138,7 @@ export function DeviceQuotaCategoryDetailPane({
           canUnassign={canUnassign}
           categoryName={category.ten_nhom}
           onUnassign={onUnassign}
+          focusAfterSuccessRef={categoryHeadingRef}
         />
       </CardContent>
     </Card>

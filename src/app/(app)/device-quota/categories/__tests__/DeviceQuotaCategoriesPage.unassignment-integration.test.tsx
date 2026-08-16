@@ -172,7 +172,10 @@ describe("DeviceQuotaCategoriesPage unassignment integration", () => {
 
     const queryClient = renderPage()
 
-    await screen.findByRole("heading", { level: 2, name: "Máy X quang" })
+    const categoryHeading = await screen.findByRole("heading", {
+      level: 2,
+      name: "Máy X quang",
+    })
     const detailPane = screen.getByTestId("device-quota-category-detail-pane")
     expect(within(detailPane).getByText("1/4")).toBeInTheDocument()
     expect(await within(detailPane).findByText("TB-001")).toBeInTheDocument()
@@ -182,6 +185,7 @@ describe("DeviceQuotaCategoriesPage unassignment integration", () => {
     await waitFor(() => {
       expect(within(detailPane).queryByText("TB-001")).not.toBeInTheDocument()
       expect(within(detailPane).getByText("0/4")).toBeInTheDocument()
+      expect(categoryHeading).toHaveFocus()
     })
 
     const cachedCategories = queryClient.getQueryData<CategoryListItem[]>([

@@ -23,6 +23,9 @@ export interface DestructiveConfirmDialogProps {
   readonly confirmLabel: React.ReactNode
   readonly isPending: boolean
   readonly onConfirm: () => void
+  readonly onCloseAutoFocus?: React.ComponentPropsWithoutRef<
+    typeof AlertDialogContent
+  >["onCloseAutoFocus"]
 }
 
 /**
@@ -37,6 +40,7 @@ export function DestructiveConfirmDialog({
   confirmLabel,
   isPending,
   onConfirm,
+  onCloseAutoFocus,
 }: DestructiveConfirmDialogProps): React.JSX.Element {
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
@@ -48,7 +52,7 @@ export function DestructiveConfirmDialog({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent>
+      <AlertDialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>

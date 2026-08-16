@@ -19,10 +19,10 @@
 | 5.2  | No explicit `any` was found in changed TypeScript files.                                                              |
 | 5.3  | The diff-only SonarJS duplicate-code gate passed.                                                                     |
 | 5.4  | TypeScript completed with no errors.                                                                                  |
-| 5.5  | A superset of the Phase 0-4 focused matrix passed: 15 files and 138 tests.                                            |
-| 5.6  | React Doctor scanned 18 changed files with score `100/100` and no findings.                                           |
+| 5.5  | A superset of the Phase 0-4 focused matrix passed: 17 files and 141 tests.                                            |
+| 5.6  | React Doctor scanned 19 changed files with score `100/100` and no findings.                                           |
 | 5.7  | Strict OpenSpec validation passed.                                                                                    |
-| 5.8  | Independent review is pending.                                                                                        |
+| 5.8  | Initial independent review findings were remediated; full re-review is pending.                                       |
 | 5.9  | The diff contains only issue-owned implementation, tests, one ordered migration, and approved OpenSpec documentation. |
 | 5.10 | Rollback readiness and backend-before-frontend deployment order are recorded below.                                   |
 
@@ -32,6 +32,17 @@ The implementation reuses the existing `DestructiveConfirmDialog`, device-quota
 mapping mutation module, shared role helpers, and established query keys. Code
 Review Graph, GitNexus, and direct search found no unchanged implementation with
 the same expected-category unlink and cache-reconciliation contract.
+
+## Initial Review Remediation
+
+- Successful unlink now restores focus to the persistent selected-category
+  heading through the alert-dialog close lifecycle. Cancel and Escape continue
+  restoring focus to the row action. Page-level regression coverage proves the
+  success path after the assigned row is removed.
+- The tree overflow interaction moved to a dedicated suite, SQL contract parsers
+  moved to a module-prefixed support file, and the large cache reconciliation
+  assertion moved into the existing hook harness. All changed source and test
+  files remain below the repository extraction threshold.
 
 ## Migration and Rollout Readiness
 

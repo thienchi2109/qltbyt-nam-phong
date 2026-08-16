@@ -33,6 +33,7 @@ interface DeviceQuotaCategoryAssignedEquipmentProps {
   canUnassign?: boolean
   categoryName?: string
   onUnassign?: (request: DeviceQuotaCategoryUnassignmentRequest) => void | Promise<void>
+  focusAfterSuccessRef?: React.RefObject<HTMLElement | null>
 }
 
 interface EquipmentUnassignment {
@@ -40,6 +41,7 @@ interface EquipmentUnassignment {
   categoryName: string
   donViId: number
   onUnassign: (request: DeviceQuotaCategoryUnassignmentRequest) => void | Promise<void>
+  focusAfterSuccessRef?: React.RefObject<HTMLElement | null>
 }
 
 // ============================================
@@ -64,21 +66,24 @@ function EquipmentUnassignmentAction({
   unassignment: EquipmentUnassignment
 }) {
   const actionRef = React.useRef<HTMLButtonElement>(null)
-  const wasOpenRef = React.useRef(false)
+  const successFocusTargetRef = React.useRef<HTMLElement | null>(null)
   const [isOpen, setIsOpen] = React.useState(false)
   const [isPending, setIsPending] = React.useState(false)
 
-  React.useEffect(() => {
-    if (wasOpenRef.current && !isOpen) {
-      actionRef.current?.focus()
+  const handleCloseAutoFocus = React.useCallback((event: Event) => {
+    const focusTarget = successFocusTargetRef.current ?? actionRef.current
+    if (focusTarget) {
+      event.preventDefault()
+      focusTarget.focus()
     }
-    wasOpenRef.current = isOpen
-  }, [isOpen])
+    successFocusTargetRef.current = null
+  }, [])
 
   const handleConfirm = React.useCallback(async () => {
     if (isPending) return
 
     setIsPending(true)
+    successFocusTargetRef.current = unassignment.focusAfterSuccessRef?.current ?? null
     try {
       await unassignment.onUnassign({
         equipmentId: item.id,
@@ -87,6 +92,7 @@ function EquipmentUnassignmentAction({
       })
       setIsOpen(false)
     } catch {
+      successFocusTargetRef.current = null
       // Mutation feedback belongs to the Phase 3 caller; keep the dialog open for retry.
     } finally {
       setIsPending(false)
@@ -130,6 +136,7 @@ function EquipmentUnassignmentAction({
         confirmLabel="Bỏ khỏi danh mục"
         isPending={isPending}
         onConfirm={handleConfirm}
+        onCloseAutoFocus={handleCloseAutoFocus}
       />
     </div>
   )
@@ -204,6 +211,7 @@ export function DeviceQuotaCategoryAssignedEquipment({
   canUnassign = false,
   categoryName,
   onUnassign,
+  focusAfterSuccessRef,
 }: DeviceQuotaCategoryAssignedEquipmentProps) {
   const {
     data: equipment,
@@ -218,6 +226,7 @@ export function DeviceQuotaCategoryAssignedEquipment({
           categoryName,
           donViId,
           onUnassign,
+          focusAfterSuccessRef,
         }
       : undefined
 
