@@ -9,10 +9,27 @@ export type LinkEquipmentVariables = {
   nhom_id: number
 }
 
+export type UnlinkEquipmentVariables = {
+  thiet_bi_ids: [number]
+  nhom_id: number
+}
+
 /** Calls the existing tenant-scoped manual-link RPC. */
 export function linkDeviceQuotaEquipment(data: LinkEquipmentVariables, donViId: number | null) {
   return callRpc<number>({
     fn: "dinh_muc_thiet_bi_link",
+    args: {
+      p_thiet_bi_ids: data.thiet_bi_ids,
+      p_nhom_id: data.nhom_id,
+      p_don_vi: donViId,
+    },
+  })
+}
+
+/** Calls the concurrency-safe unlink RPC for exactly one equipment item. */
+export function unlinkDeviceQuotaEquipment(data: UnlinkEquipmentVariables, donViId: number) {
+  return callRpc<number>({
+    fn: "dinh_muc_thiet_bi_unlink",
     args: {
       p_thiet_bi_ids: data.thiet_bi_ids,
       p_nhom_id: data.nhom_id,

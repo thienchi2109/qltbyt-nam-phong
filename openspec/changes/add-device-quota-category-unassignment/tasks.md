@@ -19,25 +19,25 @@
 **Purpose:** Lock current behavior and expose the missing unlink workflow without
 changing production behavior.
 
-- [ ] 0.1 Reconfirm the latest local and live definitions, grants, audit constraints,
+- [x] 0.1 Reconfirm the latest local and live definitions, grants, audit constraints,
       and callers of `dinh_muc_thiet_bi_unlink`.
-- [ ] 0.2 Reconfirm the latest local migration touching the unlink RPC before choosing
+- [x] 0.2 Reconfirm the latest local migration touching the unlink RPC before choosing
       a new migration timestamp.
-- [ ] 0.3 Add failing assigned-equipment component tests for a trailing `X` action,
+- [x] 0.3 Add failing assigned-equipment component tests for a trailing `X` action,
       exact `Bỏ khỏi danh mục` accessible name and tooltip, and row-event isolation.
-- [ ] 0.4 Add failing interaction tests for confirmation cancel and confirm paths.
-- [ ] 0.5 Add failing role-matrix tests proving only `global`, `admin`, and
+- [x] 0.4 Add failing interaction tests for confirmation cancel and confirm paths.
+- [x] 0.5 Add failing role-matrix tests proving only `global`, `admin`, and
       `to_qltb` receive the action.
-- [ ] 0.6 Add failing parent-category coverage proving only direct assignments expose
+- [x] 0.6 Add failing parent-category coverage proving only direct assignments expose
       the action.
-- [ ] 0.7 Add failing mutation-hook tests for one RPC call, expected-category
+- [x] 0.7 Add failing mutation-hook tests for one RPC call, expected-category
       arguments, targeted in-flight query cancellation, cache patching, delayed stale
       responses, zero affected without count decrement, error, and no immediate read
       refetch.
-- [ ] 0.8 Add failing SQL/source-contract tests for the expected-category predicate,
+- [x] 0.8 Add failing SQL/source-contract tests for the expected-category predicate,
       direct-RPC role rejection, missing claims, distinct category/equipment tenant
       failures, `user_id`, search path, audit, grants, and unsafe-overload removal.
-- [ ] 0.9 Run the focused RED suites and record the expected failures before
+- [x] 0.9 Run the focused RED suites and record the expected failures before
       implementation.
 
 **Review boundary:** Tests and characterization only. No runtime behavior, migration,
@@ -48,21 +48,21 @@ or live database change.
 **Purpose:** Make the server mutation safe against stale-category races while
 preserving tenant isolation and auditability.
 
-- [ ] 1.1 Create a correctly ordered Supabase migration after the latest local
+- [x] 1.1 Create a correctly ordered Supabase migration after the latest local
       definition of `dinh_muc_thiet_bi_unlink`.
-- [ ] 1.2 Add the three-argument expected-category overload using existing
+- [x] 1.2 Add the three-argument expected-category overload using existing
       `SECURITY DEFINER`, JWT, role normalization, and fail-closed patterns.
-- [ ] 1.3 Restrict the update predicate to equipment ID, facility, and the expected
+- [x] 1.3 Restrict the update predicate to equipment ID, facility, and the expected
       current category.
-- [ ] 1.4 Preserve affected-count return semantics and write a complete `unlink`
+- [x] 1.4 Preserve affected-count return semantics and write a complete `unlink`
       audit record for confirmed IDs.
-- [ ] 1.5 Set `search_path = public, pg_temp`, revoke `public`/`anon`, and grant only
+- [x] 1.5 Set `search_path = public, pg_temp`, revoke `public`/`anon`, and grant only
       required execution to `authenticated`.
-- [ ] 1.6 Revoke and remove the old two-argument overload so callers cannot bypass
+- [x] 1.6 Revoke and remove the old two-argument overload so callers cannot bypass
       the concurrency guard.
-- [ ] 1.7 Update RPC allowlist/source-contract tests without broadening the allowed
+- [x] 1.7 Update RPC allowlist/source-contract tests without broadening the allowed
       function surface.
-- [ ] 1.8 Run focused migration and RPC tests until the Phase 0 SQL RED cases pass.
+- [x] 1.8 Run focused migration and RPC tests until the Phase 0 SQL RED cases pass.
 
 **Deploy-safe boundary:** Repository contains the hardened database contract, but no
 frontend action calls it yet. Live apply remains a separately approved operation.
@@ -72,19 +72,19 @@ frontend action calls it yet. Live apply remains a separately approved operation
 **Purpose:** Add reusable, testable UI pieces without enabling incomplete mutation
 behavior.
 
-- [ ] 2.1 Run React and code-deduplication guidance before creating new UI or hooks.
-- [ ] 2.2 Add the trailing Lucide `X` icon button with the exact tooltip and
+- [x] 2.1 Run React and code-deduplication guidance before creating new UI or hooks.
+- [x] 2.2 Add the trailing Lucide `X` icon button with the exact tooltip and
       accessible label `Bỏ khỏi danh mục` to authorized assigned-equipment rows.
-- [ ] 2.3 Stop pointer and keyboard action events from selecting or activating the
+- [x] 2.3 Stop pointer and keyboard action events from selecting or activating the
       containing row.
-- [ ] 2.4 Add a focused confirmation dialog showing equipment and selected-category
+- [x] 2.4 Add a focused confirmation dialog showing equipment and selected-category
       identity.
-- [ ] 2.5 Implement cancel, close, focus-return, disabled, and pending states without
+- [x] 2.5 Implement cancel, close, focus-return, disabled, and pending states without
       a stuck overlay or pointer lock.
-- [ ] 2.6 Keep unauthorized and read-only role output byte-for-byte free of the
+- [x] 2.6 Keep unauthorized and read-only role output byte-for-byte free of the
       unlink command.
-- [ ] 2.7 Keep parent detail scoped to equipment assigned directly to that parent.
-- [ ] 2.8 Pass focused component and role tests before wiring the production
+- [x] 2.7 Keep parent detail scoped to equipment assigned directly to that parent.
+- [x] 2.8 Pass focused component and role tests before wiring the production
       mutation.
 
 **Review boundary:** UI composition and interaction contract are reviewable
@@ -96,30 +96,30 @@ complete.
 **Purpose:** Complete the user workflow with one required mutation request and no
 unnecessary immediate read request.
 
-- [ ] 3.1 Add a typed unlink mutation helper that sends one equipment ID, expected
+- [x] 3.1 Add a typed unlink mutation helper that sends one equipment ID, expected
       category ID, and captured facility ID.
-- [ ] 3.2 Add a focused `useMutation` hook with per-row pending state and translated
+- [x] 3.2 Add a focused `useMutation` hook with per-row pending state and translated
       error feedback.
-- [ ] 3.3 Before reconciling a resolved mutation, cancel matching in-flight assigned,
+- [x] 3.3 Before reconciling a resolved mutation, cancel matching in-flight assigned,
       category-list, unassigned, filter-option, and compliance queries for the
       captured scope without starting new requests.
-- [ ] 3.4 On affected count one, remove the row from the exact assigned-equipment
+- [x] 3.4 On affected count one, remove the row from the exact assigned-equipment
       cache with an immutable `setQueryData` update.
-- [ ] 3.5 Use targeted `setQueriesData` to decrement only the selected category's
+- [x] 3.5 Use targeted `setQueriesData` to decrement only the selected category's
       direct cached count, clamped at zero.
-- [ ] 3.6 Reuse existing aggregate-count helpers so ancestor totals recalculate from
+- [x] 3.6 Reuse existing aggregate-count helpers so ancestor totals recalculate from
       the patched full tree; do not decrement ancestors directly.
-- [ ] 3.7 Mark assigned, category-list, unassigned, filter-option, and compliance
+- [x] 3.7 Mark assigned, category-list, unassigned, filter-option, and compliance
       queries stale with `refetchType: "none"`.
-- [ ] 3.8 Prove no assigned-detail, category-list, unassigned, or compliance read RPC
+- [x] 3.8 Prove no assigned-detail, category-list, unassigned, or compliance read RPC
       is sent on the immediate success path.
-- [ ] 3.9 On affected count zero, remove only the provably stale assigned row, leave
+- [x] 3.9 On affected count zero, remove only the provably stale assigned row, leave
       the unconfirmed category count unchanged, mark assigned/category-list queries
       stale with no immediate refetch, and show stale-state feedback.
-- [ ] 3.10 Leave caches unchanged on thrown mutation errors.
-- [ ] 3.11 Wire confirmation to the mutation, but keep the action unavailable to
+- [x] 3.10 Leave caches unchanged on thrown mutation errors.
+- [x] 3.11 Wire confirmation to the mutation, but keep the action unavailable to
       deployed users until the Phase 6 backend prerequisite is verified.
-- [ ] 3.12 Pass the complete Phase 0 component and hook RED suites.
+- [x] 3.12 Pass the complete Phase 0 component and hook RED suites.
 
 **Review boundary:** Repository behavior is feature-complete but MUST remain
 undeployed or disabled until Phase 6 verifies the hardened live RPC.
@@ -129,23 +129,23 @@ undeployed or disabled until Phase 6 verifies the hardened live RPC.
 **Purpose:** Prove the workflow remains correct across roles, hierarchy levels,
 query lifecycles, and existing assignment behavior.
 
-- [ ] 4.1 Add page-level user-event coverage for leaf-category unlink confirmation,
+- [x] 4.1 Add page-level user-event coverage for leaf-category unlink confirmation,
       success feedback, row removal, and count update.
-- [ ] 4.2 Add parent-category coverage proving direct count and aggregate ancestor
+- [x] 4.2 Add parent-category coverage proving direct count and aggregate ancestor
       count update exactly once.
-- [ ] 4.3 Add stale-row concurrency coverage proving a concurrently moved assignment
+- [x] 4.3 Add stale-row concurrency coverage proving a concurrently moved assignment
       remains intact.
-- [ ] 4.4 Add under-minimum coverage proving unlink is allowed and cached category
+- [x] 4.4 Add under-minimum coverage proving unlink is allowed and cached category
       state reflects the reduced count.
-- [ ] 4.5 Add request-count assertions proving one mutation and zero immediate read
+- [x] 4.5 Add request-count assertions proving one mutation and zero immediate read
       refetches on success.
-- [ ] 4.6 Add delayed-response race coverage proving a read started before mutation
+- [x] 4.6 Add delayed-response race coverage proving a read started before mutation
       cannot overwrite the confirmed cache patch.
-- [ ] 4.7 Prove stale inactive queries refetch when their consuming surface later
+- [x] 4.7 Prove stale inactive queries refetch when their consuming surface later
       mounts or normal freshness policy requires it.
-- [ ] 4.8 Re-run existing manual assignment, category tree aggregation,
+- [x] 4.8 Re-run existing manual assignment, category tree aggregation,
       assigned-equipment, role-matrix, and RPC whitelist suites.
-- [ ] 4.9 Inspect query logs or focused mocks for duplicate/repetitive calls and
+- [x] 4.9 Inspect query logs or focused mocks for duplicate/repetitive calls and
       document the result.
 
 **Review boundary:** No new feature scope. This phase owns integration evidence and
@@ -156,19 +156,19 @@ performance regressions only.
 **Purpose:** Finish all repository gates and resolve independent review findings
 before any live write or frontend deployment.
 
-- [ ] 5.1 Run `node scripts/npm-run.js run format:check`.
-- [ ] 5.2 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 5.3 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 5.4 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 5.5 Run all focused Vitest suites owned by Phases 0-4.
-- [ ] 5.6 Run `node scripts/npm-run.js run react-doctor`.
-- [ ] 5.7 Run `openspec validate add-device-quota-category-unassignment --strict`.
-- [ ] 5.8 Run the custom `post_implementation_reviewer` against the fixed base ref
+- [x] 5.1 Run `node scripts/npm-run.js run format:check`.
+- [x] 5.2 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [x] 5.3 Run `node scripts/npm-run.js run verify:dedupe`.
+- [x] 5.4 Run `node scripts/npm-run.js run typecheck`.
+- [x] 5.5 Run all focused Vitest suites owned by Phases 0-4.
+- [x] 5.6 Run `node scripts/npm-run.js run react-doctor`.
+- [x] 5.7 Run `openspec validate add-device-quota-category-unassignment --strict`.
+- [x] 5.8 Run the custom `post_implementation_reviewer` against the fixed base ref
       and Wayfinder decision #929; resolve valid findings and repeat until zero
       findings remain.
-- [ ] 5.9 Verify the final diff contains only issue-owned implementation, tests,
+- [x] 5.9 Verify the final diff contains only issue-owned implementation, tests,
       migration, and approved documentation.
-- [ ] 5.10 Record rollback readiness and the backend-before-frontend deployment order.
+- [x] 5.10 Record rollback readiness and the backend-before-frontend deployment order.
 
 **Review boundary:** The implementation is approved for rollout but remains
 undeployed. No live database write or production mutation occurs in this phase.

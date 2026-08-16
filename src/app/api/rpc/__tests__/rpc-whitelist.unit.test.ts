@@ -229,6 +229,14 @@ describe("RPC proxy whitelist", () => {
     await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
   })
 
+  it("keeps dinh_muc_thiet_bi_unlink on the existing whitelist surface", async () => {
+    const res = await invokeRpcProxy("dinh_muc_thiet_bi_unlink")
+
+    // Whitelist check passed; next guard is missing Content-Length.
+    expect(res.status).toBe(411)
+    await expect(res.json()).resolves.toEqual({ error: "Content-Length header required" })
+  })
+
   it("rejects retired hybrid_search_category_batch fallback RPC", async () => {
     const res = await invokeRpcProxy("hybrid_search_category_batch")
 
