@@ -156,19 +156,19 @@ performance regressions only.
 **Purpose:** Finish all repository gates and resolve independent review findings
 before any live write or frontend deployment.
 
-- [ ] 5.1 Run `node scripts/npm-run.js run format:check`.
-- [ ] 5.2 Run `node scripts/npm-run.js run verify:no-explicit-any`.
-- [ ] 5.3 Run `node scripts/npm-run.js run verify:dedupe`.
-- [ ] 5.4 Run `node scripts/npm-run.js run typecheck`.
-- [ ] 5.5 Run all focused Vitest suites owned by Phases 0-4.
-- [ ] 5.6 Run `node scripts/npm-run.js run react-doctor`.
-- [ ] 5.7 Run `openspec validate add-device-quota-category-unassignment --strict`.
+- [x] 5.1 Run `node scripts/npm-run.js run format:check`.
+- [x] 5.2 Run `node scripts/npm-run.js run verify:no-explicit-any`.
+- [x] 5.3 Run `node scripts/npm-run.js run verify:dedupe`.
+- [x] 5.4 Run `node scripts/npm-run.js run typecheck`.
+- [x] 5.5 Run all focused Vitest suites owned by Phases 0-4.
+- [x] 5.6 Run `node scripts/npm-run.js run react-doctor`.
+- [x] 5.7 Run `openspec validate add-device-quota-category-unassignment --strict`.
 - [ ] 5.8 Run the custom `post_implementation_reviewer` against the fixed base ref
       and Wayfinder decision #929; resolve valid findings and repeat until zero
       findings remain.
-- [ ] 5.9 Verify the final diff contains only issue-owned implementation, tests,
+- [x] 5.9 Verify the final diff contains only issue-owned implementation, tests,
       migration, and approved documentation.
-- [ ] 5.10 Record rollback readiness and the backend-before-frontend deployment order.
+- [x] 5.10 Record rollback readiness and the backend-before-frontend deployment order.
 
 **Review boundary:** The implementation is approved for rollout but remains
 undeployed. No live database write or production mutation occurs in this phase.
