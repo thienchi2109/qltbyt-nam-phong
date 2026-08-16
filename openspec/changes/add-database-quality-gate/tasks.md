@@ -25,24 +25,24 @@
 **Purpose:** Lock current repository and environment behavior before adding the
 gate.
 
-- [ ] 0.1 Reconfirm the current root migration inventory, ordering edge cases,
+- [x] 0.1 Reconfirm the current root migration inventory, ordering edge cases,
       live migration high-water, restored-baseline high-water, SQL-test
       inventory, Oracle runtime, and GitHub ruleset state.
-- [ ] 0.2 Add failing tests for deterministic finding classifications, aggregate
+- [x] 0.2 Add failing tests for deterministic finding classifications, aggregate
       outcomes, exit codes `0/1/2`, and JSON/Markdown report consistency.
-- [ ] 0.3 Add failing tests for canonical terminal-newline normalization and
+- [x] 0.3 Add failing tests for canonical terminal-newline normalization and
       content-preserving SHA-256 behavior.
-- [ ] 0.4 Add failing registry-schema tests for applied lock, waivers,
+- [x] 0.4 Add failing registry-schema tests for applied lock, waivers,
       invariants, and SQL-test metadata.
-- [ ] 0.5 Add failing fixture-repository tests for legacy mutation, rename,
+- [x] 0.5 Add failing fixture-repository tests for legacy mutation, rename,
       deletion, lock-history mutation, pending-file editability, and ambiguous
       migration ordering.
-- [ ] 0.6 Add failing tests for identity-based baseline comparison and
+- [x] 0.6 Add failing tests for identity-based baseline comparison and
       no-new-regressions behavior.
-- [ ] 0.7 Add failing DANGEROUS approval tests for candidate evidence,
+- [x] 0.7 Add failing DANGEROUS approval tests for candidate evidence,
       approval-bearing commits, content invalidation, expiry, revocation, and
       missing review evidence.
-- [ ] 0.8 Record the expected RED failures without changing production behavior,
+- [x] 0.8 Record the expected RED failures without changing production behavior,
       migration SQL, GitHub settings, Oracle databases, or live Supabase.
 
 **Review boundary:** Tests and characterization only.
