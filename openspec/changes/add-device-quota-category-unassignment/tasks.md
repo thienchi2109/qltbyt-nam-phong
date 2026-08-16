@@ -178,21 +178,25 @@ undeployed. No live database write or production mutation occurs in this phase.
 **Purpose:** Establish the live backend prerequisite, then land or enable the
 frontend action under explicit operational control.
 
-- [ ] 6.1 Ask the maintainer for explicit permission to write the specific migration
+- [x] 6.1 Ask the maintainer for explicit permission to write the specific migration
       to live Supabase.
-- [ ] 6.2 If approved, apply the migration through Supabase MCP.
-- [ ] 6.3 Verify the deployed signature, role/tenant/category guards, grants, and
+- [x] 6.2 If approved, apply the migration through Supabase MCP.
+- [x] 6.3 Verify the deployed signature, role/tenant/category guards, grants, and
       absence of the unsafe overload with read-only MCP queries.
-- [ ] 6.4 Run Supabase security advisors immediately after migration.
-- [ ] 6.5 Land, deploy, or enable the frontend action only after steps 6.2-6.4 pass.
-- [ ] 6.6 Run read-only authenticated production smoke checks for page access, action
-      visibility, and role/facility scope.
-- [ ] 6.7 If a production unlink smoke mutation is still needed, obtain separate
+- [x] 6.4 Run Supabase security advisors immediately after migration.
+- [x] 6.5 Land, deploy, or enable the frontend action only after steps 6.2-6.4 pass.
+- [x] 6.6 Run read-only authenticated production smoke checks for page access, action
+      visibility, and role/facility scope. **User-waived on 2026-08-16; no browser
+      smoke was executed.**
+- [x] 6.7 If a production unlink smoke mutation is still needed, obtain separate
       explicit approval naming designated test equipment/category records and the
-      cleanup plan before making that write.
-- [ ] 6.8 Monitor RPC errors, stale-state feedback, and duplicate requests during the
-      initial rollout.
-- [ ] 6.9 Update linked issue/PR status, push the landed branch, verify it is up to
+      cleanup plan before making that write. **Not required and not performed; the
+      migration permission did not authorize a production mutation.**
+- [x] 6.8 Monitor RPC errors, stale-state feedback, and duplicate requests during the
+      initial rollout. **Supabase API/Postgres logs showed no rollout error. Browser
+      and mutation smoke were waived, so stale-state and duplicate unlink behavior
+      were not exercised in production.**
+- [x] 6.9 Update linked issue/PR status, push the landed branch, verify it is up to
       date with origin, and complete the implementation handoff.
 
 **Final boundary:** Do not mark implementation complete until repository gates,
