@@ -132,6 +132,7 @@ Lefthook is installed for this repo and must remain enabled. Do not bypass hooks
    - Prettier must pass. For staged commits, Lefthook auto-runs `format:staged` before the other pre-commit gates.
    - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` and `node scripts/npm-run.js run verify:dedupe` before `typecheck`, tests, and `react-doctor`
    - Before commit and push, run the automated duplicate gate as diff-only. Also use the `code-deduplication` skill for semantic cross-file checks when the change introduces or copies reusable behavior. Never expand duplicate scanning to the full codebase unless the user explicitly requests it.
+   - For SQL migration changes, follow the mandatory Database Quality Gate contract below. Until its harness command is implemented, report the static and dynamic checks separately; never claim an aggregate PASS when dynamic validation was unavailable.
    - Then run the remaining tests/linters/builds required by the task
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
@@ -251,7 +252,14 @@ const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 
 ## Supabase CLI vs MCP (MANDATORY)
 
-**All database operations MUST go through Supabase MCP (project `cdthersvldpnlbvpufrr`). Agents MUST NOT invoke the Supabase CLI for DB-touching operations.** The CLI binary may be installed locally for human developers; that is not permission for agents to use it.
+**All live Supabase project database operations MUST go through Supabase MCP (project `cdthersvldpnlbvpufrr`). Agents MUST NOT invoke the Supabase CLI for DB-touching operations.** The CLI binary may be installed locally for human developers; that is not permission for agents to use it.
+
+The dedicated Oracle VM test environment is the only current non-live
+exception. Agents may use SSH, Docker Compose, PostgreSQL 17 tooling, and
+`psql` against that isolated environment for an explicitly scoped Database
+Quality Gate or restore task. Test-environment permission never authorizes a
+live write, and candidate migrations must run in disposable gate databases,
+not directly in the restored baseline.
 
 ### Live Database Write Authorization (STRICT)
 
@@ -284,9 +292,80 @@ const filtered = isGlobalRole(role) ? allItems : items.filter(...)
 **Allowed local-only CLI work** (read-only, no live DB side effects, only when explicitly required by the task):
 
 - `supabase --version` for environment checks
-- `supabase start` / `supabase stop` / `supabase status` for a fully local dev stack only when the user explicitly asks for it
+- `supabase start` / `supabase stop` / `supabase status` for a fully local dev stack only when the user explicitly asks for it; these commands are not part of the Database Quality Gate and must not be used on the Oracle test VM
 
 If a task seems to require a forbidden CLI command, STOP and ask the user — there is almost always an MCP equivalent. Never "fall back" to the CLI silently.
+
+## Database Quality Gate (MANDATORY FOR SQL MIGRATION WORK)
+
+This section must remain semantically aligned with the corresponding section in
+`CLAUDE.md`.
+
+**Status on 2026-08-16:** the execution topology and cadence are approved in the
+Wayfinder decision "Chốt topology và cadence chạy DB Quality Gate" (#932), and
+the private Oracle test database is operational. The repository harness command
+is not implemented yet. Do not invent a command, report an automated PASS, or
+treat this section as permission to implement the gate before the remaining
+Wayfinder decisions and OpenSpec change are approved.
+
+### Hard Boundaries
+
+- Never edit, rename, delete, or repair a migration that has already been
+  applied. The applied-history lock design is still being settled by Wayfinder.
+- A passing gate never applies a migration to live and never authorizes a live
+  write.
+- Every live write still requires explicit permission for that specific
+  operation and must use Supabase MCP.
+- The Oracle VM ports must remain loopback-only. Do not expose the test
+  Supabase or PostgreSQL services to the Internet.
+- Supabase CLI is not an agent-operated gate or live-apply path.
+
+### Canonical Environments And Terms
+
+- **Restored baseline**: `qltbyt_test` on the private Oracle VM, restored from a
+  production-derived backup and caught up to the selected live migration
+  state. Candidate migrations must not be applied directly to this database.
+- **Fresh replay database**: a clean Supabase/Postgres database that replays the
+  complete local migration source only in the disposable test environment.
+- **Gate run database**: a disposable per-run database cloned for one
+  validation execution and removed afterward.
+- **Live apply**: applying only the reviewed pending migration through Supabase
+  MCP after explicit maintainer authorization for that specific write.
+- Operations runbook: `/root/Oracle/supabase-test.md` on the current Codex VPS
+  and `/opt/supabase-test/TEST-DB.md` on the Oracle VM.
+
+### Required Cadence
+
+- Static migration checks: every migration-related diff, before commit and
+  push where applicable, and on pull requests.
+- Baseline-forward validation: every migration-related diff, applying only the
+  pending migration set to a disposable clone of the restored baseline.
+- Fresh replay: nightly, whenever migration history or source ordering changes,
+  on manual request, and with a PASS for the exact commit before live apply. An
+  existing exact-commit PASS may be reused; invoking live apply does not by
+  itself require replaying the chain again.
+- Read-only live drift inspection: before refreshing the restored baseline and
+  during pre-live review, through Supabase MCP only.
+
+### Fail-Closed Interim Behavior
+
+- Until the harness exists, agents must describe the static and dynamic checks
+  they actually ran. Do not label ad hoc checks as the completed Database
+  Quality Gate.
+- If a migration changed and the Oracle executor or required dynamic check is
+  unavailable, the aggregate result is `BLOCKING / INCOMPLETE`.
+- In that state, Codex must not claim the migration work is DONE and live apply
+  must not proceed.
+- Existing SQL tests are not all default-gate-safe. Do not execute the entire
+  `supabase/tests` corpus indiscriminately; its execution contract is still
+  being settled by Wayfinder.
+
+### CI Rollout
+
+- Phase 1: GitHub-hosted CI runs secret-free static checks; Codex/manual
+  workflows run dynamic validation on the Oracle VM.
+- Phase 2: add a repository-scoped self-hosted runner on the Oracle VM only
+  after the harness is stable and the runner security boundary is reviewed.
 
 ## Database Backup
 
@@ -312,8 +391,8 @@ a deployed copy.
   human-only. An agent may help inspect dumps and prepare commands,
   but a user must approve before any `pg_restore` runs against
   production.
-- For ad-hoc DB operations during recovery, follow the existing
-  "Supabase CLI vs MCP" rule: use Supabase MCP, not the CLI.
+- For ad-hoc operations against live/production during recovery, follow the
+  existing "Supabase CLI vs MCP" rule: use Supabase MCP, not the CLI.
 
 ## SQL Code Generation Checklist
 
