@@ -90,5 +90,7 @@ task 6.9 claimed push and handoff completion while local `main` was still ahead 
 left open until the reviewed closeout commit is pushed and synchronization is
 verified.
 
-The exact final reviewer result and reviewed commit are recorded after the
-required re-review completes.
+The required re-review covered remediation commit
+`b8184120168896dbc96d465f8cc831e7062d3f95` and returned the exact result
+`Zero findings`. That reviewed closeout commit was pushed to `origin/main`, and
+local `main` was verified synchronized with the remote before task 6.9 was closed.

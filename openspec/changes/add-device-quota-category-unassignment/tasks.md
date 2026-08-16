@@ -196,7 +196,7 @@ frontend action under explicit operational control.
       initial rollout. **Supabase API/Postgres logs showed no rollout error. Browser
       and mutation smoke were waived, so stale-state and duplicate unlink behavior
       were not exercised in production.**
-- [ ] 6.9 Update linked issue/PR status, push the landed branch, verify it is up to
+- [x] 6.9 Update linked issue/PR status, push the landed branch, verify it is up to
       date with origin, and complete the implementation handoff.
 
 **Final boundary:** Do not mark implementation complete until repository gates,
