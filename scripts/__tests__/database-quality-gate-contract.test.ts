@@ -36,6 +36,7 @@ type ContractModule = {
     findings: Finding[]
     requiredChecksComplete: boolean
   }) => GateOutcome
+  finalizeReport: (report: GateReport) => GateReport
   outcomeExitCode: (outcome: GateOutcome) => 0 | 1 | 2
   renderMarkdownReport: (report: GateReport) => string
   serializeReport: (report: GateReport) => string
@@ -183,11 +184,11 @@ describe("database quality gate result contract", () => {
     const markdown = contract.renderMarkdownReport(parsedReport)
 
     expect(contract.serializeReport(reorderedEquivalentReport)).toBe(serializedReport)
-    expect(parsedReport).toEqual(report)
+    expect(parsedReport).toEqual(contract.finalizeReport(report))
     expect(markdown).toContain("run-123")
     expect(markdown).toContain("FAILED")
     expect(markdown).toContain("test.warning")
     expect(markdown).toContain("test.blocking")
-    expect(markdown).toContain("report-digest")
+    expect(markdown).toContain(parsedReport.digest)
   })
 })

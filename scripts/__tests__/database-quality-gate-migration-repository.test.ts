@@ -140,6 +140,34 @@ describe("database quality gate migration repository inspection", () => {
     )
   })
 
+  it("returns INCOMPLETE instead of throwing for a malformed applied lock", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
+    const repository = createFixtureRepository({
+      "supabase/applied-migrations.lock.json": fixtureJson({
+        applied: [],
+        cutover: {
+          migrationRoot: "supabase/migrations",
+        },
+        legacy: [{}],
+        schemaVersion: 1,
+      }),
+    })
+
+    expect(() =>
+      source.inspectMigrationRepository({ repositoryRoot: repository.root })
+    ).not.toThrow()
+    expect(source.inspectMigrationRepository({ repositoryRoot: repository.root })).toEqual({
+      findings: [
+        {
+          classification: "INCOMPLETE",
+          ruleId: "migration.applied-lock",
+        },
+      ],
+      outcome: "INCOMPLETE",
+    })
+  })
+
   it("keeps a post-cutover migration absent from the lock editable before live apply", async () => {
     const source =
       await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")

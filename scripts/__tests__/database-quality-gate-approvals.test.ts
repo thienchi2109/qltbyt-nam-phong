@@ -19,6 +19,7 @@ type CandidateEvidence = {
 type Approval = {
   approvalCommit: string
   candidateCommit: string
+  candidateReportDigest: string
   expiresAt?: string
   findingFingerprint: string
   id: string
@@ -63,6 +64,7 @@ function approval(overrides: Partial<Approval> = {}): Approval {
   return {
     approvalCommit: "b".repeat(40),
     candidateCommit: CANDIDATE_EVIDENCE.candidateCommit,
+    candidateReportDigest: CANDIDATE_EVIDENCE.reportDigest,
     findingFingerprint: FINDING.fingerprint,
     id: "approval-1",
     migrationSha256: FINDING.migrationSha256,
@@ -104,7 +106,7 @@ describe("database quality gate DANGEROUS approval contract", () => {
     expect(result.finding.classification).toBe("DANGEROUS")
   })
 
-  it("invalidates approval evidence when migration content or approval-bearing commit changes", async () => {
+  it("invalidates approval evidence when migration content, report digest, or approval-bearing commit changes", async () => {
     const approvals = await loadDatabaseQualityGateModule<ApprovalsModule>("approvals")
     const changedFinding: DangerousFinding = {
       ...FINDING,
@@ -125,9 +127,20 @@ describe("database quality gate DANGEROUS approval contract", () => {
       finalCommit: "c".repeat(40),
       now: "2026-08-16T09:29:20Z",
     })
+    const reportDigestChanged = approvals.evaluateDangerousApproval({
+      approval: approval(),
+      candidateEvidence: {
+        ...CANDIDATE_EVIDENCE,
+        reportDigest: "changed-candidate-report-digest",
+      },
+      finding: FINDING,
+      finalCommit: "b".repeat(40),
+      now: "2026-08-16T09:29:20Z",
+    })
 
     expect(contentChanged).toMatchObject({ accepted: false, outcome: "FAILED" })
     expect(approvalCommitChanged).toMatchObject({ accepted: false, outcome: "FAILED" })
+    expect(reportDigestChanged).toMatchObject({ accepted: false, outcome: "FAILED" })
   })
 
   it("rejects expired, revoked, and unreviewed approvals", async () => {

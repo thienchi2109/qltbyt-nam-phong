@@ -126,6 +126,32 @@ describe("database quality gate registry schemas", () => {
     )
   })
 
+  it("rejects a waiver whose candidate report digest is not a SHA-256 value", async () => {
+    const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
+    const input = validRegistries()
+    input.waivers.approvals.push({
+      approvalCommit: "b".repeat(40),
+      candidateCommit: "a".repeat(40),
+      candidateReportDigest: "not-a-sha256",
+      findingFingerprint: "1".repeat(64),
+      id: "approval-1",
+      migrationSha256: "2".repeat(64),
+      reviewEvidence: "PR #936 reviewed by maintainer",
+      ruleId: "sql.dangerous",
+      status: "active",
+    })
+
+    const result = registry.validateRegistrySet(input)
+
+    expect(result.valid).toBe(false)
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        classification: "BLOCKING",
+        ruleId: "registry.waivers.schema",
+      })
+    )
+  })
+
   it("rejects unknown table intent and incomplete SQL-test execution metadata", async () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()

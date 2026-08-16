@@ -30,6 +30,7 @@
     "react-doctor": "npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose -y --project . --offline --scope changed --base origin/main",
     "react-doctor:verbose": "npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose -y --project . --offline --scope changed --base origin/main",
     "react-doctor:score": "npx -y -p node@22 -p react-doctor@latest react-doctor . --score --project . --offline --scope full",
+    "db:quality-gate": "node scripts/db-quality-gate/run-cli.cjs",
     "db:types": "node scripts/gen-types.js",
     "db:push": "supabase db push",
     "db:pull": "supabase db pull",

@@ -51,17 +51,17 @@ gate.
 
 **Purpose:** Implement the runner-neutral contract shared by every lane.
 
-- [ ] 1.1 Implement typed finding, outcome, lane, evidence, and report models.
-- [ ] 1.2 Implement deterministic JSON serialization, report digesting, and
+- [x] 1.1 Implement typed finding, outcome, lane, evidence, and report models.
+- [x] 1.2 Implement deterministic JSON serialization, report digesting, and
       Markdown rendering.
-- [ ] 1.3 Implement exit-code mapping: PASS `0`, FAILED `1`, INCOMPLETE `2`.
-- [ ] 1.4 Implement stable `ruleId` and `findingFingerprint` generation.
-- [ ] 1.5 Implement evidence invalidation keys for migration, harness, lock,
+- [x] 1.3 Implement exit-code mapping: PASS `0`, FAILED `1`, INCOMPLETE `2`.
+- [x] 1.4 Implement stable `ruleId` and `findingFingerprint` generation.
+- [x] 1.5 Implement evidence invalidation keys for migration, harness, lock,
       registries, baseline high-water, and executor environment.
-- [ ] 1.6 Implement strict schema validation for all four committed registries.
-- [ ] 1.7 Implement one package-command surface with explicit lane selection and
+- [x] 1.6 Implement strict schema validation for all four committed registries.
+- [x] 1.7 Implement one package-command surface with explicit lane selection and
       machine-readable report output.
-- [ ] 1.8 Make the Phase 0 contract suites pass and add malformed-input,
+- [x] 1.8 Make the Phase 0 contract suites pass and add malformed-input,
       determinism, and backward-schema-version coverage.
 
 **Review boundary:** Pure local contract logic; no database, CI, GitHub settings,
