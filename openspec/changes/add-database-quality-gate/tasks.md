@@ -11,8 +11,10 @@
 - Never use Supabase CLI for agent-operated database work.
 - Never treat a gate PASS, approval, merge, or risk acceptance as live-write
   permission.
-- Require explicit permission for the exact live operation and use Supabase MCP
-  for any future live apply.
+- Require a new, explicit, affirmative maintainer permission for the exact live
+  target and operation in the current rollout session and use Supabase MCP.
+- Treat silence, prior or blanket permission, PASS, merge, approval, waiver, and
+  scheduled execution as no live-write permission.
 - Keep Phase 2 self-hosted runner work outside this change.
 - Do not enable the Oracle timer until the first manual fresh replay passes.
 - Do not remove interim repository guidance until the implemented gate is
@@ -190,11 +192,15 @@ VPS has no scheduled role.
 - [ ] 6.8 Block every later live migration until both reconciliation branches
       complete and baseline-forward reruns against the new high-water.
 - [ ] 6.9 Add state-machine and fault-injection tests for changed content,
-      missing permission, read-back mismatch, lock failure, catch-up failure,
-      merge/push failure, and successful recovery.
+      missing, stale, blanket, mismatched, or non-affirmative permission,
+      read-back mismatch, lock failure, catch-up failure, merge/push failure,
+      and successful recovery.
 
 **Review boundary:** Automation stops before live apply. Any future live write
-requires a separate explicit maintainer authorization in that rollout session.
+requires a new, explicit, affirmative maintainer authorization for the exact
+target and operation in that rollout session. This covers migration apply, data
+mutation, DDL/DCL, grants, policies, functions, triggers, schemas, extensions,
+migration metadata, and state-changing RPC or function calls.
 
 ## Phase 7 - Phase 1 Enforcement and Operations
 

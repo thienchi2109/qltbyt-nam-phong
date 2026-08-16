@@ -52,8 +52,11 @@ separate authorization required for every live database write.
 - Live database:
   - this proposal authorizes no live write
   - a gate PASS only permits requesting permission
-  - every live apply still requires explicit permission for that exact operation
-    and must use Supabase MCP
+  - every live write requires a new, explicit, affirmative maintainer permission
+    for the exact target and operation in that rollout session
+  - silence, prior or blanket permission, PASS, merge, approval, waiver, or a
+    scheduled trigger never grants live-write permission
+  - any permitted live write must use Supabase MCP
 - Implementation:
   - this change contains proposal artifacts only
   - no harness, test implementation, migration, CI configuration, dependency,

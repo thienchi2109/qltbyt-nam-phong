@@ -13,11 +13,17 @@ The design must preserve these hard boundaries:
 - candidate migrations never run directly on the persistent restored baseline
 - fresh replay never targets live production
 - a gate PASS never authorizes a live write
-- live writes require explicit permission for the exact operation and use
-  Supabase MCP
+- live writes require a new, explicit, affirmative maintainer permission for
+  the exact target and operation in that rollout session and use Supabase MCP
 - unavailable dynamic validation fails closed
 - Oracle database and Supabase ports remain loopback-only
 - the agent-operated database path never uses Supabase CLI
+
+Live writes include migration apply; data mutation; DDL or DCL; grant, policy,
+function, trigger, schema, extension, or migration-metadata changes; and
+state-changing RPC or function calls. Silence, stale or prior permission,
+blanket or standing authorization, merge, PASS, approval, waiver, and scheduled
+execution are never permission for a live write.
 
 The source decision is Wayfinder #936. Decisions #932, #933, #938, #934, and
 #935 own the detailed rationale for execution topology, immutability, baseline
@@ -245,8 +251,11 @@ The promotion sequence is:
 5. if approved, apply only through Supabase MCP
 6. read back and verify the live migration record and canonical SQL hash
 
-The gate cannot apply live, request blanket permission, or treat merge, approval,
-or PASS as live authorization.
+The gate cannot apply live, request blanket permission, or treat silence, prior
+permission, merge, approval, waiver, PASS, or scheduled execution as live
+authorization. Permission must be newly and affirmatively granted by the
+maintainer for the exact live target and operation in the current rollout
+session.
 
 ### 9. Model post-apply work as two mandatory reconciliation branches
 

@@ -337,6 +337,13 @@ applied-migration lock.
 The system SHALL require complete valid evidence for the landed `main` commit
 before requesting permission for a live apply.
 
+Live-write permission SHALL be a new, explicit, affirmative maintainer
+authorization in the current rollout session, bound to the exact live target
+and operation. A live write includes migration apply, data mutation, DDL/DCL,
+grants, policies, functions, triggers, schemas, extensions, migration metadata,
+and state-changing RPC or function calls. Silence, prior or blanket permission,
+PASS, merge, approval, waiver, or scheduled execution SHALL NOT substitute.
+
 #### Scenario: Only PR-head evidence exists after squash merge
 
 - **GIVEN** a migration PR was squash-merged
@@ -356,7 +363,8 @@ before requesting permission for a live apply.
 #### Scenario: Gate passes without live permission
 
 - **GIVEN** the gate outcome is PASS
-- **WHEN** no explicit permission exists for the exact live operation
+- **WHEN** permission is absent, stale, blanket, non-affirmative, or bound to a
+  different target or operation
 - **THEN** the migration is not applied to live
 - **AND** Supabase MCP is not invoked for a write
 
