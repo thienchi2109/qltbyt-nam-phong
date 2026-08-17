@@ -18,6 +18,7 @@ import {
   readCommittedSqlTest,
   readDynamicInputArtifacts,
 } from "./dynamic-lane-inputs"
+import { sha256Text } from "./serialization"
 import type { GateReport, MigrationIdentity } from "./types"
 import type { BootstrapStructuralFingerprints } from "./bootstrap"
 import type { DynamicInputArtifacts } from "./dynamic-lane-inputs"
@@ -126,12 +127,13 @@ export function createDisposableDatabaseName(input: {
   }
 
   const lane = input.lane.replaceAll("-", "_")
-  const name = `dq_${lane}_${normalizedRunId}`
-  if (name.length > 63) {
-    throw new Error("Disposable database name exceeds PostgreSQL identifier length")
+  const prefix = `dq_${lane}_`
+  const name = `${prefix}${normalizedRunId}`
+  if (name.length <= 63) {
+    return name
   }
 
-  return name
+  return `${prefix}${sha256Text(normalizedRunId).slice(0, 63 - prefix.length)}`
 }
 
 function persistTerminalReport(

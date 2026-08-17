@@ -62,6 +62,20 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
         runId: "phase4-contract",
       })
     ).toBe("dq_fresh_replay_phase4_contract")
+
+    const longRunId = `phase4-${"a".repeat(80)}`
+    const firstLongName = source.createDisposableDatabaseName({
+      lane: "baseline-forward",
+      runId: longRunId,
+    })
+    const secondLongName = source.createDisposableDatabaseName({
+      lane: "baseline-forward",
+      runId: longRunId,
+    })
+
+    expect(firstLongName).toBe(secondLongName)
+    expect(firstLongName).toMatch(/^dq_baseline_forward_[a-f0-9]+$/)
+    expect(firstLongName).toHaveLength(63)
   })
 
   it("clones only qltbyt_test and applies only ordered pending migrations to the disposable clone", async () => {
