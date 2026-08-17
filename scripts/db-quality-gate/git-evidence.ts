@@ -1,9 +1,12 @@
 import { execFileSync } from "node:child_process"
 
+const MAX_GIT_EVIDENCE_OUTPUT_BYTES = 4 * 1024 * 1024
+
 function gitOutput(repositoryRoot: string, args: string[]): string | undefined {
   try {
     return execFileSync("git", ["-C", repositoryRoot, ...args], {
       encoding: "utf8",
+      maxBuffer: MAX_GIT_EVIDENCE_OUTPUT_BYTES,
       stdio: ["ignore", "pipe", "ignore"],
     })
   } catch {
