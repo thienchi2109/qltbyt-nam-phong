@@ -1,9 +1,12 @@
 import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
+import { runOracleDynamicLane } from "./dynamic-lane"
 import { currentHeadCommit } from "./git-evidence"
+import { oracleRemoteExecutorFromEnvironment } from "./oracle-remote-executor"
 import { stableJsonStringify } from "./serialization"
 import { runStaticLane } from "./static-lane"
 import { GATE_LANES, GATE_SCHEMA_VERSION } from "./types"
 import type { GateLane, GateReport } from "./types"
+import type { OracleDynamicExecutor } from "./dynamic-lane"
 
 type CommandExecution = {
   exitCode: 0 | 1 | 2
@@ -15,6 +18,11 @@ type CommandOptions = {
   lane: GateLane
   runId: string
   subjectCommit?: string
+}
+
+type CommandDependencies = {
+  dynamicExecutor?: () => OracleDynamicExecutor | undefined
+  repositoryRoot?: string
 }
 
 const OPTION_NAMES = new Set(["--created-at", "--lane", "--run-id", "--subject-commit"])
@@ -53,8 +61,11 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   }
 }
 
-/** Runs the local command contract and executes only the repository-local static lane. */
-export function runDatabaseQualityGateCommand(args: string[]): CommandExecution {
+/** Runs one local gate lane and fails closed whenever its required executor or evidence is unavailable. */
+export function runDatabaseQualityGateCommand(
+  args: string[],
+  dependencies: CommandDependencies = {}
+): CommandExecution {
   if (!args.includes("--lane")) {
     return errorExecution("Missing required --lane argument")
   }
@@ -63,7 +74,11 @@ export function runDatabaseQualityGateCommand(args: string[]): CommandExecution 
   if (options === undefined) {
     return errorExecution("Invalid database quality gate command arguments")
   }
-  const subjectCommit = currentHeadCommit(process.cwd())
+  if (options.lane !== "static" && !args.includes("--run-id")) {
+    return errorExecution("Dynamic Oracle lanes require an explicit --run-id")
+  }
+  const repositoryRoot = dependencies.repositoryRoot ?? process.cwd()
+  const subjectCommit = currentHeadCommit(repositoryRoot)
   if (subjectCommit === undefined) {
     return errorExecution("Repository HEAD is unavailable")
   }
@@ -75,7 +90,7 @@ export function runDatabaseQualityGateCommand(args: string[]): CommandExecution 
     try {
       const report = runStaticLane({
         createdAt: options.createdAt,
-        repositoryRoot: process.cwd(),
+        repositoryRoot,
         runId: options.runId,
         subjectCommit,
       })
@@ -86,6 +101,28 @@ export function runDatabaseQualityGateCommand(args: string[]): CommandExecution 
       }
     } catch {
       return errorExecution("Static lane execution failed")
+    }
+  }
+
+  if (options.lane === "baseline-forward" || options.lane === "fresh-replay") {
+    const executor = dependencies.dynamicExecutor?.() ?? oracleRemoteExecutorFromEnvironment()
+    if (executor !== undefined) {
+      try {
+        const report = runOracleDynamicLane({
+          createdAt: options.createdAt,
+          executor,
+          lane: options.lane,
+          repositoryRoot,
+          runId: options.runId,
+          subjectCommit,
+        })
+        return {
+          exitCode: outcomeExitCode(report.outcome),
+          stdout: serializeReport(report),
+        }
+      } catch {
+        return errorExecution("Dynamic Oracle lane execution failed")
+      }
     }
   }
 

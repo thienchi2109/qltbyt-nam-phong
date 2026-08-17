@@ -126,22 +126,22 @@ security remediation and no indiscriminate SQL-test execution.
 **Purpose:** Implement baseline-forward and fresh-replay lanes on isolated
 databases.
 
-- [ ] 4.1 Implement Oracle connection and health preflight without exposing
+- [x] 4.1 Implement Oracle connection and health preflight without exposing
       database ports or using Supabase CLI.
-- [ ] 4.2 Implement mutual exclusion for clone, replay, catch-up, and refresh
+- [x] 4.2 Implement mutual exclusion for clone, replay, catch-up, and refresh
       operations.
-- [ ] 4.3 Implement disposable database naming, creation, cleanup, and orphan
+- [x] 4.3 Implement disposable database naming, creation, cleanup, and orphan
       recovery.
-- [ ] 4.4 Implement baseline-forward cloning from `qltbyt_test` and ordered
+- [x] 4.4 Implement baseline-forward cloning from `qltbyt_test` and ordered
       pending-migration application.
-- [ ] 4.5 Implement clean fresh replay from canonical root migration source.
-- [ ] 4.6 Run mandatory catalog and registry-selected default-safe SQL checks in
+- [x] 4.5 Implement clean fresh replay from canonical root migration source.
+- [x] 4.6 Run mandatory catalog and registry-selected default-safe SQL checks in
       disposable databases.
-- [ ] 4.7 Persist deterministic reports under immutable Oracle run IDs and emit
+- [x] 4.7 Persist deterministic reports under immutable Oracle run IDs and emit
       GitHub-compatible audit summaries and digests.
-- [ ] 4.8 Add success, SQL failure, timeout, unavailable executor, interrupted
+- [x] 4.8 Add success, SQL failure, timeout, unavailable executor, interrupted
       execution, cleanup, disk-pressure, and stale-environment tests.
-- [ ] 4.9 Prove no candidate migration is applied directly to `qltbyt_test` and
+- [x] 4.9 Prove no candidate migration is applied directly to `qltbyt_test` and
       no live project is reachable from the dynamic lane.
 
 **Review boundary:** Oracle disposable test databases only; no persistent
