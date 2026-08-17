@@ -63,6 +63,7 @@ export const accessCatalogSchema = z
     routines: z.array(
       z
         .object({
+          extensionOwned: z.boolean().optional(),
           executionMode: z.enum(["definer", "invoker"]),
           grants: z.array(
             z
@@ -81,6 +82,7 @@ export const accessCatalogSchema = z
     tables: z.array(
       z
         .object({
+          extensionOwned: z.boolean().optional(),
           grants: z.array(
             z
               .object({

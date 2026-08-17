@@ -38,6 +38,7 @@ export type OracleRemoteExecutorInput = {
 
 const DEFAULT_EVIDENCE_DIRECTORY = "/opt/supabase-test/quality-gate/evidence"
 const DEFAULT_MINIMUM_FREE_DISK_KILOBYTES = 1_048_576
+const MAX_ORACLE_REMOTE_OUTPUT_BYTES = 4 * 1024 * 1024
 
 function validHost(value: string): boolean {
   return /^[a-zA-Z0-9.-]+$/.test(value)
@@ -163,6 +164,7 @@ export function defaultOracleRemoteCommand(
   const result = spawnSync("ssh", input.arguments, {
     encoding: "utf8",
     input: input.input,
+    maxBuffer: MAX_ORACLE_REMOTE_OUTPUT_BYTES,
     timeout: input.timeoutMs,
   })
   const stdout = typeof result.stdout === "string" ? result.stdout : ""

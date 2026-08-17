@@ -220,6 +220,41 @@ describe("database quality gate fingerprints", () => {
     expect(firstEnvironment).toBe(reorderedEnvironment)
   })
 
+  it("excludes extension-owned objects from access fingerprints", async () => {
+    const expectedState = await loadDatabaseQualityGateModule<ExpectedStateModule>("expected-state")
+    const applicationOwned = {
+      routines: [
+        {
+          executionMode: "invoker",
+          grants: [],
+          identity: "public.equipment_list()",
+          owner: "postgres",
+          searchPath: null,
+        },
+      ],
+      tables: [],
+    }
+
+    const withExtensionOwnedRoutine = {
+      ...applicationOwned,
+      routines: [
+        ...applicationOwned.routines,
+        {
+          executionMode: "invoker",
+          extensionOwned: true,
+          grants: [{ operations: ["EXECUTE"], role: "public" }],
+          identity: "public.gist_int4_ops()",
+          owner: "postgres",
+          searchPath: null,
+        },
+      ],
+    }
+
+    expect(expectedState.collectAccessFingerprint(withExtensionOwnedRoutine)).toBe(
+      expectedState.collectAccessFingerprint(applicationOwned)
+    )
+  })
+
   it("changes the access fingerprint when policy semantics or a routine owner changes", async () => {
     const expectedState = await loadDatabaseQualityGateModule<ExpectedStateModule>("expected-state")
     const baseCatalog = {

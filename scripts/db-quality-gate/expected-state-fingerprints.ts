@@ -71,6 +71,7 @@ export function collectApplicationFingerprint(input: unknown): string {
 export function collectAccessFingerprint(input: unknown): string {
   const catalog = accessCatalogSchema.parse(input)
   const routines = [...catalog.routines]
+    .filter((routine) => !routine.extensionOwned)
     .map((routine) => ({
       executionMode: routine.executionMode,
       grants: normalizedGrants(routine.grants),
@@ -80,6 +81,7 @@ export function collectAccessFingerprint(input: unknown): string {
     }))
     .sort((left, right) => compareStrings(left.identity, right.identity))
   const tables = [...catalog.tables]
+    .filter((table) => !table.extensionOwned)
     .map((table) => ({
       grants: normalizedGrants(table.grants),
       identity: table.identity,

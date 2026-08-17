@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto"
-import { mkdtempSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
@@ -68,6 +68,7 @@ type OracleRemoteExecutorModule = {
 }
 
 type OracleRemoteContractModule = {
+  defaultOracleRemoteCommand: (input: CommandInput) => CommandResult
   oracleRemoteExecutorConfigFromEnvironment: (
     environment: NodeJS.ProcessEnv
   ) => Record<string, unknown> | undefined
@@ -420,5 +421,45 @@ describe("database quality gate Oracle remote executor", () => {
     expect(command?.arguments.at(-1)).toContain("chmod")
     expect(command?.arguments.at(-1)).toContain("phase4-run")
     expect(command?.input).toBe('{"outcome":"PASS"}\n')
+  })
+
+  it("uses a non-keyword alias for pg_constraint in the application catalog query", async () => {
+    const source = await loadDatabaseQualityGateModule<{
+      ACCESS_CATALOG_QUERY: string
+      APPLICATION_CATALOG_QUERY: string
+    }>("oracle-catalog-queries")
+
+    expect(source.APPLICATION_CATALOG_QUERY).toContain("FROM pg_constraint constraint_row")
+    expect(source.APPLICATION_CATALOG_QUERY).toContain(
+      "pg_get_constraintdef(constraint_row.oid, true)"
+    )
+    expect(source.APPLICATION_CATALOG_QUERY).not.toMatch(/\bconstraint\./)
+    expect(source.APPLICATION_CATALOG_QUERY).toContain("'extensionOwned', EXISTS")
+    expect(source.ACCESS_CATALOG_QUERY).toContain("'extensionOwned', EXISTS")
+  })
+
+  it("keeps complete catalog output above the Node default spawn buffer", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<OracleRemoteContractModule>("oracle-remote-contract")
+    const commandDirectory = mkdtempSync(path.join(tmpdir(), "dq-ssh-command-"))
+    const sshPath = path.join(commandDirectory, "ssh")
+    const originalPath = process.env.PATH
+
+    writeFileSync(sshPath, "#!/bin/sh\nhead -c 1100000 /dev/zero | tr '\\0' x\n")
+    chmodSync(sshPath, 0o700)
+    process.env.PATH = `${commandDirectory}:${originalPath ?? ""}`
+
+    try {
+      const result = source.defaultOracleRemoteCommand({
+        arguments: [],
+        timeoutMs: 5_000,
+      })
+
+      expect(result.exitCode).toBe(0)
+      expect(result.timedOut).toBe(false)
+      expect(result.stdout).toHaveLength(1_100_000)
+    } finally {
+      process.env.PATH = originalPath
+    }
   })
 })

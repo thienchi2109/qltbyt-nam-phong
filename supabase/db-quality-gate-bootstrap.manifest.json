@@ -21,6 +21,16 @@
     "restrictKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   },
   "attestation": {
-    "status": "pending"
+    "live": {
+      "accessSha256": "0e5009668f2c414e542fa722bc3c0098dea62cd98d44d3ad86f90bfee9e84733",
+      "applicationSha256": "e2baab6b96a7ad82ca265658da38067ef1841fb59c7fed8abf520c3ff42657c4",
+      "environmentSha256": "f09966d5a6459afbef455a966462522d3db0c8dfdcc38e3bc9e051350b11e039"
+    },
+    "oracleBaseline": {
+      "accessSha256": "435945f0d2cba0afb9f77a094f8406621081ceaec436666b7e1f1b57f2148716",
+      "applicationSha256": "e2baab6b96a7ad82ca265658da38067ef1841fb59c7fed8abf520c3ff42657c4",
+      "environmentSha256": "09a60eaffc38541e1608f542fe267ad5fceef101b357474a7a80a67a16735401"
+    },
+    "status": "complete"
   }
 }

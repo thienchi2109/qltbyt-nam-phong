@@ -17,12 +17,19 @@ WITH relations AS (
     'constraints',
     COALESCE((
       SELECT jsonb_agg(jsonb_build_object(
-        'definition', pg_get_constraintdef(constraint.oid, true),
-        'name', constraint.conname
-      ) ORDER BY constraint.conname)
-      FROM pg_constraint constraint
-      WHERE constraint.conrelid = relation.oid
+        'definition', pg_get_constraintdef(constraint_row.oid, true),
+        'name', constraint_row.conname
+      ) ORDER BY constraint_row.conname)
+      FROM pg_constraint constraint_row
+      WHERE constraint_row.conrelid = relation.oid
     ), '[]'::jsonb),
+    'extensionOwned', EXISTS(
+      SELECT 1
+      FROM pg_depend dependency
+      WHERE dependency.classid = 'pg_class'::regclass
+        AND dependency.objid = relation.oid
+        AND dependency.deptype = 'e'
+    ),
     'identity', format('%I.%I', namespace.nspname, relation.relname),
     'indexes',
     COALESCE((
@@ -54,6 +61,13 @@ WITH relations AS (
 routines AS (
   SELECT jsonb_build_object(
     'definition', pg_get_functiondef(routine.oid),
+    'extensionOwned', EXISTS(
+      SELECT 1
+      FROM pg_depend dependency
+      WHERE dependency.classid = 'pg_proc'::regclass
+        AND dependency.objid = routine.oid
+        AND dependency.deptype = 'e'
+    ),
     'identity', format('%I.%I(%s)', namespace.nspname, routine.proname, pg_get_function_identity_arguments(routine.oid)),
     'kind', CASE WHEN routine.prokind = 'p' THEN 'procedure' ELSE 'function' END
   ) AS value
@@ -85,6 +99,13 @@ routine_grants AS (
 ),
 tables AS (
   SELECT jsonb_build_object(
+    'extensionOwned', EXISTS(
+      SELECT 1
+      FROM pg_depend dependency
+      WHERE dependency.classid = 'pg_class'::regclass
+        AND dependency.objid = relation.oid
+        AND dependency.deptype = 'e'
+    ),
     'grants', COALESCE((
       SELECT jsonb_agg(jsonb_build_object('operations', grant_row.operations, 'role', grant_row.grantee) ORDER BY grant_row.grantee)
       FROM table_grants grant_row
@@ -121,6 +142,13 @@ tables AS (
 routines AS (
   SELECT jsonb_build_object(
     'executionMode', CASE WHEN routine.prosecdef THEN 'definer' ELSE 'invoker' END,
+    'extensionOwned', EXISTS(
+      SELECT 1
+      FROM pg_depend dependency
+      WHERE dependency.classid = 'pg_proc'::regclass
+        AND dependency.objid = routine.oid
+        AND dependency.deptype = 'e'
+    ),
     'grants', COALESCE((
       SELECT jsonb_agg(jsonb_build_object('operations', grant_row.operations, 'role', grant_row.grantee) ORDER BY grant_row.grantee)
       FROM routine_grants grant_row
