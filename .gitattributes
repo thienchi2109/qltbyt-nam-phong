@@ -21,6 +21,9 @@
 *.sh text eol=lf
 *.txt text eol=lf
 
+# Preserve the immutable pg_dump evidence without Git whitespace normalization checks.
+supabase/db-quality-gate-bootstrap.sql -whitespace
+
 # Keep Windows-native scripts on CRLF.
 *.ps1 text eol=crlf
 *.bat text eol=crlf

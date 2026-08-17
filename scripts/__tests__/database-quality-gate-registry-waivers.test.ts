@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 import { describe, expect, it } from "vitest"
 
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
@@ -25,19 +27,22 @@ type RegistryModule = {
 }
 
 function validRegistries() {
+  const legacy = [
+    {
+      path: "supabase/migrations/20241220_add_completion_tracking.sql",
+      sha256: "1".repeat(64),
+    },
+  ]
+
   return {
     appliedLock: {
       applied: [],
       cutover: {
         commit: "a".repeat(40),
+        legacyInventorySha256: createHash("sha256").update(JSON.stringify(legacy)).digest("hex"),
         migrationRoot: "supabase/migrations",
       },
-      legacy: [
-        {
-          path: "supabase/migrations/20241220_add_completion_tracking.sql",
-          sha256: "1".repeat(64),
-        },
-      ],
+      legacy,
       schemaVersion: 1,
     },
     invariants: {

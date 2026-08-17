@@ -36,6 +36,7 @@ const appliedLockSchema = z
     cutover: z
       .object({
         commit: z.string().regex(SHA1_PATTERN),
+        legacyInventorySha256: z.string().regex(SHA256_PATTERN),
         migrationRoot: z.literal(CANONICAL_MIGRATION_ROOT),
       })
       .strict(),

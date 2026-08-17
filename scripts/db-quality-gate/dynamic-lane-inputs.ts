@@ -1,18 +1,26 @@
 import path from "node:path"
 
+import { inspectBootstrapArtifact } from "./bootstrap"
 import { addDynamicFinding } from "./dynamic-lane-report"
 import { selectDefaultSafeSqlTests } from "./expected-state"
 import { readFileAtCommit } from "./git-evidence"
 import { inspectCanonicalMigrationSourceAtCommit } from "./migration-source"
+import { parseAppliedMigrationLock } from "./registries"
 import type { DynamicRunState } from "./dynamic-lane-report"
 import type { OracleDynamicLaneInput } from "./dynamic-lane-types"
 import type { MigrationIdentity } from "./types"
+import type { BootstrapArtifact } from "./bootstrap"
 
 const INVARIANTS_PATH = "supabase/db-quality-gate-invariants.json"
 const SQL_TESTS_PATH = "supabase/db-quality-gate-tests.json"
+const APPLIED_LOCK_PATH = "supabase/applied-migrations.lock.json"
+const BOOTSTRAP_MANIFEST_PATH = "supabase/db-quality-gate-bootstrap.manifest.json"
+const BOOTSTRAP_SQL_PATH = "supabase/db-quality-gate-bootstrap.sql"
 
 /** Immutable source artifacts selected from one resolved subject commit. */
 export type DynamicInputArtifacts = {
+  appliedMigrationIdentities: MigrationIdentity[]
+  bootstrap: BootstrapArtifact
   invariants: unknown
   migrationIdentities: MigrationIdentity[]
   sqlTestRegistry: unknown
@@ -57,6 +65,26 @@ function readCommittedJsonArtifact(
   }
 }
 
+function postCutoverMigrations(
+  migrationIdentities: MigrationIdentity[],
+  legacyPaths: Set<string>,
+  state: DynamicRunState
+): MigrationIdentity[] | undefined {
+  const migrations = migrationIdentities.filter((identity) => !legacyPaths.has(identity.path))
+
+  for (const migration of migrations) {
+    if (!/^supabase\/migrations\/\d{14}_.+\.sql$/.test(migration.path)) {
+      addDynamicFinding(state, "dynamic.bootstrap.post-cutover-version", migration.path, {
+        path: migration.path,
+      })
+      state.incomplete = true
+      return undefined
+    }
+  }
+
+  return migrations
+}
+
 /** Loads validation registry inputs from Git objects without consulting the mutable worktree. */
 export function readDynamicInputArtifacts(
   input: OracleDynamicLaneInput,
@@ -73,6 +101,40 @@ export function readDynamicInputArtifacts(
       })
     }
     state.incomplete = true
+    return undefined
+  }
+
+  const appliedLock = parseAppliedMigrationLock(readCommittedJsonArtifact(input, APPLIED_LOCK_PATH))
+  if (appliedLock === undefined) {
+    addDynamicFinding(state, "dynamic.bootstrap.applied-lock", APPLIED_LOCK_PATH, {
+      path: APPLIED_LOCK_PATH,
+    })
+    state.incomplete = true
+    return undefined
+  }
+
+  const bootstrap = inspectBootstrapArtifact({
+    cutoverCommit: appliedLock.cutover.commit,
+    legacy: appliedLock.legacy,
+    manifest: readCommittedJsonArtifact(input, BOOTSTRAP_MANIFEST_PATH),
+    schemaSql: committedRepositoryFile(input, BOOTSTRAP_SQL_PATH, "supabase/"),
+  })
+  if (bootstrap.outcome !== "PASS" || bootstrap.artifact === undefined) {
+    for (const finding of bootstrap.findings) {
+      addDynamicFinding(state, `dynamic.${finding.ruleId}`, BOOTSTRAP_MANIFEST_PATH, {
+        path: BOOTSTRAP_MANIFEST_PATH,
+      })
+    }
+    state.incomplete = true
+    return undefined
+  }
+
+  const migrations = postCutoverMigrations(
+    source.migrationIdentities,
+    new Set(appliedLock.legacy.map((entry) => entry.path)),
+    state
+  )
+  if (migrations === undefined) {
     return undefined
   }
 
@@ -106,8 +168,10 @@ export function readDynamicInputArtifacts(
     }
 
     return {
+      appliedMigrationIdentities: appliedLock.applied,
+      bootstrap: bootstrap.artifact,
       invariants,
-      migrationIdentities: source.migrationIdentities,
+      migrationIdentities: migrations,
       sqlTestRegistry: sqlTests,
       sqlTests: selectedSqlTests.map((test) => ({
         fixtureContract: test.fixtureContract as "isolated-fixture",

@@ -42,12 +42,17 @@ function repositoryWithLock(files: Record<string, string>) {
   }).trim()
   const lockPath = repository.path("supabase", "applied-migrations.lock.json")
   mkdirSync(path.dirname(lockPath), { recursive: true })
+  const legacy = [{ path: LEGACY_PATH, sha256: sha256(LEGACY_SQL) }]
   writeFileSync(
     lockPath,
     fixtureJson({
       applied: [],
-      cutover: { commit: cutoverCommit, migrationRoot: "supabase/migrations" },
-      legacy: [{ path: LEGACY_PATH, sha256: sha256(LEGACY_SQL) }],
+      cutover: {
+        commit: cutoverCommit,
+        legacyInventorySha256: sha256(JSON.stringify(legacy)),
+        migrationRoot: "supabase/migrations",
+      },
+      legacy,
       schemaVersion: 1,
     })
   )
@@ -93,7 +98,10 @@ describe("database quality gate protected cutover", () => {
     }).trim()
     const lockPath = repository.path("supabase", "applied-migrations.lock.json")
     const lock = JSON.parse(readFileSync(lockPath, "utf8")) as Record<string, unknown>
-    lock.cutover = { commit: cutoverCommit, migrationRoot: "supabase/migrations" }
+    lock.cutover = {
+      ...(lock.cutover as Record<string, unknown>),
+      commit: cutoverCommit,
+    }
     writeFileSync(lockPath, fixtureJson(lock))
 
     const result = source.inspectMigrationRepository({ repositoryRoot: repository.root })
@@ -112,6 +120,8 @@ describe("database quality gate protected cutover", () => {
     const lock = JSON.parse(readFileSync(lockPath, "utf8")) as Record<string, unknown>
     lock.cutover = {
       commit: (lock.cutover as { commit: string }).commit,
+      legacyInventorySha256: (lock.cutover as { legacyInventorySha256: string })
+        .legacyInventorySha256,
       migrationRoot: "supabase/other-migrations",
     }
     writeFileSync(lockPath, fixtureJson(lock))

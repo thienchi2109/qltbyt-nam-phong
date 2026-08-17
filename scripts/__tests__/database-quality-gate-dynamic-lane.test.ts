@@ -1,8 +1,11 @@
 import { writeFileSync } from "node:fs"
 
+import { rmSync } from "node:fs"
+
 import { describe, expect, it } from "vitest"
 
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { commitWorkingTree } from "./database-quality-gate-static-test-support"
 import {
   createDynamicFixture,
   DynamicLaneModule,
@@ -88,7 +91,19 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
     )
   })
 
-  it("replays the canonical root source in a clean disposable database without cloning qltbyt_test", async () => {
+  it("does not infer a legacy filename mapping from unrelated Oracle migration versions", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const executor = new FakeOracleDynamicExecutor()
+    executor.baselineMigrationVersions = ["19990101000000", "20270101000000"]
+    const { report } = runLane(source, executor, "baseline-forward")
+
+    expect(report.outcome).toBe("PASS")
+    expect(executor.operations).toContain(
+      "apply-migrations:dq_baseline_forward_phase4_contract:supabase/migrations/20270201000000_candidate.sql"
+    )
+  })
+
+  it("restores the immutable bootstrap before post-cutover migrations in a clean disposable database", async () => {
     const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
     const executor = new FakeOracleDynamicExecutor()
     const { report } = runLane(source, executor, "fresh-replay")
@@ -100,7 +115,19 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
       },
     ])
     expect(executor.operations).toContain(
-      "apply-migrations:dq_fresh_replay_phase4_contract:supabase/migrations/20270101000000_already_in_baseline.sql,supabase/migrations/20270201000000_candidate.sql"
+      "apply-bootstrap:dq_fresh_replay_phase4_contract:supabase/db-quality-gate-bootstrap.sql"
+    )
+    expect(executor.operations).toContain(
+      "apply-migrations:dq_fresh_replay_phase4_contract:supabase/migrations/20270201000000_candidate.sql"
+    )
+    expect(
+      executor.operations.indexOf(
+        "apply-bootstrap:dq_fresh_replay_phase4_contract:supabase/db-quality-gate-bootstrap.sql"
+      )
+    ).toBeLessThan(
+      executor.operations.indexOf(
+        "apply-migrations:dq_fresh_replay_phase4_contract:supabase/migrations/20270201000000_candidate.sql"
+      )
     )
     expect(executor.appliedDatabases).not.toContain("qltbyt_test")
     expect(report.inputHashes).toMatchObject({
@@ -108,6 +135,85 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
       catalogApplication: expect.stringMatching(/^[a-f0-9]{64}$/),
       catalogEnvironment: expect.stringMatching(/^[a-f0-9]{64}$/),
     })
+  })
+
+  it("fails closed before creating a database when the committed bootstrap artifact is unavailable", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const executor = new FakeOracleDynamicExecutor()
+    const fixture = createDynamicFixture()
+    rmSync(fixture.repository.path("supabase", "db-quality-gate-bootstrap.manifest.json"))
+    const subjectCommit = commitWorkingTree(
+      fixture.repository.root,
+      "remove committed bootstrap manifest"
+    )
+
+    const report = source.runOracleDynamicLane({
+      createdAt: "2026-08-17T04:30:00Z",
+      executor,
+      lane: "fresh-replay",
+      repositoryRoot: fixture.repository.root,
+      runId: "phase4-missing-bootstrap",
+      subjectCommit,
+    })
+
+    expect(report.outcome).toBe("INCOMPLETE")
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "dynamic.bootstrap.manifest" })
+    )
+    expect(executor.createdDatabases).toEqual([])
+  })
+
+  it("blocks an Oracle baseline fingerprint mismatch before creating a disposable database", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const executor = new FakeOracleDynamicExecutor()
+    executor.baselineCatalogs = {
+      ...executor.baselineCatalogs,
+      environment: {
+        ...executor.baselineCatalogs.environment,
+        postgresqlVersion: "17.7",
+      },
+    }
+
+    const { report } = runLane(source, executor, "fresh-replay")
+
+    expect(report.outcome).toBe("FAILED")
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "dynamic.bootstrap.attestation.oracle-baseline" })
+    )
+    expect(executor.createdDatabases).toEqual([])
+  })
+
+  it("blocks a restored bootstrap fingerprint mismatch before applying candidate migrations", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const executor = new FakeOracleDynamicExecutor()
+    executor.catalogs = {
+      ...executor.catalogs,
+      application: {
+        relations: [
+          {
+            columns: [],
+            constraints: [],
+            extensionOwned: false,
+            identity: "public.unexpected",
+            indexes: [],
+            kind: "table",
+            triggers: [],
+          },
+        ],
+        routines: [],
+      },
+    }
+
+    const { report } = runLane(source, executor, "fresh-replay")
+
+    expect(report.outcome).toBe("FAILED")
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({
+        ruleId: "dynamic.bootstrap.attestation.restored-oracle-baseline",
+      })
+    )
+    expect(executor.appliedMigrationContents).toEqual([])
+    expect(executor.droppedDatabases).toEqual(["dq_fresh_replay_phase4_contract"])
   })
 
   it("returns INCOMPLETE without creating a database when the Oracle executor is unavailable", async () => {

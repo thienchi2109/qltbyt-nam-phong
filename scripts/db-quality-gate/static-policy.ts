@@ -27,8 +27,29 @@ type StaticRuleFinding = Omit<GateFinding, "fingerprint"> & {
   subject: string
 }
 
+const functionNamesByMigration = new Map<string, string[]>()
+
 function sourceFilePath(repositoryRoot: string, migrationPath: string): string {
   return path.join(repositoryRoot, migrationPath)
+}
+
+function cachedFunctionNames(
+  repositoryRoot: string,
+  migration: MigrationIdentity,
+  content?: string
+): string[] {
+  const cacheKey = `${repositoryRoot}\u0000${migration.path}\u0000${migration.sha256}`
+  const cached = functionNamesByMigration.get(cacheKey)
+  if (cached !== undefined) {
+    return cached
+  }
+
+  const names = functionNames(
+    content ?? readFileSync(sourceFilePath(repositoryRoot, migration.path), "utf8")
+  )
+  functionNamesByMigration.set(cacheKey, names)
+
+  return names
 }
 
 function sourceLine(content: string, index: number): number {
@@ -139,19 +160,13 @@ export function staticRuleFindings(
     )
   }
 
-  const names = functionNames(content)
+  const names = cachedFunctionNames(repositoryRoot, migration, content)
   if (names.length > 0) {
     const laterSources = allMigrations.filter(
       (entry) => compareStrings(entry.path, migration.path) > 0
     )
     for (const name of names) {
-      if (
-        laterSources.some((entry) =>
-          functionNames(readFileSync(sourceFilePath(repositoryRoot, entry.path), "utf8")).includes(
-            name
-          )
-        )
-      ) {
+      if (laterSources.some((entry) => cachedFunctionNames(repositoryRoot, entry).includes(name))) {
         findings.push(
           staticBlockingFinding("migration.source-order-overwrite", migration.path, {
             function: name,

@@ -13,6 +13,7 @@ import {
   inspectCanonicalMigrationSourceAtCommit,
   migrationContentSha256,
 } from "./migration-source"
+import { legacyInventoryDigest } from "./bootstrap"
 import { parseAppliedMigrationLock } from "./registries"
 import { compareStrings } from "./serialization"
 import type { AppliedMigrationLock } from "./registries"
@@ -91,6 +92,13 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
     }
   }
 
+  if (currentLock.cutover.legacyInventorySha256 !== legacyInventoryDigest(currentLock.legacy)) {
+    findings.push({
+      classification: "BLOCKING",
+      ruleId: "migration.legacy-inventory-digest",
+    })
+  }
+
   if (input.previousAppliedLock !== undefined) {
     const previousAppliedLock = parseAppliedMigrationLock(input.previousAppliedLock)
 
@@ -112,6 +120,7 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
 
   const cutoverCommit = resolveGitCommit(input.repositoryRoot, currentLock.cutover.commit)
   const headCommit = currentHeadCommit(input.repositoryRoot)
+  let cutoverMigrationHashes: Map<string, string> | undefined
   if (cutoverCommit === undefined) {
     findings.push({
       classification: "INCOMPLETE",
@@ -165,6 +174,10 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
         classification: "BLOCKING",
         ruleId: "migration.legacy-cutover-membership",
       })
+    } else {
+      cutoverMigrationHashes = new Map(
+        cutoverSource.migrationIdentities.map((migration) => [migration.path, migration.sha256])
+      )
     }
   }
 
@@ -190,17 +203,31 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
     }
 
     if (entryType === "legacy" && cutoverCommit !== undefined) {
-      const cutoverContent = readFileAtCommit(input.repositoryRoot, cutoverCommit, lockedEntry.path)
-      if (cutoverContent === undefined) {
-        findings.push({
-          classification: "BLOCKING",
-          ruleId: "migration.legacy-cutover-path",
-        })
-      } else if (migrationContentSha256(cutoverContent) !== lockedEntry.sha256) {
-        findings.push({
-          classification: "BLOCKING",
-          ruleId: "migration.legacy-cutover-content",
-        })
+      const cutoverMigrationHash = cutoverMigrationHashes?.get(lockedEntry.path)
+      if (cutoverMigrationHash !== undefined) {
+        if (cutoverMigrationHash !== lockedEntry.sha256) {
+          findings.push({
+            classification: "BLOCKING",
+            ruleId: "migration.legacy-cutover-content",
+          })
+        }
+      } else {
+        const cutoverContent = readFileAtCommit(
+          input.repositoryRoot,
+          cutoverCommit,
+          lockedEntry.path
+        )
+        if (cutoverContent === undefined) {
+          findings.push({
+            classification: "BLOCKING",
+            ruleId: "migration.legacy-cutover-path",
+          })
+        } else if (migrationContentSha256(cutoverContent) !== lockedEntry.sha256) {
+          findings.push({
+            classification: "BLOCKING",
+            ruleId: "migration.legacy-cutover-content",
+          })
+        }
       }
     }
   }

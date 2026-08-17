@@ -46,14 +46,18 @@ export const INVARIANTS_PATH = "supabase/db-quality-gate-invariants.json"
 export const SQL_TESTS_PATH = "supabase/db-quality-gate-tests.json"
 export const WAIVERS_PATH = "supabase/db-quality-gate-waivers.json"
 
-export function appliedLock(cutoverCommit = SUBJECT_COMMIT) {
+export function appliedLock(
+  cutoverCommit = SUBJECT_COMMIT,
+  legacy: Array<{ path: string; sha256: string }> = []
+) {
   return {
     applied: [],
     cutover: {
       commit: cutoverCommit,
+      legacyInventorySha256: sha256(JSON.stringify(legacy)),
       migrationRoot: "supabase/migrations",
     },
-    legacy: [],
+    legacy,
     schemaVersion: 1,
   }
 }
@@ -130,15 +134,13 @@ export function fixtureWithStaticMetadata(...migrations: Array<{ path: string; s
     ...Object.fromEntries(migrations.map((entry) => [entry.path, entry.sql])),
   })
   const cutoverCommit = commitFixtureRepository(repository.root)
+  const legacy = migrations.map((entry) => ({
+    path: entry.path,
+    sha256: sha256(canonicalTerminalNewline(entry.sql)),
+  }))
   writeFileSync(
     repository.path("supabase", "applied-migrations.lock.json"),
-    fixtureJson({
-      ...appliedLock(cutoverCommit),
-      legacy: migrations.map((entry) => ({
-        path: entry.path,
-        sha256: sha256(canonicalTerminalNewline(entry.sql)),
-      })),
-    })
+    fixtureJson(appliedLock(cutoverCommit, legacy))
   )
   writeFileSync(repository.path(BASELINE_PATH), fixtureJson(identityBaseline(cutoverCommit)))
   commitWorkingTree(repository.root, "commit static gate metadata")

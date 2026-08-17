@@ -72,7 +72,7 @@ describe("database quality gate migration repository inspection", () => {
     const previousLock = appliedLock([
       {
         path: LEGACY_PATH,
-        sha256: sha256(LEGACY_SQL),
+        sha256: sha256(LEGACY_SQL.slice(0, -1)),
       },
     ])
     const currentLock = appliedLock([])
@@ -93,6 +93,29 @@ describe("database quality gate migration repository inspection", () => {
       expect.objectContaining({
         classification: "BLOCKING",
         ruleId: "migration.lock-history",
+      })
+    )
+  })
+
+  it("blocks a legacy inventory digest that no longer matches the locked entries", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
+    const lock = appliedLock([
+      {
+        path: LEGACY_PATH,
+        sha256: sha256(LEGACY_SQL.slice(0, -1)),
+      },
+    ])
+    lock.cutover.legacyInventorySha256 = sha256("stale legacy inventory")
+    const repository = repositoryWithLock({ [LEGACY_PATH]: LEGACY_SQL }, lock)
+
+    const result = source.inspectMigrationRepository({ repositoryRoot: repository.root })
+
+    expect(result.outcome).toBe("FAILED")
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        classification: "BLOCKING",
+        ruleId: "migration.legacy-inventory-digest",
       })
     )
   })

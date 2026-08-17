@@ -36,6 +36,7 @@ export function appliedLock(
     applied: appliedEntries,
     cutover: {
       commit: "a".repeat(40),
+      legacyInventorySha256: sha256(JSON.stringify(legacyEntries)),
       migrationRoot: "supabase/migrations",
     },
     legacy: legacyEntries,

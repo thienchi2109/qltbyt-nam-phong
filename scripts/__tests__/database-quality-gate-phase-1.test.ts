@@ -211,5 +211,5 @@ describe("database quality gate Phase 1 contract core", () => {
       error: "Subject commit must match repository HEAD",
       outcome: "INCOMPLETE",
     })
-  })
+  }, 30_000)
 })

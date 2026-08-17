@@ -1,17 +1,26 @@
+import { createHash } from "node:crypto"
+
+function legacyInventorySha256(entries: unknown): string {
+  return createHash("sha256").update(JSON.stringify(entries)).digest("hex")
+}
+
 export function validRegistries() {
+  const legacy = [
+    {
+      path: "supabase/migrations/20241220_add_completion_tracking.sql",
+      sha256: "1".repeat(64),
+    },
+  ]
+
   return {
     appliedLock: {
       applied: [],
       cutover: {
         commit: "a".repeat(40),
+        legacyInventorySha256: legacyInventorySha256(legacy),
         migrationRoot: "supabase/migrations",
       },
-      legacy: [
-        {
-          path: "supabase/migrations/20241220_add_completion_tracking.sql",
-          sha256: "1".repeat(64),
-        },
-      ],
+      legacy,
       schemaVersion: 1,
     },
     invariants: {

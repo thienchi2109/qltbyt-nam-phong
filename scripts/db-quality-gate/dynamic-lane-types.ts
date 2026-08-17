@@ -1,3 +1,4 @@
+import type { BootstrapArtifact } from "./bootstrap"
 import type { MigrationIdentity } from "./types"
 
 /** Fixed persistent baseline that dynamic lanes may read or clone but never mutate. */
@@ -37,6 +38,10 @@ export type OracleDynamicPreflight = {
 /** Oracle boundary used by the dynamic lane; implementations may only mutate named disposable databases. */
 export type OracleDynamicExecutor = {
   acquireLock: (runId: string) => OracleExecutorResult<undefined>
+  applyBootstrap: (input: {
+    bootstrap: BootstrapArtifact
+    databaseName: string
+  }) => OracleExecutorResult<undefined>
   applyMigrations: (input: {
     databaseName: string
     migrations: Array<
@@ -46,6 +51,11 @@ export type OracleDynamicExecutor = {
     >
   }) => OracleExecutorResult<undefined>
   collectCatalogs: (input: { databaseName: string }) => OracleExecutorResult<{
+    access: unknown
+    application: unknown
+    environment: unknown
+  }>
+  collectBaselineCatalogs: () => OracleExecutorResult<{
     access: unknown
     application: unknown
     environment: unknown
