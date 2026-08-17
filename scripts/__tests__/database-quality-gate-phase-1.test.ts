@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process"
+
 import { describe, expect, it } from "vitest"
 
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
@@ -161,6 +163,10 @@ describe("database quality gate Phase 1 contract core", () => {
 
   it("requires an explicit lane and emits deterministic INCOMPLETE JSON while no lane executor exists", async () => {
     const command = await loadDatabaseQualityGateModule<CommandModule>("cli")
+    const headCommit = execFileSync("git", ["rev-parse", "HEAD"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    }).trim()
     const args = [
       "--created-at",
       "2026-08-16T09:29:20Z",
@@ -169,7 +175,7 @@ describe("database quality gate Phase 1 contract core", () => {
       "--run-id",
       "phase-1-contract",
       "--subject-commit",
-      "a".repeat(40),
+      headCommit,
     ]
 
     const missingLane = command.runDatabaseQualityGateCommand([])
@@ -190,7 +196,20 @@ describe("database quality gate Phase 1 contract core", () => {
       requiredChecksComplete: false,
       runId: "phase-1-contract",
       schemaVersion: 1,
-      subjectCommit: "a".repeat(40),
+      subjectCommit: headCommit,
+    })
+
+    const mismatchedSubject = command.runDatabaseQualityGateCommand([
+      "--lane",
+      "static",
+      "--subject-commit",
+      "0".repeat(40),
+    ])
+
+    expect(mismatchedSubject.exitCode).toBe(2)
+    expect(JSON.parse(mismatchedSubject.stdout)).toMatchObject({
+      error: "Subject commit must match repository HEAD",
+      outcome: "INCOMPLETE",
     })
   })
 })

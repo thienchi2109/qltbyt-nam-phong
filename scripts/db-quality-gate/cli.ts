@@ -1,10 +1,12 @@
-import { aggregateOutcome, finalizeReport, serializeReport } from "./contract"
+import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
+import { currentHeadCommit } from "./git-evidence"
 import { stableJsonStringify } from "./serialization"
+import { runStaticLane } from "./static-lane"
 import { GATE_LANES, GATE_SCHEMA_VERSION } from "./types"
 import type { GateLane, GateReport } from "./types"
 
 type CommandExecution = {
-  exitCode: 2
+  exitCode: 0 | 1 | 2
   stdout: string
 }
 
@@ -12,7 +14,7 @@ type CommandOptions = {
   createdAt: string
   lane: GateLane
   runId: string
-  subjectCommit: string
+  subjectCommit?: string
 }
 
 const OPTION_NAMES = new Set(["--created-at", "--lane", "--run-id", "--subject-commit"])
@@ -47,11 +49,11 @@ function parseOptions(args: string[]): CommandOptions | undefined {
     createdAt: values.get("--created-at") ?? new Date().toISOString(),
     lane: lane as GateLane,
     runId: values.get("--run-id") ?? "local-contract",
-    subjectCommit: values.get("--subject-commit") ?? "unknown",
+    subjectCommit: values.get("--subject-commit"),
   }
 }
 
-/** Runs the local command contract and returns JSON without invoking a lane executor. */
+/** Runs the local command contract and executes only the repository-local static lane. */
 export function runDatabaseQualityGateCommand(args: string[]): CommandExecution {
   if (!args.includes("--lane")) {
     return errorExecution("Missing required --lane argument")
@@ -60,6 +62,31 @@ export function runDatabaseQualityGateCommand(args: string[]): CommandExecution 
   const options = parseOptions(args)
   if (options === undefined) {
     return errorExecution("Invalid database quality gate command arguments")
+  }
+  const subjectCommit = currentHeadCommit(process.cwd())
+  if (subjectCommit === undefined) {
+    return errorExecution("Repository HEAD is unavailable")
+  }
+  if (options.subjectCommit !== undefined && options.subjectCommit !== subjectCommit) {
+    return errorExecution("Subject commit must match repository HEAD")
+  }
+
+  if (options.lane === "static") {
+    try {
+      const report = runStaticLane({
+        createdAt: options.createdAt,
+        repositoryRoot: process.cwd(),
+        runId: options.runId,
+        subjectCommit,
+      })
+
+      return {
+        exitCode: outcomeExitCode(report.outcome),
+        stdout: serializeReport(report),
+      }
+    } catch {
+      return errorExecution("Static lane execution failed")
+    }
   }
 
   const incompleteReport: GateReport = {
@@ -80,7 +107,7 @@ export function runDatabaseQualityGateCommand(args: string[]): CommandExecution 
     requiredChecksComplete: false,
     runId: options.runId,
     schemaVersion: GATE_SCHEMA_VERSION,
-    subjectCommit: options.subjectCommit,
+    subjectCommit,
   }
   const report = finalizeReport(incompleteReport)
 

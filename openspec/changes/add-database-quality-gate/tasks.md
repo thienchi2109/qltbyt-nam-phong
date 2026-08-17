@@ -71,25 +71,25 @@ or timer changes.
 
 **Purpose:** Protect migration source and produce fast diff-aware findings.
 
-- [ ] 2.1 Reuse the repository's changed-file discovery instead of creating a
+- [x] 2.1 Reuse the repository's changed-file discovery instead of creating a
       second diff implementation.
-- [ ] 2.2 Implement the protected legacy-cutover contract and bootstrap mode
+- [x] 2.2 Implement the protected legacy-cutover contract and bootstrap mode
       without recording the final cutover SHA yet.
-- [ ] 2.3 Implement and validate the append-only
+- [x] 2.3 Implement and validate the append-only
       `supabase/applied-migrations.lock.json` schema, fixtures, and bootstrap
       generation path.
-- [ ] 2.4 Implement canonical source membership and deterministic root migration
+- [x] 2.4 Implement canonical source membership and deterministic root migration
       ordering; report ambiguity as INCOMPLETE.
-- [ ] 2.5 Implement static hygiene, transaction, source-order overwrite,
+- [x] 2.5 Implement static hygiene, transaction, source-order overwrite,
       SECURITY DEFINER/search-path, JWT-guard, explicit-grant, and ILIKE
       sanitization rules required by repository policy.
-- [ ] 2.6 Implement DANGEROUS statement detection with explanatory evidence
+- [x] 2.6 Implement DANGEROUS statement detection with explanatory evidence
       rather than syntax-only BLOCKING.
-- [ ] 2.7 Create `supabase/db-quality-gate-waivers.json` with exact-bound,
+- [x] 2.7 Create `supabase/db-quality-gate-waivers.json` with exact-bound,
       additive approval, revoke, and supersede history.
-- [ ] 2.8 Bootstrap identity-based legacy hygiene and advisor baselines from
+- [x] 2.8 Bootstrap identity-based legacy hygiene and advisor baselines from
       reviewed evidence.
-- [ ] 2.9 Make static, immutability, baseline, approval, and waiver fixture tests
+- [x] 2.9 Make static, immutability, baseline, approval, and waiver fixture tests
       pass.
 
 **Review boundary:** Repository-local static behavior and committed metadata

@@ -1,7 +1,18 @@
-import { createHash } from "node:crypto"
-import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
+import { hasAppendedAppliedEntries, preservesAppliedLockHistory } from "./applied-lock-history"
+import {
+  currentHeadCommit,
+  isAncestorCommit,
+  readFileAtCommit,
+  resolveGitCommit,
+} from "./git-evidence"
+import {
+  inspectCanonicalMigrationSource,
+  inspectCanonicalMigrationSourceAtCommit,
+  migrationContentSha256,
+} from "./migration-source"
 import { parseAppliedMigrationLock } from "./registries"
 import { compareStrings } from "./serialization"
 import type { AppliedMigrationLock } from "./registries"
@@ -17,13 +28,13 @@ type RepositoryInspection = {
 }
 
 type RepositoryInspectionInput = {
+  bootstrapBaseRef?: string
   previousAppliedLock?: unknown
+  protectedRef?: string
   repositoryRoot: string
 }
 
-function sha256(content: string): string {
-  return createHash("sha256").update(content).digest("hex")
-}
+const DEFAULT_PROTECTED_REF = "origin/main"
 
 function readAppliedLock(repositoryRoot: string): AppliedMigrationLock | undefined {
   const lockPath = path.join(repositoryRoot, "supabase", "applied-migrations.lock.json")
@@ -43,68 +54,24 @@ function resolveRepositoryPath(repositoryRoot: string, relativePath: string): st
   return resolved.startsWith(rootPrefix) ? resolved : undefined
 }
 
-function preservesLockHistory(
-  previous: AppliedMigrationLock,
-  current: AppliedMigrationLock
-): boolean {
-  const currentEntries = new Map(
-    [...current.legacy, ...current.applied].map((entry) => [entry.path, entry.sha256])
-  )
-
-  return [...previous.legacy, ...previous.applied].every(
-    (entry) => currentEntries.get(entry.path) === entry.sha256
-  )
-}
-
-function sourceOrderFinding(
-  repositoryRoot: string,
-  migrationRoot: string,
-  hasLockedMigrationInRoot: boolean
-): RepositoryFinding | undefined {
-  const sourceDirectory = resolveRepositoryPath(repositoryRoot, migrationRoot)
-
-  if (sourceDirectory === undefined || !existsSync(sourceDirectory)) {
-    if (hasLockedMigrationInRoot) {
-      return undefined
-    }
-
-    return {
-      classification: "INCOMPLETE",
-      ruleId: "migration.source-root",
-    }
-  }
-
-  const prefixes = new Set<string>()
-
-  for (const entry of readdirSync(sourceDirectory, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(".sql")) {
-      continue
-    }
-
-    const match = /^(\d{14})_/.exec(entry.name)
-    if (match === null) {
-      continue
-    }
-
-    if (prefixes.has(match[1])) {
-      return {
-        classification: "INCOMPLETE",
-        ruleId: "migration.source-order",
-      }
-    }
-
-    prefixes.add(match[1])
-  }
-
-  return undefined
-}
-
 function outcomeForFindings(findings: RepositoryFinding[]): RepositoryInspection["outcome"] {
   if (findings.some((finding) => finding.classification === "INCOMPLETE")) {
     return "INCOMPLETE"
   }
 
   return findings.length > 0 ? "FAILED" : "PASS"
+}
+
+function exactEntriesMatch(
+  left: AppliedMigrationLock["legacy"],
+  right: AppliedMigrationLock["legacy"]
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every(
+      (entry, index) => entry.path === right[index]?.path && entry.sha256 === right[index]?.sha256
+    )
+  )
 }
 
 /** Inspects migration source and lock history without mutating the repository or database. */
@@ -129,43 +96,133 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
 
     if (
       previousAppliedLock === undefined ||
-      !preservesLockHistory(previousAppliedLock, currentLock)
+      !preservesAppliedLockHistory(previousAppliedLock, currentLock)
     ) {
       findings.push({
         classification: "BLOCKING",
         ruleId: "migration.lock-history",
       })
+    } else if (hasAppendedAppliedEntries(previousAppliedLock, currentLock)) {
+      findings.push({
+        classification: "INCOMPLETE",
+        ruleId: "migration.applied-readback",
+      })
     }
   }
 
-  for (const legacyEntry of currentLock.legacy) {
-    const migrationPath = resolveRepositoryPath(input.repositoryRoot, legacyEntry.path)
+  const cutoverCommit = resolveGitCommit(input.repositoryRoot, currentLock.cutover.commit)
+  const headCommit = currentHeadCommit(input.repositoryRoot)
+  if (cutoverCommit === undefined) {
+    findings.push({
+      classification: "INCOMPLETE",
+      ruleId: "migration.cutover-commit",
+    })
+  } else if (
+    headCommit === undefined ||
+    !isAncestorCommit(input.repositoryRoot, cutoverCommit, headCommit)
+  ) {
+    findings.push({
+      classification: "INCOMPLETE",
+      ruleId: "migration.cutover-ancestry",
+    })
+  } else {
+    const protectedMainCommit = resolveGitCommit(
+      input.repositoryRoot,
+      input.protectedRef ?? DEFAULT_PROTECTED_REF
+    )
+    if (
+      protectedMainCommit === undefined ||
+      !isAncestorCommit(input.repositoryRoot, cutoverCommit, protectedMainCommit)
+    ) {
+      findings.push({
+        classification: "INCOMPLETE",
+        ruleId: "migration.cutover-protected-ref",
+      })
+    }
+
+    if (
+      input.bootstrapBaseRef !== undefined &&
+      resolveGitCommit(input.repositoryRoot, input.bootstrapBaseRef) !== cutoverCommit
+    ) {
+      findings.push({
+        classification: "INCOMPLETE",
+        ruleId: "migration.cutover-bootstrap-base",
+      })
+    }
+
+    const cutoverSource = inspectCanonicalMigrationSourceAtCommit({
+      commit: cutoverCommit,
+      migrationRoot: currentLock.cutover.migrationRoot,
+      repositoryRoot: input.repositoryRoot,
+    })
+    if (cutoverSource.outcome === "INCOMPLETE") {
+      findings.push({
+        classification: "INCOMPLETE",
+        ruleId: "migration.legacy-cutover-source",
+      })
+    } else if (!exactEntriesMatch(currentLock.legacy, cutoverSource.migrationIdentities)) {
+      findings.push({
+        classification: "BLOCKING",
+        ruleId: "migration.legacy-cutover-membership",
+      })
+    }
+  }
+
+  for (const [entryType, lockedEntry] of [
+    ...currentLock.legacy.map((entry) => ["legacy", entry] as const),
+    ...currentLock.applied.map((entry) => ["applied", entry] as const),
+  ]) {
+    const migrationPath = resolveRepositoryPath(input.repositoryRoot, lockedEntry.path)
 
     if (migrationPath === undefined || !existsSync(migrationPath)) {
       findings.push({
         classification: "BLOCKING",
-        ruleId: "migration.legacy-path",
+        ruleId: `migration.${entryType}-path`,
       })
       continue
     }
 
-    if (sha256(readFileSync(migrationPath, "utf8")) !== legacyEntry.sha256) {
+    if (migrationContentSha256(readFileSync(migrationPath, "utf8")) !== lockedEntry.sha256) {
       findings.push({
         classification: "BLOCKING",
-        ruleId: "migration.legacy-content",
+        ruleId: `migration.${entryType}-content`,
       })
+    }
+
+    if (entryType === "legacy" && cutoverCommit !== undefined) {
+      const cutoverContent = readFileAtCommit(input.repositoryRoot, cutoverCommit, lockedEntry.path)
+      if (cutoverContent === undefined) {
+        findings.push({
+          classification: "BLOCKING",
+          ruleId: "migration.legacy-cutover-path",
+        })
+      } else if (migrationContentSha256(cutoverContent) !== lockedEntry.sha256) {
+        findings.push({
+          classification: "BLOCKING",
+          ruleId: "migration.legacy-cutover-content",
+        })
+      }
     }
   }
 
-  const sourceOrder = sourceOrderFinding(
-    input.repositoryRoot,
-    currentLock.cutover.migrationRoot,
-    currentLock.legacy.some((entry) =>
-      entry.path.startsWith(`${currentLock.cutover.migrationRoot}/`)
-    )
-  )
-  if (sourceOrder !== undefined) {
-    findings.push(sourceOrder)
+  const sourceInspection = inspectCanonicalMigrationSource({
+    migrationRoot: currentLock.cutover.migrationRoot,
+    repositoryRoot: input.repositoryRoot,
+  })
+  for (const finding of sourceInspection.findings) {
+    if (
+      finding.ruleId === "migration.source-root" &&
+      currentLock.legacy.some((entry) =>
+        entry.path.startsWith(`${currentLock.cutover.migrationRoot}/`)
+      )
+    ) {
+      continue
+    }
+
+    findings.push({
+      classification: "INCOMPLETE",
+      ruleId: finding.ruleId,
+    })
   }
 
   return {

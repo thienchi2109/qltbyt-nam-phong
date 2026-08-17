@@ -22,6 +22,7 @@ export type FindingApproval = {
 export type GateFinding = {
   approval?: FindingApproval
   classification: FindingClassification
+  evidence?: Record<string, number | string>
   fingerprint: string
   ruleId: string
 }

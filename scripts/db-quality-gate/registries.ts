@@ -1,14 +1,17 @@
 import { z } from "zod"
 
-import { compareStrings } from "./serialization"
+import { hasAppendedAppliedEntries, preservesAppliedLockHistory } from "./applied-lock-history"
+import { compareStrings, stableJsonStringify } from "./serialization"
 import type { RegistryValidation, ValidationFinding } from "./types"
 
 const SHA1_PATTERN = /^[a-f0-9]{40}$/
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
+const CANONICAL_MIGRATION_ROOT = "supabase/migrations"
+const CANONICAL_MIGRATION_PATH_PATTERN = /^supabase\/migrations\/[^/]+\.sql$/
 
 const lockEntrySchema = z
   .object({
-    path: z.string().min(1),
+    path: z.string().regex(CANONICAL_MIGRATION_PATH_PATTERN),
     sha256: z.string().regex(SHA256_PATTERN),
   })
   .strict()
@@ -19,7 +22,7 @@ const appliedLockSchema = z
     cutover: z
       .object({
         commit: z.string().regex(SHA1_PATTERN),
-        migrationRoot: z.string().min(1),
+        migrationRoot: z.literal(CANONICAL_MIGRATION_ROOT),
       })
       .strict(),
     legacy: z.array(lockEntrySchema),
@@ -68,16 +71,30 @@ const sqlTestsSchema = z
 const waiverApprovalSchema = z
   .object({
     approvalCommit: z.string().regex(SHA1_PATTERN),
+    approvedAt: z.string().datetime(),
+    approver: z.string().min(1),
+    approvalUrl: z.string().url(),
     candidateCommit: z.string().regex(SHA1_PATTERN),
     candidateReportDigest: z.string().regex(SHA256_PATTERN),
+    classification: z.literal("DANGEROUS"),
+    compensatingControls: z.string().min(1),
     expiresAt: z.string().datetime().optional(),
     findingFingerprint: z.string().regex(SHA256_PATTERN),
     id: z.string().min(1),
+    migrationPath: z.string().min(1),
     migrationSha256: z.string().regex(SHA256_PATTERN),
+    objectScope: z.string().min(1),
+    rationale: z.string().min(1),
+    recoveryPlan: z.string().min(1),
+    rejectedAlternatives: z.string().min(1),
     reviewEvidence: z.string().min(1),
+    riskAndImpact: z.string().min(1),
     revokedAt: z.string().datetime().optional(),
     ruleId: z.string().min(1),
+    statementScope: z.string().min(1),
     status: z.enum(["active", "revoked", "superseded"]),
+    supersedes: z.string().min(1).optional(),
+    validation: z.string().min(1),
   })
   .strict()
 
@@ -96,10 +113,12 @@ const TABLE_CLASSIFICATIONS = new Set([
 ])
 
 export type AppliedMigrationLock = z.infer<typeof appliedLockSchema>
+export type WaiverRegistry = z.infer<typeof waiversSchema>
 type RegistryInput = {
   appliedLock: unknown
   invariants: unknown
   previousAppliedLock?: unknown
+  previousWaivers?: unknown
   sqlTests: unknown
   waivers: unknown
 }
@@ -120,16 +139,70 @@ function finding(
   return { classification, ruleId }
 }
 
-function includesAllPreviousEntries(
-  previous: AppliedMigrationLock,
-  current: AppliedMigrationLock
-): boolean {
-  const currentEntries = new Map(
-    [...current.legacy, ...current.applied].map((entry) => [entry.path, entry.sha256])
-  )
+function hasUniqueLockPaths(lock: AppliedMigrationLock): boolean {
+  const paths = [...lock.legacy, ...lock.applied].map((entry) => entry.path)
 
-  return [...previous.legacy, ...previous.applied].every(
-    (entry) => currentEntries.get(entry.path) === entry.sha256
+  return new Set(paths).size === paths.length
+}
+
+function hasValidWaiverStatus(approval: WaiverRegistry["approvals"][number]): boolean {
+  if (approval.status === "active") {
+    return approval.revokedAt === undefined
+  }
+
+  if (approval.status === "revoked") {
+    return approval.revokedAt !== undefined && approval.supersedes !== undefined
+  }
+
+  return approval.revokedAt === undefined && approval.supersedes !== undefined
+}
+
+function hasValidWaiverTransitions(waivers: WaiverRegistry): boolean {
+  const approvalsById = new Map<string, WaiverRegistry["approvals"][number]>()
+  const supersededApprovalIds = new Set<string>()
+
+  return waivers.approvals.every((approval) => {
+    if (approvalsById.has(approval.id)) {
+      return false
+    }
+
+    if (!hasValidWaiverStatus(approval)) {
+      return false
+    }
+
+    if (approval.supersedes !== undefined) {
+      const supersededApproval = approvalsById.get(approval.supersedes)
+      if (
+        supersededApproval === undefined ||
+        supersededApprovalIds.has(approval.supersedes) ||
+        approval.candidateCommit !== supersededApproval.candidateCommit ||
+        approval.candidateReportDigest !== supersededApproval.candidateReportDigest ||
+        approval.findingFingerprint !== supersededApproval.findingFingerprint ||
+        approval.migrationPath !== supersededApproval.migrationPath ||
+        approval.migrationSha256 !== supersededApproval.migrationSha256 ||
+        approval.objectScope !== supersededApproval.objectScope ||
+        approval.ruleId !== supersededApproval.ruleId ||
+        approval.statementScope !== supersededApproval.statementScope
+      ) {
+        return false
+      }
+      supersededApprovalIds.add(approval.supersedes)
+    }
+
+    approvalsById.set(approval.id, approval)
+    return true
+  })
+}
+
+/** Keeps waiver evidence additive so an approval can be revoked or superseded only by a new record. */
+export function preservesWaiverHistory(previous: WaiverRegistry, current: WaiverRegistry): boolean {
+  const currentApprovals = current.approvals.map((approval) => stableJsonStringify(approval))
+
+  return (
+    new Set(currentApprovals).size === currentApprovals.length &&
+    previous.approvals.every(
+      (approval, index) => stableJsonStringify(approval) === currentApprovals[index]
+    )
   )
 }
 
@@ -137,7 +210,14 @@ function includesAllPreviousEntries(
 export function parseAppliedMigrationLock(value: unknown): AppliedMigrationLock | undefined {
   const result = appliedLockSchema.safeParse(value)
 
-  return result.success ? result.data : undefined
+  return result.success && hasUniqueLockPaths(result.data) ? result.data : undefined
+}
+
+/** Parses committed waivers without treating malformed metadata as approval evidence. */
+export function parseWaiverRegistry(value: unknown): WaiverRegistry | undefined {
+  const result = waiversSchema.safeParse(value)
+
+  return result.success && hasValidWaiverTransitions(result.data) ? result.data : undefined
 }
 
 /** Validates all committed registry shapes and append-only lock history. */
@@ -146,9 +226,13 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
   const appliedLockResult = appliedLockSchema.safeParse(input.appliedLock)
   const invariantsResult = invariantsSchema.safeParse(input.invariants)
   const sqlTestsResult = sqlTestsSchema.safeParse(input.sqlTests)
-  const waiversResult = waiversSchema.safeParse(input.waivers)
+  const waivers = parseWaiverRegistry(input.waivers)
+  const appliedLock =
+    appliedLockResult.success && hasUniqueLockPaths(appliedLockResult.data)
+      ? appliedLockResult.data
+      : undefined
 
-  if (!appliedLockResult.success) {
+  if (appliedLock === undefined) {
     findings.push(
       finding(
         hasSchemaVersion(input.appliedLock, 1)
@@ -181,7 +265,7 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
     )
   }
 
-  if (!waiversResult.success) {
+  if (waivers === undefined) {
     findings.push(
       finding(
         hasSchemaVersion(input.waivers, 1)
@@ -200,14 +284,24 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
     }
   }
 
-  if (appliedLockResult.success && input.previousAppliedLock !== undefined) {
-    const previousAppliedLockResult = appliedLockSchema.safeParse(input.previousAppliedLock)
+  if (appliedLock !== undefined && input.previousAppliedLock !== undefined) {
+    const previousAppliedLock = parseAppliedMigrationLock(input.previousAppliedLock)
 
     if (
-      !previousAppliedLockResult.success ||
-      !includesAllPreviousEntries(previousAppliedLockResult.data, appliedLockResult.data)
+      previousAppliedLock === undefined ||
+      !preservesAppliedLockHistory(previousAppliedLock, appliedLock)
     ) {
       findings.push(finding("registry.applied-lock.append-only", "BLOCKING"))
+    } else if (hasAppendedAppliedEntries(previousAppliedLock, appliedLock)) {
+      findings.push(finding("registry.applied-lock.readback", "INCOMPLETE"))
+    }
+  }
+
+  if (waivers !== undefined && input.previousWaivers !== undefined) {
+    const previousWaivers = parseWaiverRegistry(input.previousWaivers)
+
+    if (previousWaivers === undefined || !preservesWaiverHistory(previousWaivers, waivers)) {
+      findings.push(finding("registry.waivers.append-only", "BLOCKING"))
     }
   }
 

@@ -19,6 +19,16 @@ type BaselineModule = {
     baseline: FindingIdentity[]
     current: FindingIdentity[]
   }) => BaselineComparison
+  createIdentityBaseline: (input: {
+    evidence: string
+    findings: FindingIdentity[]
+    sourceCommit: string
+  }) => {
+    evidence: string
+    findings: FindingIdentity[]
+    schemaVersion: 1
+    sourceCommit: string
+  }
 }
 
 const LEGACY_FINDING: FindingIdentity = {
@@ -34,6 +44,22 @@ const NEW_FINDING: FindingIdentity = {
 }
 
 describe("database quality gate identity-based baseline comparison", () => {
+  it("bootstraps reviewed evidence as a deterministic identity baseline", async () => {
+    const baseline = await loadDatabaseQualityGateModule<BaselineModule>("baseline")
+    const result = baseline.createIdentityBaseline({
+      evidence: "Read-only reviewed bootstrap evidence",
+      findings: [NEW_FINDING, LEGACY_FINDING, NEW_FINDING],
+      sourceCommit: "a".repeat(40),
+    })
+
+    expect(result).toEqual({
+      evidence: "Read-only reviewed bootstrap evidence",
+      findings: [LEGACY_FINDING, NEW_FINDING],
+      schemaVersion: 1,
+      sourceCommit: "a".repeat(40),
+    })
+  })
+
   it("accepts unchanged historical baseline debt by stable finding identity", async () => {
     const baseline = await loadDatabaseQualityGateModule<BaselineModule>("baseline")
 

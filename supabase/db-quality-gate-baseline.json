@@ -1,0 +1,6 @@
+{
+  "evidence": "Phase 2 static baseline: no legacy WARNING identities are accepted without a reviewed record.",
+  "findings": [],
+  "schemaVersion": 1,
+  "sourceCommit": "d9229193e2596ae06f9a1f6f3855f2ef5f4adcaf"
+}

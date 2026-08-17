@@ -2,59 +2,16 @@ import { afterEach, describe, expect, it } from "vitest"
 
 import {
   cleanupFixtureRepositories,
-  createFixtureRepository,
-  fixtureJson,
   loadDatabaseQualityGateModule,
   sha256,
 } from "./database-quality-gate-test-support"
-
-type RepositoryFinding = {
-  classification: "BLOCKING" | "INCOMPLETE"
-  ruleId: string
-}
-
-type RepositoryInspection = {
-  findings: RepositoryFinding[]
-  outcome: "FAILED" | "INCOMPLETE" | "PASS"
-}
-
-type MigrationRepositoryModule = {
-  inspectMigrationRepository: (input: {
-    previousAppliedLock?: unknown
-    repositoryRoot: string
-  }) => RepositoryInspection
-}
-
-const LEGACY_PATH = "supabase/migrations/20241220_add_completion_tracking.sql"
-const LEGACY_SQL = "CREATE TABLE public.completion_tracking (id bigint PRIMARY KEY);\n"
-const PENDING_PATH = "supabase/migrations/20270101000000_add_pending_contract.sql"
-
-function appliedLock(legacyEntries: Array<{ path: string; sha256: string }> = []) {
-  return {
-    applied: [],
-    cutover: {
-      commit: "a".repeat(40),
-      migrationRoot: "supabase/migrations",
-    },
-    legacy: legacyEntries,
-    schemaVersion: 1,
-  }
-}
-
-function repositoryWithLock(
-  files: Record<string, string>,
-  lock = appliedLock([
-    {
-      path: LEGACY_PATH,
-      sha256: sha256(LEGACY_SQL),
-    },
-  ])
-) {
-  return createFixtureRepository({
-    "supabase/applied-migrations.lock.json": fixtureJson(lock),
-    ...files,
-  })
-}
+import {
+  LEGACY_PATH,
+  LEGACY_SQL,
+  MigrationRepositoryModule,
+  appliedLock,
+  repositoryWithLock,
+} from "./database-quality-gate-migration-repository-test-support"
 
 afterEach(cleanupFixtureRepositories)
 
@@ -140,69 +97,119 @@ describe("database quality gate migration repository inspection", () => {
     )
   })
 
-  it("returns INCOMPLETE instead of throwing for a malformed applied lock", async () => {
+  it("blocks a changed cutover commit and rejects a noncanonical migration root", async () => {
     const source =
       await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
-    const repository = createFixtureRepository({
-      "supabase/applied-migrations.lock.json": fixtureJson({
-        applied: [],
-        cutover: {
-          migrationRoot: "supabase/migrations",
-        },
-        legacy: [{}],
-        schemaVersion: 1,
-      }),
+    const previousLock = appliedLock([
+      {
+        path: LEGACY_PATH,
+        sha256: sha256(LEGACY_SQL),
+      },
+    ])
+    const changedCommit = appliedLock([
+      {
+        path: LEGACY_PATH,
+        sha256: sha256(LEGACY_SQL),
+      },
+    ])
+    const changedRoot = appliedLock([
+      {
+        path: LEGACY_PATH,
+        sha256: sha256(LEGACY_SQL),
+      },
+    ])
+    changedCommit.cutover.commit = "b".repeat(40)
+    changedRoot.cutover.migrationRoot = "supabase/renamed-migrations"
+    const commitRepository = repositoryWithLock({ [LEGACY_PATH]: LEGACY_SQL }, changedCommit)
+    const rootRepository = repositoryWithLock({ [LEGACY_PATH]: LEGACY_SQL }, changedRoot)
+
+    const commitResult = source.inspectMigrationRepository({
+      previousAppliedLock: previousLock,
+      repositoryRoot: commitRepository.root,
+    })
+    const rootResult = source.inspectMigrationRepository({
+      previousAppliedLock: previousLock,
+      repositoryRoot: rootRepository.root,
     })
 
-    expect(() =>
-      source.inspectMigrationRepository({ repositoryRoot: repository.root })
-    ).not.toThrow()
-    expect(source.inspectMigrationRepository({ repositoryRoot: repository.root })).toEqual({
-      findings: [
+    expect(commitResult.outcome).toBe("FAILED")
+    expect(rootResult.outcome).toBe("INCOMPLETE")
+    expect(commitResult.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "migration.lock-history" })
+    )
+    expect(rootResult.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "migration.applied-lock" })
+    )
+  })
+
+  it("blocks moving or reordering protected history between lock sections", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
+    const secondLegacyPath = "supabase/migrations/20241221_second_protected_legacy.sql"
+    const secondLegacySql = "CREATE TABLE public.second_protected_legacy (id bigint PRIMARY KEY);\n"
+    const previousLock = appliedLock([
+      {
+        path: LEGACY_PATH,
+        sha256: sha256(LEGACY_SQL),
+      },
+      {
+        path: secondLegacyPath,
+        sha256: sha256(secondLegacySql),
+      },
+    ])
+    const movedRepository = repositoryWithLock(
+      {
+        [LEGACY_PATH]: LEGACY_SQL,
+        [secondLegacyPath]: secondLegacySql,
+      },
+      appliedLock(
+        [
+          {
+            path: secondLegacyPath,
+            sha256: sha256(secondLegacySql),
+          },
+        ],
+        [
+          {
+            path: LEGACY_PATH,
+            sha256: sha256(LEGACY_SQL),
+          },
+        ]
+      )
+    )
+    const reorderedRepository = repositoryWithLock(
+      {
+        [LEGACY_PATH]: LEGACY_SQL,
+        [secondLegacyPath]: secondLegacySql,
+      },
+      appliedLock([
         {
-          classification: "INCOMPLETE",
-          ruleId: "migration.applied-lock",
+          path: secondLegacyPath,
+          sha256: sha256(secondLegacySql),
         },
-      ],
-      outcome: "INCOMPLETE",
+        {
+          path: LEGACY_PATH,
+          sha256: sha256(LEGACY_SQL),
+        },
+      ])
+    )
+
+    const moved = source.inspectMigrationRepository({
+      previousAppliedLock: previousLock,
+      repositoryRoot: movedRepository.root,
     })
-  })
+    const reordered = source.inspectMigrationRepository({
+      previousAppliedLock: previousLock,
+      repositoryRoot: reorderedRepository.root,
+    })
 
-  it("keeps a post-cutover migration absent from the lock editable before live apply", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
-    const repository = repositoryWithLock(
-      {
-        [PENDING_PATH]: "CREATE TABLE public.pending_contract (id bigint PRIMARY KEY);\n",
-      },
-      appliedLock()
+    expect(moved.outcome).toBe("FAILED")
+    expect(reordered.outcome).toBe("FAILED")
+    expect(moved.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "migration.lock-history" })
     )
-
-    const result = source.inspectMigrationRepository({ repositoryRoot: repository.root })
-
-    expect(result.outcome).toBe("PASS")
-    expect(result.findings).toEqual([])
-  })
-
-  it("returns INCOMPLETE instead of guessing an ambiguous root migration order", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
-    const repository = repositoryWithLock(
-      {
-        "supabase/migrations/20270101000000_first.sql": "SELECT 1;\n",
-        "supabase/migrations/20270101000000_second.sql": "SELECT 2;\n",
-      },
-      appliedLock()
-    )
-
-    const result = source.inspectMigrationRepository({ repositoryRoot: repository.root })
-
-    expect(result.outcome).toBe("INCOMPLETE")
-    expect(result.findings).toContainEqual(
-      expect.objectContaining({
-        classification: "INCOMPLETE",
-        ruleId: "migration.source-order",
-      })
+    expect(reordered.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "migration.lock-history" })
     )
   })
 })
