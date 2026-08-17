@@ -1,6 +1,5 @@
 import { collectChangedFiles } from "../changed-files"
 import { compareFindingBaseline, parseIdentityBaseline } from "./baseline"
-import { aggregateOutcome, finalizeReport } from "./contract"
 import {
   inspectCanonicalMigrationSource,
   inspectCanonicalMigrationSourceAtCommit,
@@ -35,8 +34,13 @@ import {
   readJsonArtifactAtRef,
   readWaiverRegistryArtifact,
 } from "./static-artifacts"
-import { GATE_SCHEMA_VERSION } from "./types"
-import type { GateFinding, GateReport, MigrationIdentity } from "./types"
+import {
+  expectedStateRegistryEvidence,
+  INVARIANTS_PATH,
+  SQL_TESTS_PATH,
+} from "./static-lane-expected-state"
+import { finalizeStaticLaneReport } from "./static-lane-report"
+import type { GateReport } from "./types"
 
 type StaticLaneInput = {
   baseRef?: string
@@ -60,6 +64,8 @@ export function collectStaticChangedFiles(baseRef = DEFAULT_BASE_REF): string[] 
       isCanonicalMigrationPath(filePath) ||
       filePath === APPLIED_LOCK_PATH ||
       filePath === BASELINE_PATH ||
+      filePath === INVARIANTS_PATH ||
+      filePath === SQL_TESTS_PATH ||
       filePath === WAIVERS_PATH
   )
 }
@@ -162,6 +168,10 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
       )
     )
   const waivers = readWaiverRegistryArtifact(input.repositoryRoot, WAIVERS_PATH)
+  const expectedStateEvidence = expectedStateRegistryEvidence({
+    repositoryRoot: input.repositoryRoot,
+    subjectCommit: headCommit,
+  })
   const identityBaseline = readIdentityBaselineArtifact(input.repositoryRoot, BASELINE_PATH)
   const baselineEvidenceTrusted =
     identityBaseline !== undefined &&
@@ -193,6 +203,7 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
   const checkedFindings = [
     ...repositoryFindings(repositoryInspection.findings),
     ...waiverFindings,
+    ...expectedStateEvidence.findings,
     ...changedMigrations.flatMap((migration) =>
       staticRuleFindings(input.repositoryRoot, migration, sourceInspection.migrationIdentities)
     ),
@@ -295,38 +306,25 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
     baseEvidenceUnavailable ||
     identityBaseline === undefined ||
     !baselineEvidenceTrusted ||
+    expectedStateEvidence.incomplete ||
     approvalAttachment.evidenceUnavailable ||
     dynamicSqlInspectionIncomplete ||
     sourceInspection.outcome === "INCOMPLETE" ||
     repositoryInspection.outcome === "INCOMPLETE"
-  const outcome = incomplete
-    ? "INCOMPLETE"
-    : aggregateOutcome({
-        evidenceAvailable: true,
-        findings,
-        requiredChecksComplete: true,
-      })
-
-  return finalizeReport({
-    baselineMigrationHighWater: "unavailable",
+  return finalizeStaticLaneReport({
     createdAt: input.createdAt,
-    digest: "",
-    evidenceAvailable: !incomplete,
-    executorEnvironment: { execution: "local-static" },
     findings,
+    incomplete,
     inputHashes: {
       appliedLock: artifactHash(input.repositoryRoot, APPLIED_LOCK_PATH),
       baseline: artifactHash(input.repositoryRoot, BASELINE_PATH),
       harness: harnessEvidence.hash,
-      migration: stableJsonSha256(sourceInspection.migrationIdentities),
+      invariants: expectedStateEvidence.inputHashes.invariants,
+      sqlTests: expectedStateEvidence.inputHashes.sqlTests,
       waivers: artifactHash(input.repositoryRoot, WAIVERS_PATH),
     },
-    lane: "static",
     migrationIdentities: sourceInspection.migrationIdentities,
-    outcome,
-    requiredChecksComplete: !incomplete,
     runId: input.runId,
-    schemaVersion: GATE_SCHEMA_VERSION,
     subjectCommit,
   })
 }

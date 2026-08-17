@@ -1,0 +1,895 @@
+{
+  "schemaVersion": 1,
+  "tests": [
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/ai_kill_switch_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/assistant_sql_audit_smoke.sql",
+      "purpose": "performance",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/assistant_sql_foundation_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/audit_logs_v2_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/auth_audit_log_retention_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/auth_audit_log_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/auth_login_attempt_throttle_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/change_password_hardening_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/dashboard_badges_department_scope_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/dashboard_kpi_summary_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/device_quota/dinh_muc_nhom_delete.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql", "psql-meta-commands"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/device_quota/dinh_muc_quyet_dinh_delete.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql", "psql-meta-commands"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/device_quota/dinh_muc_unified_import_and_active_bulk_guard.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql", "psql-meta-commands"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/device_quota_drop_legacy_384_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/device_quota_suggestion_jobs_schema_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_bulk_delete_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_department_distribution_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_department_scope_reads_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_department_scope_workflow_guards_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_filter_buckets_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_list_enhanced_active_repair_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_list_enhanced_liquidation_order_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_list_enhanced_model_search_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/equipment_list_enhanced_overload_regression.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_delete_restore_audit_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_historical_reads_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_partial_unique_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_performance.sql",
+      "purpose": "performance",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_reports_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_schema_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_soft_delete_workflow_guards_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/header_notifications_facility_scope_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/maintenance_audit_notfound_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/maintenance_write_role_guards_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/nhan_vien_privilege_boundaries_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/push_notifications_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_completion_time_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_cost_usage_visualizations_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_active_for_equipment_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_cost_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_equipment_status_invariant_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/repair_request_history_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_lifecycle_audit_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_read_scope_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/repair_request_status_counts_overdue_summary_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/session_profile_for_jwt_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "external-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_document_urls_phase_gate.sql",
+      "purpose": "concurrency",
+      "runnerRequirements": ["psql", "dblink", "multi-session"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_documents_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_import_apply_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_import_apply_security_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_import_preview_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_import_preview_security_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_mutations_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "external-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_p6c_live_acceptance.sql",
+      "purpose": "live-acceptance",
+      "runnerRequirements": ["psql"],
+      "safety": "live-only",
+      "timeoutSeconds": 180,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_hierarchy_snapshots_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_import_atomicity_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_import_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_locking_phase_gate.sql",
+      "purpose": "concurrency",
+      "runnerRequirements": ["psql", "multi-session"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_comparison_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_comparison_set_read_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_delete_audit_failure_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_delete_audit_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_delete_concurrency_phase_gate.sql",
+      "purpose": "concurrency",
+      "runnerRequirements": ["psql", "multi-session"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_delete_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_evaluation_hierarchy_order_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_evaluation_hierarchy_order_security_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_manual_assessments_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_option_documents_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_option_import_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_option_responses_constraints_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_option_responses_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_options_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_reference_products_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/technical_configuration_reference_ranking_performance_preflight.sql",
+      "purpose": "performance",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_reference_ranking_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_result_export_axes_pagination_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_result_export_axes_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_result_export_manifest_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_result_export_pages_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_suppliers_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/transfer_external_location_sync_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/transfer_request_delete_tenant_cast_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/transfer_request_lifecycle_audit_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/transfer_request_page_data_overdue_summary_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/transfer_request_page_data_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/unused_equipment_report_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/usage_log_split_status_smoke.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    }
+  ]
+}

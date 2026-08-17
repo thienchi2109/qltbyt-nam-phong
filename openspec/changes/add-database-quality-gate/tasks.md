@@ -99,23 +99,23 @@ only; no dynamic database execution.
 
 **Purpose:** Make structural and semantic database expectations explicit.
 
-- [ ] 3.1 Create `supabase/db-quality-gate-invariants.json` with reviewed table
+- [x] 3.1 Create `supabase/db-quality-gate-invariants.json` with reviewed table
       classes, owners, allowed operations, enforcement contracts, and evidence.
-- [ ] 3.2 Create `supabase/db-quality-gate-tests.json` for the current SQL-test
+- [x] 3.2 Create `supabase/db-quality-gate-tests.json` for the current SQL-test
       corpus with purpose, safety, runner, transaction, fixture, timeout, and
       evidence metadata.
-- [ ] 3.3 Create focused Wayfinder decisions for any table whose intended access
+- [x] 3.3 Create focused Wayfinder decisions for any table whose intended access
       contract cannot be proved; keep gate activation INCOMPLETE until resolved.
-- [ ] 3.4 Implement portable application fingerprint collection.
-- [ ] 3.5 Implement access fingerprint collection for owners, grants, RLS,
+- [x] 3.4 Implement portable application fingerprint collection.
+- [x] 3.5 Implement access fingerprint collection for owners, grants, RLS,
       policies, and routine security properties.
-- [ ] 3.6 Implement environment fingerprint collection for PostgreSQL, Supabase,
+- [x] 3.6 Implement environment fingerprint collection for PostgreSQL, Supabase,
       and extensions.
-- [ ] 3.7 Implement mandatory catalog checks and registry-selected
+- [x] 3.7 Implement mandatory catalog checks and registry-selected
       `default-safe` SQL execution.
-- [ ] 3.8 Prove that opt-in, performance, concurrency, and live-only tests cannot
+- [x] 3.8 Prove that opt-in, performance, concurrency, and live-only tests cannot
       enter the default lane accidentally.
-- [ ] 3.9 Add tests for unknown classifications, historical baseline debt, new
+- [x] 3.9 Add tests for unknown classifications, historical baseline debt, new
       tables, and widened access.
 
 **Review boundary:** Registry and collector implementation; no production

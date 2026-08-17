@@ -18,9 +18,11 @@ import {
   dangerousApproval,
   fixtureWithStaticMetadata,
   identityBaseline,
+  INVARIANTS_PATH,
   migration,
   repositoryHead,
   runStatic,
+  sqlTestRegistry,
   StaticLaneModule,
   WAIVERS_PATH,
 } from "./database-quality-gate-static-test-support"
@@ -75,6 +77,44 @@ describe("database quality gate static lane evidence binding", () => {
     expect(result.outcome).toBe("INCOMPLETE")
     expect(result.findings).toContainEqual(
       expect.objectContaining({ ruleId: "registry.waivers.evidence" })
+    )
+  })
+
+  it("does not bind a dirty expected-state registry to HEAD evidence", async () => {
+    const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
+    const candidate = migration("-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n")
+    const repository = fixtureWithStaticMetadata(candidate)
+    const changedInvariants = JSON.parse(
+      readFileSync(repository.path(INVARIANTS_PATH), "utf8")
+    ) as Record<string, unknown>
+    changedInvariants.reviewedAt = "2026-08-17T00:00:00Z"
+    writeFileSync(repository.path(INVARIANTS_PATH), fixtureJson(changedInvariants))
+
+    const result = runStatic(source, repository.root, [candidate.path])
+
+    expect(result.outcome).toBe("INCOMPLETE")
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "registry.invariants.evidence" })
+    )
+  })
+
+  it("fails closed when the SQL-test registry is malformed", async () => {
+    const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
+    const candidate = migration("-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n")
+    const repository = fixtureWithStaticMetadata(candidate)
+    const malformedRegistry = sqlTestRegistry()
+    malformedRegistry.tests[0].safety = "performance"
+    writeFileSync(
+      repository.path("supabase", "db-quality-gate-tests.json"),
+      fixtureJson(malformedRegistry)
+    )
+    commitWorkingTree(repository.root, "commit malformed SQL-test registry")
+
+    const result = runStatic(source, repository.root, [candidate.path])
+
+    expect(result.outcome).toBe("INCOMPLETE")
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ ruleId: "registry.sql-tests.schema" })
     )
   })
 

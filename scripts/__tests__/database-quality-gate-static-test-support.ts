@@ -42,6 +42,8 @@ export type StaticLaneModule = {
 
 export const SUBJECT_COMMIT = "a".repeat(40)
 export const BASELINE_PATH = "supabase/db-quality-gate-baseline.json"
+export const INVARIANTS_PATH = "supabase/db-quality-gate-invariants.json"
+export const SQL_TESTS_PATH = "supabase/db-quality-gate-tests.json"
 export const WAIVERS_PATH = "supabase/db-quality-gate-waivers.json"
 
 export function appliedLock(cutoverCommit = SUBJECT_COMMIT) {
@@ -72,9 +74,56 @@ export function identityBaseline(sourceCommit = SUBJECT_COMMIT) {
   }
 }
 
+export function invariantRegistry() {
+  return {
+    invariants: [
+      {
+        classification: "rpc-only",
+        evidence: ["Wayfinder #935"],
+        expected: {
+          allowedDirectAccess: [],
+          boundary: "guarded-rpc",
+          policyIdentities: [],
+          rls: {
+            enabled: true,
+            forced: false,
+          },
+        },
+        id: "public.nhan_vien.access",
+        objectIdentity: "public.nhan_vien",
+        owner: "postgres",
+        rule: "table-access-contract",
+        scope: "table-security",
+        status: "active",
+      },
+    ],
+    schemaVersion: 1,
+  }
+}
+
+export function sqlTestRegistry() {
+  return {
+    schemaVersion: 1,
+    tests: [
+      {
+        evidence: ["Wayfinder #935"],
+        fixtureContract: "isolated-fixture",
+        path: "supabase/tests/example.sql",
+        purpose: "smoke",
+        runnerRequirements: ["psql"],
+        safety: "default-safe",
+        timeoutSeconds: 30,
+        transactionContract: "rollback-required",
+      },
+    ],
+  }
+}
+
 export function fixtureWithStaticMetadata(...migrations: Array<{ path: string; sql: string }>) {
   const repository = createFixtureRepository({
     [BASELINE_PATH]: fixtureJson(identityBaseline()),
+    [INVARIANTS_PATH]: fixtureJson(invariantRegistry()),
+    [SQL_TESTS_PATH]: fixtureJson(sqlTestRegistry()),
     [WAIVERS_PATH]: fixtureJson({ approvals: [], schemaVersion: 1 }),
     "scripts/changed-files.js": "module.exports = { collectChangedFiles: () => ['tracked'] }\n",
     "scripts/db-quality-gate/static-lane.ts": "export const fixtureStaticHarness = true\n",

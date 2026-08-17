@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { validRegistries } from "./database-quality-gate-registry-test-support"
 
 type ValidationFinding = {
   classification: "BLOCKING" | "INCOMPLETE"
@@ -22,57 +23,6 @@ type RegistryModule = {
     sqlTests: unknown
     waivers: unknown
   }) => RegistryValidation
-}
-
-function validRegistries() {
-  return {
-    appliedLock: {
-      applied: [],
-      cutover: {
-        commit: "a".repeat(40),
-        migrationRoot: "supabase/migrations",
-      },
-      legacy: [
-        {
-          path: "supabase/migrations/20241220_add_completion_tracking.sql",
-          sha256: "1".repeat(64),
-        },
-      ],
-      schemaVersion: 1,
-    },
-    invariants: {
-      schemaVersion: 1,
-      tables: [
-        {
-          allowedOperations: ["SELECT"],
-          classification: "rpc-only",
-          enforcement: "guarded RPC",
-          evidence: "Wayfinder #935",
-          owner: "postgres",
-          table: "public.nhan_vien",
-        },
-      ],
-    },
-    sqlTests: {
-      schemaVersion: 1,
-      tests: [
-        {
-          evidence: "existing smoke test",
-          fixture: "none",
-          path: "supabase/tests/equipment_list_enhanced_active_repair_smoke.sql",
-          purpose: "equipment list regression",
-          runner: "psql",
-          safety: "default-safe",
-          timeoutMs: 30000,
-          transaction: "rollback-required",
-        },
-      ],
-    },
-    waivers: {
-      approvals: [] as Array<Record<string, unknown>>,
-      schemaVersion: 1,
-    },
-  }
 }
 
 function validWaiver(overrides: Record<string, string> = {}) {
@@ -136,6 +86,70 @@ describe("database quality gate registry schemas", () => {
     expect(registry.validateRegistrySet(input)).toEqual({
       findings: [],
       valid: true,
+    })
+  })
+
+  it("marks an unknown table classification incomplete instead of inferring current access", async () => {
+    const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
+    const input = validRegistries()
+    input.invariants.invariants[0].classification = "unreviewed"
+
+    expect(registry.validateRegistrySet(input)).toEqual({
+      findings: [
+        {
+          classification: "INCOMPLETE",
+          ruleId: "registry.invariants.table-intent",
+        },
+      ],
+      valid: false,
+    })
+  })
+
+  it("keeps explicit unresolved table authority incomplete until its decision is recorded", async () => {
+    const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
+    const input = validRegistries()
+
+    expect(
+      registry.validateRegistrySet({
+        ...input,
+        invariants: {
+          ...input.invariants,
+          invariants: [
+            {
+              evidence: ["Wayfinder #941 table-security decision"],
+              id: "public.thiet_bi.access",
+              objectIdentity: "public.thiet_bi",
+              rule: "table-access-contract",
+              scope: "table-security",
+              status: "unresolved",
+            },
+          ],
+        },
+      })
+    ).toEqual({
+      findings: [
+        {
+          classification: "INCOMPLETE",
+          ruleId: "registry.invariants.table-intent",
+        },
+      ],
+      valid: false,
+    })
+  })
+
+  it("rejects metadata that would admit performance tests to the default lane", async () => {
+    const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
+    const input = validRegistries()
+    input.sqlTests.tests[0].purpose = "performance"
+
+    expect(registry.validateRegistrySet(input)).toEqual({
+      findings: [
+        {
+          classification: "BLOCKING",
+          ruleId: "registry.sql-tests.default-safe-contract",
+        },
+      ],
+      valid: false,
     })
   })
 

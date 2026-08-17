@@ -1,0 +1,421 @@
+{
+  "invariants": [
+    {
+      "classification": "rpc-only",
+      "evidence": ["Wayfinder #935 table-security classification"],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [
+          "nhan_vien_deny_delete",
+          "nhan_vien_deny_insert",
+          "nhan_vien_deny_select",
+          "nhan_vien_deny_update"
+        ],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.nhan_vien.access",
+      "objectIdentity": "public.nhan_vien",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.thiet_bi.access",
+      "objectIdentity": "public.thiet_bi",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.nhat_ky_su_dung.access",
+      "objectIdentity": "public.nhat_ky_su_dung",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.ke_hoach_bao_tri.access",
+      "objectIdentity": "public.ke_hoach_bao_tri",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.cong_viec_bao_tri.access",
+      "objectIdentity": "public.cong_viec_bao_tri",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.file_dinh_kem.access",
+      "objectIdentity": "public.file_dinh_kem",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.yeu_cau_sua_chua.access",
+      "objectIdentity": "public.yeu_cau_sua_chua",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.lich_su_thiet_bi.access",
+      "objectIdentity": "public.lich_su_thiet_bi",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.yeu_cau_luan_chuyen.access",
+      "objectIdentity": "public.yeu_cau_luan_chuyen",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.audit_logs.access",
+      "objectIdentity": "public.audit_logs",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #940 table-security decision"],
+      "id": "public.don_vi.access",
+      "objectIdentity": "public.don_vi",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #940 table-security decision"],
+      "id": "public.user_don_vi_memberships.access",
+      "objectIdentity": "public.user_don_vi_memberships",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.khoa_phong_to_don_vi.access",
+      "objectIdentity": "public.khoa_phong_to_don_vi",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.dia_ban.access",
+      "objectIdentity": "public.dia_ban",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.user_fcm_tokens.access",
+      "objectIdentity": "public.user_fcm_tokens",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.internal_settings.access",
+      "objectIdentity": "public.internal_settings",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.nhom_thiet_bi.access",
+      "objectIdentity": "public.nhom_thiet_bi",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.quyet_dinh_dinh_muc.access",
+      "objectIdentity": "public.quyet_dinh_dinh_muc",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.chi_tiet_dinh_muc.access",
+      "objectIdentity": "public.chi_tiet_dinh_muc",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.thiet_bi_nhom_audit_log.access",
+      "objectIdentity": "public.thiet_bi_nhom_audit_log",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.lich_su_dinh_muc.access",
+      "objectIdentity": "public.lich_su_dinh_muc",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.auth_audit_log.access",
+      "objectIdentity": "public.auth_audit_log",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.device_quota_suggestion_jobs.access",
+      "objectIdentity": "public.device_quota_suggestion_jobs",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.device_quota_suggestion_job_chunks.access",
+      "objectIdentity": "public.device_quota_suggestion_job_chunks",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.device_quota_category_embeddings.access",
+      "objectIdentity": "public.device_quota_category_embeddings",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.ai_quota_counters.access",
+      "objectIdentity": "public.ai_quota_counters",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.ai_quota_reservations.access",
+      "objectIdentity": "public.ai_quota_reservations",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.ai_rate_events.access",
+      "objectIdentity": "public.ai_rate_events",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.auth_login_attempt_throttle.access",
+      "objectIdentity": "public.auth_login_attempt_throttle",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.zbs_recipient_configs.access",
+      "objectIdentity": "public.zbs_recipient_configs",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.zbs_notification_outbox.access",
+      "objectIdentity": "public.zbs_notification_outbox",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.zbs_oauth_token_state.access",
+      "objectIdentity": "public.zbs_oauth_token_state",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_dossiers.access",
+      "objectIdentity": "public.technical_configuration_dossiers",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_versions.access",
+      "objectIdentity": "public.technical_configuration_baseline_versions",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_groups.access",
+      "objectIdentity": "public.technical_configuration_baseline_groups",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_criteria.access",
+      "objectIdentity": "public.technical_configuration_baseline_criteria",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_reference_products.access",
+      "objectIdentity": "public.technical_configuration_reference_products",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_reference_responses.access",
+      "objectIdentity": "public.technical_configuration_reference_responses",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_documents.access",
+      "objectIdentity": "public.technical_configuration_baseline_documents",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_citations.access",
+      "objectIdentity": "public.technical_configuration_baseline_citations",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_reference_documents.access",
+      "objectIdentity": "public.technical_configuration_reference_documents",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_reference_citations.access",
+      "objectIdentity": "public.technical_configuration_reference_citations",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_suppliers.access",
+      "objectIdentity": "public.technical_configuration_suppliers",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_options.access",
+      "objectIdentity": "public.technical_configuration_options",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_comparison_sets.access",
+      "objectIdentity": "public.technical_configuration_comparison_sets",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_option_responses.access",
+      "objectIdentity": "public.technical_configuration_option_responses",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_option_documents.access",
+      "objectIdentity": "public.technical_configuration_option_documents",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_option_citations.access",
+      "objectIdentity": "public.technical_configuration_option_citations",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_manual_assessments.access",
+      "objectIdentity": "public.technical_configuration_manual_assessments",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    },
+    {
+      "evidence": ["Wayfinder #941 table-security decision"],
+      "id": "public.technical_configuration_baseline_subgroups.access",
+      "objectIdentity": "public.technical_configuration_baseline_subgroups",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "unresolved"
+    }
+  ],
+  "schemaVersion": 1
+}

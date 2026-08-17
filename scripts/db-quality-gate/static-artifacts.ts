@@ -4,10 +4,20 @@ import path from "node:path"
 import { parseIdentityBaseline } from "./baseline"
 import { listFilesAtCommit, readFileAtCommit, resolveGitCommit } from "./git-evidence"
 import { migrationContentSha256 } from "./migration-source"
-import { parseAppliedMigrationLock, parseWaiverRegistry } from "./registries"
+import {
+  parseAppliedMigrationLock,
+  parseInvariantRegistry,
+  parseSqlTestRegistry,
+  parseWaiverRegistry,
+} from "./registries"
 import { stableJsonSha256 } from "./serialization"
 import type { IdentityBaseline } from "./baseline"
-import type { AppliedMigrationLock, WaiverRegistry } from "./registries"
+import type {
+  AppliedMigrationLock,
+  InvariantRegistry,
+  SqlTestRegistry,
+  WaiverRegistry,
+} from "./registries"
 
 export type JsonAtRef =
   | { status: "invalid" }
@@ -22,6 +32,18 @@ export function artifactHash(repositoryRoot: string, relativePath: string): stri
   return existsSync(artifactPath)
     ? migrationContentSha256(readFileSync(artifactPath, "utf8"))
     : "unavailable"
+}
+
+/** Reads a worktree JSON artifact without treating malformed content as trustworthy evidence. */
+export function readJsonArtifact(
+  repositoryRoot: string,
+  relativePath: string
+): unknown | undefined {
+  try {
+    return JSON.parse(readFileSync(path.join(repositoryRoot, relativePath), "utf8")) as unknown
+  } catch {
+    return undefined
+  }
 }
 
 /** Parses the identity baseline from the worktree without treating invalid data as evidence. */
@@ -64,6 +86,24 @@ export function readAppliedMigrationLockArtifact(
   } catch {
     return undefined
   }
+}
+
+/** Parses the committed table-security registry without inferring missing table intent. */
+export function readInvariantRegistryArtifact(
+  repositoryRoot: string,
+  relativePath: string
+): InvariantRegistry | undefined {
+  const artifact = readJsonArtifact(repositoryRoot, relativePath)
+  return artifact === undefined ? undefined : parseInvariantRegistry(artifact)
+}
+
+/** Parses the committed SQL-test registry without allowing malformed metadata into selection. */
+export function readSqlTestRegistryArtifact(
+  repositoryRoot: string,
+  relativePath: string
+): SqlTestRegistry | undefined {
+  const artifact = readJsonArtifact(repositoryRoot, relativePath)
+  return artifact === undefined ? undefined : parseSqlTestRegistry(artifact)
 }
 
 /** Reads one JSON artifact from a resolved base ref without consulting the worktree. */

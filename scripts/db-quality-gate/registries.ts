@@ -1,8 +1,22 @@
 import { z } from "zod"
 
 import { hasAppendedAppliedEntries, preservesAppliedLockHistory } from "./applied-lock-history"
+import { validateExpectedStateRegistries } from "./expected-state-registry"
 import { compareStrings, stableJsonStringify } from "./serialization"
 import type { RegistryValidation, ValidationFinding } from "./types"
+import type { InvariantRegistry, SqlTestRegistry } from "./expected-state-registry"
+
+export {
+  parseInvariantRegistry,
+  parseSqlTestRegistry,
+  TABLE_CLASSIFICATIONS,
+  validateExpectedStateRegistries,
+} from "./expected-state-registry"
+export type {
+  InvariantRegistry,
+  ResolvedInvariant,
+  SqlTestRegistry,
+} from "./expected-state-registry"
 
 const SHA1_PATTERN = /^[a-f0-9]{40}$/
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
@@ -27,44 +41,6 @@ const appliedLockSchema = z
       .strict(),
     legacy: z.array(lockEntrySchema),
     schemaVersion: z.literal(1),
-  })
-  .strict()
-
-const invariantsSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    tables: z.array(
-      z
-        .object({
-          allowedOperations: z.array(z.string().min(1)).min(1),
-          classification: z.string().min(1),
-          enforcement: z.string().min(1),
-          evidence: z.string().min(1),
-          owner: z.string().min(1),
-          table: z.string().min(1),
-        })
-        .strict()
-    ),
-  })
-  .strict()
-
-const sqlTestsSchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    tests: z.array(
-      z
-        .object({
-          evidence: z.string().min(1),
-          fixture: z.string().min(1),
-          path: z.string().min(1),
-          purpose: z.string().min(1),
-          runner: z.enum(["psql"]),
-          safety: z.enum(["default-safe", "opt-in", "performance", "concurrency", "live-only"]),
-          timeoutMs: z.number().int().positive(),
-          transaction: z.enum(["rollback-required", "isolated-database"]),
-        })
-        .strict()
-    ),
   })
   .strict()
 
@@ -104,13 +80,6 @@ const waiversSchema = z
     schemaVersion: z.literal(1),
   })
   .strict()
-
-const TABLE_CLASSIFICATIONS = new Set([
-  "app-facing",
-  "intentionally-public",
-  "rpc-only",
-  "server-only",
-])
 
 export type AppliedMigrationLock = z.infer<typeof appliedLockSchema>
 export type WaiverRegistry = z.infer<typeof waiversSchema>
@@ -224,8 +193,7 @@ export function parseWaiverRegistry(value: unknown): WaiverRegistry | undefined 
 export function validateRegistrySet(input: RegistryInput): RegistryValidation {
   const findings: ValidationFinding[] = []
   const appliedLockResult = appliedLockSchema.safeParse(input.appliedLock)
-  const invariantsResult = invariantsSchema.safeParse(input.invariants)
-  const sqlTestsResult = sqlTestsSchema.safeParse(input.sqlTests)
+  const expectedStateValidation = validateExpectedStateRegistries(input)
   const waivers = parseWaiverRegistry(input.waivers)
   const appliedLock =
     appliedLockResult.success && hasUniqueLockPaths(appliedLockResult.data)
@@ -243,28 +211,6 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
     )
   }
 
-  if (!invariantsResult.success) {
-    findings.push(
-      finding(
-        hasSchemaVersion(input.invariants, 1)
-          ? "registry.invariants.schema"
-          : "registry.invariants.schema-version",
-        "INCOMPLETE"
-      )
-    )
-  }
-
-  if (!sqlTestsResult.success) {
-    findings.push(
-      finding(
-        hasSchemaVersion(input.sqlTests, 1)
-          ? "registry.sql-tests.schema"
-          : "registry.sql-tests.schema-version",
-        "BLOCKING"
-      )
-    )
-  }
-
   if (waivers === undefined) {
     findings.push(
       finding(
@@ -274,14 +220,6 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
         "BLOCKING"
       )
     )
-  }
-
-  if (invariantsResult.success) {
-    for (const table of invariantsResult.data.tables) {
-      if (!TABLE_CLASSIFICATIONS.has(table.classification)) {
-        findings.push(finding("registry.invariants.table-intent", "INCOMPLETE"))
-      }
-    }
   }
 
   if (appliedLock !== undefined && input.previousAppliedLock !== undefined) {
@@ -306,7 +244,9 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
   }
 
   return {
-    findings: findings.sort((left, right) => compareStrings(left.ruleId, right.ruleId)),
-    valid: findings.length === 0,
+    findings: [...findings, ...expectedStateValidation.findings].sort((left, right) =>
+      compareStrings(left.ruleId, right.ruleId)
+    ),
+    valid: findings.length === 0 && expectedStateValidation.valid,
   }
 }

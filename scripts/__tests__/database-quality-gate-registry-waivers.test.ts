@@ -41,30 +41,41 @@ function validRegistries() {
       schemaVersion: 1,
     },
     invariants: {
-      schemaVersion: 1,
-      tables: [
+      invariants: [
         {
-          allowedOperations: ["SELECT"],
           classification: "rpc-only",
-          enforcement: "guarded RPC",
-          evidence: "Wayfinder #935",
+          evidence: ["Wayfinder #935"],
+          expected: {
+            allowedDirectAccess: [],
+            boundary: "guarded-rpc",
+            policyIdentities: [],
+            rls: {
+              enabled: true,
+              forced: false,
+            },
+          },
+          id: "public.nhan_vien.access",
+          objectIdentity: "public.nhan_vien",
           owner: "postgres",
-          table: "public.nhan_vien",
+          rule: "table-access-contract",
+          scope: "table-security",
+          status: "active",
         },
       ],
+      schemaVersion: 1,
     },
     sqlTests: {
       schemaVersion: 1,
       tests: [
         {
-          evidence: "existing smoke test",
-          fixture: "none",
+          evidence: ["existing smoke test"],
+          fixtureContract: "isolated-fixture",
           path: "supabase/tests/equipment_list_enhanced_active_repair_smoke.sql",
-          purpose: "equipment list regression",
-          runner: "psql",
+          purpose: "smoke",
+          runnerRequirements: ["psql"],
           safety: "default-safe",
-          timeoutMs: 30000,
-          transaction: "rollback-required",
+          timeoutSeconds: 30,
+          transactionContract: "rollback-required",
         },
       ],
     },
@@ -171,8 +182,8 @@ describe("database quality gate registry waiver transitions", () => {
   it("rejects unknown table intent and incomplete SQL-test execution metadata", async () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()
-    input.invariants.tables[0].classification = "unclassified"
-    input.sqlTests.tests[0].transaction = ""
+    input.invariants.invariants[0].classification = "unclassified"
+    input.sqlTests.tests[0].transactionContract = ""
 
     const result = registry.validateRegistrySet(input)
 
