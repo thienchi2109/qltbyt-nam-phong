@@ -8,6 +8,7 @@ import {
   DynamicLaneModule,
   FakeOracleDynamicExecutor,
 } from "./database-quality-gate-dynamic-test-support"
+import { defaultExpectedStateCatalogAccess } from "./database-quality-gate-expected-state-test-support"
 
 type CommandModule = {
   runDatabaseQualityGateCommand: (
@@ -86,9 +87,63 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
     expect(executor.runSqlTestPaths).toEqual(["supabase/tests/example.sql"])
     expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_contract"])
     expect(executor.persistedReports).toHaveLength(1)
+    expect(executor.operations).toContain("collect-catalogs:qltbyt_test")
     expect(executor.operations.indexOf("persist-report:phase4-contract")).toBeLessThan(
       executor.operations.indexOf("release-lock:phase4-contract")
     )
+  })
+
+  it("keeps unchanged routine search-path debt visible while blocking a new regression", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const historicalRoutine = {
+      executionMode: "definer",
+      extensionOwned: false,
+      grants: [],
+      identity: "public.historical_definer()",
+      owner: "postgres",
+      searchPath: null,
+    }
+    const executor = new FakeOracleDynamicExecutor()
+    executor.baselineCatalogs.access = defaultExpectedStateCatalogAccess({
+      routines: [historicalRoutine],
+    })
+    executor.catalogs.access = defaultExpectedStateCatalogAccess({
+      routines: [historicalRoutine],
+    })
+
+    const historical = runLane(source, executor).report
+
+    expect(historical.outcome).toBe("PASS")
+    expect(historical.findings).toContainEqual(
+      expect.objectContaining({
+        classification: "WARNING",
+        ruleId: "catalog.routine.search-path",
+      })
+    )
+
+    const regressedExecutor = new FakeOracleDynamicExecutor()
+    regressedExecutor.baselineCatalogs.access = defaultExpectedStateCatalogAccess({
+      routines: [historicalRoutine],
+    })
+    regressedExecutor.catalogs.access = defaultExpectedStateCatalogAccess({
+      routines: [
+        historicalRoutine,
+        {
+          ...historicalRoutine,
+          identity: "public.new_unsafe_definer()",
+        },
+      ],
+    })
+
+    const regressed = runLane(source, regressedExecutor).report
+
+    expect(regressed.outcome).toBe("FAILED")
+    expect(
+      regressed.findings.filter(
+        (finding) =>
+          finding.classification === "BLOCKING" && finding.ruleId === "catalog.routine.search-path"
+      )
+    ).toHaveLength(1)
   })
 
   it("does not infer a legacy filename mapping from unrelated Oracle migration versions", async () => {

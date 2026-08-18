@@ -105,7 +105,7 @@ describe("database quality gate registry schemas", () => {
     })
   })
 
-  it("keeps explicit unresolved table authority incomplete until its decision is recorded", async () => {
+  it("accepts explicit unresolved table authority as tracked non-blocking debt", async () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()
 
@@ -126,15 +126,7 @@ describe("database quality gate registry schemas", () => {
           ],
         },
       })
-    ).toEqual({
-      findings: [
-        {
-          classification: "INCOMPLETE",
-          ruleId: "registry.invariants.table-intent",
-        },
-      ],
-      valid: false,
-    })
+    ).toEqual({ findings: [], valid: true })
   })
 
   it("rejects metadata that would admit performance tests to the default lane", async () => {

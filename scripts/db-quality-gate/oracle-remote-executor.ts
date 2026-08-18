@@ -27,6 +27,7 @@ export type {
 } from "./oracle-remote-contract"
 
 const BASELINE_DATABASE = "qltbyt_test"
+const DATABASE_ADMIN_ROLE = "supabase_admin"
 const DEFAULT_TIMEOUT_MS = 120_000
 const GLOBAL_LOCK_NAME = "dynamic-lane.lock"
 const LOCK_LEASE_SECONDS = 30 * 60
@@ -107,9 +108,10 @@ export function createOracleRemoteExecutor(
   function sql(
     databaseName: string,
     statement: string,
-    failureKind: DynamicFailureKind
+    failureKind: DynamicFailureKind,
+    role = "postgres"
   ): OracleExecutorResult<string> {
-    const remoteCommand = `docker exec -i ${config.containerName} psql -X -v ON_ERROR_STOP=1 -U postgres -d ${shellQuote(databaseName)} -tA`
+    const remoteCommand = `docker exec -i ${config.containerName} psql -X -v ON_ERROR_STOP=1 -U ${role} -d ${shellQuote(databaseName)} -tA`
     const result = remote(remoteCommand, statement)
     if (result.status === "ok" || failureKind !== "failed" || result.kind !== "unavailable") {
       return result
@@ -283,7 +285,8 @@ rmdir "$lock_path"`,
         const dropped = sql(
           "postgres",
           `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${databaseName}' AND pid <> pg_backend_pid();\nDROP DATABASE ${quotedIdentifier(databaseName)};`,
-          "cleanup"
+          "cleanup",
+          DATABASE_ADMIN_ROLE
         )
         if (dropped.status === "error") {
           return dropped
@@ -304,7 +307,7 @@ rmdir "$lock_path"`,
         template === undefined
           ? `CREATE DATABASE ${quotedIdentifier(databaseName)};`
           : `CREATE DATABASE ${quotedIdentifier(databaseName)} TEMPLATE ${quotedIdentifier(template)};`
-      const created = sql("postgres", statement, "unavailable")
+      const created = sql("postgres", statement, "unavailable", DATABASE_ADMIN_ROLE)
       return created.status === "ok"
         ? { status: "ok", value: undefined }
         : errorResult(created.kind, created.error)
@@ -334,10 +337,10 @@ rmdir "$lock_path"`,
     },
 
     collectCatalogs({ databaseName }) {
-      if (!validDisposableDatabase(databaseName)) {
+      if (databaseName !== BASELINE_DATABASE && !validDisposableDatabase(databaseName)) {
         return errorResult(
           "stale-environment",
-          "Catalogs may be collected only from a disposable database"
+          "Catalogs may be collected only from the baseline or a disposable database"
         )
       }
       const application = readJson(databaseName, APPLICATION_CATALOG_QUERY)
@@ -419,7 +422,8 @@ rmdir "$lock_path"`,
       const result = sql(
         "postgres",
         `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${databaseName}' AND pid <> pg_backend_pid();\nDROP DATABASE ${quotedIdentifier(databaseName)};`,
-        "cleanup"
+        "cleanup",
+        DATABASE_ADMIN_ROLE
       )
       return result.status === "ok"
         ? { status: "ok", value: undefined }

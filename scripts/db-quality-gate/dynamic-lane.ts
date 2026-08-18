@@ -37,6 +37,10 @@ function migrationVersion(identity: MigrationIdentity): string | undefined {
   return /^(\d{14})_/.exec(identity.path.split("/").at(-1) ?? "")?.[1]
 }
 
+function catalogFindingKey(finding: { fingerprint: string; ruleId: string }): string {
+  return `${finding.ruleId}\u0000${finding.fingerprint}`
+}
+
 function pendingMigrations(
   state: ReturnType<typeof createDynamicRunState>,
   migrationIdentities: MigrationIdentity[],
@@ -144,6 +148,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
   }
 
   let artifacts: DynamicInputArtifacts | undefined
+  let baselineRoutineFindingKeys = new Set<string>()
   let databaseName: string | undefined
   let databaseCreated = false
   let report: GateReport
@@ -201,6 +206,36 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           canContinue = false
         }
 
+        if (canContinue) {
+          const baselineCatalogs = input.executor.collectCatalogs({
+            databaseName: ORACLE_BASELINE_DATABASE,
+          })
+          if (baselineCatalogs.status === "error") {
+            recordDynamicOperationError(state, "collect-baseline-catalogs", baselineCatalogs)
+            canContinue = false
+          } else {
+            state.catalogInputHashes = {
+              catalogBaselineAccess: collectAccessFingerprint(baselineCatalogs.value.access),
+              catalogBaselineApplication: collectApplicationFingerprint(
+                baselineCatalogs.value.application
+              ),
+              catalogBaselineEnvironment: collectEnvironmentFingerprint(
+                baselineCatalogs.value.environment
+              ),
+            }
+            baselineRoutineFindingKeys = new Set(
+              evaluateCatalogContracts({
+                access: baselineCatalogs.value.access,
+                application: baselineCatalogs.value.application,
+                environment: baselineCatalogs.value.environment,
+                invariants: artifacts.invariants,
+              })
+                .findings.filter((finding) => finding.ruleId === "catalog.routine.search-path")
+                .map(catalogFindingKey)
+            )
+          }
+        }
+
         if (canContinue && migrationInputsForRun !== undefined) {
           const created = input.executor.createDatabase({
             databaseName,
@@ -232,6 +267,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
             canContinue = false
           } else {
             state.catalogInputHashes = {
+              ...state.catalogInputHashes,
               catalogAccess: collectAccessFingerprint(catalogs.value.access),
               catalogApplication: collectApplicationFingerprint(catalogs.value.application),
               catalogEnvironment: collectEnvironmentFingerprint(catalogs.value.environment),
@@ -243,12 +279,15 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               invariants: artifacts.invariants,
             }).findings
             for (const finding of catalogFindings) {
+              const historicalRoutineDebt =
+                finding.ruleId === "catalog.routine.search-path" &&
+                baselineRoutineFindingKeys.has(catalogFindingKey(finding))
               state.findings.push({
-                classification: "BLOCKING",
+                classification: historicalRoutineDebt ? "WARNING" : "BLOCKING",
                 fingerprint: finding.fingerprint,
                 ruleId: finding.ruleId,
               })
-              if (finding.classification === "INCOMPLETE") {
+              if (!historicalRoutineDebt && finding.classification === "INCOMPLETE") {
                 state.incomplete = true
               }
             }

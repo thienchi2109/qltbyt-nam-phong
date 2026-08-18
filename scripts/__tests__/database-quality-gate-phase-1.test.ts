@@ -161,7 +161,7 @@ describe("database quality gate Phase 1 contract core", () => {
     )
   })
 
-  it("requires an explicit lane and emits deterministic INCOMPLETE JSON while no lane executor exists", async () => {
+  it("requires an explicit lane and emits deterministic INCOMPLETE JSON without a dynamic executor", async () => {
     const command = await loadDatabaseQualityGateModule<CommandModule>("cli")
     const headCommit = execFileSync("git", ["rev-parse", "HEAD"], {
       cwd: process.cwd(),
@@ -171,7 +171,7 @@ describe("database quality gate Phase 1 contract core", () => {
       "--created-at",
       "2026-08-16T09:29:20Z",
       "--lane",
-      "static",
+      "baseline-forward",
       "--run-id",
       "phase-1-contract",
       "--subject-commit",
@@ -191,7 +191,7 @@ describe("database quality gate Phase 1 contract core", () => {
     expect(first.exitCode).toBe(2)
     expect(first.stdout).toBe(second.stdout)
     expect(JSON.parse(first.stdout)).toMatchObject({
-      lane: "static",
+      lane: "baseline-forward",
       outcome: "INCOMPLETE",
       requiredChecksComplete: false,
       runId: "phase-1-contract",

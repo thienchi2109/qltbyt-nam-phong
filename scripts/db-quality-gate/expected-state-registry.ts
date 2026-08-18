@@ -165,7 +165,7 @@ export function validateExpectedStateRegistries(input: {
   } else {
     for (const invariant of invariants.invariants) {
       if (
-        invariant.status === "unresolved" ||
+        invariant.status !== "unresolved" &&
         !TABLE_CLASSIFICATIONS.has(invariant.classification)
       ) {
         findings.push(finding("registry.invariants.table-intent", "INCOMPLETE"))

@@ -45,7 +45,7 @@ describe("database quality gate expected state", () => {
     )
   })
 
-  it("keeps explicit unresolved table authority incomplete without inferring an access contract", async () => {
+  it("does not enforce an access contract for explicit unresolved historical debt", async () => {
     const expectedState = await loadDatabaseQualityGateModule<ExpectedStateModule>("expected-state")
     const result = expectedState.evaluateCatalogContracts({
       access: {
@@ -75,13 +75,10 @@ describe("database quality gate expected state", () => {
       ]),
     })
 
-    expect(result.findings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          classification: "INCOMPLETE",
-          ruleId: "catalog.table-intent.unresolved",
-        }),
-      ])
+    expect(result.findings).not.toContainEqual(
+      expect.objectContaining({
+        ruleId: "catalog.table-intent.unresolved",
+      })
     )
   })
 

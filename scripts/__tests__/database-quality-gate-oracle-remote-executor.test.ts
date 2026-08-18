@@ -236,6 +236,9 @@ describe("database quality gate Oracle remote executor", () => {
     expect(remoteCommands.join("\n")).toContain("left(datname")
     expect(remoteCommands.join("\n")).not.toContain("datname LIKE")
     expect(remoteCommands.join("\n")).toContain('DROP DATABASE "dq_stale_run"')
+    expect(
+      remoteCommands.find((command) => command.includes('DROP DATABASE "dq_stale_run"'))
+    ).toContain("-U supabase_admin")
     expect(remoteCommands.join("\n")).not.toContain('DROP DATABASE "qltbyt_test"')
     expect(remoteCommands.join("\n")).toContain("rmdir")
     expect(lockCommands.join("\n")).toContain("owner")
@@ -396,6 +399,11 @@ describe("database quality gate Oracle remote executor", () => {
     expect(remoteCommands.join("\n")).toContain(
       'CREATE DATABASE "dq_baseline_forward_phase4_run" TEMPLATE "qltbyt_test"'
     )
+    expect(
+      remoteCommands.find((command) =>
+        command.includes('CREATE DATABASE "dq_baseline_forward_phase4_run" TEMPLATE "qltbyt_test"')
+      )
+    ).toContain("-U supabase_admin")
     expect(remoteCommands.join("\n")).not.toContain("should_not_run")
     expect(recorder.commands.some((command) => command.input?.includes("candidate_only"))).toBe(
       true

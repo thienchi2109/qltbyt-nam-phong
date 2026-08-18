@@ -14,12 +14,10 @@ import {
   appliedLock,
   BASELINE_PATH,
   commitFixtureRepository,
-  commitWorkingTree,
   dangerousApproval,
   fixtureWithStaticMetadata,
   identityBaseline,
   migration,
-  repositoryHead,
   runStatic,
   StaticLaneModule,
   WAIVERS_PATH,
@@ -43,7 +41,7 @@ describe("database quality gate static lane orchestration", () => {
     expect(existsSync(repository.path("supabase", "applied-migrations.lock.json"))).toBe(false)
   })
 
-  it("pins unchanged legacy hygiene debt to an identity baseline without blocking an unrelated migration", async () => {
+  it("reports unchanged legacy hygiene debt without blocking an unrelated migration", async () => {
     const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
     const legacy = migration(
       "CREATE TABLE public.legacy_debt (id bigint);\n",
@@ -54,31 +52,6 @@ describe("database quality gate static lane orchestration", () => {
     )
     const repository = fixtureWithStaticMetadata(legacy, candidate)
 
-    const unbaselined = runStatic(source, repository.root, [candidate.path])
-
-    expect(unbaselined.outcome).toBe("FAILED")
-    expect(unbaselined.findings).toContainEqual(
-      expect.objectContaining({
-        ruleId: "baseline.identity.new-findings",
-      })
-    )
-
-    const historicalWarningIdentities = unbaselined.findings
-      .filter((finding) => finding.classification === "WARNING")
-      .map(({ classification, fingerprint, ruleId }) => ({ classification, fingerprint, ruleId }))
-
-    expect(historicalWarningIdentities).not.toEqual([])
-    writeFileSync(
-      repository.path(BASELINE_PATH),
-      fixtureJson({
-        evidence: "Reviewed legacy hygiene baseline.",
-        findings: historicalWarningIdentities,
-        schemaVersion: 1,
-        sourceCommit: repositoryHead(repository.root),
-      })
-    )
-    commitWorkingTree(repository.root, "pin legacy hygiene baseline")
-
     const result = runStatic(source, repository.root, [candidate.path])
 
     expect(result.outcome).toBe("PASS")
@@ -88,6 +61,11 @@ describe("database quality gate static lane orchestration", () => {
           classification: "WARNING",
         }),
       ])
+    )
+    expect(result.findings).not.toContainEqual(
+      expect.objectContaining({
+        ruleId: "baseline.identity.new-findings",
+      })
     )
   })
 

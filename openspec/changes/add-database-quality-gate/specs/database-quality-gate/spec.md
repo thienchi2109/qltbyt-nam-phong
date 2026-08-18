@@ -206,16 +206,18 @@ and environment compatibility as separate deterministic fingerprint layers.
 
 ### Requirement: Explicit table security intent
 
-The system SHALL require every application-owned table to have one approved
-security class, owner, allowed-operation contract, enforcement contract, and
-evidence before gate activation.
+The system SHALL enforce each approved table-security contract and SHALL keep
+explicit unresolved historical table intent visible as non-blocking registry
+debt until a focused decision records an approved contract.
 
 #### Scenario: Historical table intent is unknown
 
 - **GIVEN** an application-owned table lacks sufficient evidence for its
   intended access contract
 - **WHEN** security registry validation runs
-- **THEN** the result is INCOMPLETE
+- **THEN** the registry records that table explicitly as unresolved debt
+- **AND** no access contract is inferred or enforced for that table
+- **AND** the unresolved historical entry does not block an unrelated migration
 - **AND** a focused Wayfinder decision is required
 - **AND** current ACL or RLS state is not treated as intended policy
 
@@ -226,6 +228,16 @@ evidence before gate activation.
 - **WHEN** an unrelated migration is validated
 - **THEN** the historical mismatch remains visible
 - **AND** it does not become an unrelated new regression
+
+#### Scenario: Historical routine search-path debt remains unchanged
+
+- **GIVEN** the restored Oracle baseline contains an existing unsafe
+  `SECURITY DEFINER` routine search path
+- **WHEN** baseline-forward compares the restored baseline with its disposable
+  post-migration clone
+- **THEN** the unchanged finding remains visible as historical debt
+- **AND** it does not block the candidate
+- **BUT** a new routine or changed unsafe search path remains BLOCKING
 
 #### Scenario: New table widens exposure
 

@@ -216,10 +216,7 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
       ? undefined
       : compareFindingBaseline({
           baseline: identityBaseline.findings,
-          current: [
-            ...historicalHygieneWarnings,
-            ...checkedFindings.filter((finding) => finding.classification === "WARNING"),
-          ],
+          current: checkedFindings.filter((finding) => finding.classification === "WARNING"),
         })
   const staticFindings = [
     ...checkedFindings,

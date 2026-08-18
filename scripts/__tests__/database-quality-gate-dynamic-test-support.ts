@@ -116,6 +116,7 @@ export class FakeOracleDynamicExecutor {
       supabaseVersion: "v1.26.08",
     },
   }
+  baselineCatalogs = structuredClone(this.catalogs)
 
   failure?: {
     kind: DynamicFailureKind
@@ -178,12 +179,16 @@ export class FakeOracleDynamicExecutor {
     )
   }
 
-  collectCatalogs(): ExecutorResult<{
+  collectCatalogs(input: { databaseName: string }): ExecutorResult<{
     access: unknown
     application: unknown
     environment: unknown
   }> {
-    return this.result("collect-catalogs", this.catalogs)
+    return this.result(
+      "collect-catalogs",
+      input.databaseName === "qltbyt_test" ? this.baselineCatalogs : this.catalogs,
+      input.databaseName
+    )
   }
 
   runSqlTest(input: {

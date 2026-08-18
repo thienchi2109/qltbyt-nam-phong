@@ -251,12 +251,6 @@ export function evaluateCatalogContracts(input: CatalogContractInput): CatalogCh
       }
 
       if (invariant.status === "unresolved") {
-        findings.push(
-          catalogFinding("INCOMPLETE", "catalog.table-intent.unresolved", table.identity, {
-            evidence: invariant.evidence,
-            invariantId: invariant.id,
-          })
-        )
         continue
       }
 
