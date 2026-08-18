@@ -492,6 +492,12 @@ a prerequisite for live-apply review.
   unavailable, the aggregate result is `BLOCKING / INCOMPLETE`.
 - In that state, Codex must not claim the migration work is DONE and live apply
   must not proceed.
+- Historical application-owned `SECURITY DEFINER` `search_path` findings are
+  evaluated relative to the restored baseline. Unchanged findings are reported
+  as non-blocking warnings; new or changed unsafe findings are blocking.
+- Explicit unresolved historical table-intent findings are reported as
+  non-blocking debt. This does not downgrade defects introduced or changed by
+  the candidate migration.
 - Existing SQL tests are not all default-gate-safe. Execute only tests selected
   by the committed gate registry; never run the entire `supabase/tests` corpus
   indiscriminately.

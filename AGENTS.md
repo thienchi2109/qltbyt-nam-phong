@@ -132,7 +132,7 @@ Lefthook is installed for this repo and must remain enabled. Do not bypass hooks
    - Prettier must pass. For staged commits, Lefthook auto-runs `format:staged` before the other pre-commit gates.
    - For `.ts` / `.tsx` changes: `node scripts/npm-run.js run verify:no-explicit-any` and `node scripts/npm-run.js run verify:dedupe` before `typecheck`, tests, and `react-doctor`
    - Before commit and push, run the automated duplicate gate as diff-only. Also use the `code-deduplication` skill for semantic cross-file checks when the change introduces or copies reusable behavior. Never expand duplicate scanning to the full codebase unless the user explicitly requests it.
-   - For SQL migration changes, follow the mandatory Database Quality Gate contract below. Until its harness command is implemented, report the static and dynamic checks separately; never claim an aggregate PASS when dynamic validation was unavailable.
+   - For SQL migration changes, follow the mandatory Database Quality Gate contract below. Report `static` and `baseline-forward` separately; claim aggregate PASS only when both lanes PASS for the same exact commit.
    - Then run the remaining tests/linters/builds required by the task
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
@@ -354,6 +354,12 @@ a prerequisite for live-apply review.
   unavailable, the aggregate result is `BLOCKING / INCOMPLETE`.
 - In that state, Codex must not claim the migration work is DONE and live apply
   must not proceed.
+- Historical application-owned `SECURITY DEFINER` `search_path` findings are
+  evaluated relative to the restored baseline. Unchanged findings are reported
+  as non-blocking warnings; new or changed unsafe findings are blocking.
+- Explicit unresolved historical table-intent findings are reported as
+  non-blocking debt. This does not downgrade defects introduced or changed by
+  the candidate migration.
 - Existing SQL tests are not all default-gate-safe. Execute only tests selected
   by the committed gate registry; never run the entire `supabase/tests` corpus
   indiscriminately.
