@@ -1,20 +1,14 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 
 import {
   defaultExpectedStateCatalogAccess,
   expectedStateInvariantRegistry,
 } from "./database-quality-gate-expected-state-test-support"
 import {
-  collectAccessFingerprint,
-  collectApplicationFingerprint,
-  collectEnvironmentFingerprint,
-} from "../db-quality-gate/expected-state"
-import {
   commitWorkingTree,
   fixtureWithStaticMetadata,
   repositoryHead,
 } from "./database-quality-gate-static-test-support"
-import { sha256 } from "./database-quality-gate-test-support"
 
 export type DynamicFailureKind =
   | "cleanup"
@@ -27,9 +21,7 @@ export type DynamicFailureKind =
 
 type DynamicOperation =
   | "acquire-lock"
-  | "apply-bootstrap"
   | "apply-migrations"
-  | "collect-baseline-catalogs"
   | "clone-baseline"
   | "collect-catalogs"
   | "create-database"
@@ -54,17 +46,14 @@ type ExecutorResult<T> =
 export type DynamicLaneInput = {
   createdAt: string
   executor: FakeOracleDynamicExecutor
-  lane: "baseline-forward" | "fresh-replay"
+  lane: "baseline-forward"
   repositoryRoot: string
   runId: string
   subjectCommit: string
 }
 
 export type DynamicLaneModule = {
-  createDisposableDatabaseName: (input: {
-    lane: "baseline-forward" | "fresh-replay"
-    runId: string
-  }) => string
+  createDisposableDatabaseName: (input: { lane: "baseline-forward"; runId: string }) => string
   runOracleDynamicLane: (input: DynamicLaneInput) => {
     baselineMigrationHighWater: string
     evidenceAvailable?: boolean
@@ -73,7 +62,7 @@ export type DynamicLaneModule = {
       ruleId: string
     }>
     inputHashes: Record<string, string>
-    lane: "baseline-forward" | "fresh-replay"
+    lane: "baseline-forward"
     migrationIdentities: Array<{ path: string; sha256: string }>
     outcome: "FAILED" | "INCOMPLETE" | "PASS"
     requiredChecksComplete?: boolean
@@ -85,36 +74,6 @@ export function createDynamicFixture() {
     path: "supabase/migrations/20270101000000_already_in_baseline.sql",
     sql: "CREATE TABLE public.baseline_only (id bigint PRIMARY KEY);\n",
   })
-  const lock = JSON.parse(
-    readFileSync(repository.path("supabase", "applied-migrations.lock.json"), "utf8")
-  ) as {
-    cutover: {
-      commit: string
-    }
-    legacy: Array<{
-      path: string
-      sha256: string
-    }>
-  }
-  const bootstrapSql = "CREATE TABLE public.bootstrap_contract (id bigint PRIMARY KEY);\n"
-  const catalogs = {
-    access: defaultExpectedStateCatalogAccess(),
-    application: {
-      relations: [],
-      routines: [],
-    },
-    environment: {
-      extensions: [],
-      postgresqlVersion: "17.6",
-      supabaseVersion: "v1.26.08",
-    },
-  }
-  const fingerprints = {
-    accessSha256: collectAccessFingerprint(catalogs.access),
-    applicationSha256: collectApplicationFingerprint(catalogs.application),
-    environmentSha256: collectEnvironmentFingerprint(catalogs.environment),
-  }
-
   writeFileSync(
     repository.path("supabase", "db-quality-gate-invariants.json"),
     `${JSON.stringify(expectedStateInvariantRegistry(), null, 2)}\n`
@@ -124,47 +83,11 @@ export function createDynamicFixture() {
     repository.path("supabase", "tests", "example.sql"),
     "BEGIN;\nSELECT 1;\nROLLBACK;\n"
   )
-  writeFileSync(repository.path("supabase", "db-quality-gate-bootstrap.sql"), bootstrapSql)
-  writeFileSync(
-    repository.path("supabase", "db-quality-gate-bootstrap.manifest.json"),
-    `${JSON.stringify(
-      {
-        attestation: {
-          live: fingerprints,
-          oracleBaseline: fingerprints,
-          status: "complete",
-        },
-        artifact: {
-          path: "supabase/db-quality-gate-bootstrap.sql",
-          sha256: sha256(bootstrapSql),
-        },
-        cutover: {
-          commit: lock.cutover.commit,
-          legacyInventorySha256: sha256(JSON.stringify(lock.legacy)),
-          migrationRoot: "supabase/migrations",
-        },
-        schemaVersion: 1,
-        scope: {
-          deterministicSeeds: [],
-          excludedData: ["application-data", "roles", "secrets", "users"],
-          includedObjects: ["supabase-base-template", "application-owned-schema"],
-        },
-        source: {
-          database: "qltbyt_test",
-          dumpCommand: "pg_dump --schema-only",
-          pgDumpVersion: "17.6",
-          restrictKey: "a".repeat(64),
-        },
-      },
-      null,
-      2
-    )}\n`
-  )
   writeFileSync(
     repository.path("supabase", "migrations", "20270201000000_candidate.sql"),
     "CREATE TABLE public.candidate_only (id bigint PRIMARY KEY);\n"
   )
-  commitWorkingTree(repository.root, "add bootstrap and dynamic lane fixture inputs")
+  commitWorkingTree(repository.root, "add baseline-forward dynamic lane fixture inputs")
 
   return {
     repository,
@@ -175,25 +98,12 @@ export function createDynamicFixture() {
 export class FakeOracleDynamicExecutor {
   appliedDatabases: string[] = []
   appliedMigrationContents: string[] = []
-  appliedBootstrapContents: string[] = []
   createdDatabases: Array<{ databaseName: string; template?: string }> = []
   droppedDatabases: string[] = []
   operations: string[] = []
   persistedReports: string[] = []
   runSqlTestContents: string[] = []
   runSqlTestPaths: string[] = []
-  baselineCatalogs = {
-    access: defaultExpectedStateCatalogAccess(),
-    application: {
-      relations: [],
-      routines: [],
-    },
-    environment: {
-      extensions: [],
-      postgresqlVersion: "17.6",
-      supabaseVersion: "v1.26.08",
-    },
-  }
   catalogs = {
     access: defaultExpectedStateCatalogAccess(),
     application: {
@@ -266,33 +176,6 @@ export class FakeOracleDynamicExecutor {
       undefined,
       `${input.databaseName}:${input.migrations.map((migration) => migration.path).join(",")}`
     )
-  }
-
-  applyBootstrap(input: {
-    bootstrap: {
-      content: string
-      manifest: {
-        artifact: {
-          path: string
-        }
-      }
-    }
-    databaseName: string
-  }): ExecutorResult<undefined> {
-    this.appliedBootstrapContents.push(input.bootstrap.content)
-    return this.result(
-      "apply-bootstrap",
-      undefined,
-      `${input.databaseName}:${input.bootstrap.manifest.artifact.path}`
-    )
-  }
-
-  collectBaselineCatalogs(): ExecutorResult<{
-    access: unknown
-    application: unknown
-    environment: unknown
-  }> {
-    return this.result("collect-baseline-catalogs", this.baselineCatalogs)
   }
 
   collectCatalogs(): ExecutorResult<{

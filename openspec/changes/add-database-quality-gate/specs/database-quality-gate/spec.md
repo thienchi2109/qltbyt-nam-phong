@@ -182,41 +182,6 @@ clone of the restored Oracle baseline for every migration-related diff.
 - **AND** the migration cannot be declared complete or promoted for live
   permission
 
-### Requirement: Fresh replay isolation and bootstrap
-
-The system SHALL run fresh replay only on a clean disposable test database and
-SHALL never replay or reset live production.
-
-#### Scenario: Fresh replay succeeds
-
-- **GIVEN** the canonical root migration source has deterministic membership and
-  order
-- **WHEN** fresh replay runs
-- **THEN** a clean disposable Oracle database is created
-- **AND** the complete canonical source is replayed
-- **AND** required fingerprints and safe checks are produced
-- **AND** evidence is recorded
-- **AND** the disposable database is dropped
-
-#### Scenario: Legacy history prevents clean replay
-
-- **GIVEN** the first manual fresh replay is running
-- **WHEN** immutable legacy history prevents successful replay
-- **THEN** the result is FAILED or INCOMPLETE according to the available
-  evidence
-- **AND** the scheduled timer remains disabled
-- **AND** no applied migration is edited to force a PASS
-
-#### Scenario: Scheduled replay is activated
-
-- **GIVEN** the harness is implemented
-- **AND** the first manual fresh replay has passed
-- **WHEN** Phase 1 scheduling is activated
-- **THEN** an Oracle-local `systemd` timer runs the same runner-neutral
-  fresh-replay lane
-- **AND** the current Codex VPS has no scheduled role
-- **AND** no database port is exposed
-
 ### Requirement: Layered expected-state validation
 
 The system SHALL compare portable application structure, access/security state,
@@ -354,7 +319,7 @@ PASS, merge, approval, waiver, or scheduled execution SHALL NOT substitute.
 
 #### Scenario: Landed commit is ready for permission request
 
-- **GIVEN** the complete required gate passed for the landed SHA
+- **GIVEN** static and baseline-forward both passed for the landed SHA
 - **AND** read-only live and baseline comparisons are healthy
 - **WHEN** pre-live review completes
 - **THEN** the operator may request explicit permission for the exact live apply
@@ -434,7 +399,7 @@ self-hosted GitHub runner.
 
 #### Scenario: Dynamic validation is required in Phase 1
 
-- **GIVEN** baseline-forward, fresh-replay, or pre-live evidence is required
+- **GIVEN** baseline-forward or pre-live evidence is required
 - **WHEN** the dynamic lane runs
 - **THEN** it executes through the approved Oracle/manual path
 - **AND** inability to run is INCOMPLETE

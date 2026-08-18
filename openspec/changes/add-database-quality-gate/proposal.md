@@ -19,13 +19,14 @@ separate authorization required for every live database write.
   dangerous operations, approvals, waivers, and no-new-regressions baselines.
 - Add registry-driven expected-schema, table-security, invariant, and SQL-test
   contracts.
-- Add Oracle-hosted baseline-forward and fresh-replay lanes that operate only on
-  disposable test databases.
+- Add an Oracle-hosted baseline-forward lane that operates only on disposable
+  clones of the restored baseline.
 - Add exact landed-commit pre-live review and a fail-closed post-apply
   reconciliation state machine.
 - Add Phase 1 repository enforcement through Lefthook, secret-free pull-request
-  CI, protected `main`, runbooks, and an Oracle-local scheduled fresh replay
-  after a successful manual bootstrap run.
+  CI, protected `main`, and operator runbooks.
+- Defer full migration-history reconstruction and scheduling to a separate
+  future maintenance design; neither is part of the blocking pre-live gate.
 - Keep Phase 2 self-hosted GitHub runner provisioning outside this change until
   the harness is stable and its runner security boundary is separately
   reviewed.
@@ -47,8 +48,6 @@ separate authorization required for every live database write.
   - disposable database orchestration
   - baseline health and migration high-water evidence
   - immutable gate reports
-  - a local `systemd` timer enabled only after the first manual fresh replay
-    passes
 - Live database:
   - this proposal authorizes no live write
   - a gate PASS only permits requesting permission

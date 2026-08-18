@@ -4,14 +4,14 @@
 
 The repository has a large migration history, known legacy hygiene and security
 debt, custom SQL tests with different execution safety, and a private Oracle VM
-that hosts the canonical dynamic test environment. There is no repository gate
-harness or canonical gate registry today.
+that hosts the canonical dynamic test environment. The implemented gate must
+stay small enough to verify pending migrations without turning historical
+reconstruction into a pre-live dependency.
 
 The design must preserve these hard boundaries:
 
 - applied migrations are immutable
 - candidate migrations never run directly on the persistent restored baseline
-- fresh replay never targets live production
 - a gate PASS never authorizes a live write
 - live writes require a new, explicit, affirmative maintainer permission for
   the exact target and operation in that rollout session and use Supabase MCP
@@ -34,8 +34,8 @@ classification.
 
 ### Goals
 
-- Provide one runner-neutral contract for static, baseline-forward,
-  fresh-replay, pre-live, and reconciliation lanes.
+- Provide one runner-neutral contract for static, baseline-forward, pre-live,
+  and reconciliation lanes.
 - Produce deterministic, queryable evidence with stable finding identities and
   fail-closed outcomes.
 - Protect legacy and future applied migration history without rewriting old
@@ -68,17 +68,17 @@ classification.
 
 The implementation exposes one gate contract with these lanes:
 
-| Lane               | Purpose                                                                            | Required execution                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `static`           | Inspect changed migration source and committed registries                          | Local, hooks, and secret-free PR CI                                                 |
-| `baseline-forward` | Apply the ordered pending set to a disposable clone of `qltbyt_test`               | Every migration-related diff                                                        |
-| `fresh-replay`     | Build a clean disposable database from the canonical root migration source         | Manual bootstrap, source-order changes, pre-live exact commit, then Oracle schedule |
-| `pre-live`         | Confirm exact-commit evidence and compare live migration state read-only           | Before requesting live permission                                                   |
-| `reconciliation`   | Verify read-back, applied lock, restored baseline catch-up, and rerun requirements | After an explicitly authorized live apply                                           |
+| Lane               | Purpose                                                                            | Required execution                        |
+| ------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------- |
+| `static`           | Inspect changed migration source and committed registries                          | Local, hooks, and secret-free PR CI       |
+| `baseline-forward` | Apply the ordered pending set to a disposable clone of `qltbyt_test`               | Every migration-related diff              |
+| `pre-live`         | Confirm exact-commit evidence and compare live migration state read-only           | Before requesting live permission         |
+| `reconciliation`   | Verify read-back, applied lock, restored baseline catch-up, and rerun requirements | After an explicitly authorized live apply |
 
-Each lane emits the same report schema and finding model. An aggregate result is
-PASS only when every required lane for that invocation completed and no
-unresolved DANGEROUS or BLOCKING finding remains.
+Each lane emits the same report schema and finding model. The blocking pre-live
+aggregate is PASS only when `static` and `baseline-forward` both PASS for the
+same exact landed commit and no unresolved DANGEROUS or BLOCKING finding
+remains.
 
 Alternatives considered:
 
@@ -114,16 +114,10 @@ of truth.
 
 ### 3. Protect applied history with a cutover and append-only lock
 
-The activation bootstrap change records the exact protected `main` commit on
-which that bootstrap branch is based. Root migration paths and canonical
-contents present at that cutover become prospectively immutable.
-
-The runner, static workflow, and ruleset definition may land before the
-activation bootstrap so the required check can exist before it is enforced. The
-bootstrap itself is a dedicated PR created only after `main` protection is
-active. It adds or finalizes the cutover and baseline records without modifying,
-adding, deleting, or renaming migration SQL. No cutover trust is asserted before
-that bootstrap PR is merged and verified.
+The committed applied lock records the exact protected `main` cutover. Root
+migration paths and canonical contents present at that cutover are immutable.
+The gate verifies the cutover ancestry and protected-ref relationship without
+requiring a schema dump or historical version-to-file mapping.
 
 Future applied migrations are appended to
 `supabase/applied-migrations.lock.json` only after live read-back verifies the
@@ -139,8 +133,8 @@ real edits.
 
 ### 4. Use identity-based baselines and exact-bound approvals
 
-Historical migration hygiene and advisor debt is pinned to explicit bootstrap
-evidence. A count-only baseline is not accepted because one old finding could
+Historical migration hygiene and advisor debt is pinned to explicit identity
+baselines. A count-only baseline is not accepted because one old finding could
 disappear while an unrelated regression replaces it.
 
 The waiver registry is deterministic committed JSON. WARNING does not need a
@@ -189,7 +183,7 @@ safety, runner requirements, transaction contract, fixture contract, timeout,
 and evidence. The default lane runs mandatory catalog checks plus only
 `default-safe` tests. Filename conventions alone never grant execution safety.
 
-### 6. Run dynamic validation only on disposable Oracle databases
+### 6. Run dynamic validation only on disposable Oracle clones
 
 The Oracle VM is the canonical dynamic executor.
 
@@ -202,24 +196,10 @@ Baseline-forward validation:
 5. records evidence
 6. drops the per-run database on success or failure
 
-Fresh replay:
-
-1. creates a clean per-run database
-2. replays only the canonical root source `supabase/migrations/*.sql` in
-   deterministic order
-3. rejects ambiguous source membership or ordering as INCOMPLETE
-4. derives expected structural fingerprints
-5. runs required safe checks
-6. records evidence and drops the database
-
-The first full replay is manual. If immutable legacy history prevents replay,
-the rollout stops for an explicit bootstrap design; historical migrations are
-not edited to force a PASS.
-
-After the first manual PASS, an Oracle-local `systemd` timer runs nightly. It
-uses a read-only repository checkout, local Docker execution, mutual exclusion,
-resource limits, and local immutable evidence. The temporary Codex VPS has no
-scheduled role. No database port is exposed.
+Full migration-history reconstruction is a separate maintenance concern. It is
+not an executable gate lane, is not required for pre-live PASS, and must be
+specified separately before any implementation or scheduling work. Historical
+migrations are never edited to manufacture replayability.
 
 ### 7. Make Oracle evidence authoritative and GitHub an audit pointer
 
@@ -283,7 +263,7 @@ Phase 1 adds:
 - a protected-`main` ruleset requiring PR updates and the static DB gate
 - no force-push or deletion
 - an explicit auditable break-glass policy
-- Oracle dynamic runbooks and the post-bootstrap local timer
+- Oracle dynamic runbooks
 
 Manual and Oracle dynamic evidence remains mandatory before live permission; it
 is not represented as a GitHub-hosted dynamic check.
@@ -294,18 +274,18 @@ changing gate semantics.
 
 ## Risks / Trade-offs
 
-- **Legacy fresh replay may fail:** the current history has not been proven
-  replayable from a clean database.
-  - Mitigation: require a manual bootstrap PASS before enabling the timer; stop
-    for an explicit bootstrap decision without editing applied migrations.
+- **Historical reconstruction remains unresolved:** the current history has not
+  been proven replayable from a clean database.
+  - Mitigation: keep reconstruction outside the blocking gate and require a
+    separate design before implementing it.
 - **Oracle becomes an evidence dependency:** an unavailable VM makes reusable
   dynamic evidence unavailable.
   - Mitigation: return INCOMPLETE and block live permission rather than trusting
     summaries or stale reports.
-- **Dynamic runs consume Oracle resources:** full replay can compete with the
-  restored baseline stack.
-  - Mitigation: use local scheduling, mutual exclusion, resource limits, disk
-    checks, per-run databases, and guaranteed cleanup.
+- **Dynamic runs consume Oracle resources:** cloning and migration execution can
+  compete with the restored baseline stack.
+  - Mitigation: use mutual exclusion, resource limits, disk checks, per-run
+    databases, and guaranteed cleanup.
 - **Git and baseline reconciliation can diverge after live apply:** one branch
   may succeed while the other fails.
   - Mitigation: track both postconditions independently and block every later
@@ -329,15 +309,12 @@ changing gate semantics.
 6. Land the runner, local hooks, secret-free PR CI, runbooks, and reviewed
    ruleset definition.
 7. Activate protected `main` with the implemented static check.
-8. Freeze migration merges briefly and create a dedicated bootstrap PR from the
-   exact protected `main` SHA. Record that SHA as the legacy cutover without
-   changing migration SQL.
-9. Merge and verify the bootstrap PR, then run the first manual fresh replay on
-   the landed activation commit.
-10. If the manual replay passes, enable the Oracle-local timer and verify one
-    scheduled run.
-11. Remove interim "harness not implemented" guidance only after the implemented
-    gate and operations are verified.
+8. Verify the committed legacy cutover and append-only lock without changing
+   migration SQL.
+9. Run static and baseline-forward on the exact landed activation commit and
+   retain digest-bearing Oracle evidence.
+10. Remove interim guidance only after the implemented gate and operations are
+    verified.
 
 No rollout step applies a migration to live. A future migration still follows
 the exact permission and reconciliation lifecycle.
@@ -351,13 +328,12 @@ the exact permission and reconciliation lifecycle.
 - Disposable database tests cover successful and failed migration execution,
   selected SQL tests, fingerprint layers, and cleanup.
 - Fault-injection tests cover unavailable SSH/PostgreSQL, stale or missing
-  evidence, interrupted replay/catch-up, high-water mismatch, failed read-back,
-  lock failure, and baseline recovery.
+  evidence, interrupted migration execution or catch-up, high-water mismatch,
+  failed read-back, lock failure, and baseline recovery.
 - State-machine tests prove that PASS never grants live permission and no later
   apply can proceed before reconciliation completes.
 - Workflow tests prove that PR CI is static and secret-free, protected `main` is
-  active before cutover, the timer is disabled before bootstrap PASS, and no
-  Phase 2 runner is provisioned.
+  active before cutover trust, and no Phase 2 runner is provisioned.
 
 ## Open Questions
 

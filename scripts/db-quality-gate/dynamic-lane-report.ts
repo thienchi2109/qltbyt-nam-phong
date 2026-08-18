@@ -74,7 +74,6 @@ export function finalizeDynamicLaneReport(
   migrationIdentities: MigrationIdentity[],
   evidenceAvailable: boolean,
   artifacts: {
-    bootstrap?: unknown
     invariants: unknown
     sqlTests: unknown
   }
@@ -95,7 +94,6 @@ export function finalizeDynamicLaneReport(
     findings: state.findings,
     inputHashes: {
       ...state.catalogInputHashes,
-      bootstrap: stableJsonSha256(artifacts.bootstrap ?? null),
       harness: stableJsonSha256({ lane: input.lane, version: "phase-4" }),
       invariants: stableJsonSha256(artifacts.invariants ?? null),
       migration: stableJsonSha256(migrationIdentities),

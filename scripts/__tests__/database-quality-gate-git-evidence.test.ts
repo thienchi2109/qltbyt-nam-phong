@@ -16,13 +16,13 @@ type GitEvidenceModule = {
 }
 
 describe("database quality gate Git evidence", () => {
-  it("reads committed bootstrap evidence above the Node default exec buffer", async () => {
+  it("reads committed migration evidence above the Node default exec buffer", async () => {
     const repository = createFixtureRepository({
-      "supabase/db-quality-gate-bootstrap.sql": `${"x".repeat(1_100_000)}\n`,
+      "supabase/migrations/20270101000000_large_evidence.sql": `${"x".repeat(1_100_000)}\n`,
     })
 
     execFileSync("git", ["init", "--quiet"], { cwd: repository.root })
-    execFileSync("git", ["add", "supabase/db-quality-gate-bootstrap.sql"], {
+    execFileSync("git", ["add", "supabase/migrations/20270101000000_large_evidence.sql"], {
       cwd: repository.root,
     })
     execFileSync(
@@ -35,7 +35,7 @@ describe("database quality gate Git evidence", () => {
         "commit",
         "--quiet",
         "-m",
-        "add bootstrap evidence",
+        "add migration evidence",
       ],
       { cwd: repository.root }
     )
@@ -43,7 +43,11 @@ describe("database quality gate Git evidence", () => {
     const evidence = await loadDatabaseQualityGateModule<GitEvidenceModule>("git-evidence")
 
     expect(
-      evidence.readFileAtCommit(repository.root, "HEAD", "supabase/db-quality-gate-bootstrap.sql")
+      evidence.readFileAtCommit(
+        repository.root,
+        "HEAD",
+        "supabase/migrations/20270101000000_large_evidence.sql"
+      )
     ).toHaveLength(1_100_001)
   })
 })

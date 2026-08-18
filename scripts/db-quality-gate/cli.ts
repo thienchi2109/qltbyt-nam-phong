@@ -104,7 +104,7 @@ export function runDatabaseQualityGateCommand(
     }
   }
 
-  if (options.lane === "baseline-forward" || options.lane === "fresh-replay") {
+  if (options.lane === "baseline-forward") {
     const executor = dependencies.dynamicExecutor?.() ?? oracleRemoteExecutorFromEnvironment()
     if (executor !== undefined) {
       try {

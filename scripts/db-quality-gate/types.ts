@@ -2,13 +2,7 @@
 export const GATE_SCHEMA_VERSION = 1 as const
 
 /** Supported execution lanes. Phase 1 exposes their shared contract only. */
-export const GATE_LANES = [
-  "static",
-  "baseline-forward",
-  "fresh-replay",
-  "pre-live",
-  "reconciliation",
-] as const
+export const GATE_LANES = ["static", "baseline-forward", "pre-live", "reconciliation"] as const
 
 export type GateLane = (typeof GATE_LANES)[number]
 export type FindingClassification = "WARNING" | "DANGEROUS" | "BLOCKING"

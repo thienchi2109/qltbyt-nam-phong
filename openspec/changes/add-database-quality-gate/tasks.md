@@ -16,7 +16,8 @@
 - Treat silence, prior or blanket permission, PASS, merge, approval, waiver, and
   scheduled execution as no live-write permission.
 - Keep Phase 2 self-hosted runner work outside this change.
-- Do not enable the Oracle timer until the first manual fresh replay passes.
+- Keep full migration-history reconstruction and scheduling outside this
+  blocking gate until a separate design is approved.
 - Do not remove interim repository guidance until the implemented gate is
   verified.
 
@@ -73,11 +74,10 @@ or timer changes.
 
 - [x] 2.1 Reuse the repository's changed-file discovery instead of creating a
       second diff implementation.
-- [x] 2.2 Implement the protected legacy-cutover contract and bootstrap mode
-      without recording the final cutover SHA yet.
+- [x] 2.2 Implement the protected legacy-cutover contract without requiring a
+      historical version-to-file mapping.
 - [x] 2.3 Implement and validate the append-only
-      `supabase/applied-migrations.lock.json` schema, fixtures, and bootstrap
-      generation path.
+      `supabase/applied-migrations.lock.json` schema and fixtures.
 - [x] 2.4 Implement canonical source membership and deterministic root migration
       ordering; report ambiguity as INCOMPLETE.
 - [x] 2.5 Implement static hygiene, transaction, source-order overwrite,
@@ -87,8 +87,8 @@ or timer changes.
       rather than syntax-only BLOCKING.
 - [x] 2.7 Create `supabase/db-quality-gate-waivers.json` with exact-bound,
       additive approval, revoke, and supersede history.
-- [x] 2.8 Bootstrap identity-based legacy hygiene and advisor baselines from
-      reviewed evidence.
+- [x] 2.8 Seed identity-based legacy hygiene and advisor baselines from reviewed
+      evidence.
 - [x] 2.9 Make static, immutability, baseline, approval, and waiver fixture tests
       pass.
 
@@ -123,18 +123,18 @@ security remediation and no indiscriminate SQL-test execution.
 
 ## Phase 4 - Disposable Oracle Execution
 
-**Purpose:** Implement baseline-forward and fresh-replay lanes on isolated
-databases.
+**Purpose:** Implement baseline-forward on isolated disposable clones.
 
 - [x] 4.1 Implement Oracle connection and health preflight without exposing
       database ports or using Supabase CLI.
-- [x] 4.2 Implement mutual exclusion for clone, replay, catch-up, and refresh
+- [x] 4.2 Implement mutual exclusion for clone, catch-up, and refresh
       operations.
 - [x] 4.3 Implement disposable database naming, creation, cleanup, and orphan
       recovery.
 - [x] 4.4 Implement baseline-forward cloning from `qltbyt_test` and ordered
       pending-migration application.
-- [x] 4.5 Implement clean fresh replay from canonical root migration source.
+- [x] 4.5 Keep full migration-history reconstruction outside the executable
+      blocking gate.
 - [x] 4.6 Run mandatory catalog and registry-selected default-safe SQL checks in
       disposable databases.
 - [x] 4.7 Persist deterministic reports under immutable Oracle run IDs and emit
@@ -147,7 +147,7 @@ databases.
 **Review boundary:** Oracle disposable test databases only; no persistent
 baseline catch-up, timer, or live database work.
 
-## Phase 5 - Baseline Health, Synchronization, and Scheduling
+## Phase 5 - Baseline Health and Synchronization
 
 **Purpose:** Maintain the restored baseline and reusable evidence safely.
 
@@ -162,13 +162,8 @@ baseline catch-up, timer, or live database work.
       unexplained drift, stale health, and recovery.
 - [ ] 5.6 Add an Oracle read-only repository checkout and credential handling
       that commits no secret.
-- [ ] 5.7 Add the Oracle-local `systemd` service and timer definitions with
-      locking, resource limits, logs, failure status, and cleanup.
-- [ ] 5.8 Keep the timer disabled and run the first full replay manually.
-- [ ] 5.9 If manual replay fails because of immutable legacy history, stop and
-      resolve a bootstrap design without editing applied migrations.
-- [ ] 5.10 After a manual PASS, enable the timer, verify one scheduled run, and
-      record the evidence ID and digest.
+- [ ] 5.7 Document manual baseline health, catch-up, refresh, evidence lookup,
+      and recovery operations.
 
 **Review boundary:** Oracle test-environment operations only. The current Codex
 VPS has no scheduled role.
@@ -215,7 +210,7 @@ migration metadata, and state-changing RPC or function calls.
 - [ ] 7.4 Confirm manual/Oracle dynamic evidence remains a separate mandatory
       pre-live boundary rather than a GitHub-hosted dynamic check.
 - [ ] 7.5 Add operator runbooks for local static checks, Oracle manual runs,
-      evidence lookup, timer operation, baseline recovery, pre-live review, and
+      evidence lookup, baseline recovery, pre-live review, and
       reconciliation.
 - [ ] 7.6 Update `AGENTS.md` and `CLAUDE.md` together only after the implemented
       harness contract is verified.
@@ -233,8 +228,8 @@ runner-security review.
       implementation languages.
 - [ ] 8.2 Run all focused unit, fixture-repository, disposable-database,
       fault-injection, state-machine, workflow, and runbook contract tests.
-- [ ] 8.3 Run the implemented static, baseline-forward, and manual fresh-replay
-      lanes and verify report determinism and exit codes.
+- [ ] 8.3 Run the implemented static and baseline-forward lanes on the exact
+      commit and verify report determinism and exit codes.
 - [ ] 8.4 Run `openspec validate add-database-quality-gate --strict` and inspect
       `openspec show add-database-quality-gate`.
 - [ ] 8.5 Run the custom `post_implementation_reviewer` against the fixed base
@@ -242,7 +237,7 @@ runner-security review.
 - [ ] 8.6 Verify the final diff remains within the approved implementation
       boundary and contains no unrelated migration or debt remediation.
 - [ ] 8.7 Record rollback and recovery readiness for ruleset activation,
-      baseline state, Oracle evidence, and timer enablement.
+      baseline state, and Oracle evidence.
 
 **Review boundary:** No live database write or migration apply is part of
 implementation verification.
@@ -254,22 +249,17 @@ implementation verification.
 - [ ] 9.1 Merge and push the runner, static workflow, and ruleset definition
       through the existing approved repository process.
 - [ ] 9.2 Activate protected `main` with the implemented static gate required.
-- [ ] 9.3 Briefly freeze migration merges and create a dedicated bootstrap PR
-      from the exact protected `main` SHA.
-- [ ] 9.4 Generate the final cutover and baseline records with
-      `legacyBaseline.commit` set to that bootstrap base SHA; verify the PR does
-      not modify, add, delete, or rename migration SQL.
-- [ ] 9.5 Merge and push the bootstrap PR, verify the cutover relationship, and
-      confirm all four registries and baseline evidence are complete and
-      reviewable.
-- [ ] 9.6 Verify a manual baseline-forward run and the first manual fresh replay
-      both PASS on the landed activation commit.
-- [ ] 9.7 Enable and verify the Oracle-local timer only after step 9.6.
-- [ ] 9.8 Confirm GitHub contains the audit pointer and Oracle contains the full
+- [ ] 9.3 Verify the committed legacy cutover and append-only lock against the
+      exact protected `main` SHA without modifying migration SQL.
+- [ ] 9.4 Confirm all committed registries and baseline evidence are complete
+      and reviewable.
+- [ ] 9.5 Verify static and baseline-forward both PASS on the exact landed
+      activation commit.
+- [ ] 9.6 Confirm GitHub contains the audit pointer and Oracle contains the full
       report for the activation run.
-- [ ] 9.9 Confirm Phase 2 remains disabled and create a separate Wayfinder
+- [ ] 9.7 Confirm Phase 2 remains disabled and create a separate Wayfinder
       decision before any self-hosted runner work.
-- [ ] 9.10 Update linked issue and PR status, push all repository changes,
+- [ ] 9.8 Update linked issue and PR status, push all repository changes,
       verify the branch is synchronized, and hand off the exact commands and
       recovery state.
 

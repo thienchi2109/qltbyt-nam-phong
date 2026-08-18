@@ -11,11 +11,7 @@ import {
   validDisposableDatabase,
   validRunId,
 } from "./oracle-remote-contract"
-import {
-  hasPsqlMetaCommand,
-  hasSafeBootstrapPsqlMetaCommands,
-  rollbackRequiredSqlTestBody,
-} from "./oracle-remote-sql"
+import { hasPsqlMetaCommand, rollbackRequiredSqlTestBody } from "./oracle-remote-sql"
 import type {
   DynamicFailureKind,
   OracleDynamicExecutor,
@@ -337,21 +333,6 @@ rmdir "$lock_path"`,
         : errorResult(applied.kind, applied.error)
     },
 
-    applyBootstrap({ bootstrap, databaseName }) {
-      if (
-        !validDisposableDatabase(databaseName) ||
-        bootstrap.manifest.artifact.path !== "supabase/db-quality-gate-bootstrap.sql" ||
-        bootstrap.content.trim().length === 0 ||
-        !hasSafeBootstrapPsqlMetaCommands(bootstrap.content)
-      ) {
-        return errorResult("stale-environment", "Bootstrap input is incomplete")
-      }
-      const applied = sql(databaseName, bootstrap.content, "failed")
-      return applied.status === "ok"
-        ? { status: "ok", value: undefined }
-        : errorResult(applied.kind, applied.error)
-    },
-
     collectCatalogs({ databaseName }) {
       if (!validDisposableDatabase(databaseName)) {
         return errorResult(
@@ -362,30 +343,6 @@ rmdir "$lock_path"`,
       const application = readJson(databaseName, APPLICATION_CATALOG_QUERY)
       const access = readJson(databaseName, ACCESS_CATALOG_QUERY)
       const environment = readJson(databaseName, ENVIRONMENT_CATALOG_QUERY)
-      if (application.status === "error") {
-        return application
-      }
-      if (access.status === "error") {
-        return access
-      }
-      if (environment.status === "error") {
-        return environment
-      }
-
-      return {
-        status: "ok",
-        value: {
-          access: access.value,
-          application: application.value,
-          environment: environment.value,
-        },
-      }
-    },
-
-    collectBaselineCatalogs() {
-      const application = readJson(BASELINE_DATABASE, APPLICATION_CATALOG_QUERY)
-      const access = readJson(BASELINE_DATABASE, ACCESS_CATALOG_QUERY)
-      const environment = readJson(BASELINE_DATABASE, ENVIRONMENT_CATALOG_QUERY)
       if (application.status === "error") {
         return application
       }

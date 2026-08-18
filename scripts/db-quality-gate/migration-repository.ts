@@ -13,9 +13,8 @@ import {
   inspectCanonicalMigrationSourceAtCommit,
   migrationContentSha256,
 } from "./migration-source"
-import { legacyInventoryDigest } from "./bootstrap"
 import { parseAppliedMigrationLock } from "./registries"
-import { compareStrings } from "./serialization"
+import { compareStrings, stableJsonSha256 } from "./serialization"
 import type { AppliedMigrationLock } from "./registries"
 
 type RepositoryFinding = {
@@ -73,6 +72,10 @@ function exactEntriesMatch(
       (entry, index) => entry.path === right[index]?.path && entry.sha256 === right[index]?.sha256
     )
   )
+}
+
+function legacyInventoryDigest(entries: AppliedMigrationLock["legacy"]): string {
+  return stableJsonSha256(entries)
 }
 
 /** Inspects migration source and lock history without mutating the repository or database. */

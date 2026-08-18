@@ -1,5 +1,4 @@
 import { serializeReport } from "./contract"
-import { evaluateBootstrapAttestation } from "./bootstrap"
 import {
   addDynamicFinding,
   createDynamicRunState,
@@ -20,7 +19,6 @@ import {
 } from "./dynamic-lane-inputs"
 import { sha256Text } from "./serialization"
 import type { GateReport, MigrationIdentity } from "./types"
-import type { BootstrapStructuralFingerprints } from "./bootstrap"
 import type { DynamicInputArtifacts } from "./dynamic-lane-inputs"
 import type { OracleDynamicLaneInput } from "./dynamic-lane-types"
 
@@ -84,41 +82,9 @@ function pendingMigrations(
   })
 }
 
-function structuralFingerprints(input: {
-  access: unknown
-  application: unknown
-  environment: unknown
-}): BootstrapStructuralFingerprints | undefined {
-  try {
-    return {
-      accessSha256: collectAccessFingerprint(input.access),
-      applicationSha256: collectApplicationFingerprint(input.application),
-      environmentSha256: collectEnvironmentFingerprint(input.environment),
-    }
-  } catch {
-    return undefined
-  }
-}
-
-function recordBootstrapAttestation(
-  state: ReturnType<typeof createDynamicRunState>,
-  evaluation: ReturnType<typeof evaluateBootstrapAttestation>
-): boolean {
-  for (const finding of evaluation.findings) {
-    addDynamicFinding(state, `dynamic.${finding.ruleId}`, "bootstrap-attestation", {
-      rule: finding.ruleId,
-    })
-    if (finding.classification === "INCOMPLETE") {
-      state.incomplete = true
-    }
-  }
-
-  return evaluation.outcome === "PASS"
-}
-
 /** Produces a deterministic, PostgreSQL-safe database name for one isolated run. */
 export function createDisposableDatabaseName(input: {
-  lane: "baseline-forward" | "fresh-replay"
+  lane: "baseline-forward"
   runId: string
 }): string {
   const normalizedRunId = input.runId.toLowerCase().replaceAll(/[^a-z0-9_]+/g, "_")
@@ -143,7 +109,6 @@ function persistTerminalReport(
 ): GateReport {
   const migrationIdentities = artifacts?.migrationIdentities ?? []
   const reportArtifacts = {
-    bootstrap: artifacts?.bootstrap.manifest,
     invariants: artifacts?.invariants,
     sqlTests: artifacts?.sqlTestRegistry,
   }
@@ -173,7 +138,6 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
   if (lock.status === "error") {
     recordDynamicOperationError(state, "acquire-lock", lock)
     return finalizeDynamicLaneReport(input, state, [], false, {
-      bootstrap: undefined,
       invariants: undefined,
       sqlTests: undefined,
     })
@@ -182,7 +146,6 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
   let artifacts: DynamicInputArtifacts | undefined
   let databaseName: string | undefined
   let databaseCreated = false
-  let oracleBaseline: BootstrapStructuralFingerprints | undefined
   let report: GateReport
   try {
     artifacts = readDynamicInputArtifacts(input, state)
@@ -202,7 +165,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         })
 
         let canContinue = true
-        if (input.lane === "baseline-forward" && !preflight.value.baseline.healthy) {
+        if (!preflight.value.baseline.healthy) {
           addDynamicFinding(state, "dynamic.baseline.stale-environment", ORACLE_BASELINE_DATABASE, {
             baseline: ORACLE_BASELINE_DATABASE,
           })
@@ -210,45 +173,8 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           canContinue = false
         }
 
-        if (canContinue) {
-          const baselineCatalogs = input.executor.collectBaselineCatalogs()
-          if (baselineCatalogs.status === "error") {
-            recordDynamicOperationError(state, "collect-baseline-catalogs", baselineCatalogs)
-            canContinue = false
-          } else {
-            oracleBaseline = structuralFingerprints(baselineCatalogs.value)
-            if (oracleBaseline === undefined) {
-              addDynamicFinding(
-                state,
-                "dynamic.bootstrap.attestation.oracle-baseline-catalog",
-                ORACLE_BASELINE_DATABASE,
-                {
-                  baseline: ORACLE_BASELINE_DATABASE,
-                }
-              )
-              state.incomplete = true
-              canContinue = false
-            } else {
-              state.catalogInputHashes = {
-                ...state.catalogInputHashes,
-                bootstrapOracleBaselineAccess: oracleBaseline.accessSha256,
-                bootstrapOracleBaselineApplication: oracleBaseline.applicationSha256,
-                bootstrapOracleBaselineEnvironment: oracleBaseline.environmentSha256,
-              }
-              canContinue = recordBootstrapAttestation(
-                state,
-                evaluateBootstrapAttestation({
-                  manifest: artifacts.bootstrap.manifest,
-                  oracleBaseline,
-                  requireRestored: false,
-                })
-              )
-            }
-          }
-        }
-
         const recover = canContinue
-          ? input.executor.recoverOrphans(`dq_${input.lane.replaceAll("-", "_")}_`)
+          ? input.executor.recoverOrphans("dq_baseline_forward_")
           : undefined
         if (recover?.status === "error") {
           recordDynamicOperationError(state, "recover-orphans", recover)
@@ -256,14 +182,12 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         }
 
         const migrations = canContinue
-          ? input.lane === "baseline-forward"
-            ? pendingMigrations(
-                state,
-                artifacts.migrationIdentities,
-                artifacts.appliedMigrationIdentities,
-                preflight.value.baseline.migrationVersions
-              )
-            : artifacts.migrationIdentities
+          ? pendingMigrations(
+              state,
+              artifacts.migrationIdentities,
+              artifacts.appliedMigrationIdentities,
+              preflight.value.baseline.migrationVersions
+            )
           : undefined
         if (migrations === undefined) {
           canContinue = false
@@ -278,67 +202,15 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         }
 
         if (canContinue && migrationInputsForRun !== undefined) {
-          const created = input.executor.createDatabase(
-            input.lane === "baseline-forward"
-              ? { databaseName, template: ORACLE_BASELINE_DATABASE }
-              : { databaseName }
-          )
+          const created = input.executor.createDatabase({
+            databaseName,
+            template: ORACLE_BASELINE_DATABASE,
+          })
           if (created.status === "error") {
             recordDynamicOperationError(state, "create-database", created)
             canContinue = false
           } else {
             databaseCreated = true
-          }
-        }
-
-        if (canContinue && migrationInputsForRun !== undefined && input.lane === "fresh-replay") {
-          const restored = input.executor.applyBootstrap({
-            bootstrap: artifacts.bootstrap,
-            databaseName,
-          })
-          if (restored.status === "error") {
-            recordDynamicOperationError(state, "apply-bootstrap", restored)
-            canContinue = false
-          }
-        }
-
-        if (
-          canContinue &&
-          migrationInputsForRun !== undefined &&
-          input.lane === "fresh-replay" &&
-          oracleBaseline !== undefined
-        ) {
-          const restoredCatalogs = input.executor.collectCatalogs({ databaseName })
-          if (restoredCatalogs.status === "error") {
-            recordDynamicOperationError(state, "collect-catalogs", restoredCatalogs)
-            canContinue = false
-          } else {
-            const restored = structuralFingerprints(restoredCatalogs.value)
-            if (restored === undefined) {
-              addDynamicFinding(
-                state,
-                "dynamic.bootstrap.attestation.restored-catalog",
-                databaseName,
-                { database: databaseName }
-              )
-              state.incomplete = true
-              canContinue = false
-            } else {
-              state.catalogInputHashes = {
-                ...state.catalogInputHashes,
-                bootstrapRestoredAccess: restored.accessSha256,
-                bootstrapRestoredApplication: restored.applicationSha256,
-                bootstrapRestoredEnvironment: restored.environmentSha256,
-              }
-              canContinue = recordBootstrapAttestation(
-                state,
-                evaluateBootstrapAttestation({
-                  manifest: artifacts.bootstrap.manifest,
-                  oracleBaseline,
-                  restored,
-                })
-              )
-            }
           }
         }
 
@@ -429,7 +301,6 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         artifacts?.migrationIdentities ?? [],
         false,
         {
-          bootstrap: artifacts?.bootstrap.manifest,
           invariants: artifacts?.invariants,
           sqlTests: artifacts?.sqlTestRegistry,
         }

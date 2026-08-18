@@ -134,21 +134,6 @@ export function hasPsqlMetaCommand(content: string): boolean {
   return /(?:^|\n)[\t \r]*\\/u.test(topLevelSqlMask(content))
 }
 
-/** Accepts exactly the deterministic PostgreSQL 17 restrict envelope emitted for bootstrap SQL. */
-export function hasSafeBootstrapPsqlMetaCommands(content: string): boolean {
-  const commands = [...topLevelSqlMask(content).matchAll(/(?:^|\n)[\t \r]*(\\[^\r\n]*)/gu)].map(
-    (match) => match[1]?.trim()
-  )
-  if (commands.length !== 2) {
-    return false
-  }
-
-  const restricted = /^\\restrict ([A-Za-z0-9]{64})$/u.exec(commands[0] ?? "")
-  const unrestricted = /^\\unrestrict ([A-Za-z0-9]{64})$/u.exec(commands[1] ?? "")
-
-  return restricted?.[1] === unrestricted?.[1]
-}
-
 /** Removes the declared rollback envelope and rejects other top-level transaction control. */
 export function rollbackRequiredSqlTestBody(content: string): string | undefined {
   const statements = topLevelSqlStatements(content)

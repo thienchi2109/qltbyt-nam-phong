@@ -301,17 +301,16 @@ If a task seems to require a forbidden CLI command, STOP and ask the user — th
 This section must remain semantically aligned with the corresponding section in
 `CLAUDE.md`.
 
-**Status on 2026-08-16:** the execution topology and cadence are approved in the
-Wayfinder decision "Chốt topology và cadence chạy DB Quality Gate" (#932), and
-the private Oracle test database is operational. The repository harness command
-is not implemented yet. Do not invent a command, report an automated PASS, or
-treat this section as permission to implement the gate before the remaining
-Wayfinder decisions and OpenSpec change are approved.
+**Status on 2026-08-18:** the repository harness implements `static` and
+`baseline-forward`, and the private Oracle test database is operational. The
+blocking pre-live gate is exactly those two lanes on the same landed commit.
+Full migration-history reconstruction is deferred outside this gate and is not
+a prerequisite for live-apply review.
 
 ### Hard Boundaries
 
 - Never edit, rename, delete, or repair a migration that has already been
-  applied. The applied-history lock design is still being settled by Wayfinder.
+  applied. The committed applied-history lock is append-only.
 - A passing gate never applies a migration to live and never authorizes a live
   write.
 - Every live write still requires explicit permission for that specific
@@ -325,8 +324,6 @@ Wayfinder decisions and OpenSpec change are approved.
 - **Restored baseline**: `qltbyt_test` on the private Oracle VM, restored from a
   production-derived backup and caught up to the selected live migration
   state. Candidate migrations must not be applied directly to this database.
-- **Fresh replay database**: a clean Supabase/Postgres database that replays the
-  complete local migration source only in the disposable test environment.
 - **Gate run database**: a disposable per-run database cloned for one
   validation execution and removed afterward.
 - **Live apply**: applying only the reviewed pending migration through Supabase
@@ -339,26 +336,27 @@ Wayfinder decisions and OpenSpec change are approved.
 - Static migration checks: every migration-related diff, before commit and
   push where applicable, and on pull requests.
 - Baseline-forward validation: every migration-related diff, applying only the
-  pending migration set to a disposable clone of the restored baseline.
-- Fresh replay: nightly, whenever migration history or source ordering changes,
-  on manual request, and with a PASS for the exact commit before live apply. An
-  existing exact-commit PASS may be reused; invoking live apply does not by
-  itself require replaying the chain again.
+  pending migration set to a disposable clone of the restored baseline. Before
+  live apply, both static and baseline-forward must PASS for the exact landed
+  commit; an existing exact-commit PASS may be reused while its inputs remain
+  valid.
 - Read-only live drift inspection: before refreshing the restored baseline and
   during pre-live review, through Supabase MCP only.
+- Full migration-history reconstruction: deferred, non-blocking maintenance
+  work under a separate future design.
 
 ### Fail-Closed Interim Behavior
 
-- Until the harness exists, agents must describe the static and dynamic checks
-  they actually ran. Do not label ad hoc checks as the completed Database
-  Quality Gate.
+- Agents must report static and baseline-forward results separately.
+- Aggregate PASS requires both lanes to PASS for the same exact commit with
+  readable digest-bearing evidence.
 - If a migration changed and the Oracle executor or required dynamic check is
   unavailable, the aggregate result is `BLOCKING / INCOMPLETE`.
 - In that state, Codex must not claim the migration work is DONE and live apply
   must not proceed.
-- Existing SQL tests are not all default-gate-safe. Do not execute the entire
-  `supabase/tests` corpus indiscriminately; its execution contract is still
-  being settled by Wayfinder.
+- Existing SQL tests are not all default-gate-safe. Execute only tests selected
+  by the committed gate registry; never run the entire `supabase/tests` corpus
+  indiscriminately.
 
 ### CI Rollout
 
