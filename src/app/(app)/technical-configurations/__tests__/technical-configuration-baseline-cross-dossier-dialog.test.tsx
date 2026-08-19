@@ -144,12 +144,32 @@ describe("technical configuration cross-dossier copy dialog", () => {
     expect(screen.getByText(/bản xem trước mới/)).toBeInTheDocument()
   })
 
+  it("localizes the accessible close label", () => {
+    render(<TechnicalConfigurationBaselineCrossDossierCopyDialog workflow={createWorkflow()} />)
+
+    expect(screen.getByRole("button", { name: "Đóng" })).toBeInTheDocument()
+  })
+
+  it("disables replacement confirmation while apply is pending", () => {
+    render(
+      <TechnicalConfigurationBaselineCrossDossierCopyDialog
+        workflow={createWorkflow({ isApplying: true })}
+      />
+    )
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: /Tôi hiểu bản nháp hiện tại sẽ bị thay thế/,
+      })
+    ).toBeDisabled()
+  })
+
   it("blocks every close path while preview or apply is pending", async () => {
     const user = userEvent.setup()
     const workflow = createWorkflow({ isPreviewing: true })
     render(<TechnicalConfigurationBaselineCrossDossierCopyDialog workflow={workflow} />)
 
-    expect(screen.queryByRole("button", { name: "Close" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Đóng" })).not.toBeInTheDocument()
     await user.keyboard("{Escape}")
     expect(workflow.closeDialog).not.toHaveBeenCalled()
     expect(screen.getByRole("button", { name: "Hủy" })).toBeDisabled()

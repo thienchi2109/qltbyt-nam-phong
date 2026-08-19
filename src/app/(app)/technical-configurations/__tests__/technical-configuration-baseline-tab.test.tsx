@@ -121,6 +121,7 @@ describe("technical configuration baseline tab", () => {
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(screen.getByDisplayValue("Tên đang xung đột")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Sao chép từ hồ sơ khác" })).toBeDisabled()
     expect(screen.getByRole("button", { name: "Tải lại từ máy chủ" })).toBeEnabled()
   })
 

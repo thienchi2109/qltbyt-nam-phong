@@ -6,7 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "../baseline-types"
 import { useTechnicalConfigurationBaselineCrossDossierCopy } from "../_hooks/useTechnicalConfigurationBaselineCrossDossierCopy"
-import type { TechnicalConfigurationDossierWire } from "../types"
+import { technicalConfigurationDossierDetailQueryKey } from "../technical-configuration-query-keys"
+import type {
+  TechnicalConfigurationDossierWire,
+  TechnicalConfigurationDossierWireResponse,
+} from "../types"
 import { createReactQueryWrapper } from "@/test-utils/react-query"
 
 const rpc = vi.hoisted(() => ({
@@ -104,6 +108,22 @@ function createPreview(mode: "create" | "replace") {
         option_documents: 1,
         comparison_sets: 1,
       },
+    },
+  } as const
+}
+
+function createApplyResponse(mode: "create" | "replace", targetDossierRevision = 8) {
+  return {
+    data: {
+      mode,
+      target_dossier_id: dossier.id,
+      target_dossier_revision: targetDossierRevision,
+      target_baseline_version_id: mode === "replace" ? draft.id : "created-draft-1",
+      target_baseline_revision: mode === "replace" ? 5 : 1,
+      source_baseline_version_id: source.baseline_version_id,
+      copied_counts: {},
+      deleted_counts: {},
+      preserved_counts: {},
     },
   } as const
 }
@@ -211,19 +231,7 @@ describe("cross-dossier baseline copy workflow", () => {
 
   it("requires confirmation for replacement and applies the returned fingerprint", async () => {
     rpc.previewCopy.mockResolvedValue(createPreview("replace"))
-    rpc.applyCopy.mockResolvedValue({
-      data: {
-        mode: "replace",
-        target_dossier_id: dossier.id,
-        target_dossier_revision: 8,
-        target_baseline_version_id: draft.id,
-        target_baseline_revision: 5,
-        source_baseline_version_id: source.baseline_version_id,
-        copied_counts: {},
-        deleted_counts: {},
-        preserved_counts: {},
-      },
-    })
+    rpc.applyCopy.mockResolvedValue(createApplyResponse("replace"))
     const onApplied = vi.fn()
     const queryClient = createQueryClient()
     const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
@@ -377,30 +385,100 @@ describe("cross-dossier baseline copy workflow", () => {
     expect(result.current.operationError).toBeNull()
   })
 
-  it("closes after server success even when the optional UI refresh fails", async () => {
-    rpc.previewCopy.mockResolvedValue(createPreview("create"))
-    rpc.applyCopy.mockResolvedValue({
-      data: {
-        mode: "create",
-        target_dossier_id: dossier.id,
-        target_dossier_revision: 8,
-        target_baseline_version_id: "created-draft-1",
-        target_baseline_revision: 1,
-        source_baseline_version_id: source.baseline_version_id,
-        copied_counts: {},
-        deleted_counts: {},
-        preserved_counts: {},
-      },
-    })
+  it("does not restart stale-target recovery after the dialog closes", async () => {
+    const refreshedTargetState = deferred<{
+      dossierRevision: number
+      targetDraft: TechnicalConfigurationBaselineDraftWire | null
+    }>()
+    rpc.previewCopy
+      .mockResolvedValueOnce(createPreview("replace"))
+      .mockResolvedValueOnce(createPreview("replace"))
+    rpc.applyCopy.mockRejectedValueOnce(
+      Object.assign(new Error("stale_revision"), { code: "PT409" })
+    )
+    const onTargetStateStale = vi.fn().mockReturnValue(refreshedTargetState.promise)
     const queryClient = createQueryClient()
-    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValueOnce(new Error("refresh_failed"))
+    const { result } = renderHook(
+      () =>
+        useTechnicalConfigurationBaselineCrossDossierCopy({
+          dossier,
+          dossierRevision,
+          targetDraft: draft,
+          onApplied: vi.fn(),
+          onTargetStateStale,
+        }),
+      { wrapper: createReactQueryWrapper(queryClient) }
+    )
+
+    act(() => result.current.openDialog())
+    await waitFor(() => expect(result.current.sources).toHaveLength(1))
+    await act(() => result.current.selectSource(source.baseline_version_id))
+    act(() => result.current.setReplacementConfirmed(true))
+    let applyPromise!: Promise<void>
+    act(() => {
+      applyPromise = result.current.apply()
+    })
+    await waitFor(() => expect(onTargetStateStale).toHaveBeenCalledTimes(1))
+
+    act(() => result.current.closeDialog())
+    refreshedTargetState.resolve({
+      dossierRevision: dossierRevision + 1,
+      targetDraft: { ...draft, revision: draft.revision + 1 },
+    })
+    await act(() => applyPromise)
+
+    expect(rpc.previewCopy).toHaveBeenCalledTimes(1)
+    expect(result.current.open).toBe(false)
+    expect(result.current.selectedSourceId).toBeNull()
+    expect(result.current.preview).toBeNull()
+    expect(result.current.operationError).toBeNull()
+  })
+
+  it("does not lower a newer dossier revision already present in the detail cache", async () => {
+    rpc.previewCopy.mockResolvedValue(createPreview("create"))
+    rpc.applyCopy.mockResolvedValue(createApplyResponse("create", 8))
+    const queryClient = createQueryClient()
+    queryClient.setQueryData<TechnicalConfigurationDossierWireResponse>(
+      technicalConfigurationDossierDetailQueryKey(dossier.id),
+      { data: { ...dossier, revision: 9 } }
+    )
     const { result } = renderHook(
       () =>
         useTechnicalConfigurationBaselineCrossDossierCopy({
           dossier,
           dossierRevision,
           targetDraft: null,
-          onApplied: vi.fn().mockRejectedValue(new Error("editor_refresh_failed")),
+          onApplied: vi.fn(),
+        }),
+      { wrapper: createReactQueryWrapper(queryClient) }
+    )
+
+    act(() => result.current.openDialog())
+    await waitFor(() => expect(result.current.sources).toHaveLength(1))
+    await act(() => result.current.selectSource(source.baseline_version_id))
+    await act(() => result.current.apply())
+
+    expect(
+      queryClient.getQueryData<TechnicalConfigurationDossierWireResponse>(
+        technicalConfigurationDossierDetailQueryKey(dossier.id)
+      )?.data.revision
+    ).toBe(9)
+  })
+
+  it("closes after server success even when the optional UI refresh fails", async () => {
+    rpc.previewCopy.mockResolvedValue(createPreview("create"))
+    const applyResponse = createApplyResponse("create")
+    rpc.applyCopy.mockResolvedValue(applyResponse)
+    const queryClient = createQueryClient()
+    vi.spyOn(queryClient, "invalidateQueries").mockRejectedValueOnce(new Error("refresh_failed"))
+    const onApplied = vi.fn().mockRejectedValue(new Error("editor_refresh_failed"))
+    const { result } = renderHook(
+      () =>
+        useTechnicalConfigurationBaselineCrossDossierCopy({
+          dossier,
+          dossierRevision,
+          targetDraft: null,
+          onApplied,
         }),
       { wrapper: createReactQueryWrapper(queryClient) }
     )
@@ -411,6 +489,7 @@ describe("cross-dossier baseline copy workflow", () => {
     await act(() => result.current.apply())
 
     expect(rpc.applyCopy).toHaveBeenCalledTimes(1)
+    expect(onApplied).toHaveBeenCalledWith(applyResponse.data)
     expect(result.current.open).toBe(false)
     expect(result.current.preview).toBeNull()
   })

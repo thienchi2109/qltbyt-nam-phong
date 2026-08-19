@@ -170,6 +170,7 @@ export function TechnicalConfigurationBaselineCrossDossierCopyDialog({
       <DialogContent
         className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
         showCloseButton={!isBusy}
+        closeLabel="Đóng"
         onEscapeKeyDown={(event) => {
           if (isBusy) event.preventDefault()
         }}
@@ -261,6 +262,7 @@ export function TechnicalConfigurationBaselineCrossDossierCopyDialog({
             <Checkbox
               id="technical-configuration-cross-dossier-confirm"
               checked={workflow.replacementConfirmed}
+              disabled={isBusy}
               onCheckedChange={(checked) => workflow.setReplacementConfirmed(checked === true)}
             />
             <label

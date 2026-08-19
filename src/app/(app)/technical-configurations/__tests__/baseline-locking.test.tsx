@@ -107,6 +107,7 @@ describe("technical configuration baseline locking and history", () => {
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(requirement).toHaveValue("Dòng 1\nDòng 2")
     expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Sao chép từ hồ sơ khác" })).toBeDisabled()
   })
 
   it("reloads a concurrently locked draft into read-only history", async () => {

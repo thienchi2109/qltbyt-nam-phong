@@ -100,17 +100,19 @@ no database migration is introduced in this PR.
 - [x] 2.12 Generate
       `{Loai_Thiet_Bi}_{Ten_Ho_So}_Phien_Ban_{N}.xlsx` and
       `Mau_{Loai_Thiet_Bi}_{Ten_Ho_So}_Phien_Ban_{N}.xlsx` from the tested helper.
-- [x] 2.13 Add a browser regression covering the actual XLSX workflow:
-      click `Tải cấu hình hiện tại`, capture the downloaded file, upload that file via
-      `Nhập cấu hình phân cấp`, and reach an error-free authoritative preview.
-- [x] 2.14 Add browser acceptance for cross-dossier copy into a target with no draft,
-      including warning, source search, preview, apply, and target refresh.
-- [x] 2.15 Add browser acceptance for replacing an existing draft, including dependent
-      deletion counts, explicit confirmation, cancel-without-mutation, stale-preview
-      recovery, and successful apply.
+- [x] 2.13 Add a serialized-XLSX round-trip regression through the production
+      download/upload adapters: generate the current configuration bytes, upload the
+      unchanged bytes through hierarchy import, and reach an error-free authoritative
+      preview.
+- [x] 2.14 Add RTL/data-hook integration acceptance for cross-dossier copy into a target
+      with no draft, including warning, source search, preview, apply, and target refresh.
+- [x] 2.15 Add RTL/data-hook integration acceptance for replacing an existing draft,
+      including dependent deletion counts, explicit confirmation, cancel-without-mutation,
+      stale-preview recovery, and successful apply.
 - [x] 2.16 Verify cross-dossier workbook upload is still rejected and directs the user
       to server-side copy rather than remapping foreign hidden IDs.
-- [x] 2.17 Run format, explicit-any, dedupe, typecheck, focused Vitest/browser tests,
+- [x] 2.17 Run format, explicit-any, dedupe, typecheck, focused Vitest/RTL tests,
       and diff-only React Doctor in repository order.
 - [x] 2.18 Open PR 2 against updated main with Phase 1 deployment evidence and complete
-      the user-visible acceptance flow on desktop and mobile widths.
+      the user-visible acceptance flow through focused RTL integration coverage; the repo
+      does not currently provide a browser harness for viewport-level desktop/mobile runs.

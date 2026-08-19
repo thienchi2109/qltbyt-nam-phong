@@ -59,7 +59,8 @@ export function TechnicalConfigurationBaselineTab({
     dossier,
     dossierRevision: baseline.dossierRevision,
     targetDraft,
-    onApplied: async () => {
+    onApplied: async (result) => {
+      baseline.onDossierRevisionChanged(result.target_dossier_revision)
       await baseline.onRefreshVersions()
     },
     onTargetStateStale: baseline.onRefreshVersions,
@@ -247,7 +248,10 @@ export function TechnicalConfigurationBaselineTab({
           onCopy={() => void handleCopy()}
           onCopyFromDossier={crossDossierCopy.openDialog}
           isCopyFromDossierDisabled={
-            baseline.isDirty || bulkSessions.hasPendingInput || hasUnresolvedImportState
+            baseline.isDirty ||
+            baseline.isConflict ||
+            bulkSessions.hasPendingInput ||
+            hasUnresolvedImportState
           }
           spreadsheetActions={
             decodedVersion ? (

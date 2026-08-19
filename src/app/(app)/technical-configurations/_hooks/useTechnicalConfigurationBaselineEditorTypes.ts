@@ -38,6 +38,7 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onSelectVersion: (versionId: string, options?: { force?: boolean }) => void
   onLoadMoreVersions: () => Promise<void>
   onRetryQuery: () => Promise<void>
+  onDossierRevisionChanged: (revision: number) => void
   onRefreshVersions: () => Promise<{
     dossierRevision: number
     targetDraft: TechnicalConfigurationBaselineDraftWire | null

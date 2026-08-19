@@ -14,11 +14,8 @@ import type {
   TechnicalConfigurationBaselineCrossDossierCopyPreviewRpcArgs,
   TechnicalConfigurationBaselineCrossDossierCopyPreviewWire,
 } from "../technical-configuration-baseline-cross-dossier-types"
-import { technicalConfigurationDossierDetailQueryKey } from "../technical-configuration-query-keys"
-import type {
-  TechnicalConfigurationDossierWire,
-  TechnicalConfigurationDossierWireResponse,
-} from "../types"
+import { updateTechnicalConfigurationDossierRevisionCache } from "../technical-configuration-dossier-revision-cache"
+import type { TechnicalConfigurationDossierWire } from "../types"
 
 const SOURCE_PAGE_SIZE = 20
 
@@ -51,7 +48,7 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
   dossierRevision,
   targetDraft,
   onApplied,
-  onTargetStateStale = () => ({ dossierRevision, targetDraft }),
+  onTargetStateStale,
 }: {
   dossier: TechnicalConfigurationDossierWire
   dossierRevision: number
@@ -65,6 +62,7 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
 }) {
   const queryClient = useQueryClient()
   const previewRequestIdRef = React.useRef(0)
+  const workflowGenerationRef = React.useRef(0)
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
   const [selectedSourceId, setSelectedSourceId] = React.useState<string | null>(null)
@@ -73,6 +71,10 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
   const [replacementConfirmed, setReplacementConfirmed] = React.useState(false)
   const [operationError, setOperationError] = React.useState<string | null>(null)
   const normalizedSearch = search.trim()
+  const refreshTargetState = React.useCallback(
+    () => onTargetStateStale?.() ?? { dossierRevision, targetDraft },
+    [dossierRevision, onTargetStateStale, targetDraft]
+  )
   const sourceQueryKey = React.useMemo(
     () => [
       "technical-configurations",
@@ -114,7 +116,7 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
       p_expected_target_baseline_version_id: targetState.targetDraft?.id ?? null,
       p_expected_target_baseline_revision: targetState.targetDraft?.revision ?? null,
     }),
-    [dossier.id, dossierRevision, targetDraft?.id, targetDraft?.revision]
+    [dossier.id, dossierRevision, targetDraft]
   )
   const previewMutation = useMutation({
     mutationFn: previewTechnicalConfigurationBaselineCrossDossierCopy,
@@ -142,11 +144,13 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
     },
     [previewArgs, previewMutation]
   )
+  // react-doctor-disable-next-line react-doctor/query-mutation-missing-invalidation -- apply updates the exact dossier cache and invalidates the technical-configuration namespace after success.
   const applyMutation = useMutation({
     mutationFn: applyTechnicalConfigurationBaselineCrossDossierCopy,
   })
 
   const closeDialog = React.useCallback(() => {
+    workflowGenerationRef.current += 1
     previewRequestIdRef.current += 1
     setOpen(false)
     setSearch("")
@@ -159,6 +163,7 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
   }, [applyMutation, previewMutation])
   const openDialog = React.useCallback(() => setOpen(true), [])
   const updateSearch = React.useCallback((value: string) => {
+    workflowGenerationRef.current += 1
     previewRequestIdRef.current += 1
     setSearch(value)
     setSelectedSourceId(null)
@@ -169,6 +174,7 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
 
   const selectSource = React.useCallback(
     async (sourceBaselineVersionId: string) => {
+      workflowGenerationRef.current += 1
       setSelectedSourceId(sourceBaselineVersionId)
       setPreview(null)
       setReplacementConfirmed(false)
@@ -190,17 +196,10 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
         p_preview_fingerprint: preview.preview_fingerprint,
         p_confirm_replace: replacementConfirmed,
       })
-      queryClient.setQueryData<TechnicalConfigurationDossierWireResponse>(
-        technicalConfigurationDossierDetailQueryKey(dossier.id),
-        (current) =>
-          current
-            ? {
-                data: {
-                  ...current.data,
-                  revision: response.data.target_dossier_revision,
-                },
-              }
-            : current
+      updateTechnicalConfigurationDossierRevisionCache(
+        queryClient,
+        dossier,
+        response.data.target_dossier_revision
       )
       closeDialog()
       await Promise.allSettled([
@@ -211,29 +210,36 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
       ])
     } catch (error) {
       if (requiresTargetStateRefresh(error)) {
+        const recoveryGeneration = workflowGenerationRef.current
         previewRequestIdRef.current += 1
         setReplacementConfirmed(false)
         setPreview(null)
         try {
-          const refreshedTargetState = await onTargetStateStale()
-          await refreshPreview(selectedSourceId, refreshedTargetState)
+          const refreshedTargetState = await refreshTargetState()
+          if (recoveryGeneration !== workflowGenerationRef.current) return
+          const refreshedPreview = await refreshPreview(selectedSourceId, refreshedTargetState)
+          if (!refreshedPreview) return
           setOperationError(
             "Trạng thái hồ sơ đích đã thay đổi. Hệ thống đã tải bản xem trước mới; vui lòng kiểm tra lại."
           )
         } catch (refreshError) {
+          if (recoveryGeneration !== workflowGenerationRef.current) return
           setOperationError(getErrorMessage(refreshError))
         }
         return
       }
       if (requiresFreshPreview(error)) {
+        const recoveryGeneration = workflowGenerationRef.current
         setReplacementConfirmed(false)
         setPreview(null)
         try {
-          await refreshPreview(selectedSourceId)
+          const refreshedPreview = await refreshPreview(selectedSourceId)
+          if (!refreshedPreview || recoveryGeneration !== workflowGenerationRef.current) return
           setOperationError(
             "Dữ liệu đã thay đổi. Hệ thống đã tải bản xem trước mới; vui lòng kiểm tra lại."
           )
         } catch (previewError) {
+          if (recoveryGeneration !== workflowGenerationRef.current) return
           setOperationError(getErrorMessage(previewError))
         }
         return
@@ -243,13 +249,13 @@ export function useTechnicalConfigurationBaselineCrossDossierCopy({
   }, [
     applyMutation,
     closeDialog,
-    dossier.id,
+    dossier,
     onApplied,
-    onTargetStateStale,
     preview,
     previewArgs,
     queryClient,
     refreshPreview,
+    refreshTargetState,
     replacementConfirmed,
     selectedSourceId,
   ])

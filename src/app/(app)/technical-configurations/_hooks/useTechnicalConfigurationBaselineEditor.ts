@@ -332,6 +332,7 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     onLoadMoreVersions: loadMoreVersions,
     onRetryQuery: retryVersions,
+    onDossierRevisionChanged: updateDossierRevision,
     onRefreshVersions: async () => {
       const [nextDossierRevision, response] = await Promise.all([
         refreshDossierRevision(),
