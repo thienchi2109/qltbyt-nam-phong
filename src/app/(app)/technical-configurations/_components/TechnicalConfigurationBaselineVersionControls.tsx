@@ -19,6 +19,8 @@ type TechnicalConfigurationBaselineVersionControlsProps = Readonly<{
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
+  onCopyFromDossier: () => void
+  isCopyFromDossierDisabled: boolean
   spreadsheetActions: React.ReactNode
 }>
 
@@ -35,6 +37,8 @@ export function TechnicalConfigurationBaselineVersionControls({
   onRequestLock,
   onCreateBlank,
   onCopy,
+  onCopyFromDossier,
+  isCopyFromDossierDisabled,
   spreadsheetActions,
 }: TechnicalConfigurationBaselineVersionControlsProps): React.JSX.Element {
   if (isFocusMode) {
@@ -63,6 +67,8 @@ export function TechnicalConfigurationBaselineVersionControls({
       onRequestLock={onRequestLock}
       onCreateBlank={onCreateBlank}
       onCopy={onCopy}
+      onCopyFromDossier={onCopyFromDossier}
+      isCopyFromDossierDisabled={isCopyFromDossierDisabled}
       spreadsheetActions={spreadsheetActions}
     />
   )

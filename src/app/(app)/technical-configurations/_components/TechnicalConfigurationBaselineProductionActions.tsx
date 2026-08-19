@@ -16,6 +16,8 @@ import { HeroActionDropdown } from "@/components/ui/heroui/HeroActionDropdown"
 
 type TechnicalConfigurationBaselineProductionActionsProps = Readonly<{
   version: TechnicalConfigurationBaselineDecodedDraft
+  deviceTypeName: string
+  dossierName: string
   dirty: boolean
   conflict: boolean
   disabled: boolean
@@ -26,6 +28,8 @@ type TechnicalConfigurationBaselineProductionActionsProps = Readonly<{
 /** Mounts the P6B draft-only XLSX v2 and hierarchy import commands. */
 export function TechnicalConfigurationBaselineProductionActions({
   version,
+  deviceTypeName,
+  dossierName,
   dirty,
   conflict,
   disabled,
@@ -56,7 +60,12 @@ export function TechnicalConfigurationBaselineProductionActions({
     setDownloadingIntent(intent)
     setError(null)
     try {
-      await downloadTechnicalConfigurationBaselineWorkbookV2({ version, intent })
+      await downloadTechnicalConfigurationBaselineWorkbookV2({
+        version,
+        intent,
+        deviceTypeName,
+        dossierName,
+      })
     } catch {
       setError("Không thể tạo tệp Excel cấu hình cơ sở.")
     } finally {

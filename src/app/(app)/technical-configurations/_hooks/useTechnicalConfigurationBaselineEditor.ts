@@ -285,6 +285,7 @@ export function useTechnicalConfigurationBaselineEditor({
     lifecycleError
   )
   return {
+    dossierRevision,
     versions,
     selectedVersion: baseDraft,
     baseDraft,
@@ -331,8 +332,16 @@ export function useTechnicalConfigurationBaselineEditor({
     },
     onLoadMoreVersions: loadMoreVersions,
     onRetryQuery: retryVersions,
+    onDossierRevisionChanged: updateDossierRevision,
     onRefreshVersions: async () => {
-      await reloadMutation.mutateAsync(false)
+      const [nextDossierRevision, response] = await Promise.all([
+        refreshDossierRevision(),
+        reloadMutation.mutateAsync(false),
+      ])
+      return {
+        dossierRevision: nextDossierRevision,
+        targetDraft: response.data.find((version) => version.status === "draft") ?? null,
+      }
     },
     onReloadFromServer: async () => {
       const response = await reloadMutation.mutateAsync(true)

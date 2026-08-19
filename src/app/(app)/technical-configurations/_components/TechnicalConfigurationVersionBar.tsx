@@ -29,6 +29,8 @@ type TechnicalConfigurationVersionBarProps = {
   onRequestLock: () => void
   onCreateBlank: () => void
   onCopy: () => void
+  onCopyFromDossier: () => void
+  isCopyFromDossierDisabled: boolean
   spreadsheetActions: React.ReactNode
 }
 
@@ -43,6 +45,8 @@ export function TechnicalConfigurationVersionBar({
   onRequestLock,
   onCreateBlank,
   onCopy,
+  onCopyFromDossier,
+  isCopyFromDossierDisabled,
   spreadsheetActions,
 }: Readonly<TechnicalConfigurationVersionBarProps>) {
   const {
@@ -133,6 +137,15 @@ export function TechnicalConfigurationVersionBar({
                 {spreadsheetActions}
                 <Button
                   type="button"
+                  variant="outline"
+                  disabled={areActionsDisabled || isCopyFromDossierDisabled}
+                  onClick={onCopyFromDossier}
+                >
+                  <Copy className="size-4" aria-hidden="true" />
+                  Sao chép từ hồ sơ khác
+                </Button>
+                <Button
+                  type="button"
                   variant="destructive"
                   disabled={areActionsDisabled || Boolean(lockBlockedReason)}
                   onClick={onRequestLock}
@@ -159,6 +172,15 @@ export function TechnicalConfigurationVersionBar({
               <Button type="button" disabled={areActionsDisabled} onClick={onCopy}>
                 <Copy className="size-4" aria-hidden="true" />
                 {isCopying ? "Đang sao chép..." : "Sao chép thành bản nháp"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={areActionsDisabled || isCopyFromDossierDisabled}
+                onClick={onCopyFromDossier}
+              >
+                <Copy className="size-4" aria-hidden="true" />
+                Sao chép từ hồ sơ khác
               </Button>
             </div>
           ) : null}

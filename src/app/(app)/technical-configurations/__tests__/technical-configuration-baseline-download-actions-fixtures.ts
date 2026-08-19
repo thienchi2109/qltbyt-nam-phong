@@ -43,6 +43,8 @@ export function renderBaselineProductionActions({
   return render(
     createElement(TechnicalConfigurationBaselineProductionActions, {
       version,
+      deviceTypeName: "Máy lọc thận",
+      dossierName: "Hồ sơ khu A",
       dirty,
       conflict,
       disabled,

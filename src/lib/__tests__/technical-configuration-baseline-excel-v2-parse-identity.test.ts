@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
+import * as parseContract from "@/lib/technical-configuration-baseline-excel-v2-parse-contract"
 import {
   CURRENT_DATA_GROUPS,
   createWorkbookSheet,
+  EXISTING_HIERARCHY,
   expectWorkbookV2Result,
   expectWorkbookIssue,
   METADATA,
@@ -10,6 +12,7 @@ import {
 } from "@/lib/__tests__/technical-configuration-baseline-excel-v2-parse-fixtures"
 import { createTechnicalConfigurationBaselineWorkbookV2Model } from "@/lib/technical-configuration-baseline-excel-v2-contract"
 import { createTechnicalConfigurationBaselineWorkbookV2 } from "@/lib/technical-configuration-baseline-excel-v2-export"
+import { parseTechnicalConfigurationBaselineWorkbookV2Rows } from "@/lib/technical-configuration-baseline-excel-v2-parse-rows"
 
 describe("technical configuration baseline XLSX v2 parser identity", () => {
   it("preserves authoritative titles when optional hidden parent hints are missing or tampered", async () => {
@@ -253,30 +256,12 @@ describe("technical configuration baseline XLSX v2 parser identity", () => {
     }
   })
 
-  it("rejects partial, foreign, duplicate, and code-mismatched hidden identity", async () => {
+  it("rejects partial, duplicate, and wrong-kind hidden identity", async () => {
     const cases = [
       {
         expected: { code: "partial_identity", row: 3 },
         mutate: (configuration: ReturnType<typeof createWorkbookSheet>) => {
           configuration.getCell("F3").value = null
-        },
-      },
-      {
-        expected: { code: "foreign_identity", row: 2, column: "main_section_id" },
-        mutate: (configuration: ReturnType<typeof createWorkbookSheet>) => {
-          configuration.getCell("C2").value = "foreign-section"
-        },
-      },
-      {
-        expected: { code: "changed_criterion_code", row: 3, column: "criterion_code" },
-        mutate: (configuration: ReturnType<typeof createWorkbookSheet>) => {
-          configuration.getCell("F3").value = "TC-999"
-        },
-      },
-      {
-        expected: { code: "foreign_identity", row: 3, column: "criterion_id" },
-        mutate: (configuration: ReturnType<typeof createWorkbookSheet>) => {
-          configuration.getCell("C3").value = "section-2"
         },
       },
       {
@@ -308,6 +293,79 @@ describe("technical configuration baseline XLSX v2 parser identity", () => {
       const configuration = createWorkbookSheet(workbook)
       testCase.mutate(configuration)
       await expectWorkbookIssue(workbook, testCase.expected)
+    }
+  })
+
+  it("defers hidden identity membership and criterion-code ownership to server preview", async () => {
+    const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
+      createTechnicalConfigurationBaselineWorkbookV2Model({
+        intent: "current-data",
+        metadata: METADATA,
+        groups: CURRENT_DATA_GROUPS,
+      })
+    )
+    const configuration = createWorkbookSheet(workbook)
+    configuration.getCell("C2").value = "foreign-section"
+    configuration.getCell("E3").value = "foreign-criterion"
+    configuration.getCell("F3").value = "TC-999"
+
+    const result = await parseWorkbook(workbook)
+    expectWorkbookV2Result(result)
+
+    expect(result.rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          row: 2,
+          row_type: "GROUP",
+          group_id: "foreign-section",
+        }),
+        expect.objectContaining({
+          row: 3,
+          row_type: "CRITERION",
+          criterion_id: "foreign-criterion",
+          criterion_code: "TC-999",
+        }),
+      ])
+    )
+  })
+
+  it("does not attach criteria after an invalid subgroup to the previous valid subgroup", async () => {
+    const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
+      createTechnicalConfigurationBaselineWorkbookV2Model({
+        intent: "current-data",
+        metadata: METADATA,
+        groups: CURRENT_DATA_GROUPS,
+      })
+    )
+    const configuration = createWorkbookSheet(workbook)
+    const invalidSubgroup = Array.from(
+      { length: 7 },
+      (_, index) => configuration.getRow(4).getCell(index + 1).value
+    )
+    invalidSubgroup[4] = "criterion-direct"
+    invalidSubgroup[5] = "TC-001"
+    configuration.spliceRows(5, 0, invalidSubgroup)
+    const throwIssues = vi
+      .spyOn(parseContract, "throwIfTechnicalConfigurationBaselineWorkbookV2Issues")
+      .mockImplementation(() => undefined)
+
+    try {
+      const rows = parseTechnicalConfigurationBaselineWorkbookV2Rows(
+        configuration,
+        EXISTING_HIERARCHY
+      )
+
+      expect(rows).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            row: 6,
+            criterion_id: "criterion-subgroup",
+            subgroup_order: 1,
+          }),
+        ])
+      )
+    } finally {
+      throwIssues.mockRestore()
     }
   })
 })

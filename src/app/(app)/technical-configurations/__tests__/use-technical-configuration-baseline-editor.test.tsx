@@ -28,6 +28,16 @@ describe("useTechnicalConfigurationBaselineEditor", () => {
     })
   })
 
+  it("keeps the highest dossier revision reported by external baseline mutations", async () => {
+    const { result } = renderBaselineEditor()
+
+    await waitFor(() => expect(result.current.editorDraft).not.toBeNull())
+    act(() => result.current.onDossierRevisionChanged(9))
+    act(() => result.current.onDossierRevisionChanged(8))
+
+    expect(result.current.dossierRevision).toBe(9)
+  })
+
   it("shows field validation only after an explicit save attempt", async () => {
     const { result } = renderBaselineEditor()
 

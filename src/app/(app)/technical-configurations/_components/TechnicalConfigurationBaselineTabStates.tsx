@@ -1,4 +1,4 @@
-import { AlertCircle, FileLock2, ListPlus, RefreshCw } from "lucide-react"
+import { AlertCircle, Copy, FileLock2, ListPlus, RefreshCw } from "lucide-react"
 
 import type {
   TechnicalConfigurationBaselineCriterionWire,
@@ -43,16 +43,28 @@ export function TechnicalConfigurationBaselineMissingState({
   error,
   isCreating,
   onCreate,
-}: Readonly<{ error: string | null; isCreating: boolean; onCreate: () => void }>) {
+  onCopyFromDossier,
+}: Readonly<{
+  error: string | null
+  isCreating: boolean
+  onCreate: () => void
+  onCopyFromDossier: () => void
+}>) {
   return (
     <section className="border-y py-12 text-center">
       <ListPlus className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
       <h2 className="mt-4 text-base font-semibold">Chưa có bản nháp cấu hình</h2>
       {error ? <p className="mx-auto mt-2 max-w-xl text-sm text-destructive">{error}</p> : null}
-      <Button type="button" className="mt-5" disabled={isCreating} onClick={onCreate}>
-        <ListPlus className="size-4" aria-hidden="true" />
-        {isCreating ? "Đang khởi tạo..." : "Khởi tạo cấu hình cơ sở"}
-      </Button>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        <Button type="button" disabled={isCreating} onClick={onCreate}>
+          <ListPlus className="size-4" aria-hidden="true" />
+          {isCreating ? "Đang khởi tạo..." : "Khởi tạo cấu hình cơ sở"}
+        </Button>
+        <Button type="button" variant="outline" disabled={isCreating} onClick={onCopyFromDossier}>
+          <Copy className="size-4" aria-hidden="true" />
+          Sao chép từ hồ sơ khác
+        </Button>
+      </div>
     </section>
   )
 }
