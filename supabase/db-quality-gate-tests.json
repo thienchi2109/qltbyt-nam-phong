@@ -463,6 +463,26 @@
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_cross_dossier_copy_concurrency_phase_gate.sql",
+      "purpose": "concurrency",
+      "runnerRequirements": ["psql", "multi-session"],
+      "safety": "opt-in",
+      "timeoutSeconds": 180,
+      "transactionContract": "isolated-database"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_baseline_cross_dossier_copy_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 90,
+      "transactionContract": "rollback-required"
+    },
+    {
+      "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "external-fixture",
       "path": "supabase/tests/technical_configuration_baseline_document_urls_phase_gate.sql",
       "purpose": "concurrency",
