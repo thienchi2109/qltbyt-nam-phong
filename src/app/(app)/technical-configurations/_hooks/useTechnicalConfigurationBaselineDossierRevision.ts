@@ -42,6 +42,7 @@ export function useTechnicalConfigurationBaselineDossierRevision({
   const refreshDossierRevision = React.useCallback(async () => {
     const response = await getDossier(dossier.id)
     updateDossierRevision(response.data.revision)
+    return response.data.revision
   }, [dossier.id, getDossier, updateDossierRevision])
 
   return {

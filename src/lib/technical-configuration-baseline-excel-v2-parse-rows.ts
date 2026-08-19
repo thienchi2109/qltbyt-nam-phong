@@ -26,10 +26,6 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
 ): TechnicalConfigurationBaselineWorkbookV2ParsedRow[] {
   const issues: TechnicalConfigurationBaselineWorkbookV2Issue[] = []
   const rows: TechnicalConfigurationBaselineWorkbookV2ParsedRow[] = []
-  const groupsById = new Map(existingHierarchy.groups.map((group) => [group.id, group]))
-  const subgroupsById = new Map(
-    existingHierarchy.subgroups.map((subgroup) => [subgroup.id, subgroup])
-  )
   const criteriaById = new Map(
     existingHierarchy.criteria.map((criterion) => [criterion.id, criterion])
   )
@@ -41,6 +37,11 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
   let criterionOrder = 0
   let hasCurrentGroup = false
   let hasCurrentSubgroup = false
+  let suppressMissingParentCascade = false
+  const invalidateSubgroupBoundary = () => {
+    hasCurrentSubgroup = false
+    suppressMissingParentCascade = true
+  }
   const populatedRowNumbers: number[] = []
 
   worksheet.eachRow((_worksheetRow, rowNumber) => {
@@ -72,6 +73,13 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
         column: "content",
         message: "NỘI DUNG YÊU CẦU là bắt buộc cho mọi dòng có dữ liệu.",
       })
+      if (rowType === "GROUP") {
+        hasCurrentGroup = false
+        hasCurrentSubgroup = false
+        suppressMissingParentCascade = true
+      } else if (rowType === "SUBGROUP") {
+        invalidateSubgroupBoundary()
+      }
       continue
     }
 
@@ -82,15 +90,21 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
           row: rowNumber,
           message: "Dòng mục chính chỉ được mang main_section_id.",
         })
+        hasCurrentGroup = false
+        hasCurrentSubgroup = false
+        suppressMissingParentCascade = true
         continue
       }
-      if (groupId && (!groupsById.has(groupId) || seenGroupIds.has(groupId))) {
+      if (groupId && seenGroupIds.has(groupId)) {
         issues.push({
-          code: groupsById.has(groupId) ? "duplicate_identity" : "foreign_identity",
+          code: "duplicate_identity",
           row: rowNumber,
           column: "main_section_id",
-          message: "main_section_id không hợp lệ cho baseline đích.",
+          message: "main_section_id bị lặp trong workbook.",
         })
+        hasCurrentGroup = false
+        hasCurrentSubgroup = false
+        suppressMissingParentCascade = true
         continue
       }
 
@@ -99,6 +113,7 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
       criterionOrder = 0
       hasCurrentGroup = true
       hasCurrentSubgroup = false
+      suppressMissingParentCascade = false
       if (groupId) seenGroupIds.add(groupId)
       rows.push({
         row: rowNumber,
@@ -110,15 +125,6 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
       continue
     }
 
-    if (!hasCurrentGroup) {
-      issues.push({
-        code: rowType === "SUBGROUP" ? "subgroup_without_section" : "content_before_section",
-        row: rowNumber,
-        message: "Mọi nội dung phải đứng sau một mục chính.",
-      })
-      continue
-    }
-
     if (rowType === "SUBGROUP") {
       if (criterionId || criterionCode) {
         issues.push({
@@ -126,6 +132,7 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
           row: rowNumber,
           message: "Dòng nhóm con không được mang identity tiêu chí.",
         })
+        invalidateSubgroupBoundary()
         continue
       }
       if (groupId !== null && subgroupId === null) {
@@ -134,29 +141,34 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
           row: rowNumber,
           message: "main_section_id không được tồn tại khi subgroup_id bị thiếu.",
         })
+        invalidateSubgroupBoundary()
         continue
       }
-      const existingSubgroup = subgroupId ? subgroupsById.get(subgroupId) : undefined
-      if (
-        subgroupId &&
-        (!existingSubgroup ||
-          (groupId !== null && existingSubgroup.group_id !== groupId) ||
-          seenSubgroupIds.has(subgroupId))
-      ) {
+      if (subgroupId && seenSubgroupIds.has(subgroupId)) {
         issues.push({
-          code:
-            existingSubgroup && seenSubgroupIds.has(subgroupId)
-              ? "duplicate_identity"
-              : "foreign_identity",
+          code: "duplicate_identity",
           row: rowNumber,
           column: "subgroup_id",
-          message: "subgroup_id không hợp lệ cho baseline đích.",
+          message: "subgroup_id bị lặp trong workbook.",
         })
+        invalidateSubgroupBoundary()
+        continue
+      }
+      if (!hasCurrentGroup) {
+        if (!suppressMissingParentCascade) {
+          issues.push({
+            code: "subgroup_without_section",
+            row: rowNumber,
+            message: "Mọi nội dung phải đứng sau một mục chính.",
+          })
+        }
+        invalidateSubgroupBoundary()
         continue
       }
 
       subgroupOrder += 1
       hasCurrentSubgroup = true
+      suppressMissingParentCascade = false
       if (subgroupId) seenSubgroupIds.add(subgroupId)
       rows.push({
         row: rowNumber,
@@ -179,25 +191,12 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
     }
 
     const existingCriterion = criterionId ? criteriaById.get(criterionId) : undefined
-    if (
-      criterionId &&
-      (!existingCriterion ||
-        existingCriterion.criterion_code !== criterionCode ||
-        (groupId !== null && existingCriterion.group_id !== groupId) ||
-        (subgroupId !== null && existingCriterion.subgroup_id !== subgroupId) ||
-        seenCriterionIds.has(criterionId))
-    ) {
-      const code =
-        existingCriterion && existingCriterion.criterion_code !== criterionCode
-          ? "changed_criterion_code"
-          : existingCriterion && seenCriterionIds.has(criterionId)
-            ? "duplicate_identity"
-            : "foreign_identity"
+    if (criterionId && seenCriterionIds.has(criterionId)) {
       issues.push({
-        code,
+        code: "duplicate_identity",
         row: rowNumber,
-        column: code === "changed_criterion_code" ? "criterion_code" : "criterion_id",
-        message: "Identity tiêu chí không hợp lệ cho baseline đích.",
+        column: "criterion_id",
+        message: "criterion_id bị lặp trong workbook.",
       })
       continue
     }
@@ -207,6 +206,17 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
         row: rowNumber,
         message: "Tiêu chí mới không được mang một phần hidden identity.",
       })
+      continue
+    }
+    if (suppressMissingParentCascade) continue
+    if (!hasCurrentGroup) {
+      if (!suppressMissingParentCascade) {
+        issues.push({
+          code: "content_before_section",
+          row: rowNumber,
+          message: "Mọi nội dung phải đứng sau một mục chính.",
+        })
+      }
       continue
     }
 

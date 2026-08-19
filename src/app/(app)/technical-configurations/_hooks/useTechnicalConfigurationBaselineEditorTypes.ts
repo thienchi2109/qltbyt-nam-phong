@@ -5,6 +5,7 @@ import type {
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
 export interface UseTechnicalConfigurationBaselineEditorResult {
+  dossierRevision: number
   versions: TechnicalConfigurationBaselineDraftWire[]
   selectedVersion: TechnicalConfigurationBaselineDraftWire | null
   baseDraft: TechnicalConfigurationBaselineDraftWire | null
@@ -37,7 +38,10 @@ export interface UseTechnicalConfigurationBaselineEditorResult {
   onSelectVersion: (versionId: string, options?: { force?: boolean }) => void
   onLoadMoreVersions: () => Promise<void>
   onRetryQuery: () => Promise<void>
-  onRefreshVersions: () => Promise<void>
+  onRefreshVersions: () => Promise<{
+    dossierRevision: number
+    targetDraft: TechnicalConfigurationBaselineDraftWire | null
+  }>
   onReloadFromServer: () => Promise<TechnicalConfigurationBaselineEditorDraft | null>
   onAdoptImportSnapshot: (version: TechnicalConfigurationBaselineDraftWire) => Promise<void>
   onRefreshImportConflict: (versionId: string) => Promise<void>

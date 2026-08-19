@@ -1,6 +1,7 @@
 import * as React from "react"
 
 import { useTechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineEditor"
+import { useTechnicalConfigurationBaselineCrossDossierCopy } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineCrossDossierCopy"
 import { useTechnicalConfigurationBaselineHierarchyImport } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBaselineHierarchyImport"
 import { useTechnicalConfigurationBeforeUnloadGuard } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBeforeUnloadGuard"
 import { useTechnicalConfigurationBulkEntrySessions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
@@ -12,6 +13,7 @@ import { validateTechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/t
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
 
 import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBaselineAlerts"
+import { TechnicalConfigurationBaselineCrossDossierCopyDialog } from "./TechnicalConfigurationBaselineCrossDossierCopyDialog"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
 import { TechnicalConfigurationBaselineHierarchyImportDialog } from "./TechnicalConfigurationBaselineHierarchyImportDialog"
 import { TechnicalConfigurationBaselineProductionActions } from "./TechnicalConfigurationBaselineProductionActions"
@@ -48,6 +50,19 @@ export function TechnicalConfigurationBaselineTab({
   const baseline = useTechnicalConfigurationBaselineEditor({
     dossier,
     isExternalDraftReplacementBlocked: bulkSessions.hasPendingInput || hasUnresolvedImportState,
+  })
+  const targetDraft = React.useMemo(
+    () => baseline.versions.find((version) => version.status === "draft") ?? null,
+    [baseline.versions]
+  )
+  const crossDossierCopy = useTechnicalConfigurationBaselineCrossDossierCopy({
+    dossier,
+    dossierRevision: baseline.dossierRevision,
+    targetDraft,
+    onApplied: async () => {
+      await baseline.onRefreshVersions()
+    },
+    onTargetStateStale: baseline.onRefreshVersions,
   })
   const draft = baseline.editorDraft
   const selectedVersion = baseline.selectedVersion
@@ -189,11 +204,15 @@ export function TechnicalConfigurationBaselineTab({
   }
   if (baseline.isMissing) {
     return (
-      <TechnicalConfigurationBaselineMissingState
-        error={baseline.createError}
-        isCreating={baseline.isCreating}
-        onCreate={baseline.onCreate}
-      />
+      <>
+        <TechnicalConfigurationBaselineMissingState
+          error={baseline.createError}
+          isCreating={baseline.isCreating}
+          onCreate={baseline.onCreate}
+          onCopyFromDossier={crossDossierCopy.openDialog}
+        />
+        <TechnicalConfigurationBaselineCrossDossierCopyDialog workflow={crossDossierCopy} />
+      </>
     )
   }
   if (!selectedVersion) return null
@@ -226,10 +245,16 @@ export function TechnicalConfigurationBaselineTab({
           onRequestLock={() => setIsLockDialogOpen(true)}
           onCreateBlank={baseline.onCreate}
           onCopy={() => void handleCopy()}
+          onCopyFromDossier={crossDossierCopy.openDialog}
+          isCopyFromDossierDisabled={
+            baseline.isDirty || bulkSessions.hasPendingInput || hasUnresolvedImportState
+          }
           spreadsheetActions={
             decodedVersion ? (
               <TechnicalConfigurationBaselineProductionActions
                 version={decodedVersion}
+                deviceTypeName={dossier.device_type_name}
+                dossierName={dossier.name}
                 dirty={baseline.isDirty}
                 conflict={baseline.isConflict}
                 disabled={
@@ -248,6 +273,7 @@ export function TechnicalConfigurationBaselineTab({
       </div>
 
       <TechnicalConfigurationBaselineHierarchyImportDialog workflow={hierarchyImport} />
+      <TechnicalConfigurationBaselineCrossDossierCopyDialog workflow={crossDossierCopy} />
 
       <TechnicalConfigurationBaselineAlerts
         isConflict={baseline.isConflict}

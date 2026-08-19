@@ -31,6 +31,30 @@ describe("technical configuration baseline tab", () => {
     rpc.listVersions.mockResolvedValue(baselineVersionsResponse([createDraft()]))
   })
 
+  it("places cross-dossier copy beside baseline creation for a new dossier", async () => {
+    rpc.listVersions.mockResolvedValue(baselineVersionsResponse([]))
+    renderTab()
+
+    const createButton = await screen.findByRole("button", {
+      name: "Khởi tạo cấu hình cơ sở",
+    })
+    const copyButton = screen.getByRole("button", {
+      name: "Sao chép từ hồ sơ khác",
+    })
+
+    expect(createButton.parentElement).toBe(copyButton.parentElement)
+  })
+
+  it("keeps cross-dossier replacement available on the existing baseline version bar", async () => {
+    renderTab()
+
+    const copyButton = await screen.findByRole("button", {
+      name: "Sao chép từ hồ sơ khác",
+    })
+
+    expect(copyButton.closest("section")).toHaveAccessibleName("Lịch sử phiên bản cấu hình cơ sở")
+  })
+
   it("saves only from explicit Lưu and shows the exact pending label", async () => {
     const user = userEvent.setup()
     const pending = deferred<{ data: TechnicalConfigurationBaselineGroupMutationWire }>()

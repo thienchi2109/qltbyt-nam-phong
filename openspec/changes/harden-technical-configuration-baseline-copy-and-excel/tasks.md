@@ -69,48 +69,48 @@ Depends on: Phase 1 merged and the three RPCs verified in the target environment
 Deploy boundary: mount the target-side workflow and correct existing XLSX behavior;
 no database migration is introduced in this PR.
 
-- [ ] 2.1 Branch from updated main after Phase 1 deployment and generate/define client
+- [x] 2.1 Branch from updated main after Phase 1 deployment and generate/define client
       types directly from the frozen `contracts.md` wire shapes.
-- [ ] 2.2 Write failing client/data-hook tests for paginated locked-source search,
+- [x] 2.2 Write failing client/data-hook tests for paginated locked-source search,
       preview states, stale conflicts, create-draft apply, replacement confirmation,
       preview fingerprint, dependent-data deletion counts, cancellation, and
       mutation-cache refresh.
-- [ ] 2.3 Add `Sao chép từ hồ sơ khác` on the target dossier baseline surface while
+- [x] 2.3 Add `Sao chép từ hồ sơ khác` on the target dossier baseline surface while
       preserving the existing `Sao chép thành bản nháp` action.
-- [ ] 2.4 Build a bounded source selector that displays device type, dossier name,
+- [x] 2.4 Build a bounded source selector that displays device type, dossier name,
       archive state, and locked version; exclude the target dossier and do not issue
       per-dossier version requests.
-- [ ] 2.5 Show the locked-source warning when the copy workflow opens and keep draft
+- [x] 2.5 Show the locked-source warning when the copy workflow opens and keep draft
       versions out of the selectable result set.
-- [ ] 2.6 Render authoritative preview, including all dependent deletion counts.
+- [x] 2.6 Render authoritative preview, including all dependent deletion counts.
       Require explicit full-replacement confirmation only when the backend reports an
       existing target draft, and preserve dialog state after recoverable stale/server
       errors.
-- [ ] 2.7 Carry the returned preview fingerprint into apply and force a fresh preview
+- [x] 2.7 Carry the returned preview fingerprint into apply and force a fresh preview
       after `stale_preview` or `concurrent_write_retry`.
-- [ ] 2.8 Write a failing regression test using real serialized XLSX bytes for:
+- [x] 2.8 Write a failing regression test using real serialized XLSX bytes for:
       download current configuration -> upload the same unchanged file -> accepted
       preview with no false identity errors.
-- [ ] 2.9 Change client identity validation so syntax, duplicates, and hierarchy shape
+- [x] 2.9 Change client identity validation so syntax, duplicates, and hierarchy shape
       remain local checks while live membership/ownership is decided by server preview.
-- [ ] 2.10 Suppress dependent missing-parent cascades after a structural identity error
+- [x] 2.10 Suppress dependent missing-parent cascades after a structural identity error
       while retaining physical-row errors for independent failures.
-- [ ] 2.11 Write filename tests for the exact normalization, fallback, 60-character
+- [x] 2.11 Write filename tests for the exact normalization, fallback, 60-character
       dynamic-segment caps, and 160-character final cap in the spec.
-- [ ] 2.12 Generate
+- [x] 2.12 Generate
       `{Loai_Thiet_Bi}_{Ten_Ho_So}_Phien_Ban_{N}.xlsx` and
       `Mau_{Loai_Thiet_Bi}_{Ten_Ho_So}_Phien_Ban_{N}.xlsx` from the tested helper.
-- [ ] 2.13 Add a browser regression covering the actual XLSX workflow:
+- [x] 2.13 Add a browser regression covering the actual XLSX workflow:
       click `Tải cấu hình hiện tại`, capture the downloaded file, upload that file via
       `Nhập cấu hình phân cấp`, and reach an error-free authoritative preview.
-- [ ] 2.14 Add browser acceptance for cross-dossier copy into a target with no draft,
+- [x] 2.14 Add browser acceptance for cross-dossier copy into a target with no draft,
       including warning, source search, preview, apply, and target refresh.
-- [ ] 2.15 Add browser acceptance for replacing an existing draft, including dependent
+- [x] 2.15 Add browser acceptance for replacing an existing draft, including dependent
       deletion counts, explicit confirmation, cancel-without-mutation, stale-preview
       recovery, and successful apply.
-- [ ] 2.16 Verify cross-dossier workbook upload is still rejected and directs the user
+- [x] 2.16 Verify cross-dossier workbook upload is still rejected and directs the user
       to server-side copy rather than remapping foreign hidden IDs.
-- [ ] 2.17 Run format, explicit-any, dedupe, typecheck, focused Vitest/browser tests,
+- [x] 2.17 Run format, explicit-any, dedupe, typecheck, focused Vitest/browser tests,
       and diff-only React Doctor in repository order.
 - [ ] 2.18 Open PR 2 against updated main with Phase 1 deployment evidence and complete
       the user-visible acceptance flow on desktop and mobile widths.

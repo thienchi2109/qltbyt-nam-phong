@@ -8,6 +8,8 @@ import {
 } from "@/lib/technical-configuration-baseline-excel-v2-contract"
 import { serializeTechnicalConfigurationBaselineWorkbookV2 } from "@/lib/technical-configuration-baseline-excel-v2-export"
 
+import { buildTechnicalConfigurationBaselineWorkbookFilename } from "./technical-configuration-baseline-filename"
+
 export type TechnicalConfigurationBaselineDownloadIntent = "current-data" | "blank-template"
 
 function toWorkbookCriterion(
@@ -36,22 +38,17 @@ function toWorkbookGroups(
   }))
 }
 
-function getFilename(
-  intent: TechnicalConfigurationBaselineDownloadIntent,
-  versionNumber: number
-): string {
-  return intent === "current-data"
-    ? `Cau_Hinh_Co_So_Hien_Tai_Phien_Ban_${versionNumber}.xlsx`
-    : `Mau_Cau_Hinh_Co_So_Trong_Phien_Ban_${versionNumber}.xlsx`
-}
-
 /** Generates and downloads one XLSX v2 workbook bound to the selected draft revision. */
 export async function downloadTechnicalConfigurationBaselineWorkbookV2({
   version,
   intent,
+  deviceTypeName,
+  dossierName,
 }: {
   version: TechnicalConfigurationBaselineDecodedDraft
   intent: TechnicalConfigurationBaselineDownloadIntent
+  deviceTypeName: string
+  dossierName: string
 }): Promise<void> {
   const metadata = {
     dossier_id: version.dossier_id,
@@ -75,6 +72,11 @@ export async function downloadTechnicalConfigurationBaselineWorkbookV2({
 
   downloadBlob(
     new Blob([buffer], { type: BASELINE_WORKBOOK_MIME_TYPE }),
-    getFilename(intent, version.version_number)
+    buildTechnicalConfigurationBaselineWorkbookFilename({
+      intent,
+      deviceTypeName,
+      dossierName,
+      versionNumber: version.version_number,
+    })
   )
 }

@@ -155,7 +155,7 @@ describe("technical configuration baseline download actions", () => {
       expect.objectContaining({
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }),
-      "Cau_Hinh_Co_So_Hien_Tai_Phien_Ban_7.xlsx"
+      "May_loc_than_Ho_so_khu_A_Phien_Ban_7.xlsx"
     )
     const downloadedBlob = workbookCodec.downloadBlob.mock.calls[0]?.[0] as Blob
     await expect(readBlobBytes(downloadedBlob)).resolves.toEqual([1, 2, 3])
@@ -205,7 +205,7 @@ describe("technical configuration baseline download actions", () => {
     expect(workbookCodec.downloadBlob).toHaveBeenCalledTimes(1)
     expect(workbookCodec.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
-      "Mau_Cau_Hinh_Co_So_Trong_Phien_Ban_7.xlsx"
+      "Mau_May_loc_than_Ho_so_khu_A_Phien_Ban_7.xlsx"
     )
     const downloadedBlob = workbookCodec.downloadBlob.mock.calls[0]?.[0] as Blob
     await expect(readBlobBytes(downloadedBlob)).resolves.toEqual([1, 2, 3])
@@ -260,7 +260,7 @@ describe("technical configuration baseline download actions", () => {
     expect(workbookCodec.downloadBlob).toHaveBeenCalledTimes(1)
     expect(workbookCodec.downloadBlob).toHaveBeenCalledWith(
       expect.any(Blob),
-      "Mau_Cau_Hinh_Co_So_Trong_Phien_Ban_7.xlsx"
+      "Mau_May_loc_than_Ho_so_khu_A_Phien_Ban_7.xlsx"
     )
     await waitForExcelActionToFinish()
   })
