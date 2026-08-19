@@ -332,6 +332,8 @@ describe("technical configuration cross-dossier baseline copy migration", () => 
     expect(concurrencyGateSource).toContain("apply-first")
     expect(concurrencyGateSource).toContain("no partial mutation")
     expect(concurrencyGateSource).toContain("no deadlock wait-cycle")
+    expect(concurrencyGateSource.match(/v_observed_session_a BOOLEAN := false/g)).toHaveLength(2)
+    expect(concurrencyGateSource).not.toContain("IF v_attempt = 600 THEN")
 
     expect(registry.tests).toEqual(
       expect.arrayContaining([

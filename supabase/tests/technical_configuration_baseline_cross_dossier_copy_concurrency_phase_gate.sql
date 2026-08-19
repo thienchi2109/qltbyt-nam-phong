@@ -141,6 +141,7 @@ ROLLBACK;
 DO $gate$
 DECLARE
   v_attempt INTEGER;
+  v_observed_session_a BOOLEAN := false;
   v_user_id BIGINT;
   v_source UUID := md5('writer-first:source-version:<RUN_TOKEN>')::UUID;
   v_target UUID := md5('writer-first:target-dossier:<RUN_TOKEN>')::UUID;
@@ -168,10 +169,11 @@ BEGIN
       PERFORM pg_advisory_unlock(v_rendezvous);
       PERFORM pg_sleep(0.1);
     ELSE
+      v_observed_session_a := true;
       EXIT;
     END IF;
   END LOOP;
-  IF v_attempt = 600 THEN
+  IF NOT v_observed_session_a THEN
     RAISE EXCEPTION 'writer-first Session B did not observe Session A';
   END IF;
   SELECT d.revision, v.revision
@@ -272,6 +274,7 @@ COMMIT;
 DO $gate$
 DECLARE
   v_attempt INTEGER;
+  v_observed_session_a BOOLEAN := false;
   v_user_id BIGINT;
   v_target_version UUID := md5('apply-first:target-version:<RUN_TOKEN>')::UUID;
   v_comparison_set UUID := md5('apply-first:comparison:<RUN_TOKEN>')::UUID;
@@ -285,10 +288,11 @@ BEGIN
       PERFORM pg_advisory_unlock(v_rendezvous);
       PERFORM pg_sleep(0.1);
     ELSE
+      v_observed_session_a := true;
       EXIT;
     END IF;
   END LOOP;
-  IF v_attempt = 600 THEN
+  IF NOT v_observed_session_a THEN
     RAISE EXCEPTION 'apply-first Session B did not observe Session A';
   END IF;
   PERFORM set_config('lock_timeout', '2s', true);
