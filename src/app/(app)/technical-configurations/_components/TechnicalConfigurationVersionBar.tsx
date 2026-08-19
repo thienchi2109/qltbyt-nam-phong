@@ -1,8 +1,7 @@
 import type * as React from "react"
-import { ChevronDown, Copy, FilePlus2, History, LockKeyhole } from "lucide-react"
+import { ChevronDown, Copy, FilePlus2, LockKeyhole } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { SingleSelect } from "@/components/ui/heroui/SingleSelect"
 import { formatVietnamDateTime } from "@/lib/date-utils"
@@ -80,16 +79,6 @@ export function TechnicalConfigurationVersionBar({
     <section className="border-y py-2" aria-label="Lịch sử phiên bản cấu hình cơ sở">
       <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center">
-          <div className="flex flex-wrap items-center gap-2">
-            <History className="size-4 text-muted-foreground" aria-hidden="true" />
-            <strong className="text-sm font-semibold">
-              Phiên bản {selectedVersion.version_number}
-            </strong>
-            <Badge variant={selectedVersion.status === "locked" ? "secondary" : "outline"}>
-              {selectedVersion.status === "locked" ? "Đã khóa" : "Bản nháp"}
-            </Badge>
-          </div>
-
           <SingleSelect
             value={selectedVersion.id}
             ariaLabel="Lịch sử phiên bản"
