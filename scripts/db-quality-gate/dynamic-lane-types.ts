@@ -29,7 +29,10 @@ export type OracleExecutorResult<T> =
 export type OracleDynamicPreflight = {
   baseline: {
     healthy: boolean
+    migrationHighWater?: string
+    migrationIdentities?: MigrationIdentity[]
     migrationVersions: string[]
+    stateHash?: string
   }
   executorEnvironment: Record<string, string>
 }

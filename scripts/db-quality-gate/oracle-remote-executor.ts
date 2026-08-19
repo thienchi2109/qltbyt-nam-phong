@@ -11,7 +11,19 @@ import {
   validDisposableDatabase,
   validRunId,
 } from "./oracle-remote-contract"
+import {
+  createOracleRemoteClient,
+  oracleErrorResult as errorResult,
+  oracleStatePath,
+} from "./oracle-remote-client"
 import { hasPsqlMetaCommand, rollbackRequiredSqlTestBody } from "./oracle-remote-sql"
+import { BASELINE_OBSERVATION_QUERY } from "./oracle-baseline-sql"
+import {
+  baselineStateHash,
+  observationMatches,
+  parseBaselineState,
+  parseDatabaseObservation,
+} from "./baseline-state"
 import type {
   DynamicFailureKind,
   OracleDynamicExecutor,
@@ -28,25 +40,8 @@ export type {
 
 const BASELINE_DATABASE = "qltbyt_test"
 const DATABASE_ADMIN_ROLE = "supabase_admin"
-const DEFAULT_TIMEOUT_MS = 120_000
 const GLOBAL_LOCK_NAME = "dynamic-lane.lock"
 const LOCK_LEASE_SECONDS = 30 * 60
-
-function errorResult<T>(kind: DynamicFailureKind, error: string): OracleExecutorResult<T> {
-  return {
-    error,
-    kind,
-    status: "error",
-  }
-}
-
-function parseJsonOutput(value: string): unknown | undefined {
-  try {
-    return JSON.parse(value.trim()) as unknown
-  } catch {
-    return undefined
-  }
-}
 
 /** Creates the production SSH/Docker executor only when strict Oracle-only configuration exists. */
 export function oracleRemoteExecutorFromEnvironment(
@@ -65,72 +60,8 @@ export function oracleRemoteExecutorFromEnvironment(
 export function createOracleRemoteExecutor(
   input: OracleRemoteExecutorInput
 ): OracleDynamicExecutor {
-  const { command, config } = input
-
-  function remote(
-    remoteCommand: string,
-    inputText?: string,
-    failureKind: DynamicFailureKind = "unavailable"
-  ): OracleExecutorResult<string> {
-    const result = command({
-      arguments: [
-        "-i",
-        config.sshKeyPath,
-        "-o",
-        "BatchMode=yes",
-        "-o",
-        "ConnectTimeout=15",
-        "-o",
-        "GlobalKnownHostsFile=/dev/null",
-        "-o",
-        "StrictHostKeyChecking=yes",
-        "-o",
-        `UserKnownHostsFile=${config.sshKnownHostsPath}`,
-        `${config.sshUser}@${config.host}`,
-        remoteCommand,
-      ],
-      input: inputText,
-      timeoutMs: DEFAULT_TIMEOUT_MS,
-    })
-    if (result.timedOut) {
-      return errorResult("timeout", "Oracle SSH command timed out")
-    }
-    if (result.exitCode !== 0) {
-      return errorResult(failureKind, result.stderr.trim() || "Oracle SSH command failed")
-    }
-
-    return {
-      status: "ok",
-      value: result.stdout,
-    }
-  }
-
-  function sql(
-    databaseName: string,
-    statement: string,
-    failureKind: DynamicFailureKind,
-    role = "postgres"
-  ): OracleExecutorResult<string> {
-    const remoteCommand = `docker exec -i ${config.containerName} psql -X -v ON_ERROR_STOP=1 -U ${role} -d ${shellQuote(databaseName)} -tA`
-    const result = remote(remoteCommand, statement)
-    if (result.status === "ok" || failureKind !== "failed" || result.kind !== "unavailable") {
-      return result
-    }
-
-    const health = remote(remoteCommand, "SELECT 1;")
-    return health.status === "ok" ? errorResult("failed", result.error) : health
-  }
-
-  function readJson(databaseName: string, statement: string): OracleExecutorResult<unknown> {
-    const result = sql(databaseName, statement, "unavailable")
-    if (result.status === "error") {
-      return result
-    }
-    const value = parseJsonOutput(result.value)
-    return value === undefined
-      ? errorResult("unavailable", "Oracle catalog query returned invalid JSON")
-      : { status: "ok", value }
-  }
+  const { config } = input
+  const { readJson, remote, sql } = createOracleRemoteClient(input)
 
   return {
     preflight() {
@@ -170,18 +101,31 @@ export function createOracleRemoteExecutor(
         return errorResult("stale-environment", "Restored Oracle baseline is missing")
       }
 
-      const versions = readJson(
-        BASELINE_DATABASE,
-        "SELECT COALESCE(json_agg(version ORDER BY version), '[]'::json)::text FROM supabase_migrations.schema_migrations;"
-      )
-      if (versions.status === "error") {
-        return versions
+      const stateResult = remote(`cat ${shellQuote(oracleStatePath(config))}`)
+      if (stateResult.status === "error") {
+        return errorResult("stale-environment", "Oracle baseline state evidence is unavailable")
       }
+      let rawState: unknown
+      try {
+        rawState = JSON.parse(stateResult.value) as unknown
+      } catch {
+        return errorResult("stale-environment", "Oracle baseline state evidence is invalid")
+      }
+      const baselineState = parseBaselineState(rawState)
+      if (baselineState === undefined || !baselineState.healthy) {
+        return errorResult("stale-environment", "Oracle baseline is not published as healthy")
+      }
+
+      const observationResult = readJson(BASELINE_DATABASE, BASELINE_OBSERVATION_QUERY)
+      if (observationResult.status === "error") {
+        return observationResult
+      }
+      const observation = parseDatabaseObservation(observationResult.value)
       if (
-        !Array.isArray(versions.value) ||
-        versions.value.some((version) => typeof version !== "string")
+        observation === undefined ||
+        !observationMatches(observation, baselineState.confirmedMigrations)
       ) {
-        return errorResult("stale-environment", "Oracle baseline migration evidence is invalid")
+        return errorResult("stale-environment", "Oracle baseline health evidence is stale")
       }
 
       return {
@@ -189,7 +133,13 @@ export function createOracleRemoteExecutor(
         value: {
           baseline: {
             healthy: true,
-            migrationVersions: versions.value,
+            migrationHighWater: baselineState.migrationHighWater,
+            migrationIdentities: baselineState.confirmedMigrations.map(({ path, sha256 }) => ({
+              path,
+              sha256,
+            })),
+            migrationVersions: observation.migrationRecords.map((record) => record.liveVersion),
+            stateHash: baselineStateHash(baselineState),
           },
           executorEnvironment: {
             execution: "oracle-disposable",

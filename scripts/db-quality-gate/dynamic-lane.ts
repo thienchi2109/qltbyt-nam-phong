@@ -45,6 +45,7 @@ function pendingMigrations(
   state: ReturnType<typeof createDynamicRunState>,
   migrationIdentities: MigrationIdentity[],
   appliedMigrationIdentities: MigrationIdentity[],
+  baselineMigrationIdentities: MigrationIdentity[],
   observedVersions: string[]
 ): MigrationIdentity[] | undefined {
   for (const identity of migrationIdentities) {
@@ -58,7 +59,9 @@ function pendingMigrations(
     }
   }
 
-  const appliedVersions = new Set<string>()
+  const baselineIdentities = new Set(
+    baselineMigrationIdentities.map((identity) => `${identity.path}\u0000${identity.sha256}`)
+  )
   for (const identity of appliedMigrationIdentities) {
     const version = migrationVersion(identity)
     if (version === undefined) {
@@ -68,10 +71,18 @@ function pendingMigrations(
       state.incomplete = true
       return undefined
     }
-    appliedVersions.add(version)
   }
 
-  if ([...appliedVersions].some((version) => !observedVersions.includes(version))) {
+  if (
+    appliedMigrationIdentities.some((identity) => {
+      const version = migrationVersion(identity)
+      return (
+        version !== undefined &&
+        !observedVersions.includes(version) &&
+        !baselineIdentities.has(`${identity.path}\u0000${identity.sha256}`)
+      )
+    })
+  ) {
     addDynamicFinding(state, "dynamic.baseline.migration-evidence", ORACLE_BASELINE_DATABASE, {
       baseline: ORACLE_BASELINE_DATABASE,
     })
@@ -82,7 +93,11 @@ function pendingMigrations(
   const observed = new Set(observedVersions)
   return migrationIdentities.filter((identity) => {
     const version = migrationVersion(identity)
-    return version !== undefined && !observed.has(version)
+    return (
+      version !== undefined &&
+      !observed.has(version) &&
+      !baselineIdentities.has(`${identity.path}\u0000${identity.sha256}`)
+    )
   })
 }
 
@@ -161,9 +176,10 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
       } else {
         state.preflightComplete = true
         state.executorEnvironment = preflight.value.executorEnvironment
-        state.baselineMigrationHighWater = baselineMigrationHighWater(
-          preflight.value.baseline.migrationVersions
-        )
+        state.baselineMigrationHighWater =
+          preflight.value.baseline.migrationHighWater ??
+          baselineMigrationHighWater(preflight.value.baseline.migrationVersions)
+        state.catalogInputHashes.baselineState = preflight.value.baseline.stateHash ?? "unavailable"
         databaseName = createDisposableDatabaseName({
           lane: input.lane,
           runId: input.runId,
@@ -191,6 +207,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               state,
               artifacts.migrationIdentities,
               artifacts.appliedMigrationIdentities,
+              preflight.value.baseline.migrationIdentities ?? [],
               preflight.value.baseline.migrationVersions
             )
           : undefined
@@ -215,6 +232,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
             canContinue = false
           } else {
             state.catalogInputHashes = {
+              baselineState: state.catalogInputHashes.baselineState,
               catalogBaselineAccess: collectAccessFingerprint(baselineCatalogs.value.access),
               catalogBaselineApplication: collectApplicationFingerprint(
                 baselineCatalogs.value.application
