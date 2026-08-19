@@ -8,7 +8,22 @@ SELECT json_build_object(
     JOIN pg_class c ON c.oid = i.indexrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE NOT i.indisvalid
-      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+      AND n.nspname NOT IN (
+        'auth',
+        'extensions',
+        'graphql',
+        'graphql_public',
+        'information_schema',
+        'net',
+        'pg_catalog',
+        'pgsodium',
+        'pgsodium_masks',
+        'realtime',
+        'storage',
+        'supabase_functions',
+        'supabase_migrations',
+        'vault'
+      )
   ),
   'migrationHighWater', COALESCE(
     (SELECT max(version) FROM supabase_migrations.schema_migrations),
@@ -21,8 +36,19 @@ SELECT json_build_object(
           'liveName', COALESCE(name, ''),
           'liveVersion', version,
           'sqlSha256', encode(
-            extensions.digest(convert_to(COALESCE(statements[1], ''), 'UTF8'), 'sha256'
-          ), 'hex')
+            extensions.digest(
+              convert_to(
+                regexp_replace(
+                  replace(COALESCE(statements[1], ''), E'\r\n', E'\n'),
+                  E'\n$',
+                  ''
+                ),
+                'UTF8'
+              ),
+              'sha256'
+            ),
+            'hex'
+          )
         )
         ORDER BY version
       )
@@ -35,7 +61,22 @@ SELECT json_build_object(
     FROM pg_constraint c
     JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE NOT c.convalidated
-      AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+      AND n.nspname NOT IN (
+        'auth',
+        'extensions',
+        'graphql',
+        'graphql_public',
+        'information_schema',
+        'net',
+        'pg_catalog',
+        'pgsodium',
+        'pgsodium_masks',
+        'realtime',
+        'storage',
+        'supabase_functions',
+        'supabase_migrations',
+        'vault'
+      )
   )
 )::text;
 `

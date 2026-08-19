@@ -39,6 +39,10 @@ type MaintenanceExecutorModule = {
   }
 }
 
+type BaselineSqlModule = {
+  BASELINE_OBSERVATION_QUERY: string
+}
+
 const migration = {
   content: "SELECT 1;",
   liveName: "confirmed_live_change",
@@ -48,6 +52,14 @@ const migration = {
 }
 
 describe("database quality gate Oracle baseline maintenance executor", () => {
+  it("normalizes migration SQL and excludes Supabase-managed schemas from health debt", async () => {
+    const source = await loadDatabaseQualityGateModule<BaselineSqlModule>("oracle-baseline-sql")
+
+    expect(source.BASELINE_OBSERVATION_QUERY).toContain("regexp_replace")
+    expect(source.BASELINE_OBSERVATION_QUERY).toContain("replace(COALESCE(statements[1], '')")
+    expect(source.BASELINE_OBSERVATION_QUERY).toContain("'realtime'")
+  })
+
   it("publishes one atomic state file without embedding credentials", async () => {
     const source = await loadDatabaseQualityGateModule<MaintenanceExecutorModule>(
       "oracle-baseline-maintenance-executor"
