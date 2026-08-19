@@ -112,5 +112,5 @@ no database migration is introduced in this PR.
       to server-side copy rather than remapping foreign hidden IDs.
 - [x] 2.17 Run format, explicit-any, dedupe, typecheck, focused Vitest/browser tests,
       and diff-only React Doctor in repository order.
-- [ ] 2.18 Open PR 2 against updated main with Phase 1 deployment evidence and complete
+- [x] 2.18 Open PR 2 against updated main with Phase 1 deployment evidence and complete
       the user-visible acceptance flow on desktop and mobile widths.
