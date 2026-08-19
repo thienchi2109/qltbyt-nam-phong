@@ -151,18 +151,18 @@ baseline catch-up, timer, or live database work.
 
 **Purpose:** Maintain the restored baseline and reusable evidence safely.
 
-- [ ] 5.1 Implement atomic baseline health and migration high-water evidence.
-- [ ] 5.2 Implement incremental catch-up using only migrations read-back as
+- [x] 5.1 Implement atomic baseline health and migration high-water evidence.
+- [x] 5.2 Implement incremental catch-up using only migrations read-back as
       already applied live.
-- [ ] 5.3 Implement serialized full-refresh recovery without publishing a
+- [x] 5.3 Implement serialized full-refresh recovery without publishing a
       half-restored baseline as healthy.
-- [ ] 5.4 Invalidate baseline-forward evidence whenever the baseline high-water
+- [x] 5.4 Invalidate baseline-forward evidence whenever the baseline high-water
       changes.
-- [ ] 5.5 Add fault-injection tests for failed catch-up, interrupted refresh,
+- [x] 5.5 Add fault-injection tests for failed catch-up, interrupted refresh,
       unexplained drift, stale health, and recovery.
-- [ ] 5.6 Add an Oracle read-only repository checkout and credential handling
+- [x] 5.6 Add an Oracle read-only repository checkout and credential handling
       that commits no secret.
-- [ ] 5.7 Document manual baseline health, catch-up, refresh, evidence lookup,
+- [x] 5.7 Document manual baseline health, catch-up, refresh, evidence lookup,
       and recovery operations.
 
 **Review boundary:** Oracle test-environment operations only. The current Codex

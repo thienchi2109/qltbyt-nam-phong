@@ -122,17 +122,17 @@ describe("database quality gate Phase 3 artifacts", () => {
     expect(sqlTests).toBeDefined()
     expect(registeredPaths).toEqual(currentPaths)
     expect(classificationCount(sqlTests?.tests.map((test) => test.purpose) ?? [])).toEqual({
-      concurrency: 3,
+      concurrency: 4,
       invariant: 5,
       "live-acceptance": 1,
       performance: 3,
-      "phase-gate": 30,
+      "phase-gate": 31,
       smoke: 47,
     })
     expect(classificationCount(sqlTests?.tests.map((test) => test.safety) ?? [])).toEqual({
-      "default-safe": 64,
+      "default-safe": 65,
       "live-only": 1,
-      "opt-in": 24,
+      "opt-in": 25,
     })
   })
 
@@ -140,7 +140,7 @@ describe("database quality gate Phase 3 artifacts", () => {
     const expectedState = await loadDatabaseQualityGateModule<ExpectedStateModule>("expected-state")
     const selected = expectedState.selectDefaultSafeSqlTests(readJson(SQL_TESTS_PATH))
 
-    expect(selected).toHaveLength(64)
+    expect(selected).toHaveLength(65)
     expect(selected.map((test) => test.path)).not.toEqual(
       expect.arrayContaining([
         "supabase/tests/technical_configuration_baseline_document_urls_phase_gate.sql",

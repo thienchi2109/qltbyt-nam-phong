@@ -4,20 +4,9 @@ import { tmpdir } from "node:os"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
 
+import { commandRecorder, executorInput } from "./database-quality-gate-oracle-test-support"
+import type { CommandInput, CommandResult } from "./database-quality-gate-oracle-test-support"
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
-
-type CommandInput = {
-  arguments: string[]
-  input?: string
-  timeoutMs: number
-}
-
-type CommandResult = {
-  exitCode: number
-  stderr: string
-  stdout: string
-  timedOut: boolean
-}
 
 type OracleRemoteExecutorModule = {
   createOracleRemoteExecutor: (input: {
@@ -74,84 +63,6 @@ type OracleRemoteContractModule = {
   ) => Record<string, unknown> | undefined
 }
 
-function commandRecorder() {
-  const commands: CommandInput[] = []
-
-  return {
-    command(input: CommandInput): CommandResult {
-      commands.push(input)
-      const remoteCommand = input.arguments.at(-1) ?? ""
-      const fullCommand = `${remoteCommand}\n${input.input ?? ""}`
-
-      if (remoteCommand.includes("df -Pk")) {
-        return {
-          exitCode: 0,
-          stderr: "",
-          stdout:
-            "Filesystem 1024-blocks Used Available Capacity Mounted on\n/dev/vda1 100 10 90 10% /\n",
-          timedOut: false,
-        }
-      }
-      if (remoteCommand.includes("docker inspect")) {
-        return {
-          exitCode: 0,
-          stderr: "",
-          stdout: "true\n",
-          timedOut: false,
-        }
-      }
-      if (fullCommand.includes("baseline_exists")) {
-        return {
-          exitCode: 0,
-          stderr: "",
-          stdout: "true\n",
-          timedOut: false,
-        }
-      }
-      if (fullCommand.includes("schema_migrations")) {
-        return {
-          exitCode: 0,
-          stderr: "",
-          stdout: '["20270101000000"]\n',
-          timedOut: false,
-        }
-      }
-      if (fullCommand.includes("pg_database") && fullCommand.includes("left(datname")) {
-        return {
-          exitCode: 0,
-          stderr: "",
-          stdout: "dq_stale_run\n",
-          timedOut: false,
-        }
-      }
-
-      return {
-        exitCode: 0,
-        stderr: "",
-        stdout: "",
-        timedOut: false,
-      }
-    },
-    commands,
-  }
-}
-
-function executorInput(command: (input: CommandInput) => CommandResult) {
-  return {
-    command,
-    config: {
-      containerName: "supabase-db",
-      evidenceDirectory: "/opt/supabase-test/quality-gate/evidence",
-      host: "oracle.test",
-      minimumFreeDiskKilobytes: 64,
-      sshHostKeyFingerprint: "SHA256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      sshKeyPath: "/tmp/oracle-test.key",
-      sshKnownHostsPath: "/tmp/oracle-test.known_hosts",
-      sshUser: "ubuntu",
-    },
-  }
-}
-
 describe("database quality gate Oracle remote executor", () => {
   it("fails closed for unpinned Oracle configuration or an evidence-directory escape", async () => {
     const source =
@@ -206,7 +117,7 @@ describe("database quality gate Oracle remote executor", () => {
     )
 
     expect(preflight.status).toBe("ok")
-    expect(preflight.value?.baseline).toEqual({
+    expect(preflight.value?.baseline).toMatchObject({
       healthy: true,
       migrationVersions: ["20270101000000"],
     })
