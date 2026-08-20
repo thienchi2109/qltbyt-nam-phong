@@ -25,7 +25,7 @@ const CURRENT_DATA_GROUPS: readonly TechnicalConfigurationBaselineWorkbookV2Grou
       {
         id: "criterion-direct",
         criterion_code: "TC-001",
-        title: "Tiêu đề nội bộ",
+        title: "-",
         requirement_text: "Dòng một\nDòng hai – khe hở ≤ 5 µm",
       },
     ],
@@ -57,7 +57,7 @@ function getPatternFillColor(cell: Cell): string | undefined {
 }
 
 describe("technical configuration baseline XLSX v2 workbook export", () => {
-  it("builds the current-data workbook model with two visible columns and hidden round-trip identity", () => {
+  it("builds the current-data workbook model with a visible reference title column", () => {
     const model = createTechnicalConfigurationBaselineWorkbookV2Model({
       intent: "current-data",
       metadata: METADATA,
@@ -76,16 +76,10 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
 
     expect(
       configuration.columns.filter((column) => !column.hidden).map((column) => column.header)
-    ).toEqual(["STT", "NỘI DUNG YÊU CẦU"])
+    ).toEqual(["STT", "NỘI DUNG YÊU CẦU", "TIÊU ĐỀ (THAM CHIẾU)"])
     expect(
       configuration.columns.filter((column) => column.hidden).map((column) => column.header)
-    ).toEqual([
-      "__main_section_id",
-      "__subgroup_id",
-      "__criterion_id",
-      "__criterion_code",
-      "__criterion_title",
-    ])
+    ).toEqual(["__main_section_id", "__subgroup_id", "__criterion_id", "__criterion_code"])
 
     expect(configuration.rows).toEqual([
       {
@@ -106,7 +100,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
         subgroup_id: null,
         criterion_id: "criterion-direct",
         criterion_code: "TC-001",
-        criterion_title: "Tiêu đề nội bộ",
+        criterion_title: "-",
       },
       {
         kind: "subgroup",
@@ -152,6 +146,14 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
     const meta = model.sheets.find((sheet) => sheet.kind === "meta")
 
     expect(configuration?.rows).toEqual([])
+    expect(
+      configuration?.columns.filter((column) => !column.hidden).map((column) => column.header)
+    ).toEqual(["STT", "NỘI DUNG YÊU CẦU"])
+    expect(configuration?.columns.at(-1)).toMatchObject({
+      key: "criterion_title",
+      header: "__criterion_title",
+      hidden: true,
+    })
     expect(instructions?.rows).toEqual([
       {
         kind: "title",
@@ -234,7 +236,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
       "__subgroup_id",
       "__criterion_id",
       "__criterion_code",
-      "__criterion_title",
+      "TIÊU ĐỀ (THAM CHIẾU)",
     ])
     expect(configuration.columns.map((column) => column.hidden === true)).toEqual([
       false,
@@ -243,7 +245,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
       true,
       true,
       true,
-      true,
+      false,
     ])
     expect(configuration.columns.map((column) => column.width)).toEqual([
       12, 72, 24, 24, 24, 20, 40,
@@ -262,7 +264,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
     expect(configuration.getCell("C3").value).toBe("section-1")
     expect(configuration.getCell("E3").value).toBe("criterion-direct")
     expect(configuration.getCell("F3").value).toBe("TC-001")
-    expect(configuration.getCell("G3").value).toBe("Tiêu đề nội bộ")
+    expect(configuration.getCell("G3").value).toBe("-")
     expect(configuration.getCell("B3").alignment).toMatchObject({
       vertical: "top",
       wrapText: true,
@@ -300,7 +302,9 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
 
     const configuration = loaded.getWorksheet("Nhập cấu hình")
     expect(configuration?.getCell("B3").value).toBe("Dòng một\nDòng hai – khe hở ≤ 5 µm")
-    expect(configuration?.getCell("G3").value).toBe("Tiêu đề nội bộ")
+    expect(configuration?.getCell("G3").value).toBe("-")
+    expect(configuration?.getCell("G1").value).toBe("TIÊU ĐỀ (THAM CHIẾU)")
+    expect(configuration?.getColumn(7).hidden).toBe(false)
     expect(configuration?.getColumn(3).hidden).toBe(true)
     expect(configuration?.views[0]).toMatchObject({ state: "frozen", ySplit: 1 })
     expect(configuration ? getPatternFillColor(configuration.getCell("B2")) : undefined).toBe(

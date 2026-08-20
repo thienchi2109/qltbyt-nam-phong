@@ -13,6 +13,94 @@ type ExcelActionUser = {
   click: (element: Element) => Promise<void>
 }
 
+export function createCurrentDataWorkbookExpectation(generatedAt: unknown) {
+  return {
+    intent: "current-data",
+    sheets: [
+      {
+        kind: "configuration",
+        columns: [
+          { key: "stt", hidden: false },
+          { key: "content", hidden: false },
+          { key: "main_section_id", hidden: true },
+          { key: "subgroup_id", hidden: true },
+          { key: "criterion_id", hidden: true },
+          { key: "criterion_code", hidden: true },
+          {
+            key: "criterion_title",
+            header: "TIÊU ĐỀ (THAM CHIẾU)",
+            hidden: false,
+          },
+        ],
+        rows: [
+          {
+            kind: "section",
+            stt: "I",
+            content: "Yêu cầu chung",
+            main_section_id: "group-1",
+          },
+          {
+            kind: "criterion",
+            stt: null,
+            content: "Dòng 1\nDòng 2",
+            main_section_id: "group-1",
+            subgroup_id: null,
+            criterion_id: "criterion-1",
+            criterion_code: "TC-0001",
+            criterion_title: "Nguồn điện",
+          },
+          {
+            kind: "subgroup",
+            stt: "1",
+            content: "Điều kiện vận hành",
+            main_section_id: "group-1",
+            subgroup_id: "subgroup-1",
+          },
+          {
+            kind: "criterion",
+            stt: null,
+            content: "Hoạt động ổn định ở 18-30°C",
+            main_section_id: "group-1",
+            subgroup_id: "subgroup-1",
+            criterion_id: "criterion-2",
+            criterion_code: "TC-0002",
+            criterion_title: "Nhiệt độ",
+          },
+          {
+            kind: "section",
+            stt: "II",
+            content: "Yêu cầu cấu hình cung cấp",
+            main_section_id: "group-2",
+          },
+          {
+            kind: "section",
+            stt: "III",
+            content: "Yêu cầu kỹ thuật",
+            main_section_id: "group-3",
+          },
+          {
+            kind: "section",
+            stt: "IV",
+            content: "Yêu cầu khác",
+            main_section_id: "group-4",
+          },
+        ],
+      },
+      { kind: "instructions" },
+      {
+        kind: "meta",
+        state: "hidden",
+        metadata: {
+          dossier_id: "dossier-1",
+          baseline_version_id: "draft-1",
+          baseline_revision: 11,
+          generated_at: generatedAt,
+        },
+      },
+    ],
+  }
+}
+
 /** Selects a deferred action from the production Excel dropdown. */
 export async function chooseExcelAction(user: ExcelActionUser, actionName: string): Promise<void> {
   await user.click(screen.getByRole("button", { name: "Công cụ Excel" }))

@@ -3,6 +3,7 @@ import type { CellValue, Workbook, Worksheet } from "exceljs"
 import {
   BASELINE_WORKBOOK_V2_COLUMNS,
   BASELINE_WORKBOOK_V2_CONFIGURATION_SHEET_NAME,
+  BASELINE_WORKBOOK_V2_CRITERION_TITLE_HEADER,
   BASELINE_WORKBOOK_V2_INSTRUCTIONS_SHEET_NAME,
   BASELINE_WORKBOOK_V2_META_KEYS,
   BASELINE_WORKBOOK_V2_META_SHEET_NAME,
@@ -70,9 +71,14 @@ function validateConfigurationColumns(worksheet: Worksheet): void {
       worksheet.getRow(1).getCell(index + 1).value
     )
   )
-  const invalidHeader = headers.some(
-    (header, index) => header !== BASELINE_WORKBOOK_V2_COLUMNS[index].header
-  )
+  const invalidHeader = headers.some((header, index) => {
+    const column = BASELINE_WORKBOOK_V2_COLUMNS[index]
+
+    return (
+      header !== column.header &&
+      !(column.key === "criterion_title" && header === BASELINE_WORKBOOK_V2_CRITERION_TITLE_HEADER)
+    )
+  })
   let hasExtraValue = false
 
   worksheet.eachRow((worksheetRow) => {
