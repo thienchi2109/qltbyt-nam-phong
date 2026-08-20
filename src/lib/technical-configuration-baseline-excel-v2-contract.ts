@@ -13,12 +13,6 @@ export const BASELINE_WORKBOOK_V2_INSTRUCTIONS_SHEET_NAME = "Hướng dẫn & V�
 /** Hidden worksheet containing ownership and revision metadata. */
 export const BASELINE_WORKBOOK_V2_META_SHEET_NAME = "_meta"
 
-/** Visible reference header for the persisted criterion title. */
-export const BASELINE_WORKBOOK_V2_CRITERION_TITLE_HEADER = "TIÊU ĐỀ (THAM CHIẾU)"
-
-/** Header emitted before criterion titles became visible. */
-export const BASELINE_WORKBOOK_V2_LEGACY_CRITERION_TITLE_HEADER = "__criterion_title"
-
 /** Exact ordered metadata keys rendered on the hidden worksheet. */
 export const BASELINE_WORKBOOK_V2_META_KEYS = [
   "template_kind",
@@ -134,21 +128,11 @@ export const BASELINE_WORKBOOK_V2_COLUMNS = [
   },
   {
     key: "criterion_title",
-    header: BASELINE_WORKBOOK_V2_LEGACY_CRITERION_TITLE_HEADER,
+    header: "__criterion_title",
     width: 40,
     hidden: true,
   },
 ] as const satisfies readonly TechnicalConfigurationBaselineWorkbookV2Column[]
-
-const BASELINE_WORKBOOK_V2_CURRENT_DATA_COLUMNS = BASELINE_WORKBOOK_V2_COLUMNS.map((column) =>
-  column.key === "criterion_title"
-    ? {
-        ...column,
-        header: BASELINE_WORKBOOK_V2_CRITERION_TITLE_HEADER,
-        hidden: false,
-      }
-    : column
-)
 
 /** Stable instructions and examples rendered outside the import worksheet. */
 export const BASELINE_WORKBOOK_V2_INSTRUCTION_ROWS = [
@@ -236,7 +220,7 @@ function createCriterionRow(
 ): TechnicalConfigurationBaselineWorkbookV2Row {
   return {
     kind: "criterion",
-    stt: null,
+    stt: criterion.title,
     content: criterion.requirement_text,
     main_section_id: mainSectionId,
     subgroup_id: subgroupId,
@@ -300,10 +284,7 @@ export function createTechnicalConfigurationBaselineWorkbookV2Model(
         kind: "configuration" as const,
         name: BASELINE_WORKBOOK_V2_CONFIGURATION_SHEET_NAME,
         state: "visible" as const,
-        columns:
-          input.intent === "current-data"
-            ? BASELINE_WORKBOOK_V2_CURRENT_DATA_COLUMNS
-            : BASELINE_WORKBOOK_V2_COLUMNS,
+        columns: BASELINE_WORKBOOK_V2_COLUMNS,
         rows,
       },
       {

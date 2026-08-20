@@ -28,8 +28,8 @@ export function createCurrentDataWorkbookExpectation(generatedAt: unknown) {
           { key: "criterion_code", hidden: true },
           {
             key: "criterion_title",
-            header: "TIÊU ĐỀ (THAM CHIẾU)",
-            hidden: false,
+            header: "__criterion_title",
+            hidden: true,
           },
         ],
         rows: [
@@ -41,7 +41,7 @@ export function createCurrentDataWorkbookExpectation(generatedAt: unknown) {
           },
           {
             kind: "criterion",
-            stt: null,
+            stt: "Nguồn điện",
             content: "Dòng 1\nDòng 2",
             main_section_id: "group-1",
             subgroup_id: null,
@@ -58,7 +58,7 @@ export function createCurrentDataWorkbookExpectation(generatedAt: unknown) {
           },
           {
             kind: "criterion",
-            stt: null,
+            stt: "Nhiệt độ",
             content: "Hoạt động ổn định ở 18-30°C",
             main_section_id: "group-1",
             subgroup_id: "subgroup-1",

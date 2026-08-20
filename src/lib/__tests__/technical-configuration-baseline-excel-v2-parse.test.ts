@@ -48,6 +48,8 @@ describe("technical configuration baseline XLSX v2 parser", () => {
     expect(configuration).toBeDefined()
     if (!configuration) return
 
+    expect(configuration.getCell("A3").value).toBe("Tiêu đề trực tiếp")
+    expect(configuration.getCell("A5").value).toBe("Tiêu đề nhóm con")
     configuration.getCell("A2").value = "V"
     configuration.getCell("A4").value = 9
     const bytes = await workbook.xlsx.writeBuffer()
@@ -244,28 +246,6 @@ describe("technical configuration baseline XLSX v2 parser", () => {
     expect(result.format).toBe("v2")
   })
 
-  it.each(["TIÊU ĐỀ (THAM CHIẾU)", "__criterion_title"])(
-    "accepts the supported criterion title header %s",
-    async (criterionTitleHeader) => {
-      const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
-        createTechnicalConfigurationBaselineWorkbookV2Model({
-          intent: "current-data",
-          metadata: METADATA,
-          groups: CURRENT_DATA_GROUPS,
-        })
-      )
-      workbook.getWorksheet("Nhập cấu hình")!.getCell("G1").value = criterionTitleHeader
-      const bytes = await workbook.xlsx.writeBuffer()
-
-      const result = await parseTechnicalConfigurationBaselineWorkbookFile(
-        toUploadedFile(bytes, "baseline.xlsx"),
-        { existingHierarchy: EXISTING_HIERARCHY }
-      )
-
-      expect(result.format).toBe("v2")
-    }
-  )
-
   it("rejects changed headers instead of normalizing the column contract", async () => {
     const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
       createTechnicalConfigurationBaselineWorkbookV2Model({
@@ -275,6 +255,26 @@ describe("technical configuration baseline XLSX v2 parser", () => {
       })
     )
     workbook.getWorksheet("Nhập cấu hình")!.getCell("A1").value = "STT "
+    const bytes = await workbook.xlsx.writeBuffer()
+
+    await expect(
+      parseTechnicalConfigurationBaselineWorkbookFile(toUploadedFile(bytes, "baseline.xlsx"), {
+        existingHierarchy: EXISTING_HIERARCHY,
+      })
+    ).rejects.toMatchObject<TechnicalConfigurationBaselineWorkbookV2Error>({
+      issues: [expect.objectContaining({ code: "invalid_columns", row: 1 })],
+    })
+  })
+
+  it("rejects the removed visible criterion title header", async () => {
+    const workbook = await createTechnicalConfigurationBaselineWorkbookV2(
+      createTechnicalConfigurationBaselineWorkbookV2Model({
+        intent: "current-data",
+        metadata: METADATA,
+        groups: CURRENT_DATA_GROUPS,
+      })
+    )
+    workbook.getWorksheet("Nhập cấu hình")!.getCell("G1").value = "TIÊU ĐỀ (THAM CHIẾU)"
     const bytes = await workbook.xlsx.writeBuffer()
 
     await expect(

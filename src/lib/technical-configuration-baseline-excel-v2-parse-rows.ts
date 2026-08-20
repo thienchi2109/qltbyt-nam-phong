@@ -12,8 +12,12 @@ import { toNullableTechnicalConfigurationBaselineWorkbookV2Text } from "@/lib/te
 const ROMAN_MARKER_PATTERN = /^(?=[IVXLCDM]+$)M*(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/i
 const POSITIVE_INTEGER_MARKER_PATTERN = /^[1-9][0-9]*$/
 
-function classifyRowMarker(stt: string | null): "GROUP" | "SUBGROUP" | "CRITERION" | null {
+function classifyRowMarker(
+  stt: string | null,
+  existingCriterionTitle: string | null
+): "GROUP" | "SUBGROUP" | "CRITERION" | null {
   if (stt === null) return "CRITERION"
+  if (existingCriterionTitle !== null && stt === existingCriterionTitle) return "CRITERION"
   if (ROMAN_MARKER_PATTERN.test(stt)) return "GROUP"
   if (POSITIVE_INTEGER_MARKER_PATTERN.test(stt)) return "SUBGROUP"
   return null
@@ -56,7 +60,8 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
     const [stt, content, groupId, subgroupId, criterionId, criterionCode] = values
     if (values.every((value) => value === null)) continue
 
-    const rowType = classifyRowMarker(stt)
+    const existingCriterion = criterionId ? criteriaById.get(criterionId) : undefined
+    const rowType = classifyRowMarker(stt, existingCriterion?.title ?? null)
     if (!rowType) {
       issues.push({
         code: "unsupported_marker",
@@ -190,7 +195,6 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
       continue
     }
 
-    const existingCriterion = criterionId ? criteriaById.get(criterionId) : undefined
     if (criterionId && seenCriterionIds.has(criterionId)) {
       issues.push({
         code: "duplicate_identity",

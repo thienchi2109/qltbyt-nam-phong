@@ -57,7 +57,7 @@ function getPatternFillColor(cell: Cell): string | undefined {
 }
 
 describe("technical configuration baseline XLSX v2 workbook export", () => {
-  it("builds the current-data workbook model with a visible reference title column", () => {
+  it("builds the current-data workbook model with criterion titles in the STT column", () => {
     const model = createTechnicalConfigurationBaselineWorkbookV2Model({
       intent: "current-data",
       metadata: METADATA,
@@ -76,10 +76,16 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
 
     expect(
       configuration.columns.filter((column) => !column.hidden).map((column) => column.header)
-    ).toEqual(["STT", "NỘI DUNG YÊU CẦU", "TIÊU ĐỀ (THAM CHIẾU)"])
+    ).toEqual(["STT", "NỘI DUNG YÊU CẦU"])
     expect(
       configuration.columns.filter((column) => column.hidden).map((column) => column.header)
-    ).toEqual(["__main_section_id", "__subgroup_id", "__criterion_id", "__criterion_code"])
+    ).toEqual([
+      "__main_section_id",
+      "__subgroup_id",
+      "__criterion_id",
+      "__criterion_code",
+      "__criterion_title",
+    ])
 
     expect(configuration.rows).toEqual([
       {
@@ -94,7 +100,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
       },
       {
         kind: "criterion",
-        stt: null,
+        stt: "-",
         content: "Dòng một\nDòng hai – khe hở ≤ 5 µm",
         main_section_id: "section-1",
         subgroup_id: null,
@@ -236,7 +242,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
       "__subgroup_id",
       "__criterion_id",
       "__criterion_code",
-      "TIÊU ĐỀ (THAM CHIẾU)",
+      "__criterion_title",
     ])
     expect(configuration.columns.map((column) => column.hidden === true)).toEqual([
       false,
@@ -245,7 +251,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
       true,
       true,
       true,
-      false,
+      true,
     ])
     expect(configuration.columns.map((column) => column.width)).toEqual([
       12, 72, 24, 24, 24, 20, 40,
@@ -260,6 +266,7 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
     ])
 
     expect(configuration.getCell("A2").value).toBe("I")
+    expect(configuration.getCell("A3").value).toBe("-")
     expect(configuration.getCell("B3").value).toBe("Dòng một\nDòng hai – khe hở ≤ 5 µm")
     expect(configuration.getCell("C3").value).toBe("section-1")
     expect(configuration.getCell("E3").value).toBe("criterion-direct")
@@ -301,10 +308,11 @@ describe("technical configuration baseline XLSX v2 workbook export", () => {
     await loaded.xlsx.load(serialized)
 
     const configuration = loaded.getWorksheet("Nhập cấu hình")
+    expect(configuration?.getCell("A3").value).toBe("-")
     expect(configuration?.getCell("B3").value).toBe("Dòng một\nDòng hai – khe hở ≤ 5 µm")
     expect(configuration?.getCell("G3").value).toBe("-")
-    expect(configuration?.getCell("G1").value).toBe("TIÊU ĐỀ (THAM CHIẾU)")
-    expect(configuration?.getColumn(7).hidden).toBe(false)
+    expect(configuration?.getCell("G1").value).toBe("__criterion_title")
+    expect(configuration?.getColumn(7).hidden).toBe(true)
     expect(configuration?.getColumn(3).hidden).toBe(true)
     expect(configuration?.views[0]).toMatchObject({ state: "frozen", ySplit: 1 })
     expect(configuration ? getPatternFillColor(configuration.getCell("B2")) : undefined).toBe(
