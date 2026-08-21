@@ -14,10 +14,12 @@ const POSITIVE_INTEGER_MARKER_PATTERN = /^[1-9][0-9]*$/
 
 function classifyRowMarker(
   stt: string | null,
-  existingCriterionTitle: string | null
+  existingCriterionTitle: string | null,
+  criterionTitleHint: string | null
 ): "GROUP" | "SUBGROUP" | "CRITERION" | null {
   if (stt === null) return "CRITERION"
   if (existingCriterionTitle !== null && stt === existingCriterionTitle) return "CRITERION"
+  if (criterionTitleHint !== null) return "CRITERION"
   if (ROMAN_MARKER_PATTERN.test(stt)) return "GROUP"
   if (POSITIVE_INTEGER_MARKER_PATTERN.test(stt)) return "SUBGROUP"
   return null
@@ -57,11 +59,11 @@ export function parseTechnicalConfigurationBaselineWorkbookV2Rows(
     const values = BASELINE_WORKBOOK_V2_COLUMNS.map((_, index) =>
       toNullableTechnicalConfigurationBaselineWorkbookV2Text(worksheetRow.getCell(index + 1).value)
     )
-    const [stt, content, groupId, subgroupId, criterionId, criterionCode] = values
+    const [stt, content, groupId, subgroupId, criterionId, criterionCode, criterionTitle] = values
     if (values.every((value) => value === null)) continue
 
     const existingCriterion = criterionId ? criteriaById.get(criterionId) : undefined
-    const rowType = classifyRowMarker(stt, existingCriterion?.title ?? null)
+    const rowType = classifyRowMarker(stt, existingCriterion?.title ?? null, criterionTitle)
     if (!rowType) {
       issues.push({
         code: "unsupported_marker",

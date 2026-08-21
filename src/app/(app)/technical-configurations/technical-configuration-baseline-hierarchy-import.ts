@@ -93,6 +93,45 @@ function toV2Rows(
   })
 }
 
+function isPortableContentOnlyV2Workbook(
+  parsed: Extract<TechnicalConfigurationBaselineWorkbookCompatibleParseResult, { format: "v2" }>
+): boolean {
+  return parsed.rows.every((row) => {
+    if (row.row_type === "GROUP") {
+      return row.group_id === null
+    }
+    if (row.row_type === "SUBGROUP") {
+      return row.subgroup_id === null
+    }
+    return row.criterion_id === null && row.criterion_code === null
+  })
+}
+
+function toHierarchyImportTemplateMetadata(
+  parsed: TechnicalConfigurationBaselineWorkbookCompatibleParseResult,
+  version: TechnicalConfigurationBaselineDecodedDraft
+): TechnicalConfigurationBaselineHierarchyImportRpcArgs["p_template_metadata"] {
+  if (parsed.format !== "v2") {
+    return {
+      template_kind: BASELINE_WORKBOOK_V2_TEMPLATE_KIND,
+      template_version: BASELINE_WORKBOOK_V2_TEMPLATE_VERSION,
+      dossier_id: parsed.metadata.dossier_id,
+      baseline_version_id: parsed.metadata.baseline_version_id,
+      baseline_revision: parsed.metadata.baseline_revision,
+      generated_at: parsed.metadata.generated_at,
+    }
+  }
+  if (!isPortableContentOnlyV2Workbook(parsed)) {
+    return parsed.metadata
+  }
+  return {
+    ...parsed.metadata,
+    dossier_id: version.dossier_id,
+    baseline_version_id: version.id,
+    baseline_revision: version.revision,
+  }
+}
+
 function toLegacyRows(
   parsed: Extract<
     TechnicalConfigurationBaselineWorkbookCompatibleParseResult,
@@ -142,17 +181,7 @@ export function toTechnicalConfigurationBaselineHierarchyImportRpcArgs(
 ): TechnicalConfigurationBaselineHierarchyImportRpcArgs {
   return {
     p_baseline_version_id: version.id,
-    p_template_metadata:
-      parsed.format === "v2"
-        ? parsed.metadata
-        : {
-            template_kind: BASELINE_WORKBOOK_V2_TEMPLATE_KIND,
-            template_version: BASELINE_WORKBOOK_V2_TEMPLATE_VERSION,
-            dossier_id: parsed.metadata.dossier_id,
-            baseline_version_id: parsed.metadata.baseline_version_id,
-            baseline_revision: parsed.metadata.baseline_revision,
-            generated_at: parsed.metadata.generated_at,
-          },
+    p_template_metadata: toHierarchyImportTemplateMetadata(parsed, version),
     p_rows: parsed.format === "v2" ? toV2Rows(parsed) : toLegacyRows(parsed, version),
     p_expected_revision: version.revision,
   }
