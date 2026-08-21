@@ -78,5 +78,5 @@ Expected: the new portable-import assertion fails with source dossier/version/re
 - [x] Run `src/app/api/rpc/__tests__/technical-configuration-baseline-import-migration.test.ts` to preserve the server-side metadata mismatch contract.
 - [x] Run `react-doctor`.
 - [x] Review the final diff and affected flows.
-- [ ] Commit without bypassing Lefthook.
-- [ ] Pull with rebase, push, and verify the branch is up to date with origin.
+- [x] Commit without bypassing Lefthook.
+- [x] Pull with rebase, push, and verify the branch is up to date with origin.
