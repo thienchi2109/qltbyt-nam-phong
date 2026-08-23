@@ -21,6 +21,12 @@ Consequently, a navigation-only change would leave the module unusable, while
 a role change on an active session could retain stale privileges until the next
 login.
 
+During artifact review on 2026-08-23, the maintainer clarified that every
+`chuyen_gia` account will have an assigned current/home `don_vi` and sufficient
+metadata to resolve `dia_ban_id`. This supersedes only the tenantless-account
+detail in #952; the assigned scope remains session/account metadata and does not
+tenant-scope Technical Configurations data.
+
 Two active OpenSpec changes also own Technical Configurations behavior:
 `add-technical-configuration-comparison` and
 `harden-technical-configuration-baseline-copy-and-excel`. Implementation must
@@ -34,6 +40,8 @@ proposal-time list.
 - Add canonical role `chuyen_gia` without broadening global/admin semantics.
 - Give the role full system-wide Technical Configurations capability.
 - Deny every other app feature at route, shell, API, and RPC boundaries.
+- Require assigned account scope metadata without using it to tenant-scope
+  Technical Configurations data.
 - Make login/root landing role-aware and keep denial behavior consistent with
   #950.
 - Make active-session role transitions converge fail-closed within the existing
@@ -42,7 +50,8 @@ proposal-time list.
 
 ### Non-Goals
 
-- Adding tenant-scoped expert access or expert tenant switching.
+- Using the assigned tenant or region to scope Technical Configurations data,
+  or allowing expert tenant switching.
 - Creating a partial read/write matrix inside Technical Configurations.
 - Granting access to Dashboard, Users, Tenants, reports, equipment, device
   quota, or any other non-Technical-Configurations module.
@@ -55,10 +64,18 @@ proposal-time list.
 
 ### 1. Model an exact module capability
 
-Add a shared, Edge-safe capability predicate such as
-`canAccessTechnicalConfigurations(role)` that returns true only for
-`global/admin/chuyen_gia`. Keep `isGlobalRole()` unchanged and continue using it
-for all genuine global/admin boundaries.
+Add two shared, Edge-safe predicates with distinct semantics:
+
+- `isTechnicalConfigurationExpertRole(role)` returns true only for
+  `chuyen_gia`;
+- `canAccessTechnicalConfigurations(role)` returns true only for
+  `global/admin/chuyen_gia`.
+
+Keep `isGlobalRole()` unchanged and continue using it for all genuine
+global/admin boundaries. `chuyen_gia` must also remain excluded from
+`isRegionalLeaderRole()`, `isEquipmentManagerRole()`,
+`canAccessDeviceQuotaModule()`, `isDeptScopedRole()`, and
+`isPrivilegedRole()`.
 
 The centralized route evaluator will apply a constrained-role override:
 
@@ -86,8 +103,9 @@ the client form.
 
 ### 3. Treat the app shell as an authorization-sensitive surface
 
-`AppLayoutShell` will derive an expert-only shell mode from the shared
-capability/role helper. In that mode it will:
+`AppLayoutShell` will derive an expert-only shell mode from
+`isTechnicalConfigurationExpertRole()`, never from the broader module
+capability. In that mode it will:
 
 - render only Technical Configurations navigation;
 - keep application identity, role/account display, change-password, and
@@ -97,9 +115,78 @@ capability/role helper. In that mode it will:
 - pass disabled flags to backing hooks/providers so hidden features do not
   issue requests.
 
+Application identity remains dynamic: keep `useTenantBranding()` enabled and
+classify `don_vi_branding_get` as retained-shell infrastructure for experts.
+The branding request remains scoped to the expert's assigned `don_vi`; it does
+not grant tenant selection or any other tenant feature.
+
 Conditional visibility does not replace route or server authorization.
 
-### 4. Introduce a canonical Postgres module guard with compatibility
+### 4. Deny unrelated standalone APIs explicitly
+
+Inventory every standalone feature API that authorizes from the NextAuth role.
+Adding `chuyen_gia` to `ROLES` must not implicitly widen an allowlist such as
+`Object.values(ROLES)`.
+
+- `/api/chat` must use an explicit allowlist that excludes `chuyen_gia`.
+- Tenant membership and tenant-switch endpoints must reject `chuyen_gia`;
+  assigned account metadata does not grant tenant-selection capability.
+- Asynchronous Device Quota suggestion job routes continue to use
+  `canAccessDeviceQuotaModule()`, which excludes `chuyen_gia`.
+- The synchronous suggestion provider keeps its separate explicit role
+  allowlist in `assertSuggestionAccess()`; it must also exclude `chuyen_gia`.
+- Authentication infrastructure endpoints remain governed by their existing
+  contracts and are not feature APIs.
+
+Add focused server tests for each role-aware standalone feature API, including
+independent deny coverage for the asynchronous Device Quota job routes and the
+synchronous provider boundary. Hiding its UI or disabling its client fetch is
+not sufficient authorization.
+
+### 5. Constrain the shared RPC proxy with an exact expert allowlist
+
+`ALLOWED_FUNCTIONS` is a transport allowlist, not a module authorization
+policy. Several unrelated tenant-scoped RPCs accept any non-global role with a
+valid `don_vi`, so assigning the required expert tenant metadata would otherwise
+make those RPCs reachable.
+
+Add a separate fail-closed expert RPC classification in
+`src/app/api/rpc/[fn]/allowed-functions.ts`. The expert allow set must be built
+from one complete canonical Technical Configurations RPC-name aggregate plus
+explicitly documented retained-shell/account/session infrastructure, including
+`don_vi_branding_get` and `change_password`. Complete the dossier collection so
+the five literal dossier list/get/create/update/archive names and the existing
+delete name have one canonical owner, then compose that collection with the
+existing baseline, comparison, reference, document, supplier/option,
+assessment, ranking, and export collections. Both the generic transport
+allowlist and the expert allowlist must consume this aggregate. The expert set
+must not be derived by subtracting known denials from `ALLOWED_FUNCTIONS`.
+
+After the server session is loaded and the exact expert role is known, but
+before tenant-body rewriting, JWT minting, or upstream fetch, the RPC proxy
+must return `403` for every function outside that expert allow set. The
+server-side authorization-profile refresh remains authentication
+infrastructure; it does not implicitly expose a client-callable feature RPC.
+
+For an exact expert invoking a classified Technical Configurations RPC, bypass
+`tenantScopedRpcBody()` and forward the caller's module parameters unchanged.
+This is required because the generic proxy currently overwrites tenant-shaped
+parameters for every non-global/non-regional role. The bypass applies only
+after both the exact-role and module-RPC checks succeed; it must not affect
+other roles, expert-denied RPCs, or unrelated self-service infrastructure.
+
+Add a table-driven completeness test that classifies every current
+`ALLOWED_FUNCTIONS` entry as Technical Configurations, required retained-shell/
+account/session infrastructure, or denied to experts. Add positive expert cases
+for `don_vi_branding_get` and `change_password`. Adding a new generic proxy
+function must fail the test until its expert disposition is explicit. Keep
+representative non-module SQL deny checks where useful. Add positive proxy
+counter-tests for both `global` and a raw-session `admin` invoking
+representative non-module RPCs so the exact-expert branch cannot narrow their
+current access. Treat the proxy constraint and the module's Postgres guard as
+independent defense-in-depth boundaries.
+
+### 6. Introduce a canonical Postgres module guard with compatibility
 
 Create an append-only migration ordered after every local migration that
 currently defines or depends on the Technical Configurations guard.
@@ -122,9 +209,11 @@ applied migrations.
 Before finalizing the implementation migration, inventory both local source and
 live `pg_proc` definitions, including functions introduced by the two active
 Technical Configurations changes. Add a focused SQL assertion that every
-module-owned RPC uses the canonical helper or compatibility wrapper.
+authenticated module-owned RPC reaches the canonical helper or compatibility
+wrapper either directly or through a verified module-helper call chain. The
+same assertion must prove that no unrelated RPC reaches the module guard.
 
-### 5. Add a new authoritative session-profile RPC
+### 7. Add a new authoritative session-profile RPC
 
 Postgres cannot change a function's `RETURNS TABLE` shape with
 `CREATE OR REPLACE`. Rather than dropping the deployed
@@ -136,12 +225,33 @@ NextAuth profile refresh will call the new RPC, validate the returned role, and
 apply it to the token/session through `applyJwtProfileRefresh`. The existing
 60-second interval remains unchanged.
 
+For a refreshed `chuyen_gia` profile, authorization-critical scope is
+authoritative replacement data, not fallback data. Apply the refreshed
+`don_vi`, resolved `dia_ban_id`/`dia_ban_ma`, and `khoa_phong` directly instead
+of retaining old token values through `||` or `??` fallback. A null expert
+department must clear a stale non-null department. If refreshed expert
+`don_vi` or `dia_ban_id` cannot be resolved, invalidate the session rather than
+reusing stale scope claims.
+
+An expert is not required to have a department, so an authoritative refresh may
+set `khoa_phong` to null. Update the RPC proxy claim parser so a genuinely
+null/absent department is accepted only when
+`isTechnicalConfigurationExpertRole(role)` is true, and sign the downstream
+application JWT with a null department claim. The current parser already
+accepts an empty string for existing roles and downstream JWT normalization
+turns it into null; preserve that pre-existing behavior instead of silently
+hardening unrelated roles in this change. The focused matrix therefore proves:
+expert null and empty are accepted and signed as null; non-expert null remains
+rejected; non-expert empty retains its current accepted-and-normalized behavior.
+Required expert `don_vi`, resolvable `dia_ban_id`, role, and user ID claims
+remain fail-closed.
+
 When a due refresh fails, returns no user, or returns an empty/unsupported
 role, invalidate the authorization session and do not mint further Supabase RPC
 JWTs from the stale role. This favors revocation correctness over temporary
 availability during an authorization-profile outage.
 
-### 6. Keep account role validation explicit without adding a table constraint
+### 8. Keep account role validation explicit without adding a table constraint
 
 Do not add a new `nhan_vien.role` table CHECK in this change. The live column is
 currently open `text`, and retrofitting a global constraint would widen the
@@ -153,10 +263,34 @@ Instead:
 - expose the role only in global/admin user-management flows;
 - update guarded user create/update RPC validation to accept
   `chuyen_gia`;
-- allow the role to use a null current/home tenant and no memberships;
+- require a current/home `don_vi` and its membership;
+- require `dia_ban_id` to resolve authoritatively from the account or assigned
+  `don_vi`;
+- keep Technical Configurations authorization system-wide and independent of
+  the assigned tenant/region;
+- deny tenant switching for the role;
+- make every membership or current-unit mutation preserve the expert invariant,
+  including `user_membership_add`, `user_membership_remove`,
+  `user_set_current_don_vi`, and related global/admin management paths;
+- make generic membership/current-unit RPCs reject every expert-targeted add,
+  removal, or current/home scope switch, even when the destination membership
+  already exists or the resulting state would otherwise satisfy the invariant;
+- add an append-only, global/admin-only
+  `user_reassign_expert_scope(p_user_id bigint, p_don_vi bigint)` RPC for the
+  successful replacement path. In one database transaction it validates the
+  target expert and destination, establishes the destination membership,
+  updates the authoritative current/home unit, verifies the resulting
+  `dia_ban_id`, and only then retires obsolete assignment state. Register this
+  management RPC in the generic proxy transport allowlist with an explicit
+  expert-denied classification;
+- wire expert reassignment UI to that named RPC only after the database
+  operation exists; do not orchestrate multiple generic RPC calls from the
+  client;
+- preserve existing membership and current-unit behavior for non-expert
+  accounts;
 - keep Users/Tenants routes and management RPCs global/admin-only.
 
-### 7. Coordinate with active Technical Configurations changes
+### 9. Coordinate with active Technical Configurations changes
 
 The expert capability changes authorization only. It must not rewrite
 comparison, baseline-copy, Excel, locking, revision, audit, or concurrency
@@ -182,8 +316,15 @@ At implementation time:
 - **Compatibility wrapper has a legacy name**: preserves all existing function
   callers without redefining dozens of RPCs in one migration; new work uses the
   canonical helper name.
+- **Canonical role collections can widen unrelated APIs**: mitigate with an
+  inventory of role-derived allowlists and focused standalone-API deny tests.
+- **The shared RPC transport allowlist is broader than expert capability**:
+  mitigate with an independent exact expert allowlist and a completeness test
+  that fails on every unclassified `ALLOWED_FUNCTIONS` addition.
+- **Broad module capability can be confused with exact expert identity**:
+  mitigate with separate predicates and global/admin shell counter-tests.
 - **Active changes may add new module RPCs**: mitigate with implementation-time
-  inventory and a SQL coverage assertion.
+  inventory and a transitive SQL guard-coverage assertion.
 - **Hidden shell hooks may still fetch accidentally**: tests must assert both
   absent controls and disabled hook/query inputs.
 
@@ -191,18 +332,22 @@ At implementation time:
 
 1. Add failing TypeScript/Vitest and SQL regression coverage before production
    changes.
-2. Implement shared role, capability, default-route, route-policy, navigation,
-   and app-shell behavior.
-3. Add the new session authorization profile RPC in an append-only migration
+2. Implement shared role, exact-expert, module-capability, default-route,
+   route-policy, navigation, and app-shell behavior.
+3. Update standalone feature API allowlists and add direct-request deny
+   coverage.
+4. Add the exact expert RPC proxy allowlist and exhaustive function
+   classification tests.
+5. Add the new session authorization profile RPC in an append-only migration
    and update NextAuth refresh to consume it fail-closed.
-4. Add the canonical Technical Configurations authorization helper,
+6. Add the canonical Technical Configurations authorization helper,
    compatibility wrapper, and guarded user-role management changes in
    correctly ordered append-only migration files.
-5. Run static migration checks and Oracle baseline-forward validation for the
+7. Run static migration checks and Oracle baseline-forward validation for the
    exact landed commit, plus focused SQL tests selected by the committed gate
    registry.
-6. Run TypeScript/React quality gates and focused Vitest suites.
-7. Do not apply any migration to live. A later live apply requires explicit
+8. Run TypeScript/React quality gates and focused Vitest suites.
+9. Do not apply any migration to live. A later live apply requires explicit
    permission for that exact write through Supabase MCP, followed by security
    advisor checks.
 
