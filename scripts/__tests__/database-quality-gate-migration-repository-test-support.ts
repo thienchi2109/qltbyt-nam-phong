@@ -28,9 +28,25 @@ export const LEGACY_SQL = "CREATE TABLE public.completion_tracking (id bigint PR
 export const APPLIED_PATH = "supabase/migrations/20270102000000_already_applied.sql"
 export const PENDING_PATH = "supabase/migrations/20270101000000_add_pending_contract.sql"
 
+export function appliedAuthority(path: string, sha256Value: string) {
+  const match = /^supabase\/migrations\/(\d{14})_(.+)\.sql$/u.exec(path)
+  if (match === null) {
+    throw new Error(`Expected canonical migration path, received ${path}`)
+  }
+
+  return {
+    liveName: match[2],
+    liveVersion: match[1],
+    path,
+    readBackDigest: "b".repeat(64),
+    readBackEvidenceId: "oracle:phase-6-read-back/read-back.json",
+    sha256: sha256Value,
+  }
+}
+
 export function appliedLock(
   legacyEntries: Array<{ path: string; sha256: string }> = [],
-  appliedEntries: Array<{ path: string; sha256: string }> = []
+  appliedEntries: Array<Record<string, unknown>> = []
 ) {
   return {
     applied: appliedEntries,

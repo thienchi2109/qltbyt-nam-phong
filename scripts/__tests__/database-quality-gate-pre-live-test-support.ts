@@ -53,7 +53,16 @@ const SHARED_INPUT_HASHES = {
 }
 
 const PUBLISHED_APPLIED_LOCK: AppliedMigrationLock = {
-  applied: [],
+  applied: [
+    {
+      liveName: "candidate",
+      liveVersion: "20260819062043",
+      path: MIGRATION_IDENTITIES[0].path,
+      readBackDigest: "d".repeat(64),
+      readBackEvidenceId: "oracle:phase-6-read-back/read-back.json",
+      sha256: MIGRATION_IDENTITIES[0].sha256,
+    },
+  ],
   cutover: {
     commit: "b".repeat(40),
     legacyInventorySha256: "c".repeat(64),
@@ -204,12 +213,21 @@ export function dependencies(
   return {
     clock: () => CREATED_AT,
     evidenceStore: store,
+    evaluateReconciliation:
+      overrides.evaluateReconciliation ??
+      ((input) =>
+        gateReport("reconciliation", input.subjectCommit, {
+          runId: `${input.runId}-fixture`,
+        })),
     readAppliedMigrationLock: overrides.readAppliedMigrationLock ?? (() => PUBLISHED_APPLIED_LOCK),
     readLiveObservation: overrides.readLiveObservation ?? (() => LIVE_OBSERVATION),
     recomputeBaselineForwardInputHashes:
       overrides.recomputeBaselineForwardInputHashes ?? (() => SHARED_INPUT_HASHES),
     refreshOriginMain: overrides.refreshOriginMain ?? (() => headCommit),
     runStatic: overrides.runStatic ?? ((input) => gateReport("static", input.subjectCommit)),
+    verifyProtectedMain:
+      overrides.verifyProtectedMain ??
+      (() => ({ status: "active" as const, subjectCommit: headCommit })),
   }
 }
 

@@ -1,13 +1,25 @@
 import path from "node:path"
 
 import type { OracleExecutorResult } from "./dynamic-lane-types"
-import { oracleErrorResult, oracleStatePath } from "./oracle-remote-client"
+import {
+  createOracleRemoteClient,
+  oracleErrorResult,
+  oracleStatePath,
+} from "./oracle-remote-client"
 import type { OracleRemoteClient } from "./oracle-remote-client"
-import { shellQuote, validRunId } from "./oracle-remote-contract"
+import {
+  defaultOracleRemoteCommand,
+  oracleRemoteExecutorConfigFromEnvironment,
+  shellQuote,
+  validRunId,
+} from "./oracle-remote-contract"
 import type { OracleRemoteExecutorConfig } from "./oracle-remote-contract"
 
 /** Canonical immutable report artifact name within an Oracle evidence run. */
 export const ORACLE_REPORT_ARTIFACT = "report.json"
+
+/** Canonical immutable verified live read-back artifact name within an Oracle evidence run. */
+export const ORACLE_READ_BACK_ARTIFACT = "read-back.json"
 
 type OracleArtifactInput = {
   artifactName: string
@@ -29,6 +41,22 @@ export type OracleEvidenceStore = {
 type OracleEvidenceStoreInput = {
   client: Pick<OracleRemoteClient, "remote">
   config: OracleRemoteExecutorConfig
+}
+
+/** Creates the production evidence store only when strict Oracle SSH configuration exists. */
+export function oracleEvidenceStoreFromEnvironment(
+  environment: NodeJS.ProcessEnv = process.env
+): OracleEvidenceStore | undefined {
+  const config = oracleRemoteExecutorConfigFromEnvironment(environment)
+  return config === undefined
+    ? undefined
+    : createOracleEvidenceStore({
+        client: createOracleRemoteClient({
+          command: defaultOracleRemoteCommand,
+          config,
+        }),
+        config,
+      })
 }
 
 function validArtifactName(value: string): boolean {

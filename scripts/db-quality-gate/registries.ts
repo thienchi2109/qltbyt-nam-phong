@@ -1,6 +1,7 @@
 import { z } from "zod"
 
-import { hasAppendedAppliedEntries, preservesAppliedLockHistory } from "./applied-lock-history"
+import { preservesAppliedLockHistory } from "./applied-lock-history"
+import { validConfirmation } from "./baseline-state"
 import { validateExpectedStateRegistries } from "./expected-state-registry"
 import { compareStrings, stableJsonStringify } from "./serialization"
 import type { RegistryValidation, ValidationFinding } from "./types"
@@ -22,17 +23,31 @@ const SHA1_PATTERN = /^[a-f0-9]{40}$/
 const SHA256_PATTERN = /^[a-f0-9]{64}$/
 const CANONICAL_MIGRATION_ROOT = "supabase/migrations"
 const CANONICAL_MIGRATION_PATH_PATTERN = /^supabase\/migrations\/[^/]+\.sql$/
+const ORACLE_READ_BACK_EVIDENCE_PATTERN = /^oracle:[a-z0-9][a-z0-9._-]*\/read-back\.json$/u
 
-const lockEntrySchema = z
+const legacyLockEntrySchema = z
   .object({
     path: z.string().regex(CANONICAL_MIGRATION_PATH_PATTERN),
     sha256: z.string().regex(SHA256_PATTERN),
   })
   .strict()
 
+const appliedLockEntrySchema = legacyLockEntrySchema
+  .extend({
+    liveName: z.string().min(1),
+    liveVersion: z.string().regex(/^\d{14}$/u),
+    readBackDigest: z.string().regex(SHA256_PATTERN),
+    readBackEvidenceId: z.string().regex(ORACLE_READ_BACK_EVIDENCE_PATTERN),
+  })
+  .strict()
+  .refine(
+    (entry) => validConfirmation(entry),
+    "Applied migration authority must match the canonical migration path"
+  )
+
 const appliedLockSchema = z
   .object({
-    applied: z.array(lockEntrySchema),
+    applied: z.array(appliedLockEntrySchema),
     cutover: z
       .object({
         commit: z.string().regex(SHA1_PATTERN),
@@ -40,10 +55,17 @@ const appliedLockSchema = z
         migrationRoot: z.literal(CANONICAL_MIGRATION_ROOT),
       })
       .strict(),
-    legacy: z.array(lockEntrySchema),
+    legacy: z.array(legacyLockEntrySchema),
     schemaVersion: z.literal(1),
   })
   .strict()
+  .refine(
+    (lock) =>
+      lock.applied.every(
+        (entry, index) => index === 0 || entry.liveVersion > lock.applied[index - 1].liveVersion
+      ),
+    "Applied migration authority must be strictly ordered by unique live version"
+  )
 
 const waiverApprovalSchema = z
   .object({
@@ -231,8 +253,6 @@ export function validateRegistrySet(input: RegistryInput): RegistryValidation {
       !preservesAppliedLockHistory(previousAppliedLock, appliedLock)
     ) {
       findings.push(finding("registry.applied-lock.append-only", "BLOCKING"))
-    } else if (hasAppendedAppliedEntries(previousAppliedLock, appliedLock)) {
-      findings.push(finding("registry.applied-lock.readback", "INCOMPLETE"))
     }
   }
 

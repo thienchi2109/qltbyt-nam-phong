@@ -234,29 +234,6 @@ describe("database quality gate registry schemas", () => {
     )
   })
 
-  it("marks newly appended applied migrations incomplete without read-back evidence", async () => {
-    const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
-    const previous = validRegistries()
-    const current = validRegistries()
-    current.appliedLock.applied = [
-      {
-        path: "supabase/migrations/20270101000000_candidate.sql",
-        sha256: "2".repeat(64),
-      },
-    ]
-
-    const validation = registry.validateRegistrySet({
-      ...current,
-      previousAppliedLock: previous.appliedLock,
-    })
-
-    expect(validation.valid).toBe(false)
-    expect(validation.findings).toContainEqual({
-      classification: "INCOMPLETE",
-      ruleId: "registry.applied-lock.readback",
-    })
-  })
-
   it("rejects a waiver that is not bound to reviewed candidate evidence", async () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()

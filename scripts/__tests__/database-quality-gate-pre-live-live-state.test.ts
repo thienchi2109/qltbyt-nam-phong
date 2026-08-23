@@ -12,7 +12,14 @@ const LIVE_VERSION = "20260819062043"
 
 const baselineState: BaselineState = {
   checkedAt: CREATED_AT,
-  confirmedMigrations: [],
+  confirmedMigrations: [
+    {
+      liveName: "candidate",
+      liveVersion: LIVE_VERSION,
+      path: `supabase/migrations/${LIVE_VERSION}_candidate.sql`,
+      sha256: "a".repeat(64),
+    },
+  ],
   generation: "phase5-baseline",
   healthy: true,
   migrationHighWater: LIVE_VERSION,
@@ -23,7 +30,11 @@ const baselineState: BaselineState = {
 const appliedLock: AppliedMigrationLock = {
   applied: [
     {
+      liveName: "candidate",
+      liveVersion: LIVE_VERSION,
       path: `supabase/migrations/${LIVE_VERSION}_candidate.sql`,
+      readBackDigest: "3".repeat(64),
+      readBackEvidenceId: "oracle:phase-6-read-back/read-back.json",
       sha256: "a".repeat(64),
     },
   ],
@@ -117,6 +128,39 @@ describe("database quality gate pre-live live state", () => {
       evaluateLiveMigrationState({
         appliedLock,
         baselineState,
+        observation: parsed,
+      })
+    ).toMatchObject({ status: "invalid" })
+  })
+
+  it("rejects incomplete applied-lock coverage of confirmed post-cutover history", () => {
+    const earlierVersion = "20260818062043"
+    const parsed = parseLiveMigrationObservation(
+      observation({
+        migrations: [
+          { name: "earlier", version: earlierVersion },
+          { name: "candidate", version: LIVE_VERSION },
+        ],
+      }),
+      CREATED_AT
+    )
+    const state: BaselineState = {
+      ...baselineState,
+      confirmedMigrations: [
+        {
+          liveName: "earlier",
+          liveVersion: earlierVersion,
+          path: `supabase/migrations/${earlierVersion}_earlier.sql`,
+          sha256: "b".repeat(64),
+        },
+        ...baselineState.confirmedMigrations,
+      ],
+    }
+
+    expect(
+      evaluateLiveMigrationState({
+        appliedLock,
+        baselineState: state,
         observation: parsed,
       })
     ).toMatchObject({ status: "invalid" })

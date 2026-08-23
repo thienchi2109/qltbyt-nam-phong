@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs"
 
 import { z } from "zod"
 
+import { compareConfirmedMigrations } from "./baseline-state"
+import { readFileAtCommit } from "./git-evidence"
+import { parseAppliedMigrationLock } from "./registries"
 import { stableJsonSha256 } from "./serialization"
 import type { BaselineState } from "./baseline-state"
 import type { AppliedMigrationLock } from "./registries"
@@ -44,6 +47,26 @@ export type LiveMigrationStateEvaluation =
       reason: string
       status: "invalid"
     }
+
+/** Reads the strict applied lock from one exact landed commit. */
+export function readAppliedMigrationLockAtCommit(
+  repositoryRoot: string,
+  subjectCommit: string
+): AppliedMigrationLock | undefined {
+  const content = readFileAtCommit(
+    repositoryRoot,
+    subjectCommit,
+    "supabase/applied-migrations.lock.json"
+  )
+  if (content === undefined) {
+    return undefined
+  }
+  try {
+    return parseAppliedMigrationLock(JSON.parse(content) as unknown)
+  } catch {
+    return undefined
+  }
+}
 
 function versionsStrictlyAscending(observation: LiveMigrationObservation): boolean {
   return observation.migrations.every(
@@ -89,11 +112,34 @@ export function readLiveMigrationObservationFile(filePath: string): unknown | un
   }
 }
 
-function appliedEntryIdentity(
-  entry: AppliedMigrationLock["applied"][number]
-): { name: string; version: string } | undefined {
-  const match = MIGRATION_PATH_PATTERN.exec(entry.path)
-  return match === null ? undefined : { name: match[2], version: match[1] }
+function appliedEntryIdentity(entry: AppliedMigrationLock["applied"][number]): {
+  name: string
+  version: string
+} {
+  return { name: entry.liveName, version: entry.liveVersion }
+}
+
+function appliedConfirmationsMatchBaseline(
+  appliedLock: AppliedMigrationLock,
+  baselineState: BaselineState
+): boolean {
+  const appliedConfirmations = appliedLock.applied.map(
+    ({ liveName, liveVersion, path, sha256 }) => ({
+      liveName,
+      liveVersion,
+      path,
+      sha256,
+    })
+  )
+  const confirmedMigrations = baselineState.confirmedMigrations
+    .filter(
+      (confirmation) =>
+        !appliedLock.legacy.some(
+          (entry) => entry.path === confirmation.path && entry.sha256 === confirmation.sha256
+        )
+    )
+    .sort(compareConfirmedMigrations)
+  return stableJsonSha256(appliedConfirmations) === stableJsonSha256(confirmedMigrations)
 }
 
 /** Compares committed applied-lock intent and Oracle baseline high-water with live read-only evidence. */
@@ -108,13 +154,19 @@ export function evaluateLiveMigrationState(input: {
       status: "invalid",
     }
   }
+  if (!appliedConfirmationsMatchBaseline(input.appliedLock, input.baselineState)) {
+    return {
+      reason: "Committed applied-lock entries do not cover confirmed post-cutover history",
+      status: "invalid",
+    }
+  }
 
   const liveByVersion = new Map(
     input.observation.migrations.map((migration) => [migration.version, migration.name])
   )
   for (const entry of input.appliedLock.applied) {
     const identity = appliedEntryIdentity(entry)
-    if (identity === undefined || liveByVersion.get(identity.version) !== identity.name) {
+    if (liveByVersion.get(identity.version) !== identity.name) {
       return {
         reason: "Committed applied-lock entries do not exactly match live migration evidence",
         status: "invalid",

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs"
 import path from "node:path"
 
-import { hasAppendedAppliedEntries, preservesAppliedLockHistory } from "./applied-lock-history"
+import { preservesAppliedLockHistory } from "./applied-lock-history"
 import {
   currentHeadCommit,
   isAncestorCommit,
@@ -112,11 +112,6 @@ export function inspectMigrationRepository(input: RepositoryInspectionInput): Re
       findings.push({
         classification: "BLOCKING",
         ruleId: "migration.lock-history",
-      })
-    } else if (hasAppendedAppliedEntries(previousAppliedLock, currentLock)) {
-      findings.push({
-        classification: "INCOMPLETE",
-        ruleId: "migration.applied-readback",
       })
     }
   }

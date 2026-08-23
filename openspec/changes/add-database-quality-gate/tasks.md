@@ -180,13 +180,13 @@ VPS has no scheduled role.
       invoke a live write.
 - [x] 6.4 Document the exact-operation Supabase MCP apply handoff without
       embedding live credentials or an automatic apply command.
-- [ ] 6.5 Implement read-back evidence ingestion and canonical SQL-hash
+- [x] 6.5 Implement read-back evidence ingestion and canonical SQL-hash
       verification.
-- [ ] 6.6 Implement the lock-only reconciliation PR workflow.
-- [ ] 6.7 Implement the independent Oracle baseline catch-up and health branch.
-- [ ] 6.8 Block every later live migration until both reconciliation branches
+- [x] 6.6 Implement the lock-only reconciliation PR workflow.
+- [x] 6.7 Implement the independent Oracle baseline catch-up and health branch.
+- [x] 6.8 Block every later live migration until both reconciliation branches
       complete and baseline-forward reruns against the new high-water.
-- [ ] 6.9 Add state-machine and fault-injection tests for changed content,
+- [x] 6.9 Add state-machine and fault-injection tests for changed content,
       missing, stale, blanket, mismatched, or non-affirmative permission,
       read-back mismatch, lock failure, catch-up failure, merge/push failure,
       and successful recovery.

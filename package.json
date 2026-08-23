@@ -32,6 +32,8 @@
     "react-doctor:score": "npx -y -p node@22 -p react-doctor@latest react-doctor . --score --project . --offline --scope full",
     "db:quality-gate": "node scripts/db-quality-gate/run-cli.cjs",
     "db:quality-gate:baseline": "node scripts/db-quality-gate/run-baseline-maintenance.cjs",
+    "db:quality-gate:read-back": "node scripts/db-quality-gate/run-read-back.cjs",
+    "db:quality-gate:reconcile-lock": "node scripts/db-quality-gate/run-reconciliation-lock.cjs",
     "db:types": "node scripts/gen-types.js",
     "db:push": "supabase db push",
     "db:pull": "supabase db pull",

@@ -14,7 +14,7 @@ export function validRegistries() {
 
   return {
     appliedLock: {
-      applied: [],
+      applied: [] as Array<Record<string, unknown>>,
       cutover: {
         commit: "a".repeat(40),
         legacyInventorySha256: legacyInventorySha256(legacy),

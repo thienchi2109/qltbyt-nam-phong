@@ -6,9 +6,11 @@ import {
   sha256,
 } from "./database-quality-gate-test-support"
 import {
+  APPLIED_PATH,
   LEGACY_PATH,
   LEGACY_SQL,
   MigrationRepositoryModule,
+  appliedAuthority,
   appliedLock,
   repositoryWithLock,
 } from "./database-quality-gate-migration-repository-test-support"
@@ -79,6 +81,36 @@ describe("database quality gate migration repository inspection", () => {
     const repository = repositoryWithLock(
       {
         [LEGACY_PATH]: LEGACY_SQL,
+      },
+      currentLock
+    )
+
+    const result = source.inspectMigrationRepository({
+      previousAppliedLock: previousLock,
+      repositoryRoot: repository.root,
+    })
+
+    expect(result.outcome).toBe("FAILED")
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        classification: "BLOCKING",
+        ruleId: "migration.lock-history",
+      })
+    )
+  })
+
+  it("blocks removal of a prior applied entry without throwing", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
+    const appliedSql = "SELECT 1;\n"
+    const previousLock = appliedLock(
+      [],
+      [appliedAuthority(APPLIED_PATH, sha256(appliedSql.slice(0, -1)))]
+    )
+    const currentLock = appliedLock([])
+    const repository = repositoryWithLock(
+      {
+        [APPLIED_PATH]: appliedSql,
       },
       currentLock
     )
@@ -168,7 +200,7 @@ describe("database quality gate migration repository inspection", () => {
   it("blocks moving or reordering protected history between lock sections", async () => {
     const source =
       await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
-    const secondLegacyPath = "supabase/migrations/20241221_second_protected_legacy.sql"
+    const secondLegacyPath = "supabase/migrations/20241221000000_second_protected_legacy.sql"
     const secondLegacySql = "CREATE TABLE public.second_protected_legacy (id bigint PRIMARY KEY);\n"
     const previousLock = appliedLock([
       {
@@ -188,16 +220,11 @@ describe("database quality gate migration repository inspection", () => {
       appliedLock(
         [
           {
-            path: secondLegacyPath,
-            sha256: sha256(secondLegacySql),
-          },
-        ],
-        [
-          {
             path: LEGACY_PATH,
             sha256: sha256(LEGACY_SQL),
           },
-        ]
+        ],
+        [appliedAuthority(secondLegacyPath, sha256(secondLegacySql))]
       )
     )
     const reorderedRepository = repositoryWithLock(

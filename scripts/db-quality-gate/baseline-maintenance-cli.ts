@@ -9,9 +9,11 @@ import type { ConfirmedLiveMigration } from "./baseline-state"
 import { validConfirmation } from "./baseline-state"
 import { currentHeadCommit } from "./git-evidence"
 import { oracleBaselineMaintenanceExecutorFromEnvironment } from "./oracle-baseline-maintenance-executor"
+import { runBaselineReconciliation } from "./reconciliation-baseline"
 import { stableJsonStringify } from "./serialization"
+import type { BaselineMaintenanceExecutor } from "./baseline-maintenance"
 
-type Operation = "catch-up" | "full-refresh" | "health"
+type Operation = "catch-up" | "full-refresh" | "health" | "reconcile"
 
 type CommandOptions = {
   checkedAt: string
@@ -20,6 +22,11 @@ type CommandOptions = {
   operation: Operation
   runId: string
   subjectCommit?: string
+}
+
+type CommandDependencies = {
+  currentHeadCommit?: (repositoryRoot: string) => string | undefined
+  executorFromEnvironment?: () => BaselineMaintenanceExecutor | undefined
 }
 
 const OPTION_NAMES = new Set([
@@ -45,7 +52,10 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   const runId = values.get("--run-id")
   const confirmationsPath = values.get("--confirmations")
   if (
-    (operation !== "catch-up" && operation !== "full-refresh" && operation !== "health") ||
+    (operation !== "catch-up" &&
+      operation !== "full-refresh" &&
+      operation !== "health" &&
+      operation !== "reconcile") ||
     runId === undefined ||
     confirmationsPath === undefined ||
     !/^[a-z0-9][a-z0-9_-]*$/u.test(runId)
@@ -106,13 +116,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Runs one explicitly requested baseline maintenance operation. */
 export function runBaselineMaintenanceCommand(
   args: string[],
-  repositoryRoot = process.cwd()
+  repositoryRoot = process.cwd(),
+  dependencies: CommandDependencies = {}
 ): { exitCode: 0 | 2; stdout: string } {
   const options = parseOptions(args)
   const confirmations =
     options === undefined ? undefined : readConfirmations(options.confirmationsPath)
-  const executor = oracleBaselineMaintenanceExecutorFromEnvironment()
-  const subjectCommit = options?.subjectCommit ?? currentHeadCommit(repositoryRoot) ?? undefined
+  const executor = (
+    dependencies.executorFromEnvironment ?? oracleBaselineMaintenanceExecutorFromEnvironment
+  )()
+  const headCommit = dependencies.currentHeadCommit ?? currentHeadCommit
+  const subjectCommit = options?.subjectCommit ?? headCommit(repositoryRoot) ?? undefined
   if (
     options === undefined ||
     confirmations === undefined ||
@@ -135,19 +149,20 @@ export function runBaselineMaintenanceCommand(
     runId: options.runId,
     sourceCommit: subjectCommit,
   }
-  const result =
-    options.operation === "health"
-      ? runBaselineHealthRecovery(common)
-      : options.operation === "catch-up"
-        ? runBaselineCatchUp({
-            ...common,
-            repositoryRoot,
-          })
-        : runBaselineFullRefresh({
-            ...common,
-            dumpPath: options.dumpPath as string,
-            repositoryRoot,
-          })
+  let result
+  if (options.operation === "reconcile") {
+    result = runBaselineReconciliation({ ...common, repositoryRoot })
+  } else if (options.operation === "health") {
+    result = runBaselineHealthRecovery(common)
+  } else if (options.operation === "catch-up") {
+    result = runBaselineCatchUp({ ...common, repositoryRoot })
+  } else {
+    result = runBaselineFullRefresh({
+      ...common,
+      dumpPath: options.dumpPath as string,
+      repositoryRoot,
+    })
+  }
 
   return {
     exitCode: result.outcome === "PASS" ? 0 : 2,

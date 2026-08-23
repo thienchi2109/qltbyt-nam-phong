@@ -1,36 +1,37 @@
-import { isBaselineForwardEvidenceReusable, parseBaselineState } from "./baseline-state"
 import { finalizeReport, serializeReport } from "./contract"
 import {
   currentHeadCommit,
   firstParentCommit,
-  readFileAtCommit,
   refreshPublicOriginMain,
   resolveGitCommit,
 } from "./git-evidence"
 import { ORACLE_REPORT_ARTIFACT, type OracleEvidenceStore } from "./oracle-evidence-store"
 import {
+  loadReusableBaselineEvidence,
+  type BaselineForwardInputHashReader,
+} from "./pre-live-baseline-evidence"
+import {
   evaluateLiveMigrationState,
   parseLiveMigrationObservation,
+  readAppliedMigrationLockAtCommit,
   readLiveMigrationObservationFile,
 } from "./pre-live-live-state"
-import { recomputeBaselineForwardInputHashes as recomputeBaselineForwardInputHashesFromCommit } from "./pre-live-inputs"
 import {
   incompleteReport,
-  parseGateReport,
   preLiveFinding,
   preLiveReport,
   validReusableReport,
 } from "./pre-live-report"
-import { parseAppliedMigrationLock } from "./registries"
+import { runPreLiveReconciliationCheck } from "./pre-live-reconciliation"
 import { runStaticLaneForLandedCommit, type LandedStaticLaneInput } from "./static-lane"
 import type { GateReport } from "./types"
+import type { PreLiveReconciliationDependencies } from "./pre-live-reconciliation"
 import type { AppliedMigrationLock } from "./registries"
 
 const EVIDENCE_NOT_LANDED_RULE = "prelive/evidence-not-landed"
 const EVIDENCE_INVALID_RULE = "prelive/evidence-invalid"
 const BASELINE_BEHIND_LIVE_RULE = "prelive/baseline-behind-live"
 const EXPLICIT_PERMISSION_RULE = "prelive.permission.explicit-required"
-const APPLIED_LOCK_PATH = "supabase/applied-migrations.lock.json"
 const PRE_LIVE_INPUT_KEYS = new Set([
   "baselineForwardDigest",
   "baselineForwardRunId",
@@ -51,13 +52,11 @@ export type PreLiveEvidenceInput = {
 }
 
 type LandedStaticRunner = (input: LandedStaticLaneInput) => GateReport
-type BaselineForwardInputHashReader = typeof recomputeBaselineForwardInputHashesFromCommit
 type AppliedMigrationLockReader = (
   repositoryRoot: string,
   subjectCommit: string
 ) => AppliedMigrationLock | undefined
-
-export type PreLiveEvidenceDependencies = {
+export type PreLiveEvidenceDependencies = PreLiveReconciliationDependencies & {
   clock: () => string
   evidenceStore: OracleEvidenceStore
   readAppliedMigrationLock?: AppliedMigrationLockReader
@@ -65,21 +64,6 @@ export type PreLiveEvidenceDependencies = {
   recomputeBaselineForwardInputHashes?: BaselineForwardInputHashReader
   refreshOriginMain?: (repositoryRoot: string) => string | undefined
   runStatic?: LandedStaticRunner
-}
-
-function readAppliedMigrationLockAtCommit(
-  repositoryRoot: string,
-  subjectCommit: string
-): AppliedMigrationLock | undefined {
-  const content = readFileAtCommit(repositoryRoot, subjectCommit, APPLIED_LOCK_PATH)
-  if (content === undefined) {
-    return undefined
-  }
-  try {
-    return parseAppliedMigrationLock(JSON.parse(content) as unknown)
-  } catch {
-    return undefined
-  }
 }
 
 function validPreLiveInput(input: PreLiveEvidenceInput): boolean {
@@ -178,102 +162,36 @@ export function runPreLiveEvidenceCheck(
     )
   }
 
-  const baselineStateArtifact = dependencies.evidenceStore.readBaselineState()
-  if (baselineStateArtifact.status === "error") {
-    return incompleteReport(
-      input,
-      createdAt,
-      resolvedSubject,
-      EVIDENCE_INVALID_RULE,
-      "Published Oracle baseline state is unavailable"
-    )
-  }
-  let baselineState
-  try {
-    baselineState = parseBaselineState(JSON.parse(baselineStateArtifact.value) as unknown)
-  } catch {
-    baselineState = undefined
-  }
-  if (baselineState === undefined) {
-    return incompleteReport(
-      input,
-      createdAt,
-      resolvedSubject,
-      EVIDENCE_INVALID_RULE,
-      "Published Oracle baseline state is malformed"
-    )
-  }
-
-  const baselineArtifact = dependencies.evidenceStore.readArtifact({
-    artifactName: ORACLE_REPORT_ARTIFACT,
-    runId: input.baselineForwardRunId,
-  })
-  if (baselineArtifact.status === "error") {
-    return incompleteReport(
-      input,
-      createdAt,
-      resolvedSubject,
-      EVIDENCE_INVALID_RULE,
-      "Baseline-forward Oracle evidence is unavailable"
-    )
-  }
-
-  let baselineReport: GateReport | undefined
-  try {
-    baselineReport = parseGateReport(JSON.parse(baselineArtifact.value) as unknown)
-  } catch {
-    baselineReport = undefined
-  }
-  if (
-    baselineReport === undefined ||
-    !validReusableReport(baselineReport, {
-      digest: input.baselineForwardDigest,
-      lane: "baseline-forward",
-      runId: input.baselineForwardRunId,
-      subjectCommit: resolvedSubject,
-    })
-  ) {
-    const ruleId =
-      baselineReport?.subjectCommit !== undefined &&
-      baselineReport.subjectCommit !== resolvedSubject
-        ? EVIDENCE_NOT_LANDED_RULE
-        : EVIDENCE_INVALID_RULE
-    return incompleteReport(
-      input,
-      createdAt,
-      resolvedSubject,
-      ruleId,
-      "Baseline-forward Oracle evidence does not exactly match the landed commit"
-    )
-  }
-
-  const baselineStateMatches = isBaselineForwardEvidenceReusable(
-    {
-      baselineMigrationHighWater: baselineReport.baselineMigrationHighWater,
-      inputHashes: baselineReport.inputHashes,
-      outcome: "PASS",
-    },
-    baselineState
-  )
-  const expectedBaselineForwardHashes = (
-    dependencies.recomputeBaselineForwardInputHashes ??
-    recomputeBaselineForwardInputHashesFromCommit
-  )({
-    repositoryRoot: input.repositoryRoot,
+  const baselineEvidence = loadReusableBaselineEvidence({
+    evidenceStore: dependencies.evidenceStore,
+    preLiveInput: input,
+    recomputeInputHashes: dependencies.recomputeBaselineForwardInputHashes,
     subjectCommit: resolvedSubject,
   })
-  const baselineForwardInputsMatch =
-    expectedBaselineForwardHashes !== undefined &&
-    Object.entries(expectedBaselineForwardHashes).every(
-      ([key, expectedHash]) => baselineReport.inputHashes[key] === expectedHash
-    )
-  if (!baselineStateMatches || !baselineForwardInputsMatch) {
+  if (baselineEvidence.status === "error") {
     return incompleteReport(
       input,
       createdAt,
       resolvedSubject,
-      EVIDENCE_INVALID_RULE,
-      "Baseline-forward immutable inputs no longer match current Oracle and HEAD evidence"
+      baselineEvidence.ruleId,
+      baselineEvidence.reason
+    )
+  }
+  const { baselineReport, baselineState } = baselineEvidence
+
+  const reconciliation = runPreLiveReconciliationCheck(
+    input,
+    resolvedSubject,
+    createdAt,
+    dependencies
+  )
+  if (reconciliation.outcome !== "PASS") {
+    return incompleteReport(
+      input,
+      createdAt,
+      resolvedSubject,
+      "reconciliation/incomplete",
+      "Applied-lock, Oracle baseline, and baseline-forward reconciliation must all complete"
     )
   }
 

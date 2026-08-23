@@ -16,6 +16,7 @@ import {
   LEGACY_PATH,
   LEGACY_SQL,
   PENDING_PATH,
+  appliedAuthority,
   appliedLock,
   MigrationRepositoryModule,
   repositoryWithLock,
@@ -155,7 +156,7 @@ describe("database quality gate migration repository edge cases", () => {
       {
         [APPLIED_PATH]: "SELECT 2;",
       },
-      appliedLock([], [{ path: APPLIED_PATH, sha256: sha256("SELECT 1;") }])
+      appliedLock([], [appliedAuthority(APPLIED_PATH, sha256("SELECT 1;"))])
     )
 
     const result = source.inspectMigrationRepository({ repositoryRoot: repository.root })
@@ -169,16 +170,13 @@ describe("database quality gate migration repository edge cases", () => {
     )
   })
 
-  it("marks an appended applied migration incomplete until live read-back evidence exists", async () => {
+  it("accepts an appended applied migration with complete immutable read-back authority", async () => {
     const source =
       await loadDatabaseQualityGateModule<MigrationRepositoryModule>("migration-repository")
-    const currentLock = appliedLock([], [{ path: APPLIED_PATH, sha256: sha256("SELECT 1;") }])
-    const repository = repositoryWithLock(
-      {
-        [APPLIED_PATH]: "SELECT 1;",
-      },
-      currentLock
-    )
+    const currentLock = appliedLock([], [appliedAuthority(APPLIED_PATH, sha256("SELECT 1;"))])
+    const repository = repositoryWithLock({}, currentLock)
+    mkdirSync(path.dirname(repository.path(APPLIED_PATH)), { recursive: true })
+    writeFileSync(repository.path(APPLIED_PATH), "SELECT 1;")
     const previousLock = appliedLock()
     previousLock.cutover = { ...currentLock.cutover }
 
@@ -187,12 +185,9 @@ describe("database quality gate migration repository edge cases", () => {
       repositoryRoot: repository.root,
     })
 
-    expect(result.outcome).toBe("INCOMPLETE")
-    expect(result.findings).toContainEqual(
-      expect.objectContaining({
-        classification: "INCOMPLETE",
-        ruleId: "migration.applied-readback",
-      })
+    expect(result.outcome).toBe("PASS")
+    expect(result.findings).not.toContainEqual(
+      expect.objectContaining({ ruleId: "migration.applied-readback" })
     )
   })
 

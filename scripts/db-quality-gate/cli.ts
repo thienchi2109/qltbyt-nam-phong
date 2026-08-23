@@ -1,6 +1,6 @@
 import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
 import { runOracleDynamicLane } from "./dynamic-lane"
-import { currentHeadCommit } from "./git-evidence"
+import { currentHeadCommit, refreshPublicOriginMain } from "./git-evidence"
 import { createOracleEvidenceStore } from "./oracle-evidence-store"
 import { createOracleRemoteClient } from "./oracle-remote-client"
 import {
@@ -9,12 +9,15 @@ import {
 } from "./oracle-remote-contract"
 import { oracleRemoteExecutorFromEnvironment } from "./oracle-remote-executor"
 import { runPreLiveEvidenceCheck } from "./pre-live"
+import { verifyProtectedMain } from "./protected-main"
+import { evaluateReconciliation } from "./reconciliation"
 import { stableJsonStringify } from "./serialization"
 import { runStaticLane } from "./static-lane"
 import { GATE_LANES, GATE_SCHEMA_VERSION } from "./types"
 import type { OracleDynamicExecutor } from "./dynamic-lane"
 import type { OracleEvidenceStore } from "./oracle-evidence-store"
 import type { PreLiveEvidenceDependencies } from "./pre-live"
+import type { ReconciliationDependencies } from "./reconciliation"
 import type { GateLane, GateReport } from "./types"
 
 type CommandExecution = {
@@ -37,6 +40,7 @@ type CommandDependencies = {
   dynamicExecutor?: () => OracleDynamicExecutor | undefined
   evidenceStore?: () => OracleEvidenceStore | undefined
   preLiveDependencies?: Omit<PreLiveEvidenceDependencies, "evidenceStore">
+  reconciliationDependencies?: Omit<ReconciliationDependencies, "evidenceStore">
   repositoryRoot?: string
 }
 
@@ -120,8 +124,11 @@ export function runDatabaseQualityGateCommand(
   if (options.lane !== "static" && !args.includes("--run-id")) {
     return errorExecution("Dynamic Oracle lanes require an explicit --run-id")
   }
-  if (options.lane === "pre-live" && args.includes("--created-at")) {
-    return errorExecution("Pre-live requires a trusted internal clock")
+  if (
+    (options.lane === "pre-live" || options.lane === "reconciliation") &&
+    args.includes("--created-at")
+  ) {
+    return errorExecution("Pre-live and reconciliation require a trusted internal clock")
   }
   const repositoryRoot = dependencies.repositoryRoot ?? process.cwd()
   const subjectCommit = currentHeadCommit(repositoryRoot)
@@ -168,6 +175,44 @@ export function runDatabaseQualityGateCommand(
         }
       } catch {
         return errorExecution("Dynamic Oracle lane execution failed")
+      }
+    }
+  }
+
+  if (options.lane === "reconciliation") {
+    if (
+      options.baselineForwardDigest === undefined ||
+      options.baselineForwardRunId === undefined ||
+      options.subjectCommit === undefined
+    ) {
+      return errorExecution("Reconciliation requires exact landed evidence identifiers")
+    }
+
+    const evidenceStore = dependencies.evidenceStore?.() ?? oracleEvidenceStoreFromEnvironment()
+    if (evidenceStore !== undefined) {
+      try {
+        const report = evaluateReconciliation(
+          {
+            baselineForwardDigest: options.baselineForwardDigest,
+            baselineForwardRunId: options.baselineForwardRunId,
+            repositoryRoot,
+            runId: options.runId,
+            subjectCommit: options.subjectCommit,
+          },
+          {
+            clock: () => new Date().toISOString(),
+            refreshOriginMain: refreshPublicOriginMain,
+            verifyProtectedMain,
+            ...dependencies.reconciliationDependencies,
+            evidenceStore,
+          }
+        )
+        return {
+          exitCode: outcomeExitCode(report.outcome),
+          stdout: serializeReport(report),
+        }
+      } catch {
+        return errorExecution("Reconciliation lane execution failed")
       }
     }
   }

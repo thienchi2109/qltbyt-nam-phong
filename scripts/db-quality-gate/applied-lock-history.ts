@@ -1,24 +1,33 @@
-type AppliedLockEntry = {
+import { stableJsonStringify } from "./serialization"
+
+type LegacyLockEntry = {
   path: string
   sha256: string
+}
+
+type AppliedLockEntry = LegacyLockEntry & {
+  liveName: string
+  liveVersion: string
+  readBackDigest: string
+  readBackEvidenceId: string
 }
 
 type AppliedLockHistory = {
   applied: AppliedLockEntry[]
   cutover: {
     commit: string
+    legacyInventorySha256: string
     migrationRoot: string
   }
-  legacy: AppliedLockEntry[]
+  legacy: LegacyLockEntry[]
 }
 
-function entriesMatch(
-  previousEntries: AppliedLockEntry[],
-  currentEntries: AppliedLockEntry[]
-): boolean {
-  return previousEntries.every(
-    (entry, index) =>
-      currentEntries[index]?.path === entry.path && currentEntries[index]?.sha256 === entry.sha256
+function entriesMatch<T>(previousEntries: T[], currentEntries: T[]): boolean {
+  return (
+    currentEntries.length >= previousEntries.length &&
+    previousEntries.every(
+      (entry, index) => stableJsonStringify(currentEntries[index]) === stableJsonStringify(entry)
+    )
   )
 }
 
@@ -29,17 +38,10 @@ export function preservesAppliedLockHistory(
 ): boolean {
   return (
     previous.cutover.commit === current.cutover.commit &&
+    previous.cutover.legacyInventorySha256 === current.cutover.legacyInventorySha256 &&
     previous.cutover.migrationRoot === current.cutover.migrationRoot &&
     previous.legacy.length === current.legacy.length &&
     entriesMatch(previous.legacy, current.legacy) &&
     entriesMatch(previous.applied, current.applied)
   )
-}
-
-/** Identifies a new applied migration that lacks an independent read-back authority. */
-export function hasAppendedAppliedEntries(
-  previous: AppliedLockHistory,
-  current: AppliedLockHistory
-): boolean {
-  return current.applied.length > previous.applied.length
 }

@@ -123,6 +123,13 @@ describe("database quality gate pre-live landed input reconciliation", () => {
         repositoryRoot: fixture.repository.root,
       },
       dependencies(store, subjectCommit, {
+        readAppliedMigrationLock: () =>
+          JSON.parse(
+            readFileSync(
+              fixture.repository.path("supabase", "applied-migrations.lock.json"),
+              "utf8"
+            )
+          ) as ReturnType<NonNullable<ReturnType<typeof dependencies>["readAppliedMigrationLock"]>>,
         readLiveObservation: () => ({
           capturedAt: "2026-08-23T07:29:00.000Z",
           migrations: [
