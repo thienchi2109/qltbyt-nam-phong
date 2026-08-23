@@ -3,17 +3,17 @@
 import type { TechnicalConfigurationBaselineEditorCriterionOwner } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
 import {
-  getTechnicalConfigurationBaselineCriterionOwnerValue,
-  type TechnicalConfigurationBaselineCriterionOwnerOption,
-} from "./TechnicalConfigurationBaselineHierarchyAuthoring"
-
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+
+import {
+  getTechnicalConfigurationBaselineCriterionOwnerValue,
+  type TechnicalConfigurationBaselineCriterionOwnerOption,
+} from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 
 type TechnicalConfigurationBaselineCriterionOwnerSelectProps = Readonly<{
   label: string

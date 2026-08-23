@@ -84,7 +84,7 @@ await selectCriterionOwnerOption(
 )
 ```
 
-- [ ] **Step 4: Chạy test xác nhận FAIL (đỏ)**
+- [x] **Step 4: Chạy test xác nhận FAIL (đỏ)**
 
 Run: `node scripts/npm-run.js npx vitest run "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-controls.test.tsx"`
 Expected: test "moves a criterion…" FAIL (native select không mở listbox qua ArrowDown → không tìm thấy `role="option"`); 2 test còn lại PASS.
@@ -102,17 +102,12 @@ Expected: test "moves a criterion…" FAIL (native select không mở listbox qu
 - Consumes: `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` từ `@/components/ui/select`; `getTechnicalConfigurationBaselineCriterionOwnerValue` + type option từ `./TechnicalConfigurationBaselineHierarchyAuthoring` (không đổi).
 - Produces: cùng props API như cũ — caller không đổi gì.
 
-- [ ] **Step 1: Ghi nội dung mới cho file**
+- [x] **Step 1: Ghi nội dung mới cho file**
 
 ```tsx
 "use client"
 
 import type { TechnicalConfigurationBaselineEditorCriterionOwner } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-
-import {
-  getTechnicalConfigurationBaselineCriterionOwnerValue,
-  type TechnicalConfigurationBaselineCriterionOwnerOption,
-} from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 
 import {
   Select,
@@ -121,6 +116,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+
+import {
+  getTechnicalConfigurationBaselineCriterionOwnerValue,
+  type TechnicalConfigurationBaselineCriterionOwnerOption,
+} from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 
 type TechnicalConfigurationBaselineCriterionOwnerSelectProps = Readonly<{
   label: string
@@ -162,12 +162,12 @@ export function TechnicalConfigurationBaselineCriterionOwnerSelect({
 }
 ```
 
-- [ ] **Step 2: Chạy lại test Task 1 xác nhận PASS (xanh)**
+- [x] **Step 2: Chạy lại test Task 1 xác nhận PASS (xanh)**
 
 Run: `node scripts/npm-run.js npx vitest run "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-controls.test.tsx"`
 Expected: PASS 3/3 (assertion `combobox` ở test thứ 3 vẫn đúng vì Radix trigger có role `combobox`).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/app/\(app\)/technical-configurations/_components/TechnicalConfigurationBaselineCriterionOwnerSelect.tsx "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-authoring-controls.test.tsx"
@@ -182,12 +182,12 @@ git commit -m "refactor(technical-configurations): use shadcn select for baselin
 
 **Files:** không sửa thêm (chỉ chạy kiểm chứng).
 
-- [ ] **Step 1: Focused regression cho các test gián tiếp liên quan**
+- [x] **Step 1: Focused regression cho các test gián tiếp liên quan**
 
 Run: `node scripts/npm-run.js npx vitest run "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-group-section.test.tsx" "src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-hierarchy-tab-workflow.test.tsx" "src/app/(app)/technical-configurations/__tests__/TechnicalConfigurationVersionBar.test.tsx"`
 Expected: PASS (2 file đầu render component qua editor; VersionBar là sanity check pattern Radix).
 
-- [ ] **Step 2: Chain gates theo đúng thứ tự AGENTS.md**
+- [x] **Step 2: Chain gates theo đúng thứ tự AGENTS.md**
 
 ```bash
 node scripts/npm-run.js run verify:no-explicit-any
