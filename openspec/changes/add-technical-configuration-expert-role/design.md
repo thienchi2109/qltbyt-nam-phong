@@ -330,26 +330,41 @@ At implementation time:
 
 ## Migration Plan
 
-1. Add failing TypeScript/Vitest and SQL regression coverage before production
-   changes.
-2. Implement shared role, exact-expert, module-capability, default-route,
-   route-policy, navigation, and app-shell behavior.
-3. Update standalone feature API allowlists and add direct-request deny
-   coverage.
-4. Add the exact expert RPC proxy allowlist and exhaustive function
-   classification tests.
-5. Add the new session authorization profile RPC in an append-only migration
-   and update NextAuth refresh to consume it fail-closed.
-6. Add the canonical Technical Configurations authorization helper,
-   compatibility wrapper, and guarded user-role management changes in
-   correctly ordered append-only migration files.
-7. Run static migration checks and Oracle baseline-forward validation for the
-   exact landed commit, plus focused SQL tests selected by the committed gate
-   registry.
-8. Run TypeScript/React quality gates and focused Vitest suites.
-9. Do not apply any migration to live. A later live apply requires explicit
-   permission for that exact write through Supabase MCP, followed by security
-   advisor checks.
+Implementation is split into the 17 review and deployment phases defined in
+`tasks.md`. Each phase is intended to be one PR-sized batch and must pass its
+own exit gate before the next phase starts.
+
+1. Refresh inventories and freeze the implementation contract.
+2. Lock shared role semantics with failing tests.
+3. Harden existing role-derived and standalone boundaries before adding the
+   role to production constants.
+4. Add dormant shared role primitives and documentation.
+5. Add dormant route, landing, and navigation isolation.
+6. Add dormant expert shell isolation.
+7. Canonicalize Technical Configurations RPC-name collections without changing
+   behavior.
+8. Enforce the dormant exact-expert RPC proxy boundary.
+9. Add and validate the authoritative session-profile database RPC.
+10. After Phase 9 is deployed, switch NextAuth refresh to the new fail-closed
+    profile contract.
+11. Add and validate the Technical Configurations Postgres module guard.
+12. Add and validate expert account-scope protection plus the transactional
+    reassignment RPC.
+13. After all perimeter and database prerequisites are deployed, enable
+    backend expert account assignment.
+14. Activate the global/admin user-management UI for the role.
+15. Consolidate documentation and remove stale or duplicated assumptions.
+16. Run final integrated application and database verification.
+17. Perform controlled database-first deployment and production read-back.
+
+Phases 2-13 must not expose `chuyen_gia` in user-management UI. Phase 14 is the
+operator-visible activation point. Database phases are additive and must land
+before their application consumers; each migration-related landed commit needs
+separate `static` and Oracle `baseline-forward` PASS evidence.
+
+No phase applies a migration to live automatically. Every live Supabase MCP
+write requires separate explicit maintainer permission for that exact operation,
+followed by security advisors and read-back verification.
 
 Rollback after a live deployment uses a new superseding migration and
 application rollback; never edit an applied migration. Reassign or disable
