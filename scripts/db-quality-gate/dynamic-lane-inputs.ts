@@ -13,6 +13,11 @@ const INVARIANTS_PATH = "supabase/db-quality-gate-invariants.json"
 const SQL_TESTS_PATH = "supabase/db-quality-gate-tests.json"
 const APPLIED_LOCK_PATH = "supabase/applied-migrations.lock.json"
 
+export type DynamicRepositoryInput = Pick<
+  OracleDynamicLaneInput,
+  "repositoryRoot" | "subjectCommit"
+>
+
 /** Immutable source artifacts selected from one resolved subject commit. */
 export type DynamicInputArtifacts = {
   appliedMigrationIdentities: MigrationIdentity[]
@@ -29,7 +34,7 @@ export type DynamicInputArtifacts = {
 }
 
 function committedRepositoryFile(
-  input: OracleDynamicLaneInput,
+  input: DynamicRepositoryInput,
   relativePath: string,
   allowedPrefix: string
 ): string | undefined {
@@ -45,7 +50,7 @@ function committedRepositoryFile(
 }
 
 function readCommittedJsonArtifact(
-  input: OracleDynamicLaneInput,
+  input: DynamicRepositoryInput,
   relativePath: string
 ): unknown | undefined {
   const content = committedRepositoryFile(input, relativePath, "supabase/")
@@ -82,7 +87,7 @@ function postCutoverMigrations(
 
 /** Loads validation registry inputs from Git objects without consulting the mutable worktree. */
 export function readDynamicInputArtifacts(
-  input: OracleDynamicLaneInput,
+  input: DynamicRepositoryInput,
   state: DynamicRunState
 ): DynamicInputArtifacts | undefined {
   const source = inspectCanonicalMigrationSourceAtCommit({
@@ -170,7 +175,7 @@ export function readDynamicInputArtifacts(
 
 /** Reads one registered SQL test body from the immutable subject commit. */
 export function readCommittedSqlTest(
-  input: OracleDynamicLaneInput,
+  input: DynamicRepositoryInput,
   relativePath: string
 ): string | undefined {
   return committedRepositoryFile(input, relativePath, "supabase/tests/")
@@ -178,7 +183,7 @@ export function readCommittedSqlTest(
 
 /** Reads candidate migration contents from the immutable subject commit. */
 export function readCommittedMigrationInputs(
-  input: OracleDynamicLaneInput,
+  input: DynamicRepositoryInput,
   migrationIdentities: MigrationIdentity[],
   state: DynamicRunState
 ):

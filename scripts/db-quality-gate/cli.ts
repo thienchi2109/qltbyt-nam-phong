@@ -1,12 +1,21 @@
 import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
 import { runOracleDynamicLane } from "./dynamic-lane"
 import { currentHeadCommit } from "./git-evidence"
+import { createOracleEvidenceStore } from "./oracle-evidence-store"
+import { createOracleRemoteClient } from "./oracle-remote-client"
+import {
+  defaultOracleRemoteCommand,
+  oracleRemoteExecutorConfigFromEnvironment,
+} from "./oracle-remote-contract"
 import { oracleRemoteExecutorFromEnvironment } from "./oracle-remote-executor"
+import { runPreLiveEvidenceCheck } from "./pre-live"
 import { stableJsonStringify } from "./serialization"
 import { runStaticLane } from "./static-lane"
 import { GATE_LANES, GATE_SCHEMA_VERSION } from "./types"
-import type { GateLane, GateReport } from "./types"
 import type { OracleDynamicExecutor } from "./dynamic-lane"
+import type { OracleEvidenceStore } from "./oracle-evidence-store"
+import type { PreLiveEvidenceDependencies } from "./pre-live"
+import type { GateLane, GateReport } from "./types"
 
 type CommandExecution = {
   exitCode: 0 | 1 | 2
@@ -14,18 +23,33 @@ type CommandExecution = {
 }
 
 type CommandOptions = {
+  baselineForwardDigest?: string
+  baselineForwardRunId?: string
   createdAt: string
   lane: GateLane
+  liveObservationPath?: string
   runId: string
+  staticRunId?: string
   subjectCommit?: string
 }
 
 type CommandDependencies = {
   dynamicExecutor?: () => OracleDynamicExecutor | undefined
+  evidenceStore?: () => OracleEvidenceStore | undefined
+  preLiveDependencies?: Omit<PreLiveEvidenceDependencies, "evidenceStore">
   repositoryRoot?: string
 }
 
-const OPTION_NAMES = new Set(["--created-at", "--lane", "--run-id", "--subject-commit"])
+const OPTION_NAMES = new Set([
+  "--baseline-forward-digest",
+  "--baseline-forward-run-id",
+  "--created-at",
+  "--lane",
+  "--live-observation",
+  "--run-id",
+  "--static-run-id",
+  "--subject-commit",
+])
 
 function errorExecution(error: string): CommandExecution {
   return {
@@ -54,11 +78,30 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   }
 
   return {
+    baselineForwardDigest: values.get("--baseline-forward-digest"),
+    baselineForwardRunId: values.get("--baseline-forward-run-id"),
     createdAt: values.get("--created-at") ?? new Date().toISOString(),
     lane: lane as GateLane,
+    liveObservationPath: values.get("--live-observation"),
     runId: values.get("--run-id") ?? "local-contract",
+    staticRunId: values.get("--static-run-id"),
     subjectCommit: values.get("--subject-commit"),
   }
+}
+
+function oracleEvidenceStoreFromEnvironment(): OracleEvidenceStore | undefined {
+  const config = oracleRemoteExecutorConfigFromEnvironment(process.env)
+  if (config === undefined) {
+    return undefined
+  }
+
+  return createOracleEvidenceStore({
+    client: createOracleRemoteClient({
+      command: defaultOracleRemoteCommand,
+      config,
+    }),
+    config,
+  })
 }
 
 /** Runs one local gate lane and fails closed whenever its required executor or evidence is unavailable. */
@@ -76,6 +119,9 @@ export function runDatabaseQualityGateCommand(
   }
   if (options.lane !== "static" && !args.includes("--run-id")) {
     return errorExecution("Dynamic Oracle lanes require an explicit --run-id")
+  }
+  if (options.lane === "pre-live" && args.includes("--created-at")) {
+    return errorExecution("Pre-live requires a trusted internal clock")
   }
   const repositoryRoot = dependencies.repositoryRoot ?? process.cwd()
   const subjectCommit = currentHeadCommit(repositoryRoot)
@@ -122,6 +168,46 @@ export function runDatabaseQualityGateCommand(
         }
       } catch {
         return errorExecution("Dynamic Oracle lane execution failed")
+      }
+    }
+  }
+
+  if (options.lane === "pre-live") {
+    if (
+      options.baselineForwardDigest === undefined ||
+      options.baselineForwardRunId === undefined ||
+      options.liveObservationPath === undefined ||
+      options.staticRunId === undefined ||
+      options.subjectCommit === undefined
+    ) {
+      return errorExecution("Pre-live requires exact landed evidence identifiers")
+    }
+
+    const evidenceStore = dependencies.evidenceStore?.() ?? oracleEvidenceStoreFromEnvironment()
+    if (evidenceStore !== undefined) {
+      try {
+        const report = runPreLiveEvidenceCheck(
+          {
+            baselineForwardDigest: options.baselineForwardDigest,
+            baselineForwardRunId: options.baselineForwardRunId,
+            liveObservationPath: options.liveObservationPath,
+            repositoryRoot,
+            runId: options.runId,
+            staticRunId: options.staticRunId,
+            subjectCommit: options.subjectCommit,
+          },
+          {
+            clock: () => new Date().toISOString(),
+            ...dependencies.preLiveDependencies,
+            evidenceStore,
+          }
+        )
+        return {
+          exitCode: outcomeExitCode(report.outcome),
+          stdout: serializeReport(report),
+        }
+      } catch {
+        return errorExecution("Pre-live lane execution failed")
       }
     }
   }

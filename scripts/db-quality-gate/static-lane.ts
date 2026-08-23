@@ -1,12 +1,11 @@
-import { collectChangedFiles } from "../changed-files"
 import { compareFindingBaseline, parseIdentityBaseline } from "./baseline"
 import {
   inspectCanonicalMigrationSource,
   inspectCanonicalMigrationSourceAtCommit,
-  isCanonicalMigrationPath,
 } from "./migration-source"
 import { inspectMigrationRepository } from "./migration-repository"
 import { currentHeadCommit } from "./git-evidence"
+import { resolveLandedStaticDiff, type TrustedStaticDiff } from "./landed-static-diff"
 import { attachDangerousApprovals } from "./static-approvals"
 import {
   hasTrustedIdentityBaseline,
@@ -39,42 +38,27 @@ import {
   INVARIANTS_PATH,
   SQL_TESTS_PATH,
 } from "./static-lane-expected-state"
+import {
+  APPLIED_LOCK_PATH,
+  BASELINE_PATH,
+  collectStaticChangedFiles,
+  DEFAULT_MIGRATION_ROOT,
+  DEFAULT_STATIC_BASE_REF,
+  staticChangedFiles,
+  WAIVERS_PATH,
+} from "./static-changed-files"
 import { finalizeStaticLaneReport } from "./static-lane-report"
+import type { LandedStaticLaneInput, StaticLaneInput } from "./static-lane-types"
 import type { GateReport } from "./types"
 
-type StaticLaneInput = {
-  baseRef?: string
-  changedFiles?: string[]
-  createdAt: string
-  repositoryRoot: string
-  runId: string
-  subjectCommit: string
-}
-
-const DEFAULT_BASE_REF = "origin/main"
-const DEFAULT_MIGRATION_ROOT = "supabase/migrations"
-const APPLIED_LOCK_PATH = "supabase/applied-migrations.lock.json"
-const BASELINE_PATH = "supabase/db-quality-gate-baseline.json"
-const WAIVERS_PATH = "supabase/db-quality-gate-waivers.json"
-
-/** Reuses the repository diff helper and narrows it to canonical migrations plus static-gate metadata. */
-export function collectStaticChangedFiles(baseRef = DEFAULT_BASE_REF): string[] {
-  return collectChangedFiles(baseRef).filter(
-    (filePath: string) =>
-      isCanonicalMigrationPath(filePath) ||
-      filePath === APPLIED_LOCK_PATH ||
-      filePath === BASELINE_PATH ||
-      filePath === INVARIANTS_PATH ||
-      filePath === SQL_TESTS_PATH ||
-      filePath === WAIVERS_PATH
-  )
-}
-
-/** Runs deterministic local-only static checks for the current repository state. */
-export function runStaticLane(input: StaticLaneInput): GateReport {
-  const testOverridesAllowed = process.env.NODE_ENV === "test"
+function runStaticLaneInternal(
+  input: StaticLaneInput,
+  trustedDiff?: TrustedStaticDiff
+): GateReport {
+  const testOverridesAllowed = trustedDiff === undefined && process.env.NODE_ENV === "test"
   const baseRef =
-    testOverridesAllowed && input.baseRef !== undefined ? input.baseRef : DEFAULT_BASE_REF
+    trustedDiff?.baseRef ??
+    (testOverridesAllowed && input.baseRef !== undefined ? input.baseRef : DEFAULT_STATIC_BASE_REF)
   const headCommit = currentHeadCommit(input.repositoryRoot)
   const subjectCommit = headCommit ?? "unavailable"
   const subjectEvidenceUnavailable = headCommit === undefined || input.subjectCommit !== headCommit
@@ -97,9 +81,14 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
       sourceInspection.migrationIdentities,
       sourceAtHead.migrationIdentities
     )
-  let changedFileDiscoveryUnavailable = false
-  let changedFiles = testOverridesAllowed ? input.changedFiles : undefined
-  if (!testOverridesAllowed && (input.baseRef !== undefined || input.changedFiles !== undefined)) {
+  let changedFileDiscoveryUnavailable = trustedDiff?.unavailable ?? false
+  let changedFiles =
+    trustedDiff?.changedFiles ?? (testOverridesAllowed ? input.changedFiles : undefined)
+  if (
+    trustedDiff === undefined &&
+    !testOverridesAllowed &&
+    (input.baseRef !== undefined || input.changedFiles !== undefined)
+  ) {
     changedFileDiscoveryUnavailable = true
   }
   if (changedFiles === undefined) {
@@ -325,3 +314,31 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
     subjectCommit,
   })
 }
+
+/** Runs deterministic local-only static checks with ordinary production defaults unchanged. */
+export function runStaticLane(input: StaticLaneInput): GateReport {
+  return runStaticLaneInternal(input)
+}
+
+/**
+ * Runs static checks over the exact landed first-parent diff after independently binding both SHAs.
+ */
+export function runStaticLaneForLandedCommit(input: LandedStaticLaneInput): GateReport {
+  const trustedDiff = resolveLandedStaticDiff(input)
+
+  return runStaticLaneInternal(
+    {
+      createdAt: input.createdAt,
+      repositoryRoot: input.repositoryRoot,
+      runId: input.runId,
+      subjectCommit: input.subjectCommit,
+    },
+    {
+      ...trustedDiff,
+      changedFiles: staticChangedFiles(trustedDiff.changedFiles),
+    }
+  )
+}
+
+export { collectStaticChangedFiles }
+export type { LandedStaticLaneInput }

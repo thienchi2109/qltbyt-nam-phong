@@ -2,10 +2,27 @@ import { execFileSync } from "node:child_process"
 
 const MAX_GIT_EVIDENCE_OUTPUT_BYTES = 4 * 1024 * 1024
 
-function gitOutput(repositoryRoot: string, args: string[]): string | undefined {
+type GitOutputOptions = {
+  credentialFree?: boolean
+}
+
+function gitOutput(
+  repositoryRoot: string,
+  args: string[],
+  options: GitOutputOptions = {}
+): string | undefined {
   try {
     return execFileSync("git", ["-C", repositoryRoot, ...args], {
       encoding: "utf8",
+      env: options.credentialFree
+        ? {
+            ...process.env,
+            GIT_ASKPASS: "/bin/false",
+            GIT_SSH_COMMAND: "ssh -o BatchMode=yes -o IdentitiesOnly=yes -o IdentityFile=/dev/null",
+            GIT_TERMINAL_PROMPT: "0",
+            SSH_ASKPASS: "/bin/false",
+          }
+        : process.env,
       maxBuffer: MAX_GIT_EVIDENCE_OUTPUT_BYTES,
       stdio: ["ignore", "pipe", "ignore"],
     })
@@ -22,6 +39,69 @@ export function resolveGitCommit(repositoryRoot: string, ref: string): string | 
 /** Resolves the immutable commit checked out at repository HEAD. */
 export function currentHeadCommit(repositoryRoot: string): string | undefined {
   return resolveGitCommit(repositoryRoot, "HEAD")
+}
+
+/** Resolves the immutable first parent of a landed commit. */
+export function firstParentCommit(repositoryRoot: string, commit: string): string | undefined {
+  return resolveGitCommit(repositoryRoot, `${commit}^1`)
+}
+
+/** Lists paths changed by one exact parent-to-commit comparison. */
+export function listChangedFilesBetween(
+  repositoryRoot: string,
+  parentCommit: string,
+  subjectCommit: string
+): string[] | undefined {
+  const output = gitOutput(repositoryRoot, [
+    "diff",
+    "--name-only",
+    "--diff-filter=ACMRTUXB",
+    parentCommit,
+    subjectCommit,
+    "--",
+  ])
+
+  return output?.split("\n").filter(Boolean)
+}
+
+function credentialFreeOriginUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    return url.protocol === "https:" && url.username === "" && url.password === ""
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Refreshes the public main tracking ref with prompts, helpers, and SSH identities disabled.
+ */
+export function refreshPublicOriginMain(repositoryRoot: string): string | undefined {
+  const originUrl = gitOutput(repositoryRoot, ["remote", "get-url", "origin"])?.trim()
+  if (originUrl === undefined || !credentialFreeOriginUrl(originUrl)) {
+    return undefined
+  }
+
+  const fetched = gitOutput(
+    repositoryRoot,
+    [
+      "-c",
+      "credential.helper=",
+      "-c",
+      "credential.interactive=never",
+      "-c",
+      "http.extraHeader=",
+      "-c",
+      `http.${originUrl}.extraHeader=`,
+      "fetch",
+      "--no-tags",
+      originUrl,
+      "+refs/heads/main:refs/remotes/origin/main",
+    ],
+    { credentialFree: true }
+  )
+
+  return fetched === undefined ? undefined : resolveGitCommit(repositoryRoot, "origin/main")
 }
 
 /** Reads a tracked file at a resolved Git commit without consulting the worktree. */

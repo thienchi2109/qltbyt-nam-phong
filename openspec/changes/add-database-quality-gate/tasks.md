@@ -172,13 +172,13 @@ VPS has no scheduled role.
 
 **Purpose:** Enforce the permission boundary and post-apply recovery contract.
 
-- [ ] 6.1 Implement exact landed-SHA evidence checks; reject PR-head-only PASS
+- [x] 6.1 Implement exact landed-SHA evidence checks; reject PR-head-only PASS
       after squash merge.
-- [ ] 6.2 Implement read-only pre-live migration high-water, baseline health,
+- [x] 6.2 Implement read-only pre-live migration high-water, baseline health,
       report digest, and invalidation-key comparison.
-- [ ] 6.3 Prove that PASS only permits asking for explicit permission and cannot
+- [x] 6.3 Prove that PASS only permits asking for explicit permission and cannot
       invoke a live write.
-- [ ] 6.4 Document the exact-operation Supabase MCP apply handoff without
+- [x] 6.4 Document the exact-operation Supabase MCP apply handoff without
       embedding live credentials or an automatic apply command.
 - [ ] 6.5 Implement read-back evidence ingestion and canonical SQL-hash
       verification.

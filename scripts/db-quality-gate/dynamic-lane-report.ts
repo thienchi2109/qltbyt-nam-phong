@@ -1,4 +1,5 @@
 import { aggregateOutcome, createFindingFingerprint, finalizeReport } from "./contract"
+import { dynamicImmutableInputHashes } from "./dynamic-input-hashes"
 import { stableJsonSha256 } from "./serialization"
 import { GATE_SCHEMA_VERSION } from "./types"
 import type { GateFinding, GateReport, MigrationIdentity } from "./types"
@@ -84,6 +85,11 @@ export function finalizeDynamicLaneReport(
     findings: state.findings,
     requiredChecksComplete,
   })
+  const immutableInputHashes = dynamicImmutableInputHashes({
+    invariants: artifacts.invariants ?? null,
+    migrationIdentities,
+    sqlTestRegistry: artifacts.sqlTests ?? null,
+  })
 
   return finalizeReport({
     baselineMigrationHighWater: state.baselineMigrationHighWater,
@@ -95,9 +101,7 @@ export function finalizeDynamicLaneReport(
     inputHashes: {
       ...state.catalogInputHashes,
       harness: stableJsonSha256({ lane: input.lane, version: "phase-4" }),
-      invariants: stableJsonSha256(artifacts.invariants ?? null),
-      migration: stableJsonSha256(migrationIdentities),
-      sqlTests: stableJsonSha256(artifacts.sqlTests ?? null),
+      ...immutableInputHashes,
     },
     lane: input.lane,
     migrationIdentities,
