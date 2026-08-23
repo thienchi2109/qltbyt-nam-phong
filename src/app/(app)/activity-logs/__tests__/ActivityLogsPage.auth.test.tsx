@@ -55,7 +55,7 @@ describe("ActivityLogsPage auth wrapper", () => {
     expect(mocks.replace).not.toHaveBeenCalled()
   })
 
-  it("shows the restricted access message for non-global users", () => {
+  it("renders authenticated content without a duplicate local role gate", () => {
     mocks.useSession.mockReturnValue({
       status: "authenticated",
       data: {
@@ -69,8 +69,9 @@ describe("ActivityLogsPage auth wrapper", () => {
 
     render(<ActivityLogsPage />)
 
-    expect(screen.getByText("Truy cập bị hạn chế")).toBeInTheDocument()
-    expect(screen.queryByTestId("activity-logs-viewer")).not.toBeInTheDocument()
+    expect(screen.getByTestId("activity-logs-viewer")).toBeInTheDocument()
+    expect(screen.getByText("Nhật ký hoạt động")).toBeInTheDocument()
+    expect(screen.getByText(/Phiên của bạn:/)).toHaveTextContent("regular-user")
     expect(screen.queryByTestId("authenticated-page-spinner-fallback")).not.toBeInTheDocument()
     expect(mocks.replace).not.toHaveBeenCalled()
   })

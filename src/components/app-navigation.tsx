@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 
-import { canAccessDeviceQuotaModule, isGlobalRole } from "@/lib/rbac"
+import { canAccessAppRoute } from "@/lib/app-route-access"
 import type { AppNotificationBadgeKey } from "@/lib/app-notification-counts"
 
 export interface AppNavItem {
@@ -23,8 +23,6 @@ export interface AppNavItem {
   mobileLabel?: string
   mobileSection?: "main" | "more"
   badgeKey?: AppNotificationBadgeKey
-  requiresGlobal?: boolean
-  requiresDeviceQuotaAccess?: boolean
 }
 
 const MOBILE_FOOTER_HREFS = [
@@ -65,7 +63,6 @@ const APP_NAV_ITEMS: AppNavItem[] = [
     icon: Calculator,
     label: "Định mức",
     mobileSection: "more",
-    requiresDeviceQuotaAccess: true,
   },
   { href: "/reports", icon: BarChart3, label: "Báo cáo", mobileSection: "more" },
   { href: "/qr-scanner", icon: QrCode, label: "Quét QR", mobileSection: "more" },
@@ -73,15 +70,13 @@ const APP_NAV_ITEMS: AppNavItem[] = [
     href: "/technical-configurations",
     icon: ListChecks,
     label: "Cấu hình kỹ thuật",
-    requiresGlobal: true,
   },
-  { href: "/users", icon: Users, label: "Người dùng", mobileSection: "more", requiresGlobal: true },
+  { href: "/users", icon: Users, label: "Người dùng", mobileSection: "more" },
   {
     href: "/activity-logs",
     icon: Activity,
     label: "Nhật ký hoạt động",
     mobileSection: "more",
-    requiresGlobal: true,
   },
 ]
 
@@ -89,17 +84,7 @@ const APP_NAV_ITEMS: AppNavItem[] = [
  * Returns role-filtered navigation items for the desktop sidebar and sheet menu.
  */
 export function getAppNavigationItems(role?: string): AppNavItem[] {
-  return APP_NAV_ITEMS.filter((item) => {
-    if (item.requiresGlobal && !isGlobalRole(role)) {
-      return false
-    }
-
-    if (item.requiresDeviceQuotaAccess && !canAccessDeviceQuotaModule(role)) {
-      return false
-    }
-
-    return true
-  })
+  return APP_NAV_ITEMS.filter((item) => canAccessAppRoute(item.href, role))
 }
 
 /**

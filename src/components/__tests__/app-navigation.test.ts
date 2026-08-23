@@ -18,12 +18,16 @@ function getMoreHrefs(role: string): string[] {
 }
 
 describe("app-navigation role filtering", () => {
-  it("shows technical configurations only to global-equivalent roles", () => {
-    expect(getHrefs("global")).toContain("/technical-configurations")
-    expect(getHrefs("admin")).toContain("/technical-configurations")
+  it("shows global-only routes only to global-equivalent roles", () => {
+    const globalOnlyRoutes = ["/activity-logs", "/technical-configurations", "/users"]
 
-    for (const role of ["regional_leader", "to_qltb", ...restrictedRoles]) {
-      expect(getHrefs(role)).not.toContain("/technical-configurations")
+    for (const route of globalOnlyRoutes) {
+      expect(getHrefs("global")).toContain(route)
+      expect(getHrefs("admin")).toContain(route)
+
+      for (const role of ["regional_leader", "to_qltb", ...restrictedRoles]) {
+        expect(getHrefs(role)).not.toContain(route)
+      }
     }
   })
 

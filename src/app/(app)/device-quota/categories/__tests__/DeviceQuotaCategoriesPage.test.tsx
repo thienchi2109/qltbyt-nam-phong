@@ -87,20 +87,19 @@ describe("DeviceQuotaCategoriesPage", () => {
     })
   })
 
-  it("shows the restricted access state for authenticated users without category management permission", () => {
+  it("keeps category actions read-only without duplicating the route-level role gate", async () => {
     mockUseSession.mockReturnValue({
       data: { user: { role: "technician", don_vi: "1" } },
       status: "authenticated",
     })
+    mockCallRpc.mockResolvedValue([])
 
     render(<DeviceQuotaCategoriesPage />, { wrapper: createWrapper() })
 
-    expect(screen.getByText("Truy cập bị hạn chế")).toBeInTheDocument()
-    expect(
-      screen.getByText(/chỉ dành cho quản trị viên hoặc bộ phận quản lý thiết bị/i)
-    ).toBeInTheDocument()
+    expect(await screen.findByTestId("device-quota-categories-workspace")).toBeInTheDocument()
+    expect(screen.queryByText("Truy cập bị hạn chế")).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Tạo danh mục" })).not.toBeInTheDocument()
-    expect(mockCallRpc).not.toHaveBeenCalled()
+    await waitFor(() => expect(mockCallRpc).toHaveBeenCalledTimes(1))
   })
 
   it("admits regional leaders as read-only users without category detail or CRUD access", async () => {

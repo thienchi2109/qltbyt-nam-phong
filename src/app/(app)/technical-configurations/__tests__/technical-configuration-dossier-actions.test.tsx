@@ -34,9 +34,7 @@ vi.mock("../technical-configuration-rpc", () => ({
   updateTechnicalConfigurationDossier: (...args: unknown[]) => mocks.updateDossier(...args),
 }))
 
-type TechnicalConfigurationsClientContract = React.ComponentType<{
-  role?: string | null
-}>
+type TechnicalConfigurationsClientContract = React.ComponentType
 
 const TechnicalConfigurationsClient = (
   clientModule as { TechnicalConfigurationsClient?: TechnicalConfigurationsClientContract }
@@ -95,7 +93,7 @@ function renderClient() {
   const queryClient = createQueryClient()
   render(
     <QueryClientProvider client={queryClient}>
-      <TechnicalConfigurationsClient role="global" />
+      <TechnicalConfigurationsClient />
     </QueryClientProvider>
   )
 

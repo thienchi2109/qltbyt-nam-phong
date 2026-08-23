@@ -54,9 +54,7 @@ vi.mock("../technical-configuration-rpc", () => ({
   deleteTechnicalConfigurationDossier: (...args: unknown[]) => mocks.deleteDossier(...args),
 }))
 
-type TechnicalConfigurationsClientContract = React.ComponentType<{
-  role?: string | null
-}>
+type TechnicalConfigurationsClientContract = React.ComponentType
 
 const TechnicalConfigurationsClient = (
   clientModule as { TechnicalConfigurationsClient?: TechnicalConfigurationsClientContract }
@@ -98,11 +96,11 @@ function renderWithQueryClient(node: React.ReactNode) {
   return queryClient
 }
 
-function renderClient(role: string) {
+function renderClient() {
   expect(TechnicalConfigurationsClient).toEqual(expect.any(Function))
   if (!TechnicalConfigurationsClient) return
 
-  return renderWithQueryClient(<TechnicalConfigurationsClient role={role} />)
+  return renderWithQueryClient(<TechnicalConfigurationsClient />)
 }
 
 describe("technical configuration dossier shell", () => {
@@ -120,7 +118,7 @@ describe("technical configuration dossier shell", () => {
     )
   })
 
-  it("uses the shared auth boundary and isGlobalRole without a direct global comparison", () => {
+  it("uses the shared auth boundary without duplicating route-level role checks", () => {
     const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
     const pageSource = fs.readFileSync(path.join(moduleRoot, "page.tsx"), "utf8")
     const clientSource = fs.readFileSync(
@@ -130,40 +128,34 @@ describe("technical configuration dossier shell", () => {
 
     expect(pageSource).toMatch(/^"use client"/)
     expect(pageSource).toContain("AuthenticatedPageBoundary")
-    expect(clientSource).toContain("isGlobalRole")
+    expect(clientSource).not.toContain("isGlobalRole")
+    expect(clientSource).not.toContain("Truy cập bị hạn chế")
     expect(clientSource).not.toMatch(/role\s*===\s*["']global["']/)
   })
 
-  it("forwards the authenticated route role into the module boundary", () => {
+  it("renders authenticated route content without a duplicate local role gate", async () => {
     expect(TechnicalConfigurationsPage).toEqual(expect.any(Function))
     if (!TechnicalConfigurationsPage) return
 
     mocks.pageRole = "regional_leader"
     renderWithQueryClient(<TechnicalConfigurationsPage />)
 
-    expect(screen.getByRole("heading", { name: "Truy cập bị hạn chế" })).toBeInTheDocument()
-    expect(mocks.listDossiers).not.toHaveBeenCalled()
+    expect(await screen.findByRole("heading", { name: "Cấu hình kỹ thuật" })).toBeInTheDocument()
+    await waitFor(() => expect(mocks.listDossiers).toHaveBeenCalledTimes(1))
   })
 
-  it.each(["global", "admin"])("loads the dossier list for %s", async (role) => {
-    renderClient(role)
+  it("loads the dossier list", async () => {
+    renderClient()
 
     expect(await screen.findByRole("heading", { name: "Cấu hình kỹ thuật" })).toBeInTheDocument()
     await waitFor(() => expect(mocks.listDossiers).toHaveBeenCalledTimes(1))
     expect(await screen.findByText("Chưa có hồ sơ cấu hình")).toBeInTheDocument()
   })
 
-  it("shows an unauthorized state without loading data for a denied role", () => {
-    renderClient("regional_leader")
-
-    expect(screen.getByRole("heading", { name: "Truy cập bị hạn chế" })).toBeInTheDocument()
-    expect(mocks.listDossiers).not.toHaveBeenCalled()
-  })
-
   it("shows a stable loading state while the dossier list is pending", () => {
     mocks.listDossiers.mockReturnValue(new Promise(() => undefined))
 
-    renderClient("global")
+    renderClient()
 
     expect(screen.getByLabelText("Đang tải hồ sơ cấu hình")).toBeInTheDocument()
   })
@@ -173,7 +165,7 @@ describe("technical configuration dossier shell", () => {
     const createResponse: TechnicalConfigurationDossierWireResponse = { data: dossier }
     mocks.createDossier.mockResolvedValue(createResponse)
 
-    renderClient("global")
+    renderClient()
 
     await user.click(await screen.findByRole("button", { name: "Tạo hồ sơ" }))
     await user.type(screen.getByLabelText("Loại thiết bị"), dossier.device_type_name)
@@ -218,7 +210,7 @@ describe("technical configuration dossier shell", () => {
       data: dossier,
     } satisfies TechnicalConfigurationDossierWireResponse)
 
-    const queryClient = renderClient("admin")
+    const queryClient = renderClient()
 
     await user.click(await screen.findByRole("button", { name: `Mở ${dossier.name}` }))
 
@@ -236,7 +228,7 @@ describe("technical configuration dossier shell", () => {
     mocks.getDossier.mockRejectedValue(new Error("Hồ sơ cũ không thể mở"))
     mocks.createDossier.mockResolvedValue({ data: createdDossier })
 
-    renderClient("global")
+    renderClient()
 
     await user.click(await screen.findByRole("button", { name: `Mở ${dossier.name}` }))
     expect(await screen.findByText("Hồ sơ cũ không thể mở")).toBeInTheDocument()
@@ -264,7 +256,7 @@ describe("technical configuration dossier shell", () => {
     } satisfies TechnicalConfigurationDossierListWireResponse)
     mocks.getDossier.mockReturnValue(new Promise(() => undefined))
 
-    renderClient("global")
+    renderClient()
 
     const firstOpenButton = await screen.findByRole("button", { name: `Mở ${dossier.name}` })
     const secondOpenButton = screen.getByRole("button", { name: `Mở ${secondDossier.name}` })
@@ -279,7 +271,7 @@ describe("technical configuration dossier shell", () => {
     const user = userEvent.setup()
     mocks.createDossier.mockRejectedValue(new Error("Tên hồ sơ đã tồn tại"))
 
-    renderClient("global")
+    renderClient()
 
     await user.click(await screen.findByRole("button", { name: "Tạo hồ sơ" }))
     await user.type(screen.getByLabelText("Loại thiết bị"), dossier.device_type_name)

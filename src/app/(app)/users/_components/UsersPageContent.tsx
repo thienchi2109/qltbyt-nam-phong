@@ -15,17 +15,10 @@ import { TenantsManagement } from "@/components/tenants-management"
 import { DataTablePagination } from "@/components/shared/DataTablePagination"
 import type { DisplayContext } from "@/components/shared/DataTablePagination/types"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMediaQuery } from "@/hooks/use-media-query"
-import { isGlobalRole } from "@/lib/rbac"
 import type { SessionUser } from "@/types/database"
 
 import { useUsersManagement } from "../_hooks/useUsersManagement"
@@ -40,13 +33,13 @@ type UsersPageContentProps = {
   user: Session["user"]
 }
 
+/** Renders user administration for the authenticated session user. */
 export function UsersPageContent({ user }: UsersPageContentProps) {
   const currentUser = user as SessionUser
-  const isAdmin = isGlobalRole(currentUser.role)
   const isMobile = useMediaQuery("(max-width: 768px)")
   const usersManagement = useUsersManagement({
     user: currentUser,
-    enabled: isAdmin,
+    enabled: true,
   })
 
   const columns = React.useMemo(
@@ -62,7 +55,7 @@ export function UsersPageContent({ user }: UsersPageContentProps) {
       usersManagement.setEditingUser,
       usersManagement.setUserToDelete,
       usersManagement.setUserToReset,
-    ],
+    ]
   )
 
   const table = useReactTable({
@@ -88,17 +81,6 @@ export function UsersPageContent({ user }: UsersPageContentProps) {
 
     return `Hiển thị ${currentCount} trên ${ctx.totalCount} ${entityLabel}.`
   }, [])
-
-  if (!isAdmin) {
-    return (
-      <Card className="max-w-md">
-        <CardHeader>
-          <CardTitle>Không có quyền truy cập</CardTitle>
-          <CardDescription>Chỉ global/admin mới có thể quản lý người dùng.</CardDescription>
-        </CardHeader>
-      </Card>
-    )
-  }
 
   return (
     <>
@@ -135,8 +117,8 @@ export function UsersPageContent({ user }: UsersPageContentProps) {
                 <div className="grid gap-2">
                   <CardTitle>Quản lý Người dùng</CardTitle>
                   <CardDescription>
-                    Tạo, chỉnh sửa và xóa tài khoản người dùng. Chỉ quản trị viên mới có quyền
-                    truy cập.
+                    Tạo, chỉnh sửa và xóa tài khoản người dùng. Chỉ quản trị viên mới có quyền truy
+                    cập.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2 md:ml-auto">

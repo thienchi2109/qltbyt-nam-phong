@@ -9,7 +9,7 @@ import { TechnicalConfigurationsClient } from "./TechnicalConfigurationsClient"
 export default function TechnicalConfigurationsPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSkeletonFallback />}>
-      {(user) => <TechnicalConfigurationsClient role={user.role} />}
+      {() => <TechnicalConfigurationsClient />}
     </AuthenticatedPageBoundary>
   )
 }

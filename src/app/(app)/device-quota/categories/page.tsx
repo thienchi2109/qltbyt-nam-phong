@@ -2,13 +2,11 @@
 
 import * as React from "react"
 import type { Session } from "next-auth"
-import { AlertTriangle, Shield } from "lucide-react"
 
 import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
 import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
 import { TenantSelector } from "@/components/shared/TenantSelector"
-import { Card, CardContent } from "@/components/ui/card"
-import { canAccessDeviceQuotaModule, isEquipmentManagerRole } from "@/lib/rbac"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 import { DeviceQuotaSuggestedMappingAction } from "../_components/suggested-mapping/DeviceQuotaSuggestedMappingAction"
 import { DeviceQuotaCategoryProvider } from "./_components/DeviceQuotaCategoryContext"
 import { DeviceQuotaCategoryToolbar } from "./_components/DeviceQuotaCategoryToolbar"
@@ -18,7 +16,7 @@ import { DeviceQuotaCategoryDeleteDialog } from "./_components/DeviceQuotaCatego
 import { DeviceQuotaCategoryImportDialog } from "./_components/DeviceQuotaCategoryImportDialog"
 import { useDeviceQuotaCategoryContext } from "./_hooks/useDeviceQuotaCategoryContext"
 
-/** Renders the permission-gated Device Quota categories workspace. */
+/** Renders the authenticated Device Quota categories workspace. */
 export default function DeviceQuotaCategoriesPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
@@ -34,37 +32,7 @@ type DeviceQuotaCategoriesPageContentProps = {
 function DeviceQuotaCategoriesPageContent({ user }: DeviceQuotaCategoriesPageContentProps) {
   const userRole = user.role
   const canManageCategories = isEquipmentManagerRole(userRole)
-  const canAccessWorkspace = canAccessDeviceQuotaModule(userRole)
   const [isAssignmentActive, setIsAssignmentActive] = React.useState(false)
-
-  if (!canAccessWorkspace) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="p-3 bg-red-100 rounded-full">
-                  <Shield className="size-6 text-red-600" />
-                </div>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">Truy cập bị hạn chế</h2>
-                <p className="text-gray-600 text-sm">
-                  Tính năng &quot;Tiêu chuẩn, định mức sử dụng thiết bị y tế&quot; chỉ dành cho quản
-                  trị viên hoặc bộ phận quản lý thiết bị. Bạn không có quyền truy cập vào trang này.
-                </p>
-              </div>
-              <div className="flex items-center justify-center text-xs text-gray-500 mt-4">
-                <AlertTriangle className="size-4 mr-1" />
-                <span>Liên hệ quản trị viên nếu bạn cần hỗ trợ</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
 
   return (
     <DeviceQuotaCategoryProvider>

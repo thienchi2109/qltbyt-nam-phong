@@ -1,15 +1,14 @@
-'use client'
+"use client"
 
-import * as React from 'react'
-import type { Session } from 'next-auth'
-import { Activity, AlertTriangle, Shield } from 'lucide-react'
+import * as React from "react"
+import type { Session } from "next-auth"
+import { Activity, Shield } from "lucide-react"
 
-import { AuthenticatedPageBoundary } from '@/app/(app)/_components/AuthenticatedPageBoundary'
-import { AuthenticatedPageSpinnerFallback } from '@/app/(app)/_components/AuthenticatedPageFallbacks'
-import { ActivityLogsViewer } from '@/components/activity-logs/activity-logs-viewer'
-import { Card, CardContent } from '@/components/ui/card'
-import { isGlobalRole } from '@/lib/rbac'
+import { AuthenticatedPageBoundary } from "@/app/(app)/_components/AuthenticatedPageBoundary"
+import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
+import { ActivityLogsViewer } from "@/components/activity-logs/activity-logs-viewer"
 
+/** Renders the authenticated activity-log workspace. */
 export default function ActivityLogsPage() {
   return (
     <AuthenticatedPageBoundary fallback={<AuthenticatedPageSpinnerFallback />}>
@@ -19,43 +18,10 @@ export default function ActivityLogsPage() {
 }
 
 type ActivityLogsPageContentProps = {
-  user: Session['user']
+  user: Session["user"]
 }
 
 function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
-  const isGlobalUser = isGlobalRole(user.role)
-
-  if (!isGlobalUser) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="p-3 bg-red-100 rounded-full">
-                  <Shield className="size-6 text-red-600" />
-                </div>
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                  Truy cập bị hạn chế
-                </h2>
-                <p className="text-gray-600 text-sm">
-                  Tính năng "Nhật ký hoạt động" chỉ dành cho quản trị viên hệ thống. 
-                  Bạn không có quyền truy cập vào trang này.
-                </p>
-              </div>
-              <div className="flex items-center justify-center text-xs text-gray-500 mt-4">
-                <AlertTriangle className="size-4 mr-1" />
-                <span>Liên hệ quản trị viên nếu bạn cần hỗ trợ</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Page Header */}
@@ -65,24 +31,20 @@ function ActivityLogsPageContent({ user }: ActivityLogsPageContentProps) {
             <Activity className="size-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-semibold text-gray-900">
-              Nhật ký hoạt động
-            </h1>
+            <h1 className="text-3xl font-semibold text-gray-900">Nhật ký hoạt động</h1>
             <p className="text-gray-600 mt-1">
               Theo dõi và quản lý tất cả hoạt động của người dùng trong hệ thống
             </p>
           </div>
         </div>
-        
+
         {/* Security Badge */}
         <div className="flex items-center gap-x-2 mt-4">
           <div className="flex items-center gap-x-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
             <Shield className="size-4" />
             <span>Chỉ dành cho quản trị viên hệ thống</span>
           </div>
-          <div className="text-sm text-gray-500">
-            Phiên của bạn: {user.username || 'N/A'}
-          </div>
+          <div className="text-sm text-gray-500">Phiên của bạn: {user.username || "N/A"}</div>
         </div>
       </div>
 

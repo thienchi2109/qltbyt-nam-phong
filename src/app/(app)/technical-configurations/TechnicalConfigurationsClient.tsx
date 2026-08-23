@@ -2,12 +2,11 @@
 
 import * as React from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertCircle, ListChecks, Plus, RefreshCw, ShieldAlert } from "lucide-react"
+import { AlertCircle, ListChecks, Plus, RefreshCw } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useServerPagination } from "@/hooks/useServerPagination"
-import { isGlobalRole } from "@/lib/rbac"
 
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
 import { TechnicalConfigurationDossierDeleteDialog } from "./_components/TechnicalConfigurationDossierDeleteDialog"
@@ -33,10 +32,6 @@ import type {
 } from "./types"
 
 const DOSSIER_PAGE_SIZE = 20
-
-type TechnicalConfigurationsClientProps = {
-  role?: string | null
-}
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
@@ -73,12 +68,9 @@ function getDossierDeleteErrorMessage(error: unknown): string {
   }
 }
 
-/** Orchestrates dossier listing, lifecycle actions, and workspace selection for global roles. */
-export function TechnicalConfigurationsClient({
-  role,
-}: Readonly<TechnicalConfigurationsClientProps>) {
+/** Orchestrates dossier listing, lifecycle actions, and workspace selection. */
+export function TechnicalConfigurationsClient() {
   const queryClient = useQueryClient()
-  const canAccess = isGlobalRole(role)
   const [dossierTotalCount, setDossierTotalCount] = React.useState(0)
   const dossierPagination = useServerPagination({
     totalCount: dossierTotalCount,
@@ -114,7 +106,6 @@ export function TechnicalConfigurationsClient({
         },
         signal
       ),
-    enabled: canAccess,
     staleTime: 30_000,
   })
   const resolvedDossierTotal = dossierListQuery.data?.total
@@ -187,20 +178,6 @@ export function TechnicalConfigurationsClient({
     },
     [openingDossierId, queryClient]
   )
-
-  if (!canAccess) {
-    return (
-      <main className="mx-auto flex min-h-[60vh] max-w-2xl items-center px-4 py-10 sm:px-6">
-        <section className="w-full border-y py-10 text-center">
-          <ShieldAlert className="mx-auto size-9 text-destructive" aria-hidden="true" />
-          <h1 className="mt-4 text-xl font-semibold">Truy cập bị hạn chế</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Khu vực cấu hình kỹ thuật chỉ dành cho quản trị viên hệ thống.
-          </p>
-        </section>
-      </main>
-    )
-  }
 
   if (selectedDossier) {
     return (

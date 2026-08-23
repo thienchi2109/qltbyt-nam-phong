@@ -6,7 +6,6 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tansta
 
 import { callRpc } from "@/lib/rpc-client"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
-import { isGlobalRole } from "@/lib/rbac"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -50,10 +49,9 @@ function sortTenantHierarchyUsersByName(list: TenantHierarchyUser[]): void {
   )
 }
 
-/** Renders the global tenant administration view. */
+/** Renders the authenticated tenant administration view. */
 export function TenantsManagement() {
-  const { data: session, status } = useSession()
-  const isGlobal = isGlobalRole(session?.user?.role)
+  const { status } = useSession()
   const { toast } = useToast()
   const qc = useQueryClient()
 
@@ -93,7 +91,7 @@ export function TenantsManagement() {
     staleTime: 60_000,
     gcTime: 300_000,
     refetchOnWindowFocus: false,
-    enabled: status === "authenticated" && isGlobal,
+    enabled: status === "authenticated",
   })
 
   const rows = tenantHierarchyData?.rows ?? EMPTY_TENANT_ROWS
@@ -155,26 +153,13 @@ export function TenantsManagement() {
     }))
   }, [])
 
-  if (status === "loading") {
+  if (status !== "authenticated") {
     return (
       <div className="flex min-h-[30vh] items-center justify-center">
         <div className="space-y-2 text-center">
           <Skeleton className="mx-auto h-8 w-32" />
           <Skeleton className="mx-auto h-4 w-48" />
         </div>
-      </div>
-    )
-  }
-
-  if (!isGlobal) {
-    return (
-      <div className="flex min-h-[30vh] items-center justify-center">
-        <Card className="max-w-md">
-          <CardHeader>
-            <CardTitle>Không có quyền truy cập</CardTitle>
-            <CardDescription>Chỉ global/admin mới có thể quản lý đơn vị.</CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     )
   }

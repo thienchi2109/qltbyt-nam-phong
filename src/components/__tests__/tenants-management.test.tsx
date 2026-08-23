@@ -6,13 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   callRpc: vi.fn(),
   toast: vi.fn(),
-  useRouter: vi.fn(),
   useSession: vi.fn(),
   useSearchDebounce: vi.fn(),
-}))
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => mocks.useRouter(),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -61,7 +56,9 @@ vi.mock("@/components/ui/button", () => ({
 }))
 
 vi.mock("@/components/ui/badge", () => ({
-  Badge: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+  Badge: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props}>{children}</div>
+  ),
 }))
 
 vi.mock("@/components/ui/skeleton", () => ({
@@ -95,7 +92,6 @@ function createWrapper() {
 describe("TenantsManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.useRouter.mockReturnValue({ push: vi.fn() })
     mocks.useSession.mockReturnValue({
       data: {
         user: {
@@ -147,14 +143,12 @@ describe("TenantsManagement", () => {
           variant: "destructive",
           title: "Lỗi",
           description: "Permission denied",
-        }),
+        })
       )
     })
   })
 
-  it("does not redirect unauthenticated users from the shared tenants management component", () => {
-    const push = vi.fn()
-    mocks.useRouter.mockReturnValue({ push })
+  it("does not fetch tenant data while the shared component is unauthenticated", () => {
     mocks.useSession.mockReturnValue({
       data: null,
       status: "unauthenticated",
@@ -162,8 +156,7 @@ describe("TenantsManagement", () => {
 
     render(<TenantsManagement />, { wrapper: createWrapper() })
 
-    expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument()
-    expect(push).not.toHaveBeenCalled()
+    expect(screen.queryByText("Không có quyền truy cập")).not.toBeInTheDocument()
     expect(mocks.callRpc).not.toHaveBeenCalled()
   })
 })

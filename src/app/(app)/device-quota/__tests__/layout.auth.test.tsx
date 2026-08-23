@@ -42,26 +42,8 @@ describe("DeviceQuotaLayout auth gate", () => {
     expect(mocks.redirect).toHaveBeenCalledWith("/")
   })
 
-  it.each(["user", "qltb_khoa", "technician"])(
-    "redirects %s away from the device quota module",
-    async (role) => {
-      mocks.getServerSession.mockResolvedValue({
-        user: {
-          role,
-        },
-      })
-
-      await expect(DeviceQuotaLayout({ children: <div>Protected Child</div> })).rejects.toThrow(
-        "NEXT_REDIRECT:/dashboard"
-      )
-
-      expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
-      expect(mocks.redirect).toHaveBeenCalledWith("/dashboard")
-    }
-  )
-
-  it.each(["global", "admin", "regional_leader", "to_qltb"])(
-    "renders the device quota layout for allowed role %s",
+  it.each(["user", "qltb_khoa", "technician", "global", "admin", "regional_leader", "to_qltb"])(
+    "renders the device quota layout for authenticated role %s",
     async (role) => {
       mocks.getServerSession.mockResolvedValue({
         user: {

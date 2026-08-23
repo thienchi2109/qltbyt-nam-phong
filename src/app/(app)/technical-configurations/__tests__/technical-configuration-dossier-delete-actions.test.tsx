@@ -78,7 +78,7 @@ function renderClient() {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <TechnicalConfigurationsClient role="global" />
+      <TechnicalConfigurationsClient />
     </QueryClientProvider>
   )
 

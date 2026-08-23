@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const withAuthMock = vi.hoisted(() =>
-  vi.fn((handler: unknown, _options: unknown) => handler),
+const withAuthMock = vi.hoisted(() => vi.fn((handler: unknown, _options: unknown) => handler))
+const nextResponseNextMock = vi.hoisted(() => vi.fn(() => ({ type: "next" })))
+const nextResponseRedirectMock = vi.hoisted(() =>
+  vi.fn((url: unknown) => ({ type: "redirect", url }))
 )
 
 vi.mock("next-auth/middleware", () => ({
@@ -10,14 +12,43 @@ vi.mock("next-auth/middleware", () => ({
 
 vi.mock("next/server", () => ({
   NextResponse: {
-    next: () => ({ type: "next" }),
-    redirect: (url: unknown) => ({ type: "redirect", url }),
+    next: nextResponseNextMock,
+    redirect: nextResponseRedirectMock,
   },
 }))
 
 async function loadMiddleware() {
   vi.resetModules()
   return import("@/middleware")
+}
+
+type MiddlewareToken = {
+  id?: string
+  role?: string
+}
+
+type MiddlewareHandler = (request: {
+  nextauth?: { token?: MiddlewareToken }
+  nextUrl: {
+    pathname: string
+    search: string
+    searchParams: URLSearchParams
+    clone: () => URL
+  }
+}) => unknown
+
+function createMiddlewareRequest(path: string, token: MiddlewareToken) {
+  const url = new URL(path, "https://example.test")
+
+  return {
+    nextauth: { token },
+    nextUrl: {
+      pathname: url.pathname,
+      search: url.search,
+      searchParams: url.searchParams,
+      clone: () => new URL(url),
+    },
+  }
 }
 
 describe("auth middleware kill switch", () => {
@@ -95,34 +126,126 @@ describe("auth middleware kill switch", () => {
     expect(consoleWarnSpy).not.toHaveBeenCalled()
   })
 
-  it("authorizes only tokens with a user id", async () => {
+  it("authorizes tokens with a user id and unmapped public static assets", async () => {
     vi.stubEnv("NODE_ENV", "production")
 
     await loadMiddleware()
 
     const options = withAuthMock.mock.calls[0]?.[1] as {
       callbacks?: {
-        authorized?: (args: { token: { id?: string } | null }) => boolean
+        authorized?: (args: {
+          token: { id?: string } | null
+          req: { nextUrl: { pathname: string } }
+        }) => boolean
       }
     }
     const authorized = options.callbacks?.authorized
+    const protectedRequest = { nextUrl: { pathname: "/dashboard" } }
+    const nextDataRequest = { nextUrl: { pathname: "/_next/data/abc/dashboard.json" } }
+    const staticAssetRequest = { nextUrl: { pathname: "/login-illustration.png" } }
 
-    expect(authorized?.({ token: { id: "42" } })).toBe(true)
-    expect(authorized?.({ token: {} })).toBe(false)
-    expect(authorized?.({ token: null })).toBe(false)
+    expect(authorized?.({ token: { id: "42" }, req: protectedRequest })).toBe(true)
+    expect(authorized?.({ token: {}, req: protectedRequest })).toBe(false)
+    expect(authorized?.({ token: null, req: protectedRequest })).toBe(false)
+    expect(authorized?.({ token: null, req: nextDataRequest })).toBe(false)
+    expect(authorized?.({ token: null, req: staticAssetRequest })).toBe(true)
+  })
+
+  describe("route-level RBAC", () => {
+    async function loadHandler() {
+      vi.stubEnv("NODE_ENV", "production")
+      await loadMiddleware()
+      return withAuthMock.mock.calls[0]?.[0] as MiddlewareHandler
+    }
+
+    it("redirects a denied role before the target route continues", async () => {
+      const handler = await loadHandler()
+
+      const response = handler(
+        createMiddlewareRequest("/users?tab=active", {
+          id: "42",
+          role: "user",
+        })
+      )
+
+      expect(response).toEqual({
+        type: "redirect",
+        url: expect.any(URL),
+      })
+      expect(nextResponseNextMock).not.toHaveBeenCalled()
+
+      const redirectUrl = nextResponseRedirectMock.mock.calls[0]?.[0] as URL
+      expect(redirectUrl.pathname).toBe("/access-denied")
+      expect(redirectUrl.search).toBe("")
+    })
+
+    it.each([
+      ["/users", "admin"],
+      ["/technical-configurations/dossiers", "global"],
+      ["/device-quota/categories", "regional_leader"],
+      ["/device-quota/decisions/123", "to_qltb"],
+      ["/dashboard", "user"],
+      ["/access-denied", "user"],
+    ])("allows %s to continue for role %s", async (pathname, role) => {
+      const handler = await loadHandler()
+
+      const response = handler(
+        createMiddlewareRequest(pathname, {
+          id: "42",
+          role,
+        })
+      )
+
+      expect(response).toEqual({ type: "next" })
+      expect(nextResponseRedirectMock).not.toHaveBeenCalled()
+    })
+
+    it("fails closed for a protected route when the role claim is missing", async () => {
+      const handler = await loadHandler()
+
+      const response = handler(
+        createMiddlewareRequest("/activity-logs", {
+          id: "42",
+        })
+      )
+
+      expect(response).toEqual({
+        type: "redirect",
+        url: expect.any(URL),
+      })
+    })
+
+    it("lets an unmapped public static asset continue without authentication", async () => {
+      const handler = await loadHandler()
+
+      const response = handler(createMiddlewareRequest("/login-illustration.png", {}))
+
+      expect(response).toEqual({ type: "next" })
+    })
+
+    it("does not treat a Next data request as a public static asset", async () => {
+      const handler = await loadHandler()
+
+      const response = handler(createMiddlewareRequest("/_next/data/abc/dashboard.json", {}))
+
+      expect(response).toEqual({
+        type: "redirect",
+        url: expect.any(URL),
+      })
+    })
   })
 
   describe("matcher config", () => {
     async function loadMatcher() {
       vi.stubEnv("NODE_ENV", "production")
       const mod = await loadMiddleware()
-      const matcher = Array.isArray(mod.config.matcher)
-        ? mod.config.matcher
-        : [mod.config.matcher]
-      const regexes = matcher.map(
-        (pattern: string) => new RegExp(`^${pattern}$`),
-      )
-      return (pathname: string) => regexes.some((re) => re.test(pathname))
+      const { unstable_doesMiddlewareMatch } = await import("next/experimental/testing/server")
+
+      return (pathname: string) =>
+        unstable_doesMiddlewareMatch({
+          config: mod.config,
+          url: new URL(pathname, "https://example.test").toString(),
+        })
     }
 
     // Real URLs (route groups like (app) do NOT appear in the URL path,
@@ -136,6 +259,8 @@ describe("auth middleware kill switch", () => {
       "/maintenance",
       "/transfers",
       "/device-quota",
+      "/device-quota/decisions/123.pdf",
+      "/_next/data/abc/dashboard.json",
       "/reports",
       "/qr-scanner",
       "/activity-logs",
@@ -143,23 +268,25 @@ describe("auth middleware kill switch", () => {
       "/users",
     ]
 
-    const publicPaths = [
+    const matcherExcludedPaths = [
       "/",
       "/api/auth/callback/credentials",
       "/api/rpc/foo",
       "/_next/static/chunks/main.js",
       "/_next/image",
-      "/_next/data/abc/dashboard.json",
       "/favicon.ico",
       "/manifest.json",
       "/assets/logo.svg",
-      "/Logo master.png",
-      "/login-illustration.png",
       "/sw.js",
       "/workbox-runtime.js",
       "/icons/icon-192x192.png",
       "/icons/icon-maskable-512x512.png",
       "/screenshots/placeholder-mobile.png",
+    ]
+
+    const middlewareBypassedStaticPaths = [
+      "/Logo master.png",
+      "/login-illustration.png",
       "/robots.txt",
       "/sitemap.xml",
       "/some/nested/example.webp",
@@ -171,9 +298,17 @@ describe("auth middleware kill switch", () => {
       expect(matches(p)).toBe(true)
     })
 
-    it.each(publicPaths)("matcher excludes public path %s", async (p) => {
+    it.each(matcherExcludedPaths)("matcher excludes infrastructure path %s", async (p) => {
       const matches = await loadMatcher()
       expect(matches(p)).toBe(false)
     })
+
+    it.each(middlewareBypassedStaticPaths)(
+      "matcher includes static-looking path %s for policy-aware bypass",
+      async (p) => {
+        const matches = await loadMatcher()
+        expect(matches(p)).toBe(true)
+      }
+    )
   })
 })
