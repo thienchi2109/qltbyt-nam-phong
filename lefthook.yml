@@ -14,9 +14,17 @@ pre-commit:
     verify-python-docstrings:
       run: node scripts/npm-run.js run verify:python-docstrings:changed
 
+post-commit:
+  parallel: false
+  commands:
+    db-quality-gate-local:
+      run: node scripts/npm-run.js run db:quality-gate:local
+
 pre-push:
   parallel: false
   commands:
+    db-quality-gate-local:
+      run: node scripts/npm-run.js run db:quality-gate:local
     verify-no-explicit-any:
       run: node scripts/npm-run.js run verify:no-explicit-any
     verify-dedupe:

@@ -289,25 +289,34 @@ immutable run ID and SHALL use GitHub only as an audit pointer.
 - **THEN** the result is INCOMPLETE
 - **AND** the GitHub summary cannot substitute for machine evidence
 
-### Requirement: Protected Git trust anchor
+### Requirement: Local migration gate trigger
 
-The system SHALL require protected `main` before trusting the legacy cutover or
-applied-migration lock.
+The system SHALL run local static validation when a repository diff changes a
+canonical migration or committed DB Quality Gate registry.
 
-#### Scenario: Phase 1 protection is active
+#### Scenario: Unrelated local change
 
-- **GIVEN** gate activation is requested
-- **WHEN** the Git trust boundary is verified
-- **THEN** `main` requires pull-request updates and the secret-free static gate
-- **AND** force-push and branch deletion are disabled
-- **AND** any break-glass path is explicit and auditable
+- **GIVEN** the repository diff changes no canonical migration or gate registry
+- **WHEN** the local migration gate runs
+- **THEN** it exits successfully with `SKIP`
+- **AND** it does not execute the static lane
 
-#### Scenario: Main remains unprotected
+#### Scenario: Migration or gate registry changes
 
-- **GIVEN** the legacy cutover or applied lock would rely on Git history
-- **WHEN** required branch protection is absent
-- **THEN** gate activation is INCOMPLETE
-- **AND** the lock is not treated as a trusted enforcement record
+- **GIVEN** the repository diff changes a canonical migration, applied lock,
+  baseline, waiver, invariant, or SQL-test registry
+- **WHEN** Lefthook runs after commit or before push
+- **THEN** the existing static lane executes
+- **AND** its `PASS`, `FAILED`, or `INCOMPLETE` result controls the hook exit
+  code
+- **AND** pre-push blocks publication when the result is not `PASS`
+
+#### Scenario: Local trigger cannot be evaluated
+
+- **GIVEN** changed-file discovery, report parsing, or outcome validation fails
+- **WHEN** the local migration gate runs
+- **THEN** it reports `INCOMPLETE`
+- **AND** it exits with code `2`
 
 ### Requirement: Exact landed-commit pre-live boundary
 
@@ -397,29 +406,31 @@ reconciliation after verified live read-back.
 - **AND** the applied-lock record may still be reconciled independently
 - **AND** no later live migration may proceed
 
-### Requirement: Phase 1 enforcement and Phase 2 boundary
+### Requirement: Local static enforcement and manual dynamic boundary
 
-The system SHALL enforce static validation in Phase 1 without provisioning a
-self-hosted GitHub runner.
+The system SHALL enforce static validation locally without provisioning GitHub
+workflows, branch rulesets, or a self-hosted runner.
 
-#### Scenario: Pull request changes migrations
+#### Scenario: Static validation completes locally
 
-- **GIVEN** a pull request changes canonical migration source or gate registries
-- **WHEN** GitHub-hosted CI runs
-- **THEN** secret-free static validation runs
-- **AND** the workflow requires no Oracle or live database credential
+- **GIVEN** a relevant local diff
+- **WHEN** the static lane completes
+- **THEN** the hook prints a concise outcome, digest, and finding counts
+- **AND** it does not print individual historical finding records
+- **AND** it requires no Oracle or live database credential
 
-#### Scenario: Dynamic validation is required in Phase 1
+#### Scenario: Dynamic validation is required
 
 - **GIVEN** baseline-forward or pre-live evidence is required
 - **WHEN** the dynamic lane runs
 - **THEN** it executes through the approved Oracle/manual path
 - **AND** inability to run is INCOMPLETE
-- **AND** GitHub static success does not imply dynamic PASS
+- **AND** local static success does not imply dynamic PASS
 
-#### Scenario: Self-hosted runner is requested
+#### Scenario: GitHub enforcement is requested
 
-- **GIVEN** Phase 2 runner integration is proposed
+- **GIVEN** a GitHub workflow, protected-branch ruleset, or runner integration is
+  proposed
 - **WHEN** the current change boundary is evaluated
-- **THEN** runner provisioning is excluded
-- **AND** a separate reviewed security decision and proposal are required
+- **THEN** it is excluded
+- **AND** a separate reviewed proposal is required

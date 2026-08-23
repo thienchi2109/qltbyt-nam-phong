@@ -4,6 +4,19 @@ Tai lieu nay chi danh cho Oracle test VM. Live Supabase luon read-only trong
 toan bo quy trinh nay. Khong dung Supabase CLI, khong tao cron/timer tren Codex
 VPS, va khong chay migration candidate truc tiep tren `qltbyt_test`.
 
+## Local static gate
+
+Lefthook tu dong chay lenh sau o `post-commit` de bao ngay va o `pre-push` de
+chan publish khi diff co migration hoac registry cua DB Quality Gate:
+
+```bash
+node scripts/npm-run.js run db:quality-gate:local
+```
+
+Diff khong lien quan tra ve `SKIP`. Diff lien quan tra ve mot dong tom tat
+`PASS`, `FAILED`, hoac `INCOMPLETE` kem digest va so luong finding. This local
+command does not run baseline-forward, connect to Oracle, or write live DB.
+
 ## Bien moi truong tren Codex VPS
 
 ```bash

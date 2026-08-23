@@ -301,11 +301,12 @@ If a task seems to require a forbidden CLI command, STOP and ask the user — th
 This section must remain semantically aligned with the corresponding section in
 `CLAUDE.md`.
 
-**Status on 2026-08-18:** the repository harness implements `static` and
-`baseline-forward`, and the private Oracle test database is operational. The
-blocking pre-live gate is exactly those two lanes on the same landed commit.
-Full migration-history reconstruction is deferred outside this gate and is not
-a prerequisite for live-apply review.
+**Status on 2026-08-23:** the repository harness implements `static` and
+`baseline-forward`, the private Oracle test database is operational, and
+Lefthook enforces the static lane for relevant local migration work. The
+blocking pre-live gate is exactly static plus manual Oracle baseline-forward on
+the same landed commit. Full migration-history reconstruction is deferred
+outside this gate and is not a prerequisite for live-apply review.
 
 ### Hard Boundaries
 
@@ -333,8 +334,9 @@ a prerequisite for live-apply review.
 
 ### Required Cadence
 
-- Static migration checks: every migration-related diff, before commit and
-  push where applicable, and on pull requests.
+- Static migration checks: every migration-related diff. Lefthook runs
+  `node scripts/npm-run.js run db:quality-gate:local` after commit for immediate
+  feedback and before push for enforcement; unrelated diffs return `SKIP`.
 - Baseline-forward validation: every migration-related diff, applying only the
   pending migration set to a disposable clone of the restored baseline. Before
   live apply, both static and baseline-forward must PASS for the exact landed
@@ -364,12 +366,14 @@ a prerequisite for live-apply review.
   by the committed gate registry; never run the entire `supabase/tests` corpus
   indiscriminately.
 
-### CI Rollout
+### Local Enforcement
 
-- Phase 1: GitHub-hosted CI runs secret-free static checks; Codex/manual
-  workflows run dynamic validation on the Oracle VM.
-- Phase 2: add a repository-scoped self-hosted runner on the Oracle VM only
-  after the harness is stable and the runner security boundary is reviewed.
+- `db:quality-gate:local` detects canonical migration and committed gate-registry
+  changes, runs only the static lane, and prints a concise outcome with digest.
+- Baseline-forward remains a separate manual Oracle operation and is never
+  started by Lefthook.
+- No GitHub Action, protected-branch ruleset, or self-hosted runner is part of
+  the current gate.
 
 ## Database Backup
 

@@ -12,6 +12,7 @@ export const APPLIED_LOCK_PATH = "supabase/applied-migrations.lock.json"
 export const BASELINE_PATH = "supabase/db-quality-gate-baseline.json"
 /** Exact-bound approval registry for dangerous migration findings. */
 export const WAIVERS_PATH = "supabase/db-quality-gate-waivers.json"
+const STATIC_DIFF_FILTER = "ACMRD"
 
 /** Narrows a repository diff to canonical migrations and static-gate metadata. */
 export function staticChangedFiles(changedFiles: string[]): string[] {
@@ -28,5 +29,5 @@ export function staticChangedFiles(changedFiles: string[]): string[] {
 
 /** Collects the ordinary static-lane diff using the production default base ref. */
 export function collectStaticChangedFiles(baseRef = DEFAULT_STATIC_BASE_REF): string[] {
-  return staticChangedFiles(collectChangedFiles(baseRef))
+  return staticChangedFiles(collectChangedFiles(baseRef, { diffFilter: STATIC_DIFF_FILTER }))
 }

@@ -23,8 +23,10 @@ separate authorization required for every live database write.
   clones of the restored baseline.
 - Add exact landed-commit pre-live review and a fail-closed post-apply
   reconciliation state machine.
-- Add Phase 1 repository enforcement through Lefthook, secret-free pull-request
-  CI, protected `main`, and operator runbooks.
+- Add local repository enforcement through migration-aware Lefthook checks and
+  concise operator output.
+- Keep GitHub Actions, protected-branch rulesets, and self-hosted runners
+  outside the current change.
 - Defer full migration-history reconstruction and scheduling to a separate
   future maintenance design; neither is part of the blocking pre-live gate.
 - Keep Phase 2 self-hosted GitHub runner provisioning outside this change until
@@ -42,7 +44,7 @@ separate authorization required for every live database write.
   - `supabase/db-quality-gate-waivers.json`
   - `supabase/db-quality-gate-invariants.json`
   - `supabase/db-quality-gate-tests.json`
-  - `package.json`, `lefthook.yml`, and a secret-free pull-request workflow
+  - `package.json` and `lefthook.yml`
   - DB Quality Gate and Oracle operations runbooks
 - Anticipated Oracle test-environment areas:
   - disposable database orchestration
@@ -56,10 +58,11 @@ separate authorization required for every live database write.
   - silence, prior or blanket permission, PASS, merge, approval, waiver, or a
     scheduled trigger never grants live-write permission
   - any permitted live write must use Supabase MCP
-- Implementation:
-  - this change contains proposal artifacts only
-  - no harness, test implementation, migration, CI configuration, dependency,
-    timer, Oracle database mutation, or live database write is included
+- Phase 7 implementation:
+  - local static-gate orchestration, focused tests, Lefthook wiring, and
+    matching operator guidance only
+  - no migration, GitHub workflow or ruleset, dependency, timer, Oracle
+    database mutation, or live database write is included
 
 ## Wayfinder Traceability
 

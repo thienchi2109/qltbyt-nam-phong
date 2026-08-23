@@ -31,6 +31,7 @@
     "react-doctor:verbose": "npx -y -p node@22 -p react-doctor@latest react-doctor . --verbose -y --project . --offline --scope changed --base origin/main",
     "react-doctor:score": "npx -y -p node@22 -p react-doctor@latest react-doctor . --score --project . --offline --scope full",
     "db:quality-gate": "node scripts/db-quality-gate/run-cli.cjs",
+    "db:quality-gate:local": "node scripts/db-quality-gate/run-local-migration-gate.cjs",
     "db:quality-gate:baseline": "node scripts/db-quality-gate/run-baseline-maintenance.cjs",
     "db:quality-gate:read-back": "node scripts/db-quality-gate/run-read-back.cjs",
     "db:quality-gate:reconcile-lock": "node scripts/db-quality-gate/run-reconciliation-lock.cjs",

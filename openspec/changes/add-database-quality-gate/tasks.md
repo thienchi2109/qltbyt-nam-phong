@@ -197,28 +197,26 @@ target and operation in that rollout session. This covers migration apply, data
 mutation, DDL/DCL, grants, policies, functions, triggers, schemas, extensions,
 migration metadata, and state-changing RPC or function calls.
 
-## Phase 7 - Phase 1 Enforcement and Operations
+## Phase 7 - Local Migration Enforcement
 
-**Purpose:** Make the implemented gate enforceable without introducing Phase 2.
+**Purpose:** Run the existing static lane automatically for relevant local
+migration work without adding GitHub enforcement.
 
-- [ ] 7.1 Add migration-aware Lefthook integration for required static checks.
-- [ ] 7.2 Add secret-free pull-request CI for static migration validation.
-- [ ] 7.3 Define and test the protected-`main` ruleset and activation procedure:
-      PR-only updates, required static gate, no force-push/deletion, and
-      auditable break-glass handling. Activate it only after the required
-      workflow is landed.
-- [ ] 7.4 Confirm manual/Oracle dynamic evidence remains a separate mandatory
-      pre-live boundary rather than a GitHub-hosted dynamic check.
-- [ ] 7.5 Add operator runbooks for local static checks, Oracle manual runs,
-      evidence lookup, baseline recovery, pre-live review, and
-      reconciliation.
-- [ ] 7.6 Update `AGENTS.md` and `CLAUDE.md` together only after the implemented
-      harness contract is verified.
-- [ ] 7.7 Prove no self-hosted GitHub runner, inbound database exposure,
-      Supabase CLI database path, or automatic live apply was introduced.
+- [x] 7.1 Add focused RED tests for migration and gate-registry triggers,
+      concise outcome reporting, exit-code propagation, and fail-closed errors.
+- [x] 7.2 Add one local wrapper that reuses changed-file discovery and the
+      existing static gate command.
+- [x] 7.3 Add the wrapper to Lefthook `post-commit` and `pre-push`.
+- [x] 7.4 Document the local command and confirm baseline-forward remains a
+      separate manual Oracle operation.
+- [x] 7.5 Update `AGENTS.md` and `CLAUDE.md` together after the local contract is
+      verified.
+- [x] 7.6 Prove no GitHub workflow, ruleset, self-hosted runner, inbound database
+      exposure, Supabase CLI database path, Oracle baseline mutation, or
+      automatic live apply was introduced.
 
-**Review boundary:** Phase 1 only. Phase 2 requires a separate proposal after
-runner-security review.
+**Review boundary:** Local repository enforcement only. Protected Git,
+GitHub-hosted CI, self-hosted runners, and Phase 8 implementation are excluded.
 
 ## Phase 8 - Verification and Independent Review
 
@@ -227,7 +225,7 @@ runner-security review.
 - [ ] 8.1 Run formatting and all repository gates required by the changed
       implementation languages.
 - [ ] 8.2 Run all focused unit, fixture-repository, disposable-database,
-      fault-injection, state-machine, workflow, and runbook contract tests.
+      fault-injection, state-machine, local-hook, and runbook contract tests.
 - [ ] 8.3 Run the implemented static and baseline-forward lanes on the exact
       commit and verify report determinism and exit codes.
 - [ ] 8.4 Run `openspec validate add-database-quality-gate --strict` and inspect
@@ -236,32 +234,8 @@ runner-security review.
       and Wayfinder #936; resolve valid findings and repeat until clear.
 - [ ] 8.6 Verify the final diff remains within the approved implementation
       boundary and contains no unrelated migration or debt remediation.
-- [ ] 8.7 Record rollback and recovery readiness for ruleset activation,
+- [ ] 8.7 Record rollback and recovery readiness for local enforcement,
       baseline state, and Oracle evidence.
 
 **Review boundary:** No live database write or migration apply is part of
 implementation verification.
-
-## Phase 9 - Phase 1 Activation and Handoff
-
-**Purpose:** Activate the reviewed gate and leave an auditable operating state.
-
-- [ ] 9.1 Merge and push the runner, static workflow, and ruleset definition
-      through the existing approved repository process.
-- [ ] 9.2 Activate protected `main` with the implemented static gate required.
-- [ ] 9.3 Verify the committed legacy cutover and append-only lock against the
-      exact protected `main` SHA without modifying migration SQL.
-- [ ] 9.4 Confirm all committed registries and baseline evidence are complete
-      and reviewable.
-- [ ] 9.5 Verify static and baseline-forward both PASS on the exact landed
-      activation commit.
-- [ ] 9.6 Confirm GitHub contains the audit pointer and Oracle contains the full
-      report for the activation run.
-- [ ] 9.7 Confirm Phase 2 remains disabled and create a separate Wayfinder
-      decision before any self-hosted runner work.
-- [ ] 9.8 Update linked issue and PR status, push all repository changes,
-      verify the branch is synchronized, and hand off the exact commands and
-      recovery state.
-
-**Final boundary:** Activation establishes the gate only. It does not authorize
-or perform a live migration.

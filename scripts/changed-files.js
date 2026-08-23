@@ -1,5 +1,6 @@
 const { execFileSync } = require("node:child_process")
 
+const DEFAULT_DIFF_FILTER = "ACMR"
 const GIT_EXECUTABLE = "/usr/bin/git"
 const IGNORED_PATH_SEGMENTS = [".git", ".next", "build", "coverage", "dist", "node_modules"]
 
@@ -23,25 +24,30 @@ function runGit(args) {
   }
 }
 
-function getCommittedChangedFiles(baseRef, runGitImpl) {
+function getCommittedChangedFiles(baseRef, runGitImpl, diffFilter = DEFAULT_DIFF_FILTER) {
   try {
-    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}...HEAD`])
+    return runGitImpl(["diff", "--name-only", `--diff-filter=${diffFilter}`, `${baseRef}...HEAD`])
   } catch (error) {
     if (!baseRef) {
       throw error
     }
 
-    return runGitImpl(["diff", "--name-only", "--diff-filter=ACMR", `${baseRef}..HEAD`])
+    return runGitImpl(["diff", "--name-only", `--diff-filter=${diffFilter}`, `${baseRef}..HEAD`])
   }
 }
 
 function collectChangedFiles(
   baseRef,
-  { runGitImpl = runGit, includeFile = () => true, fileExists = () => true } = {}
+  {
+    diffFilter = DEFAULT_DIFF_FILTER,
+    runGitImpl = runGit,
+    includeFile = () => true,
+    fileExists = () => true,
+  } = {}
 ) {
-  const committed = getCommittedChangedFiles(baseRef, runGitImpl)
-  const unstaged = runGitImpl(["diff", "--name-only", "--diff-filter=ACMR"])
-  const staged = runGitImpl(["diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+  const committed = getCommittedChangedFiles(baseRef, runGitImpl, diffFilter)
+  const unstaged = runGitImpl(["diff", "--name-only", `--diff-filter=${diffFilter}`])
+  const staged = runGitImpl(["diff", "--cached", "--name-only", `--diff-filter=${diffFilter}`])
   const untracked = runGitImpl(["ls-files", "--others", "--exclude-standard"])
 
   return [...new Set([...committed, ...unstaged, ...staged, ...untracked])]
@@ -52,6 +58,7 @@ function collectChangedFiles(
 
 module.exports = {
   collectChangedFiles,
+  DEFAULT_DIFF_FILTER,
   GIT_EXECUTABLE,
   getCommittedChangedFiles,
   isIgnoredPath,

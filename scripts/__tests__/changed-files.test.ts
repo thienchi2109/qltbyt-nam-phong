@@ -56,4 +56,39 @@ describe("changed-files", () => {
 
     expect(getCommittedChangedFiles("origin/main", runGitImpl)).toEqual(["scripts/check.js"])
   })
+
+  it("retains committed, staged, and unstaged deletions when requested", () => {
+    const runGitImpl = (args: string[]) => {
+      const command = args.join(" ")
+
+      if (command === "diff --name-only --diff-filter=ACMRD main...HEAD") {
+        return ["supabase/migrations/20260823000000_deleted.sql"]
+      }
+
+      if (command === "diff --name-only --diff-filter=ACMRD") {
+        return ["supabase/db-quality-gate-waivers.json"]
+      }
+
+      if (command === "diff --cached --name-only --diff-filter=ACMRD") {
+        return ["supabase/db-quality-gate-baseline.json"]
+      }
+
+      if (command === "ls-files --others --exclude-standard") {
+        return []
+      }
+
+      return []
+    }
+
+    expect(
+      collectChangedFiles("main", {
+        diffFilter: "ACMRD",
+        runGitImpl,
+      })
+    ).toEqual([
+      "supabase/db-quality-gate-baseline.json",
+      "supabase/db-quality-gate-waivers.json",
+      "supabase/migrations/20260823000000_deleted.sql",
+    ])
+  })
 })

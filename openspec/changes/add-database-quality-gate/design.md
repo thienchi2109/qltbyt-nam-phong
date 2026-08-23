@@ -253,24 +253,22 @@ operation fails.
 No later live migration may proceed until both branches complete. A live apply
 is not rolled back solely because reconciliation failed.
 
-### 10. Introduce Phase 1 enforcement before trusting the cutover
+### 10. Enforce migration static checks locally
 
-Phase 1 adds:
+Phase 7 adds:
 
-- focused tests and package commands
-- migration-aware Lefthook checks
-- secret-free pull-request static CI
-- a protected-`main` ruleset requiring PR updates and the static DB gate
-- no force-push or deletion
-- an explicit auditable break-glass policy
-- Oracle dynamic runbooks
+- focused tests and one package command
+- migration-aware Lefthook checks at post-commit and pre-push
+- concise `PASS`, `FAILED`, `INCOMPLETE`, or `SKIP` output
+- operator guidance that keeps Oracle baseline-forward manual
 
-Manual and Oracle dynamic evidence remains mandatory before live permission; it
-is not represented as a GitHub-hosted dynamic check.
+The local wrapper reuses the existing changed-file collector and static-lane
+command. GitHub Actions, protected-branch rulesets, break-glass procedures, and
+self-hosted runners are outside this change.
 
-Phase 2 self-hosted runner provisioning is deferred. The Phase 1 harness must be
-runner-neutral so a future reviewed runner can invoke the same contracts without
-changing gate semantics.
+Manual Oracle dynamic evidence remains mandatory before live permission.
+Protected-Git-dependent pre-live and reconciliation paths remain fail-closed
+and dormant while no protected-main trust anchor is configured.
 
 ## Risks / Trade-offs
 
@@ -306,15 +304,13 @@ changing gate semantics.
 3. Bootstrap reviewed security, invariant, waiver, and SQL-test registries.
 4. Implement disposable Oracle execution and fault-injection coverage.
 5. Implement baseline health, catch-up, evidence, and reconciliation state.
-6. Land the runner, local hooks, secret-free PR CI, runbooks, and reviewed
-   ruleset definition.
-7. Activate protected `main` with the implemented static check.
+6. Add and verify the migration-aware local Lefthook command.
+7. Keep baseline-forward and pre-live execution on the documented manual Oracle
+   path.
 8. Verify the committed legacy cutover and append-only lock without changing
    migration SQL.
-9. Run static and baseline-forward on the exact landed activation commit and
-   retain digest-bearing Oracle evidence.
-10. Remove interim guidance only after the implemented gate and operations are
-    verified.
+9. Run static and baseline-forward on the exact landed commit before any
+   separately authorized live apply and retain digest-bearing Oracle evidence.
 
 No rollout step applies a migration to live. A future migration still follows
 the exact permission and reconciliation lifecycle.
@@ -332,12 +328,11 @@ the exact permission and reconciliation lifecycle.
   failed read-back, lock failure, and baseline recovery.
 - State-machine tests prove that PASS never grants live permission and no later
   apply can proceed before reconciliation completes.
-- Workflow tests prove that PR CI is static and secret-free, protected `main` is
-  active before cutover trust, and no Phase 2 runner is provisioned.
+- Local-hook tests prove that relevant diffs run the static lane, unrelated
+  diffs skip it, failures propagate, and no GitHub runner is provisioned.
 
 ## Open Questions
 
-None block implementation. Internal module names, the optional SQL parser, the
-exact Oracle evidence directory layout and retention period, and the concrete
-GitHub ruleset mechanism remain implementation-level choices that must preserve
-this contract.
+None block implementation. Internal module names, the optional SQL parser, and
+the exact Oracle evidence directory layout and retention period remain
+implementation-level choices that must preserve this contract.
