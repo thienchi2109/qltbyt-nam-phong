@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -72,6 +72,26 @@ const initialDraft: TechnicalConfigurationBaselineEditorDraft = {
       subgroups: [],
     },
   ],
+}
+
+type SelectUser = {
+  click: (element: Element) => Promise<void>
+  keyboard: (text: string) => Promise<void>
+}
+
+async function openCriterionOwnerSelect(user: SelectUser, name: string | RegExp) {
+  const trigger = screen.getByRole("combobox", { name })
+  act(() => trigger.focus())
+  await user.keyboard("{ArrowDown}")
+}
+
+async function selectCriterionOwnerOption(
+  user: SelectUser,
+  name: string | RegExp,
+  optionName: string
+) {
+  await openCriterionOwnerSelect(user, name)
+  await user.click(await screen.findByRole("option", { name: optionName }))
 }
 
 function AuthoringHarness(): React.JSX.Element {
@@ -224,12 +244,7 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     const user = userEvent.setup()
     render(<AuthoringHarness />)
 
-    await user.selectOptions(
-      screen.getByRole("combobox", {
-        name: "Chuyển tiêu chí trực tiếp 1 của nhóm I",
-      }),
-      "section-a:subgroup-a"
-    )
+    await selectCriterionOwnerOption(user, "Chuyển tiêu chí trực tiếp 1 của nhóm I", "I.1 Hạ tầng")
 
     const subgroup = screen.getByRole("region", {
       name: "Nhóm con 1 của nhóm I: Hạ tầng",
@@ -237,11 +252,10 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     expect(within(subgroup).getByDisplayValue("Nguồn điện ổn định")).toBeInTheDocument()
     expect(within(subgroup).getByText("TC-0001")).toBeInTheDocument()
 
-    await user.selectOptions(
-      within(subgroup).getByRole("combobox", {
-        name: "Chuyển tiêu chí 2 của nhóm con 1, nhóm I",
-      }),
-      "section-b:direct"
+    await selectCriterionOwnerOption(
+      user,
+      "Chuyển tiêu chí 2 của nhóm con 1, nhóm I",
+      "II. Yêu cầu bổ sung - Trực tiếp"
     )
 
     const secondSection = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
