@@ -266,19 +266,24 @@ coverage, and gate registry entries only.
 **Deploy boundary:** backward-compatible for global/admin and dormant for
 experts; no account creation is enabled.
 
-- [ ] 11.1 Add
+- [x] 11.1 Add
       `_technical_configuration_require_authorized_user()` for
       `global/admin/chuyen_gia`.
-- [ ] 11.2 Redefine `_technical_configuration_require_global_user()` as a
+- [x] 11.2 Redefine `_technical_configuration_require_global_user()` as a
       compatibility wrapper without editing applied migrations.
-- [ ] 11.3 Update only new or replaced module functions to use the canonical
+- [x] 11.3 Update only new or replaced module functions to use the canonical
       helper.
-- [ ] 11.4 Add a transitive SQL assertion proving every authenticated module RPC
+- [x] 11.4 Add a transitive SQL assertion proving every authenticated module RPC
       reaches the guard and no unrelated RPC reaches it.
-- [ ] 11.5 Extend representative read, write, import/export, copy, lock,
+- [x] 11.5 Extend representative read, write, import/export, copy, lock,
       assessment, and comparison gates with expert allow cases.
-- [ ] 11.6 Run migration `static` and Oracle `baseline-forward` for the exact
+- [x] 11.6 Run migration `static` and Oracle `baseline-forward` for the exact
       landed commit.
+
+> Gate disposition on 2026-08-24: Oracle `baseline-forward` passed. The
+> `static` lane was run and received an explicit maintainer bypass for the
+> delegated-guard false positives tracked by #956; this is not an aggregate
+> database quality-gate PASS.
 
 **Exit gate:** global/admin domain assertions remain unchanged and both database
 gate lanes pass.
