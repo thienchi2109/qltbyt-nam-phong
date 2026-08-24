@@ -47,17 +47,17 @@ tests only.
 
 **Deploy boundary:** tests only; no runtime behavior changes.
 
-- [ ] 2.1 Add failing role type/label tests for canonical `chuyen_gia` and
+- [x] 2.1 Add failing role type/label tests for canonical `chuyen_gia` and
       display label `Chuyên gia`.
-- [ ] 2.2 Add a table-driven matrix proving
+- [x] 2.2 Add a table-driven matrix proving
       `isTechnicalConfigurationExpertRole()` accepts only `chuyen_gia` and
       `canAccessTechnicalConfigurations()` accepts only
       `global/admin/chuyen_gia`.
-- [ ] 2.3 Prove `chuyen_gia` remains false for `isGlobalRole()`,
+- [x] 2.3 Prove `chuyen_gia` remains false for `isGlobalRole()`,
       `isRegionalLeaderRole()`, `isEquipmentManagerRole()`,
       `canAccessDeviceQuotaModule()`, `isDeptScopedRole()`, and
       `isPrivilegedRole()`.
-- [ ] 2.4 Add JWT tests proving only raw `admin` normalizes to `global`, while
+- [x] 2.4 Add JWT tests proving only raw `admin` normalizes to `global`, while
       `chuyen_gia` remains unchanged.
 
 **Exit gate:** focused tests fail only because the new role primitives do not

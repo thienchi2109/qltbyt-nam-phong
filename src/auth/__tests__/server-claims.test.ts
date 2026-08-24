@@ -11,20 +11,26 @@ import {
 } from "../server-claims"
 
 describe("server auth claims", () => {
-  it("normalizes app roles for Postgres app_role claims", () => {
-    expect(toAppRoleClaim("admin")).toBe("global")
-    expect(toAppRoleClaim(" ADMIN ")).toBe("global")
-    expect(toAppRoleClaim("GLOBAL")).toBe("global")
-    expect(toAppRoleClaim(" To_Qltb ")).toBe("to_qltb")
+  it.each([
+    ["admin", "global"],
+    [" ADMIN ", "global"],
+    ["GLOBAL", "global"],
+    ["chuyen_gia", "chuyen_gia"],
+    [" CHUYEN_GIA ", "chuyen_gia"],
+    ["regional_leader", "regional_leader"],
+    [" To_Qltb ", "to_qltb"],
+    ["technician", "technician"],
+    ["qltb_khoa", "qltb_khoa"],
+    ["user", "user"],
+  ])("normalizes raw app role %j to %j", (role, expected) => {
+    expect(toAppRoleClaim(role)).toBe(expected)
   })
 
   it("rejects missing required user id claims", () => {
     expect(() => toRequiredUserIdClaim(undefined)).toThrow(
-      "Cannot mint Supabase RPC JWT without user id",
+      "Cannot mint Supabase RPC JWT without user id"
     )
-    expect(() => toRequiredUserIdClaim("")).toThrow(
-      "Cannot mint Supabase RPC JWT without user id",
-    )
+    expect(() => toRequiredUserIdClaim("")).toThrow("Cannot mint Supabase RPC JWT without user id")
   })
 
   it("maps optional JWT claims to strings or null", () => {
@@ -41,7 +47,7 @@ describe("server auth claims", () => {
         role: "admin",
         issuedAt: 100,
         expiresAt: 220,
-      }),
+      })
     ).toEqual({
       role: "authenticated",
       iat: 100,
@@ -49,6 +55,19 @@ describe("server auth claims", () => {
       sub: "42",
       user_id: "42",
       app_role: "global",
+    })
+  })
+
+  it("keeps the expert role unchanged in session profile refresh claims", () => {
+    expect(
+      buildSessionProfileJwtClaims({
+        userId: "42",
+        role: "chuyen_gia",
+        issuedAt: 100,
+        expiresAt: 220,
+      })
+    ).toMatchObject({
+      app_role: "chuyen_gia",
     })
   })
 
@@ -64,7 +83,7 @@ describe("server auth claims", () => {
         },
         issuedAt: 100,
         expiresAt: 220,
-      }),
+      })
     ).toEqual({
       role: "authenticated",
       iat: 100,
@@ -78,13 +97,28 @@ describe("server auth claims", () => {
     })
   })
 
+  it("keeps the expert role unchanged in Supabase RPC JWT claims", () => {
+    expect(
+      buildSupabaseRpcJwtClaims({
+        user: {
+          id: "31",
+          role: "chuyen_gia",
+        },
+        issuedAt: 100,
+        expiresAt: 220,
+      })
+    ).toMatchObject({
+      app_role: "chuyen_gia",
+    })
+  })
+
   it("rejects missing role before building RPC JWT claims", () => {
     expect(() =>
       buildSupabaseRpcJwtClaims({
         user: { id: "31", role: "" },
         issuedAt: 100,
         expiresAt: 220,
-      }),
+      })
     ).toThrow("Cannot mint Supabase RPC JWT without app_role")
   })
 })
