@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { TenantLogo } from "@/components/tenant-logo"
 import { TenantName } from "@/components/tenant-name"
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
 import { cn } from "@/lib/utils"
 import { ChangePasswordDialog } from "@/components/change-password-dialog"
 import { NotificationBellDialog } from "@/components/notification-bell-dialog"
@@ -61,6 +62,10 @@ type AppLayoutShellProps = {
   user: AppLayoutUser
 }
 
+type AppLayoutShellContentProps = AppLayoutShellProps & {
+  isExpertShell: boolean
+}
+
 const TOUR_ATTRIBUTES: Record<string, string> = {
   "/dashboard": "sidebar-nav-dashboard",
   "/equipment": "sidebar-nav-equipment",
@@ -76,18 +81,22 @@ const TOUR_ATTRIBUTES: Record<string, string> = {
  * Wraps authenticated app pages with shared navigation, header actions, and mobile footer state.
  */
 export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
+  const isExpertShell = isTechnicalConfigurationExpertRole(user.role)
+
   return (
-    <TenantSelectionProvider>
+    <TenantSelectionProvider enabled={!isExpertShell}>
       <EquipmentFilterProvider>
         <MobileFloatingActionsProvider>
-          <AppLayoutShellContent user={user}>{children}</AppLayoutShellContent>
+          <AppLayoutShellContent user={user} isExpertShell={isExpertShell}>
+            {children}
+          </AppLayoutShellContent>
         </MobileFloatingActionsProvider>
       </EquipmentFilterProvider>
     </TenantSelectionProvider>
   )
 }
 
-function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
+function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShellContentProps) {
   const pathname = usePathname()
   const isTechnicalConfigurationsRoute = pathname.startsWith("/technical-configurations")
   const { status, update } = useSession()
@@ -97,7 +106,7 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
   const { isSidebarOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } = uiState
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
-    enabled: status === "authenticated" && shouldFetchData,
+    enabled: !isExpertShell && status === "authenticated" && shouldFetchData,
     facilityId: selectedFacilityId,
   })
 
@@ -232,16 +241,18 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
               data-testid="app-header-actions"
               className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2"
             >
-              <HeaderEquipmentSearchEntry userRole={user.role} />
-
-              <RealtimeStatus variant="icon" className="hidden md:flex" />
-              <HelpButton className="hidden md:flex" />
-
-              <NotificationBellDialog
-                repairCount={notificationCounts.repair}
-                transferCount={notificationCounts.transfer}
-                maintenanceCount={notificationCounts.maintenance}
-              />
+              {isExpertShell ? null : (
+                <>
+                  <HeaderEquipmentSearchEntry userRole={user.role} />
+                  <RealtimeStatus variant="icon" className="hidden md:flex" />
+                  <HelpButton className="hidden md:flex" />
+                  <NotificationBellDialog
+                    repairCount={notificationCounts.repair}
+                    transferCount={notificationCounts.transfer}
+                    maintenanceCount={notificationCounts.maintenance}
+                  />
+                </>
+              )}
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -307,16 +318,20 @@ function AppLayoutShellContent({ children, user }: AppLayoutShellProps) {
 
           <MobileFooterNav notificationCounts={notificationCounts} />
 
-          <AppMobileFloatingActions
-            isAssistantOpen={isAssistantOpen}
-            onAssistantToggle={() => dispatchUi({ type: "toggleAssistant" })}
-          />
-          {isAssistantOpen ? (
-            <AssistantPanel
-              isOpen={isAssistantOpen}
-              onClose={() => dispatchUi({ type: "setAssistantOpen", isOpen: false })}
-            />
-          ) : null}
+          {isExpertShell ? null : (
+            <>
+              <AppMobileFloatingActions
+                isAssistantOpen={isAssistantOpen}
+                onAssistantToggle={() => dispatchUi({ type: "toggleAssistant" })}
+              />
+              {isAssistantOpen ? (
+                <AssistantPanel
+                  isOpen={isAssistantOpen}
+                  onClose={() => dispatchUi({ type: "setAssistantOpen", isOpen: false })}
+                />
+              ) : null}
+            </>
+          )}
 
           <footer className="hidden flex-col items-center gap-1 border-t border-border bg-muted p-4 text-center caption-responsive md:flex">
             <div className="flex items-center gap-1 text-muted-foreground">

@@ -141,15 +141,15 @@ current roles retain route behavior.
 **Deploy boundary:** dormant for current users; no server authorization is
 changed.
 
-- [ ] 6.1 Add exact-expert shell mode using
+- [x] 6.1 Add exact-expert shell mode using
       `isTechnicalConfigurationExpertRole()`, not the broader module capability.
-- [ ] 6.2 Hide tenant selection, equipment search, operational notifications,
+- [x] 6.2 Hide tenant selection, equipment search, operational notifications,
       AI Assistant, onboarding/help, and mobile feature actions.
-- [ ] 6.3 Disable each hidden feature's backing query/bootstrap so hidden UI
+- [x] 6.3 Disable each hidden feature's backing query/bootstrap so hidden UI
       cannot continue fetching.
-- [ ] 6.4 Keep `useTenantBranding()` enabled and scoped to assigned `don_vi`;
+- [x] 6.4 Keep `useTenantBranding()` enabled and scoped to assigned `don_vi`;
       retain app identity, account/role display, change password, and sign out.
-- [ ] 6.5 Add global/admin shell counter-tests and expert no-fetch assertions.
+- [x] 6.5 Add global/admin shell counter-tests and expert no-fetch assertions.
 
 **Exit gate:** focused shell tests pass without changing current-role rendering
 or requests.

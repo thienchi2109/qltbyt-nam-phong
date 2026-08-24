@@ -102,4 +102,24 @@ describe("TenantSelectionProvider", () => {
     expect(screen.getByTestId("selected-facility-id")).toHaveTextContent("undefined")
     expect(screen.getByTestId("should-fetch-data")).toHaveTextContent("false")
   })
+
+  it("disables tenant selection and facility bootstrap when the shell opts out", async () => {
+    mocks.useSession.mockReturnValue({
+      data: { user: { id: "u1", role: "global" } },
+      status: "authenticated",
+    })
+
+    render(
+      <TenantSelectionProvider enabled={false}>
+        <TenantSelectionProbe />
+      </TenantSelectionProvider>,
+      { wrapper: createWrapper() }
+    )
+
+    expect(screen.getByTestId("show-selector")).toHaveTextContent("false")
+    expect(screen.getByTestId("should-fetch-data")).toHaveTextContent("false")
+    await vi.waitFor(() => {
+      expect(mocks.callRpc).not.toHaveBeenCalled()
+    })
+  })
 })

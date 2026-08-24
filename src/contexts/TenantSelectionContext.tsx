@@ -31,16 +31,27 @@ const TenantSelectionContext = React.createContext<TenantSelectionContextValue |
 
 const STORAGE_KEY = "selectedFacilityId"
 
-export function TenantSelectionProvider({ children }: { children: React.ReactNode }) {
+type TenantSelectionProviderProps = {
+  children: React.ReactNode
+  enabled?: boolean
+}
+
+/** Provides tenant selection state and optionally disables its feature bootstrap. */
+export function TenantSelectionProvider({
+  children,
+  enabled = true,
+}: TenantSelectionProviderProps) {
   const { data: session, status } = useSession()
   const user = session?.user as { role?: string; dia_ban_id?: number } | undefined
 
   // Determine if user has multi-tenant selection privileges
-  const showSelector = isPrivilegedRole(user?.role)
+  const showSelector = enabled && isPrivilegedRole(user?.role)
 
   // State for selected facility with sessionStorage persistence
   // undefined = not selected yet, null = "all facilities", number = specific facility
-  const [selectedFacilityId, setSelectedFacilityIdState] = React.useState<number | null | undefined>(() => {
+  const [selectedFacilityId, setSelectedFacilityIdState] = React.useState<
+    number | null | undefined
+  >(() => {
     // Initialize from sessionStorage if available (client-side only)
     if (typeof window === "undefined") return undefined
     try {
@@ -54,8 +65,8 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
         return Number.isFinite(parsed) ? parsed : undefined
       }
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('sessionStorage read failed:', err)
+      if (process.env.NODE_ENV === "development") {
+        console.warn("sessionStorage read failed:", err)
       }
     }
     return undefined
@@ -63,7 +74,7 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
 
   // Clear sessionStorage when user logs out to prevent stale selections
   React.useEffect(() => {
-    if (status === 'unauthenticated') {
+    if (status === "unauthenticated") {
       setSelectedFacilityIdState(undefined)
       try {
         sessionStorage.removeItem(STORAGE_KEY)
@@ -86,8 +97,8 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
         sessionStorage.setItem(STORAGE_KEY, String(id))
       }
     } catch (err) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('sessionStorage write failed:', err)
+      if (process.env.NODE_ENV === "development") {
+        console.warn("sessionStorage write failed:", err)
       }
     }
   }, [])
@@ -96,16 +107,18 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
   const { data: facilities = [], isLoading } = useQuery<FacilityOption[]>({
     queryKey: ["facilities_with_equipment_count", { role: user?.role, diaBan: user?.dia_ban_id }],
     queryFn: async () => {
-      const result = await callRpc<{ id: number; name: string; code?: string; equipment_count: number }[]>({
+      const result = await callRpc<
+        { id: number; name: string; code?: string; equipment_count: number }[]
+      >({
         fn: "get_facilities_with_equipment_count",
-        args: {}
+        args: {},
       })
       // Map equipment_count to count for FacilityOption compatibility
-      return result.map(f => ({
+      return result.map((f) => ({
         id: f.id,
         name: f.name,
         code: f.code,
-        count: f.equipment_count
+        count: f.equipment_count,
       }))
     },
     enabled: status === "authenticated" && showSelector,
@@ -116,29 +129,36 @@ export function TenantSelectionProvider({ children }: { children: React.ReactNod
   // Non-privileged users can always fetch (server enforces their don_vi)
   // Privileged users must select a facility first (undefined = not selected, null = "all", number = specific)
   const shouldFetchData = React.useMemo(() => {
+    if (!enabled) return false
     if (status !== "authenticated") return false
     if (!showSelector) return true
     // undefined = not selected yet, block fetching
     // null = "all facilities" selected, allow fetching
     // number = specific facility selected, allow fetching
     return selectedFacilityId !== undefined
-  }, [selectedFacilityId, showSelector, status])
+  }, [enabled, selectedFacilityId, showSelector, status])
 
   // Memoize context value to prevent unnecessary re-renders
-  const value = React.useMemo<TenantSelectionContextValue>(() => ({
-    selectedFacilityId,
-    setSelectedFacilityId,
-    facilities,
-    showSelector,
-    isLoading,
-    shouldFetchData,
-  }), [selectedFacilityId, setSelectedFacilityId, facilities, showSelector, isLoading, shouldFetchData])
-
-  return (
-    <TenantSelectionContext.Provider value={value}>
-      {children}
-    </TenantSelectionContext.Provider>
+  const value = React.useMemo<TenantSelectionContextValue>(
+    () => ({
+      selectedFacilityId,
+      setSelectedFacilityId,
+      facilities,
+      showSelector,
+      isLoading,
+      shouldFetchData,
+    }),
+    [
+      selectedFacilityId,
+      setSelectedFacilityId,
+      facilities,
+      showSelector,
+      isLoading,
+      shouldFetchData,
+    ]
   )
+
+  return <TenantSelectionContext.Provider value={value}>{children}</TenantSelectionContext.Provider>
 }
 
 /**
