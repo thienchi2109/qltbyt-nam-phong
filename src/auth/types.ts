@@ -1,6 +1,8 @@
 import type { Session, User } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
+
 export interface AuthRpcUserRow {
   is_authenticated?: boolean
   user_id?: string | number | null
@@ -22,6 +24,7 @@ export interface AuthProfileRow {
   full_name: string | null
   dia_ban_id: number | null
   ma_dia_ban: string | null
+  role: string | null
 }
 
 export interface AuthUserInput {
@@ -37,6 +40,7 @@ export interface AuthUserInput {
   name?: string | null
 }
 
+/** Maps the authenticated RPC row into the custom NextAuth user payload. */
 export function buildAuthUserFromRpcResult(authResult: AuthRpcUserRow): User {
   return {
     id: String(authResult.user_id ?? ""),
@@ -52,6 +56,7 @@ export function buildAuthUserFromRpcResult(authResult: AuthRpcUserRow): User {
   }
 }
 
+/** Copies sign-in user fields into a new NextAuth JWT payload. */
 export function applyAuthUserToJwt(token: JWT, user: AuthUserInput): JWT {
   return {
     ...token,
@@ -67,23 +72,28 @@ export function applyAuthUserToJwt(token: JWT, user: AuthUserInput): JWT {
   }
 }
 
+/** Applies an authoritative database profile refresh to a NextAuth JWT. */
 export function applyJwtProfileRefresh(
   token: JWT,
-  profile: AuthProfileRow,
+  profile: AuthProfileRow & { role: string },
   resolvedDonVi: string | number | null,
   resolvedDiaBan: number | null,
   resolvedDiaBanMa: string | null
 ): JWT {
+  const isExpert = isTechnicalConfigurationExpertRole(profile.role)
+
   return {
     ...token,
+    role: profile.role,
     don_vi: resolvedDonVi,
-    khoa_phong: profile.khoa_phong || token.khoa_phong || null,
+    khoa_phong: isExpert ? profile.khoa_phong : profile.khoa_phong || token.khoa_phong || "",
     full_name: profile.full_name || token.full_name,
-    dia_ban_id: resolvedDiaBan ?? token.dia_ban_id ?? null,
-    dia_ban_ma: resolvedDiaBanMa ?? token.dia_ban_ma ?? null,
+    dia_ban_id: isExpert ? resolvedDiaBan : (resolvedDiaBan ?? token.dia_ban_id ?? null),
+    dia_ban_ma: isExpert ? resolvedDiaBanMa : (resolvedDiaBanMa ?? token.dia_ban_ma ?? null),
   }
 }
 
+/** Hydrates the client-facing NextAuth session from the trusted JWT payload. */
 export function applyJwtToSession(session: Session, token: JWT): Session {
   return {
     ...session,

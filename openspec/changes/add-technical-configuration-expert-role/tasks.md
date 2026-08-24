@@ -240,18 +240,18 @@ auth tests only.
 **Deploy boundary:** application phase must follow the additive Phase 9 database
 deployment; rollback is application-only because the new RPC can remain unused.
 
-- [ ] 10.1 Update profile types and `applyJwtProfileRefresh` to consume the new
+- [x] 10.1 Update profile types and `applyJwtProfileRefresh` to consume the new
       database role.
-- [ ] 10.2 For experts, authoritatively replace `don_vi`, resolved
+- [x] 10.2 For experts, authoritatively replace `don_vi`, resolved
       `dia_ban_id`/`dia_ban_ma`, and `khoa_phong`; clear stale department state
       when the authoritative value is null.
-- [ ] 10.3 Fail closed when refreshed expert `don_vi` or `dia_ban_id` is
+- [x] 10.3 Fail closed when refreshed expert `don_vi` or `dia_ban_id` is
       missing instead of reusing stale token scope.
-- [ ] 10.4 Invalidate/sign out on failed, empty, missing, or unsupported due
+- [x] 10.4 Invalidate/sign out on failed, empty, missing, or unsupported due
       refresh; do not mint RPC JWTs from stale authorization.
-- [ ] 10.5 Prove role changes converge on the first active refresh after the
+- [x] 10.5 Prove role changes converge on the first active refresh after the
       existing 60-second interval.
-- [ ] 10.6 Preserve current refresh behavior for every existing role.
+- [x] 10.6 Preserve current refresh behavior for every existing role.
 
 **Exit gate:** focused auth helper/callback/session suites pass and the deployed
 database prerequisite is documented.

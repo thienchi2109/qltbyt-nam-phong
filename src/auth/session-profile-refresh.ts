@@ -1,5 +1,7 @@
 import jwt from "jsonwebtoken"
 
+import { ROLES, type Role } from "@/lib/rbac"
+
 import { buildSessionProfileJwtClaims } from "./server-claims"
 import type { AuthProfileRow } from "./types"
 
@@ -7,6 +9,8 @@ const SUPABASE_JWT_CLOCK_SKEW_SECONDS = 60
 
 /** Minimum time between automatic session profile refresh attempts. */
 export const PROFILE_REFRESH_INTERVAL_MS = 60_000
+
+const SUPPORTED_SESSION_ROLES = new Set<string>(Object.values(ROLES))
 
 /** Raised when session profile refresh cannot be configured safely. */
 export class AuthRefreshConfigError extends Error {
@@ -48,11 +52,7 @@ export function buildSessionProfileJwt(userId: string, role: unknown): string {
     throw new AuthRefreshConfigError(getErrorMessage(error))
   }
 
-  return jwt.sign(
-    claims,
-    secret,
-    { algorithm: "HS256" }
-  )
+  return jwt.sign(claims, secret, { algorithm: "HS256" })
 }
 
 /** Extracts the first profile row returned by the profile refresh RPC. */
@@ -62,4 +62,14 @@ export function firstProfileRow(data: unknown): AuthProfileRow | null {
   }
 
   return (data as AuthProfileRow | null) ?? null
+}
+
+/** Returns a canonical supported database role or null for fail-closed refresh. */
+export function toSupportedSessionRole(role: unknown): Role | null {
+  if (typeof role !== "string") {
+    return null
+  }
+
+  const normalizedRole = role.trim().toLowerCase()
+  return SUPPORTED_SESSION_ROLES.has(normalizedRole) ? (normalizedRole as Role) : null
 }

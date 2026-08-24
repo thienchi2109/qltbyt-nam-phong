@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import jwt from "jsonwebtoken"
 
+import { getSessionClaims } from "@/app/api/rpc/[fn]/rpc-session-claims"
+
 vi.mock("server-only", () => ({}))
 
 type RpcProfileRow = {
@@ -11,6 +13,7 @@ type RpcProfileRow = {
   full_name: string | null
   dia_ban_id: number | null
   ma_dia_ban: string | null
+  role: string | null
 }
 
 const rpcProfileRowDefault: RpcProfileRow = {
@@ -21,6 +24,7 @@ const rpcProfileRowDefault: RpcProfileRow = {
   full_name: "Nguyen Quang Minh",
   dia_ban_id: 9,
   ma_dia_ban: "HN-01",
+  role: "to_qltb",
 }
 
 const supabaseState = vi.hoisted(() => ({
@@ -69,6 +73,8 @@ import { authOptions } from "@/auth/config"
 
 type JwtCb = NonNullable<NonNullable<typeof authOptions.callbacks>["jwt"]>
 type JwtArgs = Parameters<JwtCb>[0]
+type SessionCb = NonNullable<NonNullable<typeof authOptions.callbacks>["session"]>
+type SessionArgs = Parameters<SessionCb>[0]
 
 const baseToken = {
   id: "42",
@@ -92,6 +98,25 @@ async function runJwt(args: Partial<JwtArgs> & Pick<JwtArgs, "token">) {
     trigger: undefined,
     ...args,
   } as JwtArgs)
+}
+
+async function runSession(token: SessionArgs["token"]) {
+  const cb = authOptions.callbacks?.session
+  if (!cb) throw new Error("session callback not configured")
+  return cb({
+    session: {
+      expires: "2026-05-02T13:00:00.000Z",
+      user: {
+        name: "Expert User",
+        email: null,
+        image: null,
+      },
+    },
+    token,
+    user: undefined,
+    newSession: undefined,
+    trigger: "update",
+  } as SessionArgs)
 }
 
 function getRefreshClientCall() {
@@ -141,13 +166,14 @@ describe("authOptions.jwt session profile RPC refresh", () => {
     expect(supabaseClient.rpc).toHaveBeenCalledTimes(1)
     expect(supabaseState.rpcCalls).toEqual([
       {
-        fn: "get_session_profile_for_jwt",
+        fn: "get_session_authorization_profile_for_jwt",
         args: { p_user_id: "42" },
       },
     ])
     expect(supabaseClient.from).not.toHaveBeenCalled()
     expect(supabaseState.fromCalls).toEqual([])
     expect(result).toMatchObject({
+      role: "to_qltb",
       don_vi: 17,
       khoa_phong: "KT",
       full_name: "Nguyen Quang Minh",
@@ -156,6 +182,163 @@ describe("authOptions.jwt session profile RPC refresh", () => {
       lastRefreshAt: now,
     })
   })
+
+  it("converges from global to expert with authoritative scope on the first due refresh", async () => {
+    const now = Date.now()
+    supabaseState.rpcRows = [
+      {
+        ...rpcProfileRowDefault,
+        current_don_vi: 23,
+        don_vi: 23,
+        khoa_phong: null,
+        dia_ban_id: 12,
+        ma_dia_ban: "DB-12",
+        role: "chuyen_gia",
+      },
+    ]
+
+    const beforeDue = await runJwt({
+      token: {
+        ...baseToken,
+        role: "global",
+        khoa_phong: "OLD",
+        don_vi: 99,
+        dia_ban_id: 88,
+        dia_ban_ma: "OLD-AREA",
+        loginTime: now - 5 * 60_000,
+        lastRefreshAt: now - 59_999,
+      },
+    })
+
+    expect(supabaseState.rpcCalls).toHaveLength(0)
+    expect(beforeDue).toMatchObject({
+      role: "global",
+      khoa_phong: "OLD",
+      don_vi: 99,
+      dia_ban_id: 88,
+      dia_ban_ma: "OLD-AREA",
+    })
+
+    vi.advanceTimersByTime(1)
+    const refreshed = await runJwt({ token: beforeDue })
+
+    expect(supabaseState.rpcCalls).toEqual([
+      {
+        fn: "get_session_authorization_profile_for_jwt",
+        args: { p_user_id: "42" },
+      },
+    ])
+    expect(refreshed).toMatchObject({
+      role: "chuyen_gia",
+      khoa_phong: null,
+      don_vi: 23,
+      dia_ban_id: 12,
+      dia_ban_ma: "DB-12",
+      lastRefreshAt: now + 1,
+    })
+  })
+
+  it("applies an authoritative non-expert role change without changing existing scope fallback behavior", async () => {
+    supabaseState.rpcRows = [
+      {
+        ...rpcProfileRowDefault,
+        current_don_vi: null,
+        don_vi: 17,
+        khoa_phong: null,
+        dia_ban_id: null,
+        ma_dia_ban: null,
+        role: "user",
+      },
+    ]
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        role: "chuyen_gia",
+        khoa_phong: "OLD",
+        dia_ban_id: 9,
+        dia_ban_ma: "HN-01",
+        loginTime: Date.now() - 5 * 60_000,
+        lastRefreshAt: Date.now() - 5 * 60_000,
+      },
+    })
+
+    expect(result).toMatchObject({
+      role: "user",
+      don_vi: 17,
+      khoa_phong: "OLD",
+      dia_ban_id: 9,
+      dia_ban_ma: "HN-01",
+    })
+  })
+
+  it.each(["global", "admin", "regional_leader", "to_qltb", "technician", "qltb_khoa", "user"])(
+    "preserves successful refresh behavior for existing role %s",
+    async (role) => {
+      supabaseState.rpcRows = [
+        {
+          ...rpcProfileRowDefault,
+          khoa_phong: null,
+          dia_ban_id: null,
+          ma_dia_ban: null,
+          role,
+        },
+      ]
+
+      const result = await runJwt({
+        token: {
+          ...baseToken,
+          role,
+          khoa_phong: "OLD",
+          dia_ban_id: 9,
+          dia_ban_ma: "HN-01",
+          loginTime: Date.now() - 5 * 60_000,
+          lastRefreshAt: Date.now() - 5 * 60_000,
+        },
+      })
+
+      expect(result).toMatchObject({
+        role,
+        don_vi: 17,
+        khoa_phong: "OLD",
+        dia_ban_id: 9,
+        dia_ban_ma: "HN-01",
+      })
+    }
+  )
+
+  it.each(["global", "admin", "regional_leader", "to_qltb", "technician", "qltb_khoa", "user"])(
+    "keeps expert-to-%s refresh compatible with session and RPC claim validation",
+    async (role) => {
+      supabaseState.rpcRows = [
+        {
+          ...rpcProfileRowDefault,
+          khoa_phong: null,
+          role,
+        },
+      ]
+
+      const refreshed = await runJwt({
+        token: {
+          ...baseToken,
+          role: "chuyen_gia",
+          khoa_phong: null,
+          loginTime: Date.now() - 5 * 60_000,
+          lastRefreshAt: Date.now() - 5 * 60_000,
+        },
+      })
+      const session = await runSession(refreshed)
+
+      expect(session.user).toMatchObject({
+        role,
+        khoa_phong: "",
+      })
+      expect(getSessionClaims(session.user)).toMatchObject({
+        appRole: role === "admin" ? "global" : role,
+        khoaPhong: "",
+      })
+    }
+  )
 
   it("uses anon key with signed Authorization header instead of service role", async () => {
     await runJwt({

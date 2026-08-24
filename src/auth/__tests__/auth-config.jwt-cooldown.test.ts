@@ -11,6 +11,7 @@ type ProfileRow = {
   full_name: string | null
   dia_ban_id: number | null
   ma_dia_ban: string | null
+  role: string | null
 }
 
 const profileRowDefault: ProfileRow = {
@@ -21,6 +22,7 @@ const profileRowDefault: ProfileRow = {
   full_name: "Nguyen Quang Minh",
   dia_ban_id: 9,
   ma_dia_ban: "HN-01",
+  role: "to_qltb",
 }
 
 const supabaseState = vi.hoisted(() => ({
@@ -46,7 +48,7 @@ const supabaseClient = vi.hoisted(() => ({
   rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
     supabaseState.rpcCalls.push({ fn, args })
 
-    if (fn === "get_session_profile_for_jwt") {
+    if (fn === "get_session_authorization_profile_for_jwt") {
       return {
         data: supabaseState.profileRpcError ? null : supabaseState.profileRpcRows,
         error: supabaseState.profileRpcError,
@@ -139,7 +141,9 @@ async function runJwt(args: Partial<JwtArgs> & Pick<JwtArgs, "token">) {
 }
 
 function profileRefreshRpcCalls(): typeof supabaseState.rpcCalls {
-  return supabaseState.rpcCalls.filter((call) => call.fn === "get_session_profile_for_jwt")
+  return supabaseState.rpcCalls.filter(
+    (call) => call.fn === "get_session_authorization_profile_for_jwt"
+  )
 }
 
 function authJwtTelemetryLogs(infoSpy: ReturnType<typeof vi.spyOn>): AuthJwtTelemetryLog[] {
@@ -429,91 +433,94 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
     expect(result).not.toHaveProperty("id")
   })
 
-  it("throttles failed profile fetch retries without advancing lastRefreshAt", async () => {
+  it("invalidates the token when a due profile refresh fails", async () => {
     const now = Date.now()
     supabaseState.profileRpcRows = []
     supabaseState.profileRpcError = { message: "no row" }
-    const lastRefreshAt = now - 5 * 60_000
 
     const token = {
       ...baseToken,
       loginTime: now - 5 * 60_000,
-      lastRefreshAt,
+      lastRefreshAt: now - 5 * 60_000,
     }
 
     const result = await runJwt({ token })
 
     expect(profileRefreshRpcCalls()).toHaveLength(1)
-    expect(result).toMatchObject({
-      id: "42",
-      lastRefreshAt,
-      lastRefreshAttemptAt: now,
-    })
-
-    supabaseState.rpcCalls = []
-
-    const retryResult = await runJwt({ token: result as JwtArgs["token"] })
-
-    expect(profileRefreshRpcCalls()).toHaveLength(0)
-    expect(retryResult).toMatchObject({
-      id: "42",
-      lastRefreshAt,
-      lastRefreshAttemptAt: now,
-    })
-    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          event: "jwt_refresh_skipped_cooldown",
-          hasLastRefreshAt: true,
-          refreshReason: "cooldown",
-        }),
-      ])
-    )
+    expect(result).toEqual({ loginTime: now - 5 * 60_000 })
+    expect(result).not.toHaveProperty("id")
+    expect(result).not.toHaveProperty("role")
   })
 
-  it("throttles no-profile refresh retries without advancing lastRefreshAt", async () => {
+  it("invalidates the token when a due profile refresh returns no user", async () => {
     const now = Date.now()
     supabaseState.profileRpcRows = []
     supabaseState.profileRpcError = null
-    const lastRefreshAt = now - 5 * 60_000
 
     const token = {
       ...baseToken,
       loginTime: now - 5 * 60_000,
-      lastRefreshAt,
+      lastRefreshAt: now - 5 * 60_000,
     }
 
     const result = await runJwt({ token })
 
     expect(profileRefreshRpcCalls()).toHaveLength(1)
-    expect(result).toMatchObject({
-      id: "42",
-      lastRefreshAt,
-      lastRefreshAttemptAt: now,
-    })
-
-    supabaseState.rpcCalls = []
-
-    const retryResult = await runJwt({ token: result as JwtArgs["token"] })
-
-    expect(profileRefreshRpcCalls()).toHaveLength(0)
-    expect(retryResult).toMatchObject({
-      id: "42",
-      lastRefreshAt,
-      lastRefreshAttemptAt: now,
-    })
-    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          event: "jwt_refresh_skipped_cooldown",
-          hasLastRefreshAt: true,
-          refreshReason: "cooldown",
-        }),
-      ])
-    )
+    expect(result).toEqual({ loginTime: now - 5 * 60_000 })
+    expect(result).not.toHaveProperty("id")
+    expect(result).not.toHaveProperty("role")
   })
 
-  it("reports cooldown skip telemetry accurately when only a failed attempt timestamp exists", async () => {
+  it.each([null, "", "super_admin"])(
+    "invalidates the token when a due profile refresh returns unsupported role %j",
+    async (role) => {
+      const now = Date.now()
+      supabaseState.profileRpcRows = [{ ...profileRowDefault, role }]
+
+      const result = await runJwt({
+        token: {
+          ...baseToken,
+          loginTime: now - 5 * 60_000,
+          lastRefreshAt: now - 5 * 60_000,
+        },
+      })
+
+      expect(result).toEqual({ loginTime: now - 5 * 60_000 })
+      expect(result).not.toHaveProperty("id")
+      expect(result).not.toHaveProperty("role")
+    }
+  )
+
+  it.each([
+    { current_don_vi: null, don_vi: null, dia_ban_id: 9 },
+    { current_don_vi: 17, don_vi: 17, dia_ban_id: null },
+  ])("invalidates incomplete authoritative expert scope", async (profileOverrides) => {
+    const now = Date.now()
+    supabaseState.profileRpcRows = [
+      {
+        ...profileRowDefault,
+        ...profileOverrides,
+        role: "chuyen_gia",
+      },
+    ]
+
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        role: "global",
+        don_vi: 99,
+        dia_ban_id: 88,
+        loginTime: now - 5 * 60_000,
+        lastRefreshAt: now - 5 * 60_000,
+      },
+    })
+
+    expect(result).toEqual({ loginTime: now - 5 * 60_000 })
+    expect(result).not.toHaveProperty("id")
+    expect(result).not.toHaveProperty("role")
+  })
+
+  it("refreshes legacy cookies immediately when only a recent failed attempt timestamp exists", async () => {
     const now = Date.now()
     const token = {
       ...baseToken,
@@ -523,21 +530,32 @@ describe("authOptions.jwt cooldown + trigger gate", () => {
 
     const result = await runJwt({ token })
 
-    expect(profileRefreshRpcCalls()).toHaveLength(0)
+    expect(profileRefreshRpcCalls()).toHaveLength(1)
     expect(result).toMatchObject({
       id: "42",
-      lastRefreshAttemptAt: now - 10_000,
+      role: "to_qltb",
+      lastRefreshAt: now,
+      lastRefreshAttemptAt: now,
     })
-    expect(result).not.toHaveProperty("lastRefreshAt")
-    expect(authJwtTelemetryLogs(consoleInfoSpy)).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          event: "jwt_refresh_skipped_cooldown",
-          hasLastRefreshAt: false,
-          refreshReason: "cooldown",
-        }),
-      ])
-    )
+  })
+
+  it("refreshes overdue legacy cookies despite a recent failed attempt timestamp", async () => {
+    const now = Date.now()
+    const result = await runJwt({
+      token: {
+        ...baseToken,
+        role: "global",
+        loginTime: now - 5 * 60_000,
+        lastRefreshAt: now - 60_001,
+        lastRefreshAttemptAt: now - 10_000,
+      },
+    })
+
+    expect(profileRefreshRpcCalls()).toHaveLength(1)
+    expect(result).toMatchObject({
+      role: "to_qltb",
+      lastRefreshAt: now,
+    })
   })
 
   it("emits profile_refresh_failed lifecycle log when the profile RPC fails", async () => {

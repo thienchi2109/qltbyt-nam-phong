@@ -101,6 +101,9 @@ describe("auth type helpers", () => {
         khoa_phong: "NEW",
         full_name: "New Name",
         dia_ban_id: 9,
+        ma_dia_ban: null,
+        password_changed_at: null,
+        role: "user",
       },
       17,
       9,
@@ -131,6 +134,40 @@ describe("auth type helpers", () => {
     })
   })
 
+  it("authoritatively replaces stale expert role and account scope", () => {
+    const token = applyJwtProfileRefresh(
+      {
+        id: "31",
+        role: "global",
+        khoa_phong: "OLD",
+        don_vi: 99,
+        dia_ban_id: 88,
+        dia_ban_ma: "OLD-AREA",
+      },
+      {
+        password_changed_at: null,
+        current_don_vi: 17,
+        don_vi: 16,
+        khoa_phong: null,
+        full_name: "Expert User",
+        dia_ban_id: 9,
+        ma_dia_ban: null,
+        role: "chuyen_gia",
+      },
+      17,
+      9,
+      null
+    )
+
+    expect(token).toMatchObject({
+      role: "chuyen_gia",
+      don_vi: 17,
+      khoa_phong: null,
+      dia_ban_id: 9,
+      dia_ban_ma: null,
+    })
+  })
+
   it("hydrates a session from the JWT payload", () => {
     const originalSession = {
       user: {
@@ -140,21 +177,18 @@ describe("auth type helpers", () => {
       },
     }
 
-    const session = applyJwtToSession(
-      originalSession,
-      {
-        id: "31",
-        username: "minh",
-        role: "user",
-        khoa_phong: "KT",
-        don_vi: 17,
-        current_don_vi: 17,
-        dia_ban_id: 9,
-        dia_ban_ma: "HN-01",
-        full_name: "Nguyen Quang Minh",
-        auth_mode: "dual_mode",
-      }
-    )
+    const session = applyJwtToSession(originalSession, {
+      id: "31",
+      username: "minh",
+      role: "user",
+      khoa_phong: "KT",
+      don_vi: 17,
+      current_don_vi: 17,
+      dia_ban_id: 9,
+      dia_ban_ma: "HN-01",
+      full_name: "Nguyen Quang Minh",
+      auth_mode: "dual_mode",
+    })
 
     expect(session.user).toEqual({
       name: "Minh",
