@@ -165,6 +165,28 @@ BEGIN
     'raw admin must read option collections',
     v_response->>'total' = '0' AND v_response->>'revision' = '1'
   );
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  v_response := public.technical_configuration_options_list(v_dossier_id);
+  PERFORM pg_temp.assert_true(
+    'expert can read option collections',
+    v_response->>'total' = '0' AND v_response->>'revision' = '1'
+  );
+  BEGIN
+    PERFORM public.technical_configuration_option_create(
+      v_supplier_a_id,
+      'Expert probe',
+      'Expert maker',
+      'Expert write',
+      NULL,
+      v_revision
+    );
+    RAISE EXCEPTION 'expert_option_write_probe_rollback' USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'expert_option_write_probe_rollback' THEN
+        RAISE;
+      END IF;
+  END;
   PERFORM pg_temp.set_claims('global', v_user_id);
   PERFORM pg_temp.expect_error(
     'bounded pagination validation',

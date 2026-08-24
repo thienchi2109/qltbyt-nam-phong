@@ -240,6 +240,14 @@ BEGIN
     'global can read export manifest',
     (v_manifest->'data'->>'criterion_total')::BIGINT = 2
   );
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  v_manifest := pg_temp.read_manifest(v_dossier_id, v_version_id);
+  PERFORM pg_temp.assert_true(
+    'expert can read export manifest',
+    (v_manifest->'data'->>'option_total')::BIGINT = 2
+      AND (v_manifest->'data'->>'criterion_total')::BIGINT = 2
+  );
+  PERFORM pg_temp.set_claims('global', v_user_id);
   PERFORM pg_temp.assert_true(
     'public manifest root is exact',
     (SELECT array_agg(key ORDER BY key) FROM jsonb_object_keys(v_manifest) key)

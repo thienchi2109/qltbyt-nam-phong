@@ -412,6 +412,27 @@ BEGIN
      OR v_locked_criterion_ids IS DISTINCT FROM v_copy_criterion_ids THEN
     RAISE EXCEPTION 'locked hierarchy identity changed';
   END IF;
+
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  BEGIN
+    v_copy_response := public.technical_configuration_baseline_copy(
+      v_source_version_id,
+      7
+    );
+    v_copy_version_id := (v_copy_response #>> '{data,id}')::UUID;
+    v_copy_revision := (v_copy_response #>> '{data,revision}')::BIGINT;
+    PERFORM public.technical_configuration_baseline_lock(
+      v_copy_version_id,
+      v_copy_revision
+    );
+    RAISE EXCEPTION 'expert_copy_lock_probe_rollback' USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'expert_copy_lock_probe_rollback' THEN
+        RAISE;
+      END IF;
+  END;
+  PERFORM pg_temp.set_claims('global', v_user_id);
 END;
 $gate$;
 

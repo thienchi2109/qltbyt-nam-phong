@@ -205,6 +205,30 @@ BEGIN
   SELECT public.technical_configuration_assessments_list(v_set_id, 1, 100)
   INTO v_list;
   PERFORM pg_temp.assert_true('raw admin accepted', (v_list->>'total')::BIGINT = 0);
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  SELECT public.technical_configuration_assessments_list(v_set_id, 1, 100)
+  INTO v_list;
+  PERFORM pg_temp.assert_true(
+    'expert assessment read accepted',
+    (v_list->>'total')::BIGINT = 0
+  );
+  BEGIN
+    PERFORM public.technical_configuration_assessment_upsert(
+      v_set_id,
+      v_first_criterion_id,
+      'meets',
+      'complete',
+      'Expert write probe',
+      0
+    );
+    RAISE EXCEPTION 'expert_assessment_write_probe_rollback' USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'expert_assessment_write_probe_rollback' THEN
+        RAISE;
+      END IF;
+  END;
+  PERFORM pg_temp.set_claims('admin', v_user_id);
   -- assessment list bounds enforced
   PERFORM pg_temp.expect_error('null comparison set rejected',
     'SELECT public.technical_configuration_assessments_list(NULL, 1, 100)',

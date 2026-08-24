@@ -682,6 +682,20 @@ BEGIN
     jsonb_array_length(v_response->'data'->'criteria') = 1
   );
 
+  -- technical configuration expert accepted
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  v_response := public.technical_configuration_comparison_get(
+    v_baseline_version_id,
+    v_option_ids[1:1],
+    1,
+    1
+  );
+  PERFORM pg_temp.assert_true(
+    'technical configuration expert accepted',
+    jsonb_array_length(v_response->'data'->'criteria') = 1
+  );
+  PERFORM pg_temp.set_claims('global', v_user_id);
+
   -- null baseline rejected
   PERFORM pg_temp.expect_error(
     'null baseline rejected',

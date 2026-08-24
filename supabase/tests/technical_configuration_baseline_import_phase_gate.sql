@@ -202,6 +202,25 @@ BEGIN
   IF v_after IS DISTINCT FROM v_before THEN
     RAISE EXCEPTION 'preview is read-only: aggregate changed';
   END IF;
+  PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
+  SELECT public.technical_configuration_baseline_import_preview(
+    v_version_id, v_metadata, v_rows, v_revision
+  )
+  INTO v_response;
+  IF jsonb_array_length(v_response->'errors') <> 0 THEN
+    RAISE EXCEPTION 'expert import preview succeeds: unexpected validation errors';
+  END IF;
+  BEGIN
+    PERFORM public.technical_configuration_baseline_import_apply(
+      v_version_id, v_metadata, v_rows, v_revision
+    );
+    RAISE EXCEPTION 'expert_import_apply_probe_rollback' USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      IF SQLERRM <> 'expert_import_apply_probe_rollback' THEN
+        RAISE;
+      END IF;
+  END;
   PERFORM pg_temp.set_claims('global', v_user_id);
   FOR v_case IN
     SELECT *
