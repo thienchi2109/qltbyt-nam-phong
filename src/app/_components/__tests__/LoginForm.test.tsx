@@ -7,12 +7,14 @@ import { LoginForm } from "@/app/_components/LoginForm"
 import { LanguageProvider } from "@/contexts/language-context"
 
 const mocks = vi.hoisted(() => ({
+  routerRefresh: vi.fn(),
   routerReplace: vi.fn(),
   signIn: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
+    refresh: mocks.routerRefresh,
     replace: mocks.routerReplace,
   }),
 }))
@@ -33,12 +35,13 @@ function renderLoginForm(): ReturnType<typeof render> {
   return render(
     <LanguageProvider>
       <LoginForm />
-    </LanguageProvider>,
+    </LanguageProvider>
   )
 }
 
 describe("LoginForm", () => {
   beforeEach(() => {
+    mocks.routerRefresh.mockReset()
     mocks.routerReplace.mockReset()
     mocks.signIn.mockReset()
   })
@@ -80,13 +83,13 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Không thể xác thực lúc này. Vui lòng thử lại sau.",
+      "Không thể xác thực lúc này. Vui lòng thử lại sau."
     )
 
     await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Tên đăng nhập hoặc mật khẩu không đúng",
+      "Tên đăng nhập hoặc mật khẩu không đúng"
     )
   })
 
@@ -100,7 +103,7 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+      "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu."
     )
   })
 
@@ -115,7 +118,7 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /đăng nhập/i }))
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Không thể xác thực lúc này. Vui lòng thử lại sau.",
+      "Không thể xác thực lúc này. Vui lòng thử lại sau."
     )
     consoleErrorSpy.mockRestore()
   })
@@ -142,17 +145,22 @@ describe("LoginForm", () => {
         redirect: false,
       })
     })
-    expect(mocks.routerReplace).toHaveBeenCalledWith("/dashboard")
+    expect(mocks.routerReplace).toHaveBeenCalledWith("/")
+    expect(mocks.routerReplace).not.toHaveBeenCalledWith("/dashboard")
+    expect(mocks.routerRefresh).toHaveBeenCalledTimes(1)
+    expect(mocks.routerReplace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.routerRefresh.mock.invocationCallOrder[0]
+    )
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
   })
 
-  it("keeps login controls unavailable after successful credentials while dashboard redirect is pending", async () => {
+  it("keeps login controls unavailable while the authoritative root redirect is pending", async () => {
     const user = userEvent.setup()
     let resolveSignIn: (value: { ok: boolean; error: null }) => void = () => undefined
     mocks.signIn.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveSignIn = resolve
-      }),
+      })
     )
     renderLoginForm()
 
@@ -167,7 +175,12 @@ describe("LoginForm", () => {
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /đang xác thực/i })).toBeDisabled()
     })
-    expect(mocks.routerReplace).toHaveBeenCalledWith("/dashboard")
+    expect(mocks.routerReplace).toHaveBeenCalledWith("/")
+    expect(mocks.routerReplace).not.toHaveBeenCalledWith("/dashboard")
+    expect(mocks.routerRefresh).toHaveBeenCalledTimes(1)
+    expect(mocks.routerReplace.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.routerRefresh.mock.invocationCallOrder[0]
+    )
     expect(screen.queryByRole("button", { name: /^đăng nhập/i })).not.toBeInTheDocument()
   })
 })

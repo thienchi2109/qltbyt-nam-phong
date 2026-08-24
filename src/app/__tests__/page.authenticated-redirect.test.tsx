@@ -33,20 +33,29 @@ describe("LoginPage authenticated redirect", () => {
     vi.clearAllMocks()
   })
 
-  it("redirects authenticated visitors to /dashboard", async () => {
+  it.each([
+    ["global", "/dashboard"],
+    ["admin", "/dashboard"],
+    ["regional_leader", "/dashboard"],
+    ["to_qltb", "/dashboard"],
+    ["technician", "/dashboard"],
+    ["qltb_khoa", "/dashboard"],
+    ["user", "/dashboard"],
+    ["chuyen_gia", "/technical-configurations"],
+  ])("redirects authenticated %s visitors to %s", async (role, destination) => {
     mocks.getServerSession.mockResolvedValue({
       user: {
         id: "1",
         username: "auth-user",
-        role: "global",
+        role,
         full_name: "Authenticated User",
       },
     })
 
-    await expect(LoginPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard")
+    await expect(LoginPage()).rejects.toThrow(`NEXT_REDIRECT:${destination}`)
 
     expect(mocks.getServerSession).toHaveBeenCalledWith(authOptions)
-    expect(mocks.redirect).toHaveBeenCalledWith("/dashboard")
+    expect(mocks.redirect).toHaveBeenCalledWith(destination)
     expect(mocks.loginForm).not.toHaveBeenCalled()
   })
 

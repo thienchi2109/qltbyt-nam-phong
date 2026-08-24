@@ -8,6 +8,15 @@ import {
 
 const restrictedRoles = ["user", "qltb_khoa", "technician"] as const
 const allowedRoles = ["to_qltb", "regional_leader", "global", "admin"] as const
+const fieldWorkRoutes = [
+  "/dashboard",
+  "/equipment",
+  "/repair-requests",
+  "/transfers",
+  "/maintenance",
+  "/reports",
+  "/qr-scanner",
+] as const
 
 function getHrefs(role: string): string[] {
   return getAppNavigationItems(role).map((item) => item.href)
@@ -19,15 +28,50 @@ function getMoreHrefs(role: string): string[] {
 
 describe("app-navigation role filtering", () => {
   it("shows global-only routes only to global-equivalent roles", () => {
-    const globalOnlyRoutes = ["/activity-logs", "/technical-configurations", "/users"]
+    const globalOnlyRoutes = ["/activity-logs", "/users"]
 
     for (const route of globalOnlyRoutes) {
       expect(getHrefs("global")).toContain(route)
       expect(getHrefs("admin")).toContain(route)
 
-      for (const role of ["regional_leader", "to_qltb", ...restrictedRoles]) {
+      for (const role of ["chuyen_gia", "regional_leader", "to_qltb", ...restrictedRoles]) {
         expect(getHrefs(role)).not.toContain(route)
       }
+    }
+  })
+
+  it("shows experts only Technical Configurations while retaining global equivalents", () => {
+    expect(getHrefs("chuyen_gia")).toEqual(["/technical-configurations"])
+    expect(getHrefs("global")).toContain("/technical-configurations")
+    expect(getHrefs("admin")).toContain("/technical-configurations")
+
+    for (const role of ["regional_leader", "to_qltb", ...restrictedRoles]) {
+      expect(getHrefs(role)).not.toContain("/technical-configurations")
+    }
+  })
+
+  it("preserves the complete navigation contract for every existing role", () => {
+    const globalRoutes = [
+      ...fieldWorkRoutes.slice(0, 5),
+      "/device-quota",
+      ...fieldWorkRoutes.slice(5),
+      "/technical-configurations",
+      "/users",
+      "/activity-logs",
+    ]
+    const elevatedRoutes = [
+      ...fieldWorkRoutes.slice(0, 5),
+      "/device-quota",
+      ...fieldWorkRoutes.slice(5),
+    ]
+
+    expect(getHrefs("global")).toEqual(globalRoutes)
+    expect(getHrefs("admin")).toEqual(globalRoutes)
+    expect(getHrefs("regional_leader")).toEqual(elevatedRoutes)
+    expect(getHrefs("to_qltb")).toEqual(elevatedRoutes)
+
+    for (const role of restrictedRoles) {
+      expect(getHrefs(role)).toEqual(fieldWorkRoutes)
     }
   })
 
@@ -78,5 +122,9 @@ describe("app-navigation role filtering", () => {
     ])
 
     expect(getMobileFooterMoreNavItems("admin")).toEqual([])
+    expect(getMobileFooterMainNavItems("chuyen_gia")).toEqual([
+      expect.objectContaining({ href: "/technical-configurations" }),
+    ])
+    expect(getMobileFooterMoreNavItems("chuyen_gia")).toEqual([])
   })
 })

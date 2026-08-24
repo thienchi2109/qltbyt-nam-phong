@@ -119,15 +119,15 @@ navigation only.
 **Deploy boundary:** behavior is dormant until an expert account exists; all
 current roles retain route behavior.
 
-- [ ] 5.1 Add failing and then passing route-policy cases allowing experts only
+- [x] 5.1 Add failing and then passing route-policy cases allowing experts only
       `/technical-configurations` and `/access-denied`.
-- [ ] 5.2 Extend middleware coverage for Dashboard, mapped routes, descendants,
+- [x] 5.2 Extend middleware coverage for Dashboard, mapped routes, descendants,
       unknown paths, `/_next/data/**`, and extension-looking dynamic paths.
-- [ ] 5.3 Add `getDefaultAppRoute(role)` and route successful credential login
+- [x] 5.3 Add `getDefaultAppRoute(role)` and route successful credential login
       through the authoritative server root decision.
-- [ ] 5.4 Update navigation so an expert receives only Technical
+- [x] 5.4 Update navigation so an expert receives only Technical
       Configurations.
-- [ ] 5.5 Preserve explicit global/admin Technical Configurations and existing
+- [x] 5.5 Preserve explicit global/admin Technical Configurations and existing
       role counter-tests.
 
 **Exit gate:** route, middleware, landing, and navigation focused suites pass.

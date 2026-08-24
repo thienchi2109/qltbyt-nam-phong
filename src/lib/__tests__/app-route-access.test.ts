@@ -6,15 +6,11 @@ import {
   ACCESS_DENIED_PATH,
   APP_ROUTE_ACCESS_RULES,
   canAccessAppRoute,
+  getDefaultAppRoute,
   getAppRouteAccessPolicy,
 } from "../app-route-access"
 
-const GLOBAL_ONLY_ROUTES = [
-  "/activity-logs",
-  "/technical-configurations",
-  "/tenants",
-  "/users",
-] as const
+const GLOBAL_ONLY_ROUTES = ["/activity-logs", "/tenants", "/users"] as const
 
 const DEVICE_QUOTA_ROUTES = [
   "/device-quota",
@@ -32,6 +28,16 @@ const AUTHENTICATED_ROUTES = [
   "/repair-requests",
   "/reports",
   "/transfers",
+] as const
+
+const EXISTING_ROLES = [
+  "global",
+  "admin",
+  "regional_leader",
+  "to_qltb",
+  "technician",
+  "qltb_khoa",
+  "user",
 ] as const
 
 function collectPageFiles(directory: string): string[] {
@@ -64,10 +70,42 @@ describe("app route access policy", () => {
   it.each(GLOBAL_ONLY_ROUTES)("restricts %s to global-equivalent roles", (route) => {
     expect(canAccessAppRoute(route, "global")).toBe(true)
     expect(canAccessAppRoute(route, " Admin ")).toBe(true)
+    expect(canAccessAppRoute(route, "chuyen_gia")).toBe(false)
     expect(canAccessAppRoute(route, "regional_leader")).toBe(false)
     expect(canAccessAppRoute(route, "to_qltb")).toBe(false)
     expect(canAccessAppRoute(route, "user")).toBe(false)
     expect(canAccessAppRoute(route, undefined)).toBe(false)
+  })
+
+  it("allows only the Technical Configurations route family to module-capable roles", () => {
+    for (const route of [
+      "/technical-configurations",
+      "/technical-configurations/dossiers",
+      "/technical-configurations/dossiers/123.pdf",
+    ]) {
+      expect(canAccessAppRoute(route, "global")).toBe(true)
+      expect(canAccessAppRoute(route, " Admin ")).toBe(true)
+      expect(canAccessAppRoute(route, " CHUYEN_GIA ")).toBe(true)
+      expect(canAccessAppRoute(route, "regional_leader")).toBe(false)
+      expect(canAccessAppRoute(route, "to_qltb")).toBe(false)
+      expect(canAccessAppRoute(route, "user")).toBe(false)
+      expect(canAccessAppRoute(route, undefined)).toBe(false)
+    }
+  })
+
+  it("restricts experts to Technical Configurations and the shared denial route", () => {
+    expect(canAccessAppRoute("/technical-configurations", "chuyen_gia")).toBe(true)
+    expect(canAccessAppRoute("/technical-configurations/dossiers", "chuyen_gia")).toBe(true)
+    expect(canAccessAppRoute(ACCESS_DENIED_PATH, "chuyen_gia")).toBe(true)
+
+    for (const rule of APP_ROUTE_ACCESS_RULES) {
+      if (
+        rule.pathPrefix !== "/technical-configurations" &&
+        rule.pathPrefix !== ACCESS_DENIED_PATH
+      ) {
+        expect(canAccessAppRoute(rule.pathPrefix, "chuyen_gia")).toBe(false)
+      }
+    }
   })
 
   it.each(DEVICE_QUOTA_ROUTES)("uses the device quota module policy for %s", (route) => {
@@ -75,7 +113,7 @@ describe("app route access policy", () => {
       expect(canAccessAppRoute(route, role)).toBe(true)
     }
 
-    for (const role of ["user", "qltb_khoa", "technician", undefined]) {
+    for (const role of ["chuyen_gia", "user", "qltb_khoa", "technician", undefined]) {
       expect(canAccessAppRoute(route, role)).toBe(false)
     }
   })
@@ -84,7 +122,9 @@ describe("app route access policy", () => {
     "leaves authentication-only route %s to the existing auth gate",
     (route) => {
       expect(canAccessAppRoute(route, undefined)).toBe(true)
-      expect(canAccessAppRoute(route, "user")).toBe(true)
+      for (const role of EXISTING_ROLES) {
+        expect(canAccessAppRoute(route, role)).toBe(true)
+      }
     }
   )
 
@@ -98,11 +138,21 @@ describe("app route access policy", () => {
   it("allows unmatched paths through so Next.js can render its normal 404", () => {
     expect(getAppRouteAccessPolicy("/not-a-real-page")).toBeNull()
     expect(canAccessAppRoute("/not-a-real-page", undefined)).toBe(true)
+    expect(canAccessAppRoute("/not-a-real-page", "chuyen_gia")).toBe(true)
   })
 
   it("keeps the denial destination outside restricted policies", () => {
     expect(ACCESS_DENIED_PATH).toBe("/access-denied")
     expect(getAppRouteAccessPolicy(ACCESS_DENIED_PATH)).toBe("authenticated")
     expect(canAccessAppRoute(ACCESS_DENIED_PATH, "user")).toBe(true)
+  })
+
+  it("selects the role-aware default authenticated route", () => {
+    expect(getDefaultAppRoute("chuyen_gia")).toBe("/technical-configurations")
+    expect(getDefaultAppRoute(" CHUYEN_GIA ")).toBe("/technical-configurations")
+
+    for (const role of [...EXISTING_ROLES, undefined]) {
+      expect(getDefaultAppRoute(role)).toBe("/dashboard")
+    }
   })
 })

@@ -15,6 +15,7 @@ import {
 
 import { canAccessAppRoute } from "@/lib/app-route-access"
 import type { AppNotificationBadgeKey } from "@/lib/app-notification-counts"
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
 
 export interface AppNavItem {
   href: string
@@ -91,6 +92,10 @@ export function getAppNavigationItems(role?: string): AppNavItem[] {
  * Returns the fixed small-screen footer routes for field-work navigation.
  */
 export function getMobileFooterMainNavItems(role?: string): AppNavItem[] {
+  if (isTechnicalConfigurationExpertRole(role)) {
+    return getAppNavigationItems(role).filter((item) => item.href === "/technical-configurations")
+  }
+
   return MOBILE_FOOTER_HREFS.flatMap((href) => {
     const item = getAppNavigationItems(role).find((navItem) => navItem.href === href)
     if (!item) {

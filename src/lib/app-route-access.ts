@@ -1,6 +1,12 @@
-import { canAccessDeviceQuotaModule, isGlobalRole } from "@/lib/rbac"
+import {
+  canAccessDeviceQuotaModule,
+  canAccessTechnicalConfigurations,
+  isGlobalRole,
+  isTechnicalConfigurationExpertRole,
+} from "@/lib/rbac"
 
-export type AppRouteAccessPolicy = "authenticated" | "global" | "deviceQuota"
+export type AppRouteAccessPolicy =
+  "authenticated" | "global" | "deviceQuota" | "technicalConfigurations"
 
 /** Shared redirect destination for authenticated users denied by route policy. */
 export const ACCESS_DENIED_PATH = "/access-denied"
@@ -14,7 +20,7 @@ export type AppRouteAccessRule = Readonly<{
 export const APP_ROUTE_ACCESS_RULES = [
   { pathPrefix: ACCESS_DENIED_PATH, policy: "authenticated" },
   { pathPrefix: "/activity-logs", policy: "global" },
-  { pathPrefix: "/technical-configurations", policy: "global" },
+  { pathPrefix: "/technical-configurations", policy: "technicalConfigurations" },
   { pathPrefix: "/tenants", policy: "global" },
   { pathPrefix: "/users", policy: "global" },
   { pathPrefix: "/device-quota", policy: "deviceQuota" },
@@ -50,6 +56,18 @@ export function getAppRouteAccessPolicy(pathname: string): AppRouteAccessPolicy 
 export function canAccessAppRoute(pathname: string, role: string | null | undefined): boolean {
   const policy = getAppRouteAccessPolicy(pathname)
 
+  if (policy === null) {
+    return true
+  }
+
+  if (policy === "technicalConfigurations") {
+    return canAccessTechnicalConfigurations(role)
+  }
+
+  if (isTechnicalConfigurationExpertRole(role)) {
+    return pathname === ACCESS_DENIED_PATH
+  }
+
   if (policy === "global") {
     return isGlobalRole(role)
   }
@@ -59,4 +77,11 @@ export function canAccessAppRoute(pathname: string, role: string | null | undefi
   }
 
   return true
+}
+
+/** Returns the authoritative landing route for an authenticated application role. */
+export function getDefaultAppRoute(
+  role: string | null | undefined
+): "/dashboard" | "/technical-configurations" {
+  return isTechnicalConfigurationExpertRole(role) ? "/technical-configurations" : "/dashboard"
 }

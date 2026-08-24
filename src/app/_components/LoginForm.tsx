@@ -24,7 +24,7 @@ import { LoginIllustrationPanel } from "./LoginIllustrationPanel"
 function getLoginMessage(
   t: (key: string) => string | undefined,
   key: string,
-  fallback: string,
+  fallback: string
 ): string {
   return t(key) || fallback
 }
@@ -34,14 +34,13 @@ function createLoginFormSchema(t: (key: string) => string | undefined): z.ZodObj
   password: z.ZodString
 }> {
   return z.object({
-    username: z.string().trim().min(
-      1,
-      getLoginMessage(t, "login.usernameRequired", "Vui lòng nhập tên đăng nhập"),
-    ),
-    password: z.string().min(
-      1,
-      getLoginMessage(t, "login.passwordRequired", "Vui lòng nhập mật khẩu"),
-    ),
+    username: z
+      .string()
+      .trim()
+      .min(1, getLoginMessage(t, "login.usernameRequired", "Vui lòng nhập tên đăng nhập")),
+    password: z
+      .string()
+      .min(1, getLoginMessage(t, "login.passwordRequired", "Vui lòng nhập mật khẩu")),
   })
 }
 
@@ -49,41 +48,33 @@ type LoginFormValues = z.infer<ReturnType<typeof createLoginFormSchema>>
 
 function getCredentialErrorMessage(
   t: (key: string) => string | undefined,
-  errorCode: string | undefined,
+  errorCode: string | undefined
 ): string {
   switch (errorCode) {
     case "tenant_inactive":
-      return getLoginMessage(
-        t,
-        "login.tenantInactive",
-        "Đơn vị đang tạm ngưng đăng nhập",
-      )
+      return getLoginMessage(t, "login.tenantInactive", "Đơn vị đang tạm ngưng đăng nhập")
     case "rpc_error":
       return getLoginMessage(
         t,
         "login.rpcError",
-        "Không thể xác thực lúc này. Vui lòng thử lại sau.",
+        "Không thể xác thực lúc này. Vui lòng thử lại sau."
       )
     case "rate_limited":
       return getLoginMessage(
         t,
         "login.rateLimited",
-        "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu.",
+        "Đăng nhập tạm khóa do nhập sai quá nhiều lần. Vui lòng thử lại sau ít phút hoặc liên hệ quản trị viên để reset mật khẩu."
       )
     case "invalid_credentials":
     default:
-      return getLoginMessage(
-        t,
-        "login.error",
-        "Tên đăng nhập hoặc mật khẩu không đúng",
-      )
+      return getLoginMessage(t, "login.error", "Tên đăng nhập hoặc mật khẩu không đúng")
   }
 }
 
 /** Renders the credentials login form and maps server auth errors to user-facing messages. */
 export function LoginForm(): React.ReactElement {
   const { t } = useLanguage()
-  const { replace } = useRouter()
+  const { refresh, replace } = useRouter()
   const [isRedirecting, setIsRedirecting] = React.useState(false)
   const loginFormSchema = React.useMemo(() => createLoginFormSchema(t), [t])
   const form = useForm<LoginFormValues>({
@@ -113,7 +104,8 @@ export function LoginForm(): React.ReactElement {
 
       // Success: NextAuth session established; no legacy bridge writes.
       setIsRedirecting(true)
-      replace("/dashboard")
+      replace("/")
+      refresh()
     } catch (err) {
       console.error("Unexpected login error", { error: err })
       form.setError("root", {

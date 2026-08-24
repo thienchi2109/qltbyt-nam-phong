@@ -182,10 +182,14 @@ describe("auth middleware kill switch", () => {
     it.each([
       ["/users", "admin"],
       ["/technical-configurations/dossiers", "global"],
+      ["/technical-configurations/dossiers/123.pdf", "chuyen_gia"],
       ["/device-quota/categories", "regional_leader"],
       ["/device-quota/decisions/123", "to_qltb"],
       ["/dashboard", "user"],
       ["/access-denied", "user"],
+      ["/access-denied", "chuyen_gia"],
+      ["/not-a-real-page", "chuyen_gia"],
+      ["/_next/data/abc/dashboard.json", "chuyen_gia"],
     ])("allows %s to continue for role %s", async (pathname, role) => {
       const handler = await loadHandler()
 
@@ -198,6 +202,40 @@ describe("auth middleware kill switch", () => {
 
       expect(response).toEqual({ type: "next" })
       expect(nextResponseRedirectMock).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      "/dashboard",
+      "/equipment",
+      "/forms/handover",
+      "/maintenance",
+      "/qr-scanner",
+      "/repair-requests",
+      "/reports",
+      "/transfers",
+      "/activity-logs",
+      "/tenants",
+      "/users",
+      "/device-quota/categories",
+      "/device-quota/decisions/123.pdf",
+    ])("redirects an expert away from mapped non-module route %s", async (pathname) => {
+      const handler = await loadHandler()
+
+      const response = handler(
+        createMiddlewareRequest(`${pathname}?returnTo=hidden`, {
+          id: "42",
+          role: "chuyen_gia",
+        })
+      )
+
+      expect(response).toEqual({
+        type: "redirect",
+        url: expect.any(URL),
+      })
+
+      const redirectUrl = nextResponseRedirectMock.mock.calls[0]?.[0] as URL
+      expect(redirectUrl.pathname).toBe("/access-denied")
+      expect(redirectUrl.search).toBe("")
     })
 
     it("fails closed for a protected route when the role claim is missing", async () => {
@@ -261,6 +299,9 @@ describe("auth middleware kill switch", () => {
       "/device-quota",
       "/device-quota/decisions/123.pdf",
       "/_next/data/abc/dashboard.json",
+      "/technical-configurations",
+      "/technical-configurations/dossiers/123.pdf",
+      "/not-a-real-page",
       "/reports",
       "/qr-scanner",
       "/activity-logs",
