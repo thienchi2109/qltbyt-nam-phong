@@ -1,5 +1,22 @@
 import { TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-rpcs"
 
+/** Technical Configurations RPCs that receive the expert module capability. */
+export const TECHNICAL_CONFIGURATION_RPC_FUNCTIONS = new Set<string>(
+  TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES
+)
+
+/** Retained shell/account RPCs allowed to experts under their existing contracts. */
+export const EXPERT_RETAINED_RPC_FUNCTION_NAMES = [
+  "change_password",
+  "don_vi_branding_get",
+] as const
+
+/** Exact fail-closed RPC surface available to Technical Configurations experts. */
+export const EXPERT_ALLOWED_FUNCTIONS = new Set<string>([
+  ...TECHNICAL_CONFIGURATION_RPC_FUNCTIONS,
+  ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,
+])
+
 /** Whitelist RPCs allowed through the Next.js RPC proxy. */
 export const ALLOWED_FUNCTIONS = new Set<string>([
   "equipment_list",

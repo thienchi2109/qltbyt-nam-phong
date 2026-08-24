@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 
 import { authOptions } from "@/auth/config"
-import { toAppRoleClaim } from "@/auth/server-claims"
 import { mintSupabaseJwt } from "@/lib/ai/server-rpc"
 import { sanitizeForLog } from "@/lib/log-sanitizer"
-import { isGlobalRole, isRegionalLeaderRole } from "@/lib/rbac"
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
 import { SameOriginRequestError, assertSameOriginRequest } from "@/lib/same-origin-request"
 import {
   ZBS_INTERNAL_RPC_BODY_SHA256_HEADER,
@@ -19,9 +18,12 @@ import {
 
 import {
   ALLOWED_FUNCTIONS,
+  EXPERT_ALLOWED_FUNCTIONS,
   SERVICE_ROLE_RPC_FUNCTIONS,
+  TECHNICAL_CONFIGURATION_RPC_FUNCTIONS,
   ZBS_CRON_RPC_FUNCTIONS,
 } from "./allowed-functions"
+import { getSessionClaims, getSessionUser, type RpcSessionClaims } from "./rpc-session-claims"
 
 /** Run the RPC proxy on Node.js so JWT signing uses the server crypto stack. */
 export const runtime = "nodejs"
@@ -29,77 +31,10 @@ export const runtime = "nodejs"
 // SECURITY: Maximum request body size (2MB) to prevent DoS via memory exhaustion
 const MAX_BODY_SIZE = 2 * 1024 * 1024
 
-type RpcProxySessionUser = {
-  role?: unknown
-  don_vi?: unknown
-  dia_ban_id?: unknown
-  khoa_phong?: unknown
-  id?: unknown
-}
-
-type RpcSessionClaims = {
-  role: string
-  donVi: string | null
-  diaBan: string
-  khoaPhong: string
-  userId: string
-  appRole: string
-}
-
 function getEnv(name: string) {
   const v = process.env[name]
   if (!v) throw new Error(`${name} is not set`)
   return v
-}
-
-function getSessionUser(session: unknown): RpcProxySessionUser | null {
-  if (!session || typeof session !== "object" || !("user" in session)) {
-    return null
-  }
-
-  const user = session.user
-  if (!user || typeof user !== "object") {
-    return null
-  }
-  return user as RpcProxySessionUser
-}
-
-function sessionClaimValue(value: unknown): string | null {
-  if (value == null) {
-    return null
-  }
-
-  if (typeof value === "string" || typeof value === "number") {
-    return String(value)
-  }
-
-  return null
-}
-
-function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionClaims | null {
-  const role = sessionClaimValue(sessionUser.role)
-  const donVi = sessionClaimValue(sessionUser.don_vi)
-  const diaBan = sessionClaimValue(sessionUser.dia_ban_id)
-  const khoaPhong = sessionClaimValue(sessionUser.khoa_phong)
-  const userId = sessionClaimValue(sessionUser.id)
-
-  if (role == null || diaBan == null || khoaPhong == null || userId == null) {
-    return null
-  }
-
-  const appRole = toAppRoleClaim(role)
-  if (donVi == null && !isGlobalRole(appRole) && !isRegionalLeaderRole(appRole)) {
-    return null
-  }
-
-  return {
-    role,
-    donVi,
-    diaBan,
-    khoaPhong,
-    userId,
-    appRole,
-  }
 }
 
 function getErrorMessage(error: unknown): string {
@@ -197,13 +132,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     const isZbsCronRpc = ZBS_CRON_RPC_FUNCTIONS.has(fn)
-    if (isZbsCronRpc && !hasInternalZbsCronRpcHeaders(req, fn)) {
+    const hasInternalZbsCronHeaders = isZbsCronRpc && hasInternalZbsCronRpcHeaders(req, fn)
+    const contentLengthHeader = req.headers.get("content-length")
+    if (isZbsCronRpc && !hasInternalZbsCronHeaders && !contentLengthHeader) {
       return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
     }
 
     // SECURITY: Enforce body size limit BEFORE buffering/parsing to prevent DoS
     // 1. Require Content-Length header - reject chunked/streaming requests without it
-    const contentLengthHeader = req.headers.get("content-length")
     if (!contentLengthHeader) {
       return NextResponse.json({ error: "Content-Length header required" }, { status: 411 })
     }
@@ -235,10 +171,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
 
     const isInternalZbsCron = isZbsCronRpc && isInternalZbsCronRpc(req, fn, rawText)
-    if (isZbsCronRpc && !isInternalZbsCron) {
+    if (hasInternalZbsCronHeaders && !isInternalZbsCron) {
       return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
     }
-
     const claims = isInternalZbsCron
       ? getInternalZbsCronClaims()
       : await (async (): Promise<RpcSessionClaims | NextResponse> => {
@@ -248,11 +183,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
 
           // SECURITY: Reject unauthenticated requests - do NOT mint JWT without valid session
           if (!sessionUser) {
+            if (isZbsCronRpc) {
+              return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
+            }
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
           }
 
           const sessionClaims = getSessionClaims(sessionUser)
           if (!sessionClaims) {
+            if (isZbsCronRpc) {
+              return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
+            }
             return NextResponse.json({ error: "Invalid session claims" }, { status: 400 })
           }
           return sessionClaims
@@ -262,14 +203,25 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
     }
     // (debug removed)
 
+    const isExpert = isTechnicalConfigurationExpertRole(claims.appRole)
+    if (isExpert && !EXPERT_ALLOWED_FUNCTIONS.has(fn)) {
+      return NextResponse.json({ error: "Function not allowed" }, { status: 403 })
+    }
+    if (isZbsCronRpc && !isInternalZbsCron) {
+      return NextResponse.json({ error: "Cron-only RPC not allowed" }, { status: 403 })
+    }
+
     // Sanitize tenant parameter for non-global users to enforce isolation
     // EXCEPTION: regional_leader users can see multiple tenants, don't override p_don_vi
     const requestBody: Record<string, unknown> =
       rawBody && typeof rawBody === "object" && !Array.isArray(rawBody)
         ? { ...(rawBody as Record<string, unknown>) }
         : {}
+    const preservesCallerTenantScope = isExpert && TECHNICAL_CONFIGURATION_RPC_FUNCTIONS.has(fn)
     const body =
-      claims.appRole !== "global" && claims.appRole !== "regional_leader"
+      !preservesCallerTenantScope &&
+      claims.appRole !== "global" &&
+      claims.appRole !== "regional_leader"
         ? tenantScopedRpcBody(requestBody, claims)
         : requestBody
     const dbRole = SERVICE_ROLE_RPC_FUNCTIONS.has(fn) ? "service_role" : "authenticated"

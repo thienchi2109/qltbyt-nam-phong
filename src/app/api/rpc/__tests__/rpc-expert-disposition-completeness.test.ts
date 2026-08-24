@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
+import {
+  ALLOWED_FUNCTIONS,
+  EXPERT_ALLOWED_FUNCTIONS,
+  EXPERT_RETAINED_RPC_FUNCTION_NAMES,
+  TECHNICAL_CONFIGURATION_RPC_FUNCTIONS,
+} from "@/app/api/rpc/[fn]/allowed-functions"
 import { TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-rpcs"
-
-const EXPERT_RETAINED_RPC_FUNCTION_NAMES = ["change_password", "don_vi_branding_get"] as const
 
 const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
   "equipment_list",
@@ -178,10 +181,23 @@ describe("RPC expert disposition completeness", () => {
     expect([...classifiedFunctions].sort()).toEqual([...ALLOWED_FUNCTIONS].sort())
   })
 
-  it("freezes the Phase 7 disposition counts without enforcing them", () => {
+  it("enforces the exact expert allow set from the Phase 7 disposition", () => {
     expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(79)
     expect(EXPERT_RETAINED_RPC_FUNCTION_NAMES).toEqual(["change_password", "don_vi_branding_get"])
     expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(158)
     expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 239)
+    expect([...EXPERT_ALLOWED_FUNCTIONS]).toEqual([
+      ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
+      ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,
+    ])
+    expect(EXPERT_ALLOWED_FUNCTIONS).toHaveProperty("size", 81)
+    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES.every((fn) => !EXPERT_ALLOWED_FUNCTIONS.has(fn))).toBe(
+      true
+    )
+    expect(
+      EXPERT_RETAINED_RPC_FUNCTION_NAMES.every(
+        (fn) => !TECHNICAL_CONFIGURATION_RPC_FUNCTIONS.has(fn)
+      )
+    ).toBe(true)
   })
 })

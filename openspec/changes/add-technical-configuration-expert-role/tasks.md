@@ -188,19 +188,19 @@ proxy tests only.
 **Deploy boundary:** dormant for current users; global/raw-admin and all
 existing roles must retain access.
 
-- [ ] 8.1 Build the expert allow set from the canonical Technical
+- [x] 8.1 Build the expert allow set from the canonical Technical
       Configurations aggregate plus explicit `don_vi_branding_get` and
       `change_password` infrastructure.
-- [ ] 8.2 Reject every expert-denied RPC with `403` before tenant-body rewrite,
+- [x] 8.2 Reject every expert-denied RPC with `403` before tenant-body rewrite,
       JWT minting, or upstream fetch.
-- [ ] 8.3 Bypass `tenantScopedRpcBody()` only for exact expert plus classified
+- [x] 8.3 Bypass `tenantScopedRpcBody()` only for exact expert plus classified
       module RPC, preserving caller `p_don_vi`/`p_dia_ban` parameters.
-- [ ] 8.4 Add claim-matrix coverage: expert null/empty `khoa_phong` becomes a
+- [x] 8.4 Add claim-matrix coverage: expert null/empty `khoa_phong` becomes a
       null JWT claim; non-expert null is rejected; non-expert empty keeps current
       normalization.
-- [ ] 8.5 Prove representative non-module RPCs remain available to both
+- [x] 8.5 Prove representative non-module RPCs remain available to both
       `global` and raw-session `admin`.
-- [ ] 8.6 Prove branding stays assigned-unit scoped and no self-service
+- [x] 8.6 Prove branding stays assigned-unit scoped and no self-service
       exception receives module capability.
 
 **Exit gate:** exhaustive proxy classification, claim parsing, body rewrite,
