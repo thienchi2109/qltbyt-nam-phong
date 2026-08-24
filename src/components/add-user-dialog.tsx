@@ -14,11 +14,17 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
-import { USER_ROLES, type UserRole } from "@/types/database"
+import { USER_MANAGEMENT_ROLE_OPTIONS, type UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { fetchTenantList, type AddEquipmentTenantOption } from "./add-equipment-dialog.queries"
@@ -35,13 +41,14 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [memberships, setMemberships] = React.useState<number[]>([])
-  
+  const membershipIds = React.useMemo(() => new Set(memberships), [memberships])
+
   const [formData, setFormData] = React.useState({
     username: "",
     password: "",
     full_name: "",
     role: "" as UserRole | "",
-    current_don_vi: undefined as number | undefined
+    current_don_vi: undefined as number | undefined,
   })
 
   const resetForm = React.useCallback(() => {
@@ -64,8 +71,8 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       return await fetchTenantList()
     } catch (error: unknown) {
       toast({
-        variant: 'destructive',
-        title: 'Lỗi tải danh sách đơn vị',
+        variant: "destructive",
+        title: "Lỗi tải danh sách đơn vị",
         description: getUnknownErrorMessage(error),
       })
       return []
@@ -81,7 +88,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const createUserMutation = useMutation({
     mutationFn: async () => {
       const id = await callRpc<number>({
-        fn: 'user_create',
+        fn: "user_create",
         args: {
           p_username: formData.username.trim(),
           p_password: formData.password,
@@ -93,7 +100,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
       })
 
       if (!id) {
-        throw new Error('Không nhận được ID người dùng sau khi tạo')
+        throw new Error("Không nhận được ID người dùng sau khi tạo")
       }
 
       return id
@@ -105,19 +112,22 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
         toast({
           variant: "destructive",
           title: "Không thể làm mới danh sách người dùng",
-          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+          description: getUnknownErrorMessage(
+            error,
+            "Vui lòng tải lại trang để xem dữ liệu mới nhất."
+          ),
         })
       }
-      toast({ title: 'Thành công', description: 'Đã tạo tài khoản người dùng mới.' })
+      toast({ title: "Thành công", description: "Đã tạo tài khoản người dùng mới." })
       onSuccess()
       handleOpenChange(false)
     },
     onError: (error: unknown) => {
-      console.error('Error creating user:', error)
+      console.error("Error creating user:", error)
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi tạo tài khoản.")
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi tạo tài khoản."),
       })
     },
   })
@@ -126,11 +136,17 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.username || !formData.password || !formData.full_name || !formData.role || !formData.current_don_vi) {
+    if (
+      !formData.username ||
+      !formData.password ||
+      !formData.full_name ||
+      !formData.role ||
+      !formData.current_don_vi
+    ) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc (bao gồm Đơn vị hiện tại)."
+        description: "Vui lòng điền đầy đủ thông tin bắt buộc (bao gồm Đơn vị hiện tại).",
       })
       return
     }
@@ -154,7 +170,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Input
                 id="username"
                 value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
                 placeholder="Nhập tên đăng nhập"
                 disabled={isPending}
                 required
@@ -166,7 +182,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 id="password"
                 type="password"
                 value={formData.password}
-                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
                 placeholder="Nhập mật khẩu"
                 disabled={isPending}
                 required
@@ -177,7 +193,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Input
                 id="full_name"
                 value={formData.full_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
                 placeholder="Nhập họ và tên đầy đủ"
                 disabled={isPending}
                 required
@@ -187,7 +203,9 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Label htmlFor="role">Vai trò *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: UserRole) => setFormData(prev => ({ ...prev, role: value }))}
+                onValueChange={(value: UserRole) =>
+                  setFormData((prev) => ({ ...prev, role: value }))
+                }
                 disabled={isPending}
                 required
               >
@@ -195,20 +213,21 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLES)
-                    .flatMap(([key, label]) => key === 'admin' ? [] : [(
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    )])}
+                  {Object.entries(USER_MANAGEMENT_ROLE_OPTIONS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid gap-2">
               <Label>Đơn vị hiện tại *</Label>
               <Select
-                value={formData.current_don_vi ? String(formData.current_don_vi) : ''}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, current_don_vi: Number(value) }))}
+                value={formData.current_don_vi ? String(formData.current_don_vi) : ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, current_don_vi: Number(value) }))
+                }
                 disabled={isPending}
                 required
               >
@@ -216,10 +235,10 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   <SelectValue placeholder="Chọn đơn vị" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tenants.map(t => (
+                  {tenants.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)}>
                       {t.name}
-                      {t.code ? ` (${t.code})` : ''}
+                      {t.code ? ` (${t.code})` : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -230,17 +249,19 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <ScrollArea className="h-28 w-full rounded-md border p-2">
                 <div className="flex flex-wrap gap-2">
                   {tenants.length > 0 ? (
-                    tenants.map(t => {
-                      const selected = memberships.includes(t.id) || t.id === formData.current_don_vi
+                    tenants.map((t) => {
+                      const selected = membershipIds.has(t.id) || t.id === formData.current_don_vi
                       return (
                         <Badge
                           key={t.id}
-                          variant={selected ? 'default' : 'secondary'}
+                          variant={selected ? "default" : "secondary"}
                           className="cursor-pointer select-none"
                           onClick={() => {
-                            setMemberships(prev => {
-                              if (prev.includes(t.id)) return prev.filter(x => x !== t.id)
-                              return [...prev, t.id]
+                            setMemberships((prev) => {
+                              const next = new Set(prev)
+                              if (next.delete(t.id)) return [...next]
+                              next.add(t.id)
+                              return [...next]
                             })
                           }}
                         >
@@ -253,7 +274,9 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   )}
                 </div>
               </ScrollArea>
-              <p className="text-xs text-muted-foreground">Mặc định hệ thống sẽ thêm đơn vị hiện tại vào danh sách thành viên.</p>
+              <p className="text-xs text-muted-foreground">
+                Mặc định hệ thống sẽ thêm đơn vị hiện tại vào danh sách thành viên.
+              </p>
             </div>
           </div>
           <DialogFooter>

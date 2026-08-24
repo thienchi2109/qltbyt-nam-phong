@@ -14,11 +14,17 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { callRpc } from "@/lib/rpc-client"
-import { USER_ROLES, type UserRole, type UserSummary } from "@/types/database"
+import { USER_MANAGEMENT_ROLE_OPTIONS, type UserRole, type UserSummary } from "@/types/database"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface EditUserDialogProps {
@@ -32,7 +38,7 @@ const EMPTY_EDIT_USER_FORM = {
   username: "",
   full_name: "",
   role: "" as UserRole | "",
-  khoa_phong: ""
+  khoa_phong: "",
 }
 
 function getEditUserForm(user: UserSummary | null) {
@@ -41,7 +47,7 @@ function getEditUserForm(user: UserSummary | null) {
     username: user.username,
     full_name: user.full_name,
     role: user.role,
-    khoa_phong: user.khoa_phong || ""
+    khoa_phong: user.khoa_phong || "",
   }
 }
 
@@ -49,7 +55,7 @@ function getEditUserForm(user: UserSummary | null) {
 export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
-  const activeUserId = open ? user?.id ?? null : null
+  const activeUserId = open ? (user?.id ?? null) : null
   const loadedUserIdRef = React.useRef<number | null>(activeUserId)
   const [formData, setFormData] = React.useState(() => getEditUserForm(open ? user : null))
 
@@ -93,12 +99,15 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         toast({
           variant: "destructive",
           title: "Không thể làm mới danh sách người dùng",
-          description: getUnknownErrorMessage(error, "Vui lòng tải lại trang để xem dữ liệu mới nhất."),
+          description: getUnknownErrorMessage(
+            error,
+            "Vui lòng tải lại trang để xem dữ liệu mới nhất."
+          ),
         })
       }
       toast({
         title: "Thành công",
-        description: "Đã cập nhật thông tin người dùng."
+        description: "Đã cập nhật thông tin người dùng.",
       })
       onSuccess()
       handleOpenChange(false)
@@ -107,7 +116,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi cập nhật thông tin.")
+        description: getUnknownErrorMessage(error, "Có lỗi xảy ra khi cập nhật thông tin."),
       })
     },
   })
@@ -120,7 +129,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc."
+        description: "Vui lòng điền đầy đủ thông tin bắt buộc.",
       })
       return
     }
@@ -144,7 +153,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               <Input
                 id="edit-username"
                 value={formData.username}
-                onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
                 placeholder="Nhập tên đăng nhập"
                 disabled={isPending}
                 required
@@ -155,7 +164,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               <Input
                 id="edit-full_name"
                 value={formData.full_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, full_name: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, full_name: e.target.value }))}
                 placeholder="Nhập họ và tên đầy đủ"
                 disabled={isPending}
                 required
@@ -165,7 +174,9 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               <Label htmlFor="edit-role">Vai trò *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: UserRole) => setFormData(prev => ({ ...prev, role: value }))}
+                onValueChange={(value: UserRole) =>
+                  setFormData((prev) => ({ ...prev, role: value }))
+                }
                 disabled={isPending}
                 required
               >
@@ -173,12 +184,11 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_ROLES)
-                    .flatMap(([key, label]) => key === 'admin' ? [] : [(
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    )])}
+                  {Object.entries(USER_MANAGEMENT_ROLE_OPTIONS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -187,7 +197,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
               <Input
                 id="edit-khoa_phong"
                 value={formData.khoa_phong}
-                onChange={(e) => setFormData(prev => ({ ...prev, khoa_phong: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, khoa_phong: e.target.value }))}
                 placeholder="Nhập khoa/phòng làm việc"
                 disabled={isPending}
               />

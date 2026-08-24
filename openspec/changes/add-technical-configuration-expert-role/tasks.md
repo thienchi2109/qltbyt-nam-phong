@@ -97,13 +97,13 @@ cannot widen these standalone boundaries.
 **Deploy boundary:** dormant capability only; no supported flow can create or
 assign `chuyen_gia`.
 
-- [ ] 4.1 Add `chuyen_gia: "Chuyên gia"` to canonical role types and labels.
-- [ ] 4.2 Implement Edge-safe
+- [x] 4.1 Add `chuyen_gia: "Chuyên gia"` to canonical role types and labels.
+- [x] 4.2 Implement Edge-safe
       `isTechnicalConfigurationExpertRole(role)`.
-- [ ] 4.3 Implement Edge-safe `canAccessTechnicalConfigurations(role)` without
+- [x] 4.3 Implement Edge-safe `canAccessTechnicalConfigurations(role)` without
       changing any pre-existing helper.
-- [ ] 4.4 Make the Phase 2 helper/JWT matrix pass.
-- [ ] 4.5 Document the distinct exact-role, module-capability, and global/admin
+- [x] 4.4 Make the Phase 2 helper/JWT matrix pass.
+- [x] 4.5 Document the distinct exact-role, module-capability, and global/admin
       semantics in `docs/RBAC.md`.
 
 **Exit gate:** shared helper tests pass and no user-management surface exposes

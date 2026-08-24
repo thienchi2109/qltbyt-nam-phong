@@ -1,17 +1,14 @@
 /**
- * RBAC Utility Functions - FRONTEND USE ONLY
+ * RBAC Utility Functions - EDGE-SAFE ROLE CLASSIFICATION
  *
  * Centralizes role check logic to eliminate duplication across the codebase.
  *
- * ⚠️ SECURITY NOTE: These functions control UI visibility, not data access.
- * All security enforcement happens server-side:
- *   - /api/rpc/[fn]/route.ts validates session and signs JWT
- *   - PostgreSQL RPC functions enforce permissions via JWT claims
+ * SECURITY NOTE: These functions classify role identities and capabilities;
+ * they do not enforce route or data access by themselves. Each route, API,
+ * RPC proxy, and PostgreSQL function must enforce its own boundary.
  *
- * These utilities are safe because:
- *   1. They cannot be used to access data directly
- *   2. They fail closed (return false) for null/undefined inputs
- *   3. The API proxy forcibly overrides tenant parameters
+ * These utilities are Edge-safe because they have no Node-only dependencies
+ * and fail closed (return false) for null/undefined inputs.
  *
  * Usage: import { isGlobalRole, isEquipmentManagerRole, ROLES } from '@/lib/rbac'
  *
@@ -25,13 +22,14 @@
  * Use these instead of magic strings throughout the codebase.
  */
 export const ROLES = {
-  GLOBAL: 'global',
-  ADMIN: 'admin',
-  REGIONAL_LEADER: 'regional_leader',
-  TO_QLTB: 'to_qltb',
-  TECHNICIAN: 'technician',
-  QLTB_KHOA: 'qltb_khoa',
-  USER: 'user',
+  GLOBAL: "global",
+  ADMIN: "admin",
+  CHUYEN_GIA: "chuyen_gia",
+  REGIONAL_LEADER: "regional_leader",
+  TO_QLTB: "to_qltb",
+  TECHNICIAN: "technician",
+  QLTB_KHOA: "qltb_khoa",
+  USER: "user",
 } as const
 
 export type Role = (typeof ROLES)[keyof typeof ROLES]
@@ -79,6 +77,26 @@ export function isGlobalRole(role: string | null | undefined): boolean {
 }
 
 /**
+ * Exact Technical Configurations expert identity check.
+ *
+ * Global and legacy admin roles have module access through a separate
+ * capability predicate but are not expert identities.
+ */
+export function isTechnicalConfigurationExpertRole(role: string | null | undefined): boolean {
+  return normalizeRole(role) === ROLES.CHUYEN_GIA
+}
+
+/**
+ * Technical Configurations module capability check.
+ *
+ * This shared predicate is dormant until route, proxy, and database phases
+ * adopt it. It intentionally does not alter any pre-existing role helper.
+ */
+export function canAccessTechnicalConfigurations(role: string | null | undefined): boolean {
+  return isGlobalRole(role) || isTechnicalConfigurationExpertRole(role)
+}
+
+/**
  * Regional leader check (read-only multi-tenant access).
  *
  * Use for: restricting write operations, regional data filtering.
@@ -98,9 +116,7 @@ export function isRegionalLeaderRole(role: string | null | undefined): boolean {
  */
 export function isEquipmentManagerRole(role: string | null | undefined): boolean {
   const normalized = normalizeRole(role)
-  return normalized === ROLES.GLOBAL
-    || normalized === ROLES.ADMIN
-    || normalized === ROLES.TO_QLTB
+  return normalized === ROLES.GLOBAL || normalized === ROLES.ADMIN || normalized === ROLES.TO_QLTB
 }
 
 /**
@@ -112,9 +128,7 @@ export function isEquipmentManagerRole(role: string | null | undefined): boolean
 export function canAccessDeviceQuotaModule(role: string | null | undefined): boolean {
   const normalized = normalizeRole(role)
 
-  return isGlobalRole(role)
-    || normalized === ROLES.REGIONAL_LEADER
-    || normalized === ROLES.TO_QLTB
+  return isGlobalRole(role) || normalized === ROLES.REGIONAL_LEADER || normalized === ROLES.TO_QLTB
 }
 
 /**
@@ -139,7 +153,9 @@ export function isDeptScopedRole(role: string | null | undefined): boolean {
  */
 export function isPrivilegedRole(role: string | null | undefined): boolean {
   const normalized = normalizeRole(role)
-  return normalized === ROLES.GLOBAL
-    || normalized === ROLES.ADMIN
-    || normalized === ROLES.REGIONAL_LEADER
+  return (
+    normalized === ROLES.GLOBAL ||
+    normalized === ROLES.ADMIN ||
+    normalized === ROLES.REGIONAL_LEADER
+  )
 }
