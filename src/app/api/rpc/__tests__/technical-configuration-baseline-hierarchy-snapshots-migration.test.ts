@@ -11,7 +11,7 @@ import {
 const MIGRATIONS_DIR = path.resolve(process.cwd(), "supabase/migrations")
 const TASKS_PATH = path.resolve(
   process.cwd(),
-  "openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md"
+  "openspec/changes/archive/2026-08-14-revise-technical-configuration-baseline-hierarchy/tasks.md"
 )
 const PHASE_GATE_PATH = path.resolve(
   process.cwd(),

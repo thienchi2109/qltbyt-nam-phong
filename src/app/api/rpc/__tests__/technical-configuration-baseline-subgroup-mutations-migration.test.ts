@@ -7,7 +7,8 @@ const TASKS_PATH = join(
   process.cwd(),
   "openspec",
   "changes",
-  "revise-technical-configuration-baseline-hierarchy",
+  "archive",
+  "2026-08-14-revise-technical-configuration-baseline-hierarchy",
   "tasks.md"
 )
 const ALLOWLIST_PATH = join(process.cwd(), "src", "lib", "technical-configuration-baseline-rpcs.ts")

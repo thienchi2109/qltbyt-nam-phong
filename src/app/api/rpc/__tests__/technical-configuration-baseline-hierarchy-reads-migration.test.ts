@@ -11,7 +11,7 @@ import {
 const MIGRATIONS_DIR = path.resolve(process.cwd(), "supabase/migrations")
 const TASKS_PATH = path.resolve(
   process.cwd(),
-  "openspec/changes/revise-technical-configuration-baseline-hierarchy/tasks.md"
+  "openspec/changes/archive/2026-08-14-revise-technical-configuration-baseline-hierarchy/tasks.md"
 )
 const P1A_MIGRATION_FILE = "20260807091720_technical_configuration_baseline_subgroups.sql"
 const P1C_MIGRATION_SUFFIX = "_technical_configuration_baseline_hierarchy_reads.sql"
