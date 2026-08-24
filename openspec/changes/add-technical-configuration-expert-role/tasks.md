@@ -22,17 +22,17 @@ production behavior or migration.
 **Deploy boundary:** documentation/test inventory only; safe to merge and deploy
 independently.
 
-- [ ] 1.1 Sync current `main` and re-inventory every Technical Configurations
+- [x] 1.1 Sync current `main` and re-inventory every Technical Configurations
       RPC, including functions from `add-technical-configuration-comparison` and
       `harden-technical-configuration-baseline-copy-and-excel`.
-- [ ] 1.2 Inventory every exported RBAC helper, direct role comparison,
+- [x] 1.2 Inventory every exported RBAC helper, direct role comparison,
       role-derived collection such as `Object.values(ROLES)`, standalone
       role-aware API, and `ALLOWED_FUNCTIONS` entry.
-- [ ] 1.3 Classify every generic proxy RPC as Technical Configurations,
+- [x] 1.3 Classify every generic proxy RPC as Technical Configurations,
       retained-shell/account/session infrastructure, or expert-denied.
-- [ ] 1.4 Record the exact migration ordering constraints for the session
+- [x] 1.4 Record the exact migration ordering constraints for the session
       profile RPC, module guard, and expert account-scope RPCs.
-- [ ] 1.5 Confirm the phase file map and focused test commands before production
+- [x] 1.5 Confirm the phase file map and focused test commands before production
       edits begin.
 
 **Exit gate:** inventory has no unclassified helper, API, RPC, or migration
