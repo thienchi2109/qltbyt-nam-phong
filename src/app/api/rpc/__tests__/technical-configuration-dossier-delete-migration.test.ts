@@ -153,12 +153,12 @@ describe("technical configuration dossier P15A delete migration", () => {
     expect(listBlock).not.toContain("technical_configuration_baseline_versions_list")
   })
 
-  it("activates the delete RPC only through the dedicated P15C manifest", () => {
+  it("activates the delete RPC only through the canonical module aggregate", () => {
     const allowedFunctionsSource = readFileSync(ALLOWED_FUNCTIONS_PATH, "utf8")
     expect(allowedFunctionsSource).toContain(
-      'import { DOSSIER_DELETE_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-dossier-rpcs"'
+      'import { TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-rpcs"'
     )
-    expect(allowedFunctionsSource).toContain("...DOSSIER_DELETE_RPC_FUNCTION_NAMES")
+    expect(allowedFunctionsSource).toContain("...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES")
 
     const manifestFiles = readdirSync(RPC_MANIFESTS_DIR).filter(
       (file) => file.startsWith("technical-configuration") && file.endsWith("-rpcs.ts")

@@ -163,16 +163,16 @@ authorization behavior yet.
 
 **Deploy boundary:** mechanical, backward-compatible refactor.
 
-- [ ] 7.1 Complete the dossier RPC collection with
+- [x] 7.1 Complete the dossier RPC collection with
       list/get/create/update/archive/delete names under one canonical owner.
-- [ ] 7.2 Compose one complete Technical Configurations RPC-name aggregate from
+- [x] 7.2 Compose one complete Technical Configurations RPC-name aggregate from
       dossier, baseline, comparison, reference, document, supplier/option,
       assessment, ranking, and export collections.
-- [ ] 7.3 Make the generic `ALLOWED_FUNCTIONS` transport allowlist consume the
+- [x] 7.3 Make the generic `ALLOWED_FUNCTIONS` transport allowlist consume the
       aggregate instead of parallel module literals.
-- [ ] 7.4 Add a completeness test that fails when an `ALLOWED_FUNCTIONS` entry
+- [x] 7.4 Add a completeness test that fails when an `ALLOWED_FUNCTIONS` entry
       lacks an expert disposition.
-- [ ] 7.5 Confirm no RPC name was added, removed, or behaviorally reclassified
+- [x] 7.5 Confirm no RPC name was added, removed, or behaviorally reclassified
       by this mechanical phase.
 
 **Exit gate:** generic allowlist parity and exhaustive classification tests

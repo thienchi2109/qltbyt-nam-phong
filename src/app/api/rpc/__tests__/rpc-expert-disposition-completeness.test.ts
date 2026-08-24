@@ -1,7 +1,11 @@
+import { describe, expect, it } from "vitest"
+
+import { ALLOWED_FUNCTIONS } from "@/app/api/rpc/[fn]/allowed-functions"
 import { TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES } from "@/lib/technical-configuration-rpcs"
 
-/** Whitelist RPCs allowed through the Next.js RPC proxy. */
-export const ALLOWED_FUNCTIONS = new Set<string>([
+const EXPERT_RETAINED_RPC_FUNCTION_NAMES = ["change_password", "don_vi_branding_get"] as const
+
+const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
   "equipment_list",
   "equipment_get",
   "equipment_get_by_code",
@@ -33,7 +37,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "equipment_department_distribution",
   "equipment_aggregate_search",
   "equipment_bulk_import",
-  // Repairs
   "repair_request_list",
   "repair_request_get",
   "repair_request_create",
@@ -45,7 +48,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "repair_request_status_counts",
   "repair_request_change_history_list",
   "repair_request_active_for_equipment",
-  // ZBS notifications
   "zbs_notification_outbox_pending_for_dispatch",
   "zbs_notification_outbox_claim_for_dispatch",
   "zbs_notification_outbox_mark_sent",
@@ -53,7 +55,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "zbs_oauth_token_state_get",
   "zbs_oauth_token_state_persist_success",
   "zbs_oauth_token_state_record_error",
-  // Transfers
   "transfer_request_list",
   "transfer_request_page_data",
   "transfer_request_list_enhanced",
@@ -66,9 +67,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "transfer_change_history_list",
   "get_transfer_request_facilities",
   "get_equipment_location_suggestions",
-  // Transfers - Data Grid
   "transfer_request_counts",
-  // Maintenance
   "maintenance_plan_list",
   "maintenance_plan_get",
   "maintenance_plan_create",
@@ -87,9 +86,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "get_maintenance_report_data",
   "maintenance_plan_status_counts",
   "dashboard_kpi_summary",
-  // Technical Configurations
-  ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
-  // AI Assistant (read-only)
   "ai_equipment_lookup",
   "ai_maintenance_plan_lookup",
   "ai_maintenance_summary",
@@ -103,7 +99,6 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "ai_kill_switch_status",
   "ai_kill_switch_set",
   "assistant_query_database_audit_log",
-  // Tenants + Users
   "tenant_list",
   "get_facilities_with_equipment_count",
   "get_accessible_facilities",
@@ -112,55 +107,42 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "user_update_profile",
   "user_delete_by_admin",
   "reset_password_by_admin",
-  "change_password",
   "user_membership_add",
   "user_membership_remove",
   "user_set_current_don_vi",
-  // Don vi (global-only management)
   "don_vi_list",
   "don_vi_get",
   "don_vi_create",
   "don_vi_update",
   "don_vi_set_active",
   "don_vi_user_hierarchy",
-  // Usage Analytics (Reports)
   "usage_analytics_overview",
   "usage_analytics_daily",
-  // Usage log management
   "usage_log_list",
   "usage_session_start",
   "usage_session_end",
   "usage_log_delete",
-  // Reports: status distribution
   "equipment_status_distribution",
   "unused_equipment_report_for_reports",
-  // Audit logs (global users only)
   "audit_logs_list",
   "audit_logs_list_v2",
   "audit_logs_stats",
   "audit_logs_recent_summary",
-  // Dashboard KPIs (tenant-filtered)
   "dashboard_repair_request_stats",
   "dashboard_maintenance_plan_stats",
   "dashboard_maintenance_count",
   "dashboard_equipment_total",
   "maintenance_calendar_events",
   "dashboard_recent_activities",
-  // Debug
   "debug_claims",
   "test_jwt_claims",
-  "don_vi_branding_get",
-  // Header notifications
   "header_notifications_summary",
-  // Device Quota Management (Dinh muc thiet bi)
-  // Decisions
   "dinh_muc_quyet_dinh_list",
   "dinh_muc_quyet_dinh_get",
   "dinh_muc_quyet_dinh_create",
   "dinh_muc_quyet_dinh_update",
   "dinh_muc_quyet_dinh_activate",
   "dinh_muc_quyet_dinh_delete",
-  // Categories
   "dinh_muc_nhom_list",
   "dinh_muc_nhom_list_paginated",
   "dinh_muc_nhom_get",
@@ -168,44 +150,38 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "dinh_muc_nhom_delete",
   "dinh_muc_nhom_bulk_import",
   "dinh_muc_unified_import",
-  // Equipment Mapping
   "dinh_muc_thiet_bi_link",
   "dinh_muc_thiet_bi_unlink",
   "dinh_muc_thiet_bi_unassigned",
   "dinh_muc_thiet_bi_unassigned_filter_options",
   "dinh_muc_thiet_bi_by_nhom",
   "dinh_muc_thiet_bi_by_ids",
-  // Line Items
   "dinh_muc_chi_tiet_list",
   "dinh_muc_chi_tiet_upsert",
   "dinh_muc_chi_tiet_delete",
   "dinh_muc_chi_tiet_bulk_import",
-  // Compliance
   "dinh_muc_compliance_summary",
   "dinh_muc_compliance_detail",
-  // Suggested Mapping (read-path)
   "dinh_muc_thiet_bi_unassigned_names",
-  // Suggested Mapping (write-path)
   "dinh_muc_thiet_bi_link_batch",
-])
+] as const
 
-/** RPCs that must not be directly executable by the PostgREST `authenticated` role. */
-export const SERVICE_ROLE_RPC_FUNCTIONS = new Set<string>([
-  "zbs_notification_outbox_pending_for_dispatch",
-  "zbs_notification_outbox_claim_for_dispatch",
-  "zbs_notification_outbox_mark_sent",
-  "zbs_notification_outbox_mark_failed",
-  "zbs_oauth_token_state_get",
-  "zbs_oauth_token_state_persist_success",
-  "zbs_oauth_token_state_record_error",
-])
+describe("RPC expert disposition completeness", () => {
+  it("classifies every generic transport RPC exactly once", () => {
+    const classifiedFunctions = [
+      ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
+      ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,
+      ...EXPERT_DENIED_RPC_FUNCTION_NAMES,
+    ]
 
-/** Service-role ZBS dispatch RPCs callable only through the signed internal cron path. */
-export const ZBS_CRON_RPC_FUNCTIONS = new Set<string>([
-  "zbs_notification_outbox_claim_for_dispatch",
-  "zbs_notification_outbox_mark_sent",
-  "zbs_notification_outbox_mark_failed",
-  "zbs_oauth_token_state_get",
-  "zbs_oauth_token_state_persist_success",
-  "zbs_oauth_token_state_record_error",
-])
+    expect(new Set(classifiedFunctions).size).toBe(classifiedFunctions.length)
+    expect([...classifiedFunctions].sort()).toEqual([...ALLOWED_FUNCTIONS].sort())
+  })
+
+  it("freezes the Phase 7 disposition counts without enforcing them", () => {
+    expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(79)
+    expect(EXPERT_RETAINED_RPC_FUNCTION_NAMES).toEqual(["change_password", "don_vi_branding_get"])
+    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(158)
+    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 239)
+  })
+})

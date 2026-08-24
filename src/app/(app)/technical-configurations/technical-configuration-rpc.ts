@@ -1,4 +1,4 @@
-import { DOSSIER_DELETE_RPC_FUNCTIONS } from "@/lib/technical-configuration-dossier-rpcs"
+import { DOSSIER_RPC_FUNCTIONS } from "@/lib/technical-configuration-dossier-rpcs"
 
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
@@ -103,7 +103,7 @@ export function listTechnicalConfigurationDossiers(
   args: TechnicalConfigurationDossierListRpcArgs = {},
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierListWireResponse> {
-  return callTechnicalConfigurationRpc("technical_configuration_dossiers_list", args, { signal })
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.listDossiers, args, { signal })
 }
 
 /** Fetches one configuration dossier by identifier. */
@@ -113,7 +113,7 @@ export function getTechnicalConfigurationDossier(
 ): Promise<TechnicalConfigurationDossierWireResponse> {
   const args: TechnicalConfigurationDossierGetRpcArgs = { p_id: id }
 
-  return callTechnicalConfigurationRpc("technical_configuration_dossiers_get", args, { signal })
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.getDossier, args, { signal })
 }
 
 /** Creates a configuration dossier only when the explicit save action is submitted. */
@@ -121,7 +121,7 @@ export function createTechnicalConfigurationDossier(
   args: TechnicalConfigurationDossierCreateRpcArgs,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierWireResponse> {
-  return callTechnicalConfigurationRpc("technical_configuration_dossiers_create", args, { signal })
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.createDossier, args, { signal })
 }
 
 /** Updates active dossier metadata with the caller's current revision. */
@@ -129,7 +129,7 @@ export function updateTechnicalConfigurationDossier(
   args: TechnicalConfigurationDossierUpdateRpcArgs,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierWireResponse> {
-  return callTechnicalConfigurationRpc("technical_configuration_dossiers_update", args, { signal })
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.updateDossier, args, { signal })
 }
 
 /** Permanently deletes an eligible dossier after explicit destructive confirmation. */
@@ -137,5 +137,5 @@ export function deleteTechnicalConfigurationDossier(
   args: TechnicalConfigurationDossierDeleteRpcArgs,
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierDeleteWireResponse> {
-  return callTechnicalConfigurationRpc(DOSSIER_DELETE_RPC_FUNCTIONS.deleteDossier, args, { signal })
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.deleteDossier, args, { signal })
 }

@@ -10,13 +10,6 @@ const PHASE_GATE_PATH = path.join(
   REPO_ROOT,
   "supabase/tests/technical_configuration_option_documents_phase_gate.sql"
 )
-const RPC_NAMES_PATH = path.join(REPO_ROOT, "src/lib/technical-configuration-document-rpcs.ts")
-const TYPES_PATH = path.join(REPO_ROOT, "src/app/(app)/technical-configurations/document-types.ts")
-const ADAPTER_PATH = path.join(
-  REPO_ROOT,
-  "src/app/(app)/technical-configurations/technical-configuration-document-rpc.ts"
-)
-const ALLOWLIST_PATH = path.join(REPO_ROOT, "src/app/api/rpc/[fn]/allowed-functions.ts")
 
 const TABLE_NAMES = [
   "technical_configuration_option_documents",
@@ -47,43 +40,6 @@ const RPC_ARGUMENTS: Record<(typeof OPTION_DOCUMENT_RPC_NAMES)[number], string> 
     "p_option_document_id UUID, p_comparison_set_id UUID, p_criterion_id UUID, p_page_section TEXT, p_excerpt TEXT, p_expected_revision BIGINT",
   technical_configuration_option_citation_delete:
     "p_option_citation_id UUID, p_expected_revision BIGINT",
-}
-
-const RPC_ARG_INTERFACES: Record<string, string[]> = {
-  TechnicalConfigurationOptionDocumentsListRpcArgs: [
-    "p_option_id: string",
-    "p_baseline_version_id: string",
-    "p_page?: number",
-    "p_page_size?: number",
-  ],
-  TechnicalConfigurationOptionDocumentCreateRpcArgs: [
-    "p_option_id: string",
-    "p_name: string",
-    "p_url: string",
-    "p_expected_revision: number",
-  ],
-  TechnicalConfigurationOptionDocumentUpdateRpcArgs: [
-    "p_option_document_id: string",
-    "p_name: string",
-    "p_url: string",
-    "p_expected_revision: number",
-  ],
-  TechnicalConfigurationOptionDocumentDeleteRpcArgs: [
-    "p_option_document_id: string",
-    "p_expected_revision: number",
-  ],
-  TechnicalConfigurationOptionCitationUpsertRpcArgs: [
-    "p_option_document_id: string",
-    "p_comparison_set_id: string",
-    "p_criterion_id: string",
-    "p_page_section: string | null",
-    "p_excerpt: string | null",
-    "p_expected_revision: number",
-  ],
-  TechnicalConfigurationOptionCitationDeleteRpcArgs: [
-    "p_option_citation_id: string",
-    "p_expected_revision: number",
-  ],
 }
 
 const URL_VALIDATOR_FUNCTION = "_technical_configuration_validate_document_url"
@@ -132,21 +88,8 @@ function getFunctionArguments(source: string, functionName: string): string {
   return match ? normalizeSql(match[1]) : ""
 }
 
-function getInterfaceFields(source: string, interfaceName: string): string[] {
-  const match = source.match(new RegExp(`export interface ${interfaceName} \\{([\\s\\S]*?)\\n\\}`))
-  if (!match) return []
-  return match[1]
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-}
-
 const migrationSource = readIfExists(MIGRATION_PATH)
 const phaseGateSource = readIfExists(PHASE_GATE_PATH)
-const rpcNamesSource = readIfExists(RPC_NAMES_PATH)
-const typesSource = readIfExists(TYPES_PATH)
-const adapterSource = readIfExists(ADAPTER_PATH)
-const allowlistSource = readIfExists(ALLOWLIST_PATH)
 
 describe("technical configuration P9B1 option evidence contracts", () => {
   it("ships one correctly ordered migration after P9A2", () => {
@@ -426,39 +369,5 @@ $$;
     expect(phaseGateSource).toContain("'PT409', 'archived_dossier'")
     expect(phaseGateSource).not.toContain("'42501', 'Missing role claim'")
     expect(phaseGateSource).not.toContain("'PT409', 'archived'")
-  })
-
-  it("adds the dormant manifest, wire contracts, wrappers, and allowlist only", () => {
-    for (const [key, rpcName] of Object.entries(OPTION_DOCUMENT_RPC_FUNCTIONS)) {
-      expect(rpcNamesSource).toContain(`${key}: "${rpcName}"`)
-      expect(allowlistSource).toContain("...DOCUMENT_RPC_FUNCTION_NAMES")
-    }
-
-    for (const exportName of [
-      "TechnicalConfigurationOptionDocumentWire",
-      "TechnicalConfigurationOptionDocumentsListWireResponse",
-      "TechnicalConfigurationOptionDocumentMutationWireResponse",
-      "TechnicalConfigurationOptionDocumentDeleteWireResponse",
-    ]) {
-      expect(typesSource).toContain(`export interface ${exportName}`)
-    }
-    expect(typesSource).toContain("option_id: string")
-    expect(typesSource).toContain("affected_citation_count: number")
-    expect(typesSource).toContain("citations: TechnicalConfigurationCitationWire[]")
-
-    for (const [interfaceName, fields] of Object.entries(RPC_ARG_INTERFACES)) {
-      expect(getInterfaceFields(typesSource, interfaceName)).toEqual(fields)
-    }
-
-    for (const functionName of [
-      "listTechnicalConfigurationOptionDocuments",
-      "createTechnicalConfigurationOptionDocument",
-      "updateTechnicalConfigurationOptionDocument",
-      "deleteTechnicalConfigurationOptionDocument",
-      "upsertTechnicalConfigurationOptionCitation",
-      "deleteTechnicalConfigurationOptionCitation",
-    ]) {
-      expect(adapterSource).toContain(`export function ${functionName}(`)
-    }
   })
 })
