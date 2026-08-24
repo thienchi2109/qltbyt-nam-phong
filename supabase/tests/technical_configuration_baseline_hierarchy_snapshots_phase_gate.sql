@@ -413,6 +413,14 @@ BEGIN
     RAISE EXCEPTION 'locked hierarchy identity changed';
   END IF;
 
+  DROP TABLE IF EXISTS
+    pg_temp.technical_configuration_baseline_group_copy_map,
+    pg_temp.technical_configuration_baseline_subgroup_copy_map,
+    pg_temp.technical_configuration_baseline_criterion_copy_map,
+    pg_temp.technical_configuration_reference_product_copy_map,
+    pg_temp.technical_configuration_baseline_document_copy_map,
+    pg_temp.technical_configuration_reference_document_copy_map;
+
   PERFORM pg_temp.set_claims('chuyen_gia', v_user_id);
   BEGIN
     v_copy_response := public.technical_configuration_baseline_copy(

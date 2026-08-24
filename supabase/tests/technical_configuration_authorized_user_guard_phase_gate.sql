@@ -57,6 +57,26 @@ BEGIN
 END;
 $gate$;
 
+CREATE FUNCTION pg_temp.expect_current_claims_permission_denied(p_label TEXT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $gate$
+DECLARE
+  v_message TEXT;
+BEGIN
+  BEGIN
+    PERFORM public._technical_configuration_require_authorized_user();
+    RAISE EXCEPTION 'expected_permission_denied: %', p_label;
+  EXCEPTION
+    WHEN SQLSTATE '42501' THEN
+      GET STACKED DIAGNOSTICS v_message = MESSAGE_TEXT;
+      IF v_message <> 'permission_denied' THEN
+        RAISE EXCEPTION '% returned unexpected message %', p_label, v_message;
+      END IF;
+  END;
+END;
+$gate$;
+
 DO $gate$
 DECLARE
   v_authorized_oid OID;
@@ -128,6 +148,40 @@ BEGIN
     has_function_privilege('service_role', v_authorized_oid, 'EXECUTE')
   );
 
+  PERFORM set_config('request.jwt.claims', '{}'::JSONB::TEXT, true);
+  PERFORM pg_temp.expect_current_claims_permission_denied(
+    'missing claims fail closed'
+  );
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'app_role', 'global',
+      'role', 'authenticated',
+      'user_id', 'not-a-bigint'
+    )::TEXT,
+    true
+  );
+  PERFORM pg_temp.expect_current_claims_permission_denied(
+    'malformed user id fails closed'
+  );
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'app_role', 'global',
+      'role', 'authenticated',
+      'user_id', '9223372036854775808'
+    )::TEXT,
+    true
+  );
+  PERFORM pg_temp.expect_current_claims_permission_denied(
+    'overflowing user id fails closed'
+  );
+  PERFORM pg_temp.expect_permission_denied(
+    'unknown employee fails closed',
+    'global',
+    9223372036854775807
+  );
+
   FOREACH v_denied_role IN ARRAY ARRAY[
     'to_qltb',
     'qltb_khoa',
@@ -151,7 +205,27 @@ BEGIN
       v_denied_role || ' is accepted by the canonical guard',
       v_result = v_user_id
     );
+    v_result := public._technical_configuration_require_global_user();
+    PERFORM pg_temp.assert_true(
+      v_denied_role || ' is accepted through the compatibility wrapper',
+      v_result = v_user_id
+    );
   END LOOP;
+
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'app_role', '',
+      'role', 'global',
+      'user_id', v_user_id::TEXT
+    )::TEXT,
+    true
+  );
+  v_result := public._technical_configuration_require_authorized_user();
+  PERFORM pg_temp.assert_true(
+    'legacy role claim fallback remains accepted',
+    v_result = v_user_id
+  );
 
   v_global_oid := to_regprocedure(
     'public._technical_configuration_require_global_user()'
