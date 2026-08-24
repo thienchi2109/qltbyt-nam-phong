@@ -11,7 +11,7 @@ import {
 import { recomputeBaselineForwardInputHashes } from "../db-quality-gate/pre-live-inputs"
 import { runPreLiveEvidenceCheck } from "../db-quality-gate/pre-live"
 import { stableJsonStringify } from "../db-quality-gate/serialization"
-import { runStaticLaneForLandedCommit } from "../db-quality-gate/static-lane"
+import { runStaticLaneForLandedCommit } from "../db-quality-gate/landed-static-lane"
 import type { MigrationIdentity } from "../db-quality-gate/types"
 import {
   createDynamicFixture,

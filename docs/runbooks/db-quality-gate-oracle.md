@@ -17,6 +17,60 @@ Diff khong lien quan tra ve `SKIP`. Diff lien quan tra ve mot dong tom tat
 `PASS`, `FAILED`, hoac `INCOMPLETE` kem digest va so luong finding. This local
 command does not run baseline-forward, connect to Oracle, or write live DB.
 
+## DANGEROUS approval khi land truc tiep khong co PR
+
+Workflow nay dung hai commit bat bien de tranh `approvalCommit` tu tham chieu:
+
+1. Commit candidate migration, sau do chay static voi exact candidate SHA. Exit
+   code `1` la expected khi report chi con finding `DANGEROUS`; command van ghi
+   report canonical theo candidate SHA:
+
+```bash
+CANDIDATE_SHA="$(git rev-parse HEAD)"
+node scripts/npm-run.js run db:quality-gate -- \
+  --created-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --lane static \
+  --persist-candidate-report true \
+  --run-id "candidate-${CANDIDATE_SHA:0:12}" \
+  --subject-commit "$CANDIDATE_SHA"
+```
+
+Report phai nam tai
+`supabase/db-quality-gate-static-evidence/<candidate-SHA>.json`, co
+`requiredChecksComplete=true`, `evidenceAvailable=true`, khong co finding
+`BLOCKING`, va digest tu tinh phai khop.
+
+2. Maintainer review exact report va statement. Them report canonical cung
+   approval record vao `supabase/db-quality-gate-waivers.json`. Record phai bind
+   exact candidate SHA, report digest, finding fingerprint, migration path,
+   migration content SHA-256, review evidence, expiry/revocation state, risk,
+   validation, va recovery plan.
+3. Tao mot approval commit la direct child cua candidate commit. Khong sua
+   migration sau candidate run, khong squash hai commit, va khong them commit
+   trung gian sau approval.
+4. Sau khi approval commit da land vao `main`, checkout exact clean landed HEAD
+   va chay trusted landed path voi ca hai SHA explicit:
+
+```bash
+LANDED_SHA="$(git rev-parse HEAD)"
+CANDIDATE_SHA="$(git rev-parse "${LANDED_SHA}^1")"
+node scripts/npm-run.js run db:quality-gate -- \
+  --landed-parent-commit "$CANDIDATE_SHA" \
+  --lane static \
+  --run-id "landed-${LANDED_SHA:0:12}" \
+  --subject-commit "$LANDED_SHA"
+```
+
+Khong dung lenh static mac dinh sau khi `origin/main == HEAD` de tao landed
+evidence; diff rong phai la `INCOMPLETE`, khong phai `PASS`. Missing/stale
+report, content thay doi, approval het han/revoked/superseded, dirty worktree,
+hoac subject khong phai approval-bearing direct child deu fail closed.
+
+Approval `DANGEROUS` chi cho phep finding duoc chap nhan khi aggregate static.
+No khong cap quyen ghi live DB. Moi live apply van can permission rieng, moi,
+explicit cho exact Supabase MCP operation sau khi static va Oracle
+baseline-forward cung PASS tren cung exact landed commit.
+
 ## Bien moi truong tren Codex VPS
 
 ```bash

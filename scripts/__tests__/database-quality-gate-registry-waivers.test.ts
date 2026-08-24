@@ -93,7 +93,6 @@ function validRegistries() {
 
 function validWaiver(overrides: Record<string, string> = {}) {
   return {
-    approvalCommit: "a".repeat(40),
     approvedAt: "2026-08-16T15:00:00Z",
     approver: "database maintainer",
     approvalUrl: "https://example.test/approvals/1",
@@ -124,7 +123,6 @@ describe("database quality gate registry waiver transitions", () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const previous = validRegistries()
     previous.waivers.approvals.push({
-      approvalCommit: "b".repeat(40),
       candidateCommit: "a".repeat(40),
       candidateReportDigest: "c".repeat(64),
       findingFingerprint: "d".repeat(64),
@@ -154,7 +152,6 @@ describe("database quality gate registry waiver transitions", () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()
     input.waivers.approvals.push({
-      approvalCommit: "b".repeat(40),
       approvedAt: "2026-08-16T15:10:00.000Z",
       approver: "maintainer",
       approvalUrl: "https://github.com/thienchi2109/qltbyt-nam-phong/pull/940#pullrequestreview-1",

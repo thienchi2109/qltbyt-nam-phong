@@ -12,12 +12,15 @@ import { runPreLiveEvidenceCheck } from "./pre-live"
 import { verifyProtectedMain } from "./protected-main"
 import { evaluateReconciliation } from "./reconciliation"
 import { stableJsonStringify } from "./serialization"
+import { runStaticLaneForLandedCommit } from "./landed-static-lane"
 import { runStaticLane } from "./static-lane"
+import { persistCandidateStaticEvidence } from "./static-candidate-evidence"
 import { GATE_LANES, GATE_SCHEMA_VERSION } from "./types"
 import type { OracleDynamicExecutor } from "./dynamic-lane"
 import type { OracleEvidenceStore } from "./oracle-evidence-store"
 import type { PreLiveEvidenceDependencies } from "./pre-live"
 import type { ReconciliationDependencies } from "./reconciliation"
+import type { LandedStaticLaneInput, StaticLaneInput } from "./static-lane-types"
 import type { GateLane, GateReport } from "./types"
 
 type CommandExecution = {
@@ -28,20 +31,25 @@ type CommandExecution = {
 type CommandOptions = {
   baselineForwardDigest?: string
   baselineForwardRunId?: string
-  createdAt: string
+  createdAt?: string
   lane: GateLane
   liveObservationPath?: string
+  landedParentCommit?: string
+  persistCandidateReport: boolean
   runId: string
   staticRunId?: string
   subjectCommit?: string
 }
 
 type CommandDependencies = {
+  clock?: () => string
   dynamicExecutor?: () => OracleDynamicExecutor | undefined
   evidenceStore?: () => OracleEvidenceStore | undefined
   preLiveDependencies?: Omit<PreLiveEvidenceDependencies, "evidenceStore">
   reconciliationDependencies?: Omit<ReconciliationDependencies, "evidenceStore">
   repositoryRoot?: string
+  runLandedStatic?: (input: LandedStaticLaneInput) => GateReport
+  runStatic?: (input: StaticLaneInput) => GateReport
 }
 
 const OPTION_NAMES = new Set([
@@ -49,7 +57,9 @@ const OPTION_NAMES = new Set([
   "--baseline-forward-run-id",
   "--created-at",
   "--lane",
+  "--landed-parent-commit",
   "--live-observation",
+  "--persist-candidate-report",
   "--run-id",
   "--static-run-id",
   "--subject-commit",
@@ -77,16 +87,23 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   }
 
   const lane = values.get("--lane")
-  if (lane === undefined || !GATE_LANES.includes(lane as GateLane)) {
+  const persistCandidateReport = values.get("--persist-candidate-report")
+  if (
+    lane === undefined ||
+    !GATE_LANES.includes(lane as GateLane) ||
+    (persistCandidateReport !== undefined && persistCandidateReport !== "true")
+  ) {
     return undefined
   }
 
   return {
     baselineForwardDigest: values.get("--baseline-forward-digest"),
     baselineForwardRunId: values.get("--baseline-forward-run-id"),
-    createdAt: values.get("--created-at") ?? new Date().toISOString(),
+    createdAt: values.get("--created-at"),
     lane: lane as GateLane,
+    landedParentCommit: values.get("--landed-parent-commit"),
     liveObservationPath: values.get("--live-observation"),
+    persistCandidateReport: persistCandidateReport === "true",
     runId: values.get("--run-id") ?? "local-contract",
     staticRunId: values.get("--static-run-id"),
     subjectCommit: values.get("--subject-commit"),
@@ -140,13 +157,56 @@ export function runDatabaseQualityGateCommand(
   }
 
   if (options.lane === "static") {
+    if (
+      options.persistCandidateReport &&
+      (options.landedParentCommit !== undefined || options.subjectCommit === undefined)
+    ) {
+      return errorExecution(
+        "Candidate report persistence requires an explicit subject commit and no landed parent"
+      )
+    }
+    if (options.landedParentCommit !== undefined && options.subjectCommit === undefined) {
+      return errorExecution("Landed static execution requires an explicit subject commit")
+    }
+    if (options.landedParentCommit !== undefined && args.includes("--created-at")) {
+      return errorExecution("Landed static execution requires a trusted internal clock")
+    }
+
     try {
-      const report = runStaticLane({
-        createdAt: options.createdAt,
-        repositoryRoot,
-        runId: options.runId,
-        subjectCommit,
-      })
+      const createdAt =
+        options.createdAt ?? (dependencies.clock ?? (() => new Date().toISOString()))()
+      const report =
+        options.landedParentCommit === undefined
+          ? (dependencies.runStatic ?? runStaticLane)({
+              createdAt,
+              repositoryRoot,
+              runId: options.runId,
+              subjectCommit,
+            })
+          : dependencies.runLandedStatic === undefined
+            ? runStaticLaneForLandedCommit(
+                {
+                  createdAt,
+                  landedParentCommit: options.landedParentCommit,
+                  repositoryRoot,
+                  runId: options.runId,
+                  subjectCommit,
+                },
+                { now: () => new Date(createdAt) }
+              )
+            : dependencies.runLandedStatic({
+                createdAt,
+                landedParentCommit: options.landedParentCommit,
+                repositoryRoot,
+                runId: options.runId,
+                subjectCommit,
+              })
+      if (
+        options.persistCandidateReport &&
+        persistCandidateStaticEvidence(repositoryRoot, report) === undefined
+      ) {
+        return errorExecution("Candidate static evidence could not be persisted")
+      }
 
       return {
         exitCode: outcomeExitCode(report.outcome),
@@ -162,7 +222,7 @@ export function runDatabaseQualityGateCommand(
     if (executor !== undefined) {
       try {
         const report = runOracleDynamicLane({
-          createdAt: options.createdAt,
+          createdAt: options.createdAt ?? new Date().toISOString(),
           executor,
           lane: options.lane,
           repositoryRoot,
@@ -259,7 +319,7 @@ export function runDatabaseQualityGateCommand(
 
   const incompleteReport: GateReport = {
     baselineMigrationHighWater: "unavailable",
-    createdAt: options.createdAt,
+    createdAt: options.createdAt ?? new Date().toISOString(),
     digest: "",
     evidenceAvailable: false,
     executorEnvironment: {},

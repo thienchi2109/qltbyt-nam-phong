@@ -13,7 +13,6 @@ type CandidateEvidence = {
 }
 
 type Approval = {
-  approvalCommit: string
   candidateCommit: string
   candidateReportDigest: string
   expiresAt?: string
@@ -35,22 +34,25 @@ type ApprovalEvaluation = {
 type ApprovalEvaluationInput = {
   approval?: Approval
   candidateEvidence: CandidateEvidence
-  finalCommit: string
   finding: DangerousFinding
   now: string
 }
 
 function isCurrentApproval(input: ApprovalEvaluationInput): boolean {
-  const { approval, candidateEvidence, finalCommit, finding, now } = input
+  const { approval, candidateEvidence, finding, now } = input
+  const nowTimestamp = Date.parse(now)
+  const expiresAtTimestamp =
+    approval?.expiresAt === undefined ? undefined : Date.parse(approval.expiresAt)
 
   return (
     approval !== undefined &&
+    Number.isFinite(nowTimestamp) &&
+    (expiresAtTimestamp === undefined || Number.isFinite(expiresAtTimestamp)) &&
     approval.status === "active" &&
     approval.revokedAt === undefined &&
     approval.reviewEvidence !== undefined &&
     approval.reviewEvidence.trim().length > 0 &&
-    (approval.expiresAt === undefined || approval.expiresAt > now) &&
-    approval.approvalCommit === finalCommit &&
+    (expiresAtTimestamp === undefined || expiresAtTimestamp > nowTimestamp) &&
     approval.candidateCommit === candidateEvidence.candidateCommit &&
     approval.candidateReportDigest === candidateEvidence.reportDigest &&
     approval.findingFingerprint === candidateEvidence.findingFingerprint &&

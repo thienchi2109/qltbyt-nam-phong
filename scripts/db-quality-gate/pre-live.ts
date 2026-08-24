@@ -22,8 +22,8 @@ import {
   preLiveReport,
   validReusableReport,
 } from "./pre-live-report"
+import { runStaticLaneForLandedCommit, type LandedStaticLaneInput } from "./landed-static-lane"
 import { runPreLiveReconciliationCheck } from "./pre-live-reconciliation"
-import { runStaticLaneForLandedCommit, type LandedStaticLaneInput } from "./static-lane"
 import type { GateReport } from "./types"
 import type { PreLiveReconciliationDependencies } from "./pre-live-reconciliation"
 import type { AppliedMigrationLock } from "./registries"

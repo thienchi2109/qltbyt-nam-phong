@@ -1,5 +1,6 @@
 import { collectChangedFiles } from "../changed-files"
 import { isCanonicalMigrationPath } from "./migration-source"
+import { isCandidateStaticEvidencePath } from "./static-candidate-evidence"
 import { INVARIANTS_PATH, SQL_TESTS_PATH } from "./static-lane-expected-state"
 
 /** Default comparison ref for ordinary diff-aware static gate runs. */
@@ -23,7 +24,8 @@ export function staticChangedFiles(changedFiles: string[]): string[] {
       filePath === BASELINE_PATH ||
       filePath === INVARIANTS_PATH ||
       filePath === SQL_TESTS_PATH ||
-      filePath === WAIVERS_PATH
+      filePath === WAIVERS_PATH ||
+      isCandidateStaticEvidencePath(filePath)
   )
 }
 

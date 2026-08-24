@@ -200,7 +200,6 @@ export function runStatic(
 
 export function dangerousApproval(overrides: Record<string, string> = {}) {
   return {
-    approvalCommit: SUBJECT_COMMIT,
     approvedAt: "2026-08-16T15:00:00Z",
     approver: "database maintainer",
     approvalUrl: "https://github.com/thienchi2109/qltbyt-nam-phong/pull/940#pullrequestreview-1",

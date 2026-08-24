@@ -27,7 +27,6 @@ type RegistryModule = {
 
 function validWaiver(overrides: Record<string, string> = {}) {
   return {
-    approvalCommit: "a".repeat(40),
     approvedAt: "2026-08-16T15:00:00Z",
     approver: "database maintainer",
     approvalUrl: "https://example.test/approvals/1",
@@ -238,7 +237,6 @@ describe("database quality gate registry schemas", () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()
     input.waivers.approvals.push({
-      approvalCommit: "b".repeat(40),
       candidateCommit: "a".repeat(40),
       id: "approval-1",
       ruleId: "sql.dangerous",
@@ -260,7 +258,6 @@ describe("database quality gate registry schemas", () => {
     const registry = await loadDatabaseQualityGateModule<RegistryModule>("registries")
     const input = validRegistries()
     input.waivers.approvals.push({
-      approvalCommit: "b".repeat(40),
       candidateCommit: "a".repeat(40),
       candidateReportDigest: "not-a-sha256",
       findingFingerprint: "1".repeat(64),

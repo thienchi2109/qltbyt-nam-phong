@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { reportDigest } from "../db-quality-gate/contract"
 import { ORACLE_REPORT_ARTIFACT } from "../db-quality-gate/oracle-evidence-store"
 import { runPreLiveEvidenceCheck } from "../db-quality-gate/pre-live"
-import { runStaticLaneForLandedCommit } from "../db-quality-gate/static-lane"
+import { runStaticLaneForLandedCommit } from "../db-quality-gate/landed-static-lane"
 import type { GateReport } from "../db-quality-gate/types"
 import {
   BASELINE_RUN_ID,
@@ -114,5 +114,31 @@ describe("database quality gate pre-live landed static evidence", () => {
     })
 
     expectIncomplete(result)
+  })
+
+  it("rejects a landed static run whose exact first-parent diff has no gate inputs", () => {
+    const repository = fixtureWithStaticMetadata({
+      path: "supabase/migrations/20260823070000_existing.sql",
+      sql: "-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n",
+    })
+    const parentCommit = repositoryHead(repository.root)
+    writeFileSync(repository.path("README.md"), "documentation-only landed commit\n")
+    const headCommit = commitWorkingTree(repository.root, "land documentation only")
+
+    const result = runStaticLaneForLandedCommit({
+      createdAt: CREATED_AT,
+      landedParentCommit: parentCommit,
+      repositoryRoot: repository.root,
+      runId: STATIC_RUN_ID,
+      subjectCommit: headCommit,
+    })
+
+    expectIncomplete(result)
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        classification: "BLOCKING",
+        ruleId: "migration.changed-file-discovery",
+      })
+    )
   })
 })

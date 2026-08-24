@@ -69,7 +69,6 @@ const appliedLockSchema = z
 
 const waiverApprovalSchema = z
   .object({
-    approvalCommit: z.string().regex(SHA1_PATTERN),
     approvedAt: z.string().datetime(),
     approver: z.string().min(1),
     approvalUrl: z.string().url(),

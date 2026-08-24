@@ -5,7 +5,7 @@ import {
 } from "./migration-source"
 import { inspectMigrationRepository } from "./migration-repository"
 import { currentHeadCommit } from "./git-evidence"
-import { resolveLandedStaticDiff, type TrustedStaticDiff } from "./landed-static-diff"
+import type { TrustedStaticDiff } from "./landed-static-diff"
 import { attachDangerousApprovals } from "./static-approvals"
 import {
   hasTrustedIdentityBaseline,
@@ -44,16 +44,16 @@ import {
   collectStaticChangedFiles,
   DEFAULT_MIGRATION_ROOT,
   DEFAULT_STATIC_BASE_REF,
-  staticChangedFiles,
   WAIVERS_PATH,
 } from "./static-changed-files"
 import { finalizeStaticLaneReport } from "./static-lane-report"
-import type { LandedStaticLaneInput, StaticLaneInput } from "./static-lane-types"
+import type { StaticLaneInput } from "./static-lane-types"
 import type { GateReport } from "./types"
 
 function runStaticLaneInternal(
   input: StaticLaneInput,
-  trustedDiff?: TrustedStaticDiff
+  trustedDiff?: TrustedStaticDiff,
+  approvalEvaluationAt = input.createdAt
 ): GateReport {
   const testOverridesAllowed = trustedDiff === undefined && process.env.NODE_ENV === "test"
   const baseRef =
@@ -274,7 +274,18 @@ function runStaticLaneInternal(
         ]
       : []),
   ]
+  const inputHashes = {
+    appliedLock: artifactHash(input.repositoryRoot, APPLIED_LOCK_PATH),
+    baseline: artifactHash(input.repositoryRoot, BASELINE_PATH),
+    harness: harnessEvidence.hash,
+    invariants: expectedStateEvidence.inputHashes.invariants,
+    sqlTests: expectedStateEvidence.inputHashes.sqlTests,
+    waivers: artifactHash(input.repositoryRoot, WAIVERS_PATH),
+  }
   const approvalAttachment = attachDangerousApprovals({
+    approvalEvaluationAt,
+    candidateCommit: trustedDiff?.candidateCommit,
+    finalInputHashes: inputHashes,
     findings: staticFindings,
     migrationIdentities: sourceInspection.migrationIdentities,
     repositoryRoot: input.repositoryRoot,
@@ -301,14 +312,7 @@ function runStaticLaneInternal(
     createdAt: input.createdAt,
     findings,
     incomplete,
-    inputHashes: {
-      appliedLock: artifactHash(input.repositoryRoot, APPLIED_LOCK_PATH),
-      baseline: artifactHash(input.repositoryRoot, BASELINE_PATH),
-      harness: harnessEvidence.hash,
-      invariants: expectedStateEvidence.inputHashes.invariants,
-      sqlTests: expectedStateEvidence.inputHashes.sqlTests,
-      waivers: artifactHash(input.repositoryRoot, WAIVERS_PATH),
-    },
+    inputHashes,
     migrationIdentities: sourceInspection.migrationIdentities,
     runId: input.runId,
     subjectCommit,
@@ -320,25 +324,13 @@ export function runStaticLane(input: StaticLaneInput): GateReport {
   return runStaticLaneInternal(input)
 }
 
-/**
- * Runs static checks over the exact landed first-parent diff after independently binding both SHAs.
- */
-export function runStaticLaneForLandedCommit(input: LandedStaticLaneInput): GateReport {
-  const trustedDiff = resolveLandedStaticDiff(input)
-
-  return runStaticLaneInternal(
-    {
-      createdAt: input.createdAt,
-      repositoryRoot: input.repositoryRoot,
-      runId: input.runId,
-      subjectCommit: input.subjectCommit,
-    },
-    {
-      ...trustedDiff,
-      changedFiles: staticChangedFiles(trustedDiff.changedFiles),
-    }
-  )
+/** Runs the static checks over a caller-verified immutable diff. */
+export function runStaticLaneWithTrustedDiff(
+  input: StaticLaneInput,
+  trustedDiff: TrustedStaticDiff,
+  approvalEvaluationAt: string
+): GateReport {
+  return runStaticLaneInternal(input, trustedDiff, approvalEvaluationAt)
 }
 
 export { collectStaticChangedFiles }
-export type { LandedStaticLaneInput }

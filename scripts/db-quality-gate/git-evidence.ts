@@ -41,6 +41,18 @@ export function currentHeadCommit(repositoryRoot: string): string | undefined {
   return resolveGitCommit(repositoryRoot, "HEAD")
 }
 
+/** Rejects landed evidence when tracked or untracked worktree content is present. */
+export function worktreeIsClean(repositoryRoot: string): boolean {
+  return (
+    gitOutput(repositoryRoot, [
+      "status",
+      "--porcelain=v1",
+      "--untracked-files=all",
+      "--ignore-submodules=none",
+    ]) === ""
+  )
+}
+
 /** Resolves the immutable first parent of a landed commit. */
 export function firstParentCommit(repositoryRoot: string, commit: string): string | undefined {
   return resolveGitCommit(repositoryRoot, `${commit}^1`)
