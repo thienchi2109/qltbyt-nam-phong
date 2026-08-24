@@ -216,12 +216,12 @@ tests only; no NextAuth consumer change.
 **Deploy boundary:** additive database-first phase. The existing application
 continues using the old profile path.
 
-- [ ] 9.1 Add the JWT-guarded authorization profile RPC returning current
+- [x] 9.1 Add the JWT-guarded authorization profile RPC returning current
       database role plus existing profile fields.
-- [ ] 9.2 Preserve `SECURITY DEFINER`,
+- [x] 9.2 Preserve `SECURITY DEFINER`,
       `SET search_path = public, pg_temp`, explicit grants/revokes, and user-ID
       claim matching.
-- [ ] 9.3 Add SQL tests for valid profile reads, claim mismatch, missing user,
+- [x] 9.3 Add SQL tests for valid profile reads, claim mismatch, missing user,
       and unsupported/malformed authorization state.
 - [ ] 9.4 Run migration `static` and Oracle `baseline-forward` against the exact
       landed commit and retain digest-bearing evidence.

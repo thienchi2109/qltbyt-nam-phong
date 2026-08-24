@@ -308,16 +308,18 @@ describe("database quality gate Oracle remote executor", () => {
       (command) => `${command.arguments.at(-1) ?? ""}\n${command.input ?? ""}`
     )
     expect(remoteCommands.join("\n")).toContain(
-      'CREATE DATABASE "dq_baseline_forward_phase4_run" TEMPLATE "qltbyt_test"'
+      'CREATE DATABASE "dq_baseline_forward_phase4_run" OWNER "postgres" TEMPLATE "qltbyt_test"'
     )
     expect(
       remoteCommands.find((command) =>
-        command.includes('CREATE DATABASE "dq_baseline_forward_phase4_run" TEMPLATE "qltbyt_test"')
+        command.includes(
+          'CREATE DATABASE "dq_baseline_forward_phase4_run" OWNER "postgres" TEMPLATE "qltbyt_test"'
+        )
       )
     ).toContain("-U supabase_admin")
     expect(remoteCommands.join("\n")).not.toContain("should_not_run")
-    expect(recorder.commands.some((command) => command.input?.includes("candidate_only"))).toBe(
-      true
+    expect(remoteCommands.find((command) => command.includes("candidate_only"))).toContain(
+      "-U postgres"
     )
   })
 

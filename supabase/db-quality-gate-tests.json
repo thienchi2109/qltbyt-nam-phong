@@ -452,6 +452,16 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 9"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/session_authorization_profile_for_jwt_smoke.sql",
+      "purpose": "invariant",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "dedicated-fixture",
       "path": "supabase/tests/session_profile_for_jwt_smoke.sql",

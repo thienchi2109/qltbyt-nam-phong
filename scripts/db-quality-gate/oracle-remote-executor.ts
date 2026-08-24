@@ -40,6 +40,7 @@ export type {
 
 const BASELINE_DATABASE = "qltbyt_test"
 const DATABASE_ADMIN_ROLE = "supabase_admin"
+const DATABASE_MIGRATION_ROLE = "postgres"
 const GLOBAL_LOCK_NAME = "dynamic-lane.lock"
 const LOCK_LEASE_SECONDS = 30 * 60
 
@@ -255,8 +256,8 @@ rmdir "$lock_path"`,
       }
       const statement =
         template === undefined
-          ? `CREATE DATABASE ${quotedIdentifier(databaseName)};`
-          : `CREATE DATABASE ${quotedIdentifier(databaseName)} TEMPLATE ${quotedIdentifier(template)};`
+          ? `CREATE DATABASE ${quotedIdentifier(databaseName)} OWNER ${quotedIdentifier(DATABASE_MIGRATION_ROLE)};`
+          : `CREATE DATABASE ${quotedIdentifier(databaseName)} OWNER ${quotedIdentifier(DATABASE_MIGRATION_ROLE)} TEMPLATE ${quotedIdentifier(template)};`
       const created = sql("postgres", statement, "unavailable", DATABASE_ADMIN_ROLE)
       return created.status === "ok"
         ? { status: "ok", value: undefined }
@@ -280,7 +281,7 @@ rmdir "$lock_path"`,
       const content = migrations
         .map((migration) => `-- ${migration.path}\n${migration.content.trimEnd()}\n`)
         .join("\n")
-      const applied = sql(databaseName, content, "failed")
+      const applied = sql(databaseName, content, "failed", DATABASE_MIGRATION_ROLE)
       return applied.status === "ok"
         ? { status: "ok", value: undefined }
         : errorResult(applied.kind, applied.error)
