@@ -73,15 +73,15 @@ add the new role to canonical production role constants yet.
 **Deploy boundary:** preserves behavior for all current roles and closes
 allowlist widening before the new role exists.
 
-- [ ] 3.1 Replace `/api/chat` use of `Object.values(ROLES)` with an explicit
+- [x] 3.1 Replace `/api/chat` use of `Object.values(ROLES)` with an explicit
       current-role allowlist that will not grow automatically.
-- [ ] 3.2 Add direct-request expert-deny tests for Chat, tenant memberships, and
+- [x] 3.2 Add direct-request expert-deny tests for Chat, tenant memberships, and
       tenant switching.
-- [ ] 3.3 Add independent expert-deny tests for asynchronous Device Quota
+- [x] 3.3 Add independent expert-deny tests for asynchronous Device Quota
       suggestion job routes using `canAccessDeviceQuotaModule()`.
-- [ ] 3.4 Add independent expert-deny tests for synchronous
+- [x] 3.4 Add independent expert-deny tests for synchronous
       `assertSuggestionAccess()` provider authorization.
-- [ ] 3.5 Add server-side expert-deny characterization for Users/Tenants
+- [x] 3.5 Add server-side expert-deny characterization for Users/Tenants
       management actions and preserve positive current-role cases.
 
 **Exit gate:** all current roles retain behavior; adding a future `ROLES` value

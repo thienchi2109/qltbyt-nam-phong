@@ -16,7 +16,8 @@ const retrySuggestionJobMock = vi.fn()
 vi.mock("@/app/api/device-quota/mapping/suggest/suggestion-job-service", () => ({
   createSuggestionJob: (...args: unknown[]) => createSuggestionJobMock(...args),
   getSuggestionJob: (...args: unknown[]) => getSuggestionJobMock(...args),
-  processSuggestionJobChunksForJob: (...args: unknown[]) => processSuggestionJobChunksForJobMock(...args),
+  processSuggestionJobChunksForJob: (...args: unknown[]) =>
+    processSuggestionJobChunksForJobMock(...args),
   retrySuggestionJob: (...args: unknown[]) => retrySuggestionJobMock(...args),
 }))
 
@@ -32,6 +33,14 @@ const FORBIDDEN_SESSION = {
   user: {
     id: "user-1",
     role: "qltb_khoa",
+    don_vi: "17",
+  },
+}
+
+const EXPERT_SESSION = {
+  user: {
+    id: "user-1",
+    role: "chuyen_gia",
     don_vi: "17",
   },
 }
@@ -56,7 +65,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: JSON.stringify({ donViId: 17 }),
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(401)
@@ -71,7 +80,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: JSON.stringify({ donViId: 17 }),
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(401)
@@ -86,7 +95,22 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: JSON.stringify({ donViId: 17 }),
         method: "POST",
-      }),
+      })
+    )
+
+    expect(response.status).toBe(403)
+    expect(createSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs rejects the technical configuration expert before creating a job", async () => {
+    getServerSessionMock.mockResolvedValue(EXPERT_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
+        body: JSON.stringify({ donViId: 17 }),
+        method: "POST",
+      })
     )
 
     expect(response.status).toBe(403)
@@ -105,7 +129,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: JSON.stringify({ donViId: 17 }),
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(500)
@@ -120,7 +144,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: "null",
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(400)
@@ -140,7 +164,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs", {
         body: JSON.stringify({ donViId: 17 }),
         method: "POST",
-      }),
+      })
     )
 
     expect(response.status).toBe(202)
@@ -165,7 +189,7 @@ describe("device quota suggestion job routes", () => {
 
     const response = await mod.GET(
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1"),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(200)
@@ -185,7 +209,20 @@ describe("device quota suggestion job routes", () => {
 
     const response = await mod.GET(
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1"),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
+    )
+
+    expect(response.status).toBe(403)
+    expect(getSuggestionJobMock).not.toHaveBeenCalled()
+  })
+
+  test("GET /jobs/[jobId] rejects the technical configuration expert before loading a job", async () => {
+    getServerSessionMock.mockResolvedValue(EXPERT_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/route")
+
+    const response = await mod.GET(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1"),
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(403)
@@ -205,11 +242,26 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(202)
     expect(retrySuggestionJobMock).toHaveBeenCalledWith(expect.objectContaining({ jobId: "job-1" }))
+  })
+
+  test("POST /jobs/[jobId]/retry rejects the technical configuration expert before retrying", async () => {
+    getServerSessionMock.mockResolvedValue(EXPERT_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/retry/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) }
+    )
+
+    expect(response.status).toBe(403)
+    expect(retrySuggestionJobMock).not.toHaveBeenCalled()
   })
 
   test("POST /jobs/[jobId]/process rejects unauthenticated users before processing", async () => {
@@ -221,7 +273,7 @@ describe("device quota suggestion job routes", () => {
         body: JSON.stringify({ limit: 2 }),
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(401)
@@ -238,7 +290,7 @@ describe("device quota suggestion job routes", () => {
         body: JSON.stringify({ limit: 2 }),
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(500)
@@ -259,7 +311,23 @@ describe("device quota suggestion job routes", () => {
         body: JSON.stringify({ limit: 2 }),
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
+    )
+
+    expect(response.status).toBe(403)
+    expect(processSuggestionJobChunksForJobMock).not.toHaveBeenCalled()
+  })
+
+  test("POST /jobs/[jobId]/process rejects the technical configuration expert before processing", async () => {
+    getServerSessionMock.mockResolvedValue(EXPERT_SESSION)
+    const mod = await import("@/app/api/device-quota/mapping/suggest/jobs/[jobId]/process/route")
+
+    const response = await mod.POST(
+      new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
+        body: JSON.stringify({ limit: 2 }),
+        method: "POST",
+      }),
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(403)
@@ -284,12 +352,12 @@ describe("device quota suggestion job routes", () => {
         body: JSON.stringify({ limit: 99 }),
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(202)
     expect(processSuggestionJobChunksForJobMock).toHaveBeenCalledWith(
-      expect.objectContaining({ jobId: "job-1", limit: 5 }),
+      expect.objectContaining({ jobId: "job-1", limit: 5 })
     )
     await expect(response.json()).resolves.toMatchObject({
       failed: 0,
@@ -316,7 +384,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/process", {
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(200)
@@ -334,7 +402,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(403)
@@ -350,7 +418,7 @@ describe("device quota suggestion job routes", () => {
       new Request("https://example.test/api/device-quota/mapping/suggest/jobs/job-1/retry", {
         method: "POST",
       }),
-      { params: Promise.resolve({ jobId: "job-1" }) },
+      { params: Promise.resolve({ jobId: "job-1" }) }
     )
 
     expect(response.status).toBe(500)

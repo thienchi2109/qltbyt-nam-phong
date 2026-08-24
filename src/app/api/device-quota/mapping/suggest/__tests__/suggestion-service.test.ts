@@ -66,7 +66,9 @@ function queueVmCatalogResponse({
   names?: unknown[]
   categories?: unknown[]
 }): void {
-  fetchMock.mockResolvedValueOnce(jsonResponse(names)).mockResolvedValueOnce(jsonResponse(categories))
+  fetchMock
+    .mockResolvedValueOnce(jsonResponse(names))
+    .mockResolvedValueOnce(jsonResponse(categories))
 }
 
 function successfulVmResponse() {
@@ -117,21 +119,29 @@ describe("device quota suggestion service", () => {
 
   test("denies restricted roles before provider work", async () => {
     await expect(
-      assertSuggestionAccess(
-        { id: "1", role: "technician", don_vi: "17", dia_ban_id: null },
-        17,
-        { lookupAccessibleFacilityIds: vi.fn() }
-      )
+      assertSuggestionAccess({ id: "1", role: "technician", don_vi: "17", dia_ban_id: null }, 17, {
+        lookupAccessibleFacilityIds: vi.fn(),
+      })
     ).rejects.toMatchObject({ message: "Forbidden: insufficient role", status: 403 })
+  })
+
+  test("denies the technical configuration expert before provider work", async () => {
+    const lookupAccessibleFacilityIds = vi.fn()
+
+    await expect(
+      assertSuggestionAccess({ id: "1", role: "chuyen_gia", don_vi: "17", dia_ban_id: null }, 17, {
+        lookupAccessibleFacilityIds,
+      })
+    ).rejects.toMatchObject({ message: "Forbidden: insufficient role", status: 403 })
+
+    expect(lookupAccessibleFacilityIds).not.toHaveBeenCalled()
   })
 
   test("denies tenant-scoped users requesting another facility", async () => {
     await expect(
-      assertSuggestionAccess(
-        { id: "1", role: "to_qltb", don_vi: "17", dia_ban_id: null },
-        18,
-        { lookupAccessibleFacilityIds: vi.fn() }
-      )
+      assertSuggestionAccess({ id: "1", role: "to_qltb", don_vi: "17", dia_ban_id: null }, 18, {
+        lookupAccessibleFacilityIds: vi.fn(),
+      })
     ).rejects.toMatchObject({ message: "Forbidden: facility scope denied", status: 403 })
   })
 
@@ -139,11 +149,9 @@ describe("device quota suggestion service", () => {
     const lookupAccessibleFacilityIds = vi.fn()
 
     await expect(
-      assertSuggestionAccess(
-        { id: "1", role: "admin", don_vi: null, dia_ban_id: null },
-        18,
-        { lookupAccessibleFacilityIds }
-      )
+      assertSuggestionAccess({ id: "1", role: "admin", don_vi: null, dia_ban_id: null }, 18, {
+        lookupAccessibleFacilityIds,
+      })
     ).resolves.toBeUndefined()
 
     expect(lookupAccessibleFacilityIds).not.toHaveBeenCalled()
@@ -174,11 +182,7 @@ describe("device quota suggestion service", () => {
     const user = { id: "1", role: "regional_leader", don_vi: null, dia_ban_id: "8" }
 
     await expect(
-      assertSuggestionAccess(
-        user,
-        18,
-        { lookupAccessibleFacilityIds }
-      )
+      assertSuggestionAccess(user, 18, { lookupAccessibleFacilityIds })
     ).rejects.toMatchObject({ message: "Forbidden: facility scope denied", status: 403 })
 
     expect(lookupAccessibleFacilityIds).toHaveBeenCalledWith(user)
@@ -306,13 +310,11 @@ describe("device quota suggestion service", () => {
   test("preserves structured RPC error details", async () => {
     fetchMock
       .mockResolvedValueOnce(
-        jsonResponse({ message: "RPC policy denied", details: "{\"code\":\"42501\"}" }, 403)
+        jsonResponse({ message: "RPC policy denied", details: '{"code":"42501"}' }, 403)
       )
       .mockResolvedValueOnce(jsonResponse([]))
 
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
       message: "RPC policy denied",
       details: { code: "42501" },
     })
@@ -399,9 +401,7 @@ describe("device quota suggestion service", () => {
         jsonResponse([{ id: 10, ma_nhom: "A.01", ten_nhom: "May tho", phan_loai: null }])
       )
 
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
       message: "VM suggestion payload is too large",
       status: 413,
     })
@@ -416,12 +416,12 @@ describe("device quota suggestion service", () => {
     queueVmCatalogResponse({})
     queueVmCatalogResponse({})
 
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({ status: 413 })
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({ status: 413 })
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
+      status: 413,
+    })
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
+      status: 413,
+    })
 
     expect(callVmSuggestMock).not.toHaveBeenCalled()
   })
@@ -434,15 +434,13 @@ describe("device quota suggestion service", () => {
       new SuggestionRouteError("VM suggestion provider request failed", 503)
     )
 
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({ status: 503 })
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({ status: 503 })
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
+      status: 503,
+    })
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
+      status: 503,
+    })
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
       message: "VM suggestion provider circuit is open",
       status: 503,
     })
@@ -508,12 +506,10 @@ describe("device quota suggestion service", () => {
       new SuggestionRouteError("VM suggestion provider request failed", 503)
     )
 
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({ status: 503 })
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
+      status: 503,
+    })
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
       message: "Suggestion request cooldown is active",
       status: 429,
     })
@@ -531,9 +527,7 @@ describe("device quota suggestion service", () => {
 
     await runSuggestMapping({ donViId: 17, user: USER })
     await runSuggestMapping({ donViId: 17, user: USER })
-    await expect(
-      runSuggestMapping({ donViId: 17, user: USER })
-    ).rejects.toMatchObject({
+    await expect(runSuggestMapping({ donViId: 17, user: USER })).rejects.toMatchObject({
       message: "Suggestion request rate limit exceeded",
       status: 429,
     })

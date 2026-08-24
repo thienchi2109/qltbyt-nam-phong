@@ -186,6 +186,19 @@ describe("tenant routes", () => {
     expect(createClientMock).not.toHaveBeenCalled()
   })
 
+  it("rejects tenant memberships for the technical configuration expert", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "7", role: "chuyen_gia" },
+    })
+
+    const { GET } = await import("../memberships/route")
+    const response = await GET()
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({ memberships: [] })
+    expect(createClientMock).not.toHaveBeenCalled()
+  })
+
   it("switches tenant for an authenticated global admin", async () => {
     getServerSessionMock.mockResolvedValue({
       user: { id: "1", role: "admin" },
@@ -225,5 +238,29 @@ describe("tenant routes", () => {
         }),
       }
     )
+  })
+
+  it("rejects tenant switching for the technical configuration expert", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: {
+        id: "7",
+        role: "chuyen_gia",
+        don_vi: "17",
+        dia_ban_id: "9",
+      },
+    })
+    vi.stubEnv("SUPABASE_JWT_SECRET", "test-jwt-secret")
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { POST } = await import("../switch/route")
+    const response = await POST(buildRequest({ don_vi: 18 }))
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toEqual({
+      ok: false,
+      error: "Forbidden",
+    })
+    expect(jwtSignMock).not.toHaveBeenCalled()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

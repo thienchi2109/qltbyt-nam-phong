@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -8,27 +8,31 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -36,46 +40,43 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
   }
 })
 
-import { POST } from '../route'
-import {
-  makeChatModel,
-  makeReadyStreamTextResult,
-} from './stream-text-result-test-helpers'
+import { POST } from "../route"
+import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Xin chao' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Xin chao" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-describe('/api/chat auth + schema', () => {
+describe("/api/chat auth + schema", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-2.5-flash'))
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-2.5-flash"))
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
 
-  it('returns 401 when session is missing', async () => {
+  it("returns 401 when session is missing", async () => {
     getServerSessionMock.mockResolvedValue(null)
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
@@ -84,21 +85,64 @@ describe('/api/chat auth + schema', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns 403 when authenticated role is not allowed', async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'auditor' } })
+  it("returns 403 when authenticated role is not allowed", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "auditor" } })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(403)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Forbidden')
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(text).toBe("Forbidden")
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(buildSystemPromptMock).not.toHaveBeenCalled()
   })
 
-  it('returns 400 for malformed payload', async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+  it("returns 403 for the technical configuration expert role", async () => {
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "u1", role: "chuyen_gia" },
+    })
+
+    const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+    expect(res.status).toBe(403)
+    expect(streamTextMock).not.toHaveBeenCalled()
+    expect(buildSystemPromptMock).not.toHaveBeenCalled()
+  })
+
+  it("does not auto-allow roles added to the canonical role constants", async () => {
+    vi.resetModules()
+    vi.doMock("@/lib/rbac", () => ({
+      ROLES: {
+        GLOBAL: "global",
+        ADMIN: "admin",
+        REGIONAL_LEADER: "regional_leader",
+        TO_QLTB: "to_qltb",
+        TECHNICIAN: "technician",
+        QLTB_KHOA: "qltb_khoa",
+        USER: "user",
+        CHUYEN_GIA: "chuyen_gia",
+      },
+    }))
+    getServerSessionMock.mockResolvedValue({
+      user: { id: "u1", role: "chuyen_gia" },
+    })
+
+    try {
+      const { POST: postWithFutureRole } = await import("../route")
+      const res = await postWithFutureRole(buildRequest({ messages: VALID_MESSAGES }) as never)
+
+      expect(res.status).toBe(403)
+      expect(streamTextMock).not.toHaveBeenCalled()
+      expect(buildSystemPromptMock).not.toHaveBeenCalled()
+    } finally {
+      vi.doUnmock("@/lib/rbac")
+      vi.resetModules()
+    }
+  })
+
+  it("returns 400 for malformed payload", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } })
 
     const res = await POST(buildRequest({}) as never)
 
@@ -106,21 +150,21 @@ describe('/api/chat auth + schema', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns 400 when messages array is empty', async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+  it("returns 400 when messages array is empty", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } })
 
     const res = await POST(buildRequest({ messages: [] }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(res.headers.get('content-type')).toContain('text/plain')
-    expect(text).toBe('Invalid request payload')
+    expect(res.headers.get("content-type")).toContain("text/plain")
+    expect(text).toBe("Invalid request payload")
     expect(streamTextMock).not.toHaveBeenCalled()
     expect(buildSystemPromptMock).not.toHaveBeenCalled()
   })
 
-  it('returns 400 for malformed messages item', async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'user' } })
+  it("returns 400 for malformed messages item", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "user" } })
 
     const res = await POST(buildRequest({ messages: [{}] }) as never)
 
@@ -128,8 +172,8 @@ describe('/api/chat auth + schema', () => {
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('uses model call path for authenticated valid payload', async () => {
-    getServerSessionMock.mockResolvedValue({ user: { id: 'u1', role: 'admin' } })
+  it("uses model call path for authenticated valid payload", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "u1", role: "admin" } })
 
     const res = await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
@@ -138,9 +182,9 @@ describe('/api/chat auth + schema', () => {
     expect(getChatModelMock).toHaveBeenCalledTimes(1)
   })
 
-  it('uses buildSystemPrompt output as streamText system prompt', async () => {
+  it("uses buildSystemPrompt output as streamText system prompt", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'admin', don_vi: 2 },
+      user: { id: "u1", role: "admin", don_vi: 2 },
     })
 
     await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
@@ -149,18 +193,18 @@ describe('/api/chat auth + schema', () => {
     const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
       system?: string
     }
-    expect(streamTextArgs?.system).toBe('SYSTEM_PROMPT_V1')
+    expect(streamTextArgs?.system).toBe("SYSTEM_PROMPT_V1")
   })
 
-  it('normalizes string tenant IDs when deriving facility context', async () => {
+  it("normalizes string tenant IDs when deriving facility context", async () => {
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'admin', don_vi: '2' },
+      user: { id: "u1", role: "admin", don_vi: "2" },
     })
 
     await POST(buildRequest({ messages: VALID_MESSAGES }) as never)
 
     expect(buildSystemPromptMock).toHaveBeenCalledWith(
-      expect.objectContaining({ selectedFacilityId: 2 }),
+      expect.objectContaining({ selectedFacilityId: 2 })
     )
   })
 })

@@ -6,16 +6,16 @@ import {
   stepCountIs,
   type UIMessage,
   validateUIMessages,
-} from 'ai'
-import { getServerSession } from 'next-auth'
-import { after } from 'next/server'
+} from "ai"
+import { getServerSession } from "next-auth"
+import { after } from "next/server"
 
-import { authOptions } from '@/auth/config'
-import { chatRequestSchema } from '@/lib/ai/chat-request-schema'
-import { createChatUIStreamResponse, waitForStreamReady } from './chat-ui-stream'
-import { compactValidatedMessages } from './compact-validated-messages'
-import { maybeBuildRepairRequestDraftArtifact } from '@/lib/ai/draft/repair-request-draft-orchestrator'
-import { writeRepairRequestDraftToolResult } from '@/lib/ai/draft/repair-request-draft-ui-stream'
+import { authOptions } from "@/auth/config"
+import { chatRequestSchema } from "@/lib/ai/chat-request-schema"
+import { createChatUIStreamResponse, waitForStreamReady } from "./chat-ui-stream"
+import { compactValidatedMessages } from "./compact-validated-messages"
+import { maybeBuildRepairRequestDraftArtifact } from "@/lib/ai/draft/repair-request-draft-orchestrator"
+import { writeRepairRequestDraftToolResult } from "@/lib/ai/draft/repair-request-draft-ui-stream"
 import {
   AI_MAX_COMPACTED_INPUT_CHARS,
   AI_MAX_INPUT_CHARS,
@@ -24,14 +24,14 @@ import {
   AI_MAX_TOOL_STEPS,
   AI_RATE_LIMIT_WINDOW_MS,
   calculateInputChars,
-} from '@/lib/ai/limits'
-import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from '@/lib/ai/provider'
-import { buildSystemPrompt } from '@/lib/ai/prompts/system'
-import type { SystemPromptContext } from '@/lib/ai/prompts/types'
-import { routeChatIntent } from '@/lib/ai/intent-routing'
-import { resolveAssistantScope } from '@/lib/ai/sql/scope'
-import { extractEquipmentLookupHints } from '@/lib/ai/tools/equipment-lookup-identifiers'
-import { buildToolRegistry, validateRequestedTools } from '@/lib/ai/tools/registry'
+} from "@/lib/ai/limits"
+import { getChatModel, getKeyPoolSize, handleProviderQuotaError } from "@/lib/ai/provider"
+import { buildSystemPrompt } from "@/lib/ai/prompts/system"
+import type { SystemPromptContext } from "@/lib/ai/prompts/types"
+import { routeChatIntent } from "@/lib/ai/intent-routing"
+import { resolveAssistantScope } from "@/lib/ai/sql/scope"
+import { extractEquipmentLookupHints } from "@/lib/ai/tools/equipment-lookup-identifiers"
+import { buildToolRegistry, validateRequestedTools } from "@/lib/ai/tools/registry"
 import {
   classifyStreamFailure,
   finalizeUsage,
@@ -40,26 +40,26 @@ import {
   type UsageFinalizeStatus,
   type UsageLimitReason,
   type UsageReservationResult,
-} from '@/lib/ai/usage-metering'
-import { isProviderQuotaError, sanitizeErrorForClient } from '@/lib/ai/errors'
-import { ROLES } from '@/lib/rbac'
+} from "@/lib/ai/usage-metering"
+import { isProviderQuotaError, sanitizeErrorForClient } from "@/lib/ai/errors"
+import { ROLES } from "@/lib/rbac"
 
 /** Run chat streaming on the Node.js runtime because provider SDKs and server RPCs need Node APIs. */
-export const runtime = 'nodejs'
+export const runtime = "nodejs"
 /** Hard cap for the route execution window; quota reservation TTL must exceed this. */
 export const maxDuration = 60
 
 function plainError(message: string, status: number) {
   return new Response(message, {
     status,
-    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   })
 }
 
 const DEFAULT_USAGE_LIMIT_RETRY_AFTER_MS = 60_000
 
 function retryAfterMsForUsageLimit(reason: UsageLimitReason): number {
-  if (reason === 'rate_limit') {
+  if (reason === "rate_limit") {
     return AI_RATE_LIMIT_WINDOW_MS
   }
 
@@ -67,48 +67,59 @@ function retryAfterMsForUsageLimit(reason: UsageLimitReason): number {
 }
 
 function usageLimitResponse(usageReservation: UsageReservationResult) {
-  const reason = usageReservation.reason ?? 'user_quota'
+  const reason = usageReservation.reason ?? "user_quota"
   const retryAfterMs = retryAfterMsForUsageLimit(reason)
   const retryAfterSeconds = Math.max(1, Math.ceil(retryAfterMs / 1000))
 
-  return new Response(JSON.stringify({
-    error: {
-      code: 'ai_usage_limited',
-      reason,
-      message: usageReservation.message ?? 'AI usage limit exceeded.',
-      retryAfterMs,
-    },
-  }), {
-    status: 429,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Retry-After': String(retryAfterSeconds),
-    },
-  })
+  return new Response(
+    JSON.stringify({
+      error: {
+        code: "ai_usage_limited",
+        reason,
+        message: usageReservation.message ?? "AI usage limit exceeded.",
+        retryAfterMs,
+      },
+    }),
+    {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": String(retryAfterSeconds),
+      },
+    }
+  )
 }
 
 function clarificationResponse(message: string, originalMessages: UIMessage[]) {
   const stream = createUIMessageStream({
     originalMessages,
-    onError: () => 'Unable to build clarification response.',
+    onError: () => "Unable to build clarification response.",
     execute: ({ writer }) => {
-      const textId = 'assistant-clarification'
+      const textId = "assistant-clarification"
 
-      writer.write({ type: 'start' })
-      writer.write({ type: 'text-start', id: textId })
-      writer.write({ type: 'text-delta', id: textId, delta: message })
-      writer.write({ type: 'text-end', id: textId })
-      writer.write({ type: 'finish', finishReason: 'stop' })
+      writer.write({ type: "start" })
+      writer.write({ type: "text-start", id: textId })
+      writer.write({ type: "text-delta", id: textId, delta: message })
+      writer.write({ type: "text-end", id: textId })
+      writer.write({ type: "finish", finishReason: "stop" })
     },
   })
 
   return createUIMessageStreamResponse({ stream })
 }
 
-const ALLOWED_CHAT_ROLES = new Set<string>(Object.values(ROLES))
+const ALLOWED_CHAT_ROLES = new Set<string>([
+  ROLES.GLOBAL,
+  ROLES.ADMIN,
+  ROLES.REGIONAL_LEADER,
+  ROLES.TO_QLTB,
+  ROLES.TECHNICIAN,
+  ROLES.QLTB_KHOA,
+  ROLES.USER,
+])
 
 function hasAllowedChatRole(value: unknown): boolean {
-  if (typeof value !== 'string') {
+  if (typeof value !== "string") {
     return false
   }
 
@@ -116,7 +127,7 @@ function hasAllowedChatRole(value: unknown): boolean {
 }
 
 function numberOrStringClaim(value: unknown): number | string | null {
-  if (typeof value === 'number' || typeof value === 'string') {
+  if (typeof value === "number" || typeof value === "string") {
     return value
   }
   return null
@@ -127,34 +138,32 @@ export async function POST(request: Request) {
   const session = await getServerSession(authOptions)
 
   if (!session?.user) {
-    return plainError('Unauthorized', 401)
+    return plainError("Unauthorized", 401)
   }
 
   const user = session.user as Record<string, unknown>
   if (!hasAllowedChatRole(user.role)) {
-    return plainError('Forbidden', 403)
+    return plainError("Forbidden", 403)
   }
 
   const payload = await request.json().catch(() => null)
   const parsedRequest = chatRequestSchema.safeParse(payload)
   if (!parsedRequest.success) {
-    return plainError('Invalid request payload', 400)
+    return plainError("Invalid request payload", 400)
   }
-  const requestedToolsValidation = validateRequestedTools(
-    parsedRequest.data.requestedTools ?? [],
-  )
+  const requestedToolsValidation = validateRequestedTools(parsedRequest.data.requestedTools ?? [])
   if (!requestedToolsValidation.ok) {
     return plainError(requestedToolsValidation.message, 400)
   }
   const requestedTools = requestedToolsValidation.requestedTools
 
   if (parsedRequest.data.messages.length > AI_MAX_MESSAGES) {
-    return plainError('Request exceeds message limit', 400)
+    return plainError("Request exceeds message limit", 400)
   }
 
   const inputChars = calculateInputChars(parsedRequest.data.messages)
   if (inputChars > AI_MAX_INPUT_CHARS) {
-    return plainError('Request exceeds input size limit', 400)
+    return plainError("Request exceeds input size limit", 400)
   }
 
   let validatedMessages: UIMessage[]
@@ -163,14 +172,14 @@ export async function POST(request: Request) {
       messages: parsedRequest.data.messages as UIMessage[],
     })
   } catch {
-    return plainError('Invalid messages payload', 400)
+    return plainError("Invalid messages payload", 400)
   }
 
   const routedIntent = routeChatIntent({
     messages: validatedMessages,
     requestedTools,
   })
-  if (routedIntent.kind === 'clarify') {
+  if (routedIntent.kind === "clarify") {
     return clarificationResponse(routedIntent.message, validatedMessages)
   }
   const effectiveRequestedTools = routedIntent.requestedTools
@@ -179,10 +188,10 @@ export async function POST(request: Request) {
   // Clarification responses above should bypass this budget gate entirely.
   const { compactedMessages, compactedChars } = compactValidatedMessages(validatedMessages)
   if (compactedChars > AI_MAX_COMPACTED_INPUT_CHARS) {
-    return plainError('Request exceeds compacted context limit', 400)
+    return plainError("Request exceeds compacted context limit", 400)
   }
 
-  const role = typeof user.role === 'string' ? user.role : undefined
+  const role = typeof user.role === "string" ? user.role : undefined
   const scopeResolution = resolveAssistantScope({
     user,
     requestedFacilityId: parsedRequest.data.selectedFacilityId,
@@ -191,19 +200,14 @@ export async function POST(request: Request) {
   if (!scopeResolution.ok) {
     return plainError(scopeResolution.message, 400)
   }
-  const {
-    assistantSqlScope,
-    promptUserId,
-    selectedFacilityId,
-    usageUserId,
-  } = scopeResolution
+  const { assistantSqlScope, promptUserId, selectedFacilityId, usageUserId } = scopeResolution
 
   const usageContext: UsageContext = {
     userId: usageUserId,
     tenantId: selectedFacilityId,
     role,
     diaBanId: numberOrStringClaim(user.dia_ban_id),
-    khoaPhong: typeof user.khoa_phong === 'string' ? user.khoa_phong : null,
+    khoaPhong: typeof user.khoa_phong === "string" ? user.khoa_phong : null,
   }
   const usageReservation = await reserveUsage(usageContext)
   if (!usageReservation.allowed) {
@@ -230,7 +234,7 @@ export async function POST(request: Request) {
         })
         finalized = true
       } catch (error) {
-        console.error('[chat] Usage finalize error:', error)
+        console.error("[chat] Usage finalize error:", error)
       } finally {
         finalizePromise = null
       }
@@ -247,8 +251,9 @@ export async function POST(request: Request) {
   const systemPrompt = buildSystemPrompt(promptContext)
   const equipmentLookupHints = extractEquipmentLookupHints(validatedMessages)
 
-  const shouldAttemptRepairRequestDraft =
-    effectiveRequestedTools.includes('generateRepairRequestDraft')
+  const shouldAttemptRepairRequestDraft = effectiveRequestedTools.includes(
+    "generateRepairRequestDraft"
+  )
   const tools =
     effectiveRequestedTools.length > 0 && selectedFacilityId !== undefined
       ? buildToolRegistry({
@@ -264,9 +269,9 @@ export async function POST(request: Request) {
   try {
     modelMessages = await convertToModelMessages(compactedMessages)
   } catch (error) {
-    console.error('[chat] Message conversion error:', error)
+    console.error("[chat] Message conversion error:", error)
     await finalizeOnce({
-      status: 'error_no_usage',
+      status: "error_no_usage",
       inputTokens: 0,
       outputTokens: 0,
     })
@@ -277,14 +282,14 @@ export async function POST(request: Request) {
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let keyIndex = 0
-    let configuredModel = 'unknown'
+    let configuredModel = "unknown"
     let streamStarted = false
 
     try {
       const chatModel = getChatModel()
       keyIndex = chatModel.keyIndex
       configuredModel = chatModel.config.model
-      console.info('[chat] Model attempt start', {
+      console.info("[chat] Model attempt start", {
         attempt,
         maxAttempts,
         keyIndex,
@@ -301,13 +306,17 @@ export async function POST(request: Request) {
         providerOptions: chatModel.providerOptions,
         onFinish({ usage, finishReason }) {
           const failureUsage = classifyStreamFailure({ providerUsage: usage })
-          after(() => finalizeOnce(finishReason === 'error'
-            ? failureUsage
-            : {
-                status: 'success',
-                inputTokens: usage.inputTokens ?? 0,
-                outputTokens: usage.outputTokens ?? 0,
-              }))
+          after(() =>
+            finalizeOnce(
+              finishReason === "error"
+                ? failureUsage
+                : {
+                    status: "success",
+                    inputTokens: usage.inputTokens ?? 0,
+                    outputTokens: usage.outputTokens ?? 0,
+                  }
+            )
+          )
         },
       })
 
@@ -319,7 +328,7 @@ export async function POST(request: Request) {
         // Mid-stream quota errors can't be retried (response already in-flight),
         // but rotate the key for future requests so they don't hit the same quota.
         if (isProviderQuotaError(error)) {
-          console.warn('[chat] Stream quota error', {
+          console.warn("[chat] Stream quota error", {
             attempt,
             maxAttempts,
             keyIndex,
@@ -327,12 +336,16 @@ export async function POST(request: Request) {
           })
           handleProviderQuotaError(keyIndex)
         } else {
-          console.error('[chat] Stream error', {
-            attempt,
-            maxAttempts,
-            keyIndex,
-            model: configuredModel,
-          }, error)
+          console.error(
+            "[chat] Stream error",
+            {
+              attempt,
+              maxAttempts,
+              keyIndex,
+              model: configuredModel,
+            },
+            error
+          )
         }
         return sanitizeErrorForClient(error)
       }
@@ -341,7 +354,7 @@ export async function POST(request: Request) {
         result,
         originalMessages: validatedMessages,
         onError: handleStreamError,
-        onAfterBaseStream: async writer => {
+        onAfterBaseStream: async (writer) => {
           if (!shouldAttemptRepairRequestDraft) {
             return
           }
@@ -351,8 +364,8 @@ export async function POST(request: Request) {
             const repairDraftArtifact = await maybeBuildRepairRequestDraftArtifact({
               model: chatModel.model,
               messages: validatedMessages,
-              steps: steps.map(step => ({
-                toolResults: step.toolResults.map(toolResult => ({
+              steps: steps.map((step) => ({
+                toolResults: step.toolResults.map((toolResult) => ({
                   toolName: toolResult.toolName,
                   output: toolResult.output,
                 })),
@@ -364,39 +377,44 @@ export async function POST(request: Request) {
               writeRepairRequestDraftToolResult(writer, repairDraftArtifact)
             }
           } catch (error) {
-            console.error('[chat] Repair draft orchestration skipped', {
-              attempt,
-              maxAttempts,
-              keyIndex,
-              model: configuredModel,
-            }, error)
+            console.error(
+              "[chat] Repair draft orchestration skipped",
+              {
+                attempt,
+                maxAttempts,
+                keyIndex,
+                model: configuredModel,
+              },
+              error
+            )
           }
         },
       })
     } catch (error) {
       // On quota error, silently rotate to next API key and retry.
-      if (isProviderQuotaError(error) && handleProviderQuotaError(keyIndex) && attempt < maxAttempts) {
-        console.warn(
-          '[chat] Pre-stream quota error — rotating to next key',
-          {
-            attempt,
-            maxAttempts,
-            keyIndex,
-            model: configuredModel,
-            nextAttempt: attempt + 1,
-          },
-        )
+      if (
+        isProviderQuotaError(error) &&
+        handleProviderQuotaError(keyIndex) &&
+        attempt < maxAttempts
+      ) {
+        console.warn("[chat] Pre-stream quota error — rotating to next key", {
+          attempt,
+          maxAttempts,
+          keyIndex,
+          model: configuredModel,
+          nextAttempt: attempt + 1,
+        })
         continue
       }
 
       await finalizeOnce({
-        status: streamStarted ? 'error_with_usage' : 'error_no_usage',
+        status: streamStarted ? "error_with_usage" : "error_no_usage",
         inputTokens: 0,
         outputTokens: 0,
       })
 
       console.error(
-        '[chat] Pre-stream error',
+        "[chat] Pre-stream error",
         {
           attempt,
           maxAttempts,
@@ -404,12 +422,12 @@ export async function POST(request: Request) {
           model: configuredModel,
           quotaError: isProviderQuotaError(error),
         },
-        error,
+        error
       )
       return plainError(sanitizeErrorForClient(error), 500)
     }
   }
 
   // Should be unreachable, but guard defensively.
-  return plainError(sanitizeErrorForClient('All API keys exhausted.'), 500)
+  return plainError(sanitizeErrorForClient("All API keys exhausted."), 500)
 }
