@@ -1,5 +1,7 @@
 import { aggregateOutcome } from "./contract"
 import { runDatabaseQualityGateCommand } from "./cli"
+import { currentHeadCommit, firstParentCommit } from "./git-evidence"
+import { approvalCandidateForLandedCommit } from "./landed-static-lane"
 import { collectStaticChangedFiles, DEFAULT_STATIC_BASE_REF } from "./static-changed-files"
 import type { GateFinding, GateOutcome } from "./types"
 
@@ -10,11 +12,18 @@ export type LocalMigrationGateExecution = {
 
 export type LocalMigrationGateDependencies = {
   collectStaticChangedFiles: (baseRef?: string) => string[]
-  runStaticGate: () => LocalMigrationGateExecution
+  resolveApprovedLandedStatic: (repositoryRoot: string) => ApprovedLandedStatic | undefined
+  runStaticGate: (landedStatic?: ApprovedLandedStatic) => LocalMigrationGateExecution
 }
 
 export type LocalMigrationGateOptions = {
   baseRef?: string
+  repositoryRoot?: string
+}
+
+type ApprovedLandedStatic = {
+  landedParentCommit: string
+  subjectCommit: string
 }
 
 type StaticGateSummary = {
@@ -35,7 +44,41 @@ const outcomeExitCodes: Record<GateOutcome, 0 | 1 | 2> = {
 
 const defaultDependencies: LocalMigrationGateDependencies = {
   collectStaticChangedFiles,
-  runStaticGate: () => runDatabaseQualityGateCommand(["--lane", "static"]),
+  resolveApprovedLandedStatic: (repositoryRoot) => {
+    const subjectCommit = currentHeadCommit(repositoryRoot)
+    const landedParentCommit =
+      subjectCommit === undefined ? undefined : firstParentCommit(repositoryRoot, subjectCommit)
+
+    if (
+      subjectCommit === undefined ||
+      landedParentCommit === undefined ||
+      approvalCandidateForLandedCommit({
+        landedParentCommit,
+        repositoryRoot,
+        subjectCommit,
+      }) !== landedParentCommit
+    ) {
+      return undefined
+    }
+
+    return {
+      landedParentCommit,
+      subjectCommit,
+    }
+  },
+  runStaticGate: (landedStatic) =>
+    runDatabaseQualityGateCommand(
+      landedStatic === undefined
+        ? ["--lane", "static"]
+        : [
+            "--lane",
+            "static",
+            "--subject-commit",
+            landedStatic.subjectCommit,
+            "--landed-parent-commit",
+            landedStatic.landedParentCommit,
+          ]
+    ),
 }
 
 function incompleteExecution(message: string): LocalMigrationGateExecution {
@@ -141,6 +184,7 @@ export function runLocalMigrationGate(
   dependencies: LocalMigrationGateDependencies = defaultDependencies
 ): LocalMigrationGateExecution {
   const baseRef = options.baseRef ?? DEFAULT_STATIC_BASE_REF
+  const repositoryRoot = options.repositoryRoot ?? process.cwd()
   let changedFiles: string[]
 
   try {
@@ -158,7 +202,11 @@ export function runLocalMigrationGate(
   }
 
   try {
-    return summarizeStaticGateExecution(dependencies.runStaticGate(), changedFiles.length)
+    const landedStatic = dependencies.resolveApprovedLandedStatic(repositoryRoot)
+    return summarizeStaticGateExecution(
+      dependencies.runStaticGate(landedStatic),
+      changedFiles.length
+    )
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     return incompleteExecution(`unable to run static gate: ${message}`)

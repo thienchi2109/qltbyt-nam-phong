@@ -46,10 +46,12 @@ function dependencies(
   execution: GateExecution = gateExecution("PASS", 0)
 ): LocalMigrationGateDependencies & {
   collectStaticChangedFiles: ReturnType<typeof vi.fn>
+  resolveApprovedLandedStatic: ReturnType<typeof vi.fn>
   runStaticGate: ReturnType<typeof vi.fn>
 } {
   return {
     collectStaticChangedFiles: vi.fn(() => changedFiles),
+    resolveApprovedLandedStatic: vi.fn(() => undefined),
     runStaticGate: vi.fn(() => execution),
   }
 }
@@ -83,6 +85,26 @@ describe("database quality gate local migration trigger", () => {
     expect(result.stdout).toContain("[db-quality-gate] PASS")
     expect(deps.collectStaticChangedFiles).toHaveBeenCalledWith("origin/main")
     expect(deps.runStaticGate).toHaveBeenCalledOnce()
+  })
+
+  it("uses landed static mode for a clean approval-bearing child commit", () => {
+    const deps = dependencies([
+      "supabase/db-quality-gate-static-evidence/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.json",
+      "supabase/db-quality-gate-waivers.json",
+    ])
+    deps.resolveApprovedLandedStatic.mockReturnValue({
+      landedParentCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      subjectCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    })
+
+    const result = runLocalMigrationGate({}, deps)
+
+    expect(result.exitCode).toBe(0)
+    expect(deps.resolveApprovedLandedStatic).toHaveBeenCalledWith(process.cwd())
+    expect(deps.runStaticGate).toHaveBeenCalledWith({
+      landedParentCommit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      subjectCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    })
   })
 
   it("fails closed when changed-file discovery is unavailable", () => {
