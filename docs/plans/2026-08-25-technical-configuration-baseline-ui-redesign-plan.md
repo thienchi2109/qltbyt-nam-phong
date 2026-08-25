@@ -1,7 +1,7 @@
 # Kế hoạch cải thiện UI workspace Cấu hình cơ sở
 
 - **Ngày:** 2026-08-25
-- **Trạng thái:** Đã thống nhất hướng thiết kế, chưa triển khai
+- **Trạng thái:** Đã triển khai và kiểm chứng
 - **Phạm vi:** `Cấu hình kỹ thuật` > tab `Cấu hình cơ sở` > workspace xây dựng
   cấu hình
 

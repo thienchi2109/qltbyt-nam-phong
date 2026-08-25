@@ -1,154 +1,22 @@
-import { useState } from "react"
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { afterAll, beforeEach, describe, expect, it } from "vitest"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
 import {
-  TechnicalConfigurationBaselineEditor,
-  type TechnicalConfigurationFocusTarget,
-} from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import type {
-  TechnicalConfigurationBaselineEditorDraft,
-  TechnicalConfigurationBaselineEditorValidation,
-} from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
-
-const hierarchyDraft: TechnicalConfigurationBaselineEditorDraft = {
-  id: "draft-hierarchy",
-  dossierId: "dossier-1",
-  status: "draft",
-  revision: 4,
-  groups: [
-    {
-      key: "section-a",
-      id: "section-a",
-      name: "Yêu cầu chung",
-      criteria: [
-        {
-          key: "criterion-direct",
-          id: "criterion-direct",
-          criterionCode: "TC-0001",
-          title: "Nguồn điện",
-          requirementText: "Nguồn điện ổn định",
-        },
-      ],
-      subgroups: [
-        {
-          key: "subgroup-a",
-          id: "subgroup-a",
-          name: "Hạ tầng",
-          criteria: [
-            {
-              key: "criterion-subgroup",
-              id: "criterion-subgroup",
-              criterionCode: "TC-0002",
-              title: "Tiếp địa",
-              requirementText: "Có hệ thống tiếp địa riêng",
-            },
-          ],
-        },
-      ],
-    },
-    {
-      key: "section-b",
-      id: "section-b",
-      name: "Yêu cầu bổ sung",
-      criteria: [],
-      subgroups: [],
-    },
-  ],
-}
-
-const emptyValidation: TechnicalConfigurationBaselineEditorValidation = {
-  groupErrors: {},
-  subgroupErrors: {},
-  criterionErrors: {},
-}
-
-const scrollIntoViewMock = vi.fn()
-const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
-  Element.prototype,
-  "scrollIntoView"
-)
+  HierarchyHarness,
+  hierarchyDraft,
+  installSubgroupPresentationScrollMock,
+  restoreSubgroupPresentationScrollMock,
+  scrollIntoViewMock,
+} from "./technical-configuration-baseline-subgroup-presentation-fixtures"
 
 beforeEach(() => {
-  scrollIntoViewMock.mockClear()
-  Object.defineProperty(Element.prototype, "scrollIntoView", {
-    configurable: true,
-    value: scrollIntoViewMock,
-  })
+  installSubgroupPresentationScrollMock()
 })
 
 afterAll(() => {
-  if (originalScrollIntoViewDescriptor) {
-    Object.defineProperty(Element.prototype, "scrollIntoView", originalScrollIntoViewDescriptor)
-  } else {
-    Reflect.deleteProperty(Element.prototype, "scrollIntoView")
-  }
+  restoreSubgroupPresentationScrollMock()
 })
-
-function HierarchyHarness({
-  validation = emptyValidation,
-  initialMode = "row",
-  initialPendingInput = "",
-}: {
-  validation?: TechnicalConfigurationBaselineEditorValidation
-  initialMode?: "row" | "bulk"
-  initialPendingInput?: string
-}): React.JSX.Element {
-  const [focusTarget, setFocusTarget] = useState<TechnicalConfigurationFocusTarget>(null)
-  const [entryMode, setEntryMode] = useState<"row" | "bulk">(initialMode)
-  const [pendingInput, setPendingInput] = useState(initialPendingInput)
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() =>
-          setFocusTarget((current) => ({
-            kind: "criterion",
-            key: "criterion-subgroup",
-            token: current?.kind === "criterion" ? current.token + 1 : 1,
-          }))
-        }
-      >
-        Tập trung tiêu chí nhóm con
-      </button>
-      <TechnicalConfigurationBaselineEditor
-        draft={hierarchyDraft}
-        validation={validation}
-        summaryValidation={validation}
-        status={{
-          dirty: false,
-          saving: false,
-          editingDisabled: false,
-          conflict: false,
-          saveStatus: "idle",
-          hasPendingBulkInput: pendingInput.trim().length > 0,
-        }}
-        isFocusMode={false}
-        activeValue="section-a"
-        entryMode={entryMode}
-        getBulkSession={() => ({ input: pendingInput, preview: null })}
-        focusTarget={focusTarget}
-        recentlyAcceptedCriterionKeys={new Set()}
-        onGroupModeChange={(_, mode) => setEntryMode(mode)}
-        onAddGroup={vi.fn()}
-        onGroupNameChange={vi.fn()}
-        onMoveGroup={vi.fn()}
-        onDeleteGroup={vi.fn()}
-        onCriterionTextChange={vi.fn()}
-        onMoveCriterion={vi.fn()}
-        onDeleteCriterion={vi.fn()}
-        onAddCriterion={vi.fn()}
-        onBulkInputChange={setPendingInput}
-        onBulkPreview={vi.fn()}
-        onBulkCancel={() => setPendingInput("")}
-        onBulkAccept={vi.fn()}
-        onSave={vi.fn()}
-      />
-    </>
-  )
-}
 
 describe("technical configuration baseline subgroup presentation", () => {
   it("renders the canonical section, direct criterion, subgroup, and subgroup criterion order", () => {
@@ -182,6 +50,59 @@ describe("technical configuration baseline subgroup presentation", () => {
     ).toBeInTheDocument()
     expect(screen.queryByLabelText("Nội dung yêu cầu 1.1")).not.toBeInTheDocument()
     expect(screen.queryByLabelText("Nội dung yêu cầu 1.1.1")).not.toBeInTheDocument()
+  })
+
+  it("presents group, subgroup, and criterion levels as one indented tree-grid", () => {
+    render(<HierarchyHarness />)
+
+    const groupRegion = screen.getByRole("region", { name: "Nhóm tiêu chí I" })
+    const subgroupRegion = screen.getByRole("region", {
+      name: "Nhóm con 1 của nhóm I: Hạ tầng",
+    })
+    const directRow = screen.getByTestId("criterion-row-criterion-direct")
+    const subgroupRow = screen.getByTestId("criterion-row-criterion-subgroup")
+
+    expect(groupRegion).toHaveAttribute("data-hierarchy-level", "group")
+    expect(subgroupRegion).toHaveAttribute("data-hierarchy-level", "subgroup")
+    expect(subgroupRegion).toHaveClass("ml-6", "border-l")
+    expect(screen.getByText("I.1")).toBeInTheDocument()
+    expect(directRow).toHaveAttribute("data-owner-kind", "group")
+    expect(subgroupRow).toHaveAttribute("data-owner-kind", "subgroup")
+    expect(directRow).toHaveAttribute("data-grid-template")
+    expect(subgroupRow).toHaveAttribute(
+      "data-grid-template",
+      directRow.getAttribute("data-grid-template")
+    )
+    expect(screen.queryByText("Vị trí")).not.toBeInTheDocument()
+    expect(screen.queryByText("Hợp lệ")).not.toBeInTheDocument()
+  })
+
+  it("renders stable criterion drop zones for empty group and subgroup owners", () => {
+    render(
+      <HierarchyHarness
+        draft={{
+          ...hierarchyDraft,
+          groups: [
+            {
+              ...hierarchyDraft.groups[0],
+              criteria: [],
+              subgroups: [{ ...hierarchyDraft.groups[0].subgroups![0], criteria: [] }],
+            },
+          ],
+        }}
+      />
+    )
+
+    const groupDropZone = screen.getByTestId("criterion-drop-zone-group-section-a")
+    const subgroupDropZone = screen.getByTestId("criterion-drop-zone-subgroup-subgroup-a")
+
+    expect(groupDropZone).toHaveAttribute("data-owner-kind", "group")
+    expect(groupDropZone).toHaveAttribute("data-owner-group-key", "section-a")
+    expect(groupDropZone).toHaveAttribute("data-drop-slot", "criterion")
+    expect(subgroupDropZone).toHaveAttribute("data-owner-kind", "subgroup")
+    expect(subgroupDropZone).toHaveAttribute("data-owner-group-key", "section-a")
+    expect(subgroupDropZone).toHaveAttribute("data-owner-subgroup-key", "subgroup-a")
+    expect(subgroupDropZone).toHaveAttribute("data-drop-slot", "criterion")
   })
 
   it("keeps section and subgroup disclosure independent with native keyboard controls", async () => {
@@ -280,7 +201,7 @@ describe("technical configuration baseline subgroup presentation", () => {
     )
   })
 
-  it("associates subgroup validation and keeps structural presentation responsive and read-only", () => {
+  it("associates subgroup validation and renders its locked row without edit or drag affordances", () => {
     render(
       <HierarchyHarness
         validation={{
@@ -300,18 +221,19 @@ describe("technical configuration baseline subgroup presentation", () => {
       "Nội dung yêu cầu tiêu chí 1 của nhóm con 1, nhóm I"
     )
     const subgroupRegion = screen.getByTestId("baseline-subgroup-subgroup-a")
-    const criterionGrid = screen.getByTestId("baseline-subgroup-criterion-grid")
+    const criterionGrid = screen.getByTestId("criterion-row-criterion-subgroup")
 
     expect(subgroupDisclosure).toHaveAccessibleDescription("Tên nhóm con là bắt buộc.")
     expect(subgroupRequirement).toHaveAccessibleDescription("Nội dung nhóm con là bắt buộc.")
-    expect(subgroupRequirement).toHaveAttribute("readonly")
+    expect(subgroupRequirement).toHaveTextContent("Có hệ thống tiếp địa riêng")
+    expect(subgroupRequirement).not.toBeInstanceOf(HTMLTextAreaElement)
     expect(subgroupRegion).toHaveClass("min-w-0")
-    expect(criterionGrid.className).toContain("grid-cols-1")
-    expect(criterionGrid.className).toContain("md:grid-cols-2")
-    expect(criterionGrid.className).toMatch(/xl:grid-cols-/)
-    expect(criterionGrid.className).not.toContain("min-w-[")
-    expect(criterionGrid.className).not.toContain("minmax(12rem")
-    expect(criterionGrid.className).not.toContain("minmax(20rem")
+    expect(criterionGrid).toHaveAttribute("data-locked", "true")
+    expect(criterionGrid).toHaveAttribute("data-owner-kind", "subgroup")
+    expect(
+      within(criterionGrid).queryByLabelText("Kéo để sắp xếp tiêu chí 1 của nhóm con 1, nhóm I")
+    ).not.toBeInTheDocument()
+    expect(within(criterionGrid).queryByRole("button")).not.toBeInTheDocument()
     expect(screen.getAllByText("2 lỗi")).toHaveLength(2)
 
     expect(screen.queryByRole("button", { name: /Thêm nhóm con/i })).not.toBeInTheDocument()
@@ -321,6 +243,23 @@ describe("technical configuration baseline subgroup presentation", () => {
       screen.queryByRole("button", { name: /Thêm tiêu chí vào nhóm con/i })
     ).not.toBeInTheDocument()
     expect(screen.queryByText(/Phản hồi|Đánh giá/i)).not.toBeInTheDocument()
+  })
+
+  it("keeps editing-disabled fields and row actions mounted but disabled", () => {
+    render(<HierarchyHarness editingDisabled />)
+
+    expect(screen.getByRole("textbox", { name: "Tên nhóm I" })).toBeDisabled()
+    expect(
+      screen.getByRole("textbox", {
+        name: "Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I",
+      })
+    ).toBeDisabled()
+    expect(
+      screen.getByRole("button", {
+        name: "Di chuyển tiêu chí trực tiếp 1 của nhóm I xuống",
+      })
+    ).toBeDisabled()
+    expect(screen.getByLabelText("Kéo để sắp xếp tiêu chí trực tiếp 1 của nhóm I")).toBeDisabled()
   })
 
   it("preserves a pending direct multiline buffer across section collapse and restore", async () => {

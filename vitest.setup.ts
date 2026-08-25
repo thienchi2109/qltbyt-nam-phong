@@ -13,6 +13,16 @@ if (!Element.prototype.releasePointerCapture) {
   Element.prototype.releasePointerCapture = () => {}
 }
 
+if (!globalThis.ResizeObserver) {
+  class ResizeObserverMock implements ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+
+  globalThis.ResizeObserver = ResizeObserverMock
+}
+
 type NextAfterTask = Promise<unknown> | (() => unknown | Promise<unknown>)
 
 vi.mock("next/server", async (importOriginal) => {

@@ -1,4 +1,5 @@
 import {
+  findTechnicalConfigurationBaselineCriterionOwnerByKey,
   getTechnicalConfigurationBaselineCriterionOwnerKey,
   type TechnicalConfigurationBaselineHierarchyAuthoring,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineHierarchyAuthoring"
@@ -6,15 +7,16 @@ import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
 } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
-import type { TechnicalConfigurationBulkEntrySessionsApi } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
+import type { UseTechnicalConfigurationHierarchyAuthoringOptions } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationHierarchyAuthoringTypes"
 import {
   appendTechnicalConfigurationBaselineEditorCriteriaToOwner,
   appendTechnicalConfigurationBaselineEditorCriterionToOwner,
   appendTechnicalConfigurationBaselineEditorSubgroup,
   getTechnicalConfigurationBaselineEditorOwnerCriteria,
   moveTechnicalConfigurationBaselineEditorCriterionToOwner,
-  moveTechnicalConfigurationBaselineEditorCriterionWithinOwner,
+  moveTechnicalConfigurationBaselineEditorGroupToIndex,
   moveTechnicalConfigurationBaselineEditorSubgroup,
+  moveTechnicalConfigurationBaselineEditorSubgroupToIndex,
   removeTechnicalConfigurationBaselineEditorCriterionFromOwner,
   removeTechnicalConfigurationBaselineEditorSubgroup,
   setTechnicalConfigurationBaselineEditorCriterionTextInOwner,
@@ -26,23 +28,7 @@ import type {
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import { parseTechnicalConfigurationBulkEntry } from "@/app/(app)/technical-configurations/bulk-entry-utils"
-
-type ViewTransition = Readonly<{
-  activeValue?: string
-  entryMode?: TechnicalConfigurationEntryMode
-  focusTarget?: TechnicalConfigurationFocusTarget
-}>
-
-type UseTechnicalConfigurationHierarchyAuthoringOptions = Readonly<{
-  draft: TechnicalConfigurationBaselineEditorDraft | null
-  validation: TechnicalConfigurationBaselineEditorValidation
-  activeValue: string
-  entryMode: TechnicalConfigurationEntryMode
-  bulkSessions: TechnicalConfigurationBulkEntrySessionsApi
-  updateDraft: (draft: TechnicalConfigurationBaselineEditorDraft) => void
-  transitionView: (transition: ViewTransition) => void
-  nextFocusToken: () => number
-}>
+import type { TechnicalConfigurationBaselineDndCommand } from "@/app/(app)/technical-configurations/technical-configuration-baseline-dnd"
 
 /** Owns subgroup CRUD, criterion ownership, and subgroup-scoped entry transitions. */
 export function useTechnicalConfigurationHierarchyAuthoring({
@@ -134,7 +120,7 @@ export function useTechnicalConfigurationHierarchyAuthoring({
 
   const onOwnerModeChange = (nextOwnerKey: string, mode: TechnicalConfigurationEntryMode) => {
     if (!draft) return
-    const owner = findOwner(draft, nextOwnerKey)
+    const owner = findTechnicalConfigurationBaselineCriterionOwnerByKey(draft, nextOwnerKey)
     if (!owner) return
     if (nextOwnerKey !== activeValue || mode !== entryMode) bulkSessions.clearRecentHighlights()
     const criteria = getTechnicalConfigurationBaselineEditorOwnerCriteria(draft, owner)
@@ -200,6 +186,70 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     })
   }
 
+  const onHierarchyCommand = (command: TechnicalConfigurationBaselineDndCommand) => {
+    if (!draft) return
+
+    if (command.type === "move-group") {
+      updateDraft(
+        moveTechnicalConfigurationBaselineEditorGroupToIndex(
+          draft,
+          command.groupKey,
+          command.targetIndex
+        )
+      )
+      transitionView({
+        activeValue: command.groupKey,
+        entryMode: "row",
+        focusTarget: {
+          kind: "group-disclosure",
+          key: command.groupKey,
+          token: nextFocusToken(),
+        },
+      })
+      return
+    }
+
+    if (command.type === "move-subgroup") {
+      updateDraft(
+        moveTechnicalConfigurationBaselineEditorSubgroupToIndex(
+          draft,
+          command.groupKey,
+          command.subgroupKey,
+          command.targetIndex
+        )
+      )
+      transitionView({
+        activeValue: command.subgroupKey,
+        entryMode: "row",
+        focusTarget: {
+          kind: "subgroup-disclosure",
+          key: command.subgroupKey,
+          token: nextFocusToken(),
+        },
+      })
+      return
+    }
+
+    updateDraft(
+      moveTechnicalConfigurationBaselineEditorCriterionToOwner(
+        draft,
+        command.sourceOwner,
+        command.criterionKey,
+        command.targetOwner,
+        command.targetIndex
+      )
+    )
+    transitionView({
+      activeValue: getTechnicalConfigurationBaselineCriterionOwnerKey(command.targetOwner),
+      entryMode: "row",
+      focusTarget: {
+        kind: "criterion",
+        key: command.criterionKey,
+        token: nextFocusToken(),
+      },
+    })
+  }
+
   return {
     activeOwnerKey: activeValue,
     entryMode,
@@ -232,32 +282,31 @@ export function useTechnicalConfigurationHierarchyAuthoring({
         )
     },
     onMoveCriterionWithinOwner: (owner, criterionIndex, offset) => {
-      if (draft)
-        updateDraft(
-          moveTechnicalConfigurationBaselineEditorCriterionWithinOwner(
-            draft,
-            owner,
-            criterionIndex,
-            offset
-          )
-        )
+      if (!draft) return
+      const criterion = getTechnicalConfigurationBaselineEditorOwnerCriteria(draft, owner)[
+        criterionIndex
+      ]
+      if (!criterion) return
+      onHierarchyCommand({
+        type: "move-criterion",
+        sourceOwner: owner,
+        criterionKey: criterion.key,
+        targetOwner: owner,
+        targetIndex: criterionIndex + offset,
+      })
     },
     onMoveCriterionToOwner: (sourceOwner, criterionKey, targetOwner) => {
       if (!draft) return
-      updateDraft(
-        moveTechnicalConfigurationBaselineEditorCriterionToOwner(
-          draft,
-          sourceOwner,
-          criterionKey,
-          targetOwner
-        )
-      )
-      transitionView({
-        activeValue: getTechnicalConfigurationBaselineCriterionOwnerKey(targetOwner),
-        entryMode: "row",
-        focusTarget: { kind: "criterion", key: criterionKey, token: nextFocusToken() },
+      onHierarchyCommand({
+        type: "move-criterion",
+        sourceOwner,
+        criterionKey,
+        targetOwner,
+        targetIndex: getTechnicalConfigurationBaselineEditorOwnerCriteria(draft, targetOwner)
+          .length,
       })
     },
+    onHierarchyCommand,
     onDeleteCriterion,
     onAddCriterion,
     onBulkInputChange: bulkSessions.setInput,
@@ -267,7 +316,7 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     },
     onBulkCancel: (key) => {
       bulkSessions.clearSession(key)
-      const owner = findOwner(draft, key)
+      const owner = findTechnicalConfigurationBaselineCriterionOwnerByKey(draft, key)
       transitionView({
         activeValue: key,
         entryMode: "row",
@@ -280,18 +329,4 @@ export function useTechnicalConfigurationHierarchyAuthoring({
     },
     onBulkAccept,
   }
-}
-
-function findOwner(
-  draft: TechnicalConfigurationBaselineEditorDraft | null,
-  key: string
-): TechnicalConfigurationBaselineEditorCriterionOwner | null {
-  if (!draft) return null
-  for (const group of draft.groups) {
-    if (group.key === key) return { groupKey: group.key, subgroupKey: null }
-    if (group.subgroups.some((subgroup) => subgroup.key === key)) {
-      return { groupKey: group.key, subgroupKey: key }
-    }
-  }
-  return null
 }

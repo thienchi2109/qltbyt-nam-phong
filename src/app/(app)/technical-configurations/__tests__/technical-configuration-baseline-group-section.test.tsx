@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react"
+import { screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
@@ -26,6 +26,58 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     expect(screen.getByText("2 tiêu chí")).toBeInTheDocument()
     expect(screen.getByText("2 lỗi")).toBeInTheDocument()
     expect(screen.getByText("Có nội dung nhập nhiều dòng")).toBeInTheDocument()
+  })
+
+  it("renders and edits a literal hyphen title in the shared criterion tree-grid row", async () => {
+    const user = userEvent.setup()
+    const { callbacks } = renderGroupSection({
+      groupValue: {
+        ...group,
+        criteria: [{ ...group.criteria[0], title: "-" }],
+      },
+      groupError: undefined,
+      bulkSession: { input: "", preview: null },
+    })
+
+    const row = screen.getByTestId("criterion-row-criterion-1")
+    const titleInput = within(row).getByLabelText("Tiêu đề tiêu chí trực tiếp 1 của nhóm II")
+
+    expect(row).toHaveAttribute("data-criterion-row", "true")
+    expect(row).toHaveAttribute("data-owner-kind", "group")
+    expect(titleInput).toHaveValue("-")
+    expect(titleInput).not.toHaveAttribute("placeholder")
+    expect(titleInput).toHaveClass("border-transparent", "shadow-none")
+    expect(
+      within(row).getByRole("button", {
+        name: "Kéo để sắp xếp tiêu chí trực tiếp 1 của nhóm II",
+      })
+    ).toBeInTheDocument()
+    expect(within(row).getByRole("img", { name: "Hợp lệ" })).toBeInTheDocument()
+    expect(screen.queryByText("Vị trí")).not.toBeInTheDocument()
+
+    await user.type(titleInput, "X")
+    expect(callbacks.onCriterionTextChange).toHaveBeenLastCalledWith(
+      "group-2",
+      "criterion-1",
+      "title",
+      "-X"
+    )
+  })
+
+  it("renders a stable direct-group criterion drop zone when the owner is empty", () => {
+    renderGroupSection({
+      groupValue: { ...group, criteria: [] },
+      groupError: undefined,
+      bulkSession: { input: "", preview: null },
+    })
+
+    const dropZone = screen.getByTestId("criterion-drop-zone-group-group-2")
+    expect(dropZone).toHaveAttribute("id", "baseline-criterion-drop-zone-group-group-2")
+    expect(dropZone).toHaveAttribute("data-criterion-drop-zone", "true")
+    expect(dropZone).toHaveAttribute("data-drop-slot", "criterion")
+    expect(dropZone).toHaveAttribute("data-owner-kind", "group")
+    expect(dropZone).toHaveAttribute("data-owner-group-key", "group-2")
+    expect(dropZone).toHaveTextContent("Nhóm này chưa có tiêu chí.")
   })
 
   it("collapses content while keeping counts and pending status visible", async () => {
@@ -229,14 +281,34 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     await waitFor(() => expect(target()).toHaveFocus())
   })
 
-  it("preserves disabled move, delete, name, and validation semantics", () => {
+  it("renders locked content without edit, move, delete, or drag affordances", () => {
     userEvent.setup()
     renderGroupSection({ disabled: true })
 
-    expect(screen.getByRole("textbox", { name: "Tên nhóm II" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Di chuyển nhóm II lên" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Di chuyển nhóm II xuống" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Xóa nhóm II" })).toBeDisabled()
+    expect(screen.queryByRole("textbox", { name: "Tên nhóm II" })).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Tên nhóm II")).toHaveTextContent("Yêu cầu kỹ thuật")
+    expect(screen.getByLabelText("Tiêu đề tiêu chí trực tiếp 1 của nhóm II")).toHaveTextContent(
+      "Nguồn điện"
+    )
+    expect(
+      screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm II")
+    ).toHaveTextContent("Nguồn điện ổn định")
+    expect(screen.queryByRole("button", { name: "Di chuyển nhóm II lên" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Di chuyển nhóm II xuống" })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Xóa nhóm II" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText("Kéo để sắp xếp tiêu chí trực tiếp 1 của nhóm II")
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", {
+        name: "Di chuyển tiêu chí trực tiếp 1 của nhóm II xuống",
+      })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Xóa tiêu chí trực tiếp 1 của nhóm II" })
+    ).not.toBeInTheDocument()
     expect(screen.getByText("Tên nhóm là bắt buộc.")).toHaveAttribute(
       "id",
       "baseline-group-group-2-error"

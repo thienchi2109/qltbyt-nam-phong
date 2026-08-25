@@ -64,7 +64,8 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
 
     expect(await screen.findByDisplayValue("Hạ tầng")).toBeInTheDocument()
     expect(screen.getAllByRole("button", { name: /Thêm nhóm con/i })).not.toHaveLength(0)
-    expect(screen.getByRole("combobox", { name: /Chuyển tiêu chí/i })).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /Thao tác cho tiêu chí/i }))
+    expect(await screen.findByRole("menuitem", { name: "Chuyển đến..." })).toBeInTheDocument()
 
     const lockButton = screen.getByRole("button", { name: "Khóa phiên bản" })
     expect(lockButton).toBeEnabled()

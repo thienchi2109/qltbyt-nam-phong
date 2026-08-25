@@ -74,27 +74,31 @@ const initialDraft: TechnicalConfigurationBaselineEditorDraft = {
   ],
 }
 
-type SelectUser = {
+type MenuUser = {
   click: (element: Element) => Promise<void>
-  keyboard: (text: string) => Promise<void>
 }
 
-async function openCriterionOwnerSelect(user: SelectUser, name: string | RegExp) {
-  const trigger = screen.getByRole("combobox", { name })
-  act(() => trigger.focus())
-  await user.keyboard("{ArrowDown}")
+async function openCriterionDestinationMenu(user: MenuUser, criterionLabel: string) {
+  await user.click(
+    screen.getByRole("button", {
+      name: `Thao tác cho ${criterionLabel}`,
+    })
+  )
+  await user.click(await screen.findByRole("menuitem", { name: "Chuyển đến..." }))
 }
 
-async function selectCriterionOwnerOption(
-  user: SelectUser,
-  name: string | RegExp,
+async function selectCriterionDestination(
+  user: MenuUser,
+  criterionLabel: string,
   optionName: string
 ) {
-  await openCriterionOwnerSelect(user, name)
-  await user.click(await screen.findByRole("option", { name: optionName }))
+  await openCriterionDestinationMenu(user, criterionLabel)
+  await user.click(await screen.findByRole("menuitem", { name: optionName }))
 }
 
-function AuthoringHarness(): React.JSX.Element {
+function AuthoringHarness({
+  editingDisabled = false,
+}: { editingDisabled?: boolean } = {}): React.JSX.Element {
   const [draft, setDraft] = useState(initialDraft)
 
   const setSubgroupName = (groupKey: string, subgroupKey: string, name: string) => {
@@ -136,7 +140,7 @@ function AuthoringHarness(): React.JSX.Element {
       status={{
         dirty: true,
         saving: false,
-        editingDisabled: false,
+        editingDisabled,
         conflict: false,
         saveStatus: "idle",
         hasPendingBulkInput: false,
@@ -244,7 +248,15 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     const user = userEvent.setup()
     render(<AuthoringHarness />)
 
-    await selectCriterionOwnerOption(user, "Chuyển tiêu chí trực tiếp 1 của nhóm I", "I.1 Hạ tầng")
+    await openCriterionDestinationMenu(user, "tiêu chí trực tiếp 1 của nhóm I")
+    expect(
+      screen.queryByRole("menuitem", { name: "I. Yêu cầu chung - Trực tiếp" })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "I.1 Hạ tầng" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("menuitem", { name: "II. Yêu cầu bổ sung - Trực tiếp" })
+    ).toBeInTheDocument()
+    await user.click(screen.getByRole("menuitem", { name: "I.1 Hạ tầng" }))
 
     const subgroup = screen.getByRole("region", {
       name: "Nhóm con 1 của nhóm I: Hạ tầng",
@@ -252,15 +264,26 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     expect(within(subgroup).getByDisplayValue("Nguồn điện ổn định")).toBeInTheDocument()
     expect(within(subgroup).getByText("TC-0001")).toBeInTheDocument()
 
-    await selectCriterionOwnerOption(
+    await selectCriterionDestination(
       user,
-      "Chuyển tiêu chí 2 của nhóm con 1, nhóm I",
+      "tiêu chí 2 của nhóm con 1, nhóm I",
       "II. Yêu cầu bổ sung - Trực tiếp"
     )
 
     const secondSection = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
     expect(within(secondSection).getByDisplayValue("Nguồn điện ổn định")).toBeInTheDocument()
     expect(within(secondSection).getByText("TC-0001")).toBeInTheDocument()
+  })
+
+  it("keeps DnD handles and criterion actions disabled while editing is pending", () => {
+    render(<AuthoringHarness editingDisabled />)
+
+    for (const handle of screen.getAllByRole("button", { name: /Kéo để sắp xếp/i })) {
+      expect(handle).toBeDisabled()
+    }
+    for (const action of screen.getAllByRole("button", { name: /Thao tác cho tiêu chí/i })) {
+      expect(action).toBeDisabled()
+    }
   })
 
   it("keeps hierarchy authoring controls absent unless the capability is provided", () => {
@@ -301,6 +324,6 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     )
 
     expect(screen.queryByRole("button", { name: /Thêm nhóm con/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole("combobox", { name: /Chuyển tiêu chí/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Thao tác cho tiêu chí/i })).not.toBeInTheDocument()
   })
 })

@@ -54,6 +54,8 @@
     "@ai-sdk/google": "^3.0.34",
     "@ai-sdk/openai-compatible": "^2.0.41",
     "@ai-sdk/react": "^3.0.107",
+    "@dnd-kit/helpers": "^0.5.0",
+    "@dnd-kit/react": "^0.5.0",
     "@heroui/react": "^3.2.1",
     "@heroui/styles": "^3.2.1",
     "@hookform/resolvers": "^4.1.3",

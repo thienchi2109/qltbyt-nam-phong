@@ -17,6 +17,7 @@ type TechnicalConfigurationBaselineGroupContentProps = Readonly<
     | "subgroupErrors"
     | "criterionErrors"
     | "disabled"
+    | "interactionDisabled"
     | "focusTarget"
     | "recentlyAcceptedCriterionKeys"
     | "ownerOptions"
@@ -52,6 +53,7 @@ export function TechnicalConfigurationBaselineGroupContent({
   subgroupErrors,
   criterionErrors,
   disabled,
+  interactionDisabled = false,
   focusTarget,
   recentlyAcceptedCriterionKeys,
   ownerOptions,
@@ -74,7 +76,8 @@ export function TechnicalConfigurationBaselineGroupContent({
             group={group}
             groupIndex={ordinal}
             criterionErrors={criterionErrors}
-            disabled={disabled}
+            readOnly={disabled}
+            disabled={interactionDisabled}
             focusCriterionKey={focusTarget?.kind === "criterion" ? focusTarget.key : null}
             focusCriterionToken={focusTarget?.kind === "criterion" ? focusTarget.token : null}
             recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
@@ -102,7 +105,7 @@ export function TechnicalConfigurationBaselineGroupContent({
             groupName={groupLabel}
             existingCriterionCount={group.criteria.length}
             session={bulkSession}
-            disabled={disabled}
+            disabled={disabled || interactionDisabled}
             focusInputToken={focusTarget?.kind === "bulk-input" ? focusTarget.token : null}
             onInputChange={onBulkInputChange}
             onPreview={onBulkPreview}
@@ -122,7 +125,8 @@ export function TechnicalConfigurationBaselineGroupContent({
             subgroupError={subgroupErrors[subgroup.key]}
             criterionErrors={criterionErrors}
             focusTarget={focusTarget}
-            disabled={disabled}
+            readOnly={disabled}
+            disabled={interactionDisabled}
             ownerOptions={ownerOptions}
             pendingInputDescriptionId={pendingInputDescriptionId}
             authoring={hierarchyAuthoring}

@@ -25,11 +25,17 @@ describe("technical configuration baseline hierarchy integration", () => {
 
   it("renders server groups and stages multiline, add, and reorder changes without autosave", async () => {
     const user = userEvent.setup()
-    renderTab()
+    const { container } = renderTab()
 
     expect(await screen.findByDisplayValue("Yêu cầu chung")).toBeInTheDocument()
     expect(screen.getByDisplayValue("Yêu cầu cấu hình cung cấp")).toBeInTheDocument()
     expect(screen.getAllByRole("region", { name: /Nhóm tiêu chí/ })).toHaveLength(4)
+    expect(container.querySelectorAll('[data-criterion-row="true"]').length).toBeGreaterThan(0)
+    expect(container.querySelector("[data-criterion-drag-handle]")).toBeInTheDocument()
+    const criterionGrid = container.querySelector('[data-criterion-row="true"]')?.parentElement
+    expect(criterionGrid).not.toBeNull()
+    expect(within(criterionGrid!).queryByText("Vị trí")).not.toBeInTheDocument()
+    expect(within(criterionGrid!).queryByText("Hợp lệ")).not.toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: "Thu gọn nhóm III: Yêu cầu kỹ thuật" })
     ).toHaveAttribute("aria-expanded", "true")

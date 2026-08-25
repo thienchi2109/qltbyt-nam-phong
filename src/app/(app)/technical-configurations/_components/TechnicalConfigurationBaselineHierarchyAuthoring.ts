@@ -3,6 +3,7 @@ import type {
   TechnicalConfigurationBaselineEditorCriterionOwner,
   TechnicalConfigurationBaselineEditorDraft,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type { TechnicalConfigurationBaselineDndCommand } from "@/app/(app)/technical-configurations/technical-configuration-baseline-dnd"
 import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 
 type CriterionTextField = "title" | "requirementText"
@@ -38,6 +39,7 @@ export type TechnicalConfigurationBaselineHierarchyAuthoring = Readonly<{
     criterionKey: string,
     targetOwner: TechnicalConfigurationBaselineEditorCriterionOwner
   ) => void
+  onHierarchyCommand: (command: TechnicalConfigurationBaselineDndCommand) => void
   onDeleteCriterion: (
     owner: TechnicalConfigurationBaselineEditorCriterionOwner,
     criterionKey: string
@@ -54,6 +56,21 @@ export function getTechnicalConfigurationBaselineCriterionOwnerKey(
   owner: TechnicalConfigurationBaselineEditorCriterionOwner
 ): string {
   return owner.subgroupKey ?? owner.groupKey
+}
+
+/** Resolves a direct-group or subgroup criterion owner from its stable UI key. */
+export function findTechnicalConfigurationBaselineCriterionOwnerByKey(
+  draft: TechnicalConfigurationBaselineEditorDraft | null,
+  key: string
+): TechnicalConfigurationBaselineEditorCriterionOwner | null {
+  if (!draft) return null
+  for (const group of draft.groups) {
+    if (group.key === key) return { groupKey: group.key, subgroupKey: null }
+    if (group.subgroups.some((subgroup) => subgroup.key === key)) {
+      return { groupKey: group.key, subgroupKey: key }
+    }
+  }
+  return null
 }
 
 /** Returns the form value used by criterion owner selectors. */

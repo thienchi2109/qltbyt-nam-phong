@@ -25,6 +25,7 @@ export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
   summaryErrorCount: number
   pendingInputDescriptionId?: string
   disabled: boolean
+  interactionDisabled?: boolean
   focusTarget: TechnicalConfigurationFocusTarget
   recentlyAcceptedCriterionKeys: ReadonlySet<string>
   ownerOptions: readonly TechnicalConfigurationBaselineCriterionOwnerOption[]

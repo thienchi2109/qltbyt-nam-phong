@@ -5,6 +5,8 @@ import {
   moveTechnicalConfigurationBaselineEditorItem,
 } from "./technical-configuration-baseline-editor-state"
 import { normalizeTechnicalConfigurationBulkEntryText } from "./bulk-entry-utils"
+import { arrayMove } from "@dnd-kit/helpers"
+
 import type {
   TechnicalConfigurationBaselineEditorCriterion,
   TechnicalConfigurationBaselineEditorDraft,
@@ -119,6 +121,17 @@ export function moveTechnicalConfigurationBaselineEditorGroup(
   return groups === draft.groups ? draft : { ...draft, groups: [...groups] }
 }
 
+/** Moves one section identified by its stable key to a target index. */
+export function moveTechnicalConfigurationBaselineEditorGroupToIndex(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  targetIndex: number
+): TechnicalConfigurationBaselineEditorDraft {
+  const sourceIndex = draft.groups.findIndex((group) => group.key === groupKey)
+  const groups = moveItemToIndex(draft.groups, sourceIndex, targetIndex)
+  return groups === draft.groups ? draft : { ...draft, groups }
+}
+
 /** Moves one complete subgroup block by a single stable position. */
 export function moveTechnicalConfigurationBaselineEditorSubgroup(
   draft: TechnicalConfigurationBaselineEditorDraft,
@@ -134,6 +147,21 @@ export function moveTechnicalConfigurationBaselineEditorSubgroup(
       offset
     )
     return subgroups === currentSubgroups ? group : { ...group, subgroups: [...subgroups] }
+  })
+}
+
+/** Moves one subgroup identified by its stable key within its current section. */
+export function moveTechnicalConfigurationBaselineEditorSubgroupToIndex(
+  draft: TechnicalConfigurationBaselineEditorDraft,
+  groupKey: string,
+  subgroupKey: string,
+  targetIndex: number
+): TechnicalConfigurationBaselineEditorDraft {
+  return updateGroup(draft, groupKey, (group) => {
+    const currentSubgroups = group.subgroups ?? []
+    const sourceIndex = currentSubgroups.findIndex((subgroup) => subgroup.key === subgroupKey)
+    const subgroups = moveItemToIndex(currentSubgroups, sourceIndex, targetIndex)
+    return subgroups === currentSubgroups ? group : { ...group, subgroups }
   })
 }
 
@@ -287,10 +315,7 @@ function moveItemToIndex<T>(items: T[], sourceIndex: number, targetIndex: number
   const insertionIndex = normalizeInsertionIndex(targetIndex, items.length - 1)
   if (sourceIndex === insertionIndex) return items
 
-  const next = [...items]
-  const [item] = next.splice(sourceIndex, 1)
-  next.splice(insertionIndex, 0, item)
-  return next
+  return arrayMove(items, sourceIndex, insertionIndex)
 }
 
 function normalizeInsertionIndex(targetIndex: number | undefined, maxIndex: number): number {

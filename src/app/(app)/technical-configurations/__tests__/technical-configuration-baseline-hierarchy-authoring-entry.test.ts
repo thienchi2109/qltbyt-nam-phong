@@ -37,7 +37,7 @@ const hierarchyDraft: TechnicalConfigurationBaselineEditorDraft = {
   ],
 }
 
-function renderHierarchyEditor() {
+function renderHierarchyEditor(initialDraft = hierarchyDraft) {
   const onEditorChange = vi.fn()
   const rendered = renderHook(
     ({ draft }: { draft: TechnicalConfigurationBaselineEditorDraft }) => {
@@ -51,7 +51,7 @@ function renderHierarchyEditor() {
       })
       return { bulkSessions, editor }
     },
-    { initialProps: { draft: hierarchyDraft } }
+    { initialProps: { draft: initialDraft } }
   )
 
   return { ...rendered, onEditorChange }
@@ -173,5 +173,73 @@ describe("technical configuration baseline hierarchy authoring entry", () => {
 
     await waitFor(() => expect(result.current.bulkSessions.getSession("subgroup-a").input).toBe(""))
     expect(result.current.bulkSessions.getSession("section-a").input).toBe("Giữ lại")
+  })
+
+  it("uses one hierarchy command transition for DnD and menu criterion moves", async () => {
+    const sourceCriterion = {
+      key: "criterion-source",
+      id: "criterion-source",
+      criterionCode: "TC-0001",
+      title: "-",
+      requirementText: "Nguồn điện ổn định",
+    }
+    const commandDraft: TechnicalConfigurationBaselineEditorDraft = {
+      ...hierarchyDraft,
+      groups: [
+        {
+          ...hierarchyDraft.groups[0],
+          criteria: [sourceCriterion],
+        },
+      ],
+    }
+    const dnd = renderHierarchyEditor(commandDraft)
+    const menu = renderHierarchyEditor(commandDraft)
+    await waitFor(() => expect(dnd.result.current.editor.activeValue).toBe("section-a"))
+    await waitFor(() => expect(menu.result.current.editor.activeValue).toBe("section-a"))
+
+    const hierarchyCommand = (
+      dnd.result.current.editor
+        .hierarchyAuthoring as typeof dnd.result.current.editor.hierarchyAuthoring & {
+        onHierarchyCommand?: (command: {
+          type: "move-criterion"
+          sourceOwner: { groupKey: string; subgroupKey: string | null }
+          criterionKey: string
+          targetOwner: { groupKey: string; subgroupKey: string | null }
+          targetIndex: number
+        }) => void
+      }
+    ).onHierarchyCommand
+    expect(hierarchyCommand).toEqual(expect.any(Function))
+
+    act(() =>
+      hierarchyCommand?.({
+        type: "move-criterion",
+        sourceOwner: { groupKey: "section-a", subgroupKey: null },
+        criterionKey: sourceCriterion.key,
+        targetOwner: { groupKey: "section-a", subgroupKey: "subgroup-a" },
+        targetIndex: 0,
+      })
+    )
+    act(() =>
+      menu.result.current.editor.hierarchyAuthoring.onMoveCriterionToOwner(
+        { groupKey: "section-a", subgroupKey: null },
+        sourceCriterion.key,
+        { groupKey: "section-a", subgroupKey: "subgroup-a" }
+      )
+    )
+
+    const dndDraft = dnd.onEditorChange.mock.lastCall?.[0]
+    const menuDraft = menu.onEditorChange.mock.lastCall?.[0]
+    expect(dndDraft).toEqual(menuDraft)
+    expect(dnd.result.current.editor.activeValue).toBe("subgroup-a")
+    expect(menu.result.current.editor.activeValue).toBe("subgroup-a")
+    expect(dnd.result.current.editor.focusTarget).toMatchObject({
+      kind: "criterion",
+      key: sourceCriterion.key,
+    })
+    expect(menu.result.current.editor.focusTarget).toMatchObject({
+      kind: "criterion",
+      key: sourceCriterion.key,
+    })
   })
 })

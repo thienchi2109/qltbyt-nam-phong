@@ -1,11 +1,13 @@
 "use client"
 
+import { useSortable } from "@dnd-kit/react/sortable"
 import * as React from "react"
 import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
   ClipboardPaste,
+  GripVertical,
   ListChecks,
   Plus,
   Trash2,
@@ -18,11 +20,13 @@ import type {
   TechnicalConfigurationBaselineEditorCriterionOwner,
   TechnicalConfigurationBaselineEditorSubgroup,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type {
+  TechnicalConfigurationBaselineDndSourceData,
+  TechnicalConfigurationBaselineDndTargetData,
+} from "@/app/(app)/technical-configurations/technical-configuration-baseline-dnd"
 import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-configurations/bulk-entry-utils"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { Input } from "@/components/ui/input"
 
 import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 import type {
@@ -30,6 +34,8 @@ import type {
   TechnicalConfigurationBaselineHierarchyAuthoring,
 } from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 import { focusTechnicalConfigurationBaselineElement } from "./TechnicalConfigurationBaselineFocus"
+import { TechnicalConfigurationBaselineHierarchyNameField } from "./TechnicalConfigurationBaselineHierarchyNameField"
+import { TechnicalConfigurationBaselineHierarchySummary } from "./TechnicalConfigurationBaselineHierarchySummary"
 
 type TechnicalConfigurationBaselineSubgroupSectionProps = Readonly<{
   groupKey: string
@@ -41,6 +47,7 @@ type TechnicalConfigurationBaselineSubgroupSectionProps = Readonly<{
   subgroupError?: string
   criterionErrors: Record<string, string>
   focusTarget: TechnicalConfigurationFocusTarget
+  readOnly: boolean
   disabled: boolean
   ownerOptions: readonly TechnicalConfigurationBaselineCriterionOwnerOption[]
   pendingInputDescriptionId?: string
@@ -59,6 +66,7 @@ export function TechnicalConfigurationBaselineSubgroupSection({
   subgroupError,
   criterionErrors,
   focusTarget,
+  readOnly,
   disabled,
   ownerOptions,
   pendingInputDescriptionId,
@@ -85,7 +93,9 @@ export function TechnicalConfigurationBaselineSubgroupSection({
     subgroupKey: subgroup.key,
   }
   const mode =
-    authoring?.activeOwnerKey === subgroup.key && authoring.entryMode === "bulk" ? "bulk" : "row"
+    !readOnly && authoring?.activeOwnerKey === subgroup.key && authoring.entryMode === "bulk"
+      ? "bulk"
+      : "row"
   const bulkSession = authoring?.getBulkSession(subgroup.key)
   const hasPendingBulkInput = hasTechnicalConfigurationBulkEntryInput(bulkSession?.input ?? "")
   const modeActionLabel = mode === "row" ? "Nhập nhiều dòng" : "Chỉnh từng dòng"
@@ -93,6 +103,26 @@ export function TechnicalConfigurationBaselineSubgroupSection({
   const subgroupNameRef = React.useRef<HTMLInputElement>(null)
   const modeActionRef = React.useRef<HTMLButtonElement>(null)
   const addCriterionRef = React.useRef<HTMLButtonElement>(null)
+  const sortable = useSortable<
+    TechnicalConfigurationBaselineDndSourceData & TechnicalConfigurationBaselineDndTargetData
+  >({
+    id: `baseline-subgroup-${subgroup.key}`,
+    type: "baseline-subgroup",
+    group: `baseline-subgroups-${groupKey}`,
+    index: subgroupIndex,
+    data: {
+      active: {
+        kind: "subgroup",
+        groupKey,
+        subgroupKey: subgroup.key,
+        index: subgroupIndex,
+      },
+      label: `Nhóm con ${sectionOrdinal}.${subgroupOrdinal}: ${subgroupLabel}`,
+      target: { kind: "subgroup", groupKey, index: subgroupIndex },
+      targetMode: "sortable",
+    },
+    disabled: !authoring || readOnly || disabled,
+  })
 
   React.useEffect(() => {
     if (!focusTarget || !("key" in focusTarget) || focusTarget.key !== subgroup.key) return
@@ -115,11 +145,15 @@ export function TechnicalConfigurationBaselineSubgroupSection({
   return (
     <Collapsible open={expanded} onOpenChange={onExpandedChange}>
       <section
+        ref={sortable.ref}
         aria-label={`Nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}: ${subgroupLabel}`}
         data-testid={`baseline-subgroup-${subgroup.key}`}
-        className="min-w-0 border-t bg-muted/10"
+        data-hierarchy-level="subgroup"
+        data-drag-source={sortable.isDragSource ? "true" : undefined}
+        data-drop-target={sortable.isDropTarget ? "true" : undefined}
+        className="relative ml-6 min-w-0 border-l border-border/70 before:absolute before:left-0 before:top-7 before:w-4 before:border-t before:border-border/70"
       >
-        <div className="grid min-w-0 gap-3 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="grid min-w-0 gap-3 border-b border-border/70 bg-muted/15 px-3 py-3 pl-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
           <div className="flex min-w-0 items-start gap-2">
             <CollapsibleTrigger asChild>
               <Button
@@ -139,33 +173,41 @@ export function TechnicalConfigurationBaselineSubgroupSection({
                 />
               </Button>
             </CollapsibleTrigger>
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-background text-sm font-semibold">
-              {subgroupOrdinal}
+            {authoring && !readOnly ? (
+              <Button
+                ref={sortable.handleRef}
+                type="button"
+                variant="ghost"
+                size="icon"
+                disabled={disabled}
+                className="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+                aria-label={`Kéo để sắp xếp nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}`}
+                title="Kéo để sắp xếp nhóm con"
+              >
+                <GripVertical className="size-4" aria-hidden="true" />
+              </Button>
+            ) : null}
+            <span className="flex h-9 min-w-12 shrink-0 items-center justify-center rounded-sm border border-border/80 bg-background px-2 text-sm font-semibold">
+              {sectionOrdinal}.{subgroupOrdinal}
             </span>
             <div className="min-w-0 pt-1">
-              {authoring ? (
-                <Input
-                  ref={subgroupNameRef}
-                  aria-label={`Tên nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}`}
-                  value={subgroup.name}
-                  disabled={disabled}
-                  aria-invalid={Boolean(subgroupError)}
-                  aria-describedby={subgroupErrorId}
-                  onChange={(event) =>
-                    authoring.onSubgroupNameChange(groupKey, subgroup.key, event.target.value)
-                  }
-                />
-              ) : (
-                <h3 className="break-words text-sm font-semibold">{subgroupLabel}</h3>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <Badge variant="secondary">{subgroup.criteria.length} tiêu chí</Badge>
-                {subgroupError || criterionErrorCount > 0 ? (
-                  <Badge variant="destructive">
-                    {(subgroupError ? 1 : 0) + criterionErrorCount} lỗi
-                  </Badge>
-                ) : null}
-              </div>
+              <TechnicalConfigurationBaselineHierarchyNameField
+                level="subgroup"
+                inputRef={subgroupNameRef}
+                id={`baseline-subgroup-name-${subgroup.key}`}
+                ariaLabel={`Tên nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}`}
+                value={subgroup.name}
+                displayValue={subgroupLabel}
+                locked={!authoring || readOnly}
+                disabled={disabled}
+                invalid={Boolean(subgroupError)}
+                describedBy={subgroupErrorId}
+                onChange={(value) => authoring?.onSubgroupNameChange(groupKey, subgroup.key, value)}
+              />
+              <TechnicalConfigurationBaselineHierarchySummary
+                criterionCount={subgroup.criteria.length}
+                errorCount={(subgroupError ? 1 : 0) + criterionErrorCount}
+              />
               {subgroupError ? (
                 <p id={subgroupErrorId} className="mt-1 text-sm text-destructive">
                   {subgroupError}
@@ -173,7 +215,7 @@ export function TechnicalConfigurationBaselineSubgroupSection({
               ) : null}
             </div>
           </div>
-          {authoring ? (
+          {authoring && !readOnly ? (
             <div className="flex flex-wrap items-center gap-1 sm:justify-end">
               <Button
                 ref={modeActionRef}
@@ -259,13 +301,14 @@ export function TechnicalConfigurationBaselineSubgroupSection({
             ) : (
               <TechnicalConfigurationBaselineSubgroupCriteria
                 criteria={subgroup.criteria}
+                owner={owner}
                 sectionOrdinal={sectionOrdinal}
                 subgroupOrdinal={subgroupOrdinal}
                 criterionErrors={criterionErrors}
                 focusCriterionKey={targetCriterionKey}
                 focusCriterionToken={targetCriterionToken}
                 authoring={
-                  authoring
+                  authoring && !readOnly
                     ? {
                         owner,
                         ownerOptions,

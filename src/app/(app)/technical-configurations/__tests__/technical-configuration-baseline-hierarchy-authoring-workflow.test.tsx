@@ -28,7 +28,15 @@ const initialDraft: TechnicalConfigurationBaselineEditorDraft = {
       key: "section-a",
       id: "section-a",
       name: "Yêu cầu chung",
-      criteria: [],
+      criteria: [
+        {
+          key: "criterion-direct",
+          id: "criterion-direct",
+          criterionCode: "TC-0001",
+          title: "-",
+          requirementText: "Nguồn điện ổn định",
+        },
+      ],
       subgroups: [
         {
           key: "subgroup-a",
@@ -206,5 +214,39 @@ describe("technical configuration baseline hierarchy authoring workflow", () => 
     expect(within(section).getByRole("textbox", { name: "Nội dung nhập nhanh" })).toHaveValue(
       "Yêu cầu trực tiếp đang chờ"
     )
+  })
+
+  it("opens a collapsed destination before restoring focus after a criterion menu move", async () => {
+    const user = userEvent.setup()
+    render(<HierarchyAuthoringHarness />)
+
+    const section = screen.getByRole("region", { name: "Nhóm tiêu chí I" })
+    const subgroup = within(section).getByRole("region", {
+      name: "Nhóm con 1 của nhóm I: Hạ tầng",
+    })
+    await user.click(
+      within(subgroup).getByRole("button", {
+        name: "Thu gọn nhóm con 1 của nhóm I: Hạ tầng",
+      })
+    )
+
+    await user.click(
+      within(section).getByRole("button", {
+        name: "Thao tác cho tiêu chí trực tiếp 1 của nhóm I",
+      })
+    )
+    await user.click(await screen.findByRole("menuitem", { name: "Chuyển đến..." }))
+    await user.click(await screen.findByRole("menuitem", { name: "I.1 Hạ tầng" }))
+
+    const movedRequirement = within(subgroup).getByRole("textbox", {
+      name: "Nội dung yêu cầu tiêu chí 1 của nhóm con 1, nhóm I",
+    })
+    await waitFor(() => expect(movedRequirement).toHaveFocus())
+    expect(
+      within(subgroup).getByRole("button", {
+        name: "Thu gọn nhóm con 1 của nhóm I: Hạ tầng",
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByText("Có thay đổi chưa lưu")).toBeInTheDocument()
   })
 })
