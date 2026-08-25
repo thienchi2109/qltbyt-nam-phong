@@ -48,6 +48,9 @@ Thiết kế mới phải giúp người dùng:
 - Thiết kế lại toàn bộ workspace `Cấu hình cơ sở`, không chỉ restyle từng dòng.
 - Toolbar chỉ giữ các khả năng hiện có; không thêm search, preview hay
   expand/collapse-all.
+- Thêm submenu `Chuyển đến...` trong menu của tiêu chí làm fallback không cần
+  kéo thả để chuyển owner. Đây là capability frontend mới, phải tái sử dụng
+  canonical move logic và authoring transition hiện hữu.
 - Sidebar `Cấu trúc` chỉ là bản tóm tắt thụ động; không click-to-scroll và
   không active highlight theo vị trí cuộn.
 - Giữ một cột `Tiêu đề` riêng, nhỏ gọn.
@@ -277,6 +280,9 @@ draft và không sao chép canonical hierarchy logic.
   `code-deduplication` trước khi tạo shared component/helper mới.
 - Ghi nhận line count của các file sẽ sửa; extract trước khi file tiến gần
   `350` dòng và tuyệt đối không vượt `450` dòng.
+- `TechnicalConfigurationBaselineTab.tsx` hiện đúng `350` dòng và không nằm
+  trong write set dự kiến. Nếu implementation cần chạm file này, phải extract
+  logical chunk trước khi thêm code.
 - Chạy focused baseline suites hiện tại để khóa baseline xanh.
 - Xác nhận các mutation hiện hữu sau là characterization coverage, không gọi
   lại chúng là RED behavior mới:
@@ -329,9 +335,12 @@ Viết tests, sau đó implement ngay layout toolbar + sidebar + canvas:
 - Existing direct-URL render ở viewport nhỏ không bị cố ý chặn hoặc crash, nhưng
   không thêm acceptance về mobile layout.
 
-Mở rộng
-`technical-configuration-workspace-focus-mode.test.tsx` để giữ draft instance,
-scroll region và guarded Escape behavior hiện tại.
+Mở rộng:
+
+- `technical-configuration-baseline-workspace.test.tsx` để giữ app-height shell,
+  footer/scroll boundary và dirty navigation guards.
+- `technical-configuration-workspace-focus-mode.test.tsx` để giữ draft instance,
+  scroll region và guarded Escape behavior hiện tại.
 
 ### Phase 3: RED-GREEN cho hierarchy presentation
 
@@ -360,6 +369,11 @@ Viết integration tests trước:
 - Test pointer và keyboard drop vào subgroup owner rỗng.
 - Test cross-owner drop vào destination đang collapsed: mở ancestor, giữ dirty
   state và focus criterion ở destination.
+- Test editable criterion menu hiển thị submenu `Chuyển đến...` với các
+  destination owner hợp lệ, loại owner hiện tại và không cho phép thao tác khi
+  workspace bị khóa.
+- Test chọn destination từ submenu tạo đúng target-owner command và hoạt động
+  khi destination đang collapsed.
 - Test `Chuyển đến...` và DnD tạo cùng canonical result, disclosure và focus
   transition.
 - Khóa cancel, invalid target và no-op bằng tests trước khi hoàn tất phase.
@@ -371,8 +385,8 @@ Sau khi tests đỏ đúng lý do:
 - Render drag overlay/drop indicator không làm đổi layout.
 - Sau valid `onDragEnd`, delegate command cho authoring transition; không mutate
   draft trực tiếp trong workspace.
-- Nối/giữ submenu `Chuyển đến...` qua cùng criterion move transition trước khi
-  làm các shared-result assertions xanh.
+- Thêm submenu `Chuyển đến...` qua cùng criterion move transition trước khi làm
+  các shared-result assertions xanh.
 
 ### Phase 5: Accessible fallback và regression
 
@@ -391,6 +405,7 @@ Các regression suite trọng yếu:
 - `technical-configuration-baseline-hierarchy-authoring-controls.test.tsx`
 - `technical-configuration-baseline-hierarchy-tab-workflow.test.tsx`
 - `technical-configuration-baseline-hierarchy-editor-snapshot.test.ts`
+- `technical-configuration-baseline-workspace.test.tsx`
 - `technical-configuration-workspace-focus-mode.test.tsx`
 - `technical-configuration-baseline-tab.test.tsx`
 
