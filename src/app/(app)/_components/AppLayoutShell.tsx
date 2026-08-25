@@ -17,6 +17,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useDeferredDropdownAction } from "@/components/ui/use-deferred-dropdown-action"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -104,6 +105,7 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
   const hasHandledSessionExitRef = React.useRef(false)
   const [uiState, dispatchUi] = React.useReducer(appLayoutUiReducer, initialAppLayoutUiState)
   const { isSidebarOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } = uiState
+  const deferDropdownAction = useDeferredDropdownAction()
   const branding = useTenantBranding()
   const { counts: notificationCounts } = useAppNotificationCounts({
     enabled: !isExpertShell && status === "authenticated" && shouldFetchData,
@@ -113,6 +115,9 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
   const navItems = React.useMemo(() => {
     return getAppNavigationItems(user.role)
   }, [user.role])
+
+  const openPasswordDialog = () =>
+    deferDropdownAction(() => dispatchUi({ type: "setChangePasswordOpen", isOpen: true }))
 
   const redirectToSignedOutHome = React.useCallback(() => {
     if (hasHandledSessionExitRef.current) {
@@ -285,9 +290,7 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => dispatchUi({ type: "setChangePasswordOpen", isOpen: true })}
-                  >
+                  <DropdownMenuItem onClick={openPasswordDialog}>
                     <KeyRound className="mr-2 size-4" />
                     Thay đổi mật khẩu
                   </DropdownMenuItem>

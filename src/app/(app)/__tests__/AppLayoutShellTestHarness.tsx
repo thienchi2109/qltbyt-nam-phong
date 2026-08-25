@@ -115,8 +115,20 @@ vi.mock("@/components/tenant-name", () => ({
 }))
 
 vi.mock("@/components/change-password-dialog", () => ({
-  ChangePasswordDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="change-password-dialog" /> : null,
+  ChangePasswordDialog: ({
+    open,
+    onOpenChange,
+  }: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+  }) =>
+    open ? (
+      <div data-testid="change-password-dialog">
+        <button type="button" onClick={() => onOpenChange(false)}>
+          Hủy
+        </button>
+      </div>
+    ) : null,
 }))
 
 vi.mock("@/components/notification-bell-dialog", () => ({

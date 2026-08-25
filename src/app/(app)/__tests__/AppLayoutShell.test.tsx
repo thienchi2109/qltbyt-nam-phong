@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { render, screen } from "@testing-library/react"
+import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -14,6 +14,42 @@ describe("AppLayoutShell", () => {
 
   beforeEach(() => {
     resetAppLayoutShellMocks()
+  })
+
+  it("defers the change-password dialog until the avatar menu action completes", () => {
+    vi.useFakeTimers()
+
+    try {
+      render(
+        <AppLayoutShell
+          user={{
+            role: "global",
+            full_name: "Test User",
+            username: "tester",
+            khoa_phong: "IT",
+          }}
+        >
+          <div>Child Content</div>
+        </AppLayoutShell>
+      )
+
+      fireEvent.click(screen.getByRole("button", { name: /thay đổi mật khẩu/i }))
+
+      expect(screen.queryByTestId("change-password-dialog")).not.toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(0)
+      })
+
+      expect(screen.getByTestId("change-password-dialog")).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole("button", { name: "Hủy" }))
+
+      expect(screen.queryByTestId("change-password-dialog")).not.toBeInTheDocument()
+      expect(document.body.style.pointerEvents).not.toBe("none")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("scopes notification counts to the selected facility", () => {
