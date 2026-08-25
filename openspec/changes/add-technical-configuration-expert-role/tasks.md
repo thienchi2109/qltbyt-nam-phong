@@ -318,7 +318,7 @@ replacement path, and both database gate lanes pass.
 
 ## Phase 13 - Enable Backend Expert Account Assignment
 
-**Depends on:** Phases 3-12 deployed in the target environment
+**Depends on:** Phases 3-12 and Issue #953 deployed in the target environment
 
 **Review boundary:** guarded user create/update role validation and server tests
 only; no user-management UI exposure.
@@ -327,8 +327,9 @@ only; no user-management UI exposure.
 shell, standalone API, proxy, session, module guard, and account-scope
 boundaries are all confirmed.
 
-- [ ] 13.1 Update guarded global/admin user create/update validation to accept
-      `chuyen_gia`.
+- [ ] 13.1 Supersede the Issue #953 fail-closed allowlist in a new append-only
+      migration, updating guarded global/admin user create/update validation to
+      accept `chuyen_gia`.
 - [ ] 13.2 Require assigned current/home `don_vi`, matching membership, and
       resolvable `dia_ban_id`; keep `khoa_phong` optional.
 - [ ] 13.3 Reject unauthorized callers, tenant switching, and incomplete scope
