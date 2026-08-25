@@ -327,18 +327,18 @@ only; no user-management UI exposure.
 shell, standalone API, proxy, session, module guard, and account-scope
 boundaries are all confirmed.
 
-- [ ] 13.1 Supersede the Issue #953 fail-closed allowlist in a new append-only
+- [x] 13.1 Supersede the Issue #953 fail-closed allowlist in a new append-only
       migration, updating guarded global/admin user create/update validation to
       accept `chuyen_gia`.
-- [ ] 13.2 Require assigned current/home `don_vi`, matching membership, and
+- [x] 13.2 Require assigned current/home `don_vi`, matching membership, and
       resolvable `dia_ban_id`; keep `khoa_phong` optional.
-- [ ] 13.3 Reject unauthorized callers, tenant switching, and incomplete scope
+- [x] 13.3 Reject unauthorized callers, tenant switching, and incomplete scope
       without partial account changes.
-- [ ] 13.4 Keep Users/Tenants routes and management RPCs denied to an
+- [x] 13.4 Keep Users/Tenants routes and management RPCs denied to an
       authenticated expert.
-- [ ] 13.5 Add server/SQL tests proving global and raw `admin` ownership while
+- [x] 13.5 Add server/SQL tests proving global and raw `admin` ownership while
       all other roles fail closed.
-- [ ] 13.6 Run migration gates if this phase needs an append-only RPC
+- [x] 13.6 Run migration gates if this phase needs an append-only RPC
       replacement.
 
 **Exit gate:** backend account assignment is safe, but operators still cannot
