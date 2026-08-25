@@ -160,6 +160,29 @@
       "statementScope": "DELETE FROM public.user_don_vi_memberships WHERE user_id = p_user_id AND don_vi = p_don_vi;",
       "status": "active",
       "validation": "Focused SQL proves expert deletion is rejected and non-expert membership removal behavior remains unchanged."
+    },
+    {
+      "approvedAt": "2026-08-25T09:06:13Z",
+      "approver": "thienchi2109",
+      "approvalUrl": "https://github.com/thienchi2109/qltbyt-nam-phong/issues/953",
+      "candidateCommit": "833bde881ebdb0f60830a8247a13dcd2a7e91e8d",
+      "candidateReportDigest": "5c299c102326a391ac6007371f2c135ddaac9df0537e40707eee59f1b361a9df",
+      "classification": "DANGEROUS",
+      "compensatingControls": "PUBLIC and anon execute are revoked; both the JWT app_role and stored caller role must be admin/global before role validation or any account write; focused SQL locks the ACL and authorization contract.",
+      "findingFingerprint": "0b83de93e2793992c8c4b669e28631acebb532ca9fc1b7f85ce1288e2a067942",
+      "id": "issue953-833bde88-user-create-authenticated",
+      "migrationPath": "supabase/migrations/20260825085413_harden_user_create_role_allowlist.sql",
+      "migrationSha256": "8e4a527763401fc3a7a9bf81bb85a1d6508656993c15de0655690a47f12f07e8",
+      "objectScope": "public.user_create(text,text,text,text,bigint,bigint[])",
+      "rationale": "Replay the existing authenticated execute privilege required by the RPC proxy while replacing user_create with an explicit fail-closed role allowlist.",
+      "recoveryPlan": "Use a new append-only migration to revoke authenticated execute and restore the prior reviewed user_create body and ACL; never edit the applied migration.",
+      "rejectedAlternatives": "Omitting explicit ACL replay fails the SECURITY DEFINER static contract; service-role-only access would break the existing authenticated RPC proxy workflow.",
+      "reviewEvidence": "Maintainer explicitly approved this single migration-scoped waiver in the Codex session on 2026-08-25; the approval excludes any live database write.",
+      "riskAndImpact": "Authenticated sessions can reach user_create, but only stored admin/global callers with matching admin/global JWT claims can create accounts, and unsupported roles fail before hashing or writes.",
+      "ruleId": "migration.dangerous-statement",
+      "statementScope": "GRANT EXECUTE ON FUNCTION public.user_create(TEXT, TEXT, TEXT, TEXT, BIGINT, BIGINT[]) TO authenticated;",
+      "status": "active",
+      "validation": "Focused RED/GREEN SQL covers seven supported roles, raw admin/global callers, unauthorized callers, unknown and dormant expert roles, side effects, guard ordering, and ACL metadata on disposable Oracle clones."
     }
   ],
   "schemaVersion": 1
