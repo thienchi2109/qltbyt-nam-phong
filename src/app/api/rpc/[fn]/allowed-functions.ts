@@ -133,6 +133,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "user_membership_add",
   "user_membership_remove",
   "user_set_current_don_vi",
+  "user_reassign_expert_scope",
   // Don vi (global-only management)
   "don_vi_list",
   "don_vi_get",

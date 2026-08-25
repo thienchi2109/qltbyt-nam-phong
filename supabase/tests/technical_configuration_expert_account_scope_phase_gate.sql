@@ -57,7 +57,9 @@ BEGIN
       ELSE
         RAISE EXCEPTION 'unknown test function: %', p_function_name;
     END CASE;
-    RAISE EXCEPTION 'expected_sqlstate_not_raised: %', p_label;
+    RAISE EXCEPTION USING
+      ERRCODE = 'PT001',
+      MESSAGE = format('expected_sqlstate_not_raised: %s', p_label);
   EXCEPTION
     WHEN OTHERS THEN
       GET STACKED DIAGNOSTICS v_sqlstate = RETURNED_SQLSTATE;
@@ -127,7 +129,6 @@ BEGIN
   INSERT INTO public.don_vi(name, active, dia_ban_id)
   VALUES ('Phase 12 Inactive Unit', false, v_region_b)
   RETURNING id INTO v_inactive_unit;
-
   INSERT INTO public.nhan_vien(
     username, password, hashed_password, full_name, role, don_vi, current_don_vi, dia_ban_id
   )
@@ -249,7 +250,6 @@ BEGIN
     'anon cannot execute dedicated expert reassignment RPC',
     NOT has_function_privilege('anon', v_reassign_oid, 'EXECUTE')
   );
-
   FOREACH v_signature IN ARRAY ARRAY[
     'public.user_membership_add(integer,bigint)',
     'public.user_membership_remove(integer,bigint)',
@@ -270,7 +270,6 @@ BEGIN
       v_function_config @> ARRAY['search_path=public, pg_temp']
     );
   END LOOP;
-
   PERFORM pg_temp.set_claims('global', v_global_id, v_unit_a);
   PERFORM public.user_reassign_expert_scope(v_expert_id, v_unit_b);
   PERFORM pg_temp.assert_true(
@@ -399,7 +398,11 @@ BEGIN
     v_unit_b,
     '42501'
   );
-
+  PERFORM pg_temp.set_claims('global', 9223372036854775807, v_unit_a);
+  PERFORM pg_temp.expect_scope_call_sqlstate(
+    'unknown claimed global caller cannot use dedicated expert reassignment',
+    'user_reassign_expert_scope', v_expert_id, v_unit_b, '42501'
+  );
   PERFORM pg_temp.set_claims('global', v_global_id, v_unit_a);
   PERFORM public.user_membership_add(v_non_expert_id::INTEGER, v_unit_b);
   PERFORM pg_temp.assert_true(
