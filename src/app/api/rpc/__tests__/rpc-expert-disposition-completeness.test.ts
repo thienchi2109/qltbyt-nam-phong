@@ -113,6 +113,7 @@ const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
   "user_membership_add",
   "user_membership_remove",
   "user_set_current_don_vi",
+  "user_reassign_expert_scope",
   "don_vi_list",
   "don_vi_get",
   "don_vi_create",
@@ -184,8 +185,8 @@ describe("RPC expert disposition completeness", () => {
   it("enforces the exact expert allow set from the Phase 7 disposition", () => {
     expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(79)
     expect(EXPERT_RETAINED_RPC_FUNCTION_NAMES).toEqual(["change_password", "don_vi_branding_get"])
-    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(158)
-    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 239)
+    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(159)
+    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 240)
     expect([...EXPERT_ALLOWED_FUNCTIONS]).toEqual([
       ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
       ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,
