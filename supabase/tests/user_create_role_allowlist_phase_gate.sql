@@ -37,7 +37,8 @@ CREATE FUNCTION pg_temp.assert_create_error(
   p_role TEXT,
   p_don_vi BIGINT,
   p_expected_state TEXT,
-  p_expected_message TEXT DEFAULT NULL
+  p_expected_message TEXT DEFAULT NULL,
+  p_memberships BIGINT[] DEFAULT NULL
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -53,7 +54,7 @@ BEGIN
       'Issue 953 Rejected User',
       p_role,
       p_don_vi,
-      ARRAY[p_don_vi]
+      COALESCE(p_memberships, ARRAY[p_don_vi])
     );
     RAISE EXCEPTION 'expected user_create rejection' USING ERRCODE = 'PT001';
   EXCEPTION
@@ -259,12 +260,13 @@ BEGIN
     'Invalid role'
   );
   PERFORM pg_temp.assert_create_error(
-    'dormant expert role fails closed',
+    'expert creation rejects non-canonical memberships',
     format('issue953_expert_%s', txid_current()),
     'chuyen_gia',
     v_unit_a,
     '22023',
-    'Invalid role'
+    'Invalid expert memberships',
+    ARRAY[v_unit_a, v_unit_b]
   );
   PERFORM pg_temp.assert_create_error(
     'empty role keeps required-field validation',

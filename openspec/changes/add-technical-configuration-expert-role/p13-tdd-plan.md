@@ -242,11 +242,11 @@
     --subject-commit "$GATE_CANDIDATE_SHA"
   ```
 
-      Review the persisted report before adding a waiver. Do not treat approval
-          as live-write permission. Create the canonical approval commit as a direct
-          child of the gate-candidate SHA; run its static lane with
-          `--landed-parent-commit "$GATE_CANDIDATE_SHA"` and explicit approval
-          subject SHA, then run Oracle `baseline-forward` on that same approval SHA.
+- [ ] Review the persisted report before adding a waiver. Do not treat approval
+      as live-write permission. Create the canonical approval commit as a direct
+      child of the gate-candidate SHA; run its static lane with
+      `--landed-parent-commit "$GATE_CANDIDATE_SHA"` and explicit approval
+      subject SHA, then run Oracle `baseline-forward` on that same approval SHA.
 
 - [ ] Run the canonical Oracle `baseline-forward` operation against a disposable
       clone using the exact same gate-candidate SHA for a clean PASS flow, or the
@@ -284,14 +284,13 @@
     --subject-commit "$LANDED_SHA"
   ```
 
-      For a normal or squash landing, confirm the first-parent diff includes the
-          Phase 13 migration and gate-registry changes. For a canonical
-          `DANGEROUS` approval landing, confirm the first parent is the persisted
-          candidate SHA, the direct diff contains the matching evidence/waiver
-          artifacts, and the quality-gate runner widens the trusted diff from the
-          candidate's parent so it includes the Phase 13 migration and registry.
-          Any empty, unbound, or incomplete trusted diff is
-          `BLOCKING / INCOMPLETE`.
+- [ ] For a normal or squash landing, confirm the first-parent diff includes the
+      Phase 13 migration and gate-registry changes. For a canonical `DANGEROUS`
+      approval landing, confirm the first parent is the persisted candidate SHA,
+      the direct diff contains the matching evidence/waiver artifacts, and the
+      quality-gate runner widens the trusted diff from the candidate's parent so
+      it includes the Phase 13 migration and registry. Any empty, unbound, or
+      incomplete trusted diff is `BLOCKING / INCOMPLETE`.
 
 - [ ] Do not apply the migration to live in Phase 13 implementation closeout
       unless the maintainer separately authorizes that exact Supabase MCP write.

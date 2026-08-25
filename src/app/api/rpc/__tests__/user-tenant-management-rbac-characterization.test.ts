@@ -14,7 +14,7 @@ type GlobalOnlyRpc = {
 const USER_MANAGEMENT_RPCS: GlobalOnlyRpc[] = [
   { adminHandling: "accept-raw", name: "user_create", roleVariable: "v_app_role" },
   { adminHandling: "normalize", name: "user_list_for_admin", roleVariable: "v_role" },
-  { adminHandling: "normalize", name: "user_update_profile", roleVariable: "v_role" },
+  { adminHandling: "accept-raw", name: "user_update_profile", roleVariable: "v_role" },
   { adminHandling: "normalize", name: "user_delete_by_admin", roleVariable: "v_role" },
   { adminHandling: "normalize", name: "reset_password_by_admin", roleVariable: "v_role" },
 ]
@@ -115,6 +115,15 @@ describe("Users/Tenants management RBAC characterization", () => {
     "keeps $name global/admin-only so an expert remains denied",
     expectGlobalOnlyGuard
   )
+
+  it.each(
+    USER_MANAGEMENT_RPCS.filter(({ name }) => ["user_create", "user_update_profile"].includes(name))
+  )("lets global/raw-admin callers assign the expert role through $name", (rpc) => {
+    const source = extractLatestFunction(rpc.name)
+
+    expectGlobalOnlyGuard(rpc)
+    expect(source).toMatch(/NOT\s+IN\s*\([\s\S]{0,400}'chuyen_gia'[\s\S]{0,200}\)\s*THEN/i)
+  })
 
   it.each(TENANT_MANAGEMENT_RPCS)(
     "keeps $name global-only so an expert remains denied",

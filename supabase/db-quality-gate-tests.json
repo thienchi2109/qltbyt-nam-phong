@@ -502,6 +502,16 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 13"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_expert_account_assignment_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 90,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": [
         "GitHub Issue #953",
         "OpenSpec add-technical-configuration-expert-role Phase 13 blocker"
