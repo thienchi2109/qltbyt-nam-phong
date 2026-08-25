@@ -298,19 +298,19 @@ tests; do not yet let create/update RPCs assign the new role.
 **Deploy boundary:** backward-compatible protection and dormant reassignment
 infrastructure.
 
-- [ ] 12.1 Make generic `user_membership_add`,
+- [x] 12.1 Make generic `user_membership_add`,
       `user_membership_remove`, `user_set_current_don_vi`, and related paths
       reject every expert-targeted scope change.
-- [ ] 12.2 Add global/admin-only
+- [x] 12.2 Add global/admin-only
       `user_reassign_expert_scope(p_user_id bigint, p_don_vi bigint)`.
-- [ ] 12.3 In one transaction validate the target/destination, establish
+- [x] 12.3 In one transaction validate the target/destination, establish
       membership, update current/home unit, verify resolvable `dia_ban_id`, and
       retire obsolete assignment state.
-- [ ] 12.4 Register the reassignment RPC in the generic proxy allowlist with an
+- [x] 12.4 Register the reassignment RPC in the generic proxy allowlist with an
       explicit expert-denied classification.
-- [ ] 12.5 Add success, rollback, invalid-destination, generic-mutation,
+- [x] 12.5 Add success, rollback, invalid-destination, generic-mutation,
       unauthorized-caller, and non-expert compatibility SQL tests.
-- [ ] 12.6 Run migration `static` and Oracle `baseline-forward` for the exact
+- [x] 12.6 Run migration `static` and Oracle `baseline-forward` for the exact
       landed commit.
 
 **Exit gate:** the invariant cannot be broken, the named transaction is the only
