@@ -3,24 +3,24 @@ import path from "node:path"
 
 import { createFindingFingerprint } from "./contract"
 import {
+  ambiguousFunctionNames,
   functionBlocks,
   functionGrantGrantees,
   functionNames,
+  functionRevokeGrantees,
   hasPublicFunctionRevoke,
   isCallablePublicRpc,
   isExplicitGrantContractPresent,
+  isInternalPublicHelper,
+  isPublicNonTriggerFunction,
   tableNames,
   unqualifiedTableNames,
 } from "./static-policy-objects"
 import { dangerousFindings } from "./static-policy-dangerous"
 import { compareStrings } from "./serialization"
+import { failClosedJwtAuthorizedFunctions } from "./static-sql-authorization"
 import { topLevelStatements } from "./static-sql-statements"
-import {
-  hasFailClosedJwtGuards,
-  hasRawLikePattern,
-  maskSqlCommentsAndLiterals,
-  tokenizeSqlSegment,
-} from "./static-sql"
+import { hasRawLikePattern, maskSqlCommentsAndLiterals, tokenizeSqlSegment } from "./static-sql"
 import type { GateFinding, MigrationIdentity } from "./types"
 
 type StaticRuleFinding = Omit<GateFinding, "fingerprint"> & {
@@ -177,14 +177,62 @@ export function staticRuleFindings(
     }
   }
 
-  for (const functionBlock of functionBlocks(content)) {
+  const functions = functionBlocks(content)
+  const overloadedFunctionNames = ambiguousFunctionNames(functions)
+  for (const name of overloadedFunctionNames) {
+    findings.push(
+      staticBlockingFinding("migration.function-overload-ambiguous", migration.path, {
+        function: name,
+        migration: migration.path,
+      })
+    )
+  }
+  const safeInternalTargets = new Set(
+    functions.filter((functionBlock) => {
+      const grantees = functionGrantGrantees(content, functionBlock)
+      const revokeGrantees = functionRevokeGrantees(content, functionBlock)
+
+      return (
+        isInternalPublicHelper(functionBlock) &&
+        !overloadedFunctionNames.has(functionBlock.name) &&
+        ["anon", "authenticated", "public"].every((grantee) => revokeGrantees.has(grantee)) &&
+        !["anon", "authenticated", "public"].some((grantee) => grantees.has(grantee))
+      )
+    })
+  )
+  const jwtAuthorized = failClosedJwtAuthorizedFunctions(
+    functions,
+    (functionBlock) => safeInternalTargets.has(functionBlock),
+    (functionBlock) =>
+      migration.path ===
+        "supabase/migrations/20260824132410_add_technical_configuration_authorized_user_guard.sql" &&
+      functionBlock.name === "public._technical_configuration_require_authorized_user"
+  )
+
+  for (const functionBlock of functions) {
     const declaration = maskSqlCommentsAndLiterals(functionBlock.declaration)
+    const publicFunction = isPublicNonTriggerFunction(functionBlock)
+    const internalHelper = isInternalPublicHelper(functionBlock)
     const callablePublicRpc = isCallablePublicRpc(functionBlock)
     const securityDefiner = /\bSECURITY\s+DEFINER\b/iu.test(declaration)
+    const grantGrantees = functionGrantGrantees(content, functionBlock)
+    const revokeGrantees = functionRevokeGrantees(content, functionBlock)
 
-    if (callablePublicRpc && !hasFailClosedJwtGuards(functionBlock.body)) {
+    if (publicFunction && !jwtAuthorized.has(functionBlock)) {
       findings.push(
         staticBlockingFinding("migration.jwt-guards", migration.path, {
+          function: functionBlock.name,
+          migration: migration.path,
+        })
+      )
+    }
+
+    if (
+      internalHelper &&
+      ["anon", "authenticated", "public"].some((grantee) => grantGrantees.has(grantee))
+    ) {
+      findings.push(
+        staticBlockingFinding("migration.internal-helper-execute-grant", migration.path, {
           function: functionBlock.name,
           migration: migration.path,
         })
@@ -200,23 +248,26 @@ export function staticRuleFindings(
       )
     }
 
-    if (!callablePublicRpc || !securityDefiner) {
-      continue
-    }
-
-    const grantGrantees = functionGrantGrantees(content, functionBlock.name)
-    if (!grantGrantees.has("authenticated")) {
+    if (
+      (internalHelper &&
+        !["anon", "authenticated", "public"].every((grantee) => revokeGrantees.has(grantee))) ||
+      (callablePublicRpc && securityDefiner && !hasPublicFunctionRevoke(content, functionBlock))
+    ) {
       findings.push(
-        staticBlockingFinding("migration.security-definer-execute-grant", migration.path, {
+        staticBlockingFinding("migration.security-definer-execute-revoke", migration.path, {
           function: functionBlock.name,
           migration: migration.path,
         })
       )
     }
 
-    if (!hasPublicFunctionRevoke(content, functionBlock.name)) {
+    if (!callablePublicRpc || !securityDefiner) {
+      continue
+    }
+
+    if (!grantGrantees.has("authenticated")) {
       findings.push(
-        staticBlockingFinding("migration.security-definer-execute-revoke", migration.path, {
+        staticBlockingFinding("migration.security-definer-execute-grant", migration.path, {
           function: functionBlock.name,
           migration: migration.path,
         })

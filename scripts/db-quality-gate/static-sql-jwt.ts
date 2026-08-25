@@ -1,37 +1,61 @@
+import {
+  hasSwallowedPermissionException,
+  hasSwallowedPermissionExceptionAround,
+  isConditionallyNested,
+} from "./static-sql-control-flow"
 import { tokenizeSqlSegment } from "./static-sql-tokens"
 import type { SqlToken } from "./static-sql-tokens"
 
-type ClaimAssignment = {
+export type ClaimAssignment = {
   end: number
+  start: number
   variable: string
 }
 
-type FailClosedGuard = {
+export type FailClosedGuard = {
   end: number
   start: number
 }
 
-function statementEnd(tokens: SqlToken[], start: number): number {
+/** Finds the token boundary for one semicolon-terminated PL/pgSQL statement. */
+export function statementEnd(tokens: SqlToken[], start: number): number {
   const semicolon = tokens.findIndex((token, index) => index > start && token.value === ";")
 
   return semicolon === -1 ? tokens.length : semicolon
 }
 
-function isDirectClaimAssignment(expression: SqlToken[], claim: "app_role" | "user_id"): boolean {
-  const words = expression.filter((token) => token.type === "word").map((token) => token.value)
-  const strings = expression.filter((token) => token.type === "string").map((token) => token.value)
-  const allowedWords = new Set(["current_setting", "json", "jsonb", "nullif", "true"])
+/** Recognizes PL/pgSQL assignment statements using either supported operator. */
+export function isAssignmentStatement(tokens: SqlToken[], index: number): boolean {
+  if (!["=", ":="].includes(tokens[index + 1]?.value)) {
+    return false
+  }
 
-  return (
-    expression[0]?.value === "nullif" &&
-    expression[1]?.value === "(" &&
-    words.every((word) => allowedWords.has(word)) &&
-    strings.length === 3 &&
-    strings[0] === "request.jwt.claims" &&
-    strings[1] === claim &&
-    strings[2] === "" &&
-    expression.some((token) => token.value === "->>") &&
-    expression.some((token) => token.value === "true")
+  return index === 0 || [";", "begin", "else", "then"].includes(tokens[index - 1]?.value)
+}
+
+function isDirectClaimAssignment(expression: SqlToken[], claim: "app_role" | "user_id"): boolean {
+  const values = expression.map((token) => token.value)
+
+  return ["json", "jsonb"].some(
+    (cast) =>
+      JSON.stringify(values) ===
+      JSON.stringify([
+        "nullif",
+        "(",
+        "current_setting",
+        "(",
+        "request.jwt.claims",
+        ",",
+        "true",
+        ")",
+        "::",
+        cast,
+        "->>",
+        claim,
+        ",",
+        "",
+        ")",
+      ])
   )
 }
 
@@ -43,34 +67,44 @@ function hasClaimAssignment(
 
   for (let index = 0; index < tokens.length - 2; index += 1) {
     const variable = tokens[index]
-    if (variable.type !== "word" || tokens[index + 1]?.value !== ":=") {
+    if (variable.type !== "word" || !isAssignmentStatement(tokens, index)) {
       continue
     }
 
     const end = statementEnd(tokens, index + 1)
-    if (isDirectClaimAssignment(tokens.slice(index + 2, end), claim)) {
-      assignment = { end, variable: variable.value }
+    const assignmentCount = tokens.filter(
+      (token, cursor) => token.value === variable.value && isAssignmentStatement(tokens, cursor)
+    ).length
+    if (
+      !isConditionallyNested(tokens, index) &&
+      isDirectClaimAssignment(tokens.slice(index + 2, end), claim) &&
+      assignmentCount === 1
+    ) {
+      assignment = { end, start: index, variable: variable.value }
     }
   }
 
   return assignment
 }
 
-function hasAssignmentInRange(
+/** Detects a protected variable reassignment inside a token range. */
+export function hasAssignmentInRange(
   tokens: SqlToken[],
   variable: string,
   startExclusive: number,
   endExclusive: number
 ): boolean {
-  return tokens
-    .slice(startExclusive + 1, endExclusive)
-    .some(
-      (token, index) =>
-        token.value === variable && tokens[startExclusive + index + 2]?.value === ":="
-    )
+  for (let index = startExclusive + 1; index < endExclusive; index += 1) {
+    if (tokens[index].value === variable && isAssignmentStatement(tokens, index)) {
+      return true
+    }
+  }
+
+  return false
 }
 
-function guardEnd(tokens: SqlToken[], thenIndex: number): number | undefined {
+/** Finds the matching END IF token for a guard that starts at THEN. */
+export function guardEnd(tokens: SqlToken[], thenIndex: number): number | undefined {
   let depth = 1
 
   for (let index = thenIndex + 1; index < tokens.length - 1; index += 1) {
@@ -93,36 +127,63 @@ function isExactFailClosedCondition(
   assignment: ClaimAssignment,
   requiresEmptyRoleGuard: boolean
 ): boolean {
-  const checksNull = condition.some(
-    (token, index) =>
-      token.value === assignment.variable &&
-      condition[index + 1]?.value === "is" &&
-      condition[index + 2]?.value === "null"
-  )
-  const checksEmpty = condition.some(
-    (token, index) =>
-      token.value === assignment.variable &&
-      condition[index + 1]?.value === "=" &&
-      condition[index + 2]?.type === "string" &&
-      condition[index + 2].value === ""
-  )
-  const permitted = new Set([assignment.variable, "is", "null", "or", "=", "(", ")"])
+  const normalized = condition.filter((token) => !["(", ")"].includes(token.value))
+  const nullCheck = [assignment.variable, "is", "null"]
+  const emptyCheck = [assignment.variable, "=", ""]
+  const values = normalized.map((token) => token.value)
 
-  return (
-    checksNull &&
-    (!requiresEmptyRoleGuard || checksEmpty) &&
-    condition.every((token) =>
-      token.type === "string" ? token.value === "" : permitted.has(token.value)
-    )
-  )
+  if (!requiresEmptyRoleGuard) {
+    return JSON.stringify(values) === JSON.stringify(nullCheck)
+  }
+
+  return [
+    [...nullCheck, "or", ...emptyCheck],
+    [...emptyCheck, "or", ...nullCheck],
+  ].some((expected) => JSON.stringify(values) === JSON.stringify(expected))
 }
 
-function hasSwallowedPermissionException(guard: SqlToken[]): boolean {
-  return guard.some(
+/** Requires a denial branch to contain only one static 42501 exception. */
+export function hasOnlyStaticPermissionRaise(tokens: SqlToken[]): boolean {
+  const semicolon = tokens.findIndex((token) => token.value === ";")
+  if (
+    tokens[0]?.value !== "raise" ||
+    tokens[1]?.value !== "exception" ||
+    semicolon !== tokens.length - 1
+  ) {
+    return false
+  }
+
+  const statement = tokens.slice(0, semicolon)
+  const allowedWords = new Set([
+    "column",
+    "constraint",
+    "datatype",
+    "detail",
+    "errcode",
+    "exception",
+    "hint",
+    "message",
+    "raise",
+    "schema",
+    "table",
+    "using",
+  ])
+  const hasPermissionCode = statement.some(
     (token, index) =>
-      token.value === "exception" &&
-      guard[index + 1]?.value === "when" &&
-      !guard.slice(index + 1).some((handlerToken) => handlerToken.value === "raise")
+      token.value === "errcode" &&
+      statement[index + 1]?.value === "=" &&
+      statement[index + 2]?.type === "string" &&
+      statement[index + 2].value === "42501"
+  )
+
+  return (
+    hasPermissionCode &&
+    statement.every(
+      (token) =>
+        token.type === "string" ||
+        (token.type === "word" && allowedWords.has(token.value)) ||
+        (token.type === "symbol" && [",", "="].includes(token.value))
+    )
   )
 }
 
@@ -133,6 +194,9 @@ function findFailClosedGuard(
 ): FailClosedGuard | undefined {
   for (let index = assignment.end + 1; index < tokens.length; index += 1) {
     if (tokens[index].value !== "if") {
+      continue
+    }
+    if (isConditionallyNested(tokens, index)) {
       continue
     }
     const thenIndex = tokens.findIndex((token, cursor) => cursor > index && token.value === "then")
@@ -148,23 +212,9 @@ function findFailClosedGuard(
       continue
     }
     const guard = tokens.slice(thenIndex + 1, end - 1)
-    const raisesException = guard.some(
-      (token, cursor) =>
-        token.value === "raise" &&
-        guard[cursor + 1]?.type === "word" &&
-        guard[cursor + 1].value === "exception"
-    )
-    const hasPermissionCode = guard.some(
-      (token, cursor) =>
-        token.value === "errcode" &&
-        guard[cursor + 1]?.value === "=" &&
-        guard[cursor + 2]?.type === "string" &&
-        guard[cursor + 2].value === "42501"
-    )
 
     if (
-      raisesException &&
-      hasPermissionCode &&
+      hasOnlyStaticPermissionRaise(guard) &&
       !hasSwallowedPermissionException(guard) &&
       !hasAssignmentInRange(tokens, assignment.variable, assignment.end, index)
     ) {
@@ -175,22 +225,74 @@ function findFailClosedGuard(
   return undefined
 }
 
-function hasBusinessSqlBeforeGuard(tokens: SqlToken[], guard: FailClosedGuard): boolean {
+/** Detects SQL work that executes before the authorization guard begins. */
+export function hasBusinessSqlBeforeGuard(tokens: SqlToken[], guard: FailClosedGuard): boolean {
   const businessWords = new Set([
+    "alter",
+    "analyze",
+    "assert",
     "call",
+    "close",
+    "commit",
+    "copy",
+    "create",
     "delete",
+    "discard",
+    "do",
+    "drop",
     "execute",
+    "explain",
+    "fetch",
+    "get",
+    "grant",
     "insert",
+    "listen",
+    "load",
+    "lock",
     "merge",
+    "move",
+    "notify",
+    "open",
     "perform",
+    "prepare",
+    "reassign",
+    "refresh",
+    "reindex",
+    "reset",
+    "revoke",
+    "rollback",
     "return",
+    "security",
     "select",
+    "set",
+    "show",
+    "start",
+    "truncate",
+    "unlisten",
     "update",
+    "vacuum",
+    "values",
+    "with",
   ])
 
-  return tokens
-    .slice(0, guard.start)
-    .some((token) => token.type === "word" && businessWords.has(token.value))
+  const allowedFunctions = new Set(["coalesce", "current_setting", "lower", "nullif"])
+  const beforeGuard = tokens.slice(0, guard.start)
+  const beginIndex = beforeGuard.findIndex((token) => token.value === "begin")
+  const declaration = beginIndex === -1 ? [] : beforeGuard.slice(0, beginIndex)
+
+  return (
+    beforeGuard.some(
+      (token, index) =>
+        (token.type === "word" && businessWords.has(token.value)) ||
+        (token.type === "word" &&
+          beforeGuard[index + 1]?.value === "." &&
+          beforeGuard[index + 2]?.type === "word" &&
+          beforeGuard[index + 3]?.value === "(") ||
+        (token.type === "word" &&
+          beforeGuard[index + 1]?.value === "(" &&
+          !allowedFunctions.has(token.value))
+    ) || declaration.some((token) => ["=", ":=", "default"].includes(token.value))
+  )
 }
 
 /** Requires real role/user claim extraction plus fail-closed permission guards. */
@@ -210,6 +312,8 @@ export function hasFailClosedJwtGuards(content: string): boolean {
     userIdGuard !== undefined &&
     !hasBusinessSqlBeforeGuard(tokens, roleGuard) &&
     !hasBusinessSqlBeforeGuard(tokens, userIdGuard) &&
+    !hasSwallowedPermissionExceptionAround(tokens, roleGuard.start) &&
+    !hasSwallowedPermissionExceptionAround(tokens, userIdGuard.start) &&
     !hasAssignmentInRange(tokens, roleVariable.variable, roleGuard.end, tokens.length) &&
     !hasAssignmentInRange(tokens, userIdVariable.variable, userIdGuard.end, tokens.length)
   )
