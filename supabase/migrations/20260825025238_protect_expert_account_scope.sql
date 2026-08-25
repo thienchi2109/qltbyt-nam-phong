@@ -1,6 +1,8 @@
 -- OpenSpec add-technical-configuration-expert-role, Phase 12:
 -- protect expert account scope and provide the only atomic reassignment path.
 
+BEGIN;
+
 CREATE OR REPLACE FUNCTION public.user_membership_add(
   p_user_id INTEGER,
   p_don_vi BIGINT
@@ -21,22 +23,24 @@ BEGIN
     v_claims := COALESCE(
       NULLIF(current_setting('request.jwt.claims', true), ''),
       '{}'
-    )::jsonb;
-    v_app_role := LOWER(NULLIF(COALESCE(v_claims->>'app_role', v_claims->>'role'), ''));
+    )::JSONB;
+    v_app_role := LOWER(NULLIF(v_claims->>'app_role', ''));
     v_claim_user_id := NULLIF(v_claims->>'user_id', '')::BIGINT;
+  EXCEPTION
+    WHEN invalid_text_representation OR numeric_value_out_of_range THEN
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END;
+
+  IF v_app_role IS NULL OR v_claim_user_id IS NULL THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
+
+  BEGIN
     v_req_don_vi := NULLIF(v_claims->>'don_vi', '')::BIGINT;
   EXCEPTION
     WHEN invalid_text_representation OR numeric_value_out_of_range THEN
-      RAISE EXCEPTION 'Invalid authorization claims' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END;
-
-  IF v_app_role IS NULL OR v_app_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
-  END IF;
-
-  IF v_claim_user_id IS NULL THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
-  END IF;
 
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
     RAISE EXCEPTION 'Missing user or tenant id' USING ERRCODE = '22023';
@@ -90,22 +94,24 @@ BEGIN
     v_claims := COALESCE(
       NULLIF(current_setting('request.jwt.claims', true), ''),
       '{}'
-    )::jsonb;
-    v_app_role := LOWER(NULLIF(COALESCE(v_claims->>'app_role', v_claims->>'role'), ''));
+    )::JSONB;
+    v_app_role := LOWER(NULLIF(v_claims->>'app_role', ''));
     v_claim_user_id := NULLIF(v_claims->>'user_id', '')::BIGINT;
+  EXCEPTION
+    WHEN invalid_text_representation OR numeric_value_out_of_range THEN
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END;
+
+  IF v_app_role IS NULL OR v_claim_user_id IS NULL THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
+
+  BEGIN
     v_req_don_vi := NULLIF(v_claims->>'don_vi', '')::BIGINT;
   EXCEPTION
     WHEN invalid_text_representation OR numeric_value_out_of_range THEN
-      RAISE EXCEPTION 'Invalid authorization claims' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END;
-
-  IF v_app_role IS NULL OR v_app_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
-  END IF;
-
-  IF v_claim_user_id IS NULL THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
-  END IF;
 
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
     RAISE EXCEPTION 'Missing user or tenant id' USING ERRCODE = '22023';
@@ -160,24 +166,20 @@ BEGIN
     v_claims := COALESCE(
       NULLIF(current_setting('request.jwt.claims', true), ''),
       '{}'
-    )::jsonb;
-    v_app_role := LOWER(NULLIF(COALESCE(v_claims->>'app_role', v_claims->>'role'), ''));
+    )::JSONB;
+    v_app_role := LOWER(NULLIF(v_claims->>'app_role', ''));
     v_claim_user_id := NULLIF(v_claims->>'user_id', '')::BIGINT;
   EXCEPTION
     WHEN invalid_text_representation OR numeric_value_out_of_range THEN
-      RAISE EXCEPTION 'Invalid authorization claims' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END;
+
+  IF v_app_role IS NULL OR v_claim_user_id IS NULL THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
 
   IF v_app_role = 'admin' THEN
     v_app_role := 'global';
-  END IF;
-
-  IF v_app_role IS NULL OR v_app_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
-  END IF;
-
-  IF v_claim_user_id IS NULL THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
   END IF;
 
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
@@ -254,24 +256,20 @@ BEGIN
     v_claims := COALESCE(
       NULLIF(current_setting('request.jwt.claims', true), ''),
       '{}'
-    )::jsonb;
-    v_app_role := LOWER(NULLIF(COALESCE(v_claims->>'app_role', v_claims->>'role'), ''));
+    )::JSONB;
+    v_app_role := LOWER(NULLIF(v_claims->>'app_role', ''));
     v_claim_user_id := NULLIF(v_claims->>'user_id', '')::BIGINT;
   EXCEPTION
     WHEN invalid_text_representation OR numeric_value_out_of_range THEN
-      RAISE EXCEPTION 'Invalid authorization claims' USING ERRCODE = '42501';
+      RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END;
+
+  IF v_app_role IS NULL OR v_claim_user_id IS NULL THEN
+    RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
+  END IF;
 
   IF v_app_role = 'admin' THEN
     v_app_role := 'global';
-  END IF;
-
-  IF v_app_role IS NULL OR v_app_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
-  END IF;
-
-  IF v_claim_user_id IS NULL THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
   END IF;
 
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
@@ -390,3 +388,5 @@ REVOKE ALL ON FUNCTION public.user_reassign_expert_scope(BIGINT, BIGINT) FROM PU
 REVOKE ALL ON FUNCTION public.user_reassign_expert_scope(BIGINT, BIGINT) FROM anon;
 GRANT EXECUTE ON FUNCTION public.user_reassign_expert_scope(BIGINT, BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.user_reassign_expert_scope(BIGINT, BIGINT) TO service_role;
+
+COMMIT;
