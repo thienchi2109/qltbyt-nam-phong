@@ -160,6 +160,7 @@ DECLARE
   v_claim_user_id BIGINT;
   v_target_role TEXT;
   v_has_membership BOOLEAN;
+  v_is_global BOOLEAN;
   v_tenant_active BOOLEAN;
 BEGIN
   BEGIN
@@ -178,9 +179,7 @@ BEGIN
     RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END IF;
 
-  IF v_app_role = 'admin' THEN
-    v_app_role := 'global';
-  END IF;
+  v_is_global := v_app_role IN ('admin', 'global');
 
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
     RAISE EXCEPTION 'Missing user or tenant id' USING ERRCODE = '22023';
@@ -214,7 +213,7 @@ BEGIN
     RAISE EXCEPTION 'Invalid or inactive tenant' USING ERRCODE = '22023';
   END IF;
 
-  IF v_app_role <> 'global' THEN
+  IF NOT v_is_global THEN
     SELECT EXISTS (
       SELECT 1
       FROM public.user_don_vi_memberships udvm
@@ -268,10 +267,6 @@ BEGIN
     RAISE EXCEPTION 'permission_denied' USING ERRCODE = '42501';
   END IF;
 
-  IF v_app_role = 'admin' THEN
-    v_app_role := 'global';
-  END IF;
-
   IF p_user_id IS NULL OR p_don_vi IS NULL THEN
     RAISE EXCEPTION 'Missing user or tenant id' USING ERRCODE = '22023';
   END IF;
@@ -281,7 +276,7 @@ BEGIN
   FROM public.nhan_vien nv
   WHERE nv.id = v_claim_user_id;
 
-  IF v_app_role <> 'global'
+  IF v_app_role NOT IN ('admin', 'global')
     OR v_caller_role IS NULL
     OR v_caller_role NOT IN ('admin', 'global')
   THEN
