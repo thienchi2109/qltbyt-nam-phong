@@ -35,7 +35,10 @@ Thiết kế mới phải giúp người dùng:
 
 - Đây chỉ là thay đổi UI/frontend.
 - Không thay đổi backend, API, RPC, SQL, schema, payload hay save pipeline.
-- Không làm mobile responsive vì trang này đã bị ẩn trên mobile viewport.
+- Không thiết kế mobile responsive. Ordinary roles không nhận route này trong
+  mobile footer, còn expert roles vẫn nhận `/technical-configurations` làm
+  mobile-footer route; redesign phải giữ nguyên navigation/direct-URL contract
+  hiện hữu nhưng không thêm acceptance về mobile layout.
 - Giữ explicit Save; không thêm autosave.
 - Giữ nguyên dirty guard, trạng thái khóa, focus restoration, collapse state,
   bulk-entry buffer và validation hiện tại.
@@ -162,11 +165,29 @@ tra hành vi hợp lệ trước khi cập nhật draft.
 | Phân nhóm | Trước/sau phân nhóm cùng nhóm cha                        | Sang nhóm cha khác                      |
 | Tiêu chí  | Trước/sau tiêu chí hoặc vào vùng rỗng của nhóm/phân nhóm | Target bị khóa hoặc owner không tồn tại |
 
+Mỗi group/subgroup owner rỗng phải render một drop zone riêng thay cho việc chỉ
+hiển thị placeholder text:
+
+- Drop zone giữ cùng chiều rộng và grid alignment với criterion row.
+- Ở trạng thái nghỉ, drop zone tiếp tục hiển thị empty-state text nhẹ.
+- Khi một criterion được kéo, drop zone trở thành target nhìn thấy được nhưng
+  không làm layout nhảy.
+- Direct-group owner và subgroup owner đều phải là keyboard-reachable drop
+  target trong DnD flow.
+
 ### State transition
 
 - Drag projection là state tạm thời phục vụ chỉ báo vị trí.
 - Canonical draft không đổi trong lúc pointer/keyboard đang di chuyển.
-- Chỉ cập nhật canonical draft sau một drop hợp lệ.
+- Workspace DnD chỉ tạo typed move command sau một drop hợp lệ; không trực tiếp
+  gọi `updateDraft`.
+- Commit phải đi qua authoring transition hiện hữu/mở rộng trong
+  `useTechnicalConfigurationHierarchyAuthoring.ts`.
+- DnD và submenu `Chuyển đến...` phải dùng cùng một transition cho criterion
+  move: cập nhật canonical draft, active owner, disclosure của ancestor và
+  focus target/token.
+- Cross-owner drop vào một destination đang collapsed phải mở đúng ancestor
+  trước khi khôi phục focus cho criterion vừa chuyển.
 - Drop không hợp lệ, cancel hoặc mất target phải trả UI về draft ban đầu.
 - Mỗi drop hợp lệ chỉ tạo một state transition để dirty tracking và focus
   restoration tiếp tục nhất quán.
@@ -184,14 +205,16 @@ tra hành vi hợp lệ trước khi cập nhật draft.
 ## Kế hoạch component
 
 Ưu tiên giữ ranh giới component hiện tại, nhưng tách các phần mới trước khi các
-file gần ngưỡng `350` dòng trở nên quá lớn.
+file gần ngưỡng `350` dòng trở nên quá lớn. Không source file nào được vượt hard
+ceiling `450` dòng.
 
 ### Component hiện có cần chỉnh
 
 - `TechnicalConfigurationBaselineEditor.tsx`
   - Bố trí toolbar ngoài scroll region.
   - Tạo shell hai cột sidebar/canvas.
-  - Điều phối DnD và trạng thái projection ở mức workspace.
+  - Điều phối DnD và trạng thái projection ở mức workspace, rồi delegate typed
+    move command cho authoring transition.
 - `TechnicalConfigurationBaselineGroupSection.tsx`
   - Chuyển từ section kiểu card/table sang group heading nhẹ.
   - Gắn group drag handle và drop zones.
@@ -229,8 +252,10 @@ vi. Trước khi thêm helper dùng chung phải chạy semantic deduplication t
 
 ### State helper
 
-Mở rộng `technical-configuration-baseline-editor-state.ts` hoặc tách helper
-riêng nếu file tiến gần ngưỡng:
+Giữ canonical hierarchy mutations trong
+`technical-configuration-baseline-hierarchy-editor-state.ts`, là boundary hiện
+đang sở hữu reorder và cross-owner move. Mở rộng các mutation tại đây để nhận
+target index khi cần:
 
 - Tính target index khi reorder nhóm.
 - Tính target index khi reorder phân nhóm trong cùng parent.
@@ -238,40 +263,88 @@ riêng nếu file tiến gần ngưỡng:
 - Phân biệt no-op, invalid drop và valid drop.
 - Giữ stable identity; không dựa vào STT hoặc code hiển thị làm drag identity.
 
+`technical-configuration-baseline-dnd.ts` chỉ sở hữu typed payload, projection,
+drop validation và việc chuyển kết quả thành command. Helper này không tự mutate
+draft và không sao chép canonical hierarchy logic.
+
 ## Lộ trình triển khai theo TDD
 
-### Phase 1: Khóa state contract
+### Phase 0: Preflight và characterization
 
-Viết failing tests trước cho các helper thuần:
+- Invoke `next-best-practices`, sau đó `vercel-react-best-practices` trước khi
+  sửa React/Next code.
+- Invoke các frontend/UI skills đã chọn cho redesign và
+  `code-deduplication` trước khi tạo shared component/helper mới.
+- Ghi nhận line count của các file sẽ sửa; extract trước khi file tiến gần
+  `350` dòng và tuyệt đối không vượt `450` dòng.
+- Chạy focused baseline suites hiện tại để khóa baseline xanh.
+- Xác nhận các mutation hiện hữu sau là characterization coverage, không gọi
+  lại chúng là RED behavior mới:
+  - Reorder nhóm bằng offset.
+  - Reorder phân nhóm trong cùng parent bằng offset.
+  - Reorder tiêu chí trong owner.
+  - Move tiêu chí trong cùng owner hoặc sang owner khác bằng target index,
+    gồm middle/default/clamped positions.
+  - Mọi criterion move giữ stable identity và toàn bộ field, bao gồm tiêu đề
+    `-`.
+- Khóa characterization cho authoring transition hiện tại: cross-owner move
+  cập nhật active owner, disclosure và focus.
 
-- Reorder nhóm ở đầu, giữa và cuối danh sách.
-- Reorder phân nhóm trong cùng nhóm cha.
-- Từ chối cross-parent subgroup move.
-- Reorder tiêu chí trong cùng owner.
-- Chuyển tiêu chí giữa group và subgroup theo cả hai hướng.
-- Chuyển tiêu chí giữa hai owner khác nhau.
-- Tính đúng target index khi kéo item từ trước xuống sau và ngược lại.
+### Phase 1: RED-GREEN cho projection và indexed mutations
+
+Viết failing tests chỉ cho behavior mới:
+
+- Reorder nhóm bằng target index ở đầu, giữa và cuối danh sách.
+- Reorder phân nhóm bằng target index trong cùng nhóm cha.
+- Từ chối cross-parent subgroup drop trước khi mutation chạy.
+- Projection tạo đúng typed command cho criterion reorder/move dựa trên active
+  item, target owner và target index.
+- Projection điều chỉnh đúng target index khi kéo item từ trước xuống sau và
+  ngược lại.
 - Invalid target/cancel không thay đổi canonical draft.
-- Giá trị tiêu đề `-` được bảo toàn sau mọi reorder/move.
 
-Mở rộng test gần nhất:
+Sau khi tests đỏ đúng lý do, implement typed payload, projection, validation và
+indexed group/subgroup canonical mutations để batch này xanh trước khi chuyển
+phase. Criterion command delegate canonical indexed mutation hiện hữu thay vì
+triển khai lại.
+
+Test gần nhất:
 
 - `technical-configuration-baseline-editor-state.test.ts`
 - `technical-configuration-baseline-hierarchy-editor-state.test.ts`
 - `technical-configuration-baseline-hierarchy-editor-ordering.test.ts`
 
-### Phase 2: Khóa presentation contract
+### Phase 2: RED-GREEN cho workspace shell và toolbar
 
-Viết component tests cho:
+Viết tests, sau đó implement ngay layout toolbar + sidebar + canvas:
 
-- Toolbar nằm ngoài vùng cuộn hierarchy.
+- Toolbar nằm ngoài vùng cuộn hierarchy nhưng không remount khi đổi focus mode.
+- Giữ focus-mode toggle, dirty/saved/pending status và Save disabling hiện tại.
+- Giữ in-flight Save feedback: spinner, nhãn chính xác `Đang lưu...` và button
+  disabled cho đến khi request hoàn tất.
+- Khẳng định không xuất hiện search, preview hoặc global expand/collapse
+  controls.
 - Sidebar `Cấu trúc` hiển thị đúng thứ tự nhưng không có navigation behavior.
 - Toàn canvas chỉ có một column header.
+- Existing direct-URL render ở viewport nhỏ không bị cố ý chặn hoặc crash, nhưng
+  không thêm acceptance về mobile layout.
+
+Mở rộng
+`technical-configuration-workspace-focus-mode.test.tsx` để giữ draft instance,
+scroll region và guarded Escape behavior hiện tại.
+
+### Phase 3: RED-GREEN cho hierarchy presentation
+
+Viết component tests theo từng component slice và implement slice đó trước khi
+chuyển tiếp:
+
 - Criterion row có cột `Tiêu đề` và không còn cột `Vị trí`.
 - Tiêu đề `-` được render và edit như mọi tiêu đề khác.
 - Group, subgroup và criterion có mức heading/indentation đúng.
+- Group/subgroup rỗng render dedicated criterion drop zone đúng grid.
 - Locked state không hiển thị affordance chỉnh sửa hoặc drag.
 - Validation hợp lệ hiển thị check icon; lỗi vẫn dùng message hiện tại.
+- Borderless input/textarea không làm row đổi kích thước khi hover/focus.
 
 Ưu tiên mở rộng:
 
@@ -279,28 +352,33 @@ Viết component tests cho:
 - `technical-configuration-baseline-subgroup-presentation.test.tsx`
 - `technical-configuration-baseline-hierarchy-integration.test.tsx`
 
-### Phase 3: DnD foundation
+### Phase 4: RED-GREEN cho DnD integration
+
+Viết integration tests trước:
+
+- Test pointer và keyboard drop vào direct-group owner rỗng.
+- Test pointer và keyboard drop vào subgroup owner rỗng.
+- Test cross-owner drop vào destination đang collapsed: mở ancestor, giữ dirty
+  state và focus criterion ở destination.
+- Test `Chuyển đến...` và DnD tạo cùng canonical result, disclosure và focus
+  transition.
+- Khóa cancel, invalid target và no-op bằng tests trước khi hoàn tất phase.
+
+Sau khi tests đỏ đúng lý do:
 
 - Thêm `@dnd-kit/react` và `@dnd-kit/helpers`.
-- Tạo typed drag payload và drop projection helper.
 - Tích hợp pointer và keyboard sensors.
 - Render drag overlay/drop indicator không làm đổi layout.
-- Chỉ commit canonical draft trong `onDragEnd` sau khi validation drop thành
-  công.
-- Khóa hành vi cancel/no-op bằng tests.
-
-### Phase 4: Workspace và hierarchy styling
-
-- Tạo layout toolbar + sidebar + canvas.
-- Tạo shared column header và criterion row.
-- Chuyển group/subgroup sang section heading, indentation và connector line.
-- Áp dụng borderless inline editing và stable grid dimensions.
-- Giữ collapse, bulk-entry UI và các menu/action hiện tại.
+- Sau valid `onDragEnd`, delegate command cho authoring transition; không mutate
+  draft trực tiếp trong workspace.
+- Nối/giữ submenu `Chuyển đến...` qua cùng criterion move transition trước khi
+  làm các shared-result assertions xanh.
 
 ### Phase 5: Accessible fallback và regression
 
-- Nối lại action lên/xuống và `Chuyển đến...`.
-- Kiểm tra keyboard DnD và focus restoration sau drop/menu action.
+- Khóa regression cho action lên/xuống và submenu `Chuyển đến...`.
+- Hoàn thiện accessible names, keyboard announcements và focus behavior cho
+  drag handle/drop targets.
 - Chạy regression cho save, dirty guard, lock, import, bulk authoring và
   collapse state.
 - Xác nhận không có thay đổi request/API/RPC snapshot.
@@ -313,6 +391,8 @@ Các regression suite trọng yếu:
 - `technical-configuration-baseline-hierarchy-authoring-controls.test.tsx`
 - `technical-configuration-baseline-hierarchy-tab-workflow.test.tsx`
 - `technical-configuration-baseline-hierarchy-editor-snapshot.test.ts`
+- `technical-configuration-workspace-focus-mode.test.tsx`
+- `technical-configuration-baseline-tab.test.tsx`
 
 ## Tiêu chí nghiệm thu
 
@@ -329,7 +409,8 @@ Các regression suite trọng yếu:
 - Save, dirty guard, lock, collapse, focus restoration, bulk-entry buffer và
   validation giữ nguyên hành vi.
 - Không có thay đổi backend, API, RPC, SQL, schema hoặc save payload.
-- Không phát sinh công việc mobile responsive.
+- Không phát sinh công việc mobile responsive; direct-URL render hiện hữu không
+  bị cố ý chặn hoặc làm crash.
 
 ## Ngoài phạm vi
 
