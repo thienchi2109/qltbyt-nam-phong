@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
+import { TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_TEMPLATE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineCriterionRow"
 import { TechnicalConfigurationCriteriaSpreadsheet } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationCriteriaSpreadsheet"
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 
@@ -29,12 +30,13 @@ const group: TechnicalConfigurationBaselineEditorGroup = {
 }
 
 describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
-  it("renders the selected group as editable stable columns", () => {
+  it("renders the selected group in the shared stable columns", () => {
     render(
       <TechnicalConfigurationCriteriaSpreadsheet
         group={group}
         groupIndex={2}
         criterionErrors={{ "criterion-new": "Nội dung yêu cầu là bắt buộc." }}
+        readOnly={false}
         disabled={false}
         focusCriterionKey={null}
         focusCriterionToken={null}
@@ -45,10 +47,10 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
       />
     )
 
-    expect(screen.getByText("Mã")).toBeInTheDocument()
-    expect(screen.getByText("Tiêu đề")).toBeInTheDocument()
-    expect(screen.getByText("Nội dung yêu cầu")).toBeInTheDocument()
-    expect(screen.getByText("Trạng thái")).toBeInTheDocument()
+    expect(screen.getByTestId("criterion-row-criterion-1")).toHaveAttribute(
+      "data-grid-template",
+      TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_TEMPLATE
+    )
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText("Mới")).toBeInTheDocument()
     const requirement = screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 2 của nhóm II")
@@ -72,6 +74,7 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
         group={group}
         groupIndex={2}
         criterionErrors={{}}
+        readOnly={false}
         disabled={false}
         focusCriterionKey={null}
         focusCriterionToken={null}
@@ -109,6 +112,7 @@ describe("TechnicalConfigurationCriteriaSpreadsheet", () => {
         group={group}
         groupIndex={2}
         criterionErrors={{}}
+        readOnly={false}
         disabled={false}
         focusCriterionKey="criterion-new"
         focusCriterionToken={1}
