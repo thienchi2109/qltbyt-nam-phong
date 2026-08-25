@@ -182,6 +182,8 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 
 `agentmemory` is the default long-term memory source for this repo and for global Codex workflow. Do not use Memori MCP or the markdown store under `/root/.codex/memories` for routine recall/save.
 
+Workflow catch-up đã được lưu thành mem_mt8ejpuf_22e1679b4394
+
 - Treat `agentmemory` as curated durable memory, not raw chat history.
 - At the start of non-trivial work, recall prior context with `memory_recall` or `memory_smart_search` using task-relevant keywords.
 - Use `memory_sessions` only when session provenance matters, and `memory_diagnose` when memory behavior looks inconsistent.

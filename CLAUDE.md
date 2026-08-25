@@ -120,6 +120,8 @@ Invoke `context-engineering` skill for: agent systems, token optimization (>70%)
 
 `agentmemory` is the default long-term memory source for this repository and for global Codex workflow. Do not use Memori MCP or the markdown store under `/root/.codex/memories` for routine recall/save.
 
+Workflow catch-up đã được lưu thành mem_mt8ejpuf_22e1679b4394
+
 ### What to Save
 
 - Final decisions that affect implementation or operations
