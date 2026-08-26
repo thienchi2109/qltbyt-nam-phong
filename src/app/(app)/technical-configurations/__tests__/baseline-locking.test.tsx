@@ -145,7 +145,9 @@ describe("technical configuration baseline locking and history", () => {
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
     expect(nativeConfirm).not.toHaveBeenCalled()
 
-    expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Nội dung phiên bản đã khóa" })
+    ).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
     nativeConfirm.mockRestore()
   })
@@ -202,7 +204,7 @@ describe("technical configuration baseline locking and history", () => {
     await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
     expect(screen.queryByText("Xung đột dữ liệu")).not.toBeInTheDocument()
     await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
 
@@ -226,7 +228,9 @@ describe("technical configuration baseline locking and history", () => {
     await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
     expect(requirement).toHaveValue("Nội dung đang sửa")
     await expectSelectedBaselineVersion("Phiên bản 2 · Bản nháp")
-    expect(screen.queryByText("Nội dung chỉ đọc")).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("region", { name: "Nội dung phiên bản đã khóa" })
+    ).not.toBeInTheDocument()
     nativeConfirm.mockRestore()
   })
 
@@ -354,6 +358,6 @@ describe("technical configuration baseline locking and history", () => {
         "Dữ liệu hồ sơ đã thay đổi. Trạng thái mới đã được tải; vui lòng thử lại."
       )
     ).toBeInTheDocument()
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
   })
 })

@@ -137,7 +137,9 @@ describe("technical configuration hierarchy production activation", () => {
     rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([createLockedVersion()]))
     renderTab()
 
-    expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Nội dung phiên bản đã khóa" })
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole("group", { name: "Công cụ cấu hình phân cấp" })
     ).not.toBeInTheDocument()
