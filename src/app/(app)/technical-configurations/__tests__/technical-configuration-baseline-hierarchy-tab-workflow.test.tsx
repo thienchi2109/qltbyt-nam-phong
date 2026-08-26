@@ -131,7 +131,7 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
 
     expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
-    expect(screen.getByText("Hạ tầng")).toBeInTheDocument()
+    expect(screen.getAllByText("Hạ tầng").length).toBeGreaterThanOrEqual(1)
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
 })

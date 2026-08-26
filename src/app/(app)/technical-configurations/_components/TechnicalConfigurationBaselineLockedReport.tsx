@@ -36,6 +36,18 @@ function getGroupCriterionCount(group: TechnicalConfigurationBaselineDraftWire["
   )
 }
 
+const scrollToGroupId = (groupId: string) => {
+  document
+    .querySelector<HTMLElement>(`[data-group-id="${groupId}"]`)
+    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
+const scrollToSubgroupId = (subgroupId: string) => {
+  document
+    .querySelector<HTMLElement>(`[data-subgroup-id="${subgroupId}"]`)
+    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+}
+
 /** Shows the locked baseline version as a read-only report document. */
 export function TechnicalConfigurationBaselineLockedReport({
   version,
@@ -44,12 +56,6 @@ export function TechnicalConfigurationBaselineLockedReport({
     (total, group) => total + getGroupCriterionCount(group),
     0
   )
-
-  const scrollToGroup = (groupId: string) => {
-    document
-      .querySelector<HTMLElement>(`[data-group-id="${groupId}"]`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" })
-  }
 
   return (
     <section aria-label="Nội dung phiên bản đã khóa" className="flex min-h-0 flex-1 flex-col">
@@ -68,27 +74,49 @@ export function TechnicalConfigurationBaselineLockedReport({
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-x-6 pt-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav aria-label="Mục lục nhóm" className="hidden lg:block">
-          <ul className="space-y-1">
-            {version.groups.map((group, index) => (
-              <li key={group.id}>
-                <button
-                  type="button"
-                  aria-label={group.name.trim() || `Nhóm ${index + 1}`}
-                  onClick={() => scrollToGroup(group.id)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="text-xs tabular-nums text-muted-foreground/70">{index + 1}</span>
-                  <span className="min-w-0 truncate">
-                    {group.name.trim() || `Nhóm ${index + 1}`}
-                  </span>
-                  <span className="ml-auto text-xs tabular-nums">
-                    {getGroupCriterionCount(group)}
-                  </span>
-                </button>
-              </li>
-            ))}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-x-6 overflow-hidden pt-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <nav aria-label="Mục lục nhóm" className="hidden min-h-0 overflow-y-auto lg:block">
+          <ul className="space-y-1 py-1">
+            {version.groups.map((group, index) => {
+              const subgroups = group.subgroups ?? []
+              return (
+                <li key={group.id}>
+                  <button
+                    type="button"
+                    aria-label={group.name.trim() || `Nhóm ${index + 1}`}
+                    onClick={() => scrollToGroupId(group.id)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="text-xs tabular-nums text-muted-foreground/70">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 truncate">
+                      {group.name.trim() || `Nhóm ${index + 1}`}
+                    </span>
+                    <span className="ml-auto text-xs tabular-nums">
+                      {getGroupCriterionCount(group)}
+                    </span>
+                  </button>
+                  {subgroups.length > 0 ? (
+                    <ul className="mt-0.5 space-y-0.5 pl-7">
+                      {subgroups.map((subgroup, subgroupIndex) => (
+                        <li key={subgroup.id}>
+                          <button
+                            type="button"
+                            aria-label={subgroup.name}
+                            onClick={() => scrollToSubgroupId(subgroup.id)}
+                            className="flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs text-muted-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <span className="tabular-nums">{subgroupIndex + 1}</span>
+                            <span className="min-w-0 truncate">{subgroup.name}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              )
+            })}
           </ul>
         </nav>
 
@@ -125,7 +153,8 @@ export function TechnicalConfigurationBaselineLockedReport({
                     <section
                       key={subgroup.id}
                       aria-label={`Nhóm con ${subgroupIndex + 1}: ${subgroup.name}`}
-                      className="border-t pt-4"
+                      data-subgroup-id={subgroup.id}
+                      className="scroll-mt-4 border-t pt-4"
                     >
                       <div className="flex items-center gap-2">
                         <span className="flex size-7 shrink-0 items-center justify-center rounded-md border text-xs font-semibold">

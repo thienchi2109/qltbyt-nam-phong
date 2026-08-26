@@ -135,6 +135,20 @@ describe("technical configuration baseline locked report", () => {
     expect(body).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
   })
 
+  it("keeps the table of contents independently scrollable so long outlines cannot stretch the grid row", () => {
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const toc = screen.getByRole("navigation", { name: "Mục lục nhóm" })
+    expect(toc).toHaveClass("min-h-0", "overflow-y-auto")
+  })
+
+  it("lists subgroups under their parent group in the table of contents", () => {
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const groupItem = screen.getByRole("button", { name: "Yêu cầu chung" }).closest("li")
+    expect(groupItem).toContainElement(screen.getByRole("button", { name: "Nhóm con an toàn" }))
+  })
+
   it("scrolls to a group when its table-of-contents entry is activated", async () => {
     const user = userEvent.setup()
     const scrollIntoView = vi
@@ -148,5 +162,20 @@ describe("technical configuration baseline locked report", () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     const scrolledElement = scrollIntoView.mock.contexts[0] as HTMLElement | undefined
     expect(scrolledElement?.dataset.groupId).toBe("group-2")
+  })
+
+  it("scrolls to a subgroup when its table-of-contents entry is activated", async () => {
+    const user = userEvent.setup()
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {})
+
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    await user.click(screen.getByRole("button", { name: "Nhóm con an toàn" }))
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1)
+    const scrolledElement = scrollIntoView.mock.contexts[0] as HTMLElement | undefined
+    expect(scrolledElement?.dataset.subgroupId).toBe("subgroup-1")
   })
 })
