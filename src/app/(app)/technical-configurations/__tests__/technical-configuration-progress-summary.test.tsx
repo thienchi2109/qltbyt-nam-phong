@@ -19,12 +19,11 @@ const progress: TechnicalConfigurationEvaluationProgress = {
   total: 6,
   evaluated: 4,
   statusCounts: {
+    ...emptyStatusCounts,
     not_evaluated: 2,
-    not_applicable: 0,
     fails: 1,
     unclear: 1,
     insufficient_evidence: 1,
-    exceeds: 0,
     meets: 1,
   },
   groups: [
@@ -46,61 +45,13 @@ const progress: TechnicalConfigurationEvaluationProgress = {
         insufficient_evidence: 1,
         meets: 1,
       },
-      subgroups: [
-        {
-          id: "subgroup-1",
-          name: "Hiệu năng",
-          sortOrder: 1,
-          total: 2,
-          evaluated: 1,
-          status: "in_progress",
-          statusCounts: {
-            ...emptyStatusCounts,
-            not_evaluated: 1,
-            meets: 1,
-          },
-        },
-        {
-          id: "subgroup-empty",
-          name: "Nhóm trống",
-          sortOrder: 2,
-          total: 0,
-          evaluated: 0,
-          status: "no_criteria",
-          statusCounts: emptyStatusCounts,
-        },
-      ],
-    },
-    {
-      id: "group-2",
-      name: "An toàn",
-      sortOrder: 2,
-      total: 2,
-      evaluated: 1,
-      status: "needs_clarification",
-      statusCounts: {
-        ...emptyStatusCounts,
-        not_evaluated: 1,
-        unclear: 1,
-      },
       subgroups: [],
     },
   ],
 }
 
-const fiveCardProgress: TechnicalConfigurationEvaluationProgress = {
-  ...progress,
-  total: 10,
-  evaluated: 7,
-  groups: [
-    ...progress.groups,
-    { id: "group-3", name: "Môi trường vận hành", total: 2, evaluated: 2 },
-    { id: "group-4", name: "Phụ kiện", total: 2, evaluated: 1 },
-  ],
-}
-
-describe("P12B1 technical configuration progress summary", () => {
-  it("renders overall KPI cards and exact section/subgroup aggregates", () => {
+describe("technical configuration progress summary", () => {
+  it("renders one accessible progress ring and one meaningful ratio", () => {
     render(
       <TechnicalConfigurationProgressSummary
         progress={progress}
@@ -110,125 +61,68 @@ describe("P12B1 technical configuration progress summary", () => {
     )
 
     const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
-    const progressCards = within(summary).getAllByTestId("evaluation-progress-kpi-card")
-    expect(progressCards).toHaveLength(3)
+    const ring = within(summary).getByRole("progressbar", { name: "Tiến độ đánh giá" })
 
-    const evaluatedOutput = within(progressCards[0]!).getByText("4 / 6")
-    expect(evaluatedOutput).toBeInTheDocument()
-    expect(within(progressCards[0]!).getByText("Tổng tiến độ")).toBeInTheDocument()
-
-    expect(within(progressCards[1]!).getByText("Thông số chính")).toBeInTheDocument()
-    expect(within(progressCards[1]!).getByText("3 / 4")).toBeInTheDocument()
-    expect(within(progressCards[2]!).getByText("An toàn")).toBeInTheDocument()
-    expect(within(progressCards[2]!).getByText("1 / 2")).toBeInTheDocument()
-
-    const overallCounts = within(summary).getByTestId("evaluation-progress-status-counts-overall")
-    expect(within(overallCounts).getByText("Chưa đánh giá: 2")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Không áp dụng: 0")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Không đạt: 1")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Chưa rõ: 1")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Chưa đủ bằng chứng: 1")).toBeInTheDocument()
-    expect(within(overallCounts).getByText("Đạt: 1")).toBeInTheDocument()
-
-    expect(within(summary).queryByRole("progressbar")).not.toBeInTheDocument()
-    expect(within(summary).queryByText(/%/)).not.toBeInTheDocument()
-    const mainSection = within(summary).getByTestId("evaluation-progress-section-group-1")
-    const performanceSubgroup = within(summary).getByTestId(
-      "evaluation-progress-subgroup-subgroup-1"
-    )
-    const emptySubgroup = within(summary).getByTestId("evaluation-progress-subgroup-subgroup-empty")
-    const sectionCounts = within(mainSection).getByTestId(
-      "evaluation-progress-section-status-counts-group-1"
-    )
-    const subgroupCounts = within(performanceSubgroup).getByTestId(
-      "evaluation-progress-subgroup-status-counts-subgroup-1"
-    )
-    const emptySubgroupCounts = within(emptySubgroup).getByTestId(
-      "evaluation-progress-subgroup-status-counts-subgroup-empty"
-    )
-    expect(within(mainSection).getByText("Không đạt", { exact: true })).toBeInTheDocument()
-    expect(within(mainSection).getByText("3 / 4 tiêu chí")).toBeInTheDocument()
-    expect(within(sectionCounts).getByText("Không đạt: 1")).toBeInTheDocument()
-    expect(within(sectionCounts).getByText("Đạt: 1")).toBeInTheDocument()
-    expect(within(performanceSubgroup).getByText("Đang đánh giá")).toBeInTheDocument()
-    expect(within(performanceSubgroup).getByText("1 / 2 tiêu chí")).toBeInTheDocument()
-    expect(within(subgroupCounts).getByText("Chưa đánh giá: 1")).toBeInTheDocument()
-    expect(within(subgroupCounts).getByText("Đạt: 1")).toBeInTheDocument()
-    expect(within(emptySubgroup).getByText("Chưa có tiêu chí")).toBeInTheDocument()
-    expect(within(emptySubgroup).getByText("0 / 0 tiêu chí")).toBeInTheDocument()
-    for (const count of Object.values(emptyStatusCounts)) {
-      expect(within(emptySubgroupCounts).getAllByText(new RegExp(`: ${count}$`))).not.toHaveLength(
-        0
-      )
-    }
+    expect(ring).toHaveAttribute("aria-valuemin", "0")
+    expect(ring).toHaveAttribute("aria-valuemax", "100")
+    expect(ring).toHaveAttribute("aria-valuenow", "67")
+    expect(within(ring).getByText("67%")).toBeInTheDocument()
+    expect(within(summary).getByText("4 / 6 tiêu chí")).toBeInTheDocument()
+    expect(within(summary).getByText("Đã đánh giá")).toBeInTheDocument()
+    expect(within(summary).getAllByRole("progressbar")).toHaveLength(1)
   })
 
-  it("keeps five KPI cards balanced using the Repair Request responsive pattern", () => {
+  it("removes repeated KPI, hierarchy and status summaries", () => {
     render(
       <TechnicalConfigurationProgressSummary
-        progress={fiveCardProgress}
+        progress={progress}
         isLoading={false}
         isError={false}
       />
     )
 
     const summary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
-    const grid = within(summary).getByTestId("evaluation-progress-kpi-grid")
-    const progressCards = within(grid).getAllByTestId("evaluation-progress-kpi-card")
-
-    expect(grid).toHaveClass("grid-cols-2", "md:grid-cols-4", "xl:grid-cols-5")
-    expect(progressCards).toHaveLength(5)
-    expect(progressCards[0]).toHaveClass("col-span-2", "md:col-span-4", "xl:col-span-1")
+    expect(within(summary).queryByTestId("evaluation-progress-kpi-grid")).not.toBeInTheDocument()
+    expect(within(summary).queryByText("Thông số chính")).not.toBeInTheDocument()
+    expect(within(summary).queryByText("Không đạt: 1")).not.toBeInTheDocument()
+    expect(within(summary).queryByText("Chưa đủ bằng chứng: 1")).not.toBeInTheDocument()
   })
 
-  it("does not render false all-unassessed counters while progress is loading or failed", () => {
+  it("keeps the summary footprint stable while loading and reports errors inline", () => {
     const { rerender } = render(
-      <TechnicalConfigurationProgressSummary
-        progress={{ ...progress, evaluated: 0 }}
-        isLoading
-        isError={false}
-      />
+      <TechnicalConfigurationProgressSummary progress={progress} isLoading isError={false} />
     )
 
-    expect(screen.getByText("Đang tải tiến độ đánh giá...")).toBeInTheDocument()
-    expect(screen.queryByTestId("evaluation-progress-kpi-card")).not.toBeInTheDocument()
+    const loadingSummary = screen.getByRole("region", { name: "Tiến độ đánh giá" })
+    expect(within(loadingSummary).getByTestId("evaluation-progress-summary-skeleton")).toBeVisible()
+    expect(within(loadingSummary).queryByRole("progressbar")).not.toBeInTheDocument()
 
     rerender(
-      <TechnicalConfigurationProgressSummary
-        progress={{ ...progress, evaluated: 0 }}
-        isLoading={false}
-        isError
-      />
+      <TechnicalConfigurationProgressSummary progress={progress} isLoading={false} isError />
     )
 
-    expect(screen.getByText("Chưa thể tính tiến độ đánh giá.")).toBeInTheDocument()
-    expect(screen.queryByTestId("evaluation-progress-kpi-card")).not.toBeInTheDocument()
+    expect(screen.getByRole("alert")).toHaveTextContent("Chưa thể tính tiến độ đánh giá.")
+    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument()
   })
 
-  it("renders a truthful zero counter when the selected option has no comparison set", () => {
+  it("renders zero percent when the selected option has no criteria", () => {
     render(
       <TechnicalConfigurationProgressSummary
         progress={{
-          ...progress,
+          total: 0,
           evaluated: 0,
-          statusCounts: {
-            not_evaluated: 6,
-            not_applicable: 0,
-            fails: 0,
-            unclear: 0,
-            insufficient_evidence: 0,
-            exceeds: 0,
-            meets: 0,
-          },
-          groups: progress.groups.map((group) => ({ ...group, evaluated: 0 })),
+          statusCounts: emptyStatusCounts,
+          groups: [],
+          hierarchy: [],
         }}
         isLoading={false}
         isError={false}
       />
     )
 
-    expect(screen.getByText("0 / 6")).toBeInTheDocument()
-    expect(screen.getByText("0 / 4")).toBeInTheDocument()
-    expect(screen.getByText("0 / 2")).toBeInTheDocument()
+    const ring = screen.getByRole("progressbar", { name: "Tiến độ đánh giá" })
+    expect(ring).toHaveAttribute("aria-valuenow", "0")
+    expect(within(ring).getByText("0%")).toBeInTheDocument()
+    expect(screen.getByText("0 / 0 tiêu chí")).toBeInTheDocument()
   })
 })

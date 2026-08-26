@@ -41,6 +41,8 @@ describe("technical configuration evaluation feedback regressions", () => {
       isError: false,
       error: null,
       onRetry: vi.fn(),
+      progress: null,
+      navigatorControl: <button type="button">Mục lục tiêu chí</button>,
       totalMatches: 0,
       isCurrentCriterionFilteredOut: false,
       hasNoMoreMatches: false,

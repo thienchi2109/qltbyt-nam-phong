@@ -407,6 +407,25 @@ describe("P10B2 pinned matrix columns", () => {
     ).toBeEnabled()
   })
 
+  it("applies a caller-specific matrix viewport height", () => {
+    const result = createComparisonResult()
+    render(
+      <TechnicalConfigurationMatrix
+        hasRequest
+        result={result}
+        viewportHeightClassName="max-h-[calc(100dvh-12rem)]"
+        onOpenDetail={vi.fn()}
+        onPageChange={vi.fn()}
+        onRetry={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId("comparison-matrix-scroll")).toHaveClass("max-h-[calc(100dvh-12rem)]")
+    expect(screen.getByTestId("comparison-matrix-scroll")).not.toHaveClass(
+      "max-h-[calc(100vh-20rem)]"
+    )
+  })
+
   it("renders only the focused option while preserving stable desktop dimensions", () => {
     const result = createManyOptionResult()
     render(
@@ -431,7 +450,10 @@ describe("P10B2 pinned matrix columns", () => {
       "min-w-[320px]",
       "max-w-[320px]"
     )
-    expect(screen.getByTestId("comparison-matrix-scroll")).toHaveClass("overflow-auto")
+    expect(screen.getByTestId("comparison-matrix-scroll")).toHaveClass(
+      "overflow-auto",
+      "max-h-[calc(100vh-20rem)]"
+    )
     expect(screen.getByRole("table")).toHaveClass("min-w-max")
   })
 })

@@ -69,12 +69,15 @@ const hierarchyProgress: TechnicalConfigurationEvaluationProgress["hierarchy"] =
     id: mainGroup.id,
     name: mainGroup.name,
     sortOrder: mainGroup.sortOrder,
-    total: 2,
-    evaluated: 2,
+    total: 5,
+    evaluated: 4,
     status: "failed",
     statusCounts: {
       ...emptyStatusCounts,
+      not_evaluated: 1,
       fails: 1,
+      unclear: 1,
+      insufficient_evidence: 1,
       meets: 1,
     },
     subgroups: [
@@ -114,7 +117,7 @@ function getCriterion(criterionId: string): HTMLElement | undefined {
 }
 
 describe("P5C evaluation hierarchy presentation", () => {
-  it("renders and collapses a prebuilt page-local hierarchy row union", async () => {
+  it("opens only the current criterion ancestors and supports manual expansion", async () => {
     const user = userEvent.setup()
 
     render(
@@ -132,6 +135,14 @@ describe("P5C evaluation hierarchy presentation", () => {
       screen.getByTestId("evaluation-hierarchy-subgroup-subgroup-performance")
     ).toBeInTheDocument()
     expect(getCriterion("criterion-subgroup")).toHaveAttribute("aria-current", "true")
+    expect(screen.getByTestId("evaluation-hierarchy-section-group-safety")).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    )
+    expect(getCriterion("criterion-safety")).toBeUndefined()
+
+    await user.click(screen.getByTestId("evaluation-hierarchy-section-group-safety"))
+    expect(getCriterion("criterion-safety")).toBeInTheDocument()
 
     await user.click(screen.getByTestId("evaluation-hierarchy-section-group-main"))
 
@@ -170,38 +181,37 @@ describe("P5C evaluation hierarchy presentation", () => {
     expect(onSelectCriterion).not.toHaveBeenCalled()
   })
 
-  it("renders authoritative aggregate labels and exact canonical counts on structural rows", () => {
+  it("renders ratios, conditional progress and only nonzero exception counts", () => {
     render(
       <TechnicalConfigurationCriterionList
         rows={pageRows}
         hierarchyProgress={hierarchyProgress}
         assessmentsByCriterionId={{}}
-        currentCriterionId={null}
+        currentCriterionId="criterion-subgroup"
         onSelectCriterion={vi.fn()}
       />
     )
 
     const sectionRow = screen.getByTestId("evaluation-hierarchy-section-group-main")
-    const sectionCounts = within(sectionRow).getByTestId(
-      "evaluation-hierarchy-section-status-counts-group-main"
-    )
     expect(sectionRow.querySelector("div")).toBeNull()
-    expect(within(sectionRow).getByText("Không đạt", { exact: true })).toBeInTheDocument()
-    expect(within(sectionCounts).getByText("Không đạt: 1")).toBeInTheDocument()
-    expect(within(sectionCounts).getByText("Đạt: 1")).toBeInTheDocument()
-    expect(within(sectionCounts).getByText("Chưa đánh giá: 0")).toBeInTheDocument()
+    expect(within(sectionRow).getByText("4 / 5")).toBeInTheDocument()
+    expect(within(sectionRow).getByText("Không đạt 1")).toBeInTheDocument()
+    expect(within(sectionRow).getByText("Cần làm rõ 2")).toBeInTheDocument()
+    expect(within(sectionRow).queryByText(/Chưa đánh giá/)).not.toBeInTheDocument()
+    expect(within(sectionRow).queryByText(/Đạt 1/)).not.toBeInTheDocument()
+    expect(
+      within(sectionRow).getByRole("progressbar", { name: "Tiến độ Thông số chính" })
+    ).toHaveAttribute("aria-valuenow", "80")
 
     const subgroupRow = screen.getByTestId("evaluation-hierarchy-subgroup-subgroup-performance")
-    const subgroupCounts = within(subgroupRow).getByTestId(
-      "evaluation-hierarchy-subgroup-status-counts-subgroup-performance"
-    )
     expect(subgroupRow.querySelector("div")).toBeNull()
+    expect(within(subgroupRow).getByText("1 / 1")).toBeInTheDocument()
     expect(within(subgroupRow).getByText("Đạt", { exact: true })).toBeInTheDocument()
-    expect(within(subgroupCounts).getByText("Đạt: 1")).toBeInTheDocument()
-    expect(within(subgroupCounts).getByText("Không đạt: 0")).toBeInTheDocument()
+    expect(within(subgroupRow).queryByRole("progressbar")).not.toBeInTheDocument()
+    expect(within(subgroupRow).queryByText(/Không đạt/)).not.toBeInTheDocument()
   })
 
-  it("starts expanded and collapses only presentation descendants", async () => {
+  it("collapses only presentation descendants", async () => {
     const user = userEvent.setup()
 
     render(
@@ -220,13 +230,13 @@ describe("P5C evaluation hierarchy presentation", () => {
     expect(subgroup).toHaveAttribute("aria-expanded", "true")
     expect(getCriterion("criterion-direct")).toBeInTheDocument()
     expect(getCriterion("criterion-subgroup")).toBeInTheDocument()
-    expect(getCriterion("criterion-safety")).toBeInTheDocument()
+    expect(getCriterion("criterion-safety")).toBeUndefined()
 
     await user.click(subgroup)
     expect(subgroup).toHaveAttribute("aria-expanded", "false")
     expect(getCriterion("criterion-direct")).toBeInTheDocument()
     expect(getCriterion("criterion-subgroup")).toBeUndefined()
-    expect(getCriterion("criterion-safety")).toBeInTheDocument()
+    expect(getCriterion("criterion-safety")).toBeUndefined()
 
     await user.click(mainSection)
     expect(mainSection).toHaveAttribute("aria-expanded", "false")
@@ -234,7 +244,7 @@ describe("P5C evaluation hierarchy presentation", () => {
     expect(
       screen.queryByTestId("evaluation-hierarchy-subgroup-subgroup-performance")
     ).not.toBeInTheDocument()
-    expect(getCriterion("criterion-safety")).toBeInTheDocument()
+    expect(getCriterion("criterion-safety")).toBeUndefined()
   })
 
   it("emits one uncontrolled expansion change per structural toggle in StrictMode", async () => {
@@ -257,9 +267,7 @@ describe("P5C evaluation hierarchy presentation", () => {
     await user.click(screen.getByTestId("evaluation-hierarchy-section-group-main"))
 
     expect(onExpandedRowIdsChange).toHaveBeenCalledTimes(1)
-    expect(onExpandedRowIdsChange).toHaveBeenCalledWith(
-      new Set([performanceSubgroup.id, safetyGroup.id])
-    )
+    expect(onExpandedRowIdsChange).toHaveBeenCalledWith(new Set([mainGroup.id]))
   })
 
   it("supports controlled ancestor expansion for a selected hidden leaf", async () => {
@@ -316,15 +324,43 @@ describe("P5C evaluation hierarchy presentation", () => {
         rows={legacyRows}
         hierarchyProgress={hierarchyProgress}
         assessmentsByCriterionId={{}}
-        currentCriterionId={null}
+        currentCriterionId="criterion-legacy-1"
         onSelectCriterion={vi.fn()}
       />
     )
 
-    expect(screen.getAllByTestId("evaluation-criterion")).toHaveLength(2)
+    expect(screen.getAllByTestId("evaluation-criterion")).toHaveLength(1)
+    expect(getCriterion("criterion-legacy-1")).toBeInTheDocument()
+    expect(getCriterion("criterion-legacy-2")).toBeUndefined()
     expect(
       screen.getAllByTestId(/^evaluation-hierarchy-section-(group-main|group-safety)$/)
     ).toHaveLength(2)
     expect(screen.queryByTestId(/evaluation-hierarchy-subgroup-/)).not.toBeInTheDocument()
+  })
+
+  it("uses a stable three-column desktop grid and a two-level mobile row", async () => {
+    const user = userEvent.setup()
+    const onSelectCriterion = vi.fn()
+
+    render(
+      <TechnicalConfigurationCriterionList
+        rows={pageRows}
+        hierarchyProgress={hierarchyProgress}
+        assessmentsByCriterionId={{}}
+        currentCriterionId="criterion-subgroup"
+        onSelectCriterion={onSelectCriterion}
+      />
+    )
+
+    const criterion = getCriterion("criterion-subgroup")
+    expect(criterion).toHaveClass("sm:grid-cols-[7rem_minmax(0,1fr)_11rem]")
+    expect(within(criterion!).getByText("TC-02")).toBeInTheDocument()
+    expect(within(criterion!).getByText("Tiêu chí 2")).toHaveClass("row-start-2", "sm:row-auto")
+    expect(
+      within(criterion!).getByTestId("evaluation-criterion-open-indicator")
+    ).toBeInTheDocument()
+
+    await user.click(criterion!)
+    expect(onSelectCriterion).toHaveBeenCalledWith("criterion-subgroup")
   })
 })

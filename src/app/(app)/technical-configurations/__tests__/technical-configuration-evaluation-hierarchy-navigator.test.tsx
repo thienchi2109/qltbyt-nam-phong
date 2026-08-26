@@ -122,7 +122,7 @@ describe("P5C evaluation hierarchy navigator presentation", () => {
       "subgroup:subgroup-1",
       "criterion:criterion-2",
     ])
-    expect([...result.current.expandedRowIds]).toEqual(["group-1", "subgroup-1"])
+    expect([...result.current.expandedRowIds]).toEqual(["group-1"])
 
     act(() => {
       result.current.onExpandedRowIdsChange(new Set(["group-1"]))
@@ -144,6 +144,23 @@ describe("P5C evaluation hierarchy navigator presentation", () => {
       "criterion:criterion-3",
     ])
     expect([...result.current.expandedRowIds]).toEqual(["group-2"])
+  })
+
+  it("keeps unrelated groups collapsed when one page contains multiple branches", () => {
+    criteriaMocks.data = entries.map((entry) => ({ ...entry, canonical_page: 1 }))
+    criteriaMocks.loadCriteria.mockResolvedValue(criteriaMocks.data)
+
+    const { result } = renderNavigator(createHierarchyGroups(), 50)
+
+    expect(rowKeys(result.current.hierarchyRows)).toEqual([
+      "section:group-1",
+      "criterion:criterion-1",
+      "subgroup:subgroup-1",
+      "criterion:criterion-2",
+      "section:group-2",
+      "criterion:criterion-3",
+    ])
+    expect([...result.current.expandedRowIds]).toEqual(["group-1"])
   })
 
   it("resets collapsed ancestors across canonical pages 50/51 with the same hierarchy", () => {

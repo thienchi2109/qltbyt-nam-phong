@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { buildTechnicalConfigurationEvaluationProgress } from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
+import {
+  buildTechnicalConfigurationEvaluationFilterCounts,
+  buildTechnicalConfigurationEvaluationProgress,
+} from "@/app/(app)/technical-configurations/_components/evaluation/technical-configuration-evaluation-progress"
 import {
   createAssessment,
   createCriterion,
@@ -280,5 +283,23 @@ describe("P12B1 selected-option evaluation progress", () => {
     expect(optionBProgress.statusCounts.exceeds).toBe(1)
     expectReconciledTotals(optionAProgress)
     expectReconciledTotals(optionBProgress)
+  })
+
+  it("maps full-universe progress to the four stable filter counts", () => {
+    const progress = buildTechnicalConfigurationEvaluationProgress({
+      groups: [createGroup("group-1", "Thông số chính", 5)],
+      assessments: [
+        createAssessment("group-1-criterion-1", "meets"),
+        createAssessment("group-1-criterion-2", "fails"),
+        createAssessment("group-1-criterion-3", "insufficient_evidence"),
+      ],
+    })
+
+    expect(buildTechnicalConfigurationEvaluationFilterCounts(progress)).toEqual({
+      all: 5,
+      not_evaluated: 2,
+      fails: 1,
+      insufficient_evidence: 1,
+    })
   })
 })

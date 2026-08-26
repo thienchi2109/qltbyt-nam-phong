@@ -1,9 +1,8 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
-
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import type {
   TechnicalConfigurationAssessmentWire,
@@ -12,7 +11,10 @@ import type {
 import { TechnicalConfigurationCriterionPagination } from "../comparison/TechnicalConfigurationCriterionPagination"
 import type { TechnicalConfigurationEvaluationHierarchyRow } from "./technical-configuration-evaluation-hierarchy"
 import type { TechnicalConfigurationEvaluationCriterionListItem } from "./technical-configuration-evaluation-navigation"
-import type { TechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
+import {
+  buildTechnicalConfigurationEvaluationFilterCounts,
+  type TechnicalConfigurationEvaluationProgress,
+} from "./technical-configuration-evaluation-progress"
 import { TechnicalConfigurationCriterionList } from "./TechnicalConfigurationCriterionList"
 import { TechnicalConfigurationEvaluationFilters } from "./TechnicalConfigurationEvaluationFilters"
 import { TechnicalConfigurationEvaluationLoadError } from "./TechnicalConfigurationEvaluationLoadError"
@@ -70,17 +72,19 @@ export function TechnicalConfigurationEvaluationNavigatorPane({
       {listOnly ? null : (
         <TechnicalConfigurationEvaluationFilters
           value={statusFilter}
+          counts={progress ? buildTechnicalConfigurationEvaluationFilterCounts(progress) : null}
           onValueChange={onStatusFilterChange}
           disabled={disabled}
         />
       )}
       {isLoading ? (
-        <div
-          className="flex min-h-24 items-center justify-center gap-2 text-sm text-muted-foreground"
-          role="status"
-        >
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          {listOnly ? "Đang tải tiêu chí đánh giá..." : "Đang lọc tiêu chí..."}
+        <div className="space-y-2" data-testid="evaluation-navigator-skeleton" role="status">
+          <Skeleton className="h-11 w-full rounded-none" />
+          <Skeleton className="h-16 w-full rounded-none" />
+          <Skeleton className="h-16 w-full rounded-none" />
+          <span className="sr-only">
+            {listOnly ? "Đang tải tiêu chí đánh giá..." : "Đang lọc tiêu chí..."}
+          </span>
         </div>
       ) : null}
       {isError ? (

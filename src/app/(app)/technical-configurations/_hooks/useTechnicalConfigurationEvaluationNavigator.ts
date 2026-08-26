@@ -10,15 +10,14 @@ import {
   buildTechnicalConfigurationEvaluationProjection,
   findNextTechnicalConfigurationEvaluationCriterion,
 } from "../_components/evaluation/technical-configuration-evaluation-navigation"
-import { useTechnicalConfigurationEvaluationCriteria } from "./useTechnicalConfigurationEvaluationCriteria"
 import {
   resolveTechnicalConfigurationEvaluationContextCriterion,
   resolveTechnicalConfigurationEvaluationTargetCriterion,
   type TechnicalConfigurationEvaluationCriterionCommit,
   type TechnicalConfigurationEvaluationRequestNavigation,
   type UseTechnicalConfigurationEvaluationNavigatorInput,
-  useTechnicalConfigurationEvaluationHierarchyPresentation,
 } from "./useTechnicalConfigurationEvaluationHierarchyPresentation"
+import { useTechnicalConfigurationEvaluationNavigatorDerivedState } from "./useTechnicalConfigurationEvaluationNavigatorDerivedState"
 import { useTechnicalConfigurationEvaluationTransition } from "./useTechnicalConfigurationEvaluationTransition"
 
 /** Coordinates filtered leaf selection, canonical paging, and guarded evaluation navigation. */
@@ -37,43 +36,30 @@ export function useTechnicalConfigurationEvaluationNavigator({
   const [hasNoMoreMatches, setHasNoMoreMatches] = React.useState(false)
   const { isTransitionPending, transitionPendingRef, startTransition } =
     useTechnicalConfigurationEvaluationTransition()
-  const selectedOption = options.find((option) => option.id === selectedOptionId) ?? options[0]
-  const activeSelectedOptionId = selectedOption?.id ?? ""
-  if (selectedOptionId !== activeSelectedOptionId) setSelectedOptionId(activeSelectedOptionId)
-  const { criteriaQuery, loadCriteria } = useTechnicalConfigurationEvaluationCriteria({
-    optionId: activeSelectedOptionId,
+  const {
+    selectedOption,
+    activeSelectedOptionId,
+    criteriaQuery,
+    loadCriteria,
+    projection,
+    criterionId,
+    hierarchyRows,
+    expandedRowIds,
+    onExpandedRowIdsChange,
+    expandCriterionAncestors,
+    currentCriterion,
+    isCurrentCriterionFilteredOut,
+  } = useTechnicalConfigurationEvaluationNavigatorDerivedState({
+    options,
+    baselineGroups,
     baselineVersionId,
+    pageSize,
+    selectedOptionId,
+    setSelectedOptionId,
     statusFilter,
+    canonicalPage,
+    requestedCriterionId,
   })
-  const projection = React.useMemo(
-    () =>
-      buildTechnicalConfigurationEvaluationProjection({
-        groups: baselineGroups,
-        entries: criteriaQuery.data ?? [],
-      }),
-    [baselineGroups, criteriaQuery.data]
-  )
-  const { hierarchyRows, expandedRowIds, onExpandedRowIdsChange, expandCriterionAncestors } =
-    useTechnicalConfigurationEvaluationHierarchyPresentation(projection, canonicalPage)
-  const criterionId =
-    requestedCriterionId ??
-    projection.find((item) => item.canonicalPage === canonicalPage)?.criterion.id ??
-    null
-  const currentCriterion = React.useMemo(
-    () =>
-      resolveTechnicalConfigurationEvaluationTargetCriterion(
-        projection,
-        baselineGroups,
-        criterionId,
-        pageSize
-      ),
-    [baselineGroups, criterionId, pageSize, projection]
-  )
-  const isCurrentCriterionFilteredOut =
-    criterionId !== null &&
-    !criteriaQuery.isLoading &&
-    !criteriaQuery.isError &&
-    !projection.some((item) => item.criterion.id === criterionId)
 
   const changeFilter = React.useCallback(
     (

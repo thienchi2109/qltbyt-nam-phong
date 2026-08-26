@@ -42,6 +42,7 @@ type TechnicalConfigurationMatrixProps = {
   matchingEvaluationCriterionIds?: ReadonlySet<string>
   evaluationDisabled?: boolean
   onOpenEvaluation?: (target: TechnicalConfigurationMatrixEvaluationTarget) => void
+  viewportHeightClassName?: string
 }
 
 function MatrixState({ children, role }: { children: React.ReactNode; role?: "alert" | "status" }) {
@@ -75,6 +76,7 @@ export function TechnicalConfigurationMatrix({
   matchingEvaluationCriterionIds,
   evaluationDisabled = false,
   onOpenEvaluation,
+  viewportHeightClassName = "max-h-[calc(100vh-20rem)]",
 }: Readonly<TechnicalConfigurationMatrixProps>) {
   if (!hasRequest) {
     return (
@@ -160,7 +162,7 @@ export function TechnicalConfigurationMatrix({
     <div className="space-y-3">
       <div
         data-testid="comparison-matrix-scroll"
-        className="relative max-h-[calc(100vh-20rem)] min-h-[28rem] w-full overflow-auto rounded-md border"
+        className={`relative min-h-[28rem] w-full overflow-auto rounded-md border ${viewportHeightClassName}`}
       >
         <table className="min-w-max border-separate border-spacing-0 text-left text-sm">
           <thead>

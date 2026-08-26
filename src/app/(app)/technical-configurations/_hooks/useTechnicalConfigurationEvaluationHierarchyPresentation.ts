@@ -70,7 +70,9 @@ function getAncestorRowIds(leaf: TechnicalConfigurationEvaluationHierarchyLeaf) 
 /** Owns page-local hierarchy rows and controlled structural expansion state. */
 export function useTechnicalConfigurationEvaluationHierarchyPresentation<TLeaf extends PageLeaf>(
   projection: readonly TLeaf[],
-  canonicalPage: number
+  canonicalPage: number,
+  criterionId: string | null,
+  contextKey: string
 ) {
   const hierarchyRows = React.useMemo(
     () =>
@@ -80,15 +82,19 @@ export function useTechnicalConfigurationEvaluationHierarchyPresentation<TLeaf e
     [canonicalPage, projection]
   )
   const structuralRowIds = React.useMemo(() => getStructuralRowIds(hierarchyRows), [hierarchyRows])
-  const pageKey = `${canonicalPage}:${structuralRowIds.join(":")}`
+  const defaultExpandedRowIds = React.useMemo(() => {
+    const currentLeaf =
+      projection.find(
+        (leaf) => leaf.canonicalPage === canonicalPage && leaf.criterion.id === criterionId
+      ) ?? projection.find((leaf) => leaf.canonicalPage === canonicalPage)
+    return new Set(currentLeaf ? getAncestorRowIds(currentLeaf) : [])
+  }, [canonicalPage, criterionId, projection])
+  const pageKey = `${contextKey}:${canonicalPage}:${structuralRowIds.join(":")}`
   const [expansion, setExpansion] = React.useState(() => ({
     pageKey,
-    rowIds: new Set(structuralRowIds) as ReadonlySet<string>,
+    rowIds: defaultExpandedRowIds as ReadonlySet<string>,
   }))
-  const expandedRowIds = React.useMemo(
-    () => (expansion.pageKey === pageKey ? expansion.rowIds : new Set(structuralRowIds)),
-    [expansion, pageKey, structuralRowIds]
-  )
+  const expandedRowIds = expansion.pageKey === pageKey ? expansion.rowIds : defaultExpandedRowIds
   const onExpandedRowIdsChange = React.useCallback(
     (rowIds: ReadonlySet<string>) => {
       const allowedRowIds = new Set(structuralRowIds)
@@ -105,8 +111,7 @@ export function useTechnicalConfigurationEvaluationHierarchyPresentation<TLeaf e
 
       const ancestorRowIds = getAncestorRowIds(leaf)
       setExpansion((current) => {
-        const currentRowIds =
-          current.pageKey === pageKey ? current.rowIds : new Set(structuralRowIds)
+        const currentRowIds = current.pageKey === pageKey ? current.rowIds : defaultExpandedRowIds
         if (ancestorRowIds.every((rowId) => currentRowIds.has(rowId))) return current
 
         return {
@@ -115,7 +120,7 @@ export function useTechnicalConfigurationEvaluationHierarchyPresentation<TLeaf e
         }
       })
     },
-    [pageKey, structuralRowIds]
+    [defaultExpandedRowIds, pageKey]
   )
 
   return {

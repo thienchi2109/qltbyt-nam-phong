@@ -1,6 +1,7 @@
 "use client"
 
 import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
@@ -10,16 +11,21 @@ import {
 } from "@/components/ui/select"
 
 import type { TechnicalConfigurationEvaluationStatusFilter } from "../../assessment-types"
+import type { TechnicalConfigurationEvaluationFilterCounts } from "./technical-configuration-evaluation-progress"
 
-const FILTER_LABELS = {
-  all: "Tất cả",
-  not_evaluated: "Chưa đánh giá",
-  fails: "Không đạt",
-  insufficient_evidence: "Chưa đủ bằng chứng",
-} as const satisfies Record<TechnicalConfigurationEvaluationStatusFilter, string>
+const FILTERS = [
+  { value: "all", label: "Tất cả" },
+  { value: "not_evaluated", label: "Chưa đánh giá" },
+  { value: "fails", label: "Không đạt" },
+  { value: "insufficient_evidence", label: "Chưa đủ bằng chứng" },
+] as const satisfies readonly {
+  value: TechnicalConfigurationEvaluationStatusFilter
+  label: string
+}[]
 
 type TechnicalConfigurationEvaluationFiltersProps = {
   value: TechnicalConfigurationEvaluationStatusFilter
+  counts: TechnicalConfigurationEvaluationFilterCounts | null
   onValueChange: (value: TechnicalConfigurationEvaluationStatusFilter) => void
   disabled?: boolean
 }
@@ -27,34 +33,69 @@ type TechnicalConfigurationEvaluationFiltersProps = {
 /** Renders the single selected P12B2 derived-status filter. */
 export function TechnicalConfigurationEvaluationFilters({
   value,
+  counts,
   onValueChange,
   disabled = false,
 }: Readonly<TechnicalConfigurationEvaluationFiltersProps>) {
+  const getCount = (filter: TechnicalConfigurationEvaluationStatusFilter) => counts?.[filter] ?? "-"
+
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-      <Label htmlFor="technical-configuration-evaluation-status-filter">Trạng thái đánh giá</Label>
-      <Select
-        value={value}
-        onValueChange={(nextValue) =>
-          onValueChange(nextValue as TechnicalConfigurationEvaluationStatusFilter)
-        }
-        disabled={disabled}
+    <div>
+      <div
+        className="hidden w-fit items-center gap-1 border bg-muted/30 p-1 sm:flex"
+        role="group"
+        aria-label="Bộ lọc trạng thái đánh giá"
       >
-        <SelectTrigger
-          id="technical-configuration-evaluation-status-filter"
-          aria-label="Lọc trạng thái đánh giá"
-          className="w-full sm:w-56"
+        {FILTERS.map((filter) => {
+          const isActive = filter.value === value
+          return (
+            <Button
+              key={filter.value}
+              type="button"
+              variant={isActive ? "secondary" : "ghost"}
+              size="sm"
+              className="h-8 gap-2 px-3"
+              aria-pressed={isActive}
+              aria-label={`${filter.label} ${getCount(filter.value)}`}
+              disabled={disabled}
+              onClick={() => onValueChange(filter.value)}
+            >
+              <span>{filter.label}</span>
+              <span className="min-w-4 text-center text-xs tabular-nums text-muted-foreground">
+                {getCount(filter.value)}
+              </span>
+            </Button>
+          )
+        })}
+      </div>
+
+      <div className="space-y-2 sm:hidden">
+        <Label htmlFor="technical-configuration-evaluation-status-filter">
+          Trạng thái đánh giá
+        </Label>
+        <Select
+          value={value}
+          onValueChange={(nextValue) =>
+            onValueChange(nextValue as TechnicalConfigurationEvaluationStatusFilter)
+          }
+          disabled={disabled}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {Object.entries(FILTER_LABELS).map(([filter, label]) => (
-            <SelectItem key={filter} value={filter}>
-              {label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+          <SelectTrigger
+            id="technical-configuration-evaluation-status-filter"
+            aria-label="Lọc trạng thái đánh giá"
+            className="w-full"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {FILTERS.map((filter) => (
+              <SelectItem key={filter.value} value={filter.value}>
+                {filter.label} {getCount(filter.value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   )
 }

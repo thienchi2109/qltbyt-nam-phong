@@ -24,11 +24,12 @@ import { buildTechnicalConfigurationEvaluationMatrixPresentation } from "./techn
 import { TechnicalConfigurationEvaluationFeedback } from "./TechnicalConfigurationEvaluationFeedback"
 import { TechnicalConfigurationEvaluationMatrixControls } from "./TechnicalConfigurationEvaluationMatrixControls"
 import { TechnicalConfigurationEvaluationMatrixToolbar } from "./TechnicalConfigurationEvaluationMatrixToolbar"
-import { TechnicalConfigurationEvaluationNavigatorPane } from "./TechnicalConfigurationEvaluationNavigatorPane"
+import { TechnicalConfigurationEvaluationOverview } from "./TechnicalConfigurationEvaluationOverview"
 import { TechnicalConfigurationEvaluationPanel } from "./TechnicalConfigurationEvaluationPanel"
 import { TechnicalConfigurationProgressSummary } from "./TechnicalConfigurationProgressSummary"
 import { TechnicalConfigurationResultExportControl } from "./TechnicalConfigurationResultExportControl"
 import { TechnicalConfigurationEvaluationSaveActions } from "./TechnicalConfigurationEvaluationSaveActions"
+import { TechnicalConfigurationEvaluationWorkspaceNavigatorDrawer } from "./TechnicalConfigurationEvaluationWorkspaceNavigatorDrawer"
 import { toTechnicalConfigurationSaveErrorMessage } from "./TechnicalConfigurationEvaluationWorkspaceUtils"
 
 type TechnicalConfigurationEvaluationActiveWorkspaceProps = {
@@ -191,79 +192,73 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
 
   return (
     <section className="min-w-0 space-y-4" aria-label="Không gian đánh giá cấu hình kỹ thuật">
-      <TechnicalConfigurationEvaluationMatrixToolbar
-        matrix={matrix}
-        activeOptionId={navigator.activeSelectedOptionId}
-        navigationBlocked={isNavigationBlocked}
-        runContextChange={runMatrixContextChange}
-      />
-
-      <div className="flex justify-end">
-        <TechnicalConfigurationResultExportControl
-          key={`${dossier.id}:${baselineVersionId}`}
-          dossierId={dossier.id}
-          baselineVersionId={baselineVersionId}
-          baselineRevision={baselineRevision}
-          options={matrix.selectedOptions}
-          baselineGroups={baselineGroups}
-          activeOptionId={navigator.activeSelectedOptionId}
-          currentCriteria={matrixResult?.data.criteria ?? []}
-        />
-      </div>
-
-      <TechnicalConfigurationEvaluationMatrixControls
-        options={options}
-        activeOptionId={navigator.activeSelectedOptionId}
-        onOptionChange={handleOptionChange}
-        statusFilter={navigator.statusFilter}
-        onStatusFilterChange={handleFilterChange}
-        disabled={isNavigationBlocked}
-        isLoading={navigator.criteriaQuery.isLoading || navigator.isTransitionPending}
-        isError={navigator.criteriaQuery.isError}
-        error={navigator.criteriaQuery.error}
-        onRetry={() => void navigator.criteriaQuery.refetch()}
-        totalMatches={navigator.projection.length}
-        isCurrentCriterionFilteredOut={navigator.isCurrentCriterionFilteredOut}
-        hasNoMoreMatches={navigator.hasNoMoreMatches}
-      />
-
-      <TechnicalConfigurationProgressSummary
-        progress={matrixPresentation.progress}
-        isLoading={isEvaluationReadLoading}
-        isError={hasEvaluationReadError}
-      />
-
-      <TechnicalConfigurationEvaluationNavigatorPane
-        statusFilter={navigator.statusFilter}
-        onStatusFilterChange={handleFilterChange}
-        criteria={navigator.hierarchyRows}
-        progress={matrixPresentation.progress}
-        assessmentsByCriterionId={evaluation.assessmentsByCriterionId}
-        currentCriterionId={navigator.criterionId}
-        onSelectCriterion={(criterionId) => {
-          navigator.changeCriterion(criterionId, requestNavigation, () => {
-            evaluationReturnFocusRef.current =
-              document.activeElement instanceof HTMLElement ? document.activeElement : null
-          })
-        }}
-        listOnly
-        page={matrix.page}
-        pageSize={TECHNICAL_CONFIGURATION_CRITERION_PAGE_SIZE}
-        total={navigator.projection.length}
-        onPageChange={handleMatrixPageChange}
-        disabled={isNavigationBlocked}
-        isLoading={
-          navigator.criteriaQuery.isLoading ||
-          navigator.isTransitionPending ||
-          isEvaluationReadLoading
+      <TechnicalConfigurationEvaluationOverview
+        comparisonControls={
+          <TechnicalConfigurationEvaluationMatrixToolbar
+            matrix={matrix}
+            activeOptionId={navigator.activeSelectedOptionId}
+            navigationBlocked={isNavigationBlocked}
+            runContextChange={runMatrixContextChange}
+          />
         }
-        isError={navigator.criteriaQuery.isError || hasEvaluationReadError}
-        error={hasEvaluationReadError ? evaluationReadError : navigator.criteriaQuery.error}
-        onRetry={handleRetryEvaluationData}
-        isCurrentCriterionFilteredOut={navigator.isCurrentCriterionFilteredOut}
-        hasNoMoreMatches={navigator.hasNoMoreMatches}
-        expandedRowIds={navigator.expandedRowIds}
-        onExpandedRowIdsChange={navigator.onExpandedRowIdsChange}
+        exportControl={
+          <TechnicalConfigurationResultExportControl
+            key={`${dossier.id}:${baselineVersionId}`}
+            dossierId={dossier.id}
+            baselineVersionId={baselineVersionId}
+            baselineRevision={baselineRevision}
+            options={matrix.selectedOptions}
+            baselineGroups={baselineGroups}
+            activeOptionId={navigator.activeSelectedOptionId}
+            currentCriteria={matrixResult?.data.criteria ?? []}
+          />
+        }
+        progressSummary={
+          <TechnicalConfigurationProgressSummary
+            progress={matrixPresentation.progress}
+            isLoading={isEvaluationReadLoading}
+            isError={hasEvaluationReadError}
+          />
+        }
+        evaluationControls={
+          <TechnicalConfigurationEvaluationMatrixControls
+            options={options}
+            activeOptionId={navigator.activeSelectedOptionId}
+            onOptionChange={handleOptionChange}
+            statusFilter={navigator.statusFilter}
+            onStatusFilterChange={handleFilterChange}
+            disabled={isNavigationBlocked}
+            isLoading={navigator.criteriaQuery.isLoading || navigator.isTransitionPending}
+            isError={navigator.criteriaQuery.isError}
+            error={navigator.criteriaQuery.error}
+            onRetry={() => void navigator.criteriaQuery.refetch()}
+            progress={
+              isEvaluationReadLoading || hasEvaluationReadError ? null : matrixPresentation.progress
+            }
+            navigatorControl={
+              <TechnicalConfigurationEvaluationWorkspaceNavigatorDrawer
+                navigator={navigator}
+                progress={matrixPresentation.progress}
+                assessmentsByCriterionId={evaluation.assessmentsByCriterionId}
+                page={matrix.page}
+                disabled={isNavigationBlocked}
+                isProgressLoading={isEvaluationReadLoading}
+                hasProgressError={hasEvaluationReadError}
+                progressError={evaluationReadError}
+                onStatusFilterChange={handleFilterChange}
+                onPageChange={handleMatrixPageChange}
+                onRetry={handleRetryEvaluationData}
+                requestNavigation={requestNavigation}
+                onReturnFocusTarget={(target) => {
+                  evaluationReturnFocusRef.current = target
+                }}
+              />
+            }
+            totalMatches={navigator.projection.length}
+            isCurrentCriterionFilteredOut={navigator.isCurrentCriterionFilteredOut}
+            hasNoMoreMatches={navigator.hasNoMoreMatches}
+          />
+        }
       />
 
       <TechnicalConfigurationMatrix
@@ -285,6 +280,7 @@ export function TechnicalConfigurationEvaluationActiveWorkspace({
         matchingEvaluationCriterionIds={matrixPresentation.matchingEvaluationCriterionIds}
         evaluationDisabled={isNavigationBlocked}
         onOpenEvaluation={handleOpenEvaluation}
+        viewportHeightClassName="max-h-[calc(100dvh-12rem)]"
       />
 
       <TechnicalConfigurationEvaluationFeedback

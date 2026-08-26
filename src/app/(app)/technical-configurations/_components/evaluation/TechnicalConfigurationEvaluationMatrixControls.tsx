@@ -1,10 +1,11 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
+import type { ReactNode } from "react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
   SelectContent,
@@ -15,6 +16,10 @@ import {
 
 import type { TechnicalConfigurationEvaluationStatusFilter } from "../../assessment-types"
 import type { TechnicalConfigurationOptionWire } from "../../supplier-option-types"
+import {
+  buildTechnicalConfigurationEvaluationFilterCounts,
+  type TechnicalConfigurationEvaluationProgress,
+} from "./technical-configuration-evaluation-progress"
 import { TechnicalConfigurationEvaluationFilters } from "./TechnicalConfigurationEvaluationFilters"
 import { TechnicalConfigurationEvaluationLoadError } from "./TechnicalConfigurationEvaluationLoadError"
 
@@ -29,6 +34,8 @@ type TechnicalConfigurationEvaluationMatrixControlsProps = {
   isError: boolean
   error: unknown
   onRetry: () => void
+  progress: TechnicalConfigurationEvaluationProgress | null
+  navigatorControl: ReactNode
   totalMatches: number
   isCurrentCriterionFilteredOut: boolean
   hasNoMoreMatches: boolean
@@ -47,13 +54,15 @@ export function TechnicalConfigurationEvaluationMatrixControls({
   isError,
   error,
   onRetry,
+  progress,
+  navigatorControl,
   totalMatches,
   isCurrentCriterionFilteredOut,
   hasNoMoreMatches,
 }: Readonly<TechnicalConfigurationEvaluationMatrixControlsProps>) {
   return (
     <section className="space-y-3" aria-label="Điều khiển luồng đánh giá">
-      <div className="grid gap-4 border-y py-3 lg:grid-cols-2 lg:items-end">
+      <div className="grid gap-4 border-y py-3 lg:grid-cols-[minmax(14rem,0.8fr)_minmax(0,1.2fr)_auto] lg:items-end">
         <div className="space-y-2">
           <Label htmlFor="technical-configuration-evaluation-option">Phương án đánh giá</Label>
           <Select value={activeOptionId} onValueChange={onOptionChange} disabled={disabled}>
@@ -75,18 +84,22 @@ export function TechnicalConfigurationEvaluationMatrixControls({
         </div>
         <TechnicalConfigurationEvaluationFilters
           value={statusFilter}
+          counts={progress ? buildTechnicalConfigurationEvaluationFilterCounts(progress) : null}
           onValueChange={onStatusFilterChange}
           disabled={disabled}
         />
+        <div className="flex lg:justify-end">{navigatorControl}</div>
       </div>
 
       {isLoading ? (
         <div
-          className="flex min-h-12 items-center justify-center gap-2 text-sm text-muted-foreground"
+          className="grid min-h-12 gap-2 sm:grid-cols-2"
+          data-testid="evaluation-flow-skeleton"
           role="status"
         >
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Đang cập nhật luồng đánh giá...
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-10 w-full" />
+          <span className="sr-only">Đang cập nhật luồng đánh giá...</span>
         </div>
       ) : null}
       {isError ? (

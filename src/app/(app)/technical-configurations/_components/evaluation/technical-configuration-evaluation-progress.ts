@@ -8,7 +8,10 @@ import {
   type TechnicalConfigurationDerivedStatusCounts,
 } from "@/lib/technical-configuration-hierarchy-aggregate-status"
 
-import type { TechnicalConfigurationAssessmentWire } from "@/app/(app)/technical-configurations/assessment-types"
+import type {
+  TechnicalConfigurationAssessmentWire,
+  TechnicalConfigurationEvaluationStatusFilter,
+} from "@/app/(app)/technical-configurations/assessment-types"
 import type { TechnicalConfigurationBaselineGroupWire } from "@/app/(app)/technical-configurations/baseline-types"
 import {
   buildTechnicalConfigurationEvaluationHierarchySections,
@@ -53,6 +56,10 @@ export type TechnicalConfigurationEvaluationProgress = Readonly<{
   hierarchy: readonly TechnicalConfigurationEvaluationSectionAggregateProgress[]
 }>
 
+export type TechnicalConfigurationEvaluationFilterCounts = Readonly<
+  Record<TechnicalConfigurationEvaluationStatusFilter, number>
+>
+
 type BuildTechnicalConfigurationEvaluationProgressInput = Readonly<{
   groups: readonly TechnicalConfigurationBaselineGroupWire[]
   assessments: readonly TechnicalConfigurationAssessmentWire[]
@@ -62,6 +69,18 @@ function countEvaluated(statusCounts: TechnicalConfigurationDerivedStatusCounts)
   return (
     Object.values(statusCounts).reduce((sum, count) => sum + count, 0) - statusCounts.not_evaluated
   )
+}
+
+/** Maps full-universe progress to the stable status filter contract. */
+export function buildTechnicalConfigurationEvaluationFilterCounts(
+  progress: TechnicalConfigurationEvaluationProgress
+): TechnicalConfigurationEvaluationFilterCounts {
+  return {
+    all: progress.total,
+    not_evaluated: progress.statusCounts.not_evaluated,
+    fails: progress.statusCounts.fails,
+    insufficient_evidence: progress.statusCounts.insufficient_evidence,
+  }
 }
 
 /** Reconciles complete assessments by criterion ID against one locked baseline universe. */

@@ -19,7 +19,6 @@ type ComparisonRequest = { optionIds: string[]; page: number }
 type NavigatorPaneProps = {
   criteria: readonly unknown[]
   progress: unknown
-  listOnly?: boolean
   isLoading: boolean
   isError: boolean
   expandedRowIds?: ReadonlySet<string>
@@ -205,7 +204,11 @@ vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationFeedback", ()
   TechnicalConfigurationEvaluationFeedback: () => null,
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationMatrixControls", () => ({
-  TechnicalConfigurationEvaluationMatrixControls: () => null,
+  TechnicalConfigurationEvaluationMatrixControls: ({
+    navigatorControl,
+  }: {
+    navigatorControl: ReactNode
+  }) => navigatorControl,
 }))
 vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationMatrixToolbar", () => ({
   TechnicalConfigurationEvaluationMatrixToolbar: () => null,
@@ -213,9 +216,13 @@ vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationMatrixToolbar
 vi.mock("../_components/evaluation/TechnicalConfigurationProgressSummary", () => ({
   TechnicalConfigurationProgressSummary: () => null,
 }))
-vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationNavigatorPane", () => ({
-  TechnicalConfigurationEvaluationNavigatorPane: (props: NavigatorPaneProps) => {
-    mocks.recordNavigatorPaneProps(props)
+vi.mock("../_components/evaluation/TechnicalConfigurationEvaluationNavigatorDrawer", () => ({
+  TechnicalConfigurationEvaluationNavigatorDrawer: ({
+    navigatorProps,
+  }: {
+    navigatorProps: NavigatorPaneProps
+  }) => {
+    mocks.recordNavigatorPaneProps(navigatorProps)
     return <div data-testid="navigator-pane-probe" />
   },
 }))
@@ -311,14 +318,13 @@ describe("technical configuration evaluation active workspace regressions", () =
     expect(screen.getByTestId("save-actions-probe")).toHaveAttribute("data-saving", "false")
   })
 
-  it("passes page-local hierarchy rows and controlled expansion to the navigator pane", () => {
+  it("passes page-local hierarchy rows and controlled expansion to the navigator drawer", () => {
     renderWorkspace("option-1")
 
     const props = mocks.getNavigatorPaneProps()
     expect(props).not.toBeNull()
     expect(props?.criteria).toBe(mocks.getHierarchyRows())
     expect(props?.progress).toBeDefined()
-    expect(props?.listOnly).toBe(true)
     expect(props?.expandedRowIds).toBe(mocks.getExpandedRowIds())
     expect(props?.onExpandedRowIdsChange).toBe(mocks.getOnExpandedRowIdsChange())
   })

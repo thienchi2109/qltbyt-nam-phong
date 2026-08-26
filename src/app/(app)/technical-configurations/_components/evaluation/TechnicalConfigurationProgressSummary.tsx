@@ -1,11 +1,6 @@
-import { Layers, ListChecks } from "lucide-react"
-
-import { Badge } from "@/components/ui/badge"
-import { StatCard } from "@/components/ui/stat-card"
-import { TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS } from "@/lib/technical-configuration-hierarchy-aggregate-status"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import type { TechnicalConfigurationEvaluationProgress } from "./technical-configuration-evaluation-progress"
-import { TechnicalConfigurationEvaluationHierarchyStatusCounts } from "./TechnicalConfigurationEvaluationHierarchyStatusCounts"
 
 type TechnicalConfigurationProgressSummaryProps = {
   progress: TechnicalConfigurationEvaluationProgress
@@ -13,7 +8,12 @@ type TechnicalConfigurationProgressSummaryProps = {
   isError: boolean
 }
 
-/** Renders selected-option progress and authoritative hierarchy status breakdowns. */
+function getProgressPercentage(evaluated: number, total: number) {
+  if (total <= 0) return 0
+  return Math.min(100, Math.max(0, Math.round((evaluated / total) * 100)))
+}
+
+/** Renders the selected option's progress once, without repeating hierarchy aggregates. */
 export function TechnicalConfigurationProgressSummary({
   progress,
   isLoading,
@@ -21,10 +21,22 @@ export function TechnicalConfigurationProgressSummary({
 }: Readonly<TechnicalConfigurationProgressSummaryProps>) {
   if (isLoading) {
     return (
-      <section className="rounded-lg border bg-muted/20 px-3 py-4" aria-label="Tiến độ đánh giá">
-        <p className="text-sm text-muted-foreground" role="status">
-          Đang tải tiến độ đánh giá...
-        </p>
+      <section
+        className="flex min-h-28 items-center gap-4 border-y bg-muted/20 px-4 py-4"
+        aria-label="Tiến độ đánh giá"
+      >
+        <div
+          className="flex items-center gap-4"
+          data-testid="evaluation-progress-summary-skeleton"
+          role="status"
+        >
+          <Skeleton className="size-20 shrink-0 rounded-full" />
+          <span className="space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-6 w-36" />
+          </span>
+          <span className="sr-only">Đang tải tiến độ đánh giá...</span>
+        </div>
       </section>
     )
   }
@@ -32,7 +44,7 @@ export function TechnicalConfigurationProgressSummary({
   if (isError) {
     return (
       <section
-        className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-4"
+        className="flex min-h-28 items-center border-y border-destructive/30 bg-destructive/5 px-4 py-4"
         aria-label="Tiến độ đánh giá"
       >
         <p className="text-sm text-destructive" role="alert">
@@ -42,93 +54,35 @@ export function TechnicalConfigurationProgressSummary({
     )
   }
 
+  const percentage = getProgressPercentage(progress.evaluated, progress.total)
+
   return (
-    <section className="space-y-3" aria-label="Tiến độ đánh giá">
-      <h3 className="text-sm font-semibold">Tiến độ đánh giá</h3>
-
+    <section
+      className="flex min-h-28 items-center gap-4 border-y bg-muted/20 px-4 py-4 sm:gap-5"
+      aria-label="Tiến độ đánh giá"
+    >
       <div
-        className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4 xl:grid-cols-5"
-        data-testid="evaluation-progress-kpi-grid"
+        className="grid size-20 shrink-0 place-items-center rounded-full"
+        style={{
+          background: `conic-gradient(hsl(var(--primary)) ${percentage}%, hsl(var(--muted)) 0)`,
+        }}
+        role="progressbar"
+        aria-label="Tiến độ đánh giá"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percentage}
+        aria-valuetext={`${progress.evaluated} trên ${progress.total} tiêu chí đã đánh giá`}
       >
-        <div
-          className="col-span-2 min-w-0 md:col-span-4 xl:col-span-1"
-          data-testid="evaluation-progress-kpi-card"
-        >
-          <StatCard
-            className="h-full"
-            label="Tổng tiến độ"
-            value={`${progress.evaluated} / ${progress.total}`}
-            icon={<Layers className="size-5" aria-hidden="true" />}
-          />
-        </div>
-
-        {progress.groups.map((group) => (
-          <div
-            key={group.id}
-            className="min-w-0"
-            data-testid="evaluation-progress-kpi-card"
-            title={group.name}
-          >
-            <StatCard
-              className="h-full"
-              label={group.name}
-              value={`${group.evaluated} / ${group.total}`}
-              icon={<ListChecks className="size-5" aria-hidden="true" />}
-            />
-          </div>
-        ))}
+        <span className="grid size-16 place-items-center rounded-full bg-background text-base font-semibold tabular-nums">
+          {percentage}%
+        </span>
       </div>
 
-      <TechnicalConfigurationEvaluationHierarchyStatusCounts
-        statusCounts={progress.statusCounts}
-        testId="evaluation-progress-status-counts-overall"
-      />
-
-      <div className="divide-y border-y" aria-label="Tiến độ theo cấu trúc">
-        {progress.hierarchy.map((section) => (
-          <div key={section.id} data-testid={`evaluation-progress-section-${section.id}`}>
-            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2">
-              <p className="min-w-0 break-words text-sm font-semibold">{section.name}</p>
-              <Badge variant="outline">
-                {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[section.status]}
-              </Badge>
-              <span className="text-sm tabular-nums text-muted-foreground">
-                {section.evaluated} / {section.total} tiêu chí
-              </span>
-            </div>
-            <div className="px-3 pb-2">
-              <TechnicalConfigurationEvaluationHierarchyStatusCounts
-                statusCounts={section.statusCounts}
-                testId={`evaluation-progress-section-status-counts-${section.id}`}
-              />
-            </div>
-            {section.subgroups.length > 0 ? (
-              <div className="divide-y border-t bg-muted/20">
-                {section.subgroups.map((subgroup) => (
-                  <div
-                    key={subgroup.id}
-                    data-testid={`evaluation-progress-subgroup-${subgroup.id}`}
-                    className="grid min-h-10 grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 px-3 py-2 pl-8"
-                  >
-                    <p className="min-w-0 break-words text-sm">{subgroup.name}</p>
-                    <Badge variant="outline">
-                      {TECHNICAL_CONFIGURATION_AGGREGATE_STATUS_LABELS[subgroup.status]}
-                    </Badge>
-                    <span className="text-sm tabular-nums text-muted-foreground">
-                      {subgroup.evaluated} / {subgroup.total} tiêu chí
-                    </span>
-                    <span className="col-span-3">
-                      <TechnicalConfigurationEvaluationHierarchyStatusCounts
-                        statusCounts={subgroup.statusCounts}
-                        testId={`evaluation-progress-subgroup-status-counts-${subgroup.id}`}
-                      />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ))}
+      <div className="min-w-0">
+        <h3 className="text-sm font-medium text-muted-foreground">Đã đánh giá</h3>
+        <p className="mt-1 text-xl font-semibold tabular-nums sm:text-2xl">
+          {progress.evaluated} / {progress.total} tiêu chí
+        </p>
       </div>
     </section>
   )

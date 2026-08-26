@@ -64,6 +64,22 @@ async function waitForEvaluationPanelToClose() {
   })
 }
 
+function getEvaluationFilterButton(label: string) {
+  return within(
+    screen.getByRole("group", {
+      name: "Bộ lọc trạng thái đánh giá",
+      hidden: true,
+    })
+  ).getByRole("button", {
+    name: new RegExp(`^${label} `),
+    hidden: true,
+  })
+}
+
+async function selectEvaluationFilter(user: ReturnType<typeof userEvent.setup>, label: string) {
+  await user.click(getEvaluationFilterButton(label))
+}
+
 vi.mock("../_hooks/useTechnicalConfigurationBaselineVersionSelection", () => ({
   useTechnicalConfigurationBaselineVersionSelection: () => ({
     selectedVersion: {
@@ -226,6 +242,39 @@ vi.mock("../_components/comparison/TechnicalConfigurationMatrix", async () => {
     TechnicalConfigurationMatrix: TechnicalConfigurationEvaluationMatrixTestAdapter,
   }
 })
+
+vi.mock("@/components/shared/SideSheetShell", () => ({
+  SideSheetShell: ({
+    open,
+    title,
+    children,
+    closeLabel,
+    onOpenChange,
+    onCloseAutoFocus,
+  }: {
+    open: boolean
+    title?: React.ReactNode
+    children: React.ReactNode
+    closeLabel?: string
+    onOpenChange: (open: boolean) => void
+    onCloseAutoFocus?: (event: { preventDefault: () => void }) => void
+  }) =>
+    open ? (
+      <div role="dialog" aria-label={typeof title === "string" ? title : undefined}>
+        {children}
+        {closeLabel ? (
+          <button
+            type="button"
+            aria-label={closeLabel}
+            onClick={() => {
+              onOpenChange(false)
+              onCloseAutoFocus?.({ preventDefault: () => undefined })
+            }}
+          />
+        ) : null}
+      </div>
+    ) : null,
+}))
 
 vi.mock("../_hooks/useTechnicalConfigurationComparison", () => ({
   useTechnicalConfigurationComparison: ({
@@ -445,23 +494,25 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
     expect(screen.getByTestId("reference-ranking-scope")).toHaveTextContent("dossier-1:baseline-1")
-    expect(
-      within(screen.getByTestId("evaluation-progress-kpi-grid")).getByText("2 / 3")
-    ).toBeInTheDocument()
-    expect(screen.getByText("2 / 2")).toBeInTheDocument()
-    expect(screen.getByText("0 / 1")).toBeInTheDocument()
+    expect(screen.getByTestId("evaluation-matrix-adapter")).toHaveAttribute(
+      "data-viewport-height-class-name",
+      "max-h-[calc(100dvh-12rem)]"
+    )
+    expect(screen.getByRole("progressbar", { name: "Tiến độ đánh giá" })).toHaveAttribute(
+      "aria-valuetext",
+      "2 trên 3 tiêu chí đã đánh giá"
+    )
+    expect(screen.getByText("2 / 3 tiêu chí")).toBeInTheDocument()
 
     await user.click(screen.getByLabelText("Phương án đánh giá"))
     await user.click(await screen.findByRole("option", { name: "Nhà cung cấp B · Model B" }))
 
-    expect(
-      within(screen.getByTestId("evaluation-progress-kpi-grid")).getByText("1 / 3")
-    ).toBeInTheDocument()
-    expect(screen.getByText("0 / 2")).toBeInTheDocument()
-    expect(screen.getByText("1 / 1")).toBeInTheDocument()
-    expect(
-      within(screen.getByTestId("evaluation-progress-kpi-grid")).queryByText("2 / 3")
-    ).not.toBeInTheDocument()
+    expect(screen.getByRole("progressbar", { name: "Tiến độ đánh giá" })).toHaveAttribute(
+      "aria-valuetext",
+      "1 trên 3 tiêu chí đã đánh giá"
+    )
+    expect(screen.getByText("1 / 3 tiêu chí")).toBeInTheDocument()
+    expect(screen.queryByText("2 / 3 tiêu chí")).not.toBeInTheDocument()
   })
 
   it("exports the active option and current criterion page without changing navigator state", async () => {
@@ -528,8 +579,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
       render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-      await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-      await user.click(await screen.findByRole("option", { name: label }))
+      await selectEvaluationFilter(user, label)
 
       await waitFor(() =>
         expect(mocks.loadEvaluationCriteria).toHaveBeenCalledWith({
@@ -554,8 +604,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     await user.click(getCriterion("criterion-2"))
     await user.type(screen.getByLabelText("Ghi chú"), "Lưu rồi rời bộ lọc")
     mocks.save.mockImplementationOnce(async () => {
@@ -583,12 +632,11 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
     await waitForEvaluationPanelToClose()
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
     await user.click(screen.getByRole("button", { name: "Hủy" }))
 
-    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Tất cả")
+    expect(getEvaluationFilterButton("Tất cả")).toHaveAttribute("aria-pressed", "true")
     expect(screen.getByText("Trang 2/2")).toBeInTheDocument()
     expect(getCriterion("criterion-3")).toHaveAttribute("aria-current", "true")
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
@@ -607,8 +655,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     await user.type(screen.getByLabelText("Ghi chú"), "Phải guard trước RPC")
     await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
     await waitForEvaluationPanelToClose()
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
 
     await waitFor(() => expect(mocks.loadEvaluationCriteria).toHaveBeenCalledTimes(1))
     expect(screen.getByLabelText("Phương án đánh giá")).toBeDisabled()
@@ -620,7 +667,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
     await user.click(screen.getByRole("button", { name: "Bỏ thay đổi" }))
     await waitFor(() => expect(getCriterion("criterion-2")).toHaveAttribute("aria-current", "true"))
-    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+    expect(getEvaluationFilterButton("Không đạt")).toHaveAttribute("aria-pressed", "true")
   })
 
   it("keeps the active filter and resolves selection deterministically when option changes", async () => {
@@ -628,14 +675,13 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     expect(getCriterion("criterion-2")).toHaveAttribute("aria-current", "true")
 
     await user.click(screen.getByLabelText("Phương án đánh giá"))
     await user.click(await screen.findByRole("option", { name: "Nhà cung cấp B · Model B" }))
 
-    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+    expect(getEvaluationFilterButton("Không đạt")).toHaveAttribute("aria-pressed", "true")
     expect(getCriterion("criterion-1")).toHaveAttribute("aria-current", "true")
   })
 
@@ -661,8 +707,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     expect(getCriterion("criterion-2")).toHaveAttribute("aria-current", "true")
 
     await user.click(screen.getByRole("button", { name: "Trang tiếp theo" }))
@@ -735,8 +780,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     await user.click(getCriterion("criterion-1"))
     await user.type(screen.getByLabelText("Ghi chú"), "Tiếp tục theo filter")
     await user.click(screen.getByRole("button", { name: "Lưu & tiếp tục" }))
@@ -774,8 +818,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     await user.click(getCriterion("criterion-1"))
     await user.type(screen.getByLabelText("Ghi chú"), "Chờ tải tiêu chí kế tiếp")
     mocks.loadEvaluationCriteria.mockReset()
@@ -813,8 +856,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
 
-    await user.click(screen.getByLabelText("Lọc trạng thái đánh giá"))
-    await user.click(await screen.findByRole("option", { name: "Không đạt" }))
+    await selectEvaluationFilter(user, "Không đạt")
     await user.click(getCriterion("criterion-1"))
     await user.type(screen.getByLabelText("Ghi chú"), "Giữ draft khi lỗi")
     mocks.loadEvaluationCriteria.mockClear()
@@ -823,7 +865,7 @@ describe("P12A2 technical configuration evaluation workspace", () => {
 
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(1))
     expect(mocks.loadEvaluationCriteria).not.toHaveBeenCalled()
-    expect(screen.getByLabelText("Lọc trạng thái đánh giá")).toHaveTextContent("Không đạt")
+    expect(getEvaluationFilterButton("Không đạt")).toHaveAttribute("aria-pressed", "true")
     expect(getCriterion("criterion-1")).toHaveAttribute("aria-current", "true")
     expect(screen.getByLabelText("Ghi chú")).toHaveValue("Giữ draft khi lỗi")
     expect(
@@ -861,6 +903,54 @@ describe("P12A2 technical configuration evaluation workspace", () => {
     await waitFor(() => expect(mocks.save).toHaveBeenCalledTimes(4))
     expect(screen.getByText("Trang 2/2")).toBeInTheDocument()
     expect(getCriterion("criterion-3")).toHaveAttribute("data-criterion-id", "criterion-3")
+  })
+
+  it("keeps hierarchy on demand and closes the drawer only after guarded navigation commits", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationEvaluationWorkspace dossier={dossier} />)
+
+    expect(
+      screen.queryByRole("navigation", { name: "Danh sách tiêu chí đánh giá" })
+    ).not.toBeInTheDocument()
+
+    await openCurrentCriterion(user)
+    await user.type(screen.getByLabelText("Ghi chú"), "Giữ bản nháp khi điều hướng drawer")
+    await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
+    await waitForEvaluationPanelToClose()
+
+    const trigger = screen.getByRole("button", { name: "Mục lục tiêu chí" })
+    await user.click(trigger)
+
+    const navigator = screen.getByRole("navigation", { name: "Danh sách tiêu chí đánh giá" })
+    const drawerCriterion = within(navigator)
+      .getAllByTestId("evaluation-criterion")
+      .find((item) => item.getAttribute("data-criterion-id") === "criterion-2")
+    expect(drawerCriterion).toBeDefined()
+
+    await user.click(drawerCriterion!)
+    expect(await screen.findByRole("alertdialog")).toHaveTextContent("Bỏ thay đổi chưa lưu?")
+    expect(navigator).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Hủy" }))
+    expect(
+      screen.getByRole("navigation", { name: "Danh sách tiêu chí đánh giá" })
+    ).toBeInTheDocument()
+
+    await user.click(drawerCriterion!)
+    const dialog = await screen.findByRole("alertdialog")
+    await user.click(within(dialog).getByRole("button", { name: "Bỏ thay đổi" }))
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("navigation", { name: "Danh sách tiêu chí đánh giá" })
+      ).not.toBeInTheDocument()
+    )
+    expect(await screen.findByText("Phản hồi TC-02")).toBeInTheDocument()
+
+    await user.click(screen.getByRole("button", { name: "Đóng chi tiết tiêu chí" }))
+    await waitForEvaluationPanelToClose()
+    await waitFor(() => expect(trigger).toHaveFocus())
   })
 
   it("guards dirty criterion, option and page navigation while preserving cancel state", async () => {

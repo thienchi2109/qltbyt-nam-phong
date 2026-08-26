@@ -12,13 +12,17 @@ export function TechnicalConfigurationEvaluationMatrixTestAdapter({
   evaluationDisabled,
   onOpenEvaluation,
   onPageChange,
+  viewportHeightClassName,
 }: MatrixProps) {
   if (!result || !activeEvaluationOptionId || !onOpenEvaluation) return null
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize))
 
   return (
-    <div>
+    <div
+      data-testid="evaluation-matrix-adapter"
+      data-viewport-height-class-name={viewportHeightClassName}
+    >
       {result.data.criteria.map((row) => (
         <button
           key={row.criterion.id}
