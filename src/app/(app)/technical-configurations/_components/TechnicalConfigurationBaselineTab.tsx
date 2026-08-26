@@ -16,12 +16,12 @@ import { TechnicalConfigurationBaselineAlerts } from "./TechnicalConfigurationBa
 import { TechnicalConfigurationBaselineCrossDossierCopyDialog } from "./TechnicalConfigurationBaselineCrossDossierCopyDialog"
 import { TechnicalConfigurationBaselineEditor } from "./TechnicalConfigurationBaselineEditor"
 import { TechnicalConfigurationBaselineHierarchyImportDialog } from "./TechnicalConfigurationBaselineHierarchyImportDialog"
+import { TechnicalConfigurationBaselineLockedReport } from "./TechnicalConfigurationBaselineLockedReport"
 import { TechnicalConfigurationBaselineProductionActions } from "./TechnicalConfigurationBaselineProductionActions"
 import { TechnicalConfigurationBaselineVersionControls } from "./TechnicalConfigurationBaselineVersionControls"
 import { TechnicalConfigurationLockDialog } from "./TechnicalConfigurationLockDialog"
 import {
   TechnicalConfigurationBaselineLoadingState,
-  TechnicalConfigurationBaselineLockedState,
   TechnicalConfigurationBaselineMissingState,
   TechnicalConfigurationBaselineQueryError,
 } from "./TechnicalConfigurationBaselineTabStates"
@@ -296,7 +296,7 @@ export function TechnicalConfigurationBaselineTab({
       />
 
       {selectedVersion.status === "locked" ? (
-        <TechnicalConfigurationBaselineLockedState version={selectedVersion} />
+        <TechnicalConfigurationBaselineLockedReport version={selectedVersion} />
       ) : draft ? (
         <TechnicalConfigurationBaselineEditor
           draft={draft}
