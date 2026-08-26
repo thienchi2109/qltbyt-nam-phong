@@ -296,7 +296,10 @@ export function TechnicalConfigurationBaselineTab({
       />
 
       {selectedVersion.status === "locked" ? (
-        <TechnicalConfigurationBaselineLockedReport version={selectedVersion} />
+        <TechnicalConfigurationBaselineLockedReport
+          key={selectedVersion.id}
+          version={selectedVersion}
+        />
       ) : draft ? (
         <TechnicalConfigurationBaselineEditor
           draft={draft}

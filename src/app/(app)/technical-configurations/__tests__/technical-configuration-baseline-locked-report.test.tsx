@@ -216,4 +216,67 @@ describe("technical configuration baseline locked report", () => {
     expect(secondEntry).toHaveAttribute("aria-current", "true")
     expect(firstEntry).not.toHaveAttribute("aria-current")
   })
+
+  it("resets the reading pane scroll offset when switching groups", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const body = screen.getByTestId("technical-configuration-locked-report-body")
+    body.scrollTop = 480
+
+    await user.click(screen.getByRole("button", { name: /Nhóm sau/ }))
+
+    expect(screen.getByText("Nhóm 2/2")).toBeInTheDocument()
+    expect(body.scrollTop).toBe(0)
+  })
+
+  it("restarts at the first group when the report is keyed to another locked version", async () => {
+    const user = userEvent.setup()
+    const view = render(
+      <TechnicalConfigurationBaselineLockedReport
+        key="locked-1"
+        version={lockedVersion(sampleGroups)}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: /Nhóm sau/ }))
+    expect(screen.getByText("Nhóm 2/2")).toBeInTheDocument()
+
+    view.rerender(
+      <TechnicalConfigurationBaselineLockedReport
+        key="locked-2"
+        version={{
+          ...lockedVersion([
+            group({
+              id: "group-next-a",
+              name: "Nhóm phiên bản mới",
+              sort_order: 1,
+              criteria: [criterion("criterion-8", "group-next-a", "TC-0008", null, 1)],
+            }),
+            group({
+              id: "group-next-b",
+              name: "Nhóm cuối phiên bản mới",
+              sort_order: 2,
+              criteria: [],
+            }),
+          ]),
+          id: "locked-2",
+        }}
+      />
+    )
+
+    const pane = within(screen.getByTestId("technical-configuration-locked-report-body"))
+    expect(pane.getByRole("heading", { name: /Nhóm phiên bản mới/ })).toBeInTheDocument()
+    expect(pane.queryByRole("heading", { name: /Nhóm cuối phiên bản mới/ })).not.toBeInTheDocument()
+    expect(screen.getByText("Nhóm 1/2")).toBeInTheDocument()
+  })
+
+  it("keeps the reading pane keyboard-focusable with an accessible name", () => {
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const body = screen.getByRole("region", { name: "Nội dung chỉ đọc" })
+    expect(body).toHaveAttribute("tabindex", "0")
+    expect(body).toHaveAttribute("data-testid", "technical-configuration-locked-report-body")
+  })
 })

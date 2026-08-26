@@ -54,10 +54,17 @@ export function TechnicalConfigurationBaselineLockedReport({
   const groups = version.groups
   const [selectedGroupIndex, setSelectedGroupIndex] = React.useState(0)
   const [pendingSubgroupScrollId, setPendingSubgroupScrollId] = React.useState<string | null>(null)
+  const bodyRef = React.useRef<HTMLDivElement>(null)
   const activeGroupIndex = Math.min(selectedGroupIndex, Math.max(groups.length - 1, 0))
   const activeGroup = groups[activeGroupIndex]
   const isFirstGroup = activeGroupIndex === 0
   const isLastGroup = activeGroupIndex === groups.length - 1
+
+  React.useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.scrollTop = 0
+    }
+  }, [activeGroupIndex])
 
   React.useEffect(() => {
     if (!pendingSubgroupScrollId) return
@@ -161,8 +168,12 @@ export function TechnicalConfigurationBaselineLockedReport({
           </div>
 
           <div
+            ref={bodyRef}
             data-testid="technical-configuration-locked-report-body"
-            className="min-h-0 w-full flex-1 overflow-y-auto pt-4"
+            role="region"
+            aria-label="Nội dung chỉ đọc"
+            tabIndex={0}
+            className="min-h-0 w-full flex-1 overflow-y-auto pt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <article data-group-id={activeGroup.id} className="pb-10">
               <header className="flex items-center gap-3 border-b pb-3">
