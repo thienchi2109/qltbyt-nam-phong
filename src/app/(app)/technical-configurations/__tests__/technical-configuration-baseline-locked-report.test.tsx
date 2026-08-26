@@ -17,13 +17,14 @@ function criterion(
   groupId: string,
   criterionCode: string,
   title: string | null,
-  sortOrder: number
+  sortOrder: number,
+  subgroupId: string | null = null
 ): TechnicalConfigurationBaselineDraftWire["groups"][number]["criteria"][number] {
   return {
     id,
     baseline_version_id: "locked-1",
     group_id: groupId,
-    subgroup_id: null,
+    subgroup_id: subgroupId,
     criterion_code: criterionCode,
     title,
     requirement_text: `Yêu cầu ${criterionCode}`,
@@ -91,7 +92,7 @@ const sampleGroups = [
         created_by: 1,
         updated_at: timestamp,
         updated_by: 1,
-        criteria: [criterion("criterion-2", "group-1", "TC-0002", null, 2)],
+        criteria: [criterion("criterion-2", "group-1", "TC-0002", null, 2, "subgroup-1")],
       },
     ],
   }),
@@ -131,7 +132,8 @@ describe("technical configuration baseline locked report", () => {
   it("keeps the report body scrollable inside the fixed-height shell", () => {
     render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
 
-    const body = screen.getByTestId("technical-configuration-locked-report-body")
+    const body = screen.getByRole("region", { name: "Nội dung báo cáo cấu hình cơ sở" })
+    expect(body).toHaveAttribute("tabindex", "0")
     expect(body).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
   })
 
@@ -140,6 +142,7 @@ describe("technical configuration baseline locked report", () => {
 
     const toc = screen.getByRole("navigation", { name: "Mục lục nhóm" })
     expect(toc).toHaveClass("min-h-0", "overflow-y-auto")
+    expect(toc.parentElement).toHaveClass("min-h-0", "flex-1", "overflow-hidden")
   })
 
   it("lists subgroups under their parent group in the table of contents", () => {

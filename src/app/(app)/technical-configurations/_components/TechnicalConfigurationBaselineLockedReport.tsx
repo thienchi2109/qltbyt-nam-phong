@@ -122,6 +122,9 @@ export function TechnicalConfigurationBaselineLockedReport({
 
         <div
           data-testid="technical-configuration-locked-report-body"
+          role="region"
+          aria-label="Nội dung báo cáo cấu hình cơ sở"
+          tabIndex={0}
           className="min-h-0 w-full flex-1 overflow-y-auto"
         >
           <div className="mx-auto max-w-3xl space-y-6 pb-10">
