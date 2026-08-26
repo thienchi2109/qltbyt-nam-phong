@@ -298,7 +298,7 @@ describe("technical configuration baseline tab", () => {
     expect(
       await screen.findByRole("region", { name: "Nội dung phiên bản đã khóa" })
     ).toBeInTheDocument()
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
   })
 
@@ -331,7 +331,7 @@ describe("technical configuration baseline tab", () => {
     ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: /Lịch sử phiên bản/ })).toBeInTheDocument()
     expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.getByText("TC-0001")).toBeInTheDocument()
     expect(screen.getByText(/Dòng 1/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()

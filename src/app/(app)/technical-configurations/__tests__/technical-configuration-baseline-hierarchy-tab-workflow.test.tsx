@@ -130,7 +130,9 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     rpc.listVersions.mockResolvedValueOnce(baselineVersionsResponse([locked]))
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
 
-    expect(await screen.findByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(
+      await screen.findByRole("region", { name: "Nội dung phiên bản đã khóa" })
+    ).toBeInTheDocument()
     expect(
       within(screen.getByTestId("technical-configuration-locked-report-body")).getByRole(
         "heading",

@@ -53,7 +53,7 @@ describe("technical configuration version workflow review regressions", () => {
     )
 
     await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
 
@@ -78,7 +78,7 @@ describe("technical configuration version workflow review regressions", () => {
     )
 
     await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
-    expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
+    expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
     expect(screen.queryByLabelText("Nội dung nhập nhanh")).not.toBeInTheDocument()
   })
 

@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom"
-import { render, screen } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
@@ -17,14 +17,13 @@ function criterion(
   groupId: string,
   criterionCode: string,
   title: string | null,
-  sortOrder: number,
-  subgroupId: string | null = null
+  sortOrder: number
 ): TechnicalConfigurationBaselineDraftWire["groups"][number]["criteria"][number] {
   return {
     id,
     baseline_version_id: "locked-1",
     group_id: groupId,
-    subgroup_id: subgroupId,
+    subgroup_id: null,
     criterion_code: criterionCode,
     title,
     requirement_text: `Yêu cầu ${criterionCode}`,
@@ -92,7 +91,7 @@ const sampleGroups = [
         created_by: 1,
         updated_at: timestamp,
         updated_by: 1,
-        criteria: [criterion("criterion-2", "group-1", "TC-0002", null, 2, "subgroup-1")],
+        criteria: [criterion("criterion-2", "group-1", "TC-0002", null, 2)],
       },
     ],
   }),
@@ -112,29 +111,26 @@ describe("technical configuration baseline locked report", () => {
     vi.restoreAllMocks()
   })
 
-  it("renders version metadata and complete read-only hierarchy content", () => {
+  it("shows the first group without duplicating the version bar chrome", () => {
     render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
 
     expect(screen.getByRole("region", { name: "Nội dung phiên bản đã khóa" })).toBeInTheDocument()
-    expect(screen.getByText("Phiên bản 2")).toBeInTheDocument()
-    expect(screen.getByText("Đã khóa")).toBeInTheDocument()
-    expect(screen.getByText(/2 nhóm/)).toBeInTheDocument()
-    expect(screen.getByText(/4 tiêu chí/)).toBeInTheDocument()
+    expect(screen.queryByText("Nội dung chỉ đọc")).not.toBeInTheDocument()
+    expect(screen.queryByText("Đã khóa")).not.toBeInTheDocument()
+    expect(screen.queryByText(/Phiên bản/)).not.toBeInTheDocument()
 
-    expect(screen.getByRole("heading", { name: "Yêu cầu chung" })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: "Yêu cầu kỹ thuật" })).toBeInTheDocument()
-    expect(screen.getByRole("heading", { name: /Nhóm con an toàn/ })).toBeInTheDocument()
-
-    expect(screen.getAllByText("TC-0001")).toHaveLength(1)
-    expect(screen.getByText("Yêu cầu TC-0004")).toBeInTheDocument()
+    const pane = within(screen.getByTestId("technical-configuration-locked-report-body"))
+    expect(pane.getByRole("heading", { name: /Yêu cầu chung/ })).toBeInTheDocument()
+    expect(pane.getByText("TC-0001")).toBeInTheDocument()
+    expect(pane.queryByRole("heading", { name: /Yêu cầu kỹ thuật/ })).not.toBeInTheDocument()
+    expect(pane.getByText("2 tiêu chí")).toBeInTheDocument()
   })
 
   it("keeps the report body scrollable inside the fixed-height shell", () => {
     render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
 
-    const body = screen.getByRole("region", { name: "Nội dung báo cáo cấu hình cơ sở" })
-    expect(body).toHaveAttribute("tabindex", "0")
-    expect(body).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+    const body = screen.getByTestId("technical-configuration-locked-report-body")
+    expect(body).toHaveClass("min-h-0", "overflow-y-auto")
   })
 
   it("keeps the table of contents independently scrollable so long outlines cannot stretch the grid row", () => {
@@ -142,7 +138,6 @@ describe("technical configuration baseline locked report", () => {
 
     const toc = screen.getByRole("navigation", { name: "Mục lục nhóm" })
     expect(toc).toHaveClass("min-h-0", "overflow-y-auto")
-    expect(toc.parentElement).toHaveClass("min-h-0", "flex-1", "overflow-hidden")
   })
 
   it("lists subgroups under their parent group in the table of contents", () => {
@@ -152,7 +147,7 @@ describe("technical configuration baseline locked report", () => {
     expect(groupItem).toContainElement(screen.getByRole("button", { name: "Nhóm con an toàn" }))
   })
 
-  it("scrolls to a group when its table-of-contents entry is activated", async () => {
+  it("switches the reading pane when a table-of-contents group entry is activated", async () => {
     const user = userEvent.setup()
     const scrollIntoView = vi
       .spyOn(Element.prototype, "scrollIntoView")
@@ -162,12 +157,13 @@ describe("technical configuration baseline locked report", () => {
 
     await user.click(screen.getByRole("button", { name: "Yêu cầu kỹ thuật" }))
 
-    expect(scrollIntoView).toHaveBeenCalledTimes(1)
-    const scrolledElement = scrollIntoView.mock.contexts[0] as HTMLElement | undefined
-    expect(scrolledElement?.dataset.groupId).toBe("group-2")
+    const pane = within(screen.getByTestId("technical-configuration-locked-report-body"))
+    expect(pane.getByRole("heading", { name: /Yêu cầu kỹ thuật/ })).toBeInTheDocument()
+    expect(pane.queryByRole("heading", { name: /Yêu cầu chung/ })).not.toBeInTheDocument()
+    expect(scrollIntoView).not.toHaveBeenCalled()
   })
 
-  it("scrolls to a subgroup when its table-of-contents entry is activated", async () => {
+  it("scrolls to a subgroup inside the active pane when its table-of-contents entry is activated", async () => {
     const user = userEvent.setup()
     const scrollIntoView = vi
       .spyOn(Element.prototype, "scrollIntoView")
@@ -180,5 +176,107 @@ describe("technical configuration baseline locked report", () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(1)
     const scrolledElement = scrollIntoView.mock.contexts[0] as HTMLElement | undefined
     expect(scrolledElement?.dataset.subgroupId).toBe("subgroup-1")
+  })
+
+  it("paginates groups with previous and next controls at both ends", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const previous = screen.getByRole("button", { name: /Nhóm trước/ })
+    const next = screen.getByRole("button", { name: /Nhóm sau/ })
+    expect(previous).toBeDisabled()
+    expect(screen.getByText("Nhóm 1/2")).toBeInTheDocument()
+
+    await user.click(next)
+
+    const pane = within(screen.getByTestId("technical-configuration-locked-report-body"))
+    expect(pane.getByRole("heading", { name: /Yêu cầu kỹ thuật/ })).toBeInTheDocument()
+    expect(next).toBeDisabled()
+    expect(previous).toBeEnabled()
+    expect(screen.getByText("Nhóm 2/2")).toBeInTheDocument()
+
+    await user.click(previous)
+
+    expect(pane.getByRole("heading", { name: /Yêu cầu chung/ })).toBeInTheDocument()
+  })
+
+  it("marks the active table-of-contents entry as the current one", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const firstEntry = screen.getByRole("button", { name: "Yêu cầu chung" })
+    const secondEntry = screen.getByRole("button", { name: "Yêu cầu kỹ thuật" })
+    expect(firstEntry).toHaveAttribute("aria-current", "true")
+    expect(secondEntry).not.toHaveAttribute("aria-current")
+
+    await user.click(secondEntry)
+
+    expect(secondEntry).toHaveAttribute("aria-current", "true")
+    expect(firstEntry).not.toHaveAttribute("aria-current")
+  })
+
+  it("resets the reading pane scroll offset when switching groups", async () => {
+    const user = userEvent.setup()
+
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const body = screen.getByTestId("technical-configuration-locked-report-body")
+    body.scrollTop = 480
+
+    await user.click(screen.getByRole("button", { name: /Nhóm sau/ }))
+
+    expect(screen.getByText("Nhóm 2/2")).toBeInTheDocument()
+    expect(body.scrollTop).toBe(0)
+  })
+
+  it("restarts at the first group when the report is keyed to another locked version", async () => {
+    const user = userEvent.setup()
+    const view = render(
+      <TechnicalConfigurationBaselineLockedReport
+        key="locked-1"
+        version={lockedVersion(sampleGroups)}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: /Nhóm sau/ }))
+    expect(screen.getByText("Nhóm 2/2")).toBeInTheDocument()
+
+    view.rerender(
+      <TechnicalConfigurationBaselineLockedReport
+        key="locked-2"
+        version={{
+          ...lockedVersion([
+            group({
+              id: "group-next-a",
+              name: "Nhóm phiên bản mới",
+              sort_order: 1,
+              criteria: [criterion("criterion-8", "group-next-a", "TC-0008", null, 1)],
+            }),
+            group({
+              id: "group-next-b",
+              name: "Nhóm cuối phiên bản mới",
+              sort_order: 2,
+              criteria: [],
+            }),
+          ]),
+          id: "locked-2",
+        }}
+      />
+    )
+
+    const pane = within(screen.getByTestId("technical-configuration-locked-report-body"))
+    expect(pane.getByRole("heading", { name: /Nhóm phiên bản mới/ })).toBeInTheDocument()
+    expect(pane.queryByRole("heading", { name: /Nhóm cuối phiên bản mới/ })).not.toBeInTheDocument()
+    expect(screen.getByText("Nhóm 1/2")).toBeInTheDocument()
+  })
+
+  it("keeps the reading pane keyboard-focusable with an accessible name", () => {
+    render(<TechnicalConfigurationBaselineLockedReport version={lockedVersion(sampleGroups)} />)
+
+    const body = screen.getByRole("region", { name: "Nội dung chỉ đọc" })
+    expect(body).toHaveAttribute("tabindex", "0")
+    expect(body).toHaveAttribute("data-testid", "technical-configuration-locked-report-body")
   })
 })
