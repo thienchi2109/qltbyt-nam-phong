@@ -60,3 +60,30 @@
   - obtain exact-commit approval evidence for the expected dangerous statements
   - rerun the static lane after the analyzer gaps are fixed
   - do not apply the migration to live without separate explicit permission
+
+## Phase 3: Module-Local List Hook
+
+- Date: 2026-08-26
+- Status: implementation complete; docs checkpoint; review skipped per explicit user selection
+- Branch: `feat/technical-configuration-dossier-search-p3`
+- Base commit: `353e1a90da1821634e83426ee76b9f1faf982924` (`origin/main`)
+- Implementation commit: `4c88b5a6` `refactor(technical-config): centralize dossier list query state`
+- Scope completed:
+  - module-local `useTechnicalConfigurationDossierList` owning raw/normalized/debounced search (300 ms), `useServerPagination` with `resetKey: normalizedSearch`, pinned last-settled `{search,page,pageSize}` identity, `placeholderData: keepPreviousData`, and `enabled: !isDebouncePending`
+  - delegation of `TechnicalConfigurationsClient` to the hook without visible UI change; `p_search` omitted when empty, `staleTime 30_000` preserved
+  - search-aware active `listQueryKey` passed into `useTechnicalConfigurationDossierActions` while root invalidation boundary `TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT` remains
+- TDD evidence:
+  - RED: `use-technical-configuration-dossier-list.test.tsx` failed on missing hook module import (expected feature-missing failure)
+  - interim RED: 6 of 8 new tests failed due to TanStack Query v5 `notifyManager` using `setTimeout(0)` under fake timers — fixed with `advanceTimersByTimeAsync(0)` pump plus cache-overwrite-aware mock for cross-variant invalidation
+  - GREEN: 8 focused hook tests passed; 12 focused dossier/RPC test files, 90 tests passed
+- Non-database verification:
+  - `format:check` scoped on 3 changed files passed; global `format:check` polluted by 46 pre-existing untracked files (`ocr-reviews/`, `docs/review/`) — not in scope
+  - `verify:no-explicit-any` passed
+  - `verify:dedupe` passed (diff-only)
+  - `typecheck` passed
+  - React Doctor scored 100/100
+  - `openspec validate add-technical-configuration-dossier-search --strict` passed via `@fission-ai/openspec`
+  - `TechnicalConfigurationsClient.tsx` 281 lines, `useTechnicalConfigurationDossierList.ts` 137 lines (both below 350-line threshold)
+- Review:
+  - `post_implementation_reviewer` dispatch failed twice (`Unknown agent type` then `Upstream request failed: Endpoint is unavailable`); per user choice, skipped triage and proceeded to docs/push
+- Boundary respected: no SQL, no visible search toolbar (Phase 4), no live database write.
