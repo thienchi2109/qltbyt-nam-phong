@@ -20,6 +20,13 @@ import {
 
 const rpc = getBaselineRpcMock()
 
+async function expectSelectedBaselineVersion(label: string) {
+  const trigger = await screen.findByRole("button", {
+    name: /Lịch sử phiên bản/,
+  })
+  expect(trigger.textContent?.replace(/\s+/g, " ").trim()).toBe(label)
+}
+
 describe("technical configuration baseline locking and history", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,11 +39,7 @@ describe("technical configuration baseline locking and history", () => {
 
     renderTab()
 
-    expect(
-      await screen.findByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 1 · Đã khóa")
+    await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
     expect(screen.getByText("Khóa lúc 14/07/2026 15:30")).toBeInTheDocument()
     expect(screen.getByText("Người khóa #42")).toBeInTheDocument()
     expect(screen.getByText(/Dòng 1\s+Dòng 2/)).toBeInTheDocument()
@@ -83,11 +86,7 @@ describe("technical configuration baseline locking and history", () => {
         p_expected_revision: draft.revision,
       })
     )
-    expect(
-      await screen.findByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 1 · Đã khóa")
+    await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
   })
 
   it("keeps the editor form when lock rejects a stale revision", async () => {
@@ -178,11 +177,7 @@ describe("technical configuration baseline locking and history", () => {
         p_expected_revision: locked.revision,
       })
     )
-    expect(
-      await screen.findByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 2 · Bản nháp")
+    await expectSelectedBaselineVersion("Phiên bản 2 · Bản nháp")
     expect(screen.getByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")).toHaveValue(
       "Dòng 1\nDòng 2"
     )
@@ -206,11 +201,7 @@ describe("technical configuration baseline locking and history", () => {
 
     await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
     expect(screen.queryByText("Xung đột dữ liệu")).not.toBeInTheDocument()
-    expect(
-      screen.getByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 1 · Đã khóa")
+    await expectSelectedBaselineVersion("Phiên bản 1 · Đã khóa")
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
@@ -234,11 +225,7 @@ describe("technical configuration baseline locking and history", () => {
     const discardDialog = await screen.findByRole("alertdialog")
     await user.click(within(discardDialog).getByRole("button", { name: "Hủy" }))
     expect(requirement).toHaveValue("Nội dung đang sửa")
-    expect(
-      screen.getByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 2 · Bản nháp")
+    await expectSelectedBaselineVersion("Phiên bản 2 · Bản nháp")
     expect(screen.queryByText("Nội dung chỉ đọc")).not.toBeInTheDocument()
     nativeConfirm.mockRestore()
   })
@@ -342,11 +329,7 @@ describe("technical configuration baseline locking and history", () => {
         p_expected_revision: dossier.revision,
       })
     )
-    expect(
-      await screen.findByRole("button", {
-        name: /Lịch sử phiên bản/,
-      })
-    ).toHaveTextContent("Phiên bản 2 · Bản nháp")
+    await expectSelectedBaselineVersion("Phiên bản 2 · Bản nháp")
     expect(screen.getByRole("button", { name: "Thêm nhóm" })).toBeEnabled()
     expect(
       queryClient.getQueryData<{

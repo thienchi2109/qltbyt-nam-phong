@@ -53,7 +53,7 @@ describe("technical configuration workspace shell source boundaries", () => {
       path.join(moduleRoot, "_hooks/useTechnicalConfigurationBaselineEditor.ts"),
       "utf8"
     )
-    expect(countPhysicalLines(baselineEditorSource)).toBeLessThanOrEqual(357)
+    expect(countPhysicalLines(baselineEditorSource)).toBe(357)
 
     const shellSource = fs.readFileSync(
       path.join(moduleRoot, "_components/TechnicalConfigurationWorkspaceShell.tsx"),

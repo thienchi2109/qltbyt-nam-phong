@@ -127,7 +127,10 @@ behavioral assertions.
 
 Remove one trailing empty split segment before comparing and use
 `toBeLessThanOrEqual(350)`. Do not edit the production component to satisfy the
-test.
+test. Keep the pre-existing 357-line
+`useTechnicalConfigurationBaselineEditor.ts` hook under an exact `toBe(357)`
+ratchet instead of weakening the shared threshold or refactoring production
+outside this issue.
 
 - [ ] **Step 4: Verify GREEN**
 
@@ -142,7 +145,7 @@ node scripts/npm-run.js exec vitest run \
 
 ## Chunk 3: Integration And Delivery
 
-### Task 5: Run required verification and deliver the PR
+### Task 5: Run required verification and land the change
 
 **Files:**
 
@@ -185,21 +188,23 @@ node scripts/npm-run.js run react-doctor
 
 Confirm the change is test-only and does not weaken behavioral assertions.
 
-- [ ] **Step 4: Commit and push**
+- [ ] **Step 4: Commit and land on main**
 
-Use issue-aligned commits, push the feature branch, and open one PR containing
-`Closes #960` and `Closes #961`.
+Use issue-aligned commits, fast-forward local `main`, push `main`, then close
+#960 and #961 with the landed commit reference.
 
 ```bash
 git pull --rebase
-git push -u origin test/960-961-technical-configuration-fixtures
-gh pr create --title "test: refresh technical configuration regression fixtures" --body-file <pr-body-file>
-gh issue comment 960 --body "Đang xử lý trong PR #<number>."
-gh issue comment 961 --body "Đang xử lý trong PR #<number>."
+git push
+git checkout main
+git pull --rebase
+git merge --ff-only test/960-961-technical-configuration-fixtures
+git push origin main
+gh issue close 960 --comment "Đã xử lý trên main tại commit <sha>."
+gh issue close 961 --comment "Đã xử lý trên main tại commit <sha>."
 git status --short --branch
 ```
 
-The final status must show the branch is up to date with its remote. File a
-follow-up issue before handoff if review or verification finds remaining work;
-otherwise leave both issues open for the PR's `Closes` directives to close on
-merge.
+The final `main` status must be clean and up to date with `origin/main`. Delete
+the feature worktree and local/remote feature branch after landing. File a
+follow-up issue before handoff if review or verification finds remaining work.

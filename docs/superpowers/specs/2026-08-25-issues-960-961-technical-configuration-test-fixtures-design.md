@@ -7,7 +7,7 @@ production behavior, backend contracts, or RPC implementations.
 
 ## Scope
 
-The PR updates five existing test files:
+The change updates five existing test files:
 
 - `baseline-locking.test.tsx`
 - `baseline-contract.test.ts`
@@ -37,10 +37,13 @@ the RPC implementation.
 The source-size assertion should count physical lines without treating a final
 newline as an additional line. The documented extraction threshold is
 approximately 350 lines, so a 350-line source file is accepted while files over
-350 physical lines fail.
+350 physical lines fail. The pre-existing 357-line
+`useTechnicalConfigurationBaselineEditor.ts` hook remains outside this
+test-maintenance scope and is locked to exactly 357 lines as a ratchet: either
+growth or later shrinkage requires an intentional follow-up.
 
 ## Verification
 
 The five focused suites must pass 34/34 tests. Because the diff touches
-TypeScript and React tests, the PR must also pass formatting,
+TypeScript and React tests, the change must also pass formatting,
 `verify:no-explicit-any`, `verify:dedupe`, typecheck, and React Doctor.
