@@ -39,20 +39,45 @@ export function useTechnicalConfigurationDossierList() {
     normalizedSearch,
     TECHNICAL_CONFIGURATION_DOSSIER_SEARCH_DEBOUNCE_MS
   )
-  const [totalCount, setTotalCount] = React.useState(0)
-
-  const pagination = useServerPagination({
-    totalCount,
-    initialPageSize: DOSSIER_PAGE_SIZE,
-    resetKey: normalizedSearch,
-  })
-
   const isDebouncePending = normalizedSearch !== debouncedSearch
 
   const [settled, setSettled] = React.useState<DossierListRequestIdentity>({
     search: "",
     page: 1,
     pageSize: DOSSIER_PAGE_SIZE,
+  })
+
+  const listQueryKey = technicalConfigurationDossierListQueryKey({
+    page: settled.page,
+    pageSize: settled.pageSize,
+    normalizedSearch: settled.search,
+  })
+  const isSettledSearchCurrent = settled.search === debouncedSearch
+
+  const dossierListQuery = useQuery({
+    queryKey: listQueryKey,
+    queryFn: ({ signal }) => {
+      const rpcArgs: TechnicalConfigurationDossierListRpcArgs = {
+        p_page: settled.page,
+        p_page_size: settled.pageSize,
+        p_include_archived: false,
+      }
+      if (settled.search !== "") {
+        rpcArgs.p_search = settled.search
+      }
+
+      return listTechnicalConfigurationDossiers(rpcArgs, signal)
+    },
+    enabled: !isDebouncePending && isSettledSearchCurrent,
+    placeholderData: keepPreviousData,
+    staleTime: DOSSIER_LIST_STALE_TIME_MS,
+  })
+
+  const totalCount = dossierListQuery.data?.total ?? 0
+  const pagination = useServerPagination({
+    totalCount,
+    initialPageSize: DOSSIER_PAGE_SIZE,
+    resetKey: normalizedSearch,
   })
 
   React.useEffect(() => {
@@ -74,37 +99,6 @@ export function useTechnicalConfigurationDossierList() {
       }
     })
   }, [isDebouncePending, debouncedSearch, pagination.page, pagination.pageSize])
-
-  const listQueryKey = technicalConfigurationDossierListQueryKey({
-    page: settled.page,
-    pageSize: settled.pageSize,
-    normalizedSearch: settled.search,
-  })
-
-  const dossierListQuery = useQuery({
-    queryKey: listQueryKey,
-    queryFn: ({ signal }) => {
-      const rpcArgs: TechnicalConfigurationDossierListRpcArgs = {
-        p_page: settled.page,
-        p_page_size: settled.pageSize,
-        p_include_archived: false,
-      }
-      if (settled.search !== "") {
-        rpcArgs.p_search = settled.search
-      }
-
-      return listTechnicalConfigurationDossiers(rpcArgs, signal)
-    },
-    enabled: !isDebouncePending,
-    placeholderData: keepPreviousData,
-    staleTime: DOSSIER_LIST_STALE_TIME_MS,
-  })
-
-  const resolvedTotal = dossierListQuery.data?.total
-  React.useEffect(() => {
-    if (resolvedTotal === undefined) return
-    setTotalCount(resolvedTotal)
-  }, [resolvedTotal])
 
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
@@ -132,6 +126,6 @@ export function useTechnicalConfigurationDossierList() {
     isError: dossierListQuery.isError,
     error: dossierListQuery.error,
     refetch: dossierListQuery.refetch,
-    isSearchPending: isDebouncePending || dossierListQuery.isFetching,
+    isSearchPending: isDebouncePending || !isSettledSearchCurrent || dossierListQuery.isFetching,
   }
 }

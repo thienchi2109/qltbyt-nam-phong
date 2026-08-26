@@ -16,6 +16,7 @@ import type {
 import * as clientModule from "../TechnicalConfigurationsClient"
 import * as pageModule from "../page"
 import { TechnicalConfigurationDossierForm } from "../_components/TechnicalConfigurationDossierForm"
+import { technicalConfigurationDossierListQueryKey } from "../technical-configuration-query-keys"
 
 const P3A_FILES = [
   "page.tsx",
@@ -163,9 +164,17 @@ describe("technical configuration dossier shell", () => {
   it("creates only after explicit save and opens the created dossier shell", async () => {
     const user = userEvent.setup()
     const createResponse: TechnicalConfigurationDossierWireResponse = { data: dossier }
+    const inactiveFilteredKey = technicalConfigurationDossierListQueryKey({
+      page: 2,
+      pageSize: 20,
+      normalizedSearch: "may sieu am",
+    })
     mocks.createDossier.mockResolvedValue(createResponse)
 
-    renderClient()
+    const queryClient = renderClient()
+    expect(queryClient).toBeDefined()
+    if (!queryClient) return
+    queryClient.setQueryData(inactiveFilteredKey, emptyList)
 
     await user.click(await screen.findByRole("button", { name: "Tạo hồ sơ" }))
     await user.type(screen.getByLabelText("Loại thiết bị"), dossier.device_type_name)
@@ -196,6 +205,9 @@ describe("technical configuration dossier shell", () => {
     expect(screen.getByRole("tab", { name: "Phương án" })).toBeEnabled()
     expect(screen.getByRole("tab", { name: "So sánh & đánh giá" })).toBeEnabled()
     expect(screen.queryByRole("button", { name: "Thêm nhóm" })).not.toBeInTheDocument()
+    await waitFor(() =>
+      expect(queryClient.getQueryState(inactiveFilteredKey)?.isInvalidated).toBe(true)
+    )
   })
 
   it("gets the selected dossier before opening its workspace", async () => {

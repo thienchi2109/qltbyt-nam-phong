@@ -64,26 +64,35 @@
 ## Phase 3: Module-Local List Hook
 
 - Date: 2026-08-26
-- Status: implementation complete; docs checkpoint; review skipped per explicit user selection
+- Status: implementation complete; PR review findings addressed and verified
 - Branch: `feat/technical-configuration-dossier-search-p3`
 - Base commit: `353e1a90da1821634e83426ee76b9f1faf982924` (`origin/main`)
 - Implementation commit: `4c88b5a6` `refactor(technical-config): centralize dossier list query state`
 - Scope completed:
-  - module-local `useTechnicalConfigurationDossierList` owning raw/normalized/debounced search (300 ms), `useServerPagination` with `resetKey: normalizedSearch`, pinned last-settled `{search,page,pageSize}` identity, `placeholderData: keepPreviousData`, and `enabled: !isDebouncePending`
+  - module-local `useTechnicalConfigurationDossierList` owning raw/normalized/debounced search (300 ms), `useServerPagination` with `resetKey: normalizedSearch`, pinned last-settled `{search,page,pageSize}` identity, `placeholderData: keepPreviousData`, and execution gated until the settled identity matches the current debounced search
+  - pagination totals derived from the active query response so rows, total, and page count cannot come from different query snapshots
   - delegation of `TechnicalConfigurationsClient` to the hook without visible UI change; `p_search` omitted when empty, `staleTime 30_000` preserved
   - search-aware active `listQueryKey` passed into `useTechnicalConfigurationDossierActions` while root invalidation boundary `TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT` remains
+  - delete fallback marks the dossier root stale without refetching the obsolete active page; the newly active previous-page key performs the only follow-up fetch
+  - hook consistency and action integration regressions split into module-prefixed files; changed test files are 298, 198, and 264 lines
 - TDD evidence:
   - RED: `use-technical-configuration-dossier-list.test.tsx` failed on missing hook module import (expected feature-missing failure)
   - interim RED: 6 of 8 new tests failed due to TanStack Query v5 `notifyManager` using `setTimeout(0)` under fake timers — fixed with `advanceTimersByTimeAsync(0)` pump plus cache-overwrite-aware mock for cross-variant invalidation
-  - GREEN: 8 focused hook tests passed; 12 focused dossier/RPC test files, 90 tests passed
+  - review RED: invalidating the previous page/search key produced a fourth obsolete RPC when debounce settled; fixed by requiring the settled search to equal the current debounced search before enabling the query
+  - review RED: the first new-search row rendered once with the previous query's `total` and `pageCount`; fixed by deriving totals directly from query data
+  - review GREEN: 4 review-focused files, 26 tests passed, including create/update/delete invalidation across search variants and detail-key independence
+  - reviewer follow-up RED: delete fallback issued page-2 then page-1 RPCs; fixed with `refetchType: "none"` only when moving to the previous page
+  - reviewer follow-up GREEN: exact delete RPC sequence, active-key merge before deferred refetch, complete snapshot consistency, and request-signal cancellation all pass
 - Non-database verification:
-  - `format:check` scoped on 3 changed files passed; global `format:check` polluted by 46 pre-existing untracked files (`ocr-reviews/`, `docs/review/`) — not in scope
+  - `format:check` passed for the full diff
   - `verify:no-explicit-any` passed
   - `verify:dedupe` passed (diff-only)
+  - semantic dedupe reused the dossier action harness; the generic `createTestQueryClient` was not substituted because its `gcTime: 0` removes inactive search variants required by these cache tests
   - `typecheck` passed
+  - 14 focused dossier/RPC test files, 94 tests passed
   - React Doctor scored 100/100
   - `openspec validate add-technical-configuration-dossier-search --strict` passed via `@fission-ai/openspec`
-  - `TechnicalConfigurationsClient.tsx` 281 lines, `useTechnicalConfigurationDossierList.ts` 137 lines (both below 350-line threshold)
+  - `TechnicalConfigurationsClient.tsx` 281 lines, dossier action/list hooks 255/131 lines, and changed test files 298/198/264 lines
 - Review:
-  - `post_implementation_reviewer` dispatch failed twice (`Unknown agent type` then `Upstream request failed: Endpoint is unavailable`); per user choice, skipped triage and proceeded to docs/push
+  - custom `post_implementation_reviewer` findings were triaged and fixed; final follow-up review returned no findings
 - Boundary respected: no SQL, no visible search toolbar (Phase 4), no live database write.

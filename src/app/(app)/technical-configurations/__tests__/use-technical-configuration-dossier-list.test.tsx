@@ -8,12 +8,12 @@ import type {
   TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
-  TechnicalConfigurationDossierWire,
 } from "@/app/(app)/technical-configurations/types"
-import { technicalConfigurationDossierListQueryKey } from "@/app/(app)/technical-configurations/technical-configuration-query-keys"
 import {
+  buildDossierListPage as buildPage,
+  buildDossierListRow as buildRow,
   createQueryClient,
-  dossier as baseDossier,
+  flushQueryNotifications,
 } from "./technical-configuration-dossier-actions-test-harness"
 
 const mocks = vi.hoisted(() => ({
@@ -64,23 +64,6 @@ async function importDossierListHook() {
   return useDossierList
 }
 
-function buildRow(id: string): TechnicalConfigurationDossierListItemWire {
-  return { ...baseDossier, id, name: `Hồ sơ ${id}` }
-}
-
-function buildPage(
-  args: TechnicalConfigurationDossierListRpcArgs,
-  rows: TechnicalConfigurationDossierListItemWire[],
-  total: number
-): TechnicalConfigurationDossierListWireResponse {
-  return {
-    data: rows,
-    total,
-    page: args.p_page ?? 1,
-    page_size: args.p_page_size ?? 20,
-  }
-}
-
 function getListCallArgs(call: number): TechnicalConfigurationDossierListRpcArgs {
   const [args] = mocks.listDossiers.mock.calls[call - 1] as [
     TechnicalConfigurationDossierListRpcArgs,
@@ -88,12 +71,6 @@ function getListCallArgs(call: number): TechnicalConfigurationDossierListRpcArgs
   ]
 
   return args
-}
-
-async function flushQueryNotifications(): Promise<void> {
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
 }
 
 describe("useTechnicalConfigurationDossierList", () => {
@@ -317,160 +294,5 @@ describe("useTechnicalConfigurationDossierList", () => {
 
     expect(result.current.total).toBe(41)
     expect(result.current.pageCount).toBe(3)
-  })
-
-  it("falls back to the previous filtered page after deleting the last row on a later filtered page", async () => {
-    const useDossierList = await importDossierListHook()
-    const useDossierActionsModule =
-      await import("../_hooks/useTechnicalConfigurationDossierActions")
-    const queryClient = createQueryClient()
-
-    mocks.listDossiers.mockImplementation((args: TechnicalConfigurationDossierListRpcArgs) => {
-      if (args.p_search === "may") {
-        const rows = args.p_page === 2 ? [buildRow("loc-trang-2")] : [buildRow("loc-trang-1")]
-
-        return Promise.resolve(buildPage(args, rows, 21))
-      }
-
-      return Promise.resolve(buildPage(args, [buildRow(`trang-${args.p_page}`)], 60))
-    })
-    mocks.deleteDossier.mockResolvedValue({ data: { id: "loc-trang-2" } })
-
-    const { result } = renderHook(
-      () => {
-        const list = useDossierList()
-        const [selectedDossier, setSelectedDossier] =
-          React.useState<TechnicalConfigurationDossierWire | null>(null)
-        const actions = useDossierActionsModule.useTechnicalConfigurationDossierActions({
-          listQueryKey: list.listQueryKey,
-          page: list.page,
-          onPageChange: list.handlePageChange,
-          onSelectedDossierChange: setSelectedDossier,
-        })
-
-        return { list, actions }
-      },
-      {
-        wrapper: ({ children }: { children: React.ReactNode }) => (
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        ),
-      }
-    )
-    await flushQueryNotifications()
-
-    act(() => {
-      result.current.list.handleSearchTextChange("may")
-    })
-    act(() => {
-      vi.advanceTimersByTime(300)
-    })
-    await flushQueryNotifications()
-
-    act(() => {
-      result.current.list.handlePageChange(2)
-    })
-    await flushQueryNotifications()
-    expect(result.current.list.dossiers[0]?.id).toBe("loc-trang-2")
-
-    const target = result.current.list.dossiers[0]
-    if (!target) throw new Error("expected a filtered page-2 row")
-    act(() => {
-      result.current.actions.openDelete(target)
-    })
-    await act(async () => {
-      await result.current.actions.submitDelete()
-    })
-    await flushQueryNotifications()
-
-    expect(result.current.list.page).toBe(1)
-    expect(result.current.list.dossiers[0]?.id).toBe("loc-trang-1")
-    const latestCall = getListCallArgs(mocks.listDossiers.mock.calls.length)
-    expect(latestCall.p_page).toBe(1)
-    expect(latestCall.p_search).toBe("may")
-  })
-
-  it("invalidates every search variant through the shared root while merging edits into the active variant only", async () => {
-    const useDossierList = await importDossierListHook()
-    const useDossierActionsModule =
-      await import("../_hooks/useTechnicalConfigurationDossierActions")
-    const queryClient = createQueryClient()
-    const unfilteredVariantKey = technicalConfigurationDossierListQueryKey({
-      page: 1,
-      pageSize: 20,
-      normalizedSearch: "",
-    })
-    let editedName: string | null = null
-
-    mocks.listDossiers.mockImplementation((args: TechnicalConfigurationDossierListRpcArgs) => {
-      if (args.p_search !== undefined && args.p_search !== null && args.p_search !== "") {
-        const row = editedName
-          ? { ...buildRow(`tim-${args.p_search}-trang-${args.p_page}`), name: editedName }
-          : buildRow(`tim-${args.p_search}-trang-${args.p_page}`)
-
-        return Promise.resolve(buildPage(args, [row], 41))
-      }
-
-      return Promise.resolve(buildPage(args, [buildRow(`trang-${args.p_page}`)], 60))
-    })
-    mocks.updateDossier.mockImplementation(async () => {
-      editedName = "Tên đã sửa"
-
-      return { data: { ...baseDossier, name: editedName, revision: 8 } }
-    })
-
-    const { result } = renderHook(
-      () => {
-        const list = useDossierList()
-        const [selectedDossier, setSelectedDossier] =
-          React.useState<TechnicalConfigurationDossierWire | null>(null)
-        const actions = useDossierActionsModule.useTechnicalConfigurationDossierActions({
-          listQueryKey: list.listQueryKey,
-          page: list.page,
-          onPageChange: list.handlePageChange,
-          onSelectedDossierChange: setSelectedDossier,
-        })
-
-        return { list, actions, selectedDossier }
-      },
-      {
-        wrapper: ({ children }: { children: React.ReactNode }) => (
-          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-        ),
-      }
-    )
-    await flushQueryNotifications()
-
-    act(() => {
-      result.current.list.handleSearchTextChange("may")
-    })
-    act(() => {
-      vi.advanceTimersByTime(300)
-    })
-    await flushQueryNotifications()
-
-    queryClient.setQueryData<TechnicalConfigurationDossierListWireResponse>(
-      unfilteredVariantKey,
-      buildPage({ p_page: 1 }, [buildRow("trang-1")], 60)
-    )
-
-    act(() => {
-      result.current.actions.openEdit(result.current.list.dossiers[0])
-    })
-    await act(async () => {
-      await result.current.actions.submitEdit({
-        p_id: baseDossier.id,
-        p_device_type_name: baseDossier.device_type_name,
-        p_name: "Tên đã sửa",
-        p_description: null,
-        p_expected_revision: baseDossier.revision,
-      })
-    })
-    await flushQueryNotifications()
-
-    const activeCache = queryClient.getQueryData<TechnicalConfigurationDossierListWireResponse>(
-      result.current.list.listQueryKey
-    )
-    expect(activeCache?.data[0]?.name).toBe("Tên đã sửa")
-    expect(queryClient.getQueryState(unfilteredVariantKey)?.isInvalidated).toBe(true)
   })
 })

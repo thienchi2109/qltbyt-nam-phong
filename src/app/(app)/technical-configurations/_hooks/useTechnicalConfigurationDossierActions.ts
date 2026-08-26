@@ -170,6 +170,8 @@ export function useTechnicalConfigurationDossierActions({
 
       await queryClient.invalidateQueries({
         queryKey: TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+        // The page change activates and refetches the previous key; do not refetch the obsolete page.
+        refetchType: shouldMoveToPreviousPage ? "none" : "active",
       })
     },
   })
