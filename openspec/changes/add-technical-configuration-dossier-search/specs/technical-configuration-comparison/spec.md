@@ -89,8 +89,9 @@ The dossier list UI SHALL compose existing shared search and pagination primitiv
 #### Scenario: Search is local and debounced
 
 - **GIVEN** the user is viewing page 2 or later
-- **WHEN** the user changes the raw search input
+- **WHEN** the user changes the raw search input to a different normalized search value
 - **THEN** pagination resets to page 1 immediately
+- **AND** the rows from the last-settled search and page remain visible even if page 1 of the previous search is already cached
 - **AND** no new list request is sent until the normalized value remains stable for 300 ms
 - **AND** after 300 ms the next request uses page 1 and the current normalized search rather than the previous search
 - **AND** the search value is not written to the URL
@@ -99,6 +100,7 @@ The dossier list UI SHALL compose existing shared search and pagination primitiv
 
 - **WHEN** two raw values normalize to the same dossier search value
 - **THEN** the list query uses the same normalized search identity
+- **AND** pagination does not reset and no new list request is sent solely because the raw representation changed
 - **AND** different normalized values or pages use isolated list keys
 
 #### Scenario: Pending search preserves rows

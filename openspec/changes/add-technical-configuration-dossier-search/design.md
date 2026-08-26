@@ -118,7 +118,8 @@ Adding a defaulted fourth argument creates a distinct PostgreSQL signature. The 
 5. Keep `p_search TEXT DEFAULT NULL` last so old callers that omit it remain compatible.
 6. Update the existing registered dossier-delete phase gate to resolve the new four-argument `regprocedure` while retaining its three-argument RPC calls as proof that the defaulted parameter remains backward-compatible.
 7. Register the new dossier-search phase gate unconditionally in the committed Database Quality Gate registry.
-8. Preserve the current authorization helper, archive predicate, validation, JSON payload, `can_delete`, `SECURITY DEFINER`, `SET search_path = public, pg_temp`, and explicit grants/revokes.
+8. Preserve the current authorization helper, archive predicate, validation, JSON payload, `can_delete`, `SECURITY DEFINER`, and `SET search_path = public, pg_temp`.
+9. Recreate the deployed ACL exactly: revoke all privileges from `PUBLIC`, `anon`, `authenticated`, and `service_role`, then grant only `EXECUTE` to `authenticated`.
 
 The migration must land and be eligible for deployment before the client starts sending `p_search`. The application can be rolled out after the migration because old callers still work through the defaulted parameter.
 
@@ -132,12 +133,14 @@ Create `useTechnicalConfigurationDossierList` to own:
 - total count,
 - `useServerPagination`,
 - immediate page reset through the raw normalized value as `resetKey`,
+- a last-settled request identity containing normalized search, page, and page size,
+- rendered data pinned to the last-settled request while debounce is pending,
 - a query `enabled` guard while the normalized raw value differs from the debounced value,
 - TanStack Query key and RPC args,
 - `placeholderData: keepPreviousData`,
 - initial loading, debounce-pending, background-fetching, error, retry, and filtered-empty state.
 
-The query key includes the debounced normalized search value or `null`. The RPC receives the same value through `p_search`. Query execution is disabled during the debounce interval, so an immediate reset from page 2 or later cannot issue a page-1 request for the previous search. When the normalized value has remained stable for 300 ms, the query is enabled and requests page 1 for the current debounced search.
+When the normalized search changes, visible pagination resets immediately, but the query key, RPC args, and displayed rows remain pinned to the last-settled search/page/page-size identity for the 300 ms debounce interval. This prevents both an RPC for the previous search at page 1 and a pre-cached page-1 result from replacing the currently visible page-2 rows. Query execution remains disabled while normalized and debounced search differ. When the normalized value has remained stable for 300 ms, the settled request identity advances atomically to the current normalized search and page 1.
 
 `isSearchPending` is true while the normalized raw value differs from the debounced value or while the current query is fetching.
 
@@ -219,6 +222,7 @@ If rollback is required after deployment:
   - exact 300 ms debounce,
   - immediate page reset,
   - zero RPC calls through the first 299 ms after typing on a later page and one current-search page-1 request when 300 ms elapses,
+  - pre-cached page-1 data for the previous search cannot replace the currently rendered later-page rows during debounce,
   - query-key isolation,
   - RPC argument omission/value,
   - previous-data transition,
@@ -231,6 +235,7 @@ If rollback is required after deployment:
   - one four-argument signature,
   - old signature removed,
   - helper volatility and privileges,
+  - replacement RPC ACL: no `EXECUTE` for `PUBLIC`, `anon`, or `service_role`, and `EXECUTE` for `authenticated`,
   - `SECURITY DEFINER` and fixed `search_path`,
   - authorization helper preserved,
   - literal wildcard sanitization,
@@ -238,6 +243,7 @@ If rollback is required after deployment:
   - both trigram expression indexes.
 - Registry-selected rollback-only SQL phase gate:
   - existing dossier-delete gate resolves the four-argument signature while its three-argument calls still succeed,
+  - catalog-level privilege checks enforce the exact replacement RPC ACL,
   - accent/case/Unicode/punctuation equivalence,
   - cross-field all-token matching,
   - description exclusion,

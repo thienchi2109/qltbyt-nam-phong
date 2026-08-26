@@ -71,10 +71,11 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Invoke `supabase-postgres-best-practices`.
 - [ ] Inspect all later local definitions of `technical_configuration_dossiers_list` and choose a migration timestamp that sorts last.
 - [ ] Write/finish failing SQL phase-gate assertions before the migration implementation.
-- [ ] Add failing static migration expectations for the exact signature, helper, privileges, predicates, ranking, totals, and indexes.
+- [ ] Add failing static migration expectations for the exact signature, helper privileges, replacement RPC ACL, predicates, ranking, totals, and indexes.
 - [ ] Add `public._normalize_search_text(TEXT)` as an immutable, internal helper with explicit privileges.
 - [ ] In one transaction, drop only the old `(INTEGER, INTEGER, BOOLEAN)` signature and create `(INTEGER, INTEGER, BOOLEAN, TEXT)` with `p_search DEFAULT NULL`.
-- [ ] Preserve the current authorization helper, validation, archive behavior, page projection, `can_delete`, JSON shape, fixed `search_path`, and ACLs.
+- [ ] Preserve the current authorization helper, validation, archive behavior, page projection, `can_delete`, JSON shape, and fixed `search_path`.
+- [ ] Recreate and assert the deployed RPC ACL exactly: revoke all from `PUBLIC`, `anon`, `authenticated`, and `service_role`, then grant only `EXECUTE` to `authenticated`.
 - [ ] Add all-token predicates, filtered total, ranking tiers, and two `extensions.gin_trgm_ops` expression indexes.
 - [ ] Add representative `EXPLAIN (FORMAT JSON)` checks for index-eligible queries; document that one-/two-character tokens may scan.
 - [ ] Update `technical_configuration_dossier_delete_phase_gate.sql` to resolve the four-argument `regprocedure` while retaining its three-argument invocations as backward-compatibility coverage.
@@ -91,6 +92,7 @@ Live Supabase writes are excluded until the user gives explicit permission for t
   - exact 300 ms debounce,
   - immediate page reset from normalized raw input on page 2 or later,
   - zero RPC calls through 299 ms and one current-search page-1 request when 300 ms elapses,
+  - pre-cached page 1 of the previous search cannot replace the currently rendered later-page rows during debounce,
   - `p_search` omission/value,
   - search-aware query keys,
   - `keepPreviousData`,
@@ -101,12 +103,13 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Derive:
   - `normalizedSearch`,
   - `debouncedSearch`,
+  - the last-settled request identity and data,
   - `isSearchActive`,
   - `isSearchPending`,
   - initial loading,
   - background fetching,
   - filtered-empty state.
-- [ ] Disable query execution while `normalizedSearch !== debouncedSearch` so the immediate page reset cannot request page 1 for the previous search.
+- [ ] While `normalizedSearch !== debouncedSearch`, keep the query key, RPC args, and rendered rows pinned to the last-settled search/page/page-size identity and disable execution; advance atomically to the current normalized search at page 1 when debounce settles.
 - [ ] Keep the existing action hook contract by passing the active search-aware list key and root invalidation boundary.
 - [ ] Add cache regressions for create/update/delete and filtered-page fallback.
 - [ ] Confirm empty-search output, ordering, pagination, and action behavior are unchanged.
@@ -144,10 +147,8 @@ Live Supabase writes are excluded until the user gives explicit permission for t
   2. apply migration through Supabase MCP,
   3. security/performance advisors and live read-only contract checks,
   4. deploy search-enabled application.
-- [ ] Run `post_implementation_reviewer` against the originating OpenSpec acceptance criteria and triage every finding for technical validity.
+- [ ] Spawn the custom `post_implementation_reviewer` without a full-history fork, using explicit fixed point `origin/main` and the originating OpenSpec acceptance criteria, then triage every finding for technical validity.
 - [ ] Apply valid review fixes and rerun affected focused checks.
-- [ ] Commit checkpoint: `docs(technical-config): record dossier search verification`.
-- [ ] Confirm the worktree is clean and record the final `HEAD`; no file modification or commit is allowed after the exact-commit database evidence is collected.
 - [ ] Run one context-mode batch in repository order:
   - `node scripts/npm-run.js run format:check`
   - `node scripts/npm-run.js run verify:no-explicit-any`
@@ -157,8 +158,12 @@ Live Supabase writes are excluded until the user gives explicit permission for t
   - `node scripts/npm-run.js run react-doctor`
 - [ ] Invoke `code-deduplication` and document why the hook remains module-local.
 - [ ] Run `openspec validate add-technical-configuration-dossier-search --strict`.
+- [ ] Commit checkpoint: `docs(technical-config): record dossier search verification`.
+- [ ] Run `git pull --rebase`. If synchronization changes the commit or content, rerun the affected non-database verification before continuing.
+- [ ] Confirm the worktree is clean and record the synchronized final `HEAD`.
 - [ ] Run the Database Quality Gate static lane and Oracle baseline-forward lane for the same exact commit.
-- [ ] If any final gate requires a file change, create a new final commit and rerun both Database Quality Gate lanes against the new exact `HEAD`.
+- [ ] Run `git push`, then verify the remote branch and `git status` are up to date with the same gated `HEAD`.
+- [ ] If any final gate, rebase, or push retry changes the commit, rerun both Database Quality Gate lanes against the new exact `HEAD`.
 - [ ] Do not mark implementation complete if either Database Quality Gate lane is missing or if the migration/app deployment order is unresolved.
 
 ## Acceptance Checklist
@@ -169,7 +174,7 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Every token must match; no fuzzy behavior exists.
 - [ ] Filtered totals and ranking are deterministic.
 - [ ] Default empty-search behavior is unchanged.
-- [ ] Debounce is exactly 300 ms, pagination resets immediately, and no request is issued for the previous search during the debounce interval.
+- [ ] A normalized search change resets pagination immediately while keeping last-settled rows visible; no previous-search request or cached-page substitution occurs during the 300 ms debounce interval.
 - [ ] Previous rows remain during pending work with clear busy feedback.
 - [ ] Empty/error states are distinct and accessible.
 - [ ] Existing authorization, archive, `can_delete`, and mutation-cache contracts are preserved.
