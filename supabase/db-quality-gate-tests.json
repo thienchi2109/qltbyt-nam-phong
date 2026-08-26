@@ -735,6 +735,16 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["OpenSpec add-technical-configuration-dossier-search Phase 2"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_search_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate.sql",
