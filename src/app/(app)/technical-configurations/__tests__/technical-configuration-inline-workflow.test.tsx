@@ -1,12 +1,14 @@
 import "@testing-library/jest-dom"
 import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import type { ComponentProps } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TechnicalConfigurationBaselineTab } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineTab"
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import type { TechnicalConfigurationBaselineEditorDraft } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
 import type { TechnicalConfigurationDossierWire } from "@/app/(app)/technical-configurations/types"
+import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 
 const baseline = vi.hoisted(() => {
   const selectedVersion: TechnicalConfigurationBaselineDraftWire = {
@@ -119,13 +121,23 @@ const dossier: TechnicalConfigurationDossierWire = {
   updated_by: 1,
 }
 
+function renderBaselineTab(
+  props: Partial<ComponentProps<typeof TechnicalConfigurationBaselineTab>> = {}
+) {
+  const queryClient = createTestQueryClient()
+  return render(
+    <TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} {...props} />,
+    { wrapper: createReactQueryWrapper(queryClient) }
+  )
+}
+
 describe("technical configuration inline workflow", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it("keeps the baseline tab shrinkable so the group list owns vertical scrolling", async () => {
-    render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+    renderBaselineTab()
 
     const baselineTab = await screen.findByTestId("technical-configuration-baseline-tab")
     const editor = screen.getByTestId("baseline-editor-workspace")
@@ -138,14 +150,7 @@ describe("technical configuration inline workflow", () => {
     const user = userEvent.setup()
     const onToggleFocusMode = vi.fn()
 
-    render(
-      <TechnicalConfigurationBaselineTab
-        dossier={dossier}
-        isFocusMode
-        onDirtyChange={vi.fn()}
-        onToggleFocusMode={onToggleFocusMode}
-      />
-    )
+    renderBaselineTab({ isFocusMode: true, onToggleFocusMode })
 
     expect(
       await screen.findByRole("region", { name: "Ngữ cảnh cấu hình đang chỉnh sửa" })
@@ -180,7 +185,7 @@ describe("technical configuration inline workflow", () => {
     }
 
     try {
-      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+      renderBaselineTab()
 
       const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
       expect(within(firstGroup).getByText("2 lỗi")).toBeInTheDocument()
@@ -202,7 +207,7 @@ describe("technical configuration inline workflow", () => {
     }
 
     try {
-      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+      renderBaselineTab()
 
       const groupInput = await screen.findByLabelText("Tên nhóm I")
       const groupError = screen.getByText("Tên nhóm là bắt buộc.")
@@ -221,7 +226,7 @@ describe("technical configuration inline workflow", () => {
     baseline.isReloading = true
 
     try {
-      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+      renderBaselineTab()
 
       const saveButton = await screen.findByRole("button", { name: "Lưu" })
       expect(saveButton).toBeDisabled()
@@ -239,7 +244,7 @@ describe("technical configuration inline workflow", () => {
     const addEventListener = vi.spyOn(window, "addEventListener")
 
     try {
-      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={onDirtyChange} />)
+      renderBaselineTab({ onDirtyChange })
 
       const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
       const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
@@ -278,7 +283,7 @@ describe("technical configuration inline workflow", () => {
     baseline.isConflict = true
 
     try {
-      render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+      renderBaselineTab()
 
       const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
       await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))
@@ -313,7 +318,7 @@ describe("technical configuration inline workflow", () => {
 
   it("renders every group inline and keeps requirement cells directly focusable", async () => {
     const user = userEvent.setup()
-    render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+    renderBaselineTab()
 
     const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     const secondGroup = screen.getByRole("region", { name: "Nhóm tiêu chí II" })
@@ -330,7 +335,7 @@ describe("technical configuration inline workflow", () => {
 
   it("returns from cancel to row mode and keeps focus on the bulk mode trigger", async () => {
     const user = userEvent.setup()
-    render(<TechnicalConfigurationBaselineTab dossier={dossier} onDirtyChange={vi.fn()} />)
+    renderBaselineTab()
 
     const firstGroup = await screen.findByRole("region", { name: "Nhóm tiêu chí I" })
     await user.click(within(firstGroup).getByRole("button", { name: /Nhập nhiều dòng/ }))

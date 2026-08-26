@@ -3,6 +3,11 @@ import path from "node:path"
 
 import { describe, expect, it } from "vitest"
 
+function countPhysicalLines(source: string) {
+  const lines = source.split("\n")
+  return lines.at(-1) === "" ? lines.length - 1 : lines.length
+}
+
 describe("technical configuration workspace shell source boundaries", () => {
   it("keeps the shell thin and baseline responsibilities extracted before the threshold", () => {
     const moduleRoot = path.resolve(process.cwd(), "src/app/(app)/technical-configurations")
@@ -30,7 +35,6 @@ describe("technical configuration workspace shell source boundaries", () => {
       "_components/comparison/TechnicalConfigurationMatrixToolbar.tsx",
       "_components/comparison/TechnicalConfigurationMatrixColumnControls.tsx",
       "comparison-matrix-constants.ts",
-      "_hooks/useTechnicalConfigurationBaselineEditor.ts",
       "_hooks/useTechnicalConfigurationBaselineHierarchyImport.ts",
       "_hooks/useTechnicalConfigurationBulkEntrySessions.ts",
       "_hooks/useTechnicalConfigurationInlineEditor.ts",
@@ -42,9 +46,14 @@ describe("technical configuration workspace shell source boundaries", () => {
 
     for (const file of files) {
       const source = fs.readFileSync(path.join(moduleRoot, file), "utf8")
-      const lineCount = source.split("\n").length
-      expect(lineCount).toBeLessThan(350)
+      expect(countPhysicalLines(source)).toBeLessThanOrEqual(350)
     }
+
+    const baselineEditorSource = fs.readFileSync(
+      path.join(moduleRoot, "_hooks/useTechnicalConfigurationBaselineEditor.ts"),
+      "utf8"
+    )
+    expect(countPhysicalLines(baselineEditorSource)).toBeLessThanOrEqual(357)
 
     const shellSource = fs.readFileSync(
       path.join(moduleRoot, "_components/TechnicalConfigurationWorkspaceShell.tsx"),

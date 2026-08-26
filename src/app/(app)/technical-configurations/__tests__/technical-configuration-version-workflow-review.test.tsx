@@ -45,7 +45,9 @@ describe("technical configuration version workflow review regressions", () => {
       })
     )
 
-    expect(await screen.findByText("Phiên bản 1")).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /Lịch sử phiên bản/ })).toHaveTextContent(
+      "Phiên bản 1 · Đã khóa"
+    )
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
@@ -70,7 +72,9 @@ describe("technical configuration version workflow review regressions", () => {
       })
     )
 
-    expect(await screen.findByText("Phiên bản 1")).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /Lịch sử phiên bản/ })).toHaveTextContent(
+      "Phiên bản 1 · Đã khóa"
+    )
     expect(screen.getByText("Nội dung chỉ đọc")).toBeInTheDocument()
     expect(screen.queryByLabelText("Nội dung nhập nhanh")).not.toBeInTheDocument()
   })
@@ -175,7 +179,9 @@ describe("technical configuration version workflow review regressions", () => {
     renderTab()
     await user.click(await screen.findByRole("button", { name: "Sao chép thành bản nháp" }))
 
-    expect(await screen.findByText("Phiên bản 2")).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /Lịch sử phiên bản/ })).toHaveTextContent(
+      "Phiên bản 2 · Bản nháp"
+    )
     expect(screen.getByText("Sao chép từ phiên bản 1")).toBeInTheDocument()
   })
 
@@ -269,7 +275,9 @@ describe("technical configuration version workflow review regressions", () => {
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Khóa vĩnh viễn" })
     )
 
-    expect(await screen.findByText("Đã khóa")).toBeInTheDocument()
+    expect(await screen.findByRole("button", { name: /Lịch sử phiên bản/ })).toHaveTextContent(
+      "Phiên bản 1 · Đã khóa"
+    )
     expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
   })
 })
