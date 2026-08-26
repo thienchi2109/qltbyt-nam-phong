@@ -6,6 +6,22 @@ export const TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT = [
   "dossiers",
 ] as const
 
+/** Builds one paginated dossier-list cache key from normalized search. */
+export function technicalConfigurationDossierListQueryKey({
+  page,
+  pageSize,
+  normalizedSearch,
+}: {
+  page: number
+  pageSize: number
+  normalizedSearch: string
+}) {
+  return [
+    ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
+    { page, pageSize, search: normalizedSearch },
+  ] as const
+}
+
 /** Builds the cache key for one technical-configuration dossier detail. */
 export function technicalConfigurationDossierDetailQueryKey(dossierId: string) {
   return [...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT, "detail", dossierId] as const

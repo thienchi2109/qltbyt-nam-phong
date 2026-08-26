@@ -8,12 +8,12 @@
 
 ## Phase 1. Contract And Test Foundation
 
-- [ ] 1.1 Add shared dossier-search fixtures covering Vietnamese accents, `đ`, decomposed Unicode, punctuation/separators, repeated whitespace, wildcard characters, empty normalization, and the 200-character boundary.
-- [ ] 1.2 Add failing TypeScript tests for the module-local normalizer, normalized query-key identity, and optional `p_search`.
-- [ ] 1.3 Extend `TechnicalConfigurationDossierListRpcArgs` with optional `p_search?: string | null` without changing any caller yet.
-- [ ] 1.4 Add a dossier-list query-key builder that includes page, page size, and normalized search while preserving the existing root invalidation key.
-- [ ] 1.5 Add the module-local search constants/normalizer and make the Phase 1 tests pass.
-- [ ] 1.6 Review checkpoint: confirm no UI sends `p_search`, no SQL file exists yet, and all existing dossier tests remain green.
+- [x] 1.1 Add shared dossier-search fixtures covering Vietnamese accents, `đ`, decomposed Unicode, punctuation/separators, repeated whitespace, wildcard characters, empty normalization, and the 200-character boundary.
+- [x] 1.2 Add failing TypeScript tests for the module-local normalizer, normalized query-key identity, and optional `p_search`.
+- [x] 1.3 Extend `TechnicalConfigurationDossierListRpcArgs` with optional `p_search?: string | null` without changing any caller yet.
+- [x] 1.4 Add a dossier-list query-key builder that includes page, page size, and normalized search while preserving the existing root invalidation key.
+- [x] 1.5 Add the module-local search constants/normalizer and make the Phase 1 tests pass.
+- [x] 1.6 Review checkpoint: confirm no UI sends `p_search`, no SQL file exists yet, and all existing dossier tests remain green.
 
 ## Phase 2. Database Search Contract
 

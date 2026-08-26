@@ -8,6 +8,7 @@ import type {
   TechnicalConfigurationDossierDeleteRpcArgs,
   TechnicalConfigurationDossierDeleteWireResponse,
   TechnicalConfigurationDossierListItemWire,
+  TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
 } from "../types"
@@ -15,11 +16,7 @@ import * as rpcModule from "../technical-configuration-rpc"
 
 type RpcModuleContract = {
   listTechnicalConfigurationDossiers?: (
-    args?: {
-      p_page?: number
-      p_page_size?: number
-      p_include_archived?: boolean
-    },
+    args?: TechnicalConfigurationDossierListRpcArgs,
     signal?: AbortSignal
   ) => Promise<TechnicalConfigurationDossierListWireResponse>
   createTechnicalConfigurationDossier?: (
@@ -50,6 +47,15 @@ describe("technical configuration RPC adapter", () => {
     )
 
     expect(fs.existsSync(adapterPath)).toBe(true)
+  })
+
+  it("declares optional nullable search in the typed dossier list arguments", () => {
+    const typesPath = path.resolve(process.cwd(), "src/app/(app)/technical-configurations/types.ts")
+    const typesSource = fs.readFileSync(typesPath, "utf8")
+
+    expect(typesSource).toMatch(
+      /interface TechnicalConfigurationDossierListRpcArgs\s*\{[^}]*p_search\?: string \| null/
+    )
   })
 
   it("posts typed dossier list arguments through the RPC proxy", async () => {
@@ -84,13 +90,14 @@ describe("technical configuration RPC adapter", () => {
     )
     vi.stubGlobal("fetch", fetchMock)
 
-    await expect(
-      rpc.listTechnicalConfigurationDossiers({
-        p_page: 2,
-        p_page_size: 10,
-        p_include_archived: false,
-      })
-    ).resolves.toEqual(response)
+    const args = {
+      p_page: 2,
+      p_page_size: 10,
+      p_include_archived: false,
+      p_search: "may sieu am",
+    } satisfies TechnicalConfigurationDossierListRpcArgs
+
+    await expect(rpc.listTechnicalConfigurationDossiers(args)).resolves.toEqual(response)
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/rpc/technical_configuration_dossiers_list",
@@ -100,6 +107,7 @@ describe("technical configuration RPC adapter", () => {
           p_page: 2,
           p_page_size: 10,
           p_include_archived: false,
+          p_search: "may sieu am",
         }),
       })
     )

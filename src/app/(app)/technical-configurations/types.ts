@@ -31,6 +31,7 @@ export interface TechnicalConfigurationDossierListRpcArgs {
   p_page?: number
   p_page_size?: number
   p_include_archived?: boolean
+  p_search?: string | null
 }
 
 export interface TechnicalConfigurationDossierGetRpcArgs {
