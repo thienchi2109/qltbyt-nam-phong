@@ -131,13 +131,18 @@ $gate$;
 
 DO $gate$
 DECLARE
-  v_user_id CONSTANT BIGINT := 900000026;
+  v_user_id BIGINT;
   v_exact UUID;
   v_prefix UUID;
   v_token UUID;
   v_description UUID;
   v_wildcard UUID;
+  v_tie_newer UUID;
+  v_tie_a UUID;
+  v_tie_b UUID;
+  v_single UUID;
   v_archived UUID;
+  v_tie_at TIMESTAMPTZ := transaction_timestamp() - interval '4 days';
   v_response JSONB;
   v_default_response JSONB;
   v_punctuation_response JSONB;
@@ -145,6 +150,18 @@ DECLARE
   v_plan JSONB;
   v_count INTEGER;
 BEGIN
+  PERFORM pg_advisory_xact_lock(
+    hashtext('technical_configuration_dossier_search_phase_gate')
+  );
+  SELECT nv.id INTO v_user_id
+  FROM public.nhan_vien nv
+  WHERE nv.is_active = true
+  ORDER BY nv.id
+  LIMIT 1;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Setup failed: no active nhan_vien row found';
+  END IF;
+
   PERFORM pg_temp.set_claims('global', v_user_id);
 
   INSERT INTO public.technical_configuration_dossiers (
@@ -181,9 +198,10 @@ BEGIN
   ) RETURNING id INTO v_token;
 
   INSERT INTO public.technical_configuration_baseline_versions (
-    dossier_id, version_number, status, next_criterion_number, created_by, updated_by
+    dossier_id, version_number, status, next_criterion_number, revision,
+    locked_at, locked_by, created_by, updated_by
   ) VALUES (
-    v_token, 1, 'locked', 1, v_user_id, v_user_id
+    v_token, 1, 'locked', 1, 2, now(), v_user_id, v_user_id, v_user_id
   );
 
   INSERT INTO public.technical_configuration_dossiers (
@@ -207,6 +225,50 @@ BEGIN
     v_user_id,
     v_user_id
   ) RETURNING id INTO v_wildcard;
+
+  INSERT INTO public.technical_configuration_dossiers (
+    device_type_name, name, description, updated_at, created_by, updated_by
+  ) VALUES (
+    'Thiết bị khác',
+    'Alpha P2DossierTie26 rank',
+    'Newer token-tier fixture',
+    v_tie_at + interval '1 day',
+    v_user_id,
+    v_user_id
+  ) RETURNING id INTO v_tie_newer;
+
+  INSERT INTO public.technical_configuration_dossiers (
+    device_type_name, name, description, updated_at, created_by, updated_by
+  ) VALUES (
+    'Thiết bị khác',
+    'Beta P2DossierTie26 rank',
+    'UUID tie-break fixture A',
+    v_tie_at,
+    v_user_id,
+    v_user_id
+  ) RETURNING id INTO v_tie_a;
+
+  INSERT INTO public.technical_configuration_dossiers (
+    device_type_name, name, description, updated_at, created_by, updated_by
+  ) VALUES (
+    'Thiết bị khác',
+    'Gamma P2DossierTie26 rank',
+    'UUID tie-break fixture B',
+    v_tie_at,
+    v_user_id,
+    v_user_id
+  ) RETURNING id INTO v_tie_b;
+
+  INSERT INTO public.technical_configuration_dossiers (
+    device_type_name, name, description, updated_at, created_by, updated_by
+  ) VALUES (
+    'Thiết bị khác',
+    'Q',
+    'One-character fixture',
+    now(),
+    v_user_id,
+    v_user_id
+  ) RETURNING id INTO v_single;
 
   INSERT INTO public.technical_configuration_dossiers (
     device_type_name, name, description, archived_at, updated_at, created_by, updated_by
@@ -252,6 +314,20 @@ BEGIN
     WHERE item->>'id' = v_token::TEXT
   ) IS DISTINCT FROM false THEN
     RAISE EXCEPTION 'page-scoped can_delete failed for locked search result';
+  END IF;
+
+  v_response := public.technical_configuration_dossiers_list(
+    1, 10, false, 'P2DossierTie26 rank'
+  );
+  SELECT array_agg((item->>'id')::UUID ORDER BY ordinal)
+  INTO v_ids
+  FROM jsonb_array_elements(v_response->'data') WITH ORDINALITY AS rows(item, ordinal);
+  IF v_ids IS DISTINCT FROM ARRAY[
+    v_tie_newer,
+    LEAST(v_tie_a, v_tie_b),
+    GREATEST(v_tie_a, v_tie_b)
+  ] THEN
+    RAISE EXCEPTION 'updated_at/UUID tie-break ranking failed: %', v_ids;
   END IF;
 
   v_response := public.technical_configuration_dossiers_list(
@@ -330,6 +406,17 @@ BEGIN
     RAISE EXCEPTION 'filtered pagination page 2 failed: %', v_response;
   END IF;
 
+  v_response := public.technical_configuration_dossiers_list(
+    1, 100, false, 'q'
+  );
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_response->'data') item
+    WHERE item->>'id' = v_single::TEXT
+  ) THEN
+    RAISE EXCEPTION 'one-character search failed: %', v_response;
+  END IF;
+
   PERFORM public.technical_configuration_dossiers_list(
     1, 10, false, repeat('a', 200)
   );
@@ -344,11 +431,54 @@ BEGIN
   );
 
   PERFORM set_config('enable_seqscan', 'off', true);
+  PERFORM set_config('enable_indexscan', 'off', true);
   EXPLAIN (FORMAT JSON)
+  WITH search_tokens AS MATERIALIZED (
+    SELECT DISTINCT token
+    FROM pg_catalog.regexp_split_to_table(
+      'p2dossiersearch26 sieu',
+      '[[:space:]]+'
+    ) AS tokens(token)
+    WHERE token <> ''
+  ),
+  candidate_ids AS MATERIALIZED (
+    SELECT d.id
+    FROM public.technical_configuration_dossiers d
+    WHERE public._normalize_search_text(d.name)
+      LIKE '%' || public._sanitize_ilike_pattern('p2dossiersearch26') || '%' ESCAPE E'\\'
+    UNION
+    SELECT d.id
+    FROM public.technical_configuration_dossiers d
+    WHERE public._normalize_search_text(d.device_type_name)
+      LIKE '%' || public._sanitize_ilike_pattern('p2dossiersearch26') || '%' ESCAPE E'\\'
+  ),
+  candidate_dossiers AS MATERIALIZED (
+    SELECT
+      d.id,
+      d.name,
+      d.device_type_name
+    FROM public.technical_configuration_dossiers d
+    WHERE d.archived_at IS NULL
+      AND EXISTS (
+        SELECT 1
+        FROM candidate_ids candidate
+        WHERE candidate.id = d.id
+      )
+  ),
+  filtered_dossiers AS MATERIALIZED (
+    SELECT d.id
+    FROM candidate_dossiers d
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM search_tokens search_token
+      WHERE public._normalize_search_text(d.name)
+          NOT LIKE '%' || public._sanitize_ilike_pattern(search_token.token) || '%' ESCAPE E'\\'
+        AND public._normalize_search_text(d.device_type_name)
+          NOT LIKE '%' || public._sanitize_ilike_pattern(search_token.token) || '%' ESCAPE E'\\'
+    )
+  )
   SELECT d.id
-  FROM public.technical_configuration_dossiers d
-  WHERE public._normalize_search_text(d.name)
-    LIKE '%' || public._sanitize_ilike_pattern('p2dossiersearch26') || '%' ESCAPE E'\\'
+  FROM filtered_dossiers d
   INTO v_plan;
   IF NOT jsonb_path_exists(
     v_plan,
@@ -357,12 +487,6 @@ BEGIN
     RAISE EXCEPTION 'name trigram index plan failed: %', v_plan;
   END IF;
 
-  EXPLAIN (FORMAT JSON)
-  SELECT d.id
-  FROM public.technical_configuration_dossiers d
-  WHERE public._normalize_search_text(d.device_type_name)
-    LIKE '%' || public._sanitize_ilike_pattern('sieu am') || '%' ESCAPE E'\\'
-  INTO v_plan;
   IF NOT jsonb_path_exists(
     v_plan,
     '$.**."Index Name" ? (@ == "technical_configuration_dossiers_device_type_search_trgm_idx")'
@@ -372,17 +496,26 @@ BEGIN
 
   DELETE FROM public.technical_configuration_baseline_versions
   WHERE dossier_id = ANY(
-    ARRAY[v_exact, v_prefix, v_token, v_description, v_wildcard, v_archived]
+    ARRAY[
+      v_exact, v_prefix, v_token, v_description, v_wildcard, v_tie_newer,
+      v_tie_a, v_tie_b, v_single, v_archived
+    ]
   );
   DELETE FROM public.technical_configuration_dossiers
   WHERE id = ANY(
-    ARRAY[v_exact, v_prefix, v_token, v_description, v_wildcard, v_archived]
+    ARRAY[
+      v_exact, v_prefix, v_token, v_description, v_wildcard, v_tie_newer,
+      v_tie_a, v_tie_b, v_single, v_archived
+    ]
   );
 
   SELECT count(*) INTO v_count
   FROM public.technical_configuration_dossiers
   WHERE id = ANY(
-    ARRAY[v_exact, v_prefix, v_token, v_description, v_wildcard, v_archived]
+    ARRAY[
+      v_exact, v_prefix, v_token, v_description, v_wildcard, v_tie_newer,
+      v_tie_a, v_tie_b, v_single, v_archived
+    ]
   );
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'fixture cleanup failed';

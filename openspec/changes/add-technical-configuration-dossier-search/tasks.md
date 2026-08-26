@@ -17,14 +17,14 @@
 
 ## Phase 2. Database Search Contract
 
-- [ ] 2.1 Invoke `supabase-postgres-best-practices` before creating the migration and compare migration ordering against every local migration that defines `technical_configuration_dossiers_list`.
-- [ ] 2.2 Add failing static migration contract tests and a failing rollback-only SQL phase gate for the new signature, exact RPC ACL, normalization, matching, ranking, archive behavior, pagination, totals, indexes, and fixture cleanup.
-- [ ] 2.3 Update the existing dossier-delete phase gate to resolve the four-argument signature while retaining three-argument calls, and register the new dossier-search phase gate unconditionally.
-- [ ] 2.4 Add one append-only migration that creates `public._normalize_search_text`, atomically replaces the three-argument list RPC with the defaulted four-argument signature, preserves authorization/archive/pagination/`can_delete`/fixed `search_path`, revokes all RPC privileges from `PUBLIC`, `anon`, `authenticated`, and `service_role`, then grants only `EXECUTE` to `authenticated`.
-- [ ] 2.5 Implement bounded input validation, deduplicated all-token matching across name/device type, literal wildcard sanitization, filtered totals, and deterministic exact/prefix/token relevance tiers.
-- [ ] 2.6 Add two schema-qualified GIN trigram expression indexes for normalized dossier name and device type and make the Phase 2 database contracts pass.
-- [ ] 2.7 Run the static Database Quality Gate and an early Oracle baseline-forward validation; record each lane separately.
-- [ ] 2.8 Review checkpoint: migration-first deploy remains backward-compatible with callers that omit `p_search`; no live write has occurred.
+- [x] 2.1 Invoke `supabase-postgres-best-practices` before creating the migration and compare migration ordering against every local migration that defines `technical_configuration_dossiers_list`.
+- [x] 2.2 Add failing static migration contract tests and a failing rollback-only SQL phase gate for the new signature, exact RPC ACL, normalization, matching, ranking, archive behavior, pagination, totals, indexes, and fixture cleanup.
+- [x] 2.3 Update the existing dossier-delete phase gate to resolve the four-argument signature while retaining three-argument calls, and register the new dossier-search phase gate unconditionally.
+- [x] 2.4 Add one append-only migration that creates `public._normalize_search_text`, atomically replaces the three-argument list RPC with the defaulted four-argument signature, preserves authorization/archive/pagination/`can_delete`/fixed `search_path`, revokes all RPC privileges from `PUBLIC`, `anon`, `authenticated`, and `service_role`, then grants only `EXECUTE` to `authenticated`.
+- [x] 2.5 Implement bounded input validation, deduplicated all-token matching across name/device type, literal wildcard sanitization, filtered totals, and deterministic exact/prefix/token relevance tiers.
+- [x] 2.6 Add two schema-qualified GIN trigram expression indexes for normalized dossier name and device type and make the Phase 2 database contracts pass.
+- [x] 2.7 Run the static Database Quality Gate and an early Oracle baseline-forward validation; record each lane separately.
+- [x] 2.8 Review checkpoint: migration-first deploy remains backward-compatible with callers that omit `p_search`; no live write has occurred.
 
 ## Phase 3. Module-Local List Hook
 

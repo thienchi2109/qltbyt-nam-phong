@@ -130,13 +130,13 @@ describe("technical configuration dossier Phase 2 search migration", () => {
     expect(listBlock).toContain("PERFORM public._technical_configuration_require_global_user()")
 
     expect(migrationSource).toMatch(
-      /REVOKE ALL ON FUNCTION public\.technical_configuration_dossiers_list\(INTEGER, INTEGER, BOOLEAN, TEXT\)\s+FROM PUBLIC, anon, authenticated, service_role;/
+      /REVOKE ALL ON FUNCTION public\.technical_configuration_dossiers_list\(\s*INTEGER, INTEGER, BOOLEAN, TEXT\s*\)\s+FROM PUBLIC, anon, authenticated, service_role;/
     )
     expect(migrationSource).toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_list\(INTEGER, INTEGER, BOOLEAN, TEXT\)\s+TO authenticated;/
+      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_list\(\s*INTEGER, INTEGER, BOOLEAN, TEXT\s*\)\s+TO authenticated;/
     )
     expect(migrationSource).not.toMatch(
-      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_list\(INTEGER, INTEGER, BOOLEAN, TEXT\)[\s\S]*TO service_role;/
+      /GRANT EXECUTE ON FUNCTION public\.technical_configuration_dossiers_list\(\s*INTEGER, INTEGER, BOOLEAN, TEXT\s*\)[\s\S]*TO service_role;/
     )
   })
 
@@ -146,6 +146,12 @@ describe("technical configuration dossier Phase 2 search migration", () => {
     expect(listBlock).toContain("SELECT DISTINCT token")
     expect(listBlock).toContain("pg_catalog.regexp_split_to_table")
     expect(listBlock.match(/public\._sanitize_ilike_pattern/g)?.length).toBeGreaterThanOrEqual(3)
+    expect(listBlock).toContain("v_index_token TEXT")
+    expect(listBlock).toContain("ORDER BY pg_catalog.char_length(token) DESC, token")
+    expect(listBlock).toContain("candidate_ids AS MATERIALIZED")
+    expect(listBlock).toContain("UNION")
+    expect(listBlock).toContain("candidate_dossiers AS MATERIALIZED")
+    expect(listBlock).toContain("FROM candidate_dossiers d")
     expect(listBlock).toContain("NOT EXISTS")
     expect(listBlock).toMatch(
       /public\._normalize_search_text\(d\.name\)\s+LIKE[\s\S]*public\._normalize_search_text\(d\.device_type_name\)\s+LIKE/
@@ -155,13 +161,15 @@ describe("technical configuration dossier Phase 2 search migration", () => {
       "WHEN public._normalize_search_text(d.name) LIKE public._sanitize_ilike_pattern(v_normalized_search) || '%'"
     )
     expect(listBlock).toContain("search_rank")
-    expect(listBlock).toMatch(/ORDER BY page\.search_rank,\s*page\.updated_at DESC,\s*page\.id/)
+    expect(listBlock).toMatch(
+      /ORDER BY filtered\.search_rank,\s*filtered\.updated_at DESC,\s*filtered\.id/
+    )
     expect(listBlock).toContain("SELECT count(*)")
     expect(listBlock).toContain("FROM filtered_dossiers")
   })
 
   it("preserves archive, pagination, payload, and set-based can-delete contracts", () => {
-    expect(listBlock).toContain("WHERE p_include_archived OR d.archived_at IS NULL")
+    expect(listBlock).toContain("p_include_archived OR d.archived_at IS NULL")
     expect(listBlock).toContain("LIMIT p_page_size")
     expect(listBlock).toContain("OFFSET (p_page - 1)::BIGINT * p_page_size")
     expect(listBlock).toContain("WITH search_tokens AS MATERIALIZED")

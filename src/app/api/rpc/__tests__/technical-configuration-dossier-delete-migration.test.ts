@@ -65,13 +65,22 @@ describe("technical configuration dossier P15A delete migration", () => {
   const deleteBlock = getFunctionBlock(migrationSource, DELETE_RPC_NAME)
   const listBlock = getFunctionBlock(migrationSource, "technical_configuration_dossiers_list")
 
-  it("adds one migration after every local list, guard, and baseline-lock predecessor", () => {
+  it("adds one migration after every list, guard, and baseline-lock predecessor available then", () => {
     const migrationFiles = getDeleteMigrationFiles()
     expect(migrationFiles).toHaveLength(1)
 
     const migrationFile = migrationFiles[0] ?? ""
+    const migrationTimestamp = getMigrationTimestamp(migrationFile)
     const predecessorFiles = readdirSync(MIGRATIONS_DIR).filter((file) => {
       if (!file.endsWith(".sql") || file === migrationFile) {
+        return false
+      }
+
+      if (!/^(\d{14})_/.test(file)) {
+        return false
+      }
+
+      if (getMigrationTimestamp(file) >= migrationTimestamp) {
         return false
       }
 
@@ -80,7 +89,6 @@ describe("technical configuration dossier P15A delete migration", () => {
     })
 
     expect(predecessorFiles.length).toBeGreaterThan(0)
-    const migrationTimestamp = getMigrationTimestamp(migrationFile)
     for (const predecessorFile of predecessorFiles) {
       expect(migrationTimestamp).toBeGreaterThan(getMigrationTimestamp(predecessorFile))
     }
@@ -182,7 +190,7 @@ describe("technical configuration dossier P15A delete migration", () => {
     expect(phaseGateSource).toContain(DELETE_RPC_NAME)
     expect(phaseGateSource).toContain("pg_get_functiondef(")
     expect(phaseGateSource).toContain("CREATE FUNCTION pg_temp.expect_list_can_delete")
-    expect(phaseGateSource).toContain("WITH dossier_page AS MATERIALIZED")
+    expect(phaseGateSource).toContain("dossier_page AS MATERIALIZED")
     expect(phaseGateSource).toContain("JOIN dossier_page page")
     expect(phaseGateSource).toContain("ON page.id = v.dossier_id")
     expect(phaseGateSource).toContain("list presence failed: % missing")

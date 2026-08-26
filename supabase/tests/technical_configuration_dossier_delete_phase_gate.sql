@@ -325,7 +325,7 @@ BEGIN
   SELECT pg_get_functiondef(
     'public.technical_configuration_dossiers_list(integer,integer,boolean,text)'::regprocedure
   ) INTO v_list_definition;
-  IF position('WITH dossier_page AS MATERIALIZED' IN v_list_definition) = 0
+  IF position('dossier_page AS MATERIALIZED' IN v_list_definition) = 0
      OR position('locked_dossiers AS' IN v_list_definition) = 0
      OR position('JOIN dossier_page page' IN v_list_definition) = 0
      OR position('ON page.id = v.dossier_id' IN v_list_definition) = 0
