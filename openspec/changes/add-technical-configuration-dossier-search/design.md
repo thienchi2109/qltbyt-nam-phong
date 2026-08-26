@@ -116,7 +116,9 @@ Adding a defaulted fourth argument creates a distinct PostgreSQL signature. The 
 4. Create the four-argument function:
    `technical_configuration_dossiers_list(INTEGER, INTEGER, BOOLEAN, TEXT)`.
 5. Keep `p_search TEXT DEFAULT NULL` last so old callers that omit it remain compatible.
-6. Preserve the current authorization helper, archive predicate, validation, JSON payload, `can_delete`, `SECURITY DEFINER`, `SET search_path = public, pg_temp`, and explicit grants/revokes.
+6. Update the existing registered dossier-delete phase gate to resolve the new four-argument `regprocedure` while retaining its three-argument RPC calls as proof that the defaulted parameter remains backward-compatible.
+7. Register the new dossier-search phase gate unconditionally in the committed Database Quality Gate registry.
+8. Preserve the current authorization helper, archive predicate, validation, JSON payload, `can_delete`, `SECURITY DEFINER`, `SET search_path = public, pg_temp`, and explicit grants/revokes.
 
 The migration must land and be eligible for deployment before the client starts sending `p_search`. The application can be rolled out after the migration because old callers still work through the defaulted parameter.
 
@@ -130,11 +132,12 @@ Create `useTechnicalConfigurationDossierList` to own:
 - total count,
 - `useServerPagination`,
 - immediate page reset through the raw normalized value as `resetKey`,
+- a query `enabled` guard while the normalized raw value differs from the debounced value,
 - TanStack Query key and RPC args,
 - `placeholderData: keepPreviousData`,
 - initial loading, debounce-pending, background-fetching, error, retry, and filtered-empty state.
 
-The query key includes the debounced normalized search value or `null`. The RPC receives the same value through `p_search`.
+The query key includes the debounced normalized search value or `null`. The RPC receives the same value through `p_search`. Query execution is disabled during the debounce interval, so an immediate reset from page 2 or later cannot issue a page-1 request for the previous search. When the normalized value has remained stable for 300 ms, the query is enabled and requests page 1 for the current debounced search.
 
 `isSearchPending` is true while the normalized raw value differs from the debounced value or while the current query is fetching.
 
@@ -148,7 +151,9 @@ Render `ListFilterSearchCard` with `surface="plain"` before the list alert/table
 - placeholder and accessible label `Tìm theo loại thiết bị hoặc tên hồ sơ...`,
 - full width on mobile and the shared desktop width constraints,
 - `searchEndAddon` with a small `Loader2` while `isSearchPending`,
-- input `maxLength={200}`.
+- `searchMaxLength={200}`, passed through the shared toolbar to `SearchInput.maxLength`.
+
+Add the narrow optional `searchMaxLength` prop to `ListFilterSearchCard` and cover the passthrough with a focused shared-component test. Do not introduce a dossier-specific search wrapper.
 
 Loading behavior:
 
@@ -194,10 +199,10 @@ Regression tests must confirm:
 ## Migration And Rollout Plan
 
 1. Land the TypeScript contract and test harness without sending `p_search`.
-2. Land the append-only migration and database tests; run the static lane and an early Oracle baseline-forward check.
+2. Land the append-only migration and database tests, update the existing dossier-delete gate for the new exact signature, register the search gate, and run the static lane plus an early Oracle baseline-forward check.
 3. Land the module-local hook with default empty search.
 4. Enable the search toolbar and UX states.
-5. Run all final quality gates and both Database Quality Gate lanes for the exact landed commit.
+5. Complete review fixes and rollout documentation, create the final commit, then run all final quality gates and both Database Quality Gate lanes against that exact clean `HEAD`. Any subsequent file change requires a new final commit and both database lanes to be rerun.
 6. After separate explicit approval, apply the migration through Supabase MCP before deploying the search-enabled client.
 
 If rollback is required after deployment:
@@ -213,6 +218,7 @@ If rollback is required after deployment:
   - normalization fixtures,
   - exact 300 ms debounce,
   - immediate page reset,
+  - zero RPC calls through the first 299 ms after typing on a later page and one current-search page-1 request when 300 ms elapses,
   - query-key isolation,
   - RPC argument omission/value,
   - previous-data transition,
@@ -231,6 +237,7 @@ If rollback is required after deployment:
   - filtered total and stable order,
   - both trigram expression indexes.
 - Registry-selected rollback-only SQL phase gate:
+  - existing dossier-delete gate resolves the four-argument signature while its three-argument calls still succeed,
   - accent/case/Unicode/punctuation equivalence,
   - cross-field all-token matching,
   - description exclusion,

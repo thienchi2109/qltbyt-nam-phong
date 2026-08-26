@@ -38,7 +38,10 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - `src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-pagination.test.tsx`: page reset and filtered-page deletion regressions.
 - `src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-shell.test.tsx`: initial/filtered empty, loading, and error states.
 - `src/app/(app)/technical-configurations/__tests__/technical-configuration-rpc.test.ts`: typed `p_search` transport.
-- The committed Database Quality Gate registry, only if required to select the new SQL phase gate.
+- `src/components/shared/ListFilterSearchCard.tsx`: optional `searchMaxLength` passthrough to `SearchInput`.
+- `src/components/shared/__tests__/ListFilterSearchCard.test.tsx`: focused max-length passthrough regression.
+- `supabase/tests/technical_configuration_dossier_delete_phase_gate.sql`: resolve the four-argument signature while retaining three-argument default-compatibility calls.
+- `supabase/db-quality-gate-tests.json`: unconditionally register the new dossier-search SQL phase gate.
 
 ## Phase 1: Contract And Test Foundation
 
@@ -74,7 +77,8 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Preserve the current authorization helper, validation, archive behavior, page projection, `can_delete`, JSON shape, fixed `search_path`, and ACLs.
 - [ ] Add all-token predicates, filtered total, ranking tiers, and two `extensions.gin_trgm_ops` expression indexes.
 - [ ] Add representative `EXPLAIN (FORMAT JSON)` checks for index-eligible queries; document that one-/two-character tokens may scan.
-- [ ] Add the phase gate to the committed registry if required.
+- [ ] Update `technical_configuration_dossier_delete_phase_gate.sql` to resolve the four-argument `regprocedure` while retaining its three-argument invocations as backward-compatibility coverage.
+- [ ] Add the new dossier-search phase gate to the committed Database Quality Gate registry unconditionally.
 - [ ] Run static migration checks and an early Oracle baseline-forward execution.
 - [ ] Commit checkpoint: `feat(db): add normalized dossier list search contract`.
 
@@ -82,9 +86,11 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 
 **Review boundary:** Search-capable data flow with default empty search; still no visible search input.
 
+- [ ] Invoke `vercel-react-best-practices` before changing the React hook/query flow in Phases 3 and 4.
 - [ ] Write failing tests for:
   - exact 300 ms debounce,
-  - immediate page reset from normalized raw input,
+  - immediate page reset from normalized raw input on page 2 or later,
+  - zero RPC calls through 299 ms and one current-search page-1 request when 300 ms elapses,
   - `p_search` omission/value,
   - search-aware query keys,
   - `keepPreviousData`,
@@ -100,6 +106,7 @@ Live Supabase writes are excluded until the user gives explicit permission for t
   - initial loading,
   - background fetching,
   - filtered-empty state.
+- [ ] Disable query execution while `normalizedSearch !== debouncedSearch` so the immediate page reset cannot request page 1 for the previous search.
 - [ ] Keep the existing action hook contract by passing the active search-aware list key and root invalidation boundary.
 - [ ] Add cache regressions for create/update/delete and filtered-page fallback.
 - [ ] Confirm empty-search output, ordering, pagination, and action behavior are unchanged.
@@ -109,11 +116,13 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 
 **Review boundary:** User-visible search and its accessibility/responsive states only.
 
-- [ ] Write failing Testing Library tests using fake timers for the 300 ms contract.
+- [ ] Write a failing focused shared-component test for `ListFilterSearchCard.searchMaxLength` passthrough.
+- [ ] Add the optional shared `searchMaxLength` prop and pass it to `SearchInput.maxLength`.
+- [ ] Write failing dossier Testing Library tests using fake timers for the 300 ms contract.
 - [ ] Render `ListFilterSearchCard surface="plain"` before alert/table content.
 - [ ] Configure shared `SearchInput` with:
   - raw controlled value,
-  - `maxLength={200}`,
+  - `searchMaxLength={200}`,
   - placeholder/ARIA label `Tìm theo loại thiết bị hoặc tên hồ sơ...`,
   - clear/Escape behavior from the shared component,
   - `Loader2` through `searchEndAddon`.
@@ -129,6 +138,16 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 
 **Review boundary:** No new feature behavior. Only evidence, fixes required by valid findings, and rollout documentation.
 
+- [ ] Use Supabase MCP read-only inspection to verify signature/grant/index/helper drift before live-apply review.
+- [ ] Record deployment order:
+  1. explicit permission,
+  2. apply migration through Supabase MCP,
+  3. security/performance advisors and live read-only contract checks,
+  4. deploy search-enabled application.
+- [ ] Run `post_implementation_reviewer` against the originating OpenSpec acceptance criteria and triage every finding for technical validity.
+- [ ] Apply valid review fixes and rerun affected focused checks.
+- [ ] Commit checkpoint: `docs(technical-config): record dossier search verification`.
+- [ ] Confirm the worktree is clean and record the final `HEAD`; no file modification or commit is allowed after the exact-commit database evidence is collected.
 - [ ] Run one context-mode batch in repository order:
   - `node scripts/npm-run.js run format:check`
   - `node scripts/npm-run.js run verify:no-explicit-any`
@@ -139,16 +158,8 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Invoke `code-deduplication` and document why the hook remains module-local.
 - [ ] Run `openspec validate add-technical-configuration-dossier-search --strict`.
 - [ ] Run the Database Quality Gate static lane and Oracle baseline-forward lane for the same exact commit.
-- [ ] Use Supabase MCP read-only inspection to verify signature/grant/index/helper drift before live-apply review.
-- [ ] Run `post_implementation_reviewer` against this proposal/spec and triage findings for technical validity.
-- [ ] Re-run affected gates after any review fix.
-- [ ] Record deployment order:
-  1. explicit permission,
-  2. apply migration through Supabase MCP,
-  3. security/performance advisors and live read-only contract checks,
-  4. deploy search-enabled application.
+- [ ] If any final gate requires a file change, create a new final commit and rerun both Database Quality Gate lanes against the new exact `HEAD`.
 - [ ] Do not mark implementation complete if either Database Quality Gate lane is missing or if the migration/app deployment order is unresolved.
-- [ ] Commit checkpoint: `docs(technical-config): record dossier search verification`.
 
 ## Acceptance Checklist
 
@@ -158,7 +169,7 @@ Live Supabase writes are excluded until the user gives explicit permission for t
 - [ ] Every token must match; no fuzzy behavior exists.
 - [ ] Filtered totals and ranking are deterministic.
 - [ ] Default empty-search behavior is unchanged.
-- [ ] Debounce is exactly 300 ms and pagination resets immediately.
+- [ ] Debounce is exactly 300 ms, pagination resets immediately, and no request is issued for the previous search during the debounce interval.
 - [ ] Previous rows remain during pending work with clear busy feedback.
 - [ ] Empty/error states are distinct and accessible.
 - [ ] Existing authorization, archive, `can_delete`, and mutation-cache contracts are preserved.

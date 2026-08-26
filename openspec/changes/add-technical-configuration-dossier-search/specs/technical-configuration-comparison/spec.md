@@ -15,6 +15,12 @@ The system SHALL allow an authorized user to search the technical-configuration 
 - **WHEN** the user searches for `may sieu am`
 - **THEN** the dossier is included regardless of case, Vietnamese diacritics, or composed/decomposed Unicode representation
 
+#### Scenario: Vietnamese d-stroke maps to ASCII d
+
+- **GIVEN** a dossier has a name or device type containing `Điện tim`
+- **WHEN** the user searches for `dien tim`
+- **THEN** `đ` and `Đ` normalize to `d` and the dossier is included
+
 #### Scenario: Punctuation and separators normalize to spaces
 
 - **GIVEN** a searchable field contains `X-quang` or `CT/MRI`
@@ -55,7 +61,8 @@ The system SHALL calculate search relevance, filtered totals, and pagination on 
 - **GIVEN** multiple dossiers satisfy every normalized token
 - **WHEN** one dossier exactly matches the full normalized query in its name or device type
 - **THEN** it ranks before prefix-only and token-substring matches
-- **AND** exact or prefix matches in either searchable field use the same relevance tier
+- **AND** a prefix-only match ranks before an all-token substring match
+- **AND** name and device-type matches are equal only within the same exact, prefix, or token tier
 
 #### Scenario: Token matches use stable tie-breakers
 
@@ -81,9 +88,11 @@ The dossier list UI SHALL compose existing shared search and pagination primitiv
 
 #### Scenario: Search is local and debounced
 
+- **GIVEN** the user is viewing page 2 or later
 - **WHEN** the user changes the raw search input
 - **THEN** pagination resets to page 1 immediately
 - **AND** no new list request is sent until the normalized value remains stable for 300 ms
+- **AND** after 300 ms the next request uses page 1 and the current normalized search rather than the previous search
 - **AND** the search value is not written to the URL
 
 #### Scenario: Equivalent normalized queries share cache identity
