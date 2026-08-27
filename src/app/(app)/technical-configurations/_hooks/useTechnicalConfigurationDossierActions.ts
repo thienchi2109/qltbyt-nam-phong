@@ -13,6 +13,7 @@ import {
   technicalConfigurationDossierDetailQueryKey,
 } from "../technical-configuration-query-keys"
 import type {
+  TechnicalConfigurationDossierDeleteRpcArgs,
   TechnicalConfigurationDossierListItemWire,
   TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
@@ -27,6 +28,21 @@ type UseTechnicalConfigurationDossierActionsOptions = {
   onSelectedDossierChange: React.Dispatch<
     React.SetStateAction<TechnicalConfigurationDossierWire | null>
   >
+}
+
+type DossierActionOrigin = {
+  listQueryKey: QueryKey
+  page: number
+}
+
+type UpdateMutationVariables = {
+  args: TechnicalConfigurationDossierUpdateRpcArgs
+  origin: DossierActionOrigin
+}
+
+type DeleteMutationVariables = {
+  args: TechnicalConfigurationDossierDeleteRpcArgs
+  origin: DossierActionOrigin
 }
 
 const STALE_REVISION_ERROR_CODE = "stale_revision"
@@ -84,31 +100,34 @@ export function useTechnicalConfigurationDossierActions({
 }: UseTechnicalConfigurationDossierActionsOptions) {
   const queryClient = useQueryClient()
   const deleteInFlightRef = React.useRef(false)
+  const editOriginRef = React.useRef<DossierActionOrigin | null>(null)
+  const deleteOriginRef = React.useRef<DossierActionOrigin | null>(null)
   const [editTarget, setEditTarget] = React.useState<TechnicalConfigurationDossierWire | null>(null)
   const [deleteTarget, setDeleteTarget] =
     React.useState<TechnicalConfigurationDossierListItemWire | null>(null)
   const [updateErrorOverride, setUpdateErrorOverride] = React.useState<Error | null>(null)
 
   const updateMutation = useMutation({
-    mutationFn: updateTechnicalConfigurationDossier,
+    mutationFn: ({ args }: UpdateMutationVariables) => updateTechnicalConfigurationDossier(args),
     onMutate: () => {
       setUpdateErrorOverride(null)
     },
-    onSuccess: async (response) => {
+    onSuccess: async (response, { origin }) => {
       const updatedDossier = response.data
 
       setUpdateErrorOverride(null)
-      mergeDossierIntoQueryCaches(queryClient, listQueryKey, updatedDossier)
+      mergeDossierIntoQueryCaches(queryClient, origin.listQueryKey, updatedDossier)
       onSelectedDossierChange((current) =>
         current?.id === updatedDossier.id ? mergeDossier(current, updatedDossier) : current
       )
       setEditTarget(null)
+      editOriginRef.current = null
 
       await queryClient.invalidateQueries({
         queryKey: TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
       })
     },
-    onError: async (error, args) => {
+    onError: async (error, { args, origin }) => {
       if (!isStaleRevisionError(error)) {
         return
       }
@@ -121,7 +140,7 @@ export function useTechnicalConfigurationDossierActions({
           name: args.p_name,
           description: args.p_description,
         }
-        mergeDossierIntoQueryCaches(queryClient, listQueryKey, response.data)
+        mergeDossierIntoQueryCaches(queryClient, origin.listQueryKey, response.data)
         onSelectedDossierChange((current) =>
           current?.id === response.data.id ? mergeDossier(current, response.data) : current
         )
@@ -135,20 +154,20 @@ export function useTechnicalConfigurationDossierActions({
   })
 
   const deleteMutation = useMutation({
-    mutationFn: deleteTechnicalConfigurationDossier,
-    onSuccess: async (response) => {
+    mutationFn: ({ args }: DeleteMutationVariables) => deleteTechnicalConfigurationDossier(args),
+    onSuccess: async (response, { origin }) => {
       const deletedId = response.data.id
       let shouldMoveToPreviousPage = false
 
       queryClient.setQueryData<TechnicalConfigurationDossierListWireResponse>(
-        listQueryKey,
+        origin.listQueryKey,
         (current) => {
           if (!current) return current
 
           const data = current.data.filter((dossier) => dossier.id !== deletedId)
           if (data.length === current.data.length) return current
 
-          shouldMoveToPreviousPage = page > 1 && data.length === 0
+          shouldMoveToPreviousPage = origin.page > 1 && data.length === 0
 
           return {
             ...current,
@@ -163,9 +182,10 @@ export function useTechnicalConfigurationDossierActions({
       })
       onSelectedDossierChange((current) => (current?.id === deletedId ? null : current))
       setDeleteTarget((current) => (current?.id === deletedId ? null : current))
+      deleteOriginRef.current = null
 
       if (shouldMoveToPreviousPage) {
-        onPageChange(page - 1)
+        onPageChange(origin.page - 1)
       }
 
       await queryClient.invalidateQueries({
@@ -180,9 +200,10 @@ export function useTechnicalConfigurationDossierActions({
     (dossier: TechnicalConfigurationDossierWire) => {
       updateMutation.reset()
       setUpdateErrorOverride(null)
+      editOriginRef.current = { listQueryKey, page }
       setEditTarget(dossier)
     },
-    [updateMutation]
+    [listQueryKey, page, updateMutation]
   )
 
   const openDelete = React.useCallback(
@@ -190,9 +211,10 @@ export function useTechnicalConfigurationDossierActions({
       if (!dossier.can_delete || deleteInFlightRef.current || deleteMutation.isPending) return
 
       deleteMutation.reset()
+      deleteOriginRef.current = { listQueryKey, page }
       setDeleteTarget(dossier)
     },
-    [deleteMutation]
+    [deleteMutation, listQueryKey, page]
   )
 
   const handleEditOpenChange = React.useCallback(
@@ -202,6 +224,7 @@ export function useTechnicalConfigurationDossierActions({
       }
 
       setUpdateErrorOverride(null)
+      editOriginRef.current = null
       setEditTarget(null)
     },
     [updateMutation.isPending]
@@ -209,9 +232,12 @@ export function useTechnicalConfigurationDossierActions({
 
   const submitEdit = React.useCallback(
     async (args: TechnicalConfigurationDossierUpdateRpcArgs) => {
-      await updateMutation.mutateAsync(args)
+      await updateMutation.mutateAsync({
+        args,
+        origin: editOriginRef.current ?? { listQueryKey, page },
+      })
     },
-    [updateMutation]
+    [listQueryKey, page, updateMutation]
   )
 
   const handleDeleteOpenChange = React.useCallback(
@@ -219,6 +245,7 @@ export function useTechnicalConfigurationDossierActions({
       if (open || deleteInFlightRef.current || deleteMutation.isPending) return
 
       deleteMutation.reset()
+      deleteOriginRef.current = null
       setDeleteTarget(null)
     },
     [deleteMutation]
@@ -230,13 +257,16 @@ export function useTechnicalConfigurationDossierActions({
     deleteInFlightRef.current = true
     try {
       await deleteMutation.mutateAsync({
-        p_id: deleteTarget.id,
-        p_expected_revision: deleteTarget.revision,
+        args: {
+          p_id: deleteTarget.id,
+          p_expected_revision: deleteTarget.revision,
+        },
+        origin: deleteOriginRef.current ?? { listQueryKey, page },
       })
     } finally {
       deleteInFlightRef.current = false
     }
-  }, [deleteMutation, deleteTarget])
+  }, [deleteMutation, deleteTarget, listQueryKey, page])
 
   return {
     deleteError: deleteMutation.isError ? deleteMutation.error : null,

@@ -139,3 +139,54 @@
   - Database Quality Gate local lane returned `SKIP` because Phase 4 changes no migration or gate registry
   - semantic graph/search backstops found no existing reusable visible-snapshot identity abstraction; the implementation remains module-local
 - Boundary respected: no SQL or migration changes, no live database operation, no archive filter, URL state, fuzzy search, description search, sortable headers, or Phase 5 deployment work.
+
+## Phase 5: Verification And Deploy Readiness
+
+- Date: 2026-08-27
+- Status: reviewer findings and final non-database verification complete; integration, live apply, and Oracle catch-up pending
+- Branch: `feat/technical-configuration-dossier-search-p5`
+- Base commit: `b6b81876bad75d12ff2b5c8fc326e0975e3bd5d2` (`origin/main`)
+- Scope completed before final verification:
+  - client normalization now uses NFC plus the same Vietnamese transliteration contract as `public._normalize_search_text`
+  - non-Vietnamese accents remain literal, while combining marks outside the Vietnamese table become separators consistently with SQL
+  - edit/delete action origin captures the visible query key and page when the action opens
+  - immutable TanStack mutation variables carry that origin through success, stale-refresh, and delete previous-page fallback handling
+  - focused mutation-origin regressions cover changing search/page while edit or delete is pending
+- TDD evidence for review fixes:
+  - normalization RED produced `muller` instead of `müller` and `ab` instead of `a b`
+  - mutation-origin RED left the originating edit cache unchanged and failed to update the originating delete page/cache
+  - focused GREEN: 2 files, 16 tests passed
+  - broader dossier GREEN before the final documentation pass: 19 files, 131 tests passed
+- Review findings and resolution:
+  - client/SQL Unicode normalization mismatch fixed with the shared contract encoded explicitly in the module-local client normalizer
+  - pending edit/delete cache retargeting fixed by binding mutations to the visible action origin rather than later replacement query state
+  - custom `post_implementation_reviewer` follow-up was started without a full-history fork against `origin/main`, then canceled before completion at the maintainer's direction; it produced no additional review result
+- Final non-database verification:
+  - `format:check`, `verify:no-explicit-any`, diff-only `verify:dedupe`, and `typecheck` passed
+  - 19 focused dossier/shared-search/RPC files, 124 tests passed
+  - React Doctor scored 100/100 with no issues
+  - strict OpenSpec validation passed
+- Semantic dedupe:
+  - reused `useDebounce` and `useServerPagination`
+  - no reusable visible-snapshot or mutation-origin abstraction was found
+  - `src/lib/search-normalize.ts` is intentionally not reused because it strips all accents and preserves punctuation, which conflicts with the dossier SQL contract
+  - the dossier normalizer and action-origin behavior remain module-local
+- Read-only live drift inspection:
+  - live still has only the three-argument `technical_configuration_dossiers_list`
+  - `public._normalize_search_text` and both dossier search indexes are absent
+  - the search migration is absent from live migration history
+  - the existing RPC remains `SECURITY DEFINER` with `search_path=public, pg_temp`
+  - existing RPC execute privileges are held by `authenticated` and `postgres`
+- Database Quality Gate override:
+  - maintainer explicitly directed Phase 5 to bypass the Database Quality Gate
+  - `static`: bypassed, not PASS
+  - exact-commit Oracle `baseline-forward`: bypassed, not PASS
+  - aggregate: not PASS; no gate PASS or exact-commit gate coverage claim is permitted
+  - the earlier Phase 2 disposable-clone evidence does not cover the final Phase 5 commit
+- Live authorization and rollout:
+  - maintainer explicitly authorized applying `20260826120436_technical_configuration_dossier_search.sql` to live on 2026-08-27 after reviewer findings are fixed
+  - deploy only the exact migration bytes from the synchronized pushed implementation commit
+  - after live apply, read back migration/routine/helper/ACL/index state and run security/performance advisors
+  - only after live confirmation, catch up persistent Oracle `qltbyt_test` with the live-derived exact-commit manifest
+  - Oracle catch-up synchronizes migration metadata, schema, and the normalized Technical Configurations routine catalog; it does not synchronize production business data
+- Current boundary: no live database write or Oracle baseline mutation has occurred in Phase 5 yet.
