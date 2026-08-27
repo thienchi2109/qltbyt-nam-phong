@@ -43,7 +43,9 @@ vi.mock("@/components/ui/scroll-area", () => ({
 }))
 
 vi.mock("@/components/ui/badge", () => ({
-  Badge: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+  Badge: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+    <div {...props}>{children}</div>
+  ),
 }))
 
 vi.mock("@/components/ui/select", () => ({
@@ -93,9 +95,12 @@ describe("dialog unknown-error handling", () => {
   it("surfaces plain-object tenant fetch errors in AddUserDialog", async () => {
     mocks.fetchTenantList.mockRejectedValueOnce({ message: "Permission denied" })
 
-    render(<AddUserDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />, {
-      wrapper: createWrapper(),
-    })
+    render(
+      <AddUserDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} operatorRole="global" />,
+      {
+        wrapper: createWrapper(),
+      }
+    )
 
     await waitFor(() => {
       expect(mocks.toast).toHaveBeenCalledWith(
@@ -103,7 +108,7 @@ describe("dialog unknown-error handling", () => {
           variant: "destructive",
           title: "Lỗi tải danh sách đơn vị",
           description: "Permission denied",
-        }),
+        })
       )
     })
   })
@@ -121,10 +126,9 @@ describe("dialog unknown-error handling", () => {
     })
     mocks.callRpc.mockRejectedValueOnce({ message: "Permission denied" })
 
-    render(
-      <AddMaintenancePlanDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
-      { wrapper: createWrapper() },
-    )
+    render(<AddMaintenancePlanDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
 
     fireEvent.change(screen.getByLabelText("Tên kế hoạch"), {
       target: { value: "Kế hoạch bảo trì năm 2026" },
@@ -138,7 +142,7 @@ describe("dialog unknown-error handling", () => {
           variant: "destructive",
           title: "Lỗi",
           description: "Không thể tạo kế hoạch. Permission denied",
-        }),
+        })
       )
     })
   })
@@ -156,10 +160,9 @@ describe("dialog unknown-error handling", () => {
     })
     mocks.callRpc.mockRejectedValueOnce({ detail: "ignored" })
 
-    render(
-      <AddMaintenancePlanDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />,
-      { wrapper: createWrapper() },
-    )
+    render(<AddMaintenancePlanDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} />, {
+      wrapper: createWrapper(),
+    })
 
     fireEvent.change(screen.getByLabelText("Tên kế hoạch"), {
       target: { value: "Kế hoạch bảo trì năm 2026" },
@@ -173,7 +176,7 @@ describe("dialog unknown-error handling", () => {
           variant: "destructive",
           title: "Lỗi",
           description: "Không thể tạo kế hoạch.",
-        }),
+        })
       )
     })
   })

@@ -85,6 +85,7 @@ export function UsersPageContent({ user }: UsersPageContentProps) {
   return (
     <>
       <UsersDialogs
+        operatorRole={currentUser.role}
         isAddDialogOpen={usersManagement.isAddDialogOpen}
         onAddDialogOpenChange={usersManagement.setIsAddDialogOpen}
         onSuccess={usersManagement.refreshUsers}

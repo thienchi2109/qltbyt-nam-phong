@@ -62,17 +62,33 @@ describe("useUsersManagement", () => {
 
   it("fetches users through the admin list RPC when enabled", async () => {
     const users = [makeUser()]
-    mocks.callRpc.mockResolvedValueOnce(users)
+    mocks.callRpc.mockImplementation(({ fn }: { fn: string }) => {
+      if (fn === "user_list_for_admin") {
+        return Promise.resolve(users)
+      }
+      if (fn === "don_vi_user_hierarchy") {
+        return Promise.resolve([
+          {
+            tenant_id: 12,
+            users: [{ id: users[0].id, current_don_vi: 12 }],
+          },
+        ])
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
 
-    const { result } = renderHook(() =>
-      useUsersManagement({ user: adminUser, enabled: true }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: true }), {
+      wrapper: createWrapper(),
+    })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
     expect(mocks.callRpc).toHaveBeenCalledWith({ fn: "user_list_for_admin" })
-    expect(result.current.users).toEqual(users)
+    expect(mocks.callRpc).toHaveBeenCalledWith({
+      fn: "don_vi_user_hierarchy",
+      args: { p_q: null, p_only_active: false },
+    })
+    expect(result.current.users).toEqual([{ ...users[0], current_don_vi: 12 }])
   })
 
   it("does not fetch users when disabled", () => {
@@ -83,11 +99,36 @@ describe("useUsersManagement", () => {
     expect(mocks.callRpc).not.toHaveBeenCalled()
   })
 
-  it("blocks deleting the current user before calling RPC", async () => {
-    const { result } = renderHook(() =>
-      useUsersManagement({ user: adminUser, enabled: false }),
-      { wrapper: createWrapper() },
+  it("keeps the primary user list available when unit enrichment fails", async () => {
+    const users = [makeUser()]
+    mocks.callRpc.mockImplementation(({ fn }: { fn: string }) => {
+      if (fn === "user_list_for_admin") {
+        return Promise.resolve(users)
+      }
+      if (fn === "don_vi_user_hierarchy") {
+        return Promise.reject(new Error("Hierarchy unavailable"))
+      }
+      return Promise.reject(new Error(`Unexpected RPC: ${fn}`))
+    })
+
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: true }), {
+      wrapper: createWrapper(),
+    })
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+    expect(result.current.users).toEqual([{ ...users[0], current_don_vi: null }])
+    expect(mocks.toast).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Lỗi tải danh sách người dùng",
+      })
     )
+  })
+
+  it("blocks deleting the current user before calling RPC", async () => {
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: false }), {
+      wrapper: createWrapper(),
+    })
 
     act(() => {
       result.current.setUserToDelete(makeUser({ id: 1 }))
@@ -102,16 +143,15 @@ describe("useUsersManagement", () => {
       expect.objectContaining({
         variant: "destructive",
         description: "Bạn không thể xóa tài khoản của chính mình.",
-      }),
+      })
     )
   })
 
   it("deletes another user through user_delete_by_admin", async () => {
     mocks.callRpc.mockResolvedValueOnce(true)
-    const { result } = renderHook(() =>
-      useUsersManagement({ user: adminUser, enabled: false }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: false }), {
+      wrapper: createWrapper(),
+    })
 
     act(() => {
       result.current.setUserToDelete(makeUser({ id: 3 }))
@@ -129,10 +169,9 @@ describe("useUsersManagement", () => {
 
   it("does not report success when user_delete_by_admin returns false", async () => {
     mocks.callRpc.mockResolvedValueOnce(false)
-    const { result } = renderHook(() =>
-      useUsersManagement({ user: adminUser, enabled: false }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: false }), {
+      wrapper: createWrapper(),
+    })
 
     act(() => {
       result.current.setUserToDelete(makeUser({ id: 3 }))
@@ -146,12 +185,12 @@ describe("useUsersManagement", () => {
       expect.objectContaining({
         variant: "destructive",
         title: "Lỗi xóa người dùng",
-      }),
+      })
     )
     expect(mocks.toast).not.toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Đã xóa",
-      }),
+      })
     )
   })
 
@@ -160,10 +199,9 @@ describe("useUsersManagement", () => {
       success: false,
       message: "Không thể đặt lại mật khẩu",
     })
-    const { result } = renderHook(() =>
-      useUsersManagement({ user: adminUser, enabled: false }),
-      { wrapper: createWrapper() },
-    )
+    const { result } = renderHook(() => useUsersManagement({ user: adminUser, enabled: false }), {
+      wrapper: createWrapper(),
+    })
 
     act(() => {
       result.current.setUserToReset(makeUser({ id: 4 }))
@@ -184,7 +222,7 @@ describe("useUsersManagement", () => {
       expect.objectContaining({
         variant: "destructive",
         title: "Lỗi đặt lại mật khẩu",
-      }),
+      })
     )
   })
 })

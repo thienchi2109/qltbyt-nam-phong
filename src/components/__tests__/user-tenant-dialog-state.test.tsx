@@ -72,13 +72,9 @@ vi.mock("@/components/ui/input", () => ({
 }))
 
 vi.mock("@/components/ui/label", () => ({
-  Label: ({
-    children,
-    htmlFor,
-  }: {
-    children: React.ReactNode
-    htmlFor?: string
-  }) => <label htmlFor={htmlFor}>{children}</label>,
+  Label: ({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) => (
+    <label htmlFor={htmlFor}>{children}</label>
+  ),
 }))
 
 vi.mock("@/components/ui/checkbox", () => ({
@@ -119,11 +115,7 @@ function renderWithQueryClient(ui: React.ReactElement) {
     },
   })
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>
-  )
+  return render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>)
 }
 
 const user: UserSummary = {
@@ -149,7 +141,13 @@ const tenant: TenantRow = {
 describe("shared edit dialogs preserve in-progress drafts", () => {
   it("does not overwrite an edited user draft when the same user prop refreshes", () => {
     const { rerender } = renderWithQueryClient(
-      <EditUserDialog open onOpenChange={vi.fn()} onSuccess={vi.fn()} user={user} />
+      <EditUserDialog
+        open
+        onOpenChange={vi.fn()}
+        onSuccess={vi.fn()}
+        operatorRole="global"
+        user={user}
+      />
     )
 
     fireEvent.change(screen.getByLabelText("Tên đăng nhập *"), {
@@ -162,6 +160,7 @@ describe("shared edit dialogs preserve in-progress drafts", () => {
           open
           onOpenChange={vi.fn()}
           onSuccess={vi.fn()}
+          operatorRole="global"
           user={{ ...user, full_name: "Nguyen Van A refreshed" }}
         />
       </QueryClientProvider>

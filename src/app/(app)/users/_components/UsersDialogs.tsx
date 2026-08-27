@@ -18,6 +18,7 @@ import {
 import type { UserSummary } from "@/types/database"
 
 type UsersDialogsProps = {
+  operatorRole: string
   isAddDialogOpen: boolean
   onAddDialogOpenChange: (open: boolean) => void
   onSuccess: () => void
@@ -33,7 +34,9 @@ type UsersDialogsProps = {
   onResetPassword: () => Promise<void>
 }
 
+/** Renders user-management dialogs with role options scoped to the current operator. */
 export function UsersDialogs({
+  operatorRole,
   isAddDialogOpen,
   onAddDialogOpenChange,
   onSuccess,
@@ -54,11 +57,13 @@ export function UsersDialogs({
         open={isAddDialogOpen}
         onOpenChange={onAddDialogOpenChange}
         onSuccess={onSuccess}
+        operatorRole={operatorRole}
       />
       <EditUserDialog
         open={!!editingUser}
         onOpenChange={(open) => !open && onEditingUserChange(null)}
         onSuccess={onSuccess}
+        operatorRole={operatorRole}
         user={editingUser}
       />
       {userToDelete && (
@@ -70,8 +75,8 @@ export function UsersDialogs({
             <AlertDialogHeader>
               <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
               <AlertDialogDescription>
-                Bạn có chắc chắn muốn xóa người dùng &quot;{userToDelete.full_name}&quot;? Hành
-                động này không thể hoàn tác.
+                Bạn có chắc chắn muốn xóa người dùng &quot;{userToDelete.full_name}&quot;? Hành động
+                này không thể hoàn tác.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -84,16 +89,13 @@ export function UsersDialogs({
           </AlertDialogContent>
         </AlertDialog>
       )}
-      <AlertDialog
-        open={!!userToReset}
-        onOpenChange={(open) => !open && onUserToResetChange(null)}
-      >
+      <AlertDialog open={!!userToReset} onOpenChange={(open) => !open && onUserToResetChange(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Đặt lại mật khẩu</AlertDialogTitle>
             <AlertDialogDescription>
-              Bạn có chắc chắn muốn đặt lại mật khẩu cho &quot;{userToReset?.full_name}&quot; về
-              giá trị mặc định?
+              Bạn có chắc chắn muốn đặt lại mật khẩu cho &quot;{userToReset?.full_name}&quot; về giá
+              trị mặc định?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

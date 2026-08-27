@@ -23,14 +23,18 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
-import { USER_MANAGEMENT_ROLE_OPTIONS, type UserRole, type UserSummary } from "@/types/database"
+import { getUserManagementRoleOptions } from "@/components/user-management-role-options"
+import { useUserManagementTenants } from "@/components/use-user-management-tenants"
+import type { UserRole, UserSummary } from "@/types/database"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface EditUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  operatorRole: string
   user: UserSummary | null
 }
 
@@ -39,6 +43,7 @@ const EMPTY_EDIT_USER_FORM = {
   full_name: "",
   role: "" as UserRole | "",
   khoa_phong: "",
+  current_don_vi: undefined as number | undefined,
 }
 
 function getEditUserForm(user: UserSummary | null) {
@@ -48,11 +53,18 @@ function getEditUserForm(user: UserSummary | null) {
     full_name: user.full_name,
     role: user.role,
     khoa_phong: user.khoa_phong || "",
+    current_don_vi: user.current_don_vi ?? undefined,
   }
 }
 
 /** Renders the user edit dialog without overwriting in-progress drafts on refresh. */
-export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUserDialogProps) {
+export function EditUserDialog({
+  open,
+  onOpenChange,
+  onSuccess,
+  operatorRole,
+  user,
+}: EditUserDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const activeUserId = open ? (user?.id ?? null) : null
@@ -63,6 +75,10 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
     loadedUserIdRef.current = activeUserId
     setFormData(getEditUserForm(open ? user : null))
   }
+
+  const roleOptions = getUserManagementRoleOptions(operatorRole)
+  const isExpertRole = isTechnicalConfigurationExpertRole(formData.role)
+  const { data: tenants = [] } = useUserManagementTenants(open && isExpertRole)
 
   const handleOpenChange = React.useCallback(
     (nextOpen: boolean) => {
@@ -81,7 +97,25 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
         throw new Error("Không có người dùng để cập nhật")
       }
 
-      await callRpc<boolean>({
+      const isExistingExpert = isTechnicalConfigurationExpertRole(user.role)
+      const isScopeChange =
+        isExistingExpert &&
+        isExpertRole &&
+        formData.current_don_vi != null &&
+        formData.current_don_vi !== user.current_don_vi
+
+      if (isScopeChange) {
+        await callRpc<void>({
+          fn: "user_reassign_expert_scope",
+          args: {
+            p_user_id: user.id,
+            p_don_vi: formData.current_don_vi,
+          },
+        })
+        return
+      }
+
+      const updated = await callRpc<boolean>({
         fn: "user_update_profile",
         args: {
           p_target_user_id: user.id,
@@ -91,6 +125,10 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
           p_khoa_phong: formData.khoa_phong.trim() || null,
         },
       })
+
+      if (updated === false) {
+        throw new Error("Không thể cập nhật thông tin người dùng")
+      }
     },
     onSuccess: async () => {
       try {
@@ -125,11 +163,49 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!user || !formData.username || !formData.full_name || !formData.role) {
+    if (
+      !user ||
+      !formData.username ||
+      !formData.full_name ||
+      !formData.role ||
+      (isExpertRole && !formData.current_don_vi)
+    ) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc.",
+        description: isExpertRole
+          ? "Vui lòng điền đầy đủ thông tin bắt buộc, bao gồm Đơn vị chuyên gia."
+          : "Vui lòng điền đầy đủ thông tin bắt buộc.",
+      })
+      return
+    }
+
+    const isExistingExpert = isTechnicalConfigurationExpertRole(user.role)
+    const isScopeChange =
+      isExpertRole &&
+      formData.current_don_vi != null &&
+      formData.current_don_vi !== user.current_don_vi
+    const isProfileChange =
+      formData.username.trim() !== user.username ||
+      formData.full_name.trim() !== user.full_name ||
+      (formData.khoa_phong.trim() || null) !== (user.khoa_phong?.trim() || null)
+
+    if (isExpertRole && !isExistingExpert && isScopeChange) {
+      toast({
+        variant: "destructive",
+        title: "Không thể đổi vai trò và đơn vị cùng lúc",
+        description:
+          "Hãy đổi vai trò với đơn vị hiện tại trước, sau đó đổi phạm vi chuyên gia ở lần cập nhật riêng.",
+      })
+      return
+    }
+
+    if (isExistingExpert && isExpertRole && isScopeChange && isProfileChange) {
+      toast({
+        variant: "destructive",
+        title: "Không thể cập nhật đồng thời",
+        description:
+          "Vui lòng cập nhật thông tin và đổi đơn vị theo từng bước riêng để tránh trạng thái cập nhật một phần.",
       })
       return
     }
@@ -184,7 +260,7 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_MANAGEMENT_ROLE_OPTIONS).map(([key, label]) => (
+                  {roleOptions.map(([key, label]) => (
                     <SelectItem key={key} value={key}>
                       {label}
                     </SelectItem>
@@ -192,6 +268,31 @@ export function EditUserDialog({ open, onOpenChange, onSuccess, user }: EditUser
                 </SelectContent>
               </Select>
             </div>
+            {isExpertRole && (
+              <div className="grid gap-2">
+                <Label>Đơn vị chuyên gia *</Label>
+                <Select
+                  value={formData.current_don_vi ? String(formData.current_don_vi) : ""}
+                  onValueChange={(value) =>
+                    setFormData((prev) => ({ ...prev, current_don_vi: Number(value) }))
+                  }
+                  disabled={isPending}
+                  required
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn đơn vị" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((tenant) => (
+                      <SelectItem key={tenant.id} value={String(tenant.id)}>
+                        {tenant.name}
+                        {tenant.code ? ` (${tenant.code})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label htmlFor="edit-khoa_phong">Khoa/Phòng</Label>
               <Input

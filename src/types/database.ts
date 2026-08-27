@@ -67,7 +67,9 @@ export interface User {
 export type UserSummary = Pick<
   User,
   "id" | "username" | "full_name" | "role" | "khoa_phong" | "created_at"
->
+> & {
+  current_don_vi?: number | null
+}
 
 /** Roles currently exposed by the add/edit user selectors. */
 export const USER_MANAGEMENT_ROLE_OPTIONS = {

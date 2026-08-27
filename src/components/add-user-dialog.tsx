@@ -23,21 +23,24 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
+import { isTechnicalConfigurationExpertRole } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
-import { USER_MANAGEMENT_ROLE_OPTIONS, type UserRole } from "@/types/database"
+import type { UserRole } from "@/types/database"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { fetchTenantList, type AddEquipmentTenantOption } from "./add-equipment-dialog.queries"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { getUserManagementRoleOptions } from "@/components/user-management-role-options"
+import { useUserManagementTenants } from "@/components/use-user-management-tenants"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 
 interface AddUserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
+  operatorRole: string
 }
 
 /** Renders the user creation dialog and resets draft state when it closes. */
-export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogProps) {
+export function AddUserDialog({ open, onOpenChange, onSuccess, operatorRole }: AddUserDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [memberships, setMemberships] = React.useState<number[]>([])
@@ -66,24 +69,9 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
     [onOpenChange, resetForm]
   )
 
-  const loadTenants = React.useCallback(async (): Promise<AddEquipmentTenantOption[]> => {
-    try {
-      return await fetchTenantList()
-    } catch (error: unknown) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải danh sách đơn vị",
-        description: getUnknownErrorMessage(error),
-      })
-      return []
-    }
-  }, [toast])
-
-  const { data: tenants = [] } = useQuery({
-    queryKey: ["add-user-dialog-tenants"],
-    queryFn: loadTenants,
-    enabled: open,
-  })
+  const { data: tenants = [] } = useUserManagementTenants(open)
+  const roleOptions = getUserManagementRoleOptions(operatorRole)
+  const isExpertRole = isTechnicalConfigurationExpertRole(formData.role)
 
   const createUserMutation = useMutation({
     mutationFn: async () => {
@@ -95,7 +83,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
           p_full_name: formData.full_name.trim(),
           p_role: formData.role,
           p_current_don_vi: formData.current_don_vi,
-          p_memberships: memberships.length ? memberships : null,
+          p_memberships: !isExpertRole && memberships.length ? memberships : null,
         },
       })
 
@@ -203,9 +191,12 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
               <Label htmlFor="role">Vai trò *</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: UserRole) =>
+                onValueChange={(value: UserRole) => {
+                  if (isTechnicalConfigurationExpertRole(value)) {
+                    setMemberships([])
+                  }
                   setFormData((prev) => ({ ...prev, role: value }))
-                }
+                }}
                 disabled={isPending}
                 required
               >
@@ -213,7 +204,7 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                   <SelectValue placeholder="Chọn vai trò" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(USER_MANAGEMENT_ROLE_OPTIONS).map(([key, label]) => (
+                  {roleOptions.map(([key, label]) => (
                     <SelectItem key={key} value={key}>
                       {label}
                     </SelectItem>
@@ -244,40 +235,42 @@ export function AddUserDialog({ open, onOpenChange, onSuccess }: AddUserDialogPr
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>Thành viên đơn vị (tùy chọn)</Label>
-              <ScrollArea className="h-28 w-full rounded-md border p-2">
-                <div className="flex flex-wrap gap-2">
-                  {tenants.length > 0 ? (
-                    tenants.map((t) => {
-                      const selected = membershipIds.has(t.id) || t.id === formData.current_don_vi
-                      return (
-                        <Badge
-                          key={t.id}
-                          variant={selected ? "default" : "secondary"}
-                          className="cursor-pointer select-none"
-                          onClick={() => {
-                            setMemberships((prev) => {
-                              const next = new Set(prev)
-                              if (next.delete(t.id)) return [...next]
-                              next.add(t.id)
-                              return [...next]
-                            })
-                          }}
-                        >
-                          {t.name}
-                        </Badge>
-                      )
-                    })
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Không có danh sách đơn vị.</p>
-                  )}
-                </div>
-              </ScrollArea>
-              <p className="text-xs text-muted-foreground">
-                Mặc định hệ thống sẽ thêm đơn vị hiện tại vào danh sách thành viên.
-              </p>
-            </div>
+            {!isExpertRole && (
+              <div className="grid gap-2">
+                <Label>Thành viên đơn vị (tùy chọn)</Label>
+                <ScrollArea className="h-28 w-full rounded-md border p-2">
+                  <div className="flex flex-wrap gap-2">
+                    {tenants.length > 0 ? (
+                      tenants.map((t) => {
+                        const selected = membershipIds.has(t.id) || t.id === formData.current_don_vi
+                        return (
+                          <Badge
+                            key={t.id}
+                            variant={selected ? "default" : "secondary"}
+                            className="cursor-pointer select-none"
+                            onClick={() => {
+                              setMemberships((prev) => {
+                                const next = new Set(prev)
+                                if (next.delete(t.id)) return [...next]
+                                next.add(t.id)
+                                return [...next]
+                              })
+                            }}
+                          >
+                            {t.name}
+                          </Badge>
+                        )
+                      })
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Không có danh sách đơn vị.</p>
+                    )}
+                  </div>
+                </ScrollArea>
+                <p className="text-xs text-muted-foreground">
+                  Mặc định hệ thống sẽ thêm đơn vị hiện tại vào danh sách thành viên.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

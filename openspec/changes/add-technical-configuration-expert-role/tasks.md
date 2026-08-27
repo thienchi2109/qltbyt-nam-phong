@@ -354,18 +354,23 @@ tests only.
 **Deploy boundary:** operator-visible activation point. After this phase,
 global/admin can create and manage expert accounts.
 
-- [ ] 14.1 Offer `Chuyên gia` only in global/admin user-management flows.
-- [ ] 14.2 Require unit assignment and surface validation errors before create
+- [x] 14.1 Offer `Chuyên gia` only in global/admin user-management flows.
+- [x] 14.2 Require unit assignment and surface validation errors before create
       or role change submits.
-- [ ] 14.3 Wire expert reassignment only to
+- [x] 14.3 Wire expert reassignment only to
       `user_reassign_expert_scope`; never sequence generic membership RPCs from
       the client.
-- [ ] 14.4 Do not expose tenant switching to the expert account.
-- [ ] 14.5 Add create, update, reassignment, validation, and global/raw-admin
+- [x] 14.4 Do not expose tenant switching to the expert account.
+- [x] 14.5 Add create, update, reassignment, validation, and global/raw-admin
       counter-tests.
 
 **Exit gate:** focused user-management tests and an end-to-end expert login
 smoke test pass.
+
+Verification note (2026-08-27): focused and cross-layer automated tests pass.
+Browser-level live login automation remains tracked in GitHub issue #974 because
+the repository does not yet provide a credentialed E2E harness; this phase does
+not claim that live smoke was executed.
 
 ## Phase 15 - Consolidate Documentation And Remove Stale Assumptions
 

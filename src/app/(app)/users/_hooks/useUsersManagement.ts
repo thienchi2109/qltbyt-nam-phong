@@ -20,10 +20,39 @@ type UseUsersManagementOptions = {
   enabled: boolean
 }
 
+type UserHierarchyScopeRow = {
+  users: Array<{
+    id: UserSummary["id"]
+    current_don_vi?: number | null
+  }> | null
+}
+
 const usersManagementKeys = {
   all: ["users-management"] as const,
 }
 
+function mergeCurrentUnit(
+  users: UserSummary[],
+  hierarchyRows: UserHierarchyScopeRow[]
+): UserSummary[] {
+  const currentUnitByUserId = new Map<string, number>()
+
+  for (const row of hierarchyRows) {
+    for (const hierarchyUser of row.users ?? []) {
+      if (hierarchyUser.current_don_vi != null) {
+        currentUnitByUserId.set(String(hierarchyUser.id), hierarchyUser.current_don_vi)
+      }
+    }
+  }
+
+  return users.map((listedUser) => ({
+    ...listedUser,
+    current_don_vi:
+      currentUnitByUserId.get(String(listedUser.id)) ?? listedUser.current_don_vi ?? null,
+  }))
+}
+
+/** Manages the global/admin user list and its account actions. */
 export function useUsersManagement({ user, enabled }: UseUsersManagementOptions) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -42,10 +71,19 @@ export function useUsersManagement({ user, enabled }: UseUsersManagementOptions)
 
   const usersQuery = useQuery({
     queryKey: usersManagementKeys.all,
-    queryFn: () =>
-      callRpc<UserSummary[]>({
-        fn: "user_list_for_admin",
-      }),
+    queryFn: async () => {
+      const [users, hierarchyRows] = await Promise.all([
+        callRpc<UserSummary[]>({
+          fn: "user_list_for_admin",
+        }),
+        callRpc<UserHierarchyScopeRow[]>({
+          fn: "don_vi_user_hierarchy",
+          args: { p_q: null, p_only_active: false },
+        }).catch(() => []),
+      ])
+
+      return mergeCurrentUnit(users ?? [], hierarchyRows ?? [])
+    },
     enabled,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
@@ -136,8 +174,7 @@ export function useUsersManagement({ user, enabled }: UseUsersManagementOptions)
       const data = await resetPasswordMutation.mutateAsync(userToReset.id)
 
       const message =
-        data.message ||
-        `Mật khẩu của ${userToReset.full_name} đã được đặt lại thành "userqltb".`
+        data.message || `Mật khẩu của ${userToReset.full_name} đã được đặt lại thành "userqltb".`
 
       toast({
         title: "Thành công",
@@ -149,7 +186,7 @@ export function useUsersManagement({ user, enabled }: UseUsersManagementOptions)
         title: "Lỗi đặt lại mật khẩu",
         description: getUnknownErrorMessage(
           error,
-          "Không thể đặt lại mật khẩu cho người dùng này.",
+          "Không thể đặt lại mật khẩu cho người dùng này."
         ),
       })
     } finally {
