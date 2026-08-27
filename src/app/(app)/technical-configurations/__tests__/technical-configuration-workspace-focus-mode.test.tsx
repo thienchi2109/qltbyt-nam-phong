@@ -119,7 +119,7 @@ describe("technical configuration workspace focus mode", () => {
     await user.type(draftInput, " đã sửa")
     await user.click(screen.getByRole("button", { name: "Mở rộng vùng chỉnh sửa" }))
 
-    expect(workspace).toHaveClass("overflow-hidden")
+    expect(workspace).toHaveClass("fixed", "inset-0", "z-50", "bg-background", "overflow-hidden")
     expect(screen.queryByRole("heading", { name: dossier.name })).not.toBeInTheDocument()
     expect(screen.queryByRole("tab")).not.toBeInTheDocument()
     expect(screen.getByText("Đang tập trung chỉnh sửa")).toBeInTheDocument()
@@ -130,6 +130,7 @@ describe("technical configuration workspace focus mode", () => {
 
     await user.click(screen.getByRole("button", { name: "Thu nhỏ vùng chỉnh sửa" }))
 
+    expect(workspace).not.toHaveClass("fixed", "inset-0", "z-50")
     expect(screen.getByRole("heading", { name: dossier.name })).toBeInTheDocument()
     expect(screen.getAllByRole("tab")).toHaveLength(5)
     expect(screen.getByLabelText("Nội dung bản nháp")).toBe(draftInput)
@@ -171,6 +172,12 @@ describe("technical configuration workspace focus mode", () => {
 
     expect(await screen.findByText("Bố cục mặc định")).toBeInTheDocument()
     expect(screen.getByRole("heading", { name: "Cấu hình máy thở" })).toBeInTheDocument()
+
+    rerender(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
+
+    expect(await screen.findByText("Bố cục mặc định")).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: dossier.name })).toBeInTheDocument()
+    expect(screen.getByTestId("technical-configuration-workspace")).not.toHaveClass("fixed")
   })
 
   it("keeps every non-baseline workspace vertically scrollable", async () => {

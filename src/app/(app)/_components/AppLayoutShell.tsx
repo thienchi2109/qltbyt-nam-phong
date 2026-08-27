@@ -4,8 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
-import dynamic from "next/dynamic"
-import { Copyright, KeyRound, LogOut, Menu, User } from "lucide-react"
+import { KeyRound, LogOut, Menu, User } from "lucide-react"
 
 import { MainContentTransition } from "@/components/page-transition-wrapper"
 import { AuthenticatedPageSpinnerFallback } from "@/app/(app)/_components/AuthenticatedPageFallbacks"
@@ -43,13 +42,10 @@ import { useAppNotificationCounts } from "@/hooks/useAppNotificationCounts"
 import { signOutWithReason } from "@/lib/auth-signout"
 import { MobileFloatingActionsProvider } from "@/components/shared/floating-actions"
 import { appLayoutUiReducer, initialAppLayoutUiState } from "./AppLayoutShellState"
-import { AppMobileFloatingActions } from "./AppMobileFloatingActions"
+import { AppLayoutAssistantChrome } from "./AppLayoutAssistantChrome"
+import { AppLayoutFooter } from "./AppLayoutFooter"
+import { AppLayoutChrome, FooterVisibilityProvider } from "./AppLayoutFooterVisibility"
 import { HeaderEquipmentSearchEntry } from "./HeaderEquipmentSearchEntry"
-
-const AssistantPanel = dynamic(
-  () => import("@/components/assistant/AssistantPanel").then((m) => m.AssistantPanel),
-  { ssr: false }
-)
 
 type AppLayoutUser = {
   role?: string
@@ -88,9 +84,11 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
     <TenantSelectionProvider enabled={!isExpertShell}>
       <EquipmentFilterProvider>
         <MobileFloatingActionsProvider>
-          <AppLayoutShellContent user={user} isExpertShell={isExpertShell}>
-            {children}
-          </AppLayoutShellContent>
+          <FooterVisibilityProvider>
+            <AppLayoutShellContent user={user} isExpertShell={isExpertShell}>
+              {children}
+            </AppLayoutShellContent>
+          </FooterVisibilityProvider>
         </MobileFloatingActionsProvider>
       </EquipmentFilterProvider>
     </TenantSelectionProvider>
@@ -176,133 +174,137 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
           isSidebarOpen ? "lg:grid-cols-[220px_minmax(0,1fr)]" : "lg:grid-cols-[72px_minmax(0,1fr)]"
         )}
       >
-        <div className="hidden border-r border-border bg-white shadow-[2px_0_8px_rgba(0,0,0,0.04)] lg:block">
-          <div className="flex h-full max-h-screen flex-col">
-            <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
-              <Link
-                href="/"
-                className="flex flex-col items-center gap-3 font-semibold text-primary"
-                data-tour="sidebar-logo"
-              >
-                {branding.isLoading ? (
-                  <Skeleton className={isSidebarOpen ? "size-16" : "size-8"} />
-                ) : (
-                  <TenantLogo
-                    src={branding.data?.logo_url ?? null}
-                    name={branding.data?.name ?? null}
-                    size={isSidebarOpen ? 64 : 32}
-                    className={isSidebarOpen ? "" : "mt-2"}
-                  />
-                )}
-              </Link>
-            </div>
-            <div className="flex-1 overflow-auto py-4">
-              <AppSidebarNav
-                items={navItems}
-                pathname={pathname}
-                isSidebarOpen={isSidebarOpen}
-                notificationCounts={notificationCounts}
-                tourAttributes={TOUR_ATTRIBUTES}
-                className={cn("px-3", !isSidebarOpen && "justify-items-center px-0")}
-              />
-            </div>
-          </div>
-        </div>
-        <div className={cn("flex min-w-0 flex-col", isTechnicalConfigurationsRoute && "min-h-0")}>
-          <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md lg:relative lg:z-auto lg:h-[60px] lg:px-6">
-            <Button
-              variant="outline"
-              size="icon"
-              className="hidden shrink-0 touch-target lg:flex"
-              onClick={() => dispatchUi({ type: "toggleSidebar" })}
-              data-tour="sidebar-toggle"
-            >
-              <Menu className="size-5" />
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-            <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex min-w-0 items-center gap-3">
-                {branding.isLoading ? (
-                  <Skeleton className="size-7 rounded-full" />
-                ) : (
-                  <TenantLogo
-                    src={branding.data?.logo_url ?? null}
-                    name={branding.data?.name ?? null}
-                    size={28}
-                  />
-                )}
-                {branding.isLoading ? (
-                  <Skeleton className="h-5 w-48" />
-                ) : (
-                  <TenantName
-                    name={branding.data?.name ?? null}
-                    className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base lg:max-w-none lg:text-lg"
-                  />
-                )}
+        <AppLayoutChrome>
+          <div className="hidden border-r border-border bg-white shadow-[2px_0_8px_rgba(0,0,0,0.04)] lg:block">
+            <div className="flex h-full max-h-screen flex-col">
+              <div className="flex h-auto flex-col items-center gap-4 border-b border-border p-4">
+                <Link
+                  href="/"
+                  className="flex flex-col items-center gap-3 font-semibold text-primary"
+                  data-tour="sidebar-logo"
+                >
+                  {branding.isLoading ? (
+                    <Skeleton className={isSidebarOpen ? "size-16" : "size-8"} />
+                  ) : (
+                    <TenantLogo
+                      src={branding.data?.logo_url ?? null}
+                      name={branding.data?.name ?? null}
+                      size={isSidebarOpen ? 64 : 32}
+                      className={isSidebarOpen ? "" : "mt-2"}
+                    />
+                  )}
+                </Link>
+              </div>
+              <div className="flex-1 overflow-auto py-4">
+                <AppSidebarNav
+                  items={navItems}
+                  pathname={pathname}
+                  isSidebarOpen={isSidebarOpen}
+                  notificationCounts={notificationCounts}
+                  tourAttributes={TOUR_ATTRIBUTES}
+                  className={cn("px-3", !isSidebarOpen && "justify-items-center px-0")}
+                />
               </div>
             </div>
+          </div>
+        </AppLayoutChrome>
+        <div className={cn("flex min-w-0 flex-col", isTechnicalConfigurationsRoute && "min-h-0")}>
+          <AppLayoutChrome>
+            <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center gap-4 bg-white px-4 shadow-md lg:relative lg:z-auto lg:h-[60px] lg:px-6">
+              <Button
+                variant="outline"
+                size="icon"
+                className="hidden shrink-0 touch-target lg:flex"
+                onClick={() => dispatchUi({ type: "toggleSidebar" })}
+                data-tour="sidebar-toggle"
+              >
+                <Menu className="size-5" />
+                <span className="sr-only">Toggle sidebar</span>
+              </Button>
+              <div className="flex min-w-0 flex-1 items-center">
+                <div className="flex min-w-0 items-center gap-3">
+                  {branding.isLoading ? (
+                    <Skeleton className="size-7 rounded-full" />
+                  ) : (
+                    <TenantLogo
+                      src={branding.data?.logo_url ?? null}
+                      name={branding.data?.name ?? null}
+                      size={28}
+                    />
+                  )}
+                  {branding.isLoading ? (
+                    <Skeleton className="h-5 w-48" />
+                  ) : (
+                    <TenantName
+                      name={branding.data?.name ?? null}
+                      className="max-w-[calc(100vw-120px)] truncate text-sm sm:max-w-[400px] sm:text-base lg:max-w-none lg:text-lg"
+                    />
+                  )}
+                </div>
+              </div>
 
-            <div
-              data-testid="app-header-actions"
-              className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2"
-            >
-              {isExpertShell ? null : (
-                <>
-                  <HeaderEquipmentSearchEntry userRole={user.role} />
-                  <RealtimeStatus variant="icon" className="hidden md:flex" />
-                  <HelpButton className="hidden md:flex" />
-                  <NotificationBellDialog
-                    repairCount={notificationCounts.repair}
-                    transferCount={notificationCounts.transfer}
-                    maintenanceCount={notificationCounts.maintenance}
-                  />
-                </>
-              )}
+              <div
+                data-testid="app-header-actions"
+                className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2"
+              >
+                {isExpertShell ? null : (
+                  <>
+                    <HeaderEquipmentSearchEntry userRole={user.role} />
+                    <RealtimeStatus variant="icon" className="hidden md:flex" />
+                    <HelpButton className="hidden md:flex" />
+                    <NotificationBellDialog
+                      repairCount={notificationCounts.repair}
+                      transferCount={notificationCounts.transfer}
+                      maintenanceCount={notificationCounts.maintenance}
+                    />
+                  </>
+                )}
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="rounded-full touch-target"
-                    onClick={(event) => event.stopPropagation()}
-                  >
-                    <User className="size-5" />
-                    <span className="sr-only">Toggle user menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel className="pb-2">
-                    <div className="flex flex-col gap-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user.full_name || user.username}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs">
-                          {USER_ROLES[user.role as keyof typeof USER_ROLES]}
-                        </Badge>
-                      </div>
-                      {user.khoa_phong ? (
-                        <p className="text-xs leading-none text-muted-foreground">
-                          {user.khoa_phong}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="rounded-full touch-target"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <User className="size-5" />
+                      <span className="sr-only">Toggle user menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel className="pb-2">
+                      <div className="flex flex-col gap-y-1">
+                        <p className="text-sm font-medium leading-none">
+                          {user.full_name || user.username}
                         </p>
-                      ) : null}
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={openPasswordDialog}>
-                    <KeyRound className="mr-2 size-4" />
-                    Thay đổi mật khẩu
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 size-4" />
-                    Đăng xuất
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </header>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {USER_ROLES[user.role as keyof typeof USER_ROLES]}
+                          </Badge>
+                        </div>
+                        {user.khoa_phong ? (
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {user.khoa_phong}
+                          </p>
+                        ) : null}
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={openPasswordDialog}>
+                      <KeyRound className="mr-2 size-4" />
+                      Thay đổi mật khẩu
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut}>
+                      <LogOut className="mr-2 size-4" />
+                      Đăng xuất
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </header>
+          </AppLayoutChrome>
           <main
             className={cn(
               "flex min-w-0 flex-1 flex-col gap-4 bg-background p-4 pb-24 lg:gap-8 lg:p-8 lg:pb-8",
@@ -319,29 +321,17 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
             </MainContentTransition>
           </main>
 
-          <MobileFooterNav notificationCounts={notificationCounts} />
-
-          {isExpertShell ? null : (
-            <>
-              <AppMobileFloatingActions
+          <AppLayoutChrome>
+            <MobileFooterNav notificationCounts={notificationCounts} />
+            {isExpertShell ? null : (
+              <AppLayoutAssistantChrome
                 isAssistantOpen={isAssistantOpen}
+                onAssistantClose={() => dispatchUi({ type: "setAssistantOpen", isOpen: false })}
                 onAssistantToggle={() => dispatchUi({ type: "toggleAssistant" })}
               />
-              {isAssistantOpen ? (
-                <AssistantPanel
-                  isOpen={isAssistantOpen}
-                  onClose={() => dispatchUi({ type: "setAssistantOpen", isOpen: false })}
-                />
-              ) : null}
-            </>
-          )}
-
-          <footer className="hidden flex-col items-center gap-1 border-t border-border bg-muted p-4 text-center caption-responsive md:flex">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <span>Hệ thống quản lý thiết bị y tế CVMEMS</span>
-              <Copyright className="size-3" />
-            </div>
-          </footer>
+            )}
+            <AppLayoutFooter />
+          </AppLayoutChrome>
         </div>
       </div>
     </>

@@ -1,7 +1,6 @@
 import * as React from "react"
 import {
   ArrowLeft,
-  ClipboardList,
   FileText,
   GitCompareArrows,
   LibraryBig,
@@ -14,6 +13,10 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
+import {
+  useSuppressAppChrome,
+  useSuppressFooter,
+} from "../../_components/AppLayoutFooterVisibility"
 import { useTechnicalConfigurationGuardedNavigation } from "../_hooks/useTechnicalConfigurationGuardedNavigation"
 import { TechnicalConfigurationBaselineTab } from "./TechnicalConfigurationBaselineTab"
 import { TechnicalConfigurationBaselineEvidence } from "./TechnicalConfigurationBaselineEvidence"
@@ -46,6 +49,8 @@ export function TechnicalConfigurationWorkspaceShell({
   dossier,
   onBack,
 }: Readonly<TechnicalConfigurationWorkspaceShellProps>) {
+  useSuppressFooter()
+
   const [activeTab, setActiveTab] = React.useState("baseline")
   const [revisionOverride, setRevisionOverride] = React.useState<WorkspaceRevisionOverride | null>(
     null
@@ -64,6 +69,8 @@ export function TechnicalConfigurationWorkspaceShell({
     null
   )
   const isBaselineFocusMode = activeTab === "baseline" && focusedBaselineDossierId === dossier.id
+  useSuppressAppChrome(isBaselineFocusMode)
+
   const isDirty =
     isBaselineDirty || isEvidenceDirty || isReferenceDirty || isOptionDirty || isComparisonDirty
   const isNavigationBlocked =
@@ -125,6 +132,10 @@ export function TechnicalConfigurationWorkspaceShell({
   }, [dossier.id])
 
   React.useEffect(() => {
+    setFocusedBaselineDossierId(null)
+  }, [dossier.id])
+
+  React.useEffect(() => {
     if (!isBaselineFocusMode) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -145,37 +156,28 @@ export function TechnicalConfigurationWorkspaceShell({
   return (
     <div
       data-testid="technical-configuration-workspace"
-      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+      className={cn(
+        "flex min-h-0 w-full flex-1 flex-col overflow-hidden",
+        isBaselineFocusMode && "fixed inset-0 z-50 bg-background"
+      )}
     >
       <header
         hidden={isBaselineFocusMode}
         aria-hidden={isBaselineFocusMode || undefined}
-        className="shrink-0 border-b pb-3"
+        className="flex h-14 min-w-0 shrink-0 items-center gap-2 border-b"
       >
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="-ml-2"
+          size="icon"
+          className="size-9 shrink-0"
+          aria-label="Quay lại danh sách hồ sơ"
           disabled={isNavigationBlocked}
           onClick={handleBack}
         >
           <ArrowLeft className="size-4" aria-hidden="true" />
-          Danh sách hồ sơ
         </Button>
-
-        <div className="mt-2 flex min-w-0 items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-muted">
-            <ClipboardList className="size-4" aria-hidden="true" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="break-words text-xl font-semibold">{dossier.name}</h1>
-            <p className="break-words text-sm text-muted-foreground">
-              {dossier.device_type_name}
-              {dossier.description ? ` · ${dossier.description}` : ""}
-            </p>
-          </div>
-        </div>
+        <h1 className="min-w-0 flex-1 truncate text-lg font-semibold">{dossier.name}</h1>
       </header>
 
       <Tabs
@@ -183,52 +185,54 @@ export function TechnicalConfigurationWorkspaceShell({
         onValueChange={handleTabChange}
         className={cn("flex min-h-0 flex-1 flex-col", isBaselineFocusMode ? "mt-0" : "mt-3")}
       >
-        <TabsList
+        <div
           hidden={isBaselineFocusMode}
           aria-hidden={isBaselineFocusMode || undefined}
-          className="grid h-auto w-full shrink-0 grid-cols-1 gap-1 sm:grid-cols-5"
+          className="w-full shrink-0 overflow-x-auto overflow-y-hidden"
         >
-          <TabsTrigger
-            value="baseline"
-            className="min-h-9 gap-2"
-            disabled={isNavigationBlocked && activeTab !== "baseline"}
-          >
-            <ListChecks className="size-4" aria-hidden="true" />
-            Cấu hình cơ sở
-          </TabsTrigger>
-          <TabsTrigger
-            value="evidence"
-            className="min-h-9 gap-2"
-            disabled={isNavigationBlocked && activeTab !== "evidence"}
-          >
-            <FileText className="size-4" aria-hidden="true" />
-            Tài liệu &amp; trích dẫn
-          </TabsTrigger>
-          <TabsTrigger
-            value="references"
-            className="min-h-9 gap-2"
-            disabled={isNavigationBlocked && activeTab !== "references"}
-          >
-            <LibraryBig className="size-4" aria-hidden="true" />
-            Sản phẩm tham chiếu
-          </TabsTrigger>
-          <TabsTrigger
-            value="options"
-            className="min-h-9 gap-2"
-            disabled={isNavigationBlocked && activeTab !== "options"}
-          >
-            <PackageSearch className="size-4" aria-hidden="true" />
-            Phương án
-          </TabsTrigger>
-          <TabsTrigger
-            value="comparison"
-            className="min-h-9 gap-2"
-            disabled={isNavigationBlocked && activeTab !== "comparison"}
-          >
-            <GitCompareArrows className="size-4" aria-hidden="true" />
-            So sánh &amp; đánh giá
-          </TabsTrigger>
-        </TabsList>
+          <TabsList className="h-10 w-max min-w-full flex-nowrap justify-start gap-1 p-0.5">
+            <TabsTrigger
+              value="baseline"
+              className="h-9 gap-2 px-3 py-0"
+              disabled={isNavigationBlocked && activeTab !== "baseline"}
+            >
+              <ListChecks className="size-4" aria-hidden="true" />
+              Cấu hình cơ sở
+            </TabsTrigger>
+            <TabsTrigger
+              value="evidence"
+              className="h-9 gap-2 px-3 py-0"
+              disabled={isNavigationBlocked && activeTab !== "evidence"}
+            >
+              <FileText className="size-4" aria-hidden="true" />
+              Tài liệu &amp; trích dẫn
+            </TabsTrigger>
+            <TabsTrigger
+              value="references"
+              className="h-9 gap-2 px-3 py-0"
+              disabled={isNavigationBlocked && activeTab !== "references"}
+            >
+              <LibraryBig className="size-4" aria-hidden="true" />
+              Sản phẩm tham chiếu
+            </TabsTrigger>
+            <TabsTrigger
+              value="options"
+              className="h-9 gap-2 px-3 py-0"
+              disabled={isNavigationBlocked && activeTab !== "options"}
+            >
+              <PackageSearch className="size-4" aria-hidden="true" />
+              Phương án
+            </TabsTrigger>
+            <TabsTrigger
+              value="comparison"
+              className="h-9 gap-2 px-3 py-0"
+              disabled={isNavigationBlocked && activeTab !== "comparison"}
+            >
+              <GitCompareArrows className="size-4" aria-hidden="true" />
+              So sánh &amp; đánh giá
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent
           value="baseline"

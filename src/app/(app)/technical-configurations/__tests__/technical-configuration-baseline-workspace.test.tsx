@@ -139,19 +139,28 @@ const dossier: TechnicalConfigurationDossierWire = {
 }
 
 describe("technical configuration baseline workspace integration", () => {
-  it("fills the available app height without moving the footer into the scroll area", async () => {
+  it("uses the compact shell without moving the footer into the scroll area", async () => {
     baselineTabMock.dirty = false
 
     try {
       render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={vi.fn()} />)
 
       const workspace = screen.getByTestId("technical-configuration-workspace")
-      const tabs = screen.getByRole("tablist").parentElement
+      const tabList = screen.getByRole("tablist")
+      const tabs = tabList.parentElement?.parentElement
       const baselinePanel = await screen.findByRole("tabpanel", { name: "Cấu hình cơ sở" })
 
       expect(workspace).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
       expect(tabs).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
       expect(baselinePanel).toHaveClass("flex", "min-h-0", "flex-1", "overflow-hidden")
+      expect(screen.getByRole("button", { name: "Quay lại danh sách hồ sơ" })).toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: dossier.name })).toHaveClass("truncate")
+      expect(
+        screen.queryByText(new RegExp(`Danh sách hồ sơ|${dossier.device_type_name}`))
+      ).not.toBeInTheDocument()
+      expect(tabList.parentElement).toHaveClass("w-full", "overflow-x-auto", "overflow-y-hidden")
+      expect(tabList).toHaveClass("h-10", "w-max", "min-w-full", "flex-nowrap", "justify-start")
+      expect(tabList).not.toHaveClass("grid-cols-5")
     } finally {
       baselineTabMock.dirty = true
     }
@@ -166,7 +175,7 @@ describe("technical configuration baseline workspace integration", () => {
       render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
       await screen.findByText("Baseline editor")
 
-      await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
+      await user.click(screen.getByRole("button", { name: "Quay lại danh sách hồ sơ" }))
 
       expect(nativeConfirm).not.toHaveBeenCalled()
       const dialog = await screen.findByRole("alertdialog")
@@ -181,7 +190,7 @@ describe("technical configuration baseline workspace integration", () => {
       expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
       expect(screen.getByText("Baseline editor")).toBeInTheDocument()
 
-      await user.click(screen.getByRole("button", { name: "Danh sách hồ sơ" }))
+      await user.click(screen.getByRole("button", { name: "Quay lại danh sách hồ sơ" }))
       await user.click(
         within(await screen.findByRole("alertdialog")).getByRole("button", {
           name: "Bỏ thay đổi",
@@ -228,7 +237,7 @@ describe("technical configuration baseline workspace integration", () => {
 
     try {
       render(<TechnicalConfigurationWorkspaceShell dossier={dossier} onBack={onBack} />)
-      const backButton = await screen.findByRole("button", { name: "Danh sách hồ sơ" })
+      const backButton = await screen.findByLabelText("Quay lại danh sách hồ sơ")
 
       expect(backButton).toBeDisabled()
       await user.click(backButton)
@@ -307,7 +316,7 @@ describe("technical configuration baseline workspace integration", () => {
       await user.click(screen.getByRole("tab", { name: "Phương án" }))
       expect(await screen.findByText(/Supplier option workspace revision/)).toBeInTheDocument()
 
-      const backButton = screen.getByRole("button", { name: "Danh sách hồ sơ" })
+      const backButton = screen.getByRole("button", { name: "Quay lại danh sách hồ sơ" })
       expect(backButton).toBeDisabled()
       await user.click(backButton)
       await user.click(screen.getByRole("tab", { name: "Sản phẩm tham chiếu" }))
