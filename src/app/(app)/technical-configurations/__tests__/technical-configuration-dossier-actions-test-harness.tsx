@@ -1,10 +1,13 @@
 import * as React from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { renderHook } from "@testing-library/react"
+import { act, renderHook } from "@testing-library/react"
+import { vi } from "vitest"
 
 import { TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT } from "../technical-configuration-query-keys"
 import type {
   TechnicalConfigurationDossierListItemWire,
+  TechnicalConfigurationDossierListRpcArgs,
+  TechnicalConfigurationDossierListWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
   TechnicalConfigurationDossierWire,
 } from "../types"
@@ -46,6 +49,29 @@ export const dossier: TechnicalConfigurationDossierListItemWire = {
   updated_at: "2026-07-13T00:00:00.000Z",
   updated_by: 1,
   can_delete: true,
+}
+
+export function buildDossierListRow(id: string): TechnicalConfigurationDossierListItemWire {
+  return { ...dossier, id, name: `Hồ sơ ${id}` }
+}
+
+export function buildDossierListPage(
+  args: TechnicalConfigurationDossierListRpcArgs,
+  rows: TechnicalConfigurationDossierListItemWire[],
+  total: number
+): TechnicalConfigurationDossierListWireResponse {
+  return {
+    data: rows,
+    total,
+    page: args.p_page ?? 1,
+    page_size: args.p_page_size ?? 20,
+  }
+}
+
+export async function flushQueryNotifications(): Promise<void> {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(0)
+  })
 }
 
 export const listQueryKey = [

@@ -1,17 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, ListChecks, Plus, RefreshCw } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { useServerPagination } from "@/hooks/useServerPagination"
 
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
 import { TechnicalConfigurationDossierDeleteDialog } from "./_components/TechnicalConfigurationDossierDeleteDialog"
 import { TechnicalConfigurationDossierTable } from "./_components/TechnicalConfigurationDossierTable"
 import { TechnicalConfigurationWorkspaceShell } from "./_components/TechnicalConfigurationWorkspaceShell"
+import { useTechnicalConfigurationDossierList } from "./_hooks/useTechnicalConfigurationDossierList"
 import {
   isStaleRevisionError,
   isStaleRevisionRefreshError,
@@ -20,7 +20,6 @@ import {
 import {
   createTechnicalConfigurationDossier,
   getTechnicalConfigurationDossier,
-  listTechnicalConfigurationDossiers,
 } from "./technical-configuration-rpc"
 import {
   TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
@@ -30,8 +29,6 @@ import type {
   TechnicalConfigurationDossierCreateRpcArgs,
   TechnicalConfigurationDossierWire,
 } from "./types"
-
-const DOSSIER_PAGE_SIZE = 20
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback
@@ -71,53 +68,17 @@ function getDossierDeleteErrorMessage(error: unknown): string {
 /** Orchestrates dossier listing, lifecycle actions, and workspace selection. */
 export function TechnicalConfigurationsClient() {
   const queryClient = useQueryClient()
-  const [dossierTotalCount, setDossierTotalCount] = React.useState(0)
-  const dossierPagination = useServerPagination({
-    totalCount: dossierTotalCount,
-    initialPageSize: DOSSIER_PAGE_SIZE,
-  })
+  const dossierList = useTechnicalConfigurationDossierList()
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [openingDossierId, setOpeningDossierId] = React.useState<string | null>(null)
   const [openDossierError, setOpenDossierError] = React.useState<unknown>(null)
   const [selectedDossier, setSelectedDossier] =
     React.useState<TechnicalConfigurationDossierWire | null>(null)
-  const handleDossierPageChange = React.useCallback(
-    (nextPage: number) => {
-      dossierPagination.setPagination((current) => ({
-        ...current,
-        pageIndex: Math.max(0, nextPage - 1),
-      }))
-    },
-    [dossierPagination.setPagination]
-  )
-  const dossierListQueryKey = [
-    ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
-    { page: dossierPagination.page, pageSize: dossierPagination.pageSize },
-  ] as const
-
-  const dossierListQuery = useQuery({
-    queryKey: dossierListQueryKey,
-    queryFn: ({ signal }) =>
-      listTechnicalConfigurationDossiers(
-        {
-          p_page: dossierPagination.page,
-          p_page_size: dossierPagination.pageSize,
-          p_include_archived: false,
-        },
-        signal
-      ),
-    staleTime: 30_000,
-  })
-  const resolvedDossierTotal = dossierListQuery.data?.total
-  React.useEffect(() => {
-    if (resolvedDossierTotal === undefined) return
-    setDossierTotalCount(resolvedDossierTotal)
-  }, [resolvedDossierTotal])
 
   const dossierActions = useTechnicalConfigurationDossierActions({
-    listQueryKey: dossierListQueryKey,
-    page: dossierPagination.page,
-    onPageChange: handleDossierPageChange,
+    listQueryKey: dossierList.listQueryKey,
+    page: dossierList.page,
+    onPageChange: dossierList.handlePageChange,
     onSelectedDossierChange: setSelectedDossier,
   })
 
@@ -188,8 +149,8 @@ export function TechnicalConfigurationsClient() {
     )
   }
 
-  const listError = dossierListQuery.isError
-    ? getErrorMessage(dossierListQuery.error, "Không thể tải danh sách hồ sơ.")
+  const listError = dossierList.isError
+    ? getErrorMessage(dossierList.error, "Không thể tải danh sách hồ sơ.")
     : null
   const openError = openDossierError
     ? getErrorMessage(openDossierError, "Không thể mở hồ sơ.")
@@ -238,7 +199,7 @@ export function TechnicalConfigurationsClient() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => void dossierListQuery.refetch()}
+                onClick={() => void dossierList.refetch()}
               >
                 <RefreshCw className="size-4" aria-hidden="true" />
                 Thử lại
@@ -257,16 +218,16 @@ export function TechnicalConfigurationsClient() {
 
         {!listError ? (
           <TechnicalConfigurationDossierTable
-            dossiers={dossierListQuery.data?.data ?? []}
-            isLoading={dossierListQuery.isLoading}
+            dossiers={dossierList.dossiers}
+            isLoading={dossierList.isLoading}
             isActionPending={dossierActions.isDeleting || dossierActions.isUpdating}
             openingDossierId={openingDossierId}
             pagination={{
-              page: dossierPagination.page,
-              pageCount: dossierPagination.pageCount,
-              canPreviousPage: dossierPagination.canPreviousPage,
-              canNextPage: dossierPagination.canNextPage,
-              onPageChange: handleDossierPageChange,
+              page: dossierList.page,
+              pageCount: dossierList.pageCount,
+              canPreviousPage: dossierList.canPreviousPage,
+              canNextPage: dossierList.canNextPage,
+              onPageChange: dossierList.handlePageChange,
             }}
             onDelete={dossierActions.openDelete}
             onEdit={dossierActions.openEdit}
