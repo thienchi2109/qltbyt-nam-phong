@@ -52,14 +52,15 @@
 
 ## Phase 5. Verification And Deploy Readiness
 
-- [ ] 5.1 Perform read-only live drift inspection through Supabase MCP for the current list signature, helper name conflicts, grants, indexes, and migration state.
-- [ ] 5.2 Document migration-first rollout and require a new explicit authorization before any live `apply_migration`.
-- [ ] 5.3 Spawn the custom `post_implementation_reviewer` without a full-history fork, using fixed point `origin/main` and the originating OpenSpec acceptance criteria; triage and apply valid fixes.
-- [ ] 5.4 Run one context-mode batch for `format:check`, `verify:no-explicit-any`, diff-only `verify:dedupe`, `typecheck`, focused dossier UI/RPC/migration Vitest suites, `react-doctor`, and strict OpenSpec validation.
-- [ ] 5.5 Complete the semantic `code-deduplication` check for the module-local hook/helper.
+- [x] 5.1 Perform read-only live drift inspection through Supabase MCP for the current list signature, helper name conflicts, grants, indexes, and migration state.
+- [x] 5.2 Document migration-first rollout and obtain explicit authorization for the specific live `apply_migration`.
+- [x] 5.3 Triage and fix the initial custom reviewer findings; a no-history follow-up against `origin/main` was started and then canceled before completion at the maintainer's direction.
+- [x] 5.4 Run one context-mode batch for `format:check`, `verify:no-explicit-any`, diff-only `verify:dedupe`, `typecheck`, focused dossier UI/RPC/migration Vitest suites, `react-doctor`, and strict OpenSpec validation.
+- [x] 5.5 Complete the semantic `code-deduplication` check for the module-local hook/helper.
 - [ ] 5.6 Create the final implementation/documentation commit, run `git pull --rebase`, rerun affected non-database checks if synchronization changes the commit/content, then confirm the worktree is clean and record final `HEAD`.
-- [ ] 5.7 Run Database Quality Gate `static` and Oracle `baseline-forward` against that exact synchronized `HEAD`; report both lanes separately and require aggregate PASS.
-- [ ] 5.8 Run `git push` and verify the remote branch plus `git status` are up to date with the same gated `HEAD`.
-- [ ] 5.9 If a gate, rebase, push retry, or follow-up fix changes the commit, rerun both database lanes against the new exact `HEAD`.
-- [ ] 5.10 Do not modify or commit files after collecting exact-commit database evidence unless restarting the exact-commit verification sequence.
-- [ ] 5.11 Final review checkpoint: verify the pushed `HEAD` is the same commit covered by both Database Quality Gate lanes before declaring implementation complete.
+- [x] 5.7 Record the maintainer-directed Database Quality Gate bypass: `static` and exact-commit Oracle `baseline-forward` are not PASS, aggregate gate status is not PASS, and no PASS claim may be made.
+- [ ] 5.8 Run `git push` and verify the remote branch plus `git status` are up to date with the synchronized implementation `HEAD`.
+- [ ] 5.9 If rebase, push retry, or a follow-up fix changes the commit or migration bytes, rerun affected non-database checks and deploy only the replacement pushed bytes.
+- [ ] 5.10 Apply only `20260826120436_technical_configuration_dossier_search.sql` through Supabase MCP under the explicit authorization granted on 2026-08-27, then read back the migration entry, four-argument RPC, helper, grants, indexes, and security/performance advisors.
+- [ ] 5.11 Catch up the persistent Oracle `qltbyt_test` baseline only after live apply is confirmed, using the live-derived exact-commit manifest; verify baseline state v2 health, migration identity, and normalized Technical Configurations catalog parity.
+- [ ] 5.12 Update this handoff with actual live/catch-up evidence, commit and push the evidence, sync `main`, and clean the Phase 5 worktree.

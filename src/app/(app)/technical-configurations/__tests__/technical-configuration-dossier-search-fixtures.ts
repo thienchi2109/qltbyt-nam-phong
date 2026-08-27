@@ -10,6 +10,16 @@ export const technicalConfigurationDossierSearchNormalizationFixtures = [
     expected: "may sieu am",
   },
   {
+    name: "non-Vietnamese accent",
+    input: "Müller",
+    expected: "müller",
+  },
+  {
+    name: "non-composing combining mark",
+    input: "A\u20DDB",
+    expected: "a b",
+  },
+  {
     name: "hyphenated device type",
     input: "X-quang",
     expected: "x quang",
