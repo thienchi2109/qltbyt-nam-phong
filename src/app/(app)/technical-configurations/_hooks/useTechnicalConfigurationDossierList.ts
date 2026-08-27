@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { keepPreviousData, useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 
 import { useDebounce } from "@/hooks/use-debounce"
 import { useServerPagination } from "@/hooks/useServerPagination"
@@ -21,11 +21,33 @@ const DOSSIER_PAGE_SIZE = 20
 const DOSSIER_LIST_STALE_TIME_MS = 30_000
 
 const EMPTY_DOSSIERS: TechnicalConfigurationDossierListItemWire[] = []
+const DOSSIER_LIST_REQUEST_IDENTITY_META_KEY = "technicalConfigurationDossierListRequestIdentity"
 
 type DossierListRequestIdentity = {
   search: string
+  rawSearch: string
   page: number
   pageSize: number
+}
+
+/** Reads one dossier-list request identity from TanStack Query metadata. */
+function getDossierListRequestIdentity(
+  meta: Record<string, unknown> | undefined
+): DossierListRequestIdentity | null {
+  const identity = meta?.[DOSSIER_LIST_REQUEST_IDENTITY_META_KEY]
+  if (!identity || typeof identity !== "object") return null
+
+  const candidate = identity as Record<string, unknown>
+  if (
+    typeof candidate.search !== "string" ||
+    typeof candidate.rawSearch !== "string" ||
+    typeof candidate.page !== "number" ||
+    typeof candidate.pageSize !== "number"
+  ) {
+    return null
+  }
+
+  return identity as DossierListRequestIdentity
 }
 
 /**
@@ -43,9 +65,11 @@ export function useTechnicalConfigurationDossierList() {
 
   const [settled, setSettled] = React.useState<DossierListRequestIdentity>({
     search: "",
+    rawSearch: "",
     page: 1,
     pageSize: DOSSIER_PAGE_SIZE,
   })
+  const placeholderIdentityRef = React.useRef<DossierListRequestIdentity | null>(null)
 
   const listQueryKey = technicalConfigurationDossierListQueryKey({
     page: settled.page,
@@ -69,9 +93,28 @@ export function useTechnicalConfigurationDossierList() {
       return listTechnicalConfigurationDossiers(rpcArgs, signal)
     },
     enabled: !isDebouncePending && isSettledSearchCurrent,
-    placeholderData: keepPreviousData,
+    meta: {
+      [DOSSIER_LIST_REQUEST_IDENTITY_META_KEY]: settled,
+    },
+    placeholderData: (previousData, previousQuery) => {
+      placeholderIdentityRef.current = getDossierListRequestIdentity(previousQuery?.meta)
+
+      return previousData
+    },
     staleTime: DOSSIER_LIST_STALE_TIME_MS,
   })
+  const visibleRequestIdentity = dossierListQuery.isPlaceholderData
+    ? (placeholderIdentityRef.current ?? settled)
+    : settled
+  const visibleListQueryKey = technicalConfigurationDossierListQueryKey({
+    page: visibleRequestIdentity.page,
+    pageSize: visibleRequestIdentity.pageSize,
+    normalizedSearch: visibleRequestIdentity.search,
+  })
+  const visibleSearchText =
+    normalizedSearch === visibleRequestIdentity.search
+      ? searchText
+      : visibleRequestIdentity.rawSearch
 
   const totalCount = dossierListQuery.data?.total ?? 0
   const pagination = useServerPagination({
@@ -86,6 +129,7 @@ export function useTechnicalConfigurationDossierList() {
     setSettled((current) => {
       if (
         current.search === debouncedSearch &&
+        current.rawSearch === searchText &&
         current.page === pagination.page &&
         current.pageSize === pagination.pageSize
       ) {
@@ -94,11 +138,12 @@ export function useTechnicalConfigurationDossierList() {
 
       return {
         search: debouncedSearch,
+        rawSearch: searchText,
         page: pagination.page,
         pageSize: pagination.pageSize,
       }
     })
-  }, [isDebouncePending, debouncedSearch, pagination.page, pagination.pageSize])
+  }, [isDebouncePending, debouncedSearch, pagination.page, pagination.pageSize, searchText])
 
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
@@ -113,6 +158,9 @@ export function useTechnicalConfigurationDossierList() {
   return {
     searchText,
     handleSearchTextChange: setSearchText,
+    hasActiveSearch: normalizedSearch !== "",
+    visibleSearchText,
+    hasVisibleActiveSearch: visibleRequestIdentity.search !== "",
     dossiers: dossierListQuery.data?.data ?? EMPTY_DOSSIERS,
     total: totalCount,
     page: pagination.page,
@@ -122,6 +170,8 @@ export function useTechnicalConfigurationDossierList() {
     canNextPage: pagination.canNextPage,
     handlePageChange,
     listQueryKey,
+    visibleListQueryKey,
+    visiblePage: visibleRequestIdentity.page,
     isLoading: dossierListQuery.isLoading,
     isError: dossierListQuery.isError,
     error: dossierListQuery.error,

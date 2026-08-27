@@ -134,6 +134,76 @@ describe("technical configuration dossier list consistency", () => {
     })
   })
 
+  it("keeps the visible key, page, and search copy on the placeholder snapshot", async () => {
+    const queryClient = createQueryClient()
+    let resolveSearch: ((response: ReturnType<typeof buildPage>) => void) | undefined
+    mocks.listDossiers.mockImplementation((args: TechnicalConfigurationDossierListRpcArgs) => {
+      if (args.p_search === "may") {
+        return new Promise((resolve) => {
+          resolveSearch = resolve
+        })
+      }
+
+      return Promise.resolve(buildPage(args, [buildRow(`trang-${args.p_page}`)], 60))
+    })
+
+    const { result } = renderHook(() => useTechnicalConfigurationDossierList(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      ),
+    })
+    await flushQueryNotifications()
+
+    act(() => {
+      result.current.handlePageChange(2)
+    })
+    await flushQueryNotifications()
+    const previousKey = result.current.listQueryKey
+
+    act(() => {
+      result.current.handleSearchTextChange("Máy")
+    })
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    await flushQueryNotifications()
+
+    expect(result.current.visibleListQueryKey).toEqual(previousKey)
+    expect(result.current.visiblePage).toBe(2)
+    expect(result.current.visibleSearchText).toBe("")
+    expect(result.current.hasVisibleActiveSearch).toBe(false)
+
+    const completeSearch = resolveSearch
+    if (!completeSearch) {
+      throw new Error("expected the current search request to remain pending")
+    }
+    await act(async () => {
+      completeSearch(
+        buildPage(
+          { p_page: 1, p_page_size: 20, p_include_archived: false, p_search: "may" },
+          [buildRow("tim-may-trang-1")],
+          1
+        )
+      )
+    })
+    await flushQueryNotifications()
+
+    expect(result.current.visibleListQueryKey).toEqual(result.current.listQueryKey)
+    expect(result.current.visiblePage).toBe(1)
+    expect(result.current.visibleSearchText).toBe("Máy")
+    expect(result.current.hasVisibleActiveSearch).toBe(true)
+
+    act(() => {
+      result.current.handleSearchTextChange("MÁY")
+    })
+    await flushQueryNotifications()
+
+    act(() => {
+      result.current.handleSearchTextChange("CT")
+    })
+    expect(result.current.visibleSearchText).toBe("MÁY")
+  })
+
   it("keeps rows and pagination totals on the same query snapshot", async () => {
     const queryClient = createQueryClient()
     const snapshots: Array<{

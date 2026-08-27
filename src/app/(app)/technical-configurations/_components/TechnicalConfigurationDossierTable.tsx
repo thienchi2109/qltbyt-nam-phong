@@ -26,10 +26,13 @@ type TechnicalConfigurationDossierPagination = {
   onPageChange: (page: number) => void
 }
 
+export type TechnicalConfigurationDossierListState = "loading" | "pending" | "ready"
+
 type TechnicalConfigurationDossierTableProps = {
   dossiers: TechnicalConfigurationDossierListItemWire[]
-  isLoading: boolean
+  emptySearchText?: string
   isActionPending: boolean
+  listState: TechnicalConfigurationDossierListState
   openingDossierId: string | null
   pagination: TechnicalConfigurationDossierPagination
   onDelete: (dossier: TechnicalConfigurationDossierListItemWire) => void
@@ -40,17 +43,25 @@ type TechnicalConfigurationDossierTableProps = {
 /** Renders the paginated dossier list and open actions. */
 export function TechnicalConfigurationDossierTable({
   dossiers,
-  isLoading,
+  emptySearchText,
   isActionPending,
+  listState,
   openingDossierId,
   pagination,
   onDelete,
   onEdit,
   onOpen,
 }: Readonly<TechnicalConfigurationDossierTableProps>) {
-  if (isLoading) {
+  const isBusy = listState !== "ready"
+
+  if (listState === "loading") {
     return (
-      <div className="space-y-3" aria-label="Đang tải hồ sơ cấu hình">
+      <div
+        className="space-y-3"
+        aria-busy={isBusy}
+        aria-label="Đang tải hồ sơ cấu hình"
+        role="region"
+      >
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-16 w-full" />
         <Skeleton className="h-16 w-full" />
@@ -61,18 +72,29 @@ export function TechnicalConfigurationDossierTable({
 
   if (dossiers.length === 0) {
     return (
-      <div className="border-y py-12 text-center">
+      <div
+        className="border-y py-12 text-center"
+        aria-busy={isBusy}
+        aria-label="Bảng hồ sơ cấu hình"
+        role="region"
+      >
         <FileText className="mx-auto size-9 text-muted-foreground" aria-hidden="true" />
-        <h2 className="mt-4 text-base font-semibold">Chưa có hồ sơ cấu hình</h2>
+        <h2 className="mt-4 text-base font-semibold">
+          {emptySearchText
+            ? `Không tìm thấy hồ sơ phù hợp với "${emptySearchText}"`
+            : "Chưa có hồ sơ cấu hình"}
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Tạo hồ sơ đầu tiên để bắt đầu không gian làm việc.
+          {emptySearchText
+            ? "Thử điều chỉnh từ khóa tìm kiếm."
+            : "Tạo hồ sơ đầu tiên để bắt đầu không gian làm việc."}
         </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isBusy} aria-label="Bảng hồ sơ cấu hình" role="region">
       <div className="overflow-hidden rounded-md border">
         <Table className="min-w-[760px]">
           <TableHeader>
@@ -126,6 +148,7 @@ export function TechnicalConfigurationDossierTable({
           onPreviousPage={() => pagination.onPageChange(pagination.page - 1)}
           onNextPage={() => pagination.onPageChange(pagination.page + 1)}
           onLastPage={() => pagination.onPageChange(pagination.pageCount)}
+          disabled={listState === "pending"}
           className="sm:justify-between"
         />
       ) : null}

@@ -27,6 +27,7 @@ interface ListFilterSearchCardSearchProps {
   onSearchChange: (value: string) => void
   searchInputRef?: React.Ref<HTMLInputElement>
   searchPlaceholder: string
+  searchMaxLength?: number
   searchEndAddon?: React.ReactNode
   showSearchIcon?: boolean
   searchDisabled?: boolean
@@ -37,6 +38,7 @@ interface ListFilterSearchCardFilterOnlyProps {
   onSearchChange?: never
   searchInputRef?: never
   searchPlaceholder?: never
+  searchMaxLength?: never
   searchEndAddon?: never
   showSearchIcon?: never
   searchDisabled?: never
@@ -55,6 +57,7 @@ export function ListFilterSearchCard({
   onSearchChange,
   searchInputRef,
   searchPlaceholder,
+  searchMaxLength,
   searchEndAddon,
   showSearchIcon = true,
   searchDisabled,
@@ -112,6 +115,7 @@ export function ListFilterSearchCard({
                 placeholder={searchPlaceholder}
                 value={searchValue}
                 onChange={onSearchChange}
+                maxLength={searchMaxLength}
                 showSearchIcon={showSearchIcon}
                 className="h-9 w-full"
                 endAddon={searchEndAddon}

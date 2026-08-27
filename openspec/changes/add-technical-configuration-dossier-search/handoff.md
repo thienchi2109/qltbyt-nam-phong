@@ -96,3 +96,46 @@
 - Review:
   - custom `post_implementation_reviewer` findings were triaged and fixed; final follow-up review returned no findings
 - Boundary respected: no SQL, no visible search toolbar (Phase 4), no live database write.
+
+## Phase 4: Search UI And Async States
+
+- Date: 2026-08-27
+- Status: implementation, review fixes, and final verification complete; landed to `main`
+- Branch: `feat/technical-configuration-dossier-search-p4`
+- Base commit: `d90959d7396c3f31989e547ebd57396cb14aee4a` (`origin/main`)
+- Scope completed:
+  - optional `ListFilterSearchCard.searchMaxLength` passthrough to shared `SearchInput.maxLength`
+  - plain shared dossier search toolbar with exact 200-character bound, placeholder/ARIA label, mobile full-width and existing desktop sizing
+  - accessible `Loader2` end addon while debounce or list fetching is pending, with input and clear actions kept enabled
+  - table presentation state modeled as `loading | pending | ready` so initial skeleton, retained rows, `aria-busy`, and pagination freezing cannot form invalid boolean combinations
+  - row actions remain available while retained rows are visible; only pagination navigation is frozen
+  - distinct unfiltered empty, filtered no-results using the raw visible term, and request error/retry states; stale rows are hidden on current-search error
+  - `hasActiveSearch` derives from normalized search so punctuation-only raw input preserves the default empty state
+  - visible snapshot identity keeps retained rows bound to their originating query key, page, and raw search copy until the replacement query settles
+- TDD evidence:
+  - RED: focused shared/UI run failed 5 tests because `searchMaxLength` and the dossier search toolbar/states were absent
+  - GREEN: shared max-length plus dossier UI tests passed 27/27 after implementation
+  - follow-up: split normalization contract coverage into a module-prefixed test file so the UI test remains 332 lines after reviewer regressions, below the 350-line extraction threshold
+  - reviewer regression RED: 4 of 11 focused tests failed for visible query identity, pending edit/delete cache targeting, and stale empty-state copy
+  - reviewer regression GREEN: all 11 focused tests passed, including equivalent normalized raw-search identity
+- Verification before review:
+  - `format:check` passed after direct Prettier formatting
+  - `verify:no-explicit-any`, diff-only `verify:dedupe`, and `typecheck` passed
+  - 16 focused files, 104 tests passed
+  - React Doctor scored 100/100 with no issues
+  - strict OpenSpec validation passed
+  - Database Quality Gate local lane returned `SKIP` because Phase 4 changes no migration or gate registry
+  - semantic dedupe reused `ListFilterSearchCard`, `SearchInput`, `DataTablePagination`, the module-local dossier hook, and the existing dossier test harness; no new shared search abstraction was added
+- Review findings and resolution:
+  - high: edit/delete on retained rows used the replacement query key/page; fixed by passing the visible snapshot key/page to dossier actions
+  - medium: pending empty state used the replacement raw input; fixed by deriving empty-state copy from the visible snapshot identity
+  - TanStack Query `placeholderData(previousData, previousQuery)` metadata pins the prior request identity while placeholder rows are displayed
+  - follow-up re-review was intentionally skipped at maintainer request after both findings were covered by regression tests
+- Final verification:
+  - `format:check`, `verify:no-explicit-any`, diff-only `verify:dedupe`, `verify:heroui-boundary`, `verify:ts-docstrings`, and `typecheck` passed
+  - 17 focused dossier/shared-search/RPC test files, 113 tests passed
+  - React Doctor scored 100/100 with no issues
+  - strict OpenSpec validation passed
+  - Database Quality Gate local lane returned `SKIP` because Phase 4 changes no migration or gate registry
+  - semantic graph/search backstops found no existing reusable visible-snapshot identity abstraction; the implementation remains module-local
+- Boundary respected: no SQL or migration changes, no live database operation, no archive filter, URL state, fuzzy search, description search, sortable headers, or Phase 5 deployment work.

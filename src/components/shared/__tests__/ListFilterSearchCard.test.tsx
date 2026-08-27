@@ -151,6 +151,22 @@ describe("ListFilterSearchCard", () => {
     )
   })
 
+  it("forwards searchMaxLength to the shared search input", () => {
+    render(
+      <ListFilterSearchCard
+        searchValue=""
+        onSearchChange={vi.fn()}
+        searchPlaceholder="Tìm kiếm chung..."
+        searchMaxLength={200}
+      />
+    )
+
+    expect(screen.getByRole("searchbox", { name: "Tìm kiếm chung..." })).toHaveAttribute(
+      "maxlength",
+      "200"
+    )
+  })
+
   it("can disable the shared search input", () => {
     render(
       <ListFilterSearchCard

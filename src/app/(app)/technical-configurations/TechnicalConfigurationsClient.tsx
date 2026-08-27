@@ -2,14 +2,18 @@
 
 import * as React from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { AlertCircle, ListChecks, Plus, RefreshCw } from "lucide-react"
+import { AlertCircle, ListChecks, Loader2, Plus, RefreshCw } from "lucide-react"
 
+import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
 import { TechnicalConfigurationDossierForm } from "./_components/TechnicalConfigurationDossierForm"
 import { TechnicalConfigurationDossierDeleteDialog } from "./_components/TechnicalConfigurationDossierDeleteDialog"
-import { TechnicalConfigurationDossierTable } from "./_components/TechnicalConfigurationDossierTable"
+import {
+  TechnicalConfigurationDossierTable,
+  type TechnicalConfigurationDossierListState,
+} from "./_components/TechnicalConfigurationDossierTable"
 import { TechnicalConfigurationWorkspaceShell } from "./_components/TechnicalConfigurationWorkspaceShell"
 import { useTechnicalConfigurationDossierList } from "./_hooks/useTechnicalConfigurationDossierList"
 import {
@@ -25,6 +29,7 @@ import {
   TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
   technicalConfigurationDossierDetailQueryKey,
 } from "./technical-configuration-query-keys"
+import { TECHNICAL_CONFIGURATION_DOSSIER_SEARCH_MAX_LENGTH } from "./technical-configuration-dossier-search"
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
   TechnicalConfigurationDossierWire,
@@ -76,8 +81,8 @@ export function TechnicalConfigurationsClient() {
     React.useState<TechnicalConfigurationDossierWire | null>(null)
 
   const dossierActions = useTechnicalConfigurationDossierActions({
-    listQueryKey: dossierList.listQueryKey,
-    page: dossierList.page,
+    listQueryKey: dossierList.visibleListQueryKey,
+    page: dossierList.visiblePage,
     onPageChange: dossierList.handlePageChange,
     onSelectedDossierChange: setSelectedDossier,
   })
@@ -155,6 +160,12 @@ export function TechnicalConfigurationsClient() {
   const openError = openDossierError
     ? getErrorMessage(openDossierError, "Không thể mở hồ sơ.")
     : null
+  let dossierListState: TechnicalConfigurationDossierListState = "ready"
+  if (dossierList.isLoading) {
+    dossierListState = "loading"
+  } else if (dossierList.isSearchPending) {
+    dossierListState = "pending"
+  }
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col">
@@ -192,6 +203,21 @@ export function TechnicalConfigurationsClient() {
         className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto"
         aria-label="Danh sách hồ sơ cấu hình"
       >
+        <ListFilterSearchCard
+          surface="plain"
+          searchValue={dossierList.searchText}
+          onSearchChange={dossierList.handleSearchTextChange}
+          searchPlaceholder="Tìm theo loại thiết bị hoặc tên hồ sơ..."
+          searchMaxLength={TECHNICAL_CONFIGURATION_DOSSIER_SEARCH_MAX_LENGTH}
+          searchEndAddon={
+            dossierList.isSearchPending ? (
+              <span className="flex items-center" role="status" aria-label="Đang tìm kiếm hồ sơ">
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              </span>
+            ) : undefined
+          }
+        />
+
         {listError ? (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />
@@ -222,8 +248,11 @@ export function TechnicalConfigurationsClient() {
         {!listError ? (
           <TechnicalConfigurationDossierTable
             dossiers={dossierList.dossiers}
-            isLoading={dossierList.isLoading}
+            emptySearchText={
+              dossierList.hasVisibleActiveSearch ? dossierList.visibleSearchText : undefined
+            }
             isActionPending={dossierActions.isDeleting || dossierActions.isUpdating}
+            listState={dossierListState}
             openingDossierId={openingDossierId}
             pagination={{
               page: dossierList.page,

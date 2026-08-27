@@ -35,15 +35,6 @@ vi.mock("../technical-configuration-rpc", () => ({
   deleteTechnicalConfigurationDossier: (...args: unknown[]) => mocks.deleteDossier(...args),
 }))
 
-function getListCallArgs(call: number): TechnicalConfigurationDossierListRpcArgs {
-  const [args] = mocks.listDossiers.mock.calls[call - 1] as [
-    TechnicalConfigurationDossierListRpcArgs,
-    AbortSignal?,
-  ]
-
-  return args
-}
-
 describe("technical configuration dossier search actions", () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -260,5 +251,92 @@ describe("technical configuration dossier search actions", () => {
         result.current.list.listQueryKey
       )
     expect(activeCacheAfterRefetch?.data[0]?.name).toBe("Tên đã sửa")
+  })
+
+  it("edits and deletes the visible page cache while a new search is pending", async () => {
+    const queryClient = createQueryClient()
+    const fallbackPages: number[] = []
+    let resolveSearch:
+      ((response: TechnicalConfigurationDossierListWireResponse) => void) | undefined
+    mocks.listDossiers.mockImplementation((args: TechnicalConfigurationDossierListRpcArgs) => {
+      if (args.p_search === "may") {
+        return new Promise((resolve) => {
+          resolveSearch = resolve
+        })
+      }
+
+      return Promise.resolve(buildPage(args, [baseDossier], 21))
+    })
+    mocks.updateDossier.mockResolvedValue({
+      data: { ...baseDossier, name: "Tên đã sửa", revision: 8 },
+    })
+    mocks.deleteDossier.mockResolvedValue({ data: { id: baseDossier.id } })
+
+    const { result } = renderHook(
+      () => {
+        const list = useTechnicalConfigurationDossierList()
+        const [, setSelectedDossier] = React.useState<TechnicalConfigurationDossierWire | null>(
+          null
+        )
+        const actions = useTechnicalConfigurationDossierActions({
+          listQueryKey: list.visibleListQueryKey,
+          page: list.visiblePage,
+          onPageChange: (page) => {
+            fallbackPages.push(page)
+            list.handlePageChange(page)
+          },
+          onSelectedDossierChange: setSelectedDossier,
+        })
+
+        return { list, actions }
+      },
+      {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        ),
+      }
+    )
+    await flushQueryNotifications()
+    act(() => {
+      result.current.list.handlePageChange(2)
+    })
+    await flushQueryNotifications()
+    const visibleKey = result.current.list.listQueryKey
+
+    act(() => {
+      result.current.list.handleSearchTextChange("may")
+      vi.advanceTimersByTime(300)
+    })
+    await flushQueryNotifications()
+
+    act(() => {
+      result.current.actions.openEdit(baseDossier)
+    })
+    await act(async () => {
+      await result.current.actions.submitEdit({
+        p_id: baseDossier.id,
+        p_device_type_name: baseDossier.device_type_name,
+        p_name: "Tên đã sửa",
+        p_description: null,
+        p_expected_revision: baseDossier.revision,
+      })
+    })
+    expect(
+      queryClient.getQueryData<TechnicalConfigurationDossierListWireResponse>(visibleKey)?.data[0]
+    ).toMatchObject({ name: "Tên đã sửa", revision: 8 })
+
+    act(() => {
+      result.current.actions.openDelete({ ...baseDossier, name: "Tên đã sửa", revision: 8 })
+    })
+    await act(async () => {
+      await result.current.actions.submitDelete()
+    })
+
+    expect(
+      queryClient.getQueryData<TechnicalConfigurationDossierListWireResponse>(visibleKey)?.data
+    ).toEqual([])
+    expect(fallbackPages).toContain(1)
+
+    resolveSearch?.(buildPage({ p_page: 1, p_search: "may" }, [], 0))
   })
 })

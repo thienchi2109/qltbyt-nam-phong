@@ -41,14 +41,14 @@
 
 ## Phase 4. Search UI And Async States
 
-- [ ] 4.1 Add a failing focused test for `ListFilterSearchCard.searchMaxLength` passthrough plus failing dossier UI tests for toolbar placement, placeholder/accessibility, loader timing, `aria-busy`, disabled pagination, clear/Escape behavior, and local-only state.
-- [ ] 4.2 Add the optional `searchMaxLength` prop to `ListFilterSearchCard` and pass it to `SearchInput.maxLength`.
-- [ ] 4.3 Render `ListFilterSearchCard surface="plain"` above the dossier alert/table, reuse the shared `SearchInput`, and set `searchMaxLength={200}`.
-- [ ] 4.4 Show a small `Loader2` through `searchEndAddon` while debounce or fetch is pending; keep the input and clear action enabled.
-- [ ] 4.5 Retain prior rows during refetch, use skeletons only for initial load, mark the table region busy, and disable pagination until the current request settles.
-- [ ] 4.6 Distinguish `Chưa có hồ sơ cấu hình`, filtered no-results copy containing the raw term, and request error with retry while keeping the toolbar visible.
-- [ ] 4.7 Verify responsive layout: full-width search on mobile and existing shared desktop width constraints without introducing a dossier-specific search component.
-- [ ] 4.8 Review checkpoint: no archive filter, URL state, fuzzy search, description search, sortable headers, or unrelated shared-component refactor has entered scope.
+- [x] 4.1 Added RED coverage for `ListFilterSearchCard.searchMaxLength` plus dossier toolbar placement, placeholder/accessibility, exact 299/300 ms loader timing, `aria-busy`, disabled pagination, enabled row/input/clear actions, clear/Escape focus, local-only state, distinct empty/error/retry states, and normalized-empty fallback.
+- [x] 4.2 Added optional `searchMaxLength` passthrough from `ListFilterSearchCard` to `SearchInput.maxLength`.
+- [x] 4.3 Rendered `ListFilterSearchCard surface="plain"` above dossier alerts/table with the shared input, exact placeholder/ARIA label, and `searchMaxLength={200}`.
+- [x] 4.4 Added an accessible `Loader2` search end addon while debounce or list fetching is pending; input and clear remain enabled.
+- [x] 4.5 Retained prior rows during debounce/refetch, preserved skeletons for initial load only, marked the table region busy, disabled pagination while pending, and kept row actions enabled.
+- [x] 4.6 Distinguished unfiltered empty, filtered no-results using the raw visible term, and request error/retry while keeping the toolbar visible and stale rows hidden on error.
+- [x] 4.7 Verified shared responsive sizing (`w-full` mobile and existing `md:min-w-[280px] md:max-w-[460px]` desktop constraints) without a dossier-specific search component.
+- [x] 4.8 Review checkpoint: no archive filter, URL state, fuzzy search, description search, sortable headers, or unrelated shared-component refactor has entered scope.
 
 ## Phase 5. Verification And Deploy Readiness
 
