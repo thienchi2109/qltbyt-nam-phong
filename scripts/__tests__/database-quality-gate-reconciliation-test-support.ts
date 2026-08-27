@@ -37,6 +37,7 @@ type FixtureOptions = {
 function baselineState(migrationSubjectCommit: string, healthy: boolean): BaselineState {
   if (healthy) {
     return {
+      catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       checkedAt: RECEIVED_AT,
       confirmedMigrations: [
         {
@@ -49,12 +50,14 @@ function baselineState(migrationSubjectCommit: string, healthy: boolean): Baseli
       generation: "phase6-reconciliation",
       healthy: true,
       migrationHighWater: LIVE_VERSION,
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceCommit: migrationSubjectCommit,
+      technicalConfigurationCatalog: [],
     }
   }
 
   return {
+    catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     checkedAt: RECEIVED_AT,
     confirmedMigrations: [],
     generation: "phase6-reconciliation",
@@ -62,11 +65,19 @@ function baselineState(migrationSubjectCommit: string, healthy: boolean): Baseli
     migrationHighWater: "unavailable",
     recovery: {
       kind: "catch-up",
+      migration: {
+        liveName: LIVE_NAME,
+        liveVersion: LIVE_VERSION,
+        path: MIGRATION_PATH,
+        sha256: migrationContentSha256(MIGRATION_SQL),
+      },
+      phase: "sql-applied",
       runId: "phase6-reconciliation",
       targetMigrationHighWater: LIVE_VERSION,
     },
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceCommit: migrationSubjectCommit,
+    technicalConfigurationCatalog: [],
   }
 }
 

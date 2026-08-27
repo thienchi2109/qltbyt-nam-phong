@@ -303,12 +303,14 @@ If a task seems to require a forbidden CLI command, STOP and ask the user — th
 This section must remain semantically aligned with the corresponding section in
 `CLAUDE.md`.
 
-**Status on 2026-08-23:** the repository harness implements `static` and
+**Status on 2026-08-27:** the repository harness implements `static` and
 `baseline-forward`, the private Oracle test database is operational, and
 Lefthook enforces the static lane for relevant local migration work. The
 blocking pre-live gate is exactly static plus manual Oracle baseline-forward on
 the same landed commit. Full migration-history reconstruction is deferred
-outside this gate and is not a prerequisite for live-apply review.
+outside this gate and is not a prerequisite for live-apply review. Oracle
+maintenance uses a live-derived, exact-commit manifest and atomic baseline state
+v2; dynamic preflight rejects state v1 and re-queries catalog parity.
 
 ### Hard Boundaries
 
@@ -326,9 +328,14 @@ outside this gate and is not a prerequisite for live-apply review.
 
 - **Restored baseline**: `qltbyt_test` on the private Oracle VM, restored from a
   production-derived backup and caught up to the selected live migration
-  state. Candidate migrations must not be applied directly to this database.
+  state. Incremental catch-up mutates this persistent database only for
+  migrations already confirmed on live; candidate migrations must not be
+  applied directly to it.
 - **Gate run database**: a disposable per-run database cloned for one
   validation execution and removed afterward.
+- **Baseline manifest**: a read-only live-derived, exact-landed-commit input
+  binding migration version/name/local path/SHA-256 and the normalized
+  `technical_configuration_*` routine catalog.
 - **Live apply**: applying only the reviewed pending migration through Supabase
   MCP after explicit maintainer authorization for that specific write.
 - Operations runbook: `/root/Oracle/supabase-test.md` on the current Codex VPS
@@ -358,6 +365,13 @@ outside this gate and is not a prerequisite for live-apply review.
   unavailable, the aggregate result is `BLOCKING / INCOMPLETE`.
 - In that state, Codex must not claim the migration work is DONE and live apply
   must not proceed.
+- Healthy baseline state must use schema v2 and match exact migration identity,
+  structural health, absence of temporary `postgres` schema `CREATE`, and the
+  normalized Technical Configurations catalog. High-water equality alone is
+  insufficient.
+- Legacy state v1 is maintenance-upgrade input only. Recovery from phase
+  `prepared`, metadata conflict, identity/hash mismatch, or catalog mismatch
+  requires full refresh; `health` must never replay migration SQL.
 - Historical application-owned `SECURITY DEFINER` `search_path` findings are
   evaluated relative to the restored baseline. Unchanged findings are reported
   as non-blocking warnings; new or changed unsafe findings are blocking.

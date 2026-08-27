@@ -122,10 +122,7 @@ export function createOracleRemoteExecutor(
         return observationResult
       }
       const observation = parseDatabaseObservation(observationResult.value)
-      if (
-        observation === undefined ||
-        !observationMatches(observation, baselineState.confirmedMigrations)
-      ) {
+      if (observation === undefined || !observationMatches(observation, baselineState)) {
         return errorResult("stale-environment", "Oracle baseline health evidence is stale")
       }
 

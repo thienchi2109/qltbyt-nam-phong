@@ -6,423 +6,306 @@ import {
 } from "./database-quality-gate-static-test-support"
 import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
 
-type MigrationIdentity = {
-  path: string
-  sha256: string
+const currentMigration = {
+  liveName: "current_live_change",
+  liveVersion: "20260818000000",
+  path: "supabase/migrations/20260818000000_current_live_change.sql",
+  sha256: "a".repeat(64),
 }
 
-type ConfirmedLiveMigration = MigrationIdentity & {
-  liveName: string
-  liveVersion: string
+const targetMigration = {
+  liveName: "confirmed_live_change",
+  liveVersion: "20260819062043",
+  path: "supabase/migrations/20260819062043_confirmed_live_change.sql",
+  sha256: "17db4fd369edb9244b9f91d9aeed145c3d04ad8ba6e95d06247f07a63527d11a",
 }
 
-type BaselineState = {
+const targetRoutine = {
+  definitionSha256: "b".repeat(64),
+  executeGrantees: ["authenticated"],
+  executionMode: "definer" as const,
+  identity: "public.technical_configuration_target()",
+  owner: "postgres",
+  searchPath: "public, pg_temp",
+}
+
+type State = {
+  catalogSha256: string
   checkedAt: string
-  confirmedMigrations: ConfirmedLiveMigration[]
+  confirmedMigrations: (typeof targetMigration)[]
   generation: string
   healthy: boolean
   migrationHighWater: string
-  recovery?: {
-    kind: "catch-up" | "full-refresh"
-    runId: string
-    targetMigrationHighWater: string
-  }
+  recovery?: { phase: string }
+  schemaVersion: 2
+  sourceCommit: string
+  technicalConfigurationCatalog: (typeof targetRoutine)[]
+}
+
+type Manifest = {
+  catalogSha256: string
+  migrations: (typeof targetMigration)[]
   schemaVersion: 1
   sourceCommit: string
+  targetMigrationHighWater: string
+  technicalConfigurationCatalog: (typeof targetRoutine)[]
 }
 
-type DatabaseObservation = {
-  healthy: boolean
-  invalidIndexCount: number
-  migrationHighWater: string
-  migrationRecords: Array<{
-    liveName: string
-    liveVersion: string
-    sqlSha256: string
-  }>
-  unvalidatedConstraintCount: number
+class RefreshExecutor {
+  applySucceeds = true
+  currentState:
+    | State
+    | {
+        checkedAt: string
+        confirmedMigrations: (typeof currentMigration)[]
+        generation: string
+        healthy: boolean
+        migrationHighWater: string
+        schemaVersion: 1
+        sourceCommit: string
+      }
+  metadataStatus: "exact" | "missing" = "missing"
+  operations: string[] = []
+  observation: Record<string, unknown>
+  retiredDropSucceeds = true
+
+  constructor(observation: Record<string, unknown>) {
+    this.observation = observation
+    this.currentState = {
+      checkedAt: "2026-08-26T00:00:00Z",
+      confirmedMigrations: [currentMigration],
+      generation: "legacy-baseline",
+      healthy: true,
+      migrationHighWater: currentMigration.liveVersion,
+      schemaVersion: 1,
+      sourceCommit: "c".repeat(40),
+    }
+  }
+
+  acquireLock(runId: string) {
+    return this.record(`acquire:${runId}`)
+  }
+
+  releaseLock(runId: string) {
+    return this.record(`release:${runId}`)
+  }
+
+  readState() {
+    return this.currentState
+  }
+
+  publishState(state: State) {
+    this.currentState = state
+    return this.record(`publish:${state.healthy ? "healthy" : state.recovery?.phase}`)
+  }
+
+  preflightRoles(databaseName: string) {
+    return this.record(`preflight:${databaseName}`)
+  }
+
+  createRefreshDatabase(databaseName: string) {
+    return this.record(`create:${databaseName}`)
+  }
+
+  restoreDump(databaseName: string, dumpPath: string) {
+    return this.record(`restore:${databaseName}:${dumpPath}`)
+  }
+
+  inspectMigrationMetadata(databaseName: string) {
+    this.operations.push(`metadata:${databaseName}:${this.metadataStatus}`)
+    return this.metadataStatus
+  }
+
+  applyMigration(databaseName: string) {
+    this.operations.push(`apply:${databaseName}`)
+    return this.applySucceeds
+  }
+
+  applyMigrations() {
+    return false
+  }
+
+  recordMigrationMetadata(databaseName: string) {
+    this.operations.push(`record:${databaseName}`)
+    this.metadataStatus = "exact"
+    return true
+  }
+
+  cleanupMigrationRole() {
+    return true
+  }
+
+  inspectDatabase(databaseName: string) {
+    this.operations.push(`inspect:${databaseName}`)
+    return this.observation
+  }
+
+  swapBaseline(databaseName: string, retiredDatabaseName: string) {
+    return this.record(`swap:${databaseName}:${retiredDatabaseName}`)
+  }
+
+  dropDatabase(databaseName: string) {
+    this.operations.push(`drop:${databaseName}`)
+    return databaseName.startsWith("dq_baseline_retired_") ? this.retiredDropSucceeds : true
+  }
+
+  private record(operation: string) {
+    this.operations.push(operation)
+    return true
+  }
 }
 
-type MaintenanceResult = {
-  outcome: "INCOMPLETE" | "PASS"
-  state: BaselineState
-}
-
-type MaintenanceExecutor = {
-  acquireLock: (runId: string) => boolean
-  applyMigrations: (databaseName: string, migrations: ConfirmedLiveMigration[]) => boolean
-  createRefreshDatabase: (databaseName: string) => boolean
-  dropDatabase: (databaseName: string) => boolean
-  inspectDatabase: (databaseName: string) => DatabaseObservation | undefined
-  publishState: (state: BaselineState) => boolean
-  readState: () => BaselineState | undefined
-  releaseLock: (runId: string) => boolean
-  restoreDump: (databaseName: string, dumpPath: string) => boolean
-  swapBaseline: (databaseName: string, retiredDatabaseName: string) => boolean
-}
-
-type BaselineMaintenanceModule = {
-  baselineStateHash: (state: BaselineState) => string
+type MaintenanceModule = {
+  baselineStateHash: (state: State) => string
   isBaselineForwardEvidenceReusable: (
     report: {
       baselineMigrationHighWater: string
       inputHashes: Record<string, string>
       outcome: "INCOMPLETE" | "PASS"
     },
-    state: BaselineState
+    state: State
   ) => boolean
-  runBaselineCatchUp: (input: {
-    checkedAt: string
-    confirmedMigrations: ConfirmedLiveMigration[]
-    executor: MaintenanceExecutor
-    repositoryRoot: string
-    runId: string
-    sourceCommit: string
-  }) => MaintenanceResult
   runBaselineFullRefresh: (input: {
     checkedAt: string
-    confirmedMigrations: ConfirmedLiveMigration[]
     dumpPath: string
-    executor: MaintenanceExecutor
+    executor: RefreshExecutor
+    manifest: Manifest
     repositoryRoot: string
     runId: string
-    sourceCommit: string
-  }) => MaintenanceResult
-  runBaselineHealthRecovery: (input: {
-    checkedAt: string
-    confirmedMigrations: ConfirmedLiveMigration[]
-    executor: MaintenanceExecutor
-    runId: string
-    sourceCommit: string
-  }) => MaintenanceResult
+  }) => { outcome: "INCOMPLETE" | "PASS"; state: State }
 }
 
-const migration: ConfirmedLiveMigration = {
-  liveName: "confirmed_live_change",
-  liveVersion: "20260819062043",
-  path: "supabase/migrations/20260819031200_confirmed_live_change.sql",
-  sha256: "17db4fd369edb9244b9f91d9aeed145c3d04ad8ba6e95d06247f07a63527d11a",
+type ManifestModule = {
+  technicalConfigurationCatalogSha256: (catalog: (typeof targetRoutine)[]) => string
 }
 
-function confirmedFixture() {
+async function fixture() {
   const repository = fixtureWithStaticMetadata({
-    path: migration.path,
+    path: targetMigration.path,
     sql: "SELECT 1;\n",
   })
-
-  return {
-    repositoryRoot: repository.root,
-    sourceCommit: repositoryHead(repository.root),
-  }
-}
-
-function healthyState(): BaselineState {
-  return {
-    checkedAt: "2026-08-18T12:00:00Z",
-    confirmedMigrations: [],
-    generation: "phase4-baseline",
-    healthy: true,
-    migrationHighWater: "20260816044031",
+  const sourceCommit = repositoryHead(repository.root)
+  const catalogSource = await loadDatabaseQualityGateModule<ManifestModule>("baseline-manifest")
+  const catalogSha256 = catalogSource.technicalConfigurationCatalogSha256([targetRoutine])
+  const manifest: Manifest = {
+    catalogSha256,
+    migrations: [targetMigration],
     schemaVersion: 1,
-    sourceCommit: "a".repeat(40),
+    sourceCommit,
+    targetMigrationHighWater: targetMigration.liveVersion,
+    technicalConfigurationCatalog: [targetRoutine],
   }
+  const observation = {
+    catalogSha256,
+    healthy: true,
+    invalidIndexCount: 0,
+    migrationHighWater: targetMigration.liveVersion,
+    migrationRecords: [currentMigration, targetMigration].map((migration) => ({
+      liveName: migration.liveName,
+      liveVersion: migration.liveVersion,
+      sqlSha256: migration.sha256,
+    })),
+    postgresHasCreateOnPublic: false,
+    technicalConfigurationCatalog: [targetRoutine],
+    unvalidatedConstraintCount: 0,
+  }
+  return { manifest, observation, repositoryRoot: repository.root }
 }
 
-class FakeMaintenanceExecutor implements MaintenanceExecutor {
-  currentState: BaselineState | undefined = healthyState()
-  failAt?: string
-  observations = new Map<string, DatabaseObservation>([
-    [
-      "qltbyt_test",
-      {
-        healthy: true,
-        invalidIndexCount: 0,
-        migrationHighWater: migration.liveVersion,
-        migrationRecords: [
-          {
-            liveName: migration.liveName,
-            liveVersion: migration.liveVersion,
-            sqlSha256: migration.sha256,
-          },
-        ],
-        unvalidatedConstraintCount: 0,
-      },
-    ],
-    [
-      "dq_baseline_refresh_phase5_refresh",
-      {
-        healthy: true,
-        invalidIndexCount: 0,
-        migrationHighWater: migration.liveVersion,
-        migrationRecords: [
-          {
-            liveName: migration.liveName,
-            liveVersion: migration.liveVersion,
-            sqlSha256: migration.sha256,
-          },
-        ],
-        unvalidatedConstraintCount: 0,
-      },
-    ],
-  ])
-  operations: string[] = []
+describe("database quality gate Oracle baseline maintenance", () => {
+  it("upgrades v1 state through role-safe full refresh before swapping the baseline", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
 
-  acquireLock(runId: string): boolean {
-    return this.record(`acquire-lock:${runId}`)
-  }
-
-  releaseLock(runId: string): boolean {
-    return this.record(`release-lock:${runId}`)
-  }
-
-  readState(): BaselineState | undefined {
-    this.operations.push("read-state")
-    return this.currentState === undefined ? undefined : structuredClone(this.currentState)
-  }
-
-  publishState(state: BaselineState): boolean {
-    const status = state.healthy ? "healthy" : "unhealthy"
-    if (!this.record(`publish-state:${status}:${state.migrationHighWater}`)) {
-      return false
-    }
-    this.currentState = structuredClone(state)
-    return true
-  }
-
-  inspectDatabase(databaseName: string): DatabaseObservation | undefined {
-    if (!this.record(`inspect:${databaseName}`)) {
-      return undefined
-    }
-    return structuredClone(this.observations.get(databaseName))
-  }
-
-  applyMigrations(databaseName: string, migrations: ConfirmedLiveMigration[]): boolean {
-    return this.record(
-      `apply:${databaseName}:${migrations.map((item) => item.liveVersion).join(",")}`
-    )
-  }
-
-  createRefreshDatabase(databaseName: string): boolean {
-    return this.record(`create-refresh:${databaseName}`)
-  }
-
-  restoreDump(databaseName: string, dumpPath: string): boolean {
-    return this.record(`restore:${databaseName}:${dumpPath}`)
-  }
-
-  swapBaseline(databaseName: string, retiredDatabaseName: string): boolean {
-    return this.record(`swap:${databaseName}:${retiredDatabaseName}`)
-  }
-
-  dropDatabase(databaseName: string): boolean {
-    return this.record(`drop:${databaseName}`)
-  }
-
-  private record(operation: string): boolean {
-    this.operations.push(operation)
-    return this.failAt !== operation
-  }
-}
-
-describe("database quality gate Phase 5 baseline maintenance", () => {
-  it("publishes health and live high-water atomically after confirmed catch-up", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    const fixture = confirmedFixture()
-
-    const result = source.runBaselineCatchUp({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [migration],
+    const result = source.runBaselineFullRefresh({
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
       executor,
-      repositoryRoot: fixture.repositoryRoot,
-      runId: "phase5-catch-up",
-      sourceCommit: fixture.sourceCommit,
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue955-refresh",
     })
 
     expect(result.outcome).toBe("PASS")
     expect(result.state).toMatchObject({
-      confirmedMigrations: [migration],
+      catalogSha256: input.manifest.catalogSha256,
       healthy: true,
-      migrationHighWater: migration.liveVersion,
+      schemaVersion: 2,
     })
-    expect(executor.operations.indexOf("publish-state:unhealthy:20260816044031")).toBeLessThan(
-      executor.operations.indexOf(`apply:qltbyt_test:${migration.liveVersion}`)
+    expect(executor.operations).toContain(
+      "swap:dq_baseline_refresh_issue955_refresh:dq_baseline_retired_issue955_refresh"
     )
-    expect(executor.operations.indexOf("inspect:qltbyt_test")).toBeLessThan(
-      executor.operations.indexOf(`publish-state:healthy:${migration.liveVersion}`)
+    expect(executor.operations.indexOf("publish:prepared")).toBeLessThan(
+      executor.operations.findIndex((operation) => operation.startsWith("apply:"))
     )
-    expect(executor.operations.at(-1)).toBe("release-lock:phase5-catch-up")
   })
 
-  it("rejects a catch-up migration that is not confirmed by exact live identity", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    const fixture = confirmedFixture()
-
-    const result = source.runBaselineCatchUp({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [{ ...migration, sha256: "0".repeat(64) }],
-      executor,
-      repositoryRoot: fixture.repositoryRoot,
-      runId: "phase5-unconfirmed",
-      sourceCommit: fixture.sourceCommit,
-    })
-
-    expect(result.outcome).toBe("INCOMPLETE")
-    expect(executor.operations).not.toContain(`apply:qltbyt_test:${migration.liveVersion}`)
-  })
-
-  it("leaves the baseline unhealthy when catch-up is interrupted", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    const fixture = confirmedFixture()
-    executor.failAt = `apply:qltbyt_test:${migration.liveVersion}`
-
-    const result = source.runBaselineCatchUp({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [migration],
-      executor,
-      repositoryRoot: fixture.repositoryRoot,
-      runId: "phase5-interrupted",
-      sourceCommit: fixture.sourceCommit,
-    })
-
-    expect(result.outcome).toBe("INCOMPLETE")
-    expect(result.state.healthy).toBe(false)
-    expect(result.state.recovery).toMatchObject({
-      kind: "catch-up",
-      targetMigrationHighWater: migration.liveVersion,
-    })
-    expect(executor.operations.at(-1)).toBe("release-lock:phase5-interrupted")
-  })
-
-  it("serializes full refresh and never publishes a staging database as healthy", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    const fixture = confirmedFixture()
+  it("keeps full refresh unhealthy and drops staging when migration SQL fails", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
+    executor.applySucceeds = false
 
     const result = source.runBaselineFullRefresh({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [migration],
-      dumpPath: "/opt/supabase-test/backups/20260815T150001Z.dump",
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
       executor,
-      repositoryRoot: fixture.repositoryRoot,
-      runId: "phase5-refresh",
-      sourceCommit: fixture.sourceCommit,
-    })
-
-    expect(result.outcome).toBe("PASS")
-    expect(executor.operations[0]).toBe("acquire-lock:phase5-refresh")
-    expect(executor.operations.indexOf("publish-state:unhealthy:20260816044031")).toBeLessThan(
-      executor.operations.indexOf("create-refresh:dq_baseline_refresh_phase5_refresh")
-    )
-    expect(
-      executor.operations.indexOf(
-        "swap:dq_baseline_refresh_phase5_refresh:dq_baseline_retired_phase5_refresh"
-      )
-    ).toBeLessThan(executor.operations.indexOf(`publish-state:healthy:${migration.liveVersion}`))
-    expect(executor.operations.at(-1)).toBe("release-lock:phase5-refresh")
-  })
-
-  it("keeps interrupted refresh unhealthy and does not swap the baseline", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    const fixture = confirmedFixture()
-    executor.failAt =
-      "restore:dq_baseline_refresh_phase5_refresh:/opt/supabase-test/backups/20260815T150001Z.dump"
-
-    const result = source.runBaselineFullRefresh({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [migration],
-      dumpPath: "/opt/supabase-test/backups/20260815T150001Z.dump",
-      executor,
-      repositoryRoot: fixture.repositoryRoot,
-      runId: "phase5-refresh",
-      sourceCommit: fixture.sourceCommit,
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue955-interrupted",
     })
 
     expect(result.outcome).toBe("INCOMPLETE")
-    expect(result.state.healthy).toBe(false)
-    expect(executor.operations.some((operation) => operation.startsWith("swap:"))).toBe(false)
-  })
-
-  it("recovers only when health evidence matches the confirmed live target", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    executor.currentState = {
-      ...healthyState(),
+    expect(result.state).toMatchObject({
       healthy: false,
-      recovery: {
-        kind: "catch-up",
-        runId: "phase5-interrupted",
-        targetMigrationHighWater: migration.liveVersion,
-      },
-    }
-    executor.observations.get("qltbyt_test")!.invalidIndexCount = 1
-
-    const stale = source.runBaselineHealthRecovery({
-      checkedAt: "2026-08-19T11:00:00Z",
-      confirmedMigrations: [migration],
-      executor,
-      runId: "phase5-recovery-stale",
-      sourceCommit: "f".repeat(40),
+      recovery: { phase: "prepared" },
     })
-
-    expect(stale.outcome).toBe("INCOMPLETE")
-    expect(stale.state.healthy).toBe(false)
-
-    executor.observations.get("qltbyt_test")!.invalidIndexCount = 0
-    const recovered = source.runBaselineHealthRecovery({
-      checkedAt: "2026-08-19T11:05:00Z",
-      confirmedMigrations: [migration],
-      executor,
-      runId: "phase5-recovery",
-      sourceCommit: "f".repeat(40),
-    })
-
-    expect(recovered.outcome).toBe("PASS")
-    expect(recovered.state.healthy).toBe(true)
-    expect(recovered.state.migrationHighWater).toBe(migration.liveVersion)
+    expect(executor.operations.some((operation) => operation.startsWith("swap:"))).toBe(false)
+    expect(executor.operations).toContain("drop:dq_baseline_refresh_issue955_interrupted")
   })
 
-  it("bootstraps the first healthy snapshot only from confirmed live evidence", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const executor = new FakeMaintenanceExecutor()
-    executor.currentState = undefined
+  it("fails closed before publishing healthy when retired database cleanup fails", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
+    executor.retiredDropSucceeds = false
 
-    const result = source.runBaselineHealthRecovery({
-      checkedAt: "2026-08-19T11:10:00Z",
-      confirmedMigrations: [migration],
+    const result = source.runBaselineFullRefresh({
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
       executor,
-      runId: "phase5-bootstrap",
-      sourceCommit: "f".repeat(40),
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue955-retired-cleanup",
     })
 
-    expect(result.outcome).toBe("PASS")
+    expect(result.outcome).toBe("INCOMPLETE")
     expect(result.state).toMatchObject({
-      confirmedMigrations: [migration],
-      generation: "phase5-bootstrap",
-      healthy: true,
-      migrationHighWater: migration.liveVersion,
+      healthy: false,
+      recovery: { phase: "metadata-recorded" },
     })
+    expect(executor.operations).toContain("drop:dq_baseline_retired_issue955_retired_cleanup")
+    expect(executor.operations).not.toContain("publish:healthy")
   })
 
-  it("invalidates baseline-forward evidence when generation or high-water changes", async () => {
-    const source =
-      await loadDatabaseQualityGateModule<BaselineMaintenanceModule>("baseline-maintenance")
-    const state = healthyState()
+  it("invalidates reusable evidence when the catalog-bound state changes", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const state: State = {
+      catalogSha256: input.manifest.catalogSha256,
+      checkedAt: "2026-08-27T00:00:00Z",
+      confirmedMigrations: [targetMigration],
+      generation: "issue955-refresh",
+      healthy: true,
+      migrationHighWater: targetMigration.liveVersion,
+      schemaVersion: 2,
+      sourceCommit: input.manifest.sourceCommit,
+      technicalConfigurationCatalog: [targetRoutine],
+    }
     const report = {
       baselineMigrationHighWater: state.migrationHighWater,
-      inputHashes: {
-        baselineState: source.baselineStateHash(state),
-      },
+      inputHashes: { baselineState: source.baselineStateHash(state) },
       outcome: "PASS" as const,
     }
 
@@ -430,13 +313,7 @@ describe("database quality gate Phase 5 baseline maintenance", () => {
     expect(
       source.isBaselineForwardEvidenceReusable(report, {
         ...state,
-        generation: "new-generation",
-      })
-    ).toBe(false)
-    expect(
-      source.isBaselineForwardEvidenceReusable(report, {
-        ...state,
-        migrationHighWater: migration.liveVersion,
+        generation: "issue955-health",
       })
     ).toBe(false)
   })

@@ -90,15 +90,37 @@ describe("database quality gate Oracle baseline maintenance executor", () => {
     const source = await loadDatabaseQualityGateModule<MaintenanceExecutorModule>(
       "oracle-baseline-maintenance-executor"
     )
-    const recorder = commandRecorder()
-    const executor = source.createOracleBaselineMaintenanceExecutor(executorInput(recorder.command))
+    const commands: CommandInput[] = []
+    let metadataRecorded = false
+    const executor = source.createOracleBaselineMaintenanceExecutor(
+      executorInput((input) => {
+        commands.push(input)
+        if (input.input?.includes("metadataStatus")) {
+          return {
+            exitCode: 0,
+            stderr: "",
+            stdout: JSON.stringify({
+              metadataStatus: metadataRecorded ? "exact" : "missing",
+            }),
+            timedOut: false,
+          }
+        }
+        if (input.input?.includes("INSERT INTO supabase_migrations.schema_migrations")) {
+          metadataRecorded = true
+        }
+        if (input.input?.includes("has_schema_privilege('postgres', 'public', 'CREATE')")) {
+          return { exitCode: 0, stderr: "", stdout: "false\n", timedOut: false }
+        }
+        return { exitCode: 0, stderr: "", stdout: "", timedOut: false }
+      })
+    )
 
     expect(executor.applyMigrations("qltbyt_test", [migration])).toBe(true)
     expect(
       executor.applyMigrations("qltbyt_test", [{ ...migration, sha256: "0".repeat(64) }])
     ).toBe(false)
 
-    const stdin = recorder.commands.map((command) => command.input ?? "").join("\n")
+    const stdin = commands.map((command) => command.input ?? "").join("\n")
     expect(stdin).toContain("SELECT 1;")
     expect(stdin).toContain(migration.liveVersion)
     expect(stdin).toContain(migration.liveName)

@@ -21,13 +21,15 @@ const confirmation = {
 
 function healthyState() {
   return {
+    catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     checkedAt: "2026-08-19T11:00:00Z",
     confirmedMigrations: [confirmation],
     generation: "phase5-baseline",
     healthy: true,
     migrationHighWater: confirmation.liveVersion,
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceCommit: "b".repeat(40),
+    technicalConfigurationCatalog: [],
   }
 }
 
@@ -56,6 +58,8 @@ describe("database quality gate Phase 5 atomic baseline state", () => {
         ...healthyState(),
         recovery: {
           kind: "catch-up",
+          migration: confirmation,
+          phase: "prepared",
           runId: "interrupted",
           targetMigrationHighWater: confirmation.liveVersion,
         },
@@ -67,6 +71,8 @@ describe("database quality gate Phase 5 atomic baseline state", () => {
     const source = await loadDatabaseQualityGateModule<BaselineStateModule>("baseline-state")
     const recovery = {
       kind: "full-refresh",
+      migration: confirmation,
+      phase: "prepared",
       runId: "phase5-refresh",
       targetMigrationHighWater: confirmation.liveVersion,
     }

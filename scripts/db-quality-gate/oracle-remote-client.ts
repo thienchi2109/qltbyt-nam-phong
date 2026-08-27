@@ -28,7 +28,11 @@ function parseJsonOutput(value: string): unknown | undefined {
 }
 
 export type OracleRemoteClient = {
-  readJson: (databaseName: string, statement: string) => OracleExecutorResult<unknown>
+  readJson: (
+    databaseName: string,
+    statement: string,
+    role?: string
+  ) => OracleExecutorResult<unknown>
   remote: (
     remoteCommand: string,
     inputText?: string,
@@ -100,8 +104,12 @@ export function createOracleRemoteClient(input: OracleRemoteExecutorInput): Orac
     return health.status === "ok" ? oracleErrorResult("failed", result.error) : health
   }
 
-  function readJson(databaseName: string, statement: string): OracleExecutorResult<unknown> {
-    const result = sql(databaseName, statement, "unavailable")
+  function readJson(
+    databaseName: string,
+    statement: string,
+    role?: string
+  ): OracleExecutorResult<unknown> {
+    const result = sql(databaseName, statement, "unavailable", role)
     if (result.status === "error") {
       return result
     }

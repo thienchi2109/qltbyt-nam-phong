@@ -30,6 +30,7 @@ const MIGRATION_IDENTITIES: MigrationIdentity[] = [
 ]
 
 const PUBLISHED_BASELINE_STATE: BaselineState = {
+  catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
   checkedAt: CREATED_AT,
   confirmedMigrations: [
     {
@@ -42,8 +43,9 @@ const PUBLISHED_BASELINE_STATE: BaselineState = {
   generation: "phase5-baseline",
   healthy: true,
   migrationHighWater: "20260819062043",
-  schemaVersion: 1,
+  schemaVersion: 2,
   sourceCommit: "a".repeat(40),
+  technicalConfigurationCatalog: [],
 }
 
 const SHARED_INPUT_HASHES = {

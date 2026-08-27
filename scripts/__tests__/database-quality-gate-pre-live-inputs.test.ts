@@ -42,6 +42,7 @@ function baselineStateForFixture(repositoryRoot: string, sourceCommit: string): 
   }
 
   return {
+    catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
     checkedAt: CREATED_AT,
     confirmedMigrations: [
       {
@@ -53,8 +54,9 @@ function baselineStateForFixture(repositoryRoot: string, sourceCommit: string): 
     generation: "phase6a-input-reconciliation",
     healthy: true,
     migrationHighWater: match[1],
-    schemaVersion: 1,
+    schemaVersion: 2,
     sourceCommit,
+    technicalConfigurationCatalog: [],
   }
 }
 

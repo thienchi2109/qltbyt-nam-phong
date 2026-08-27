@@ -99,78 +99,129 @@ bash -s -- '<exact-40-character-commit>' \
 Checkout nam tai `/opt/supabase-test/quality-gate/repository`, detached HEAD,
 origin co dinh, credential helper rong, va permissions khong mo cho group/other.
 
-## Tao confirmation tu live read-only
+## Tao manifest tu live read-only
 
-1. Dung Supabase MCP `list_migrations` va read-only `execute_sql`.
-2. Lay `version`, `name`, va SHA-256 cua `statements[1]`.
-3. Doi chieu SHA-256 voi canonical local migration:
+Chi tao manifest sau khi exact commit da land. Dung Supabase MCP
+`list_migrations` va read-only `execute_sql`; khong dung Supabase CLI va khong
+ghi live DB.
+
+1. Lay `version`, `name`, va SHA-256 cua `statements[1]`.
+2. Doi chieu SHA-256 voi canonical local migration tai exact landed commit:
 
 ```bash
 node -e "const fs=require('fs'),c=require('crypto');const s=fs.readFileSync(process.argv[1],'utf8').replace(/\n$/,'');console.log(c.createHash('sha256').update(s).digest('hex'))" \
   supabase/migrations/<local-file>.sql
 ```
 
-4. Tao file tam ngoai repository, vi du `/tmp/confirmed-live.json`:
+3. Dung read-only `execute_sql` voi catalog query cung contract
+   `BASELINE_OBSERVATION_QUERY` de lay moi RPC `technical_configuration_*` theo:
+   `identity`, `definitionSha256`, `owner`, `executionMode`, `searchPath`, va
+   `executeGrantees`.
+4. Sap xep migrations theo `liveVersion`, catalog theo `identity`, va grantees
+   theo ten. Tinh `catalogSha256` tren canonical JSON cua catalog da normalize.
+5. Tao file tam ngoai repository, vi du `/tmp/oracle-baseline-manifest.json`:
 
 ```json
-[
-  {
-    "liveName": "migration_name_without_timestamp",
-    "liveVersion": "20260819062043",
-    "path": "supabase/migrations/20260819031200_migration_name_without_timestamp.sql",
-    "sha256": "<canonical-local-and-live-SQL-sha256>"
-  }
-]
+{
+  "catalogSha256": "<normalized-technical-configuration-catalog-sha256>",
+  "migrations": [
+    {
+      "liveName": "migration_name_without_timestamp",
+      "liveVersion": "20260819062043",
+      "path": "supabase/migrations/20260819031200_migration_name_without_timestamp.sql",
+      "sha256": "<canonical-local-and-live-SQL-sha256>"
+    }
+  ],
+  "schemaVersion": 1,
+  "sourceCommit": "<exact-40-character-landed-commit>",
+  "targetMigrationHighWater": "20260819062043",
+  "technicalConfigurationCatalog": [
+    {
+      "definitionSha256": "<function-definition-sha256>",
+      "executeGrantees": ["authenticated"],
+      "executionMode": "definer",
+      "identity": "public.technical_configuration_example(uuid)",
+      "owner": "postgres",
+      "searchPath": "public, pg_temp"
+    }
+  ]
+}
 ```
 
-Khong dua migration vao confirmation neu live read-back thieu, name khac, hoac
-SQL hash khac. Trong truong hop do, dung lai voi trang thai reconciliation
-required.
+Command maintenance parse va hash lai manifest; malformed, duplicate,
+contradictory high-water, stale source commit, hoac catalog hash sai deu
+`INCOMPLETE`. Khong dua migration vao manifest neu live read-back thieu, name
+khac, hoac SQL hash khac.
 
-## Baseline health va bootstrap
+## Role matrix
 
-Lenh `health` dung cho bootstrap metadata lan dau va recovery sau interruption.
-No chi publish healthy khi Oracle high-water, live name, SQL hash, invalid index
-count va unvalidated constraint count deu khop.
+| Role             | Quyen truoc/sau maintenance                                                      | Quyen tam thoi                             |
+| ---------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
+| `supabase_admin` | quan ly schema `public`, `SET ROLE postgres`, `SELECT/INSERT` migration metadata | khong                                      |
+| `postgres`       | `USAGE` tren `public`, khong co `CREATE`                                         | `CREATE` chi trong luc apply migration SQL |
+
+Preflight role va metadata conflict phai PASS truoc khi publish unhealthy state,
+`GRANT`, hoac chay migration SQL. Moi migration attempt deu `REVOKE CREATE`
+trong `finally` va query lai de xac nhan privilege da sach.
+
+## Baseline health va recovery
+
+Lenh `health` chi recovery mot catch-up da publish state v2. No khong bootstrap
+state v1 va khong replay migration SQL.
 
 ```bash
 node scripts/npm-run.js run db:quality-gate:baseline -- \
   --operation health \
   --run-id phase5-health-<unique-id> \
   --subject-commit "$(git rev-parse HEAD)" \
-  --confirmations /tmp/confirmed-live.json
+  --manifest /tmp/oracle-baseline-manifest.json
 ```
 
 Atomic state nam tai
 `/opt/supabase-test/quality-gate/baseline/current.json`. Maintenance ghi file
 tam mode `0600`, atomic rename, sau do dat mode `0400`. Healthy va high-water
-luon nam trong cung mot snapshot.
+luon nam trong cung mot snapshot. Dynamic preflight chi chap nhan healthy state
+v2, re-query database, va doi chieu exact migration identities, structural
+health, temporary privilege, va Technical Configurations catalog.
+
+| State/DB observation                                                          | `health` action                                                         |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| metadata exact va observation/catalog exact                                   | publish healthy v2                                                      |
+| phase `sql-applied`, metadata missing, migration identity/hash exact manifest | ghi metadata bang `supabase_admin`, read-back exact, roi verify/publish |
+| temporary `CREATE` con leak                                                   | revoke va verify truoc khi tiep tuc                                     |
+| phase `prepared`                                                              | `INCOMPLETE`; bat buoc full refresh                                     |
+| metadata conflict, hash/source mismatch, hoac catalog mismatch                | `INCOMPLETE`; bat buoc full refresh                                     |
 
 ## Incremental catch-up
 
-Chi chay sau khi tung migration trong confirmation da duoc xac nhan applied
-live bang read-only MCP:
+Chi chay sau khi tung migration trong manifest da duoc xac nhan applied live
+bang read-only MCP. Catch-up sua truc tiep persistent `qltbyt_test`; no khong
+dung staging database va khong duoc xem la disposable:
 
 ```bash
 node scripts/npm-run.js run db:quality-gate:baseline -- \
   --operation catch-up \
   --run-id phase5-catch-up-<unique-id> \
   --subject-commit "$(git rev-parse HEAD)" \
-  --confirmations /tmp/confirmed-live.json
+  --manifest /tmp/oracle-baseline-manifest.json
 ```
 
 Thu tu fail-closed:
 
 1. acquire global Oracle lease lock;
-2. publish `healthy=false` voi recovery target;
-3. apply exact canonical local SQL vao `qltbyt_test`;
-4. ghi exact live migration metadata;
-5. verify health va high-water;
-6. atomic publish healthy snapshot;
-7. release lock.
+2. preflight role capabilities va metadata status cho toan bo manifest;
+3. publish phase `prepared`;
+4. grant tam `CREATE`, apply exact canonical SQL as `postgres`, revoke va verify;
+5. publish phase `sql-applied`;
+6. ghi metadata as `supabase_admin`, read-back exact name/hash, publish
+   `metadata-recorded`;
+7. verify migration records, structural health, privilege va catalog exact;
+8. atomic publish healthy v2;
+9. release lock.
 
-Neu buoc 3-6 loi, baseline giu `healthy=false`. Khong rerun migration mot cach
-mu quang; dung `health` neu DB da khop exact target, hoac full refresh.
+Neu buoc 4-8 loi, baseline giu `healthy=false`. Chi dung `health` cho
+`sql-applied`/`metadata-recorded` exact; phase `prepared` hoac ambiguity bat
+buoc full refresh.
 
 ## Serialized full refresh
 
@@ -183,13 +234,16 @@ node scripts/npm-run.js run db:quality-gate:baseline -- \
   --operation full-refresh \
   --run-id phase5-refresh-<unique-id> \
   --subject-commit "$(git rev-parse HEAD)" \
-  --confirmations /tmp/confirmed-live.json \
+  --manifest /tmp/oracle-baseline-manifest.json \
   --dump /opt/supabase-test/backups/<verified-dump>.dump
 ```
 
 Dump phai nam trong `/opt/supabase-test/backups`, da qua `pg_restore --list` va
-SHA-256 verification. Confirmation phai bao gom moi migration can catch-up tu
-dump den confirmed-live high-water.
+SHA-256 verification. Manifest phai bao gom moi migration can catch-up tu dump
+den confirmed-live high-water. State v1 chi duoc doc de chay explicit
+full-refresh upgrade; dynamic preflight va `health` khong duoc tin state v1.
+Full refresh chi publish healthy sau khi staging va swapped baseline deu exact,
+retired database da xoa, `dq_*` count bang 0, va temporary privilege da sach.
 
 ## Evidence va invalidation
 

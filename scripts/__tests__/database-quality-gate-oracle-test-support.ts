@@ -50,6 +50,7 @@ export function commandRecorder() {
           exitCode: 0,
           stderr: "",
           stdout: `${JSON.stringify({
+            catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
             checkedAt: "2026-08-19T11:00:00Z",
             confirmedMigrations: [
               {
@@ -62,8 +63,9 @@ export function commandRecorder() {
             generation: "phase5-baseline",
             healthy: true,
             migrationHighWater: "20270101000000",
-            schemaVersion: 1,
+            schemaVersion: 2,
             sourceCommit: "a".repeat(40),
+            technicalConfigurationCatalog: [],
           })}\n`,
           timedOut: false,
         }
@@ -83,6 +85,8 @@ export function commandRecorder() {
                 sqlSha256: "a".repeat(64),
               },
             ],
+            postgresHasCreateOnPublic: false,
+            technicalConfigurationCatalog: [],
             unvalidatedConstraintCount: 0,
           })}\n`,
           timedOut: false,

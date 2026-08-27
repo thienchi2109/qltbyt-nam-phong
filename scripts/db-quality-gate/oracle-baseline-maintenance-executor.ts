@@ -1,8 +1,16 @@
-import { parseBaselineState, parseDatabaseObservation, validConfirmation } from "./baseline-state"
-import type { BaselineState, DatabaseObservation } from "./baseline-state"
+import { parseDatabaseObservation, parsePersistedBaselineState } from "./baseline-state"
+import type { DatabaseObservation, PersistedBaselineState } from "./baseline-state"
 import type { BaselineMaintenanceExecutor, ConfirmedMigrationInput } from "./baseline-maintenance"
-import { migrationContentSha256 } from "./migration-source"
-import { BASELINE_OBSERVATION_QUERY } from "./oracle-baseline-sql"
+import {
+  metadataStatement,
+  migrationMetadataStatusQuery,
+  validMigrationInput,
+} from "./oracle-baseline-metadata"
+import {
+  BASELINE_OBSERVATION_QUERY,
+  BASELINE_ROLE_PREFLIGHT_QUERY,
+  POSTGRES_CREATE_PRIVILEGE_QUERY,
+} from "./oracle-baseline-sql"
 import { createOracleRemoteClient, oracleStatePath } from "./oracle-remote-client"
 import {
   defaultOracleRemoteCommand,
@@ -32,29 +40,9 @@ function validDumpPath(dumpPath: string): boolean {
   )
 }
 
-function metadataStatement(migration: ConfirmedMigrationInput): string | undefined {
-  if (
-    !validConfirmation(migration) ||
-    migrationContentSha256(migration.content) !== migration.sha256
-  ) {
-    return undefined
-  }
-  const delimiter = `$dq_${migration.sha256.slice(0, 16)}$`
-  if (migration.content.includes(delimiter)) {
-    return undefined
-  }
-
-  return `INSERT INTO supabase_migrations.schema_migrations(version, statements, name)
-VALUES (
-  '${migration.liveVersion}',
-  ARRAY[${delimiter}${migration.content}${delimiter}],
-  '${migration.liveName}'
-);`
-}
-
-function parseStateText(value: string): BaselineState | undefined {
+function parseStateText(value: string): PersistedBaselineState | undefined {
   try {
-    return parseBaselineState(JSON.parse(value) as unknown)
+    return parsePersistedBaselineState(JSON.parse(value) as unknown)
   } catch {
     return undefined
   }
@@ -88,6 +76,88 @@ DROP DATABASE IF EXISTS ${quotedIdentifier(databaseName)};`,
       DATABASE_ADMIN_ROLE
     )
     return result.status === "ok"
+  }
+
+  function cleanupMigrationRole(databaseName: string): boolean {
+    if (!validMaintenanceDatabase(databaseName)) {
+      return false
+    }
+    const revoked = sql(
+      databaseName,
+      "REVOKE CREATE ON SCHEMA public FROM postgres;",
+      "cleanup",
+      DATABASE_ADMIN_ROLE
+    )
+    const verified = sql(
+      databaseName,
+      POSTGRES_CREATE_PRIVILEGE_QUERY,
+      "cleanup",
+      DATABASE_ADMIN_ROLE
+    )
+    return revoked.status === "ok" && verified.status === "ok" && verified.value.trim() === "false"
+  }
+
+  function applyMigration(databaseName: string, migration: ConfirmedMigrationInput): boolean {
+    if (!validMaintenanceDatabase(databaseName) || !validMigrationInput(migration)) {
+      return false
+    }
+    let applied = false
+    let granted = false
+    let cleaned = false
+    try {
+      granted =
+        sql(
+          databaseName,
+          "GRANT CREATE ON SCHEMA public TO postgres;",
+          "failed",
+          DATABASE_ADMIN_ROLE
+        ).status === "ok"
+      if (granted) {
+        applied = sql(databaseName, migration.content, "failed").status === "ok"
+      }
+    } finally {
+      cleaned = cleanupMigrationRole(databaseName)
+    }
+    return granted && applied && cleaned
+  }
+
+  function inspectMigrationMetadata(databaseName: string, migration: ConfirmedMigrationInput) {
+    if (!validMaintenanceDatabase(databaseName)) {
+      return undefined
+    }
+    const query = migrationMetadataStatusQuery(migration)
+    if (query === undefined) {
+      return undefined
+    }
+    const result = readJson(databaseName, query, DATABASE_ADMIN_ROLE)
+    if (
+      result.status === "error" ||
+      typeof result.value !== "object" ||
+      result.value === null ||
+      Array.isArray(result.value)
+    ) {
+      return undefined
+    }
+    const metadataStatus = (result.value as Record<string, unknown>).metadataStatus
+    return metadataStatus === "conflict" ||
+      metadataStatus === "exact" ||
+      metadataStatus === "missing"
+      ? metadataStatus
+      : undefined
+  }
+
+  function recordMigrationMetadata(
+    databaseName: string,
+    migration: ConfirmedMigrationInput
+  ): boolean {
+    if (!validMaintenanceDatabase(databaseName)) {
+      return false
+    }
+    const metadata = metadataStatement(migration)
+    return (
+      metadata !== undefined &&
+      sql(databaseName, metadata, "failed", DATABASE_ADMIN_ROLE).status === "ok"
+    )
   }
 
   return {
@@ -127,22 +197,54 @@ chmod 400 "$state_path"`,
 
     inspectDatabase,
 
+    preflightRoles(databaseName) {
+      if (!validMaintenanceDatabase(databaseName)) {
+        return false
+      }
+      const result = readJson(databaseName, BASELINE_ROLE_PREFLIGHT_QUERY, DATABASE_ADMIN_ROLE)
+      if (
+        result.status === "error" ||
+        typeof result.value !== "object" ||
+        result.value === null ||
+        Array.isArray(result.value)
+      ) {
+        return false
+      }
+      const facts = result.value as Record<string, unknown>
+      return (
+        facts.adminCanManageSchema === true &&
+        facts.adminCanSetRole === true &&
+        facts.adminCanWriteMetadata === true &&
+        facts.postgresHasCreateOnPublic === false &&
+        facts.postgresHasUsageOnPublic === true
+      )
+    },
+
+    cleanupMigrationRole,
+
+    applyMigration,
+
+    inspectMigrationMetadata,
+
+    recordMigrationMetadata,
+
     applyMigrations(databaseName, migrations) {
       if (!validMaintenanceDatabase(databaseName)) {
         return false
       }
       for (const migration of migrations) {
-        const metadata = metadataStatement(migration)
-        if (metadata === undefined) {
+        const metadataStatus = inspectMigrationMetadata(databaseName, migration)
+        if (metadataStatus === undefined || metadataStatus === "conflict") {
           return false
         }
-        const applied = sql(databaseName, migration.content, "failed")
-        if (applied.status === "error") {
-          return false
-        }
-        const recorded = sql(databaseName, metadata, "failed")
-        if (recorded.status === "error") {
-          return false
+        if (metadataStatus === "missing") {
+          if (
+            !applyMigration(databaseName, migration) ||
+            !recordMigrationMetadata(databaseName, migration) ||
+            inspectMigrationMetadata(databaseName, migration) !== "exact"
+          ) {
+            return false
+          }
         }
       }
       return true

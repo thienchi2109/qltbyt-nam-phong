@@ -29,11 +29,17 @@ type ReconciliationModule = {
   runBaselineReconciliation: (
     input: {
       checkedAt: string
-      confirmedMigrations: ConfirmedLiveMigration[]
       executor: BaselineMaintenanceExecutor
+      manifest: {
+        catalogSha256: string
+        migrations: ConfirmedLiveMigration[]
+        schemaVersion: 1
+        sourceCommit: string
+        targetMigrationHighWater: string
+        technicalConfigurationCatalog: []
+      }
       repositoryRoot: string
       runId: string
-      sourceCommit: string
     },
     dependencies?: {
       runCatchUp?: () => { outcome: "INCOMPLETE" | "PASS"; state: BaselineState }
@@ -195,12 +201,17 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
   function executor(state: BaselineState): BaselineMaintenanceExecutor {
     return {
       acquireLock: () => false,
+      applyMigration: () => false,
       applyMigrations: () => false,
+      cleanupMigrationRole: () => false,
       createRefreshDatabase: () => false,
       dropDatabase: () => false,
       inspectDatabase: () => undefined,
+      inspectMigrationMetadata: () => undefined,
+      preflightRoles: () => false,
       publishState: () => false,
       readState: () => state,
+      recordMigrationMetadata: () => false,
       releaseLock: () => false,
       restoreDump: () => false,
       swapBaseline: () => false,
@@ -210,24 +221,39 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
   function input(state: BaselineState) {
     return {
       checkedAt: "2026-08-23T08:00:00.000Z",
-      confirmedMigrations: [confirmation],
       executor: executor(state),
+      manifest: {
+        catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        migrations: [confirmation],
+        schemaVersion: 1 as const,
+        sourceCommit: "a".repeat(40),
+        targetMigrationHighWater: LIVE_VERSION,
+        technicalConfigurationCatalog: [] as [],
+      },
       repositoryRoot: "/fixture",
       runId: "phase6-baseline-reconcile",
-      sourceCommit: "a".repeat(40),
     }
   }
 
   it("selects catch-up for a healthy baseline behind confirmed live", async () => {
     const source = (await import("../db-quality-gate/reconciliation")) as ReconciliationModule
     const state: BaselineState = {
+      catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       checkedAt: "2026-08-23T07:00:00.000Z",
-      confirmedMigrations: [],
+      confirmedMigrations: [
+        {
+          liveName: "prior",
+          liveVersion: "20260822070000",
+          path: "supabase/migrations/20260822070000_prior.sql",
+          sha256: "1".repeat(64),
+        },
+      ],
       generation: "previous",
       healthy: true,
       migrationHighWater: "20260822070000",
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceCommit: "b".repeat(40),
+      technicalConfigurationCatalog: [],
     }
     const runCatchUp = vi.fn(() => ({ outcome: "PASS" as const, state }))
     const runHealthRecovery = vi.fn(() => ({ outcome: "PASS" as const, state }))
@@ -241,6 +267,7 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
   it("selects health recovery for an unhealthy published catch-up state", async () => {
     const source = (await import("../db-quality-gate/reconciliation")) as ReconciliationModule
     const state: BaselineState = {
+      catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       checkedAt: "2026-08-23T07:00:00.000Z",
       confirmedMigrations: [],
       generation: "failed-catch-up",
@@ -248,11 +275,14 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
       migrationHighWater: "unavailable",
       recovery: {
         kind: "catch-up",
+        migration: confirmation,
+        phase: "sql-applied",
         runId: "failed-catch-up",
         targetMigrationHighWater: LIVE_VERSION,
       },
-      schemaVersion: 1,
-      sourceCommit: "b".repeat(40),
+      schemaVersion: 2,
+      sourceCommit: "a".repeat(40),
+      technicalConfigurationCatalog: [],
     }
     const runCatchUp = vi.fn(() => ({ outcome: "PASS" as const, state }))
     const runHealthRecovery = vi.fn(() => ({ outcome: "INCOMPLETE" as const, state }))
@@ -270,6 +300,7 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
   it("treats requested confirmations as an idempotent subset at the current high-water", async () => {
     const source = (await import("../db-quality-gate/reconciliation")) as ReconciliationModule
     const state: BaselineState = {
+      catalogSha256: "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
       checkedAt: "2026-08-23T07:00:00.000Z",
       confirmedMigrations: [
         {
@@ -283,8 +314,9 @@ describe("database quality gate Oracle baseline reconciliation orchestration", (
       generation: "current",
       healthy: true,
       migrationHighWater: LIVE_VERSION,
-      schemaVersion: 1,
+      schemaVersion: 2,
       sourceCommit: "b".repeat(40),
+      technicalConfigurationCatalog: [],
     }
     const runCatchUp = vi.fn(() => ({ outcome: "PASS" as const, state }))
     const runHealthRecovery = vi.fn(() => ({ outcome: "PASS" as const, state }))

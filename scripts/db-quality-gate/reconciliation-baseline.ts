@@ -1,26 +1,22 @@
 import { runBaselineCatchUp, runBaselineHealthRecovery } from "./baseline-maintenance"
-import { compareConfirmedMigrations } from "./baseline-state"
+import { BASELINE_STATE_SCHEMA_VERSION } from "./baseline-state"
 import { stableJsonStringify } from "./serialization"
+import type { BaselineManifest } from "./baseline-manifest"
 import type { BaselineMaintenanceExecutor } from "./baseline-maintenance"
+import type { MaintenanceResult } from "./baseline-maintenance-recovery"
 import type { BaselineState, ConfirmedLiveMigration } from "./baseline-state"
 
 type MaintenanceInput = {
   checkedAt: string
-  confirmedMigrations: ConfirmedLiveMigration[]
   executor: BaselineMaintenanceExecutor
+  manifest: BaselineManifest
   repositoryRoot: string
   runId: string
-  sourceCommit: string
-}
-
-type MaintenanceResult = {
-  outcome: "INCOMPLETE" | "PASS"
-  state: BaselineState
 }
 
 type BaselineReconciliationDependencies = {
   runCatchUp?: (input: MaintenanceInput) => MaintenanceResult
-  runHealthRecovery?: (input: Omit<MaintenanceInput, "repositoryRoot">) => MaintenanceResult
+  runHealthRecovery?: (input: MaintenanceInput) => MaintenanceResult
 }
 
 function confirmationsIncluded(
@@ -33,31 +29,24 @@ function confirmationsIncluded(
   return confirmations.every((confirmation) => current.has(stableJsonStringify(confirmation)))
 }
 
-/**
- * Selects the independent Oracle maintenance branch. The supplied maintenance
- * executor remains the only component allowed to mutate the isolated baseline.
- */
+/** Selects catch-up or metadata-only recovery without mutating live Supabase state. */
 export function runBaselineReconciliation(
   input: MaintenanceInput,
   dependencies: BaselineReconciliationDependencies = {}
 ): MaintenanceResult {
   const current = input.executor.readState()
-  const targetHighWater = [...input.confirmedMigrations]
-    .sort(compareConfirmedMigrations)
-    .at(-1)?.liveVersion
   if (
-    current !== undefined &&
+    current?.schemaVersion === BASELINE_STATE_SCHEMA_VERSION &&
     current.healthy &&
-    current.migrationHighWater === targetHighWater &&
-    confirmationsIncluded(current, input.confirmedMigrations)
+    current.migrationHighWater === input.manifest.targetMigrationHighWater &&
+    current.catalogSha256 === input.manifest.catalogSha256 &&
+    confirmationsIncluded(current, input.manifest.migrations)
   ) {
     return { outcome: "PASS", state: current }
   }
 
-  if (current?.healthy) {
+  if (current?.schemaVersion === BASELINE_STATE_SCHEMA_VERSION && current.healthy) {
     return (dependencies.runCatchUp ?? runBaselineCatchUp)(input)
   }
-
-  const { repositoryRoot: _repositoryRoot, ...healthInput } = input
-  return (dependencies.runHealthRecovery ?? runBaselineHealthRecovery)(healthInput)
+  return (dependencies.runHealthRecovery ?? runBaselineHealthRecovery)(input)
 }
