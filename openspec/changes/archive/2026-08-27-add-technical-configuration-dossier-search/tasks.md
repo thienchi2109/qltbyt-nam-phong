@@ -2,9 +2,9 @@
 
 ## TDD Execution Rule
 
-- [ ] For every phase that changes behavior, write the focused failing regression first and record the expected failure before production changes.
-- [ ] Keep each phase independently reviewable and green; do not merge a phase that depends on uncommitted work from a later phase.
-- [ ] Do not apply any migration to live Supabase without separate explicit permission for that specific write.
+- [x] For every phase that changes behavior, write the focused failing regression first and record the expected failure before production changes.
+- [x] Keep each phase independently reviewable and green; do not merge a phase that depends on uncommitted work from a later phase.
+- [x] Do not apply any migration to live Supabase without separate explicit permission for that specific write.
 
 ## Phase 1. Contract And Test Foundation
 
