@@ -2,16 +2,7 @@
 
 import { useSortable } from "@dnd-kit/react/sortable"
 import * as React from "react"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ClipboardPaste,
-  GripVertical,
-  ListChecks,
-  Plus,
-  Trash2,
-} from "lucide-react"
+import { ChevronDown, ClipboardPaste, GripVertical, ListChecks, Plus } from "lucide-react"
 
 import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
@@ -24,10 +15,10 @@ import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-c
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 import { focusTechnicalConfigurationBaselineElement } from "./TechnicalConfigurationBaselineFocus"
 import { TechnicalConfigurationBaselineGroupContent } from "./TechnicalConfigurationBaselineGroupContent"
 import type { TechnicalConfigurationBaselineGroupSectionProps } from "./TechnicalConfigurationBaselineGroupSectionTypes"
+import { TechnicalConfigurationBaselineHierarchyActionsMenu } from "./TechnicalConfigurationBaselineHierarchyActionsMenu"
 import { TechnicalConfigurationBaselineHierarchyNameField } from "./TechnicalConfigurationBaselineHierarchyNameField"
 import { TechnicalConfigurationBaselineHierarchySummary } from "./TechnicalConfigurationBaselineHierarchySummary"
 
@@ -108,7 +99,8 @@ export function TechnicalConfigurationBaselineGroupSection({
   const groupNameRef = React.useRef<HTMLInputElement>(null)
   const modeActionRef = React.useRef<HTMLButtonElement>(null)
   const addCriterionRef = React.useRef<HTMLButtonElement>(null)
-  const addSubgroupRef = React.useRef<HTMLButtonElement>(null)
+  const addSubgroupRef = React.useRef<HTMLDivElement>(null)
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = React.useState(false)
   const sortable = useSortable<
     TechnicalConfigurationBaselineDndSourceData & TechnicalConfigurationBaselineDndTargetData
   >({
@@ -145,11 +137,23 @@ export function TechnicalConfigurationBaselineGroupSection({
       } else if (focusTarget.kind === "add-criterion" && focusTarget.key === group.key) {
         focusTechnicalConfigurationBaselineElement(addCriterionRef.current)
       } else if (focusTarget.kind === "add-subgroup" && focusTarget.key === group.key) {
-        focusTechnicalConfigurationBaselineElement(addSubgroupRef.current)
+        setIsActionsMenuOpen(true)
       }
     }, 0)
     return () => window.clearTimeout(timeoutId)
   }, [focusTarget, group.key])
+
+  React.useLayoutEffect(() => {
+    if (
+      !isActionsMenuOpen ||
+      focusTarget?.kind !== "add-subgroup" ||
+      focusTarget.key !== group.key
+    ) {
+      return
+    }
+
+    focusTechnicalConfigurationBaselineElement(addSubgroupRef.current)
+  }, [focusTarget, group.key, isActionsMenuOpen])
 
   return (
     <Collapsible open={expanded} onOpenChange={onExpandedChange}>
@@ -161,7 +165,7 @@ export function TechnicalConfigurationBaselineGroupSection({
         data-drag-source={sortable.isDragSource ? "true" : undefined}
         data-drop-target={sortable.isDropTarget ? "true" : undefined}
       >
-        <div className="grid gap-3 border-y border-border/70 bg-background px-3 py-3 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-start">
+        <div className="grid gap-2 border-y border-border/70 bg-background px-3 py-2 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-start">
           <div className="flex items-center gap-2">
             <CollapsibleTrigger asChild>
               <Button
@@ -224,7 +228,7 @@ export function TechnicalConfigurationBaselineGroupSection({
           </div>
 
           {disabled ? null : (
-            <div className="flex flex-wrap items-center gap-1 lg:justify-end">
+            <div className="flex flex-nowrap items-center gap-1 lg:justify-end">
               <Button
                 ref={modeActionRef}
                 type="button"
@@ -256,49 +260,28 @@ export function TechnicalConfigurationBaselineGroupSection({
                 <Plus className="size-4" aria-hidden="true" />
                 Thêm tiêu chí
               </Button>
-              {hierarchyAuthoring ? (
-                <Button
-                  ref={addSubgroupRef}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={disabled}
-                  aria-label={`Thêm nhóm con vào nhóm ${sectionOrdinal}`}
-                  onClick={() => hierarchyAuthoring.onAddSubgroup(group.key)}
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Thêm nhóm con
-                </Button>
-              ) : null}
-              <IconButton
-                label={`Di chuyển nhóm ${sectionOrdinal} lên`}
-                title="Di chuyển lên"
-                disabled={controlsDisabled || groupIndex === 0}
-                onClick={() => onMoveGroup(groupIndex, -1)}
-              >
-                <ArrowUp className="size-4" />
-              </IconButton>
-              <IconButton
-                label={`Di chuyển nhóm ${sectionOrdinal} xuống`}
-                title="Di chuyển xuống"
-                disabled={controlsDisabled || groupIndex === groupCount - 1}
-                onClick={() => onMoveGroup(groupIndex, 1)}
-              >
-                <ArrowDown className="size-4" />
-              </IconButton>
-              <IconButton
-                label={`Xóa nhóm ${sectionOrdinal}`}
-                title="Xóa nhóm"
+              <TechnicalConfigurationBaselineHierarchyActionsMenu
+                triggerLabel={`Thao tác cho nhóm ${sectionOrdinal}`}
                 disabled={controlsDisabled}
-                ariaDisabled={hasPendingBulkInput}
-                ariaDescribedBy={hasPendingBulkInput ? pendingInputDescriptionId : undefined}
-                destructive
-                onClick={() => {
-                  if (!hasPendingBulkInput) onDeleteGroup(group.key)
-                }}
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+                moveUpDisabled={controlsDisabled || groupIndex === 0}
+                moveDownDisabled={controlsDisabled || groupIndex === groupCount - 1}
+                deleteLabel="Xóa nhóm"
+                deleteBlocked={hasPendingBulkInput}
+                deleteDescribedBy={pendingInputDescriptionId}
+                open={isActionsMenuOpen}
+                onOpenChange={setIsActionsMenuOpen}
+                additionalAction={
+                  hierarchyAuthoring
+                    ? {
+                        label: "Thêm nhóm con",
+                        itemRef: addSubgroupRef,
+                        onSelect: () => hierarchyAuthoring.onAddSubgroup(group.key),
+                      }
+                    : undefined
+                }
+                onMove={(offset) => onMoveGroup(groupIndex, offset)}
+                onDelete={() => onDeleteGroup(group.key)}
+              />
             </div>
           )}
         </div>

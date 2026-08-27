@@ -2,16 +2,7 @@
 
 import { useSortable } from "@dnd-kit/react/sortable"
 import * as React from "react"
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ClipboardPaste,
-  GripVertical,
-  ListChecks,
-  Plus,
-  Trash2,
-} from "lucide-react"
+import { ChevronDown, ClipboardPaste, GripVertical, ListChecks, Plus } from "lucide-react"
 
 import type { TechnicalConfigurationFocusTarget } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
 import { TechnicalConfigurationBaselineSubgroupCriteria } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineSubgroupCriteria"
@@ -28,12 +19,12 @@ import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-c
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
-import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 import type {
   TechnicalConfigurationBaselineCriterionOwnerOption,
   TechnicalConfigurationBaselineHierarchyAuthoring,
 } from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 import { focusTechnicalConfigurationBaselineElement } from "./TechnicalConfigurationBaselineFocus"
+import { TechnicalConfigurationBaselineHierarchyActionsMenu } from "./TechnicalConfigurationBaselineHierarchyActionsMenu"
 import { TechnicalConfigurationBaselineHierarchyNameField } from "./TechnicalConfigurationBaselineHierarchyNameField"
 import { TechnicalConfigurationBaselineHierarchySummary } from "./TechnicalConfigurationBaselineHierarchySummary"
 
@@ -216,7 +207,7 @@ export function TechnicalConfigurationBaselineSubgroupSection({
             </div>
           </div>
           {authoring && !readOnly ? (
-            <div className="flex flex-wrap items-center gap-1 sm:justify-end">
+            <div className="flex flex-nowrap items-center gap-1 sm:justify-end">
               <Button
                 ref={modeActionRef}
                 type="button"
@@ -247,35 +238,17 @@ export function TechnicalConfigurationBaselineSubgroupSection({
                 <Plus className="size-4" aria-hidden="true" />
                 Thêm tiêu chí
               </Button>
-              <IconButton
-                label={`Di chuyển nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal} lên`}
-                title="Di chuyển lên"
-                disabled={disabled || subgroupIndex === 0}
-                onClick={() => authoring.onMoveSubgroup(groupKey, subgroupIndex, -1)}
-              >
-                <ArrowUp className="size-4" />
-              </IconButton>
-              <IconButton
-                label={`Di chuyển nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal} xuống`}
-                title="Di chuyển xuống"
-                disabled={disabled || subgroupIndex === subgroupCount - 1}
-                onClick={() => authoring.onMoveSubgroup(groupKey, subgroupIndex, 1)}
-              >
-                <ArrowDown className="size-4" />
-              </IconButton>
-              <IconButton
-                label={`Xóa nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}`}
-                title="Xóa nhóm con"
+              <TechnicalConfigurationBaselineHierarchyActionsMenu
+                triggerLabel={`Thao tác cho nhóm con ${subgroupOrdinal} của nhóm ${sectionOrdinal}`}
                 disabled={disabled}
-                ariaDisabled={hasPendingBulkInput}
-                ariaDescribedBy={hasPendingBulkInput ? pendingInputDescriptionId : undefined}
-                destructive
-                onClick={() => {
-                  if (!hasPendingBulkInput) authoring.onDeleteSubgroup(groupKey, subgroup.key)
-                }}
-              >
-                <Trash2 className="size-4" />
-              </IconButton>
+                moveUpDisabled={disabled || subgroupIndex === 0}
+                moveDownDisabled={disabled || subgroupIndex === subgroupCount - 1}
+                deleteLabel="Xóa nhóm con"
+                deleteBlocked={hasPendingBulkInput}
+                deleteDescribedBy={pendingInputDescriptionId}
+                onMove={(offset) => authoring.onMoveSubgroup(groupKey, subgroupIndex, offset)}
+                onDelete={() => authoring.onDeleteSubgroup(groupKey, subgroup.key)}
+              />
             </div>
           ) : null}
         </div>

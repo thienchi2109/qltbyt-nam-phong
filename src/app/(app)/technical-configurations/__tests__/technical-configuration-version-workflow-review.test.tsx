@@ -92,7 +92,8 @@ describe("technical configuration version workflow review regressions", () => {
     )
 
     renderTab()
-    await user.click(await screen.findByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(await screen.findByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: "Khóa vĩnh viễn",
@@ -104,9 +105,10 @@ describe("technical configuration version workflow review regressions", () => {
     await user.click(screen.getByRole("button", { name: "Tải lại từ máy chủ" }))
     await waitFor(() => expect(rpc.listVersions).toHaveBeenCalledTimes(2))
 
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
     const lockWasDisabled = screen
-      .getByRole("button", { name: "Khóa phiên bản" })
-      .hasAttribute("disabled")
+      .getByRole("menuitem", { name: "Khóa phiên bản" })
+      .hasAttribute("data-disabled")
     await act(async () => {
       pending.resolve(baselineVersionsResponse([{ ...draft, revision: 8 }]))
       await pending.promise
@@ -271,7 +273,8 @@ describe("technical configuration version workflow review regressions", () => {
     ).toBeInTheDocument()
     expect(screen.queryByText("Không thể khởi tạo bản nháp.")).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", { name: "Khóa vĩnh viễn" })
     )

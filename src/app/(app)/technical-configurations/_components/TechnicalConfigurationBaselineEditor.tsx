@@ -27,6 +27,7 @@ import {
   getTechnicalConfigurationFocusTargetForGroup,
   type TechnicalConfigurationFocusTarget,
 } from "./TechnicalConfigurationBaselineEditorUtils"
+import { useTechnicalConfigurationBaselineStructure } from "./useTechnicalConfigurationBaselineStructure"
 
 export type TechnicalConfigurationEntryMode = "row" | "bulk"
 export type { TechnicalConfigurationFocusTarget } from "./TechnicalConfigurationBaselineEditorUtils"
@@ -74,6 +75,7 @@ type TechnicalConfigurationBaselineEditorProps = Readonly<{
   onSave: () => void
   onToggleFocusMode?: () => void
   hierarchyAuthoring?: TechnicalConfigurationBaselineHierarchyAuthoring
+  commandBarContext?: React.ReactNode
 }>
 
 const PENDING_BULK_STATUS_ID = "technical-configuration-pending-bulk-status"
@@ -106,6 +108,7 @@ export function TechnicalConfigurationBaselineEditor({
   onSave,
   onToggleFocusMode,
   hierarchyAuthoring,
+  commandBarContext,
 }: TechnicalConfigurationBaselineEditorProps): React.JSX.Element {
   const {
     dirty: isDirty,
@@ -122,6 +125,8 @@ export function TechnicalConfigurationBaselineEditor({
   )
   const disclosure = useTechnicalConfigurationGroupDisclosure(groupKeys)
   const addGroupRef = React.useRef<HTMLButtonElement>(null)
+  const bodyRef = React.useRef<HTMLDivElement>(null)
+  const structure = useTechnicalConfigurationBaselineStructure(bodyRef)
 
   React.useEffect(() => {
     if (!focusTarget) return
@@ -153,25 +158,30 @@ export function TechnicalConfigurationBaselineEditor({
       >
         <div
           data-testid="baseline-editor-toolbar"
-          className="flex shrink-0 flex-col gap-2 border-b pb-3 sm:flex-row sm:items-center sm:justify-between"
+          className="flex min-h-12 shrink-0 items-center gap-2 border-y py-1.5"
         >
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-semibold">Bản nháp cấu hình cơ sở</h2>
-              <Badge variant="secondary">Bản nháp</Badge>
-            </div>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            {commandBarContext ?? (
+              <div className="flex min-w-0 items-center gap-2">
+                <h2 className="truncate text-base font-semibold">Bản nháp cấu hình cơ sở</h2>
+                <Badge variant="secondary">Bản nháp</Badge>
+              </div>
+            )}
             {hasPendingBulkInput ? (
-              <p id={PENDING_BULK_STATUS_ID} className="mt-1 text-sm font-medium text-amber-700">
+              <p
+                id={PENDING_BULK_STATUS_ID}
+                className="shrink-0 text-sm font-medium text-amber-700"
+              >
                 Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.
               </p>
             ) : isDirty ? (
-              <p className="mt-1 text-sm font-medium text-amber-700">Có thay đổi chưa lưu</p>
+              <p className="shrink-0 text-sm font-medium text-amber-700">Có thay đổi chưa lưu</p>
             ) : saveStatus === "saved" ? (
-              <p className="mt-1 text-sm font-medium text-emerald-700">Đã lưu</p>
+              <p className="shrink-0 text-sm font-medium text-emerald-700">Đã lưu</p>
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+          <div className="flex shrink-0 items-center gap-2">
             {onToggleFocusMode ? (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
@@ -219,10 +229,23 @@ export function TechnicalConfigurationBaselineEditor({
         </div>
 
         <div
+          ref={bodyRef}
           data-testid="baseline-editor-body"
-          className="grid min-h-0 flex-1 grid-cols-[220px_minmax(0,1fr)] overflow-hidden"
+          data-structure-layout={structure.layout}
+          className="relative grid min-h-0 flex-1 overflow-hidden"
+          style={{
+            gridTemplateColumns:
+              structure.layout === "panel" ? "220px minmax(0, 1fr)" : "48px minmax(0, 1fr)",
+          }}
         >
-          <TechnicalConfigurationBaselineStructureSidebar groups={draft.groups} />
+          <div className="relative z-30 min-h-0">
+            <TechnicalConfigurationBaselineStructureSidebar
+              groups={draft.groups}
+              expanded={structure.expanded}
+              overlay={structure.layout === "overlay"}
+              onToggle={structure.toggle}
+            />
+          </div>
 
           <div
             role="region"

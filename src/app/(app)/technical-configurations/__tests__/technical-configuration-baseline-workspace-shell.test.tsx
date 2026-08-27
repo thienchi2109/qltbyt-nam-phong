@@ -2,7 +2,7 @@ import * as React from "react"
 import "@testing-library/jest-dom"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_TEMPLATE } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineCriterionRow"
 import { TechnicalConfigurationBaselineEditor } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor"
@@ -131,7 +131,12 @@ function EditorHarness({
 }
 
 describe("TechnicalConfigurationBaselineEditor workspace shell", () => {
-  it("renders a passive canonical structure outline beside the hierarchy canvas", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+
+  it("uses a passive compact rail and persists manual expansion for the session", async () => {
+    const user = userEvent.setup()
     render(<EditorHarness />)
 
     const shell = screen.getByTestId("baseline-editor-body")
@@ -139,15 +144,22 @@ describe("TechnicalConfigurationBaselineEditor workspace shell", () => {
     const canvas = screen.getByRole("region", { name: "Các nhóm cấu hình cơ sở" })
     const outlineItems = within(sidebar).getAllByRole("listitem")
 
-    expect(shell).toHaveClass("grid-cols-[220px_minmax(0,1fr)]")
+    expect(shell).toHaveAttribute("data-structure-layout", "rail")
     expect(shell).toContainElement(sidebar)
     expect(shell).toContainElement(canvas)
     expect(outlineItems).toHaveLength(2)
-    expect(outlineItems[0]).toHaveTextContent(/^IYêu cầu chung2 tiêu chí$/)
-    expect(outlineItems[1]).toHaveTextContent(/^IIYêu cầu lắp đặt0 tiêu chí$/)
-    expect(within(sidebar).queryByRole("button")).not.toBeInTheDocument()
+    expect(outlineItems[0]).toHaveTextContent(/^I$/)
+    expect(outlineItems[1]).toHaveTextContent(/^II$/)
     expect(within(sidebar).queryByRole("link")).not.toBeInTheDocument()
-    expect(sidebar.querySelector("[tabindex]")).toBeNull()
+
+    await user.click(within(sidebar).getByRole("button", { name: "Mở bảng cấu trúc" }))
+
+    expect(shell).toHaveAttribute("data-structure-layout", "overlay")
+    expect(within(sidebar).getByRole("button", { name: "Đóng bảng cấu trúc" })).toBeInTheDocument()
+    expect(outlineItems[0]).toHaveTextContent(/^IYêu cầu chung2 tiêu chí$/)
+    expect(window.sessionStorage.getItem("technical-configuration-baseline-structure")).toBe(
+      "expanded"
+    )
   })
 
   it("keeps one shared column header in the primary hierarchy scroll region", () => {
@@ -216,7 +228,7 @@ describe("TechnicalConfigurationBaselineEditor workspace shell", () => {
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
   })
 
-  it("does not add unrequested toolbar capabilities or block a small direct render", () => {
+  it("keeps the compact workspace usable in a small direct render", () => {
     const originalInnerWidth = window.innerWidth
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 360 })
 
@@ -224,10 +236,10 @@ describe("TechnicalConfigurationBaselineEditor workspace shell", () => {
       render(<EditorHarness />)
 
       expect(screen.getByTestId("baseline-editor-workspace")).toBeInTheDocument()
-      expect(screen.queryByRole("button", { name: "Tìm kiếm" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("button", { name: "Xem trước" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("button", { name: "Thu gọn tất cả" })).not.toBeInTheDocument()
-      expect(screen.queryByRole("button", { name: "Mở rộng tất cả" })).not.toBeInTheDocument()
+      expect(screen.getByTestId("baseline-editor-body")).toHaveAttribute(
+        "data-structure-layout",
+        "rail"
+      )
     } finally {
       Object.defineProperty(window, "innerWidth", {
         configurable: true,

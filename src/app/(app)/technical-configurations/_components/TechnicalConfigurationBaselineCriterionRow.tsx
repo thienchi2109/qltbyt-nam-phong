@@ -57,12 +57,12 @@ type TechnicalConfigurationBaselineCriterionDropZoneProps = Readonly<{
 
 /** Shared Tailwind grid columns used by criterion headers, rows, and empty drop zones. */
 export const TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_COLUMNS =
-  "grid-cols-[2.25rem_3rem_7rem_minmax(11rem,0.75fr)_minmax(24rem,2fr)_5rem_9.5rem]"
+  "grid-cols-[2rem_2.75rem_6rem_minmax(9rem,10rem)_minmax(20rem,1fr)_4.5rem_3rem]"
 /** CSS grid template mirrored to DnD metadata for stable criterion alignment. */
 export const TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_TEMPLATE =
-  "2.25rem 3rem 7rem minmax(11rem, 0.75fr) minmax(24rem, 2fr) 5rem 9.5rem"
+  "2rem 2.75rem 6rem minmax(9rem, 10rem) minmax(20rem, 1fr) 4.5rem 3rem"
 /** Minimum width that keeps every criterion editing column usable. */
-export const TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_MIN_WIDTH = "min-w-[1080px]"
+export const TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_MIN_WIDTH = "min-w-[780px]"
 
 const EDITABLE_FIELD_CLASS =
   "rounded-sm border-transparent bg-transparent shadow-none transition-colors hover:border-input hover:bg-background focus-visible:border-ring focus-visible:bg-background focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-0"
@@ -126,7 +126,7 @@ export function TechnicalConfigurationBaselineCriterionDropZone({
       data-drop-target={droppable.isDropTarget ? "true" : undefined}
       tabIndex={locked || !dndEnabled ? undefined : 0}
       aria-label="Vùng thả tiêu chí"
-      className={`grid ${TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_COLUMNS} min-h-16 items-center border-b border-dashed text-sm text-muted-foreground transition-colors ${
+      className={`grid ${TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_COLUMNS} min-h-12 items-center border-b border-dashed text-sm text-muted-foreground transition-colors ${
         droppable.isDropTarget ? "border-primary bg-primary/5 text-foreground" : "border-border/70"
       }`}
     >
@@ -198,7 +198,7 @@ export function TechnicalConfigurationBaselineCriterionRow({
       data-recently-accepted={recentlyAccepted ? "true" : undefined}
       data-drag-source={sortable.isDragSource ? "true" : undefined}
       data-drop-target={sortable.isDropTarget ? "true" : undefined}
-      className={`grid ${TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_COLUMNS} min-h-16 items-stretch border-b border-border/70 transition-colors ${
+      className={`grid ${TECHNICAL_CONFIGURATION_BASELINE_CRITERION_GRID_COLUMNS} min-h-12 items-stretch border-b border-border/70 transition-colors hover:bg-muted/20 ${
         sortable.isDropTarget
           ? "bg-primary/5"
           : recentlyAccepted
@@ -224,17 +224,17 @@ export function TechnicalConfigurationBaselineCriterionRow({
         )}
       </div>
 
-      <span className="flex items-center justify-center px-2 py-3 text-sm font-medium tabular-nums">
+      <span className="flex items-center justify-center px-2 py-1 text-sm font-medium tabular-nums">
         {criterionIndex + 1}
       </span>
 
-      <div className="flex items-center px-2 py-3">
+      <div className="flex items-center px-2 py-1">
         <Badge variant={criterion.id === null ? "secondary" : "outline"}>
           {criterion.criterionCode ?? "Mới"}
         </Badge>
       </div>
 
-      <div className="min-w-0 px-1.5 py-2">
+      <div className="min-w-0 px-1 py-1">
         {locked ? (
           <div
             aria-label={titleLabel}
@@ -252,14 +252,15 @@ export function TechnicalConfigurationBaselineCriterionRow({
               aria-label={titleLabel}
               value={criterion.title}
               disabled={disabled}
-              className={`h-10 ${EDITABLE_FIELD_CLASS}`}
+              className={`h-9 truncate ${EDITABLE_FIELD_CLASS}`}
+              title={criterion.title}
               onChange={(event) => onTextChange?.("title", event.target.value)}
             />
           </>
         )}
       </div>
 
-      <div className="min-w-0 px-1.5 py-2">
+      <div className="min-w-0 px-1 py-1">
         {locked ? (
           <div
             ref={requirementRef}
@@ -280,7 +281,7 @@ export function TechnicalConfigurationBaselineCriterionRow({
               ref={requirementRef}
               id={requirementId}
               aria-label={requirementLabel}
-              className={`min-h-10 resize-y whitespace-pre-wrap ${EDITABLE_FIELD_CLASS}`}
+              className={`min-h-9 resize-y whitespace-pre-wrap ${EDITABLE_FIELD_CLASS}`}
               value={criterion.requirementText}
               disabled={disabled}
               aria-invalid={Boolean(error)}
@@ -296,7 +297,7 @@ export function TechnicalConfigurationBaselineCriterionRow({
         ) : null}
       </div>
 
-      <div className="flex items-center justify-center px-2 py-3">
+      <div className="flex items-center justify-center px-2 py-1">
         {error ? (
           <Badge variant="destructive">Có lỗi</Badge>
         ) : criterion.id === null ? (

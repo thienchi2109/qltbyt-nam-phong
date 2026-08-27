@@ -63,13 +63,15 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     renderTab()
 
     expect(await screen.findByDisplayValue("Hạ tầng")).toBeInTheDocument()
-    expect(screen.getAllByRole("button", { name: /Thêm nhóm con/i })).not.toHaveLength(0)
+    expect(screen.getByRole("button", { name: "Thao tác cho nhóm I" })).toBeEnabled()
     await user.click(screen.getByRole("button", { name: /Thao tác cho tiêu chí/i }))
     expect(await screen.findByRole("menuitem", { name: "Chuyển đến..." })).toBeInTheDocument()
+    await user.keyboard("{Escape}")
 
-    const lockButton = screen.getByRole("button", { name: "Khóa phiên bản" })
-    expect(lockButton).toBeEnabled()
-    await user.click(lockButton)
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    const lockAction = screen.getByRole("menuitem", { name: "Khóa phiên bản" })
+    expect(lockAction).not.toHaveAttribute("data-disabled")
+    await user.click(lockAction)
     await user.click(screen.getByRole("button", { name: "Khóa vĩnh viễn" }))
 
     expect(rpc.lockVersion).toHaveBeenCalledWith({
@@ -87,8 +89,12 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
 
     const groupName = await screen.findByDisplayValue("Yêu cầu chung")
     await user.type(groupName, " đã sửa")
-    expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    expect(screen.getByRole("menuitem", { name: "Khóa phiên bản" })).toHaveAttribute(
+      "data-disabled"
+    )
     expect(screen.getByText("Lưu thay đổi trước khi khóa phiên bản.")).toBeInTheDocument()
+    await user.keyboard("{Escape}")
 
     await user.clear(groupName)
     await user.type(groupName, "Yêu cầu chung")
@@ -99,7 +105,10 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
     )
     await user.type(screen.getByRole("textbox", { name: "Nội dung nhập nhanh" }), "Đang chờ")
 
-    expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    expect(screen.getByRole("menuitem", { name: "Khóa phiên bản" })).toHaveAttribute(
+      "data-disabled"
+    )
     expect(
       screen.getByText("Hoàn tất hoặc hủy nội dung nhập nhanh trước khi khóa.")
     ).toBeInTheDocument()
@@ -119,7 +128,8 @@ describe("technical configuration baseline hierarchy tab workflow", () => {
 
     renderTab()
     await screen.findByDisplayValue("Hạ tầng")
-    await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: "Khóa vĩnh viễn",

@@ -92,6 +92,9 @@ Do not rely on the default `react-doctor` script when you specifically need full
 
 ## Verification Order For TypeScript / React Diffs
 
+Do not write a test only to prove that the current implementation does not exist yet. Write a
+test when it will protect valuable behavior after the implementation is complete.
+
 When a task changes `.ts` / `.tsx` files, run verification in this order before claiming success, committing, or opening/updating a PR:
 
 1. `node scripts/npm-run.js run format:check` for broad formatting checks, or rely on the Lefthook `pre-commit` Prettier auto-format for staged diff files before committing.

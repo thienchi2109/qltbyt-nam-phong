@@ -1,8 +1,16 @@
 import type * as React from "react"
-import { ChevronDown, Copy, FilePlus2, LockKeyhole } from "lucide-react"
+import { ChevronDown, Copy, FilePlus2, LockKeyhole, MoreHorizontal } from "lucide-react"
 
 import type { TechnicalConfigurationBaselineDraftWire } from "@/app/(app)/technical-configurations/baseline-types"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { SingleSelect } from "@/components/ui/heroui/SingleSelect"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 
@@ -23,6 +31,7 @@ type TechnicalConfigurationVersionBarProps = {
   selectedVersion: TechnicalConfigurationBaselineDraftWire
   lockBlockedReason: string | null
   status: TechnicalConfigurationVersionBarStatus
+  compact?: boolean
   onSelectVersion: (versionId: string) => void
   onLoadMoreVersions: () => void
   onRequestLock: () => void
@@ -39,6 +48,7 @@ export function TechnicalConfigurationVersionBar({
   selectedVersion,
   lockBlockedReason,
   status,
+  compact = false,
   onSelectVersion,
   onLoadMoreVersions,
   onRequestLock,
@@ -76,13 +86,16 @@ export function TechnicalConfigurationVersionBar({
   }))
 
   return (
-    <section className="border-y py-2" aria-label="Lịch sử phiên bản cấu hình cơ sở">
-      <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center">
+    <section
+      className={compact ? "min-w-0 overflow-x-auto" : "border-y py-2"}
+      aria-label="Lịch sử phiên bản cấu hình cơ sở"
+    >
+      <div className={compact ? "flex min-w-max items-center gap-2" : "flex items-center gap-2"}>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <SingleSelect
             value={selectedVersion.id}
             ariaLabel="Lịch sử phiên bản"
-            className="w-full shrink-0 sm:w-[280px]"
+            className="w-[240px] shrink-0"
             disabled={isNavigationDisabled}
             onValueChange={onSelectVersion}
             options={versionOptions}
@@ -105,7 +118,7 @@ export function TechnicalConfigurationVersionBar({
           ) : null}
 
           {hasLockMetadata || hasLineage ? (
-            <div className="flex min-w-0 flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            <div className="hidden min-w-0 gap-x-3 text-sm text-muted-foreground xl:flex">
               {selectedVersion.status === "locked" && selectedVersion.locked_at ? (
                 <span>Khóa lúc {formatVietnamDateTime(selectedVersion.locked_at)}</span>
               ) : null}
@@ -119,36 +132,51 @@ export function TechnicalConfigurationVersionBar({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-start gap-1 xl:items-end">
+        <div className="flex shrink-0 items-center gap-1">
           {selectedVersion.status === "draft" ? (
             <>
-              <div className="flex flex-wrap gap-2 lg:justify-end">
-                {spreadsheetActions}
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={areActionsDisabled || isCopyFromDossierDisabled}
-                  onClick={onCopyFromDossier}
-                >
-                  <Copy className="size-4" aria-hidden="true" />
-                  Sao chép từ hồ sơ khác
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={areActionsDisabled || Boolean(lockBlockedReason)}
-                  onClick={onRequestLock}
-                >
-                  <LockKeyhole className="size-4" aria-hidden="true" />
-                  {isLocking ? "Đang khóa..." : "Khóa phiên bản"}
-                </Button>
-              </div>
-              {lockBlockedReason ? (
-                <p className="max-w-md text-sm text-muted-foreground">{lockBlockedReason}</p>
-              ) : null}
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9"
+                    aria-label="Thao tác phiên bản"
+                    title="Thao tác phiên bản"
+                  >
+                    <MoreHorizontal className="size-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {spreadsheetActions}
+                  {spreadsheetActions ? <DropdownMenuSeparator /> : null}
+                  <DropdownMenuItem
+                    disabled={areActionsDisabled || isCopyFromDossierDisabled}
+                    onSelect={onCopyFromDossier}
+                  >
+                    <Copy className="size-4" aria-hidden="true" />
+                    Sao chép từ hồ sơ khác
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    disabled={areActionsDisabled || Boolean(lockBlockedReason)}
+                    onSelect={onRequestLock}
+                  >
+                    <LockKeyhole className="size-4" aria-hidden="true" />
+                    {isLocking ? "Đang khóa..." : "Khóa phiên bản"}
+                  </DropdownMenuItem>
+                  {lockBlockedReason ? (
+                    <DropdownMenuLabel className="max-w-72 whitespace-normal font-normal text-muted-foreground">
+                      {lockBlockedReason}
+                    </DropdownMenuLabel>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : !hasDraft ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-nowrap gap-2">
               <Button
                 type="button"
                 variant="outline"

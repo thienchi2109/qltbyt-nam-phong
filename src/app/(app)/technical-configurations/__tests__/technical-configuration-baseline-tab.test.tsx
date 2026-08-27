@@ -46,13 +46,17 @@ describe("technical configuration baseline tab", () => {
   })
 
   it("keeps cross-dossier replacement available on the existing baseline version bar", async () => {
+    const user = userEvent.setup()
     renderTab()
 
-    const copyButton = await screen.findByRole("button", {
-      name: "Sao chép từ hồ sơ khác",
+    const versionActions = await screen.findByRole("button", {
+      name: "Thao tác phiên bản",
     })
-
-    expect(copyButton.closest("section")).toHaveAccessibleName("Lịch sử phiên bản cấu hình cơ sở")
+    expect(versionActions.closest("section")).toHaveAccessibleName(
+      "Lịch sử phiên bản cấu hình cơ sở"
+    )
+    await user.click(versionActions)
+    expect(screen.getByRole("menuitem", { name: "Sao chép từ hồ sơ khác" })).toBeEnabled()
   })
 
   it("saves only from explicit Lưu and shows the exact pending label", async () => {
@@ -121,7 +125,10 @@ describe("technical configuration baseline tab", () => {
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(screen.getByDisplayValue("Tên đang xung đột")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Sao chép từ hồ sơ khác" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    expect(screen.getByRole("menuitem", { name: "Sao chép từ hồ sơ khác" })).toHaveAttribute(
+      "data-disabled"
+    )
     expect(screen.getByRole("button", { name: "Tải lại từ máy chủ" })).toBeEnabled()
   })
 

@@ -126,7 +126,8 @@ describe("technical configuration baseline hierarchy authoring workflow", () => 
     render(<HierarchyAuthoringHarness />)
 
     const section = screen.getByRole("region", { name: "Nhóm tiêu chí I" })
-    await user.click(within(section).getByRole("button", { name: "Thêm nhóm con vào nhóm I" }))
+    await user.click(within(section).getByRole("button", { name: "Thao tác cho nhóm I" }))
+    await user.click(await screen.findByRole("menuitem", { name: "Thêm nhóm con" }))
 
     const newSubgroupName = within(section).getByRole("textbox", {
       name: "Tên nhóm con 2 của nhóm I",

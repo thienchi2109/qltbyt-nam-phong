@@ -10,6 +10,7 @@ import {
 type TechnicalConfigurationBaselineVersionControlsProps = Readonly<{
   dossierName: string
   isFocusMode: boolean
+  compact?: boolean
   versions: TechnicalConfigurationBaselineDraftWire[]
   selectedVersion: TechnicalConfigurationBaselineDraftWire
   lockBlockedReason: string | null
@@ -28,6 +29,7 @@ type TechnicalConfigurationBaselineVersionControlsProps = Readonly<{
 export function TechnicalConfigurationBaselineVersionControls({
   dossierName,
   isFocusMode,
+  compact = false,
   versions,
   selectedVersion,
   lockBlockedReason,
@@ -45,7 +47,7 @@ export function TechnicalConfigurationBaselineVersionControls({
     return (
       <section
         aria-label="Ngữ cảnh cấu hình đang chỉnh sửa"
-        className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b pb-2 text-sm"
+        className="flex min-w-max items-center gap-3 text-sm"
       >
         <strong className="truncate font-semibold">{dossierName}</strong>
         <span className="text-muted-foreground">
@@ -62,6 +64,7 @@ export function TechnicalConfigurationBaselineVersionControls({
       selectedVersion={selectedVersion}
       lockBlockedReason={lockBlockedReason}
       status={status}
+      compact={compact}
       onSelectVersion={onSelectVersion}
       onLoadMoreVersions={onLoadMoreVersions}
       onRequestLock={onRequestLock}

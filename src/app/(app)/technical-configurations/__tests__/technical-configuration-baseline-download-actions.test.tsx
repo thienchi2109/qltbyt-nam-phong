@@ -241,21 +241,14 @@ describe("technical configuration baseline download actions", () => {
     expect(screen.queryByRole("button", { name: "Công cụ Excel" })).not.toBeInTheDocument()
   })
 
-  it("mounts the unified XLSX v2 dropdown on the production baseline screen", async () => {
+  it("exposes the unified XLSX v2 actions in the production version menu", async () => {
     const user = userEvent.setup()
     renderTab()
 
-    const actionGroup = await screen.findByRole("group", {
-      name: "Công cụ cấu hình phân cấp",
+    const versionActions = await screen.findByRole("button", {
+      name: "Thao tác phiên bản",
     })
-    expect(actionGroup).toHaveClass("flex-col")
-    expect(screen.queryByRole("button", { name: "Tải template Excel" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
-    const excelTrigger = screen.getByRole("button", { name: "Công cụ Excel" })
-    expect(excelTrigger).toBeEnabled()
-    expect(excelTrigger).toHaveTextContent("Excel")
-
-    await user.click(excelTrigger)
+    await user.click(versionActions)
     expect(screen.getByRole("menuitem", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
     expect(screen.getByRole("menuitem", { name: "Tải mẫu trống" })).toBeEnabled()
     expect(screen.getByRole("menuitem", { name: "Nhập cấu hình phân cấp" })).toBeEnabled()

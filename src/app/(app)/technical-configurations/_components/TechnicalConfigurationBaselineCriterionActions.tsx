@@ -12,7 +12,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { TechnicalConfigurationBaselineEditorIconButton as IconButton } from "./TechnicalConfigurationBaselineEditorControls"
 import type { TechnicalConfigurationBaselineCriterionOwnerOption } from "./TechnicalConfigurationBaselineHierarchyAuthoring"
 
 type TechnicalConfigurationBaselineCriterionActionsProps = Readonly<{
@@ -52,72 +51,68 @@ export function TechnicalConfigurationBaselineCriterionActions({
   const [showDestinations, setShowDestinations] = React.useState(false)
 
   return (
-    <div className="flex items-center justify-center gap-1 px-1.5 py-2">
-      <IconButton
-        label={`Di chuyển ${criterionLabel} lên`}
-        title="Di chuyển lên"
-        disabled={disabled || criterionIndex === 0}
-        onClick={() => onMove?.(-1)}
+    <div className="flex items-center justify-center px-1 py-1">
+      <DropdownMenu
+        modal={false}
+        onOpenChange={(open) => {
+          if (!open) setShowDestinations(false)
+        }}
       >
-        <ArrowUp className="size-4" />
-      </IconButton>
-      <IconButton
-        label={`Di chuyển ${criterionLabel} xuống`}
-        title="Di chuyển xuống"
-        disabled={disabled || criterionIndex === criterionCount - 1}
-        onClick={() => onMove?.(1)}
-      >
-        <ArrowDown className="size-4" />
-      </IconButton>
-      <IconButton
-        label={`Xóa ${criterionLabel}`}
-        title="Xóa tiêu chí"
-        disabled={disabled}
-        destructive
-        onClick={() => onDelete?.()}
-      >
-        <Trash2 className="size-4" />
-      </IconButton>
-      {hierarchyEnabled ? (
-        <DropdownMenu
-          modal={false}
-          onOpenChange={(open) => {
-            if (!open) setShowDestinations(false)
-          }}
-        >
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              disabled={disabled}
-              aria-label={`Thao tác cho ${criterionLabel}`}
-              title="Thao tác khác"
-            >
-              <MoreHorizontal className="size-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {showDestinations ? (
-              destinations.map((option) => (
-                <DropdownMenuItem key={option.value} onSelect={() => onMoveToOwner?.(option.owner)}>
-                  {option.label}
-                </DropdownMenuItem>
-              ))
-            ) : (
-              <DropdownMenuItem
-                disabled={destinations.length === 0}
-                onSelect={(event) => {
-                  event.preventDefault()
-                  setShowDestinations(true)
-                }}
-              >
-                Chuyển đến...
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            disabled={disabled}
+            aria-label={`Thao tác cho ${criterionLabel}`}
+            title="Thao tác khác"
+          >
+            <MoreHorizontal className="size-4" aria-hidden="true" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {showDestinations ? (
+            destinations.map((option) => (
+              <DropdownMenuItem key={option.value} onSelect={() => onMoveToOwner?.(option.owner)}>
+                {option.label}
               </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+            ))
+          ) : (
+            <>
+              <DropdownMenuItem disabled={criterionIndex === 0} onSelect={() => onMove?.(-1)}>
+                <ArrowUp className="size-4" aria-hidden="true" />
+                Di chuyển lên
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={criterionIndex === criterionCount - 1}
+                onSelect={() => onMove?.(1)}
+              >
+                <ArrowDown className="size-4" aria-hidden="true" />
+                Di chuyển xuống
+              </DropdownMenuItem>
+              {hierarchyEnabled ? (
+                <DropdownMenuItem
+                  disabled={destinations.length === 0}
+                  onSelect={(event) => {
+                    event.preventDefault()
+                    setShowDestinations(true)
+                  }}
+                >
+                  Chuyển đến...
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onSelect={() => onDelete?.()}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Xóa tiêu chí
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   )
 }

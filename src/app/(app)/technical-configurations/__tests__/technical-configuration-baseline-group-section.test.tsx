@@ -130,11 +130,15 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     )
 
     await user.click(
-      screen.getByRole("button", { name: "Di chuyển tiêu chí trực tiếp 1 của nhóm II xuống" })
+      screen.getByRole("button", { name: "Thao tác cho tiêu chí trực tiếp 1 của nhóm II" })
     )
+    await user.click(await screen.findByRole("menuitem", { name: "Di chuyển xuống" }))
     expect(callbacks.onMoveCriterion).toHaveBeenCalledWith("group-2", 0, 1)
 
-    await user.click(screen.getByRole("button", { name: "Xóa tiêu chí trực tiếp 2 của nhóm II" }))
+    await user.click(
+      screen.getByRole("button", { name: "Thao tác cho tiêu chí trực tiếp 2 của nhóm II" })
+    )
+    await user.click(await screen.findByRole("menuitem", { name: "Xóa tiêu chí" }))
     expect(callbacks.onDeleteCriterion).toHaveBeenCalledWith("group-2", "criterion-2")
   })
 
@@ -164,12 +168,12 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
     const user = userEvent.setup()
     const { callbacks } = renderGroupSection({ groupError: undefined })
 
-    const deleteButton = screen.getByRole("button", { name: "Xóa nhóm II" })
-    expect(deleteButton).not.toBeDisabled()
-    expect(deleteButton).toHaveAttribute("aria-disabled", "true")
-    expect(deleteButton).toHaveAttribute("aria-describedby", "pending-bulk-status")
+    await user.click(screen.getByRole("button", { name: "Thao tác cho nhóm II" }))
+    const deleteItem = await screen.findByRole("menuitem", { name: "Xóa nhóm" })
+    expect(deleteItem).toHaveAttribute("aria-disabled", "true")
+    expect(deleteItem).toHaveAttribute("aria-describedby", "pending-bulk-status")
 
-    await user.click(deleteButton)
+    await user.click(deleteItem)
     expect(callbacks.onDeleteGroup).not.toHaveBeenCalled()
   })
 
@@ -212,12 +216,12 @@ describe("TechnicalConfigurationBaselineGroupSection", () => {
       },
     })
 
-    const deleteButton = screen.getByRole("button", { name: "Xóa nhóm II" })
-    expect(deleteButton).not.toBeDisabled()
-    expect(deleteButton).toHaveAttribute("aria-disabled", "true")
-    expect(deleteButton).toHaveAttribute("aria-describedby", "pending-bulk-status")
+    await user.click(screen.getByRole("button", { name: "Thao tác cho nhóm II" }))
+    const deleteItem = await screen.findByRole("menuitem", { name: "Xóa nhóm" })
+    expect(deleteItem).toHaveAttribute("aria-disabled", "true")
+    expect(deleteItem).toHaveAttribute("aria-describedby", "pending-bulk-status")
 
-    await user.click(deleteButton)
+    await user.click(deleteItem)
     expect(callbacks.onDeleteGroup).not.toHaveBeenCalled()
   })
 

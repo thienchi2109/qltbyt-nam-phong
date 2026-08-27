@@ -44,33 +44,22 @@ describe("technical configuration hierarchy production activation", () => {
     rpc.previewHierarchyImport.mockResolvedValue(createHierarchyPreview())
   })
 
-  it("replaces legacy Excel actions with one XLSX v2 dropdown in the version bar", async () => {
+  it("keeps XLSX v2 actions available from the version menu", async () => {
     const user = userEvent.setup()
     renderTab()
 
     const versionBar = await screen.findByRole("region", {
       name: "Lịch sử phiên bản cấu hình cơ sở",
     })
-    expect(screen.queryByRole("button", { name: "Tải template Excel" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
-    expect(
-      within(versionBar).queryByRole("button", { name: "Tải cấu hình hiện tại" })
-    ).not.toBeInTheDocument()
-    expect(
-      within(versionBar).queryByRole("button", { name: "Tải mẫu trống" })
-    ).not.toBeInTheDocument()
-    expect(
-      within(versionBar).queryByRole("button", { name: "Nhập cấu hình phân cấp" })
-    ).not.toBeInTheDocument()
-    const excelTrigger = within(versionBar).getByRole("button", { name: "Công cụ Excel" })
-    expect(excelTrigger).toBeEnabled()
-    expect(excelTrigger).toHaveTextContent("Excel")
-    expect(screen.getAllByRole("button", { name: /Thêm nhóm con/i })).not.toHaveLength(0)
+    const versionActions = within(versionBar).getByRole("button", {
+      name: "Thao tác phiên bản",
+    })
+    expect(screen.getByRole("button", { name: "Thao tác cho nhóm I" })).toBeEnabled()
     expect(
       screen.queryByRole("dialog", { name: "Nhập cấu hình phân cấp từ Excel" })
     ).not.toBeInTheDocument()
 
-    await user.click(excelTrigger)
+    await user.click(versionActions)
     expect(screen.getByRole("menuitem", { name: "Tải cấu hình hiện tại" })).toBeEnabled()
     expect(screen.getByRole("menuitem", { name: "Tải mẫu trống" })).toBeEnabled()
     const importAction = screen.getByRole("menuitem", { name: "Nhập cấu hình phân cấp" })
@@ -92,7 +81,7 @@ describe("technical configuration hierarchy production activation", () => {
     rpc.applyHierarchyImport.mockReturnValue(pendingApply.promise)
 
     renderTab(vi.fn(), createPersistentQueryClient(), onNavigationBlockedChange)
-    await user.click(await screen.findByRole("button", { name: "Công cụ Excel" }))
+    await user.click(await screen.findByRole("button", { name: "Thao tác phiên bản" }))
     await user.click(await screen.findByRole("menuitem", { name: "Nhập cấu hình phân cấp" }))
     await user.upload(
       screen.getByLabelText("Chọn workbook cấu hình phân cấp"),
@@ -105,7 +94,6 @@ describe("technical configuration hierarchy production activation", () => {
     const applyButton = screen.getByRole("button", { name: "Áp dụng thay thế toàn bộ" })
     expect(confirmation).toHaveTextContent("Xóa 0 mục chính, 0 nhóm con và 1 tiêu chí.")
     expect(applyButton).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Khóa phiên bản", hidden: true })).toBeDisabled()
     expect(onNavigationBlockedChange).toHaveBeenLastCalledWith(false)
 
     await user.click(

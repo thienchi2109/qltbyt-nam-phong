@@ -218,64 +218,66 @@ export function TechnicalConfigurationBaselineTab({
   }
   if (!selectedVersion) return null
 
+  const versionControls = (
+    <TechnicalConfigurationBaselineVersionControls
+      dossierName={dossier.name}
+      isFocusMode={isFocusMode}
+      compact={selectedVersion.status === "draft"}
+      versions={baseline.versions}
+      selectedVersion={selectedVersion}
+      lockBlockedReason={lockBlockedReason}
+      status={{
+        hasDraft: baseline.hasDraft,
+        isCreating: baseline.isCreating,
+        isLocking: baseline.isLocking,
+        isCopying: baseline.isCopying,
+        isLoadingMoreVersions: baseline.isLoadingMoreVersions,
+        hasLoadMoreError: baseline.hasLoadMoreError,
+        isNavigationDisabled: baseline.isLifecycleBusy,
+        hasMoreVersions: baseline.hasMoreVersions,
+        isImportBusy: isHierarchyImportBusy,
+      }}
+      onSelectVersion={handleSelectVersion}
+      onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
+      onRequestLock={() => setIsLockDialogOpen(true)}
+      onCreateBlank={baseline.onCreate}
+      onCopy={() => void handleCopy()}
+      onCopyFromDossier={crossDossierCopy.openDialog}
+      isCopyFromDossierDisabled={
+        baseline.isDirty ||
+        baseline.isConflict ||
+        bulkSessions.hasPendingInput ||
+        hasUnresolvedImportState
+      }
+      spreadsheetActions={
+        decodedVersion ? (
+          <TechnicalConfigurationBaselineProductionActions
+            version={decodedVersion}
+            deviceTypeName={dossier.device_type_name}
+            dossierName={dossier.name}
+            dirty={baseline.isDirty}
+            conflict={baseline.isConflict}
+            disabled={
+              baseline.isLifecycleBusy || bulkSessions.hasPendingInput || isHierarchyImportBusy
+            }
+            disabledMessage={
+              bulkSessions.hasPendingInput
+                ? "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
+                : null
+            }
+            renderMode="menu"
+            onRequestHierarchyImport={hierarchyImport.openDialog}
+          />
+        ) : null
+      }
+    />
+  )
+
   return (
     <div
       data-testid="technical-configuration-baseline-tab"
       className="flex min-h-0 flex-1 flex-col gap-3"
     >
-      <div className="shrink-0">
-        <TechnicalConfigurationBaselineVersionControls
-          dossierName={dossier.name}
-          isFocusMode={isFocusMode}
-          versions={baseline.versions}
-          selectedVersion={selectedVersion}
-          lockBlockedReason={lockBlockedReason}
-          status={{
-            hasDraft: baseline.hasDraft,
-            isCreating: baseline.isCreating,
-            isLocking: baseline.isLocking,
-            isCopying: baseline.isCopying,
-            isLoadingMoreVersions: baseline.isLoadingMoreVersions,
-            hasLoadMoreError: baseline.hasLoadMoreError,
-            isNavigationDisabled: baseline.isLifecycleBusy,
-            hasMoreVersions: baseline.hasMoreVersions,
-            isImportBusy: isHierarchyImportBusy,
-          }}
-          onSelectVersion={handleSelectVersion}
-          onLoadMoreVersions={() => void baseline.onLoadMoreVersions()}
-          onRequestLock={() => setIsLockDialogOpen(true)}
-          onCreateBlank={baseline.onCreate}
-          onCopy={() => void handleCopy()}
-          onCopyFromDossier={crossDossierCopy.openDialog}
-          isCopyFromDossierDisabled={
-            baseline.isDirty ||
-            baseline.isConflict ||
-            bulkSessions.hasPendingInput ||
-            hasUnresolvedImportState
-          }
-          spreadsheetActions={
-            decodedVersion ? (
-              <TechnicalConfigurationBaselineProductionActions
-                version={decodedVersion}
-                deviceTypeName={dossier.device_type_name}
-                dossierName={dossier.name}
-                dirty={baseline.isDirty}
-                conflict={baseline.isConflict}
-                disabled={
-                  baseline.isLifecycleBusy || bulkSessions.hasPendingInput || isHierarchyImportBusy
-                }
-                disabledMessage={
-                  bulkSessions.hasPendingInput
-                    ? "Hoàn tất hoặc hủy nội dung nhập nhanh trước khi dùng công cụ Excel."
-                    : null
-                }
-                onRequestHierarchyImport={hierarchyImport.openDialog}
-              />
-            ) : null
-          }
-        />
-      </div>
-
       <TechnicalConfigurationBaselineHierarchyImportDialog workflow={hierarchyImport} />
       <TechnicalConfigurationBaselineCrossDossierCopyDialog workflow={crossDossierCopy} />
 
@@ -296,10 +298,13 @@ export function TechnicalConfigurationBaselineTab({
       />
 
       {selectedVersion.status === "locked" ? (
-        <TechnicalConfigurationBaselineLockedReport
-          key={selectedVersion.id}
-          version={selectedVersion}
-        />
+        <>
+          <div className="shrink-0">{versionControls}</div>
+          <TechnicalConfigurationBaselineLockedReport
+            key={selectedVersion.id}
+            version={selectedVersion}
+          />
+        </>
       ) : draft ? (
         <TechnicalConfigurationBaselineEditor
           draft={draft}
@@ -335,6 +340,7 @@ export function TechnicalConfigurationBaselineTab({
           onSave={baseline.onSave}
           onToggleFocusMode={onToggleFocusMode}
           hierarchyAuthoring={inlineEditor.hierarchyAuthoring}
+          commandBarContext={versionControls}
         />
       ) : null}
 

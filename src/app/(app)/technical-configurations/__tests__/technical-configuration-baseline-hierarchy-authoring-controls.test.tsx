@@ -208,7 +208,8 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     render(<AuthoringHarness />)
 
     const firstSection = screen.getByRole("region", { name: "Nhóm tiêu chí I" })
-    await user.click(within(firstSection).getByRole("button", { name: "Thêm nhóm con vào nhóm I" }))
+    await user.click(within(firstSection).getByRole("button", { name: "Thao tác cho nhóm I" }))
+    await user.click(await screen.findByRole("menuitem", { name: "Thêm nhóm con" }))
 
     const newSubgroupName = within(firstSection).getByRole("textbox", {
       name: "Tên nhóm con 3 của nhóm I",
@@ -224,17 +225,19 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
 
     await user.click(
       within(firstSection).getByRole("button", {
-        name: "Di chuyển nhóm con 3 của nhóm I lên",
+        name: "Thao tác cho nhóm con 3 của nhóm I",
       })
     )
+    await user.click(await screen.findByRole("menuitem", { name: "Di chuyển lên" }))
 
     expect(
       within(firstSection).getByRole("textbox", { name: "Tên nhóm con 2 của nhóm I" })
     ).toHaveValue("An toàn")
 
     await user.click(
-      within(firstSection).getByRole("button", { name: "Xóa nhóm con 2 của nhóm I" })
+      within(firstSection).getByRole("button", { name: "Thao tác cho nhóm con 2 của nhóm I" })
     )
+    await user.click(await screen.findByRole("menuitem", { name: "Xóa nhóm con" }))
 
     expect(
       within(firstSection).queryByRole("textbox", { name: "Tên nhóm con 3 của nhóm I" })
@@ -324,6 +327,6 @@ describe("technical configuration baseline hierarchy authoring controls", () => 
     )
 
     expect(screen.queryByRole("button", { name: /Thêm nhóm con/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: /Thao tác cho tiêu chí/i })).not.toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /Thao tác cho tiêu chí/i })).not.toHaveLength(0)
   })
 })

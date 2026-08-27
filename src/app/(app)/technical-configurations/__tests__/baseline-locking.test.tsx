@@ -74,7 +74,8 @@ describe("technical configuration baseline locking and history", () => {
     rpc.lockVersion.mockResolvedValue({ data: locked })
 
     renderTab()
-    await user.click(await screen.findByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(await screen.findByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
 
     const dialog = screen.getByRole("alertdialog")
     expect(within(dialog).getByText("Khóa phiên bản 1?")).toBeInTheDocument()
@@ -103,7 +104,8 @@ describe("technical configuration baseline locking and history", () => {
     )
     expect(requirement).toHaveValue("Dòng 1\nDòng 2")
 
-    await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: "Khóa vĩnh viễn",
@@ -112,8 +114,13 @@ describe("technical configuration baseline locking and history", () => {
 
     expect(await screen.findByText("Xung đột dữ liệu")).toBeInTheDocument()
     expect(requirement).toHaveValue("Dòng 1\nDòng 2")
-    expect(screen.getByRole("button", { name: "Khóa phiên bản" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Sao chép từ hồ sơ khác" })).toBeDisabled()
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    expect(screen.getByRole("menuitem", { name: "Khóa phiên bản" })).toHaveAttribute(
+      "data-disabled"
+    )
+    expect(screen.getByRole("menuitem", { name: "Sao chép từ hồ sơ khác" })).toHaveAttribute(
+      "data-disabled"
+    )
   })
 
   it("reloads a concurrently locked draft into read-only history", async () => {
@@ -128,7 +135,8 @@ describe("technical configuration baseline locking and history", () => {
 
     renderTab()
     await screen.findByLabelText("Nội dung yêu cầu tiêu chí trực tiếp 1 của nhóm I")
-    await user.click(screen.getByRole("button", { name: "Khóa phiên bản" }))
+    await user.click(screen.getByRole("button", { name: "Thao tác phiên bản" }))
+    await user.click(screen.getByRole("menuitem", { name: "Khóa phiên bản" }))
     await user.click(
       within(screen.getByRole("alertdialog")).getByRole("button", {
         name: "Khóa vĩnh viễn",

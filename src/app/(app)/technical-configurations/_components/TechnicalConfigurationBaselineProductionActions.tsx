@@ -12,6 +12,11 @@ import {
 
 import type { TechnicalConfigurationBaselineDecodedDraft } from "../baseline-types"
 import { downloadTechnicalConfigurationBaselineWorkbookV2 } from "../technical-configuration-baseline-download"
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import { HeroActionDropdown } from "@/components/ui/heroui/HeroActionDropdown"
 
 type TechnicalConfigurationBaselineProductionActionsProps = Readonly<{
@@ -22,6 +27,7 @@ type TechnicalConfigurationBaselineProductionActionsProps = Readonly<{
   conflict: boolean
   disabled: boolean
   disabledMessage: string | null
+  renderMode?: "button" | "menu"
   onRequestHierarchyImport: () => void
 }>
 
@@ -34,6 +40,7 @@ export function TechnicalConfigurationBaselineProductionActions({
   conflict,
   disabled,
   disabledMessage,
+  renderMode = "button",
   onRequestHierarchyImport,
 }: TechnicalConfigurationBaselineProductionActionsProps): React.JSX.Element | null {
   const [downloadingIntent, setDownloadingIntent] = React.useState<
@@ -72,6 +79,45 @@ export function TechnicalConfigurationBaselineProductionActions({
       downloadingRef.current = false
       setDownloadingIntent(null)
     }
+  }
+
+  if (renderMode === "menu") {
+    return (
+      <>
+        <DropdownMenuItem
+          disabled={actionsDisabled}
+          onSelect={() => void handleDownload("current-data")}
+        >
+          <Download className="size-4" aria-hidden="true" />
+          Tải cấu hình hiện tại
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={actionsDisabled}
+          onSelect={() => void handleDownload("blank-template")}
+        >
+          <FileDown className="size-4" aria-hidden="true" />
+          Tải mẫu trống
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={actionsDisabled} onSelect={onRequestHierarchyImport}>
+          <Upload className="size-4" aria-hidden="true" />
+          Nhập cấu hình phân cấp
+        </DropdownMenuItem>
+        {guardMessage || error ? <DropdownMenuSeparator /> : null}
+        {guardMessage ? (
+          <DropdownMenuLabel className="max-w-72 whitespace-normal font-normal text-muted-foreground">
+            {guardMessage}
+          </DropdownMenuLabel>
+        ) : null}
+        {error ? (
+          <DropdownMenuLabel
+            role="alert"
+            className="max-w-72 whitespace-normal font-normal text-destructive"
+          >
+            {error}
+          </DropdownMenuLabel>
+        ) : null}
+      </>
+    )
   }
 
   return (
