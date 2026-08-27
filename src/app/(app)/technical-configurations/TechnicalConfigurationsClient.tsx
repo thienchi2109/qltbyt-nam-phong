@@ -157,7 +157,7 @@ export function TechnicalConfigurationsClient() {
     : null
 
   return (
-    <div className="w-full">
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       <header className="flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-3">
@@ -188,7 +188,10 @@ export function TechnicalConfigurationsClient() {
         </Button>
       </header>
 
-      <section className="mt-6 space-y-4" aria-label="Danh sách hồ sơ cấu hình">
+      <section
+        className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto"
+        aria-label="Danh sách hồ sơ cấu hình"
+      >
         {listError ? (
           <Alert variant="destructive">
             <AlertCircle className="size-4" />

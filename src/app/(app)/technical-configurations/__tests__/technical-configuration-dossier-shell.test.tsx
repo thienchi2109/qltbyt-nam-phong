@@ -153,6 +153,39 @@ describe("technical configuration dossier shell", () => {
     expect(await screen.findByText("Chưa có hồ sơ cấu hình")).toBeInTheDocument()
   })
 
+  it("keeps a long dossier list keyboard reachable inside a vertical scroll region", async () => {
+    const user = userEvent.setup()
+    const dossiers = Array.from({ length: 20 }, (_, index) => ({
+      ...dossier,
+      id: `dossier-${index + 1}`,
+      name: `Hồ sơ cấu hình ${index + 1}`,
+      can_delete: true,
+    }))
+    mocks.listDossiers.mockResolvedValue({
+      data: dossiers,
+      total: dossiers.length,
+      page: 1,
+      page_size: 20,
+    } satisfies TechnicalConfigurationDossierListWireResponse)
+
+    renderClient()
+
+    const listRegion = await screen.findByRole("region", {
+      name: "Danh sách hồ sơ cấu hình",
+    })
+    const lastOpenButton = await screen.findByRole("button", {
+      name: "Mở Hồ sơ cấu hình 20",
+    })
+
+    await user.tab({ shift: true })
+    await user.tab({ shift: true })
+    await user.tab({ shift: true })
+
+    expect(lastOpenButton).toHaveFocus()
+    expect(listRegion.parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col")
+    expect(listRegion).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+  })
+
   it("shows a stable loading state while the dossier list is pending", () => {
     mocks.listDossiers.mockReturnValue(new Promise(() => undefined))
 
