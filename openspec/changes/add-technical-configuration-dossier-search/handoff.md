@@ -143,7 +143,7 @@
 ## Phase 5: Verification And Deploy Readiness
 
 - Date: 2026-08-27
-- Status: reviewer findings and final non-database verification complete; integration, live apply, and Oracle catch-up pending
+- Status: complete; landed, applied live, and directly caught up to Oracle `qltbyt_test`
 - Branch: `feat/technical-configuration-dossier-search-p5`
 - Base commit: `b6b81876bad75d12ff2b5c8fc326e0975e3bd5d2` (`origin/main`)
 - Scope completed before final verification:
@@ -171,7 +171,7 @@
   - no reusable visible-snapshot or mutation-origin abstraction was found
   - `src/lib/search-normalize.ts` is intentionally not reused because it strips all accents and preserves punctuation, which conflicts with the dossier SQL contract
   - the dossier normalizer and action-origin behavior remain module-local
-- Read-only live drift inspection:
+- Pre-apply read-only live drift inspection:
   - live still has only the three-argument `technical_configuration_dossiers_list`
   - `public._normalize_search_text` and both dossier search indexes are absent
   - the search migration is absent from live migration history
@@ -185,8 +185,28 @@
   - the earlier Phase 2 disposable-clone evidence does not cover the final Phase 5 commit
 - Live authorization and rollout:
   - maintainer explicitly authorized applying `20260826120436_technical_configuration_dossier_search.sql` to live on 2026-08-27 after reviewer findings are fixed
-  - deploy only the exact migration bytes from the synchronized pushed implementation commit
-  - after live apply, read back migration/routine/helper/ACL/index state and run security/performance advisors
-  - only after live confirmation, catch up persistent Oracle `qltbyt_test` with the live-derived exact-commit manifest
-  - Oracle catch-up synchronizes migration metadata, schema, and the normalized Technical Configurations routine catalog; it does not synchronize production business data
-- Current boundary: no live database write or Oracle baseline mutation has occurred in Phase 5 yet.
+  - implementation commit `eb540d69` was pushed and landed on `main` as `030d89cd73af9549917b2ce4b95388673eab038a`
+  - the main worktree fast-forwarded cleanly to `030d89cd`
+  - canonical local SQL SHA-256 `4a630774ef876763e36d9484e079d4a58a00c42f23ee910cf60f91caede59c56` matched the live migration statement hash
+- Live apply evidence:
+  - Supabase MCP `apply_migration` succeeded for `technical_configuration_dossier_search`
+  - live migration version is `20260827074233`
+  - the three-argument list RPC is replaced by `technical_configuration_dossiers_list(integer, integer, boolean, text)`
+  - the list RPC is `SECURITY DEFINER`, uses `search_path=public, pg_temp`, and grants execute only to `authenticated` plus owner `postgres`
+  - `_normalize_search_text(text)` is immutable, parallel-safe, uses `search_path=public, pg_temp`, and is executable only by owner `postgres`
+  - both dossier search trigram indexes exist
+  - security/performance advisors returned the existing project finding classes; the two new indexes are reported as unused immediately after creation, with no dossier-search-specific security finding
+- Oracle direct catch-up evidence:
+  - the canonical incremental path was not used because persisted baseline state remained legacy schema v1; the current harness intentionally rejects v1 catch-up
+  - at the maintainer's direction, the exact live-confirmed migration was applied directly to persistent `qltbyt_test` without restoring a dump
+  - the existing Oracle maintenance executor supplied the global lock, role preflight, temporary `CREATE` grant, guaranteed cleanup, and exact metadata writer
+  - run ID: `p5-direct-catch-up-202608270750`
+  - pre-apply metadata status was `missing`; SQL apply succeeded; metadata read-back became `exact`
+  - Oracle migration high-water is `20260827074233`, with the same migration name and SQL SHA-256 as live
+  - the helper, four-argument list RPC, two indexes, `search_path`, ACLs, and dossier-list definition SHA-256 match live
+  - temporary `CREATE` on schema `public` is absent after catch-up and the maintenance lock was released
+  - this synchronizes the migration schema/metadata surface only; it does not copy production business data
+- Remaining Quality Gate debt:
+  - persisted Oracle baseline state remains schema v1 with its previous recorded high-water `20260825121502`; no state v2 health claim is made
+  - the complete 80-routine Technical Configurations catalog hash differs between live and Oracle, and the difference remains after excluding the changed dossier-list RPC, proving unrelated pre-existing catalog drift
+  - the changed dossier-list routine itself matches live exactly; aggregate Database Quality Gate status remains not PASS by explicit bypass
