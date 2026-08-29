@@ -26,6 +26,12 @@ export type MigrationIdentity = {
   sha256: string
 }
 
+export type SqlTestExecutionEvidence = {
+  attempted: string[]
+  executed: string[]
+  selected: string[]
+}
+
 export type GateReport = {
   baselineMigrationHighWater: string
   createdAt: string
@@ -40,6 +46,7 @@ export type GateReport = {
   requiredChecksComplete?: boolean
   runId: string
   schemaVersion: typeof GATE_SCHEMA_VERSION
+  sqlTestExecution?: SqlTestExecutionEvidence
   subjectCommit: string
 }
 

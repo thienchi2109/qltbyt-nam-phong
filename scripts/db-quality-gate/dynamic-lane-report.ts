@@ -13,6 +13,11 @@ export type DynamicRunState = {
   findings: GateFinding[]
   incomplete: boolean
   preflightComplete: boolean
+  sqlTestExecution: {
+    attempted: string[]
+    executed: string[]
+    selected: string[]
+  }
 }
 
 /** Creates the fail-closed state used before Oracle preflight supplies any trusted evidence. */
@@ -24,6 +29,11 @@ export function createDynamicRunState(): DynamicRunState {
     findings: [],
     incomplete: false,
     preflightComplete: false,
+    sqlTestExecution: {
+      attempted: [],
+      executed: [],
+      selected: [],
+    },
   }
 }
 
@@ -109,6 +119,7 @@ export function finalizeDynamicLaneReport(
     requiredChecksComplete,
     runId: input.runId,
     schemaVersion: GATE_SCHEMA_VERSION,
+    sqlTestExecution: state.sqlTestExecution,
     subjectCommit: input.subjectCommit,
   })
 }

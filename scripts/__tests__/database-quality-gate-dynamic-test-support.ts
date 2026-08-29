@@ -66,6 +66,11 @@ export type DynamicLaneModule = {
     migrationIdentities: Array<{ path: string; sha256: string }>
     outcome: "FAILED" | "INCOMPLETE" | "PASS"
     requiredChecksComplete?: boolean
+    sqlTestExecution?: {
+      attempted: string[]
+      executed: string[]
+      selected: string[]
+    }
   }
 }
 
@@ -122,6 +127,8 @@ export class FakeOracleDynamicExecutor {
     kind: DynamicFailureKind
     operation: DynamicOperation
   }
+
+  sqlTestFailurePath?: string
 
   additionalFailure?: {
     kind: DynamicFailureKind
@@ -199,6 +206,17 @@ export class FakeOracleDynamicExecutor {
   }): ExecutorResult<undefined> {
     this.runSqlTestContents.push(input.content)
     this.runSqlTestPaths.push(input.path)
+    if (
+      this.failure?.operation === "run-sql-test" &&
+      this.sqlTestFailurePath !== undefined &&
+      this.sqlTestFailurePath !== input.path
+    ) {
+      this.operations.push(`run-sql-test:${input.databaseName}:${input.timeoutSeconds}`)
+      return {
+        status: "ok",
+        value: undefined,
+      }
+    }
     return this.result("run-sql-test", undefined, `${input.databaseName}:${input.timeoutSeconds}`)
   }
 

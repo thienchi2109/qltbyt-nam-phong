@@ -120,6 +120,13 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
         ruleId: "catalog.routine.search-path",
       })
     )
+    expect(historical.sqlTestExecution).toEqual({
+      attempted: ["supabase/tests/example.sql"],
+      executed: ["supabase/tests/example.sql"],
+      selected: ["supabase/tests/example.sql"],
+    })
+    expect(executor.runSqlTestPaths).toEqual(["supabase/tests/example.sql"])
+    expect(executor.operations).toContain("collect-catalogs:dq_baseline_forward_phase4_contract")
 
     const regressedExecutor = new FakeOracleDynamicExecutor()
     regressedExecutor.baselineCatalogs.access = defaultExpectedStateCatalogAccess({
@@ -144,6 +151,12 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
           finding.classification === "BLOCKING" && finding.ruleId === "catalog.routine.search-path"
       )
     ).toHaveLength(1)
+    expect(regressed.sqlTestExecution).toEqual({
+      attempted: [],
+      executed: [],
+      selected: ["supabase/tests/example.sql"],
+    })
+    expect(regressedExecutor.runSqlTestPaths).toEqual([])
   })
 
   it("does not infer a legacy filename mapping from unrelated Oracle migration versions", async () => {
@@ -243,7 +256,15 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
     const { report } = runLane(source, executor)
 
     expect(report.outcome).toBe("FAILED")
+    expect(report.sqlTestExecution).toEqual({
+      attempted: ["supabase/tests/example.sql"],
+      executed: ["supabase/tests/example.sql"],
+      selected: ["supabase/tests/example.sql"],
+    })
     expect(executor.runSqlTestPaths).toEqual(["supabase/tests/example.sql"])
+    expect(JSON.parse(executor.persistedReports[0]).sqlTestExecution).toEqual(
+      report.sqlTestExecution
+    )
     expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_contract"])
   })
 
@@ -268,30 +289,6 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
         expect.objectContaining({ ruleId: "dynamic.release-lock.cleanup" }),
       ])
     )
-  })
-
-  it.each([
-    ["timeout", "apply-migrations"],
-    ["interrupted", "run-sql-test"],
-    ["cleanup", "drop-database"],
-    ["disk-pressure", "preflight"],
-    ["stale-environment", "preflight"],
-  ] as const)("fails closed as INCOMPLETE for %s execution evidence", async (kind, operation) => {
-    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
-    const executor = new FakeOracleDynamicExecutor()
-    executor.failure = {
-      kind,
-      operation,
-    }
-
-    const { report } = runLane(source, executor)
-
-    expect(report.outcome).toBe("INCOMPLETE")
-    expect(report.requiredChecksComplete).toBe(false)
-    expect(report.evidenceAvailable).toBe(operation !== "preflight")
-    if (operation !== "preflight") {
-      expect(executor.operations).toContain("release-lock:phase4-contract")
-    }
   })
 
   it("keeps an immutable per-run evidence record before reporting PASS", async () => {

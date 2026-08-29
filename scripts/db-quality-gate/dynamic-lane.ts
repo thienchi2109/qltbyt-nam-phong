@@ -170,6 +170,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
   try {
     artifacts = readDynamicInputArtifacts(input, state)
     if (artifacts !== undefined) {
+      state.sqlTestExecution.selected = artifacts.sqlTests.map((sqlTest) => sqlTest.path)
       const preflight = input.executor.preflight()
       if (preflight.status === "error") {
         recordDynamicOperationError(state, "preflight", preflight)
@@ -278,7 +279,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           }
         }
 
-        if (canContinue && !state.incomplete && state.findings.length === 0) {
+        if (canContinue && !state.incomplete) {
           const catalogs = input.executor.collectCatalogs({ databaseName })
           if (catalogs.status === "error") {
             recordDynamicOperationError(state, "collect-catalogs", catalogs)
@@ -305,14 +306,17 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
                 fingerprint: finding.fingerprint,
                 ruleId: finding.ruleId,
               })
-              if (!historicalRoutineDebt && finding.classification === "INCOMPLETE") {
-                state.incomplete = true
+              if (!historicalRoutineDebt) {
+                canContinue = false
+                if (finding.classification === "INCOMPLETE") {
+                  state.incomplete = true
+                }
               }
             }
           }
         }
 
-        if (canContinue && !state.incomplete && state.findings.length === 0) {
+        if (canContinue && !state.incomplete) {
           for (const sqlTest of artifacts.sqlTests) {
             const content = readCommittedSqlTest(input, sqlTest.path)
             if (content === undefined) {
@@ -323,6 +327,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               canContinue = false
               break
             }
+            state.sqlTestExecution.attempted.push(sqlTest.path)
             const checked = input.executor.runSqlTest({
               content,
               databaseName,
@@ -333,11 +338,31 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               transactionContract: sqlTest.transactionContract,
             })
             if (checked.status === "error") {
+              if (checked.kind === "failed") {
+                state.sqlTestExecution.executed.push(sqlTest.path)
+              }
               recordDynamicOperationError(state, "run-sql-test", checked)
               canContinue = false
               break
             }
+            state.sqlTestExecution.executed.push(sqlTest.path)
           }
+        }
+
+        if (
+          canContinue &&
+          !state.incomplete &&
+          (state.sqlTestExecution.selected.length !== state.sqlTestExecution.attempted.length ||
+            state.sqlTestExecution.selected.some(
+              (path, index) => state.sqlTestExecution.attempted[index] !== path
+            ))
+        ) {
+          addDynamicFinding(state, "dynamic.sql-test.execution", "default-safe-sql-tests", {
+            attempted: JSON.stringify(state.sqlTestExecution.attempted),
+            executed: JSON.stringify(state.sqlTestExecution.executed),
+            selected: JSON.stringify(state.sqlTestExecution.selected),
+          })
+          state.incomplete = true
         }
       }
     }
