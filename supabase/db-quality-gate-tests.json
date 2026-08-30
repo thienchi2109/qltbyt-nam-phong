@@ -545,6 +545,16 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["GitHub Issue #957"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_copy_reentrant_workspace_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 120,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "external-fixture",
       "path": "supabase/tests/technical_configuration_baseline_document_urls_phase_gate.sql",

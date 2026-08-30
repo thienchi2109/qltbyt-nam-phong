@@ -297,12 +297,22 @@ BEGIN
   ) INTO v_response;
   PERFORM pg_temp.assert_true(
     'repeated preview is stable and read-only',
-    v_response #>> '{data,preview_fingerprint}' = v_fingerprint
+    v_response -> 'data' = v_preview -> 'data'
+    AND length(v_fingerprint) = 64
     AND NOT EXISTS (
       SELECT 1 FROM public.technical_configuration_baseline_versions
       WHERE dossier_id = v_create_dossier
     )
   );
+  BEGIN
+    SELECT public.technical_configuration_baseline_cross_dossier_copy_apply(
+      v_cross_source_version, v_create_dossier, v_dossier_revision, NULL, NULL,
+      repeat('0', 64), false
+    ) INTO v_response;
+    RAISE EXCEPTION 'stale preview assertion did not fail';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLSTATE <> 'PT409' OR SQLERRM <> 'stale_preview' THEN RAISE; END IF;
+  END;
   SELECT public.technical_configuration_baseline_cross_dossier_copy_apply(
     v_cross_source_version, v_create_dossier, v_dossier_revision, NULL, NULL,
     v_fingerprint, false
