@@ -328,7 +328,6 @@ BEGIN
       WHERE dossier_id = v_create_dossier
     )
   );
-  DROP TABLE IF EXISTS pg_temp.technical_configuration_baseline_group_copy_map, pg_temp.technical_configuration_baseline_subgroup_copy_map, pg_temp.technical_configuration_baseline_criterion_copy_map, pg_temp.technical_configuration_reference_product_copy_map, pg_temp.technical_configuration_baseline_document_copy_map, pg_temp.technical_configuration_reference_document_copy_map;
   SELECT d.revision, v.revision
   INTO v_dossier_revision, v_baseline_revision
   FROM public.technical_configuration_dossiers d
@@ -430,7 +429,6 @@ BEGIN
       WHERE comparison_set_id = (v_replace_fixture->>'comparison_set')::UUID
     )
   );
-  DROP TABLE IF EXISTS pg_temp.technical_configuration_baseline_group_copy_map, pg_temp.technical_configuration_baseline_subgroup_copy_map, pg_temp.technical_configuration_baseline_criterion_copy_map, pg_temp.technical_configuration_reference_product_copy_map, pg_temp.technical_configuration_baseline_document_copy_map, pg_temp.technical_configuration_reference_document_copy_map;
   -- Existing same-dossier compatibility remains callable after lineage broadening.
   SELECT public.technical_configuration_baseline_copy(v_same_version, 1) INTO v_response;
   PERFORM pg_temp.assert_true(
