@@ -3,12 +3,64 @@ import { tmpdir } from "node:os"
 import { resolve } from "node:path"
 import { spawnSync } from "node:child_process"
 
+import ts from "typescript"
 import { describe, expect, it } from "vitest"
 
 const repositoryRoot = resolve(__dirname, "../..")
 
 function repositoryFile(path: string): string {
   return readFileSync(resolve(repositoryRoot, path), "utf8")
+}
+
+function isStaticLaneArguments(expression: ts.Expression): boolean {
+  if (ts.isParenthesizedExpression(expression)) {
+    return isStaticLaneArguments(expression.expression)
+  }
+
+  if (ts.isConditionalExpression(expression)) {
+    return isStaticLaneArguments(expression.whenTrue) && isStaticLaneArguments(expression.whenFalse)
+  }
+
+  if (!ts.isArrayLiteralExpression(expression)) {
+    return false
+  }
+
+  const [laneFlag, laneName] = expression.elements
+  return (
+    ts.isStringLiteral(laneFlag) &&
+    laneFlag.text === "--lane" &&
+    ts.isStringLiteral(laneName) &&
+    laneName.text === "static"
+  )
+}
+
+function databaseQualityGateArguments(sourceText: string): ts.Expression[] {
+  const sourceFile = ts.createSourceFile(
+    "local-migration-gate.ts",
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  )
+  const argumentsList: ts.Expression[] = []
+
+  function visit(node: ts.Node): void {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === "runDatabaseQualityGateCommand"
+    ) {
+      const [argumentsExpression] = node.arguments
+      if (argumentsExpression !== undefined) {
+        argumentsList.push(argumentsExpression)
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return argumentsList
 }
 
 describe("database quality gate local repository wiring", () => {
@@ -43,8 +95,10 @@ describe("database quality gate local repository wiring", () => {
     const wrapper = repositoryFile("scripts/db-quality-gate/local-migration-gate.ts")
     const bootstrap = repositoryFile("scripts/db-quality-gate/run-local-migration-gate.cjs")
     const localCommand = `${wrapper}\n${bootstrap}`
+    const gateArguments = databaseQualityGateArguments(wrapper)
 
-    expect(wrapper).toContain('runDatabaseQualityGateCommand(["--lane", "static"])')
+    expect(gateArguments).toHaveLength(1)
+    expect(gateArguments.every(isStaticLaneArguments)).toBe(true)
     expect(bootstrap).not.toContain("process.argv")
     expect(localCommand).not.toMatch(
       /apply_migration|execute_sql|supabase db|ORACLE_DATABASE_QUALITY_GATE|live write/i
