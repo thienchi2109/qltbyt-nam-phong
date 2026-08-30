@@ -60,10 +60,11 @@ function firstDelegatedTarget(content: string): DelegatedTarget | undefined {
 export function failClosedJwtAuthorizedFunctions(
   functionBlocks: SqlFunctionBlock[],
   isSafeInternalTarget: (functionBlock: SqlFunctionBlock) => boolean,
-  allowsRoleClaimFallback: (functionBlock: SqlFunctionBlock) => boolean = () => false
+  allowsRoleClaimFallback: (functionBlock: SqlFunctionBlock) => boolean = () => false,
+  availableFunctionBlocks = functionBlocks
 ): Set<SqlFunctionBlock> {
   const functionsByName = new Map<string, SqlFunctionBlock[]>()
-  for (const functionBlock of functionBlocks) {
+  for (const functionBlock of availableFunctionBlocks) {
     const matches = functionsByName.get(functionBlock.name) ?? []
     matches.push(functionBlock)
     functionsByName.set(functionBlock.name, matches)

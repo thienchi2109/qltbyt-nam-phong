@@ -17,6 +17,11 @@ import {
   unqualifiedTableNames,
 } from "./static-policy-objects"
 import { dangerousFindings } from "./static-policy-dangerous"
+import {
+  historicalFunctionDefinitions,
+  safeInternalFunctionTargets,
+} from "./static-policy-authorization"
+import { isPureImmutableInternalFunction } from "./static-policy-pure-functions"
 import { compareStrings } from "./serialization"
 import { failClosedJwtAuthorizedFunctions } from "./static-sql-authorization"
 import { topLevelStatements } from "./static-sql-statements"
@@ -178,6 +183,13 @@ export function staticRuleFindings(
   }
 
   const functions = functionBlocks(content)
+  const availableDefinitions = historicalFunctionDefinitions(
+    repositoryRoot,
+    migration,
+    allMigrations,
+    content
+  )
+  const availableFunctions = availableDefinitions.map((entry) => entry.functionBlock)
   const overloadedFunctionNames = ambiguousFunctionNames(functions)
   for (const name of overloadedFunctionNames) {
     findings.push(
@@ -187,26 +199,15 @@ export function staticRuleFindings(
       })
     )
   }
-  const safeInternalTargets = new Set(
-    functions.filter((functionBlock) => {
-      const grantees = functionGrantGrantees(content, functionBlock)
-      const revokeGrantees = functionRevokeGrantees(content, functionBlock)
-
-      return (
-        isInternalPublicHelper(functionBlock) &&
-        !overloadedFunctionNames.has(functionBlock.name) &&
-        ["anon", "authenticated", "public"].every((grantee) => revokeGrantees.has(grantee)) &&
-        !["anon", "authenticated", "public"].some((grantee) => grantees.has(grantee))
-      )
-    })
-  )
+  const safeInternalTargets = safeInternalFunctionTargets(availableDefinitions)
   const jwtAuthorized = failClosedJwtAuthorizedFunctions(
     functions,
     (functionBlock) => safeInternalTargets.has(functionBlock),
     (functionBlock) =>
       migration.path ===
         "supabase/migrations/20260824132410_add_technical_configuration_authorized_user_guard.sql" &&
-      functionBlock.name === "public._technical_configuration_require_authorized_user"
+      functionBlock.name === "public._technical_configuration_require_authorized_user",
+    availableFunctions
   )
 
   for (const functionBlock of functions) {
@@ -218,7 +219,11 @@ export function staticRuleFindings(
     const grantGrantees = functionGrantGrantees(content, functionBlock)
     const revokeGrantees = functionRevokeGrantees(content, functionBlock)
 
-    if (publicFunction && !jwtAuthorized.has(functionBlock)) {
+    if (
+      publicFunction &&
+      !isPureImmutableInternalFunction(functionBlock) &&
+      !jwtAuthorized.has(functionBlock)
+    ) {
       findings.push(
         staticBlockingFinding("migration.jwt-guards", migration.path, {
           function: functionBlock.name,

@@ -45,9 +45,25 @@ export async function runCandidate(
   sql: string,
   path = "supabase/migrations/20270101000000_candidate.sql"
 ) {
+  return runCandidateWithHistory([{ path, sql }], path)
+}
+
+export async function runCandidateWithHistory(
+  migrations: Array<{ path: string; sql: string }>,
+  candidatePath = migrations.at(-1)?.path
+) {
+  if (candidatePath === undefined) {
+    throw new Error("Candidate migration is required")
+  }
+
   const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
-  const candidate = migration(sql, path)
-  const repository = fixtureWithStaticMetadata(candidate)
+  const candidate = migrations.find((entry) => entry.path === candidatePath)
+  if (candidate === undefined) {
+    throw new Error(`Candidate migration not found: ${candidatePath}`)
+  }
+  const repository = fixtureWithStaticMetadata(
+    ...migrations.map((entry) => migration(entry.sql, entry.path))
+  )
 
   return runStatic(source, repository.root, [candidate.path])
 }
