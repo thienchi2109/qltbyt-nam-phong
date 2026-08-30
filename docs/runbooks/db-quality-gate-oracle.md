@@ -17,6 +17,40 @@ Diff khong lien quan tra ve `SKIP`. Diff lien quan tra ve mot dong tom tat
 `PASS`, `FAILED`, hoac `INCOMPLETE` kem digest va so luong finding. This local
 command does not run baseline-forward, connect to Oracle, or write live DB.
 
+## Known Supabase-managed Realtime finding
+
+`realtime.messages.messages_payload_exclusive` is intentionally created by
+Supabase Realtime as:
+
+```sql
+CHECK (payload IS NULL OR binary_payload IS NULL) NOT VALID
+```
+
+This is not application-owned migration debt. The upstream Realtime migration
+uses `NOT VALID` so the check applies to new rows without requiring a
+historical table scan. Do not validate, replace, or otherwise alter this
+constraint through an application migration.
+
+The health query excludes the `realtime` schema from
+`unvalidatedConstraintCount`. That exclusion is intentional and does not
+weaken checks for unvalidated constraints in application-owned schemas.
+
+For read-only verification, inspect only metadata and aggregate counts:
+
+```sql
+SELECT convalidated, pg_get_constraintdef(oid, true)
+FROM pg_constraint
+WHERE conname = 'messages_payload_exclusive';
+
+SELECT count(*) AS violating_rows
+FROM realtime.messages
+WHERE payload IS NOT NULL AND binary_payload IS NOT NULL;
+```
+
+Do not select or expose payload contents. A `0` violation count confirms that
+the known upstream finding has no observed historical violations; it does not
+authorize a live database write.
+
 ## DANGEROUS approval khi land truc tiep khong co PR
 
 Workflow nay dung hai commit bat bien de tranh `approvalCommit` tu tham chieu:
