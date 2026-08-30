@@ -52,12 +52,17 @@ const migration = {
 }
 
 describe("database quality gate Oracle baseline maintenance executor", () => {
-  it("normalizes migration SQL and excludes Supabase-managed schemas from health debt", async () => {
+  it("classifies the Realtime payload constraint as managed-schema health debt", async () => {
     const source = await loadDatabaseQualityGateModule<BaselineSqlModule>("oracle-baseline-sql")
 
     expect(source.BASELINE_OBSERVATION_QUERY).toContain("regexp_replace")
     expect(source.BASELINE_OBSERVATION_QUERY).toContain("replace(COALESCE(statements[1], '')")
-    expect(source.BASELINE_OBSERVATION_QUERY).toContain("'realtime'")
+    expect(source.BASELINE_OBSERVATION_QUERY).toMatch(
+      /unvalidatedConstraintCount[\s\S]+WHERE NOT c\.convalidated[\s\S]+n\.nspname NOT IN[\s\S]+'realtime'/
+    )
+    expect(source.BASELINE_OBSERVATION_QUERY).toContain(
+      "messages_payload_exclusive is upstream-managed"
+    )
   })
 
   it("publishes one atomic state file without embedding credentials", async () => {

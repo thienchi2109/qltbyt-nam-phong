@@ -128,6 +128,9 @@ SELECT json_build_object(
     FROM pg_constraint c
     JOIN pg_namespace n ON n.oid = c.connamespace
     WHERE NOT c.convalidated
+      -- Supabase-managed schemas are excluded from application-owned debt.
+      -- realtime.messages.messages_payload_exclusive is upstream-managed.
+      -- It intentionally uses NOT VALID to protect new rows.
       AND n.nspname NOT IN (
         'auth',
         'extensions',
