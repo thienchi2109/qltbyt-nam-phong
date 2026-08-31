@@ -1,0 +1,48 @@
+{
+  "artifact_id": "thong-tu-10-2026-appendix-freeze",
+  "document_number": "10/2026/TT-BYT",
+  "document_title": "Thông tư 10/2026/TT-BYT",
+  "appendix_title": "Phụ lục - Tiêu chuẩn, định mức sử dụng máy móc, thiết bị chuyên dùng trong lĩnh vực y tế",
+  "issued_date": "2026-05-14",
+  "effective_date": "2026-07-01",
+  "import_status": "ready",
+  "extraction_revision": "phase-0-2026-08-31-r1",
+  "source_artifact": {
+    "pdf": {
+      "path": "757_Thong-tu-10-2026-TT-BYT_88e68354fb.pdf",
+      "sha256": "04186bd3cc50cf541f5e481d25480741412cfe3c899040c35713d4eeda24fd8f"
+    },
+    "appendix_json": {
+      "path": "thong-tu-10-2026-appendix.json",
+      "sha256": "01aac96335d83fd51ca45e9bce0b03c20ec3a333822151f320ac22948cc9b438"
+    },
+    "appendix_markdown": {
+      "path": "thong-tu-10-2026-appendix.md",
+      "sha256": "1ac4b38c14675b2de065c13c09036b89c92de87c17da840776e351f67761c4ca"
+    },
+    "source_pages": "6-12",
+    "source_note": "The PDF is the legal ground truth. JSON and Markdown are structural transcriptions used for traceable source inspection."
+  },
+  "completeness": {
+    "structural_rows": 42,
+    "section_rows": 5,
+    "equipment_item_rows": 37,
+    "source_declared_child_rows": 16,
+    "top_level_item_rows": 21,
+    "footnotes": 3,
+    "items_with_source_pages": 37,
+    "items_with_source_references": 37,
+    "multiline_quota_items": 32,
+    "source_order": "appendix_json.rows",
+    "section_ids": ["1", "2", "5", "16", "23"]
+  },
+  "representation_rules": {
+    "source_order_preserved": true,
+    "source_declared_parent_relationships_preserved": true,
+    "quota_kept_as_multiline_array": true,
+    "footnotes_kept_separately": true,
+    "source_pages_retained_on_every_row": true,
+    "source_references_retained_on_every_row": true,
+    "regulatory_text_is_not_reduced_to_inferred_formula": true
+  }
+}

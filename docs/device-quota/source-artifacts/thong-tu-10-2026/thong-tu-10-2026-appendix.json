@@ -1,0 +1,760 @@
+{
+  "source_file": "757_Thong-tu-10-2026-TT-BYT_88e68354fb.pdf",
+  "document_title": "Phụ lục - Tiêu chuẩn, định mức sử dụng máy móc, thiết bị chuyên dùng trong lĩnh vực y tế",
+  "columns": [
+    "TT",
+    "Chủng loại",
+    "Đơn vị tính",
+    "Số lượng định mức"
+  ],
+  "rows": [
+    {
+      "id": "1",
+      "tt": "1",
+      "type": "section",
+      "level": 0,
+      "parent": null,
+      "name": "Máy X - quang",
+      "unit": null,
+      "quota": null,
+      "source_pages": [
+        6,
+        7
+      ],
+      "source_ref": "Phụ lục, trang 6, 7"
+    },
+    {
+      "id": "1a",
+      "tt": "a",
+      "type": "item",
+      "level": 1,
+      "parent": "1",
+      "name": "Máy X - quang kỹ thuật số chụp tổng quát",
+      "unit": "Máy",
+      "quota": [
+        "Nhu cầu trung bình dưới 300 ca chụp/tháng/cơ sở: 01 Máy/cơ sở.",
+        "Nhu cầu trung bình từ 300 đến 2.600 ca chụp/tháng/cơ sở: tối đa 02 Máy/cơ sở.",
+        "Nhu cầu trung bình trên 2.600 ca chụp/tháng/cơ sở: tăng thêm 1.300 ca chụp/tháng/cơ sở được bổ sung thêm 01 Máy.",
+        "Trường hợp cơ sở có các đơn vị điều trị cách ly hoặc khu truyền nhiễm độc lập: được bổ sung 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        6
+      ],
+      "source_ref": "Phụ lục, trang 6"
+    },
+    {
+      "id": "1b",
+      "tt": "b",
+      "type": "item",
+      "level": 1,
+      "parent": "1",
+      "name": "Máy X - quang di động",
+      "unit": "Máy",
+      "quota": [
+        "Dưới 200 giường nội trú/cơ sở: 01 Máy/cơ sở.",
+        "Ngoài ra:",
+        "Tăng thêm 200 giường nội trú/cơ sở: được bổ sung thêm 01 Máy.",
+        "Trường hợp cơ sở có đơn vị thực hiện chức năng hồi sức tích cực; cấp cứu; hồi sức sau phẫu thuật; giám định pháp y; pháp y tâm thần: được bổ sung thêm 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        6
+      ],
+      "source_ref": "Phụ lục, trang 6"
+    },
+    {
+      "id": "1c",
+      "tt": "c",
+      "type": "item",
+      "level": 1,
+      "parent": "1",
+      "name": "Máy X - quang C Arm",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/02 phòng mổ.",
+        "Trường hợp đơn vị thực hiện kỹ thuật chụp mật tụy ngược dòng (ERCP), tán sỏi ngoài cơ thể hoặc can thiệp: được bổ sung thêm 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        6
+      ],
+      "source_ref": "Phụ lục, trang 6"
+    },
+    {
+      "id": "1d",
+      "tt": "d",
+      "type": "item",
+      "level": 1,
+      "parent": "1",
+      "name": "Máy X - quang răng toàn cảnh",
+      "unit": "Máy",
+      "quota": [
+        "Nhu cầu trung bình dưới 600 ca chụp/tháng/cơ sở: Tối đa 02 Máy/cơ sở.",
+        "Nhu cầu trung bình trên 600 ca chụp/tháng/cơ sở: tăng thêm 600 ca chụp/tháng/cơ sở được bổ sung thêm 01 Máy."
+      ],
+      "source_pages": [
+        6
+      ],
+      "source_ref": "Phụ lục, trang 6"
+    },
+    {
+      "id": "1dd",
+      "tt": "đ",
+      "type": "item",
+      "level": 1,
+      "parent": "1",
+      "name": "Máy X - quang đo mật độ xương toàn thân",
+      "unit": "Máy",
+      "quota": [
+        "Nhu cầu trung bình dưới 200 ca chụp/tháng/cơ sở: 01 Máy/cơ sở.",
+        "Nhu cầu trung bình từ 200 đến 1.000 ca chụp/tháng/cơ sở: Tối đa 02 Máy/cơ sở.",
+        "Nhu cầu trung bình trên 1.000 ca chụp/tháng/cơ sở: tăng thêm 500 ca chụp/tháng/cơ sở được bổ sung thêm 01 Máy."
+      ],
+      "source_pages": [
+        6,
+        7
+      ],
+      "source_ref": "Phụ lục, trang 6, 7"
+    },
+    {
+      "id": "2",
+      "tt": "2",
+      "type": "section",
+      "level": 0,
+      "parent": null,
+      "name": "Hệ thống CT - Scanner",
+      "unit": null,
+      "quota": null,
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "2a",
+      "tt": "a",
+      "type": "item",
+      "level": 1,
+      "parent": "2",
+      "name": "Hệ thống CT Scanner < 64 dãy đầu thu",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 300 ca chụp/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 300 đến 1.300 ca chụp/tháng/cơ sở: Tối đa 02 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 1.300 ca chụp/tháng/cơ sở: tăng thêm 650 ca chụp/tháng/cơ sở được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "2b",
+      "tt": "b",
+      "type": "item",
+      "level": 1,
+      "parent": "2",
+      "name": "Hệ thống CT Scanner 64 - 128 dãy đầu thu",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 400 ca chụp/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 400 ca chụp/tháng/cơ sở: tăng thêm 400 ca chụp/tháng/cơ sở được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "2c",
+      "tt": "c",
+      "type": "item",
+      "level": 1,
+      "parent": "2",
+      "name": "Hệ thống CT Scanner > 128 dãy đầu thu",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 400 ca chụp/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 400 ca chụp/tháng/cơ sở: tăng thêm 400 ca chụp/tháng/cơ sở được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "3",
+      "tt": "3",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Hệ thống chụp cộng hưởng từ ≥ 1.5 Tesla",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 400 ca chụp/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 400 ca chụp/tháng/cơ sở: tăng thêm 400 ca chụp/tháng/cơ sở được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "4",
+      "tt": "4",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Hệ thống chụp mạch số hóa xóa nền (DSA)",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 100 ca chụp/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 100 đến 200 ca chụp/tháng/cơ sở: tối đa 02 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 200 ca chụp/tháng/cơ sở: tăng thêm 200 ca chụp/tháng/cơ sở được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        7
+      ],
+      "source_ref": "Phụ lục, trang 7"
+    },
+    {
+      "id": "5",
+      "tt": "5",
+      "type": "section",
+      "level": 0,
+      "parent": null,
+      "name": "Máy siêu âm",
+      "unit": null,
+      "quota": null,
+      "source_pages": [
+        7,
+        8
+      ],
+      "source_ref": "Phụ lục, trang 7, 8"
+    },
+    {
+      "id": "5a",
+      "tt": "a",
+      "type": "item",
+      "level": 1,
+      "parent": "5",
+      "name": "Máy siêu âm chuyên tim mạch",
+      "unit": "Máy",
+      "quota": [
+        "Nhu cầu trung bình dưới 300 ca chụp/tháng/cơ sở: 01 Máy/cơ sở.",
+        "Nhu cầu trung bình trên 300 ca chụp/tháng/cơ sở: tăng thêm 300 ca chụp/tháng/cơ sở được bổ sung thêm 01 Máy.",
+        "Ngoài ra:",
+        "Trường hợp cơ sở có đơn vị chụp mạch số hóa xóa nền (DSA); đơn vị thực hiện chức năng hồi sức; đơn vị thực hiện chức năng cấp cứu: được bổ sung thêm 01 Máy.",
+        "Phòng mổ: được bổ sung thêm 01 Máy/phòng mổ tim."
+      ],
+      "source_pages": [
+        8
+      ],
+      "source_ref": "Phụ lục, trang 8"
+    },
+    {
+      "id": "5b",
+      "tt": "b",
+      "type": "item",
+      "level": 1,
+      "parent": "5",
+      "name": "Máy siêu âm tổng quát",
+      "unit": "Máy",
+      "quota": [
+        "Nhu cầu trung bình dưới 600 ca chụp/tháng/cơ sở: 01 Máy/cơ sở.",
+        "Nhu cầu trung bình từ 600 đến 1.600 ca chụp/tháng/cơ sở: tối đa 02 Máy/cơ sở.",
+        "Nhu cầu trung bình trên 1.600 ca chụp/tháng/cơ sở: tăng thêm 800 ca chụp/tháng/cơ sở được bổ sung thêm 01 Máy.",
+        "Ngoài ra:",
+        "Trường hợp cơ sở có đơn vị hồi sức; cấp cứu; hồi sức sau phẫu thuật, can thiệp và các đơn vị có sử dụng kỹ thuật siêu âm hỗ trợ, chọc hút noãn, chuyển phôi: được bổ sung thêm 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        8
+      ],
+      "source_ref": "Phụ lục, trang 8"
+    },
+    {
+      "id": "6",
+      "tt": "6",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy xét nghiệm sinh hóa các loại",
+      "unit": "Tổng công suất các máy (Test/giờ)¹",
+      "quota": [
+        "Nhu cầu trung bình dưới 1.200 test/ngày/cơ sở: tổng công suất các Máy tối đa 1.200 test/giờ/cơ sở.",
+        "Nhu cầu trung bình trên 1.200 test/ngày/cơ sở: tăng thêm 1.200 test/ngày/cơ sở được bổ sung thêm tổng công suất các Máy tối đa 1.200 test/giờ/cơ sở."
+      ],
+      "source_pages": [
+        8
+      ],
+      "source_ref": "Phụ lục, trang 8"
+    },
+    {
+      "id": "7",
+      "tt": "7",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy xét nghiệm miễn dịch các loại",
+      "unit": "Tổng công suất các máy (Test/giờ)",
+      "quota": [
+        "Nhu cầu trung bình dưới 200 test/ngày/cơ sở: tổng công suất các Máy tối đa 200 test/giờ/cơ sở.",
+        "Nhu cầu trung bình trên 200 test/ngày/cơ sở: tăng thêm 200 test/ngày/cơ sở được bổ sung thêm tổng công suất các Máy tối đa 200 test/giờ/cơ sở."
+      ],
+      "source_pages": [
+        8
+      ],
+      "source_ref": "Phụ lục, trang 8"
+    },
+    {
+      "id": "8",
+      "tt": "8",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy xét nghiệm huyết học",
+      "unit": "Tổng công suất các máy (Test/giờ)",
+      "quota": [
+        "Nhu cầu trung bình dưới 300 test/ngày/cơ sở: tổng công suất các Máy tối đa 100 test/giờ/cơ sở.",
+        "Nhu cầu trung bình trên 300 test/ngày/cơ sở: tăng thêm 300 test/ngày/cơ sở được bổ sung thêm tổng công suất các Máy tối đa 100 test/giờ/cơ sở."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "9",
+      "tt": "9",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy thận nhân tạo (HD)",
+      "unit": "Máy",
+      "quota": [
+        "Đáp ứng công suất sử dụng trung bình 02 ca/ngày: 01 Máy.",
+        "Ngoài ra:",
+        "Trung bình 05 Máy được bổ sung thêm 01 Máy.",
+        "Trường hợp cơ sở có đơn vị hồi sức: trung bình 05 giường hồi sức được bổ sung thêm 01 Máy."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "10",
+      "tt": "10",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy thở xâm nhập",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/giường hồi sức sau phẫu thuật; hồi sức tích cực; cấp cứu; sơ sinh.",
+        "Ngoài ra: Trung bình 06 Máy được bổ sung thêm 01 Máy."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "11",
+      "tt": "11",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy thở xâm nhập di động",
+      "unit": "Máy",
+      "quota": [
+        "Định mức cho phòng mổ: 01 Máy/02 phòng mổ.",
+        "Ngoài ra: Định mức 01 Máy/05 giường hồi sức sau phẫu thuật; hồi sức tích cực; cấp cứu; sơ sinh."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "12",
+      "tt": "12",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy gây mê",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/bàn mổ.",
+        "Ngoài ra:",
+        "Trung bình 06 Máy được bổ sung thêm 01 Máy.",
+        "Trường hợp cơ sở có đơn vị sử dụng kỹ thuật gây mê hỗ trợ được bổ sung thêm 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "13",
+      "tt": "13",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy theo dõi bệnh nhân ≥ 5 thông số",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/05 giường nội trú.",
+        "Ngoài ra:",
+        "Được bổ sung thêm 01 Máy/bàn mổ.",
+        "Trường hợp cơ sở có giường hồi sức sau phẫu thuật; hồi sức tích cực; cấp cứu; thận nhân tạo: được bổ sung thêm 01 Máy/giường.",
+        "Trường hợp cơ sở có phòng thực hiện kỹ thuật can thiệp: được bổ sung thêm 01 Máy/phòng.",
+        "Trường hợp cơ sở có đơn vị thuộc lĩnh vực pháp y tâm thần: căn cứ nhu cầu thực tế để quyết định định mức sử dụng dựa trên giường bệnh hoặc đơn vị hồi sức cấp cứu để xác định theo nguyên tắc đảm bảo tiết kiệm, hiệu quả."
+      ],
+      "source_pages": [
+        9
+      ],
+      "source_ref": "Phụ lục, trang 9"
+    },
+    {
+      "id": "14",
+      "tt": "14",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Bơm tiêm điện",
+      "unit": "Cái",
+      "quota": [
+        "Định mức 01 Cái/05 giường nội trú.",
+        "Ngoài ra:",
+        "Được bổ sung thêm 05 Cái/bàn mổ.",
+        "Trường hợp cơ sở có giường hồi sức sau phẫu thuật: được bổ sung thêm tối đa 05 Cái/giường.",
+        "Trường hợp cơ sở có giường hồi sức tích cực; cấp cứu: được bổ sung thêm tối đa 10 Cái/giường.",
+        "Trường hợp cơ sở có giường điều trị bệnh nhân ngoại trú chuyên khoa nhi; ung bướu; huyết học: được bổ sung thêm tối đa 02 Cái/giường."
+      ],
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "15",
+      "tt": "15",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy truyền dịch",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/05 giường nội trú.",
+        "Ngoài ra:",
+        "Được bổ sung thêm 05 Máy/bàn mổ.",
+        "Trường hợp cơ sở có giường hồi sức sau phẫu thuật: được bổ sung thêm tối đa 05 Máy/giường",
+        "Trường hợp cơ sở có giường hồi sức tích cực; cấp cứu: được bổ sung thêm tối đa 05 Máy/giường.",
+        "Trường hợp cơ sở có giường điều trị bệnh nhân ngoại trú chuyên khoa nhi; ung bướu; huyết học: được bổ sung thêm tối đa 02 Máy/giường."
+      ],
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "16",
+      "tt": "16",
+      "type": "section",
+      "level": 0,
+      "parent": null,
+      "name": "Dao mổ",
+      "unit": null,
+      "quota": null,
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "16a",
+      "tt": "a",
+      "type": "item",
+      "level": 1,
+      "parent": "16",
+      "name": "Dao mổ điện cao tần",
+      "unit": "Cái",
+      "quota": [
+        "Định mức 01 Cái/01 bàn mổ.",
+        "Ngoài ra:",
+        "Được bổ sung thêm 01 Cái/01 phòng thủ thuật.",
+        "Trung bình 05 Cái được bổ sung thêm 01 Cái."
+      ],
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "16b",
+      "tt": "b",
+      "type": "item",
+      "level": 1,
+      "parent": "16",
+      "name": "Dao mổ siêu âm/ Dao hàn mạch/ Dao hàn mô",
+      "unit": "Cái",
+      "quota": [
+        "Định mức: 01 Cái/phòng mổ.",
+        "Ngoài ra: Trung bình 05 Cái được bổ sung thêm 01 Cái."
+      ],
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "17",
+      "tt": "17",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy phá rung tim",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/Phòng mổ.",
+        "Ngoài ra:",
+        "Được bổ sung thêm: 01 Máy/10 giường hồi sức, cấp cứu; chống độc.",
+        "Được bổ sung thêm: 01 Máy/đơn vị tim mạch.",
+        "Được bổ sung thêm: 01 Máy/phòng DSA.",
+        "Được bổ sung thêm: 01 Máy/đơn vị nội trú khác.",
+        "Được bổ sung thêm: 01 Máy/đơn vị khám ngoại trú; đơn vị điều trị trong ngày."
+      ],
+      "source_pages": [
+        10
+      ],
+      "source_ref": "Phụ lục, trang 10"
+    },
+    {
+      "id": "18",
+      "tt": "18",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Hệ thống phẫu thuật nội soi",
+      "unit": "Hệ thống",
+      "quota": [
+        "Định mức 01 Hệ thống/bàn mổ có mổ nội soi.",
+        "Ngoài ra: Trung bình 05 Hệ thống được bổ sung thêm 01 Hệ thống."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "19",
+      "tt": "19",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Đèn mổ treo trần",
+      "unit": "Cái",
+      "quota": [
+        "Định mức 01 Cái/bàn mổ."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "20",
+      "tt": "20",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Đèn mổ di động",
+      "unit": "Cái",
+      "quota": [
+        "Định mức tối đa 01 Cái/phòng tiểu phẫu; khoa hồi sức; khoa cấp cứu."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "21",
+      "tt": "21",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Bàn mổ",
+      "unit": "Cái",
+      "quota": [
+        "Định mức 01 Cái/phòng mổ."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "22",
+      "tt": "22",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy điện tim",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/50 bệnh nhân khám ngoại trú/ngày.",
+        "Trường hợp cơ sở có đơn vị điều trị nội trú; cấp cứu; hồi sức tích cực; pháp y tâm thần: được bổ sung thêm 01 Máy/đơn vị."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "23",
+      "tt": "23",
+      "type": "section",
+      "level": 0,
+      "parent": null,
+      "name": "Hệ thống nội soi chẩn đoán",
+      "unit": null,
+      "quota": null,
+      "source_pages": [
+        11,
+        12
+      ],
+      "source_ref": "Phụ lục, trang 11, 12"
+    },
+    {
+      "id": "23a",
+      "tt": "a",
+      "type": "item",
+      "level": 1,
+      "parent": "23",
+      "name": "Hệ thống nội soi tiêu hóa (dạ dày, đại tràng)",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 100 ca/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 100 đến 400 ca/tháng/cơ sở: tối đa 02 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 400 ca/tháng/cơ sở: Được bổ sung thêm 01 Hệ thống cho mỗi 200 ca tăng thêm/tháng/cơ sở.",
+        "Trường hợp cơ sở có đơn vị hồi sức; cấp cứu: được bổ sung thêm 01 Hệ thống/đơn vị."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "23b",
+      "tt": "b",
+      "type": "item",
+      "level": 1,
+      "parent": "23",
+      "name": "Hệ thống nội soi khí quản, phế quản",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 100 ca/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 100 đến 400 ca/tháng/cơ sở: tối đa 02 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 400 ca/tháng/cơ sở: Được bổ sung thêm 01 Hệ thống cho mỗi 200 ca tăng thêm/tháng/cơ sở.",
+        "Trường hợp cơ sở có đơn vị hồi sức; cấp cứu: Được bổ sung thêm 01 Hệ thống/đơn vị."
+      ],
+      "source_pages": [
+        11
+      ],
+      "source_ref": "Phụ lục, trang 11"
+    },
+    {
+      "id": "23c",
+      "tt": "c",
+      "type": "item",
+      "level": 1,
+      "parent": "23",
+      "name": "Hệ thống nội soi tai mũi họng",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 200 ca/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 200 đến 1.800 ca/tháng/cơ sở tối đa 02 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình trên 1.800 ca/tháng/cơ sở: Được bổ sung thêm 01 Hệ thống cho mỗi 900 ca tăng thêm/tháng/cơ sở.",
+        "Trường hợp cơ sở có bàn khám Tai mũi họng: được bổ sung thêm 01 Hệ thống/ bàn khám Tai mũi họng."
+      ],
+      "source_pages": [
+        12
+      ],
+      "source_ref": "Phụ lục, trang 12"
+    },
+    {
+      "id": "23d",
+      "tt": "d",
+      "type": "item",
+      "level": 1,
+      "parent": "23",
+      "name": "Hệ thống nội soi tiết niệu",
+      "unit": "Hệ thống",
+      "quota": [
+        "Nhu cầu trung bình dưới 100 ca/tháng/cơ sở: 01 Hệ thống/cơ sở.",
+        "Nhu cầu trung bình từ 100 đến 600 ca/ tháng/cơ sở: tối đa 02 Hệ thống /cơ sở.",
+        "Nhu cầu trung bình trên 600 ca/tháng/cơ sở: Được bổ sung thêm 01 Hệ thống cho mỗi 300 ca tăng thêm/tháng/cơ sở.",
+        "Trường hợp cơ sở có sử dụng máy tán sỏi: được bổ sung thêm 01 Hệ thống/máy tán sỏi."
+      ],
+      "source_pages": [
+        12
+      ],
+      "source_ref": "Phụ lục, trang 12"
+    },
+    {
+      "id": "24",
+      "tt": "24",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy soi cổ tử cung",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/ 01 bàn khám phụ khoa."
+      ],
+      "source_pages": [
+        12
+      ],
+      "source_ref": "Phụ lục, trang 12"
+    },
+    {
+      "id": "25",
+      "tt": "25",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy theo dõi sản khoa 02 chức năng",
+      "unit": "Máy",
+      "quota": [
+        "Định mức 01 Máy/ 01 bàn đẻ.",
+        "Trường hợp cơ sở có giường nội trú theo dõi sản khoa: được bổ sung thêm 01 Máy/10 giường nội trú theo dõi sản khoa."
+      ],
+      "source_pages": [
+        12
+      ],
+      "source_ref": "Phụ lục, trang 12"
+    },
+    {
+      "id": "26",
+      "tt": "26",
+      "type": "item",
+      "level": 0,
+      "parent": null,
+      "name": "Máy và ghế nha khoa",
+      "unit": "Bộ",
+      "quota": [
+        "Định mức 01 Bộ/01 vị trí khám, điều trị nha khoa."
+      ],
+      "source_pages": [
+        12
+      ],
+      "source_ref": "Phụ lục, trang 12"
+    }
+  ],
+  "footnotes": [
+    "¹ Tiêu chuẩn, định mức không phụ thuộc số lượng máy xét nghiệm. Áp dụng tương tự đối với các Máy xét nghiệm khác.",
+    "* Đơn vị quy định tại Phụ lục này là bộ phận hoạt động chuyên môn thực hiện một hoặc một số lĩnh vực chuyên môn y tế thuộc cơ cấu tổ chức của đơn vị sự nghiệp công lập trong lĩnh vực y tế.",
+    "** Định mức sử dụng được xác định theo nguyên tắc làm tròn số lên. Áp dụng nguyên tắc làm tròn số lên cho tất cả thiết bị y tế khi tính định mức."
+  ],
+  "notes": "Cấu trúc được tái tạo từ bảng ở trang 6-12. Nội dung quota được giữ theo văn bản, chỉ chuẩn hóa ngắt dòng do layout PDF. Các section row (1, 2, 5, 16, 23) được giữ riêng để React có thể render colspan."
+}

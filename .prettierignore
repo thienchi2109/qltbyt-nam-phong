@@ -13,3 +13,7 @@ bun.lockb
 *.tsbuildinfo
 *.log
 .env*
+
+# Frozen regulatory source bytes are verified by SHA-256 and must not be reformatted.
+docs/device-quota/source-artifacts/thong-tu-10-2026/thong-tu-10-2026-appendix.json
+docs/device-quota/source-artifacts/thong-tu-10-2026/thong-tu-10-2026-appendix.md

@@ -3,19 +3,19 @@
 Boundary: documentation, source-artifact, and test-fixture work only. No
 runtime route, active data contract, or live database behavior changes.
 
-- [ ] 0.1 Record the current category Excel import contract, including
+- [x] 0.1 Record the current category Excel import contract, including
       `dinh_muc_nhom_bulk_import`, optional quota-column handling through
       `dinh_muc_unified_import`, automatic decision creation, and
       partial-success behavior.
-- [ ] 0.2 Record the separate quota-decision Excel import contract, including
+- [x] 0.2 Record the separate quota-decision Excel import contract, including
       its validation, payload mapping, and
       `dinh_muc_chi_tiet_bulk_import` behavior.
-- [ ] 0.3 Freeze a repository-owned source artifact for the official
+- [x] 0.3 Freeze a repository-owned source artifact for the official
       Thông tư 10/2026 snapshot: 42 structural rows, five sections, 37 items,
       16 source-declared child rows, 21 top-level rows, source positions,
       multiline rules, footnotes, document metadata, PDF SHA-256, extraction
       revision, effective date, and ready status.
-- [ ] 0.4 Add source-only traceability fixtures/tests proving the artifact is
+- [x] 0.4 Add source-only traceability fixtures/tests proving the artifact is
       reproducible and complete. Do not expose it through the application yet.
 
 Exit criteria: the source snapshot and existing import contracts are reviewable
