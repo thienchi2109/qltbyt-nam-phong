@@ -52,14 +52,7 @@ export function runBaselineFullRefresh(
         state: stateForResult(input, current),
       }
     }
-    const confirmations = mergeConfirmations(
-      current,
-      input.manifest.migrations,
-      input.manifest.targetMigrationHighWater
-    )
-    if (confirmations === undefined) {
-      return { outcome: "INCOMPLETE", state: stateForResult(input, current) }
-    }
+    const confirmations = input.manifest.migrations
     let recovery = recoveryState(
       input,
       current.confirmedMigrations,
@@ -78,11 +71,12 @@ export function runBaselineFullRefresh(
     try {
       if (
         !input.executor.restoreDump(refreshDatabase, input.dumpPath) ||
+        !input.executor.cleanupMigrationRole(refreshDatabase) ||
         !input.executor.preflightRoles(refreshDatabase)
       ) {
         return { outcome: "INCOMPLETE", state: recovery }
       }
-      let progress = [...current.confirmedMigrations]
+      let progress: typeof confirmations = []
       for (const migration of migrations) {
         const status = input.executor.inspectMigrationMetadata(refreshDatabase, migration)
         if (status === undefined || status === "conflict") {
@@ -111,6 +105,10 @@ export function runBaselineFullRefresh(
         progress = recovery.confirmedMigrations
       }
       if (
+        !input.executor.restoreTechnicalConfigurationCatalogAcls(
+          refreshDatabase,
+          input.manifest.technicalConfigurationCatalog
+        ) ||
         !observationMatches(
           input.executor.inspectDatabase(refreshDatabase),
           expectedState(input, confirmations)

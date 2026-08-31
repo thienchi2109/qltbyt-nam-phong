@@ -1,5 +1,6 @@
 import { BASELINE_STATE_SCHEMA_VERSION, compareConfirmedMigrations } from "./baseline-state"
 import type { BaselineManifest } from "./baseline-manifest"
+import type { TechnicalConfigurationRoutine } from "./baseline-catalog"
 import type {
   BaselineRecovery,
   BaselineState,
@@ -32,6 +33,10 @@ export type BaselineMaintenanceExecutor = {
   recordMigrationMetadata: (databaseName: string, migration: ConfirmedMigrationInput) => boolean
   releaseLock: (runId: string) => boolean
   restoreDump: (databaseName: string, dumpPath: string) => boolean
+  restoreTechnicalConfigurationCatalogAcls: (
+    databaseName: string,
+    catalog: TechnicalConfigurationRoutine[]
+  ) => boolean
   swapBaseline: (databaseName: string, retiredDatabaseName: string) => boolean
 }
 

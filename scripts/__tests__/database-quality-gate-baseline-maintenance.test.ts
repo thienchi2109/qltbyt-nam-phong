@@ -13,6 +13,13 @@ const currentMigration = {
   sha256: "a".repeat(64),
 }
 
+const staleFutureMigration = {
+  liveName: "stale_future_change",
+  liveVersion: "20260820000000",
+  path: "supabase/migrations/20260820000000_stale_future_change.sql",
+  sha256: "c".repeat(64),
+}
+
 const targetMigration = {
   liveName: "confirmed_live_change",
   liveVersion: "20260819062043",
@@ -32,7 +39,9 @@ const targetRoutine = {
 type State = {
   catalogSha256: string
   checkedAt: string
-  confirmedMigrations: (typeof targetMigration)[]
+  confirmedMigrations: Array<
+    typeof currentMigration | typeof staleFutureMigration | typeof targetMigration
+  >
   generation: string
   healthy: boolean
   migrationHighWater: string
@@ -53,11 +62,12 @@ type Manifest = {
 
 class RefreshExecutor {
   applySucceeds = true
+  aclReplaySucceeds = true
   currentState:
     | State
     | {
         checkedAt: string
-        confirmedMigrations: (typeof currentMigration)[]
+        confirmedMigrations: Array<typeof currentMigration | typeof staleFutureMigration>
         generation: string
         healthy: boolean
         migrationHighWater: string
@@ -125,13 +135,22 @@ class RefreshExecutor {
     return false
   }
 
+  restoreTechnicalConfigurationCatalogAcls(
+    databaseName: string,
+    catalog: (typeof targetRoutine)[]
+  ) {
+    this.operations.push(`replay-acls:${databaseName}:${catalog.length}`)
+    return this.aclReplaySucceeds
+  }
+
   recordMigrationMetadata(databaseName: string) {
     this.operations.push(`record:${databaseName}`)
     this.metadataStatus = "exact"
     return true
   }
 
-  cleanupMigrationRole() {
+  cleanupMigrationRole(databaseName: string) {
+    this.operations.push(`cleanup:${databaseName}`)
     return true
   }
 
@@ -239,6 +258,90 @@ describe("database quality gate Oracle baseline maintenance", () => {
     expect(executor.operations.indexOf("publish:prepared")).toBeLessThan(
       executor.operations.findIndex((operation) => operation.startsWith("apply:"))
     )
+  })
+
+  it("cleans restore privileges and replays the manifest routine ACL catalog before observation", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
+
+    const result = source.runBaselineFullRefresh({
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
+      executor,
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue977-replay-acls",
+    })
+
+    expect(result.outcome).toBe("PASS")
+    const replayIndex = executor.operations.indexOf(
+      "replay-acls:dq_baseline_refresh_issue977_replay_acls:1"
+    )
+    const restoreIndex = executor.operations.findIndex((operation) =>
+      operation.startsWith("restore:")
+    )
+    const cleanupIndex = executor.operations.indexOf(
+      "cleanup:dq_baseline_refresh_issue977_replay_acls"
+    )
+    const metadataIndex = executor.operations.findIndex((operation) =>
+      operation.startsWith("metadata:")
+    )
+    const observationIndex = executor.operations.findIndex((operation) =>
+      operation.startsWith("inspect:")
+    )
+    expect(replayIndex).toBeGreaterThan(restoreIndex)
+    expect(cleanupIndex).toBeGreaterThan(restoreIndex)
+    expect(cleanupIndex).toBeLessThan(metadataIndex)
+    expect(replayIndex).toBeGreaterThan(metadataIndex)
+    expect(replayIndex).toBeLessThan(observationIndex)
+  })
+
+  it("fails closed and drops staging when routine ACL replay fails", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
+    executor.aclReplaySucceeds = false
+
+    const result = source.runBaselineFullRefresh({
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
+      executor,
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue977-acl-replay-failed",
+    })
+
+    expect(result.outcome).toBe("INCOMPLETE")
+    expect(executor.operations).toContain(
+      "replay-acls:dq_baseline_refresh_issue977_acl_replay_failed:1"
+    )
+    expect(executor.operations.some((operation) => operation.startsWith("inspect:"))).toBe(false)
+    expect(executor.operations.some((operation) => operation.startsWith("swap:"))).toBe(false)
+    expect(executor.operations).toContain("drop:dq_baseline_refresh_issue977_acl_replay_failed")
+  })
+
+  it("does not carry stale future confirmations into a full refresh", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceModule>("baseline-maintenance")
+    const input = await fixture()
+    const executor = new RefreshExecutor(input.observation)
+    executor.currentState = {
+      ...executor.currentState,
+      confirmedMigrations: [currentMigration, staleFutureMigration],
+      migrationHighWater: staleFutureMigration.liveVersion,
+    }
+
+    const result = source.runBaselineFullRefresh({
+      checkedAt: "2026-08-27T00:00:00Z",
+      dumpPath: "/opt/supabase-test/backups/verified.dump",
+      executor,
+      manifest: input.manifest,
+      repositoryRoot: input.repositoryRoot,
+      runId: "issue977-refresh-stale-progress",
+    })
+
+    expect(result.outcome).toBe("PASS")
+    expect(result.state.confirmedMigrations).toEqual([targetMigration])
   })
 
   it("keeps full refresh unhealthy and drops staging when migration SQL fails", async () => {

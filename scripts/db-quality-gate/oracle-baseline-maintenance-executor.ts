@@ -1,6 +1,8 @@
 import { parseDatabaseObservation, parsePersistedBaselineState } from "./baseline-state"
 import type { DatabaseObservation, PersistedBaselineState } from "./baseline-state"
 import type { BaselineMaintenanceExecutor, ConfirmedMigrationInput } from "./baseline-maintenance"
+import { parseTechnicalConfigurationCatalog } from "./baseline-catalog"
+import type { TechnicalConfigurationRoutine } from "./baseline-catalog"
 import {
   metadataStatement,
   migrationMetadataStatusQuery,
@@ -24,6 +26,7 @@ import { stableJsonStringify } from "./serialization"
 
 const BASELINE_DATABASE = "qltbyt_test"
 const DATABASE_ADMIN_ROLE = "supabase_admin"
+const DATABASE_MIGRATION_ROLE = "postgres"
 
 function validMaintenanceDatabase(databaseName: string): boolean {
   return (
@@ -46,6 +49,47 @@ function parseStateText(value: string): PersistedBaselineState | undefined {
   } catch {
     return undefined
   }
+}
+
+function sqlStringLiteral(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`
+}
+
+function roleGrantTarget(role: string): string {
+  return role === "PUBLIC" ? role : quotedIdentifier(role)
+}
+
+function technicalConfigurationCatalogAclStatement(
+  catalog: TechnicalConfigurationRoutine[]
+): string | undefined {
+  const normalizedCatalog = parseTechnicalConfigurationCatalog(catalog)
+  if (normalizedCatalog === undefined) {
+    return undefined
+  }
+
+  const statements = normalizedCatalog.map((routine) => {
+    const routineLiteral = sqlStringLiteral(routine.identity)
+    const grants = routine.executeGrantees
+      .filter((grantee) => grantee !== "postgres")
+      .map(roleGrantTarget)
+      .join(", ")
+    return `DO $baseline_acl$
+DECLARE
+  routine_oid oid;
+BEGIN
+  SELECT p.oid
+  INTO STRICT routine_oid
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND format('%I.%I(%s)', n.nspname, p.proname, pg_get_function_identity_arguments(p.oid)) = ${routineLiteral};
+  EXECUTE format('REVOKE ALL PRIVILEGES ON FUNCTION %s FROM PUBLIC, anon, authenticated, service_role', routine_oid::regprocedure);
+${grants.length > 0 ? `  EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO ${grants}', routine_oid::regprocedure);` : ""}
+END
+$baseline_acl$;`
+  })
+
+  return ["SET ROLE postgres;", ...statements, "RESET ROLE;"].join("\n")
 }
 
 /** Creates the Oracle-write adapter used only by explicit Phase 5 maintenance commands. */
@@ -257,7 +301,9 @@ chmod 400 "$state_path"`,
       return (
         sql(
           "postgres",
-          `CREATE DATABASE ${quotedIdentifier(databaseName)} TEMPLATE template0;`,
+          `CREATE DATABASE ${quotedIdentifier(databaseName)} OWNER ${quotedIdentifier(
+            DATABASE_MIGRATION_ROLE
+          )} TEMPLATE template0;`,
           "unavailable",
           DATABASE_ADMIN_ROLE
         ).status === "ok"
@@ -297,6 +343,17 @@ WHERE e.extname <> 'plpgsql';`,
         "failed"
       )
       return restored.status === "ok"
+    },
+
+    restoreTechnicalConfigurationCatalogAcls(databaseName, catalog) {
+      if (!validMaintenanceDatabase(databaseName)) {
+        return false
+      }
+      const statement = technicalConfigurationCatalogAclStatement(catalog)
+      return (
+        statement !== undefined &&
+        sql(databaseName, statement, "failed", DATABASE_ADMIN_ROLE).status === "ok"
+      )
     },
 
     swapBaseline(databaseName, retiredDatabaseName) {

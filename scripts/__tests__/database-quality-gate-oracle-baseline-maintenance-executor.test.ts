@@ -35,6 +35,17 @@ type MaintenanceExecutorModule = {
       sourceCommit: string
     }) => boolean
     restoreDump: (databaseName: string, dumpPath: string) => boolean
+    restoreTechnicalConfigurationCatalogAcls: (
+      databaseName: string,
+      catalog: Array<{
+        definitionSha256: string
+        executeGrantees: string[]
+        executionMode: "definer" | "invoker"
+        identity: string
+        owner: string
+        searchPath: string | null
+      }>
+    ) => boolean
     swapBaseline: (databaseName: string, retiredDatabaseName: string) => boolean
   }
 }
@@ -50,6 +61,17 @@ const migration = {
   path: "supabase/migrations/20260819031200_confirmed_live_change.sql",
   sha256: "17db4fd369edb9244b9f91d9aeed145c3d04ad8ba6e95d06247f07a63527d11a",
 }
+
+const technicalConfigurationCatalog = [
+  {
+    definitionSha256: "a".repeat(64),
+    executeGrantees: ["authenticated", "postgres", "service_role"],
+    executionMode: "definer" as const,
+    identity: "public.technical_configuration_example(uuid, text)",
+    owner: "postgres",
+    searchPath: "public, pg_temp",
+  },
+]
 
 describe("database quality gate Oracle baseline maintenance executor", () => {
   it("classifies the Realtime payload constraint as managed-schema health debt", async () => {
@@ -131,6 +153,30 @@ describe("database quality gate Oracle baseline maintenance executor", () => {
     expect(stdin).toContain(migration.liveName)
   })
 
+  it("replays exact Technical Configuration routine execute grants after no-privileges restore", async () => {
+    const source = await loadDatabaseQualityGateModule<MaintenanceExecutorModule>(
+      "oracle-baseline-maintenance-executor"
+    )
+    const recorder = commandRecorder()
+    const executor = source.createOracleBaselineMaintenanceExecutor(executorInput(recorder.command))
+
+    expect(
+      executor.restoreTechnicalConfigurationCatalogAcls(
+        "dq_baseline_refresh_phase5",
+        technicalConfigurationCatalog
+      )
+    ).toBe(true)
+
+    const statement = recorder.commands.at(-1)?.input ?? ""
+    expect(statement).toContain("SET ROLE postgres;")
+    expect(statement).toContain(
+      "REVOKE ALL PRIVILEGES ON FUNCTION %s FROM PUBLIC, anon, authenticated, service_role"
+    )
+    expect(statement).toContain('GRANT EXECUTE ON FUNCTION %s TO "authenticated", "service_role"')
+    expect(statement).toContain("'public.technical_configuration_example(uuid, text)'")
+    expect(statement).toContain("routine_oid::regprocedure")
+  })
+
   it("restores only into a fixed refresh database before an explicit swap", async () => {
     const source = await loadDatabaseQualityGateModule<MaintenanceExecutorModule>(
       "oracle-baseline-maintenance-executor"
@@ -149,7 +195,9 @@ describe("database quality gate Oracle baseline maintenance executor", () => {
     const commands = recorder.commands.map(
       (command) => `${command.arguments.at(-1) ?? ""}\n${command.input ?? ""}`
     )
-    expect(commands.join("\n")).toContain("TEMPLATE template0")
+    expect(commands.join("\n")).toContain(
+      'CREATE DATABASE "dq_baseline_refresh_phase5" OWNER "postgres" TEMPLATE template0'
+    )
     expect(commands.join("\n")).toContain("pg_restore --single-transaction --exit-on-error")
     expect(commands.join("\n")).toContain('ALTER DATABASE "qltbyt_test" RENAME TO')
     expect(commands.join("\n")).not.toContain("supabase db")
