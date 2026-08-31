@@ -4,9 +4,11 @@ The regulatory source is the official
 `757_Thong-tu-10-2026-TT-BYT_88e68354fb.pdf`, with the extracted
 `thong-tu-10-2026-appendix.json` and Markdown representation used for
 structured inspection. The appendix contains 42 structural rows: five section
-rows and 37 equipment item rows. The quota text is frequently multiline and
-contains conditional rules, so it must not be reduced to one inferred numeric
-formula.
+rows and 37 equipment item rows. Of the equipment rows, 16 have a
+source-declared section parent and 21 are top-level rows. Rendering must
+preserve that distinction and source order; it must not synthesize parents.
+The quota text is frequently multiline and contains conditional rules, so it
+must not be reduced to one inferred numeric formula.
 
 The current application has separate concepts:
 
@@ -35,7 +37,8 @@ future publish change.
   `chi_tiet_dinh_muc`, or `thiet_bi`.
 - Replacing the current active decision workflow.
 - Machine evaluation of legal conditions.
-- Custom items, approval authority, publication, or electronic signatures.
+- Non-appendix equipment, approval authority, publication, or electronic
+  signatures.
 
 ## Domain Model
 
@@ -53,8 +56,13 @@ future publish change.
   Structured interpretation may be stored later, but source text and source
   reference remain authoritative.
 
-Regulatory entities are immutable to unit users. The imported version must be
-identified explicitly when a draft is created.
+Regulatory entities are immutable to unit users. MVP uses one system-selected
+immutable catalog version for Thông tư 10/2026; users do not choose a version.
+The version is reproducible from document identifier, effective date, source
+PDF SHA-256, extraction revision, import status, and source-page references.
+The source snapshot is repository-owned or migration-seeded so implementation
+does not depend on an untracked workstation path. Creation fails closed when
+the canonical snapshot is missing, duplicated, incomplete, or not marked ready.
 
 ### Unit draft layer
 
@@ -87,25 +95,41 @@ change.
 Required invariants:
 
 - A draft belongs to exactly one unit and one regulatory catalog version.
-- The effective unit comes from the authenticated session for non-global
-  users; a missing session unit blocks creation and save.
+- Every draft operation requires a non-empty, server-verified `don_vi` claim
+  from the authenticated session. This applies to `global`/`admin` as well as
+  `to_qltb`; missing session unit blocks creation, read, and save. No
+  client-selected or caller-supplied unit can override the session unit.
+- `global` and legacy `admin` (normalized through `isGlobalRole()`) may manage
+  a draft only when the authenticated session has the current unit. `to_qltb`
+  may manage only its session unit. Mapping-only users and `regional_leader`
+  retain their existing read-only/non-category-management boundaries and
+  cannot create or mutate this draft in the MVP.
 - A unit has at most one editable draft in the MVP.
+- Create-or-open is transactional and protected by a unique partial
+  constraint for one editable draft per unit.
+- Draft mutations use a monotonic revision or expected-revision token. A stale
+  save is rejected as a conflict and cannot overwrite newer values.
 - A draft item references at most one regulatory item.
 - A regulatory item cannot appear twice in the same draft.
 - Removing an item changes draft state only; it does not delete regulatory data.
 - Draft writes cannot modify active decision/category/equipment tables.
 - Regulatory source fields cannot be written through draft mutation contracts.
 - `applied_quantity` is either null for an incomplete draft or a non-negative
-  integer. No legal maximum comparison is inferred by this MVP.
+  integer. It is a unit-proposed draft value, not a legal determination or
+  approved quota. MVP does not compute, reject, or warn on regulatory maximum
+  comparisons because the source rules are conditional and not uniformly
+  machine-evaluable; the source rule remains visible beside the value.
 
 ## UX And Data Flow
 
 1. An authorized user opens the create action in `/device-quota/categories`.
 2. The application resolves the current unit from the authenticated session.
 3. The application creates or opens the unit's one editable draft, initialized
-   with all 37 regulatory items under five read-only sections.
+   with the 42 source rows: five structural sections and 37 regulatory items,
+   retaining source order and source-declared parent relationships.
 4. The editor presents regulatory columns and unit-specific columns with
-   distinct visual treatment and source badges.
+   distinct visual treatment and source badges. It shows five section rows,
+   16 child items, and 21 top-level items according to the source structure.
 5. The user edits unit-specific fields, excludes or restores rows, and saves.
 6. The application persists the draft and returns the saved draft state.
 7. Reopening the draft reads the same regulatory basis and unit-specific
@@ -122,14 +146,24 @@ All reads and writes use the existing `/api/rpc/[fn]` proxy and RPC allowlist.
 RPCs must validate the authenticated user, role, and effective unit, and must
 fail closed when the session unit is absent or mismatched. The implementation
 must use `isGlobalRole()` in any server-side TypeScript role branch outside the
-proxy.
+proxy. The draft capability is limited to the existing category-management
+roles; mapping-only and `regional_leader` users cannot mutate drafts.
 
 Draft persistence should use new tables and RPCs rather than overloading active
 `nhom_thiet_bi` or `quyet_dinh_dinh_muc` rows. The implementation must add
 appropriate uniqueness, foreign-key, non-negative quantity, and tenant-scope
-constraints, plus an audit trail for draft creation and mutation. Any SQL
-change follows the repository migration source-order and database quality-gate
-rules.
+constraints. New source, draft, and audit tables must revoke direct
+`anon`/`authenticated`/`public` table access and be reachable only through
+explicitly granted RPCs. Each RPC must use authenticated/app-role/user/unit
+claim guards, `SECURITY DEFINER SET search_path = public, pg_temp`, and the
+repository's role normalization rules.
+
+Audit persistence is mandatory but not user-visible in this MVP. Each
+successful create, save, exclude, and restore event records the actor from
+JWT claims, unit, draft, event type, timestamp, and before/after item or
+aggregate state. Audit insertion is in the same transaction as the mutation;
+failed mutations do not create a successful-change event. Any SQL change
+follows the repository migration source-order and database quality-gate rules.
 
 ## Validation
 
@@ -137,7 +171,7 @@ Validation has four distinct layers:
 
 - source validation: the regulatory snapshot is complete and traceable;
 - draft-domain validation: duplicate items, tenant scope, field types, and
-  quantity range;
+  quantity range, expected revision, and one-draft invariant;
 - UI validation: editable controls, required input shape, and save-state
   feedback;
 - future publication validation: intentionally deferred and not executed by
@@ -149,6 +183,13 @@ Publication-time completeness is outside the MVP.
 ## Compatibility And Risks
 
 - Existing active quota reads must continue to use their current contracts.
+- The existing active category create/edit/delete flow remains available. The
+  draft catalog gets a separate entry point and does not replace active
+  category creation.
+- The existing Excel import flow remains available with its current entry
+  point, permissions, validation, API/RPC contract, imported data mapping, and
+  active-category effects. Draft initialization and draft mutations must not
+  route through, alter, or disable Excel import.
 - A future publish change will need an explicit mapping from draft items to
   active categories/decisions; this proposal does not define that mapping.
 - The extracted JSON/Markdown is structural transcription, not a replacement
