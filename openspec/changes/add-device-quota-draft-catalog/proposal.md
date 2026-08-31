@@ -23,7 +23,8 @@ catalog, and save the result as a reviewable draft.
 - Keep drafts isolated from active decisions, equipment mappings, compliance,
   and reports.
 - Preserve the current Excel import flow, including its existing entry point,
-  permissions, validation, data contract, and active-category behavior.
+  permissions, validation, data contract, and active-category behavior. This
+  includes both category import and the separate quota-decision import flow.
 
 ## Non-Goals
 

@@ -3,24 +3,60 @@
 ### Requirement: Existing data-contract preservation
 
 The unified workspace SHALL preserve existing category listing, assigned-equipment
-detail, manual assignment, suggested-mapping, RPC allowlist, generated database
-contracts, and the current Excel import flow. Excel import includes its existing
-entry point, permissions, validation, API/RPC contract, imported data mapping,
-and active-category writes. This change MAY add the draft-catalog schema and RPC
-contracts defined below, plus the correctly ordered SQL migration required by
-the existing per-equipment unassignment contract. It SHALL NOT change or remove
-the Excel import behavior or any unrelated existing contract.
+detail, manual assignment, suggested-mapping, RPC allowlist, and generated database
+contracts. It SHALL also preserve the current category Excel import and separate
+quota-decision Excel import, including their entry points, permissions,
+validation, API/RPC contracts, imported data mapping, active-category or
+decision writes, optional quota-column behavior, automatic decision creation,
+and partial-success behavior. This change MAY add the draft-catalog schema and
+RPC contracts defined below. It SHALL NOT modify the unrelated `#928`
+per-equipment unassignment initiative, change or remove either Excel import
+contract, or change any unrelated existing contract.
 
 #### Scenario: existing Excel import remains compatible
 
 - **GIVEN** the draft-catalog implementation is ready for review
-- **WHEN** an authorized user opens and executes the existing Excel import flow
-- **THEN** the existing entry point and permissions remain available
-- **AND** the existing validation and imported data mapping remain compatible
-- **AND** the import continues to write active-category data through its
+- **WHEN** an authorized user opens and executes the existing category Excel
+  import flow
+- **THEN** its entry point, permissions, validation, imported data mapping, and
+  `dinh_muc_nhom_bulk_import` contract remain compatible
+- **AND** category import continues to write active-category data through its
+  existing contract
+- **AND** if quota columns are present, the existing
+  `dinh_muc_unified_import` invocation, automatic decision creation, and
+  partial-success behavior remain compatible
+- **AND** draft initialization or draft mutation does not invoke, alter, or
+  disable this import flow
+
+#### Scenario: existing quota-decision Excel import remains compatible
+
+- **GIVEN** an authorized user opens the existing quota-decision Excel import
+- **WHEN** the user validates and imports a workbook
+- **THEN** its entry point, permissions, validation, payload mapping, and
+  `dinh_muc_chi_tiet_bulk_import` contract remain compatible
+- **AND** the importer continues to write quota-decision data through its
   existing contract
 - **AND** draft initialization or draft mutation does not invoke, alter, or
-  disable the Excel import flow
+  disable this import flow
+
+#### Scenario: canonical workspace data contracts remain compatible
+
+- **GIVEN** the unified workspace implementation is ready for review
+- **WHEN** its data access and repository diff are inspected
+- **THEN** category listing uses `dinh_muc_nhom_list`
+- **AND** assigned-equipment detail uses `dinh_muc_thiet_bi_by_nhom`
+- **AND** manual assignment uses the existing unassigned-equipment queries and
+  `dinh_muc_thiet_bi_link`
+- **AND** per-equipment unassignment uses the existing expected-category
+  `dinh_muc_thiet_bi_unlink` contract from its own change
+- **AND** suggested mapping continues to use the existing suggestion routes and
+  `dinh_muc_thiet_bi_link_batch`
+- **AND** removing the Mapping page does not remove or rename
+  `/api/device-quota/mapping/suggest/**`
+- **AND** the draft change adds only its own ordered migrations, tables, and
+  RPC contracts
+- **AND** no unrelated suggestion API, RPC allowlist, or generated database
+  contract is changed
 
 ## ADDED Requirements
 
@@ -64,7 +100,8 @@ The draft catalog SHALL initialize from the 42-row immutable Thông tư 10/2026
 snapshot: five structural section rows and 37 equipment item rows. Rendering
 SHALL preserve source order and source-declared parent relationships, including
 16 child items and 21 top-level items. Regulatory names, original units, rules,
-source pages, and source references SHALL remain available as read-only data.
+source pages, source references, and immutable source positions SHALL remain
+available as read-only data.
 
 #### Scenario: new draft is initialized
 
@@ -75,6 +112,7 @@ source pages, and source references SHALL remain available as read-only data.
 - **AND** it preserves the 16 source-declared child relationships and 21
   top-level equipment rows
 - **AND** every regulatory item shows a Thông tư 10/2026 source reference
+- **AND** source positions preserve the relative order of all 42 snapshot rows
 
 #### Scenario: canonical source snapshot is unavailable
 
@@ -231,9 +269,12 @@ tenant overrides.
 
 New regulatory source, draft, and audit tables SHALL be inaccessible through
 direct `anon`, `authenticated`, or `public` table privileges. Access SHALL use
-explicitly granted guarded RPCs with authenticated user, role, unit, and
-expected-revision checks. Security-definer functions SHALL set
-`search_path = public, pg_temp`.
+explicitly granted guarded RPCs with authenticated user, role, and unit checks.
+Read operations SHALL NOT require an expected revision. Save, exclude, and
+restore SHALL require an expected revision and atomically reject stale writes
+with a conflict response. Create-or-open SHALL be transactional and protected
+by the one-editable-draft uniqueness invariant. Security-definer functions
+SHALL set `search_path = public, pg_temp`.
 
 Each successful draft create, save, exclude, and restore mutation SHALL write
 an audit event in the same transaction. The event SHALL derive actor identity

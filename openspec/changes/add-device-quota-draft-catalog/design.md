@@ -51,7 +51,7 @@ future publish change.
 - `regulatory_section`: a structural section row from the appendix.
 - `regulatory_item`: one of the 37 equipment item rows, retaining its source
   identifier, original name, original unit, section, source pages, and source
-  reference.
+  reference, and immutable source position.
 - `regulatory_rule`: one source-text rule belonging to a regulatory item.
   Structured interpretation may be stored later, but source text and source
   reference remain authoritative.
@@ -82,6 +82,11 @@ reference, while storing independent values for:
 - excluded/restored state;
 - ordering within the regulatory section.
 
+Every regulatory section and item stores an immutable `source_position` from
+the 42-row source snapshot. This preserves the relative placement of section
+rows, child items, and top-level items; it is distinct from any future
+unit-editable display ordering.
+
 `applied_quantity` is not the legal maximum and must not be named or displayed
 as the regulatory quota. The UI must show the regulatory rule text separately
 from the unit-applied value.
@@ -106,9 +111,15 @@ Required invariants:
   cannot create or mutate this draft in the MVP.
 - A unit has at most one editable draft in the MVP.
 - Create-or-open is transactional and protected by a unique partial
-  constraint for one editable draft per unit.
-- Draft mutations use a monotonic revision or expected-revision token. A stale
-  save is rejected as a conflict and cannot overwrite newer values.
+  constraint for one editable draft per unit. It uses the same result for
+  repeated or concurrent requests and establishes revision `1` for a newly
+  created draft.
+- Read operations require authentication, role, and session-unit checks but do
+  not require an expected revision. Create-or-open requires those checks and
+  the one-draft uniqueness invariant. Save, exclude, and restore require an
+  `expected_revision`, atomically compare-and-swap the draft revision, and
+  increment it on success. A stale mutation returns a conflict and cannot
+  overwrite newer values.
 - A draft item references at most one regulatory item.
 - A regulatory item cannot appear twice in the same draft.
 - Removing an item changes draft state only; it does not delete regulatory data.
@@ -188,8 +199,13 @@ Publication-time completeness is outside the MVP.
   category creation.
 - The existing Excel import flow remains available with its current entry
   point, permissions, validation, API/RPC contract, imported data mapping, and
-  active-category effects. Draft initialization and draft mutations must not
-  route through, alter, or disable Excel import.
+  active-category effects. This includes category import through
+  `dinh_muc_nhom_bulk_import` and the separate quota-decision import path
+  through `dinh_muc_chi_tiet_bulk_import`; where the current category flow
+  includes optional quota columns, its `dinh_muc_unified_import` invocation,
+  automatic decision creation, and partial-success behavior remain unchanged.
+  Draft initialization and draft mutations must not route through, alter, or
+  disable either Excel flow.
 - A future publish change will need an explicit mapping from draft items to
   active categories/decisions; this proposal does not define that mapping.
 - The extracted JSON/Markdown is structural transcription, not a replacement
