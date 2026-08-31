@@ -26,15 +26,15 @@ in isolation; no application user flow changes.
 Boundary: additive database/source persistence and read-only server contracts.
 No draft mutation, no active-table writes, and no UI cutover.
 
-- [ ] 1.1 Add the immutable regulatory document, catalog version, structural
+- [x] 1.1 Add the immutable regulatory document, catalog version, structural
       rows, items, rules, source positions, source pages, and references.
-- [ ] 1.2 Enforce one canonical ready snapshot for Thông tư 10/2026 with
+- [x] 1.2 Enforce one canonical ready snapshot for Thông tư 10/2026 with
       identity/hash/effective-date/extraction metadata and source completeness
       constraints.
-- [ ] 1.3 Add read-only RPC access for the regulatory snapshot with explicit
+- [x] 1.3 Add read-only RPC access for the regulatory snapshot with explicit
       grants, JWT/auth-role guards, tenant-safe behavior, and
       `SECURITY DEFINER SET search_path = public, pg_temp`.
-- [ ] 1.4 Add database/source contract tests. Do not alter existing category,
+- [x] 1.4 Add database/source contract tests. Do not alter existing category,
       decision, assignment, compliance, report, or Excel-import contracts.
 
 Deploy boundary: additive migration and dormant/read-only RPCs can deploy
