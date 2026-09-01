@@ -174,7 +174,7 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const saveButton = screen.getByRole("button", { name: "Lưu" })
 
     expect(workspace).toHaveClass("min-h-0", "flex-1")
-    expect(workspace).not.toHaveClass("h-[70dvh]", "min-h-[28rem]", "max-h-[52rem]")
+    expect(workspace).toHaveClass("h-[70dvh]", "min-h-[28rem]", "max-h-[52rem]")
     expect(scrollRegion).toHaveClass("relative", "min-h-0", "flex-1", "overflow-y-auto")
     expect(scrollRegion).toHaveAttribute("tabindex", "0")
     expect(scrollRegion).not.toContainElement(saveButton)
@@ -310,7 +310,10 @@ describe("TechnicalConfigurationBaselineEditor hierarchy", () => {
     const user = userEvent.setup()
     render(<EditorHarness />)
 
-    await user.click(within(getGroupSection(1)).getByRole("button", { name: "Xóa nhóm I" }))
+    await user.click(
+      within(getGroupSection(1)).getByRole("button", { name: "Thao tác cho nhóm I" })
+    )
+    await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: "Xóa nhóm" }))
     const remainingDisclosure = screen.getByRole("button", {
       name: "Thu gọn nhóm I: Nhóm B",
     })

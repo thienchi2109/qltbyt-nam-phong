@@ -1,3 +1,5 @@
+import type * as React from "react"
+
 import type {
   TechnicalConfigurationEntryMode,
   TechnicalConfigurationFocusTarget,
@@ -30,6 +32,7 @@ export type TechnicalConfigurationBaselineGroupSectionProps = Readonly<{
   recentlyAcceptedCriterionKeys: ReadonlySet<string>
   ownerOptions: readonly TechnicalConfigurationBaselineCriterionOwnerOption[]
   hierarchyAuthoring?: TechnicalConfigurationBaselineHierarchyAuthoring
+  sectionRef?: React.Ref<HTMLElement>
   onExpandedChange: (expanded: boolean) => void
   onModeChange: (groupKey: string, mode: TechnicalConfigurationEntryMode) => void
   onGroupNameChange: (groupKey: string, name: string) => void

@@ -2,7 +2,7 @@
 
 import { useSortable } from "@dnd-kit/react/sortable"
 import * as React from "react"
-import { ChevronDown, ClipboardPaste, GripVertical, ListChecks, Plus } from "lucide-react"
+import { ClipboardPaste, GripVertical, ListChecks, Plus } from "lucide-react"
 
 import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type { TechnicalConfigurationBaselineEditorGroup } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
@@ -13,8 +13,7 @@ import type {
 import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 import { hasTechnicalConfigurationBulkEntryInput } from "@/app/(app)/technical-configurations/bulk-entry-utils"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible"
-
+import { HierarchicalEditorSection } from "@/components/hierarchical-editor/HierarchicalEditorSection"
 import { focusTechnicalConfigurationBaselineElement } from "./TechnicalConfigurationBaselineFocus"
 import { TechnicalConfigurationBaselineGroupContent } from "./TechnicalConfigurationBaselineGroupContent"
 import type { TechnicalConfigurationBaselineGroupSectionProps } from "./TechnicalConfigurationBaselineGroupSectionTypes"
@@ -45,6 +44,7 @@ export function TechnicalConfigurationBaselineGroupSection({
   recentlyAcceptedCriterionKeys,
   ownerOptions,
   hierarchyAuthoring,
+  sectionRef,
   onExpandedChange,
   onModeChange,
   onGroupNameChange,
@@ -156,32 +156,27 @@ export function TechnicalConfigurationBaselineGroupSection({
   }, [focusTarget, group.key, isActionsMenuOpen])
 
   return (
-    <Collapsible open={expanded} onOpenChange={onExpandedChange}>
-      <section
-        ref={sortable.ref}
-        className="border-b border-border/70"
-        aria-label={`Nhóm tiêu chí ${sectionOrdinal}`}
-        data-hierarchy-level="group"
-        data-drag-source={sortable.isDragSource ? "true" : undefined}
-        data-drop-target={sortable.isDropTarget ? "true" : undefined}
-      >
+    <HierarchicalEditorSection
+      sectionKey={group.key}
+      label={`Nhóm tiêu chí ${sectionOrdinal}`}
+      disclosureLabel={`nhóm ${sectionOrdinal}: ${groupLabel}`}
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
+      disclosureRef={disclosureRef}
+      sectionRef={(node) => {
+        sortable.ref(node)
+        if (typeof sectionRef === "function") sectionRef(node)
+        else if (sectionRef) sectionRef.current = node
+      }}
+      dataAttributes={{
+        "data-hierarchy-level": "group",
+        "data-drag-source": sortable.isDragSource ? "true" : undefined,
+        "data-drop-target": sortable.isDropTarget ? "true" : undefined,
+      }}
+      header={({ disclosure }) => (
         <div className="grid gap-2 border-y border-border/70 bg-background px-3 py-2 lg:grid-cols-[auto_minmax(12rem,1fr)_auto] lg:items-start">
           <div className="flex items-center gap-2">
-            <CollapsibleTrigger asChild>
-              <Button
-                ref={disclosureRef}
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={`${expanded ? "Thu gọn" : "Mở rộng"} nhóm ${sectionOrdinal}: ${groupLabel}`}
-                title={expanded ? "Thu gọn nhóm" : "Mở rộng nhóm"}
-              >
-                <ChevronDown
-                  className={`size-4 transition-transform ${expanded ? "" : "-rotate-90"}`}
-                  aria-hidden="true"
-                />
-              </Button>
-            </CollapsibleTrigger>
+            {disclosure}
             {disabled ? null : (
               <Button
                 ref={sortable.handleRef}
@@ -285,35 +280,35 @@ export function TechnicalConfigurationBaselineGroupSection({
             </div>
           )}
         </div>
-
-        <TechnicalConfigurationBaselineGroupContent
-          group={group}
-          ordinal={ordinal}
-          sectionOrdinal={sectionOrdinal}
-          groupLabel={groupLabel}
-          mode={disabled ? "row" : mode}
-          bulkSession={bulkSession}
-          subgroups={subgroups}
-          expandedSubgroupKeys={expandedSubgroupKeys}
-          subgroupErrors={subgroupErrors}
-          criterionErrors={criterionErrors}
-          disabled={disabled}
-          interactionDisabled={interactionDisabled}
-          focusTarget={focusTarget}
-          recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
-          ownerOptions={ownerOptions}
-          hierarchyAuthoring={hierarchyAuthoring}
-          pendingInputDescriptionId={pendingInputDescriptionId}
-          onCriterionTextChange={onCriterionTextChange}
-          onMoveCriterion={onMoveCriterion}
-          onDeleteCriterion={onDeleteCriterion}
-          onBulkInputChange={onBulkInputChange}
-          onBulkPreview={onBulkPreview}
-          onBulkCancel={onBulkCancel}
-          onBulkAccept={onBulkAccept}
-          onSubgroupExpandedChange={setSubgroupExpanded}
-        />
-      </section>
-    </Collapsible>
+      )}
+    >
+      <TechnicalConfigurationBaselineGroupContent
+        group={group}
+        ordinal={ordinal}
+        sectionOrdinal={sectionOrdinal}
+        groupLabel={groupLabel}
+        mode={disabled ? "row" : mode}
+        bulkSession={bulkSession}
+        subgroups={subgroups}
+        expandedSubgroupKeys={expandedSubgroupKeys}
+        subgroupErrors={subgroupErrors}
+        criterionErrors={criterionErrors}
+        disabled={disabled}
+        interactionDisabled={interactionDisabled}
+        focusTarget={focusTarget}
+        recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
+        ownerOptions={ownerOptions}
+        hierarchyAuthoring={hierarchyAuthoring}
+        pendingInputDescriptionId={pendingInputDescriptionId}
+        onCriterionTextChange={onCriterionTextChange}
+        onMoveCriterion={onMoveCriterion}
+        onDeleteCriterion={onDeleteCriterion}
+        onBulkInputChange={onBulkInputChange}
+        onBulkPreview={onBulkPreview}
+        onBulkCancel={onBulkCancel}
+        onBulkAccept={onBulkAccept}
+        onSubgroupExpandedChange={setSubgroupExpanded}
+      />
+    </HierarchicalEditorSection>
   )
 }

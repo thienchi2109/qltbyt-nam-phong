@@ -245,7 +245,7 @@ describe("technical configuration baseline subgroup presentation", () => {
     expect(screen.queryByText(/Phản hồi|Đánh giá/i)).not.toBeInTheDocument()
   })
 
-  it("keeps editing-disabled fields and row actions mounted but disabled", () => {
+  it("keeps editing-disabled fields and row action controls mounted but disabled", () => {
     render(<HierarchyHarness editingDisabled />)
 
     expect(screen.getByRole("textbox", { name: "Tên nhóm I" })).toBeDisabled()
@@ -256,7 +256,7 @@ describe("technical configuration baseline subgroup presentation", () => {
     ).toBeDisabled()
     expect(
       screen.getByRole("button", {
-        name: "Di chuyển tiêu chí trực tiếp 1 của nhóm I xuống",
+        name: "Thao tác cho tiêu chí trực tiếp 1 của nhóm I",
       })
     ).toBeDisabled()
     expect(screen.getByLabelText("Kéo để sắp xếp tiêu chí trực tiếp 1 của nhóm I")).toBeDisabled()

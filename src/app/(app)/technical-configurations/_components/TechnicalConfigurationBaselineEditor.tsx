@@ -1,21 +1,25 @@
 "use client"
 
 import * as React from "react"
-import { LoaderCircle, Maximize2, Minimize2, Plus, Save } from "lucide-react"
+import { Maximize2, Minimize2, Plus } from "lucide-react"
 
 import { TechnicalConfigurationBaselineColumnHeader } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineColumnHeader"
 import { TechnicalConfigurationBaselineDndProvider } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineDndProvider"
 import { TechnicalConfigurationBaselineGroupSection } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineGroupSection"
-import { TechnicalConfigurationBaselineStructureSidebar } from "@/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineStructureSidebar"
 import type { TechnicalConfigurationBulkEntrySession } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationBulkEntrySessions"
 import { useTechnicalConfigurationGroupDisclosure } from "@/app/(app)/technical-configurations/_hooks/useTechnicalConfigurationGroupDisclosure"
 import type {
   TechnicalConfigurationBaselineEditorDraft,
   TechnicalConfigurationBaselineEditorValidation,
 } from "@/app/(app)/technical-configurations/technical-configuration-baseline-editor"
+import type { HierarchicalEditorSectionDescriptor } from "@/components/hierarchical-editor/HierarchicalEditorTypes"
+import { HierarchicalEditorStructureSidebar } from "@/components/hierarchical-editor/HierarchicalEditorStructureSidebar"
+import { HierarchicalEditorToolbar } from "@/components/hierarchical-editor/HierarchicalEditorToolbar"
+import { HierarchicalEditorWorkspace } from "@/components/hierarchical-editor/HierarchicalEditorWorkspace"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { formatTechnicalConfigurationBaselineSectionOrdinal } from "@/app/(app)/technical-configurations/technical-configuration-baseline-ordinals"
 
 import {
   getTechnicalConfigurationBaselineCriterionOwnerOptions,
@@ -126,7 +130,39 @@ export function TechnicalConfigurationBaselineEditor({
   const disclosure = useTechnicalConfigurationGroupDisclosure(groupKeys)
   const addGroupRef = React.useRef<HTMLButtonElement>(null)
   const bodyRef = React.useRef<HTMLDivElement>(null)
+  const sectionRefs = React.useRef(new Map<string, React.RefObject<HTMLElement | null>>())
+  const [selectedSectionKey, setSelectedSectionKey] = React.useState<string | null>(null)
   const structure = useTechnicalConfigurationBaselineStructure(bodyRef)
+  const focusSectionKey =
+    (focusTarget
+      ? getTechnicalConfigurationFocusTargetGroupKey(focusTarget, draft.groups, activeValue)
+      : null) ??
+    (activeValue || null)
+  const activeSectionKey =
+    selectedSectionKey && groupKeys.includes(selectedSectionKey)
+      ? selectedSectionKey
+      : focusSectionKey
+  const getSectionRef = React.useCallback((groupKey: string) => {
+    const existingRef = sectionRefs.current.get(groupKey)
+    if (existingRef) return existingRef
+
+    const nextRef = React.createRef<HTMLElement>()
+    sectionRefs.current.set(groupKey, nextRef)
+    return nextRef
+  }, [])
+  const structureSections = React.useMemo<readonly HierarchicalEditorSectionDescriptor[]>(
+    () =>
+      draft.groups.map((group, groupIndex) => ({
+        key: group.key,
+        label:
+          group.name.trim() ||
+          `Nhóm ${formatTechnicalConfigurationBaselineSectionOrdinal(groupIndex + 1)}`,
+        ordinal: formatTechnicalConfigurationBaselineSectionOrdinal(groupIndex + 1),
+        summary: `${group.criteria.length + (group.subgroups ?? []).reduce((count, subgroup) => count + subgroup.criteria.length, 0)} tiêu chí`,
+        targetRef: getSectionRef(group.key),
+      })),
+    [draft.groups, getSectionRef]
+  )
 
   React.useEffect(() => {
     if (!focusTarget) return
@@ -151,179 +187,158 @@ export function TechnicalConfigurationBaselineEditor({
     <TechnicalConfigurationBaselineDndProvider
       onHierarchyCommand={hierarchyAuthoring?.onHierarchyCommand}
     >
-      <section
-        aria-label="Trình soạn cấu hình cơ sở"
-        data-testid="baseline-editor-workspace"
-        className="flex min-h-0 flex-1 flex-col"
+      <HierarchicalEditorWorkspace
+        ariaLabel="Trình soạn cấu hình cơ sở"
+        bodyAriaLabel="Các nhóm cấu hình cơ sở"
+        workspaceTestId="baseline-editor-workspace"
+        bodyTestId="baseline-editor-body"
+        bodyRef={bodyRef}
+        bodyDataAttributes={{ "data-structure-layout": structure.layout }}
+        bodyStyle={{
+          gridTemplateColumns:
+            structure.layout === "panel" ? "220px minmax(0, 1fr)" : "48px minmax(0, 1fr)",
+        }}
+        sidebar={
+          <HierarchicalEditorStructureSidebar
+            sections={structureSections}
+            activeKey={activeSectionKey}
+            expanded={structure.expanded}
+            overlay={structure.layout === "overlay"}
+            onToggle={structure.toggle}
+            onSectionSelect={setSelectedSectionKey}
+            testId="baseline-structure-sidebar"
+          />
+        }
+        toolbar={
+          <HierarchicalEditorToolbar
+            testId="baseline-editor-toolbar"
+            leading={
+              commandBarContext ?? (
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2 className="truncate text-base font-semibold">Bản nháp cấu hình cơ sở</h2>
+                  <Badge variant="secondary">Bản nháp</Badge>
+                </div>
+              )
+            }
+            status={
+              hasPendingBulkInput ? null : isDirty ? (
+                <p className="text-sm font-medium text-amber-700">Có thay đổi chưa lưu</p>
+              ) : saveStatus === "saved" ? (
+                <p className="text-sm font-medium text-emerald-700">Đã lưu</p>
+              ) : null
+            }
+            pendingInputDescription={
+              hasPendingBulkInput
+                ? "Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu."
+                : undefined
+            }
+            pendingInputDescriptionId={PENDING_BULK_STATUS_ID}
+            actions={
+              onToggleFocusMode ? (
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="size-9"
+                        aria-label={
+                          isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"
+                        }
+                        aria-pressed={isFocusMode}
+                        onClick={onToggleFocusMode}
+                      >
+                        {isFocusMode ? (
+                          <Minimize2 className="size-4" aria-hidden="true" />
+                        ) : (
+                          <Maximize2 className="size-4" aria-hidden="true" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : undefined
+            }
+            saveDisabled={isEditingDisabled || !isDirty || isConflict}
+            isSaving={isSaving}
+            onSave={onSave}
+          />
+        }
       >
-        <div
-          data-testid="baseline-editor-toolbar"
-          className="flex min-h-12 shrink-0 items-center gap-2 border-y py-1.5"
-        >
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
-            {commandBarContext ?? (
-              <div className="flex min-w-0 items-center gap-2">
-                <h2 className="truncate text-base font-semibold">Bản nháp cấu hình cơ sở</h2>
-                <Badge variant="secondary">Bản nháp</Badge>
-              </div>
-            )}
-            {hasPendingBulkInput ? (
-              <p
-                id={PENDING_BULK_STATUS_ID}
-                className="shrink-0 text-sm font-medium text-amber-700"
-              >
-                Hoàn tất hoặc hủy phần nhập nhiều dòng trước khi lưu.
-              </p>
-            ) : isDirty ? (
-              <p className="shrink-0 text-sm font-medium text-amber-700">Có thay đổi chưa lưu</p>
-            ) : saveStatus === "saved" ? (
-              <p className="shrink-0 text-sm font-medium text-emerald-700">Đã lưu</p>
-            ) : null}
-          </div>
+        <TechnicalConfigurationBaselineColumnHeader />
 
-          <div className="flex shrink-0 items-center gap-2">
-            {onToggleFocusMode ? (
-              <TooltipProvider delayDuration={300}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-9"
-                      aria-label={isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
-                      aria-pressed={isFocusMode}
-                      onClick={onToggleFocusMode}
-                    >
-                      {isFocusMode ? (
-                        <Minimize2 className="size-4" aria-hidden="true" />
-                      ) : (
-                        <Maximize2 className="size-4" aria-hidden="true" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {isFocusMode ? "Thu nhỏ vùng chỉnh sửa" : "Mở rộng vùng chỉnh sửa"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : null}
+        {draft.groups.length === 0 ? (
+          <p className="border-b px-4 py-10 text-center text-sm text-muted-foreground">
+            Chưa có nhóm tiêu chí.
+          </p>
+        ) : (
+          draft.groups.map((group, groupIndex) => {
+            const mode = activeValue === group.key && entryMode === "bulk" ? "bulk" : "row"
+            const summaryErrorCount = countTechnicalConfigurationGroupValidationErrors(
+              group,
+              summaryValidation
+            )
 
-            <Button
-              type="button"
-              className="h-9"
-              disabled={
-                isEditingDisabled || !isDirty || isSaving || isConflict || hasPendingBulkInput
-              }
-              aria-describedby={hasPendingBulkInput ? PENDING_BULK_STATUS_ID : undefined}
-              onClick={onSave}
-            >
-              {isSaving ? (
-                <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-              ) : (
-                <Save className="size-4" aria-hidden="true" />
-              )}
-              {isSaving ? "Đang lưu..." : "Lưu"}
-            </Button>
-          </div>
-        </div>
-
-        <div
-          ref={bodyRef}
-          data-testid="baseline-editor-body"
-          data-structure-layout={structure.layout}
-          className="relative grid min-h-0 flex-1 overflow-hidden"
-          style={{
-            gridTemplateColumns:
-              structure.layout === "panel" ? "220px minmax(0, 1fr)" : "48px minmax(0, 1fr)",
-          }}
-        >
-          <div className="relative z-30 min-h-0">
-            <TechnicalConfigurationBaselineStructureSidebar
-              groups={draft.groups}
-              expanded={structure.expanded}
-              overlay={structure.layout === "overlay"}
-              onToggle={structure.toggle}
-            />
-          </div>
-
-          <div
-            role="region"
-            aria-label="Các nhóm cấu hình cơ sở"
-            tabIndex={0}
-            className="relative min-h-0 min-w-0 flex-1 overflow-y-auto bg-background"
-          >
-            <TechnicalConfigurationBaselineColumnHeader />
-
-            {draft.groups.length === 0 ? (
-              <p className="border-b px-4 py-10 text-center text-sm text-muted-foreground">
-                Chưa có nhóm tiêu chí.
-              </p>
-            ) : (
-              draft.groups.map((group, groupIndex) => {
-                const mode = activeValue === group.key && entryMode === "bulk" ? "bulk" : "row"
-                const summaryErrorCount = countTechnicalConfigurationGroupValidationErrors(
+            return (
+              <TechnicalConfigurationBaselineGroupSection
+                key={group.key}
+                group={group}
+                groupIndex={groupIndex}
+                groupCount={draft.groups.length}
+                expanded={disclosure.expandedGroupKeys.has(group.key)}
+                mode={mode}
+                bulkSession={getBulkSession(group.key)}
+                groupError={validation.groupErrors[group.key]}
+                subgroupErrors={validation.subgroupErrors ?? {}}
+                criterionErrors={validation.criterionErrors}
+                summaryErrorCount={summaryErrorCount}
+                pendingInputDescriptionId={PENDING_BULK_STATUS_ID}
+                disabled={false}
+                focusTarget={getTechnicalConfigurationFocusTargetForGroup(
+                  focusTarget,
                   group,
-                  summaryValidation
-                )
+                  activeValue
+                )}
+                recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
+                ownerOptions={ownerOptions}
+                hierarchyAuthoring={hierarchyAuthoring}
+                sectionRef={getSectionRef(group.key)}
+                interactionDisabled={isEditingDisabled}
+                onExpandedChange={(expanded) => disclosure.setExpanded(group.key, expanded)}
+                onModeChange={onGroupModeChange}
+                onGroupNameChange={onGroupNameChange}
+                onMoveGroup={onMoveGroup}
+                onDeleteGroup={onDeleteGroup}
+                onCriterionTextChange={onCriterionTextChange}
+                onMoveCriterion={onMoveCriterion}
+                onDeleteCriterion={onDeleteCriterion}
+                onAddCriterion={onAddCriterion}
+                onBulkInputChange={onBulkInputChange}
+                onBulkPreview={onBulkPreview}
+                onBulkCancel={onBulkCancel}
+                onBulkAccept={onBulkAccept}
+              />
+            )
+          })
+        )}
 
-                return (
-                  <TechnicalConfigurationBaselineGroupSection
-                    key={group.key}
-                    group={group}
-                    groupIndex={groupIndex}
-                    groupCount={draft.groups.length}
-                    expanded={disclosure.expandedGroupKeys.has(group.key)}
-                    mode={mode}
-                    bulkSession={getBulkSession(group.key)}
-                    groupError={validation.groupErrors[group.key]}
-                    subgroupErrors={validation.subgroupErrors ?? {}}
-                    criterionErrors={validation.criterionErrors}
-                    summaryErrorCount={summaryErrorCount}
-                    pendingInputDescriptionId={PENDING_BULK_STATUS_ID}
-                    disabled={false}
-                    focusTarget={getTechnicalConfigurationFocusTargetForGroup(
-                      focusTarget,
-                      group,
-                      activeValue
-                    )}
-                    recentlyAcceptedCriterionKeys={recentlyAcceptedCriterionKeys}
-                    ownerOptions={ownerOptions}
-                    hierarchyAuthoring={hierarchyAuthoring}
-                    interactionDisabled={isEditingDisabled}
-                    onExpandedChange={(expanded) => disclosure.setExpanded(group.key, expanded)}
-                    onModeChange={onGroupModeChange}
-                    onGroupNameChange={onGroupNameChange}
-                    onMoveGroup={onMoveGroup}
-                    onDeleteGroup={onDeleteGroup}
-                    onCriterionTextChange={onCriterionTextChange}
-                    onMoveCriterion={onMoveCriterion}
-                    onDeleteCriterion={onDeleteCriterion}
-                    onAddCriterion={onAddCriterion}
-                    onBulkInputChange={onBulkInputChange}
-                    onBulkPreview={onBulkPreview}
-                    onBulkCancel={onBulkCancel}
-                    onBulkAccept={onBulkAccept}
-                  />
-                )
-              })
-            )}
-
-            <div className="flex justify-center px-3 py-4">
-              <Button
-                ref={addGroupRef}
-                type="button"
-                variant="outline"
-                disabled={isEditingDisabled}
-                onClick={onAddGroup}
-              >
-                <Plus className="size-4" aria-hidden="true" />
-                Thêm nhóm
-              </Button>
-            </div>
-          </div>
+        <div className="flex justify-center px-3 py-4">
+          <Button
+            ref={addGroupRef}
+            type="button"
+            variant="outline"
+            disabled={isEditingDisabled}
+            onClick={onAddGroup}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            Thêm nhóm
+          </Button>
         </div>
-      </section>
+      </HierarchicalEditorWorkspace>
     </TechnicalConfigurationBaselineDndProvider>
   )
 }
