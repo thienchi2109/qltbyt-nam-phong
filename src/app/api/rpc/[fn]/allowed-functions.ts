@@ -205,6 +205,12 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "dinh_muc_thiet_bi_unassigned_names",
   // Suggested Mapping (write-path)
   "dinh_muc_thiet_bi_link_batch",
+  // Regulatory device-quota draft catalog
+  "device_quota_unit_catalog_draft_create_or_open",
+  "device_quota_unit_catalog_draft_get",
+  "device_quota_unit_catalog_draft_save",
+  "device_quota_unit_catalog_draft_exclude",
+  "device_quota_unit_catalog_draft_restore",
 ])
 
 /** RPCs that must not be directly executable by the PostgREST `authenticated` role. */

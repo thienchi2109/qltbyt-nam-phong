@@ -46,21 +46,21 @@ Boundary: new draft tables, RPCs, audit records, and generated contracts only.
 The editor remains feature-flagged or unreachable until Phase 3; existing
 category and import flows remain untouched.
 
-- [ ] 2.1 Add `unit_catalog_draft` and `unit_catalog_draft_item` with source
+- [x] 2.1 Add `unit_catalog_draft` and `unit_catalog_draft_item` with source
       version integrity, one editable draft per unit, duplicate protection,
       non-negative quantity constraint, and monotonic revision.
-- [ ] 2.2 Implement transactional create-or-open at revision `1`; repeated or
+- [x] 2.2 Implement transactional create-or-open at revision `1`; repeated or
       concurrent requests return the same draft.
-- [ ] 2.3 Implement read RPCs with auth, role, and session-unit guards only.
+- [x] 2.3 Implement read RPCs with auth, role, and session-unit guards only.
       Implement save, exclude, and restore RPCs with mandatory
       `expected_revision`, atomic compare-and-swap, and standard stale-conflict
       response.
-- [ ] 2.4 Enforce the role matrix: `global`/`admin` and `to_qltb` require a
+- [x] 2.4 Enforce the role matrix: `global`/`admin` and `to_qltb` require a
       server-verified session unit; mapping-only and `regional_leader` cannot
       create or mutate drafts.
-- [ ] 2.5 Add mandatory atomic audit events for successful create, save,
+- [x] 2.5 Add mandatory atomic audit events for successful create, save,
       exclude, and restore, deriving actor and unit from JWT claims.
-- [ ] 2.6 Add explicit table revokes, RPC grants, proxy allowlist entries, and
+- [x] 2.6 Add explicit table revokes, RPC grants, proxy allowlist entries, and
       generated database contracts. Add SQL contract tests for tenant isolation,
       role normalization, immutable source access, and audit coupling.
 

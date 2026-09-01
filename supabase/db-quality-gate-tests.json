@@ -162,6 +162,16 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["OpenSpec add-device-quota-draft-catalog Phase 2"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/device_quota_unit_catalog_draft_phase_gate.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/equipment_bulk_delete_smoke.sql",
