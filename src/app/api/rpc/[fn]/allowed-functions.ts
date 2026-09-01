@@ -206,6 +206,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   // Suggested Mapping (write-path)
   "dinh_muc_thiet_bi_link_batch",
   // Regulatory device-quota draft catalog
+  "device_quota_regulatory_catalog_get",
   "device_quota_unit_catalog_draft_create_or_open",
   "device_quota_unit_catalog_draft_get",
   "device_quota_unit_catalog_draft_save",
