@@ -193,4 +193,78 @@ describe("useDeviceQuotaDraftCatalog mutation recovery", () => {
       expect.objectContaining({ fn: "device_quota_unit_catalog_draft_save" })
     )
   })
+
+  it("locks editor writes while conflict recovery is refetching", async () => {
+    rpcSequence()
+    mockCallRpc.mockRejectedValueOnce(new Error("stale_revision"))
+    let resolveReload: (value: unknown) => void = () => undefined
+    mockCallRpc.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveReload = resolve
+      })
+    )
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 8 }))
+    await expect(
+      act(async () => {
+        await rendered.result.current.save()
+      })
+    ).rejects.toThrow()
+    await waitFor(() => expect(rendered.result.current.status).toBe("conflict"))
+
+    let retryPromise = Promise.resolve()
+    act(() => {
+      retryPromise = rendered.result.current.retry()
+    })
+    await waitFor(() => expect(rendered.result.current.isRecovering).toBe(true))
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 10 }))
+    await act(async () => {
+      await rendered.result.current.exclude("item-1")
+    })
+
+    expect(rendered.result.current.rows[0]?.appliedQuantity).toBe(8)
+    expect(mockCallRpc).toHaveBeenCalledTimes(5)
+
+    await act(async () => {
+      resolveReload({
+        data: {
+          ...draft,
+          draft: { ...draft.draft, revision: 4 },
+          items: [{ ...draft.items[0], applied_quantity: 9 }],
+        },
+      })
+      await retryPromise
+    })
+    expect(rendered.result.current.isRecovering).toBe(false)
+    expect(rendered.result.current.rows[0]?.appliedQuantity).toBe(9)
+  })
+
+  it("keeps conflict and local edits when conflict recovery refetch fails", async () => {
+    rpcSequence()
+    mockCallRpc.mockRejectedValueOnce(new Error("stale_revision"))
+    mockCallRpc.mockRejectedValueOnce(new Error("reload failed"))
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 8 }))
+    await expect(
+      act(async () => {
+        await rendered.result.current.save()
+      })
+    ).rejects.toThrow()
+    await waitFor(() => expect(rendered.result.current.status).toBe("conflict"))
+
+    await act(async () => {
+      await rendered.result.current.retry()
+    })
+
+    expect(rendered.result.current.status).toBe("conflict")
+    expect(rendered.result.current.rows[0]?.appliedQuantity).toBe(8)
+    expect(rendered.result.current.isDirty).toBe(true)
+    expect(rendered.result.current.isRecovering).toBe(false)
+  })
 })

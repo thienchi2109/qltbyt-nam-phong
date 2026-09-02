@@ -3,6 +3,21 @@ import { isEquipmentManagerRole } from "@/lib/rbac"
 export type DeviceQuotaDraftCatalogStatus =
   "blocked" | "loading" | "ready" | "conflict" | "error" | "unavailable"
 
+/** Derives the public hook status from access, query, and mutation state. */
+export function getDeviceQuotaDraftCatalogStatus(input: {
+  canAccess: boolean
+  hasConflict: boolean
+  hasUnavailable: boolean
+  hasError: boolean
+  isLoading: boolean
+}): DeviceQuotaDraftCatalogStatus {
+  if (!input.canAccess) return "blocked"
+  if (input.hasConflict) return "conflict"
+  if (input.hasUnavailable) return "unavailable"
+  if (input.hasError) return "error"
+  return input.isLoading ? "loading" : "ready"
+}
+
 /** Resolves the authenticated session unit used by the draft catalog. */
 export function toDeviceQuotaDraftCatalogUnitId(
   user: { current_don_vi?: number | string | null; don_vi?: number | string | null } | undefined

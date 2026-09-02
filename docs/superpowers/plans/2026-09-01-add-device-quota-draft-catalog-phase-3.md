@@ -93,19 +93,19 @@ All new and modified source/test files must remain below the repository's 450-li
 - Create: `src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx`
 - Read/modify as needed: `src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-workspace.test.tsx`
 
-- [ ] **Step 1: Write failing tests for the shared contract**
+- [x] **Step 1: Write failing tests for the shared contract**
   - Assert a fixed-height workspace surface exposes an independently scrollable editor body.
   - Assert the structure sidebar renders the ordered sections and clicking a section scrolls its target into view.
   - Assert the section header toggles disclosure without changing row order.
   - Assert toolbar save is disabled while saving or while a pending input guard is active.
   - Assert the new Technical Configurations shared-workspace regression file covers the extracted save, disclosure, structure, and scrolling behavior without growing `technical-configuration-baseline-workspace.test.tsx` past the extraction threshold.
 
-- [ ] **Step 2: Run only the new focused test**
+- [x] **Step 2: Run only the new focused test**
 
 Run:
 
 ```bash
-node scripts/npm-run.js test:run -- src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx
+node scripts/npm-run.js run test:run -- src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx
 ```
 
 Expected: FAIL because the shared component contracts do not exist yet.
@@ -122,7 +122,7 @@ Expected: FAIL because the shared component contracts do not exist yet.
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationBaselineEditor.tsx`
 - Modify: directly affected Technical Configurations baseline component/type files only
 
-- [ ] **Step 1: Implement the smallest generic contracts**
+- [x] **Step 1: Implement the smallest generic contracts**
   - Keep all domain-specific values in render-prop or adapter callbacks.
   - Support section keys, labels, collapsed state, pending/error summary, section refs, and row content.
   - Put the definite height and inner scrolling in `HierarchicalEditorWorkspace`; use the approved desktop dimensions `h-[70dvh]`, `min-h-[28rem]`, and `max-h-[52rem]`.
@@ -131,23 +131,23 @@ Expected: FAIL because the shared component contracts do not exist yet.
   - Keep shared primitives presentational: they do not own DnD, focus recovery, domain disclosure, persistence, validation, or query state.
   - Sidebar click-to-scroll is a controlled shared capability. Technical Configurations may opt into it only if its existing structure adapter can provide stable section refs without changing domain behavior.
 
-- [ ] **Step 2: Migrate Technical Configurations to the primitives**
+- [x] **Step 2: Migrate Technical Configurations to the primitives**
   - Preserve existing keyboard behavior, focus fallback, bulk-entry behavior, drag/drop behavior, validation, and save guards.
   - Keep DnD, focus recovery, domain disclosure, and persistence in the Technical Configurations adapter/composition layer.
   - Keep `TechnicalConfigurationBaselineEditor` as the composition boundary.
   - Do not change baseline domain types or persistence contracts.
 
-- [ ] **Step 3: Run the shared and Technical Configurations focused tests**
+- [x] **Step 3: Run the shared and Technical Configurations focused tests**
 
 Run:
 
 ```bash
-node scripts/npm-run.js test:run -- src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx 'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-workspace.test.tsx'
+node scripts/npm-run.js run test:run -- src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx 'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-workspace.test.tsx'
 ```
 
 Expected: PASS, with the existing Technical Configurations behavior preserved.
 
-- [ ] **Step 4: Commit the extraction**
+- [x] **Step 4: Commit the extraction**
 
 ```bash
 git add src/components/hierarchical-editor 'src/app/(app)/technical-configurations'
@@ -164,7 +164,7 @@ git commit -m "refactor: share hierarchical editor workspace primitives"
 - Create: `src/app/(app)/device-quota/categories/draft-catalog/device-quota-draft-catalog-mappers.ts`
 - Create: `src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-mappers.test.ts`
 
-- [ ] **Step 1: Write failing mapper tests**
+- [x] **Step 1: Write failing mapper tests**
   - Merge an immutable catalog snapshot with draft item values by the Phase 1/2 source item identifier.
   - Preserve five section rows, 37 item rows, source order, parent, and level.
   - Preserve 16 child items under their source-declared parents and 21 top-level items.
@@ -173,21 +173,21 @@ git commit -m "refactor: share hierarchical editor workspace primitives"
   - Derive incomplete status from the draft contract's required editable values without treating an excluded item as an invalid active row.
   - Mark all regulatory fields read-only and all four unit fields editable only when the mode is editable.
 
-- [ ] **Step 2: Run the mapper tests**
+- [x] **Step 2: Run the mapper tests**
 
 ```bash
-node scripts/npm-run.js test:run -- 'src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-mappers.test.ts'
+node scripts/npm-run.js run test:run -- 'src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-mappers.test.ts'
 ```
 
 Expected: FAIL because the merged model and mapper do not exist.
 
-- [ ] **Step 3: Implement pure types and mappers**
+- [x] **Step 3: Implement pure types and mappers**
   - Use explicit TypeScript types; do not introduce `any`.
   - Reuse `src/lib/device-quota-draft-contract.ts` for Phase 2 draft contracts and define only catalog/merged-view adapter types locally.
   - Keep source values immutable by returning a new merged view model.
   - Keep completeness and display-name fallback deterministic and independently testable.
 
-- [ ] **Step 4: Run the mapper tests again**
+- [x] **Step 4: Run the mapper tests again**
 
 Expected: PASS.
 
@@ -203,7 +203,7 @@ Expected: PASS.
 - Create: `src/app/(app)/device-quota/categories/_hooks/__tests__/useDeviceQuotaDraftCatalog.validation.test.tsx`
 - Modify: `src/app/api/rpc/[fn]/allowed-functions.ts`
 
-- [ ] **Step 1: Write failing hook tests**
+- [x] **Step 1: Write failing hook tests**
   - `global`, `admin`, and `to_qltb` users with a server-verified session unit call create-or-open and then read the draft/catalog.
   - Missing session unit fails closed without a mutation.
   - There is no invented `Viewer` role in the client contract.
@@ -214,28 +214,28 @@ Expected: PASS.
   - A failed exclude/restore preserves the previous local/server row state and exposes retry.
   - Session unit A remains the only unit used when selected facility B is present in the tenant UI; no caller-provided facility override reaches draft RPCs.
 
-- [ ] **Step 2: Run the hook tests**
+- [x] **Step 2: Run the hook tests**
 
 ```bash
-node scripts/npm-run.js test:run -- 'src/app/(app)/device-quota/categories/_hooks/__tests__/useDeviceQuotaDraftCatalog.test.tsx'
+node scripts/npm-run.js run test:run -- 'src/app/(app)/device-quota/categories/_hooks/__tests__/useDeviceQuotaDraftCatalog.test.tsx'
 ```
 
 Expected: FAIL because the query and mutation orchestration does not exist.
 
-- [ ] **Step 3: Write failing quantity validation tests**
+- [x] **Step 3: Write failing quantity validation tests**
   - Negative and fractional quantities produce field-level feedback.
   - Invalid quantity prevents the save RPC from being called.
   - The last saved server value remains intact after invalid local input.
 
-- [ ] **Step 4: Run the quantity validation tests**
+- [x] **Step 4: Run the quantity validation tests**
 
 ```bash
-node scripts/npm-run.js test:run -- 'src/app/(app)/device-quota/categories/_hooks/__tests__/useDeviceQuotaDraftCatalog.validation.test.tsx'
+node scripts/npm-run.js run test:run -- 'src/app/(app)/device-quota/categories/_hooks/__tests__/useDeviceQuotaDraftCatalog.validation.test.tsx'
 ```
 
 Expected: FAIL because the field-level quantity validation does not exist.
 
-- [ ] **Step 5: Implement the orchestration**
+- [x] **Step 5: Implement the orchestration**
   - Fetch the catalog snapshot and draft through separate existing RPC contracts.
   - Resolve the current unit from the authenticated session; never add a facility selector or client-provided unit override.
   - Keep the draft hook on a session-authoritative unit accessor; do not reuse `useDeviceQuotaCategoryAccess` when it can resolve `selectedFacilityId`.
@@ -244,11 +244,11 @@ Expected: FAIL because the field-level quantity validation does not exist.
   - Normalize stale conflict and unavailable snapshot errors into user-visible states without exposing raw database errors.
   - Add `device_quota_regulatory_catalog_get` to the RPC proxy allowlist and cover that reachability with a focused assertion.
 
-- [ ] **Step 6: Run both hook test files again**
+- [x] **Step 6: Run both hook test files again**
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit the data layer**
+- [x] **Step 7: Commit the data layer**
 
 ```bash
 git add 'src/app/(app)/device-quota/categories/draft-catalog' 'src/app/(app)/device-quota/categories/_queries' 'src/app/(app)/device-quota/categories/_components/DeviceQuotaDraftCatalogMutations.ts' 'src/app/(app)/device-quota/categories/_hooks'
@@ -269,7 +269,7 @@ git commit -m "feat: wire device quota draft catalog data flow"
 - Create: `src/app/(app)/device-quota/categories/draft-catalog/_components/DeviceQuotaDraftCatalogStates.tsx`
 - Create: `src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogEditor.test.tsx`
 
-- [ ] **Step 1: Write failing UI integration tests**
+- [x] **Step 1: Write failing UI integration tests**
   - `global`, `admin`, and `to_qltb` users can open the workspace from the entry action and see source metadata.
   - `regional_leader` and mapping-only roles cannot open this Phase 3 workspace.
   - The editor renders all 42 rows in immutable source order with five section headers.
@@ -288,10 +288,10 @@ git commit -m "feat: wire device quota draft catalog data flow"
   - Negative and fractional quantities show field-level feedback and do not trigger Save.
   - No mobile-specific assertions are added.
 
-- [ ] **Step 2: Run the editor tests**
+- [x] **Step 2: Run the editor tests**
 
 ```bash
-node scripts/npm-run.js test:run -- 'src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogEditor.test.tsx'
+node scripts/npm-run.js run test:run -- 'src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogEditor.test.tsx'
 ```
 
 Expected: FAIL because the route and editor components do not exist.
@@ -303,12 +303,12 @@ Expected: FAIL because the route and editor components do not exist.
 - Modify the files from Task 5.
 - Reuse: `src/components/hierarchical-editor/*`
 
-- [ ] **Step 1: Implement the page/client composition**
+- [x] **Step 1: Implement the page/client composition**
   - Keep the route server entry small.
   - Render compact metadata: unit, draft status, source document/version, snapshot hash or version marker, last saved timestamp, and current mode.
   - Keep toolbar outside the independently scrollable editor body.
 
-- [ ] **Step 2: Implement section and row adapters**
+- [x] **Step 2: Implement section and row adapters**
   - Use the shared section/sidebar/workspace primitives.
   - Render the source name and regulatory metadata with muted read-only styling.
   - Keep `Tên hiển thị tại đơn vị` as a normal-width input with the agreed fallback placeholder.
@@ -317,14 +317,14 @@ Expected: FAIL because the route and editor components do not exist.
   - Keep rule disclosure inline and collapsed by default.
   - Ensure section/item DOM identifiers are stable for sidebar scrolling and tests.
 
-- [ ] **Step 3: Implement all state surfaces**
+- [x] **Step 3: Implement all state surfaces**
   - Loading and unavailable snapshot states fail closed.
   - Missing session unit and unsupported roles do not render the workspace or mutation controls.
   - Save failure preserves unsaved edits and exposes retry.
   - Stale conflict preserves the user’s current edits, tells the user to reload, and does not silently merge over a newer revision.
   - Excluded rows remain visible for restore and do not disturb source order.
 
-- [ ] **Step 4: Run the editor tests again**
+- [x] **Step 4: Run the editor tests again**
 
 Expected: PASS.
 
@@ -336,30 +336,30 @@ Expected: PASS.
 - Modify: `src/app/(app)/device-quota/categories/_components/DeviceQuotaCategoryToolbar.tsx`
 - Modify: `src/app/(app)/device-quota/categories/__tests__/DeviceQuotaCategoryToolbar.test.tsx`
 
-- [ ] **Step 1: Write the failing entry-point regression test**
+- [x] **Step 1: Write the failing entry-point regression test**
   - Assert the toolbar exposes a clearly named draft-catalog action for `global`, `admin`, and `to_qltb`.
   - Assert the existing create, edit, delete, category import, and quota-decision import actions remain available.
   - Assert `regional_leader`, mapping-only, and other unsupported roles do not receive the draft action.
   - Keep these assertions in the focused toolbar test so no test file exceeds the 450-line ceiling.
 
-- [ ] **Step 2: Run the category page test**
+- [x] **Step 2: Run the category page test**
 
 ```bash
-node scripts/npm-run.js test:run -- 'src/app/(app)/device-quota/categories/__tests__/DeviceQuotaCategoryToolbar.test.tsx'
+node scripts/npm-run.js run test:run -- 'src/app/(app)/device-quota/categories/__tests__/DeviceQuotaCategoryToolbar.test.tsx'
 ```
 
 Expected: FAIL on the missing draft action.
 
-- [ ] **Step 3: Implement the additive route link**
+- [x] **Step 3: Implement the additive route link**
   - Navigate to `/device-quota/categories/draft-catalog`.
   - Keep existing category toolbar actions and import flows untouched.
   - Use role normalization conventions and a session-authoritative draft access path; do not route draft unit resolution through a client-selected facility.
 
-- [ ] **Step 4: Run the category and editor tests**
+- [x] **Step 4: Run the category and editor tests**
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit the Phase 3 UI**
+- [x] **Step 5: Commit the Phase 3 UI**
 
 ```bash
 git add 'src/app/(app)/device-quota/categories'
@@ -374,10 +374,10 @@ git commit -m "feat: add device quota draft catalog editor"
 
 - No planned source changes. Fix only failures caused by the Phase 3 implementation.
 
-- [ ] **Step 1: Run all focused tests together**
+- [x] **Step 1: Run all focused tests together**
 
 ```bash
-  node scripts/npm-run.js test:run -- \
+  node scripts/npm-run.js run test:run -- \
   src/components/hierarchical-editor/__tests__/HierarchicalEditorWorkspace.test.tsx \
   'src/app/(app)/technical-configurations/__tests__/technical-configuration-baseline-shared-workspace.test.tsx' \
   'src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-mappers.test.ts' \
@@ -389,10 +389,10 @@ git commit -m "feat: add device quota draft catalog editor"
 
 Expected: PASS.
 
-- [ ] **Step 2: Run the existing category and Technical Configurations suites**
+- [x] **Step 2: Run the existing category and Technical Configurations suites**
 
 ```bash
-node scripts/npm-run.js test:run -- \
+node scripts/npm-run.js run test:run -- \
   'src/app/(app)/device-quota/categories/__tests__' \
   'src/app/(app)/technical-configurations/__tests__'
 ```
@@ -401,7 +401,7 @@ Expected: PASS, or any pre-existing unrelated failures are documented with exact
 
 ### Task 9: Run repository verification in the required order
 
-- [ ] **Step 1: Format check**
+- [x] **Step 1: Format check**
 
 ```bash
 node scripts/npm-run.js run format:check
@@ -409,7 +409,7 @@ node scripts/npm-run.js run format:check
 
 Expected: PASS.
 
-- [ ] **Step 2: Type-safety and duplicate gates**
+- [x] **Step 2: Type-safety and duplicate gates**
 
 ```bash
 node scripts/npm-run.js run verify:no-explicit-any
@@ -418,7 +418,7 @@ node scripts/npm-run.js run verify:dedupe
 
 Expected: PASS. Invoke `code-deduplication` to verify the shared primitive extraction against unchanged repository capabilities.
 
-- [ ] **Step 3: Typecheck**
+- [x] **Step 3: Typecheck**
 
 ```bash
 node scripts/npm-run.js run typecheck
@@ -426,7 +426,7 @@ node scripts/npm-run.js run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 4: React Doctor**
+- [x] **Step 4: React Doctor**
 
 ```bash
 node scripts/npm-run.js run react-doctor
@@ -436,16 +436,16 @@ Expected: PASS or documented findings limited to pre-existing baseline issues. D
 
 ### Task 10: Review impact and finish the handoff
 
-- [ ] **Step 1: Run Code Review Graph impact analysis for all changed files**
+- [x] **Step 1: Run Code Review Graph impact analysis for all changed files**
   - Confirm the shared extraction affects only Technical Configurations baseline and the new Device Quota draft route.
   - Check that active category CRUD/import and Phase 4 surfaces are not in the changed execution paths.
 
-- [ ] **Step 2: Dispatch `post_implementation_reviewer`**
+- [x] **Step 2: Dispatch `post_implementation_reviewer`** _(Skipped per explicit user instruction; final diff review performed directly.)_
   - Review against the fixed base `14440884669fab0e33ce8520c20fe03a4dd04efb`.
   - Review against `openspec/changes/add-device-quota-draft-catalog/specs/device-quota-category-workspace/spec.md`.
   - Require findings first, with file/line references and explicit Phase 4 scope checks.
 
-- [ ] **Step 3: Inspect the final diff**
+- [x] **Step 3: Inspect the final diff**
 
 ```bash
 git diff --stat 14440884669fab0e33ce8520c20fe03a4dd04efb
@@ -454,10 +454,10 @@ git status --short
 
 Expected: only the planned shared primitives, Technical Configurations adapter changes, Phase 3 Device Quota files, tests, and plan/doc updates are present.
 
-- [ ] **Step 4: Create issues for any deferred work**
+- [x] **Step 4: Create issues for any deferred work**
   - Examples: mobile enablement, publish/approval flow, compliance integration, mapping integration, or broader workspace reuse that is not required for Phase 3.
 
-- [ ] **Step 5: Commit and push only after explicit implementation approval and all gates pass**
+- [x] **Step 5: Commit and push only after explicit implementation approval and all gates pass**
   - Do not apply migrations or write to live Supabase.
   - Follow the repository landing workflow: pull with rebase, push, verify status is up to date, and report exact verification results.
 

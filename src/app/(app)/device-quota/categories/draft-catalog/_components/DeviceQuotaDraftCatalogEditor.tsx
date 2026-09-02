@@ -32,6 +32,7 @@ export type DeviceQuotaDraftCatalogEditorState = {
   isSaving: boolean
   isExcluding: boolean
   isRestoring: boolean
+  isRecovering: boolean
   isReadOnly: boolean
 }
 
@@ -102,8 +103,9 @@ export function DeviceQuotaDraftCatalogEditor({
   onExclude,
   onRestore,
 }: DeviceQuotaDraftCatalogEditorProps): React.JSX.Element {
-  const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isReadOnly } = state
-  const isMutationPending = isSaving || isExcluding || isRestoring
+  const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isRecovering, isReadOnly } =
+    state
+  const isMutationPending = isSaving || isExcluding || isRestoring || isRecovering
   const bodyRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)

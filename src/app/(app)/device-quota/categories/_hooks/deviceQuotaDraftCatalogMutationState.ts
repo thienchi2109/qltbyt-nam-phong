@@ -65,6 +65,7 @@ export function useDeviceQuotaDraftCatalogMutationState() {
   const lockRef = useRef(false)
   const [lastError, setLastError] = useState<DeviceQuotaDraftError | null>(null)
   const [failedAction, setFailedAction] = useState<FailedDraftAction | null>(null)
+  const [isRecovering, setIsRecovering] = useState(false)
 
   const tryLock = useCallback(() => {
     if (lockRef.current) return false
@@ -72,6 +73,16 @@ export function useDeviceQuotaDraftCatalogMutationState() {
     return true
   }, [])
   const unlock = useCallback(() => {
+    lockRef.current = false
+  }, [])
+  const beginRecovery = useCallback(() => {
+    if (lockRef.current) return false
+    lockRef.current = true
+    setIsRecovering(true)
+    return true
+  }, [])
+  const endRecovery = useCallback(() => {
+    setIsRecovering(false)
     lockRef.current = false
   }, [])
   const isLocked = useCallback(() => lockRef.current, [])
@@ -87,8 +98,11 @@ export function useDeviceQuotaDraftCatalogMutationState() {
   return {
     lastError,
     failedAction,
+    isRecovering,
     tryLock,
     unlock,
+    beginRecovery,
+    endRecovery,
     isLocked,
     clearError,
     recordError,

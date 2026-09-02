@@ -135,6 +135,7 @@ const defaultEditorState = {
   isSaving: false,
   isExcluding: false,
   isRestoring: false,
+  isRecovering: false,
   isReadOnly: false,
 }
 
@@ -175,6 +176,7 @@ function makeHookResult(
     isSaving: false,
     isExcluding: false,
     isRestoring: false,
+    isRecovering: false,
     updateItem: vi.fn(),
     save: vi.fn().mockResolvedValue(undefined),
     exclude: vi.fn().mockResolvedValue(undefined),
@@ -270,24 +272,30 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
   })
 
-  it("disables every editor write control while any mutation is pending", () => {
-    const excludedRows = makeRows().map((row) =>
-      row.type === "item" && row.sourceIdentifier === "item-1"
-        ? { ...row, isExcluded: true, completeness: "excluded" as const }
-        : row
-    )
-    renderEditor({
-      rows: excludedRows,
-      state: { ...defaultEditorState, isDirty: true, isExcluding: true },
-    })
-
-    expect(
-      screen.getAllByRole("textbox").every((element) => element.hasAttribute("disabled"))
-    ).toBe(true)
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 2" })).toBeDisabled()
-    expect(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })).toBeDisabled()
-  })
+  it.each(["isSaving", "isExcluding", "isRestoring", "isRecovering"] as const)(
+    "disables every editor write control while %s is pending",
+    (pendingState) => {
+      const excludedRows = makeRows().map((row) =>
+        row.type === "item" && row.sourceIdentifier === "item-1"
+          ? { ...row, isExcluded: true, completeness: "excluded" as const }
+          : row
+      )
+      renderEditor({
+        rows: excludedRows,
+        state: { ...defaultEditorState, isDirty: true, [pendingState]: true },
+      })
+      expect(
+        screen.getAllByRole("textbox").every((element) => element.hasAttribute("disabled"))
+      ).toBe(true)
+      expect(
+        screen.getByRole("button", {
+          name: pendingState === "isSaving" ? "Đang lưu..." : "Lưu",
+        })
+      ).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 2" })).toBeDisabled()
+      expect(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })).toBeDisabled()
+    }
+  )
 
   it("persists exclude and restore immediately while keeping excluded rows visible", () => {
     const onExclude = vi.fn().mockResolvedValue(undefined)

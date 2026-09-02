@@ -46,6 +46,7 @@ export function DeviceQuotaDraftCatalogPageClient({
           isSaving: draft.isSaving,
           isExcluding: draft.isExcluding,
           isRestoring: draft.isRestoring,
+          isRecovering: draft.isRecovering,
           isReadOnly: draft.isReadOnly,
         }}
         onUpdateItem={draft.updateItem}
