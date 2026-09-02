@@ -82,16 +82,6 @@ function buildRenderEntries(rows: DeviceQuotaMergedRow[]): DeviceQuotaDraftCatal
   return entries
 }
 
-const savedAtFormatter = new Intl.DateTimeFormat("vi-VN", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "UTC",
-})
-
-function formatSavedAt(value: string): string {
-  return savedAtFormatter.format(new Date(value))
-}
-
 /** Composes the desktop-only draft catalog workspace from shared hierarchy primitives. */
 export function DeviceQuotaDraftCatalogEditor({
   rows,
@@ -127,10 +117,17 @@ export function DeviceQuotaDraftCatalogEditor({
       },
     }))
 
-  const status = isIncomplete ? (
+  const completionStatus = isIncomplete ? (
     <Badge variant="outline">Chưa hoàn thiện</Badge>
   ) : (
     <Badge variant="secondary">Đã đủ dữ liệu</Badge>
+  )
+  const saveFeedback = isSaving ? (
+    <span className="text-sm font-medium text-amber-700">Đang lưu...</span>
+  ) : isDirty ? (
+    <span className="text-sm font-medium text-amber-700">Chưa lưu</span>
+  ) : (
+    <span className="text-sm font-medium text-emerald-700">Đã lưu</span>
   )
   const leading = (
     <div className="min-w-0">
@@ -140,19 +137,8 @@ export function DeviceQuotaDraftCatalogEditor({
       </p>
     </div>
   )
-  const metadataLine = (
-    <div className="flex flex-wrap gap-x-3 gap-y-1 border-b px-4 py-2 text-xs text-muted-foreground">
-      <span>Trạng thái: {metadata.draftStatus}</span>
-      <span>Snapshot: {metadata.snapshotMarker.slice(0, 12)}</span>
-      <span>Đã lưu: {formatSavedAt(metadata.lastSavedAt)} UTC</span>
-      <span>Revision: {metadata.revision}</span>
-      <span>Chế độ: {metadata.mode === "editable" ? "Chỉnh sửa" : "Xem"}</span>
-    </div>
-  )
-
   return (
     <div className="min-w-0 space-y-3 py-6" data-testid="device-quota-draft-catalog-editor">
-      {metadataLine}
       <HierarchicalEditorWorkspace
         ariaLabel="Trình soạn danh mục định mức dự thảo"
         bodyAriaLabel="Các nhóm thiết bị pháp quy"
@@ -176,13 +162,18 @@ export function DeviceQuotaDraftCatalogEditor({
               className="flex min-h-12 items-center border-y px-3"
             >
               {leading}
-              <div className="ml-auto">{status}</div>
+              <div className="ml-auto">{completionStatus}</div>
             </div>
           ) : (
             <HierarchicalEditorToolbar
               testId="device-quota-draft-catalog-toolbar"
               leading={leading}
-              status={status}
+              status={
+                <div className="flex items-center gap-2">
+                  {completionStatus}
+                  {saveFeedback}
+                </div>
+              }
               saveDisabled={
                 !isDirty || isMutationPending || Object.keys(validationErrors).length > 0
               }

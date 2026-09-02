@@ -33,14 +33,14 @@ changed.
 Boundary: workspace-level presentation only. Existing full-height item rows
 remain in place and continue using their current callbacks.
 
-- [ ] 1.1 Remove the dedicated user-facing technical metadata row containing
+- [x] 1.1 Remove the dedicated user-facing technical metadata row containing
       snapshot, revision, raw draft status, save timestamp, and mode.
-- [ ] 1.2 Consolidate the page title, document/unit context, completion state,
+- [x] 1.2 Consolidate the page title, document/unit context, completion state,
       and concise saved/unsaved/saving feedback into the existing sticky top
       toolbar, which remains visible outside the item scroll region.
-- [ ] 1.3 Preserve the current save callback, disabled conditions, validation
+- [x] 1.3 Preserve the current save callback, disabled conditions, validation
       guard, pending state, and independent item scroll region.
-- [ ] 1.4 Add focused `user-event` tests for technical metadata removal and the
+- [x] 1.4 Add focused `user-event` tests for technical metadata removal and the
       toolbar save states without changing item-editing semantics.
 
 Exit criteria: the header is compact and deployable with the existing item

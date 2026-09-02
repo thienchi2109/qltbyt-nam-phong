@@ -195,13 +195,19 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     Element.prototype.scrollIntoView = vi.fn()
   })
 
-  it("renders source metadata and all 42 rows in five navigable sections", async () => {
+  it("renders workspace context without exposing technical metadata", async () => {
     const user = userEvent.setup()
     renderEditor()
 
     expect(screen.getByText(/10\/2026\/TT-BYT/)).toBeInTheDocument()
-    expect(screen.getByText(/abc123def456/)).toBeInTheDocument()
     expect(screen.getByText(/Đơn vị 23 ·/)).toBeInTheDocument()
+    expect(screen.getByText("Đã lưu")).toBeInTheDocument()
+    expect(screen.getByText("Chưa hoàn thiện")).toBeInTheDocument()
+    expect(screen.queryByText(/abc123def456/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Revision: 4/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Trạng thái: draft/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Chế độ: Chỉnh sửa/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Đã lưu: /)).not.toBeInTheDocument()
     expect(screen.getAllByTestId(/^device-quota-catalog-row-/)).toHaveLength(37)
     expect(screen.getAllByTestId(/^device-quota-catalog-section-/)).toHaveLength(5)
     expect(screen.getAllByTestId(/^device-quota-catalog-(row|section)-/).length).toBe(42)
@@ -219,6 +225,25 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
     expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Mở rộng Nhóm 1" })).toBeInTheDocument()
+  })
+
+  it.each([
+    { state: { ...defaultEditorState }, feedback: "Đã lưu", buttonName: "Lưu" },
+    {
+      state: { ...defaultEditorState, isDirty: true },
+      feedback: "Chưa lưu",
+      buttonName: "Lưu",
+    },
+    {
+      state: { ...defaultEditorState, isDirty: true, isSaving: true },
+      feedback: "Đang lưu...",
+      buttonName: "Đang lưu...",
+    },
+  ])("shows $feedback in the workspace toolbar", ({ state, feedback, buttonName }) => {
+    renderEditor({ state })
+
+    expect(screen.getByTestId("device-quota-draft-catalog-toolbar")).toHaveTextContent(feedback)
+    expect(screen.getByRole("button", { name: buttonName })).toBeInTheDocument()
   })
 
   it("keeps regulatory values read-only and stages ordinary edits until Save", async () => {
