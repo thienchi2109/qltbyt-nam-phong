@@ -103,6 +103,7 @@ export function DeviceQuotaDraftCatalogEditor({
   onRestore,
 }: DeviceQuotaDraftCatalogEditorProps): React.JSX.Element {
   const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isReadOnly } = state
+  const isMutationPending = isSaving || isExcluding || isRestoring
   const bodyRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
@@ -180,7 +181,9 @@ export function DeviceQuotaDraftCatalogEditor({
               testId="device-quota-draft-catalog-toolbar"
               leading={leading}
               status={status}
-              saveDisabled={!isDirty || Object.keys(validationErrors).length > 0}
+              saveDisabled={
+                !isDirty || isMutationPending || Object.keys(validationErrors).length > 0
+              }
               isSaving={isSaving}
               onSave={() => void onSave()}
             />
@@ -195,8 +198,7 @@ export function DeviceQuotaDraftCatalogEditor({
               items={entry.items}
               validationErrors={validationErrors}
               isReadOnly={isReadOnly}
-              isExcluding={isExcluding}
-              isRestoring={isRestoring}
+              isMutationPending={isMutationPending}
               onUpdate={onUpdateItem}
               onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
               onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
@@ -211,8 +213,7 @@ export function DeviceQuotaDraftCatalogEditor({
               row={entry.item}
               validationMessage={validationErrors[entry.item.sourceIdentifier]}
               isReadOnly={isReadOnly}
-              isExcluding={isExcluding}
-              isRestoring={isRestoring}
+              isMutationPending={isMutationPending}
               onUpdate={onUpdateItem}
               onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
               onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}

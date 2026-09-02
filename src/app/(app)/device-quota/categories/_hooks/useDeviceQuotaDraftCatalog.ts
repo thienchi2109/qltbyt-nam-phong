@@ -4,15 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { isEquipmentManagerRole } from "@/lib/rbac"
-import type {
-  DeviceQuotaDraftItem,
-  DeviceQuotaDraftSaveItem,
-} from "@/lib/device-quota-draft-contract"
+import type { DeviceQuotaDraftItem } from "@/lib/device-quota-draft-contract"
 import {
   DeviceQuotaDraftError,
   excludeDeviceQuotaDraftItem,
-  normalizeDeviceQuotaDraftError,
   restoreDeviceQuotaDraftItem,
   saveDeviceQuotaDraft,
 } from "../_components/DeviceQuotaDraftCatalogMutations"
@@ -35,45 +30,18 @@ import type {
   DeviceQuotaMergedItemRow,
   DeviceQuotaMergedRow,
 } from "../draft-catalog/device-quota-draft-catalog-types"
-
-type DraftStatus = "blocked" | "loading" | "ready" | "conflict" | "error" | "unavailable"
-type FailedDraftAction =
-  { type: "save" } | { type: "item"; sourceIdentifier: string; excluded: boolean }
-
-function toSessionUnitId(
-  user: { current_don_vi?: number | string | null; don_vi?: number | string | null } | undefined
-) {
-  const value = user?.current_don_vi ?? user?.don_vi
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN
-  return Number.isInteger(parsed) && parsed > 0 ? parsed : null
-}
-
-function isSupportedRole(role: string | undefined): boolean {
-  return isEquipmentManagerRole(role)
-}
-
-function toDraftSaveItem(item: DeviceQuotaDraftItem): DeviceQuotaDraftSaveItem {
-  return {
-    regulatory_item_id: item.regulatory_item_id,
-    display_name_override: item.display_name_override,
-    applied_unit: item.applied_unit,
-    applied_quantity: item.applied_quantity,
-    notes: item.notes,
-    is_excluded: item.is_excluded,
-    display_order: item.display_order,
-  }
-}
-
-function getQuantityError(item: DeviceQuotaDraftItem): string | null {
-  if (item.applied_quantity == null) return null
-  if (!Number.isInteger(item.applied_quantity)) return "Số lượng phải là số nguyên."
-  if (item.applied_quantity < 0) return "Số lượng không được âm."
-  return null
-}
-
-function mapMutationError(error: unknown): DeviceQuotaDraftError {
-  return error instanceof DeviceQuotaDraftError ? error : normalizeDeviceQuotaDraftError(error)
-}
+import {
+  type DeviceQuotaDraftCatalogStatus,
+  isDeviceQuotaDraftCatalogRoleSupported,
+  toDeviceQuotaDraftCatalogUnitId,
+} from "./deviceQuotaDraftCatalogAccess"
+import {
+  getQuantityError,
+  mapMutationError,
+  mergeStagedItemValues,
+  toDraftSaveItem,
+  useDeviceQuotaDraftCatalogMutationState,
+} from "./deviceQuotaDraftCatalogMutationState"
 
 /** Orchestrates session-scoped draft/catalog queries and CAS-protected mutations. */
 export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEditorMode } = {}) {
@@ -82,16 +50,18 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
   const user = session?.user
   const userId = user?.id != null ? String(user.id) : null
   const role = typeof user?.role === "string" ? user.role : undefined
-  const donViId = toSessionUnitId(user)
+  const donViId = toDeviceQuotaDraftCatalogUnitId(user)
   const canAccess =
-    sessionStatus === "authenticated" && !!userId && isSupportedRole(role) && donViId != null
+    sessionStatus === "authenticated" &&
+    !!userId &&
+    isDeviceQuotaDraftCatalogRoleSupported(role) &&
+    donViId != null
   const queryClient = useQueryClient()
   const [localItems, setLocalItems] = useState<DeviceQuotaDraftItem[] | null>(null)
   const [localRevision, setLocalRevision] = useState<number | null>(null)
   const [localDraftId, setLocalDraftId] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
-  const [lastError, setLastError] = useState<DeviceQuotaDraftError | null>(null)
-  const [failedAction, setFailedAction] = useState<FailedDraftAction | null>(null)
+  const mutationState = useDeviceQuotaDraftCatalogMutationState()
 
   const openDraftQuery = useQuery({
     queryKey: [...deviceQuotaDraftCatalogQueryKey(donViId, userId), "open"] as const,
@@ -160,8 +130,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       setLocalItems(result.items)
       setLocalRevision(result.revision)
       setIsDirty(false)
-      setLastError(null)
-      setFailedAction(null)
+      mutationState.clearError()
       queryClient.setQueryData(
         [...deviceQuotaDraftCatalogQueryKey(donViId, userId), result.id],
         result
@@ -182,8 +151,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       ])
     },
     onError: (error) => {
-      setLastError(mapMutationError(error))
-      setFailedAction({ type: "save" })
+      mutationState.recordError(error, { type: "save" })
     },
   })
 
@@ -204,26 +172,11 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       return { snapshot, stagedItems }
     },
     onSuccess: async ({ snapshot, stagedItems }) => {
-      const nextItems = snapshot.items.map((serverItem) => {
-        const stagedItem = stagedItems?.find(
-          (candidate) => candidate.source_identifier === serverItem.source_identifier
-        )
-        return stagedItem
-          ? {
-              ...serverItem,
-              display_name_override: stagedItem.display_name_override,
-              applied_unit: stagedItem.applied_unit,
-              applied_quantity: stagedItem.applied_quantity,
-              notes: stagedItem.notes,
-              display_order: stagedItem.display_order,
-            }
-          : serverItem
-      })
+      const nextItems = mergeStagedItemValues(snapshot.items, stagedItems)
       setLocalItems(nextItems)
       setLocalRevision(snapshot.revision)
       setIsDirty(stagedItems != null)
-      setLastError(null)
-      setFailedAction(null)
+      mutationState.clearError()
       queryClient.setQueryData(
         [...deviceQuotaDraftCatalogQueryKey(donViId, userId), snapshot.id],
         snapshot
@@ -234,14 +187,13 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       })
     },
     onError: (error, variables) => {
-      setLastError(mapMutationError(error))
-      setFailedAction({ type: "item", ...variables })
+      mutationState.recordError(error, { type: "item", ...variables })
     },
   })
 
   const updateItem = useCallback(
     (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => {
-      if (mode !== "editable") return
+      if (mode !== "editable" || mutationState.isLocked()) return
       setLocalItems((current) =>
         (current ?? items).map((item) =>
           item.source_identifier === sourceIdentifier
@@ -262,9 +214,10 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
         )
       )
       setIsDirty(true)
-      setLastError(null)
+      mutationState.setLastError(null)
+      mutationState.setFailedAction(null)
     },
-    [items, mode]
+    [items, mode, mutationState]
   )
 
   const rows = useMemo(
@@ -275,24 +228,49 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     [catalogQuery.data, draftQuery.data, items, mode]
   )
 
-  const save = useCallback(() => saveMutation.mutateAsync(), [saveMutation])
+  const save = useCallback(() => {
+    if (!mutationState.tryLock()) return Promise.resolve(undefined)
+    return saveMutation.mutateAsync().finally(mutationState.unlock)
+  }, [mutationState, saveMutation])
   const exclude = useCallback(
-    (sourceIdentifier: string) => itemMutation.mutateAsync({ sourceIdentifier, excluded: true }),
-    [itemMutation]
+    (sourceIdentifier: string) => {
+      if (!mutationState.tryLock()) return Promise.resolve(undefined)
+      return itemMutation
+        .mutateAsync({ sourceIdentifier, excluded: true })
+        .finally(mutationState.unlock)
+    },
+    [itemMutation, mutationState]
   )
   const restore = useCallback(
-    (sourceIdentifier: string) => itemMutation.mutateAsync({ sourceIdentifier, excluded: false }),
-    [itemMutation]
+    (sourceIdentifier: string) => {
+      if (!mutationState.tryLock()) return Promise.resolve(undefined)
+      return itemMutation
+        .mutateAsync({ sourceIdentifier, excluded: false })
+        .finally(mutationState.unlock)
+    },
+    [itemMutation, mutationState]
   )
   const queryError = openDraftQuery.error ?? draftQuery.error ?? catalogQuery.error
   const normalizedQueryError = queryError ? mapMutationError(queryError) : null
   const retry = useCallback(async () => {
-    if (failedAction?.type === "save") {
-      await saveMutation.mutateAsync()
+    if (mutationState.lastError?.kind === "conflict") {
+      const result = await draftQuery.refetch()
+      if (result.data) {
+        setLocalDraftId(result.data.id)
+        setLocalItems(result.data.items)
+        setLocalRevision(result.data.revision)
+        setIsDirty(false)
+        mutationState.clearError()
+      }
       return
     }
-    if (failedAction?.type === "item") {
-      await itemMutation.mutateAsync(failedAction)
+    if (mutationState.failedAction?.type === "save") {
+      await save()
+      return
+    }
+    if (mutationState.failedAction?.type === "item") {
+      const { sourceIdentifier, excluded } = mutationState.failedAction
+      await (excluded ? exclude(sourceIdentifier) : restore(sourceIdentifier))
       return
     }
     if (openDraftQuery.error) {
@@ -304,15 +282,16 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       return
     }
     if (catalogQuery.error) await catalogQuery.refetch()
-  }, [catalogQuery, draftQuery, failedAction, itemMutation, openDraftQuery, saveMutation])
+  }, [catalogQuery, draftQuery, exclude, mutationState, openDraftQuery, restore, save])
 
-  const status: DraftStatus = !canAccess
+  const status: DeviceQuotaDraftCatalogStatus = !canAccess
     ? "blocked"
-    : lastError?.kind === "conflict"
+    : mutationState.lastError?.kind === "conflict"
       ? "conflict"
-      : lastError?.kind === "unavailable" || normalizedQueryError?.kind === "unavailable"
+      : mutationState.lastError?.kind === "unavailable" ||
+          normalizedQueryError?.kind === "unavailable"
         ? "unavailable"
-        : queryError || lastError
+        : queryError || mutationState.lastError
           ? "error"
           : openDraftQuery.isPending ||
               (openDraftQuery.data != null && draftQuery.isPending) ||
@@ -329,8 +308,9 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
         : ([] as DeviceQuotaMergedRow[]),
     validationErrors,
     errorMessage:
-      lastError?.message ?? (normalizedQueryError ? normalizedQueryError.message : null),
-    canRetry: !!failedAction || !!queryError || !!lastError,
+      mutationState.lastError?.message ??
+      (normalizedQueryError ? normalizedQueryError.message : null),
+    canRetry: !!mutationState.failedAction || !!queryError || !!mutationState.lastError,
     retry,
     canAccess,
     isReadOnly: mode === "readonly",

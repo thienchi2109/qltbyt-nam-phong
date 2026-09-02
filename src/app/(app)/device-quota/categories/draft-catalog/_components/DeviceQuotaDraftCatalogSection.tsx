@@ -17,8 +17,7 @@ type DeviceQuotaDraftCatalogSectionProps = {
   items: DeviceQuotaMergedItemRow[]
   validationErrors: Record<string, string>
   isReadOnly: boolean
-  isExcluding: boolean
-  isRestoring: boolean
+  isMutationPending: boolean
   onUpdate: (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => void
   onExclude: (sourceIdentifier: string) => void
   onRestore: (sourceIdentifier: string) => void
@@ -31,8 +30,7 @@ export function DeviceQuotaDraftCatalogSection({
   items,
   validationErrors,
   isReadOnly,
-  isExcluding,
-  isRestoring,
+  isMutationPending,
   onUpdate,
   onExclude,
   onRestore,
@@ -74,8 +72,7 @@ export function DeviceQuotaDraftCatalogSection({
           row={item}
           validationMessage={validationErrors[item.sourceIdentifier]}
           isReadOnly={isReadOnly}
-          isExcluding={isExcluding}
-          isRestoring={isRestoring}
+          isMutationPending={isMutationPending}
           onUpdate={onUpdate}
           onExclude={onExclude}
           onRestore={onRestore}

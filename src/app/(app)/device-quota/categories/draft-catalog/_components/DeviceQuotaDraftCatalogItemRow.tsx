@@ -16,8 +16,7 @@ type DeviceQuotaDraftCatalogItemRowProps = {
   row: DeviceQuotaMergedItemRow
   validationMessage?: string
   isReadOnly: boolean
-  isExcluding: boolean
-  isRestoring: boolean
+  isMutationPending: boolean
   onUpdate: (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => void
   onExclude: (sourceIdentifier: string) => void
   onRestore: (sourceIdentifier: string) => void
@@ -33,8 +32,7 @@ export function DeviceQuotaDraftCatalogItemRow({
   row,
   validationMessage,
   isReadOnly,
-  isExcluding,
-  isRestoring,
+  isMutationPending,
   onUpdate,
   onExclude,
   onRestore,
@@ -63,7 +61,7 @@ export function DeviceQuotaDraftCatalogItemRow({
               type="button"
               variant="outline"
               size="sm"
-              disabled={isRestoring}
+              disabled={isMutationPending}
               onClick={() => onRestore(row.sourceIdentifier)}
             >
               <RotateCcw className="size-4" />
@@ -74,7 +72,7 @@ export function DeviceQuotaDraftCatalogItemRow({
               type="button"
               variant="ghost"
               size="sm"
-              disabled={isExcluding}
+              disabled={isMutationPending}
               onClick={() => onExclude(row.sourceIdentifier)}
             >
               <SquareMinus className="size-4" />
@@ -100,6 +98,7 @@ export function DeviceQuotaDraftCatalogItemRow({
           ) : (
             <Input
               id={displayNameId}
+              disabled={isMutationPending}
               value={row.displayNameOverride ?? ""}
               placeholder="Mặc định theo tên Thông tư"
               onChange={(event) =>
@@ -126,6 +125,7 @@ export function DeviceQuotaDraftCatalogItemRow({
           ) : (
             <Input
               id={appliedUnitId}
+              disabled={isMutationPending}
               value={row.appliedUnit ?? ""}
               placeholder={row.regulatoryUnit || "Nhập đơn vị áp dụng"}
               onChange={(event) =>
@@ -157,6 +157,7 @@ export function DeviceQuotaDraftCatalogItemRow({
               type="number"
               min="0"
               step="1"
+              disabled={isMutationPending}
               value={row.appliedQuantity ?? ""}
               aria-invalid={!!validationMessage}
               aria-describedby={validationMessage ? `${quantityId}-error` : undefined}
@@ -190,6 +191,7 @@ export function DeviceQuotaDraftCatalogItemRow({
           ) : (
             <Textarea
               id={notesId}
+              disabled={isMutationPending}
               value={row.notes ?? ""}
               rows={1}
               onChange={(event) =>

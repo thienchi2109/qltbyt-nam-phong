@@ -218,7 +218,10 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
   })
 
   it("keeps regulatory values read-only and stages ordinary edits until Save", () => {
-    const { props } = renderEditor({ state: { ...defaultEditorState, isDirty: true } })
+    const { props } = renderEditor({
+      rows: [makeItem(1, 1)],
+      state: { ...defaultEditorState, isDirty: true },
+    })
     const firstRow = screen.getByTestId("device-quota-catalog-row-item-1")
 
     expect(screen.queryByRole("textbox", { name: "Tên theo Thông tư" })).not.toBeInTheDocument()
@@ -265,6 +268,25 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
 
     expect(screen.getByText("Số lượng phải là số nguyên không âm.")).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
+  })
+
+  it("disables every editor write control while any mutation is pending", () => {
+    const excludedRows = makeRows().map((row) =>
+      row.type === "item" && row.sourceIdentifier === "item-1"
+        ? { ...row, isExcluded: true, completeness: "excluded" as const }
+        : row
+    )
+    renderEditor({
+      rows: excludedRows,
+      state: { ...defaultEditorState, isDirty: true, isExcluding: true },
+    })
+
+    expect(
+      screen.getAllByRole("textbox").every((element) => element.hasAttribute("disabled"))
+    ).toBe(true)
+    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 2" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })).toBeDisabled()
   })
 
   it("persists exclude and restore immediately while keeping excluded rows visible", () => {
