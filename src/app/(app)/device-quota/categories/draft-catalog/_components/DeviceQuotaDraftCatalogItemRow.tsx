@@ -39,7 +39,7 @@ export function DeviceQuotaDraftCatalogItemRow({
   onExclude,
   onRestore,
 }: DeviceQuotaDraftCatalogItemRowProps): React.JSX.Element {
-  const itemName = row.name
+  const itemName = row.regulatoryName
   const quantityId = `device-quota-quantity-${row.sourceIdentifier}`
   const appliedUnitId = `device-quota-applied-unit-${row.sourceIdentifier}`
   const notesId = `device-quota-notes-${row.sourceIdentifier}`
@@ -54,7 +54,7 @@ export function DeviceQuotaDraftCatalogItemRow({
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-medium">{row.displayName}</h3>
+          <h3 className="font-medium">{row.regulatoryName}</h3>
           <p className="text-xs leading-5 text-muted-foreground">{sourceMetadata(row)}</p>
         </div>
         {!isReadOnly ? (
@@ -86,9 +86,13 @@ export function DeviceQuotaDraftCatalogItemRow({
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_10rem_10rem_minmax(0,1fr)]">
         <div className="space-y-1">
-          <label htmlFor={displayNameId} className="text-sm font-medium">
-            Tên hiển thị tại đơn vị - {itemName}
-          </label>
+          {isReadOnly || row.isExcluded ? (
+            <span className="text-sm font-medium">Tên hiển thị tại đơn vị - {itemName}</span>
+          ) : (
+            <label htmlFor={displayNameId} className="text-sm font-medium">
+              Tên hiển thị tại đơn vị - {itemName}
+            </label>
+          )}
           {isReadOnly || row.isExcluded ? (
             <p className="min-h-9 rounded-md border bg-muted/30 px-3 py-2 text-sm">
               {row.displayNameOverride || "Mặc định theo tên Thông tư"}
@@ -108,9 +112,13 @@ export function DeviceQuotaDraftCatalogItemRow({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor={appliedUnitId} className="text-sm font-medium">
-            Đơn vị áp dụng tại đơn vị - {itemName}
-          </label>
+          {isReadOnly || row.isExcluded ? (
+            <span className="text-sm font-medium">Đơn vị áp dụng tại đơn vị - {itemName}</span>
+          ) : (
+            <label htmlFor={appliedUnitId} className="text-sm font-medium">
+              Đơn vị áp dụng tại đơn vị - {itemName}
+            </label>
+          )}
           {isReadOnly || row.isExcluded ? (
             <p className="min-h-9 rounded-md border bg-muted/30 px-3 py-2 text-sm">
               {row.appliedUnit || "Chưa nhập"}
@@ -130,9 +138,15 @@ export function DeviceQuotaDraftCatalogItemRow({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor={quantityId} className="text-sm font-medium">
-            Số lượng đề xuất trong bản nháp - {itemName}
-          </label>
+          {isReadOnly || row.isExcluded ? (
+            <span className="text-sm font-medium">
+              Số lượng đề xuất trong bản nháp - {itemName}
+            </span>
+          ) : (
+            <label htmlFor={quantityId} className="text-sm font-medium">
+              Số lượng đề xuất trong bản nháp - {itemName}
+            </label>
+          )}
           {isReadOnly || row.isExcluded ? (
             <p className="min-h-9 rounded-md border bg-muted/30 px-3 py-2 text-sm">
               {row.appliedQuantity ?? "Chưa nhập"}
@@ -162,9 +176,13 @@ export function DeviceQuotaDraftCatalogItemRow({
         </div>
 
         <div className="space-y-1">
-          <label htmlFor={notesId} className="text-sm font-medium">
-            Ghi chú - {itemName}
-          </label>
+          {isReadOnly || row.isExcluded ? (
+            <span className="text-sm font-medium">Ghi chú - {itemName}</span>
+          ) : (
+            <label htmlFor={notesId} className="text-sm font-medium">
+              Ghi chú - {itemName}
+            </label>
+          )}
           {isReadOnly || row.isExcluded ? (
             <p className="min-h-9 rounded-md border bg-muted/30 px-3 py-2 text-sm">
               {row.notes || "Không có"}

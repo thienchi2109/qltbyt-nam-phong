@@ -13,33 +13,46 @@ export function DeviceQuotaDraftCatalogPageClient({
   const draft = useDeviceQuotaDraftCatalog({ mode })
   const metadata = draft.metadata
   const unitId = metadata?.unitId
+  const hasLoadedEditor = metadata && typeof unitId === "number"
 
-  if (draft.status !== "ready" || !metadata || typeof unitId !== "number") {
+  if (!hasLoadedEditor) {
     return (
       <DeviceQuotaDraftCatalogStates
         status={draft.status === "ready" ? "loading" : draft.status}
         hasUnit={draft.donViId != null}
         errorMessage={draft.errorMessage}
-        onRetry={draft.status === "error" && draft.canRetry ? () => void draft.save() : undefined}
+        onRetry={draft.canRetry ? () => void draft.retry() : undefined}
       />
     )
   }
 
   return (
-    <DeviceQuotaDraftCatalogEditor
-      rows={draft.rows}
-      metadata={{ ...metadata, unitId }}
-      validationErrors={draft.validationErrors}
-      isDirty={draft.isDirty}
-      isIncomplete={draft.isIncomplete}
-      isSaving={draft.isSaving}
-      isExcluding={draft.isExcluding}
-      isRestoring={draft.isRestoring}
-      isReadOnly={draft.isReadOnly}
-      onUpdateItem={draft.updateItem}
-      onSave={draft.save}
-      onExclude={draft.exclude}
-      onRestore={draft.restore}
-    />
+    <>
+      {draft.status !== "ready" ? (
+        <DeviceQuotaDraftCatalogStates
+          status={draft.status}
+          hasUnit={draft.donViId != null}
+          errorMessage={draft.errorMessage}
+          onRetry={draft.canRetry ? () => void draft.retry() : undefined}
+        />
+      ) : null}
+      <DeviceQuotaDraftCatalogEditor
+        rows={draft.rows}
+        metadata={{ ...metadata, unitId }}
+        validationErrors={draft.validationErrors}
+        state={{
+          isDirty: draft.isDirty,
+          isIncomplete: draft.isIncomplete,
+          isSaving: draft.isSaving,
+          isExcluding: draft.isExcluding,
+          isRestoring: draft.isRestoring,
+          isReadOnly: draft.isReadOnly,
+        }}
+        onUpdateItem={draft.updateItem}
+        onSave={draft.save}
+        onExclude={draft.exclude}
+        onRestore={draft.restore}
+      />
+    </>
   )
 }

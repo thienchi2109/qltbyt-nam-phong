@@ -12,6 +12,7 @@ import type {
   DeviceQuotaMergedItemRow,
   DeviceQuotaMergedRow,
 } from "../device-quota-draft-catalog-types"
+import { DeviceQuotaDraftCatalogItemRow } from "./DeviceQuotaDraftCatalogItemRow"
 import { DeviceQuotaDraftCatalogSection } from "./DeviceQuotaDraftCatalogSection"
 
 export type DeviceQuotaDraftCatalogEditorMetadata = {
@@ -25,45 +26,69 @@ export type DeviceQuotaDraftCatalogEditorMetadata = {
   mode: "editable" | "readonly"
 }
 
-type DeviceQuotaDraftCatalogEditorProps = {
-  rows: DeviceQuotaMergedRow[]
-  metadata: DeviceQuotaDraftCatalogEditorMetadata
-  validationErrors: Record<string, string>
+export type DeviceQuotaDraftCatalogEditorState = {
   isDirty: boolean
   isIncomplete: boolean
   isSaving: boolean
   isExcluding: boolean
   isRestoring: boolean
   isReadOnly: boolean
+}
+
+type DeviceQuotaDraftCatalogEditorProps = {
+  rows: DeviceQuotaMergedRow[]
+  metadata: DeviceQuotaDraftCatalogEditorMetadata
+  validationErrors: Record<string, string>
+  state: DeviceQuotaDraftCatalogEditorState
   onUpdateItem: (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => void
   onSave: () => Promise<unknown>
   onExclude: (sourceIdentifier: string) => Promise<unknown>
   onRestore: (sourceIdentifier: string) => Promise<unknown>
 }
 
-function groupRows(rows: DeviceQuotaMergedRow[]) {
-  const groups: Array<{
-    section: Extract<DeviceQuotaMergedRow, { type: "section" }>
-    items: DeviceQuotaMergedItemRow[]
-  }> = []
-  for (const row of rows) {
-    if (row.type === "section") groups.push({ section: row, items: [] })
-    else {
-      const group = groups.find(
-        (candidate) => candidate.section.sourceIdentifier === row.parentSourceIdentifier
-      )
-      ;(group ?? groups.at(-1))?.items.push(row)
+type DeviceQuotaDraftCatalogRenderEntry =
+  | {
+      type: "section"
+      section: Extract<DeviceQuotaMergedRow, { type: "section" }>
+      items: DeviceQuotaMergedItemRow[]
+    }
+  | { type: "item"; item: DeviceQuotaMergedItemRow }
+
+function buildRenderEntries(rows: DeviceQuotaMergedRow[]): DeviceQuotaDraftCatalogRenderEntry[] {
+  const orderedRows = rows.slice().sort((left, right) => left.sourceOrder - right.sourceOrder)
+  const groups = new Map<string, Extract<DeviceQuotaDraftCatalogRenderEntry, { type: "section" }>>()
+
+  for (const row of orderedRows) {
+    if (row.type === "section") {
+      groups.set(row.sourceIdentifier, { type: "section", section: row, items: [] })
     }
   }
-  return groups
+
+  const entries: DeviceQuotaDraftCatalogRenderEntry[] = []
+  for (const row of orderedRows) {
+    if (row.type === "section") {
+      const group = groups.get(row.sourceIdentifier)
+      if (group) entries.push(group)
+      continue
+    }
+
+    const group =
+      row.parentSourceIdentifier == null ? undefined : groups.get(row.parentSourceIdentifier)
+    if (group) group.items.push(row)
+    else entries.push({ type: "item", item: row })
+  }
+
+  return entries
 }
 
+const savedAtFormatter = new Intl.DateTimeFormat("vi-VN", {
+  dateStyle: "short",
+  timeStyle: "short",
+  timeZone: "UTC",
+})
+
 function formatSavedAt(value: string): string {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "UTC",
-  }).format(new Date(value))
+  return savedAtFormatter.format(new Date(value))
 }
 
 /** Composes the desktop-only draft catalog workspace from shared hierarchy primitives. */
@@ -71,32 +96,33 @@ export function DeviceQuotaDraftCatalogEditor({
   rows,
   metadata,
   validationErrors,
-  isDirty,
-  isIncomplete,
-  isSaving,
-  isExcluding,
-  isRestoring,
-  isReadOnly,
+  state,
   onUpdateItem,
   onSave,
   onExclude,
   onRestore,
 }: DeviceQuotaDraftCatalogEditorProps): React.JSX.Element {
+  const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isReadOnly } = state
   const bodyRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
-  const groups = useMemo(() => groupRows(rows), [rows])
-  const sections = groups.map(({ section, items }) => ({
-    key: section.sourceIdentifier,
-    label: section.name,
-    ordinal: section.sourceLabel,
-    summary: `${items.length}`,
-    targetRef: {
-      get current() {
-        return sectionRefs.current.get(section.sourceIdentifier) ?? null
+  const entries = useMemo(() => buildRenderEntries(rows), [rows])
+  const sections = entries
+    .filter(
+      (entry): entry is Extract<DeviceQuotaDraftCatalogRenderEntry, { type: "section" }> =>
+        entry.type === "section"
+    )
+    .map(({ section, items }) => ({
+      key: section.sourceIdentifier,
+      label: section.name,
+      ordinal: section.sourceLabel,
+      summary: `${items.length}`,
+      targetRef: {
+        get current() {
+          return sectionRefs.current.get(section.sourceIdentifier) ?? null
+        },
       },
-    },
-  }))
+    }))
 
   const status = isIncomplete ? (
     <Badge variant="outline">Chưa hoàn thiện</Badge>
@@ -161,24 +187,38 @@ export function DeviceQuotaDraftCatalogEditor({
           )
         }
       >
-        {groups.map(({ section, items }) => (
-          <DeviceQuotaDraftCatalogSection
-            key={section.sourceIdentifier}
-            section={section}
-            items={items}
-            validationErrors={validationErrors}
-            isReadOnly={isReadOnly}
-            isExcluding={isExcluding}
-            isRestoring={isRestoring}
-            onUpdate={onUpdateItem}
-            onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
-            onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
-            sectionRef={(element) => {
-              if (element) sectionRefs.current.set(section.sourceIdentifier, element)
-              else sectionRefs.current.delete(section.sourceIdentifier)
-            }}
-          />
-        ))}
+        {entries.map((entry) =>
+          entry.type === "section" ? (
+            <DeviceQuotaDraftCatalogSection
+              key={entry.section.sourceIdentifier}
+              section={entry.section}
+              items={entry.items}
+              validationErrors={validationErrors}
+              isReadOnly={isReadOnly}
+              isExcluding={isExcluding}
+              isRestoring={isRestoring}
+              onUpdate={onUpdateItem}
+              onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
+              onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
+              sectionRef={(element) => {
+                if (element) sectionRefs.current.set(entry.section.sourceIdentifier, element)
+                else sectionRefs.current.delete(entry.section.sourceIdentifier)
+              }}
+            />
+          ) : (
+            <DeviceQuotaDraftCatalogItemRow
+              key={entry.item.sourceIdentifier}
+              row={entry.item}
+              validationMessage={validationErrors[entry.item.sourceIdentifier]}
+              isReadOnly={isReadOnly}
+              isExcluding={isExcluding}
+              isRestoring={isRestoring}
+              onUpdate={onUpdateItem}
+              onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
+              onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
+            />
+          )
+        )}
       </HierarchicalEditorWorkspace>
     </div>
   )

@@ -102,7 +102,7 @@ function rpcSequence() {
 
 describe("useDeviceQuotaDraftCatalog", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
   })
 
   it.each(["global", "admin", "to_qltb"])(
@@ -245,6 +245,43 @@ describe("useDeviceQuotaDraftCatalog", () => {
     expect(rendered.result.current.errorMessage).toMatch(/thay đổi|tải lại/i)
   })
 
+  it("reports draft-open failures and retries the query", async () => {
+    setup("to_qltb")
+    mockCallRpc
+      .mockRejectedValueOnce(new Error("draft open failed"))
+      .mockResolvedValueOnce({ data: draft })
+      .mockResolvedValueOnce({ data: draft })
+      .mockResolvedValueOnce(catalog)
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("error"))
+    expect(rendered.result.current.canRetry).toBe(true)
+
+    await act(async () => {
+      await rendered.result.current.retry()
+    })
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+    expect(mockCallRpc).toHaveBeenCalledTimes(4)
+  })
+
+  it("classifies unavailable catalog snapshots as the unavailable state", async () => {
+    setup("to_qltb")
+    mockCallRpc
+      .mockResolvedValueOnce({ data: draft })
+      .mockResolvedValueOnce({ data: draft })
+      .mockRejectedValueOnce(new Error("canonical snapshot unavailable"))
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+
+    await waitFor(() => expect(rendered.result.current.status).toBe("unavailable"))
+    expect(rendered.result.current.errorMessage).toMatch(/chưa sẵn sàng/i)
+  })
+
   it("keeps the previous row state when exclude fails and exposes retry", async () => {
     setup("to_qltb")
     rpcSequence()
@@ -263,6 +300,44 @@ describe("useDeviceQuotaDraftCatalog", () => {
 
     expect(rendered.result.current.rows[0]?.isExcluded).toBe(false)
     await waitFor(() => expect(rendered.result.current.canRetry).toBe(true))
+    expect(mockCallRpc).toHaveBeenLastCalledWith({
+      fn: "device_quota_unit_catalog_draft_exclude",
+      args: {
+        p_draft_id: "draft-1",
+        p_regulatory_item_id: "regulatory-1",
+        p_expected_revision: 3,
+      },
+    })
+  })
+
+  it("retries a failed exclude with the exclude mutation", async () => {
+    setup("to_qltb")
+    rpcSequence()
+    mockCallRpc.mockRejectedValueOnce(new Error("exclude denied")).mockResolvedValueOnce({
+      data: {
+        ...draft,
+        draft: { ...draft.draft, revision: 4 },
+        items: [{ ...draft.items[0], is_excluded: true }],
+      },
+    })
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+
+    await expect(
+      act(async () => {
+        await rendered.result.current.exclude("item-1")
+      })
+    ).rejects.toThrow()
+
+    await waitFor(() => expect(rendered.result.current.canRetry).toBe(true))
+    await act(async () => {
+      await rendered.result.current.retry()
+    })
+
+    await waitFor(() => expect(rendered.result.current.rows[0]?.isExcluded).toBe(true))
     expect(mockCallRpc).toHaveBeenLastCalledWith({
       fn: "device_quota_unit_catalog_draft_exclude",
       args: {

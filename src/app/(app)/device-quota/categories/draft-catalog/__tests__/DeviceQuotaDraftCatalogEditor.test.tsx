@@ -88,6 +88,22 @@ function makeItem(index: number, sectionIndex: number): DeviceQuotaMergedItemRow
   }
 }
 
+function makeTopLevelItem(): DeviceQuotaMergedItemRow {
+  return {
+    ...makeItem(99, 1),
+    id: "top-level-item",
+    sourceIdentifier: "top-level-item",
+    sourceLabel: "2",
+    parentSourceIdentifier: null,
+    level: 0,
+    name: "Thiết bị pháp quy gốc",
+    displayName: "Tên hiển thị tùy chỉnh",
+    displayNameOverride: "Tên hiển thị tùy chỉnh",
+    regulatoryName: "Thiết bị pháp quy gốc",
+    sourceOrder: 2,
+  }
+}
+
 function makeRows(): DeviceQuotaMergedRow[] {
   const rows: DeviceQuotaMergedRow[] = []
   let itemIndex = 1
@@ -113,6 +129,15 @@ const metadata = {
   mode: "editable" as const,
 }
 
+const defaultEditorState = {
+  isDirty: false,
+  isIncomplete: true,
+  isSaving: false,
+  isExcluding: false,
+  isRestoring: false,
+  isReadOnly: false,
+}
+
 function renderEditor(
   overrides: Partial<React.ComponentProps<typeof DeviceQuotaDraftCatalogEditor>> = {}
 ) {
@@ -120,12 +145,7 @@ function renderEditor(
     rows: makeRows(),
     metadata,
     validationErrors: {},
-    isDirty: false,
-    isIncomplete: true,
-    isSaving: false,
-    isExcluding: false,
-    isRestoring: false,
-    isReadOnly: false,
+    state: defaultEditorState,
     onUpdateItem: vi.fn(),
     onSave: vi.fn().mockResolvedValue(undefined),
     onExclude: vi.fn().mockResolvedValue(undefined),
@@ -198,7 +218,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
   })
 
   it("keeps regulatory values read-only and stages ordinary edits until Save", () => {
-    const { props } = renderEditor({ isDirty: true })
+    const { props } = renderEditor({ state: { ...defaultEditorState, isDirty: true } })
     const firstRow = screen.getByTestId("device-quota-catalog-row-item-1")
 
     expect(screen.queryByRole("textbox", { name: "Tên theo Thông tư" })).not.toBeInTheDocument()
@@ -237,7 +257,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
 
   it("shows quantity feedback and blocks Save for negative or fractional values", () => {
     renderEditor({
-      isDirty: true,
+      state: { ...defaultEditorState, isDirty: true },
       validationErrors: {
         "item-1": "Số lượng phải là số nguyên không âm.",
       },
@@ -265,12 +285,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
         rows={excludedRows}
         metadata={metadata}
         validationErrors={{}}
-        isDirty={false}
-        isIncomplete={false}
-        isSaving={false}
-        isExcluding={false}
-        isRestoring={false}
-        isReadOnly={false}
+        state={{ ...defaultEditorState, isIncomplete: false }}
         onUpdateItem={vi.fn()}
         onSave={vi.fn()}
         onExclude={onExclude}
@@ -289,7 +304,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
   it("renders view mode read-only and hides mutation controls", () => {
     renderEditor({
       metadata: { ...metadata, mode: "readonly" },
-      isReadOnly: true,
+      state: { ...defaultEditorState, isReadOnly: true },
     })
 
     expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
@@ -297,6 +312,45 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(
       screen.queryByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" })
     ).not.toBeInTheDocument()
+  })
+
+  it("keeps top-level items outside section collapse and preserves source order", () => {
+    const rootItem = makeTopLevelItem()
+    renderEditor({
+      rows: [makeSection(1), rootItem, makeSection(2), makeItem(1, 1)],
+    })
+
+    expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
+    expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
+    expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
+  })
+
+  it("shows the immutable regulatory name separately from the editable display override", () => {
+    const row = makeTopLevelItem()
+    renderEditor({ rows: [row], state: { ...defaultEditorState, isDirty: true } })
+
+    const renderedRow = screen.getByTestId("device-quota-catalog-row-top-level-item")
+    expect(
+      within(renderedRow).getByRole("heading", { name: "Thiết bị pháp quy gốc" })
+    ).toBeInTheDocument()
+    expect(
+      within(renderedRow).getByRole("textbox", {
+        name: "Tên hiển thị tại đơn vị - Thiết bị pháp quy gốc",
+      })
+    ).toHaveValue("Tên hiển thị tùy chỉnh")
+  })
+
+  it("does not render orphaned labels for read-only values", () => {
+    const row = makeTopLevelItem()
+    renderEditor({
+      rows: [row],
+      state: { ...defaultEditorState, isReadOnly: true },
+      metadata: { ...metadata, mode: "readonly" },
+    })
+
+    const renderedRow = screen.getByTestId("device-quota-catalog-row-top-level-item")
+    expect(renderedRow.querySelectorAll("label")).toHaveLength(0)
   })
 })
 
@@ -341,21 +395,25 @@ describe("DeviceQuotaDraftCatalogPageClient", () => {
     expect(screen.getByText("Bạn không có quyền mở danh mục dự thảo")).toBeInTheDocument()
   })
 
-  it("exposes retry for a failed Save without dropping staged edits", () => {
+  it("keeps the editor mounted and retries the failed operation without dropping staged edits", () => {
     const save = vi.fn().mockResolvedValue(undefined)
+    const retry = vi.fn().mockResolvedValue(undefined)
     mockUseDraftCatalog.mockReturnValue(
       makeHookResult({
         status: "error",
         canRetry: true,
         isDirty: true,
         save,
+        retry,
         errorMessage: "Không thể cập nhật bản nháp.",
       })
     )
 
     render(<DeviceQuotaDraftCatalogPageClient />)
 
+    expect(screen.getByTestId("device-quota-draft-catalog-editor")).toBeInTheDocument()
     fireEvent.click(screen.getByRole("button", { name: "Thử lại" }))
-    expect(save).toHaveBeenCalledTimes(1)
+    expect(retry).toHaveBeenCalledTimes(1)
+    expect(save).not.toHaveBeenCalled()
   })
 })
