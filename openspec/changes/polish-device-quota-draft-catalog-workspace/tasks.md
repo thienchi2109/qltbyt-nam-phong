@@ -5,13 +5,19 @@ changes.
 
 - [ ] 0.1 Re-read the resolved Wayfinder decision, this OpenSpec change, and
       the active `add-device-quota-draft-catalog` change before implementation.
-- [ ] 0.2 Coordinate the shared-file boundary with issue `#982`; decide the
-      implementation order or rebase point without absorbing its
+- [ ] 0.2 Confirm the implementation branch starts from an exact commit that
+      contains the parent draft-catalog editor behavior and record that baseline
+      commit in the implementation handoff.
+- [ ] 0.3 Coordinate the shared-file boundary with issue `#982`; record the
+      landing order and exact rebase point without absorbing its
       React-complexity acceptance criteria.
-- [ ] 0.3 Characterize the current editor behavior with focused tests covering
+- [ ] 0.4 Characterize the current editor behavior with focused tests covering
       save, pending locks, validation, read-only mode, section navigation,
       source/rule disclosure, exclusion, restoration, and stale conflicts.
-- [ ] 0.4 Capture the current workspace at `1024px`, `1280x720`, `1366x768`,
+- [ ] 0.5 Confirm snapshot and revision values remain available to internal
+      save, mutation, and stale-conflict logic after their dedicated
+      user-facing metadata row is removed.
+- [ ] 0.6 Capture the current workspace at `1024px`, `1280x720`, `1366x768`,
       and `1440x900`, or record why a target cannot be captured in the local
       browser harness.
 
@@ -27,7 +33,8 @@ remain in place and continue using their current callbacks.
 - [ ] 1.1 Remove the dedicated user-facing technical metadata row containing
       snapshot, revision, raw draft status, save timestamp, and mode.
 - [ ] 1.2 Consolidate the page title, document/unit context, completion state,
-      and concise saved/unsaved/saving feedback into the existing top toolbar.
+      and concise saved/unsaved/saving feedback into the existing sticky top
+      toolbar, which remains visible outside the item scroll region.
 - [ ] 1.3 Preserve the current save callback, disabled conditions, validation
       guard, pending state, and independent item scroll region.
 - [ ] 1.4 Add focused tests for technical metadata removal and the toolbar save

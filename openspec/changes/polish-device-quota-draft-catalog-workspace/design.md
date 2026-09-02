@@ -67,11 +67,13 @@ state uses the same column intent where fields are previewed.
 
 ### Decision: Use a collapsible structure panel and rail
 
-The structure sidebar is approximately `176px` when expanded and `48px` when
-collapsed. At constrained desktop/tablet widths from `1024px` upward, the
-collapsed rail is the default space-saving state and the expanded structure
-panel may overlay the editor content using the existing shared primitive
-support. It must not create unintended horizontal overflow.
+The current implementation uses a fixed `220px` structure sidebar. The target
+presentation uses an approximately `176px` expanded panel and a `48px`
+collapsed rail. At constrained desktop/tablet widths from `1024px` through
+`1199px`, the collapsed rail is the default space-saving state. Users can
+manually toggle both modes, and the expanded structure panel overlays the
+editor content using the existing shared primitive support without shrinking
+the item grid or creating unintended horizontal overflow.
 
 No mobile drawer or bottom sheet is introduced.
 
@@ -97,9 +99,19 @@ remove or reinterpret source data.
 
 Issue `#982` owns the React complexity refactor for the draft hook and item-row.
 This change may need to touch the same presentation component, so implementation
-must rebase or coordinate as appropriate and preserve both scopes. Complexity
+must record an explicit landing order and exact rebase point. Whichever change
+lands second must rebase onto the first and preserve both scopes. Complexity
 refactoring, hook restructuring, and unrelated maintainability cleanup are not
 part of this change.
+
+### Decision: Layer the polish on the parent draft-catalog baseline
+
+This change is a presentation delta to
+`openspec/changes/add-device-quota-draft-catalog/`, not an alternative
+implementation of that change. Runtime implementation starts only from a
+commit where the parent draft editor behavior and focused tests are present.
+The baseline commit and the coordination state of issue `#982` are recorded
+before presentation files change.
 
 ## Component Boundaries
 

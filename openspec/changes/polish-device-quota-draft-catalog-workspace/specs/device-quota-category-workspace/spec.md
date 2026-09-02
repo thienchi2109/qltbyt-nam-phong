@@ -12,8 +12,13 @@ changing its existing draft data contracts or business behavior.
   a viewport width of at least `1024px`
 - **WHEN** the draft catalog editor renders
 - **THEN** the workspace uses the available route content area for the editor
-- **AND** the structure navigation can occupy an approximately `176px`
-  expanded panel or a `48px` collapsed rail
+- **AND** the structure navigation SHALL provide an approximately `176px`
+  expanded panel and a `48px` collapsed rail with a manual toggle between them
+- **AND** at constrained widths from `1024px` through `1199px`, the structure
+  navigation defaults to the collapsed rail
+- **AND** expanding the panel at those constrained widths overlays the editor
+  without shrinking the item content or field grid
+- **AND** neither sidebar mode causes unintended horizontal page overflow
 - **AND** the item content has an independent scroll region
 - **AND** the editor does not render a mobile drawer, bottom sheet, or mobile
   navigation mode
@@ -26,14 +31,15 @@ changing its existing draft data contracts or business behavior.
 - **THEN** those technical values are not rendered as a dedicated metadata row
 - **AND** the header exposes only concise user-relevant save feedback beside the
   existing save action
-- **AND** internal state remains available to the existing save, conflict, and
-  mutation logic
+- **AND** snapshot and revision state remain available to the existing save,
+  conflict, and mutation logic
+- **AND** stale-conflict feedback retains the user-relevant version context
+  required by the existing recovery behavior
 
 #### Scenario: repeated item records share one field grid
 
 - **GIVEN** a section contains multiple regulatory item records
-- **WHEN** one or more item records are rendered in their editable
-  representation
+- **WHEN** an item record is rendered in its editable representation
 - **THEN** every record uses the same field-grid column boundaries
 - **AND** display name, applied unit, proposed quantity, and notes begin on the
   same baseline and use consistent input dimensions
@@ -45,8 +51,9 @@ changing its existing draft data contracts or business behavior.
 - **GIVEN** an item name is already rendered in its item header
 - **WHEN** its editable fields and item actions render
 - **THEN** field labels use concise object-independent text
-- **AND** source/rule/exclusion actions do not append the item name to their
-  visible label when context is already available
+- **AND** source, rule, exclusion, and restoration actions use concise visible
+  labels, including `Khôi phục` for restoration, and do not append the item
+  name when context is already available
 - **AND** accessible names still identify the target item where needed
 
 #### Scenario: compact records expose one editable item
@@ -63,21 +70,24 @@ changing its existing draft data contracts or business behavior.
 
 #### Scenario: source and rule traceability remains available
 
-- **GIVEN** an item has source references, parent information, or multiline
-  regulatory rule text
+- **GIVEN** an item has source references, source pages, an immutable source
+  position, a parent relationship, or multiline regulatory rule text
 - **WHEN** the compact item representation renders
 - **THEN** a concise source summary remains visible
-- **AND** complete source and rule details remain available through disclosure
-  controls
-- **AND** the redesign does not infer, rewrite, or remove regulatory source
-  semantics
+- **AND** every item's complete source references and pages remain available
+  through disclosure controls
+- **AND** its immutable source position and parent relationship are preserved
+- **AND** multiline regulatory rule text remains available without truncating,
+  flattening, rewriting, or otherwise changing its content
+- **AND** the redesign does not infer, rewrite, reorder, or remove regulatory
+  source semantics
 
 #### Scenario: save remains available while items scroll
 
 - **GIVEN** an editable draft contains enough records to require scrolling
 - **WHEN** the user scrolls the item content region
-- **THEN** the single top workspace save toolbar remains outside that scroll
-  region and accessible
+- **THEN** the single top workspace save toolbar remains sticky and visible
+  outside that scroll region
 - **AND** it uses the existing save callback, disabled conditions, pending state,
   and validation behavior
 - **AND** the editor does not add a second bottom save bar or a new cancel/reset
@@ -92,3 +102,13 @@ changing its existing draft data contracts or business behavior.
   source ordering, and conflict recovery remain unchanged
 - **AND** active category CRUD, both Excel import flows, mapping, reporting,
   compliance, and future publication behavior remain unaffected
+
+#### Scenario: target viewport evidence is captured
+
+- **GIVEN** the presentation change is ready for review
+- **WHEN** visual QA is performed for the landed commit
+- **THEN** reviewable evidence is captured at `1024px`, `1280x720`,
+  `1366x768`, and `1440x900`
+- **AND** the evidence verifies field alignment, compact record density,
+  sidebar defaults and overlay behavior, sticky save visibility, scroll
+  boundaries, and the absence of unintended horizontal overflow

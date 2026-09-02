@@ -24,11 +24,11 @@ focused presentation-only change for the editor workspace.
 - Shorten field labels and remove repeated item names from labels and actions.
 - Reduce source metadata to a compact summary with progressive disclosure for
   secondary source and rule details.
-- Reduce the structure sidebar from approximately `176px` when expanded to a
-  `48px` rail when collapsed, reusing the existing hierarchical-editor
-  presentation primitives.
-- Keep one top workspace save toolbar outside the scrollable item region; do
-  not add a second bottom action bar or new cancel/reset behavior.
+- Replace the current fixed `220px` structure sidebar with a target
+  approximately `176px` expanded panel and a `48px` collapsed rail, reusing the
+  existing hierarchical-editor presentation primitives.
+- Keep one sticky top workspace save toolbar visible outside the scrollable item
+  region; do not add a second bottom action bar or new cancel/reset behavior.
 - Add focused behavioral and visual-regression coverage for the new
   presentation states at desktop/tablet target sizes where the repository
   tooling supports it.
@@ -47,9 +47,14 @@ focused presentation-only change for the editor workspace.
   unchanged.
 - Existing active category CRUD, category import, quota-decision import,
   mapping, reporting, compliance, and Phase 4 behavior remain unchanged.
+- This presentation delta depends on the behavior delivered by the active
+  `add-device-quota-draft-catalog` change. Implementation must start from a
+  commit containing that baseline rather than recreating or replacing its
+  contracts.
 - Issue `#982` remains a separate complexity-refactor concern. Work touching
-  the same item-row or draft-hook files must be coordinated with that issue
-  and must not silently absorb its acceptance criteria.
+  the same item-row or draft-hook files must use an explicit landing order and
+  rebase point. Whichever change lands second must rebase onto the first and
+  preserve both scopes without absorbing `#982` acceptance criteria here.
 
 ## Wayfinder Traceability
 
