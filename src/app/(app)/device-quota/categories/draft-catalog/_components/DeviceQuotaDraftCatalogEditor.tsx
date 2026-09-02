@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { HierarchicalEditorStructureSidebar } from "@/components/hierarchical-editor/HierarchicalEditorStructureSidebar"
 import { HierarchicalEditorToolbar } from "@/components/hierarchical-editor/HierarchicalEditorToolbar"
 import { HierarchicalEditorWorkspace } from "@/components/hierarchical-editor/HierarchicalEditorWorkspace"
+import { useHierarchicalEditorStructure } from "@/components/hierarchical-editor/useHierarchicalEditorStructure"
 
 import type {
   DeviceQuotaDraftItemPatch,
@@ -14,6 +15,9 @@ import type {
 } from "../device-quota-draft-catalog-types"
 import { DeviceQuotaDraftCatalogItemRow } from "./DeviceQuotaDraftCatalogItemRow"
 import { DeviceQuotaDraftCatalogSection } from "./DeviceQuotaDraftCatalogSection"
+
+const DRAFT_CATALOG_STRUCTURE_PREFERENCE_KEY = "device-quota-draft-catalog-structure"
+const DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH = 176
 
 export type DeviceQuotaDraftCatalogEditorMetadata = {
   unitId: number
@@ -99,6 +103,10 @@ export function DeviceQuotaDraftCatalogEditor({
   const bodyRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
+  const structure = useHierarchicalEditorStructure({
+    containerRef: bodyRef,
+    preferenceKey: DRAFT_CATALOG_STRUCTURE_PREFERENCE_KEY,
+  })
   const entries = useMemo(() => buildRenderEntries(rows), [rows])
   const sections = entries
     .filter(
@@ -145,13 +153,23 @@ export function DeviceQuotaDraftCatalogEditor({
         workspaceTestId="device-quota-draft-catalog-workspace"
         bodyTestId="device-quota-draft-catalog-body"
         bodyRef={bodyRef}
-        bodyStyle={{ gridTemplateColumns: "220px minmax(0, 1fr)" }}
+        bodyDataAttributes={{ "data-structure-layout": structure.layout }}
+        bodyStyle={{
+          gridTemplateColumns:
+            structure.layout === "panel"
+              ? `${DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH}px minmax(0, 1fr)`
+              : "48px minmax(0, 1fr)",
+        }}
         sidebar={
           <HierarchicalEditorStructureSidebar
             sections={sections}
             activeKey={activeSectionKey}
+            expanded={structure.expanded}
+            overlay={structure.layout === "overlay"}
+            expandedWidth={DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH}
             ariaLabel="Cấu trúc danh mục"
             testId="device-quota-draft-catalog-sidebar"
+            onToggle={structure.toggle}
             onSectionSelect={setActiveSectionKey}
           />
         }

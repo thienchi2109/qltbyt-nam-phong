@@ -156,6 +156,7 @@ describe("TechnicalConfigurationBaselineEditor workspace shell", () => {
 
     expect(shell).toHaveAttribute("data-structure-layout", "overlay")
     expect(within(sidebar).getByRole("button", { name: "Đóng bảng cấu trúc" })).toBeInTheDocument()
+    expect(sidebar).toHaveStyle({ width: "220px" })
     expect(outlineItems[0]).toHaveTextContent(/^IYêu cầu chung2 tiêu chí$/)
     expect(window.sessionStorage.getItem("technical-configuration-baseline-structure")).toBe(
       "expanded"

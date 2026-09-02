@@ -2,7 +2,7 @@ import React from "react"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import "@testing-library/jest-dom"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { useDeviceQuotaDraftCatalog } from "../../_hooks/useDeviceQuotaDraftCatalog"
 import { DeviceQuotaDraftCatalogEditor } from "../_components/DeviceQuotaDraftCatalogEditor"
@@ -18,6 +18,11 @@ vi.mock("../../_hooks/useDeviceQuotaDraftCatalog", () => ({
 }))
 
 const mockUseDraftCatalog = vi.mocked(useDeviceQuotaDraftCatalog)
+const originalInnerWidth = window.innerWidth
+
+function setViewportWidth(width: number): void {
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: width })
+}
 
 function makeSection(index: number): DeviceQuotaMergedSectionRow {
   return {
@@ -192,11 +197,75 @@ function makeHookResult(
 describe("DeviceQuotaDraftCatalogEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.sessionStorage.clear()
     Element.prototype.scrollIntoView = vi.fn()
   })
 
-  it("renders workspace context without exposing technical metadata", async () => {
+  afterEach(() => {
+    setViewportWidth(originalInnerWidth)
+  })
+
+  it("uses a 176px structure panel at wide widths and toggles to a 48px rail", async () => {
     const user = userEvent.setup()
+    setViewportWidth(1200)
+    renderEditor({ rows: [makeSection(1), makeItem(1, 1)] })
+
+    const body = screen.getByTestId("device-quota-draft-catalog-body")
+    const sidebar = screen.getByTestId("device-quota-draft-catalog-sidebar")
+
+    expect(body).toHaveAttribute("data-structure-layout", "panel")
+    expect(body).toHaveStyle({ gridTemplateColumns: "176px minmax(0, 1fr)" })
+    expect(sidebar).toHaveAttribute("data-expanded", "true")
+    expect(sidebar).toHaveStyle({ width: "176px" })
+
+    await user.click(within(sidebar).getByRole("button", { name: "Đóng bảng cấu trúc" }))
+
+    expect(body).toHaveAttribute("data-structure-layout", "rail")
+    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
+    expect(sidebar).toHaveAttribute("data-expanded", "false")
+  })
+
+  it("defaults to the rail at 1024px and overlays the expanded panel without resizing rows", async () => {
+    const user = userEvent.setup()
+    setViewportWidth(1024)
+    renderEditor({
+      rows: [
+        makeSection(1),
+        makeItem(1, 1),
+        makeSection(2),
+        makeItem(2, 2),
+        makeSection(3),
+        makeItem(3, 3),
+      ],
+    })
+
+    const body = screen.getByTestId("device-quota-draft-catalog-body")
+    const sidebar = screen.getByTestId("device-quota-draft-catalog-sidebar")
+
+    expect(body).toHaveAttribute("data-structure-layout", "rail")
+    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
+    expect(sidebar).toHaveAttribute("data-expanded", "false")
+    expect(sidebar).not.toHaveAttribute("data-overlay")
+
+    await user.click(within(sidebar).getByRole("button", { name: "Mở bảng cấu trúc" }))
+
+    expect(body).toHaveAttribute("data-structure-layout", "overlay")
+    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
+    expect(sidebar).toHaveAttribute("data-expanded", "true")
+    expect(sidebar).toHaveAttribute("data-overlay", "true")
+    expect(sidebar).toHaveStyle({ width: "176px" })
+
+    within(sidebar).getByRole("button", { name: "Nhóm 3" }).focus()
+    await user.keyboard("{Enter}")
+
+    expect(within(sidebar).getByRole("button", { name: "Nhóm 3" })).toHaveAttribute(
+      "aria-current",
+      "true"
+    )
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" })
+  })
+
+  it("renders workspace context without exposing technical metadata", () => {
     renderEditor()
 
     expect(screen.getByText(/10\/2026\/TT-BYT/)).toBeInTheDocument()
@@ -218,9 +287,14 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(within(firstRow).getByText(/Thứ tự nguồn: 6/)).toBeInTheDocument()
     expect(within(firstRow).getByText(/Cấp: 1/)).toBeInTheDocument()
     expect(within(firstRow).getByText(/Thuộc: section-1/)).toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole("button", { name: "Nhóm 3" }))
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  it("keeps section collapse independent from structure navigation", async () => {
+    const user = userEvent.setup()
+    renderEditor({ rows: [makeSection(1), makeItem(1, 1), makeSection(2), makeItem(2, 2)] })
+
+    await user.click(screen.getByRole("button", { name: "Nhóm 2" }))
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" })
 
     await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
     expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()

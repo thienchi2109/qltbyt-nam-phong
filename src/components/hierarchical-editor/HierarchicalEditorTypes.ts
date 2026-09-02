@@ -58,6 +58,7 @@ export type HierarchicalEditorStructureSidebarProps = Readonly<{
   activeKey?: string | null
   expanded?: boolean
   overlay?: boolean
+  expandedWidth?: number | string
   onToggle?: () => void
   onSectionSelect?: (sectionKey: string) => void
   ariaLabel?: string

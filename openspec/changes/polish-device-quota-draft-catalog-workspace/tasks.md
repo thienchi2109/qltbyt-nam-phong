@@ -51,16 +51,16 @@ layout; save and conflict behavior are unchanged; focused shell tests pass.
 Boundary: shared hierarchical workspace and structure navigation only. Item
 record markup and edit behavior remain unchanged.
 
-- [ ] 2.1 Add the expanded approximately `176px` structure panel and collapsed
+- [x] 2.1 Add the expanded approximately `176px` structure panel and collapsed
       `48px` rail to the draft editor using existing hierarchical-editor
       primitives.
-- [ ] 2.2 At constrained widths from `1024px` upward, default to the rail and
+- [x] 2.2 At constrained widths from `1024px` upward, default to the rail and
       allow the expanded panel to overlay without resizing the item grid or
       creating unintended horizontal overflow.
-- [ ] 2.3 Preserve section ordering, active-section highlighting,
+- [x] 2.3 Preserve section ordering, active-section highlighting,
       `scrollIntoView`, keyboard operation, and Technical Configurations
       behavior when shared primitives are adjusted.
-- [ ] 2.4 Add focused `user-event` tests for expanded, collapsed,
+- [x] 2.4 Add focused `user-event` tests for expanded, collapsed,
       constrained-width, and section-selection states.
 
 Exit criteria: structure navigation can ship independently; existing rows
