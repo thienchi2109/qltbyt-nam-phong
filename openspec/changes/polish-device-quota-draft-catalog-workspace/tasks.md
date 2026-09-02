@@ -72,14 +72,14 @@ tests pass.
 Boundary: item expansion and compact-summary behavior only. Editable field
 content and visual grid remain functionally equivalent to the current form.
 
-- [ ] 3.1 Introduce compact item summaries and workspace-level expanded-item
+- [x] 3.1 Introduce compact item summaries and workspace-level expanded-item
       state with at most one full item editor open at a time.
-- [ ] 3.2 Ensure opening another item collapses the previous item without
+- [x] 3.2 Ensure opening another item collapses the previous item without
       discarding staged values, validation errors, or pending state.
-- [ ] 3.3 Preserve independent section collapse, source order, completeness
+- [x] 3.3 Preserve independent section collapse, source order, completeness
       counts, excluded-row position, read-only mode, and existing item
       callbacks.
-- [ ] 3.4 Add focused `user-event` tests for initial expansion, item switching,
+- [x] 3.4 Add focused `user-event` tests for initial expansion, item switching,
       staged-value preservation, section collapse, excluded items, and
       read-only summaries.
 

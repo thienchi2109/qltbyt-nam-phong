@@ -18,6 +18,8 @@ type DeviceQuotaDraftCatalogSectionProps = {
   validationErrors: Record<string, string>
   isReadOnly: boolean
   isMutationPending: boolean
+  expandedItemKey: string | null
+  onItemToggle: (itemKey: string) => void
   onUpdate: (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => void
   onExclude: (sourceIdentifier: string) => void
   onRestore: (sourceIdentifier: string) => void
@@ -31,6 +33,8 @@ export function DeviceQuotaDraftCatalogSection({
   validationErrors,
   isReadOnly,
   isMutationPending,
+  expandedItemKey,
+  onItemToggle,
   onUpdate,
   onExclude,
   onRestore,
@@ -73,6 +77,8 @@ export function DeviceQuotaDraftCatalogSection({
           validationMessage={validationErrors[item.sourceIdentifier]}
           isReadOnly={isReadOnly}
           isMutationPending={isMutationPending}
+          isExpanded={expandedItemKey === item.sourceIdentifier}
+          onToggleExpanded={() => onItemToggle(item.sourceIdentifier)}
           onUpdate={onUpdate}
           onExclude={onExclude}
           onRestore={onRestore}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { HierarchicalEditorStructureSidebar } from "@/components/hierarchical-editor/HierarchicalEditorStructureSidebar"
@@ -103,6 +103,7 @@ export function DeviceQuotaDraftCatalogEditor({
   const bodyRef = useRef<HTMLDivElement>(null)
   const sectionRefs = useRef(new Map<string, HTMLElement>())
   const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
+  const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null)
   const structure = useHierarchicalEditorStructure({
     containerRef: bodyRef,
     preferenceKey: DRAFT_CATALOG_STRUCTURE_PREFERENCE_KEY,
@@ -124,6 +125,9 @@ export function DeviceQuotaDraftCatalogEditor({
         },
       },
     }))
+  const handleItemToggle = useCallback((itemKey: string) => {
+    setExpandedItemKey((current) => (current === itemKey ? null : itemKey))
+  }, [])
 
   const completionStatus = isIncomplete ? (
     <Badge variant="outline">Chưa hoàn thiện</Badge>
@@ -210,6 +214,8 @@ export function DeviceQuotaDraftCatalogEditor({
               validationErrors={validationErrors}
               isReadOnly={isReadOnly}
               isMutationPending={isMutationPending}
+              expandedItemKey={expandedItemKey}
+              onItemToggle={handleItemToggle}
               onUpdate={onUpdateItem}
               onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
               onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
@@ -225,6 +231,8 @@ export function DeviceQuotaDraftCatalogEditor({
               validationMessage={validationErrors[entry.item.sourceIdentifier]}
               isReadOnly={isReadOnly}
               isMutationPending={isMutationPending}
+              isExpanded={expandedItemKey === entry.item.sourceIdentifier}
+              onToggleExpanded={() => handleItemToggle(entry.item.sourceIdentifier)}
               onUpdate={onUpdateItem}
               onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
               onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
