@@ -103,7 +103,7 @@ export function DeviceQuotaDraftCatalogItemSummary({
           <dd className="truncate text-foreground">{row.appliedUnit || "Chưa nhập"}</dd>
         </div>
         <div className="min-w-0">
-          <dt className="text-xs">Số lượng</dt>
+          <dt className="text-xs">Số lượng đề xuất</dt>
           <dd className="text-foreground">{row.appliedQuantity ?? "Chưa nhập"}</dd>
         </div>
         <div className="min-w-0">

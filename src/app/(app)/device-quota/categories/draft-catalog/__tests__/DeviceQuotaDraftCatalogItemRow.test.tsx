@@ -65,6 +65,9 @@ describe("DeviceQuotaDraftCatalogItemRow", () => {
   it("uses concise field labels and one intentional responsive field grid", () => {
     renderItem()
 
+    const summary = screen.getByTestId("device-quota-catalog-summary-item-1")
+    expect(within(summary).getByText("Số lượng đề xuất", { selector: "dt" })).toBeInTheDocument()
+
     const fieldGrid = screen.getByTestId("device-quota-catalog-field-grid-item-1")
     expect(fieldGrid).toHaveAttribute("data-field-grid", "shared")
     expect(fieldGrid).toHaveClass(
