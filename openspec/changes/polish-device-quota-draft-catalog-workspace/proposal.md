@@ -29,9 +29,9 @@ focused presentation-only change for the editor workspace.
   existing hierarchical-editor presentation primitives.
 - Keep one sticky top workspace save toolbar visible outside the scrollable item
   region; do not add a second bottom action bar or new cancel/reset behavior.
-- Add focused behavioral and visual-regression coverage for the new
-  presentation states at desktop/tablet target sizes where the repository
-  tooling supports it.
+- Add focused behavioral and interaction-regression coverage with
+  `@testing-library/user-event`; visual viewport review remains manual or
+  equivalent release evidence and is not a browser test.
 
 ## Impact
 

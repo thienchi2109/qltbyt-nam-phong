@@ -106,9 +106,11 @@ changing its existing draft data contracts or business behavior.
 #### Scenario: target viewport evidence is captured
 
 - **GIVEN** the presentation change is ready for review
-- **WHEN** visual QA is performed for the landed commit
+- **WHEN** manual or equivalent visual QA is performed for the landed commit
 - **THEN** reviewable evidence is captured at `1024px`, `1280x720`,
   `1366x768`, and `1440x900`
 - **AND** the evidence verifies field alignment, compact record density,
   sidebar defaults and overlay behavior, sticky save visibility, scroll
   boundaries, and the absence of unintended horizontal overflow
+- **AND** automated interaction coverage for this change uses
+  `@testing-library/user-event` rather than a browser or Playwright test

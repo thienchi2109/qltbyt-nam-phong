@@ -1,5 +1,6 @@
 import React from "react"
-import { fireEvent, render, screen, within } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import "@testing-library/jest-dom"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -194,7 +195,8 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     Element.prototype.scrollIntoView = vi.fn()
   })
 
-  it("renders source metadata and all 42 rows in five navigable sections", () => {
+  it("renders source metadata and all 42 rows in five navigable sections", async () => {
+    const user = userEvent.setup()
     renderEditor()
 
     expect(screen.getByText(/10\/2026\/TT-BYT/)).toBeInTheDocument()
@@ -211,15 +213,16 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(within(firstRow).getByText(/Cấp: 1/)).toBeInTheDocument()
     expect(within(firstRow).getByText(/Thuộc: section-1/)).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole("button", { name: "Nhóm 3" }))
+    await user.click(screen.getByRole("button", { name: "Nhóm 3" }))
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
+    await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
     expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Mở rộng Nhóm 1" })).toBeInTheDocument()
   })
 
-  it("keeps regulatory values read-only and stages ordinary edits until Save", () => {
+  it("keeps regulatory values read-only and stages ordinary edits until Save", async () => {
+    const user = userEvent.setup()
     const { props } = renderEditor({
       rows: [makeItem(1, 1)],
       state: { ...defaultEditorState, isDirty: true },
@@ -229,33 +232,28 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.queryByRole("textbox", { name: "Tên theo Thông tư" })).not.toBeInTheDocument()
     expect(within(firstRow).getByPlaceholderText("Mặc định theo tên Thông tư")).toHaveValue("")
 
-    fireEvent.click(screen.getByRole("button", { name: "Xem quy tắc Thiết bị 1" }))
+    await user.click(screen.getByRole("button", { name: "Xem quy tắc Thiết bị 1" }))
     expect(screen.getByText("Tối thiểu 01 máy")).toBeInTheDocument()
     expect(screen.getByText("Tối đa 02 máy")).toBeInTheDocument()
 
-    fireEvent.change(
-      within(firstRow).getByRole("textbox", { name: "Tên hiển thị tại đơn vị - Thiết bị 1" }),
-      { target: { value: "Máy theo nhu cầu đơn vị" } }
-    )
-    fireEvent.change(
-      within(firstRow).getByRole("spinbutton", {
-        name: "Số lượng đề xuất trong bản nháp - Thiết bị 1",
-      }),
-      { target: { value: "3" } }
-    )
-
-    expect(props.onUpdateItem).toHaveBeenCalledWith("item-1", {
-      displayNameOverride: "Máy theo nhu cầu đơn vị",
+    const displayNameInput = within(firstRow).getByRole("textbox", {
+      name: "Tên hiển thị tại đơn vị - Thiết bị 1",
     })
-    fireEvent.change(
-      within(firstRow).getByRole("textbox", { name: "Đơn vị áp dụng tại đơn vị - Thiết bị 1" }),
-      { target: { value: "Bộ" } }
-    )
-    expect(props.onUpdateItem).toHaveBeenCalledWith("item-1", { appliedUnit: "Bộ" })
-    expect(props.onUpdateItem).toHaveBeenCalledWith("item-1", { appliedQuantity: 3 })
+    await user.type(displayNameInput, "M")
+    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { displayNameOverride: "M" })
+    const quantityInput = within(firstRow).getByRole("spinbutton", {
+      name: "Số lượng đề xuất trong bản nháp - Thiết bị 1",
+    })
+    await user.type(quantityInput, "3")
+    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedQuantity: 3 })
+    const appliedUnitInput = within(firstRow).getByRole("textbox", {
+      name: "Đơn vị áp dụng tại đơn vị - Thiết bị 1",
+    })
+    await user.type(appliedUnitInput, "B")
+    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedUnit: "B" })
     expect(props.onSave).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole("button", { name: "Lưu" }))
+    await user.click(screen.getByRole("button", { name: "Lưu" }))
     expect(props.onSave).toHaveBeenCalledTimes(1)
     expect(screen.getByText("Chưa hoàn thiện")).toBeInTheDocument()
   })
@@ -297,11 +295,12 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     }
   )
 
-  it("persists exclude and restore immediately while keeping excluded rows visible", () => {
+  it("persists exclude and restore immediately while keeping excluded rows visible", async () => {
+    const user = userEvent.setup()
     const onExclude = vi.fn().mockResolvedValue(undefined)
     const { rerender } = renderEditor({ onExclude })
 
-    fireEvent.click(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" }))
+    await user.click(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" }))
     expect(onExclude).toHaveBeenCalledWith("item-1")
 
     const excludedRows = makeRows().map((row) =>
@@ -327,7 +326,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
       "data-excluded",
       "true"
     )
-    fireEvent.click(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" }))
+    await user.click(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" }))
     expect(onRestore).toHaveBeenCalledWith("item-1")
   })
 
@@ -344,14 +343,15 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     ).not.toBeInTheDocument()
   })
 
-  it("keeps top-level items outside section collapse and preserves source order", () => {
+  it("keeps top-level items outside section collapse and preserves source order", async () => {
+    const user = userEvent.setup()
     const rootItem = makeTopLevelItem()
     renderEditor({
       rows: [makeSection(1), rootItem, makeSection(2), makeItem(1, 1)],
     })
 
     expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
+    await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
     expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
     expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
   })
@@ -425,7 +425,8 @@ describe("DeviceQuotaDraftCatalogPageClient", () => {
     expect(screen.getByText("Bạn không có quyền mở danh mục dự thảo")).toBeInTheDocument()
   })
 
-  it("keeps the editor mounted and retries the failed operation without dropping staged edits", () => {
+  it("keeps the editor mounted and retries the failed operation without dropping staged edits", async () => {
+    const user = userEvent.setup()
     const save = vi.fn().mockResolvedValue(undefined)
     const retry = vi.fn().mockResolvedValue(undefined)
     mockUseDraftCatalog.mockReturnValue(
@@ -442,7 +443,7 @@ describe("DeviceQuotaDraftCatalogPageClient", () => {
     render(<DeviceQuotaDraftCatalogPageClient />)
 
     expect(screen.getByTestId("device-quota-draft-catalog-editor")).toBeInTheDocument()
-    fireEvent.click(screen.getByRole("button", { name: "Thử lại" }))
+    await user.click(screen.getByRole("button", { name: "Thử lại" }))
     expect(retry).toHaveBeenCalledTimes(1)
     expect(save).not.toHaveBeenCalled()
   })

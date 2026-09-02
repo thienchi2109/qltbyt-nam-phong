@@ -128,15 +128,19 @@ before presentation files change.
 
 ## Verification Strategy
 
-- Preserve and update focused editor tests for all existing callbacks,
-  validation, read-only fields, section navigation, source/rule disclosure,
-  save disabling, exclude, restore, and pending-state locking.
+- Preserve and update focused React Testing Library tests driven by
+  `@testing-library/user-event` for all existing callbacks, validation,
+  read-only fields, section navigation, source/rule disclosure, save
+  disabling, exclude, restore, and pending-state locking. Any later automated
+  UI interaction coverage in this change uses `user-event`, not a browser
+  harness or Playwright.
 - Add assertions that technical metadata is not user-visible and that compact
   labels/actions do not repeat the item name.
 - Add structural assertions for the shared grid and sidebar expanded/collapsed
   states.
-- Perform visual QA at `1280x720`, `1366x768`, and `1440x900`; include
-  `1024px` width coverage when the local browser harness supports it.
+- Perform manual or equivalent visual QA at `1280x720`, `1366x768`, and
+  `1440x900`; include `1024px` width coverage when a reviewable visual
+  evidence path is available. This is not automated browser testing.
 - Do not add mobile viewport implementation or tests for this change.
 
 ## Rollout And Recovery
@@ -148,5 +152,5 @@ mutation contracts remain usable in either presentation version.
 ## Open Questions
 
 None at the product or domain level. Exact Tailwind grid token values,
-component extraction boundaries, and visual-test mechanics are implementation
-details to be resolved while executing the approved scope.
+component extraction boundaries, and manual visual-evidence mechanics are
+implementation details to be resolved while executing the approved scope.

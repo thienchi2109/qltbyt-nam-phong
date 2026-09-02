@@ -3,23 +3,26 @@
 Boundary: characterization and coordination only. No runtime presentation
 changes.
 
-- [ ] 0.1 Re-read the resolved Wayfinder decision, this OpenSpec change, and
+- [x] 0.1 Re-read the resolved Wayfinder decision, this OpenSpec change, and
       the active `add-device-quota-draft-catalog` change before implementation.
-- [ ] 0.2 Confirm the implementation branch starts from an exact commit that
+- [x] 0.2 Confirm the implementation branch starts from an exact commit that
       contains the parent draft-catalog editor behavior and record that baseline
       commit in the implementation handoff.
-- [ ] 0.3 Coordinate the shared-file boundary with issue `#982`; record the
+- [x] 0.3 Coordinate the shared-file boundary with issue `#982`; record the
       landing order and exact rebase point without absorbing its
       React-complexity acceptance criteria.
-- [ ] 0.4 Characterize the current editor behavior with focused tests covering
+- [x] 0.4 Characterize the current editor behavior with focused tests covering
       save, pending locks, validation, read-only mode, section navigation,
       source/rule disclosure, exclusion, restoration, and stale conflicts.
-- [ ] 0.5 Confirm snapshot and revision values remain available to internal
+      Drive UI interactions with `@testing-library/user-event`; do not add a
+      browser or Playwright test.
+- [x] 0.5 Confirm snapshot and revision values remain available to internal
       save, mutation, and stale-conflict logic after their dedicated
       user-facing metadata row is removed.
-- [ ] 0.6 Capture the current workspace at `1024px`, `1280x720`, `1366x768`,
-      and `1440x900`, or record why a target cannot be captured in the local
-      browser harness.
+- [x] 0.6 Record the visual baseline/evidence status for `1024px`, `1280x720`,
+      `1366x768`, and `1440x900`. Browser-driven capture is intentionally not
+      performed; automated interaction coverage is provided by
+      `@testing-library/user-event`.
 
 Exit criteria: existing behavior and visual defects are reproducible; the
 shared-file ordering with issue `#982` is explicit; no production source has
@@ -37,8 +40,8 @@ remain in place and continue using their current callbacks.
       toolbar, which remains visible outside the item scroll region.
 - [ ] 1.3 Preserve the current save callback, disabled conditions, validation
       guard, pending state, and independent item scroll region.
-- [ ] 1.4 Add focused tests for technical metadata removal and the toolbar save
-      states without changing item-editing tests.
+- [ ] 1.4 Add focused `user-event` tests for technical metadata removal and the
+      toolbar save states without changing item-editing semantics.
 
 Exit criteria: the header is compact and deployable with the existing item
 layout; save and conflict behavior are unchanged; focused shell tests pass.
@@ -57,8 +60,8 @@ record markup and edit behavior remain unchanged.
 - [ ] 2.3 Preserve section ordering, active-section highlighting,
       `scrollIntoView`, keyboard operation, and Technical Configurations
       behavior when shared primitives are adjusted.
-- [ ] 2.4 Add focused tests for expanded, collapsed, constrained-width, and
-      section-selection states.
+- [ ] 2.4 Add focused `user-event` tests for expanded, collapsed,
+      constrained-width, and section-selection states.
 
 Exit criteria: structure navigation can ship independently; existing rows
 remain fully usable at every supported desktop/tablet target; shared-consumer
@@ -76,8 +79,9 @@ content and visual grid remain functionally equivalent to the current form.
 - [ ] 3.3 Preserve independent section collapse, source order, completeness
       counts, excluded-row position, read-only mode, and existing item
       callbacks.
-- [ ] 3.4 Add focused tests for initial expansion, item switching, staged-value
-      preservation, section collapse, excluded items, and read-only summaries.
+- [ ] 3.4 Add focused `user-event` tests for initial expansion, item switching,
+      staged-value preservation, section collapse, excluded items, and
+      read-only summaries.
 
 Exit criteria: the compact interaction model is behaviorally complete and
 deployable before field-density styling; all existing mutation and draft-state
@@ -103,8 +107,9 @@ data operations or toolbar functionality.
 - [ ] 4.5 Shorten visible exclusion/restoration and rule actions without
       changing confirmation, mutation, disabled, pending, or destructive-action
       semantics.
-- [ ] 4.6 Add focused accessibility and structural tests for labels, field-grid
-      alignment hooks, disclosure controls, and item actions.
+- [ ] 4.6 Add focused `user-event` accessibility and structural tests for
+      labels, field-grid alignment hooks, disclosure controls, and item
+      actions.
 
 Exit criteria: compact and expanded records share a stable information
 hierarchy; all supported widths are usable; behavior and accessibility tests
@@ -136,14 +141,15 @@ Boundary: verification, evidence, and release readiness only.
       order, including focused draft-catalog and shared hierarchical-editor
       tests plus React Doctor.
 - [ ] 6.2 Perform visual QA at `1024px`, `1280x720`, `1366x768`, and
-      `1440x900`; verify field alignment, record density, sidebar behavior,
-      save accessibility, scroll boundaries, and absence of unintended
-      horizontal overflow.
+      `1440x900`; manually or through equivalent visual evidence verify field
+      alignment, record density, sidebar behavior, save accessibility, scroll
+      boundaries, and absence of unintended horizontal overflow. Do not add a
+      browser-driven test.
 - [ ] 6.3 Confirm the final diff contains no API, database, migration,
       permission, validation, business-rule, mobile, active-category/import, or
       issue `#982` scope changes.
-- [ ] 6.4 Record reviewable screenshots or equivalent visual evidence and the
-      exact verification results for the landed commit.
+- [ ] 6.4 Record reviewable manual/equivalent visual evidence and the exact
+      `user-event` and verification results for the landed commit.
 
 Exit criteria: functional gates pass, visual evidence matches the same landed
 commit, and the UI-only change is ready for approval and deployment.
