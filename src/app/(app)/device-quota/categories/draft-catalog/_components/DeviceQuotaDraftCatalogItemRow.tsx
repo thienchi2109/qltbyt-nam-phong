@@ -41,7 +41,7 @@ export function DeviceQuotaDraftCatalogItemRow({
 
   return (
     <article
-      className={`space-y-3 border-b px-4 py-4 ${row.isExcluded ? "bg-muted/40" : ""}`}
+      className={`space-y-3 border-b px-3 py-3 ${row.isExcluded ? "bg-muted/40" : ""}`}
       data-testid={`device-quota-catalog-row-${row.sourceIdentifier}`}
       data-excluded={row.isExcluded || undefined}
       data-source-order={row.sourceOrder}
@@ -60,14 +60,16 @@ export function DeviceQuotaDraftCatalogItemRow({
       {isExpanded ? (
         <div
           id={`device-quota-catalog-editor-${row.sourceIdentifier}`}
-          className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_10rem_10rem_minmax(0,1fr)]"
+          className="grid gap-x-4 gap-y-3 lg:grid-cols-2 min-[1200px]:grid-cols-[minmax(0,1.2fr)_10rem_10rem_minmax(0,1fr)]"
+          data-field-grid="shared"
+          data-testid={`device-quota-catalog-field-grid-${row.sourceIdentifier}`}
         >
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             {isReadOnly || row.isExcluded ? (
-              <span className="text-sm font-medium">Tên hiển thị tại đơn vị - {itemName}</span>
+              <span className="text-sm font-medium">Tên hiển thị</span>
             ) : (
               <label htmlFor={displayNameId} className="text-sm font-medium">
-                Tên hiển thị tại đơn vị - {itemName}
+                Tên hiển thị
               </label>
             )}
             {isReadOnly || row.isExcluded ? (
@@ -77,6 +79,7 @@ export function DeviceQuotaDraftCatalogItemRow({
             ) : (
               <Input
                 id={displayNameId}
+                aria-label={`Tên hiển thị - ${itemName}`}
                 disabled={isMutationPending}
                 value={row.displayNameOverride ?? ""}
                 placeholder="Mặc định theo tên Thông tư"
@@ -89,12 +92,12 @@ export function DeviceQuotaDraftCatalogItemRow({
             )}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             {isReadOnly || row.isExcluded ? (
-              <span className="text-sm font-medium">Đơn vị áp dụng tại đơn vị - {itemName}</span>
+              <span className="text-sm font-medium">Đơn vị áp dụng</span>
             ) : (
               <label htmlFor={appliedUnitId} className="text-sm font-medium">
-                Đơn vị áp dụng tại đơn vị - {itemName}
+                Đơn vị áp dụng
               </label>
             )}
             {isReadOnly || row.isExcluded ? (
@@ -104,6 +107,7 @@ export function DeviceQuotaDraftCatalogItemRow({
             ) : (
               <Input
                 id={appliedUnitId}
+                aria-label={`Đơn vị áp dụng - ${itemName}`}
                 disabled={isMutationPending}
                 value={row.appliedUnit ?? ""}
                 placeholder={row.regulatoryUnit || "Nhập đơn vị áp dụng"}
@@ -116,14 +120,12 @@ export function DeviceQuotaDraftCatalogItemRow({
             )}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             {isReadOnly || row.isExcluded ? (
-              <span className="text-sm font-medium">
-                Số lượng đề xuất trong bản nháp - {itemName}
-              </span>
+              <span className="text-sm font-medium">Số lượng đề xuất</span>
             ) : (
               <label htmlFor={quantityId} className="text-sm font-medium">
-                Số lượng đề xuất trong bản nháp - {itemName}
+                Số lượng đề xuất
               </label>
             )}
             {isReadOnly || row.isExcluded ? (
@@ -133,6 +135,7 @@ export function DeviceQuotaDraftCatalogItemRow({
             ) : (
               <Input
                 id={quantityId}
+                aria-label={`Số lượng đề xuất - ${itemName}`}
                 type="number"
                 min="0"
                 step="1"
@@ -155,12 +158,12 @@ export function DeviceQuotaDraftCatalogItemRow({
             ) : null}
           </div>
 
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             {isReadOnly || row.isExcluded ? (
-              <span className="text-sm font-medium">Ghi chú - {itemName}</span>
+              <span className="text-sm font-medium">Ghi chú</span>
             ) : (
               <label htmlFor={notesId} className="text-sm font-medium">
-                Ghi chú - {itemName}
+                Ghi chú
               </label>
             )}
             {isReadOnly || row.isExcluded ? (
@@ -170,6 +173,8 @@ export function DeviceQuotaDraftCatalogItemRow({
             ) : (
               <Textarea
                 id={notesId}
+                aria-label={`Ghi chú - ${itemName}`}
+                className="min-h-9 resize-y"
                 disabled={isMutationPending}
                 value={row.notes ?? ""}
                 rows={1}

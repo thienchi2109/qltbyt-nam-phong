@@ -92,22 +92,22 @@ tests pass.
 Boundary: expanded-item information hierarchy, alignment, and density. No new
 data operations or toolbar functionality.
 
-- [ ] 4.1 Replace repeated object-specific labels with `Tên hiển thị`,
+- [x] 4.1 Replace repeated object-specific labels with `Tên hiển thị`,
       `Đơn vị áp dụng`, `Số lượng đề xuất`, and `Ghi chú`, while retaining
       item-specific accessible names where needed.
-- [ ] 4.2 Implement one stable shared CSS Grid template for every expanded
+- [x] 4.2 Implement one stable shared CSS Grid template for every expanded
       item so field boundaries, label baselines, input heights, and spacing
       remain identical across records.
-- [ ] 4.3 Define the intentional `1024-1199px` field arrangement and the
+- [x] 4.3 Define the intentional `1024-1199px` field arrangement and the
       `>=1200px` field arrangement without browser-driven arbitrary wrapping
       or horizontal page overflow.
-- [ ] 4.4 Reduce item padding and visible source metadata, and keep complete
+- [x] 4.4 Reduce item padding and visible source metadata, and keep complete
       source references and multiline rules available through progressive
       disclosure.
-- [ ] 4.5 Shorten visible exclusion/restoration and rule actions without
+- [x] 4.5 Shorten visible exclusion/restoration and rule actions without
       changing confirmation, mutation, disabled, pending, or destructive-action
       semantics.
-- [ ] 4.6 Add focused `user-event` accessibility and structural tests for
+- [x] 4.6 Add focused `user-event` accessibility and structural tests for
       labels, field-grid alignment hooks, disclosure controls, and item
       actions.
 

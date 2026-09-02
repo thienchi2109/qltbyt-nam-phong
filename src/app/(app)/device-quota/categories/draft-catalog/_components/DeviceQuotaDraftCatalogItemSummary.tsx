@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 
 import type { DeviceQuotaMergedItemRow } from "../device-quota-draft-catalog-types"
 import { DeviceQuotaDraftCatalogRuleDisclosure } from "./DeviceQuotaDraftCatalogRuleDisclosure"
+import { DeviceQuotaDraftCatalogSourceDisclosure } from "./DeviceQuotaDraftCatalogSourceDisclosure"
 
 type DeviceQuotaDraftCatalogItemSummaryProps = Readonly<{
   row: DeviceQuotaMergedItemRow
@@ -16,11 +17,6 @@ type DeviceQuotaDraftCatalogItemSummaryProps = Readonly<{
   onExclude: (sourceIdentifier: string) => void
   onRestore: (sourceIdentifier: string) => void
 }>
-
-function sourceMetadata(row: DeviceQuotaMergedItemRow): string {
-  const pages = row.sourcePages.length > 0 ? row.sourcePages.join(", ") : "Chưa rõ"
-  return `Nguồn: ${row.sourceReference ?? "Chưa có tham chiếu"} · Trang ${pages} · Thứ tự nguồn: ${row.sourceOrder} · Cấp: ${row.level} · Thuộc: ${row.parentSourceIdentifier ?? "gốc"}`
-}
 
 /** Renders compact item information, traceability, and actions in both modes. */
 export function DeviceQuotaDraftCatalogItemSummary({
@@ -58,7 +54,9 @@ export function DeviceQuotaDraftCatalogItemSummary({
           </Button>
           <div className="min-w-0">
             <h3 className="font-medium">{row.regulatoryName}</h3>
-            <p className="text-xs leading-5 text-muted-foreground">{sourceMetadata(row)}</p>
+            <div className="text-xs leading-5 text-muted-foreground">
+              <DeviceQuotaDraftCatalogSourceDisclosure row={row} />
+            </div>
           </div>
         </div>
         {!isReadOnly ? (
@@ -68,10 +66,11 @@ export function DeviceQuotaDraftCatalogItemSummary({
               variant="outline"
               size="sm"
               disabled={isMutationPending}
+              aria-label={`Khôi phục ${itemName}`}
               onClick={() => onRestore(row.sourceIdentifier)}
             >
               <RotateCcw className="size-4" />
-              Khôi phục {itemName}
+              Khôi phục
             </Button>
           ) : (
             <Button
@@ -79,34 +78,35 @@ export function DeviceQuotaDraftCatalogItemSummary({
               variant="ghost"
               size="sm"
               disabled={isMutationPending}
+              aria-label={`Loại khỏi bản nháp ${itemName}`}
               onClick={() => onExclude(row.sourceIdentifier)}
             >
               <SquareMinus className="size-4" />
-              Loại khỏi bản nháp {itemName}
+              Loại trừ
             </Button>
           )
         ) : null}
       </div>
 
       <dl
-        className="grid gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-x-4 gap-y-1 text-sm text-muted-foreground sm:grid-cols-2 min-[1200px]:grid-cols-4"
         data-testid={`device-quota-catalog-summary-${row.sourceIdentifier}`}
       >
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs">Tên hiển thị</dt>
           <dd className="truncate text-foreground">
             {row.displayNameOverride || "Mặc định theo tên Thông tư"}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs">Đơn vị áp dụng</dt>
           <dd className="truncate text-foreground">{row.appliedUnit || "Chưa nhập"}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs">Số lượng</dt>
           <dd className="text-foreground">{row.appliedQuantity ?? "Chưa nhập"}</dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs">Ghi chú</dt>
           <dd className="truncate text-foreground">{row.notes || "Không có"}</dd>
         </div>

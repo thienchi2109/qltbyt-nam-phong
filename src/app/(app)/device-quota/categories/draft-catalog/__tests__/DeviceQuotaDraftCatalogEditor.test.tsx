@@ -282,11 +282,10 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.getAllByTestId(/^device-quota-catalog-(row|section)-/).length).toBe(42)
 
     const firstRow = screen.getByTestId("device-quota-catalog-row-item-1")
-    expect(within(firstRow).getByText(/Phụ lục, dòng 1/)).toBeInTheDocument()
-    expect(within(firstRow).getByText(/Trang 12, 13/)).toBeInTheDocument()
-    expect(within(firstRow).getByText(/Thứ tự nguồn: 6/)).toBeInTheDocument()
-    expect(within(firstRow).getByText(/Cấp: 1/)).toBeInTheDocument()
-    expect(within(firstRow).getByText(/Thuộc: section-1/)).toBeInTheDocument()
+    expect(within(firstRow).getByText("Nguồn 6 · Trang 12, 13 · Cấp 1")).toBeInTheDocument()
+    expect(
+      within(firstRow).getByRole("button", { name: "Xem nguồn Thiết bị 1" })
+    ).toHaveTextContent("Nguồn")
   })
 
   it("keeps section collapse independent from structure navigation", async () => {
@@ -301,9 +300,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
     await user.click(screen.getByRole("button", { name: "Mở rộng Nhóm 1" }))
     expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 1" })).toBeInTheDocument()
-    expect(
-      screen.getByRole("textbox", { name: "Tên hiển thị tại đơn vị - Thiết bị 1" })
-    ).toBeInTheDocument()
+    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toBeInTheDocument()
   })
 
   it("renders compact item summaries and keeps only one editable item expanded", async () => {
@@ -318,7 +315,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 1" })).toBeInTheDocument()
     expect(
       within(screen.getByTestId("device-quota-catalog-row-item-1")).getByRole("textbox", {
-        name: "Tên hiển thị tại đơn vị - Thiết bị 1",
+        name: "Tên hiển thị - Thiết bị 1",
       })
     ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" })).toBeInTheDocument()
@@ -329,12 +326,12 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 2" })).toBeInTheDocument()
     expect(
       within(screen.getByTestId("device-quota-catalog-row-item-1")).queryByRole("textbox", {
-        name: "Tên hiển thị tại đơn vị - Thiết bị 1",
+        name: "Tên hiển thị - Thiết bị 1",
       })
     ).not.toBeInTheDocument()
     expect(
       within(screen.getByTestId("device-quota-catalog-row-item-2")).getByRole("textbox", {
-        name: "Tên hiển thị tại đơn vị - Thiết bị 2",
+        name: "Tên hiển thị - Thiết bị 2",
       })
     ).toBeInTheDocument()
 
@@ -349,7 +346,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
 
     await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
     const firstInput = screen.getByRole("textbox", {
-      name: "Tên hiển thị tại đơn vị - Thiết bị 1",
+      name: "Tên hiển thị - Thiết bị 1",
     })
     await user.type(firstInput, "Đã chỉnh sửa")
 
@@ -380,9 +377,9 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    expect(
-      screen.getByRole("textbox", { name: "Tên hiển thị tại đơn vị - Thiết bị 1" })
-    ).toHaveValue("Đã chỉnh sửa")
+    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toHaveValue(
+      "Đã chỉnh sửa"
+    )
     expect(screen.getByText("Số lượng phải là số nguyên không âm.")).toBeInTheDocument()
   })
 
@@ -452,17 +449,17 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.getByText("Tối đa 02 máy")).toBeInTheDocument()
 
     const displayNameInput = within(firstRow).getByRole("textbox", {
-      name: "Tên hiển thị tại đơn vị - Thiết bị 1",
+      name: "Tên hiển thị - Thiết bị 1",
     })
     await user.type(displayNameInput, "M")
     expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { displayNameOverride: "M" })
     const quantityInput = within(firstRow).getByRole("spinbutton", {
-      name: "Số lượng đề xuất trong bản nháp - Thiết bị 1",
+      name: "Số lượng đề xuất - Thiết bị 1",
     })
     await user.type(quantityInput, "3")
     expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedQuantity: 3 })
     const appliedUnitInput = within(firstRow).getByRole("textbox", {
-      name: "Đơn vị áp dụng tại đơn vị - Thiết bị 1",
+      name: "Đơn vị áp dụng - Thiết bị 1",
     })
     await user.type(appliedUnitInput, "B")
     expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedUnit: "B" })
@@ -585,7 +582,7 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị pháp quy gốc" }))
     expect(
       within(renderedRow).getByRole("textbox", {
-        name: "Tên hiển thị tại đơn vị - Thiết bị pháp quy gốc",
+        name: "Tên hiển thị - Thiết bị pháp quy gốc",
       })
     ).toHaveValue("Tên hiển thị tùy chỉnh")
   })
