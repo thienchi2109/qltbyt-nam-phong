@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { isGlobalRole } from "@/lib/rbac"
+import { isEquipmentManagerRole } from "@/lib/rbac"
 import type {
   DeviceQuotaDraftItem,
   DeviceQuotaDraftSaveItem,
@@ -47,7 +47,7 @@ function toSessionUnitId(
 }
 
 function isSupportedRole(role: string | undefined): boolean {
-  return isGlobalRole(role) || role?.trim().toLowerCase() === "to_qltb"
+  return isEquipmentManagerRole(role)
 }
 
 function toDraftSaveItem(item: DeviceQuotaDraftItem): DeviceQuotaDraftSaveItem {
@@ -185,23 +185,40 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       if (!draftQuery.data) throw new Error("Draft is not ready")
       const item = items.find((candidate) => candidate.source_identifier === input.sourceIdentifier)
       if (!item) throw new Error("Draft item not found")
+      const stagedItems = isDirty ? items : null
       const mutationInput = {
         draftId: draftQuery.data.id,
         regulatoryItemId: item.regulatory_item_id,
         expectedRevision: revision,
       }
-      return input.excluded
-        ? excludeDeviceQuotaDraftItem(mutationInput)
-        : restoreDeviceQuotaDraftItem(mutationInput)
+      const snapshot = input.excluded
+        ? await excludeDeviceQuotaDraftItem(mutationInput)
+        : await restoreDeviceQuotaDraftItem(mutationInput)
+      return { snapshot, stagedItems }
     },
-    onSuccess: async (result) => {
-      setLocalItems(result.items)
-      setLocalRevision(result.revision)
-      setIsDirty(false)
+    onSuccess: async ({ snapshot, stagedItems }) => {
+      const nextItems = snapshot.items.map((serverItem) => {
+        const stagedItem = stagedItems?.find(
+          (candidate) => candidate.source_identifier === serverItem.source_identifier
+        )
+        return stagedItem
+          ? {
+              ...serverItem,
+              display_name_override: stagedItem.display_name_override,
+              applied_unit: stagedItem.applied_unit,
+              applied_quantity: stagedItem.applied_quantity,
+              notes: stagedItem.notes,
+              display_order: stagedItem.display_order,
+            }
+          : serverItem
+      })
+      setLocalItems(nextItems)
+      setLocalRevision(snapshot.revision)
+      setIsDirty(stagedItems != null)
       setLastError(null)
       queryClient.setQueryData(
-        [...deviceQuotaDraftCatalogQueryKey(donViId, userId), result.id],
-        result
+        [...deviceQuotaDraftCatalogQueryKey(donViId, userId), snapshot.id],
+        snapshot
       )
       await queryClient.invalidateQueries({
         queryKey: deviceQuotaDraftCatalogQueryKey(donViId, userId),
@@ -289,6 +306,19 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     revision,
     draftId: draftQuery.data?.id ?? null,
     catalogVersionId: draftQuery.data?.catalog_version_id ?? null,
+    metadata:
+      catalogQuery.data && draftQuery.data
+        ? {
+            unitId: donViId,
+            draftStatus: draftQuery.data.status,
+            documentNumber: catalogQuery.data.document.documentNumber,
+            documentVersion: catalogQuery.data.document.documentVersion,
+            snapshotMarker: catalogQuery.data.document.sourcePdfSha256,
+            lastSavedAt: draftQuery.data.updated_at,
+            revision,
+            mode,
+          }
+        : null,
     isSaving: saveMutation.isPending,
     isExcluding: itemMutation.isPending && itemMutation.variables?.excluded === true,
     isRestoring: itemMutation.isPending && itemMutation.variables?.excluded === false,

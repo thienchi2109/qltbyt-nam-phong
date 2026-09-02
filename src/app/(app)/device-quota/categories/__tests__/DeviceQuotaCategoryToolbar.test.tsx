@@ -37,6 +37,11 @@ type CategoryContext = ReturnType<typeof useDeviceQuotaCategoryContext>
 
 const makeContext = (overrides: Partial<CategoryContext> = {}): CategoryContext =>
   ({
+    user: {
+      id: "7",
+      username: "quota-manager",
+      role: "to_qltb",
+    },
     canManageCategories: true,
     openCreateDialog: vi.fn(),
     openImportDialog: vi.fn(),
@@ -97,4 +102,48 @@ describe("DeviceQuotaCategoryToolbar", () => {
     expect(setSearchTerm).toHaveBeenCalledWith("x-quang")
     expect(openImportDialog).toHaveBeenCalledTimes(1)
   })
+
+  it.each(["global", "admin", "to_qltb"])(
+    "adds the draft catalog entry action for %s without replacing existing actions",
+    (role) => {
+      mockUseContext.mockReturnValue(
+        makeContext({
+          user: {
+            id: "7",
+            username: "quota-manager",
+            role,
+          },
+        })
+      )
+
+      render(<DeviceQuotaCategoryToolbar />)
+
+      expect(screen.getByRole("link", { name: "Soạn danh mục dự thảo" })).toHaveAttribute(
+        "href",
+        "/device-quota/categories/draft-catalog"
+      )
+      expect(screen.getByRole("button", { name: "Tải mẫu Excel" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Nhập từ Excel" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Tạo danh mục" })).toBeInTheDocument()
+    }
+  )
+
+  it.each(["regional_leader", "regional_manager", "viewer", ""])(
+    "does not expose the draft catalog entry action for unsupported role %s",
+    (role) => {
+      mockUseContext.mockReturnValue(
+        makeContext({
+          user: {
+            id: "7",
+            username: "unsupported-user",
+            role,
+          },
+        })
+      )
+
+      render(<DeviceQuotaCategoryToolbar />)
+
+      expect(screen.queryByRole("link", { name: "Soạn danh mục dự thảo" })).not.toBeInTheDocument()
+    }
+  )
 })

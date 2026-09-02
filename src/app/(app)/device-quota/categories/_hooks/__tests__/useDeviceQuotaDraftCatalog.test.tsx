@@ -272,4 +272,33 @@ describe("useDeviceQuotaDraftCatalog", () => {
       },
     })
   })
+
+  it("preserves staged fields when exclude succeeds immediately", async () => {
+    setup("to_qltb")
+    rpcSequence()
+    mockCallRpc.mockResolvedValueOnce({
+      data: {
+        ...draft,
+        draft: { ...draft.draft, revision: 4 },
+        items: [{ ...draft.items[0], applied_quantity: 2, is_excluded: true }],
+      },
+    })
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 8 }))
+    await act(async () => {
+      await rendered.result.current.exclude("item-1")
+    })
+
+    expect(rendered.result.current.rows[0]).toMatchObject({
+      appliedQuantity: 8,
+      isExcluded: true,
+    })
+    expect(rendered.result.current.isDirty).toBe(true)
+    expect(rendered.result.current.revision).toBe(4)
+  })
 })
