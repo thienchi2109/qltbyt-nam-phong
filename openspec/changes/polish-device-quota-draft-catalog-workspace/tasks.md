@@ -137,18 +137,18 @@ states, and no adjacent Device Quota workflow regresses.
 
 Boundary: verification, evidence, and release readiness only.
 
-- [ ] 6.1 Run the repository TypeScript/React quality gates in the required
+- [x] 6.1 Run the repository TypeScript/React quality gates in the required
       order, including focused draft-catalog and shared hierarchical-editor
       tests plus React Doctor.
-- [ ] 6.2 Perform visual QA at `1024px`, `1280x720`, `1366x768`, and
+- [x] 6.2 Perform visual QA at `1024px`, `1280x720`, `1366x768`, and
       `1440x900`; manually or through equivalent visual evidence verify field
       alignment, record density, sidebar behavior, save accessibility, scroll
       boundaries, and absence of unintended horizontal overflow. Do not add a
       browser-driven test.
-- [ ] 6.3 Confirm the final diff contains no API, database, migration,
+- [x] 6.3 Confirm the final diff contains no API, database, migration,
       permission, validation, business-rule, mobile, active-category/import, or
       issue `#982` scope changes.
-- [ ] 6.4 Record reviewable manual/equivalent visual evidence and the exact
+- [x] 6.4 Record reviewable manual/equivalent visual evidence and the exact
       `user-event` and verification results for the landed commit.
 
 Exit criteria: functional gates pass, visual evidence matches the same landed
