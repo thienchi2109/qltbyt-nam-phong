@@ -102,7 +102,7 @@ Boundary: prove that the existing categories page remains operational while
 the separate draft entry point is present. No active-category or import
 behavior is changed in this sub-phase.
 
-- [ ] 4.1.1 Add page-level integration coverage proving category-management
+- [x] 4.1.1 Add page-level integration coverage proving category-management
       controls, both Excel import entry points, and their manager gating remain
       available before and after draft initialization, save, and reopen.
 
