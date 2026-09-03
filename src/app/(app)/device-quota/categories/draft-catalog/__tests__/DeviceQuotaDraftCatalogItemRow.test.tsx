@@ -1,150 +1,92 @@
 import React from "react"
 import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import "@testing-library/jest-dom"
 import { describe, expect, it, vi } from "vitest"
 
 import { DeviceQuotaDraftCatalogItemRow } from "../_components/DeviceQuotaDraftCatalogItemRow"
-import type { DeviceQuotaMergedItemRow } from "../device-quota-draft-catalog-types"
-
-const item: DeviceQuotaMergedItemRow = {
-  id: "item-1",
-  sourceLabel: "1.1",
-  type: "item",
-  level: 1,
-  parentSourceIdentifier: "section-1",
-  name: "Thiết bị 1",
-  regulatoryUnit: "Máy",
-  quotaLines: ["Tối thiểu 01 máy", "Tối đa 02 máy"],
-  sourcePages: [12, 13],
-  sourceReference: "Phụ lục, dòng 1",
-  sourceOrder: 6,
-  sourceIdentifier: "item-1",
-  completeness: "incomplete",
-  displayName: "Thiết bị 1",
-  displayNameOverride: null,
-  appliedUnit: null,
-  appliedQuantity: null,
-  notes: null,
-  isExcluded: false,
-  displayOrder: 6,
-  regulatoryItemId: "reg-1",
-  regulatoryName: "Thiết bị 1",
-  regulatoryQuotaLines: ["Tối thiểu 01 máy", "Tối đa 02 máy"],
-  regulatoryRules: [
-    { lineOrder: 1, sourceText: "Tối thiểu 01 máy" },
-    { lineOrder: 2, sourceText: "Tối đa 02 máy" },
-  ],
-  regulatoryFieldsReadOnly: true,
-  editableFields: {
-    displayName: true,
-    appliedUnit: true,
-    appliedQuantity: true,
-    notes: true,
-  },
-}
+import { makeItem } from "./DeviceQuotaDraftCatalogTestSupport"
 
 function renderItem(
   overrides: Partial<React.ComponentProps<typeof DeviceQuotaDraftCatalogItemRow>> = {}
 ) {
   const props: React.ComponentProps<typeof DeviceQuotaDraftCatalogItemRow> = {
-    row: item,
+    row: makeItem(1, 1),
     isReadOnly: false,
     isMutationPending: false,
-    isExpanded: true,
-    onToggleExpanded: vi.fn(),
     onUpdate: vi.fn(),
     onExclude: vi.fn(),
     onRestore: vi.fn(),
     ...overrides,
   }
 
-  return { ...render(<DeviceQuotaDraftCatalogItemRow {...props} />), props }
+  return {
+    ...render(
+      <table>
+        <tbody>
+          <DeviceQuotaDraftCatalogItemRow {...props} />
+        </tbody>
+      </table>
+    ),
+    props,
+  }
 }
 
 describe("DeviceQuotaDraftCatalogItemRow", () => {
-  it("uses concise field labels and one intentional responsive field grid", () => {
+  it("renders immutable source cells, complete rules, and the three draft fields", () => {
     renderItem()
 
-    const summary = screen.getByTestId("device-quota-catalog-summary-item-1")
-    expect(within(summary).getByText("Số lượng đề xuất", { selector: "dt" })).toBeInTheDocument()
-
-    const fieldGrid = screen.getByTestId("device-quota-catalog-field-grid-item-1")
-    expect(fieldGrid).toHaveAttribute("data-field-grid", "shared")
-    expect(fieldGrid).toHaveClass(
-      "lg:grid-cols-2",
-      "min-[1200px]:grid-cols-[minmax(0,1.2fr)_10rem_10rem_minmax(0,1fr)]"
-    )
-    expect(within(fieldGrid).getByText("Tên hiển thị", { selector: "label" })).toBeInTheDocument()
-    expect(within(fieldGrid).getByText("Đơn vị áp dụng", { selector: "label" })).toBeInTheDocument()
-    expect(
-      within(fieldGrid).getByText("Số lượng đề xuất", { selector: "label" })
-    ).toBeInTheDocument()
-    expect(within(fieldGrid).getByText("Ghi chú", { selector: "label" })).toBeInTheDocument()
-    expect(
-      within(fieldGrid).getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })
-    ).toBeInTheDocument()
-    expect(
-      within(fieldGrid).getByRole("textbox", { name: "Đơn vị áp dụng - Thiết bị 1" })
-    ).toBeInTheDocument()
-    expect(
-      within(fieldGrid).getByRole("spinbutton", { name: "Số lượng đề xuất - Thiết bị 1" })
-    ).toBeInTheDocument()
-    expect(
-      within(fieldGrid).getByRole("textbox", { name: "Ghi chú - Thiết bị 1" })
-    ).toBeInTheDocument()
-  })
-
-  it("keeps compact source context visible and discloses complete source and rules", async () => {
-    const user = userEvent.setup()
-    renderItem({ isExpanded: false })
-
     const row = screen.getByTestId("device-quota-catalog-row-item-1")
-    expect(within(row).getByText("Nguồn 6 · Trang 12, 13 · Cấp 1")).toBeInTheDocument()
-    expect(within(row).queryByText("Phụ lục, dòng 1")).not.toBeInTheDocument()
-    expect(within(row).queryByText("section-1")).not.toBeInTheDocument()
-
-    const sourceButton = within(row).getByRole("button", { name: "Xem nguồn Thiết bị 1" })
-    expect(sourceButton).toHaveTextContent("Nguồn")
-    await user.click(sourceButton)
-
-    const sourceDetails = within(row).getByTestId("device-quota-source-details-item-1")
-    expect(within(sourceDetails).getByText("Phụ lục, dòng 1")).toBeInTheDocument()
-    expect(within(sourceDetails).getByText("12, 13")).toBeInTheDocument()
-    expect(within(sourceDetails).getByText("6")).toBeInTheDocument()
-    expect(within(sourceDetails).getByText("1")).toBeInTheDocument()
-    expect(within(sourceDetails).getByText("section-1")).toBeInTheDocument()
-
-    const ruleButton = within(row).getByRole("button", { name: "Xem quy tắc Thiết bị 1" })
-    expect(ruleButton).toHaveTextContent("Quy tắc")
-    await user.click(ruleButton)
+    expect(within(row).getByText("1.1")).toBeInTheDocument()
+    expect(within(row).getByText("Thiết bị 1")).toBeInTheDocument()
+    expect(within(row).getByText("Máy", { selector: "[data-source-unit]" })).toBeInTheDocument()
     expect(within(row).getByText("Tối thiểu 01 máy")).toBeInTheDocument()
     expect(within(row).getByText("Tối đa 02 máy")).toBeInTheDocument()
+    expect(
+      within(row).getByRole("textbox", { name: "ĐVT áp dụng - Thiết bị 1" })
+    ).toBeInTheDocument()
+    expect(
+      within(row).getByRole("spinbutton", { name: "SL đề xuất - Thiết bị 1" })
+    ).toBeInTheDocument()
+    expect(within(row).getByRole("textbox", { name: "Ghi chú - Thiết bị 1" })).toBeInTheDocument()
+    expect(within(row).queryByRole("textbox", { name: /Chủng loại/ })).not.toBeInTheDocument()
   })
 
-  it("shortens visible item actions while preserving callbacks and accessible names", async () => {
+  it("keeps source metadata and rule disclosures accessible", async () => {
     const user = userEvent.setup()
-    const { props, rerender } = renderItem({ isExpanded: false })
+    renderItem()
+    const row = screen.getByTestId("device-quota-catalog-row-item-1")
 
-    const excludeButton = screen.getByRole("button", {
-      name: "Loại khỏi bản nháp Thiết bị 1",
-    })
-    expect(excludeButton).toHaveTextContent("Loại trừ")
+    await user.click(within(row).getByRole("button", { name: "Xem nguồn Thiết bị 1" }))
+    expect(within(row).getByTestId("device-quota-source-details-item-1")).toBeInTheDocument()
+    await user.click(within(row).getByRole("button", { name: "Xem quy tắc Thiết bị 1" }))
+    expect(within(row).getAllByText("Tối thiểu 01 máy")).toHaveLength(2)
+  })
+
+  it("preserves exclude and restore callbacks without putting the item name in button text", async () => {
+    const user = userEvent.setup()
+    const onExclude = vi.fn()
+    const onRestore = vi.fn()
+    const { rerender, props } = renderItem({ onExclude, onRestore })
+
+    const excludeButton = screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" })
     expect(excludeButton).not.toHaveTextContent("Thiết bị 1")
     await user.click(excludeButton)
-    expect(props.onExclude).toHaveBeenCalledWith("item-1")
+    expect(onExclude).toHaveBeenCalledWith("item-1")
 
-    const onRestore = vi.fn()
     rerender(
-      <DeviceQuotaDraftCatalogItemRow
-        {...props}
-        row={{ ...item, isExcluded: true, completeness: "excluded" }}
-        onRestore={onRestore}
-      />
+      <table>
+        <tbody>
+          <DeviceQuotaDraftCatalogItemRow
+            {...props}
+            row={{ ...makeItem(1, 1), isExcluded: true, completeness: "excluded" }}
+          />
+        </tbody>
+      </table>
     )
-
     const restoreButton = screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })
-    expect(restoreButton).toHaveTextContent("Khôi phục")
     expect(restoreButton).not.toHaveTextContent("Thiết bị 1")
+    expect(screen.getByText("Đã loại khỏi bản nháp")).toBeInTheDocument()
     await user.click(restoreButton)
     expect(onRestore).toHaveBeenCalledWith("item-1")
   })

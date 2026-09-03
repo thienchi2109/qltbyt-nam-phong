@@ -1,23 +1,17 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useMemo } from "react"
 
 import { Badge } from "@/components/ui/badge"
-import { HierarchicalEditorStructureSidebar } from "@/components/hierarchical-editor/HierarchicalEditorStructureSidebar"
 import { HierarchicalEditorToolbar } from "@/components/hierarchical-editor/HierarchicalEditorToolbar"
 import { HierarchicalEditorWorkspace } from "@/components/hierarchical-editor/HierarchicalEditorWorkspace"
-import { useHierarchicalEditorStructure } from "@/components/hierarchical-editor/useHierarchicalEditorStructure"
 
 import type {
   DeviceQuotaDraftItemPatch,
-  DeviceQuotaMergedItemRow,
   DeviceQuotaMergedRow,
 } from "../device-quota-draft-catalog-types"
 import { DeviceQuotaDraftCatalogItemRow } from "./DeviceQuotaDraftCatalogItemRow"
 import { DeviceQuotaDraftCatalogSection } from "./DeviceQuotaDraftCatalogSection"
-
-const DRAFT_CATALOG_STRUCTURE_PREFERENCE_KEY = "device-quota-draft-catalog-structure"
-const DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH = 176
 
 export type DeviceQuotaDraftCatalogEditorMetadata = {
   unitId: number
@@ -51,42 +45,142 @@ type DeviceQuotaDraftCatalogEditorProps = {
   onRestore: (sourceIdentifier: string) => Promise<unknown>
 }
 
-type DeviceQuotaDraftCatalogRenderEntry =
-  | {
-      type: "section"
-      section: Extract<DeviceQuotaMergedRow, { type: "section" }>
-      items: DeviceQuotaMergedItemRow[]
-    }
-  | { type: "item"; item: DeviceQuotaMergedItemRow }
+const sourceHeaders = ["TT", "Chủng loại", "Đơn vị tính", "Số lượng định mức"] as const
+const draftHeaders = ["ĐVT áp dụng", "SL đề xuất", "Ghi chú"] as const
 
-function buildRenderEntries(rows: DeviceQuotaMergedRow[]): DeviceQuotaDraftCatalogRenderEntry[] {
-  const orderedRows = rows.slice().sort((left, right) => left.sourceOrder - right.sourceOrder)
-  const groups = new Map<string, Extract<DeviceQuotaDraftCatalogRenderEntry, { type: "section" }>>()
-
-  for (const row of orderedRows) {
-    if (row.type === "section") {
-      groups.set(row.sourceIdentifier, { type: "section", section: row, items: [] })
-    }
-  }
-
-  const entries: DeviceQuotaDraftCatalogRenderEntry[] = []
-  for (const row of orderedRows) {
-    if (row.type === "section") {
-      const group = groups.get(row.sourceIdentifier)
-      if (group) entries.push(group)
-      continue
-    }
-
-    const group =
-      row.parentSourceIdentifier == null ? undefined : groups.get(row.parentSourceIdentifier)
-    if (group) group.items.push(row)
-    else entries.push({ type: "item", item: row })
-  }
-
-  return entries
+function SourceTableHeader(): React.JSX.Element {
+  return (
+    <thead className="bg-background">
+      <tr>
+        <th colSpan={4} scope="colgroup" className="border-b bg-muted/50 px-4 py-2 text-left">
+          Theo Thông tư 10/2026
+        </th>
+        <th colSpan={3} scope="colgroup" className="border-b bg-primary/5 px-4 py-2 text-left">
+          Thông tin dự thảo của đơn vị
+        </th>
+      </tr>
+      <tr>
+        {sourceHeaders.map((header, index) => (
+          <th
+            key={header}
+            scope="col"
+            data-testid={
+              index === 0
+                ? "device-quota-draft-catalog-sticky-tt"
+                : index === 1
+                  ? "device-quota-draft-catalog-sticky-name"
+                  : undefined
+            }
+            className={`whitespace-nowrap border-b bg-background px-4 py-3 text-left ${
+              index === 0 ? "sticky left-0 z-20 w-20" : ""
+            } ${index === 1 ? "sticky left-20 z-20 min-w-[22rem]" : ""}`}
+          >
+            {header}
+          </th>
+        ))}
+        {draftHeaders.map((header) => (
+          <th
+            key={header}
+            scope="col"
+            className="whitespace-nowrap border-b bg-primary/5 px-4 py-3 text-left"
+          >
+            {header}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  )
 }
 
-/** Composes the desktop-only draft catalog workspace from shared hierarchy primitives. */
+function DraftCatalogTable({
+  rows,
+  validationErrors,
+  isReadOnly,
+  isMutationPending,
+  onUpdateItem,
+  onExclude,
+  onRestore,
+}: {
+  rows: DeviceQuotaMergedRow[]
+  validationErrors: Record<string, string>
+  isReadOnly: boolean
+  isMutationPending: boolean
+  onUpdateItem: (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => void
+  onExclude: (sourceIdentifier: string) => void
+  onRestore: (sourceIdentifier: string) => void
+}): React.JSX.Element {
+  const orderedRows = useMemo(
+    () => rows.slice().sort((left, right) => left.sourceOrder - right.sourceOrder),
+    [rows]
+  )
+  const rowGroups = useMemo(() => {
+    const groups: Array<{
+      section: Extract<DeviceQuotaMergedRow, { type: "section" }> | null
+      rows: DeviceQuotaMergedRow[]
+    }> = []
+
+    for (const row of orderedRows) {
+      if (row.type === "section" || groups.length === 0) {
+        groups.push({ section: row.type === "section" ? row : null, rows: [row] })
+      } else {
+        groups[groups.length - 1].rows.push(row)
+      }
+    }
+
+    return groups
+  }, [orderedRows])
+
+  return (
+    <div
+      data-testid="device-quota-draft-catalog-table-viewport"
+      className="h-full min-w-0 overflow-auto border-y"
+    >
+      <table
+        className="w-full min-w-[1120px] border-collapse text-sm"
+        aria-label="Phụ lục định mức thiết bị theo Thông tư 10/2026"
+      >
+        <caption className="sr-only">
+          Danh mục thiết bị theo Phụ lục Thông tư 10/2026 và thông tin dự thảo của đơn vị
+        </caption>
+        <colgroup>
+          <col className="w-20" />
+          <col className="min-w-[22rem]" />
+          <col className="w-36" />
+          <col className="w-[28rem]" />
+          <col className="w-44" />
+          <col className="w-36" />
+          <col className="w-64" />
+        </colgroup>
+        <SourceTableHeader />
+        {rowGroups.map((group, groupIndex) => (
+          <tbody
+            key={group.section?.sourceIdentifier ?? `top-level-${groupIndex}`}
+            aria-label={group.section?.name}
+          >
+            {group.rows.map((row) =>
+              row.type === "section" ? (
+                <DeviceQuotaDraftCatalogSection key={row.sourceIdentifier} section={row} />
+              ) : (
+                <DeviceQuotaDraftCatalogItemRow
+                  key={row.sourceIdentifier}
+                  row={row}
+                  validationMessage={validationErrors[row.sourceIdentifier]}
+                  isReadOnly={isReadOnly}
+                  isMutationPending={isMutationPending}
+                  onUpdate={onUpdateItem}
+                  onExclude={onExclude}
+                  onRestore={onRestore}
+                />
+              )
+            )}
+          </tbody>
+        ))}
+      </table>
+    </div>
+  )
+}
+
+/** Renders the desktop appendix table while preserving the existing draft contract. */
 export function DeviceQuotaDraftCatalogEditor({
   rows,
   metadata,
@@ -100,35 +194,6 @@ export function DeviceQuotaDraftCatalogEditor({
   const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isRecovering, isReadOnly } =
     state
   const isMutationPending = isSaving || isExcluding || isRestoring || isRecovering
-  const bodyRef = useRef<HTMLDivElement>(null)
-  const sectionRefs = useRef(new Map<string, HTMLElement>())
-  const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
-  const [expandedItemKey, setExpandedItemKey] = useState<string | null>(null)
-  const structure = useHierarchicalEditorStructure({
-    containerRef: bodyRef,
-    preferenceKey: DRAFT_CATALOG_STRUCTURE_PREFERENCE_KEY,
-  })
-  const entries = useMemo(() => buildRenderEntries(rows), [rows])
-  const sections = entries
-    .filter(
-      (entry): entry is Extract<DeviceQuotaDraftCatalogRenderEntry, { type: "section" }> =>
-        entry.type === "section"
-    )
-    .map(({ section, items }) => ({
-      key: section.sourceIdentifier,
-      label: section.name,
-      ordinal: section.sourceLabel,
-      summary: `${items.length}`,
-      targetRef: {
-        get current() {
-          return sectionRefs.current.get(section.sourceIdentifier) ?? null
-        },
-      },
-    }))
-  const handleItemToggle = useCallback((itemKey: string) => {
-    setExpandedItemKey((current) => (current === itemKey ? null : itemKey))
-  }, [])
-
   const completionStatus = isIncomplete ? (
     <Badge variant="outline">Chưa hoàn thiện</Badge>
   ) : (
@@ -149,6 +214,7 @@ export function DeviceQuotaDraftCatalogEditor({
       </p>
     </div>
   )
+
   return (
     <div className="min-w-0 space-y-3 py-6" data-testid="device-quota-draft-catalog-editor">
       <HierarchicalEditorWorkspace
@@ -156,27 +222,8 @@ export function DeviceQuotaDraftCatalogEditor({
         bodyAriaLabel="Các nhóm thiết bị pháp quy"
         workspaceTestId="device-quota-draft-catalog-workspace"
         bodyTestId="device-quota-draft-catalog-body"
-        bodyRef={bodyRef}
-        bodyDataAttributes={{ "data-structure-layout": structure.layout }}
-        bodyStyle={{
-          gridTemplateColumns:
-            structure.layout === "panel"
-              ? `${DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH}px minmax(0, 1fr)`
-              : "48px minmax(0, 1fr)",
-        }}
-        sidebar={
-          <HierarchicalEditorStructureSidebar
-            sections={sections}
-            activeKey={activeSectionKey}
-            expanded={structure.expanded}
-            overlay={structure.layout === "overlay"}
-            expandedWidth={DRAFT_CATALOG_STRUCTURE_PANEL_WIDTH}
-            ariaLabel="Cấu trúc danh mục"
-            testId="device-quota-draft-catalog-sidebar"
-            onToggle={structure.toggle}
-            onSectionSelect={setActiveSectionKey}
-          />
-        }
+        bodyClassName="block"
+        contentClassName="overflow-hidden"
         toolbar={
           isReadOnly ? (
             <div
@@ -205,40 +252,15 @@ export function DeviceQuotaDraftCatalogEditor({
           )
         }
       >
-        {entries.map((entry) =>
-          entry.type === "section" ? (
-            <DeviceQuotaDraftCatalogSection
-              key={entry.section.sourceIdentifier}
-              section={entry.section}
-              items={entry.items}
-              validationErrors={validationErrors}
-              isReadOnly={isReadOnly}
-              isMutationPending={isMutationPending}
-              expandedItemKey={expandedItemKey}
-              onItemToggle={handleItemToggle}
-              onUpdate={onUpdateItem}
-              onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
-              onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
-              sectionRef={(element) => {
-                if (element) sectionRefs.current.set(entry.section.sourceIdentifier, element)
-                else sectionRefs.current.delete(entry.section.sourceIdentifier)
-              }}
-            />
-          ) : (
-            <DeviceQuotaDraftCatalogItemRow
-              key={entry.item.sourceIdentifier}
-              row={entry.item}
-              validationMessage={validationErrors[entry.item.sourceIdentifier]}
-              isReadOnly={isReadOnly}
-              isMutationPending={isMutationPending}
-              isExpanded={expandedItemKey === entry.item.sourceIdentifier}
-              onToggleExpanded={() => handleItemToggle(entry.item.sourceIdentifier)}
-              onUpdate={onUpdateItem}
-              onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
-              onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
-            />
-          )
-        )}
+        <DraftCatalogTable
+          rows={rows}
+          validationErrors={validationErrors}
+          isReadOnly={isReadOnly}
+          isMutationPending={isMutationPending}
+          onUpdateItem={onUpdateItem}
+          onExclude={(sourceIdentifier) => void onExclude(sourceIdentifier)}
+          onRestore={(sourceIdentifier) => void onRestore(sourceIdentifier)}
+        />
       </HierarchicalEditorWorkspace>
     </div>
   )

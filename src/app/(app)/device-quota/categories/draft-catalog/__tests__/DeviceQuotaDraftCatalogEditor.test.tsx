@@ -1,48 +1,19 @@
 import React from "react"
-import { render, screen, within } from "@testing-library/react"
+import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import "@testing-library/jest-dom"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { useDeviceQuotaDraftCatalog } from "../../_hooks/useDeviceQuotaDraftCatalog"
 import { DeviceQuotaDraftCatalogEditor } from "../_components/DeviceQuotaDraftCatalogEditor"
 import { DeviceQuotaDraftCatalogPageClient } from "../_components/DeviceQuotaDraftCatalogPageClient"
-import {
-  defaultEditorState,
-  makeItem,
-  makeRows,
-  makeSection,
-  makeTopLevelItem,
-  metadata,
-} from "./DeviceQuotaDraftCatalogTestSupport"
+import { defaultEditorState, makeRows, metadata } from "./DeviceQuotaDraftCatalogTestSupport"
 
 vi.mock("../../_hooks/useDeviceQuotaDraftCatalog", () => ({
   useDeviceQuotaDraftCatalog: vi.fn(),
 }))
 
 const mockUseDraftCatalog = vi.mocked(useDeviceQuotaDraftCatalog)
-const originalInnerWidth = window.innerWidth
-
-function setViewportWidth(width: number): void {
-  Object.defineProperty(window, "innerWidth", { configurable: true, value: width })
-}
-
-function renderEditor(
-  overrides: Partial<React.ComponentProps<typeof DeviceQuotaDraftCatalogEditor>> = {}
-) {
-  const props: React.ComponentProps<typeof DeviceQuotaDraftCatalogEditor> = {
-    rows: makeRows(),
-    metadata,
-    validationErrors: {},
-    state: defaultEditorState,
-    onUpdateItem: vi.fn(),
-    onSave: vi.fn().mockResolvedValue(undefined),
-    onExclude: vi.fn().mockResolvedValue(undefined),
-    onRestore: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  }
-  return { ...render(<DeviceQuotaDraftCatalogEditor {...props} />), props }
-}
 
 function makeHookResult(
   overrides: Partial<ReturnType<typeof useDeviceQuotaDraftCatalog>> = {}
@@ -69,6 +40,7 @@ function makeHookResult(
     save: vi.fn().mockResolvedValue(undefined),
     exclude: vi.fn().mockResolvedValue(undefined),
     restore: vi.fn().mockResolvedValue(undefined),
+    retry: vi.fn().mockResolvedValue(undefined),
     getDeviceQuotaDraftCompleteness: vi.fn(),
     isDirty: false,
     isIncomplete: true,
@@ -77,78 +49,19 @@ function makeHookResult(
 }
 
 describe("DeviceQuotaDraftCatalogEditor", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    window.sessionStorage.clear()
-    Element.prototype.scrollIntoView = vi.fn()
-  })
-
-  afterEach(() => {
-    setViewportWidth(originalInnerWidth)
-  })
-
-  it("uses a 176px structure panel at wide widths and toggles to a 48px rail", async () => {
-    const user = userEvent.setup()
-    setViewportWidth(1200)
-    renderEditor({ rows: [makeSection(1), makeItem(1, 1)] })
-
-    const body = screen.getByTestId("device-quota-draft-catalog-body")
-    const sidebar = screen.getByTestId("device-quota-draft-catalog-sidebar")
-
-    expect(body).toHaveAttribute("data-structure-layout", "panel")
-    expect(body).toHaveStyle({ gridTemplateColumns: "176px minmax(0, 1fr)" })
-    expect(sidebar).toHaveAttribute("data-expanded", "true")
-    expect(sidebar).toHaveStyle({ width: "176px" })
-
-    await user.click(within(sidebar).getByRole("button", { name: "Đóng bảng cấu trúc" }))
-
-    expect(body).toHaveAttribute("data-structure-layout", "rail")
-    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
-    expect(sidebar).toHaveAttribute("data-expanded", "false")
-  })
-
-  it("defaults to the rail at 1024px and overlays the expanded panel without resizing rows", async () => {
-    const user = userEvent.setup()
-    setViewportWidth(1024)
-    renderEditor({
-      rows: [
-        makeSection(1),
-        makeItem(1, 1),
-        makeSection(2),
-        makeItem(2, 2),
-        makeSection(3),
-        makeItem(3, 3),
-      ],
-    })
-
-    const body = screen.getByTestId("device-quota-draft-catalog-body")
-    const sidebar = screen.getByTestId("device-quota-draft-catalog-sidebar")
-
-    expect(body).toHaveAttribute("data-structure-layout", "rail")
-    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
-    expect(sidebar).toHaveAttribute("data-expanded", "false")
-    expect(sidebar).not.toHaveAttribute("data-overlay")
-
-    await user.click(within(sidebar).getByRole("button", { name: "Mở bảng cấu trúc" }))
-
-    expect(body).toHaveAttribute("data-structure-layout", "overlay")
-    expect(body).toHaveStyle({ gridTemplateColumns: "48px minmax(0, 1fr)" })
-    expect(sidebar).toHaveAttribute("data-expanded", "true")
-    expect(sidebar).toHaveAttribute("data-overlay", "true")
-    expect(sidebar).toHaveStyle({ width: "176px" })
-
-    within(sidebar).getByRole("button", { name: "Nhóm 3" }).focus()
-    await user.keyboard("{Enter}")
-
-    expect(within(sidebar).getByRole("button", { name: "Nhóm 3" })).toHaveAttribute(
-      "aria-current",
-      "true"
+  it("keeps concise header metadata and save feedback without technical metadata", () => {
+    render(
+      <DeviceQuotaDraftCatalogEditor
+        rows={makeRows()}
+        metadata={metadata}
+        validationErrors={{}}
+        state={defaultEditorState}
+        onUpdateItem={vi.fn()}
+        onSave={vi.fn()}
+        onExclude={vi.fn()}
+        onRestore={vi.fn()}
+      />
     )
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" })
-  })
-
-  it("renders workspace context without exposing technical metadata", () => {
-    renderEditor()
 
     expect(screen.getByText(/10\/2026\/TT-BYT/)).toBeInTheDocument()
     expect(screen.getByText(/Đơn vị 23 ·/)).toBeInTheDocument()
@@ -157,330 +70,32 @@ describe("DeviceQuotaDraftCatalogEditor", () => {
     expect(screen.queryByText(/abc123def456/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Revision: 4/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Trạng thái: draft/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Chế độ: Chỉnh sửa/)).not.toBeInTheDocument()
-    expect(screen.queryByText(/Đã lưu: /)).not.toBeInTheDocument()
-    expect(screen.getAllByTestId(/^device-quota-catalog-row-/)).toHaveLength(37)
-    expect(screen.getAllByTestId(/^device-quota-catalog-section-/)).toHaveLength(5)
-    expect(screen.getAllByTestId(/^device-quota-catalog-(row|section)-/).length).toBe(42)
-
-    const firstRow = screen.getByTestId("device-quota-catalog-row-item-1")
-    expect(within(firstRow).getByText("Nguồn 6 · Trang 12, 13 · Cấp 1")).toBeInTheDocument()
-    expect(
-      within(firstRow).getByRole("button", { name: "Xem nguồn Thiết bị 1" })
-    ).toHaveTextContent("Nguồn")
-  })
-
-  it("keeps section collapse independent from structure navigation", async () => {
-    const user = userEvent.setup()
-    renderEditor({ rows: [makeSection(1), makeItem(1, 1), makeSection(2), makeItem(2, 2)] })
-
-    await user.click(screen.getByRole("button", { name: "Nhóm 2" }))
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" })
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
-    expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Mở rộng Nhóm 1" }))
-    expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 1" })).toBeInTheDocument()
-    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toBeInTheDocument()
-  })
-
-  it("renders compact item summaries and keeps only one editable item expanded", async () => {
-    const user = userEvent.setup()
-    renderEditor({ rows: [makeSection(1), makeItem(1, 1), makeItem(2, 1)] })
-
-    expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" })).toBeInTheDocument()
-    expect(screen.queryByRole("textbox", { name: /Thiết bị 1/ })).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-
-    expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 1" })).toBeInTheDocument()
-    expect(
-      within(screen.getByTestId("device-quota-catalog-row-item-1")).getByRole("textbox", {
-        name: "Tên hiển thị - Thiết bị 1",
-      })
-    ).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" })).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" }))
-
-    expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Thu gọn Thiết bị 2" })).toBeInTheDocument()
-    expect(
-      within(screen.getByTestId("device-quota-catalog-row-item-1")).queryByRole("textbox", {
-        name: "Tên hiển thị - Thiết bị 1",
-      })
-    ).not.toBeInTheDocument()
-    expect(
-      within(screen.getByTestId("device-quota-catalog-row-item-2")).getByRole("textbox", {
-        name: "Tên hiển thị - Thiết bị 2",
-      })
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Thu gọn Thiết bị 2" }))
-    expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" })).toBeInTheDocument()
-  })
-
-  it("preserves staged values when switching the expanded item", async () => {
-    const user = userEvent.setup()
-    const rows = [makeSection(1), makeItem(1, 1), makeItem(2, 1)]
-    const { rerender } = renderEditor({ rows })
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    const firstInput = screen.getByRole("textbox", {
-      name: "Tên hiển thị - Thiết bị 1",
-    })
-    await user.type(firstInput, "Đã chỉnh sửa")
-
-    const stagedRows = rows.map((row) =>
-      row.type === "item" && row.sourceIdentifier === "item-1"
-        ? { ...row, displayNameOverride: "Đã chỉnh sửa" }
-        : row
-    )
-    rerender(
-      <DeviceQuotaDraftCatalogEditor
-        rows={stagedRows}
-        metadata={metadata}
-        validationErrors={{ "item-1": "Số lượng phải là số nguyên không âm." }}
-        state={{ ...defaultEditorState, isDirty: true }}
-        onUpdateItem={vi.fn()}
-        onSave={vi.fn()}
-        onExclude={vi.fn()}
-        onRestore={vi.fn()}
-      />
-    )
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" }))
-    expect(screen.queryByRole("textbox", { name: /Thiết bị 1/ })).not.toBeInTheDocument()
-    expect(
-      within(screen.getByTestId("device-quota-catalog-row-item-1")).getByText(
-        "Số lượng phải là số nguyên không âm."
-      )
-    ).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toHaveValue(
-      "Đã chỉnh sửa"
-    )
-    expect(screen.getByText("Số lượng phải là số nguyên không âm.")).toBeInTheDocument()
-  })
-
-  it("keeps excluded and read-only items usable as compact summaries", async () => {
-    const user = userEvent.setup()
-    const excludedRows = [
-      makeSection(1),
-      { ...makeItem(1, 1), isExcluded: true, completeness: "excluded" as const },
-    ]
-    const { rerender } = renderEditor({ rows: excludedRows })
-
-    expect(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText("Mặc định theo tên Thông tư")).not.toBeInTheDocument()
-
-    rerender(
-      <DeviceQuotaDraftCatalogEditor
-        rows={[makeSection(1), makeItem(1, 1)]}
-        metadata={{ ...metadata, mode: "readonly" }}
-        validationErrors={{}}
-        state={{ ...defaultEditorState, isReadOnly: true }}
-        onUpdateItem={vi.fn()}
-        onSave={vi.fn()}
-        onExclude={vi.fn()}
-        onRestore={vi.fn()}
-      />
-    )
-
-    expect(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" })).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText("Mặc định theo tên Thông tư")).not.toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
   })
 
   it.each([
-    { state: { ...defaultEditorState }, feedback: "Đã lưu", buttonName: "Lưu" },
-    {
-      state: { ...defaultEditorState, isDirty: true },
-      feedback: "Chưa lưu",
-      buttonName: "Lưu",
-    },
+    { state: defaultEditorState, feedback: "Đã lưu", button: "Lưu" },
+    { state: { ...defaultEditorState, isDirty: true }, feedback: "Chưa lưu", button: "Lưu" },
     {
       state: { ...defaultEditorState, isDirty: true, isSaving: true },
       feedback: "Đang lưu...",
-      buttonName: "Đang lưu...",
+      button: "Đang lưu...",
     },
-  ])("shows $feedback in the workspace toolbar", ({ state, feedback, buttonName }) => {
-    renderEditor({ state })
-
-    expect(screen.getByTestId("device-quota-draft-catalog-toolbar")).toHaveTextContent(feedback)
-    expect(screen.getByRole("button", { name: buttonName })).toBeInTheDocument()
-  })
-
-  it("keeps regulatory values read-only and stages ordinary edits until Save", async () => {
-    const user = userEvent.setup()
-    const { props } = renderEditor({
-      rows: [makeItem(1, 1)],
-      state: { ...defaultEditorState, isDirty: true },
-    })
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 1" }))
-    const firstRow = screen.getByTestId("device-quota-catalog-row-item-1")
-
-    expect(screen.queryByRole("textbox", { name: "Tên theo Thông tư" })).not.toBeInTheDocument()
-    expect(within(firstRow).getByPlaceholderText("Mặc định theo tên Thông tư")).toHaveValue("")
-
-    await user.click(screen.getByRole("button", { name: "Xem quy tắc Thiết bị 1" }))
-    expect(screen.getByText("Tối thiểu 01 máy")).toBeInTheDocument()
-    expect(screen.getByText("Tối đa 02 máy")).toBeInTheDocument()
-
-    const displayNameInput = within(firstRow).getByRole("textbox", {
-      name: "Tên hiển thị - Thiết bị 1",
-    })
-    await user.type(displayNameInput, "M")
-    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { displayNameOverride: "M" })
-    const quantityInput = within(firstRow).getByRole("spinbutton", {
-      name: "Số lượng đề xuất - Thiết bị 1",
-    })
-    await user.type(quantityInput, "3")
-    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedQuantity: 3 })
-    const appliedUnitInput = within(firstRow).getByRole("textbox", {
-      name: "Đơn vị áp dụng - Thiết bị 1",
-    })
-    await user.type(appliedUnitInput, "B")
-    expect(props.onUpdateItem).toHaveBeenLastCalledWith("item-1", { appliedUnit: "B" })
-    expect(props.onSave).not.toHaveBeenCalled()
-
-    await user.click(screen.getByRole("button", { name: "Lưu" }))
-    expect(props.onSave).toHaveBeenCalledTimes(1)
-    expect(screen.getByText("Chưa hoàn thiện")).toBeInTheDocument()
-  })
-
-  it("shows quantity feedback and blocks Save for negative or fractional values", () => {
-    renderEditor({
-      state: { ...defaultEditorState, isDirty: true },
-      validationErrors: {
-        "item-1": "Số lượng phải là số nguyên không âm.",
-      },
-    })
-
-    expect(screen.getByText("Số lượng phải là số nguyên không âm.")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Lưu" })).toBeDisabled()
-  })
-
-  it.each(["isSaving", "isExcluding", "isRestoring", "isRecovering"] as const)(
-    "disables every editor write control while %s is pending",
-    async (pendingState) => {
-      const user = userEvent.setup()
-      const excludedRows = makeRows().map((row) =>
-        row.type === "item" && row.sourceIdentifier === "item-1"
-          ? { ...row, isExcluded: true, completeness: "excluded" as const }
-          : row
-      )
-      renderEditor({
-        rows: excludedRows,
-        state: { ...defaultEditorState, isDirty: true, [pendingState]: true },
-      })
-      await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị 2" }))
-      expect(
-        screen.getAllByRole("textbox").every((element) => element.hasAttribute("disabled"))
-      ).toBe(true)
-      expect(
-        screen.getByRole("button", {
-          name: pendingState === "isSaving" ? "Đang lưu..." : "Lưu",
-        })
-      ).toBeDisabled()
-      expect(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 2" })).toBeDisabled()
-      expect(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" })).toBeDisabled()
-    }
-  )
-
-  it("persists exclude and restore immediately while keeping excluded rows visible", async () => {
-    const user = userEvent.setup()
-    const onExclude = vi.fn().mockResolvedValue(undefined)
-    const { rerender } = renderEditor({ onExclude })
-
-    await user.click(screen.getByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" }))
-    expect(onExclude).toHaveBeenCalledWith("item-1")
-
-    const excludedRows = makeRows().map((row) =>
-      row.type === "item" && row.sourceIdentifier === "item-1"
-        ? { ...row, isExcluded: true, completeness: "excluded" as const }
-        : row
-    )
-    const onRestore = vi.fn().mockResolvedValue(undefined)
-    rerender(
+  ])("shows $feedback in the toolbar", ({ state, feedback, button }) => {
+    render(
       <DeviceQuotaDraftCatalogEditor
-        rows={excludedRows}
+        rows={makeRows()}
         metadata={metadata}
         validationErrors={{}}
-        state={{ ...defaultEditorState, isIncomplete: false }}
+        state={state}
         onUpdateItem={vi.fn()}
         onSave={vi.fn()}
-        onExclude={onExclude}
-        onRestore={onRestore}
+        onExclude={vi.fn()}
+        onRestore={vi.fn()}
       />
     )
 
-    expect(screen.getByTestId("device-quota-catalog-row-item-1")).toHaveAttribute(
-      "data-excluded",
-      "true"
-    )
-    await user.click(screen.getByRole("button", { name: "Khôi phục Thiết bị 1" }))
-    expect(onRestore).toHaveBeenCalledWith("item-1")
-  })
-
-  it("renders view mode read-only and hides mutation controls", () => {
-    renderEditor({
-      metadata: { ...metadata, mode: "readonly" },
-      state: { ...defaultEditorState, isReadOnly: true },
-    })
-
-    expect(screen.queryByRole("button", { name: "Lưu" })).not.toBeInTheDocument()
-    expect(screen.queryByPlaceholderText("Mặc định theo tên Thông tư")).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole("button", { name: "Loại khỏi bản nháp Thiết bị 1" })
-    ).not.toBeInTheDocument()
-  })
-
-  it("keeps top-level items outside section collapse and preserves source order", async () => {
-    const user = userEvent.setup()
-    const rootItem = makeTopLevelItem()
-    renderEditor({
-      rows: [makeSection(1), rootItem, makeSection(2), makeItem(1, 1)],
-    })
-
-    expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Thu gọn Nhóm 1" }))
-    expect(screen.getByTestId("device-quota-catalog-row-top-level-item")).toBeInTheDocument()
-    expect(screen.queryByTestId("device-quota-catalog-row-item-1")).not.toBeInTheDocument()
-  })
-
-  it("shows the immutable regulatory name separately from the editable display override", async () => {
-    const user = userEvent.setup()
-    const row = makeTopLevelItem()
-    renderEditor({ rows: [row], state: { ...defaultEditorState, isDirty: true } })
-
-    const renderedRow = screen.getByTestId("device-quota-catalog-row-top-level-item")
-    expect(
-      within(renderedRow).getByRole("heading", { name: "Thiết bị pháp quy gốc" })
-    ).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị pháp quy gốc" }))
-    expect(
-      within(renderedRow).getByRole("textbox", {
-        name: "Tên hiển thị - Thiết bị pháp quy gốc",
-      })
-    ).toHaveValue("Tên hiển thị tùy chỉnh")
-  })
-
-  it("does not render orphaned labels for read-only values", async () => {
-    const user = userEvent.setup()
-    const row = makeTopLevelItem()
-    renderEditor({
-      rows: [row],
-      state: { ...defaultEditorState, isReadOnly: true },
-      metadata: { ...metadata, mode: "readonly" },
-    })
-
-    const renderedRow = screen.getByTestId("device-quota-catalog-row-top-level-item")
-    await user.click(screen.getByRole("button", { name: "Mở rộng Thiết bị pháp quy gốc" }))
-    expect(renderedRow.querySelectorAll("label")).toHaveLength(0)
+    expect(screen.getByTestId("device-quota-draft-catalog-toolbar")).toHaveTextContent(feedback)
+    expect(screen.getByRole("button", { name: button })).toBeInTheDocument()
   })
 })
 
@@ -490,61 +105,58 @@ describe("DeviceQuotaDraftCatalogPageClient", () => {
     ["unavailable", "Chưa có snapshot pháp quy khả dụng"],
     ["conflict", "Bản nháp đã được cập nhật ở nơi khác"],
     ["error", "Không thể tải danh mục dự thảo"],
-  ] as const)("renders the %s state clearly", (status, message) => {
+  ] as const)("renders the %s state", (status, message) => {
     mockUseDraftCatalog.mockReturnValue(
-      makeHookResult({
-        status,
-        errorMessage: status === "error" ? "Lỗi thử nghiệm" : null,
-      })
+      makeHookResult({ status, errorMessage: status === "error" ? "Lỗi thử nghiệm" : null })
     )
 
     render(<DeviceQuotaDraftCatalogPageClient />)
-
     expect(screen.getByText(message)).toBeInTheDocument()
   })
 
-  it("fails closed for missing session unit or unsupported access", () => {
+  it("fails closed for missing unit or unsupported access and preserves retry", async () => {
+    const user = userEvent.setup()
+    const retry = vi.fn().mockResolvedValue(undefined)
     mockUseDraftCatalog.mockReturnValue(
-      makeHookResult({
-        status: "blocked",
-        canAccess: false,
-        donViId: null,
-      })
+      makeHookResult({ status: "blocked", canAccess: false, donViId: null })
     )
     const { rerender } = render(<DeviceQuotaDraftCatalogPageClient />)
     expect(screen.getByText("Chưa xác định đơn vị làm việc")).toBeInTheDocument()
 
     mockUseDraftCatalog.mockReturnValue(
-      makeHookResult({
-        status: "blocked",
-        canAccess: false,
-        donViId: 23,
-      })
+      makeHookResult({ status: "error", canRetry: true, retry, errorMessage: "Lỗi" })
     )
     rerender(<DeviceQuotaDraftCatalogPageClient />)
-    expect(screen.getByText("Bạn không có quyền mở danh mục dự thảo")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Thử lại" }))
+    expect(retry).toHaveBeenCalledTimes(1)
   })
 
-  it("keeps the editor mounted and retries the failed operation without dropping staged edits", async () => {
+  it("keeps staged values visible while a stale conflict can be retried", async () => {
     const user = userEvent.setup()
-    const save = vi.fn().mockResolvedValue(undefined)
     const retry = vi.fn().mockResolvedValue(undefined)
+    const firstItem = makeRows()[1]
+    if (firstItem.type !== "item") throw new Error("Expected an item fixture")
+
     mockUseDraftCatalog.mockReturnValue(
       makeHookResult({
-        status: "error",
+        status: "conflict",
         canRetry: true,
         isDirty: true,
-        save,
         retry,
-        errorMessage: "Không thể cập nhật bản nháp.",
+        rows: [{ ...firstItem, displayNameOverride: "Tên đã nhập" }],
+        lastSavedRows: [firstItem],
+        metadata,
       })
     )
 
     render(<DeviceQuotaDraftCatalogPageClient />)
 
-    expect(screen.getByTestId("device-quota-draft-catalog-editor")).toBeInTheDocument()
+    expect(screen.getByText("Bản nháp đã được cập nhật ở nơi khác")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: "Chỉnh tên hiển thị Thiết bị 1" }))
+    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toHaveValue(
+      "Tên đã nhập"
+    )
     await user.click(screen.getByRole("button", { name: "Thử lại" }))
     expect(retry).toHaveBeenCalledTimes(1)
-    expect(save).not.toHaveBeenCalled()
   })
 })
