@@ -222,7 +222,6 @@ export function DeviceQuotaDraftCatalogEditor({
         bodyAriaLabel="Các nhóm thiết bị pháp quy"
         workspaceTestId="device-quota-draft-catalog-workspace"
         bodyTestId="device-quota-draft-catalog-body"
-        bodyClassName="block"
         contentClassName="overflow-hidden"
         toolbar={
           isReadOnly ? (

@@ -49,6 +49,23 @@ describe("DeviceQuotaDraftCatalog Phase 5 regression hardening", () => {
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
+  it("keeps the long-list viewport inside a sized workspace after user enters draft editing", async () => {
+    const user = userEvent.setup()
+    renderEditor()
+
+    const body = screen.getByTestId("device-quota-draft-catalog-body")
+    const scrollRegion = screen.getByRole("region", { name: "Các nhóm thiết bị pháp quy" })
+    const viewport = screen.getByTestId("device-quota-draft-catalog-table-viewport")
+
+    await user.click(screen.getByRole("button", { name: "Chỉnh tên hiển thị Thiết bị 1" }))
+
+    expect(screen.getByRole("textbox", { name: "Tên hiển thị - Thiết bị 1" })).toBeInTheDocument()
+    expect(body).toHaveClass("grid", "min-h-0", "flex-1")
+    expect(body).not.toHaveClass("block")
+    expect(scrollRegion).toContainElement(viewport)
+    expect(viewport).toHaveClass("h-full", "overflow-auto")
+  })
+
   it("keeps staged editing, validation, secondary naming, and ordinary save semantics", async () => {
     const user = userEvent.setup()
     const onUpdateItem = vi.fn()
