@@ -52,6 +52,28 @@ catalog, and save the result as a reviewable draft.
   contracts remain unchanged in this MVP. The existing Excel import contract
   and behavior also remain unchanged.
 
+## Phase 4 Delivery Decomposition
+
+The remaining compatibility and release-hardening work is split into four
+independently reviewable sub-phases:
+
+1. **Phase 4.1 — Page-level coexistence and manager gating:** prove that the
+   current category-management controls and both Excel import entry points
+   remain available with the separate draft entry point present.
+2. **Phase 4.2 — Active-surface isolation and regression:** prove that draft
+   reads and writes do not mutate or invalidate active category, decision,
+   equipment-mapping, compliance, report, or Excel-import behavior.
+3. **Phase 4.3 — Direct-RPC negative security contract:** exercise tenant,
+   session-unit, role, revision, source-version, table-access, and malformed-
+   payload guards directly against the existing draft RPCs.
+4. **Phase 4.4 — Release verification and rollback readiness:** run the
+   repository and database gates, report static and baseline-forward lanes
+   separately for the exact commit, and verify additive deployment/rollback
+   sequencing.
+
+No sub-phase introduces publish, approval, activation, non-appendix equipment,
+or changes to the existing active/import contracts.
+
 ## Wayfinder Traceability
 
 - Map: [Tạo bản nháp danh mục định mức theo Thông tư 10/2026](https://github.com/thienchi2109/qltbyt-nam-phong/issues/978)

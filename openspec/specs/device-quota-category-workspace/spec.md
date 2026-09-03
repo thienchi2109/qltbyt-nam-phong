@@ -438,115 +438,165 @@ interaction.
 
 ### Requirement: Desktop draft catalog workspace presentation
 
-The draft catalog editor in the Device Quota Categories workspace SHALL provide
-a dense desktop/tablet presentation from `1024px` viewport width upward without
-changing its existing draft data contracts or business behavior.
+The draft catalog editor in the Device Quota Categories workspace SHALL render
+the immutable Thông tư 10/2026 appendix structure as one appendix-aligned
+semantic table at viewport widths of at least `1024px`. The table SHALL
+preserve all 42 source rows, source order, source-declared parent
+relationships, and source references.
 
-#### Scenario: compact workspace is rendered on desktop
+The table SHALL present the legal source columns in this order:
 
-- **GIVEN** an authorized user opens an editable or read-only draft catalog at
-  a viewport width of at least `1024px`
-- **WHEN** the draft catalog editor renders
-- **THEN** the workspace uses the available route content area for the editor
-- **AND** the structure navigation SHALL provide an approximately `176px`
-  expanded panel and a `48px` collapsed rail with a manual toggle between them
-- **AND** at constrained widths from `1024px` through `1199px`, the structure
-  navigation defaults to the collapsed rail
-- **AND** expanding the panel at those constrained widths overlays the editor
-  without shrinking the item content or field grid
-- **AND** neither sidebar mode causes unintended horizontal page overflow
-- **AND** the item content has an independent scroll region
-- **AND** the editor does not render a mobile drawer, bottom sheet, or mobile
-  navigation mode
+1. `TT`
+2. `Chủng loại`
+3. `Đơn vị tính`
+4. `Số lượng định mức`
 
-#### Scenario: technical metadata is kept out of the user-facing header
+Those four columns SHALL be read-only. The table SHALL present a separate
+unit-draft column group after them:
 
-- **GIVEN** the draft editor has snapshot, revision, raw draft status, save
+1. `ĐVT áp dụng`
+2. `SL đề xuất`
+3. `Ghi chú`
+
+Only the unit-draft group may contain the ordinary inline draft inputs.
+`displayNameOverride` SHALL remain available through an explicit secondary row
+action, but SHALL NOT replace or make the regulatory `Chủng loại` editable.
+The primary editor SHALL NOT retain the permanent structure sidebar, compact
+item-card summaries, or single-expanded-item interaction from the previous
+presentation.
+
+#### Scenario: appendix columns are visible in source order
+
+- **GIVEN** an authorized user opens an editable or read-only draft catalog
+- **WHEN** the table renders
+- **THEN** it shows the legal column group in the exact order `TT`,
+  `Chủng loại`, `Đơn vị tính`, `Số lượng định mức`
+- **AND** it shows the unit-draft group after the legal group in the exact
+  order `ĐVT áp dụng`, `SL đề xuất`, `Ghi chú`
+- **AND** the table identifies the two groups so users can distinguish source
+  values from unit-entered values
+- **AND** the primary editor does not render a permanent structure sidebar,
+  compact item-card summaries, or a single-expanded-item control
+
+#### Scenario: appendix hierarchy and source order are preserved
+
+- **GIVEN** the frozen snapshot contains five structural section rows and 37
+  equipment rows
+- **WHEN** the table renders
+- **THEN** it renders each section as a full-width hierarchy row
+- **AND** it renders the 37 equipment rows in source order beneath their
+  source-declared section where applicable
+- **AND** it keeps top-level equipment rows in their source positions
+- **AND** it does not synthesize, flatten, or reorder regulatory parents
+
+#### Scenario: legal source fields remain read-only
+
+- **GIVEN** an item row contains a regulatory name, unit, and multiline quota
+  rules
+- **WHEN** the row renders in editable mode
+- **THEN** `Chủng loại`, `Đơn vị tính`, and `Số lượng định mức` render as
+  read-only cells rather than inputs
+- **AND** the complete source quota text is visible as readable multiline
+  content in the `Số lượng định mức` cell
+- **AND** source page/reference details remain available without a separate
+  structure panel
+
+#### Scenario: only unit-specific fields are entered inline
+
+- **GIVEN** an editable draft item has no applied-unit override
+- **WHEN** the row renders
+- **THEN** `ĐVT áp dụng` shows the regulatory unit as a visible suggestion or
+  fallback
+- **AND** rendering that suggestion does not create a staged patch or
+  persisted value
+- **AND** the user can edit `ĐVT áp dụng`, `SL đề xuất`, and `Ghi chú`
+- **AND** the user is not required to re-enter unchanged legal source values
+- **AND** the existing staged patch and validation semantics remain unchanged
+
+#### Scenario: proposed quantity is not presented as a legal quota
+
+- **GIVEN** the user enters a value in `SL đề xuất`
+- **WHEN** the row or save feedback renders
+- **THEN** the value is labeled as a unit proposal
+- **AND** the UI does not call it an approved quota or legal determination
+- **AND** the application does not infer or certify compliance against the
+  conditional source rules
+
+#### Scenario: display-name override remains secondary
+
+- **GIVEN** a user needs a local display name
+- **WHEN** the user invokes the row's explicit secondary-name action
+- **THEN** the user can edit the existing `displayNameOverride` draft field
+- **AND** the regulatory `Chủng loại` text remains unchanged and visible
+- **AND** the override is staged through the existing patch callback
+- **AND** the main table does not add a permanently repeated name input
+- **AND** the secondary-name and exclude/restore actions share the
+  `Chủng loại` row-action area rather than adding a permanent action column
+
+#### Scenario: section rows and excluded rows remain understandable
+
+- **GIVEN** the draft contains included, excluded, or read-only rows
+- **WHEN** the table renders
+- **THEN** section rows remain visually distinct and non-editable
+- **AND** excluded rows remain visible in source order with muted status
+- **AND** editable rows expose only the actions allowed by the existing mode
+- **AND** exclude/restore uses the existing immediate mutation callbacks
+
+#### Scenario: save and scrolling remain coherent
+
+- **GIVEN** an editable draft is long enough to require scrolling
+- **WHEN** the user edits a draft cell and scrolls the table
+- **THEN** the existing save toolbar remains sticky, visible, and outside the
+  table's vertical scroll region
+- **AND** ordinary edits remain staged until the existing save action
+- **AND** horizontal overflow is contained by the table viewport
+- **AND** `TT` and `Chủng loại` remain visible while the remaining columns
+  scroll at constrained desktop widths
+- **AND** the page does not acquire unintended horizontal overflow
+
+#### Scenario: technical metadata remains outside the user-facing header
+
+- **GIVEN** the editor has snapshot, revision, raw draft status, save
   timestamp, and mode state
-- **WHEN** the editor header renders
+- **WHEN** the appendix-aligned workspace header renders
 - **THEN** those technical values are not rendered as a dedicated metadata row
-- **AND** the header exposes only concise user-relevant save feedback beside the
-  existing save action
-- **AND** snapshot and revision state remain available to the existing save,
+- **AND** the header exposes only concise user-relevant save feedback beside
+  the existing save action
+- **AND** snapshot and revision state remain available to existing save,
   conflict, and mutation logic
 - **AND** stale-conflict feedback retains the user-relevant version context
   required by the existing recovery behavior
 
-#### Scenario: repeated item records share one field grid
+#### Scenario: table semantics and actions are accessible
 
-- **GIVEN** a section contains multiple regulatory item records
-- **WHEN** an item record is rendered in its editable representation
-- **THEN** every record uses the same field-grid column boundaries
-- **AND** display name, applied unit, proposed quantity, and notes begin on the
-  same baseline and use consistent input dimensions
-- **AND** a long item name or label does not push a neighboring field to a
-  different vertical position
-
-#### Scenario: item labels and actions avoid redundant names
-
-- **GIVEN** an item name is already rendered in its item header
-- **WHEN** its editable fields and item actions render
-- **THEN** field labels use concise object-independent text
-- **AND** source, rule, exclusion, and restoration actions use concise visible
-  labels, including `Khôi phục` for restoration, and do not append the item
-  name when context is already available
-- **AND** accessible names still identify the target item where needed
-
-#### Scenario: compact records expose one editable item
-
-- **GIVEN** a section or workspace contains multiple draft item records
-- **WHEN** the item list renders
-- **THEN** item records appear as compact summaries by default
-- **AND** at most one item is expanded into the full editable field grid at a
-  time
-- **AND** opening another item collapses the previously expanded item without
-  changing its staged values
-- **AND** section collapse continues to hide its items without changing their
-  data or source order
-
-#### Scenario: source and rule traceability remains available
-
-- **GIVEN** an item has source references, source pages, an immutable source
-  position, a parent relationship, or multiline regulatory rule text
-- **WHEN** the compact item representation renders
-- **THEN** a concise source summary remains visible
-- **AND** every item's complete source references and pages remain available
-  through disclosure controls
-- **AND** its immutable source position and parent relationship are preserved
-- **AND** multiline regulatory rule text remains available without truncating,
-  flattening, rewriting, or otherwise changing its content
-- **AND** the redesign does not infer, rewrite, reorder, or remove regulatory
-  source semantics
-
-#### Scenario: save remains available while items scroll
-
-- **GIVEN** an editable draft contains enough records to require scrolling
-- **WHEN** the user scrolls the item content region
-- **THEN** the single top workspace save toolbar remains sticky and visible
-  outside that scroll region
-- **AND** it uses the existing save callback, disabled conditions, pending state,
-  and validation behavior
-- **AND** the editor does not add a second bottom save bar or a new cancel/reset
-  operation
+- **GIVEN** the appendix-aligned table renders
+- **WHEN** a keyboard or assistive-technology user navigates the table
+- **THEN** the table has an accessible name or caption
+- **AND** grouped and individual headers are associated with their columns
+- **AND** every editable input and row action has an item-specific accessible
+  name
+- **AND** status and read-only distinctions do not depend on color alone
+- **AND** keyboard order proceeds coherently across each row's source context
+  and editable fields
 
 #### Scenario: existing draft behavior is preserved
 
-- **GIVEN** the polished presentation is deployed
+- **GIVEN** the appendix-aligned table presentation is deployed
 - **WHEN** a user edits fields, saves, excludes, restores, views rules, opens
   read-only mode, or encounters a stale revision conflict
-- **THEN** the existing handlers, validation, authorization, mutation semantics,
+- **THEN** existing handlers, validation, authorization, mutation semantics,
   source ordering, and conflict recovery remain unchanged
 - **AND** active category CRUD, both Excel import flows, mapping, reporting,
   compliance, and future publication behavior remain unaffected
+- **AND** no API, database, permission, business-rule, mobile, or `#982`
+  scope is introduced
 
-#### Scenario: target viewport evidence is captured
+#### Scenario: required visual and interaction evidence is captured
 
 - **GIVEN** the presentation change is ready for review
-- **WHEN** manual or equivalent visual QA is performed for the landed commit
-- **THEN** reviewable evidence is captured at `1024px`, `1280x720`,
-  `1366x768`, and `1440x900`
-- **AND** the evidence verifies field alignment, compact record density,
-  sidebar defaults and overlay behavior, sticky save visibility, scroll
-  boundaries, and the absence of unintended horizontal overflow
-- **AND** automated interaction coverage for this change uses
-  `@testing-library/user-event` rather than a browser or Playwright test
+- **WHEN** equivalent visual QA and interaction verification are performed
+- **THEN** evidence covers `1024px`, `1280x720`, `1366x768`, and `1440x900`
+- **AND** evidence verifies grouped headers, source/input alignment,
+  hierarchy rows, sticky columns, contained scrolling, and no page overflow
+- **AND** interaction tests use `@testing-library/user-event`
+- **AND** no browser or Playwright test is added

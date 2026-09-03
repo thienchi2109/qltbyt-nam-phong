@@ -191,6 +191,43 @@ Validation has four distinct layers:
 Saving an incomplete draft is valid. Excluded rows may remain incomplete.
 Publication-time completeness is outside the MVP.
 
+## Phase 4 Delivery Decomposition
+
+Phase 4 is intentionally split into four sub-phases so each compatibility and
+release concern has a focused test boundary:
+
+### Phase 4.1: Page-Level Coexistence And Manager Gating
+
+The page-level suite proves that the existing category-management controls,
+both Excel import entry points, and their manager gating remain available before
+and after draft initialization, save, and reopen. The draft editor remains a
+separate entry point and can be disabled without changing the active page.
+
+### Phase 4.2: Active-Surface Isolation And Regression
+
+Regression coverage proves that draft reads and writes do not mutate active
+category, decision, equipment-mapping, compliance, report, or Excel-import
+state or invalidate their query contracts. This sub-phase is behavior-only;
+it does not introduce a new shared data layer.
+
+### Phase 4.3: Direct-RPC Negative Security Contract
+
+The database phase gate exercises cross-tenant access, missing session units,
+unsupported roles, caller-supplied unit overrides, direct table access,
+source-version mismatches, stale revisions, and malformed payloads. The gate
+must remain fail-closed and must not weaken the existing SECURITY DEFINER,
+JWT-claim, or explicit-grant boundaries.
+
+### Phase 4.4: Release Verification And Rollback Readiness
+
+Verification runs formatting, OpenSpec validation, the applicable static and
+Oracle baseline-forward database lanes, typecheck, focused tests, and the
+repository React gate. Static and baseline-forward results are recorded
+separately; aggregate PASS is allowed only when both lanes pass for the same
+exact commit. Deployment remains additive (migrations, then RPC contracts,
+then UI enablement), and rollback must leave active contracts and both Excel
+flows intact.
+
 ## Compatibility And Risks
 
 - Existing active quota reads must continue to use their current contracts.

@@ -73,6 +73,11 @@ Boundary: `/device-quota/categories` draft entry point and editor UI only,
 using Phase 1-2 contracts. Existing active category CRUD and both Excel import
 flows remain available as separate actions.
 
+Presentation source of truth: the canonical `device-quota-category-workspace`
+specification now defines the appendix-aligned semantic table delivered by the
+archived follow-up change. Phase 4 must not reintroduce the superseded sidebar,
+compact item-card, or single-expanded-item requirements.
+
 - [x] 3.1 Add a separate draft-catalog entry point without replacing the
       current single-category active create/edit/delete flow or import controls.
 - [x] 3.2 Implement create-or-open and read-only view mode for the current
@@ -91,24 +96,47 @@ flows remain available as separate actions.
 Deploy boundary: the existing workspace remains functional if the draft entry
 point is disabled; the new editor writes only draft contracts.
 
-## Phase 4: Coexistence, Regression, And Release Hardening
+## Phase 4.1: Page-Level Coexistence And Manager Gating
 
-Boundary: compatibility verification and operational readiness. No new product
-scope or legal workflow is introduced.
+Boundary: prove that the existing categories page remains operational while
+the separate draft entry point is present. No active-category or import
+behavior is changed in this sub-phase.
 
-- [ ] 4.1 Add page-level integration coverage proving category-management
+- [ ] 4.1.1 Add page-level integration coverage proving category-management
       controls, both Excel import entry points, and their manager gating remain
       available before and after draft initialization, save, and reopen.
-- [ ] 4.2 Add regression tests proving draft writes do not mutate or invalidate
-      active category, decision, equipment-mapping, compliance, report, or
-      Excel-import behavior.
-- [ ] 4.3 Add direct-RPC negative tests for cross-tenant access, missing session
-      unit, unauthorized roles, caller-supplied unit overrides, direct table
-      access, source-version mismatch, stale revisions, and malformed payloads.
-- [ ] 4.4 Run formatting, OpenSpec strict validation, applicable database
+
+## Phase 4.2: Active-Surface Isolation And Regression
+
+Boundary: prove that draft reads and writes remain isolated from active
+category, decision, equipment-mapping, compliance, report, and Excel-import
+contracts.
+
+- [ ] 4.2.1 Add regression tests proving draft writes do not mutate or
+      invalidate active category, decision, equipment-mapping, compliance,
+      report, or Excel-import behavior.
+
+## Phase 4.3: Direct-RPC Negative Security Contract
+
+Boundary: exercise the draft RPC security and payload guards directly without
+changing the RPC contract or granting direct table access.
+
+- [ ] 4.3.1 Add direct-RPC negative tests for cross-tenant access, missing
+      session unit, unauthorized roles, caller-supplied unit overrides,
+      direct table access, source-version mismatch, stale revisions, and
+      malformed payloads.
+
+## Phase 4.4: Release Verification And Rollback Readiness
+
+Boundary: establish exact-commit verification and an additive deployment /
+rollback sequence. No new product scope or legal workflow is introduced.
+
+- [ ] 4.4.1 Run formatting, OpenSpec strict validation, applicable database
       static and baseline-forward gates, typecheck, focused tests, and the
-      repository React verification sequence.
-- [ ] 4.5 Verify deployment and rollback runbooks: additive migrations first,
+      repository React verification sequence. Static and baseline-forward
+      results must be reported separately; aggregate PASS requires both lanes
+      to pass for the same exact commit.
+- [ ] 4.4.2 Verify deployment and rollback runbooks: additive migrations first,
       RPC contracts second, UI enablement last; rollback leaves active
       contracts and both Excel flows intact.
 

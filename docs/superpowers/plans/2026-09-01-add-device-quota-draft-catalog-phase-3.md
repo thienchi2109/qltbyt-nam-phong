@@ -1,4 +1,13 @@
-# Add Device Quota Draft Catalog Phase 3 Implementation Plan
+# Add Device Quota Draft Catalog Phase 3 Implementation Plan (Historical Baseline)
+
+> **Presentation reconciliation (2026-09-03):** The original sidebar/card
+> presentation described below was superseded by the completed and archived
+> `appendix-table-device-quota-draft-catalog` change. The canonical
+> `device-quota-category-workspace` specification now requires the
+> appendix-aligned semantic table. Phase 4 must target that current table
+> contract and must not reintroduce the historical sidebar/card behavior. The
+> draft data contract, RPCs, backend, and active/import boundaries are
+> unchanged.
 
 > **For agentic workers:** REQUIRED: Use `superpowers:subagent-driven-development` (if subagents are available) or `superpowers:executing-plans` to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -33,7 +42,7 @@
 - In this Phase 3 implementation, `global`, `admin`, and `to_qltb` are the only supported roles for catalog/draft access. `regional_leader`, mapping-only, and other roles fail closed because the catalog read RPC does not authorize them.
 - Ordinary field edits are staged locally until `Lưu`. `Loại trừ` and `Khôi phục` are immediate CAS-protected mutations through their dedicated RPCs, each carrying `expected_revision`; a failed mutation leaves the prior state intact.
 - The applied quantity label must communicate that it is a unit-proposed draft value, never an approved quota.
-- The five sections use the same sidebar plus independently collapsible section pattern as Technical Configurations. The regulatory rule is collapsed behind `Xem quy tắc`.
+- The five sections originally used the same sidebar plus independently collapsible section pattern as Technical Configurations; that presentation was superseded by the archived appendix-table change. The regulatory rule remains available behind `Xem quy tắc`.
 - Desktop/tablet only. The product hides Device Quota on small screens, so Phase 3 does not add mobile layouts, mobile-specific states, or mobile viewport tests.
 - No Phase 4 work: no publish, submit, approve, activate, compliance, mapping, reporting, or migration changes.
 - No live database mutation is part of implementation or verification.
