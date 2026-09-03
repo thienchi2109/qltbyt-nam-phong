@@ -120,14 +120,14 @@ pass.
 Boundary: integration coverage and defect correction only. No new layout
 features.
 
-- [ ] 5.1 Verify editable, incomplete, complete, excluded, read-only, saving,
+- [x] 5.1 Verify editable, incomplete, complete, excluded, read-only, saving,
       excluding, restoring, recovering, validation-error, and stale-conflict
       states in the polished workspace.
-- [ ] 5.2 Verify section navigation, item expansion, source/rule disclosure,
+- [x] 5.2 Verify section navigation, item expansion, source/rule disclosure,
       and save availability remain coherent after long-list scrolling.
-- [ ] 5.3 Verify active category CRUD, both Excel import entry points, mapping,
+- [x] 5.3 Verify active category CRUD, both Excel import entry points, mapping,
       reporting, compliance, and unrelated Device Quota routes are unaffected.
-- [ ] 5.4 Resolve only regressions attributable to this change; file follow-up
+- [x] 5.4 Resolve only regressions attributable to this change; file follow-up
       issues for unrelated findings instead of widening scope.
 
 Exit criteria: all existing draft behavior is preserved across user-visible
