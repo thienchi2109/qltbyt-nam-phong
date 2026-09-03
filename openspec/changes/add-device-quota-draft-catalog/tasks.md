@@ -73,18 +73,18 @@ Boundary: `/device-quota/categories` draft entry point and editor UI only,
 using Phase 1-2 contracts. Existing active category CRUD and both Excel import
 flows remain available as separate actions.
 
-- [ ] 3.1 Add a separate draft-catalog entry point without replacing the
+- [x] 3.1 Add a separate draft-catalog entry point without replacing the
       current single-category active create/edit/delete flow or import controls.
-- [ ] 3.2 Implement create-or-open and read-only view mode for the current
+- [x] 3.2 Implement create-or-open and read-only view mode for the current
       session unit, including clear source-version metadata and unavailable-
       snapshot feedback.
-- [ ] 3.3 Render all 42 source rows in immutable source order: five structural
+- [x] 3.3 Render all 42 source rows in immutable source order: five structural
       sections, 16 source-declared child items, and 21 top-level items.
-- [ ] 3.4 Implement unit-specific display name, applied unit, applied quantity,
+- [x] 3.4 Implement unit-specific display name, applied unit, applied quantity,
       notes, exclude, restore, incomplete-save, and stale-conflict states.
-- [ ] 3.5 Distinguish regulatory fields from editable unit fields and label
+- [x] 3.5 Distinguish regulatory fields from editable unit fields and label
       applied quantity as a unit-proposed draft value, not an approved quota.
-- [ ] 3.6 Add UI integration coverage for authorized/unauthorized roles,
+- [x] 3.6 Add UI integration coverage for authorized/unauthorized roles,
       session-unit enforcement, create/open/view/edit/save, exclusion/restore,
       incomplete drafts, read-only regulatory fields, and stale conflicts.
 
