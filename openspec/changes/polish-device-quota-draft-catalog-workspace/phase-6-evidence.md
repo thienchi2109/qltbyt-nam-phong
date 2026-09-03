@@ -17,9 +17,13 @@
 ## Equivalent Visual Evidence
 
 The Phase 6 test
-`DeviceQuotaDraftCatalogPhase6.test.tsx` renders the real editor in jsdom at
-each requested width and checks the reviewable DOM/layout contracts. It does
-not claim browser pixel metrics, because jsdom does not perform CSS layout.
+`DeviceQuotaDraftCatalogPhase6.test.tsx` renders the real editor in jsdom and
+emits each requested workspace width through the production `ResizeObserver`
+path. The `window.innerWidth` fallback is deliberately set on the opposite side
+of the `1200px` breakpoint, so the layout assertions cannot pass by exercising
+the fallback alone. The test checks the reviewable DOM/layout contracts but
+does not claim browser pixel metrics, because jsdom does not perform CSS
+layout.
 
 | Viewport                                     | Structure default | Expanded structure behavior                                          | Grid/scroll/save checks                                                                       | Result |
 | -------------------------------------------- | ----------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------ |
@@ -29,7 +33,7 @@ not claim browser pixel metrics, because jsdom does not perform CSS layout.
 | `1440x900`                                   | `176px` panel     | remains in panel mode                                                | 37 compact records, one shared expanded grid, independent vertical scroll region, top toolbar | PASS   |
 
 The test also checks the expanded item uses the existing shared field-grid
-contract and that no mobile drawer/bottom-sheet path is introduced.
+contract.
 
 ## Quality Gate Results
 
@@ -44,7 +48,7 @@ Final results are re-run on the exact pushed commit before handoff.
 | focused draft-catalog tests              | PASS, 5 files / 40 tests                                  |
 | focused shared hierarchical-editor tests | PASS, 1 file / 5 tests                                    |
 | Phase 6 viewport evidence                | PASS, 1 file / 4 `user-event` tests                       |
-| `react-doctor` diff gate                 | PASS/SKIP, no changed production source files             |
+| `react-doctor` diff gate                 | PASS, 100/100, no issues in the changed test file         |
 | React Doctor full score                  | 49, exit 0; repository baseline, not Phase 6 attributable |
 | OpenSpec strict validation               | PASS                                                      |
 | local DB quality gate                    | SKIP, no migration or gate-registry changes               |

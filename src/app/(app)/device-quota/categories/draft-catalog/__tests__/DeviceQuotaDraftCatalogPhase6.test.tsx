@@ -9,9 +9,34 @@ import { defaultEditorState, makeRows, metadata } from "./DeviceQuotaDraftCatalo
 
 const originalInnerWidth = window.innerWidth
 const originalInnerHeight = window.innerHeight
+let measuredWorkspaceWidth = originalInnerWidth
+let observedTargets: Element[] = []
+
+class EvidenceResizeObserver implements ResizeObserver {
+  constructor(private readonly callback: ResizeObserverCallback) {}
+
+  observe(target: Element): void {
+    observedTargets.push(target)
+    this.callback(
+      [
+        {
+          target,
+          contentRect: { width: measuredWorkspaceWidth } as DOMRectReadOnly,
+        } as ResizeObserverEntry,
+      ],
+      this
+    )
+  }
+
+  unobserve(): void {}
+
+  disconnect(): void {}
+}
 
 function setViewport(width: number, height = originalInnerHeight): void {
-  Object.defineProperty(window, "innerWidth", { configurable: true, value: width })
+  measuredWorkspaceWidth = width
+  const fallbackWidth = width < 1200 ? 1280 : 1024
+  Object.defineProperty(window, "innerWidth", { configurable: true, value: fallbackWidth })
   Object.defineProperty(window, "innerHeight", { configurable: true, value: height })
 }
 
@@ -34,10 +59,20 @@ describe("DeviceQuotaDraftCatalog Phase 6 visual evidence contracts", () => {
   beforeEach(() => {
     window.sessionStorage.clear()
     Element.prototype.scrollIntoView = vi.fn()
+    observedTargets = []
+    vi.stubGlobal("ResizeObserver", EvidenceResizeObserver)
   })
 
   afterEach(() => {
-    setViewport(originalInnerWidth, originalInnerHeight)
+    Object.defineProperty(window, "innerWidth", {
+      configurable: true,
+      value: originalInnerWidth,
+    })
+    Object.defineProperty(window, "innerHeight", {
+      configurable: true,
+      value: originalInnerHeight,
+    })
+    vi.unstubAllGlobals()
   })
 
   it.each([
@@ -54,6 +89,8 @@ describe("DeviceQuotaDraftCatalog Phase 6 visual evidence contracts", () => {
     const sidebar = screen.getByTestId("device-quota-draft-catalog-sidebar")
     const content = screen.getByRole("region", { name: "Các nhóm thiết bị pháp quy" })
     const toolbar = screen.getByTestId("device-quota-draft-catalog-toolbar")
+
+    expect(observedTargets).toContain(body)
 
     if (width === 1024) {
       expect(body).toHaveAttribute("data-structure-layout", "rail")
