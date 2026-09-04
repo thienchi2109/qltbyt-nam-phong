@@ -121,10 +121,13 @@ contracts.
 Boundary: exercise the draft RPC security and payload guards directly without
 changing the RPC contract or granting direct table access.
 
-- [ ] 4.3.1 Add direct-RPC negative tests for cross-tenant access, missing
+- [x] 4.3.1 Add direct-RPC negative tests for cross-tenant access, missing
       session unit, unauthorized roles, caller-supplied unit overrides,
       direct table access, source-version mismatch, stale revisions, and
       malformed payloads.
+      Evidence: `supabase/tests/device_quota_unit_catalog_draft_security_phase_gate.sql`
+      passes on an Oracle `dq_*` disposable clone with the Phase 4.3 registry
+      entry at the exact implementation commit.
 
 ## Phase 4.4: Release Verification And Rollback Readiness
 
