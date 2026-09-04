@@ -139,9 +139,12 @@ rollback sequence. No new product scope or legal workflow is introduced.
       repository React verification sequence. Static and baseline-forward
       results must be reported separately; aggregate PASS requires both lanes
       to pass for the same exact commit.
-- [ ] 4.4.2 Verify deployment and rollback runbooks: additive migrations first,
+- [x] 4.4.2 Verify deployment and rollback runbooks: additive migrations first,
       RPC contracts second, UI enablement last; rollback leaves active
       contracts and both Excel flows intact.
+      Evidence: `docs/runbooks/device-quota-draft-catalog-rollout.md` records
+      the additive order, fail-closed rollback, and active/Excel compatibility
+      checks.
 
 Exit criteria: all phases are independently reviewable, the draft feature can
 be disabled without affecting existing operations, and no publish/activation
