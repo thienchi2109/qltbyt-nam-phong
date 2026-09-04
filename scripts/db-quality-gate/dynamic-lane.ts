@@ -29,6 +29,11 @@ export type {
   OracleExecutorResult,
 } from "./dynamic-lane-types"
 
+const HISTORICAL_CATALOG_DEBT_RULES = new Set([
+  "catalog.routine.search-path",
+  "catalog.table-intent.missing",
+])
+
 function baselineMigrationHighWater(versions: string[]): string {
   return [...versions].sort().at(-1) ?? "unavailable"
 }
@@ -163,7 +168,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
   }
 
   let artifacts: DynamicInputArtifacts | undefined
-  let baselineRoutineFindingKeys = new Set<string>()
+  let baselineHistoricalFindingKeys = new Set<string>()
   let databaseName: string | undefined
   let databaseCreated = false
   let report: GateReport
@@ -242,14 +247,14 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
                 baselineCatalogs.value.environment
               ),
             }
-            baselineRoutineFindingKeys = new Set(
+            baselineHistoricalFindingKeys = new Set(
               evaluateCatalogContracts({
                 access: baselineCatalogs.value.access,
                 application: baselineCatalogs.value.application,
                 environment: baselineCatalogs.value.environment,
                 invariants: artifacts.invariants,
               })
-                .findings.filter((finding) => finding.ruleId === "catalog.routine.search-path")
+                .findings.filter((finding) => HISTORICAL_CATALOG_DEBT_RULES.has(finding.ruleId))
                 .map(catalogFindingKey)
             )
           }
@@ -307,15 +312,13 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               invariants: artifacts.invariants,
             }).findings
             for (const finding of catalogFindings) {
-              const historicalRoutineDebt =
-                finding.ruleId === "catalog.routine.search-path" &&
-                baselineRoutineFindingKeys.has(catalogFindingKey(finding))
+              const historicalDebt = baselineHistoricalFindingKeys.has(catalogFindingKey(finding))
               state.findings.push({
-                classification: historicalRoutineDebt ? "WARNING" : "BLOCKING",
+                classification: historicalDebt ? "WARNING" : "BLOCKING",
                 fingerprint: finding.fingerprint,
                 ruleId: finding.ruleId,
               })
-              if (!historicalRoutineDebt) {
+              if (!historicalDebt) {
                 canContinue = false
                 if (finding.classification === "INCOMPLETE") {
                   state.incomplete = true
