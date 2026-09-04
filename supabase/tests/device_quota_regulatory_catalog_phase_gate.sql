@@ -193,9 +193,15 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM jsonb_array_elements(v_payload->'rows') AS row_data
-    WHERE row_data->>'id' = '1a'
-      AND row_data->>'name' = 'Máy X - quang kỹ thuật số chụp tổng quát'
+    WHERE row_data->>'id' = '1'
+      AND row_data->>'name' = 'Máy X - quang'
   )
+     OR NOT EXISTS (
+       SELECT 1
+       FROM jsonb_array_elements(v_payload->'rows') AS row_data
+       WHERE row_data->>'id' = '1a'
+         AND row_data->>'name' = 'Máy X - quang kỹ thuật số chụp tổng quát'
+     )
      OR NOT EXISTS (
        SELECT 1
        FROM jsonb_array_elements(v_payload->'rows') AS row_data
@@ -207,6 +213,12 @@ BEGIN
        FROM jsonb_array_elements(v_payload->'rows') AS row_data
        WHERE row_data->>'id' = '1c'
          AND row_data->>'name' = 'Máy X - quang C Arm'
+     )
+     OR NOT EXISTS (
+       SELECT 1
+       FROM jsonb_array_elements(v_payload->'rows') AS row_data
+       WHERE row_data->>'id' = '1d'
+         AND row_data->>'name' = 'Máy X - quang răng toàn cảnh'
      )
   THEN
     RAISE EXCEPTION 'Snapshot RPC collapsed X-ray item names to their parent section';
