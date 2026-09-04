@@ -139,6 +139,11 @@ rollback sequence. No new product scope or legal workflow is introduced.
       repository React verification sequence. Static and baseline-forward
       results must be reported separately; aggregate PASS requires both lanes
       to pass for the same exact commit.
+      Current evidence: OpenSpec strict, static, typecheck, focused tests, and
+      React verification pass; Oracle baseline-forward is BLOCKING/INCOMPLETE
+      at `dynamic.apply-migrations.failed` because the restored baseline has
+      live draft identity `20260901021419` while the immutable local migration
+      filename is `20260901090000`. Aggregate 4.4.1 therefore remains open.
 - [x] 4.4.2 Verify deployment and rollback runbooks: additive migrations first,
       RPC contracts second, UI enablement last; rollback leaves active
       contracts and both Excel flows intact.
