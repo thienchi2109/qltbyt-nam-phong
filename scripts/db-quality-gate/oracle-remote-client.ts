@@ -80,7 +80,11 @@ export function createOracleRemoteClient(input: OracleRemoteExecutorInput): Orac
       timeoutMs: DEFAULT_TIMEOUT_MS,
     })
     if (result.timedOut) {
-      return oracleErrorResult("timeout", "Oracle SSH command timed out")
+      return oracleErrorResult(
+        "timeout",
+        "Oracle SSH command timed out",
+        result.stderr.length === 0 ? undefined : classifyOracleDiagnostic(result.stderr)
+      )
     }
     if (result.exitCode !== 0) {
       return oracleErrorResult(

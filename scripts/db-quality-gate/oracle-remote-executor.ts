@@ -104,7 +104,11 @@ export function createOracleRemoteExecutor(
 
       const stateResult = remote(`cat ${shellQuote(oracleStatePath(config))}`)
       if (stateResult.status === "error") {
-        return errorResult("stale-environment", "Oracle baseline state evidence is unavailable")
+        return errorResult(
+          "stale-environment",
+          "Oracle baseline state evidence is unavailable",
+          stateResult.diagnostic
+        )
       }
       let rawState: unknown
       try {
@@ -153,7 +157,7 @@ export function createOracleRemoteExecutor(
       }
       const lockRoot = `${config.evidenceDirectory}/../locks`
       const lockPath = `${lockRoot}/${GLOBAL_LOCK_NAME}`
-      return remote(
+      const result = remote(
         `set -eu
 umask 077
 lock_root=${shellQuote(lockRoot)}
@@ -183,9 +187,10 @@ lease_expires_at=$((now + ${LOCK_LEASE_SECONDS}))
 printf '%s %s\n' "$run_id" "$lease_expires_at" > "$lock_path/owner"`,
         undefined,
         "interrupted"
-      ).status === "ok"
+      )
+      return result.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult("interrupted", "Oracle dynamic-lane lock is unavailable")
+        : errorResult("interrupted", "Oracle dynamic-lane lock is unavailable", result.diagnostic)
     },
 
     releaseLock(runId) {
