@@ -8,11 +8,11 @@ import {
   migrationMetadataStatusQuery,
   validMigrationInput,
 } from "./oracle-baseline-metadata"
+import { BASELINE_OBSERVATION_QUERY, BASELINE_ROLE_PREFLIGHT_QUERY } from "./oracle-baseline-sql"
 import {
-  BASELINE_OBSERVATION_QUERY,
-  BASELINE_ROLE_PREFLIGHT_QUERY,
-  POSTGRES_CREATE_PRIVILEGE_QUERY,
-} from "./oracle-baseline-sql"
+  cleanupPostgresCreatePrivilege,
+  withTemporaryPostgresCreatePrivilege,
+} from "./oracle-migration-role-privileges"
 import { createOracleRemoteClient, oracleStatePath } from "./oracle-remote-client"
 import {
   defaultOracleRemoteCommand,
@@ -126,43 +126,18 @@ DROP DATABASE IF EXISTS ${quotedIdentifier(databaseName)};`,
     if (!validMaintenanceDatabase(databaseName)) {
       return false
     }
-    const revoked = sql(
-      databaseName,
-      "REVOKE CREATE ON SCHEMA public FROM postgres;",
-      "cleanup",
-      DATABASE_ADMIN_ROLE
-    )
-    const verified = sql(
-      databaseName,
-      POSTGRES_CREATE_PRIVILEGE_QUERY,
-      "cleanup",
-      DATABASE_ADMIN_ROLE
-    )
-    return revoked.status === "ok" && verified.status === "ok" && verified.value.trim() === "false"
+    return cleanupPostgresCreatePrivilege(sql, databaseName).status === "ok"
   }
 
   function applyMigration(databaseName: string, migration: ConfirmedMigrationInput): boolean {
     if (!validMaintenanceDatabase(databaseName) || !validMigrationInput(migration)) {
       return false
     }
-    let applied = false
-    let granted = false
-    let cleaned = false
-    try {
-      granted =
-        sql(
-          databaseName,
-          "GRANT CREATE ON SCHEMA public TO postgres;",
-          "failed",
-          DATABASE_ADMIN_ROLE
-        ).status === "ok"
-      if (granted) {
-        applied = sql(databaseName, migration.content, "failed").status === "ok"
-      }
-    } finally {
-      cleaned = cleanupMigrationRole(databaseName)
-    }
-    return granted && applied && cleaned
+    return (
+      withTemporaryPostgresCreatePrivilege(sql, databaseName, () =>
+        sql(databaseName, migration.content, "failed")
+      ).status === "ok"
+    )
   }
 
   function inspectMigrationMetadata(databaseName: string, migration: ConfirmedMigrationInput) {

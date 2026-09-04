@@ -92,6 +92,14 @@ export function commandRecorder() {
           timedOut: false,
         }
       }
+      if (fullCommand.includes("has_schema_privilege('postgres', 'public', 'CREATE')")) {
+        return {
+          exitCode: 0,
+          stderr: "",
+          stdout: "false\n",
+          timedOut: false,
+        }
+      }
       if (fullCommand.includes("pg_database") && fullCommand.includes("left(datname")) {
         return {
           exitCode: 0,

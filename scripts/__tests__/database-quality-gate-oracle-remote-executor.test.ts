@@ -164,7 +164,7 @@ describe("database quality gate Oracle remote executor", () => {
     expect(lockCommands.join("\n")).toContain("second-run")
   })
 
-  it("keeps transport loss after preflight INCOMPLETE instead of treating it as a candidate SQL failure", async () => {
+  it("revokes temporary CREATE after transport loss and keeps the result INCOMPLETE", async () => {
     const source =
       await loadDatabaseQualityGateModule<OracleRemoteExecutorModule>("oracle-remote-executor")
     const recorder = commandRecorder()
@@ -197,6 +197,12 @@ describe("database quality gate Oracle remote executor", () => {
       kind: "unavailable",
       status: "error",
     })
+    const sqlInputs = recorder.commands.map((command) => command.input ?? "")
+    expect(sqlInputs).toContain("GRANT CREATE ON SCHEMA public TO postgres;")
+    expect(sqlInputs).toContain("REVOKE CREATE ON SCHEMA public FROM postgres;")
+    expect(sqlInputs).toContain(
+      "\nSELECT has_schema_privilege('postgres', 'public', 'CREATE')::text;\n"
+    )
   })
 
   it("rejects END transaction control in SQL tests before remote execution", async () => {
@@ -266,7 +272,7 @@ describe("database quality gate Oracle remote executor", () => {
     )
   })
 
-  it("rejects baseline mutation while allowing a clone and candidate SQL on a disposable database", async () => {
+  it("grants temporary CREATE only for candidate SQL on a disposable database", async () => {
     const source =
       await loadDatabaseQualityGateModule<OracleRemoteExecutorModule>("oracle-remote-executor")
     const recorder = commandRecorder()
@@ -320,6 +326,14 @@ describe("database quality gate Oracle remote executor", () => {
     expect(remoteCommands.join("\n")).not.toContain("should_not_run")
     expect(remoteCommands.find((command) => command.includes("candidate_only"))).toContain(
       "-U postgres"
+    )
+    const sqlInputs = recorder.commands.map((command) => command.input ?? "")
+    expect(sqlInputs).toEqual(
+      expect.arrayContaining([
+        "GRANT CREATE ON SCHEMA public TO postgres;",
+        "REVOKE CREATE ON SCHEMA public FROM postgres;",
+        "\nSELECT has_schema_privilege('postgres', 'public', 'CREATE')::text;\n",
+      ])
     )
   })
 

@@ -18,6 +18,7 @@ import {
 } from "./oracle-remote-client"
 import { hasPsqlMetaCommand, rollbackRequiredSqlTestBody } from "./oracle-remote-sql"
 import { BASELINE_OBSERVATION_QUERY } from "./oracle-baseline-sql"
+import { withTemporaryPostgresCreatePrivilege } from "./oracle-migration-role-privileges"
 import {
   baselineStateHash,
   observationMatches,
@@ -283,10 +284,12 @@ rmdir "$lock_path"`,
       const content = migrations
         .map((migration) => `-- ${migration.path}\n${migration.content.trimEnd()}\n`)
         .join("\n")
-      const applied = sql(databaseName, content, "failed", DATABASE_MIGRATION_ROLE)
-      return applied.status === "ok"
-        ? { status: "ok", value: undefined }
-        : errorResult(applied.kind, applied.error, applied.diagnostic)
+      return withTemporaryPostgresCreatePrivilege(sql, databaseName, () => {
+        const applied = sql(databaseName, content, "failed", DATABASE_MIGRATION_ROLE)
+        return applied.status === "ok"
+          ? { status: "ok", value: undefined }
+          : errorResult(applied.kind, applied.error, applied.diagnostic)
+      })
     },
 
     collectCatalogs({ databaseName }) {
