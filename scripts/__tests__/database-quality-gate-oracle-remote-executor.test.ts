@@ -28,10 +28,12 @@ type OracleRemoteExecutorModule = {
         path: string
         sha256: string
       }>
-    }) => { status: string }
+    }) => OracleOperationResult
     createDatabase: (input: { databaseName: string; template?: "qltbyt_test" }) => {
+      diagnostic?: OracleDiagnostic
       status: string
     }
+    dropDatabase: (databaseName: string) => OracleOperationResult
     persistReport: (input: { report: string; runId: string }) => { status: string }
     preflight: () => {
       status: string
@@ -52,8 +54,19 @@ type OracleRemoteExecutorModule = {
       runnerRequirements: string[]
       timeoutSeconds: number
       transactionContract: "rollback-required"
-    }) => { kind?: string; status: string }
+    }) => OracleOperationResult
   }
+}
+
+type OracleDiagnostic = {
+  category: string
+  stderrSha256: string
+}
+
+type OracleOperationResult = {
+  diagnostic?: OracleDiagnostic
+  kind?: string
+  status: string
 }
 
 type OracleRemoteContractModule = {
@@ -198,6 +211,81 @@ describe("database quality gate Oracle remote executor", () => {
       status: "error",
     })
   })
+
+  it.each([
+    {
+      expectedCategory: "permission-denied",
+      invoke: (executor: ReturnType<OracleRemoteExecutorModule["createOracleRemoteExecutor"]>) =>
+        executor.createDatabase({ databaseName: "dq_baseline_forward_diagnostic" }),
+      stderr: "ERROR:  permission denied to create database secret-diagnostic-token",
+      trigger: "CREATE DATABASE",
+    },
+    {
+      expectedCategory: "duplicate-object",
+      invoke: (executor: ReturnType<OracleRemoteExecutorModule["createOracleRemoteExecutor"]>) =>
+        executor.applyMigrations({
+          databaseName: "dq_baseline_forward_diagnostic",
+          migrations: [
+            {
+              content: "CREATE TABLE public.diagnostic_candidate (id bigint);",
+              path: "supabase/migrations/20270201000000_diagnostic.sql",
+              sha256: "a".repeat(64),
+            },
+          ],
+        }),
+      stderr: 'ERROR:  relation "diagnostic_candidate" already exists secret-diagnostic-token',
+      trigger: "diagnostic_candidate",
+    },
+    {
+      expectedCategory: "undefined-function",
+      invoke: (executor: ReturnType<OracleRemoteExecutorModule["createOracleRemoteExecutor"]>) =>
+        executor.runSqlTest({
+          content: "BEGIN;\nSELECT public.diagnostic_function();\nROLLBACK;\n",
+          databaseName: "dq_baseline_forward_diagnostic",
+          fixtureContract: "isolated-fixture",
+          path: "supabase/tests/diagnostic.sql",
+          runnerRequirements: ["psql"],
+          timeoutSeconds: 30,
+          transactionContract: "rollback-required",
+        }),
+      stderr:
+        "ERROR:  function public.diagnostic_function() does not exist secret-diagnostic-token",
+      trigger: "diagnostic_function",
+    },
+    {
+      expectedCategory: "undefined-relation",
+      invoke: (executor: ReturnType<OracleRemoteExecutorModule["createOracleRemoteExecutor"]>) =>
+        executor.dropDatabase("dq_baseline_forward_diagnostic"),
+      stderr: 'ERROR:  relation "diagnostic_database" does not exist secret-diagnostic-token',
+      trigger: "DROP DATABASE",
+    },
+  ])(
+    "propagates a redacted $expectedCategory diagnostic through the executor",
+    async ({ expectedCategory, invoke, stderr, trigger }) => {
+      const source =
+        await loadDatabaseQualityGateModule<OracleRemoteExecutorModule>("oracle-remote-executor")
+      const recorder = commandRecorder()
+      const executor = source.createOracleRemoteExecutor(
+        executorInput((input) => {
+          if (input.input?.includes(trigger)) {
+            return { exitCode: 1, stderr, stdout: "", timedOut: false }
+          }
+          return recorder.command(input)
+        })
+      )
+
+      const result = invoke(executor)
+
+      expect(result).toMatchObject({
+        diagnostic: {
+          category: expectedCategory,
+          stderrSha256: createHash("sha256").update(stderr).digest("hex"),
+        },
+        status: "error",
+      })
+      expect(JSON.stringify(result)).not.toContain("secret-diagnostic-token")
+    }
+  )
 
   it("rejects END transaction control in SQL tests before remote execution", async () => {
     const source =

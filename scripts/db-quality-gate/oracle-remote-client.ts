@@ -4,15 +4,19 @@ import type {
   OracleRemoteExecutorInput,
 } from "./oracle-remote-contract"
 import type { DynamicFailureKind, OracleExecutorResult } from "./dynamic-lane-types"
+import { classifyOracleDiagnostic } from "./oracle-diagnostics"
+import type { OracleDiagnostic } from "./oracle-diagnostics"
 
 const DEFAULT_TIMEOUT_MS = 120_000
 
 /** Builds a typed fail-closed Oracle executor error result. */
 export function oracleErrorResult<T>(
   kind: DynamicFailureKind,
-  error: string
+  error: string,
+  diagnostic?: OracleDiagnostic
 ): OracleExecutorResult<T> {
   return {
+    ...(diagnostic === undefined ? {} : { diagnostic }),
     error,
     kind,
     status: "error",
@@ -79,7 +83,11 @@ export function createOracleRemoteClient(input: OracleRemoteExecutorInput): Orac
       return oracleErrorResult("timeout", "Oracle SSH command timed out")
     }
     if (result.exitCode !== 0) {
-      return oracleErrorResult(failureKind, result.stderr.trim() || "Oracle SSH command failed")
+      return oracleErrorResult(
+        failureKind,
+        "Oracle SSH command failed",
+        classifyOracleDiagnostic(result.stderr)
+      )
     }
 
     return {
@@ -101,7 +109,9 @@ export function createOracleRemoteClient(input: OracleRemoteExecutorInput): Orac
     }
 
     const health = remote(remoteCommand, "SELECT 1;")
-    return health.status === "ok" ? oracleErrorResult("failed", result.error) : health
+    return health.status === "ok"
+      ? oracleErrorResult("failed", "Oracle SQL command failed", result.diagnostic)
+      : health
   }
 
   function readJson(

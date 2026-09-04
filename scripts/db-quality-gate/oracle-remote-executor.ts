@@ -210,7 +210,7 @@ rmdir "$lock_path"`,
       )
       return result.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult("cleanup", "Oracle dynamic-lane lock cleanup failed")
+        : errorResult("cleanup", "Oracle dynamic-lane lock cleanup failed", result.diagnostic)
     },
 
     recoverOrphans(prefix) {
@@ -258,7 +258,7 @@ rmdir "$lock_path"`,
       const created = sql("postgres", statement, "unavailable", DATABASE_ADMIN_ROLE)
       return created.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult(created.kind, created.error)
+        : errorResult(created.kind, created.error, created.diagnostic)
     },
 
     applyMigrations({ databaseName, migrations }) {
@@ -281,7 +281,7 @@ rmdir "$lock_path"`,
       const applied = sql(databaseName, content, "failed", DATABASE_MIGRATION_ROLE)
       return applied.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult(applied.kind, applied.error)
+        : errorResult(applied.kind, applied.error, applied.diagnostic)
     },
 
     collectCatalogs({ databaseName }) {
@@ -345,7 +345,7 @@ rmdir "$lock_path"`,
       )
       return result.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult(result.kind, result.error)
+        : errorResult(result.kind, result.error, result.diagnostic)
     },
 
     persistReport({ report, runId }) {
@@ -360,7 +360,7 @@ rmdir "$lock_path"`,
       )
       return result.status === "ok"
         ? { status: "ok", value: { evidenceId: `oracle:${runId}` } }
-        : errorResult(result.kind, result.error)
+        : errorResult(result.kind, result.error, result.diagnostic)
     },
 
     dropDatabase(databaseName) {
@@ -375,7 +375,7 @@ rmdir "$lock_path"`,
       )
       return result.status === "ok"
         ? { status: "ok", value: undefined }
-        : errorResult(result.kind, result.error)
+        : errorResult(result.kind, result.error, result.diagnostic)
     },
   }
 }

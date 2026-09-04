@@ -1,4 +1,5 @@
 import type { MigrationIdentity } from "./types"
+import type { OracleDiagnostic } from "./oracle-diagnostics"
 
 /** Fixed persistent baseline that dynamic lanes may read or clone but never mutate. */
 export const ORACLE_BASELINE_DATABASE = "qltbyt_test"
@@ -20,6 +21,7 @@ export type OracleExecutorResult<T> =
       value: T
     }
   | {
+      diagnostic?: OracleDiagnostic
       error: string
       kind: DynamicFailureKind
       status: "error"
