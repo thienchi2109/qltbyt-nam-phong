@@ -56,11 +56,29 @@ export function addDynamicFinding(
 export function recordDynamicOperationError(
   state: DynamicRunState,
   operation: string,
-  result: Extract<OracleExecutorResult<never>, { status: "error" }>
+  result: Extract<OracleExecutorResult<never>, { status: "error" }>,
+  safeContext?: {
+    pendingMigrations?: readonly MigrationIdentity[]
+  }
 ): void {
-  const evidence = {
+  const evidence: Record<string, number | string> = {
     kind: result.kind,
     operation,
+  }
+  if (result.diagnostic !== undefined) {
+    evidence.diagnosticCategory = result.diagnostic.category
+    evidence.stderrSha256 = result.diagnostic.stderrSha256
+  }
+  if (operation === "apply-migrations" && safeContext?.pendingMigrations !== undefined) {
+    const pendingMigrations = safeContext.pendingMigrations.map(({ path, sha256 }) => ({
+      path,
+      sha256,
+    }))
+    evidence.pendingMigrationCount = pendingMigrations.length
+    evidence.pendingMigrationPaths = JSON.stringify(
+      pendingMigrations.map((migration) => migration.path)
+    )
+    evidence.pendingMigrationsSha256 = stableJsonSha256(pendingMigrations)
   }
   const ruleId = `dynamic.${operation}.${result.kind}`
   state.findings.push({

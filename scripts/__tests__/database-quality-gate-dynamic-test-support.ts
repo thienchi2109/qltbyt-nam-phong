@@ -9,6 +9,7 @@ import {
   fixtureWithStaticMetadata,
   repositoryHead,
 } from "./database-quality-gate-static-test-support"
+import type { OracleDiagnostic } from "../db-quality-gate/oracle-diagnostics"
 
 export type DynamicFailureKind =
   | "cleanup"
@@ -38,10 +39,18 @@ type ExecutorResult<T> =
       value: T
     }
   | {
+      diagnostic?: OracleDiagnostic
       error: string
       kind: DynamicFailureKind
       status: "error"
     }
+
+type SimulatedFailure = {
+  diagnostic?: OracleDiagnostic
+  error?: string
+  kind: DynamicFailureKind
+  operation: DynamicOperation
+}
 
 export type DynamicLaneInput = {
   createdAt: string
@@ -59,6 +68,7 @@ export type DynamicLaneModule = {
     evidenceAvailable?: boolean
     findings: Array<{
       classification: "BLOCKING" | "DANGEROUS" | "WARNING"
+      evidence?: Record<string, number | string>
       ruleId: string
     }>
     inputHashes: Record<string, string>
@@ -74,7 +84,15 @@ export type DynamicLaneModule = {
   }
 }
 
-export function createDynamicFixture() {
+export function createDynamicFixture(
+  options: {
+    candidatePath?: string
+    candidateSql?: string
+  } = {}
+) {
+  const candidatePath = options.candidatePath ?? "supabase/migrations/20270201000000_candidate.sql"
+  const candidateSql =
+    options.candidateSql ?? "CREATE TABLE public.candidate_only (id bigint PRIMARY KEY);\n"
   const repository = fixtureWithStaticMetadata({
     path: "supabase/migrations/20270101000000_already_in_baseline.sql",
     sql: "CREATE TABLE public.baseline_only (id bigint PRIMARY KEY);\n",
@@ -88,13 +106,12 @@ export function createDynamicFixture() {
     repository.path("supabase", "tests", "example.sql"),
     "BEGIN;\nSELECT 1;\nROLLBACK;\n"
   )
-  writeFileSync(
-    repository.path("supabase", "migrations", "20270201000000_candidate.sql"),
-    "CREATE TABLE public.candidate_only (id bigint PRIMARY KEY);\n"
-  )
+  writeFileSync(repository.path(...candidatePath.split("/")), candidateSql)
   commitWorkingTree(repository.root, "add baseline-forward dynamic lane fixture inputs")
 
   return {
+    candidatePath,
+    candidateSql,
     repository,
     subjectCommit: repositoryHead(repository.root),
   }
@@ -123,23 +140,19 @@ export class FakeOracleDynamicExecutor {
   }
   baselineCatalogs = structuredClone(this.catalogs)
 
-  failure?: {
-    kind: DynamicFailureKind
-    operation: DynamicOperation
-  }
+  failure?: SimulatedFailure
 
   sqlTestFailurePath?: string
 
-  additionalFailure?: {
-    kind: DynamicFailureKind
-    operation: DynamicOperation
-  }
+  additionalFailure?: SimulatedFailure
 
+  baselineMigrationIdentities: Array<{ path: string; sha256: string }> = []
   baselineMigrationVersions = ["20270101000000"]
 
   preflight(): ExecutorResult<{
     baseline: {
       healthy: boolean
+      migrationIdentities: Array<{ path: string; sha256: string }>
       migrationVersions: string[]
     }
     executorEnvironment: Record<string, string>
@@ -147,6 +160,7 @@ export class FakeOracleDynamicExecutor {
     return this.result("preflight", {
       baseline: {
         healthy: true,
+        migrationIdentities: this.baselineMigrationIdentities,
         migrationVersions: this.baselineMigrationVersions,
       },
       executorEnvironment: {
@@ -240,7 +254,8 @@ export class FakeOracleDynamicExecutor {
           : undefined
     if (failure !== undefined) {
       return {
-        error: `Simulated ${failure.kind} at ${operation}`,
+        diagnostic: failure.diagnostic,
+        error: failure.error ?? `Simulated ${failure.kind} at ${operation}`,
         kind: failure.kind,
         status: "error",
       }

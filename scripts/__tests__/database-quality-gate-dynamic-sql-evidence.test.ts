@@ -3,6 +3,8 @@ import { writeFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 import { fixtureJson, loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { migrationContentSha256 } from "../db-quality-gate/migration-source"
+import { stableJsonSha256 } from "../db-quality-gate/serialization"
 import {
   commitWorkingTree,
   repositoryHead,
@@ -96,6 +98,99 @@ describe("database quality gate dynamic SQL-test evidence", () => {
     ])
   })
 
+  it("does not reapply a matching path and SHA after catch-up when the live timestamp differs", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const fixture = createDynamicFixture()
+    const executor = new FakeOracleDynamicExecutor()
+    const candidateIdentity = {
+      path: fixture.candidatePath,
+      sha256: migrationContentSha256(fixture.candidateSql),
+    }
+    executor.baselineMigrationIdentities = [candidateIdentity]
+    executor.baselineMigrationVersions = ["20270101000000", "20270202000000"]
+
+    const report = runLane(source, executor, fixture.repository.root, fixture.subjectCommit)
+
+    expect(report.outcome).toBe("PASS")
+    expect(report.migrationIdentities).toContainEqual(candidateIdentity)
+    expect(
+      executor.operations.filter((operation) => operation.startsWith("apply-migrations"))
+    ).toEqual([])
+    expect(executor.createdDatabases).toEqual([
+      {
+        databaseName: "dq_baseline_forward_phase4_sql_evidence",
+        template: "qltbyt_test",
+      },
+    ])
+    expect(executor.operations).toContain("collect-catalogs:qltbyt_test")
+    expect(executor.operations).toContain(
+      "collect-catalogs:dq_baseline_forward_phase4_sql_evidence"
+    )
+    expect(executor.runSqlTestPaths).toEqual(["supabase/tests/example.sql"])
+    expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_sql_evidence"])
+  })
+
+  it("persists redacted diagnostics and pending identities for a candidate apply failure", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const candidatePath =
+      "supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql"
+    const candidateSql = "SELECT public.technical_configuration_copy_reentrant_workspace();\n"
+    const fixture = createDynamicFixture({ candidatePath, candidateSql })
+    const executor = new FakeOracleDynamicExecutor()
+    const rawExecutorError = "password=do-not-persist raw apply failure"
+    executor.failure = {
+      diagnostic: {
+        category: "undefined-function",
+        stderrSha256: "a".repeat(64),
+      },
+      error: rawExecutorError,
+      kind: "failed",
+      operation: "apply-migrations",
+    }
+    const candidateIdentity = {
+      path: candidatePath,
+      sha256: migrationContentSha256(candidateSql),
+    }
+
+    const report = runLane(source, executor, fixture.repository.root, fixture.subjectCommit)
+
+    expect(report.outcome).toBe("FAILED")
+    expect(report.migrationIdentities).toContainEqual(candidateIdentity)
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({
+        evidence: {
+          diagnosticCategory: "undefined-function",
+          kind: "failed",
+          operation: "apply-migrations",
+          pendingMigrationCount: 1,
+          pendingMigrationPaths: JSON.stringify([candidatePath]),
+          pendingMigrationsSha256: stableJsonSha256([candidateIdentity]),
+          stderrSha256: "a".repeat(64),
+        },
+        ruleId: "dynamic.apply-migrations.failed",
+      })
+    )
+    expect(report.sqlTestExecution).toEqual({
+      attempted: [],
+      executed: [],
+      selected: ["supabase/tests/example.sql"],
+    })
+    expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_sql_evidence"])
+    expect(executor.persistedReports).toHaveLength(1)
+    expect(JSON.parse(executor.persistedReports[0]).findings).toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({
+          diagnosticCategory: "undefined-function",
+          pendingMigrationPaths: JSON.stringify([candidatePath]),
+          stderrSha256: "a".repeat(64),
+        }),
+        ruleId: "dynamic.apply-migrations.failed",
+      })
+    )
+    expect(executor.persistedReports[0]).not.toContain(rawExecutorError)
+    expect(executor.persistedReports[0]).not.toContain(candidateSql.trim())
+  })
+
   it.each([
     ["timeout", "apply-migrations"],
     ["interrupted", "run-sql-test"],
@@ -106,7 +201,13 @@ describe("database quality gate dynamic SQL-test evidence", () => {
     const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
     const fixture = createDynamicFixture()
     const executor = new FakeOracleDynamicExecutor()
+    const rawExecutorError = `secret-${kind}-${operation}`
     executor.failure = {
+      diagnostic: {
+        category: "unknown",
+        stderrSha256: "b".repeat(64),
+      },
+      error: rawExecutorError,
       kind,
       operation,
     }
@@ -116,6 +217,25 @@ describe("database quality gate dynamic SQL-test evidence", () => {
     expect(report.outcome).toBe("INCOMPLETE")
     expect(report.requiredChecksComplete).toBe(false)
     expect(report.evidenceAvailable).toBe(operation !== "preflight")
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({
+          diagnosticCategory: "unknown",
+          stderrSha256: "b".repeat(64),
+        }),
+        ruleId: `dynamic.${operation}.${kind}`,
+      })
+    )
+    expect(JSON.parse(executor.persistedReports[0]).findings).toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({
+          diagnosticCategory: "unknown",
+          stderrSha256: "b".repeat(64),
+        }),
+        ruleId: `dynamic.${operation}.${kind}`,
+      })
+    )
+    expect(executor.persistedReports[0]).not.toContain(rawExecutorError)
     if (operation !== "preflight") {
       expect(executor.operations).toContain("release-lock:phase4-sql-evidence")
     }

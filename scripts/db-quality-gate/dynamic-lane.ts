@@ -268,13 +268,22 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           }
         }
 
-        if (canContinue && migrationInputsForRun !== undefined) {
+        if (
+          canContinue &&
+          migrationInputsForRun !== undefined &&
+          migrationInputsForRun.length > 0
+        ) {
           const applied = input.executor.applyMigrations({
             databaseName,
             migrations: migrationInputsForRun,
           })
           if (applied.status === "error") {
-            recordDynamicOperationError(state, "apply-migrations", applied)
+            recordDynamicOperationError(state, "apply-migrations", applied, {
+              pendingMigrations: migrationInputsForRun.map(({ path, sha256 }) => ({
+                path,
+                sha256,
+              })),
+            })
             canContinue = false
           }
         }
