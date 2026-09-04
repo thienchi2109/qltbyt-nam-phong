@@ -190,6 +190,28 @@ BEGIN
     RAISE EXCEPTION 'Snapshot RPC returned an invalid source-order contract';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1
+    FROM jsonb_array_elements(v_payload->'rows') AS row_data
+    WHERE row_data->>'id' = '1a'
+      AND row_data->>'name' = 'Máy X - quang kỹ thuật số chụp tổng quát'
+  )
+     OR NOT EXISTS (
+       SELECT 1
+       FROM jsonb_array_elements(v_payload->'rows') AS row_data
+       WHERE row_data->>'id' = '1b'
+         AND row_data->>'name' = 'Máy X - quang di động'
+     )
+     OR NOT EXISTS (
+       SELECT 1
+       FROM jsonb_array_elements(v_payload->'rows') AS row_data
+       WHERE row_data->>'id' = '1c'
+         AND row_data->>'name' = 'Máy X - quang C Arm'
+     )
+  THEN
+    RAISE EXCEPTION 'Snapshot RPC collapsed X-ray item names to their parent section';
+  END IF;
+
   PERFORM set_config('request.jwt.claims', '{}'::TEXT, true);
   BEGIN
     PERFORM public.device_quota_regulatory_catalog_get();

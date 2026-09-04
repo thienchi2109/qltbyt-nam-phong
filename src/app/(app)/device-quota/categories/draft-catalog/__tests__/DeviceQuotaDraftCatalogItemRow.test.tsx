@@ -33,6 +33,59 @@ function renderItem(
 }
 
 describe("DeviceQuotaDraftCatalogItemRow", () => {
+  it("keeps the appendix X-ray item names distinct through row interaction", async () => {
+    const user = userEvent.setup()
+    const regulatoryNames = [
+      "Máy X - quang kỹ thuật số chụp tổng quát",
+      "Máy X - quang di động",
+      "Máy X - quang C Arm",
+    ]
+
+    render(
+      <table>
+        <tbody>
+          {regulatoryNames.map((regulatoryName, index) => {
+            const sourceIdentifier = `1${String.fromCharCode(97 + index)}`
+
+            return (
+              <DeviceQuotaDraftCatalogItemRow
+                key={sourceIdentifier}
+                row={{
+                  ...makeItem(index + 1, 1),
+                  id: sourceIdentifier,
+                  sourceIdentifier,
+                  sourceLabel: String.fromCharCode(97 + index),
+                  name: regulatoryName,
+                  displayName: regulatoryName,
+                  regulatoryItemId: `regulatory-${sourceIdentifier}`,
+                  regulatoryName,
+                }}
+                isReadOnly={false}
+                isMutationPending={false}
+                onUpdate={vi.fn()}
+                onExclude={vi.fn()}
+                onRestore={vi.fn()}
+              />
+            )
+          })}
+        </tbody>
+      </table>
+    )
+
+    for (const [index, regulatoryName] of regulatoryNames.entries()) {
+      const sourceIdentifier = `1${String.fromCharCode(97 + index)}`
+      const row = screen.getByTestId(`device-quota-catalog-row-${sourceIdentifier}`)
+
+      expect(within(row).getByText(regulatoryName)).toBeInTheDocument()
+      await user.click(
+        within(row).getByRole("button", { name: `Chỉnh tên hiển thị ${regulatoryName}` })
+      )
+      expect(
+        within(row).getByRole("textbox", { name: `Tên hiển thị - ${regulatoryName}` })
+      ).toBeInTheDocument()
+    }
+  })
+
   it("renders immutable source cells, complete rules, and the three draft fields", () => {
     renderItem()
 
