@@ -112,7 +112,7 @@ Boundary: prove that draft reads and writes remain isolated from active
 category, decision, equipment-mapping, compliance, report, and Excel-import
 contracts.
 
-- [ ] 4.2.1 Add regression tests proving draft writes do not mutate or
+- [x] 4.2.1 Add regression tests proving draft writes do not mutate or
       invalidate active category, decision, equipment-mapping, compliance,
       report, or Excel-import behavior.
 
