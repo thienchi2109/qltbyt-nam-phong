@@ -88,8 +88,8 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
     expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_contract"])
     expect(executor.persistedReports).toHaveLength(1)
     expect(executor.operations).toContain("collect-catalogs:qltbyt_test")
-    expect(executor.operations.indexOf("persist-report:phase4-contract")).toBeLessThan(
-      executor.operations.indexOf("release-lock:phase4-contract")
+    expect(executor.operations.indexOf("release-lock:phase4-contract")).toBeLessThan(
+      executor.operations.indexOf("persist-report:phase4-contract")
     )
   })
 
@@ -223,10 +223,10 @@ describe("database quality gate Phase 4 disposable Oracle execution", () => {
       executor.operations.indexOf("preflight")
     )
     expect(executor.operations.indexOf("preflight")).toBeLessThan(
-      executor.operations.indexOf("persist-report:phase4-contract")
-    )
-    expect(executor.operations.indexOf("persist-report:phase4-contract")).toBeLessThan(
       executor.operations.indexOf("release-lock:phase4-contract")
+    )
+    expect(executor.operations.indexOf("release-lock:phase4-contract")).toBeLessThan(
+      executor.operations.indexOf("persist-report:phase4-contract")
     )
   })
 

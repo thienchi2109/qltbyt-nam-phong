@@ -382,21 +382,11 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         recordDynamicOperationError(state, "drop-database", cleanup)
       }
     }
-    report = persistTerminalReport(input, state, artifacts)
     const release = input.executor.releaseLock(input.runId)
     if (release.status === "error") {
       recordDynamicOperationError(state, "release-lock", release)
-      report = finalizeDynamicLaneReport(
-        input,
-        state,
-        artifacts?.migrationIdentities ?? [],
-        false,
-        {
-          invariants: artifacts?.invariants,
-          sqlTests: artifacts?.sqlTestRegistry,
-        }
-      )
     }
+    report = persistTerminalReport(input, state, artifacts)
   }
 
   return report
