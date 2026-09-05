@@ -58,7 +58,19 @@ export function classifyOracleDiagnostic(stderr: string): OracleDiagnostic {
   const sqlState = /\b(?:ERROR|FATAL|PANIC):\s+([0-9A-Z]{5})(?=\s|:|$)/u.exec(stderr)?.[1]
   // VERBOSITY=verbose retains the assertion and stack in the digest, never in the report.
   // SQLSTATE-only output is deliberately insufficient to authorize an old-debt exemption.
-  const failure = /\b(?:ERROR|FATAL|PANIC):\s+[0-9A-Z]{5}:\s+\S[\s\S]*/u.exec(stderr)?.[0]
+  const primary = /\b(?:ERROR|FATAL|PANIC):\s+[0-9A-Z]{5}:\s+\S[^\n]*/u.exec(stderr)?.[0]
+  // PL/pgSQL source frames identify the assertion; rendered SQL arguments contain
+  // fresh fixture UUIDs. Keep their raw digest above, not in the stable identity.
+  const frames = [...stderr.matchAll(/^(?:CONTEXT:\s*)?(PL\/pgSQL function [^\n]+)/gmu)].map(
+    (match) => match[1].replaceAll(/\bpg_temp_\d+\./gu, "pg_temp.")
+  )
+  const failure =
+    primary === undefined
+      ? undefined
+      : JSON.stringify({
+          primary: primary.replace(/, got \{.*$/u, ", got <diagnostic-json>"),
+          frames,
+        })
   return {
     category: categoryForStderr(stderr),
     ...(sqlState === undefined ? {} : { sqlState }),

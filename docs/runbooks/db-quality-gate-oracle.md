@@ -105,43 +105,48 @@ No khong cap quyen ghi live DB. Moi live apply van can permission rieng, moi,
 explicit cho exact Supabase MCP operation sau khi static va Oracle
 baseline-forward cung PASS tren cung exact landed commit.
 
-## Bien moi truong tren Codex VPS
+## Chạy và đối chiếu trên Oracle
 
-Baseline-forward tu dong chay control tren mot clone disposable cua restored
-baseline truoc candidate. Report ghi rieng `baselineControlSqlTestExecution` va
-`sqlTestExecution`. Theo quyet dinh maintainer ngay 2026-09-05, loi SQL
-deterministic cua control khong ngan candidate chay de doi chieu; loi ha tang,
-timeout, parser, evidence hoac cleanup van chan. Quy tac nay thay dieu kien
-"control phai PASS truoc candidate" cu; AGENTS.md/CLAUDE.md duoc giu nguyen
-theo yeu cau maintainer. Static
-lane dung cung rollback parser de loai SQL test khong tuong thich truoc khi vao
-Oracle. Executor cho phep directive dau file `\set ON_ERROR_STOP on` va
-savepoint noi bo hop le, nhung van cam `COMMIT`, nested transaction va cac psql
-meta-command khac. Psql diagnostic dung `VERBOSITY=verbose`; report chi giu
-category/SQLSTATE/SHA-256 va `failureSignature` cua loi/stack, khong luu raw stderr.
+Baseline-forward tự chạy bộ test đối chứng trên một DB dùng tạm, được sao chép
+từ restored baseline, trước khi thử candidate trên một DB dùng tạm khác.
+Report ghi riêng `baselineControlSqlTestExecution` và `sqlTestExecution`.
+Theo quyết định maintainer ngày 2026-09-05, lỗi SQL tái hiện được trên đối chứng
+không ngăn candidate chạy để so sánh; lỗi hạ tầng, timeout, parser, thiếu bằng
+chứng hoặc lỗi dọn dẹp vẫn chặn. Quy tắc này thay điều kiện cũ "control phải
+PASS trước candidate" và được đồng bộ trong AGENTS.md/CLAUDE.md.
 
-### No SQL cu: canh bao co bang chung, khong bo test
+Static dùng cùng bộ phân tích rollback với Oracle để phát hiện test không tương
+thích trước khi chạy DB. Executor cho phép dòng đầu `\set ON_ERROR_STOP on` và
+savepoint nội bộ hợp lệ, nhưng cấm `COMMIT`, giao dịch lồng nhau và các psql
+meta-command khác. Psql dùng `VERBOSITY=verbose`; report chỉ giữ category,
+SQLSTATE, SHA-256 và `failureSignature` của lỗi/stack, không lưu stderr thô.
 
-- Moi test van chay tren ca control va candidate. `baselineControlFindings`
-  luu loi control tach biet, khong danh dong voi loi candidate.
-- `baselineDebt` trong registry chi duoc them sau khi xac minh assertion cu:
-  SHA-256 source test, SQLSTATE, failureSignature, protectedObjects, ly do va
-  report Oracle goc. Khong tu dong chap nhan moi test dang do.
-- Chi downgrade thanh `dynamic.sql-test.baseline-debt` WARNING khi control va
-  candidate cung khop day du authority tren, va pending SQL khong tham chieu
-  protectedObjects. SQLSTATE trung nhau la chua du.
-- Test co `requiredForMigrations` trung pending migration bat buoc PASS;
-  khong duoc mien tru loi dang can sua. Cac test #957 duoc rang buoc ro rang.
-- Test PASS truoc/FAIL sau, loi khac, source thay doi, no chua duoc xac minh,
-  loi apply migration, hoac thieu execution evidence van chan.
-- Loi control bien mat sau candidate duoc ghi `baseline-repaired`; no khong
-  can mien tru. PASS kem WARNING khong dong nghia baseline da het no.
-- Cache control hien chi reuse run khong co loi baseline. Run co no cu se
-  chay lai control de tranh dung lai authority khong con hop le.
+### Nợ SQL cũ: cảnh báo có bằng chứng, không bỏ test
 
-Mot baseline-control PASS co the duoc reuse tu report baseline-forward truoc
-neu baseline state, harness, registries, invariants va noi dung SQL tests khong
-doi:
+- Mỗi test vẫn chạy trên cả đối chứng và candidate. `baselineControlFindings`
+  lưu riêng lỗi đối chứng, không đánh đồng với lỗi candidate.
+- Chỉ thêm `baselineDebt` vào registry sau khi xác minh assertion cũ: SHA-256
+  của source test, SQLSTATE, `failureSignature`, `protectedObjects`, lý do và
+  report Oracle gốc. Không tự động chấp nhận mọi test đang lỗi.
+- Chỉ chuyển thành cảnh báo `dynamic.sql-test.baseline-debt` khi lỗi trước/sau
+  cùng khớp đầy đủ bằng chứng đã duyệt, và cấu trúc/quyền của `protectedObjects`
+  trong catalog trước/sau không đổi. Chỉ gọi một RPC không có nghĩa là thay đổi
+  RPC đó. Trùng SQLSTATE là chưa đủ.
+- Chữ ký assertion giữ thông báo lỗi và vị trí stack trong source; chuẩn hóa
+  hậu tố schema `pg_temp_<session>` và không dùng tham số SQL sinh động hay
+  JSON chẩn đoán sau `, got {` làm định danh lỗi. SHA-256 stderr thô vẫn được
+  giữ để đối chiếu chi tiết; nội dung stderr không được lưu vào report.
+- Test có `requiredForMigrations` trùng migration pending bắt buộc PASS;
+  không miễn trừ chính lỗi đang cần sửa. Các test #957 được ràng buộc rõ ràng.
+- Test PASS trước/FAIL sau, lỗi khác, source thay đổi, nợ chưa được xác minh,
+  lỗi áp migration hoặc thiếu bằng chứng thực thi vẫn chặn.
+- Lỗi đối chứng biến mất sau candidate được ghi `baseline-repaired`, không cần
+  miễn trừ. PASS kèm cảnh báo không đồng nghĩa baseline đã hết nợ.
+- Hiện chỉ tái sử dụng cache của lần chạy không có lỗi baseline. Nếu có nợ cũ,
+  gate chạy lại đối chứng để tránh dùng bằng chứng không còn hợp lệ.
+
+Có thể tái sử dụng baseline-control PASS từ report trước nếu baseline state,
+harness, registry, invariant và nội dung SQL test không đổi:
 
 ```bash
 node scripts/npm-run.js run db:quality-gate -- \

@@ -8,6 +8,8 @@ import type { OracleDynamicLaneInput, OracleExecutorResult } from "./dynamic-lan
 /** Mutable facts accumulated by one dynamic validation run before its deterministic report is built. */
 export type DynamicRunState = {
   baselineControlFindings: GateFinding[]
+  baselineObjectHashes?: Record<string, string>
+  candidateObjectHashes?: Record<string, string>
   baselineMigrationHighWater: string
   baselineControlSqlTestExecution: {
     attempted: string[]

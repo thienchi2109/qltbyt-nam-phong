@@ -356,11 +356,13 @@ v2; dynamic preflight rejects state v1 and re-queries catalog parity.
   valid.
 - Static validation certifies every registered `default-safe` SQL test with the
   same rollback parser used by Oracle before a dynamic run can begin.
-- Baseline-forward first runs the SQL registry on its own disposable baseline
-  control clone. Candidate migrations run only after that control passes. A
-  prior PASS control may be reused only when its report digest and the exact
-  baseline-state, harness, registry, invariant, and SQL-source hashes still
-  match.
+- Baseline-forward runs the same SQL registry on separate disposable baseline
+  control and candidate clones. Deterministic control failures do not prevent
+  candidate execution: a repair migration must be allowed to fix a known bug.
+  Infrastructure, parser, timeout, missing-evidence, and cleanup failures still
+  block. A prior clean PASS control may be reused only when its report digest
+  and exact baseline-state, catalog, harness, registry, invariant, and SQL-source
+  hashes match; controls with SQL failures must be rerun.
 - Read-only live drift inspection: before refreshing the restored baseline and
   during pre-live review, through Supabase MCP only.
 - Full migration-history reconstruction: deferred, non-blocking maintenance
@@ -391,6 +393,19 @@ v2; dynamic preflight rejects state v1 and re-queries catalog parity.
 - Existing SQL tests are not all default-gate-safe. Execute only tests selected
   by the committed gate registry; never run the entire `supabase/tests` corpus
   indiscriminately.
+- Reviewed SQL debt is non-blocking only when both control and candidate
+  reproduce the same source-bound assertion/error signature outside the
+  pending migration's protected scope (compare actual object structure/access
+  in both catalogs, not mere SQL references). Record the test source SHA-256,
+  SQLSTATE, failure signature, protected objects, rationale, and Oracle report
+  reference in the committed registry. SQLSTATE or test-path equality alone
+  is insufficient; never auto-approve all failing tests.
+- Tests mapped by `requiredForMigrations` to a pending migration must PASS.
+  Never exempt the bug that migration is intended to fix. New failures,
+  changed errors, affected debt scope, and missing execution evidence block.
+  Repaired baseline failures are informational warnings, not candidate defects.
+- PASS with reviewed baseline-debt warnings certifies no detected regression
+  under these checks, not a debt-free baseline and never permission to write live.
 
 ### Local Enforcement
 

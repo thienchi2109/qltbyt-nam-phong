@@ -21,6 +21,23 @@ type OracleDiagnosticsModule = {
 }
 
 describe("database quality gate Oracle diagnostics", () => {
+  it("binds assertion identity while excluding generated SQL arguments and diagnostic JSON", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<OracleDiagnosticsModule>("oracle-diagnostics")
+    const diagnostic = (payload: string, argument: string) =>
+      source.classifyOracleDiagnostic(
+        `ERROR:  P0001: Expected report keys, got ${payload}\nCONTEXT: SQL statement "SELECT helper('${argument}')"\nPL/pgSQL function pg_temp_${argument === "first-argument" ? "69" : "83"}.assert_true(text,boolean) line 3 at RAISE\nPL/pgSQL function inline_code_block line 42 at PERFORM\nLOCATION: exec_stmt_raise, pl_exec.c:3921`
+      ) as { failureSignature?: string; stderrSha256: string }
+    const first = diagnostic('{"generatedAt":"first"}', "first-argument")
+    const second = diagnostic('{"generatedAt":"second"}', "second-argument")
+    expect(first.failureSignature).toBeDefined()
+    expect(first.failureSignature).toBe(second.failureSignature)
+    expect(first.stderrSha256).not.toBe(second.stderrSha256)
+    const changed = source.classifyOracleDiagnostic(
+      "ERROR:  P0001: Different assertion\nCONTEXT: PL/pgSQL function inline_code_block line 42 at RAISE"
+    )
+    expect(changed).not.toHaveProperty("failureSignature", first.failureSignature)
+  })
   it("distinguishes assertions sharing SQLSTATE without storing diagnostic text", async () => {
     const source =
       await loadDatabaseQualityGateModule<OracleDiagnosticsModule>("oracle-diagnostics")

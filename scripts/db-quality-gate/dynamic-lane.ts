@@ -9,7 +9,7 @@ import {
 import { ORACLE_BASELINE_DATABASE } from "./dynamic-lane-types"
 import { runDynamicSqlTestSweep } from "./dynamic-sql-sweep"
 import { runBaselineControl } from "./baseline-control-run"
-import { reconcileSqlTestDebt } from "./sql-test-debt"
+import { collectDebtObjectHashes, reconcileSqlTestDebt } from "./sql-test-debt"
 import {
   collectAccessFingerprint,
   collectApplicationFingerprint,
@@ -239,6 +239,10 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
             recordDynamicOperationError(state, "collect-baseline-catalogs", baselineCatalogs)
             canContinue = false
           } else {
+            state.baselineObjectHashes = collectDebtObjectHashes(
+              baselineCatalogs.value,
+              artifacts.sqlTests
+            )
             state.catalogInputHashes = {
               baselineState: state.catalogInputHashes.baselineState,
               catalogBaselineAccess: collectAccessFingerprint(baselineCatalogs.value.access),
@@ -341,6 +345,10 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
             recordDynamicOperationError(state, "collect-catalogs", catalogs)
             canContinue = false
           } else {
+            state.candidateObjectHashes = collectDebtObjectHashes(
+              catalogs.value,
+              artifacts.sqlTests
+            )
             state.catalogInputHashes = {
               ...state.catalogInputHashes,
               catalogAccess: collectAccessFingerprint(catalogs.value.access),

@@ -49,6 +49,10 @@ describe("reviewed SQL baseline debt", () => {
     "timeout",
   ])("handles %s without weakening candidate checks", (scenario) => {
     const state = createDynamicRunState()
+    state.baselineObjectHashes = { "public.old_rpc": "same" }
+    state.candidateObjectHashes = {
+      "public.old_rpc": scenario === "affected scope" ? "changed" : "same",
+    }
     const baseline = failure("baseline-control.run-sql-test")
     const candidate = failure()
     state.baselineControlFindings = [baseline]
