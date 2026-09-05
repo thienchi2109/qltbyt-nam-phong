@@ -4,8 +4,8 @@
 
 - Ngày kiểm tra: 2026-09-05.
 - Required base và starting `HEAD`: `0b88ec9e8331c511b35884513d0d262e9af81d7f`.
-- Verification tree trước commit implementation: `c521c63c2fde0eabf1a4bc3f41c31dcd4b1217d7` (`git write-tree` sau khi stage module, test và sample).
-- Implementation commit (module, test và sample): `f4cacf238fd675fc6feccce5788c82ca04e4891e`; không push/merge.
+- Verification implementation head after all runtime refactors and sample regeneration: `2e15a709dd6dd67f7121858c0d992b6738b94e11`.
+- Earlier implementation commit before the formatter optimization: `f4cacf238fd675fc6feccce5788c82ca04e4891e` (superseded by the head above); không push/merge.
 - Boundary: chỉ builder/module/test/sample/evidence/task checkboxes; không nối UI/editor, không RPC/query/mutation/SQL.
 
 ## Fixture và baseline
@@ -40,7 +40,7 @@ Test bắt hành vi sau khi có snapshot fixture hợp lệ; không có test ch�
 
 Artifact: `openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx`.
 
-- ExcelJS `readFile` PASS; size 11,458 bytes; SHA-256 `69886fb6986695545359ca3a1152293f29592f4c15e800a3758ea64e21e2589a`.
+- ExcelJS `readFile` PASS; size 11,458 bytes; SHA-256 `556193ade81af6adf5775d2ba6babf980de774ebddf11862009dca111c7462cf`.
 - 1 worksheet `Danh mục dự thảo`; row count 55; column count 7; headers đúng thứ tự; 42 data rows gồm 5 section/37 item; source order match `true`.
 - Merge count 15 = 7 metadata + 5 section + 3 footnote; blank rows 8 và 52; footnotes row 53–55 đúng source order/text.
 - Null row `1a`: E/F `""`; zero row `1b`: E `Máy`, F numeric `0`; excluded row `5a`: gray fill, A:D not strike, E:G strike, note `Ghi chú cũ [Đã loại khỏi đề xuất]`.
@@ -65,8 +65,8 @@ Chuỗi bắt buộc chạy một `ctx_batch_execute`, đúng thứ tự và có
 3. `verify:dedupe` — exit 0; diff-only SonarJS, không chạy full-repo scan.
 4. `typecheck` — exit 0.
 5. Focused Vitest (Phase 2 + `src/lib/__tests__/excel-workbook.test.ts`) — exit 0, 2 files/7 tests.
-6. `react-doctor` — exit 0; script báo không có changed source để scan trước commit vì implementation còn staged/uncommitted, không coi đây là full React scan.
+6. `react-doctor` — exit 0; scan 2 changed source files, score 100/100, no issues found.
 
-Line count sau Prettier: module 322 dòng, test 403 dòng; module dưới ngưỡng extraction 350 và cả hai dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả Buffer và để Phase 3 nối `downloadBlob` sau session checks.
+Line count sau Prettier: module 334 dòng, test 403 dòng; module dưới ngưỡng extraction 350 và cả hai dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả Buffer và để Phase 3 nối `downloadBlob` sau session checks.
 
 Tasks 2.1–2.7 được đánh dấu sau evidence này; mục `2.8 USER REVIEW — Phase 2 approval` vẫn unchecked. Không thay đổi checkbox Phase 3.
