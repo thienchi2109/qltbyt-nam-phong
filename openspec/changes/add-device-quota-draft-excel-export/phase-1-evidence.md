@@ -56,8 +56,19 @@ cùng snapshot đã được hiển thị; không ghép revision cũ với hàng
   đối chiếu tại source code. PDF chỉ định tồn tại, trùng byte với artifact repo
   và cùng SHA-256
   `04186bd3cc50cf541f5e481d25480741412cfe3c899040c35713d4eeda24fd8f`.
-- Independent review: DEFERRED theo yêu cầu người dùng “khoan review”; mục 1.6
-  vẫn unchecked.
+- Independent review: một reviewer đã rà soát tính đúng đặc tả và chất lượng
+  tài liệu. Kết quả là 0 Critical và 3 Important; cả ba finding đều được triage
+  là hợp lệ và đã sửa:
+  1. Bổ sung identity contract cho authenticated `userId` và
+     `resolvedUnitId = current_don_vi ?? don_vi`, trạng thái thiếu identity và
+     hủy export khi identity mất trong lúc pending.
+  2. Bổ sung Red/Green user-event cases cho unauthorized role và read-only mode,
+     bảo đảm action ẩn và không tạo context/builder/download; giữ nguyên các
+     role được phép `global`/`admin`/`to_qltb`.
+  3. Làm rõ `sourcePages`, `sourceReference`, `parentSourceIdentifier` cùng
+     source/order/catalog identity chỉ là input validation/fixture, không render
+     ngoài bốn cột source hợp lệ của worksheet.
+- Task 1.6 được đánh dấu sau khi các sửa đổi và fresh gates pass.
 - `USER REVIEW — Phase 1 approval`: PENDING explicit approval; mục 1.7 vẫn
   unchecked.
 

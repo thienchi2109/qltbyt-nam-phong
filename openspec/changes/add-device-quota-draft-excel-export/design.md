@@ -66,6 +66,16 @@ workbook export, không phải tiện ích export dùng chung. Nếu module ho�
 - ba footnotes nguồn, giữ đúng thứ tự và text;
 - identity của user/unit dùng để hủy tác vụ nếu session đổi trong lúc tạo Blob.
 
+Identity authoritative của export là cùng authenticated session đã được
+`useDeviceQuotaDraftCatalog` chấp nhận: `userId` hợp lệ của session và
+`resolvedUnitId = current_don_vi ?? don_vi`, trong đó `resolvedUnitId` phải là
+số dương. Nếu thiếu `userId` hợp lệ hoặc `resolvedUnitId` không dương, hook/page
+không tạo export context và builder không được gọi. Khi access contract chưa
+cho phép truy cập, action được ẩn; nếu quyền đã được xác định nhưng identity
+tạm thời không còn, action bị khóa với trạng thái thiếu identity. Nếu identity
+biến mất trong lúc tạo Blob, phải hủy tác vụ trước khi tải xuống và không dùng
+Blob cũ. Không tạo tenant selector mới hoặc public API cho việc này.
+
 Snapshot chỉ hợp lệ khi `draftQuery.data` và `catalogQuery.data` cùng
 `catalog_version_id`, cùng unit và cùng lần accepted server state. `revision` và
 `updated_at` phải lấy trực tiếp từ saved draft response; không dùng
@@ -85,15 +95,16 @@ Nếu session, đơn vị hoặc accepted snapshot thay đổi trước khi `dow
 
 ### Eligibility and state
 
-| State                                                 | Nút `Xuất Excel`        | Hành vi                                                           |
-| ----------------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
-| Có quyền, saved snapshot sạch                         | Bật                     | Tạo đúng một workbook từ snapshot đã đóng băng                    |
-| `global`/`admin`/`to_qltb` nhưng dirty                | Khóa                    | Không Save, không refetch, giải thích cần lưu trước               |
-| Đang save/exclude/restore/recover                     | Khóa                    | Chờ mutation hiện tại hoàn tất                                    |
-| Thiếu snapshot/catalog/branding                       | Khóa                    | Hiện trạng thái thiếu dữ liệu và retry query hiện tại             |
-| Đang tạo hoặc tải file                                | Khóa                    | Một lượt duy nhất; không duplicate download                       |
-| Unauthorized hoặc mode read-only theo access contract | Ẩn                      | Không tạo context và không rò rỉ dữ liệu                          |
-| Builder/download lỗi                                  | Mở lại nếu đủ điều kiện | Toast lỗi; nhấn Xuất Excel để thử lại trên snapshot đang hiển thị |
+| State                                                     | Nút `Xuất Excel`                                        | Hành vi                                                                                   |
+| --------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Có quyền, saved snapshot sạch                             | Bật                                                     | Tạo đúng một workbook từ snapshot đã đóng băng                                            |
+| `global`/`admin`/`to_qltb` nhưng dirty                    | Khóa                                                    | Không Save, không refetch, giải thích cần lưu trước                                       |
+| Đang save/exclude/restore/recover                         | Khóa                                                    | Chờ mutation hiện tại hoàn tất                                                            |
+| Thiếu snapshot/catalog/branding                           | Khóa                                                    | Hiện trạng thái thiếu dữ liệu và retry query hiện tại                                     |
+| Thiếu `userId` xác thực hoặc `resolvedUnitId` không dương | Ẩn khi access chưa được cấp; khóa khi quyền đã xác định | Không tạo export context/builder; nếu mất identity lúc pending thì hủy trước khi download |
+| Đang tạo hoặc tải file                                    | Khóa                                                    | Một lượt duy nhất; không duplicate download                                               |
+| Unauthorized hoặc mode read-only theo access contract     | Ẩn                                                      | Không tạo context và không rò rỉ dữ liệu                                                  |
+| Builder/download lỗi                                      | Mở lại nếu đủ điều kiện                                 | Toast lỗi; nhấn Xuất Excel để thử lại trên snapshot đang hiển thị                         |
 
 Nút dùng label user-facing `Xuất Excel`, `type="button"`, trạng thái disabled
 đúng với lý do và không chặn nút Lưu. `actions` đứng bên trái nút Lưu theo
@@ -135,7 +146,13 @@ Bảng dữ liệu bắt đầu sau metadata block, có đúng bảy header theo
 Builder phải ghi đủ 42 rows theo `appendix.json.rows`, gồm 5 section rows và 37
 item rows. Section rows giữ TT/name/hierarchy và các ô còn lại trống hoặc
 trình bày theo style section, nhưng vẫn thuộc cùng bảy-column worksheet. Item
-rows giữ source page/reference, source-declared parent và thứ tự gốc.
+rows giữ source page/reference, source-declared parent và thứ tự gốc. Các
+`sourcePages`, `sourceReference`, `parentSourceIdentifier` và identity của
+source/order/catalog chỉ là input để validate snapshot/fixture, bảo đảm thứ tự,
+hierarchy và coherence; chúng không được ghi thành cột worksheet bổ sung, cột
+ẩn, comment, sheet phụ hoặc ô user-facing. Chỉ bốn cột source hợp lệ là
+`TT`, `Chủng loại`, `Đơn vị tính` và `Số lượng định mức` được render nội dung
+pháp quy.
 
 `Số lượng định mức` là text nhiều dòng đúng source, gồm mọi điều kiện và ghi
 chú inline. Không parse thành formula, không rút gọn điều kiện và không dùng
@@ -219,7 +236,10 @@ chứng minh không có seam tương đương qua `rg`/Code Review Graph trướ
 ## Verification strategy
 
 Phase 2 chứng minh builder thuần bằng fixture/source artifact và sample
-`.xlsx`; Phase 3 chứng minh interaction bằng `@testing-library/user-event`;
+`.xlsx`; Phase 3 chứng minh interaction bằng `@testing-library/user-event` cho
+cả role được phép và các ca âm unauthorized/read-only, thiếu identity
+(`userId` hoặc `current_don_vi ?? don_vi` không hợp lệ), không tạo context/
+builder/download; ca mất identity khi đang pending phải hủy download cũ;
 Phase 4 kiểm tra mở/in và hồi quy. Với TypeScript/React, gate bắt buộc theo
 thứ tự là format, no-explicit-any, diff dedupe, typecheck, focused Vitest,
 react-doctor. Không chạy database quality gate vì change này không có SQL.

@@ -40,8 +40,9 @@ những mục có evidence rõ ràng.
 - [x] 1.5 Chạy validation tài liệu:
       `openspec validate add-device-quota-draft-excel-export --strict --no-interactive`,
       `node scripts/npm-run.js run format:check`, và `git diff --check`.
-- [ ] 1.6 Review độc lập tính đúng đặc tả rồi chất lượng tài liệu; sửa finding
-      hợp lệ, ghi kết quả vào `phase-1-evidence.md`, commit/push nhánh tài liệu.
+- [x] 1.6 Review độc lập tính đúng đặc tả rồi chất lượng tài liệu; sửa finding
+      hợp lệ, ghi kết quả vào `phase-1-evidence.md`, commit nhánh tài liệu sau
+      khi các gate fresh pass.
 - [ ] 1.7 `USER REVIEW — Phase 1 approval:` người dùng duyệt rõ ràng bộ docs,
       contract, reuse decision và acceptance trước khi mở Phase 2.
 
@@ -62,7 +63,10 @@ runtime tương ứng; lỗi import/setup đơn thuần không phải bằng ch�
 - [ ] 2.1 Tạo test Red tại
       `src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts`
       cho schema một sheet/bảy cột, title/metadata, 42 source rows, multiline
-      rules, 3 footnotes, null/zero và excluded styling.
+      rules, 3 footnotes, null/zero và excluded styling; xác nhận
+      `sourcePages`, `sourceReference`, `parentSourceIdentifier` cùng identity
+      source/order/catalog chỉ là fixture/validation input và không render thêm
+      cột, cột ẩn, comment, sheet hoặc ô user-facing.
 - [ ] 2.2 Chạy focused Red:
       `node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts"`;
       ghi failure có ý nghĩa của contract mới.
@@ -98,10 +102,14 @@ không đổi active category/import contracts.
 - [ ] 3.1 Tạo Red user-event test tại
       `src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx`
       cho authorized `global`/`admin`/`to_qltb`, current session unit, nút ngay
-      trước Save, và một download duy nhất.
+      trước Save, và một download duy nhất; thêm ca unauthorized role và
+      read-only mode để action bị ẩn, không tạo export context/builder/download.
 - [ ] 3.2 Mở rộng Red cases cho dirty, save/exclude/restore pending, missing
       snapshot, missing/mismatched branding, exporting lock, builder/download
-      error retry, session/unit change, không refetch và không gọi Save.
+      error retry, session/unit change, thiếu authenticated `userId` hoặc
+      `current_don_vi ?? don_vi` không phải số dương, không refetch và không
+      gọi Save. Khi identity mất trong lúc pending, phải hủy và không tải Blob
+      stale.
 - [ ] 3.3 Chạy focused Red:
       `node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx"`.
 - [ ] 3.4 Thêm context export nội bộ tối thiểu từ cùng server draft/catalog
@@ -111,7 +119,9 @@ không đổi active category/import contracts.
 - [ ] 3.5 Nối editor qua `HierarchicalEditorToolbar.actions`, giữ Save và
       existing mutation state; thêm status/toast retry tiếng Việt và duplicate
       lock.
-- [ ] 3.6 Chạy focused Green user-event test; xác minh click không gọi query
+- [ ] 3.6 Chạy focused Green user-event test; xác minh authorized roles tạo
+      đúng một download, còn unauthorized/read-only hoặc thiếu identity ẩn/
+      khóa action và không tạo context/builder/download; click không gọi query
       refetch, mutation Save hoặc RPC mới. Nếu fail, sửa implementation theo
       đặc tả; chỉ refactor khi Green, rồi chạy lại test. Không sửa assertion
       hoặc đặc tả chỉ để làm test pass.

@@ -9,6 +9,10 @@ existing manager roles `global`, `admin`, and `to_qltb`, scoped to the current
 session unit. The action MUST export the accepted saved draft snapshot and MUST
 not create a new read-only data path, call a mutation, or change any existing
 category, mapping, reporting, compliance, or import contract.
+The authoritative export identity MUST be the same authenticated session
+accepted by `useDeviceQuotaDraftCatalog`: a valid authenticated `userId` and
+`resolvedUnitId = current_don_vi ?? don_vi`, where the resolved unit id MUST be
+positive. The export contract MUST NOT add a tenant selector or public API.
 
 #### Scenario: Authorized manager exports a clean saved draft
 
@@ -21,6 +25,18 @@ category, mapping, reporting, compliance, or import contract.
 - **AND** the action is rendered immediately before the existing `Lưu` action
   in the draft toolbar
 - **AND** no Save, RPC mutation, or click-time refetch is issued
+
+#### Scenario: Missing session or unit identity cannot prepare export
+
+- **GIVEN** the authenticated session has no valid `userId` or its resolved
+  `current_don_vi ?? don_vi` value is not a positive unit id
+- **WHEN** the workspace evaluates export eligibility
+- **THEN** no export snapshot/context is created and no builder or download is
+  called
+- **AND** the action is hidden when access is not granted, or disabled with a
+  missing-identity status when access has already been established
+- **AND** if the identity becomes unavailable during asynchronous generation,
+  the workspace aborts before download and releases no stale file
 
 #### Scenario: Unsupported or read-only access cannot export
 
@@ -98,7 +114,13 @@ The workbook MUST contain one worksheet with a seven-column data table in this
 exact order: `TT`, `Chủng loại`, `Đơn vị tính`, `Số lượng định mức`, `ĐVT áp
 dụng`, `SL đề xuất`, `Ghi chú`. It MUST preserve the original appendix title,
 source order, source-declared hierarchy, source text and legal column meaning
-from the repository-owned Thông tư 10/2026 artifact.
+from the repository-owned Thông tư 10/2026 artifact. `sourcePages`,
+`sourceReference`, `parentSourceIdentifier` and source/order/catalog identity
+MUST remain snapshot/fixture validation inputs for ordering, hierarchy and
+coherence only; they MUST NOT be rendered as additional worksheet columns,
+hidden columns, comments, extra sheets or user-facing cells. Only the four legal
+source columns `TT`, `Chủng loại`, `Đơn vị tính` and `Số lượng định mức` may
+render source content.
 
 #### Scenario: Source rows remain complete and ordered
 
