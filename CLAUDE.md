@@ -456,6 +456,11 @@ v2; dynamic preflight rejects state v1 and re-queries catalog parity.
   applied. The committed applied-history lock is append-only.
 - A passing gate never applies a migration to live and never authorizes a live
   write.
+- A reviewed historical live/source SQL mapping must bind both hashes and all
+  identity fields. Maintenance verifies both immutable files and replays the
+  archived live SQL; it never relabels source SQL as live SQL. See
+  `docs/runbooks/db-quality-gate-live-sql-identities.md`. Unmapped mismatches
+  remain blocking and existing conflicting Oracle metadata requires full refresh.
 - Every live write still requires explicit permission for that specific
   operation and must use Supabase MCP.
 - The Oracle VM ports must remain loopback-only. Do not expose the test

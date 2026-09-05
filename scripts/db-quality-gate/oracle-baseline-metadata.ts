@@ -1,4 +1,5 @@
 import { validConfirmation } from "./baseline-state"
+import { confirmedLiveSqlSha256 } from "./live-sql-identity"
 import { migrationContentSha256 } from "./migration-source"
 import type { ConfirmedMigrationInput } from "./baseline-maintenance-recovery"
 
@@ -6,7 +7,7 @@ import type { ConfirmedMigrationInput } from "./baseline-maintenance-recovery"
 export function metadataStatement(migration: ConfirmedMigrationInput): string | undefined {
   if (
     !validConfirmation(migration) ||
-    migrationContentSha256(migration.content) !== migration.sha256
+    migrationContentSha256(migration.content) !== confirmedLiveSqlSha256(migration)
   ) {
     return undefined
   }
@@ -26,7 +27,8 @@ VALUES (
 /** Checks that migration identity and canonical content hash agree. */
 export function validMigrationInput(migration: ConfirmedMigrationInput): boolean {
   return (
-    validConfirmation(migration) && migrationContentSha256(migration.content) === migration.sha256
+    validConfirmation(migration) &&
+    migrationContentSha256(migration.content) === confirmedLiveSqlSha256(migration)
   )
 }
 
@@ -63,7 +65,7 @@ SELECT json_build_object(
   CASE
     WHEN count(*) = 0 THEN 'missing'
     WHEN count(*) = 1
-      AND bool_and(name = '${migration.liveName}' AND sql_sha256 = '${migration.sha256}')
+      AND bool_and(name = '${migration.liveName}' AND sql_sha256 = '${confirmedLiveSqlSha256(migration)}')
       THEN 'exact'
     ELSE 'conflict'
   END

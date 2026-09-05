@@ -1,4 +1,5 @@
 import path from "node:path"
+import { reviewedLiveSqlIdentity } from "./live-sql-identity"
 
 import {
   parseTechnicalConfigurationCatalog,
@@ -132,7 +133,8 @@ export function validConfirmation(confirmation: ConfirmedLiveMigration): boolean
     /^[a-z0-9_]+$/u.test(confirmation.liveName) &&
     /^[a-f0-9]{64}$/u.test(confirmation.sha256) &&
     /^supabase\/migrations\/\d{14}_.+\.sql$/u.test(confirmation.path) &&
-    migrationName(confirmation.path) === confirmation.liveName
+    (migrationName(confirmation.path) === confirmation.liveName ||
+      reviewedLiveSqlIdentity(confirmation) !== undefined)
   )
 }
 

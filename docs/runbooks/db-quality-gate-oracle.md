@@ -238,7 +238,10 @@ node -e "const fs=require('fs'),c=require('crypto');const s=fs.readFileSync(proc
 Command maintenance parse va hash lai manifest; malformed, duplicate,
 contradictory high-water, stale source commit, hoac catalog hash sai deu
 `INCOMPLETE`. Khong dua migration vao manifest neu live read-back thieu, name
-khac, hoac SQL hash khac.
+khac, hoac SQL hash khac, trừ mapping lịch sử đã review và ràng buộc cả hai
+hash theo [hợp đồng SQL live/source](db-quality-gate-live-sql-identities.md).
+Với mapping đó, manifest giữ hash source; metadata/observation dùng hash SQL
+live và maintenance chạy bản SQL live lưu trữ đã kiểm tra tại exact commit.
 
 ## Role matrix
 

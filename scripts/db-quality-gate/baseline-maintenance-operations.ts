@@ -1,6 +1,7 @@
 import { parseBaselineManifest } from "./baseline-manifest"
 import { mergeConfirmations, recoveryState } from "./baseline-maintenance-recovery"
 import { readFileAtCommit } from "./git-evidence"
+import { confirmedLiveSqlSha256, reviewedLiveSqlIdentity } from "./live-sql-identity"
 import { canonicalizeMigrationContent, migrationContentSha256 } from "./migration-source"
 import type { BaselineManifest } from "./baseline-manifest"
 import type {
@@ -11,13 +12,15 @@ import type {
 import type { BaselineState } from "./baseline-state"
 
 /** Re-parses the caller manifest so maintenance never trusts an unchecked object. */
-export function validatedManifest(input: MaintenanceInput): BaselineManifest | undefined {
+export function validatedManifest(
+  input: Pick<MaintenanceInput, "manifest">
+): BaselineManifest | undefined {
   return parseBaselineManifest(input.manifest)
 }
 
 /** Reads and hash-verifies every manifest migration from its exact source commit. */
 export function readManifestMigrationInputs(
-  input: MaintenanceInput
+  input: Pick<MaintenanceInput, "manifest" | "repositoryRoot">
 ): ConfirmedMigrationInput[] | undefined {
   const manifest = validatedManifest(input)
   if (manifest === undefined) {
@@ -29,9 +32,20 @@ export function readManifestMigrationInputs(
     if (content === undefined || migrationContentSha256(content) !== migration.sha256) {
       return undefined
     }
+    const mapping = reviewedLiveSqlIdentity(migration)
+    const liveContent =
+      mapping === undefined
+        ? content
+        : readFileAtCommit(input.repositoryRoot, manifest.sourceCommit, mapping.liveSqlPath)
+    if (
+      liveContent === undefined ||
+      migrationContentSha256(liveContent) !== confirmedLiveSqlSha256(migration)
+    ) {
+      return undefined
+    }
     migrations.push({
       ...migration,
-      content: canonicalizeMigrationContent(content),
+      content: canonicalizeMigrationContent(liveContent),
     })
   }
   return migrations

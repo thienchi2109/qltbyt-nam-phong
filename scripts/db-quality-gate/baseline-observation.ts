@@ -3,6 +3,7 @@ import {
   technicalConfigurationCatalogSha256,
 } from "./baseline-catalog"
 import { stableJsonSha256 } from "./serialization"
+import { confirmedLiveSqlSha256 } from "./live-sql-identity"
 import type { BaselineState, DatabaseObservation } from "./baseline-state"
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -88,6 +89,9 @@ export function observationMatches(
 
   return confirmations.every((confirmation) => {
     const record = records.get(confirmation.liveVersion)
-    return record?.liveName === confirmation.liveName && record.sqlSha256 === confirmation.sha256
+    return (
+      record?.liveName === confirmation.liveName &&
+      record.sqlSha256 === confirmedLiveSqlSha256(confirmation)
+    )
   })
 }
