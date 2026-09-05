@@ -8,7 +8,9 @@ import {
   commitWorkingTree,
   fixtureWithStaticMetadata,
   repositoryHead,
+  sqlTestRegistry,
 } from "./database-quality-gate-static-test-support"
+import { fixtureJson } from "./database-quality-gate-test-support"
 import type { OracleDiagnostic } from "../db-quality-gate/oracle-diagnostics"
 
 export type DynamicFailureKind =
@@ -69,6 +71,7 @@ export type DynamicLaneModule = {
     findings: Array<{
       classification: "BLOCKING" | "DANGEROUS" | "WARNING"
       evidence?: Record<string, number | string>
+      fingerprint: string
       ruleId: string
     }>
     inputHashes: Record<string, string>
@@ -117,6 +120,32 @@ export function createDynamicFixture(
   }
 }
 
+export function addSqlTestsToDynamicFixture(
+  fixture: ReturnType<typeof createDynamicFixture>,
+  additionalPaths: string[],
+  commitMessage: string
+): string {
+  const registry = sqlTestRegistry()
+  registry.tests.push(
+    ...additionalPaths.map((path) => ({
+      ...registry.tests[0],
+      path,
+    }))
+  )
+  writeFileSync(
+    fixture.repository.path("supabase", "db-quality-gate-tests.json"),
+    fixtureJson(registry)
+  )
+  additionalPaths.forEach((path, index) => {
+    writeFileSync(
+      fixture.repository.path(...path.split("/")),
+      `BEGIN;\nSELECT ${index + 2};\nROLLBACK;\n`
+    )
+  })
+  commitWorkingTree(fixture.repository.root, commitMessage)
+  return repositoryHead(fixture.repository.root)
+}
+
 export class FakeOracleDynamicExecutor {
   appliedDatabases: string[] = []
   appliedMigrationContents: string[] = []
@@ -143,6 +172,8 @@ export class FakeOracleDynamicExecutor {
   failure?: SimulatedFailure
 
   sqlTestFailurePath?: string
+
+  sqlTestFailures = new Map<string, SimulatedFailure>()
 
   additionalFailure?: SimulatedFailure
 
@@ -220,6 +251,15 @@ export class FakeOracleDynamicExecutor {
   }): ExecutorResult<undefined> {
     this.runSqlTestContents.push(input.content)
     this.runSqlTestPaths.push(input.path)
+    const pathFailure = this.sqlTestFailures.get(input.path)
+    if (pathFailure !== undefined) {
+      return this.result(
+        "run-sql-test",
+        undefined,
+        `${input.databaseName}:${input.timeoutSeconds}`,
+        pathFailure
+      )
+    }
     if (
       this.failure?.operation === "run-sql-test" &&
       this.sqlTestFailurePath !== undefined &&
@@ -244,14 +284,20 @@ export class FakeOracleDynamicExecutor {
     return this.result("drop-database", undefined, databaseName)
   }
 
-  private result<T>(operation: DynamicOperation, value: T, detail = ""): ExecutorResult<T> {
+  private result<T>(
+    operation: DynamicOperation,
+    value: T,
+    detail = "",
+    pathFailure?: SimulatedFailure
+  ): ExecutorResult<T> {
     this.operations.push(detail.length === 0 ? operation : `${operation}:${detail}`)
     const failure =
-      this.failure?.operation === operation
+      pathFailure ??
+      (this.failure?.operation === operation
         ? this.failure
         : this.additionalFailure?.operation === operation
           ? this.additionalFailure
-          : undefined
+          : undefined)
     if (failure !== undefined) {
       return {
         diagnostic: failure.diagnostic,

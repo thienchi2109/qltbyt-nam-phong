@@ -350,10 +350,13 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
               transactionContract: sqlTest.transactionContract,
             })
             if (checked.status === "error") {
+              recordDynamicOperationError(state, "run-sql-test", checked, {
+                sqlTestPath: sqlTest.path,
+              })
               if (checked.kind === "failed") {
                 state.sqlTestExecution.executed.push(sqlTest.path)
+                continue
               }
-              recordDynamicOperationError(state, "run-sql-test", checked)
               canContinue = false
               break
             }

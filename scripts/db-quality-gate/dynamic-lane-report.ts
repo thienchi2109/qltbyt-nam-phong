@@ -59,6 +59,7 @@ export function recordDynamicOperationError(
   result: Extract<OracleExecutorResult<never>, { status: "error" }>,
   safeContext?: {
     pendingMigrations?: readonly MigrationIdentity[]
+    sqlTestPath?: string
   }
 ): void {
   const diagnosticEvidence: Record<string, string> =
@@ -82,11 +83,15 @@ export function recordDynamicOperationError(
           ),
           pendingMigrationsSha256: stableJsonSha256(pendingMigrations),
         }
+  const sqlTestPath =
+    operation === "run-sql-test" && result.kind === "failed" ? safeContext?.sqlTestPath : undefined
+  const sqlTestEvidence: Record<string, string> = sqlTestPath === undefined ? {} : { sqlTestPath }
   const evidence: Record<string, number | string> = {
     kind: result.kind,
     operation,
     ...diagnosticEvidence,
     ...pendingMigrationEvidence,
+    ...sqlTestEvidence,
   }
   const ruleId = `dynamic.${operation}.${result.kind}`
   state.findings.push({
@@ -95,7 +100,7 @@ export function recordDynamicOperationError(
     fingerprint: createFindingFingerprint({
       evidence,
       ruleId,
-      subject: operation,
+      subject: sqlTestPath === undefined ? operation : `${operation}:${sqlTestPath}`,
     }),
     ruleId,
   })

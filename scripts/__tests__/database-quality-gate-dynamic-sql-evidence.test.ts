@@ -1,17 +1,13 @@
-import { writeFileSync } from "node:fs"
-
 import { describe, expect, it } from "vitest"
 
-import { fixtureJson, loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { createFindingFingerprint } from "../db-quality-gate/contract"
 import { readFileAtCommit } from "../db-quality-gate/git-evidence"
 import { migrationContentSha256 } from "../db-quality-gate/migration-source"
 import { stableJsonSha256 } from "../db-quality-gate/serialization"
+import { repositoryHead } from "./database-quality-gate-static-test-support"
 import {
-  commitWorkingTree,
-  repositoryHead,
-  sqlTestRegistry,
-} from "./database-quality-gate-static-test-support"
-import {
+  addSqlTestsToDynamicFixture,
   createDynamicFixture,
   DynamicLaneModule,
   FakeOracleDynamicExecutor,
@@ -60,21 +56,11 @@ describe("database quality gate dynamic SQL-test evidence", () => {
   it("fails closed with selected and attempted prefixes when a later SQL test cannot run", async () => {
     const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
     const fixture = createDynamicFixture()
-    const registry = sqlTestRegistry()
-    registry.tests.push({
-      ...registry.tests[0],
-      path: "supabase/tests/second-example.sql",
-    })
-    writeFileSync(
-      fixture.repository.path("supabase", "db-quality-gate-tests.json"),
-      fixtureJson(registry)
+    const subjectCommit = addSqlTestsToDynamicFixture(
+      fixture,
+      ["supabase/tests/second-example.sql"],
+      "add second SQL test to dynamic evidence fixture"
     )
-    writeFileSync(
-      fixture.repository.path("supabase", "tests", "second-example.sql"),
-      "BEGIN;\nSELECT 2;\nROLLBACK;\n"
-    )
-    commitWorkingTree(fixture.repository.root, "add second SQL test to dynamic evidence fixture")
-    const subjectCommit = repositoryHead(fixture.repository.root)
     const executor = new FakeOracleDynamicExecutor()
     executor.failure = {
       kind: "unavailable",
@@ -83,8 +69,26 @@ describe("database quality gate dynamic SQL-test evidence", () => {
     executor.sqlTestFailurePath = "supabase/tests/second-example.sql"
 
     const report = runLane(source, executor, fixture.repository.root, subjectCommit)
+    const unavailableFinding = report.findings.find(
+      (finding) => finding.ruleId === "dynamic.run-sql-test.unavailable"
+    )
 
     expect(report.outcome).toBe("INCOMPLETE")
+    expect(unavailableFinding).toMatchObject({
+      evidence: {
+        kind: "unavailable",
+        operation: "run-sql-test",
+      },
+      fingerprint: createFindingFingerprint({
+        evidence: {
+          kind: "unavailable",
+          operation: "run-sql-test",
+        },
+        ruleId: "dynamic.run-sql-test.unavailable",
+        subject: "run-sql-test",
+      }),
+    })
+    expect(unavailableFinding?.evidence).not.toHaveProperty("sqlTestPath")
     expect(report.sqlTestExecution).toEqual({
       attempted: ["supabase/tests/example.sql", "supabase/tests/second-example.sql"],
       executed: ["supabase/tests/example.sql"],
@@ -97,6 +101,108 @@ describe("database quality gate dynamic SQL-test evidence", () => {
       "supabase/tests/example.sql",
       "supabase/tests/second-example.sql",
     ])
+  })
+
+  it("attempts every registered SQL test and records each deterministic failure by path", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const fixture = createDynamicFixture()
+    const paths = [
+      "supabase/tests/example.sql",
+      "supabase/tests/second-example.sql",
+      "supabase/tests/third-example.sql",
+      "supabase/tests/zz-fourth-example.sql",
+    ]
+    const subjectCommit = addSqlTestsToDynamicFixture(
+      fixture,
+      paths.slice(1),
+      "add exhaustive SQL test fixture"
+    )
+    const executor = new FakeOracleDynamicExecutor()
+    const rawErrors = [
+      "password=do-not-persist second failure",
+      "token=do-not-persist third failure",
+    ]
+    executor.sqlTestFailures.set(paths[1], {
+      diagnostic: { category: "undefined-function", stderrSha256: "d".repeat(64) },
+      error: rawErrors[0],
+      kind: "failed",
+      operation: "run-sql-test",
+    })
+    executor.sqlTestFailures.set(paths[2], {
+      diagnostic: { category: "unknown", stderrSha256: "e".repeat(64) },
+      error: rawErrors[1],
+      kind: "failed",
+      operation: "run-sql-test",
+    })
+
+    const report = runLane(source, executor, fixture.repository.root, subjectCommit)
+    const persistedReport = executor.persistedReports[0]
+    const failedFindings = report.findings.filter(
+      (finding) => finding.ruleId === "dynamic.run-sql-test.failed"
+    )
+
+    expect(report.outcome).toBe("FAILED")
+    expect(report.sqlTestExecution).toEqual({ attempted: paths, executed: paths, selected: paths })
+    expect(executor.runSqlTestPaths).toEqual(paths)
+    expect(failedFindings).toHaveLength(2)
+    expect(failedFindings.map((finding) => finding.evidence?.sqlTestPath)).toEqual([
+      paths[1],
+      paths[2],
+    ])
+    failedFindings.forEach((finding, index) => {
+      const sqlTestPath = paths[index + 1]
+      expect(finding.fingerprint).toBe(
+        createFindingFingerprint({
+          evidence: {
+            diagnosticCategory: index === 0 ? "undefined-function" : "unknown",
+            kind: "failed",
+            operation: "run-sql-test",
+            sqlTestPath,
+            stderrSha256: (index === 0 ? "d" : "e").repeat(64),
+          },
+          ruleId: "dynamic.run-sql-test.failed",
+          subject: `run-sql-test:${sqlTestPath}`,
+        })
+      )
+    })
+    rawErrors.forEach((rawError) => expect(persistedReport).not.toContain(rawError))
+  })
+
+  it("stops after unavailable SQL evidence while still attempting terminal cleanup and reporting", async () => {
+    const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
+    const fixture = createDynamicFixture()
+    const paths = [
+      "supabase/tests/example.sql",
+      "supabase/tests/second-example.sql",
+      "supabase/tests/zz-final-example.sql",
+    ]
+    const subjectCommit = addSqlTestsToDynamicFixture(
+      fixture,
+      paths.slice(1),
+      "add mixed SQL test fixture"
+    )
+    const executor = new FakeOracleDynamicExecutor()
+    executor.sqlTestFailures.set(paths[0], {
+      kind: "failed",
+      operation: "run-sql-test",
+    })
+    executor.sqlTestFailures.set(paths[1], {
+      kind: "unavailable",
+      operation: "run-sql-test",
+    })
+
+    const report = runLane(source, executor, fixture.repository.root, subjectCommit)
+
+    expect(report.outcome).toBe("INCOMPLETE")
+    expect(report.sqlTestExecution).toEqual({
+      attempted: paths.slice(0, 2),
+      executed: [paths[0]],
+      selected: paths,
+    })
+    expect(executor.runSqlTestPaths).toEqual(paths.slice(0, 2))
+    expect(executor.droppedDatabases).toEqual(["dq_baseline_forward_phase4_sql_evidence"])
+    expect(executor.operations).toContain("release-lock:phase4-sql-evidence")
+    expect(executor.operations).toContain("persist-report:phase4-sql-evidence")
   })
 
   it("does not reapply a matching path and SHA after catch-up when the live timestamp differs", async () => {
