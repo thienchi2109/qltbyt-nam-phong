@@ -334,7 +334,8 @@ rmdir "$lock_path"`,
       if (!validDisposableDatabase(databaseName) || !sqlTestPath.startsWith("supabase/tests/")) {
         return errorResult("stale-environment", "SQL test target is not disposable-safe")
       }
-      const body = rollbackRequiredSqlTestBody(content)
+      const normalizedContent = content.replace(/^\\set ON_ERROR_STOP on(?:\r?\n|$)/u, "")
+      const body = rollbackRequiredSqlTestBody(normalizedContent)
       if (
         content.trim().length === 0 ||
         timeoutSeconds < 1 ||
