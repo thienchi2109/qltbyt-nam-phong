@@ -19,6 +19,10 @@ literal ngày chèn vào cột DATE; source viết rõ `AS` ở các alias.
 Các token còn lại, bao gồm seed, khớp theo thứ tự. Không dùng chuẩn hóa token
 làm thuật toán tự động chấp nhận migration khác hash.
 
+Kiểm chứng Oracle độc lập đã apply từng bản SQL lên hai database disposable:
+8 relation definitions và access catalog khớp hoàn toàn, cả hai apply thành công.
+Hai database đã được xóa và global lock đã nhả sau kiểm chứng.
+
 ## Hợp đồng
 
 Mapping trong `scripts/db-quality-gate/live-sql-identity.ts` ràng buộc đồng thời

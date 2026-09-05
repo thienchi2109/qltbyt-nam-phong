@@ -534,17 +534,6 @@
       "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 11"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_authorized_user_guard_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "f6db0ff12fc3147d20be0ed9f618d018ddad04644f9fde36180a883c8a43e849",
-        "failureSignature": "42b672d84a5610b2dac6243a1ba1296e2dac356b1c5f16b9cc85e37d7114e2ae",
-        "sqlState": "P0001",
-        "protectedObjects": [
-          "public._technical_configuration_require_authorized_user",
-          "public._technical_configuration_require_global_user"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: assertion_failed: no unrelated authenticated RPC reaches the canonical guard",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -644,14 +633,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_baseline_documents_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "9412615a724f4b501938ec4db0ecdd24d4e61e7fbf10b886e006208808d1ca2a",
-        "failureSignature": "9a19150843dcce3117cb08b5c99735510c33ab78cdc4dfc6df81035c98807c77",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_baseline_documents"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: service_role table grant missing for technical_configuration_baseline_documents",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -703,14 +684,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_baseline_hierarchy_import_preview_security_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "ce127c8f4491fa364d87660d85ed0f2f7455b6217e31182ffc9045d56908a54c",
-        "failureSignature": "f7c852f7cee9aa03e5152cbe2bcac40bff71ef28f8e185bcaafaea72ebc58c7c",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_baseline_import_preview_v2"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: internal helper privilege contract mismatch",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -741,17 +714,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "4665f85f75b6096f0a10dc01e8a60a1a7a4e81763343569bf62c8bb977bb5cbe",
-        "failureSignature": "6f23dc2f059cc92a3800b263f49512a894e69388870926225a7952d3d39f5a99",
-        "sqlState": "P0001",
-        "protectedObjects": [
-          "public._technical_configuration_baseline_import_apply_v2",
-          "public.technical_configuration_baseline_import_apply_v2"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: internal v2 apply privilege contract mismatch",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "smoke",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -922,14 +884,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_manual_assessments_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "69efbc34452dbfdea2dfc48ca3e874c6b67c29ea021b20ad467a5b45161c264c",
-        "failureSignature": "d1e4a24cfd7426140a4e077652705fb5d411a91d0d13ef2e5e2aa0a5c1762586",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_manual_assessments"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: service role table privilege granted",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -940,14 +894,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_option_documents_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "a5827115d9fc3998e14d2230e508a603f917e36e2254199dc27c5b69149d5c22",
-        "failureSignature": "f8abe751ccb429ed22d3920e17501703fdd7cea4fc6e4478e0fce0216211e411",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_option_documents"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: assertion_failed: technical_configuration_option_documents allows service_role table CRUD",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1000,14 +946,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_option_responses_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "b382f271649e593b5a25e7b4167f06010477f225f66218df3066c81cdfce2c16",
-        "failureSignature": "f7b14488dc6a19de2f0532525fa762c98f3e8f7394058a8e1404eab3be384a43",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_option_responses"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: service role table privilege granted",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1018,14 +956,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_options_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "b2010528063b426c76e01acb917df740b0470b70a27b5a0943e1814542eaca30",
-        "failureSignature": "badbed7e4e8d6995ed9d8bc592de7e31705ec94f6787eefd750be48bf7a8d125",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_options"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: service_role must have table privilege SELECT",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1036,14 +966,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_reference_products_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "f0103bca63abd5edb11f501c2c054b86cd31a51046a82fd85b68a83918848f46",
-        "failureSignature": "7350ece024f1c2f154dd337a47095f57fe6c326854cc6902a699c11aca350b5d",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_reference_products"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: Catalog check failed: service_role lacks SELECT on technical_configuration_reference_products",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1074,24 +996,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_result_export_axes_pagination_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "2c8c1ca3e31d0bae39c66d2a3d6b38876ab5c34d7bd87c4c8796ae3bde6ef594",
-        "failureSignature": "58b36c529ce44a237528361cb2e96a3c8a58a94baa438a681dc889e8013069c3",
-        "sqlState": "42501",
-        "protectedObjects": [
-          "public.nhan_vien",
-          "public.technical_configuration_dossiers",
-          "public.technical_configuration_baseline_versions",
-          "public.technical_configuration_baseline_groups",
-          "public.technical_configuration_baseline_criteria",
-          "public.technical_configuration_suppliers",
-          "public.technical_configuration_options",
-          "public.technical_configuration_result_export_option_axis_list",
-          "public.technical_configuration_result_export_criterion_axis_list"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: permission denied for schema public",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1102,17 +1006,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_result_export_axes_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "87c088059bf96047ee6b3a1ee2a19310de2b78a98aff59c59d0c5a036c50105c",
-        "failureSignature": "84105463920480f613731ed05869004f1159478297936abd7b6ee3ab8b1ad8a2",
-        "sqlState": "P0001",
-        "protectedObjects": [
-          "public.technical_configuration_result_export_option_axis_list",
-          "public.technical_configuration_result_export_criterion_axis_list"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: missing claims rejected: expected [42501] permission_denied, got [42501] permission denied for schema public",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1123,14 +1016,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_result_export_manifest_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "0305deb2c537e7cddd9d6409fd537d68d3abe1c3b7e455a1a3c1f97e34e50f65",
-        "failureSignature": "833065d65154668b64bd322fdc1b3f2433eababf7199e8fee40e3d29a9f4d68d",
-        "sqlState": "P0001",
-        "protectedObjects": ["public._technical_configuration_result_export_snapshot"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: helper authenticated execute revoked",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1141,17 +1026,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_result_export_pages_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "554baf49249a8255fb40d5cc7dfdda71dc06de4e19c548ebfb91bb228a7fe8fa",
-        "failureSignature": "d93588442f05b388b29ab192fe244505f07561fefe8b0419b11b04858e4aaa71",
-        "sqlState": "P0001",
-        "protectedObjects": [
-          "public._technical_configuration_reference_ranking_snapshot",
-          "public._technical_configuration_reference_ranking_token"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: private ranking helper stays service-only",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1162,14 +1036,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_suppliers_phase_gate.sql",
-      "baselineDebt": {
-        "sourceSha256": "44b32e960c096074372d90d7ca395e052839aece99d958fcde97ccfc0a1f6b90",
-        "failureSignature": "3db2246a083fb0731defc9dc7d95962b589dc29928758f4992f178bafcac5589",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.technical_configuration_suppliers"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: service_role must have table privilege SELECT",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -1229,14 +1095,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/transfer_request_page_data_overdue_summary_smoke.sql",
-      "baselineDebt": {
-        "sourceSha256": "aad96f2d1fcc7ebe660253868d1899fc3d1ceb8d24a0dfffd7a62e4f84bb470d",
-        "failureSignature": "db781936160baf06728bbc26061aa4dde7482a78636dadfebd29d6e9bbf1799f",
-        "sqlState": "P0001",
-        "protectedObjects": ["public.transfer_request_external_pending_returns"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: anon should not execute legacy external pending returns RPC",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "smoke",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
