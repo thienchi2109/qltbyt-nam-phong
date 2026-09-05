@@ -73,6 +73,16 @@ const HEADER_BORDER = {
   bottom: { style: "thin" as const, color: { argb: "FF7F8C8D" } },
   right: { style: "thin" as const, color: { argb: "FF7F8C8D" } },
 }
+const SAVED_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Ho_Chi_Minh",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hourCycle: "h23",
+})
 
 function normalizeSectionLabel(label: string): string {
   return label.trim().replace(/[.:]+$/, "")
@@ -151,16 +161,7 @@ function validateSnapshot(snapshot: DeviceQuotaDraftCatalogExportSnapshot): void
 }
 
 function formatSavedTimestamp(isoTimestamp: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Ho_Chi_Minh",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(isoTimestamp))
+  const parts = SAVED_TIMESTAMP_FORMATTER.formatToParts(new Date(isoTimestamp))
   const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]))
   return `${values.day}/${values.month}/${values.year} ${values.hour}:${values.minute}:${values.second} (Asia/Ho_Chi_Minh)`
 }
