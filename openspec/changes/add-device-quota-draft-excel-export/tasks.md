@@ -62,30 +62,30 @@ Lặp bước 2.1–2.4 theo từng nhóm hành vi: cấu trúc/nội dung, null
 rồi layout/serialization. Chạy và ghi Red đúng nguyên nhân trước khi viết
 runtime tương ứng; lỗi import/setup đơn thuần không phải bằng chứng hành vi.
 
-- [ ] 2.1 Tạo test Red tại
+- [x] 2.1 Tạo test Red tại
       `src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts`
       cho schema một sheet/bảy cột, title/metadata, 42 source rows, multiline
       rules, 3 footnotes, null/zero và excluded styling; xác nhận
       `sourcePages`, `sourceReference`, `parentSourceIdentifier` cùng identity
       source/order/catalog chỉ là fixture/validation input và không render thêm
       cột, cột ẩn, comment, sheet hoặc ô user-facing.
-- [ ] 2.2 Chạy focused Red:
+- [x] 2.2 Chạy focused Red:
       `node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts"`;
       ghi failure có ý nghĩa của contract mới.
-- [ ] 2.3 Tạo module hữu hạn
+- [x] 2.3 Tạo module hữu hạn
       `src/app/(app)/device-quota/categories/draft-catalog/device-quota-draft-catalog-excel-export.ts`
       với type snapshot immutable, mapper và builder; tái sử dụng helper ExcelJS
       hiện có, không thêm domain flags vào flat `exportToExcel`.
-- [ ] 2.4 Implement Green tối thiểu: metadata block riêng, bảy headers đúng
+- [x] 2.4 Implement Green tối thiểu: metadata block riêng, bảy headers đúng
       thứ tự, section/item source order, full source text, null/zero semantics,
       excluded row marker/style, footnotes và A4 landscape/fit width/header
       repeat contract.
-- [ ] 2.5 Chạy focused Green cùng test path ở 2.2; kiểm tra worksheet thật bằng
+- [x] 2.5 Chạy focused Green cùng test path ở 2.2; kiểm tra worksheet thật bằng
       ExcelJS và tạo sample artifact tại
       `openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx`.
-- [ ] 2.6 Refactor sau Green: tách mapper/style/types nếu chạm ngưỡng 350 dòng,
+- [x] 2.6 Refactor sau Green: tách mapper/style/types nếu chạm ngưỡng 350 dòng,
       giữ hard ceiling 450 dòng, và chạy lại focused test không đổi hành vi.
-- [ ] 2.7 Chạy đủ gate TS theo thứ tự tại 3.7, bao gồm hồi quy
+- [x] 2.7 Chạy đủ gate TS theo thứ tự tại 3.7, bao gồm hồi quy
       `src/lib/__tests__/excel-workbook.test.ts`; review spec rồi chất lượng,
       ghi Red/Green/gates vào evidence trước commit/push. Kiểm tra tái sử dụng
       liên file bằng Code Review Graph, GitNexus và `rg`; không chạy dedupe toàn repo.
