@@ -21,6 +21,20 @@ type OracleDiagnosticsModule = {
 }
 
 describe("database quality gate Oracle diagnostics", () => {
+  it("distinguishes assertions sharing SQLSTATE without storing diagnostic text", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<OracleDiagnosticsModule>("oracle-diagnostics")
+    const first = source.classifyOracleDiagnostic(
+      "ERROR:  P0001: assertion alpha\nCONTEXT: SQL statement"
+    )
+    const second = source.classifyOracleDiagnostic(
+      "ERROR:  P0001: assertion beta\nCONTEXT: SQL statement"
+    )
+    expect(first).toHaveProperty("failureSignature")
+    expect(first).not.toEqual(second)
+    expect(JSON.stringify(first)).not.toContain("assertion alpha")
+    expect(source.classifyOracleDiagnostic("ERROR:  P0001")).not.toHaveProperty("failureSignature")
+  })
   it.each(["42501", "P0001", "42P01"])(
     "retains only the structured SQLSTATE %s",
     async (sqlState) => {

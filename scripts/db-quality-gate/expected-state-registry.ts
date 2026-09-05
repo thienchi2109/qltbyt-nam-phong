@@ -60,6 +60,20 @@ const invariantsSchema = z
 
 const sqlTestSchema = z
   .object({
+    baselineDebt: z
+      .object({
+        sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
+        failureSignature: z.string().regex(/^[a-f0-9]{64}$/u),
+        sqlState: z.string().regex(/^[0-9A-Z]{5}$/u),
+        protectedObjects: z.array(z.string().regex(/^[a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*$/u)).min(1),
+        reason: z.string().min(1),
+        evidence: z.string().regex(/^oracle:[a-z0-9][a-z0-9._-]*\/report\.json$/u),
+      })
+      .strict()
+      .optional(),
+    requiredForMigrations: z
+      .array(z.string().regex(/^supabase\/migrations\/\d{14}_[^/]+\.sql$/u))
+      .optional(),
     evidence: z.array(z.string().min(1)).min(1),
     fixtureContract: z.enum(["isolated-fixture", "dedicated-fixture", "external-fixture"]),
     path: z.string().regex(/^supabase\/tests\/.+\.sql$/),

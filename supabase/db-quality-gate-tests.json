@@ -568,6 +568,9 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_baseline_cross_dossier_copy_phase_gate.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql"
+      ],
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -578,6 +581,9 @@
       "evidence": ["GitHub Issue #957"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_copy_reentrant_workspace_phase_gate.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql"
+      ],
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
@@ -678,6 +684,9 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/technical_configuration_baseline_hierarchy_snapshots_phase_gate.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql"
+      ],
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",

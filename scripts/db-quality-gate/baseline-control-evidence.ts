@@ -44,6 +44,7 @@ export function reusableBaselineControlExecution(input: {
 
   if (
     input.report.lane !== "baseline-forward" ||
+    (input.report.baselineControlFindings?.length ?? 0) !== 0 ||
     input.report.outcome !== "PASS" ||
     aggregateOutcome({
       evidenceAvailable: input.report.evidenceAvailable === true,

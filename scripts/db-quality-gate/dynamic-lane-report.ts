@@ -7,6 +7,7 @@ import type { OracleDynamicLaneInput, OracleExecutorResult } from "./dynamic-lan
 
 /** Mutable facts accumulated by one dynamic validation run before its deterministic report is built. */
 export type DynamicRunState = {
+  baselineControlFindings: GateFinding[]
   baselineMigrationHighWater: string
   baselineControlSqlTestExecution: {
     attempted: string[]
@@ -28,6 +29,7 @@ export type DynamicRunState = {
 /** Creates the fail-closed state used before Oracle preflight supplies any trusted evidence. */
 export function createDynamicRunState(): DynamicRunState {
   return {
+    baselineControlFindings: [],
     baselineMigrationHighWater: "unavailable",
     baselineControlSqlTestExecution: {
       attempted: [],
@@ -70,6 +72,7 @@ export function recordDynamicOperationError(
   safeContext?: {
     pendingMigrations?: readonly MigrationIdentity[]
     sqlTestPath?: string
+    sqlTestSourceSha256?: string
   }
 ): void {
   const diagnosticEvidence: Record<string, string> =
@@ -77,6 +80,9 @@ export function recordDynamicOperationError(
       ? {}
       : {
           diagnosticCategory: result.diagnostic.category,
+          ...(result.diagnostic.failureSignature === undefined
+            ? {}
+            : { failureSignature: result.diagnostic.failureSignature }),
           ...(result.diagnostic.sqlState === undefined
             ? {}
             : { sqlState: result.diagnostic.sqlState }),
@@ -100,7 +106,15 @@ export function recordDynamicOperationError(
     operation.endsWith("run-sql-test") && result.kind === "failed"
       ? safeContext?.sqlTestPath
       : undefined
-  const sqlTestEvidence: Record<string, string> = sqlTestPath === undefined ? {} : { sqlTestPath }
+  const sqlTestEvidence: Record<string, string> =
+    sqlTestPath === undefined
+      ? {}
+      : {
+          sqlTestPath,
+          ...(safeContext?.sqlTestSourceSha256 === undefined
+            ? {}
+            : { sqlTestSourceSha256: safeContext.sqlTestSourceSha256 }),
+        }
   const evidence: Record<string, number | string> = {
     kind: result.kind,
     operation,
@@ -152,6 +166,7 @@ export function finalizeDynamicLaneReport(
   })
 
   return finalizeReport({
+    baselineControlFindings: state.baselineControlFindings,
     baselineMigrationHighWater: state.baselineMigrationHighWater,
     baselineControlSqlTestExecution: state.baselineControlSqlTestExecution,
     createdAt: input.createdAt,

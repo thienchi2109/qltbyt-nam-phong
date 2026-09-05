@@ -8,6 +8,8 @@ import {
 } from "./dynamic-lane-report"
 import { ORACLE_BASELINE_DATABASE } from "./dynamic-lane-types"
 import { runDynamicSqlTestSweep } from "./dynamic-sql-sweep"
+import { runBaselineControl } from "./baseline-control-run"
+import { reconcileSqlTestDebt } from "./sql-test-debt"
 import {
   collectAccessFingerprint,
   collectApplicationFingerprint,
@@ -171,8 +173,6 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
 
   let artifacts: DynamicInputArtifacts | undefined
   let baselineHistoricalFindingKeys = new Set<string>()
-  let baselineControlDatabaseName: string | undefined
-  let baselineControlDatabaseCreated = false
   let databaseName: string | undefined
   let databaseCreated = false
   let report: GateReport
@@ -291,38 +291,15 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           input.baselineControlReport === undefined
         ) {
           state.executorEnvironment.baselineControl = "inline"
-          baselineControlDatabaseName = createDisposableDatabaseName({
-            lane: "baseline-control",
-            runId: input.runId,
+          canContinue = runBaselineControl({
+            databaseName: createDisposableDatabaseName({
+              lane: "baseline-control",
+              runId: input.runId,
+            }),
+            input,
+            artifacts,
+            state,
           })
-          const createdControl = input.executor.createDatabase({
-            databaseName: baselineControlDatabaseName,
-            template: ORACLE_BASELINE_DATABASE,
-          })
-          if (createdControl.status === "error") {
-            recordDynamicOperationError(state, "baseline-control.create-database", createdControl)
-            canContinue = false
-          } else {
-            baselineControlDatabaseCreated = true
-            canContinue = runDynamicSqlTestSweep({
-              databaseName: baselineControlDatabaseName,
-              execution: state.baselineControlSqlTestExecution,
-              input,
-              operationPrefix: "baseline-control",
-              sqlTests: artifacts.sqlTests,
-              state,
-            })
-          }
-        }
-
-        if (baselineControlDatabaseCreated && baselineControlDatabaseName !== undefined) {
-          const cleanupControl = input.executor.dropDatabase(baselineControlDatabaseName)
-          if (cleanupControl.status === "error") {
-            recordDynamicOperationError(state, "baseline-control.drop-database", cleanupControl)
-            canContinue = false
-          } else {
-            baselineControlDatabaseCreated = false
-          }
         }
 
         if (canContinue && migrationInputsForRun !== undefined) {
@@ -401,6 +378,11 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
             sqlTests: artifacts.sqlTests,
             state,
           })
+          reconcileSqlTestDebt({
+            state,
+            sqlTests: artifacts.sqlTests,
+            migrations: migrationInputsForRun ?? [],
+          })
         }
 
         if (
@@ -421,12 +403,6 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
       }
     }
   } finally {
-    if (baselineControlDatabaseCreated && baselineControlDatabaseName !== undefined) {
-      const cleanup = input.executor.dropDatabase(baselineControlDatabaseName)
-      if (cleanup.status === "error") {
-        recordDynamicOperationError(state, "baseline-control.drop-database", cleanup)
-      }
-    }
     if (databaseCreated && databaseName !== undefined) {
       const cleanup = input.executor.dropDatabase(databaseName)
       if (cleanup.status === "error") {

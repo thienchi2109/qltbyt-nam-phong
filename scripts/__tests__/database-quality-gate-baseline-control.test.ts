@@ -77,7 +77,7 @@ describe("database quality gate baseline control", () => {
     expect(executor.createdDatabases).toEqual([])
     expect(executor.appliedDatabases).toEqual([])
   })
-  it("certifies SQL tests on a baseline clone before applying candidate migrations", async () => {
+  it("allows candidate repair after a deterministic baseline failure", async () => {
     const source = await loadDatabaseQualityGateModule<DynamicLaneModule>("dynamic-lane")
     const fixture = createDynamicFixture()
     const executor = new FakeOracleDynamicExecutor()
@@ -89,21 +89,21 @@ describe("database quality gate baseline control", () => {
 
     const report = runLane(source, executor, fixture.repository.root, fixture.subjectCommit)
 
-    expect(report.outcome).toBe("FAILED")
+    expect(report.outcome).toBe("PASS")
     expect(report.baselineControlSqlTestExecution).toEqual({
       attempted: ["supabase/tests/example.sql"],
       executed: ["supabase/tests/example.sql"],
       selected: ["supabase/tests/example.sql"],
     })
     expect(report.sqlTestExecution).toEqual({
-      attempted: [],
-      executed: [],
+      attempted: ["supabase/tests/example.sql"],
+      executed: ["supabase/tests/example.sql"],
       selected: ["supabase/tests/example.sql"],
     })
     expect(report.findings).toContainEqual(
       expect.objectContaining({
         evidence: expect.objectContaining({ sqlTestPath: "supabase/tests/example.sql" }),
-        ruleId: "dynamic.baseline-control.run-sql-test.failed",
+        ruleId: "dynamic.sql-test.baseline-repaired",
       })
     )
     expect(executor.baselineCreatedDatabases).toEqual([
@@ -112,7 +112,7 @@ describe("database quality gate baseline control", () => {
         template: "qltbyt_test",
       },
     ])
-    expect(executor.appliedDatabases).toEqual([])
+    expect(executor.appliedDatabases).toHaveLength(1)
     expect(executor.baselineDroppedDatabases).toEqual([
       "dq_baseline_control_baseline_control_contract",
     ])

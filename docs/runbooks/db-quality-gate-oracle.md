@@ -109,12 +109,35 @@ baseline-forward cung PASS tren cung exact landed commit.
 
 Baseline-forward tu dong chay control tren mot clone disposable cua restored
 baseline truoc candidate. Report ghi rieng `baselineControlSqlTestExecution` va
-`sqlTestExecution`; control khong PASS thi candidate khong duoc apply. Static
+`sqlTestExecution`. Theo quyet dinh maintainer ngay 2026-09-05, loi SQL
+deterministic cua control khong ngan candidate chay de doi chieu; loi ha tang,
+timeout, parser, evidence hoac cleanup van chan. Quy tac nay thay dieu kien
+"control phai PASS truoc candidate" cu; AGENTS.md/CLAUDE.md duoc giu nguyen
+theo yeu cau maintainer. Static
 lane dung cung rollback parser de loai SQL test khong tuong thich truoc khi vao
 Oracle. Executor cho phep directive dau file `\set ON_ERROR_STOP on` va
 savepoint noi bo hop le, nhung van cam `COMMIT`, nested transaction va cac psql
-meta-command khac. Psql diagnostic dung `VERBOSITY=sqlstate`; report chi giu
-category/SQLSTATE/SHA-256, khong luu raw stderr.
+meta-command khac. Psql diagnostic dung `VERBOSITY=verbose`; report chi giu
+category/SQLSTATE/SHA-256 va `failureSignature` cua loi/stack, khong luu raw stderr.
+
+### No SQL cu: canh bao co bang chung, khong bo test
+
+- Moi test van chay tren ca control va candidate. `baselineControlFindings`
+  luu loi control tach biet, khong danh dong voi loi candidate.
+- `baselineDebt` trong registry chi duoc them sau khi xac minh assertion cu:
+  SHA-256 source test, SQLSTATE, failureSignature, protectedObjects, ly do va
+  report Oracle goc. Khong tu dong chap nhan moi test dang do.
+- Chi downgrade thanh `dynamic.sql-test.baseline-debt` WARNING khi control va
+  candidate cung khop day du authority tren, va pending SQL khong tham chieu
+  protectedObjects. SQLSTATE trung nhau la chua du.
+- Test co `requiredForMigrations` trung pending migration bat buoc PASS;
+  khong duoc mien tru loi dang can sua. Cac test #957 duoc rang buoc ro rang.
+- Test PASS truoc/FAIL sau, loi khac, source thay doi, no chua duoc xac minh,
+  loi apply migration, hoac thieu execution evidence van chan.
+- Loi control bien mat sau candidate duoc ghi `baseline-repaired`; no khong
+  can mien tru. PASS kem WARNING khong dong nghia baseline da het no.
+- Cache control hien chi reuse run khong co loi baseline. Run co no cu se
+  chay lai control de tranh dung lai authority khong con hop le.
 
 Mot baseline-control PASS co the duoc reuse tu report baseline-forward truoc
 neu baseline state, harness, registries, invariants va noi dung SQL tests khong

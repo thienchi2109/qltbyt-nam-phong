@@ -10,6 +10,7 @@ import { gateHarnessHashAtCommit } from "./static-artifacts"
 import type { DynamicRunState } from "./dynamic-lane-report"
 import type { OracleDynamicLaneInput } from "./dynamic-lane-types"
 import type { MigrationIdentity } from "./types"
+import type { SqlTestRegistry } from "./expected-state-registry"
 
 const INVARIANTS_PATH = "supabase/db-quality-gate-invariants.json"
 const SQL_TESTS_PATH = "supabase/db-quality-gate-tests.json"
@@ -29,6 +30,8 @@ export type DynamicInputArtifacts = {
   sqlTestRegistry: unknown
   sqlTestSourcesHash: string
   sqlTests: Array<{
+    baselineDebt?: SqlTestRegistry["tests"][number]["baselineDebt"]
+    requiredForMigrations?: string[]
     fixtureContract: "isolated-fixture"
     path: string
     runnerRequirements: string[]
@@ -183,6 +186,8 @@ export function readDynamicInputArtifacts(
       sqlTestRegistry: sqlTests,
       sqlTestSourcesHash: stableJsonSha256(sqlTestSources),
       sqlTests: selectedSqlTests.map((test) => ({
+        baselineDebt: test.baselineDebt,
+        requiredForMigrations: test.requiredForMigrations,
         fixtureContract: test.fixtureContract as "isolated-fixture",
         path: test.path,
         runnerRequirements: test.runnerRequirements,

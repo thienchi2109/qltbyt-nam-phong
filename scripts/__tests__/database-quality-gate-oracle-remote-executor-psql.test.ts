@@ -49,7 +49,7 @@ describe("database quality gate Oracle psql test handling", () => {
       "BEGIN;\nSET LOCAL statement_timeout = 30000;\nSELECT 1;\nROLLBACK;"
     )
     expect(recorder.commands.at(-1)?.arguments.at(-1)).toContain(
-      "-v ON_ERROR_STOP=1 -v VERBOSITY=sqlstate"
+      "-v ON_ERROR_STOP=1 -v VERBOSITY=verbose"
     )
   })
 

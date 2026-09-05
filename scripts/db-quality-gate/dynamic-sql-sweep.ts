@@ -6,6 +6,7 @@ import {
 import { readCommittedSqlTest } from "./dynamic-lane-inputs"
 import type { OracleDynamicLaneInput } from "./dynamic-lane-types"
 import type { SqlTestExecutionEvidence } from "./types"
+import { sha256Text } from "./serialization"
 
 type DynamicSqlTest = {
   fixtureContract: "isolated-fixture"
@@ -56,6 +57,7 @@ export function runDynamicSqlTestSweep(input: DynamicSqlSweepInput): boolean {
     if (checked.status === "error") {
       recordDynamicOperationError(input.state, operation, checked, {
         sqlTestPath: sqlTest.path,
+        sqlTestSourceSha256: sha256Text(content),
       })
       if (checked.kind === "failed") {
         deterministicFailure = true

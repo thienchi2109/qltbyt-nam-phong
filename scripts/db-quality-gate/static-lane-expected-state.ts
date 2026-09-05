@@ -1,5 +1,5 @@
 import { validateExpectedStateRegistries } from "./registries"
-import { parseSqlTestRegistry } from "./registries"
+import { sha256Text } from "./serialization"
 import { readFileAtCommit } from "./git-evidence"
 import { registeredSqlTestBody } from "./oracle-remote-sql"
 import {
@@ -43,9 +43,7 @@ export function expectedStateRegistryEvidence(input: {
   const sqlTestsMatchCommit =
     input.subjectCommit !== undefined &&
     artifactMatchesCommit(input.repositoryRoot, input.subjectCommit, SQL_TESTS_PATH)
-  const parsedSqlTests = parseSqlTestRegistry(
-    readJsonArtifact(input.repositoryRoot, SQL_TESTS_PATH)
-  )
+  const parsedSqlTests = sqlTests
   const sqlTestSourceFindings =
     input.subjectCommit === undefined || parsedSqlTests === undefined
       ? []
@@ -60,6 +58,16 @@ export function expectedStateRegistryEvidence(input: {
             if (content === undefined) {
               return [
                 staticBlockingFinding("registry.sql-tests.source", test.path, {
+                  path: test.path,
+                }),
+              ]
+            }
+            if (
+              test.baselineDebt !== undefined &&
+              test.baselineDebt.sourceSha256 !== sha256Text(content)
+            ) {
+              return [
+                staticBlockingFinding("registry.sql-tests.debt-source", test.path, {
                   path: test.path,
                 }),
               ]

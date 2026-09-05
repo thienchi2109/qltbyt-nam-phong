@@ -4,7 +4,7 @@ import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-supp
 import { createFindingFingerprint } from "../db-quality-gate/contract"
 import { readFileAtCommit } from "../db-quality-gate/git-evidence"
 import { migrationContentSha256 } from "../db-quality-gate/migration-source"
-import { stableJsonSha256 } from "../db-quality-gate/serialization"
+import { sha256Text, stableJsonSha256 } from "../db-quality-gate/serialization"
 import { repositoryHead } from "./database-quality-gate-static-test-support"
 import {
   addSqlTestsToDynamicFixture,
@@ -145,12 +145,13 @@ describe("database quality gate dynamic SQL-test evidence", () => {
     expect(report.sqlTestExecution).toEqual({ attempted: paths, executed: paths, selected: paths })
     expect(executor.runSqlTestPaths).toEqual(paths)
     expect(failedFindings).toHaveLength(2)
-    expect(failedFindings.map((finding) => finding.evidence?.sqlTestPath)).toEqual([
+    expect(failedFindings.map((finding) => finding.evidence?.sqlTestPath).sort()).toEqual([
       paths[1],
       paths[2],
     ])
-    failedFindings.forEach((finding, index) => {
-      const sqlTestPath = paths[index + 1]
+    failedFindings.forEach((finding) => {
+      const sqlTestPath = String(finding.evidence?.sqlTestPath)
+      const index = paths.indexOf(sqlTestPath) - 1
       expect(finding.fingerprint).toBe(
         createFindingFingerprint({
           evidence: {
@@ -158,6 +159,9 @@ describe("database quality gate dynamic SQL-test evidence", () => {
             kind: "failed",
             operation: "run-sql-test",
             sqlTestPath,
+            sqlTestSourceSha256: sha256Text(
+              readFileAtCommit(fixture.repository.root, subjectCommit, sqlTestPath)!
+            ),
             stderrSha256: (index === 0 ? "d" : "e").repeat(64),
           },
           ruleId: "dynamic.run-sql-test.failed",
