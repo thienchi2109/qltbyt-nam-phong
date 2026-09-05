@@ -134,16 +134,22 @@ changing the RPC contract or granting direct table access.
 Boundary: establish exact-commit verification and an additive deployment /
 rollback sequence. No new product scope or legal workflow is introduced.
 
-- [ ] 4.4.1 Run formatting, OpenSpec strict validation, applicable database
+- [x] 4.4.1 Run formatting, OpenSpec strict validation, applicable database
       static and baseline-forward gates, typecheck, focused tests, and the
       repository React verification sequence. Static and baseline-forward
       results must be reported separately; aggregate PASS requires both lanes
       to pass for the same exact commit.
-      Current evidence: OpenSpec strict, static, typecheck, focused tests, and
-      React verification pass; Oracle baseline-forward is BLOCKING/INCOMPLETE
-      at `dynamic.apply-migrations.failed` because the restored baseline has
-      live draft identity `20260901021419` while the immutable local migration
-      filename is `20260901090000`. Aggregate 4.4.1 therefore remains open.
+      Evidence (2026-09-05): OpenSpec strict, formatting, typecheck, focused tests
+      and React verification PASS. Exact landed code commit
+      `f92f9d7fa3ce9337b0c4e5c1810f1aa0b2813fca`: static PASS
+      (`issue989-static-f92f9d7f-20260905`, digest
+      `d6ea5a4e09625f4cedfcb4470ae6dded55401d13acd0ce71834f3bd66c15a908`)
+      and baseline-forward PASS (`issue989-final-f92f9d7f-20260905`, digest
+      `9924a3a930b3545d4a093ab1ca180f568f2cf31e95f0ba11e0eff287d696875c`).
+      Both disposable runs executed 76/76 selected tests. Three #957 tests
+      repaired; 21 reviewed unchanged SQL debts remain warnings under #990.
+      No live write; no applied migration was modified. This checklist update
+      records that exact-commit evidence and does not certify a live apply.
 - [x] 4.4.2 Verify deployment and rollback runbooks: additive migrations first,
       RPC contracts second, UI enablement last; rollback leaves active
       contracts and both Excel flows intact.
