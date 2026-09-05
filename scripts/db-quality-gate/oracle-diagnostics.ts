@@ -12,6 +12,7 @@ export type OracleDiagnosticCategory =
 
 export type OracleDiagnostic = {
   category: OracleDiagnosticCategory
+  sqlState?: string
   stderrSha256: string
 }
 
@@ -53,8 +54,10 @@ function categoryForStderr(stderr: string): OracleDiagnosticCategory {
 
 /** Classifies Oracle stderr without retaining any raw diagnostic text. */
 export function classifyOracleDiagnostic(stderr: string): OracleDiagnostic {
+  const sqlState = /\b(?:ERROR|FATAL|PANIC):\s+([0-9A-Z]{5})(?=\s|:|$)/u.exec(stderr)?.[1]
   return {
     category: categoryForStderr(stderr),
+    ...(sqlState === undefined ? {} : { sqlState }),
     stderrSha256: createHash("sha256").update(stderr).digest("hex"),
   }
 }

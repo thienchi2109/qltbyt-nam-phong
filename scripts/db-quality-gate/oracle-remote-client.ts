@@ -106,7 +106,7 @@ export function createOracleRemoteClient(input: OracleRemoteExecutorInput): Orac
     failureKind: DynamicFailureKind,
     role = "postgres"
   ): OracleExecutorResult<string> {
-    const remoteCommand = `docker exec -i ${config.containerName} psql -X -v ON_ERROR_STOP=1 -U ${role} -d ${shellQuote(databaseName)} -tA`
+    const remoteCommand = `docker exec -i ${config.containerName} psql -X -v ON_ERROR_STOP=1 -v VERBOSITY=sqlstate -U ${role} -d ${shellQuote(databaseName)} -tA`
     const result = remote(remoteCommand, statement)
     if (result.status === "ok" || failureKind !== "failed" || result.kind !== "unavailable") {
       return result

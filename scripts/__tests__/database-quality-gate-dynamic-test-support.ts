@@ -55,6 +55,7 @@ type SimulatedFailure = {
 }
 
 export type DynamicLaneInput = {
+  baselineControlReport?: unknown
   createdAt: string
   executor: FakeOracleDynamicExecutor
   lane: "baseline-forward"
@@ -64,9 +65,13 @@ export type DynamicLaneInput = {
 }
 
 export type DynamicLaneModule = {
-  createDisposableDatabaseName: (input: { lane: "baseline-forward"; runId: string }) => string
+  createDisposableDatabaseName: (input: {
+    lane: "baseline-control" | "baseline-forward"
+    runId: string
+  }) => string
   runOracleDynamicLane: (input: DynamicLaneInput) => {
     baselineMigrationHighWater: string
+    digest: string
     evidenceAvailable?: boolean
     findings: Array<{
       classification: "BLOCKING" | "DANGEROUS" | "WARNING"
@@ -79,6 +84,12 @@ export type DynamicLaneModule = {
     migrationIdentities: Array<{ path: string; sha256: string }>
     outcome: "FAILED" | "INCOMPLETE" | "PASS"
     requiredChecksComplete?: boolean
+    runId: string
+    baselineControlSqlTestExecution?: {
+      attempted: string[]
+      executed: string[]
+      selected: string[]
+    }
     sqlTestExecution?: {
       attempted: string[]
       executed: string[]
@@ -149,6 +160,10 @@ export function addSqlTestsToDynamicFixture(
 export class FakeOracleDynamicExecutor {
   appliedDatabases: string[] = []
   appliedMigrationContents: string[] = []
+  baselineCreatedDatabases: Array<{ databaseName: string; template?: string }> = []
+  baselineDroppedDatabases: string[] = []
+  baselineRunSqlTestContents: string[] = []
+  baselineRunSqlTestPaths: string[] = []
   createdDatabases: Array<{ databaseName: string; template?: string }> = []
   droppedDatabases: string[] = []
   operations: string[] = []
@@ -175,6 +190,8 @@ export class FakeOracleDynamicExecutor {
 
   sqlTestFailures = new Map<string, SimulatedFailure>()
 
+  baselineSqlTestFailures = new Map<string, SimulatedFailure>()
+
   additionalFailure?: SimulatedFailure
 
   baselineMigrationIdentities: Array<{ path: string; sha256: string }> = []
@@ -185,6 +202,7 @@ export class FakeOracleDynamicExecutor {
       healthy: boolean
       migrationIdentities: Array<{ path: string; sha256: string }>
       migrationVersions: string[]
+      stateHash: string
     }
     executorEnvironment: Record<string, string>
   }> {
@@ -193,6 +211,7 @@ export class FakeOracleDynamicExecutor {
         healthy: true,
         migrationIdentities: this.baselineMigrationIdentities,
         migrationVersions: this.baselineMigrationVersions,
+        stateHash: "b".repeat(64),
       },
       executorEnvironment: {
         execution: "oracle-disposable-test",
@@ -214,6 +233,11 @@ export class FakeOracleDynamicExecutor {
   }
 
   createDatabase(input: { databaseName: string; template?: string }): ExecutorResult<undefined> {
+    if (input.databaseName.startsWith("dq_baseline_control_")) {
+      this.baselineCreatedDatabases.push(input)
+      this.operations.push(`create-database:${input.databaseName}`)
+      return { status: "ok", value: undefined }
+    }
     this.createdDatabases.push(input)
     return this.result("create-database", undefined, input.databaseName)
   }
@@ -249,9 +273,17 @@ export class FakeOracleDynamicExecutor {
     path: string
     timeoutSeconds: number
   }): ExecutorResult<undefined> {
-    this.runSqlTestContents.push(input.content)
-    this.runSqlTestPaths.push(input.path)
-    const pathFailure = this.sqlTestFailures.get(input.path)
+    const baselineControl = input.databaseName.startsWith("dq_baseline_control_")
+    if (baselineControl) {
+      this.baselineRunSqlTestContents.push(input.content)
+      this.baselineRunSqlTestPaths.push(input.path)
+    } else {
+      this.runSqlTestContents.push(input.content)
+      this.runSqlTestPaths.push(input.path)
+    }
+    const pathFailure = baselineControl
+      ? this.baselineSqlTestFailures.get(input.path)
+      : this.sqlTestFailures.get(input.path)
     if (pathFailure !== undefined) {
       return this.result(
         "run-sql-test",
@@ -259,6 +291,10 @@ export class FakeOracleDynamicExecutor {
         `${input.databaseName}:${input.timeoutSeconds}`,
         pathFailure
       )
+    }
+    if (baselineControl) {
+      this.operations.push(`run-sql-test:${input.databaseName}:${input.timeoutSeconds}`)
+      return { status: "ok", value: undefined }
     }
     if (
       this.failure?.operation === "run-sql-test" &&
@@ -280,6 +316,11 @@ export class FakeOracleDynamicExecutor {
   }
 
   dropDatabase(databaseName: string): ExecutorResult<undefined> {
+    if (databaseName.startsWith("dq_baseline_control_")) {
+      this.baselineDroppedDatabases.push(databaseName)
+      this.operations.push(`drop-database:${databaseName}`)
+      return { status: "ok", value: undefined }
+    }
     this.droppedDatabases.push(databaseName)
     return this.result("drop-database", undefined, databaseName)
   }

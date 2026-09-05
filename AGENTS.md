@@ -354,6 +354,13 @@ v2; dynamic preflight rejects state v1 and re-queries catalog parity.
   live apply, both static and baseline-forward must PASS for the exact landed
   commit; an existing exact-commit PASS may be reused while its inputs remain
   valid.
+- Static validation certifies every registered `default-safe` SQL test with the
+  same rollback parser used by Oracle before a dynamic run can begin.
+- Baseline-forward first runs the SQL registry on its own disposable baseline
+  control clone. Candidate migrations run only after that control passes. A
+  prior PASS control may be reused only when its report digest and the exact
+  baseline-state, harness, registry, invariant, and SQL-source hashes still
+  match.
 - Read-only live drift inspection: before refreshing the restored baseline and
   during pre-live review, through Supabase MCP only.
 - Full migration-history reconstruction: deferred, non-blocking maintenance

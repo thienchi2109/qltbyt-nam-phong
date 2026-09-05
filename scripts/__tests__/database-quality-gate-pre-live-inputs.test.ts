@@ -110,8 +110,10 @@ describe("database quality gate pre-live landed input reconciliation", () => {
       artifacts.migrationIdentities,
       true,
       {
+        harnessHash: artifacts.harnessHash,
         invariants: artifacts.invariants,
         sqlTests: artifacts.sqlTestRegistry,
+        sqlTestSourcesHash: artifacts.sqlTestSourcesHash,
       }
     )
     const store = new FakeEvidenceStore()

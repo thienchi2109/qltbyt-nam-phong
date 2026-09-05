@@ -17,8 +17,10 @@ export function recomputeBaselineForwardInputHashes(input: {
   }
 
   return dynamicImmutableInputHashes({
+    harnessHash: artifacts.harnessHash,
     invariants: artifacts.invariants,
     migrationIdentities: artifacts.migrationIdentities,
     sqlTestRegistry: artifacts.sqlTestRegistry,
+    sqlTestSourcesHash: artifacts.sqlTestSourcesHash,
   })
 }

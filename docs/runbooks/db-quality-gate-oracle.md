@@ -107,6 +107,31 @@ baseline-forward cung PASS tren cung exact landed commit.
 
 ## Bien moi truong tren Codex VPS
 
+Baseline-forward tu dong chay control tren mot clone disposable cua restored
+baseline truoc candidate. Report ghi rieng `baselineControlSqlTestExecution` va
+`sqlTestExecution`; control khong PASS thi candidate khong duoc apply. Static
+lane dung cung rollback parser de loai SQL test khong tuong thich truoc khi vao
+Oracle. Executor cho phep directive dau file `\set ON_ERROR_STOP on` va
+savepoint noi bo hop le, nhung van cam `COMMIT`, nested transaction va cac psql
+meta-command khac. Psql diagnostic dung `VERBOSITY=sqlstate`; report chi giu
+category/SQLSTATE/SHA-256, khong luu raw stderr.
+
+Mot baseline-control PASS co the duoc reuse tu report baseline-forward truoc
+neu baseline state, harness, registries, invariants va noi dung SQL tests khong
+doi:
+
+```bash
+node scripts/npm-run.js run db:quality-gate -- \
+  --baseline-control-run-id '<previous-pass-run-id>' \
+  --baseline-control-digest '<previous-pass-digest>' \
+  --lane baseline-forward \
+  --run-id '<new-unique-run-id>' \
+  --subject-commit "$(git rev-parse HEAD)"
+```
+
+Evidence sai identity/hash se fail closed; bo hai option control de chay lai
+control clone. Ca control va candidate van chi chay tren disposable databases.
+
 ```bash
 export ORACLE_DATABASE_QUALITY_GATE_HOST=149.118.148.179
 export ORACLE_DATABASE_QUALITY_GATE_SSH_USER=ubuntu

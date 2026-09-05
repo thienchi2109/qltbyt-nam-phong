@@ -8,6 +8,11 @@ import type { OracleDynamicLaneInput, OracleExecutorResult } from "./dynamic-lan
 /** Mutable facts accumulated by one dynamic validation run before its deterministic report is built. */
 export type DynamicRunState = {
   baselineMigrationHighWater: string
+  baselineControlSqlTestExecution: {
+    attempted: string[]
+    executed: string[]
+    selected: string[]
+  }
   catalogInputHashes: Record<string, string>
   executorEnvironment: Record<string, string>
   findings: GateFinding[]
@@ -24,6 +29,11 @@ export type DynamicRunState = {
 export function createDynamicRunState(): DynamicRunState {
   return {
     baselineMigrationHighWater: "unavailable",
+    baselineControlSqlTestExecution: {
+      attempted: [],
+      executed: [],
+      selected: [],
+    },
     catalogInputHashes: {},
     executorEnvironment: {},
     findings: [],
@@ -67,6 +77,9 @@ export function recordDynamicOperationError(
       ? {}
       : {
           diagnosticCategory: result.diagnostic.category,
+          ...(result.diagnostic.sqlState === undefined
+            ? {}
+            : { sqlState: result.diagnostic.sqlState }),
           stderrSha256: result.diagnostic.stderrSha256,
         }
   const pendingMigrations =
@@ -84,7 +97,9 @@ export function recordDynamicOperationError(
           pendingMigrationsSha256: stableJsonSha256(pendingMigrations),
         }
   const sqlTestPath =
-    operation === "run-sql-test" && result.kind === "failed" ? safeContext?.sqlTestPath : undefined
+    operation.endsWith("run-sql-test") && result.kind === "failed"
+      ? safeContext?.sqlTestPath
+      : undefined
   const sqlTestEvidence: Record<string, string> = sqlTestPath === undefined ? {} : { sqlTestPath }
   const evidence: Record<string, number | string> = {
     kind: result.kind,
@@ -117,7 +132,9 @@ export function finalizeDynamicLaneReport(
   evidenceAvailable: boolean,
   artifacts: {
     invariants: unknown
+    harnessHash?: string
     sqlTests: unknown
+    sqlTestSourcesHash?: string
   }
 ): GateReport {
   const requiredChecksComplete = !state.incomplete
@@ -127,13 +144,16 @@ export function finalizeDynamicLaneReport(
     requiredChecksComplete,
   })
   const immutableInputHashes = dynamicImmutableInputHashes({
+    harnessHash: artifacts.harnessHash ?? "unavailable",
     invariants: artifacts.invariants ?? null,
     migrationIdentities,
     sqlTestRegistry: artifacts.sqlTests ?? null,
+    sqlTestSourcesHash: artifacts.sqlTestSourcesHash ?? "unavailable",
   })
 
   return finalizeReport({
     baselineMigrationHighWater: state.baselineMigrationHighWater,
+    baselineControlSqlTestExecution: state.baselineControlSqlTestExecution,
     createdAt: input.createdAt,
     digest: "",
     evidenceAvailable,
@@ -141,7 +161,6 @@ export function finalizeDynamicLaneReport(
     findings: state.findings,
     inputHashes: {
       ...state.catalogInputHashes,
-      harness: stableJsonSha256({ lane: input.lane, version: "phase-4" }),
       ...immutableInputHashes,
     },
     lane: input.lane,

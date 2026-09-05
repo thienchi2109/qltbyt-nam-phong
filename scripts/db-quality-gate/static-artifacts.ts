@@ -208,3 +208,25 @@ export function gateHarnessEvidence(
       ),
   }
 }
+
+/** Hashes the gate harness exactly as committed without consulting mutable worktree files. */
+export function gateHarnessHashAtCommit(
+  repositoryRoot: string,
+  commit: string
+): string | undefined {
+  const committedSourcePaths = listFilesAtCommit(
+    repositoryRoot,
+    commit,
+    "scripts/db-quality-gate"
+  )?.filter(isHarnessSourcePath)
+  if (committedSourcePaths === undefined) {
+    return undefined
+  }
+
+  const paths = [...committedSourcePaths, ...STATIC_HARNESS_DEPENDENCIES].sort()
+  const sources = paths.map((relativePath) => {
+    const content = readFileAtCommit(repositoryRoot, commit, relativePath)
+    return content === undefined ? undefined : [relativePath, migrationContentSha256(content)]
+  })
+  return sources.some((source) => source === undefined) ? undefined : stableJsonSha256(sources)
+}

@@ -129,6 +129,7 @@ export function fixtureWithStaticMetadata(...migrations: Array<{ path: string; s
     [INVARIANTS_PATH]: fixtureJson(invariantRegistry()),
     [SQL_TESTS_PATH]: fixtureJson(sqlTestRegistry()),
     [WAIVERS_PATH]: fixtureJson({ approvals: [], schemaVersion: 1 }),
+    "supabase/tests/example.sql": "BEGIN;\nSELECT 1;\nROLLBACK;\n",
     "scripts/changed-files.js": "module.exports = { collectChangedFiles: () => ['tracked'] }\n",
     "scripts/db-quality-gate/static-lane.ts": "export const fixtureStaticHarness = true\n",
     ...Object.fromEntries(migrations.map((entry) => [entry.path, entry.sql])),

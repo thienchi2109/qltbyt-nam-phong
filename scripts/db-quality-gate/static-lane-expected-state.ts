@@ -1,4 +1,7 @@
 import { validateExpectedStateRegistries } from "./registries"
+import { parseSqlTestRegistry } from "./registries"
+import { readFileAtCommit } from "./git-evidence"
+import { registeredSqlTestBody } from "./oracle-remote-sql"
 import {
   artifactHash,
   artifactMatchesCommit,
@@ -40,6 +43,35 @@ export function expectedStateRegistryEvidence(input: {
   const sqlTestsMatchCommit =
     input.subjectCommit !== undefined &&
     artifactMatchesCommit(input.repositoryRoot, input.subjectCommit, SQL_TESTS_PATH)
+  const parsedSqlTests = parseSqlTestRegistry(
+    readJsonArtifact(input.repositoryRoot, SQL_TESTS_PATH)
+  )
+  const sqlTestSourceFindings =
+    input.subjectCommit === undefined || parsedSqlTests === undefined
+      ? []
+      : parsedSqlTests.tests
+          .filter((test) => test.safety === "default-safe")
+          .flatMap((test) => {
+            const content = readFileAtCommit(
+              input.repositoryRoot,
+              input.subjectCommit as string,
+              test.path
+            )
+            if (content === undefined) {
+              return [
+                staticBlockingFinding("registry.sql-tests.source", test.path, {
+                  path: test.path,
+                }),
+              ]
+            }
+            return registeredSqlTestBody(content) === undefined
+              ? [
+                  staticBlockingFinding("registry.sql-tests.execution-contract", test.path, {
+                    path: test.path,
+                  }),
+                ]
+              : []
+          })
   const validationFindings = validation.findings.map((finding) =>
     staticBlockingFinding(
       finding.ruleId,
@@ -69,13 +101,15 @@ export function expectedStateRegistryEvidence(input: {
             }),
           ]
         : []),
+      ...sqlTestSourceFindings,
     ],
     incomplete:
       invariants === undefined ||
       sqlTests === undefined ||
       !validation.valid ||
       !invariantsMatchCommit ||
-      !sqlTestsMatchCommit,
+      !sqlTestsMatchCommit ||
+      sqlTestSourceFindings.length > 0,
     inputHashes: {
       invariants: artifactHash(input.repositoryRoot, INVARIANTS_PATH),
       sqlTests: artifactHash(input.repositoryRoot, SQL_TESTS_PATH),

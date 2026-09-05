@@ -1,7 +1,7 @@
 import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
 import { runOracleDynamicLane } from "./dynamic-lane"
 import { currentHeadCommit, refreshPublicOriginMain } from "./git-evidence"
-import { createOracleEvidenceStore } from "./oracle-evidence-store"
+import { createOracleEvidenceStore, ORACLE_REPORT_ARTIFACT } from "./oracle-evidence-store"
 import { createOracleRemoteClient } from "./oracle-remote-client"
 import {
   defaultOracleRemoteCommand,
@@ -9,6 +9,7 @@ import {
 } from "./oracle-remote-contract"
 import { oracleRemoteExecutorFromEnvironment } from "./oracle-remote-executor"
 import { runPreLiveEvidenceCheck } from "./pre-live"
+import { parseGateReport } from "./pre-live-report"
 import { verifyProtectedMain } from "./protected-main"
 import { evaluateReconciliation } from "./reconciliation"
 import { stableJsonStringify } from "./serialization"
@@ -29,6 +30,8 @@ type CommandExecution = {
 }
 
 type CommandOptions = {
+  baselineControlDigest?: string
+  baselineControlRunId?: string
   baselineForwardDigest?: string
   baselineForwardRunId?: string
   createdAt?: string
@@ -53,6 +56,8 @@ type CommandDependencies = {
 }
 
 const OPTION_NAMES = new Set([
+  "--baseline-control-digest",
+  "--baseline-control-run-id",
   "--baseline-forward-digest",
   "--baseline-forward-run-id",
   "--created-at",
@@ -97,6 +102,8 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   }
 
   return {
+    baselineControlDigest: values.get("--baseline-control-digest"),
+    baselineControlRunId: values.get("--baseline-control-run-id"),
     baselineForwardDigest: values.get("--baseline-forward-digest"),
     baselineForwardRunId: values.get("--baseline-forward-run-id"),
     createdAt: values.get("--created-at"),
@@ -218,10 +225,42 @@ export function runDatabaseQualityGateCommand(
   }
 
   if (options.lane === "baseline-forward") {
+    const hasControlDigest = options.baselineControlDigest !== undefined
+    const hasControlRunId = options.baselineControlRunId !== undefined
+    if (hasControlDigest !== hasControlRunId) {
+      return errorExecution("Baseline-control evidence requires both run ID and digest")
+    }
+    let baselineControlReport: GateReport | undefined
+    if (hasControlDigest && hasControlRunId) {
+      const evidenceStore = dependencies.evidenceStore?.() ?? oracleEvidenceStoreFromEnvironment()
+      if (evidenceStore === undefined) {
+        return errorExecution("Baseline-control Oracle evidence store is unavailable")
+      }
+      const artifact = evidenceStore.readArtifact({
+        artifactName: ORACLE_REPORT_ARTIFACT,
+        runId: options.baselineControlRunId as string,
+      })
+      if (artifact.status === "error") {
+        return errorExecution("Baseline-control Oracle evidence is unavailable")
+      }
+      try {
+        baselineControlReport = parseGateReport(JSON.parse(artifact.value) as unknown)
+      } catch {
+        baselineControlReport = undefined
+      }
+      if (
+        baselineControlReport === undefined ||
+        baselineControlReport.runId !== options.baselineControlRunId ||
+        baselineControlReport.digest !== options.baselineControlDigest
+      ) {
+        return errorExecution("Baseline-control Oracle evidence identity is invalid")
+      }
+    }
     const executor = dependencies.dynamicExecutor?.() ?? oracleRemoteExecutorFromEnvironment()
     if (executor !== undefined) {
       try {
         const report = runOracleDynamicLane({
+          baselineControlReport,
           createdAt: options.createdAt ?? new Date().toISOString(),
           executor,
           lane: options.lane,

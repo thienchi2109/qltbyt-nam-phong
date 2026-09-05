@@ -21,6 +21,18 @@ type OracleDiagnosticsModule = {
 }
 
 describe("database quality gate Oracle diagnostics", () => {
+  it.each(["42501", "P0001", "42P01"])(
+    "retains only the structured SQLSTATE %s",
+    async (sqlState) => {
+      const source =
+        await loadDatabaseQualityGateModule<OracleDiagnosticsModule>("oracle-diagnostics")
+      const stderr = `psql:<stdin>:42: ERROR:  ${sqlState}`
+      expect(source.classifyOracleDiagnostic(stderr)).toEqual(expect.objectContaining({ sqlState }))
+      expect(
+        source.classifyOracleDiagnostic(`ERROR:  user supplied ${sqlState}`)
+      ).not.toHaveProperty("sqlState")
+    }
+  )
   it.each([
     ["permission-denied", "ERROR:  permission denied for schema auth"],
     ["permission-denied", "ubuntu@oracle.test: Permission denied (publickey)."],

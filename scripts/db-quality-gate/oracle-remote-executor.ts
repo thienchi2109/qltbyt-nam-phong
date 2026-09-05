@@ -16,7 +16,7 @@ import {
   oracleErrorResult as errorResult,
   oracleStatePath,
 } from "./oracle-remote-client"
-import { hasPsqlMetaCommand, rollbackRequiredSqlTestBody } from "./oracle-remote-sql"
+import { hasPsqlMetaCommand, registeredSqlTestBody } from "./oracle-remote-sql"
 import { BASELINE_OBSERVATION_QUERY } from "./oracle-baseline-sql"
 import { withTemporaryPostgresCreatePrivilege } from "./oracle-migration-role-privileges"
 import {
@@ -334,8 +334,7 @@ rmdir "$lock_path"`,
       if (!validDisposableDatabase(databaseName) || !sqlTestPath.startsWith("supabase/tests/")) {
         return errorResult("stale-environment", "SQL test target is not disposable-safe")
       }
-      const normalizedContent = content.replace(/^\\set ON_ERROR_STOP on(?:\r?\n|$)/u, "")
-      const body = rollbackRequiredSqlTestBody(normalizedContent)
+      const body = registeredSqlTestBody(content)
       if (
         content.trim().length === 0 ||
         timeoutSeconds < 1 ||

@@ -5,6 +5,8 @@ import { selectDefaultSafeSqlTests } from "./expected-state"
 import { readFileAtCommit } from "./git-evidence"
 import { inspectCanonicalMigrationSourceAtCommit } from "./migration-source"
 import { parseAppliedMigrationLock } from "./registries"
+import { sha256Text, stableJsonSha256 } from "./serialization"
+import { gateHarnessHashAtCommit } from "./static-artifacts"
 import type { DynamicRunState } from "./dynamic-lane-report"
 import type { OracleDynamicLaneInput } from "./dynamic-lane-types"
 import type { MigrationIdentity } from "./types"
@@ -21,9 +23,11 @@ export type DynamicRepositoryInput = Pick<
 /** Immutable source artifacts selected from one resolved subject commit. */
 export type DynamicInputArtifacts = {
   appliedMigrationIdentities: MigrationIdentity[]
+  harnessHash: string
   invariants: unknown
   migrationIdentities: MigrationIdentity[]
   sqlTestRegistry: unknown
+  sqlTestSourcesHash: string
   sqlTests: Array<{
     fixtureContract: "isolated-fixture"
     path: string
@@ -151,11 +155,33 @@ export function readDynamicInputArtifacts(
       return undefined
     }
 
+    const sqlTestSources = selectedSqlTests.map((test) => {
+      const content = committedRepositoryFile(input, test.path, "supabase/tests/")
+      return content === undefined ? undefined : [test.path, sha256Text(content)]
+    })
+    if (sqlTestSources.some((source) => source === undefined)) {
+      addDynamicFinding(state, "dynamic.sql-test.source", SQL_TESTS_PATH, {
+        path: SQL_TESTS_PATH,
+      })
+      state.incomplete = true
+      return undefined
+    }
+    const harnessHash = gateHarnessHashAtCommit(input.repositoryRoot, input.subjectCommit)
+    if (harnessHash === undefined) {
+      addDynamicFinding(state, "dynamic.harness.source", "scripts/db-quality-gate", {
+        path: "scripts/db-quality-gate",
+      })
+      state.incomplete = true
+      return undefined
+    }
+
     return {
       appliedMigrationIdentities: appliedLock.applied,
+      harnessHash,
       invariants,
       migrationIdentities: migrations,
       sqlTestRegistry: sqlTests,
+      sqlTestSourcesHash: stableJsonSha256(sqlTestSources),
       sqlTests: selectedSqlTests.map((test) => ({
         fixtureContract: test.fixtureContract as "isolated-fixture",
         path: test.path,

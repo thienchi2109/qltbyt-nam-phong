@@ -134,7 +134,51 @@ export function hasPsqlMetaCommand(content: string): boolean {
   return /(?:^|\n)[\t \r]*\\/u.test(topLevelSqlMask(content))
 }
 
-/** Removes the declared rollback envelope and rejects other top-level transaction control. */
+function hasSafeSavepointControl(statements: TopLevelSqlStatement[]): boolean {
+  const savepoints: string[] = []
+  const savepointName = "([A-Z_][A-Z0-9_$]*)"
+  const savepointPattern = new RegExp(`^SAVEPOINT ${savepointName}$`, "u")
+  const rollbackPattern = new RegExp(`^ROLLBACK TO(?: SAVEPOINT)? ${savepointName}$`, "u")
+  const releasePattern = new RegExp(`^RELEASE(?: SAVEPOINT)? ${savepointName}$`, "u")
+  const transactionControl =
+    /^(?:BEGIN|START TRANSACTION|COMMIT|END|ROLLBACK|ABORT|SAVEPOINT|RELEASE(?: SAVEPOINT)?|PREPARE TRANSACTION|SET TRANSACTION)\b/u
+
+  for (const statement of statements) {
+    const savepoint = savepointPattern.exec(statement.normalized)?.[1]
+    if (savepoint !== undefined) {
+      savepoints.push(savepoint)
+      continue
+    }
+
+    const rollback = rollbackPattern.exec(statement.normalized)?.[1]
+    if (rollback !== undefined) {
+      const index = savepoints.lastIndexOf(rollback)
+      if (index === -1) {
+        return false
+      }
+      savepoints.splice(index + 1)
+      continue
+    }
+
+    const release = releasePattern.exec(statement.normalized)?.[1]
+    if (release !== undefined) {
+      const index = savepoints.lastIndexOf(release)
+      if (index === -1) {
+        return false
+      }
+      savepoints.splice(index)
+      continue
+    }
+
+    if (transactionControl.test(statement.normalized)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+/** Removes the declared rollback envelope and accepts only scoped top-level savepoint control. */
 export function rollbackRequiredSqlTestBody(content: string): string | undefined {
   const statements = topLevelSqlStatements(content)
   if (statements === undefined || statements.length < 2) {
@@ -151,11 +195,17 @@ export function rollbackRequiredSqlTestBody(content: string): string | undefined
     return undefined
   }
 
-  const transactionControl =
-    /^(?:BEGIN|START TRANSACTION|COMMIT|END|ROLLBACK|ABORT|SAVEPOINT|RELEASE(?: SAVEPOINT)?|PREPARE TRANSACTION|SET TRANSACTION)\b/u
-  if (statements.slice(1, -1).some((statement) => transactionControl.test(statement.normalized))) {
+  if (!hasSafeSavepointControl(statements.slice(1, -1))) {
     return undefined
   }
 
   return content.slice(first.end, last.start).trim()
+}
+
+/** Normalizes the one supported psql directive and validates the shared rollback contract. */
+export function registeredSqlTestBody(content: string): string | undefined {
+  const normalizedContent = content.replace(/^\\set ON_ERROR_STOP on(?:\r?\n|$)/u, "")
+  return normalizedContent.trim().length === 0
+    ? undefined
+    : rollbackRequiredSqlTestBody(normalizedContent)
 }

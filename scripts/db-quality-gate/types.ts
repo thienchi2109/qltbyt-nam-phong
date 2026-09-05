@@ -34,6 +34,7 @@ export type SqlTestExecutionEvidence = {
 
 export type GateReport = {
   baselineMigrationHighWater: string
+  baselineControlSqlTestExecution?: SqlTestExecutionEvidence
   createdAt: string
   digest: string
   evidenceAvailable?: boolean

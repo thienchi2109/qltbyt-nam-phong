@@ -118,6 +118,25 @@ describe("database quality gate static lane evidence binding", () => {
     )
   })
 
+  it("fails static certification when a default-safe SQL test violates the executor contract", async () => {
+    const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
+    const candidate = migration("-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n")
+    const repository = fixtureWithStaticMetadata(candidate)
+    mkdirSync(repository.path("supabase", "tests"), { recursive: true })
+    writeFileSync(repository.path("supabase", "tests", "example.sql"), "BEGIN;\nCOMMIT;\n")
+    commitWorkingTree(repository.root, "commit incompatible default-safe SQL test")
+
+    const result = runStatic(source, repository.root, [candidate.path])
+
+    expect(result.outcome).toBe("INCOMPLETE")
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({ path: "supabase/tests/example.sql" }),
+        ruleId: "registry.sql-tests.execution-contract",
+      })
+    )
+  })
+
   it("returns a deterministic incomplete report when changed-file discovery cannot resolve the base", async () => {
     const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
     const candidate = migration("-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n")

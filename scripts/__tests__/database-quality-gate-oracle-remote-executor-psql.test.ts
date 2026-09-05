@@ -48,6 +48,9 @@ describe("database quality gate Oracle psql test handling", () => {
     expect(recorder.commands.at(-1)?.input).toBe(
       "BEGIN;\nSET LOCAL statement_timeout = 30000;\nSELECT 1;\nROLLBACK;"
     )
+    expect(recorder.commands.at(-1)?.arguments.at(-1)).toContain(
+      "-v ON_ERROR_STOP=1 -v VERBOSITY=sqlstate"
+    )
   })
 
   it("still rejects every other psql meta command before remote execution", async () => {
@@ -58,6 +61,38 @@ describe("database quality gate Oracle psql test handling", () => {
 
     const result = executor.runSqlTest(
       sqlTestInput("\\set ON_ERROR_STOP on\n\\echo unsafe\nBEGIN;\nSELECT 1;\nROLLBACK;\n")
+    )
+
+    expect(result).toMatchObject({ kind: "stale-environment", status: "error" })
+    expect(recorder.commands).toHaveLength(0)
+  })
+
+  it("preserves a balanced savepoint inside the executor-owned rollback envelope", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<OracleRemoteExecutorModule>("oracle-remote-executor")
+    const recorder = commandRecorder()
+    const executor = source.createOracleRemoteExecutor(executorInput(recorder.command))
+
+    const result = executor.runSqlTest(
+      sqlTestInput(
+        "BEGIN;\nSAVEPOINT fixture_failure;\nSELECT 1;\nROLLBACK TO SAVEPOINT fixture_failure;\nROLLBACK;\n"
+      )
+    )
+
+    expect(result.status).toBe("ok")
+    expect(recorder.commands.at(-1)?.input).toBe(
+      "BEGIN;\nSET LOCAL statement_timeout = 30000;\nSAVEPOINT fixture_failure;\nSELECT 1;\nROLLBACK TO SAVEPOINT fixture_failure;\nROLLBACK;"
+    )
+  })
+
+  it("rejects savepoint control that can escape the declared rollback contract", async () => {
+    const source =
+      await loadDatabaseQualityGateModule<OracleRemoteExecutorModule>("oracle-remote-executor")
+    const recorder = commandRecorder()
+    const executor = source.createOracleRemoteExecutor(executorInput(recorder.command))
+
+    const result = executor.runSqlTest(
+      sqlTestInput("BEGIN;\nROLLBACK TO SAVEPOINT missing_fixture;\nROLLBACK;\n")
     )
 
     expect(result).toMatchObject({ kind: "stale-environment", status: "error" })

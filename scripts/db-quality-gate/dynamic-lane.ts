@@ -1,4 +1,5 @@
 import { serializeReport } from "./contract"
+import { reusableBaselineControlExecution } from "./baseline-control-evidence"
 import {
   addDynamicFinding,
   createDynamicRunState,
@@ -6,17 +7,14 @@ import {
   recordDynamicOperationError,
 } from "./dynamic-lane-report"
 import { ORACLE_BASELINE_DATABASE } from "./dynamic-lane-types"
+import { runDynamicSqlTestSweep } from "./dynamic-sql-sweep"
 import {
   collectAccessFingerprint,
   collectApplicationFingerprint,
   collectEnvironmentFingerprint,
   evaluateCatalogContracts,
 } from "./expected-state"
-import {
-  readCommittedMigrationInputs,
-  readCommittedSqlTest,
-  readDynamicInputArtifacts,
-} from "./dynamic-lane-inputs"
+import { readCommittedMigrationInputs, readDynamicInputArtifacts } from "./dynamic-lane-inputs"
 import { sha256Text } from "./serialization"
 import type { GateReport, MigrationIdentity } from "./types"
 import type { DynamicInputArtifacts } from "./dynamic-lane-inputs"
@@ -108,7 +106,7 @@ function pendingMigrations(
 
 /** Produces a deterministic, PostgreSQL-safe database name for one isolated run. */
 export function createDisposableDatabaseName(input: {
-  lane: "baseline-forward"
+  lane: "baseline-control" | "baseline-forward"
   runId: string
 }): string {
   const normalizedRunId = input.runId.toLowerCase().replaceAll(/[^a-z0-9_]+/g, "_")
@@ -133,8 +131,10 @@ function persistTerminalReport(
 ): GateReport {
   const migrationIdentities = artifacts?.migrationIdentities ?? []
   const reportArtifacts = {
+    harnessHash: artifacts?.harnessHash,
     invariants: artifacts?.invariants,
     sqlTests: artifacts?.sqlTestRegistry,
+    sqlTestSourcesHash: artifacts?.sqlTestSourcesHash,
   }
   const report = finalizeDynamicLaneReport(
     input,
@@ -163,12 +163,16 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
     recordDynamicOperationError(state, "acquire-lock", lock)
     return finalizeDynamicLaneReport(input, state, [], false, {
       invariants: undefined,
+      harnessHash: undefined,
       sqlTests: undefined,
+      sqlTestSourcesHash: undefined,
     })
   }
 
   let artifacts: DynamicInputArtifacts | undefined
   let baselineHistoricalFindingKeys = new Set<string>()
+  let baselineControlDatabaseName: string | undefined
+  let baselineControlDatabaseCreated = false
   let databaseName: string | undefined
   let databaseCreated = false
   let report: GateReport
@@ -200,9 +204,7 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
           canContinue = false
         }
 
-        const recover = canContinue
-          ? input.executor.recoverOrphans("dq_baseline_forward_")
-          : undefined
+        const recover = canContinue ? input.executor.recoverOrphans("dq_baseline_") : undefined
         if (recover?.status === "error") {
           recordDynamicOperationError(state, "recover-orphans", recover)
           canContinue = false
@@ -257,6 +259,69 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
                 .findings.filter((finding) => HISTORICAL_CATALOG_DEBT_RULES.has(finding.ruleId))
                 .map(catalogFindingKey)
             )
+          }
+        }
+
+        if (
+          canContinue &&
+          migrationInputsForRun !== undefined &&
+          input.baselineControlReport !== undefined
+        ) {
+          const reusableControl = reusableBaselineControlExecution({
+            artifacts,
+            baselineMigrationHighWater: state.baselineMigrationHighWater,
+            baselineInputHashes: state.catalogInputHashes,
+            report: input.baselineControlReport,
+          })
+          if (reusableControl === undefined) {
+            addDynamicFinding(state, "dynamic.baseline-control.evidence", "baseline-control", {
+              runId: input.baselineControlReport.runId,
+            })
+            state.incomplete = true
+            canContinue = false
+          } else {
+            state.baselineControlSqlTestExecution = reusableControl
+            state.executorEnvironment.baselineControl = `reused:${input.baselineControlReport.runId}`
+          }
+        }
+
+        if (
+          canContinue &&
+          migrationInputsForRun !== undefined &&
+          input.baselineControlReport === undefined
+        ) {
+          state.executorEnvironment.baselineControl = "inline"
+          baselineControlDatabaseName = createDisposableDatabaseName({
+            lane: "baseline-control",
+            runId: input.runId,
+          })
+          const createdControl = input.executor.createDatabase({
+            databaseName: baselineControlDatabaseName,
+            template: ORACLE_BASELINE_DATABASE,
+          })
+          if (createdControl.status === "error") {
+            recordDynamicOperationError(state, "baseline-control.create-database", createdControl)
+            canContinue = false
+          } else {
+            baselineControlDatabaseCreated = true
+            canContinue = runDynamicSqlTestSweep({
+              databaseName: baselineControlDatabaseName,
+              execution: state.baselineControlSqlTestExecution,
+              input,
+              operationPrefix: "baseline-control",
+              sqlTests: artifacts.sqlTests,
+              state,
+            })
+          }
+        }
+
+        if (baselineControlDatabaseCreated && baselineControlDatabaseName !== undefined) {
+          const cleanupControl = input.executor.dropDatabase(baselineControlDatabaseName)
+          if (cleanupControl.status === "error") {
+            recordDynamicOperationError(state, "baseline-control.drop-database", cleanupControl)
+            canContinue = false
+          } else {
+            baselineControlDatabaseCreated = false
           }
         }
 
@@ -329,39 +394,13 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
         }
 
         if (canContinue && !state.incomplete) {
-          for (const sqlTest of artifacts.sqlTests) {
-            const content = readCommittedSqlTest(input, sqlTest.path)
-            if (content === undefined) {
-              addDynamicFinding(state, "dynamic.sql-test.source", sqlTest.path, {
-                path: sqlTest.path,
-              })
-              state.incomplete = true
-              canContinue = false
-              break
-            }
-            state.sqlTestExecution.attempted.push(sqlTest.path)
-            const checked = input.executor.runSqlTest({
-              content,
-              databaseName,
-              fixtureContract: sqlTest.fixtureContract,
-              path: sqlTest.path,
-              runnerRequirements: sqlTest.runnerRequirements,
-              timeoutSeconds: sqlTest.timeoutSeconds,
-              transactionContract: sqlTest.transactionContract,
-            })
-            if (checked.status === "error") {
-              recordDynamicOperationError(state, "run-sql-test", checked, {
-                sqlTestPath: sqlTest.path,
-              })
-              if (checked.kind === "failed") {
-                state.sqlTestExecution.executed.push(sqlTest.path)
-                continue
-              }
-              canContinue = false
-              break
-            }
-            state.sqlTestExecution.executed.push(sqlTest.path)
-          }
+          canContinue = runDynamicSqlTestSweep({
+            databaseName,
+            execution: state.sqlTestExecution,
+            input,
+            sqlTests: artifacts.sqlTests,
+            state,
+          })
         }
 
         if (
@@ -382,6 +421,12 @@ export function runOracleDynamicLane(input: OracleDynamicLaneInput): GateReport 
       }
     }
   } finally {
+    if (baselineControlDatabaseCreated && baselineControlDatabaseName !== undefined) {
+      const cleanup = input.executor.dropDatabase(baselineControlDatabaseName)
+      if (cleanup.status === "error") {
+        recordDynamicOperationError(state, "baseline-control.drop-database", cleanup)
+      }
+    }
     if (databaseCreated && databaseName !== undefined) {
       const cleanup = input.executor.dropDatabase(databaseName)
       if (cleanup.status === "error") {

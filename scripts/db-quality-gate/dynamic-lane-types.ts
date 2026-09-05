@@ -1,4 +1,4 @@
-import type { MigrationIdentity } from "./types"
+import type { GateReport, MigrationIdentity } from "./types"
 import type { OracleDiagnostic } from "./oracle-diagnostics"
 
 /** Fixed persistent baseline that dynamic lanes may read or clone but never mutate. */
@@ -79,6 +79,7 @@ export type OracleDynamicExecutor = {
 
 /** Inputs for one offline baseline-forward Oracle validation run. */
 export type OracleDynamicLaneInput = {
+  baselineControlReport?: GateReport
   createdAt: string
   executor: OracleDynamicExecutor
   lane: "baseline-forward"
