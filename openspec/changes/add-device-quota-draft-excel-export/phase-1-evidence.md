@@ -7,8 +7,9 @@
 - Nhánh: `docs/device-quota-draft-excel-export`.
 - Phase 1 chỉ tạo tài liệu OpenSpec, thiết kế, checklist và tiêu chí nghiệm thu.
 - Chưa triển khai workbook, nút xuất, test runtime hoặc migration.
-- Người dùng đã chốt thiết kế và yêu cầu duyệt riêng sau từng phase; việc duyệt
-  bộ tài liệu Phase 1 để bắt đầu Phase 2 vẫn đang chờ.
+- Người dùng đã chốt thiết kế và yêu cầu duyệt riêng sau từng phase. Trong lượt
+  này, người dùng explicit ủy quyền fast-forward to main; theo đó Phase 1 được
+  duyệt và parent được ủy quyền land/closeout Phase 1. Không có ủy quyền Phase 2.
 
 ## Nguồn và baseline đã kiểm tra
 
@@ -69,10 +70,12 @@ cùng snapshot đã được hiển thị; không ghép revision cũ với hàng
      source/order/catalog identity chỉ là input validation/fixture, không render
      ngoài bốn cột source hợp lệ của worksheet.
 - Task 1.6 được đánh dấu sau khi các sửa đổi và fresh gates pass.
-- `USER REVIEW — Phase 1 approval`: PENDING explicit approval; mục 1.7 vẫn
-  unchecked.
+- `USER REVIEW — Phase 1 approval`: APPROVED trong lượt này theo explicit
+  authorization fast-forward to main; mục 1.7 và acceptance Phase 1 đã checked.
+  Phase 2–4 vẫn unchecked.
 
 ## Điểm dừng
 
-Phase 2 chỉ được bắt đầu sau khi người dùng duyệt bộ tài liệu này. Các bước
-Red–Green–Refactor và nghiệm thu file/UI thuộc Phase 2–4 chưa được thực hiện.
+Phase 2 chỉ được bắt đầu sau một explicit approval riêng của người dùng; lượt
+duyệt này chỉ cho phép parent land/closeout Phase 1. Các bước Red–Green–Refactor
+và nghiệm thu file/UI thuộc Phase 2–4 chưa được thực hiện và vẫn unchecked.

@@ -125,7 +125,9 @@ Tất cả checklist dưới đây phải được đánh dấu khi có artifact
 - [x] Independent review evidence: một reviewer đã rà soát tính đúng đặc tả và
       chất lượng tài liệu; kết quả 0 Critical, 3 Important, cả ba finding hợp
       lệ đã được triage và sửa trong design/tasks/acceptance.
-- [ ] `USER REVIEW — Phase 1 approval` nhận explicit approval.
+- [x] `USER REVIEW — Phase 1 approval` nhận explicit approval trong lượt này;
+      người dùng ủy quyền fast-forward to main để parent land/closeout Phase 1.
+      Phase 2–4 vẫn unchecked và chưa được ủy quyền.
 
 Exit: parent có thể đánh dấu các mục Phase 1 đã có evidence; checkbox approval
 vẫn phải unchecked nếu chưa có phê duyệt trực tiếp.

@@ -43,8 +43,10 @@ những mục có evidence rõ ràng.
 - [x] 1.6 Review độc lập tính đúng đặc tả rồi chất lượng tài liệu; sửa finding
       hợp lệ, ghi kết quả vào `phase-1-evidence.md`, commit nhánh tài liệu sau
       khi các gate fresh pass.
-- [ ] 1.7 `USER REVIEW — Phase 1 approval:` người dùng duyệt rõ ràng bộ docs,
-      contract, reuse decision và acceptance trước khi mở Phase 2.
+- [x] 1.7 `USER REVIEW — Phase 1 approval:` người dùng đã explicit duyệt bộ docs,
+      contract, reuse decision và acceptance trong lượt này; fast-forward to main
+      được ủy quyền để parent land/closeout Phase 1. Việc này không ủy quyền
+      Phase 2; các checkbox Phase 2–4 vẫn giữ nguyên unchecked.
 
 Exit criteria: strict validation và formatting pass; không có runtime/SQL/test
 source diff; acceptance đủ fixture/test matrix và layout contract; mục USER
