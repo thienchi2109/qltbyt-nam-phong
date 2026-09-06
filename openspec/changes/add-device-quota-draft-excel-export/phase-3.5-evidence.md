@@ -115,6 +115,46 @@ made.
 
 ## Còn chờ parent xác minh
 
+## Final current status
+
+Analyzer/direct-claims implementation landed at `bfbeb9a6f986081e33482ca261ac31247fb3744b`;
+the tenant-mismatch SQLSTATE correction landed at
+`70bc703b398fce6e3684c15fd8e5b2471b868d1a`.
+
+TDD Red reproduced the exact direct `app_role` → `role` claim fallback being
+rejected as `migration.jwt-guards`: focused Red was `27 passed / 1 failed`.
+Green focused static-policy verification was `3 files / 53 tests PASS`.
+Ordered gates passed: format, no-explicit-any, dedupe, typecheck, focused tests,
+React Doctor `100/100`, OpenSpec strict, and `git diff --check`.
+
+The exact-commit static result remains `FAILED`, digest
+`515f8050e36f9697ce538546f40b3855950ee249d32ed4a2dcfdd65018aebfe3`, with
+`warnings=1538`, `dangerous=1`, and `blocking=0`. The target
+`public.don_vi_branding_get` `migration.jwt-guards` finding disappeared. The
+sole dangerous finding is the unchanged
+`GRANT EXECUTE ON FUNCTION public.device_quota_regulatory_catalog_get() TO authenticated`,
+fingerprint `fdc544e5530ead760dec5fa4540018f3ae80ea84576bae6c095d8a7261c9469d`.
+Parent/head statement SHA is
+`993721bc96881ffb14bdb5e4ef74b78de97a1076c0cc44f45558876ca9886975` in both
+inputs; it was not touched by the diff, so this is an exact-diff false positive,
+but the static outcome remains `FAILED`.
+
+The first Oracle run on `bfbeb9a6f986081e33482ca261ac31247fb3744b` failed with
+digest `b13beac6dbdcb573358bb6e9e5c585a66cb2d5804eeed61af39654eb5fcec778`:
+the candidate Phase 3.5 test returned SQLSTATE `P0001` because the
+`tenant_mismatch` raise omitted `ERRCODE`. The final exact-commit Oracle run
+passed with digest `361646d66e30484094690216041189bc0eca7dc389b663e583022aaf3625bdc2`,
+run ID `phase35-tenant-sqlstate-70bc703b-20260906-1420`,
+`requiredChecksComplete=true`, disposable SSH/Docker execution, 54 warnings,
+and no candidate non-warning. The control Phase 3.5 `42501` result remains a
+baseline warning while the candidate passes.
+
+Aggregate status is `BLOCKING / INCOMPLETE` solely because static is `FAILED`.
+There was no live apply/write. `tasks.md` was checked: Phase 3.5 items
+3.5.1–3.5.7 and Phase 4 items 4.1–4.7 remain unchecked; no checkbox was
+changed. USER REVIEW for Phase 3.5 has not been reached and Phase 4 remains
+untouched.
+
 ## DB gate remediation status
 
 Trên commit cuối đã kiểm tra `b96264c851358dfb79a0cbf449945fc5317d8a8f`,
