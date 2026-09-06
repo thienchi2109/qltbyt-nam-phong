@@ -142,6 +142,34 @@ describe("useDeviceQuotaDraftCatalog", () => {
     }
   )
 
+  it("exposes export context from the saved server snapshot, not staged rows", async () => {
+    setup("to_qltb")
+    rpcSequence()
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+
+    expect(rendered.result.current.exportSnapshot).toMatchObject({
+      unitId: 7,
+      userId: "user-1",
+      revision: 3,
+      lastSavedAt: "2026-09-01T00:00:00Z",
+      catalogVersionId: "catalog-1",
+    })
+    expect(rendered.result.current.exportSnapshot?.rows[0]).toMatchObject({
+      sourceIdentifier: "item-1",
+      appliedQuantity: 2,
+    })
+
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 8 }))
+
+    expect(rendered.result.current.rows[0]?.appliedQuantity).toBe(8)
+    expect(rendered.result.current.exportSnapshot?.rows[0]?.appliedQuantity).toBe(2)
+    expect(rendered.result.current.exportSnapshot?.revision).toBe(3)
+  })
+
   it("uses the authenticated session unit and ignores the selected facility", async () => {
     setup("to_qltb", 7)
     rpcSequence()

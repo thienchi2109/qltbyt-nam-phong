@@ -43,6 +43,7 @@ import {
   toDraftSaveItem,
   useDeviceQuotaDraftCatalogMutationState,
 } from "./deviceQuotaDraftCatalogMutationState"
+import { createDeviceQuotaDraftCatalogSavedExport } from "../draft-catalog/device-quota-draft-catalog-excel-export-context"
 
 /** Orchestrates session-scoped draft/catalog queries and CAS-protected mutations. */
 export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEditorMode } = {}) {
@@ -223,6 +224,15 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
         : [],
     [catalogQuery.data, draftQuery.data, items, mode]
   )
+  const { lastSavedRows, exportSnapshot } = createDeviceQuotaDraftCatalogSavedExport(
+    canAccess,
+    draftQuery.data ?? null,
+    catalogQuery.data ?? null,
+    serverItems,
+    mode,
+    userId,
+    donViId
+  )
 
   const save = useCallback(() => {
     if (!mutationState.tryLock()) return Promise.resolve(undefined)
@@ -301,10 +311,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
   return {
     status,
     rows,
-    lastSavedRows:
-      catalogQuery.data && draftQuery.data
-        ? mergeDeviceQuotaDraftCatalog(catalogQuery.data, { items: serverItems }, mode)
-        : ([] as DeviceQuotaMergedRow[]),
+    lastSavedRows,
     validationErrors,
     errorMessage:
       mutationState.lastError?.message ??
@@ -317,6 +324,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     revision,
     draftId: draftQuery.data?.id ?? null,
     catalogVersionId: draftQuery.data?.catalog_version_id ?? null,
+    exportSnapshot,
     metadata:
       catalogQuery.data && draftQuery.data
         ? {

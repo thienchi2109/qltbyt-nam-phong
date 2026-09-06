@@ -10,8 +10,10 @@ import type {
   DeviceQuotaDraftItemPatch,
   DeviceQuotaMergedRow,
 } from "../device-quota-draft-catalog-types"
+import type { DeviceQuotaDraftCatalogExportSnapshot } from "../device-quota-draft-catalog-excel-export"
 import { DeviceQuotaDraftCatalogItemRow } from "./DeviceQuotaDraftCatalogItemRow"
 import { DeviceQuotaDraftCatalogSection } from "./DeviceQuotaDraftCatalogSection"
+import { useDeviceQuotaDraftCatalogExport } from "./useDeviceQuotaDraftCatalogExport"
 
 export type DeviceQuotaDraftCatalogEditorMetadata = {
   unitId: number
@@ -34,7 +36,7 @@ export type DeviceQuotaDraftCatalogEditorState = {
   isReadOnly: boolean
 }
 
-type DeviceQuotaDraftCatalogEditorProps = {
+export type DeviceQuotaDraftCatalogEditorProps = {
   rows: DeviceQuotaMergedRow[]
   metadata: DeviceQuotaDraftCatalogEditorMetadata
   validationErrors: Record<string, string>
@@ -43,6 +45,10 @@ type DeviceQuotaDraftCatalogEditorProps = {
   onSave: () => Promise<unknown>
   onExclude: (sourceIdentifier: string) => Promise<unknown>
   onRestore: (sourceIdentifier: string) => Promise<unknown>
+  exportSnapshot?: DeviceQuotaDraftCatalogExportSnapshot | null
+  exportStatus?: "ready" | "loading" | "missing" | "error"
+  exportStatusMessage?: string | null
+  onRetryExport?: () => void
 }
 
 const sourceHeaders = ["TT", "Chủng loại", "Đơn vị tính", "Số lượng định mức"] as const
@@ -190,10 +196,29 @@ export function DeviceQuotaDraftCatalogEditor({
   onSave,
   onExclude,
   onRestore,
+  exportSnapshot = null,
+  exportStatus = "missing",
+  exportStatusMessage = null,
+  onRetryExport,
 }: DeviceQuotaDraftCatalogEditorProps): React.JSX.Element {
   const { isDirty, isIncomplete, isSaving, isExcluding, isRestoring, isRecovering, isReadOnly } =
     state
   const isMutationPending = isSaving || isExcluding || isRestoring || isRecovering
+  const {
+    isExporting,
+    exportError,
+    blockedMessage: exportBlockedMessage,
+    canExport,
+    handleExport,
+  } = useDeviceQuotaDraftCatalogExport({
+    snapshot: exportSnapshot,
+    status: exportStatus,
+    statusMessage: exportStatusMessage,
+    isDirty,
+    isMutationPending,
+    isReadOnly,
+  })
+
   const completionStatus = isIncomplete ? (
     <Badge variant="outline">Chưa hoàn thiện</Badge>
   ) : (
@@ -205,6 +230,34 @@ export function DeviceQuotaDraftCatalogEditor({
     <span className="text-sm font-medium text-amber-700">Chưa lưu</span>
   ) : (
     <span className="text-sm font-medium text-emerald-700">Đã lưu</span>
+  )
+  const exportFeedback = exportError ? (
+    <span className="flex items-center gap-2 text-sm font-medium text-destructive" role="status">
+      <span>{exportError}</span>
+      <button type="button" className="underline" onClick={() => void handleExport()}>
+        Thử lại xuất Excel
+      </button>
+    </span>
+  ) : exportBlockedMessage ? (
+    <span
+      id="device-quota-draft-catalog-export-status"
+      className="text-sm text-muted-foreground"
+      role="status"
+    >
+      {exportBlockedMessage}
+      {onRetryExport && (exportStatus === "error" || exportStatus === "missing") ? (
+        <button type="button" className="ml-2 underline" onClick={onRetryExport}>
+          Thử lại branding
+        </button>
+      ) : null}
+    </span>
+  ) : null
+  const toolbarStatus = (
+    <div className="flex min-w-0 items-center gap-2">
+      {completionStatus}
+      {saveFeedback}
+      {exportFeedback}
+    </div>
   )
   const leading = (
     <div className="min-w-0">
@@ -236,11 +289,19 @@ export function DeviceQuotaDraftCatalogEditor({
             <HierarchicalEditorToolbar
               testId="device-quota-draft-catalog-toolbar"
               leading={leading}
-              status={
-                <div className="flex items-center gap-2">
-                  {completionStatus}
-                  {saveFeedback}
-                </div>
+              status={toolbarStatus}
+              actions={
+                <button
+                  type="button"
+                  className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+                  disabled={!canExport}
+                  aria-describedby={
+                    exportBlockedMessage ? "device-quota-draft-catalog-export-status" : undefined
+                  }
+                  onClick={() => void handleExport()}
+                >
+                  {isExporting ? "Đang xuất..." : "Xuất Excel"}
+                </button>
               }
               saveDisabled={
                 !isDirty || isMutationPending || Object.keys(validationErrors).length > 0

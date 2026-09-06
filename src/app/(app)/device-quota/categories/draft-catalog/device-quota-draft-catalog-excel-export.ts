@@ -67,6 +67,12 @@ export type DeviceQuotaDraftCatalogExportSnapshot = Readonly<{
   footnotes: readonly string[]
 }>
 
+/** Server-bound export context before the page adds matched tenant branding. */
+export type DeviceQuotaDraftCatalogExportContext = Omit<
+  DeviceQuotaDraftCatalogExportSnapshot,
+  "unitName"
+>
+
 const DEFAULT_FONT = { name: "Times New Roman", size: 11 }
 const TITLE_FONT = { ...DEFAULT_FONT, size: 13, bold: true }
 const HEADER_FONT = { ...DEFAULT_FONT, bold: true }
