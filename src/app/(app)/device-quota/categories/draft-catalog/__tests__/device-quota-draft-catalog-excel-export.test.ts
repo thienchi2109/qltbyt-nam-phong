@@ -455,4 +455,27 @@ describe("device quota draft catalog Excel export", () => {
       Uint8Array
     )
   })
+
+  it("sizes long merged section labels from the combined column widths", async () => {
+    const longSectionName = "X".repeat(400)
+    const snapshot = makeSnapshot()
+    const worksheet = (
+      await loadWorkbook({
+        ...snapshot,
+        rows: snapshot.rows.map((row) =>
+          row.type === "section" && row.sourceIdentifier === "1"
+            ? { ...row, name: longSectionName, displayName: longSectionName }
+            : row
+        ),
+      })
+    ).worksheets[0]
+    const sectionRow = worksheet?.getRow(rowNumberForSourceId("1"))
+    const mergedWidth = DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS.reduce(
+      (sum, width) => sum + width,
+      0
+    )
+    expect(sectionRow?.height).toBeGreaterThanOrEqual(
+      Math.ceil(`1. ${longSectionName}`.length / mergedWidth) * 15
+    )
+  })
 })
