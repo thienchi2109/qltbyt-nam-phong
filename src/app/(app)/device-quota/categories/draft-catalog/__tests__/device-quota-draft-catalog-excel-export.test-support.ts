@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 
+import JSZip from "jszip"
+
 import { createExcelWorkbook } from "@/lib/excel-workbook"
 import { mergeDeviceQuotaDraftCatalog } from "../device-quota-draft-catalog-mappers"
 import type {
@@ -181,4 +183,18 @@ export async function loadWorkbook(snapshot: DeviceQuotaDraftCatalogExportSnapsh
   const workbook = await createExcelWorkbook()
   await workbook.xlsx.load(buffer)
   return workbook
+}
+
+/** Normalizes XLSX archive entry dates so the committed sample is byte-stable. */
+export async function normalizeDraftExportArchive(buffer: Uint8Array): Promise<Uint8Array> {
+  const archive = await JSZip.loadAsync(buffer)
+  const fixedArchiveDate = new Date("2000-01-01T00:00:00.000Z")
+  Object.values(archive.files).forEach((entry) => {
+    entry.date = fixedArchiveDate
+  })
+  return archive.generateAsync({
+    type: "uint8array",
+    compression: "DEFLATE",
+    platform: "DOS",
+  })
 }

@@ -22,6 +22,7 @@ import {
 import {
   loadWorkbook,
   makeSnapshot,
+  normalizeDraftExportArchive,
   rowNumberForSourceId,
   sourceAppendix,
   sourceManifest,
@@ -262,7 +263,8 @@ describe("device quota draft catalog Excel export", () => {
         "openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx"
       )
       const buffer = await serializeDeviceQuotaDraftCatalogWorkbook(snapshot)
-      writeFileSync(samplePath, Buffer.from(buffer))
+      const deterministicBuffer = await normalizeDraftExportArchive(buffer)
+      writeFileSync(samplePath, Buffer.from(deterministicBuffer))
     }
 
     expect((await serializeDeviceQuotaDraftCatalogWorkbook(snapshot)).byteLength).toBeGreaterThan(0)
@@ -301,6 +303,16 @@ describe("device quota draft catalog Excel export", () => {
 
     expect(workbook.created).toEqual(expectedTimestamp)
     expect(workbook.modified).toEqual(expectedTimestamp)
+  })
+
+  it("normalizes sample archive timestamps for stable repeated writes", async () => {
+    const snapshot = makeSnapshot()
+    const source = await serializeDeviceQuotaDraftCatalogWorkbook(snapshot)
+    const normalized = await normalizeDraftExportArchive(source)
+    const normalizedAgain = await normalizeDraftExportArchive(normalized)
+
+    expect(normalized).not.toEqual(source)
+    expect(normalizedAgain).toEqual(normalized)
   })
 
   it("sizes long merged section labels from the combined column widths", async () => {
