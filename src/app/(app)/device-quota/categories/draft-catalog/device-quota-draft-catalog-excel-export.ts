@@ -292,10 +292,10 @@ export async function createDeviceQuotaDraftCatalogWorkbook(
   return workbook
 }
 
-/** Serializes an independent draft catalog snapshot to an XLSX buffer. */
+/** Serializes an independent draft catalog snapshot to browser-compatible bytes. */
 export async function serializeDeviceQuotaDraftCatalogWorkbook(
   snapshot: DeviceQuotaDraftCatalogExportSnapshot
-): Promise<Buffer> {
+): Promise<Uint8Array> {
   const workbook = await createDeviceQuotaDraftCatalogWorkbook(snapshot)
-  return Buffer.from(await workbook.xlsx.writeBuffer())
+  return new Uint8Array(await workbook.xlsx.writeBuffer())
 }
