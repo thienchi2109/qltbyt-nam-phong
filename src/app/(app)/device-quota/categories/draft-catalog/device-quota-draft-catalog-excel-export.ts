@@ -286,6 +286,9 @@ export async function createDeviceQuotaDraftCatalogWorkbook(
 ): Promise<Workbook> {
   validateDeviceQuotaDraftCatalogExportSnapshot(snapshot)
   const workbook = await createExcelWorkbook()
+  const snapshotTimestamp = new Date(snapshot.lastSavedAt)
+  workbook.created = snapshotTimestamp
+  workbook.modified = new Date(snapshotTimestamp)
   const worksheet = workbook.addWorksheet(DEVICE_QUOTA_DRAFT_EXPORT_SHEET_NAME)
   configureWorksheet(worksheet)
   renderMetadata(worksheet, snapshot)
