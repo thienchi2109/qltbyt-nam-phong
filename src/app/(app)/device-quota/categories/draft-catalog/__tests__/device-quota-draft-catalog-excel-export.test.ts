@@ -279,6 +279,17 @@ describe("device quota draft catalog Excel export", () => {
     expect(cellNotes).toEqual([])
   })
 
+  it("rejects incoherent source parent identity before rendering", async () => {
+    const snapshot = makeSnapshot()
+    const rows = snapshot.rows.map((row, index) =>
+      index === 1 ? { ...row, parentSourceIdentifier: "missing-source-row" } : row
+    )
+
+    await expect(createDeviceQuotaDraftCatalogWorkbook({ ...snapshot, rows })).rejects.toThrow(
+      "Invalid source hierarchy"
+    )
+  })
+
   it("preserves null and zero proposal semantics and styles excluded rows without striking source cells", async () => {
     const snapshot = makeSnapshot()
     const worksheet = (await loadWorkbook(snapshot)).worksheets[0]
