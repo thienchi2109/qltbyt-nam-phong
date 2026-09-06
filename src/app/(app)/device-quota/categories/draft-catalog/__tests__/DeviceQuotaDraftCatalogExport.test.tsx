@@ -136,9 +136,10 @@ describe("DeviceQuotaDraftCatalog export", () => {
   })
 
   it("hides export in read-only mode without preparing a builder", () => {
-    renderPage(makeHookResult({ isReadOnly: true }))
+    renderPage(makeHookResult({ isReadOnly: true, exportSnapshot: null }))
 
     expect(screen.queryByRole("button", { name: "Xuất Excel" })).not.toBeInTheDocument()
+    expect(mockUseTenantBranding).not.toHaveBeenCalled()
     expect(mockSerializeWorkbook).not.toHaveBeenCalled()
     expect(mockDownloadBlob).not.toHaveBeenCalled()
   })
@@ -237,6 +238,8 @@ describe("DeviceQuotaDraftCatalog export", () => {
     ["user", { userId: "user-2" }],
     ["unit", { unitId: 99 }],
     ["snapshot", { revision: 5, lastSavedAt: "2026-09-01T09:30:00.000Z" }],
+    ["catalog version", { catalogVersionId: "catalog-2" }],
+    ["source marker", { sourcePdfSha256: "sha256:other", sourcePdfMarker: "sha256:other" }],
   ] as const)("aborts stale download when %s identity changes", async (_kind, change) => {
     const user = userEvent.setup()
     let resolveWorkbook: (bytes: Uint8Array) => void = () => undefined

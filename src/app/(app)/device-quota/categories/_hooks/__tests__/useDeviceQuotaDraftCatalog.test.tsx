@@ -170,6 +170,19 @@ describe("useDeviceQuotaDraftCatalog", () => {
     expect(rendered.result.current.exportSnapshot?.revision).toBe(3)
   })
 
+  it("does not expose an export context in readonly mode", async () => {
+    setup("to_qltb")
+    rpcSequence()
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog({ mode: "readonly" }), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(rendered.result.current.status).toBe("ready"))
+
+    expect(rendered.result.current.isReadOnly).toBe(true)
+    expect(rendered.result.current.exportSnapshot).toBeNull()
+  })
+
   it("uses the authenticated session unit and ignores the selected facility", async () => {
     setup("to_qltb", 7)
     rpcSequence()

@@ -43,6 +43,9 @@ function getExportIdentityKey(snapshot: DeviceQuotaDraftCatalogExportSnapshot | 
     snapshot.revision,
     snapshot.lastSavedAt,
     snapshot.unitName,
+    snapshot.catalogVersionId,
+    snapshot.sourcePdfMarker,
+    snapshot.sourcePdfSha256,
   ].join("|")
 }
 

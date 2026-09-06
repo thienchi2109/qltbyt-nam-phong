@@ -51,7 +51,7 @@ export function createDeviceQuotaDraftCatalogSavedExport(
       ? mergeDeviceQuotaDraftCatalog(catalog, { items: serverItems }, mode)
       : ([] as DeviceQuotaMergedRow[])
   const exportSnapshot =
-    canAccess && userId !== null && unitId !== null && draft && catalog
+    mode !== "readonly" && canAccess && userId !== null && unitId !== null && draft && catalog
       ? createDeviceQuotaDraftCatalogExportContext({
           draft,
           catalog,
