@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 
 import type { CellValue } from "exceljs"
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { createExcelWorkbook } from "@/lib/excel-workbook"
 import { mergeDeviceQuotaDraftCatalog } from "../device-quota-draft-catalog-mappers"
@@ -198,6 +198,8 @@ async function loadWorkbook(snapshot: DeviceQuotaDraftCatalogExportSnapshot) {
 }
 
 describe("device quota draft catalog Excel export", () => {
+  afterEach(() => vi.restoreAllMocks())
+
   it("renders one seven-column worksheet with source order, metadata, rules, notes, and validation-only identity", async () => {
     const snapshot = makeSnapshot()
     const workbook = await createDeviceQuotaDraftCatalogWorkbook(snapshot)
@@ -441,5 +443,16 @@ describe("device quota draft catalog Excel export", () => {
       firstItem.regulatoryUnit,
       firstItem.quotaLines?.join("\n") ?? "",
     ])
+  })
+
+  it("serializes without requiring Node Buffer.from", async () => {
+    const originalBufferFrom = Buffer.from
+    vi.spyOn(Buffer, "from").mockImplementation((...args) => {
+      if (Buffer.isBuffer(args[0])) throw new Error("Buffer.from unavailable")
+      return Reflect.apply(originalBufferFrom, Buffer, args)
+    })
+    await expect(serializeDeviceQuotaDraftCatalogWorkbook(makeSnapshot())).resolves.toBeInstanceOf(
+      Uint8Array
+    )
   })
 })
