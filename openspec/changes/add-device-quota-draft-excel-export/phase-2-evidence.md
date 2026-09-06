@@ -77,7 +77,7 @@ tiến hành forward trên `ec7652c1` và được lưu bằng các commit incre
 - Green command chính xác: `rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1` — 1 file/6 tests pass, exit 0; narrow-column height assertion pass.
 - Refactor sau Green: `b955c850cb66a775757f927047e6794b5d590e01` tách
   `device-quota-draft-catalog-excel-export-validation.ts`; focused test chạy lại
-  1 file/6 tests pass, exit 0. Module builder còn 301 dòng, helper 81 dòng và
+  1 file/6 tests pass, exit 0. Module builder còn 301 dòng, helper 58 dòng và
   test 445 dòng; mọi file dưới hard ceiling 450.
 
 ## Builder contract đã thực hiện
@@ -123,6 +123,6 @@ Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên 
 5. `rtk node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" "src/lib/__tests__/excel-workbook.test.ts"` — PASS, 2 files/9 tests, exit 0.
 6. `rtk node scripts/npm-run.js run react-doctor` — PASS, diff scan 3 files, score 100/100, no issues, exit 0.
 
-`git diff --check` và Lefthook pre-commit cũng pass cho các commit remediation; module builder còn 301 dòng, validation helper 81 dòng và test 445 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả Buffer và để Phase 3 nối `downloadBlob` sau session checks.
+`git diff --check` và Lefthook pre-commit cũng pass cho các commit remediation; module builder còn 301 dòng, validation helper 58 dòng và test 445 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả Buffer và để Phase 3 nối `downloadBlob` sau session checks.
 
 Tasks 2.1–2.7 được đánh dấu sau evidence này; mục `2.8 USER REVIEW — Phase 2 approval` vẫn unchecked. Không thay đổi checkbox Phase 3.
