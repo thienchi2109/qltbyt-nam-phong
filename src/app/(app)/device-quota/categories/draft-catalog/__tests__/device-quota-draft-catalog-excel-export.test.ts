@@ -294,6 +294,15 @@ describe("device quota draft catalog Excel export", () => {
     )
   })
 
+  it("pins workbook metadata to the saved snapshot time for deterministic serialization", async () => {
+    const snapshot = makeSnapshot()
+    const workbook = await createDeviceQuotaDraftCatalogWorkbook(snapshot)
+    const expectedTimestamp = new Date(snapshot.lastSavedAt)
+
+    expect(workbook.created).toEqual(expectedTimestamp)
+    expect(workbook.modified).toEqual(expectedTimestamp)
+  })
+
   it("sizes long merged section labels from the combined column widths", async () => {
     const longSectionName = "X".repeat(400)
     const snapshot = makeSnapshot()
