@@ -117,17 +117,22 @@ made.
 
 ## DB gate remediation status
 
-Trên commit amended `750bccf8`, DB gate ghi nhận `static FAILED` với digest
-`c474ef8c...` và `baseline-forward FAILED` với digest `f474a87d...`. Static
-chặn `migration.jwt-guards` cho `don_vi_branding_get` vì bộ phân tích không
-nhận diện helper lịch sử `_get_jwt_claim`; đây là false positive của scanner,
-không phải thiếu guard runtime. Baseline-forward ghi nhận candidate Phase
-3.5 SQL test `P0001` permission-denied sau khi fixture assigned/current đã
-được tạo; nguyên nhân là branding invoker truy vấn `public.nhan_vien`, bảng
-được bảo vệ khỏi role chạy test. Remediation bỏ lookup actor-table này, giữ
-claim validation, tenant mismatch denial và actor verification trong catalog
-SECURITY DEFINER RPC. Parent cần rerun static và baseline-forward trên commit
-amended; chưa claim PASS.
+Trên commit cuối đã kiểm tra `b96264c851358dfb79a0cbf449945fc5317d8a8f`,
+static ghi nhận `FAILED` với digest
+`90ce5caf4e2075deb8f4f6abaec9ee43adb04b40c589e17e51ff62af21b2516b`; blocker
+duy nhất là `migration.jwt-guards` trên `public.don_vi_branding_get`,
+fingerprint `43d25fb...`. Đây là false positive của scanner vì helper lịch sử
+`_get_jwt_claim` không được bộ phân tích nhận diện dù runtime đã có guards.
+Baseline-forward ghi nhận `FAILED` với digest
+`bf8a2ee1012bd87accebd573d1fc0a86b78e2a5518152fb3b332559020a96d18`; test
+Phase 3.5 vẫn `P0001` permission-denied, fingerprint `b76a747b...`, sau khi
+đã bỏ actor lookup; statement chính xác vẫn chưa xác định và không điều tra
+thêm. Aggregate là `BLOCKING / INCOMPLETE`; không có live write. Phase 3.5
+gate/task và Phase 4 vẫn unchecked.
+
+Functional gates `121/121` và các gate TS/React/OpenSpec bắt buộc đã PASS;
+React Doctor đạt `93/100` với hai cảnh báo complexity đã biết. Không claim
+USER REVIEW.
 
 Migration `20260906090000_device_quota_draft_excel_export_coherence.sql` và
 test `supabase/tests/device_quota_draft_excel_export_phase35.sql` đã được tạo và
