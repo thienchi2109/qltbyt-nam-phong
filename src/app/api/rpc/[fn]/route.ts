@@ -107,6 +107,7 @@ function getInternalZbsCronClaims(): RpcSessionClaims {
   return {
     role: "to_qltb",
     donVi: "0",
+    currentDonVi: null,
     diaBan: "0",
     khoaPhong: "zbs-dispatch",
     userId: "zbs-dispatch-cron",
@@ -235,6 +236,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ fn: st
         id: claims.userId,
         role: claims.role,
         don_vi: claims.donVi,
+        current_don_vi: claims.currentDonVi,
         dia_ban_id: claims.diaBan,
         khoa_phong: claims.khoaPhong,
       },

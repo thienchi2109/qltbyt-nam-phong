@@ -12,7 +12,10 @@ vi.mock("@/lib/rpc-client", () => ({ callRpc: vi.fn() }))
 const mockCallRpc = vi.mocked(callRpc)
 const catalog = {
   document: {},
-  catalog_version: { artifact_id: "artifact-1" },
+  catalog_version: {
+    id: "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
+    artifact_id: "artifact-1",
+  },
   completeness: {},
   rows: [
     {
@@ -34,7 +37,7 @@ const draft = {
   draft: {
     id: "draft-1",
     don_vi: 7,
-    catalog_version_id: "catalog-1",
+    catalog_version_id: "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
     status: "draft",
     revision: 3,
     created_by: 1,

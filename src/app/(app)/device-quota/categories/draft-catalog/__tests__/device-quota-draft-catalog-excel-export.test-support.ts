@@ -58,6 +58,8 @@ type SourceManifest = {
 
 const artifactDirectory = join(process.cwd(), "docs/device-quota/source-artifacts/thong-tu-10-2026")
 
+const catalogVersionId = "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01"
+
 /** Repository-owned source manifest fixture for the export tests. */
 export const sourceManifest = JSON.parse(
   readFileSync(join(artifactDirectory, "manifest.json"), "utf8")
@@ -95,6 +97,7 @@ function makeCatalog(): DeviceQuotaRegulatoryCatalog {
       sourcePdfSha256: sourceManifest.source_artifact.pdf.sha256,
     },
     catalogVersion: {
+      id: catalogVersionId,
       artifactId: sourceManifest.artifact_id,
       appendixJsonPath: sourceManifest.source_artifact.appendix_json.path,
       appendixJsonSha256: sourceManifest.source_artifact.appendix_json.sha256,
@@ -164,7 +167,7 @@ export function makeSnapshot(): DeviceQuotaDraftCatalogExportSnapshot {
     appendixTitle: sourceAppendix.document_title,
     sourcePdfMarker: sourceManifest.source_artifact.pdf.path,
     sourcePdfSha256: sourceManifest.source_artifact.pdf.sha256,
-    catalogVersionId: sourceManifest.artifact_id,
+    catalogVersionId,
     rows,
     footnotes: sourceAppendix.footnotes,
   }

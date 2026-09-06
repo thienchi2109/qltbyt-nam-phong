@@ -1,7 +1,7 @@
 "use client"
-import { useQuery, keepPreviousData, useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
-import { isGlobalRole } from "@/lib/rbac"
+import { isEquipmentManagerRole, isGlobalRole } from "@/lib/rbac"
 import { useSession } from "next-auth/react"
 import * as React from "react"
 
@@ -16,6 +16,7 @@ type TenantBrandingSessionUser = {
   id?: string | number | null
   role?: string | null
   don_vi?: number | null
+  current_don_vi?: number | null
 }
 
 /** Fetch branding for the tenant selected from the session or privileged form context. */
@@ -26,9 +27,12 @@ export function useTenantBranding(options?: {
   const { data: session, status } = useSession()
   const user = session?.user as TenantBrandingSessionUser | undefined
   const isPrivileged = isGlobalRole(user?.role)
+  const sessionTenantId = isEquipmentManagerRole(user?.role)
+    ? (user?.current_don_vi ?? user?.don_vi ?? null)
+    : (user?.don_vi ?? null)
 
   // Determine effective tenant ID based on user privilege and options
-  const sessionTenantKey = user?.don_vi ? String(user.don_vi) : "none"
+  const sessionTenantKey = sessionTenantId != null ? String(sessionTenantId) : "none"
   const formTenantKey = options?.formTenantId ? String(options.formTenantId) : null
 
   // Smart tenant selection logic
@@ -43,11 +47,11 @@ export function useTenantBranding(options?: {
   } else if (options?.formTenantId && !isPrivileged) {
     // Security: non-privileged users can only see their own tenant
     effectiveTenantKey = sessionTenantKey
-    rpcTenantId = user?.don_vi || null
+    rpcTenantId = sessionTenantId
   } else {
     // Dynamic branding: session-based (current behavior)
     effectiveTenantKey = sessionTenantKey
-    rpcTenantId = user?.don_vi || null
+    rpcTenantId = sessionTenantId
   }
   /* eslint-enable sonarjs/no-duplicated-branches */
 
@@ -70,7 +74,6 @@ export function useTenantBranding(options?: {
         : null
     },
     enabled: status === "authenticated" && !!user?.id,
-    placeholderData: keepPreviousData,
     staleTime: 5 * 60_000,
     gcTime: 15 * 60_000,
     refetchOnWindowFocus: false,

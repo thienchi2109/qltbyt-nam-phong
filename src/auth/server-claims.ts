@@ -4,6 +4,7 @@ export type SupabaseRpcUser = {
   id?: unknown
   role?: unknown
   don_vi?: unknown
+  current_don_vi?: unknown
   dia_ban_id?: unknown
   khoa_phong?: unknown
 }
@@ -111,6 +112,9 @@ export function buildSupabaseRpcJwtClaims({
     sub: userId,
     app_role: appRole,
     don_vi: toNullableJwtClaim(user.don_vi),
+    ...(user.current_don_vi !== undefined
+      ? { current_don_vi: toNullableJwtClaim(user.current_don_vi) }
+      : {}),
     user_id: userId,
     dia_ban: toNullableJwtClaim(user.dia_ban_id),
     khoa_phong: toNullableJwtClaim(user.khoa_phong),

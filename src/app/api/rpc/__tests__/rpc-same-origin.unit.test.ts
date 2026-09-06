@@ -136,6 +136,33 @@ describe("RPC proxy same-origin guard", () => {
     expect(fetchMock).toHaveBeenCalledOnce()
   })
 
+  it("rewrites spoofed tenant parameters to the trusted current tenant", async () => {
+    getServerSessionMock.mockResolvedValueOnce({
+      user: {
+        id: "31",
+        role: "to_qltb",
+        don_vi: 17,
+        current_don_vi: 99,
+        dia_ban_id: 10,
+        khoa_phong: "ICU",
+      },
+    })
+
+    const res = await POST(
+      buildRequest(
+        { p_don_vi: 17, p_dia_ban: 999 },
+        { origin: "https://app.example.com" }
+      ) as never,
+      { params: Promise.resolve({ fn: "ai_equipment_lookup" }) }
+    )
+
+    expect(res.status).toBe(200)
+    const [, requestInit] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(JSON.parse(String(requestInit.body))).toEqual({ p_don_vi: 99, p_dia_ban: 10 })
+    expect(jwtSignMock.mock.calls[0]?.[0]).toMatchObject({ don_vi: "99" })
+    expect(jwtSignMock.mock.calls[0]?.[0]).toMatchObject({ current_don_vi: "99" })
+  })
+
   it("allows global sessions without a tenant claim to proxy dashboard RPCs", async () => {
     getServerSessionMock.mockResolvedValueOnce({
       user: {

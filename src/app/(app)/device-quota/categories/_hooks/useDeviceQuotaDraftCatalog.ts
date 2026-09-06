@@ -31,6 +31,10 @@ import type {
   DeviceQuotaMergedRow,
 } from "../draft-catalog/device-quota-draft-catalog-types"
 import {
+  DEVICE_QUOTA_CATALOG_IDENTITY_ERROR,
+  isDeviceQuotaCatalogVersionCoherent,
+} from "../draft-catalog/device-quota-draft-catalog-types"
+import {
   type DeviceQuotaDraftCatalogStatus,
   getDeviceQuotaDraftCatalogStatus,
   isDeviceQuotaDraftCatalogRoleSupported,
@@ -90,6 +94,15 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     retry: false,
   })
   const serverItems = draftQuery.data?.items ?? []
+  const catalogIdentityMatches = isDeviceQuotaCatalogVersionCoherent(
+    draftQuery.data?.catalog_version_id,
+    catalogQuery.data?.catalogVersion.id
+  )
+  const catalogIdentityMismatch =
+    Boolean(draftQuery.data && catalogQuery.data) && !catalogIdentityMatches
+  const catalogIdentityError = catalogIdentityMismatch
+    ? new DeviceQuotaDraftError(DEVICE_QUOTA_CATALOG_IDENTITY_ERROR, "unavailable")
+    : null
   useEffect(() => {
     const serverDraft = draftQuery.data
     const shouldInitialize = serverDraft && localDraftId !== serverDraft.id
@@ -114,7 +127,9 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
   }, [items])
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!draftQuery.data) throw new Error("Draft is not ready")
+      if (!draftQuery.data || !catalogIdentityMatches) {
+        throw catalogIdentityError ?? new Error("Draft is not ready")
+      }
       if (Object.keys(validationErrors).length > 0) {
         throw new DeviceQuotaDraftError("Dữ liệu số lượng không hợp lệ.", "validation")
       }
@@ -154,7 +169,9 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
   })
   const itemMutation = useMutation({
     mutationFn: async (input: { sourceIdentifier: string; excluded: boolean }) => {
-      if (!draftQuery.data) throw new Error("Draft is not ready")
+      if (!draftQuery.data || !catalogIdentityMatches) {
+        throw catalogIdentityError ?? new Error("Draft is not ready")
+      }
       const item = items.find((candidate) => candidate.source_identifier === input.sourceIdentifier)
       if (!item) throw new Error("Draft item not found")
       const stagedItems = isDirty ? items : null
@@ -190,7 +207,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
 
   const updateItem = useCallback(
     (sourceIdentifier: string, patch: DeviceQuotaDraftItemPatch) => {
-      if (mode !== "editable" || mutationState.isLocked()) return
+      if (mode !== "editable" || mutationState.isLocked() || !catalogIdentityMatches) return
       setLocalItems((current) =>
         (current ?? items).map((item) =>
           item.source_identifier === sourceIdentifier
@@ -214,15 +231,15 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       mutationState.setLastError(null)
       mutationState.setFailedAction(null)
     },
-    [items, mode, mutationState]
+    [catalogIdentityMatches, items, mode, mutationState]
   )
 
   const rows = useMemo(
     () =>
-      catalogQuery.data && draftQuery.data
+      catalogQuery.data && draftQuery.data && catalogIdentityMatches
         ? mergeDeviceQuotaDraftCatalog(catalogQuery.data, { items }, mode)
         : [],
-    [catalogQuery.data, draftQuery.data, items, mode]
+    [catalogIdentityMatches, catalogQuery.data, draftQuery.data, items, mode]
   )
   const { lastSavedRows, exportSnapshot } = createDeviceQuotaDraftCatalogSavedExport(
     canAccess,
@@ -284,6 +301,10 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       await (excluded ? exclude(sourceIdentifier) : restore(sourceIdentifier))
       return
     }
+    if (catalogIdentityMismatch) {
+      await Promise.all([draftQuery.refetch(), catalogQuery.refetch()])
+      return
+    }
     if (openDraftQuery.error) {
       await openDraftQuery.refetch()
       return
@@ -293,7 +314,16 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
       return
     }
     if (catalogQuery.error) await catalogQuery.refetch()
-  }, [catalogQuery, draftQuery, exclude, mutationState, openDraftQuery, restore, save])
+  }, [
+    catalogIdentityMismatch,
+    catalogQuery,
+    draftQuery,
+    exclude,
+    mutationState,
+    openDraftQuery,
+    restore,
+    save,
+  ])
 
   const status: DeviceQuotaDraftCatalogStatus = getDeviceQuotaDraftCatalogStatus({
     canAccess,
@@ -301,7 +331,7 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     hasUnavailable:
       mutationState.lastError?.kind === "unavailable" ||
       normalizedQueryError?.kind === "unavailable",
-    hasError: !!queryError || !!mutationState.lastError,
+    hasError: !!queryError || !!mutationState.lastError || catalogIdentityMismatch,
     isLoading:
       openDraftQuery.isPending ||
       (openDraftQuery.data != null && draftQuery.isPending) ||
@@ -315,18 +345,23 @@ export function useDeviceQuotaDraftCatalog(options: { mode?: DeviceQuotaDraftEdi
     validationErrors,
     errorMessage:
       mutationState.lastError?.message ??
+      catalogIdentityError?.message ??
       (normalizedQueryError ? normalizedQueryError.message : null),
-    canRetry: !!mutationState.failedAction || !!queryError || !!mutationState.lastError,
+    canRetry:
+      !!mutationState.failedAction ||
+      !!queryError ||
+      !!mutationState.lastError ||
+      catalogIdentityMismatch,
     retry,
     canAccess,
     isReadOnly: mode === "readonly",
     donViId,
     revision,
     draftId: draftQuery.data?.id ?? null,
-    catalogVersionId: draftQuery.data?.catalog_version_id ?? null,
+    catalogVersionId: catalogIdentityMatches ? (draftQuery.data?.catalog_version_id ?? null) : null,
     exportSnapshot,
     metadata:
-      catalogQuery.data && draftQuery.data
+      catalogQuery.data && draftQuery.data && catalogIdentityMatches
         ? {
             unitId: donViId,
             draftStatus: draftQuery.data.status,

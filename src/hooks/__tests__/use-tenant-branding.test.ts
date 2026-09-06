@@ -147,4 +147,41 @@ describe("useTenantBranding", () => {
       signal: undefined,
     })
   })
+
+  it("uses the trusted current tenant for equipment-manager branding", async () => {
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: { id: "u1", role: "to_qltb", don_vi: 7, current_don_vi: 12 },
+      },
+      status: "authenticated",
+    })
+    mocks.callRpc.mockResolvedValueOnce([])
+
+    renderHook(() => useTenantBranding({ formTenantId: 7, useFormContext: true }))
+
+    const firstCall = mocks.useQuery.mock.calls[0]?.[0]
+    expect(firstCall.queryKey).toEqual(["tenant_branding", { tenant: "12" }])
+
+    await firstCall.queryFn({ signal: undefined })
+
+    expect(mocks.callRpc).toHaveBeenCalledWith({
+      fn: "don_vi_branding_get",
+      args: { p_id: 12 },
+      signal: undefined,
+    })
+  })
+
+  it("does not expose previous-tenant branding while the current query is pending", () => {
+    mocks.useSession.mockReturnValue({
+      data: {
+        user: { id: "u1", role: "to_qltb", don_vi: 7, current_don_vi: 12 },
+      },
+      status: "authenticated",
+    })
+
+    renderHook(() => useTenantBranding({ formTenantId: 7, useFormContext: true }))
+
+    const firstCall = mocks.useQuery.mock.calls[0]?.[0]
+    expect(firstCall.placeholderData).toBeUndefined()
+  })
 })

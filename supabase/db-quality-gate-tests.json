@@ -162,6 +162,19 @@
       "transactionContract": "rollback-required"
     },
     {
+      "evidence": ["OpenSpec add-device-quota-draft-excel-export Phase 3.5"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/device_quota_draft_excel_export_phase35.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20260906090000_device_quota_draft_excel_export_coherence.sql"
+      ],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required"
+    },
+    {
       "evidence": ["OpenSpec add-device-quota-draft-catalog Phase 2"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/device_quota_unit_catalog_draft_phase_gate.sql",

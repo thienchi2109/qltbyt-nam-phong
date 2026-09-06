@@ -1,5 +1,6 @@
 import type { DeviceQuotaDraftItem } from "@/lib/device-quota-draft-contract"
 
+import { isDeviceQuotaCatalogVersionCoherent } from "./device-quota-draft-catalog-types"
 import type {
   DeviceQuotaDraftEditorMode,
   DeviceQuotaDraftSnapshot,
@@ -17,7 +18,15 @@ export function createDeviceQuotaDraftCatalogExportContext(input: {
   userId: string
   unitId: number
 }): DeviceQuotaDraftCatalogExportContext | null {
-  if (input.draft.don_vi !== input.unitId) return null
+  if (
+    input.draft.don_vi !== input.unitId ||
+    !isDeviceQuotaCatalogVersionCoherent(
+      input.draft.catalog_version_id,
+      input.catalog.catalogVersion.id
+    )
+  ) {
+    return null
+  }
 
   return {
     unitId: input.draft.don_vi,
@@ -46,12 +55,23 @@ export function createDeviceQuotaDraftCatalogSavedExport(
   userId: string | null,
   unitId: number | null
 ) {
+  const hasCoherentCatalogIdentity = Boolean(
+    draft &&
+    catalog &&
+    isDeviceQuotaCatalogVersionCoherent(draft.catalog_version_id, catalog.catalogVersion.id)
+  )
   const lastSavedRows =
-    catalog && draft
+    hasCoherentCatalogIdentity && catalog && draft
       ? mergeDeviceQuotaDraftCatalog(catalog, { items: serverItems }, mode)
       : ([] as DeviceQuotaMergedRow[])
   const exportSnapshot =
-    mode !== "readonly" && canAccess && userId !== null && unitId !== null && draft && catalog
+    mode !== "readonly" &&
+    canAccess &&
+    userId !== null &&
+    unitId !== null &&
+    hasCoherentCatalogIdentity &&
+    draft &&
+    catalog
       ? createDeviceQuotaDraftCatalogExportContext({
           draft,
           catalog,

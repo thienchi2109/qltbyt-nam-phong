@@ -1,9 +1,15 @@
 import { toAppRoleClaim } from "@/auth/server-claims"
-import { isGlobalRole, isRegionalLeaderRole, isTechnicalConfigurationExpertRole } from "@/lib/rbac"
+import {
+  isEquipmentManagerRole,
+  isGlobalRole,
+  isRegionalLeaderRole,
+  isTechnicalConfigurationExpertRole,
+} from "@/lib/rbac"
 
 export type RpcProxySessionUser = {
   role?: unknown
   don_vi?: unknown
+  current_don_vi?: unknown
   dia_ban_id?: unknown
   khoa_phong?: unknown
   id?: unknown
@@ -12,6 +18,7 @@ export type RpcProxySessionUser = {
 export type RpcSessionClaims = {
   role: string
   donVi: string | null
+  currentDonVi: string | null
   diaBan: string
   khoaPhong: string | null
   userId: string
@@ -50,7 +57,8 @@ export function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionCl
     typeof sessionUser.khoa_phong === "string" ||
     typeof sessionUser.khoa_phong === "number"
   const role = sessionClaimValue(sessionUser.role)
-  const donVi = sessionClaimValue(sessionUser.don_vi)
+  const assignedDonVi = sessionClaimValue(sessionUser.don_vi)
+  const currentDonVi = sessionClaimValue(sessionUser.current_don_vi)
   const diaBan = sessionClaimValue(sessionUser.dia_ban_id)
   const khoaPhong = sessionClaimValue(sessionUser.khoa_phong)
   const userId = sessionClaimValue(sessionUser.id)
@@ -60,6 +68,7 @@ export function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionCl
   }
 
   const appRole = toAppRoleClaim(role)
+  const donVi = isEquipmentManagerRole(appRole) ? (currentDonVi ?? assignedDonVi) : assignedDonVi
   const isExpert = isTechnicalConfigurationExpertRole(appRole)
   if (isExpert && (!donVi?.trim() || !diaBan.trim() || !userId.trim())) {
     return null
@@ -74,6 +83,7 @@ export function getSessionClaims(sessionUser: RpcProxySessionUser): RpcSessionCl
   return {
     role,
     donVi,
+    currentDonVi,
     diaBan,
     khoaPhong,
     userId,

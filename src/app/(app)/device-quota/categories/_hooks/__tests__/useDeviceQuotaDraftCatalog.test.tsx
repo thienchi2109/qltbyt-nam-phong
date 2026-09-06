@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { callRpc } from "@/lib/rpc-client"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
+import { DEVICE_QUOTA_CATALOG_IDENTITY_ERROR } from "../../draft-catalog/device-quota-draft-catalog-types"
 import { useDeviceQuotaDraftCatalog } from "../useDeviceQuotaDraftCatalog"
 
 const mockUseSession = vi.fn()
@@ -24,7 +25,10 @@ const mockCallRpc = vi.mocked(callRpc)
 
 const catalog = {
   document: {},
-  catalog_version: { artifact_id: "artifact-1" },
+  catalog_version: {
+    id: "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
+    artifact_id: "artifact-1",
+  },
   completeness: {},
   rows: [
     {
@@ -47,7 +51,7 @@ const draft = {
   draft: {
     id: "draft-1",
     don_vi: 7,
-    catalog_version_id: "catalog-1",
+    catalog_version_id: "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
     status: "draft",
     revision: 3,
     created_by: 1,
@@ -136,7 +140,12 @@ describe("useDeviceQuotaDraftCatalog", () => {
       })
       expect(
         queryClient.getQueryCache().find({
-          queryKey: ["device-quota-regulatory-catalog", 7, "user-1", "catalog-1"],
+          queryKey: [
+            "device-quota-regulatory-catalog",
+            7,
+            "user-1",
+            "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
+          ],
         })
       ).toBeDefined()
     }
@@ -156,7 +165,7 @@ describe("useDeviceQuotaDraftCatalog", () => {
       userId: "user-1",
       revision: 3,
       lastSavedAt: "2026-09-01T00:00:00Z",
-      catalogVersionId: "catalog-1",
+      catalogVersionId: "7d1e3c83-5f95-4b4d-9c3a-0b3d777d0a01",
     })
     expect(rendered.result.current.exportSnapshot?.rows[0]).toMatchObject({
       sourceIdentifier: "item-1",
@@ -168,6 +177,40 @@ describe("useDeviceQuotaDraftCatalog", () => {
     expect(rendered.result.current.rows[0]?.appliedQuantity).toBe(8)
     expect(rendered.result.current.exportSnapshot?.rows[0]?.appliedQuantity).toBe(2)
     expect(rendered.result.current.exportSnapshot?.revision).toBe(3)
+  })
+
+  it("fails closed when the canonical catalog version differs from the draft", async () => {
+    setup("to_qltb")
+    mockCallRpc
+      .mockResolvedValueOnce({ data: draft })
+      .mockResolvedValueOnce({ data: draft })
+      .mockResolvedValueOnce({
+        ...catalog,
+        catalog_version: {
+          ...catalog.catalog_version,
+          id: "c1e2d3f4-5678-4abc-9def-0123456789ab",
+        },
+      })
+
+    const rendered = renderHook(() => useDeviceQuotaDraftCatalog(), {
+      wrapper: createReactQueryWrapper(createTestQueryClient()),
+    })
+    await waitFor(() => expect(mockCallRpc).toHaveBeenCalledTimes(3))
+
+    expect(rendered.result.current.status).toBe("error")
+    expect(rendered.result.current.rows).toEqual([])
+    expect(rendered.result.current.lastSavedRows).toEqual([])
+    expect(rendered.result.current.exportSnapshot).toBeNull()
+
+    act(() => rendered.result.current.updateItem("item-1", { appliedQuantity: 8 }))
+    expect(rendered.result.current.isDirty).toBe(false)
+
+    await expect(
+      act(async () => {
+        await rendered.result.current.save()
+      })
+    ).rejects.toThrow(DEVICE_QUOTA_CATALOG_IDENTITY_ERROR)
+    expect(mockCallRpc).toHaveBeenCalledTimes(3)
   })
 
   it("does not expose an export context in readonly mode", async () => {

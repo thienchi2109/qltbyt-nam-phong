@@ -16,6 +16,7 @@ export type DeviceQuotaRegulatoryCatalogDocument = {
 }
 
 export type DeviceQuotaRegulatoryCatalogVersion = {
+  id: string
   artifactId: string
   appendixJsonPath: string
   appendixJsonSha256: string
@@ -26,6 +27,29 @@ export type DeviceQuotaRegulatoryCatalogVersion = {
   isCanonical: boolean
   sourcePages: string
   sourceNote: string
+}
+
+/** User-facing error shown when draft and canonical catalog identities differ. */
+export const DEVICE_QUOTA_CATALOG_IDENTITY_ERROR = "Danh mục canonical không khớp với bản nháp."
+
+const DEVICE_QUOTA_CATALOG_VERSION_UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/** Returns whether a catalog version identity is a canonical UUID. */
+export function isDeviceQuotaCatalogVersionId(value: unknown): value is string {
+  return typeof value === "string" && DEVICE_QUOTA_CATALOG_VERSION_UUID.test(value)
+}
+
+/** Returns whether the draft and canonical catalog identify the same UUID. */
+export function isDeviceQuotaCatalogVersionCoherent(
+  draftCatalogVersionId: unknown,
+  catalogVersionId: unknown
+): boolean {
+  return (
+    isDeviceQuotaCatalogVersionId(draftCatalogVersionId) &&
+    isDeviceQuotaCatalogVersionId(catalogVersionId) &&
+    draftCatalogVersionId === catalogVersionId
+  )
 }
 
 export type DeviceQuotaRegulatoryCatalogCompleteness = {

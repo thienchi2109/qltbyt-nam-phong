@@ -1,5 +1,6 @@
 import { callRpc } from "@/lib/rpc-client"
 import { isRecord, toNullableNumber, toNullableString } from "@/lib/rpc-normalize"
+import { isDeviceQuotaCatalogVersionId } from "../draft-catalog/device-quota-draft-catalog-types"
 import type {
   DeviceQuotaRegulatoryCatalog,
   DeviceQuotaRegulatoryCatalogCompleteness,
@@ -64,6 +65,10 @@ export function parseDeviceQuotaRegulatoryCatalog(value: unknown): DeviceQuotaRe
   const versionValue = isRecord(envelope.catalog_version) ? envelope.catalog_version : {}
   const completenessValue = isRecord(envelope.completeness) ? envelope.completeness : {}
   const rowsValue = Array.isArray(envelope.rows) ? envelope.rows : []
+  const id = toNullableString(versionValue.id)
+  if (!isDeviceQuotaCatalogVersionId(id)) {
+    throw new Error("Missing catalog version identity")
+  }
 
   const document: DeviceQuotaRegulatoryCatalogDocument = {
     documentNumber: stringValue(documentValue.document_number),
@@ -76,6 +81,7 @@ export function parseDeviceQuotaRegulatoryCatalog(value: unknown): DeviceQuotaRe
     sourcePdfSha256: stringValue(documentValue.source_pdf_sha256),
   }
   const catalogVersion: DeviceQuotaRegulatoryCatalogVersion = {
+    id,
     artifactId: stringValue(versionValue.artifact_id),
     appendixJsonPath: stringValue(versionValue.appendix_json_path),
     appendixJsonSha256: stringValue(versionValue.appendix_json_sha256),
