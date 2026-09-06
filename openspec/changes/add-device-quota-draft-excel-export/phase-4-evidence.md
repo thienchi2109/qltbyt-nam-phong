@@ -6,7 +6,11 @@
 - Phạm vi thực hiện: chỉ Phase 4.1–4.6; không tick `4.7 USER REVIEW` và
   không thay đổi checkbox Phase 3.5.
 - Base/starting `HEAD`: `7dcbfbb67ef144f73398d04451e2e233d1b7bf3e`.
-- Exact landed SHA và ordered final gates của parent: `PENDING`.
+- Exact implementation/gate SHA: `4df2aea2dad41bccc3f40f6d4117141c72f525a0`.
+- Ordered final gates trên exact SHA: format `0`, no-explicit-any `0`, dedupe
+  `0`, typecheck `0`, focused matrix `6 files / 88 tests` exit `0` (duration
+  `18.24s`), React Doctor `100/100` exit `0`, OpenSpec strict valid exit `0`,
+  `git diff --check` `0`; working tree clean tại thời điểm run.
 - Không có migration, SQL, RPC, live DB write hoặc thay đổi runtime export trong
   lượt này.
 
@@ -76,6 +80,16 @@ Kết quả raw: `Test Files 5 passed (5)`, `Tests 78 passed (78)`, exit `0`, t�
 duration `17.95s`. Đây là `OBSERVED / PROVISIONAL`, không phải acceptance PASS:
 Phase 3.5 aggregate/static và USER REVIEW vẫn hard-block change closeout.
 
+### Parent final matrix (exact SHA, observed / provisional)
+
+- Exact SHA: `4df2aea2dad41bccc3f40f6d4117141c72f525a0`.
+- Ordered gates: format `0`, no-explicit-any `0`, dedupe `0`, typecheck `0`,
+  React Doctor `100/100` exit `0`, OpenSpec strict valid exit `0`, và
+  `git diff --check` `0`.
+- Focused final matrix: `6 files / 88 tests`, exit `0`, duration `18.24s`.
+- Đây là raw observed evidence ở mức provisional; 4.3/4.4 không được coi là
+  acceptance PASS khi Phase 3.5 aggregate/static và USER REVIEW còn hard-block.
+
 - `src/lib/__tests__/excel-workbook.test.ts`: observed `3` tests, exit `0`.
 - `src/lib/__tests__/category-excel.test.ts`: observed `24` tests, exit `0`.
 - `src/lib/__tests__/device-quota-excel.test.ts`: observed `23` tests, exit `0`.
@@ -84,6 +98,8 @@ Phase 3.5 aggregate/static và USER REVIEW vẫn hard-block change closeout.
   cả hai entry point import Excel, Save và reopen.
 - `src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx`:
   observed `26` tests, exit `0`; các guard export hiện hữu không bị ảnh hưởng.
+- `src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts`:
+  observed `10` tests, exit `0`; layout và builder được kiểm tra.
 
 ## Sample artifact và workbook read-back
 
@@ -125,15 +141,15 @@ acceptance 4.1 vẫn `INCOMPLETE` chờ môi trường/browser của parent.
 
 ## Acceptance mapping
 
-| Task | Evidence                                                                        | Trạng thái               |
-| ---- | ------------------------------------------------------------------------------- | ------------------------ |
-| 4.1  | ExcelJS structural print read-back PASS; visual/print renderer unavailable      | `INCOMPLETE`             |
-| 4.2  | Builder tests + sample row 23 style/marker/source read-back observed            | `OBSERVED / PROVISIONAL` |
-| 4.3  | 3 Excel regression files, 50 tests observed exit `0`                            | `OBSERVED / PROVISIONAL` |
-| 4.4  | `DeviceQuotaPageCoexistence.integration.test.tsx`, 2 tests observed exit `0`    | `OBSERVED / PROVISIONAL` |
-| 4.5  | Ordered final TypeScript/React gates must be run by parent on landed SHA        | `PENDING`                |
-| 4.6  | This evidence file plus acceptance/tasks updates, pending hard-blocked closeout | `OBSERVED / PROVISIONAL` |
-| 4.7  | Explicit USER REVIEW is outside this implementer turn                           | `UNCHANGED`              |
+| Task | Evidence                                                                                                             | Trạng thái               |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 4.1  | ExcelJS structural print read-back PASS; visual/print renderer unavailable                                           | `INCOMPLETE`             |
+| 4.2  | Builder tests + sample row 23 style/marker/source read-back observed                                                 | `OBSERVED / PROVISIONAL` |
+| 4.3  | 3 Excel regression files, 50 tests observed exit `0`                                                                 | `OBSERVED / PROVISIONAL` |
+| 4.4  | `DeviceQuotaPageCoexistence.integration.test.tsx`, 2 tests observed exit `0`                                         | `OBSERVED / PROVISIONAL` |
+| 4.5  | Ordered final TypeScript/React gates observed on exact SHA; Phase 3.5 aggregate/static và USER REVIEW vẫn hard-block | `OBSERVED / PROVISIONAL` |
+| 4.6  | This evidence file plus acceptance/evidence updates, pending hard-blocked closeout                                   | `OBSERVED / PROVISIONAL` |
+| 4.7  | Explicit USER REVIEW is outside this implementer turn                                                                | `UNCHANGED`              |
 
 ## Diff and scope audit
 
@@ -143,9 +159,18 @@ acceptance 4.1 vẫn `INCOMPLETE` chờ môi trường/browser của parent.
   workbook was read-only inspected and not rewritten, and `tasks.md` has no
   remaining diff.
 - No migration/SQL/RPC/live DB scope; database quality gate is not applicable.
-- Parent must rerun ordered final gates, record exact landed SHA, and decide the
-  visual inspection/USER REVIEW checkpoint. Do not convert `INCOMPLETE` or
-  `PENDING` to PASS from commit existence alone.
+- Parent's ordered final gates and exact SHA are recorded above. Do not convert
+  `INCOMPLETE` or provisional observations to PASS from commit existence alone;
+  visual inspection/USER REVIEW remain open.
 - The current user request authorizes performing Phase 4 verification only; it
   does not retroactively convert Phase 3.5 aggregate/static results or its USER
   REVIEW state into PASS.
+
+## Review gate disposition
+
+- One Important acceptance-gating finding was accepted and fixed by downgrading
+  provisional evidence and unticking the affected Phase 4 checkboxes; no second
+  reviewer round was run per user instruction.
+- Phase 4 verification is authorized and recorded as observed, but Phase 3.5
+  aggregate/static and USER REVIEW remain hard-blocked and are not retroactively
+  PASS.
