@@ -303,7 +303,7 @@ BEGIN
     END IF;
     IF p_id IS NOT NULL AND p_id <> v_effective_id THEN
       RAISE EXCEPTION 'Forbidden'
-        USING HINT = 'tenant_mismatch';
+        USING ERRCODE = '42501', HINT = 'tenant_mismatch';
     END IF;
   END IF;
 
