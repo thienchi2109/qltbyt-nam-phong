@@ -101,33 +101,33 @@ ghi evidence; toàn bộ gate TS bắt buộc đạt.
 Boundary: hook/page/editor wiring và test interaction. Không sửa RPC/SQL,
 không đổi active category/import contracts.
 
-- [ ] 3.1 Tạo Red user-event test tại
+- [x] 3.1 Tạo Red user-event test tại
       `src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx`
       cho authorized `global`/`admin`/`to_qltb`, current session unit, nút ngay
       trước Save, và một download duy nhất; thêm ca unauthorized role và
       read-only mode để action bị ẩn, không tạo export context/builder/download.
-- [ ] 3.2 Mở rộng Red cases cho dirty, save/exclude/restore pending, missing
+- [x] 3.2 Mở rộng Red cases cho dirty, save/exclude/restore pending, missing
       snapshot, missing/mismatched branding, exporting lock, builder/download
       error retry, session/unit change, thiếu authenticated `userId` hoặc
       `current_don_vi ?? don_vi` không phải số dương, không refetch và không
       gọi Save. Khi identity mất trong lúc pending, phải hủy và không tải Blob
       stale.
-- [ ] 3.3 Chạy focused Red:
+- [x] 3.3 Chạy focused Red:
       `node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx"`.
-- [ ] 3.4 Thêm context export nội bộ tối thiểu từ cùng server draft/catalog
+- [x] 3.4 Thêm context export nội bộ tối thiểu từ cùng server draft/catalog
       snapshot; revision/updated_at phải từ saved server response, không từ
       local staged state. Nối branding bằng `useTenantBranding` với id-match
       guard; không tạo public API/RPC.
-- [ ] 3.5 Nối editor qua `HierarchicalEditorToolbar.actions`, giữ Save và
+- [x] 3.5 Nối editor qua `HierarchicalEditorToolbar.actions`, giữ Save và
       existing mutation state; thêm status/toast retry tiếng Việt và duplicate
       lock.
-- [ ] 3.6 Chạy focused Green user-event test; xác minh authorized roles tạo
+- [x] 3.6 Chạy focused Green user-event test; xác minh authorized roles tạo
       đúng một download, còn unauthorized/read-only hoặc thiếu identity ẩn/
       khóa action và không tạo context/builder/download; click không gọi query
       refetch, mutation Save hoặc RPC mới. Nếu fail, sửa implementation theo
       đặc tả; chỉ refactor khi Green, rồi chạy lại test. Không sửa assertion
       hoặc đặc tả chỉ để làm test pass.
-- [ ] 3.7 Chạy bắt buộc theo đúng thứ tự cho TS/React diff:
+- [x] 3.7 Chạy bắt buộc theo đúng thứ tự cho TS/React diff:
       `node scripts/npm-run.js run format:check` →
       `node scripts/npm-run.js run verify:no-explicit-any` →
       `node scripts/npm-run.js run verify:dedupe` →

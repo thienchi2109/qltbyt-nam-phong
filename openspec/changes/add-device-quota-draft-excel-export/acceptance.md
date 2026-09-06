@@ -141,11 +141,11 @@ vẫn phải unchecked nếu chưa có phê duyệt trực tiếp.
 
 ### Phase 3
 
-- [ ] User-event Red → Green pass cho role/unit/dirty/pending/missing/error/
+- [x] User-event Red → Green pass cho role/unit/dirty/pending/missing/error/
       retry/duplicate/identity cases.
-- [ ] Snapshot coherence chứng minh server revision/updated_at và matched
+- [x] Snapshot coherence chứng minh server revision/updated_at và matched
       catalog/footnotes dùng chung; branding id guard pass.
-- [ ] Required format, no-explicit-any, diff dedupe, typecheck, focused Vitest
+- [x] Required format, no-explicit-any, diff dedupe, typecheck, focused Vitest
       và react-doctor pass trên cùng commit.
 - [ ] `USER REVIEW — Phase 3 approval` nhận explicit approval.
 
