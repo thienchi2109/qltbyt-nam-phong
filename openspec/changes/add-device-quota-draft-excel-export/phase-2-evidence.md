@@ -8,7 +8,7 @@
 - Code/sample verification commit (đích của final gate chain): `7a398fc1c72516ef55354d0cf71241816d68dcb9`.
 - Forward remediation commits: Cycle 1 Red `050fdf0223605ce4a0017ff39c6b9f7bbf31fdea` / Green `7394067351f64e5a54b473b3c14939bd12af5d37`; Cycle 2 Red `3cb5c0de57178153589a7888f42b1a9e55602587` / Green `3a63f97d04e1df5966389e10db688eaa6028edcb`; Cycle 3 Red `3442ad19c1e6865620f566ec2b74df3734162998` / Green `25e532f3c3bc2a87789e3ce0d058694849155ae4`.
 - Post-Green size refactor: `b955c850cb66a775757f927047e6794b5d590e01`; sample regeneration: `8cb16c44ed0ed0e695f327e5b8f7450bd845fec1`.
-- Focused review-fix commits: browser serialization Red `2ab57cb9e9a509068d48278d984ebd62a68e48d9` / Green `ecad87759cbdab2e54fe693388dee1d462e3a4f1`; merged-section height Red `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` / Green `577e344f5906d14a630a05ad76cbea26a56e6466`; post-Green fixture refactor `80e89031`; deterministic metadata Red `2c35c593` / Green `23fa3e0b`; sample archive normalization `ff0787b0`; canonical sample `7a398fc1`.
+- Focused review-fix commits: browser serialization Red `2ab57cb9e9a509068d48278d984ebd62a68e48d9` / Green `ecad87759cbdab2e54fe693388dee1d462e3a4f1`; merged-section height Red `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` / Green `577e344f5906d14a630a05ad76cbea26a56e6466`; post-Green fixture refactor `80e89031`; deterministic metadata Red `2c35c5938595b67cdfbdde82f1623b28a4343c33` / Green `23fa3e0be3e69b153419cd02313e6b3f4c28f2b2`; sample archive normalization `ff0787b02848ab12a883e9ed10c2bcc3fe5f07b0`; canonical sample `7a398fc1c72516ef55354d0cf71241816d68dcb9`.
 - Boundary: chỉ builder/module/test/validation helper/sample/evidence/task checkboxes; không nối UI/editor, không RPC/query/mutation/SQL và không thay đổi Phase 3.
 
 ## Fixture và baseline
@@ -138,12 +138,12 @@ incremental riêng; không relabel các run lịch sử.
   `85aca6df2fe6b318bd7b3516a3aa1dffb309b5161f8906c2d7dddea8c583e624` và
   `3be9c0883e26fa15079fbb1e47d0c988b9cb85ccb874e83aab978f084743c7bc`.
 - Test `pins workbook metadata to the saved snapshot time for deterministic
-serialization` được Red trước tại commit `2c35c593`: cùng focused command
+serialization` được Red trước tại commit `2c35c5938595b67cdfbdde82f1623b28a4343c33`: cùng focused command
   verbose ở trên báo `expected 2026-09-06T01:53:41.966Z to deeply equal
 2026-09-01T08:30:00.000Z`, 1 failed/8 passed trong 9 tests, exit 1.
-- Green runtime commit `23fa3e0b` pin `workbook.created` và `workbook.modified`
+- Green runtime commit `23fa3e0be3e69b153419cd02313e6b3f4c28f2b2` pin `workbook.created` và `workbook.modified`
   theo `snapshot.lastSavedAt`; cùng command pass 1 file/9 tests, exit 0.
-- Post-Green artifact contract commit `ff0787b0` canonicalize mọi ZIP entry
+- Post-Green artifact contract commit `ff0787b02848ab12a883e9ed10c2bcc3fe5f07b0` canonicalize mọi ZIP entry
   date về `2000-01-01T00:00:00Z` trong test-only sample writer. Assertion
   `normalizes sample archive timestamps for stable repeated writes` pass; focused
   test pass 1 file/10 tests, exit 0. Cách này chỉ ổn định artifact mẫu, không
