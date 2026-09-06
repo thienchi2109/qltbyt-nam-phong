@@ -5,10 +5,10 @@
 - Ngày kiểm tra: 2026-09-06.
 - Required base và starting `HEAD`: `0b88ec9e8331c511b35884513d0d262e9af81d7f`.
 - Starting review-failed implementation `HEAD`: `ec7652c13d708c00868c704dc3cbfc66cc582db3`.
-- Code/sample verification commit (đích của final gate chain): `663462fc5cf0afd0dbfe1ecd2bfcede326c41c04`.
+- Code/sample verification commit (đích của final gate chain): `7a398fc1c72516ef55354d0cf71241816d68dcb9`.
 - Forward remediation commits: Cycle 1 Red `050fdf0223605ce4a0017ff39c6b9f7bbf31fdea` / Green `7394067351f64e5a54b473b3c14939bd12af5d37`; Cycle 2 Red `3cb5c0de57178153589a7888f42b1a9e55602587` / Green `3a63f97d04e1df5966389e10db688eaa6028edcb`; Cycle 3 Red `3442ad19c1e6865620f566ec2b74df3734162998` / Green `25e532f3c3bc2a87789e3ce0d058694849155ae4`.
 - Post-Green size refactor: `b955c850cb66a775757f927047e6794b5d590e01`; sample regeneration: `8cb16c44ed0ed0e695f327e5b8f7450bd845fec1`.
-- Focused review-fix commits: browser serialization Red `2ab57cb9e9a509068d48278d984ebd62a68e48d9` / Green `ecad87759cbdab2e54fe693388dee1d462e3a4f1`; merged-section height Red `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` / Green `577e344f5906d14a630a05ad76cbea26a56e6466`; post-Green fixture refactor `80e89031`; sample regeneration `663462fc`.
+- Focused review-fix commits: browser serialization Red `2ab57cb9e9a509068d48278d984ebd62a68e48d9` / Green `ecad87759cbdab2e54fe693388dee1d462e3a4f1`; merged-section height Red `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` / Green `577e344f5906d14a630a05ad76cbea26a56e6466`; post-Green fixture refactor `80e89031`; deterministic metadata Red `2c35c593` / Green `23fa3e0b`; sample archive normalization `ff0787b0`; canonical sample `7a398fc1`.
 - Boundary: chỉ builder/module/test/validation helper/sample/evidence/task checkboxes; không nối UI/editor, không RPC/query/mutation/SQL và không thay đổi Phase 3.
 
 ## Fixture và baseline
@@ -130,6 +130,25 @@ incremental riêng; không relabel các run lịch sử.
   lại 1 file/8 tests pass, exit 0. Các file hiện tại lần lượt là builder 303,
   validation helper 58, test 319 và support 184 dòng, đều dưới hard ceiling 450.
 
+#### Deterministic sample archive stabilization
+
+- Sau khi Green, repeated sample writes cho cùng snapshot cho cùng worksheet
+  XML nhưng khác hash vì JSZip ghi DOS timestamps hiện tại vào ZIP headers.
+  Hai run trước khi canonicalize đều exit 0 nhưng hash khác nhau:
+  `85aca6df2fe6b318bd7b3516a3aa1dffb309b5161f8906c2d7dddea8c583e624` và
+  `3be9c0883e26fa15079fbb1e47d0c988b9cb85ccb874e83aab978f084743c7bc`.
+- Test `pins workbook metadata to the saved snapshot time for deterministic
+serialization` được Red trước tại commit `2c35c593`: cùng focused command
+  verbose ở trên báo `expected 2026-09-06T01:53:41.966Z to deeply equal
+2026-09-01T08:30:00.000Z`, 1 failed/8 passed trong 9 tests, exit 1.
+- Green runtime commit `23fa3e0b` pin `workbook.created` và `workbook.modified`
+  theo `snapshot.lastSavedAt`; cùng command pass 1 file/9 tests, exit 0.
+- Post-Green artifact contract commit `ff0787b0` canonicalize mọi ZIP entry
+  date về `2000-01-01T00:00:00Z` trong test-only sample writer. Assertion
+  `normalizes sample archive timestamps for stable repeated writes` pass; focused
+  test pass 1 file/10 tests, exit 0. Cách này chỉ ổn định artifact mẫu, không
+  thêm UI/download hoặc đổi browser serializer contract.
+
 ## Builder contract đã thực hiện
 
 - `DeviceQuotaDraftCatalogExportSnapshot` là `Readonly` snapshot; mapper chỉ trả tuple bảy cell và chỉ dùng bốn cột source A:D cùng ba cột proposal/notes E:G.
@@ -145,9 +164,9 @@ incremental riêng; không relabel các run lịch sử.
 
 Artifact: `openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx`.
 
-Regenerate command: `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1` — 1 file/8 tests pass, exit 0.
+Regenerate command (one intentional final write): `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1` — 1 file/10 tests pass, exit 0.
 
-- `sha256sum openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` and `wc -c openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` report size 11,458 bytes and SHA-256 `acd810b2827badb9cb52b66abb124f3ecd7a05844ad1358b63123478fbe009bd`.
+- `sha256sum openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` and `wc -c openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` report size 11,457 bytes and SHA-256 `3bb72b74b02038f4e5360c21dcb94eacdee5da45c2b6830ef657d6076bf8707b`.
 - Independent ExcelJS `readFile` read-back PASS (the `node -e` read-back command inspected workbook identity, merges, blank rows, widths, page setup, freeze pane, row heights, and excluded styles).
 - 1 worksheet `Danh mục dự thảo`; row count 55; column count 7; headers đúng thứ tự; 42 data rows gồm 5 section/37 item; source order match `true`.
 - Merge count 15 = 7 metadata + 5 section + 3 footnote; blank rows 8 và 52; footnotes row 53–55 đúng source order/text.
@@ -165,15 +184,17 @@ Regenerate command: `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.
 
 ## Gates và scope audit
 
-Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên exact code/sample commit `663462fc5cf0afd0dbfe1ecd2bfcede326c41c04`, đúng thứ tự sau; tất cả exit 0:
+Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên exact code/sample commit `7a398fc1c72516ef55354d0cf71241816d68dcb9`, đúng thứ tự sau; tất cả exit 0:
 
 1. `rtk node scripts/npm-run.js run format:check` — PASS, exit 0.
 2. `rtk node scripts/npm-run.js run verify:no-explicit-any` — PASS, exit 0.
 3. `rtk node scripts/npm-run.js run verify:dedupe` — PASS, diff-only, không có SonarJS duplicate-code findings, exit 0.
 4. `rtk node scripts/npm-run.js run typecheck` — PASS, exit 0.
-5. `rtk node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" "src/lib/__tests__/excel-workbook.test.ts"` — PASS, 2 files/11 tests, exit 0.
+5. `rtk node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" "src/lib/__tests__/excel-workbook.test.ts"` — PASS, 2 files/13 tests, exit 0.
 6. `rtk node scripts/npm-run.js run react-doctor` — PASS, diff scan 4 files, score 100/100, no issues, exit 0.
 
-`git diff --check` và Lefthook pre-commit cũng pass cho các commit remediation; module builder 303 dòng, validation helper 58 dòng, test 319 dòng và test support 184 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả `Uint8Array` browser-compatible và để Phase 3 nối `downloadBlob` sau session checks.
+- `rtk openspec validate add-device-quota-draft-excel-export --strict --no-interactive` — PASS, exit 0.
+- `git diff --check` — PASS, exit 0. Lefthook pre-commit cũng pass cho các commit remediation.
+- Module builder 306 dòng, validation helper 58 dòng, test 340 dòng và test support 200 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả `Uint8Array` browser-compatible và để Phase 3 nối `downloadBlob` sau session checks.
 
 Tasks 2.1–2.7 được đánh dấu sau evidence này; mục `2.8 USER REVIEW — Phase 2 approval` vẫn unchecked. Không thay đổi checkbox Phase 3.
