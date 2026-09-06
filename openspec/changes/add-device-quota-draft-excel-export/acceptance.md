@@ -78,31 +78,31 @@ không phải PASS.
 Tất cả checklist dưới đây phải được đánh dấu khi có artifact/evidence tương
 ứng. Các yêu cầu này áp dụng cho workbook cuối cùng, không chỉ DOM preview.
 
-- [ ] Workbook có đúng một worksheet và phần bảng có đúng bảy cột theo thứ tự
+- [x] Workbook có đúng một worksheet và phần bảng có đúng bảy cột theo thứ tự
       `TT`, `Chủng loại`, `Đơn vị tính`, `Số lượng định mức`, `ĐVT áp dụng`,
       `SL đề xuất`, `Ghi chú`.
-- [ ] `sourcePages`, `sourceReference`, `parentSourceIdentifier` và identity
+- [x] `sourcePages`, `sourceReference`, `parentSourceIdentifier` và identity
       source/order/catalog chỉ dùng để validate fixture/snapshot; không có cột
       bổ sung, cột ẩn, comment, sheet phụ hoặc ô user-facing nào chứa chúng,
       và chỉ bốn cột source hợp lệ render nội dung nguồn.
-- [ ] Tiêu đề appendix giữ nguyên source title; metadata block riêng chứa tên
+- [x] Tiêu đề appendix giữ nguyên source title; metadata block riêng chứa tên
       đơn vị, draft status, revision và saved timestamp.
-- [ ] Metadata không tạo thêm cột, chữ ký, approval field hoặc import marker.
-- [ ] 42 dòng source xuất hiện đủ, đúng thứ tự, section rows và quan hệ
+- [x] Metadata không tạo thêm cột, chữ ký, approval field hoặc import marker.
+- [x] 42 dòng source xuất hiện đủ, đúng thứ tự, section rows và quan hệ
       top-level/child được giữ; không có row ngoài appendix.
 - [ ] `Số lượng định mức` giữ toàn bộ điều kiện multiline; wrap text và chiều
       cao dòng đủ đọc khi mở worksheet và khi in.
-- [ ] `ĐVT áp dụng = null` là blank, không có regulatory fallback; quantity null
+- [x] `ĐVT áp dụng = null` là blank, không có regulatory fallback; quantity null
       là blank; quantity 0 là numeric zero.
-- [ ] Excluded row ở đúng vị trí, giữ proposal values và note cũ; nền xám,
+- [x] Excluded row ở đúng vị trí, giữ proposal values và note cũ; nền xám,
       strike chỉ ba proposal cells, source cells không strike.
-- [ ] Marker `[Đã loại khỏi đề xuất]` xuất hiện đúng một lần trong notes của
+- [x] Marker `[Đã loại khỏi đề xuất]` xuất hiện đúng một lần trong notes của
       excluded row.
 - [ ] Ba footnotes nguồn xuất hiện sau bảng, đúng thứ tự, nguyên văn, không bị
       strike/cắt.
 - [ ] Worksheet A4 landscape, fit-to-width một trang, fit-to-height unlimited;
       header bảng lặp trên trang tiếp theo.
-- [ ] Filename không có ký tự Excel cấm, không lộ secret, và xác định được
+- [x] Filename không có ký tự Excel cấm, không lộ secret, và xác định được
       document/unit/revision theo quy ước đã duyệt.
 - [ ] Khi branding thiếu/mismatch, export bị khóa và có status/retry; không
       dùng tên đơn vị từ tenant trước.
@@ -180,7 +180,9 @@ approve.
 
 - [ ] Visual/print inspection pass theo layout checklist.
 - [ ] Excel helper, category import, quota import và page coexistence regression
-      pass.
+      đã được quan sát ở mức provisional: `5 files / 78 tests`, exit `0`; chưa
+      coi là acceptance PASS khi Phase 3.5 aggregate/static/user-review còn
+      hard-block.
 - [ ] Evidence gắn exact commit; mọi timeout/baseline noise được ghi trạng thái
       riêng, không hạ thành PASS.
 - [ ] `USER REVIEW — Phase 4 closeout` nhận explicit approval.

@@ -80,7 +80,7 @@ const draftSnapshot = (revision: number, item = draftItem) => ({
   draft: {
     id: "draft-1",
     don_vi: 1,
-    catalog_version_id: "catalog-1",
+    catalog_version_id: "00000000-0000-4000-8000-000000000001",
     status: "draft",
     revision,
     created_by: 7,
@@ -103,6 +103,7 @@ const regulatoryCatalog = {
     source_pdf_sha256: "sha256",
   },
   catalog_version: {
+    id: "00000000-0000-4000-8000-000000000001",
     artifact_id: "artifact-1",
     appendix_json_path: "fixtures/source.json",
     appendix_json_sha256: "json-sha256",
