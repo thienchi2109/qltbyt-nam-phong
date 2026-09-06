@@ -16,6 +16,7 @@ import type {
   DeviceQuotaRegulatoryCatalogRow,
 } from "../device-quota-draft-catalog-types"
 import {
+  DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS,
   DEVICE_QUOTA_DRAFT_EXPORT_HEADERS,
   DEVICE_QUOTA_DRAFT_EXPORT_LEAD_IN,
   DEVICE_QUOTA_DRAFT_EXPORT_MARKER,
@@ -365,6 +366,25 @@ describe("device quota draft catalog Excel export", () => {
     expect([1, 2, 3, 4, 5, 6, 7].map((column) => worksheet.getColumn(column).width)).toEqual([
       7, 32, 13, 64, 15, 14, 32,
     ])
+
+    const narrowColumnValue = "X".repeat(104)
+    const narrowColumnWorksheet = (
+      await loadWorkbook({
+        ...snapshot,
+        rows: snapshot.rows.map((row) =>
+          row.type === "item" && row.sourceIdentifier === "1a"
+            ? { ...row, regulatoryUnit: narrowColumnValue }
+            : row
+        ),
+      })
+    ).worksheets[0]
+    expect(narrowColumnWorksheet).toBeDefined()
+    if (!narrowColumnWorksheet) return
+
+    const narrowColumnRow = narrowColumnWorksheet.getRow(rowNumberForSourceId("1a"))
+    const expectedWrappedHeight =
+      Math.ceil(narrowColumnValue.length / DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS[2]) * 15
+    expect(narrowColumnRow.height).toBeGreaterThanOrEqual(expectedWrappedHeight)
 
     expect(worksheet.getCell(1, 1).font).toMatchObject({
       name: "Times New Roman",
