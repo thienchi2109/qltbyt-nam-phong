@@ -331,6 +331,17 @@ describe("device quota draft catalog Excel export", () => {
     expect(completeWorksheet?.getCell(5, 1).value).toBe("Bản nháp — Đã đủ dữ liệu")
   })
 
+  it("rejects negative saved proposal quantities before rendering", async () => {
+    const snapshot = makeSnapshot()
+    const rows = snapshot.rows.map((row) =>
+      row.type === "item" && row.sourceIdentifier === "1b" ? { ...row, appliedQuantity: -1 } : row
+    )
+
+    await expect(createDeviceQuotaDraftCatalogWorkbook({ ...snapshot, rows })).rejects.toThrow(
+      "Invalid applied quantity"
+    )
+  })
+
   it("serializes with the required print layout, styles, widths, freeze pane, and dynamic wrapped heights", async () => {
     const snapshot = makeSnapshot()
     const workbook = await loadWorkbook(snapshot)
