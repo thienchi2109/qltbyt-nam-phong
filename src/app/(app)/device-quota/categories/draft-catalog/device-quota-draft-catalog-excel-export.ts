@@ -213,9 +213,10 @@ function estimateLineCount(value: ExportCellValue, width: number): number {
     .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / width)), 0)
 }
 
-function setDynamicHeight(row: Row, values: readonly ExportCellValue[], width = 32): void {
+function setDynamicHeight(row: Row, values: readonly ExportCellValue[]): void {
   const lineCount = values.reduce<number>(
-    (max, value, index) => Math.max(max, estimateLineCount(value, index === 3 ? 64 : width)),
+    (max, value, index) =>
+      Math.max(max, estimateLineCount(value, DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS[index])),
     1
   )
   row.height = Math.max(18, lineCount * 15)
