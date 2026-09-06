@@ -35,6 +35,8 @@ export const DEVICE_QUOTA_DRAFT_EXPORT_MARKER = DEVICE_QUOTA_DRAFT_EXPORT_EXCLUD
 export const DEVICE_QUOTA_DRAFT_EXPORT_EXCLUDED_FILL = "FFE5E7EB"
 /** Fixed printable widths for columns A through G. */
 export const DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS = [7, 32, 13, 64, 15, 14, 32] as const
+const MERGED_SECTION_WIDTH =
+  DEVICE_QUOTA_DRAFT_EXPORT_COLUMN_WIDTHS.reduce((total, width) => total + width, 0) + 2
 
 type ExportCellValue = string | number
 
@@ -245,7 +247,7 @@ function renderTable(worksheet: Worksheet, snapshot: DeviceQuotaDraftCatalogExpo
       row.getCell(1).font = { ...DEFAULT_FONT, bold: true }
       row.getCell(1).alignment = { vertical: "middle", wrapText: true }
       row.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE2F0D9" } }
-      row.height = 24
+      row.height = Math.max(24, estimateLineCount(values[0], MERGED_SECTION_WIDTH) * 15)
     } else if (sourceRow.isExcluded) {
       styleExcludedRow(row)
     }
