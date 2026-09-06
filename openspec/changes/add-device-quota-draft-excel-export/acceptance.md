@@ -142,14 +142,41 @@ vẫn phải unchecked nếu chưa có phê duyệt trực tiếp.
 ### Phase 3
 
 - [x] User-event Red → Green pass cho role/unit/dirty/pending/missing/error/
-      retry/duplicate/identity cases.
-- [x] Snapshot coherence chứng minh server revision/updated_at và matched
-      catalog/footnotes dùng chung; branding id guard pass.
+      retry/duplicate/identity cases ở client; strict cross-layer tenant claim
+      không thuộc evidence client-only này.
+- [ ] Snapshot coherence strict: server revision/updated_at và saved
+      catalog/footnotes đã được kiểm tra ở client, nhưng actual catalog UUID
+      equality và current-unit/branding cross-layer alignment chưa chứng minh
+      được; chuyển thành blocker Phase 3.5.
 - [x] Required format, no-explicit-any, diff dedupe, typecheck, focused Vitest
       và react-doctor pass trên cùng commit.
 - [ ] `USER REVIEW — Phase 3 approval` nhận explicit approval.
 
+### Phase 3.5 — Cross-layer catalog/tenant coherence (blocking Phase 4)
+
+- [ ] Forward-only RPC SQL migration trả actual catalog version UUID hoặc query
+      đúng requested version; không giả gắn `draft.catalog_version_id` vào
+      canonical response.
+- [ ] Client parser/query/context enforce strict equality với
+      `draft.catalog_version_id` và fail closed khi thiếu/mismatch UUID.
+- [ ] Trusted RPC tenant claims và branding resolution align với
+      `current_don_vi ?? don_vi` cho `global`/`admin`/`to_qltb`, không nới tenant
+      isolation.
+- [ ] TDD negative authorization/tenant tests cho catalog mismatch, branding
+      cross-tenant và role normalization.
+- [ ] SQL Database Quality Gate static và Oracle baseline-forward pass trên
+      cùng exact commit; ghi riêng hai lane và aggregate chỉ PASS khi cả hai
+      pass.
+- [ ] Independent review, explicit USER REVIEW và operation-specific approval
+      cho mọi live-write/apply; chưa apply migration hoặc live write.
+- [ ] Phase 4 chỉ được mở sau khi toàn bộ Phase 3.5 implementation, gates và
+      approval hoàn tất.
+- [ ] `USER REVIEW — Phase 3.5 approval` nhận explicit approval.
+
 ### Phase 4
+
+Phase 4 bị hard-block cho tới khi toàn bộ Phase 3.5 được implement, verify và
+approve.
 
 - [ ] Visual/print inspection pass theo layout checklist.
 - [ ] Excel helper, category import, quota import và page coexistence regression

@@ -114,10 +114,13 @@ không đổi active category/import contracts.
       stale.
 - [x] 3.3 Chạy focused Red:
       `node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx"`.
-- [x] 3.4 Thêm context export nội bộ tối thiểu từ cùng server draft/catalog
+- [ ] 3.4 Thêm context export nội bộ tối thiểu từ cùng server draft/catalog
       snapshot; revision/updated_at phải từ saved server response, không từ
       local staged state. Nối branding bằng `useTenantBranding` với id-match
-      guard; không tạo public API/RPC.
+      guard; không tạo public API/RPC. Client-side rows/revision và branding
+      guard đã có evidence, nhưng strict catalog UUID equality và trusted
+      current-unit coherence chưa thể chứng minh từ payload hiện tại; phần này
+      bị giữ unchecked và chuyển sang Phase 3.5.
 - [x] 3.5 Nối editor qua `HierarchicalEditorToolbar.actions`, giữ Save và
       existing mutation state; thêm status/toast retry tiếng Việt và duplicate
       lock.
@@ -138,12 +141,47 @@ không đổi active category/import contracts.
 - [ ] 3.8 `USER REVIEW — Phase 3 approval:` người dùng duyệt interaction và
       quyền trước khi visual/print closeout.
 
-Exit criteria: user-event matrix pass, snapshot/branding coherence pass, no
-duplicate/no refetch/no Save evidence pass, required TS/React gates pass.
+Exit criteria: user-event matrix pass, client-side saved-snapshot/branding
+guards pass, no duplicate/no refetch/no Save evidence pass, required TS/React
+gates pass. Cross-layer catalog/tenant coherence remains the blocking Phase 3.5
+exit criterion before Phase 4.
+
+## Phase 3.5: Cross-layer catalog/tenant coherence (blocking Phase 4)
+
+Boundary: forward-only RPC/query/branding alignment và database-quality evidence
+cho các contract mà client-only Phase 3 không thể chứng minh. Không thực hiện
+trong Phase 3; mọi checkbox và user review dưới đây phải còn unchecked cho tới
+khi có implementation, gate và phê duyệt riêng.
+
+- [ ] 3.5.1 Tạo forward-only RPC SQL migration trả actual catalog version UUID
+      (hoặc query đúng requested version), không giả gắn
+      `draft.catalog_version_id` vào canonical response.
+- [ ] 3.5.2 Nối parser/query/export context để strict-equality với
+      `draft.catalog_version_id`, fail closed khi thiếu/mismatch UUID hoặc
+      catalog payload không chứng minh được version.
+- [ ] 3.5.3 Align trusted RPC tenant claims và branding resolution với
+      `current_don_vi ?? don_vi` cho `global`/`admin`/`to_qltb`, không nới tenant
+      isolation và không dùng raw `don_vi` sai tenant.
+- [ ] 3.5.4 Viết TDD negative authorization/tenant tests cho mismatch unit,
+      cross-tenant branding và role normalization; chứng minh không rò rỉ
+      context hoặc workbook.
+- [ ] 3.5.5 Chạy SQL Database Quality Gate static và Oracle baseline-forward
+      trên cùng exact implementation commit; ghi static/baseline-forward riêng
+      và chỉ coi aggregate PASS khi cả hai pass.
+- [ ] 3.5.6 Có independent review, explicit USER REVIEW và operation-specific
+      approval trước mọi live-write/apply; không apply migration trong task này.
+- [ ] 3.5.7 Giữ Phase 4 hard-blocked cho tới khi toàn bộ Phase 3.5 và approval
+      hoàn tất; không tick layout/regression closeout dựa trên client-only
+      evidence.
+
+Exit criteria: actual catalog UUID, trusted tenant/branding identity, negative
+authorization tests và cả hai database-quality lanes có evidence trên cùng
+commit; user review và live-write approval rõ ràng.
 
 ## Phase 4: Visual, print và regression closeout
 
 Boundary: kiểm tra artifact/UI đã nối, hồi quy các luồng liên quan và closeout.
+Phase 4 bị hard-block cho tới khi Phase 3.5 được implement, verify và approve.
 
 - [ ] 4.1 Kiểm tra sample/UI ở A4 landscape: width một trang, height unlimited,
       header lặp, title/metadata/table/footnotes đủ, multiline không bị cắt.

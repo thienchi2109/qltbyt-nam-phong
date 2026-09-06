@@ -66,7 +66,7 @@ workbook export, không phải tiện ích export dùng chung. Nếu module ho�
 - ba footnotes nguồn, giữ đúng thứ tự và text;
 - identity của user/unit dùng để hủy tác vụ nếu session đổi trong lúc tạo Blob.
 
-Identity authoritative của export là cùng authenticated session đã được
+Identity client-side của export là cùng authenticated session đã được
 `useDeviceQuotaDraftCatalog` chấp nhận: `userId` hợp lệ của session và
 `resolvedUnitId = current_don_vi ?? don_vi`, trong đó `resolvedUnitId` phải là
 số dương. Nếu thiếu `userId` hợp lệ hoặc `resolvedUnitId` không dương, hook/page
@@ -74,14 +74,20 @@ không tạo export context và builder không được gọi. Khi access contra
 cho phép truy cập, action được ẩn; nếu quyền đã được xác định nhưng identity
 tạm thời không còn, action bị khóa với trạng thái thiếu identity. Nếu identity
 biến mất trong lúc tạo Blob, phải hủy tác vụ trước khi tải xuống và không dùng
-Blob cũ. Không tạo tenant selector mới hoặc public API cho việc này.
+Blob cũ. Không tạo tenant selector mới hoặc public API cho việc này. Đây là
+client-side identity guard; trusted RPC tenant claim và branding resolution
+phải được align qua Phase 3.5 trước khi coi đây là cross-layer coherence.
 
-Snapshot chỉ hợp lệ khi `draftQuery.data` và `catalogQuery.data` cùng
+Target contract yêu cầu `draftQuery.data` và `catalogQuery.data` cùng
 `catalog_version_id`, cùng unit và cùng lần accepted server state. `revision` và
 `updated_at` phải lấy trực tiếp từ saved draft response; không dùng
 `localRevision`, local staged `rows` hoặc metadata của một cache mới hơn để ghép
 với `lastSavedRows`. `lastSavedRows` vẫn là seam hiển thị saved rows đã được
 chấp nhận, nhưng context export phải giữ cặp rows/metadata/footnotes nguyên tử.
+Phase 3 đã chứng minh saved rows/revision và carried metadata ở client; nó chưa
+được phép claim strict catalog UUID equality vì canonical
+`device_quota_regulatory_catalog_get()` hiện không trả actual `v.id`. Strict
+equality/fail-closed là blocker của Phase 3.5.
 
 Tên đơn vị không lấy từ session `don_vi` vì session không có tên tin cậy.
 `useTenantBranding` có thể giữ dữ liệu cũ trong `keepPreviousData`, do đó builder
@@ -89,9 +95,31 @@ chỉ nhận tên khi `branding.id === snapshot.unitId` và `name.trim()` không
 Thiếu hoặc mismatch branding là trạng thái không thể export, có status và
 retry rõ ràng.
 
-Khi bắt đầu export, đóng băng identity `(userId, unitId, revision, savedAt)`.
-Nếu session, đơn vị hoặc accepted snapshot thay đổi trước khi `downloadBlob`
-được gọi, hủy tác vụ và không tải file cũ. Việc này không refetch để tự sửa.
+Khi bắt đầu export, đóng băng identity `(userId, unitId, revision, savedAt,
+catalogVersionId, sourcePdfMarker, sourcePdfSha256)`. Nếu session, đơn vị hoặc
+accepted snapshot thay đổi trước khi `downloadBlob` được gọi, hủy tác vụ và
+không tải file cũ. Việc này không refetch để tự sửa. Ref hiện được đồng bộ bằng
+passive effect; chưa có deterministic test chứng minh một race giữa commit và
+effect, nên đây là residual risk cần xem lại trong Phase 3.5/Phase 4 review,
+không được tự suy diễn thành PASS.
+
+## Phase boundary: Phase 3.5 cross-layer catalog/tenant coherence
+
+Phase 3 chỉ sở hữu client hook/page/editor wiring và user-event contract. Triage
+đã xác minh hai blocker không thể sửa trung thực bằng client-only code:
+
+- `device_quota_regulatory_catalog_get()` trả canonical catalog nhưng payload
+  không có actual UUID `v.id`; create/open có thể reopen draft cũ khi canonical
+  catalog mới. Client không được giả gắn `draft.catalog_version_id` vào response.
+- Draft/export dùng `current_don_vi ?? don_vi`, trong khi trusted RPC proxy claims
+  và branding DB function hiện dùng raw `don_vi`; client không được tuyên bố
+  cross-layer tenant coherence hoặc tự nới tenant isolation.
+
+Phase 3.5 là change boundary riêng cho forward-only RPC/query/branding alignment,
+negative authorization tests và SQL Database Quality Gate (static + Oracle
+baseline-forward). Không tạo/apply migration, không live write và không đổi
+RPC/SQL trong Phase 3. Phase 4 bị hard-block cho đến khi Phase 3.5 có exact-commit
+evidence và explicit review/operation-specific approval.
 
 ### Eligibility and state
 
