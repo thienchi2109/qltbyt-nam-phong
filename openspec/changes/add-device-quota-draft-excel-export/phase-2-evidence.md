@@ -197,4 +197,12 @@ Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên 
 - `git diff --check` — PASS, exit 0. Lefthook pre-commit cũng pass cho các commit remediation.
 - Module builder 306 dòng, validation helper 58 dòng, test 340 dòng và test support 200 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả `Uint8Array` browser-compatible và để Phase 3 nối `downloadBlob` sau session checks.
 
-Tasks 2.1–2.7 được đánh dấu sau evidence này; mục `2.8 USER REVIEW — Phase 2 approval` vẫn unchecked. Không thay đổi checkbox Phase 3.
+Tasks 2.1–2.7 được đánh dấu sau evidence này. Không thay đổi checkbox Phase 3.
+
+## USER REVIEW và landing
+
+- Ngày 2026-09-06, sau lượt review cuối trực tiếp và dynamic verification trên
+  sample thật, người dùng xác nhận `Ok` và yêu cầu land trực tiếp vào `main`
+  không qua PR.
+- Mục `2.8 USER REVIEW — Phase 2 approval` được đánh dấu theo phê duyệt này;
+  Phase 3 chưa bắt đầu.

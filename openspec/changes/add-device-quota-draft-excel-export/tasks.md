@@ -89,7 +89,7 @@ runtime tương ứng; lỗi import/setup đơn thuần không phải bằng ch�
       `src/lib/__tests__/excel-workbook.test.ts`; review spec rồi chất lượng,
       ghi Red/Green/gates vào evidence trước commit/push. Kiểm tra tái sử dụng
       liên file bằng Code Review Graph, GitNexus và `rg`; không chạy dedupe toàn repo.
-- [ ] 2.8 `USER REVIEW — Phase 2 approval:` người dùng duyệt builder, sample
+- [x] 2.8 `USER REVIEW — Phase 2 approval:` người dùng duyệt builder, sample
       artifact và filename trước khi nối vào editor.
 
 Exit criteria: focused workbook tests pass; sample mở được, đúng bảy cột/42
