@@ -149,6 +149,15 @@ function validateSnapshot(snapshot: DeviceQuotaDraftCatalogExportSnapshot): void
   if (sectionCount !== 5 || itemCount !== 37) {
     throw new Error("Draft snapshot must contain 5 sections and 37 items")
   }
+  const sourceIdentifiers = new Set(snapshot.rows.map((row) => row.sourceIdentifier))
+  if (
+    snapshot.rows.some(
+      (row) =>
+        row.parentSourceIdentifier !== null && !sourceIdentifiers.has(row.parentSourceIdentifier)
+    )
+  ) {
+    throw new Error("Invalid source hierarchy")
+  }
   if (snapshot.footnotes.length !== 3) throw new Error("Draft snapshot must contain 3 footnotes")
   if (snapshot.footnotes.some((footnote) => !footnote.trim()))
     throw new Error("Footnotes cannot be blank")
