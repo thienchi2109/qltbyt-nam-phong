@@ -158,6 +158,16 @@ function validateSnapshot(snapshot: DeviceQuotaDraftCatalogExportSnapshot): void
   ) {
     throw new Error("Invalid source hierarchy")
   }
+  if (
+    snapshot.rows.some(
+      (row) =>
+        row.type === "item" &&
+        row.appliedQuantity !== null &&
+        (!Number.isInteger(row.appliedQuantity) || row.appliedQuantity < 0)
+    )
+  ) {
+    throw new Error("Invalid applied quantity")
+  }
   if (snapshot.footnotes.length !== 3) throw new Error("Draft snapshot must contain 3 footnotes")
   if (snapshot.footnotes.some((footnote) => !footnote.trim()))
     throw new Error("Footnotes cannot be blank")
