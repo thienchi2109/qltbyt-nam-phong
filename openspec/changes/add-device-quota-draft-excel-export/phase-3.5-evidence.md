@@ -149,8 +149,9 @@ run ID `phase35-tenant-sqlstate-70bc703b-20260906-1420`,
 and no candidate non-warning. The control Phase 3.5 `42501` result remains a
 baseline warning while the candidate passes.
 
-Aggregate status is `BLOCKING / INCOMPLETE` solely because static is `FAILED`.
-There was no live apply/write. `tasks.md` was checked: Phase 3.5 items
+At that pre-apply checkpoint, aggregate status was `BLOCKING / INCOMPLETE`
+solely because static was `FAILED`; there was no live apply/write at that
+point. `tasks.md` was checked: Phase 3.5 items
 3.5.1–3.5.7 and Phase 4 items 4.1–4.7 remain unchecked; no checkbox was
 changed. USER REVIEW for Phase 3.5 has not been reached and Phase 4 remains
 untouched.
@@ -167,7 +168,8 @@ Baseline-forward ghi nhận `FAILED` với digest
 `bf8a2ee1012bd87accebd573d1fc0a86b78e2a5518152fb3b332559020a96d18`; test
 Phase 3.5 vẫn `P0001` permission-denied, fingerprint `b76a747b...`, sau khi
 đã bỏ actor lookup; statement chính xác vẫn chưa xác định và không điều tra
-thêm. Aggregate là `BLOCKING / INCOMPLETE`; không có live write. Phase 3.5
+thêm. Tại checkpoint đó aggregate là `BLOCKING / INCOMPLETE`; chưa có live
+write. Phase 3.5
 gate/task và Phase 4 vẫn unchecked.
 
 Functional gates `121/121` và các gate TS/React/OpenSpec bắt buộc đã PASS;
@@ -177,6 +179,44 @@ USER REVIEW.
 Migration `20260906090000_device_quota_draft_excel_export_coherence.sql` và
 test `supabase/tests/device_quota_draft_excel_export_phase35.sql` đã được tạo và
 đăng ký với `requiredForMigrations`, nhưng static/Oracle baseline-forward là
-gate của parent và chưa được tuyên bố PASS trong bằng chứng này. Không có live
-write. Luna đã sở hữu implementation và refactor trong scope; parent chỉ xác
+gate của parent và chưa được tuyên bố PASS trong bằng chứng này; tại checkpoint
+đó chưa có live write. Luna đã sở hữu implementation và refactor trong scope; parent chỉ xác
 minh/review, chạy gate, independent review và reconciliation cuối.
+
+## Operational apply and Oracle catch-up closeout
+
+Sau khi maintainer/user explicitly authorized static-gate bypass, live apply,
+và qltbyt_test catch-up, migration `device_quota_draft_excel_export_coherence`
+đã được apply thành công qua Supabase MCP. Live migration version là
+`20260906144040`. Stored raw SQL SHA là
+`28d296f7a23150cdded8b7ad2fce4f73e3660259c88a92bee204bb1652fcfbb4`; canonical
+no-terminal-LF SHA là
+`da54e1f90cdec6af7524facce9602ddd446b1e111f0f3a43f5030659bd5385a3`.
+
+Live read-back xác nhận catalog getter trả về catalog-version identity; branding
+không còn `_get_jwt_claim`, đọc trực tiếp `request.jwt.claims`, và
+tenant-mismatch dùng SQLSTATE `42501`. ACL của catalog getter là
+`authenticated=true`, `anon=false`, `public=false`. Static không được tuyên bố
+PASS: apply dùng explicit maintainer waiver cho unchanged
+`device_quota_regulatory_catalog_get()` GRANT false positive. Post-apply
+advisors có các security warnings `function_search_path_mutable` và
+`authenticated_security_definer_function_executable`; không có relevant
+performance lint. Đây là follow-up/advisor warnings, không mở rộng scope
+Phase 3.5.
+
+qltbyt_test trước catch-up ở trạng thái healthy schema v2, high-water
+`20260905104446`, với 12 migrations confirmed. Các lần catch-up đầu tiên dừng
+trước mutation do manifest raw-SQL SHA không khớp canonical SHA; baseline vẫn
+healthy. Sau khi sửa temporary manifest sang canonical hash, verification là
+`13/13`.
+
+Catch-up PASS có run ID `phase35-postlive-catchup-20260906-v2`: schema v2
+healthy, generation trùng run ID, high-water `20260906144040`, sourceCommit
+`34aaca83877034cbcab7900b337dc95da8e4c847`, và 13 migrations confirmed.
+Independent qltbyt_test read-back xác nhận migration version/name/canonical SHA
+exact, branding/catalog invariants true, không có PostgreSQL `CREATE` trên
+schema `public`, và số object `dq_*` trong database là `0`.
+
+Đây là operational apply/catch-up closeout, không phải static PASS và không
+phải USER REVIEW approval. Phase 3.5 và Phase 4 tasks vẫn unchecked; không có
+Phase 4 work hoặc live write nào khác được thực hiện.
