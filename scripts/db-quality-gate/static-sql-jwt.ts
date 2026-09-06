@@ -33,30 +33,58 @@ export function isAssignmentStatement(tokens: SqlToken[], index: number): boolea
   return index === 0 || [";", "begin", "else", "then"].includes(tokens[index - 1]?.value)
 }
 
+type DirectClaimName = "app_role" | "role" | "user_id"
+const supportedJsonCasts: Array<"json" | "jsonb"> = ["json", "jsonb"]
+
+function directClaimExpression(claim: DirectClaimName, cast: "json" | "jsonb") {
+  return [
+    "nullif",
+    "(",
+    "current_setting",
+    "(",
+    "request.jwt.claims",
+    ",",
+    "true",
+    ")",
+    "::",
+    cast,
+    "->>",
+    claim,
+    ",",
+    "",
+    ")",
+  ]
+}
+
 function isDirectClaimAssignment(expression: SqlToken[], claim: "app_role" | "user_id"): boolean {
   const values = expression.map((token) => token.value)
 
-  return ["json", "jsonb"].some(
-    (cast) =>
-      JSON.stringify(values) ===
-      JSON.stringify([
-        "nullif",
-        "(",
-        "current_setting",
-        "(",
-        "request.jwt.claims",
-        ",",
-        "true",
-        ")",
-        "::",
-        cast,
-        "->>",
-        claim,
-        ",",
-        "",
-        ")",
-      ])
+  return supportedJsonCasts.some(
+    (cast) => JSON.stringify(values) === JSON.stringify(directClaimExpression(claim, cast))
   )
+}
+
+/** Recognizes only a direct, empty-safe app_role -> role fallback. */
+function isDirectRoleFallbackAssignment(expression: SqlToken[]): boolean {
+  const values = expression.map((token) => token.value)
+
+  return supportedJsonCasts.some((cast) => {
+    const expected = [
+      "lower",
+      "(",
+      "coalesce",
+      "(",
+      ...directClaimExpression("app_role", cast),
+      ",",
+      ...directClaimExpression("role", cast),
+      ",",
+      "",
+      ")",
+      ")",
+    ]
+
+    return JSON.stringify(values) === JSON.stringify(expected)
+  })
 }
 
 function hasClaimAssignment(
@@ -75,11 +103,12 @@ function hasClaimAssignment(
     const assignmentCount = tokens.filter(
       (token, cursor) => token.value === variable.value && isAssignmentStatement(tokens, cursor)
     ).length
-    if (
-      !isConditionallyNested(tokens, index) &&
-      isDirectClaimAssignment(tokens.slice(index + 2, end), claim) &&
-      assignmentCount === 1
-    ) {
+    const expression = tokens.slice(index + 2, end)
+    const directAssignment =
+      isDirectClaimAssignment(expression, claim) ||
+      (claim === "app_role" && isDirectRoleFallbackAssignment(expression))
+
+    if (!isConditionallyNested(tokens, index) && directAssignment && assignmentCount === 1) {
       assignment = { end, start: index, variable: variable.value }
     }
   }

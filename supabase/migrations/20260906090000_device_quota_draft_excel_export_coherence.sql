@@ -225,7 +225,6 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_role text;
-  v_role_fallback text;
   v_effective_role text;
   v_user_id text;
   v_claim_don_vi_text text;
@@ -234,25 +233,45 @@ DECLARE
   v_claim_current_don_vi bigint;
   v_effective_id bigint;
 BEGIN
-  v_role := lower(coalesce(public._get_jwt_claim('app_role')::text, ''));
-  v_role_fallback := lower(coalesce(public._get_jwt_claim('role')::text, ''));
-  IF v_role = '' THEN
-    v_role := v_role_fallback;
+  BEGIN
+    v_role := lower(
+      coalesce(
+        nullif(current_setting('request.jwt.claims', true)::jsonb->>'app_role', ''),
+        nullif(current_setting('request.jwt.claims', true)::jsonb->>'role', ''),
+        ''
+      )
+    );
+    v_user_id := nullif(
+      current_setting('request.jwt.claims', true)::jsonb->>'user_id',
+      ''
+    );
+    v_claim_don_vi_text := nullif(
+      current_setting('request.jwt.claims', true)::jsonb->>'don_vi',
+      ''
+    );
+    v_claim_current_don_vi_text := nullif(
+      current_setting('request.jwt.claims', true)::jsonb->>'current_don_vi',
+      ''
+    );
+  EXCEPTION WHEN OTHERS THEN
+    RAISE EXCEPTION 'Missing or malformed JWT claims' USING errcode = '42501';
+  END;
+
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
   END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
+  END IF;
+  IF v_user_id !~ '^[0-9]+$' THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
+  END IF;
+
   v_effective_role := CASE
     WHEN v_role = 'admin' THEN 'global'
     ELSE v_role
   END;
 
-  v_user_id := NULLIF(public._get_jwt_claim('user_id'), '');
-  IF v_effective_role IS NULL OR v_effective_role = '' THEN
-    RAISE EXCEPTION 'Missing role claim' USING errcode = '42501';
-  END IF;
-  IF v_user_id IS NULL OR v_user_id !~ '^[0-9]+$' THEN
-    RAISE EXCEPTION 'Missing user_id claim' USING errcode = '42501';
-  END IF;
-  v_claim_don_vi_text := NULLIF(public._get_jwt_claim('don_vi'), '');
-  v_claim_current_don_vi_text := NULLIF(public._get_jwt_claim('current_don_vi'), '');
   IF v_claim_don_vi_text IS NOT NULL AND v_claim_don_vi_text !~ '^[0-9]+$' THEN
     RAISE EXCEPTION 'Invalid don_vi claim' USING errcode = '42501';
   END IF;

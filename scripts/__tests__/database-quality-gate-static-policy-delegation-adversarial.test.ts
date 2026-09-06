@@ -31,6 +31,32 @@ function directGuardFunction(signature: string, revoke: string): string {
   ].join("\n")
 }
 
+const DIRECT_ROLE_FALLBACK_EXPRESSION =
+  "lower(COALESCE(NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'app_role', ''), NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'role', ''), ''))"
+
+function directRoleFallbackGuard(expression = DIRECT_ROLE_FALLBACK_EXPRESSION): string {
+  return [
+    "CREATE OR REPLACE FUNCTION public._direct_role_fallback_guard() RETURNS void",
+    "LANGUAGE plpgsql AS $$",
+    "DECLARE",
+    "  v_role text;",
+    "  v_user_id text;",
+    "BEGIN",
+    "  v_role := " + expression + ";",
+    "  v_user_id := NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'user_id', '');",
+    "  IF v_role IS NULL OR v_role = '' THEN",
+    "    RAISE EXCEPTION 'permission_denied' USING errcode = '42501';",
+    "  END IF;",
+    "  IF v_user_id IS NULL THEN",
+    "    RAISE EXCEPTION 'permission_denied' USING errcode = '42501';",
+    "  END IF;",
+    "END;",
+    "$$;",
+    "REVOKE EXECUTE ON FUNCTION public._direct_role_fallback_guard()",
+    "  FROM PUBLIC, anon, authenticated;",
+  ].join("\n")
+}
+
 function internalModule(body: string, declaration = ""): string {
   return [
     "CREATE OR REPLACE FUNCTION public._module_operation() RETURNS void",
@@ -47,6 +73,60 @@ function internalModule(body: string, declaration = ""): string {
 }
 
 describe("database quality gate JWT delegation adversarial cases", () => {
+  it("accepts the exact direct app_role-to-role JWT fallback expression", async () => {
+    const result = await runCandidate(candidateSql(directRoleFallbackGuard()))
+
+    expect(result.findings).not.toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({ function: "public._direct_role_fallback_guard" }),
+        ruleId: "migration.jwt-guards",
+      })
+    )
+  })
+
+  it.each([
+    {
+      name: "a privileged constant fallback",
+      expression:
+        "lower(COALESCE(NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'app_role', ''), 'global'))",
+    },
+    {
+      name: "a wrong fallback claim key",
+      expression:
+        "lower(COALESCE(NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'app_role', ''), NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'permissions', ''), ''))",
+    },
+    {
+      name: "a helper fallback call",
+      expression:
+        "lower(COALESCE(NULLIF(current_setting('request.jwt.claims', true)::jsonb->>'app_role', ''), NULLIF(public._get_jwt_claim('role'), ''), ''))",
+    },
+    {
+      name: "a role reassignment before the guard",
+      expression: DIRECT_ROLE_FALLBACK_EXPRESSION,
+      mutate: (sql: string) =>
+        sql.replace(
+          "  IF v_role IS NULL OR v_role = '' THEN",
+          "  v_role := 'global';\n  IF v_role IS NULL OR v_role = '' THEN"
+        ),
+    },
+    {
+      name: "a non-fail-closed role guard",
+      expression: DIRECT_ROLE_FALLBACK_EXPRESSION,
+      mutate: (sql: string) =>
+        sql.replace("  IF v_role IS NULL OR v_role = '' THEN", "  IF v_role IS NULL THEN"),
+    },
+  ])("rejects $name", async ({ expression, mutate }) => {
+    const guard = directRoleFallbackGuard(expression)
+    const result = await runCandidate(candidateSql(mutate?.(guard) ?? guard))
+
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        evidence: expect.objectContaining({ function: "public._direct_role_fallback_guard" }),
+        ruleId: "migration.jwt-guards",
+      })
+    )
+  })
+
   it.each([
     {
       guard: CANONICAL_GUARD.replace("'{}'", `'{"app_role":"global","user_id":"1"}'`),
