@@ -5,9 +5,10 @@
 - Ngày kiểm tra: 2026-09-06.
 - Required base và starting `HEAD`: `0b88ec9e8331c511b35884513d0d262e9af81d7f`.
 - Starting review-failed implementation `HEAD`: `ec7652c13d708c00868c704dc3cbfc66cc582db3`.
-- Code/sample verification commit (đích của final gate chain): `8cb16c44ed0ed0e695f327e5b8f7450bd845fec1`.
+- Code/sample verification commit (đích của final gate chain): `663462fc5cf0afd0dbfe1ecd2bfcede326c41c04`.
 - Forward remediation commits: Cycle 1 Red `050fdf0223605ce4a0017ff39c6b9f7bbf31fdea` / Green `7394067351f64e5a54b473b3c14939bd12af5d37`; Cycle 2 Red `3cb5c0de57178153589a7888f42b1a9e55602587` / Green `3a63f97d04e1df5966389e10db688eaa6028edcb`; Cycle 3 Red `3442ad19c1e6865620f566ec2b74df3734162998` / Green `25e532f3c3bc2a87789e3ce0d058694849155ae4`.
 - Post-Green size refactor: `b955c850cb66a775757f927047e6794b5d590e01`; sample regeneration: `8cb16c44ed0ed0e695f327e5b8f7450bd845fec1`.
+- Focused review-fix commits: browser serialization Red `2ab57cb9e9a509068d48278d984ebd62a68e48d9` / Green `ecad87759cbdab2e54fe693388dee1d462e3a4f1`; merged-section height Red `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` / Green `577e344f5906d14a630a05ad76cbea26a56e6466`; post-Green fixture refactor `80e89031`; sample regeneration `663462fc`.
 - Boundary: chỉ builder/module/test/validation helper/sample/evidence/task checkboxes; không nối UI/editor, không RPC/query/mutation/SQL và không thay đổi Phase 3.
 
 ## Fixture và baseline
@@ -80,6 +81,55 @@ tiến hành forward trên `ec7652c1` và được lưu bằng các commit incre
   1 file/6 tests pass, exit 0. Module builder còn 301 dòng, helper 58 dòng và
   test 445 dòng; mọi file dưới hard ceiling 450.
 
+### Focused review-fix cycles — browser serialization and merged sections
+
+Hai contract gap dưới đây được phát hiện bởi focused review sau ba cycle
+remediation trước. Mỗi gap được làm theo một Red → Green cycle mới bằng commit
+incremental riêng; không relabel các run lịch sử.
+
+#### Review fix 1 — browser-compatible serialization
+
+- Contract gap hợp lệ: Phase 3 sẽ import builder vào client bundle, vì vậy
+  serializer không được phụ thuộc `Buffer.from`; payload trả về phải dùng được
+  trực tiếp làm browser bytes.
+- Red test commit: `2ab57cb9e9a509068d48278d984ebd62a68e48d9` thêm assertion
+  `serializes without requiring Node Buffer.from`, spy chỉ chặn nhánh
+  `Buffer.from` nhận Buffer để giữ lỗi là lỗi hành vi runtime.
+- Red command chính xác:
+  `rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1`.
+- Red expected: serializer resolve một `Uint8Array` browser-compatible ngay cả
+  khi `Buffer.from` không khả dụng.
+- Red actual: Vitest báo `promise rejected "Error: Buffer.from unavailable" instead of resolving`,
+  1 failed/6 passed trong 7 tests, exit 1; failure xảy ra sau khi test đã
+  render workbook nên không phải import/setup/type error.
+- Green runtime commit: `ecad87759cbdab2e54fe693388dee1d462e3a4f1` trả trực
+  tiếp bytes từ `writeBuffer()` qua `Uint8Array`, bỏ `Buffer.from` khỏi module
+  production.
+- Green command chính xác (cùng command trên): 1 file/7 tests pass, exit 0.
+
+#### Review fix 2 — dynamic height for merged section rows
+
+- Contract gap hợp lệ: section label dài là nội dung hợp lệ; merged A:G row
+  phải tính wrapped height theo tổng width hiệu dụng, không được fixed-height
+  override. Code cũ luôn ghi đè `row.height = 24`.
+- Red test commit: `fb4a3d4e56233589431a8fd9176a5d1e52c8da40` thêm section label
+  dài 400 ký tự và assertion height theo combined A:G widths.
+- Red command chính xác:
+  `rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1`.
+- Red expected: merged section row phải có height tối thiểu 45 points (3 dòng
+  theo tổng width 179).
+- Red actual: Vitest báo `expected 24 to be greater than or equal to 45`,
+  1 failed/7 passed trong 8 tests, exit 1; đây là lỗi height runtime thực sự.
+- Green runtime commit: `577e344f5906d14a630a05ad76cbea26a56e6466` tính
+  merged width từ A:G cộng 2 points padding, dùng `Math.max(24, computedHeight)`
+  và không còn ghi đè một height lớn hơn do nội dung.
+- Green command chính xác (cùng command trên): 1 file/8 tests pass, exit 0;
+  long-section height assertion pass.
+- Refactor sau Green: `80e89031` tách fixture/read-back helpers sang
+  `device-quota-draft-catalog-excel-export.test-support.ts`; focused test chạy
+  lại 1 file/8 tests pass, exit 0. Các file hiện tại lần lượt là builder 303,
+  validation helper 58, test 319 và support 184 dòng, đều dưới hard ceiling 450.
+
 ## Builder contract đã thực hiện
 
 - `DeviceQuotaDraftCatalogExportSnapshot` là `Readonly` snapshot; mapper chỉ trả tuple bảy cell và chỉ dùng bốn cột source A:D cùng ba cột proposal/notes E:G.
@@ -88,21 +138,22 @@ tiến hành forward trên `ec7652c1` và được lưu bằng các commit incre
 - Workbook có đúng một sheet `Danh mục dự thảo`, metadata A:G rows 1–7, row 8 blank, header row 9 và data từ row 10.
 - Source order/hierarchy giữ nguyên 5 section + 37 item; source name/quota multiline đầy đủ; `sourcePages`, `sourceReference`, `parentSourceIdentifier`, `sourceIdentifier`, source order và catalog/PDF identity chỉ được validation/fixture, không render.
 - Null applied unit/quantity là blank; zero là numeric `0`; notes giữ text. Excluded row giữ vị trí/values, fill `FFE5E7EB`, strike chỉ E:G và marker `[Đã loại khỏi đề xuất]` không lặp.
-- Sau table có một blank row và đúng ba footnote merged A:G. Layout đặt A4 landscape, paper size 9, fit width 1/height 0, repeat row `9:9`, no print area, freeze row 9, widths `7,32,13,64,15,14,32`, wrap/top alignment và dynamic row height theo chính width của từng cột.
+- Sau table có một blank row và đúng ba footnote merged A:G. Layout đặt A4 landscape, paper size 9, fit width 1/height 0, repeat row `9:9`, no print area, freeze row 9, widths `7,32,13,64,15,14,32`, wrap/top alignment và dynamic row height theo chính width của từng cột; section merge dùng combined A:G width cộng padding và minimum hợp lý.
 - Filename helper khóa mẫu `danh-muc-du-thao-don-vi-23-r4-20260901T083000Z.xlsx`, lấy `lastSavedAt` UTC thay vì thời điểm export.
 
 ## Sample artifact read-back
 
 Artifact: `openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx`.
 
-Regenerate command: `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts"` — 1 file/6 tests pass, exit 0.
+Regenerate command: `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.js run test:run -- --reporter verbose "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" 2>&1` — 1 file/8 tests pass, exit 0.
 
-- ExcelJS `readFile` PASS; size 11,457 bytes; SHA-256 `c658456dacae9f318007b2691b860a41dc22cfffc6ee8ab52098c57d137df823`.
+- `sha256sum openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` and `wc -c openspec/changes/add-device-quota-draft-excel-export/artifacts/device-quota-draft-export-sample.xlsx` report size 11,458 bytes and SHA-256 `acd810b2827badb9cb52b66abb124f3ecd7a05844ad1358b63123478fbe009bd`.
+- Independent ExcelJS `readFile` read-back PASS (the `node -e` read-back command inspected workbook identity, merges, blank rows, widths, page setup, freeze pane, row heights, and excluded styles).
 - 1 worksheet `Danh mục dự thảo`; row count 55; column count 7; headers đúng thứ tự; 42 data rows gồm 5 section/37 item; source order match `true`.
 - Merge count 15 = 7 metadata + 5 section + 3 footnote; blank rows 8 và 52; footnotes row 53–55 đúng source order/text.
 - Null row `1a`: E/F `""`; zero row `1b`: E `Máy`, F numeric `0`; excluded row `5a` row 23: gray fill `FFE5E7EB`, A:D not strike, E:G strike, note `Ghi chú cũ [Đã loại khỏi đề xuất]`.
 - Print read-back: landscape, paperSize 9, fitToWidth 1, fitToHeight 0, `printTitlesRow: "9:9"`, no print area; view frozen `ySplit:9`, `topLeftCell:A10`, `activeCell:A10`.
-- Widths `[7,32,13,64,15,14,32]`; row 11 (source `1a`) height 105; excluded row 23 height 120 after width-aware calculation; Times New Roman 11/13 title, italic lead-in, bold header/thin border và wrapped top alignment được read-back; technical sentinel không xuất hiện trong visible cells.
+- Widths `[7,32,13,64,15,14,32]`; row 11 (source `1a`) height 105; excluded row 23 height 120 after width-aware calculation; excluded style read-back has gray solid fill, A:D `strike=false`, E:G `strike=true`; Times New Roman 11/13 title, italic lead-in, bold header/thin border và wrapped top alignment được read-back; technical sentinel không xuất hiện trong visible cells.
 
 ## Reuse và deduplication evidence
 
@@ -114,15 +165,15 @@ Regenerate command: `DEVICE_QUOTA_WRITE_SAMPLE=1 rtk proxy node scripts/npm-run.
 
 ## Gates và scope audit
 
-Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên exact code/sample commit `8cb16c44ed0ed0e695f327e5b8f7450bd845fec1`, đúng thứ tự sau; tất cả exit 0:
+Final chain chạy trong **một `ctx_batch_execute`**, `concurrency: 1`, trên exact code/sample commit `663462fc5cf0afd0dbfe1ecd2bfcede326c41c04`, đúng thứ tự sau; tất cả exit 0:
 
 1. `rtk node scripts/npm-run.js run format:check` — PASS, exit 0.
 2. `rtk node scripts/npm-run.js run verify:no-explicit-any` — PASS, exit 0.
 3. `rtk node scripts/npm-run.js run verify:dedupe` — PASS, diff-only, không có SonarJS duplicate-code findings, exit 0.
 4. `rtk node scripts/npm-run.js run typecheck` — PASS, exit 0.
-5. `rtk node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" "src/lib/__tests__/excel-workbook.test.ts"` — PASS, 2 files/9 tests, exit 0.
-6. `rtk node scripts/npm-run.js run react-doctor` — PASS, diff scan 3 files, score 100/100, no issues, exit 0.
+5. `rtk node scripts/npm-run.js run test:run -- "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts" "src/lib/__tests__/excel-workbook.test.ts"` — PASS, 2 files/11 tests, exit 0.
+6. `rtk node scripts/npm-run.js run react-doctor` — PASS, diff scan 4 files, score 100/100, no issues, exit 0.
 
-`git diff --check` và Lefthook pre-commit cũng pass cho các commit remediation; module builder còn 301 dòng, validation helper 58 dòng và test 445 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả Buffer và để Phase 3 nối `downloadBlob` sau session checks.
+`git diff --check` và Lefthook pre-commit cũng pass cho các commit remediation; module builder 303 dòng, validation helper 58 dòng, test 319 dòng và test support 184 dòng, mọi file dưới hard ceiling 450. Không có UI/editor/page/hook/RPC/query/mutation/SQL diff. `downloadBlob` không được gọi vì Phase 2 không có browser download; serializer trả `Uint8Array` browser-compatible và để Phase 3 nối `downloadBlob` sau session checks.
 
 Tasks 2.1–2.7 được đánh dấu sau evidence này; mục `2.8 USER REVIEW — Phase 2 approval` vẫn unchecked. Không thay đổi checkbox Phase 3.
