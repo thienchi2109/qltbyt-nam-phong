@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, screen, waitFor } from "@testing-library/react"
+import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
@@ -7,11 +7,15 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest"
 import DeviceQuotaCategoriesPage from "../page"
 import { DeviceQuotaDraftCatalogPageClient } from "../draft-catalog/_components/DeviceQuotaDraftCatalogPageClient"
 import { DeviceQuotaChiTietToolbar } from "@/app/(app)/device-quota/decisions/[id]/_components/DeviceQuotaChiTietToolbar"
+import { readExcelFile, worksheetToJson } from "@/lib/excel-utils"
 import { callRpc } from "@/lib/rpc-client"
 
 const mockUseSession = vi.hoisted(() => vi.fn())
 const mockUseTenantSelection = vi.hoisted(() => vi.fn())
 const mockUseChiTietContext = vi.hoisted(() => vi.fn())
+const mockUseSuggestMapping = vi.hoisted(() => vi.fn())
+const mockReadExcelFile = vi.hoisted(() => vi.fn())
+const mockWorksheetToJson = vi.hoisted(() => vi.fn())
 
 vi.mock("next-auth/react", () => ({ useSession: () => mockUseSession() }))
 vi.mock("@/contexts/TenantSelectionContext", () => ({
@@ -20,21 +24,12 @@ vi.mock("@/contexts/TenantSelectionContext", () => ({
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <button type="button">Chọn đơn vị</button>,
 }))
-vi.mock("../../_components/suggested-mapping/SuggestedMappingPreviewDialog", () => ({
-  SuggestedMappingPreviewDialog: ({
-    open,
-    donViId,
-    userRole,
-  }: {
-    open: boolean
-    donViId: number | null
-    userRole: string | null
-  }) =>
-    open ? (
-      <div data-testid="suggested-mapping-dialog">
-        {donViId}:{userRole}
-      </div>
-    ) : null,
+vi.mock("../../_hooks/useSuggestMapping", () => ({
+  useSuggestMapping: (...args: unknown[]) => mockUseSuggestMapping(...args),
+}))
+vi.mock("@/lib/excel-utils", () => ({
+  readExcelFile: mockReadExcelFile,
+  worksheetToJson: mockWorksheetToJson,
 }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("@/lib/rpc-client", () => ({ callRpc: vi.fn() }))
@@ -43,6 +38,10 @@ vi.mock("@/app/(app)/device-quota/decisions/[id]/_hooks/useDeviceQuotaChiTietCon
 }))
 
 const mockCallRpc = vi.mocked(callRpc)
+const mockReadExcelFileResult = {
+  SheetNames: ["Sheet1"],
+  Sheets: { Sheet1: {} },
+} as Awaited<ReturnType<typeof readExcelFile>>
 
 const category = {
   id: 1,
@@ -74,6 +73,24 @@ const draftItem = {
   regulatory_unit: "Máy",
   regulatory_quota_lines: ["01 máy"],
   regulatory_rules: [{ line_order: 1, source_text: "01 máy" }],
+}
+
+const suggestedMappingResult = {
+  groups: [
+    {
+      nhom_id: 1,
+      nhom_label: "Nhóm chẩn đoán hình ảnh",
+      nhom_code: "G1",
+      phan_loai: "A",
+      rrf_score: 0.95,
+      device_names: ["Máy X quang"],
+      device_ids: [101],
+      device_name_to_ids: { "Máy X quang": [101] },
+    },
+  ],
+  unmatched: [],
+  totalDevices: 1,
+  matchedDevices: 1,
 }
 
 const draftSnapshot = (revision: number, item = draftItem) => ({
@@ -192,6 +209,7 @@ describe("Device quota page-level coexistence", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseSuggestMapping.mockReset()
     mockUseTenantSelection.mockReturnValue({ selectedFacilityId: null, showSelector: false })
   })
 
@@ -199,12 +217,37 @@ describe("Device quota page-level coexistence", () => {
     const user = userEvent.setup()
     const queryClient = new QueryClient()
     let persistedDraft = draftSnapshot(1)
+    const saveMappingBatch = vi.fn()
 
     mockUseSession.mockReturnValue({
       data: { user: { id: "7", username: "quota-manager", role: "admin", don_vi: "1" } },
       status: "authenticated",
     })
     mockUseChiTietContext.mockReturnValue(decisionToolbarContext)
+    mockUseSuggestMapping.mockReturnValue({
+      status: "done",
+      result: suggestedMappingResult,
+      error: null,
+      canRetry: false,
+      progress: 100,
+      processedUniqueNames: 1,
+      retryFailedJob: vi.fn(),
+      reset: vi.fn(),
+      saveBatch: saveMappingBatch,
+      saveStatus: "idle",
+      saveResult: null,
+      saveError: null,
+      totalUniqueNames: 1,
+    })
+    mockReadExcelFile.mockResolvedValue(mockReadExcelFileResult)
+    mockWorksheetToJson.mockResolvedValue([
+      {
+        "Ma nhom": "G2",
+        "Ten nhom": "Nhóm siêu âm",
+        "Dinh muc": 5,
+        "Toi thieu": 1,
+      },
+    ])
     mockCallRpc.mockImplementation(async ({ fn, args }) => {
       switch (fn) {
         case "dinh_muc_nhom_list":
@@ -214,6 +257,10 @@ describe("Device quota page-level coexistence", () => {
           return persistedDraft
         case "device_quota_regulatory_catalog_get":
           return regulatoryCatalog
+        case "dinh_muc_nhom_bulk_import":
+          return { success: true, inserted: 1, failed: 0, total: 1, details: [] }
+        case "dinh_muc_unified_import":
+          return { success: true, inserted: 1, failed: 0, total: 1 }
         case "device_quota_unit_catalog_draft_save": {
           const saveArgs = args as {
             p_expected_revision: number
@@ -246,6 +293,7 @@ describe("Device quota page-level coexistence", () => {
       ).toBeInTheDocument()
       expect(screen.getByRole("button", { name: "Tải mẫu Excel" })).toBeInTheDocument()
       expect(screen.getByRole("button", { name: "Nhập từ Excel" })).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Gợi ý phân loại hàng loạt" })).toBeInTheDocument()
       expect(screen.getByRole("link", { name: "Soạn danh mục dự thảo" })).toHaveAttribute(
         "href",
         "/device-quota/categories/draft-catalog"
@@ -265,6 +313,15 @@ describe("Device quota page-level coexistence", () => {
       },
       { timeout: 5000 }
     )
+    await user.click(screen.getByRole("button", { name: "Gợi ý phân loại hàng loạt" }))
+    const mappingDialog = await screen.findByRole("dialog")
+    expect(within(mappingDialog).getByText("Gợi ý phân loại thiết bị")).toBeInTheDocument()
+    await user.click(
+      within(mappingDialog).getByRole("button", { name: "Áp dụng 1 gợi ý phân loại" })
+    )
+    expect(saveMappingBatch).toHaveBeenCalledWith([{ nhom_id: 1, thiet_bi_ids: [101] }])
+    await user.click(within(mappingDialog).getByRole("button", { name: "Đóng" }))
+
     await user.click(
       screen.getByRole("button", { name: "Mở menu danh mục Nhóm chẩn đoán hình ảnh" })
     )
@@ -274,7 +331,41 @@ describe("Device quota page-level coexistence", () => {
 
     await user.click(screen.getByRole("button", { name: "Nhập từ Excel" }))
     expect(await screen.findByText("Nhập danh mục từ Excel")).toBeInTheDocument()
-    await user.click(screen.getByRole("button", { name: "Hủy" }))
+    const categoryFile = new File(["dummy"], "categories.xlsx", {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    })
+    await user.upload(screen.getByLabelText("Chọn file Excel"), categoryFile)
+    await waitFor(() => expect(screen.getByText(/sẵn sàng nhập/i)).toBeInTheDocument())
+    await user.click(screen.getByRole("button", { name: /Nhập \(1\)/i }))
+    await waitFor(() => {
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: "dinh_muc_nhom_bulk_import",
+        args: {
+          p_items: [
+            {
+              ma_nhom: "G2",
+              ten_nhom: "Nhóm siêu âm",
+              parent_ma_nhom: null,
+              phan_loai: null,
+              don_vi_tinh: null,
+              thu_tu_hien_thi: null,
+              mo_ta: null,
+              dinh_muc_toi_da: 5,
+              toi_thieu: 1,
+            },
+          ],
+          p_don_vi: 1,
+        },
+      })
+      expect(mockCallRpc).toHaveBeenCalledWith({
+        fn: "dinh_muc_unified_import",
+        args: {
+          p_items: [{ ma_nhom: "G2", so_luong_dinh_muc: 5, so_luong_toi_thieu: 1 }],
+          p_don_vi: 1,
+        },
+      })
+    })
+    await user.click(screen.getByRole("button", { name: "Đóng" }))
     await user.click(screen.getByRole("button", { name: "Nhập định mức từ file Excel" }))
     expect(decisionToolbarContext.openImportDialog).toHaveBeenCalledTimes(1)
 
@@ -288,7 +379,21 @@ describe("Device quota page-level coexistence", () => {
       expect(mockCallRpc).toHaveBeenCalledWith(
         expect.objectContaining({
           fn: "device_quota_unit_catalog_draft_save",
-          args: expect.objectContaining({ p_expected_revision: 1 }),
+          args: {
+            p_draft_id: "draft-1",
+            p_expected_revision: 1,
+            p_items: [
+              {
+                regulatory_item_id: "reg-item-1",
+                display_name_override: null,
+                applied_unit: "Máy",
+                applied_quantity: 3,
+                notes: null,
+                is_excluded: false,
+                display_order: 1,
+              },
+            ],
+          },
         })
       )
       expect(screen.getByText("Đã lưu")).toBeInTheDocument()
@@ -334,6 +439,9 @@ describe("Device quota page-level coexistence", () => {
     expect(screen.queryByRole("button", { name: "Tạo danh mục" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Tải mẫu Excel" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Nhập từ Excel" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: "Gợi ý phân loại hàng loạt" })
+    ).not.toBeInTheDocument()
     expect(screen.queryByRole("link", { name: "Soạn danh mục dự thảo" })).not.toBeInTheDocument()
   })
 })

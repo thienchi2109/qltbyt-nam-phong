@@ -90,18 +90,22 @@ Tất cả checklist dưới đây phải được đánh dấu khi có artifact
 - [x] Metadata không tạo thêm cột, chữ ký, approval field hoặc import marker.
 - [x] 42 dòng source xuất hiện đủ, đúng thứ tự, section rows và quan hệ
       top-level/child được giữ; không có row ngoài appendix.
-- [ ] `Số lượng định mức` giữ toàn bộ điều kiện multiline; wrap text và chiều
-      cao dòng đủ đọc khi mở worksheet và khi in.
+- [x] `Số lượng định mức` giữ toàn bộ điều kiện multiline; structural read-back
+      xác nhận wrap text và chiều cao dòng khi mở worksheet. Print renderer độc
+      lập không khả dụng và đã được maintainer explicit waive; không claim
+      independent render/no-clipping.
 - [x] `ĐVT áp dụng = null` là blank, không có regulatory fallback; quantity null
       là blank; quantity 0 là numeric zero.
 - [x] Excluded row ở đúng vị trí, giữ proposal values và note cũ; nền xám,
       strike chỉ ba proposal cells, source cells không strike.
 - [x] Marker `[Đã loại khỏi đề xuất]` xuất hiện đúng một lần trong notes của
       excluded row.
-- [ ] Ba footnotes nguồn xuất hiện sau bảng, đúng thứ tự, nguyên văn, không bị
-      strike/cắt.
-- [ ] Worksheet A4 landscape, fit-to-width một trang, fit-to-height unlimited;
-      header bảng lặp trên trang tiếp theo.
+- [x] Ba footnotes nguồn xuất hiện sau bảng, đúng thứ tự, nguyên văn; structural
+      read-back xác nhận không strike. Không claim print clipping do renderer
+      độc lập không khả dụng và đã được waive.
+- [x] Worksheet A4 landscape, fit-to-width một trang, fit-to-height unlimited;
+      header bảng lặp trên trang tiếp theo theo structural page-setup read-back;
+      independent print rendering được maintainer explicit waive.
 - [x] Filename không có ký tự Excel cấm, không lộ secret, và xác định được
       document/unit/revision theo quy ước đã duyệt.
 - [ ] Khi branding thiếu/mismatch, export bị khóa và có status/retry; không
@@ -175,22 +179,26 @@ vẫn phải unchecked nếu chưa có phê duyệt trực tiếp.
 
 ### Phase 4
 
-Phase 4 bị hard-block cho tới khi toàn bộ Phase 3.5 được implement, verify và
-approve.
+Phase 4 được explicit maintainer override/waiver phê duyệt ngày 2026-09-07 để
+land phần visual/print/regression closeout dù môi trường thiếu print renderer
+độc lập. Phase 3.5 vẫn giữ nguyên unchecked và không được gọi là PASS.
 
-- [ ] Visual/print inspection pass theo layout checklist.
-- [ ] Excel helper, category import, quota import và page coexistence regression
-      đã được quan sát ở mức provisional: `5 files / 78 tests`, exit `0`; chưa
-      coi là acceptance PASS khi Phase 3.5 aggregate/static/user-review còn
-      hard-block.
-- [ ] Evidence gắn exact commit; mọi timeout/baseline noise được ghi trạng thái
-      riêng, không hạ thành PASS.
-- [ ] `USER REVIEW — Phase 4 closeout` nhận explicit approval.
+- [x] Structural visual/print contract pass theo layout checklist; phần
+      independent print rendering/no-clipping được maintainer explicit waive,
+      không suy diễn từ structural read-back.
+- [x] Excel helper, category import, quota import và page coexistence regression
+      đã được quan sát: current matrix `6 files / 88 tests`, exit `0`, cùng
+      focused coexistence `1 file / 2 tests`, exit `0`. Evidence chi tiết giữ
+      Red/Green và exact interactions/payload; parent refresh SHA sau land.
+- [x] Evidence gắn exact commit lịch sử; timeout/baseline noise được ghi trạng
+      thái riêng, không hạ thành PASS. Parent cập nhật landed SHA sau final gates.
+- [x] `USER REVIEW — Phase 4 closeout` nhận explicit approval ngày 2026-09-07
+      cho artifact/evidence, maintainer waiver và land trực tiếp.
 
 ## Out of scope confirmation
 
-- [ ] Không sửa migration/RPC/database hoặc ghi live DB.
-- [ ] Không thay đổi D1-D3 draft catalog, active category CRUD hoặc hai import
+- [x] Không sửa migration/RPC/database hoặc ghi live DB.
+- [x] Không thay đổi D1-D3 draft catalog, active category CRUD hoặc hai import
       flow.
-- [ ] Không thêm publish/approval/signature/import roundtrip.
-- [ ] Không mở rộng generic workbook helper bằng domain flag.
+- [x] Không thêm publish/approval/signature/import roundtrip.
+- [x] Không mở rộng generic workbook helper bằng domain flag.

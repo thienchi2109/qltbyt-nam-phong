@@ -181,29 +181,41 @@ commit; user review và live-write approval rõ ràng.
 ## Phase 4: Visual, print và regression closeout
 
 Boundary: kiểm tra artifact/UI đã nối, hồi quy các luồng liên quan và closeout.
-Phase 4 bị hard-block cho tới khi Phase 3.5 được implement, verify và approve.
+Theo explicit USER REVIEW ngày 2026-09-07, Phase 4 được phép land bằng
+maintainer override/waiver cho phần print renderer không khả dụng. Phase 3.5
+vẫn giữ nguyên toàn bộ checkbox unchecked và không được gọi là PASS.
 
-- [ ] 4.1 Kiểm tra sample/UI ở A4 landscape: width một trang, height unlimited,
-      header lặp, title/metadata/table/footnotes đủ, multiline không bị cắt.
-- [ ] 4.2 Kiểm tra excluded rows: thứ tự không đổi, proposal cells strike,
+- [x] 4.1 Kiểm tra sample/UI ở A4 landscape: structural width một trang, height
+      unlimited, header lặp, title/metadata/table/footnotes đủ, multiline wrap
+      và row-height đúng.
+      Evidence structural workbook PASS; maintainer chấp thuận/waive việc thiếu
+      print renderer độc lập, nên không claim independent render hoặc no-clipping.
+- [x] 4.2 Kiểm tra excluded rows: thứ tự không đổi, proposal cells strike,
       source text đọc được, marker và ghi chú cũ cùng tồn tại.
-- [ ] 4.3 Chạy hồi quy Excel hiện hữu:
+- [x] 4.3 Chạy hồi quy Excel hiện hữu:
       `src/lib/__tests__/excel-workbook.test.ts`,
       `src/lib/__tests__/category-excel.test.ts`,
       `src/lib/__tests__/device-quota-excel.test.ts`.
-- [ ] 4.4 Chạy hồi quy workspace:
+- [x] 4.4 Chạy hồi quy workspace:
       `src/app/(app)/device-quota/categories/__tests__/DeviceQuotaPageCoexistence.integration.test.tsx`;
       xác minh category CRUD, mapping và cả hai import flow vẫn giữ entry point,
-      quyền, payload và behavior.
-- [ ] 4.5 Chạy lại required TypeScript/React gates ở Phase 3.7 trên cùng commit;
-      báo riêng focused tests và React Doctor, không coi timeout là pass.
-- [ ] 4.6 Ghi evidence layout/print/regression vào acceptance hoặc phase evidence
-      tương ứng; không đánh dấu pass chỉ từ commit hoặc file tồn tại.
-- [ ] 4.7 `USER REVIEW — Phase 4 closeout:` người dùng duyệt artifact và evidence
-      cuối trước khi merge/land; không có live DB write trong change này.
+      quyền, payload và behavior. Test drive cụ thể mapping bằng user-event,
+      bắt exact `saveBatch`, exact payload của `dinh_muc_nhom_bulk_import` và
+      `dinh_muc_unified_import`, exact draft-save payload, và kiểm tra manager
+      (`admin`) đối lập non-manager (`technician`).
+- [x] 4.5 Chạy lại required TypeScript/React gates ở Phase 3.7 trên cùng commit;
+      báo riêng focused tests và React Doctor, không coi timeout là pass. Evidence
+      exact SHA lịch sử được giữ trong phase evidence; parent refresh SHA sau land.
+- [x] 4.6 Ghi evidence layout/print/regression vào acceptance hoặc phase evidence
+      tương ứng; không đánh dấu pass chỉ từ file tồn tại.
+- [x] 4.7 `USER REVIEW — Phase 4 closeout:` explicit user approval ngày
+      2026-09-07 cho artifact/evidence, maintainer waiver và land trực tiếp;
+      không có live DB write trong change này.
 
-Exit criteria: layout/print contract và hồi quy import/workspace pass; static
-TS/React gates pass; mọi evidence gắn đúng commit; không có SQL/RPC mutation.
+Exit criteria: structural layout/print contract và hồi quy import/workspace có
+evidence; phần independent print renderer được explicit waiver; static TS/React
+gates có evidence exact SHA và parent sẽ cập nhật landed SHA; không có SQL/RPC
+mutation/live DB write. Đây không phải là Phase 3.5 PASS.
 
 ## Ngoài phạm vi
 
