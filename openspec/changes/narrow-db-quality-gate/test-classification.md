@@ -867,3 +867,480 @@ chỉ là hướng đi tương lai, chưa tạo hoặc sửa SQL.
   tiết cho các batch sau trong lượt này.
 - Artifact này không tuyên bố thay đổi selector, registry, static lane,
   baseline-forward hoặc Oracle behavior.
+
+## BATCH3 — paths 41–60
+
+Provenance của batch này vẫn dùng đúng snapshot `default-safe` ổn định tại
+`subjectCommit` `1940887e9fe09d2264912602e43aee3b785a06bd`: registry có `103`
+entry, trong đó `77` entry `default-safe`; registry bytes tại subject và HEAD
+đều khớp SHA-256 `c1a2f1ceac663b815cfbf96a3c9b2551c37a46132b34464c02d524d6b6ecf477`.
+Chỉ đọc assertion body của đúng paths 41–60 tại subject commit; không sửa SQL,
+registry, source, database, Oracle hoặc test runner.
+
+### 41. `supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate.sql`
+
+- Registry hiện tại: `purpose: "smoke"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent. Core-security assertion không cần mapping;
+  business half chưa có mapping declared nhưng mixed test vẫn giữ trong default
+  lane cho tới khi tách ở Chunk 4.
+- Actual assertions: function identity/contract và privilege của internal/public
+  apply (`58–112`); public/authenticated ACL, missing claims và non-global
+  role phải fail `42501/permission_denied` (`171–203`). Raw `admin` đi tới
+  target guard `PT404/not_found` cho apply và hierarchy authoring (`205–225`)
+  là business target/version guard, không phải authorization denial. `set_claims`
+  và `nhan_vien` chỉ tạo execution fixture.
+- Proposed scope: `mixed → core-security (temporary)`. Function identity,
+  privilege, JWT missing-claims/non-global denials giữ trong core; raw-admin
+  target guards là migration-specific business.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact và rationale.
+- Coverage và hướng tách: giữ toàn bộ privilege, missing-claims, role-denial,
+  target-guard và normalized `admin` coverage. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_baseline_hierarchy_server_activation_security_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 42. `supabase/tests/technical_configuration_baseline_hierarchy_snapshots_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` khai báo đúng canonical path
+  `supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql`,
+  path tồn tại tại exact `subjectCommit`, nên declared mapping hợp lệ.
+- Actual assertions: copy/remap hierarchy và criterion identity (`280–318`),
+  mixed subgroup ordering (`318–332`), wrapper leaf remap (`374`), locked
+  hierarchy identity (`413`), và rollback probe (`416–428`). Global/expert
+  `set_claims` ở `59`, `416`, `435` chỉ là fixture; không có ACL/JWT denial,
+  tenant mismatch hoặc search_path assertion.
+- Proposed scope: `migration-specific`. Các assertion là workflow/domain
+  snapshot copy, remap, ordering, lock identity và rollback; theo boundary của
+  Chunk 2, domain ordering/locked-version/atomicity không được gọi là core
+  migration integrity.
+- Mapping/rationale: mapping exact path hợp lệ; giữ nguyên để selector chỉ chọn
+  test khi pending migration path khớp exact, không backfill hoặc đổi registry.
+- Coverage: giữ toàn bộ copy/remap/identity/order/rollback coverage trong
+  migration-specific; không đề xuất split file.
+
+### 43. `supabase/tests/technical_configuration_baseline_import_atomicity_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared canonical path.
+- Actual assertions: import tạo group/criterion và cập nhật revision/counter
+  (`199–229`), giữ criterion identity/source linkage và xóa row bị omit
+  (`249–260`), reorder và code allocation (`270–303`), rollback cho row,
+  duplicate, relationship, stale revision và overflow (`304–342`).
+  `set_claims('global', ...)` ở `194` chỉ là fixture.
+- Proposed scope: `migration-specific`. Đây là domain import reconciliation và
+  atomicity phase gate; revision, ordering, lock/overflow và rollback business
+  không phải migration/schema/evidence safety core.
+- Mapping/rationale: intentional-unmapped lịch sử; rationale đã đủ ở assertion
+  body nhưng chưa có canonical migration identity, nên giữ ngoài default lane
+  và không ép backfill.
+- Coverage: giữ toàn bộ import reconciliation, identity, allocation và rollback
+  coverage; không đề xuất split file.
+
+### 44. `supabase/tests/technical_configuration_baseline_import_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared canonical path.
+- Actual assertions security: missing claims và non-global role bị từ chối cho
+  cả preview/apply (`149–189`). Actual business assertions: raw `admin`/expert
+  preview success, preview read-only và expert apply rollback probe
+  (`191–223`), metadata/template binding, malformed/tampered rows, global apply
+  result, stale/locked/archived target (`230–362`).
+- Proposed scope: `mixed → core-security (temporary)`. Chỉ phần JWT role/claim
+  denial và role authorization giữ trong core; metadata, preview, validation,
+  revision, locked/archived target là migration-specific business để tách ở
+  Chunk 4. Không coi `set_claims` fixture là security evidence nếu không có
+  assertion denial/authorization đi kèm.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Không loại mixed test khỏi
+  default lane; chỉ business half sau khi tách ở Chunk 4 mới cần exact mapping
+  và rationale migration-specific.
+- Coverage và hướng tách: giữ toàn bộ assertion hiện tại trong test đang chạy.
+  Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_baseline_import_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_baseline_import_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 45. `supabase/tests/technical_configuration_comparison_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared canonical path.
+- Actual assertions security: comparison RPC tồn tại, `SECURITY DEFINER`,
+  fixed `search_path`, authenticated-only ACL và public/anon/service-role
+  denial (`144–165`). Actual business assertions: exact response keys, option
+  request ordering, evidence/response shape, archived/locked read behavior,
+  read immutability and bounded set-based plan (`877–1293`).
+- Proposed scope: `mixed → core-security (temporary)`. Catalog/ACL/search_path
+  checks stay core; comparison payload, evidence, ordering, pagination and
+  performance behavior are migration-specific business. `set_claims` and
+  fixture rows do not independently prove tenant security.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; chỉ business half sau Chunk 4 mới cần exact mapping, không tự
+  phát minh migration mapping.
+- Coverage và hướng tách: retain all current assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_comparison_phase_gate_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_comparison_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 46. `supabase/tests/technical_configuration_comparison_set_read_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared canonical path.
+- Actual assertions security: missing/malformed/nonnumeric claims và non-global
+  role bị từ chối (`470–528`); authenticated/service-role/anon function ACL và
+  fixed `search_path` (`610–647`). Actual business assertions: cross-dossier
+  validation, missing/existing pair payload, response ordering, archived read và
+  audit/revision immutability (`530–600`). Cross-dossier là workflow boundary,
+  không tự suy ra tenant-security.
+- Proposed scope: `mixed → core-security (temporary)`. Giữ JWT/role/ACL/search_path
+  thật trong core; tách read payload, cross-dossier validation và audit behavior
+  thành migration-specific. JWT fixture `set_claims` không tính riêng là core.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane, không backfill canonical path hoặc đổi safety/registry; business
+  half sau Chunk 4 sẽ có rationale riêng.
+- Coverage và hướng tách: giữ toàn bộ assertion hiện tại. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_comparison_set_read_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_comparison_set_read_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 47. `supabase/tests/technical_configuration_copy_reentrant_workspace_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `120` giây;
+  `requiredForMigrations` khai báo canonical path
+  `supabase/migrations/20260830090000_technical_configuration_copy_reentrant_workspace.sql`,
+  tồn tại tại exact `subjectCommit`, nên mapping declared hợp lệ.
+- Actual assertions: copy workspace/source listing, preview/apply lineage and
+  replacement, stale preview guards và result snapshots (`263–381`); baseline
+  rollback và cross-workspace rollback probes (`401–453`). `global` claim ở
+  `206` chỉ là execution fixture; không có JWT/ACL/tenant-denial assertion.
+- Proposed scope: `migration-specific`. Nội dung là copy/reentrant business
+  workflow, identity, revision/atomicity and rollback; domain atomicity/order/
+  locked-version không được nâng thành core migration integrity.
+- Mapping/rationale: exact canonical path tồn tại và được giữ nguyên; selector
+  chỉ dùng khi pending path match exact, không đổi registry.
+- Coverage: giữ toàn bộ copy, preview, replacement, stale và rollback coverage;
+  không đề xuất split file.
+
+### 48. `supabase/tests/technical_configuration_dossier_delete_audit_failure_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions: injected audit failure phải không xóa dossier (`113`),
+  trả `PT500/audit_log_failed` (`120–124`), giữ nguyên aggregate (`142–145`)
+  và không tạo audit row (`153`). `SECURITY DEFINER SET search_path` ở `16–17`
+  thuộc helper/fixture definition, không có assertion search_path; global claims
+  chỉ là setup.
+- Proposed scope: `migration-specific`. Đây là failure atomicity/audit business
+  behavior; không có RPC authorization, JWT/tenant denial hoặc ACL assertion.
+- Mapping/rationale: intentional-unmapped lịch sử; không backfill migration path,
+  giữ ngoài default lane.
+- Coverage: giữ toàn bộ failure injection, rollback, aggregate và audit-row
+  coverage; không đề xuất split file.
+
+### 49. `supabase/tests/technical_configuration_dossier_delete_audit_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions: audited delete response (`94`), đúng một audit row với
+  expected detail (`113–117`), và không còn aggregate residue (`133–135`).
+  Global claims/active-user lookup chỉ tạo fixture; không có JWT, tenant, ACL
+  hoặc search_path assertion.
+- Proposed scope: `migration-specific`. Đây là dossier deletion và audit-row
+  workflow contract, không phải core migration/schema/evidence safety.
+- Mapping/rationale: intentional-unmapped lịch sử; không ép backfill hoặc biến
+  business audit test thành required migration mapping.
+- Coverage: giữ response, audit count/detail và residue cleanup coverage; không
+  đề xuất split file.
+
+### 50. `supabase/tests/technical_configuration_dossier_delete_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared canonical path.
+- Actual assertions security: `qltb_khoa` role denial, missing claims và
+  expected `permission_denied` (`340–351`). Actual business assertions:
+  `can_delete`/locked/archived state (`333–338`), stale/archived/missing/locked
+  guards (`354–372`), lock rejection, global/raw-admin response and cascade
+  deletion, list disappearance cùng set-based plan (`383–445`).
+- Proposed scope: `mixed → core-security (temporary)`. Chỉ role/authorization
+  denial giữ core; can-delete, lock, cascade, response and query-plan behavior
+  là migration-specific business. Fixture `set_claims` không tự là security
+  evidence.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  trong Chunk 2.
+- Coverage và hướng tách: giữ toàn bộ test hiện tại. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_dossier_delete_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_dossier_delete_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 51. `supabase/tests/technical_configuration_dossier_search_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: normalized list signature/ACL (`66–81`), helper
+  internal ACL và immutable/non-definer fixed `search_path` (`85–108`). Actual
+  business assertions: normalization vectors (`120–127`), matching/ranking,
+  wildcard/Unicode behavior, pagination, length validation and index plans
+  (`293–494`). `set_claims('global', ...)` chỉ là fixture.
+- Proposed scope: `mixed → core-security (temporary)`. ACL/search_path/catalog
+  assertions stay core; text normalization, ranking, pagination, wildcard and
+  index-plan outcomes are migration-specific business/performance behavior.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không gán path
+  theo tên `search` hoặc phase gate.
+- Coverage và hướng tách: giữ mọi assertion hiện tại. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_dossier_search_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_dossier_search_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 52. `supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: missing claims/non-global denial (`254–276`) và
+  authenticated/service-role/anon function ACL (`393–401`). Actual business
+  assertions: raw-admin page, filter results/canonical indexes, invalid paging
+  and immutability (`287–390`); raw `admin` setup is retained only where it
+  participates in role authorization behavior.
+- Proposed scope: `mixed → core-security (temporary)`. JWT/role/ACL assertions
+  remain core; filter semantics, canonical page/index, bounds and assessment
+  read behavior are migration-specific business. No migration-integrity core
+  claim is inferred from revision/order-like result fields.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  hoặc loại test vì thiếu mapping.
+- Coverage và hướng tách: retain all current assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_evaluation_criteria_filter_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 53. `supabase/tests/technical_configuration_evaluation_hierarchy_order_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions: hierarchy ordering across 50/51 and 100/101 boundaries
+  (`314–339`), transport page/canonical index behavior (`341–356`), sparse
+  filtered hierarchy and evidence ordering (`358–386`), plus read non-mutation
+  snapshots (`389–428`). Global/admin claims only establish the fixture.
+- Proposed scope: `migration-specific`. These are domain evaluation ordering,
+  filtering and snapshot invariants; they are explicitly outside core migration
+  integrity even where they mention pages, revisions or non-mutation.
+- Mapping/rationale: intentional-unmapped lịch sử; no canonical migration path
+  declared or validated.
+- Coverage: giữ toàn bộ hierarchy order/filter/non-mutation coverage; không đề
+  xuất split file.
+
+### 54. `supabase/tests/technical_configuration_evaluation_hierarchy_order_security_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: missing claims và non-global role denial (`81–105`),
+  hardened `SECURITY DEFINER/search_path` and ACL (`130–150`). Actual business
+  assertions: invalid filter and oversized page rejection before lookup
+  (`107–128`). `set_claims` is fixture setup unless paired with a denial.
+- Proposed scope: `mixed → core-security (temporary)`. Keep JWT/role/ACL/search_path
+  in core; extract endpoint validation/bounds into migration-specific. The
+  validation is not migration/schema/evidence safety and must not be promoted
+  to core merely because the file name says security.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  trong batch này.
+- Coverage và hướng tách: keep all current assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_evaluation_hierarchy_order_security_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_evaluation_hierarchy_order_security_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 55. `supabase/tests/technical_configuration_expert_account_assignment_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `90` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: unauthorized caller/JWT-stored-role mismatch and
+  expert-caller denials (`265–269`, `380–390`); function `SECURITY DEFINER`,
+  fixed `search_path`, PUBLIC/anon denial and authenticated/service-role ACL
+  (`414–437`). Actual business assertions: canonical expert assignment/scope,
+  membership retirement, profile/audit updates and rollback (`219–406`).
+- Proposed scope: `mixed → core-security (temporary)`. Role/tenant/scope denial,
+  ACL and search_path stay core; canonical scope, memberships, audit and
+  transaction behavior are migration-specific business. Fixture tenant columns
+  alone are not isolation evidence.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  hoặc âm thầm loại test.
+- Coverage và hướng tách: retain all current assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_expert_account_assignment_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_expert_account_assignment_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 56. `supabase/tests/technical_configuration_expert_account_scope_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `90` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: reassignment RPC identity, fixed `search_path` and
+  authenticated/anon ACL (`226–270`), plus role/user/invalid-claim denial cases
+  (`342–406`). Actual business assertions: global/admin scope changes, membership
+  state, rollback restoration, non-expert behavior and scope invariants
+  (`273–439`).
+- Proposed scope: `mixed → core-security (temporary)`. Keep actual authorization,
+  role/claim and ACL assertions in core; expert scope mutation, membership,
+  locking and rollback are migration-specific business. `current_setting` trigger
+  controls are failure fixtures, not independent tenant proof.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill.
+- Coverage và hướng tách: retain current test coverage. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_expert_account_scope_phase_gate_core_security.sql`
+  và
+  `supabase/tests/technical_configuration_expert_account_scope_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 57. `supabase/tests/technical_configuration_expert_account_scope_review_regression.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `90` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: current-unit mismatch must not reveal expert/target
+  existence (`203–208`), and all listed RPCs deny PUBLIC/anon while allowing
+  authenticated/service-role (`230–257`). Actual business/regression assertions:
+  expert-create disablement, existing-role behavior, destination lock/activity
+  checks (`128–225`).
+- Proposed scope: `mixed → core-security (temporary)`. Keep error indistinguishability
+  and ACL in core; account-role regression and destination lock/invariant behavior
+  are migration-specific. No `set_claims` fixture is counted by itself.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không dùng
+  review regression để tự suy ra path.
+- Coverage và hướng tách: keep all assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_expert_account_scope_review_regression_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_expert_account_scope_review_regression_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 58. `supabase/tests/technical_configuration_manual_assessments_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: missing claims/non-global denial and explicit raw
+  `admin`/`chuyen_gia` assessment-read authorization (`195–213`), RPC ACL, RLS
+  and table privilege contracts (`426–469`). The expert write rollback sentinel
+  (`215–230`) is business transaction coverage. Other business assertions are
+  bounds/FK/axis validation, create/update revision, stale state,
+  source/document preservation and cascade behavior (`233–425`).
+- Proposed scope: `mixed → core-security (temporary)`. Role/JWT/ACL/RLS/table
+  privilege assertions stay core; assessment CRUD, revisions, FK and cascade
+  behavior are migration-specific business. Revision/atomicity/ordering fields
+  do not become migration-integrity core.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  hoặc loại test khỏi default lane.
+- Coverage và hướng tách: retain all assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_manual_assessments_phase_gate_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_manual_assessments_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 59. `supabase/tests/technical_configuration_option_documents_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: RLS/policy and PUBLIC/anon/authenticated/service-role
+  table access (`116–180`), function `SECURITY DEFINER`, fixed `search_path` and
+  function ACL (`181–207`), plus missing/non-global role denials (`288–345`).
+  Actual business assertions: document/citation create/update/delete, cross-
+  baseline validation, URL/revision guards and injected cascade rollback
+  (`350–604`).
+- Proposed scope: `mixed → core-security (temporary)`. Keep only actual ACL,
+  RLS, role and search_path evidence in core; document/citation lifecycle and
+  transactional business behavior are migration-specific. Global/admin fixtures
+  do not prove tenant isolation alone.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  hoặc đổi safety.
+- Coverage và hướng tách: retain all current assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_option_documents_phase_gate_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_option_documents_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+### 60. `supabase/tests/technical_configuration_option_import_phase_gate.sql`
+
+- Registry hiện tại: `purpose: "phase-gate"`, `safety: "default-safe"`, fixture
+  `isolated-fixture`, transaction `rollback-required`, timeout `30` giây;
+  `requiredForMigrations` absent và không có declared path.
+- Actual assertions security: missing/invalid claims and non-global role denial
+  (`268–286`), public function ACL for preview/apply and validator visibility
+  (`481–510`). Actual business assertions: preview read-only, metadata/row
+  validation, zero-write guards, global/draft apply, response reconciliation,
+  revision and late-failure rollback (`289–469`).
+- Proposed scope: `mixed → core-security (temporary)`. Keep JWT/role/ACL checks
+  in core; option import validation, reconciliation, revision and rollback are
+  migration-specific business. JWT fixtures without denial/authorization checks
+  are not security evidence.
+- Mapping/lý do: không có mapping declared cho business half tại exact subject
+  commit; core-security half không cần mapping. Giữ nguyên mixed test trong
+  default lane; business half sau Chunk 4 mới cần mapping exact, không backfill
+  hoặc loại mixed test.
+- Coverage và hướng tách: preserve all assertions. Chunk 4 đề xuất tạo
+  `supabase/tests/technical_configuration_option_import_phase_gate_core_security.sql`
+  and
+  `supabase/tests/technical_configuration_option_import_phase_gate_migration_specific.sql`;
+  chưa sửa SQL/registry.
+
+## BATCH3 summary counts
+
+- BATCH3 đã review `20/20` (path 41–60): `0` pure `core-security`, `6`
+  `migration-specific`, `14` mixed tạm thời giữ trong core-security. Hai
+  declared `requiredForMigrations` mapping (path 42 và 47) đều trỏ đúng
+  canonical path tồn tại tại exact `subjectCommit`; declared-path invalid count
+  của BATCH3 là `0`. Bốn migration-specific historical entry không mapping được
+  là intentional-unmapped; `13` mixed chưa backfill mapping cho business half
+  nhưng toàn bộ mixed test vẫn giữ trong default lane nhờ core half.
+- Tổng đã review: `60/77`; còn `17` path pending. Tổng cumulative đề xuất của
+  BATCH1–3 là `7` `core-security`, `16` `migration-specific`, và `37` mixed tạm
+  giữ trong core-security. Bốn declared mappings đều hợp lệ; declared invalid
+  count cumulative là `0`. Các migration-specific historical không mapping được
+  giữ ngoài default lane với rationale; mixed chưa backfill mapping business và
+  chờ Chunk 4.
+- Toàn bộ assertion của BATCH1–3 vẫn được giữ trong test hiện tại; artifact này
+  không backfill mapping, sửa SQL/registry, loại coverage hoặc tuyên bố thay đổi
+  selector, static lane, baseline-forward hay Oracle behavior.
+- BATCH4 là lượt kế tiếp với `17` path pending (61–77); không thêm evidence chi
+  tiết cho BATCH4 trong lượt này.
