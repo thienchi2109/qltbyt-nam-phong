@@ -205,7 +205,8 @@ vẫn giữ nguyên toàn bộ checkbox unchecked và không được gọi là 
       (`admin`) đối lập non-manager (`technician`).
 - [x] 4.5 Chạy lại required TypeScript/React gates ở Phase 3.7 trên cùng commit;
       báo riêng focused tests và React Doctor, không coi timeout là pass. Evidence
-      exact SHA lịch sử được giữ trong phase evidence; parent refresh SHA sau land.
+      exact implementation/gate SHA `ac702788beb615014a7e5809ce10957da3d9223a`
+      ghi riêng từng lane và matrix trong phase evidence.
 - [x] 4.6 Ghi evidence layout/print/regression vào acceptance hoặc phase evidence
       tương ứng; không đánh dấu pass chỉ từ file tồn tại.
 - [x] 4.7 `USER REVIEW — Phase 4 closeout:` explicit user approval ngày
@@ -214,8 +215,8 @@ vẫn giữ nguyên toàn bộ checkbox unchecked và không được gọi là 
 
 Exit criteria: structural layout/print contract và hồi quy import/workspace có
 evidence; phần independent print renderer được explicit waiver; static TS/React
-gates có evidence exact SHA và parent sẽ cập nhật landed SHA; không có SQL/RPC
-mutation/live DB write. Đây không phải là Phase 3.5 PASS.
+gates PASS trên exact SHA `ac702788beb615014a7e5809ce10957da3d9223a`; không có
+SQL/RPC mutation/live DB write. Đây không phải là Phase 3.5 PASS.
 
 ## Ngoài phạm vi
 

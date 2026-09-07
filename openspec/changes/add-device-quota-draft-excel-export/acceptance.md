@@ -189,9 +189,11 @@ land phần visual/print/regression closeout dù môi trường thiếu print re
 - [x] Excel helper, category import, quota import và page coexistence regression
       đã được quan sát: current matrix `6 files / 88 tests`, exit `0`, cùng
       focused coexistence `1 file / 2 tests`, exit `0`. Evidence chi tiết giữ
-      Red/Green và exact interactions/payload; parent refresh SHA sau land.
+      Red/Green và exact interactions/payload trên exact SHA
+      `ac702788beb615014a7e5809ce10957da3d9223a`.
 - [x] Evidence gắn exact commit lịch sử; timeout/baseline noise được ghi trạng
-      thái riêng, không hạ thành PASS. Parent cập nhật landed SHA sau final gates.
+      thái riêng, không hạ thành PASS. Ordered final gates trên exact SHA đều
+      PASS và được ghi trong phase evidence.
 - [x] `USER REVIEW — Phase 4 closeout` nhận explicit approval ngày 2026-09-07
       cho artifact/evidence, maintainer waiver và land trực tiếp.
 

@@ -2,18 +2,19 @@
 
 ## Trạng thái
 
-- Status: `DONE_WITH_CONCERNS` — Phase 4 được explicit approve để land với
-  maintainer waiver cho print renderer độc lập không khả dụng.
+- Status: `COMPLETE` — Phase 4 được explicit approve để land với maintainer
+  waiver cho print renderer độc lập không khả dụng.
 - Phạm vi thực hiện: Phase 4.1–4.7; toàn bộ checkbox Phase 4 đã tick. Không
   thay đổi checkbox Phase 3.5; Phase 3.5 vẫn unchecked và không phải PASS.
 - Base/starting `HEAD`: `7dcbfbb67ef144f73398d04451e2e233d1b7bf3e`.
-- Exact implementation/gate SHA: `4df2aea2dad41bccc3f40f6d4117141c72f525a0`.
-- Current test/doc finding-fix base: `852c0409a9cbc067b58f6845cb7c257f5239164a`;
-  parent sẽ cập nhật SHA sau khi land và chạy final gates.
-- Ordered final gates trên exact SHA: format `0`, no-explicit-any `0`, dedupe
-  `0`, typecheck `0`, focused matrix `6 files / 88 tests` exit `0` (duration
-  `18.24s`), React Doctor `100/100` exit `0`, OpenSpec strict valid exit `0`,
-  `git diff --check` `0`; working tree clean tại thời điểm run.
+- Historical exact implementation/gate SHA: `4df2aea2dad41bccc3f40f6d4117141c72f525a0`
+  (preserved below for traceability).
+- Current exact implementation/gate SHA:
+  `ac702788beb615014a7e5809ce10957da3d9223a`.
+- Ordered final gates trên current exact SHA: format `0`, no-explicit-any `0`,
+  dedupe `0`, typecheck `0`, focused matrix `6 files / 88 tests` exit `0`
+  (duration `16.93s`), React Doctor `100/100` exit `0`, OpenSpec strict valid
+  exit `0`, `git diff --check` `0`; working tree clean tại thời điểm run.
 - Không có migration, SQL, live DB write hoặc thay đổi production runtime trong
   lượt này. `callRpc` chỉ được mock/capture trong coexistence test để khóa
   payload; không có RPC mutation thật.
@@ -125,11 +126,10 @@ Lệnh hồi quy focused sáu file chạy trên current finding-fix worktree:
 node scripts/npm-run.js run test:run -- "src/lib/__tests__/excel-workbook.test.ts" "src/lib/__tests__/category-excel.test.ts" "src/lib/__tests__/device-quota-excel.test.ts" "src/app/(app)/device-quota/categories/__tests__/DeviceQuotaPageCoexistence.integration.test.tsx" "src/app/(app)/device-quota/categories/draft-catalog/__tests__/DeviceQuotaDraftCatalogExport.test.tsx" "src/app/(app)/device-quota/categories/draft-catalog/__tests__/device-quota-draft-catalog-excel-export.test.ts"
 ```
 
-Kết quả: `Test Files 6 passed (6)`, `Tests 88 passed (88)`, exit `0`, duration
-`16.40s` (transform `2.08s`, setup `560ms`, import `5.07s`, tests `21.04s`,
-environment `4.26s`). Đây là evidence regression đã được duyệt trong phạm vi
-Phase 4; không hạ kết quả thành provisional vì Phase 3.5 không nằm trong phạm
-vi acceptance này.
+Kết quả trên current exact SHA: `Test Files 6 passed (6)`, `Tests 88 passed
+(88)`, exit `0`, duration `16.93s`. Đây là evidence regression đã được duyệt
+trong phạm vi Phase 4; không hạ kết quả thành provisional vì Phase 3.5 không
+nằm trong phạm vi acceptance này.
 
 ### Historical parent final matrix (exact SHA, preserved)
 
@@ -138,8 +138,8 @@ vi acceptance này.
   React Doctor `100/100` exit `0`, OpenSpec strict valid exit `0`, và
   `git diff --check` `0`.
 - Focused final matrix: `6 files / 88 tests`, exit `0`, duration `18.24s`.
-- Đây là evidence lịch sử được giữ để trace exact SHA; parent sẽ cập nhật
-  landed SHA và kết quả final gates sau khi land finding-fix.
+- Đây là evidence lịch sử được giữ để trace exact SHA; chứng nhận current exact
+  SHA và kết quả final gates được ghi ở phần Trạng thái.
 
 - `src/lib/__tests__/excel-workbook.test.ts`: observed `3` tests, exit `0`.
 - `src/lib/__tests__/category-excel.test.ts`: observed `24` tests, exit `0`.
@@ -195,15 +195,15 @@ concern đã được duyệt để land, không phải bằng chứng independe
 
 ## Acceptance mapping
 
-| Task | Evidence                                                                                                              | Trạng thái                   |
-| ---- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| 4.1  | ExcelJS structural print read-back PASS; independent renderer unavailable and explicitly waived, no no-clipping claim | `PASS WITH PRINT WAIVER`     |
-| 4.2  | Builder tests + sample row 23 style/marker/source read-back PASS                                                      | `PASS`                       |
-| 4.3  | 3 Excel regression files included in current 6-file matrix, exit `0`                                                  | `PASS`                       |
-| 4.4  | Coexistence 2 tests: exact mapping/import/save payloads and manager authorization, exit `0`                           | `PASS`                       |
-| 4.5  | Historical exact-SHA gates PASS; parent refreshes the exact landed SHA after this finding-fix                         | `PASS / SHA REFRESH PENDING` |
-| 4.6  | Acceptance and this evidence updated with structural limitation and exact interaction/payload records                 | `PASS`                       |
-| 4.7  | Explicit USER REVIEW approval on 2026-09-07 authorizes waiver and direct land                                         | `APPROVED`                   |
+| Task | Evidence                                                                                                              | Trạng thái               |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 4.1  | ExcelJS structural print read-back PASS; independent renderer unavailable and explicitly waived, no no-clipping claim | `PASS WITH PRINT WAIVER` |
+| 4.2  | Builder tests + sample row 23 style/marker/source read-back PASS                                                      | `PASS`                   |
+| 4.3  | 3 Excel regression files included in current 6-file matrix, exit `0`                                                  | `PASS`                   |
+| 4.4  | Coexistence 2 tests: exact mapping/import/save payloads and manager authorization, exit `0`                           | `PASS`                   |
+| 4.5  | Ordered format/no-any/dedupe/typecheck, 6-file matrix, React Doctor, OpenSpec và diff check PASS trên `ac702788`      | `PASS`                   |
+| 4.6  | Acceptance and this evidence updated with structural limitation and exact interaction/payload records                 | `PASS`                   |
+| 4.7  | Explicit USER REVIEW approval on 2026-09-07 authorizes waiver and direct land                                         | `APPROVED`               |
 
 ## Diff and scope audit
 
@@ -217,9 +217,10 @@ concern đã được duyệt để land, không phải bằng chứng independe
 - No migration/SQL/live DB scope and no production RPC/runtime changes;
   database quality gate is not applicable. Mocked `callRpc` assertions are
   test evidence only.
-- Historical exact-SHA gates and current focused matrix are recorded above;
-  parent updates the landed SHA after final gates. The print-renderer waiver is
-  explicit and does not claim independent rendering/no-clipping.
+- Historical exact-SHA evidence and current focused matrix are recorded above;
+  current exact SHA `ac702788beb615014a7e5809ce10957da3d9223a` is certified.
+  The print-renderer waiver is explicit and does not claim independent
+  rendering/no-clipping.
 - Phase 3.5 checkboxes and status remain unchanged/unchecked and are not
   retroactively converted to PASS.
 
@@ -231,6 +232,6 @@ concern đã được duyệt để land, không phải bằng chứng independe
   refactor was needed.
 - The residual Phase 4.1 limitation is the unavailable independent print
   renderer. The maintainer/user explicitly accepted that waiver on 2026-09-07,
-  so Phase 4 is approved for direct land with `DONE_WITH_CONCERNS` status.
+  so Phase 4 is approved for direct land with `COMPLETE` status.
 - Phase 3.5 aggregate/static and USER REVIEW remain unchanged and are not
   retroactively PASS.
