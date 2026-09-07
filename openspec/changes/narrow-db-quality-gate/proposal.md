@@ -1,6 +1,6 @@
 # Change: Thu hẹp phạm vi DB Quality Gate theo selector và registry
 
-## Vì sao
+## Why
 
 Change đang hoạt động `add-database-quality-gate` đã có các hợp đồng fail-closed
 cho migration integrity, bảo mật và baseline-forward. Tuy nhiên, việc coi toàn
@@ -14,7 +14,7 @@ nguyên safety contract và giữ đầy đủ các kiểm tra nền tảng. Đ�
 change mới phụ thuộc vào `add-database-quality-gate`; nó không archive, sửa
 checkbox, hay áp dụng lại change đang hoạt động.
 
-## Thay đổi
+## What Changes
 
 - Bổ sung contract cho scope logic của test trong registry tương lai:
   `core-security` và `migration-specific` được tách khỏi `safety`.
@@ -22,7 +22,12 @@ checkbox, hay áp dụng lại change đang hoạt động.
 - Chọn test `default-safe` thuộc `migration-specific` chỉ khi
   `requiredForMigrations` chứa chính xác pending migration path trong
   `subjectCommit` hiện tại. Không dùng glob, substring, timestamp heuristic,
-  tên file, hay suy luận từ SQL.
+  tên file, hay suy luận từ SQL. Entry migration-specific lịch sử có mapping
+  trống/không có được giữ ngoài default lane với rationale đã phân loại; không
+  backfill hồi tố chỉ để làm selector xanh. Mỗi migration business mới trong
+  approved plan vẫn phải có ít nhất một mapping `requiredForMigrations` exact
+  đã review; thiếu mapping làm review bị block. Một path đã khai báo nhưng
+  không tồn tại canonical ở `subjectCommit` là lỗi blocking.
 - Giữ nguyên ý nghĩa của `opt-in` và `live-only`; safety không bị đổi chỉ vì
   chi phí chạy.
 - Giữ assertion RPC authorization, JWT role/user, tenant isolation, ACL
@@ -75,6 +80,17 @@ Issue #991 và analyzer follow-up #931 nằm ngoài change này. Không tạo mi
 không sửa catalog getter, và không sửa analyzer trong bất kỳ chunk nào của tài
 liệu này.
 
+Việc archive/publication của delta này là boundary chỉ dành cho tài liệu. Trước
+khi archive, điều phối viên phải xác nhận canonical capability
+`database-quality-gate` đã chứa base requirement `Registry-selected SQL-test
+execution`, gồm contract metadata đã commit cho phép lane được yêu cầu và kết
+quả test đã execute nằm trong evidence. Sau đó phải reconcile/rebase delta này
+theo canonical spec và chạy cả `openspec validate narrow-db-quality-gate
+--strict` cùng `openspec show narrow-db-quality-gate --json --deltas-only`. Nếu
+canonical spec chưa có requirement đó, phải STOP archive và yêu cầu một change
+canonicalization có scope riêng. Safeguard này không tự archive change cũ,
+không tạo runtime gate mới và không thay đổi các Chunk 2–7.
+
 ## Lộ trình bảy chunk
 
 | Chunk | Kết quả                                                       | Hành vi gate                          |
@@ -90,7 +106,7 @@ liệu này.
 Mỗi chunk có review boundary riêng. Chunk 6 mới được phép chuyển behavior của
 cả hai lane trong cùng một thay đổi; chunk 7 mới nghiệm thu dynamic behavior.
 
-## Ảnh hưởng
+## Impact
 
 - Affected spec: delta cho capability `database-quality-gate`.
 - Dependency: `openspec/changes/add-database-quality-gate/` vẫn là nguồn contract
@@ -104,6 +120,7 @@ cả hai lane trong cùng một thay đổi; chunk 7 mới nghiệm thu dynamic 
 ## Tiêu chí chấp nhận cho proposed change
 
 - Strict OpenSpec validation PASS cho `narrow-db-quality-gate`.
+- `openspec show narrow-db-quality-gate --json --deltas-only` parse thành công.
 - Delta spec có requirement/scenario hợp lệ, giữ nguyên requirement không bị
   ảnh hưởng, và mô tả rõ cutover tương lai.
 - Tasks ghi đủ bảy chunk, giới hạn batch Chunk 2 là tối đa 20, và giữ các review

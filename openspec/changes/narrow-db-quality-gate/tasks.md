@@ -32,7 +32,13 @@
       không bị ảnh hưởng vẫn giữ nguyên và cutover tương lai chỉ xảy ra ở
       Chunk 6.
 - [x] 1.4 Tạo kế hoạch bảy chunk và acceptance criteria; chạy
-      `openspec validate narrow-db-quality-gate --strict` cùng focused Prettier.
+      `openspec validate narrow-db-quality-gate --strict`, parse
+      `openspec show narrow-db-quality-gate --json --deltas-only` và chạy
+      focused Prettier cho bốn file.
+- [x] 1.5 Ghi boundary publication/archive: chỉ archive sau khi canonical
+      `database-quality-gate` có base requirement, delta đã reconcile/rebase và
+      strict validate/show PASS; nếu thiếu thì STOP và yêu cầu canonicalization
+      riêng, không auto archive change cũ hay đổi Chunks 2–7.
 
 **Review boundary:** Chỉ bốn file trong proposed change mới. Không inventory,
 không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
@@ -49,8 +55,10 @@ không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
       migration integrity; gán `migration-specific` cho business workflow.
 - [ ] 2.4 Liệt kê từng mixed test và assertion security/business cần tách ở
       Chunk 4; không sửa SQL hoặc registry trong chunk này.
-- [ ] 2.5 Ghi entry chưa phân loại, path thiếu và mapping cần review như
-      evidence blocking; không âm thầm bỏ test.
+- [ ] 2.5 Phân biệt entry migration-specific lịch sử có
+      `requiredForMigrations` trống/không có (ghi intentional unmapped,
+      rationale và giữ ngoài default lane) với path đã khai báo nhưng invalid
+      (evidence blocking); không ép backfill lịch sử hoặc âm thầm bỏ test.
 
 **Review boundary:** Chỉ bảng phân loại; chưa đổi behavior, chưa chạy Oracle.
 
@@ -95,6 +103,10 @@ SQL test.
       parser hoặc implicit fallback.
 - [ ] 5.5 Giữ các lane gọi selector cũ; chưa chạy Oracle và chưa đổi baseline
       preflight/parity.
+- [ ] 5.6 Viết RED phân biệt mapping lịch sử cố ý để trống vẫn ngoài default
+      lane, path `requiredForMigrations` đã khai báo nhưng không tồn tại
+      canonical là BLOCKING, và migration business mới thiếu relevant exact
+      mapping đã review thì chặn review; không suy luận bằng SQL.
 
 **Review boundary:** Pure selector và unit tests; production lane chưa dùng
 selector mới.

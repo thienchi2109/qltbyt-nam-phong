@@ -8,8 +8,10 @@ reconciliation và exact landed-commit/live-write boundary, vẫn giữ nguyên.
 
 ### Requirement: Registry-selected SQL-test execution
 
-The system SHALL keep test safety independent from gate scope and SHALL select
-default-lane tests from validated registry metadata. Every `default-safe`
+The system SHALL execute only SQL tests whose committed metadata permits the
+requested lane, SHALL keep test safety independent from gate scope, and SHALL
+include the result of every executed test in gate evidence. The system SHALL
+select default-lane tests from validated registry metadata. Every `default-safe`
 `core-security` test SHALL be selected. A `default-safe`
 `migration-specific` test SHALL be selected only when at least one
 `requiredForMigrations` entry exactly matches a canonical pending migration path
@@ -27,6 +29,7 @@ these safety or purpose restrictions.
   `core-security`
 - **AND** the entry has valid source, runner, fixture, transaction, rollback and
   timeout metadata
+- **AND** its committed metadata permits the requested default lane
 - **WHEN** a default static or baseline-forward selection runs for any valid
   pending migration set
 - **THEN** the core-security test is selected
@@ -52,6 +55,41 @@ these safety or purpose restrictions.
   migration
 - **AND** the selector does not use a glob, substring, timestamp, filename
   category, or SQL inference as a fallback
+
+#### Scenario: Intentional historical migration mapping may remain empty
+
+- **GIVEN** an existing historical `default-safe` migration-specific entry has
+  an absent or empty `requiredForMigrations` list
+- **AND** the Chunk 2 inventory records it as intentionally unmapped with a
+  rationale
+- **WHEN** the default lane selects tests
+- **THEN** the test remains outside the default lane
+- **AND** its registry entry and rationale remain visible
+- **AND** the empty mapping alone does not require retroactive backfill or cause
+  a blocking error
+
+#### Scenario: Declared migration paths must exist at the subject commit
+
+- **GIVEN** a migration-specific entry declares a non-empty
+  `requiredForMigrations` path
+- **AND** that path does not exist in the canonical migration source at the
+  exact `subjectCommit`
+- **WHEN** registry validation runs
+- **THEN** validation emits a BLOCKING registry error before selection
+- **AND** the selector does not silently ignore the invalid declaration
+- **AND** no glob, substring, timestamp, filename or SQL inference can make it
+  valid
+
+#### Scenario: New business migration requires reviewed exact coverage
+
+- **GIVEN** a new business-changing migration is included in the approved plan
+- **AND** no reviewed migration-specific entry declares its canonical path in
+  `requiredForMigrations`
+- **WHEN** pre-cutover registry review evaluates migration coverage
+- **THEN** review is blocked for that migration
+- **AND** the selector does not infer coverage from SQL, filename or category
+- **AND** this review failure does not require rewriting intentionally unmapped
+  historical entries
 
 #### Scenario: Special safety classes keep their meaning
 

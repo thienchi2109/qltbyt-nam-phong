@@ -4,8 +4,10 @@
 
 `add-database-quality-gate` đã định nghĩa registry-selected SQL tests, static
 lane, baseline-forward lane, exact landed-commit evidence và các lớp expected
-state. Contract mới chỉ thay đổi cách chọn test `default-safe`. Nó không thay
-đổi safety, transaction, fixture, rollback, evidence, hay live-authorization
+state. Base contract vẫn yêu cầu chỉ execute SQL test khi committed metadata
+cho phép requested lane và phải đưa kết quả test đã execute vào gate evidence.
+Contract mới chỉ thay đổi cách chọn test `default-safe`. Nó không thay đổi
+safety, transaction, fixture, rollback, evidence, hay live-authorization
 contract.
 
 Mục tiêu là giảm phạm vi business được chạy cho từng migration mà vẫn giữ lớp
@@ -37,6 +39,19 @@ một test được chọn; selector không được tự đoán từ nội dung
 Baseline repair, catch-up và refresh là operations follow-up. Nếu baseline
 không khỏe hoặc parity chưa chứng minh được, gate giữ `INCOMPLETE`; selector
 không tự chữa baseline và không dùng thin-trust cache mới để che thiếu evidence.
+
+## Ranh giới publication/archive
+
+Archive/publication của delta này chỉ là boundary của tài liệu. Trước khi
+archive, điều phối viên phải kiểm tra canonical capability
+`database-quality-gate` đã chứa base requirement `Registry-selected SQL-test
+execution`, gồm contract committed metadata cho phép requested lane và kết quả
+test đã execute trong evidence. Delta phải được reconcile/rebase theo canonical
+spec rồi chạy `openspec validate narrow-db-quality-gate --strict` và
+`openspec show narrow-db-quality-gate --json --deltas-only`. Nếu base requirement
+chưa có, phải STOP archive và yêu cầu một change canonicalization riêng. Đây
+không phải điều kiện closeout/archive của change cũ để bắt đầu Chunk 6; không tự
+archive change cũ, không tạo runtime gate mới và không thay đổi Chunks 2–7.
 
 ## Mô hình scope và safety
 
@@ -89,7 +104,9 @@ Với default lane, selector thực hiện theo thứ tự:
 
 1. Validate registry và pending identities. Default-safe thiếu `gateScope`, có
    scope không hợp lệ, hoặc khai báo migration path không tồn tại trong
-   canonical subject commit là lỗi blocking.
+   canonical subject commit là lỗi blocking. Historical migration-specific
+   entry có mapping trống/không có chỉ được giữ ngoài default lane khi Chunk 2
+   đã ghi rõ rationale; thiếu phân loại/rationale là blocking review.
 2. Chọn mọi `default-safe` `core-security`.
 3. Với mỗi `default-safe` `migration-specific`, chọn nếu có ít nhất một
    `requiredForMigrations` entry bằng chính xác một pending canonical path.
@@ -104,8 +121,15 @@ Với default lane, selector thực hiện theo thứ tự:
 
 Một required migration-specific test thất bại là failure của required contract;
 baseline debt hoặc waiver cho finding khác không được hạ nó thành warning hay
-bỏ qua. Required test không có mapping exact phải dừng registry review với
-evidence thiếu.
+bỏ qua. Historical migration-specific entry có `requiredForMigrations` trống
+hoặc không khớp pending exact được giữ ngoài default lane nếu inventory đã ghi
+rationale; điều này không tự động yêu cầu backfill. Ngược lại, mọi path được
+khai báo trong `requiredForMigrations` phải tồn tại trong canonical migration
+source tại exact `subjectCommit`; path không hợp lệ là blocking. Mỗi migration
+business mới trong approved plan phải có ít nhất một relevant
+`requiredForMigrations` contract exact đã review; thiếu coverage chặn review của
+migration đó. Selector không được suy luận coverage từ SQL, tên file hoặc
+category.
 
 ## Đồng nhất static và baseline-forward
 
@@ -152,7 +176,12 @@ không gộp repair vào candidate migration hoặc selector.
 Chunk 2 lập bảng phân loại theo batch tối đa 20 test tại exact commit. Bảng là
 input review, không phải registry runtime. Mọi `default-safe` phải có scope và
 rationale trước khi cutover; entry chưa phân loại là blocking, không bị bỏ
-ngầm.
+ngầm. Với migration-specific test lịch sử có `requiredForMigrations` trống
+hoặc không có, inventory ghi rõ đây là mapping cố ý chưa gắn, rationale và việc
+giữ ngoài default lane; không yêu cầu backfill lịch sử. Path không rỗng đã khai
+báo nhưng không tồn tại canonical ở `subjectCommit` là blocking. Mỗi migration
+business mới trong approved plan phải có relevant exact mapping đã review; thiếu
+mapping chặn review migration mới.
 
 Chunk 3 ghi metadata tương thích nhưng giữ selector cũ chạy toàn bộ
 `default-safe`, để không thay đổi behavior khi metadata còn đang được review.
@@ -183,7 +212,10 @@ parity result, outcome và report digest. Dynamic report còn phải ghi disposa
 database identity và cleanup evidence. Static report chỉ là offline
 certification; không được dùng thay Oracle evidence.
 
-Acceptance cuối cùng cần chứng minh ba trường hợp: core security luôn được
-chọn; migration-specific chỉ được chọn khi path khớp exact; migration không có
-business mapping không kéo cả corpus business vào. Mọi acceptance dynamic
-chạy trên disposable clone và không tạo live write.
+Acceptance cuối cùng cần chứng minh các trường hợp: core security luôn được
+chọn; migration-specific chỉ được chọn khi path khớp exact; mapping lịch sử cố
+ý để trống vẫn nằm ngoài default lane mà không ép backfill; path đã khai báo
+nhưng không hợp lệ là blocking; migration business mới thiếu relevant mapping
+đã review thì chặn review; migration không có business mapping không kéo cả
+corpus business vào. Mọi acceptance dynamic chạy trên disposable clone và
+không tạo live write.
