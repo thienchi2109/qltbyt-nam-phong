@@ -47,9 +47,9 @@ không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
 
 ## Chunk 2 — Phân loại test theo batch tối đa 20
 
-- [ ] 2.1 Chụp danh sách `default-safe` tại exact subject commit và sắp path
+- [x] 2.1 Chụp danh sách `default-safe` tại exact subject commit và sắp path
       ổn định; không suy luận scope từ tên file hoặc category.
-- [ ] 2.2 Chia inventory thành các batch không quá 20 test; mỗi batch ghi path,
+- [x] 2.2 Chia inventory thành các batch không quá 20 test; mỗi batch ghi path,
       assertion, rationale, safety hiện tại và coverage dự kiến.
 - [ ] 2.3 Gán đề xuất `core-security` cho RPC/JWT/tenant/ACL/search_path và
       migration integrity; gán `migration-specific` cho business workflow.
@@ -61,6 +61,17 @@ không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
       (evidence blocking); không ép backfill lịch sử hoặc âm thầm bỏ test.
 
 **Review boundary:** Chỉ bảng phân loại; chưa đổi behavior, chưa chạy Oracle.
+
+**BATCH1 status (2026-09-07):** `test-classification.md` ghi snapshot đầy đủ
+77 path tại subject commit
+`1940887e9fe09d2264912602e43aee3b785a06bd`, chia `20/20/20/17`, và review
+thực tế 20 SQL body đầu tiên. BATCH1 có 2 đề xuất `core-security`,
+4 `migration-specific`, 14 mixed giữ tạm trong core để chờ Chunk 4; 1
+`requiredForMigrations` path hợp lệ tại subject commit. Trong 19 entry còn
+lại, 2 core-security không cần mapping, 4 migration-specific là
+intentional-unmapped lịch sử, và 13 mixed chờ mapping cho business half ở
+Chunk 4. BATCH2 (path 21–40) là lượt kế tiếp. Các mục 2.3–2.5
+chưa hoàn tất cho toàn bộ inventory nên vẫn để unchecked; không bắt đầu Chunk 3.
 
 ## Chunk 3 — Thêm metadata, giữ nguyên behavior cũ
 
