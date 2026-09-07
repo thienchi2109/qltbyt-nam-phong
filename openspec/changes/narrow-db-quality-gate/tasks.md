@@ -40,10 +40,13 @@
       strict validate/show PASS; nếu thiếu thì STOP và yêu cầu canonicalization
       riêng, không auto archive change cũ hay đổi Chunks 2–7.
 
-**Review boundary:** Chỉ bốn file trong proposed change mới. Không inventory,
-không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
+**Review boundary:** Chunk1 chỉ gồm bốn file proposed change; Chunk2 BATCH1–2
+chỉ cập nhật `test-classification.md` và progress này. Không registry/SQL/source/
+DB/runbook edit.
 
-**Trạng thái:** Chunk1 tài liệu hoàn tất, USER REVIEW trước Chunk2 đang chờ.
+**Trạng thái:** Chunk1 tài liệu hoàn tất. Chunk2 đã review BATCH1–2, tổng `40/77`
+path; BATCH3 kế tiếp còn `37` path. Các mục 2.3–2.5 vẫn unchecked cho toàn bộ
+inventory và cần review các batch còn lại trước khi bắt đầu Chunk3.
 
 ## Chunk 2 — Phân loại test theo batch tối đa 20
 
@@ -62,16 +65,17 @@ không `test-classification.md`, không registry/SQL/source/DB/runbook edit.
 
 **Review boundary:** Chỉ bảng phân loại; chưa đổi behavior, chưa chạy Oracle.
 
-**BATCH1 status (2026-09-07):** `test-classification.md` ghi snapshot đầy đủ
+**BATCH1–2 status (2026-09-07):** `test-classification.md` giữ snapshot đầy đủ
 77 path tại subject commit
-`1940887e9fe09d2264912602e43aee3b785a06bd`, chia `20/20/20/17`, và review
-thực tế 20 SQL body đầu tiên. BATCH1 có 2 đề xuất `core-security`,
-4 `migration-specific`, 14 mixed giữ tạm trong core để chờ Chunk 4; 1
-`requiredForMigrations` path hợp lệ tại subject commit. Trong 19 entry còn
-lại, 2 core-security không cần mapping, 4 migration-specific là
-intentional-unmapped lịch sử, và 13 mixed chờ mapping cho business half ở
-Chunk 4. BATCH2 (path 21–40) là lượt kế tiếp. Các mục 2.3–2.5
-chưa hoàn tất cho toàn bộ inventory nên vẫn để unchecked; không bắt đầu Chunk 3.
+`1940887e9fe09d2264912602e43aee3b785a06bd`, chia `20/20/20/17`, và đã review
+thực tế 40 SQL body đầu tiên. BATCH1 có 2 đề xuất `core-security`, 4
+`migration-specific`, 14 mixed; BATCH2 có 5 `core-security`, 6
+`migration-specific`, 9 mixed. Hai `requiredForMigrations` path đã khai báo đều
+hợp lệ tại exact subject commit; chín migration-specific lịch sử còn lại là
+intentional-unmapped, còn 23 mixed chờ mapping business ở Chunk 4. BATCH3
+(path 41–60) là lượt kế tiếp với 20 path pending; BATCH4 (path 61–77) còn 17
+path pending, tổng cộng 37 path. Các mục 2.3–2.5 chưa hoàn tất cho toàn bộ
+inventory nên vẫn để unchecked; không bắt đầu Chunk 3.
 
 ## Chunk 3 — Thêm metadata, giữ nguyên behavior cũ
 
