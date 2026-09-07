@@ -40,13 +40,13 @@
       strict validate/show PASS; nếu thiếu thì STOP và yêu cầu canonicalization
       riêng, không auto archive change cũ hay đổi Chunks 2–7.
 
-**Review boundary:** Chunk1 chỉ gồm bốn file proposed change; Chunk2 BATCH1–3
+**Review boundary:** Chunk1 chỉ gồm bốn file proposed change; Chunk2 BATCH1–4
 chỉ cập nhật `test-classification.md` và progress này. Không registry/SQL/source/
 DB/runbook edit.
 
-**Trạng thái:** Chunk1 tài liệu hoàn tất. Chunk2 đã review BATCH1–3, tổng `60/77`
-path; BATCH4 còn `17` path. Các mục 2.3–2.5 vẫn unchecked cho toàn bộ
-inventory và cần review BATCH4 trước khi bắt đầu Chunk3.
+**Trạng thái:** Chunk1 tài liệu hoàn tất. Chunk2 đã review đủ BATCH1–4, tổng
+`77/77` path; mọi entry có assertion evidence và mapping status. Các mục
+2.3–2.5 đã hoàn tất cho toàn bộ inventory; Chunk3 vẫn chưa bắt đầu.
 
 ## Chunk 2 — Phân loại test theo batch tối đa 20
 
@@ -54,28 +54,35 @@ inventory và cần review BATCH4 trước khi bắt đầu Chunk3.
       ổn định; không suy luận scope từ tên file hoặc category.
 - [x] 2.2 Chia inventory thành các batch không quá 20 test; mỗi batch ghi path,
       assertion, rationale, safety hiện tại và coverage dự kiến.
-- [ ] 2.3 Gán đề xuất `core-security` cho RPC/JWT/tenant/ACL/search_path và
+- [x] 2.3 Gán đề xuất `core-security` cho RPC/JWT/tenant/ACL/search_path và
       migration integrity; gán `migration-specific` cho business workflow.
-- [ ] 2.4 Liệt kê từng mixed test và assertion security/business cần tách ở
+- [x] 2.4 Liệt kê từng mixed test và assertion security/business cần tách ở
       Chunk 4; không sửa SQL hoặc registry trong chunk này.
-- [ ] 2.5 Phân biệt entry migration-specific lịch sử có
+- [x] 2.5 Phân biệt entry migration-specific lịch sử có
       `requiredForMigrations` trống/không có (ghi intentional unmapped,
       rationale và giữ ngoài default lane) với path đã khai báo nhưng invalid
       (evidence blocking); không ép backfill lịch sử hoặc âm thầm bỏ test.
 
 **Review boundary:** Chỉ bảng phân loại; chưa đổi behavior, chưa chạy Oracle.
 
-**BATCH1–3 status (2026-09-07):** `test-classification.md` giữ snapshot đầy đủ
-77 path tại subject commit
+**BATCH1–4 status (2026-09-07):** `test-classification.md` giữ snapshot đầy đủ
+77 path tại exact subject commit
 `1940887e9fe09d2264912602e43aee3b785a06bd`, chia `20/20/20/17`, và đã review
-thực tế 60 SQL body đầu tiên. BATCH1 có 2 đề xuất `core-security`, 4
+thực tế cả 77 SQL body. BATCH1 có 2 đề xuất `core-security`, 4
 `migration-specific`, 14 mixed; BATCH2 có 5 `core-security`, 6
 `migration-specific`, 9 mixed; BATCH3 có 0 pure `core-security`, 6
-`migration-specific`, 14 mixed. Bốn `requiredForMigrations` path đã khai báo
-đều hợp lệ tại exact subject commit; historical migration-specific còn lại là
-intentional-unmapped, còn 37 mixed chờ mapping business ở Chunk 4. BATCH4
-(path 61–77) còn 17 path pending. Các mục 2.3–2.5 chưa hoàn tất cho toàn bộ
-inventory nên vẫn để unchecked; không bắt đầu Chunk 3.
+`migration-specific`, 14 mixed; BATCH4 có 0 pure `core-security`, 2
+`migration-specific`, 15 mixed. Cumulative là 7 pure `core-security`, 18
+`migration-specific`, 52 mixed. Bốn `requiredForMigrations` path đã khai báo
+đều trỏ canonical path hợp lệ tại exact subject commit; BATCH4 không có
+declared mapping. Historical migration-specific không có mapping được ghi
+intentional-unmapped; declared-path invalid count là `0`. Mọi mixed entry đã
+có cặp extraction path và giữ nguyên trong default lane cho tới Chunk 4.
+
+**USER REVIEW required trước Chunk 3:** Đây là điểm dừng theo yêu cầu SDD.
+Không tick hoặc bắt đầu bất kỳ mục Chunk 3 nào trước khi user review/duyệt
+classification cumulative `77/77` và các ranh giới mixed trong
+`test-classification.md`.
 
 ## Chunk 3 — Thêm metadata, giữ nguyên behavior cũ
 
