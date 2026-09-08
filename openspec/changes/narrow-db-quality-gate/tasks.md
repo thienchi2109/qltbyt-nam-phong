@@ -99,8 +99,13 @@ SQL test.
 
 **Handoff evidence (2026-09-08, commit `cd2068db`):**
 
-- RED trên baseline `0cfaec28`: 5/9 assertions failed; sau implementation trên
-  `cd2068db`: 20/20 focused tests PASS.
+- Kiểm tra RED hồi cứu: chép test scope từ `cd2068db` vào worktree baseline
+  `0cfaec28`, chạy `node scripts/npm-run.js exec vitest run
+scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
+  failed. Bốn case enum sai đã PASS với parser strict cũ; missing metadata và
+  mapping path failed do validator chưa tồn tại. Kết quả này không chứng minh
+  thứ tự RED trước implementation của phiên ban đầu. GREEN trên `cd2068db`:
+  20/20 focused tests PASS.
 - `scripts/__tests__/database-quality-gate-scope-metadata.test.ts` và
   `database-quality-gate-registry.test.ts`: 20/20 tests PASS.
 - `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: PASS.
