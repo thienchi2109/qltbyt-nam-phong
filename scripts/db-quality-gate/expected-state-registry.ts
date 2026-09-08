@@ -60,6 +60,7 @@ const invariantsSchema = z
 
 const sqlTestSchema = z
   .object({
+    gateScope: z.enum(["core-security", "migration-specific"]).optional(),
     baselineDebt: z
       .object({
         sourceSha256: z.string().regex(/^[a-f0-9]{64}$/u),
@@ -112,6 +113,33 @@ export const TABLE_CLASSIFICATIONS = new Set([
 export type InvariantRegistry = z.infer<typeof invariantsSchema>
 export type ResolvedInvariant = z.infer<typeof resolvedInvariantSchema>
 export type SqlTestRegistry = z.infer<typeof sqlTestsSchema>
+
+/** Checks Chunk 3 scope metadata without changing the legacy selector. */
+export function validateSqlTestGateScope(input: {
+  sqlTests: unknown
+  canonicalMigrationPaths: readonly string[]
+}): RegistryValidation {
+  const registry = parseSqlTestRegistry(input.sqlTests)
+  if (registry === undefined) {
+    return { findings: [finding("registry.sql-tests.schema", "BLOCKING")], valid: false }
+  }
+  const canonical = new Set(input.canonicalMigrationPaths)
+  const findings: ValidationFinding[] = []
+  for (const test of registry.tests) {
+    if (test.safety === "default-safe" && test.gateScope === undefined) {
+      findings.push(finding("registry.sql-tests.gate-scope", "BLOCKING"))
+    }
+    for (const migrationPath of test.requiredForMigrations ?? []) {
+      if (!canonical.has(migrationPath)) {
+        findings.push(finding("registry.sql-tests.required-migration-path", "BLOCKING"))
+      }
+    }
+  }
+  return {
+    findings: findings.sort((left, right) => compareStrings(left.ruleId, right.ruleId)),
+    valid: findings.length === 0,
+  }
+}
 
 function hasSchemaVersion(value: unknown, schemaVersion: number): boolean {
   return (

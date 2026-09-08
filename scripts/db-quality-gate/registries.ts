@@ -12,6 +12,7 @@ export {
   parseSqlTestRegistry,
   TABLE_CLASSIFICATIONS,
   validateExpectedStateRegistries,
+  validateSqlTestGateScope,
 } from "./expected-state-registry"
 export type {
   InvariantRegistry,

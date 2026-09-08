@@ -9,7 +9,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -89,7 +90,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -99,7 +101,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -159,7 +162,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-device-quota-draft-excel-export Phase 3.5"],
@@ -172,7 +176,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-device-quota-draft-catalog Phase 2"],
@@ -182,7 +187,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-device-quota-draft-catalog Phase 4.3"],
@@ -192,7 +198,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -202,7 +209,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -212,7 +220,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -222,7 +231,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -232,7 +242,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -242,7 +253,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -252,7 +264,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -262,7 +275,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -272,7 +286,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -292,7 +307,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -302,7 +318,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -312,7 +329,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -332,7 +350,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -352,7 +371,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -362,7 +382,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -372,7 +393,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -382,7 +404,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -412,7 +435,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -430,7 +454,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -440,7 +465,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -450,7 +476,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -460,7 +487,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -501,7 +529,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -511,7 +540,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -521,7 +551,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 9"],
@@ -531,7 +562,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -551,7 +583,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 12"],
@@ -561,7 +594,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 12 review"],
@@ -571,7 +605,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-technical-configuration-expert-role Phase 13"],
@@ -581,7 +616,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": [
@@ -594,7 +630,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -617,7 +654,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 90,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["GitHub Issue #957"],
@@ -630,7 +668,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 120,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -650,7 +689,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -660,7 +700,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -681,7 +722,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -691,7 +733,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -701,7 +744,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -711,7 +755,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -731,7 +776,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -744,7 +790,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -754,7 +801,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -764,7 +812,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -784,7 +833,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -794,7 +844,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -821,7 +872,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -831,7 +883,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -851,7 +904,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["OpenSpec add-technical-configuration-dossier-search Phase 2"],
@@ -861,7 +915,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -871,7 +926,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -881,7 +937,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -891,7 +948,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -901,7 +959,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -911,7 +970,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -943,7 +1003,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -953,7 +1014,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -963,7 +1025,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -973,7 +1036,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -983,7 +1047,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1003,7 +1068,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1013,7 +1079,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1023,7 +1090,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1033,7 +1101,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1043,7 +1112,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1053,7 +1123,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1063,7 +1134,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1073,7 +1145,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1102,7 +1175,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1112,7 +1186,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1132,7 +1207,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     },
     {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
@@ -1142,7 +1218,8 @@
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
       "timeoutSeconds": 30,
-      "transactionContract": "rollback-required"
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     }
   ]
 }
