@@ -22,6 +22,10 @@ Base: `1c7ce5e534263e45223dda40456b5c2a55190362`. User duyệt brief ngày
 
 - RED: 1 failed/1 passed trước extraction, lỗi assertion scope leakage trên
   source mixed, không phải ENOENT. GREEN: 5 focused files, 28/28 tests PASS.
+- Format, explicit-any, dedupe, typecheck PASS; React Doctor quét test mới
+  sau staging, 100/100. Commit/push hooks đã chạy thành công.
+- Review trực tiếp xác nhận chỉ năm file trong phạm vi thay đổi. Reviewer
+  subagent lỗi provider credentials (404); không có independent review approval.
 - Tái sử dụng `registeredSqlTestBody`, `validateExpectedStateRegistries`,
   `selectDefaultSafeSqlTests` và `validRegistries`; không thêm shared capability.
 - Regression giữ nguyên toàn bộ block SQL, source SHA-256 và fixture registration;
@@ -41,5 +45,6 @@ Base: `1c7ce5e534263e45223dda40456b5c2a55190362`. User duyệt brief ngày
 - [x] RED → GREEN, tạo hai companion và kiểm tra fixture harness.
 - [x] Giữ source/registry/selected set 77 và rollback envelope.
 - [ ] User review kết quả 4c; checklist tổng Chunk 4 vẫn mở.
-- [ ] Scope riêng: harden sentinel guard; mapping migration trước cutover.
+- [ ] Scope riêng: harden sentinel guard theo issue #993; mapping migration
+      trước cutover.
 - [ ] Dynamic semantic validation ở Chunk 7 khi được giao.
