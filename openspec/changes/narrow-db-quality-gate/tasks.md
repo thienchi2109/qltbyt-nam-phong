@@ -86,16 +86,27 @@ classification cumulative `77/77` và các ranh giới mixed trong
 
 ## Chunk 3 — Thêm metadata, giữ nguyên behavior cũ
 
-- [ ] 3.1 Viết RED cho enum `gateScope`, metadata thiếu và
+- [x] 3.1 Viết RED cho enum `gateScope`, metadata thiếu và
       `requiredForMigrations` path không tồn tại.
-- [ ] 3.2 Thêm metadata tương thích vào registry theo bảng đã duyệt, vẫn giữ
+- [x] 3.2 Thêm metadata tương thích vào registry theo bảng đã duyệt, vẫn giữ
       `safety` hiện tại.
-- [ ] 3.3 Giữ selector hiện tại chạy toàn bộ `default-safe`; chứng minh selected
+- [x] 3.3 Giữ selector hiện tại chạy toàn bộ `default-safe`; chứng minh selected
       set trước/sau metadata không đổi.
-- [ ] 3.4 Chạy focused registry checks và dừng trước lane cutover.
+- [x] 3.4 Chạy focused registry checks và dừng trước lane cutover.
 
 **Review boundary:** Metadata và validation only; không giảm coverage hoặc sửa
 SQL test.
+
+**Handoff evidence (2026-09-08, commit `cd2068db`):**
+
+- RED trên baseline `0cfaec28`: 5/9 assertions failed; sau implementation trên
+  `cd2068db`: 20/20 focused tests PASS.
+- `scripts/__tests__/database-quality-gate-scope-metadata.test.ts` và
+  `database-quality-gate-registry.test.ts`: 20/20 tests PASS.
+- `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: PASS.
+- `react-doctor`: PASS, score 100/100.
+- Registry metadata đối chiếu 77/77 test; selector legacy giữ nguyên selected set.
+- Đã merge/push vào `main`; Chunk 4+ chưa bắt đầu.
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
