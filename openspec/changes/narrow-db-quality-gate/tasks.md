@@ -115,6 +115,9 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
+**Lượt 4c:** Equipment bulk delete; xem [handoff 4c](chunk4c-handoff.md).
+Đã tách companion, chờ user review; không bắt đầu Chunk 5/6.
+
 **Lượt 4b:** Dashboard badges department scope; xem [TODO và evidence 4b](chunk4b-handoff.md). Chờ user review; các nhóm khác chưa triển khai.
 
 **Lượt 4a:** Chỉ AI kill switch (`ai_kill_switch_smoke.sql`); hai file tách
