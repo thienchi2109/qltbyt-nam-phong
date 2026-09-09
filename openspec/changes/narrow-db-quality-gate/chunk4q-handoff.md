@@ -16,6 +16,7 @@ Verification: format, no-explicit-any, dedupe, typecheck PASS; focused suite
 2/2 PASS. Oracle/live DB was not run; no aggregate DB PASS; Chunk 5/6 remain
 unstarted.
 
-Known follow-up: Entry 29 companions retain large independent PL/pgSQL blocks
-and exceed the repository's 450-line source ceiling; helper extraction is
-required before activation.
+The companions now keep Entry 29 audit fail-closed blocks separate from
+lifecycle business blocks. Entry 31 core retains only scope invocations and
+fixture witnesses; expected counts/overdue assertions remain in the business
+companion. Dynamic SQL execution is still required before activation.

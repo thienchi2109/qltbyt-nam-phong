@@ -1,4 +1,4 @@
--- supabase/tests/repair_request_lifecycle_audit_smoke_migration_specific.sql
+-- supabase/tests/repair_request_lifecycle_audit_smoke.sql
 -- Purpose: validate repair request lifecycle audit coverage for update/approve/complete/delete
 -- How to run (local): docker exec -i supabase_db_qltbyt-nam-phong psql -U postgres -d postgres -v ON_ERROR_STOP=1 -f - < supabase/tests/repair_request_lifecycle_audit_smoke.sql
 -- Non-destructive: wrapped in transaction and rolled back

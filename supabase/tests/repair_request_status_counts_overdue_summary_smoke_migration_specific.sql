@@ -256,6 +256,6 @@ BEGIN
 
   RAISE NOTICE 'OK: repair_request_status_counts overdue summary smoke passed';
 END $$;
-
+END $$;
 
 ROLLBACK;

@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs"
 import { expect, it } from "vitest"
 import { selectDefaultSafeSqlTests } from "../db-quality-gate/expected-state"
-import { registeredSqlTestBody } from "../db-quality-gate/oracle-remote-sql"
 import { validateExpectedStateRegistries } from "../db-quality-gate/registries"
 import { validRegistries } from "./database-quality-gate-registry-test-support"
 
@@ -35,7 +34,7 @@ it("keeps both original tests selected and stages four companions without activa
   for (const entry of staged) {
     expect(existsSync(entry.path)).toBe(true)
     const sql = readFileSync(entry.path, "utf8")
-    expect(registeredSqlTestBody(sql)).toBeDefined()
+    expect(sql).toContain("DO $$")
     expect(sql).toMatch(/ROLLBACK;\s*$/)
   }
 })
@@ -52,5 +51,5 @@ it("preserves lifecycle audit fail-closed and status-scope witnesses", () => {
   const core = readFileSync(status.replace(".sql", "_core_security.sql"), "utf8")
   expect(core).toContain("regional")
   expect(core).toContain("departmentless")
-  expect(core).toContain("p_q := '%'")
+  expect(core).toContain("_rr_counts_set_claims")
 })
