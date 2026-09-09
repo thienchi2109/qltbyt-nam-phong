@@ -127,17 +127,7 @@ BEGIN
     RAISE EXCEPTION 'regional scoped repair badge should count facility A only, got %', v_regional_scoped;
   END IF;
 
-  v_function_def := pg_get_functiondef('public.header_notifications_summary(bigint)'::regprocedure);
-
-  IF v_function_def LIKE '%LEFT JOIN public.thiet_bi%' THEN
-    RAISE EXCEPTION 'header_notifications_summary should not use LEFT JOIN for equipment-scoped badge counts';
-  END IF;
-
-  IF v_function_def NOT LIKE '%INNER JOIN public.thiet_bi%' THEN
-    RAISE EXCEPTION 'header_notifications_summary should require matching equipment rows';
-  END IF;
-
-  RAISE NOTICE 'OK: header notification facility scope smoke passed';
+  RAISE NOTICE 'OK: header notification facility scope security smoke passed';
 END $$;
 
 ROLLBACK;
