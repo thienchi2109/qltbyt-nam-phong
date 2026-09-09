@@ -119,6 +119,14 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 business giữ historical reads và wildcard escaping. Xem [handoff 4i](chunk4i-handoff.md).
 Companions fixture-only, selected set 77; chưa bắt đầu Chunk 5/6.
 
+**Lượt 4j:** Entry 18 partial unique sau soft-delete; toàn bộ test là
+core-security/migration-integrity, không cần extraction companion. Xem [handoff
+4j](chunk4j-handoff.md). Entry 16 sentinel false-pass vẫn ngoài scope.
+
+**Lượt 4k:** Entry 20 soft-delete workflow guards; toàn bộ test là
+migration-specific business workflow, không có core-security extraction. Xem
+[handoff 4k](chunk4k-handoff.md). Entry 16 và Entry 19 vẫn ngoài scope.
+
 **Lượt 4h:** Entry 13 active repair; core giữ F và witness quyền global của G,
 business giữ A–E và repair ID của G. Xem [handoff 4h](chunk4h-handoff.md).
 Companions chưa active; chưa bắt đầu Chunk 5/6.
