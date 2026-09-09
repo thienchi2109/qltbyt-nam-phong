@@ -115,6 +115,8 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
+**Lượt 4g correction:** deleted/cross-tenant bucket exclusion is core-security; regression and fixture staging verified; mixed SQL and active registry unchanged.
+
 **Lượt 4c:** Equipment bulk delete; xem [handoff 4c](chunk4c-handoff.md).
 Đã tách companion, chờ user review; không bắt đầu Chunk 5/6.
 

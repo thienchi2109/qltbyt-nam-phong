@@ -174,14 +174,6 @@ BEGIN
     RAISE EXCEPTION 'status filter should narrow department buckets across full tenant scope: %', v_payload;
   END IF;
 
-  IF EXISTS (
-    SELECT 1
-    FROM jsonb_array_elements(v_payload->'department') entry
-    WHERE entry->>'name' IN ('Khoa Deleted ' || v_suffix, 'Khoa Other Tenant ' || v_suffix)
-  ) THEN
-    RAISE EXCEPTION 'equipment_filter_buckets leaked deleted or cross-tenant department bucket: %', v_payload;
-  END IF;
-
   IF NOT EXISTS (
     SELECT 1
     FROM jsonb_array_elements(v_payload->'status') entry
