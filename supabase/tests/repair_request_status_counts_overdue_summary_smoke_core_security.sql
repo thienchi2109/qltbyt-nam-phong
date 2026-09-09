@@ -189,14 +189,17 @@ BEGIN
   -- global with explicit facility filter: isolate the new fixture rows on facility A.
   PERFORM pg_temp._rr_counts_set_claims('global', v_global_user, NULL, NULL, NULL);
   SELECT public.repair_request_status_counts(p_don_vi := v_facility_a) INTO v_result;
+  PERFORM pg_temp._rr_assert_eq_int('global scoped pending', (v_result->'counts'->>'Chờ xử lý')::integer, 5);
 
   -- global can also isolate facility C, proving the cross-tenant fixture is reachable
   -- only when explicitly selected.
   SELECT public.repair_request_status_counts(p_don_vi := v_facility_c) INTO v_result;
+  PERFORM pg_temp._rr_assert_eq_int('global C pending', (v_result->'counts'->>'Chờ xử lý')::integer, 1);
 
   -- regional leader: sees facilities A + B, not C.
   PERFORM pg_temp._rr_counts_set_claims('regional_leader', v_regional_user, v_facility_a, v_region_1, NULL);
   SELECT public.repair_request_status_counts() INTO v_result;
+  PERFORM pg_temp._rr_assert_eq_int('scope pending', (v_result->'counts'->>'Chờ xử lý')::integer, 6);
 
   -- regional leader facility filter narrows to B only.
   SELECT public.repair_request_status_counts(p_don_vi := v_facility_b) INTO v_result;
