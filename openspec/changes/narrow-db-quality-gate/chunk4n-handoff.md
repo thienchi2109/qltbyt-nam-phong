@@ -20,3 +20,9 @@ PASS. Chunk 5/6 chưa bắt đầu.
 
 Entry 16 sentinel false-pass và Entry 19 reports chưa xử lý; các mixed entry
 khác còn trong inventory classification và cần batch theo domain.
+
+# Chunk 4o — Entry 21 + 23
+
+Đã tạo companion cho notification facility scope và maintenance write role guards:
+core-security giữ scope/role/tenant authorization; migration-specific giữ payload
+và workflow persistence assertions. SQL gốc và registry/selected set 77 giữ nguyên.

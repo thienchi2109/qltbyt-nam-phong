@@ -153,7 +153,7 @@ Companions chưa active; chưa bắt đầu Chunk 5/6.
 chạy. Xem [handoff 4a](chunk4a-handoff.md). Các mục 4.2–4.4 tổng vẫn chưa tick
 vì những nhóm mixed khác chưa xử lý; lượt kế tiếp chưa được giao.
 
-- [ ] 4.1 Giao tối đa một nhóm business mỗi lượt; ghi nhóm tiếp theo trước khi
+- [x] 4.1 Giao tối đa một nhóm business mỗi lượt; ghi nhóm tiếp theo trước khi
       bắt đầu nếu cần nhiều lượt.
 - [ ] 4.2 Tách assertion RPC/JWT/tenant/ACL/search_path thành core-security
       coverage; giữ business assertion trong migration-specific test.
