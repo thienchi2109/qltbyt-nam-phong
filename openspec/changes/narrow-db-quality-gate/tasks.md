@@ -115,6 +115,10 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
+**Lượt 4h:** Entry 13 active repair; core giữ F và witness quyền global của G,
+business giữ A–E và repair ID của G. Xem [handoff 4h](chunk4h-handoff.md).
+Companions chưa active; chưa bắt đầu Chunk 5/6.
+
 **Lượt 4g correction:** deleted/cross-tenant bucket exclusion is core-security; regression and fixture staging verified; mixed SQL and active registry unchanged.
 
 **Lượt 4c:** Equipment bulk delete; xem [handoff 4c](chunk4c-handoff.md).
