@@ -115,6 +115,10 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
+**Lượt 4p:** Chỉ Entry 26 active request for equipment; core giữ scenario 2/4/5,
+business giữ 1/3/6. Xem [handoff 4p](chunk4p-handoff.md). Companions chưa active,
+selected set 77; Entry 29/31 chưa triển khai.
+
 **Lượt 4i:** Entry 17 historical reads; core giữ regional scope/search_path,
 business giữ historical reads và wildcard escaping. Xem [handoff 4i](chunk4i-handoff.md).
 Companions fixture-only, selected set 77; chưa bắt đầu Chunk 5/6.
