@@ -93,6 +93,7 @@ BEGIN
   v_global_all := public.header_notifications_summary(NULL::bigint);
   v_global_scoped := public.header_notifications_summary(v_facility_a);
 
+  -- Core scope checks intentionally retain only facility/region isolation.
   IF (v_global_all->>'pending_repairs')::integer <> v_global_baseline_repairs + 3 THEN
     RAISE EXCEPTION 'global all-facility repair badge should count baseline + 3, got % with baseline %',
       v_global_all,

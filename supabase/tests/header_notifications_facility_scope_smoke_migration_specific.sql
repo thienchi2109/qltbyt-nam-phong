@@ -128,6 +128,7 @@ BEGIN
 
   v_function_def := pg_get_functiondef('public.header_notifications_summary(bigint)'::regprocedure);
 
+  -- Migration-specific payload/count contract; join shape is retained as business data contract.
   IF v_function_def LIKE '%LEFT JOIN public.thiet_bi%' THEN
     RAISE EXCEPTION 'header_notifications_summary should not use LEFT JOIN for equipment-scoped badge counts';
   END IF;

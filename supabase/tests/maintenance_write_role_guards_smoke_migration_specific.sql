@@ -96,6 +96,7 @@ BEGIN
     true
   );
 
+  -- Companion retains shared fixture and workflow persistence assertions.
   v_plan_id := public.maintenance_plan_create(
     'Smoke Maintenance Allowed Plan ' || v_suffix,
     EXTRACT(YEAR FROM current_date)::integer,
