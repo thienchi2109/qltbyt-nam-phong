@@ -131,6 +131,9 @@ migration-specific business workflow, không có core-security extraction. Xem
 đều migration-specific business thuần, không cần core-security companion. Xem
 [handoff 4l](chunk4l-handoff.md).
 
+**Lượt 4m:** Batch Entry 22 + 28 + 34; cả ba migration-specific business/integrity
+thuần, không cần core-security companion. Xem [handoff 4m](chunk4m-handoff.md).
+
 **Lượt 4h:** Entry 13 active repair; core giữ F và witness quyền global của G,
 business giữ A–E và repair ID của G. Xem [handoff 4h](chunk4h-handoff.md).
 Companions chưa active; chưa bắt đầu Chunk 5/6.
