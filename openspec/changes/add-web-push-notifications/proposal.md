@@ -2,7 +2,7 @@
 
 QLTBYT cần thêm Web Push tới các tài khoản được cấu hình để xử lý yêu cầu sửa chữa mới, song song với Zalo ZBS đang gửi tới số điện thoại. Hướng Firebase/FCM + Supabase Edge Functions cũ không còn phù hợp với runtime và identity hiện tại.
 
-Giữ change ID `add-firebase-push-notifications` để bảo toàn tham chiếu; nội dung change này thay thế hướng Firebase bằng dedicated Go Web Push service trên Docker/Oracle VM. Quyết định kiến trúc và chính sách người nhận được maintainer xác nhận trong phiên thảo luận ngày 2026-09-10; không có Wayfinder map/ticket được cung cấp nên không tạo traceability giả.
+Change ID `add-web-push-notifications` phản ánh hướng dedicated Go Web Push service trên Docker/Oracle VM, thay thế proposal Firebase trước đây. Quyết định kiến trúc và chính sách người nhận được maintainer xác nhận trong phiên thảo luận ngày 2026-09-10; không có Wayfinder map/ticket được cung cấp nên không tạo traceability giả.
 
 ## What Changes
 
