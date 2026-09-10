@@ -26,6 +26,14 @@ Không Go -> Supabase trực tiếp, không Supabase service-role key trên Orac
 
 Worker API dùng credential riêng, signed method/path/body/timestamp và nonce hoặc cơ chế chống replay tương đương, kiểm tra constant-time, cửa sổ thời gian hữu hạn và rotation có overlap. Chỉ endpoint claim/report được cấp quyền; không mở arbitrary RPC. Có giới hạn body/batch/timeouts và không log secrets/subscription endpoint/payload sự cố. Chốt wire format và nơi đặt source Go ở phase 1, trước khi hai phía implement; không cần thêm quyết định sản phẩm.
 
+### VAPID provisioning và dependency
+
+Owner vận hành notification service quản lý cặp key theo từng môi trường. Phase 1 chốt fingerprint/version và quy trình bàn giao; không tạo production secret trong phase contract. Phase 4 dùng key test riêng để cung cấp public key/version qua cấu hình app và ghi version vào subscription. Phase 5 chỉ cần artifact public key/version của Phase 4, không phụ thuộc container Phase 6 đang chạy.
+
+Phase 6 kiểm tra public key suy ra từ private key khớp version/fingerprint của app trước readiness; thiếu hoặc lệch thì không claim/send. Private key lưu ở secret store vận hành dành riêng cho Go, không trong Git/image, QLTBYT hoặc Supabase; không tự tạo lại lúc container restart. Phase 8 owner tạo/provision cặp production, phân phối chỉ public key/version cho QLTBYT và kiểm tra khớp trước bật registration.
+
+Rotation MVP là thao tác có kiểm soát: pause registration/dispatch, đổi cặp key đồng bộ, đánh dấu subscription version cũ cần đăng ký lại và hướng dẫn user resubscribe; không gửi subscription cũ bằng key mới. Giữ secret version cũ để rollback trong cửa sổ vận hành, không tuyên bố rotation không gián đoạn. Delivery chỉ dùng subscription version tương thích.
+
 ### 2. Recipient và subscription
 
 UI cấu hình theo đơn vị của thiết bị, cho global/admin và to_qltb đúng scope. Parse username bằng dấu phẩy, trim, loại trùng, resolve theo semantics username hiện có; lưu quan hệ user ID riêng từng recipient. Reject toàn bộ nếu unknown/inactive/không đủ quyền. Danh sách rỗng là tắt recipient Web Push của đơn vị. Không tự thêm global fallback.
@@ -51,6 +59,8 @@ Transaction enqueue lỗi nội bộ sẽ rollback để giữ tính nguyên t�
 Title/body chứa tên thiết bị, khoa/phòng quản lý, mô tả sự cố snapshot lúc tạo; Unicode-safe truncation và byte budget dưới giới hạn Web Push sau mã hóa. Không nhúng secret, dữ liệu quyền hoặc nội dung ngoài ba trường đã chốt. Click URL cùng origin qua helper deep link; đăng nhập và quyền hiện tại quyết định mở chi tiết.
 
 Service worker xử lý push/background/click, tránh hai notification hiển thị cho cùng message do foreground và background cùng xử lý. Stable notification tag giảm trùng hiển thị nhưng không bảo đảm exactly-once. Push provider vẫn là hạ tầng browser vendor, có thể là Google trên Chromium dù không dùng Firebase project/SDK.
+
+Phase 5 kiểm kê manifest/metadata/icon/service-worker registration hiện có và bổ sung phần thiếu để app cài được: manifest có identity, name, start_url/scope cùng origin, display standalone và icons phù hợp; metadata link manifest, HTTPS và service worker registration với scope tương thích. Không thêm offline caching hoặc cache dữ liệu có auth. Phase 7 kiểm chứng luồng thêm Home Screen, mở installed standalone, user-gesture permission, subscription và push thực tế trên iOS/iPadOS; chỉ có hướng dẫn UI không đủ nghiệm thu.
 
 MVP hỗ trợ desktop Chrome/Edge/Firefox, Android Chrome/Edge và iOS/iPadOS hỗ trợ Web Push qua installed Home Screen web app. Feature detection và hướng dẫn tiếng Việt; không ép permission hay giả định browser đóng luôn nhận ngay.
 

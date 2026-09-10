@@ -10,7 +10,7 @@
 
 - Đây là kế hoạch implementation tương lai; mọi checkbox để trống cho đến khi có bằng chứng. Lượt sửa artifacts không thực thi phase nào.
 - Mỗi phase là một đơn vị review và landing riêng. Chỉ thực hiện phase được maintainer giao, báo kết quả rồi dừng; không tự nhảy sang phase sau hoặc live deploy.
-- Dependency: 1 -> 2; 3 và 4 cần 2; 5 cần 3+4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
+- Dependency: 1 -> 2; 3 và 4 cần 2; 5 cần 3+4 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
 - Phase có SQL phải giữ migration immutable, chạy static và Oracle baseline-forward trên disposable DB cùng exact landed commit. Report hai lane riêng; live apply cần quyền cụ thể qua Supabase MCP.
 - Phase TS/TSX chạy format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused tests -> React Doctor. Semantic reuse check khi thêm logic dùng chung; không full-suite/full-dedupe mặc định.
 - Phase Go có runnable checks cho claim/report errors, provider responses, crash recovery, SSRF và payload; chọn thư viện Web Push bảo trì tốt thay vì tự viết crypto.
@@ -21,7 +21,7 @@
 **Boundary:** artifacts/contract fixtures và tests bảo vệ hành vi; chưa runtime, SQL, UI hay deploy. Đọc `src/auth`, RPC claims, ZBS enqueue/dispatcher, DQSS client và deep-link helper.
 **Deliverable:** contract một phiên bản đủ để QLTBYT và Go implement độc lập; không dựng scaffolding rỗng.
 
-- [ ] 1.1 Ghi source/build location Go, tên bảng/RPC/endpoints, request/response/version, signed request/replay/rotation contract; không tạo external repo hoặc provision VM trong phase này.
+- [ ] 1.1 Ghi source/build location Go, tên bảng/RPC/endpoints, request/response/version, signed request/replay/rotation contract; chốt owner vận hành VAPID, fingerprint/version, bàn giao public key và controlled rotation/resubscribe; không tạo external repo hoặc provision VM trong phase này.
 - [ ] 1.2 Pin lease/batch/poll/backoff/body limits, payload byte budget và retention, đáp ứng mục tiêu 60 giây và deadline 24 giờ; ghi error/status mapping, ownership/revocation và retry contract.
 - [ ] 1.3 Khóa regression có giá trị: ZBS enqueue mọi priority, đúng tenant/phone, không recipient, rollback, delivery failure isolation; ghi baseline thực tế và scope code sẽ chạm.
 - [ ] 1.4 Review contract đối chiếu mọi requirement; xác nhận không mở lại chính sách đã chốt, ghi bằng chứng baseline và dừng.
@@ -32,7 +32,7 @@
 
 **Dependency:** 1. **Boundary:** forward-only additive SQL + SQL tests cho config/subscription/delivery state; không sửa create flow, không API/UI/Go. Target `supabase/migrations` và test registry đúng scope.
 
-- [ ] 2.1 Thêm schema Web Push riêng với recipient user IDs, subscription unique ownership/revision, logical intent và per-subscription delivery/lease/deadline constraints; cấm client table access trực tiếp.
+- [ ] 2.1 Thêm schema Web Push riêng với recipient user IDs, subscription unique ownership/revision và VAPID key version, logical intent và per-subscription delivery/lease/deadline constraints; cấm client table access trực tiếp.
 - [ ] 2.2 Thêm RPC cấu hình và register/revoke có claims/scope, validation atomic username list, inactive/unknown/unauthorized rejection và admin/global parity.
 - [ ] 2.3 Test tenant tampering, account switch, duplicate endpoint, username trim/dedupe, invalid list không partial save và revoke idempotency.
 - [ ] 2.4 Chạy hai DB lanes cùng commit, review grants/RLS/source ordering và lưu evidence; chưa live apply nếu chưa được phép.
@@ -56,7 +56,7 @@
 
 - [ ] 4.1 Expose configuration/registration/revoke server routes đúng quyền, không tin client identity, input limits/CSRF-origin protection và lỗi an toàn.
 - [ ] 4.2 Implement claim/fan-out/report có lease fencing, deadline, recheck quyền/config/ownership và per-subscription completion; giữ intent chưa có subscription trong hạn.
-- [ ] 4.3 Implement private worker authentication, replay rejection, bounded requests và separate controls; endpoint disabled phản hồi để worker backoff, revoke vẫn hoạt động.
+- [ ] 4.3 Implement private worker authentication, replay rejection, bounded requests và separate controls; endpoint disabled phản hồi để worker backoff, revoke vẫn hoạt động; cung cấp public key/version test riêng của môi trường qua cấu hình app, reject registration dùng version không hỗ trợ.
 - [ ] 4.4 Test concurrency/reclaim/stale report, removed recipient, account inactive/mất quyền, successful endpoint không resend vì endpoint khác lỗi và SSRF input boundary.
 - [ ] 4.5 Chạy TS gates và DB lanes nếu có SQL, review contract compatibility; deploy mặc định tắt và dừng.
 
@@ -64,11 +64,11 @@
 
 ## Phase 5 - UI cấu hình, opt-in và service worker
 
-**Dependency:** 3+4. **Boundary:** QLTBYT UI/browser lifecycle và tests; không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold.
+**Dependency:** 3+4, gồm public key/version test được Phase 4 cung cấp; không cần Go chạy. **Boundary:** QLTBYT UI/browser lifecycle và tests; không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold.
 
 - [ ] 5.1 Thêm UI cấu hình theo đơn vị cho global/admin/to_qltb, comma-separated username list, atomic errors và trạng thái không có recipient.
-- [ ] 5.2 Thêm bật/tắt thông báo tự nguyện trong app, preview nội dung màn hình khóa, permission/unsupported/blocked states và hướng dẫn Home Screen iOS/iPadOS.
-- [ ] 5.3 Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
+- [ ] 5.2 Thêm bật/tắt thông báo tự nguyện trong app, preview nội dung màn hình khóa, permission/unsupported/blocked states và hướng dẫn Home Screen iOS/iPadOS; dùng public key/version từ Phase 4 và hiển thị yêu cầu đăng ký lại khi key version thay đổi.
+- [ ] 5.3 Kiểm kê và bổ sung manifest/metadata/icons/start_url/scope/display standalone, HTTPS và service-worker registration để cài Home Screen được; không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
 - [ ] 5.4 Gắn revoke vào disable/logout/account switch; test offline cleanup không chặn logout vô hạn, multi-browser độc lập và không tự đổi owner.
 - [ ] 5.5 Chạy TS gates, user-event tests và browser checks có fake push; registration mặc định tắt, chưa production send.
 
@@ -78,10 +78,10 @@
 
 **Dependency:** 1 + wire contract 4. **Boundary:** source Go/build/tests/runbook trong location phase 1; mock QLTBYT/provider. Không Supabase credentials/SQL, không live Oracle mutation.
 
-- [ ] 6.1 Implement poll/claim/send/report loop có timeout, backoff và graceful shutdown; dùng Web Push library, VAPID private key qua secret, không durable queue/database.
+- [ ] 6.1 Implement poll/claim/send/report loop có timeout, backoff và graceful shutdown; dùng Web Push library, VAPID private key qua secret; readiness kiểm tra derived public key/fingerprint khớp app contract Phase 4, mismatch không claim/send; không durable queue/database.
 - [ ] 6.2 Validate outbound HTTPS endpoint và resolved addresses, chặn private/link-local/redirect bypass; bound payload/TTL và map 404/410/429/5xx/config errors đúng contract.
 - [ ] 6.3 Test provider accepted/report lost, worker crash/reclaim, stale lease, deadline và từng subscription; không báo accepted thành delivered/read.
-- [ ] 6.4 Tạo Docker image, private health/readiness, minimal metrics/log redaction và VAPID persistence/rotation runbook cho Oracle; mặc định paused.
+- [ ] 6.4 Tạo Docker image, private health/readiness, minimal metrics/log redaction và VAPID persistence/controlled rotation/resubscribe/rollback runbook cho Oracle, không regenerate key khi restart; mặc định paused.
 - [ ] 6.5 Chạy Go checks/container smoke trên mocks, xác nhận image không chứa secrets, review artifact và dừng.
 
 **Exit / rollback:** artifact chạy được trên mocks, không gửi thật. Rollback image hoặc pause worker, không mất queue vì state ở Supabase.
@@ -92,7 +92,7 @@
 
 - [ ] 7.1 Chứng minh create -> independent outboxes -> authenticated Oracle-style worker -> provider acceptance, đo target 60 giây khi khỏe và TTL <= remaining 24 giờ.
 - [ ] 7.2 Fault injection backend/Go/provider outage, partial delivery, credential failure, logout/revocation, concurrent workers và expired backlog; đọc lại state làm evidence.
-- [ ] 7.3 Kiểm chứng Chrome/Edge desktop, Android Chrome/Edge, Firefox desktop, iOS/iPadOS Home Screen: opt-in, foreground/background, click/login, payload dài, logout/account switch; ghi OS/browser/version, thiếu thiết bị thì incomplete.
+- [ ] 7.3 Kiểm chứng Chrome/Edge desktop, Android Chrome/Edge, Firefox desktop, iOS/iPadOS: thêm Home Screen từ app, mở installed standalone, xác nhận manifest/scope/registration rồi user-gesture opt-in, foreground/background, click/login, payload dài, logout/account switch; ghi OS/browser/version, thiếu thiết bị thì incomplete.
 - [ ] 7.4 Chạy ZBS regressions và đối chiếu cùng request không bị đổi phone recipient, enqueue count, retry state; Web Push disable không ảnh hưởng ZBS.
 - [ ] 7.5 Review kết quả và runbook enable/pause/rollback/retention, xác nhận toàn bộ gates hoặc blockers trước production review.
 
@@ -103,7 +103,7 @@
 **Dependency:** 7. **Boundary:** vận hành được maintainer cho phép; không mở rộng feature hoặc sửa ZBS/test DB infrastructure.
 
 - [ ] 8.1 Kiểm tra read-only live drift, exact-commit DB evidence và compatibility; xin quyền cụ thể trước từng live migration qua Supabase MCP, apply rồi read-back.
-- [ ] 8.2 Deploy Go image trên Docker Oracle với network/secrets riêng, private health, HTTPS outbound QLTBYT/providers; xác minh không có Supabase service-role key và không mở cổng container công khai. Worker vẫn paused.
+- [ ] 8.2 Deploy Go image trên Docker Oracle với network/secrets riêng, private health, HTTPS outbound QLTBYT/providers; xác minh không có Supabase service-role key và không mở cổng container công khai. Owner vận hành provision cặp VAPID production bền vững và bàn giao chỉ public key/version cho app, kiểm tra khớp trước bật registration. Worker vẫn paused.
 - [ ] 8.3 Deploy QLTBYT tương thích; bật registration cho canary đã đồng ý, cấu hình user đúng tenant, rồi enqueue/dispatch theo controls; ghi provider acceptance và kiểm tra thực tế trên thiết bị.
 - [ ] 8.4 Quan sát backlog/error/expiry, xác nhận ZBS vẫn hoạt động độc lập; diễn tập pause/resume giữ deadline, chỉ mở rộng sau maintainer review canary.
 - [ ] 8.5 Hoàn tất handoff phiên bản app/image, cấu hình không chứa secret, rollback, key rotation, retention và evidence; chỉ tick mục đã có bằng chứng, không archive khi còn acceptance incomplete.

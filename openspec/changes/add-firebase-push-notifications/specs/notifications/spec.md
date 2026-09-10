@@ -166,3 +166,29 @@ MVP SHALL kiểm chứng Chrome/Edge desktop, Android Chrome/Edge, Firefox deskt
 
 - **WHEN** nghiệm thu browser matrix
 - **THEN** ghi rõ browser/OS/version và bằng chứng permission, foreground/background, click, logout; chưa kiểm chứng được platform nào thì báo incomplete cho platform đó
+
+### Requirement: VAPID Key Compatibility
+
+Hệ thống SHALL phân phối public key/version cho browser, lưu version của subscription và giữ private key trong secret store dành riêng cho Go. Worker SHALL chỉ gửi subscription tương thích với cặp key hiện tại; restart SHALL NOT tự thay key.
+
+#### Scenario: Missing or mismatched key
+
+- **WHEN** private key thiếu hoặc derived public key không khớp cấu hình app
+- **THEN** worker không ready/claim/send và operator nhận lỗi không lộ secret
+- **AND** registration không sử dụng key version thiếu hoặc không hỗ trợ
+
+#### Scenario: Controlled rotation
+
+- **WHEN** operator rotate VAPID key
+- **THEN** pause registration/dispatch, cập nhật hai phía đồng bộ và yêu cầu subscription version cũ đăng ký lại
+- **AND** không gửi subscription cũ bằng key mới; runbook có rollback key version
+
+### Requirement: Home Screen Installability
+
+Hệ thống SHALL cung cấp manifest, metadata, icons và service-worker registration/scope cần thiết để cài web app và bật Web Push trên iOS/iPadOS hỗ trợ. Phạm vi này SHALL NOT thêm offline caching dữ liệu có auth.
+
+#### Scenario: Installed app opt in
+
+- **WHEN** user thêm QLTBYT vào Home Screen và mở ở installed standalone mode trên iOS/iPadOS hỗ trợ
+- **THEN** user có thể bấm bật, cấp quyền, đăng ký subscription và nhận push
+- **AND** nghiệm thu kiểm tra luồng cài và nhận thực tế, không chỉ kiểm tra văn bản hướng dẫn
