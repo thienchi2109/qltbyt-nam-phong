@@ -23,7 +23,7 @@
 
 - [ ] 1.1 Ghi source/build location Go, tên bảng/RPC/endpoints, request/response/version, signed request/replay/rotation contract; chốt owner vận hành VAPID, fingerprint/version, bàn giao public key và controlled rotation/resubscribe; không tạo external repo hoặc provision VM trong phase này.
 - [ ] 1.2 Pin lease/batch/poll/backoff/body limits, payload byte budget và retention, đáp ứng mục tiêu 60 giây và deadline 24 giờ; ghi error/status mapping, ownership/revocation và retry contract.
-- [ ] 1.3 Khóa regression có giá trị: ZBS enqueue mọi priority, đúng tenant/phone, không recipient, rollback, delivery failure isolation; ghi baseline thực tế và scope code sẽ chạm.
+- [ ] 1.3 Khóa regression có giá trị: ZBS enqueue mọi priority, đúng tenant/phone, không recipient, rollback, delivery failure isolation; ghi baseline thực tế và scope code sẽ chạm; pin recipient authorization truth table từ profile/read/tenant guards mới nhất, semantics current_don_vi và account eligibility (không giả định nhan_vien.active).
 - [ ] 1.4 Review contract đối chiếu mọi requirement; xác nhận không mở lại chính sách đã chốt, ghi bằng chứng baseline và dừng.
 
 **Exit / rollback:** contract được review, checks phản ánh hành vi ZBS hiện tại. Không có production behavior để rollback.
@@ -33,8 +33,8 @@
 **Dependency:** 1. **Boundary:** forward-only additive SQL + SQL tests cho config/subscription/delivery state; không sửa create flow, không API/UI/Go. Target `supabase/migrations` và test registry đúng scope.
 
 - [ ] 2.1 Thêm schema Web Push riêng với recipient user IDs, subscription unique ownership/revision và VAPID key version, logical intent và per-subscription delivery/lease/deadline constraints; cấm client table access trực tiếp.
-- [ ] 2.2 Thêm RPC cấu hình và register/revoke có claims/scope, validation atomic username list, inactive/unknown/unauthorized rejection và admin/global parity.
-- [ ] 2.3 Test tenant tampering, account switch, duplicate endpoint, username trim/dedupe, invalid list không partial save và revoke idempotency.
+- [ ] 2.2 Thêm RPC cấu hình và register/revoke có claims/scope, validation atomic username list, invalid-profile/unknown/unauthorized rejection và admin/global parity; thêm server-internal subject predicate đọc recipient profile từ DB, tenant-level check cho config và request-specific check cho enqueue/dispatch, không dùng worker JWT làm recipient.
+- [ ] 2.3 Test tenant tampering, account switch, duplicate endpoint, username trim/dedupe, invalid list không partial save và revoke idempotency; test subject/read parity cho admin/global, regional_leader, to_qltb đổi current_don_vi, user khoa/phòng rỗng/khác, subject bị xóa/role không hợp lệ và worker identity đặc quyền.
 - [ ] 2.4 Chạy hai DB lanes cùng commit, review grants/RLS/source ordering và lưu evidence; chưa live apply nếu chưa được phép.
 
 **Exit / rollback:** schema/RPC kiểm chứng trên disposable DB; additive deploy không tự phát sinh event. Rollback bằng giữ entrypoint chưa kết nối, không DROP để mất dữ liệu.
@@ -68,7 +68,7 @@
 
 - [ ] 5.1 Thêm UI cấu hình theo đơn vị cho global/admin/to_qltb, comma-separated username list, atomic errors và trạng thái không có recipient.
 - [ ] 5.2 Thêm bật/tắt thông báo tự nguyện trong app, preview nội dung màn hình khóa, permission/unsupported/blocked states và hướng dẫn Home Screen iOS/iPadOS; dùng public key/version từ Phase 4 và hiển thị yêu cầu đăng ký lại khi key version thay đổi.
-- [ ] 5.3 Kiểm kê và bổ sung manifest/metadata/icons/start_url/scope/display standalone, HTTPS và service-worker registration để cài Home Screen được; không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
+- [ ] 5.3 Tái sử dụng public/manifest.json, metadata src/app/layout.tsx, Serwist next.config.ts/src/sw.ts và registration /sw.js trong pwa-install-prompt; kiểm kê/bổ sung icons/start_url/scope/display standalone/HTTPS để cài Home Screen được, không đăng ký worker thứ hai cùng scope; không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
 - [ ] 5.4 Gắn revoke vào disable/logout/account switch; test offline cleanup không chặn logout vô hạn, multi-browser độc lập và không tự đổi owner.
 - [ ] 5.5 Chạy TS gates, user-event tests và browser checks có fake push; registration mặc định tắt, chưa production send.
 

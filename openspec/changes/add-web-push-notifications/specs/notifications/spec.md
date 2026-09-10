@@ -192,3 +192,19 @@ Hệ thống SHALL cung cấp manifest, metadata, icons và service-worker regis
 - **WHEN** user thêm QLTBYT vào Home Screen và mở ở installed standalone mode trên iOS/iPadOS hỗ trợ
 - **THEN** user có thể bấm bật, cấp quyền, đăng ký subscription và nhận push
 - **AND** nghiệm thu kiểm tra luồng cài và nhận thực tế, không chỉ kiểm tra văn bản hướng dẫn
+
+### Requirement: Subject Based Recipient Authorization
+
+Hệ thống SHALL kiểm tra recipient bằng user ID và profile quyền hiện hành từ DB, không dùng worker JWT hoặc claims snapshot cũ. “Active account” SHALL nghĩa là subject còn tồn tại và profile/role hợp lệ theo account lifecycle hiện có; SHALL NOT giả định cột `nhan_vien.active` hay thêm feature khóa account trong change này.
+
+#### Scenario: Background permission check
+
+- **WHEN** server lưu config, enqueue hoặc cấp claim/retry
+- **THEN** kiểm tra quyền subject với đơn vị, và với request cụ thể tại enqueue/claim bằng đơn vị thiết bị và quy tắc khoa/phòng role user
+- **AND** cấu hình nhận không cấp quyền; identity worker đặc quyền không làm recipient được bypass
+
+#### Scenario: Current profile changes
+
+- **WHEN** subject bị xóa, profile không hợp lệ, mất scope địa bàn/đơn vị/khoa phòng hoặc to_qltb đổi current_don_vi
+- **THEN** lần claim tiếp theo đọc lại durable profile và từ chối delivery không còn quyền theo cùng quy tắc đọc tương tác
+- **AND** không dùng session snapshot cũ hay tự coi account đang online là điều kiện nhận
