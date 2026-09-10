@@ -8,7 +8,7 @@
 
 ## Quy tắc thực thi và review
 
-- Đây là kế hoạch implementation tương lai; mọi checkbox để trống cho đến khi có bằng chứng. Lượt sửa artifacts không thực thi phase nào.
+- Mọi checkbox để trống cho đến khi có bằng chứng. Phase 1 là contract/baseline; hoàn thành artifacts Phase 1 không có nghĩa các phase runtime/deploy đã được thực hiện.
 - Mỗi phase là một đơn vị review và landing riêng. Chỉ thực hiện phase được maintainer giao, báo kết quả rồi dừng; không tự nhảy sang phase sau hoặc live deploy.
 - Dependency: 1 -> 2; 3 và 4 cần 2; 5 cần 3+4 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
 - Phase có SQL phải giữ migration immutable, chạy static và Oracle baseline-forward trên disposable DB cùng exact landed commit. Report hai lane riêng; live apply cần quyền cụ thể qua Supabase MCP.
@@ -21,10 +21,12 @@
 **Boundary:** artifacts/contract fixtures và tests bảo vệ hành vi; chưa runtime, SQL, UI hay deploy. Đọc `src/auth`, RPC claims, ZBS enqueue/dispatcher, DQSS client và deep-link helper.
 **Deliverable:** contract một phiên bản đủ để QLTBYT và Go implement độc lập; không dựng scaffolding rỗng.
 
-- [ ] 1.1 Ghi source/build location Go, tên bảng/RPC/endpoints, request/response/version, signed request/replay/rotation contract; chốt owner vận hành VAPID, fingerprint/version, bàn giao public key và controlled rotation/resubscribe; không tạo external repo hoặc provision VM trong phase này.
-- [ ] 1.2 Pin lease/batch/poll/backoff/body limits, payload byte budget và retention, đáp ứng mục tiêu 60 giây và deadline 24 giờ; ghi error/status mapping, ownership/revocation và retry contract.
-- [ ] 1.3 Khóa regression có giá trị: ZBS enqueue mọi priority, đúng tenant/phone, không recipient, rollback, delivery failure isolation; ghi baseline thực tế và scope code sẽ chạm; pin recipient authorization truth table từ profile/read/tenant guards mới nhất, semantics current_don_vi và account eligibility (không giả định nhan_vien.active).
-- [ ] 1.4 Review contract đối chiếu mọi requirement; xác nhận không mở lại chính sách đã chốt, ghi bằng chứng baseline và dừng.
+- [x] 1.1 Ghi source/build location Go, tên bảng/RPC/endpoints, request/response/version, signed request/replay/rotation contract; chốt owner vận hành VAPID, fingerprint/version, bàn giao public key và controlled rotation/resubscribe; không tạo external repo hoặc provision VM trong phase này.
+- [x] 1.2 Pin lease/batch/poll/backoff/body limits, payload byte budget và retention, đáp ứng mục tiêu 60 giây và deadline 24 giờ; ghi error/status mapping, ownership/revocation và retry contract.
+- [x] 1.3 Khóa regression có giá trị: ZBS enqueue mọi priority, đúng tenant/phone, không recipient, rollback, delivery failure isolation; ghi baseline thực tế và scope code sẽ chạm; pin recipient authorization truth table từ profile/read/tenant guards mới nhất, semantics current_don_vi và account eligibility (không giả định nhan_vien.active).
+- [x] 1.4 Review contract đối chiếu mọi requirement; xác nhận không mở lại chính sách đã chốt, ghi bằng chứng baseline và dừng.
+
+**Evidence:** [contract v1](phase-1-contract.md), [source/mock baseline, review và giới hạn](phase-1-evidence.md), runnable `node openspec/changes/add-web-push-notifications/phase-1-baseline.check.mjs`. Tick Phase 1 không chứng nhận DB rollback/browser/live: source check PASS; baseline hiện hữu 75 pass/1 QR adoption fail, theo dõi #997; memory ID yêu cầu không có trong agentmemory hiện tại.
 
 **Exit / rollback:** contract được review, checks phản ánh hành vi ZBS hiện tại. Không có production behavior để rollback.
 

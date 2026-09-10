@@ -100,4 +100,4 @@ Live DB chỉ qua Supabase MCP với quyền cụ thể; static và Oracle basel
 
 ## Implementation Decisions To Pin In Phase 1
 
-Vị trí source/build artifact Go, tên bảng/RPC và wire contract, batch/lease/backoff constants, giới hạn payload và retention phải được ghi cụ thể trước implementation phụ thuộc. Đây là chi tiết kỹ thuật, không mở lại Q1-Q11. Không tự tạo repo ngoài hoặc provision production trong phase contract.
+Các chi tiết này được pin tại [Phase 1 contract v1](phase-1-contract.md): source/build Go, bảng/RPC/API, chữ ký/replay, VAPID ownership, limits và authorization truth table. [Evidence](phase-1-evidence.md) phân biệt source/mock baseline với DB/browser checks chưa thực hiện. Đây là chi tiết kỹ thuật, không mở lại Q1-Q11. Không tự tạo repo ngoài hoặc provision production trong phase contract.
