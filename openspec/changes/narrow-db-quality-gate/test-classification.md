@@ -1828,7 +1828,7 @@ registry, source, database, Oracle hoặc test runner.
 - SQL SHA-256 tại subject đối chiếu:
   `5a6dfec0e1fc1ad64fbfe941d1e57807bedc057f00ee6052befd90f976e39fb6`.
 - Registry hiện tại: `phase-gate`, `default-safe`, `isolated-fixture`,
-  `rollback-required`, `psql`, timeout 30 giây; `gateScope: migration-specific`.
+  `rollback-required`, `psql`, timeout 30 giây; `gateScope: core-security`.
 - Exact `requiredForMigrations` đều tồn tại tại subject:
   `supabase/migrations/20260910100000_technical_configuration_dossier_specialty.sql`,
   `supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql`,
@@ -1836,8 +1836,8 @@ registry, source, database, Oracle hoặc test runner.
 
 ### Phân loại theo assertions của specialty
 
-**Mixed, đề xuất core-security tạm thời cho tới khi tách**. Scope hiện tại trong
-registry là debt, không phải kết luận đây là pure migration-specific.
+**Mixed, giữ trong `core-security` tạm thời cho tới khi tách**. Ba migration
+mappings vẫn được giữ để business half có thể tách sau này.
 
 - Security: denied role `user` nhận `42501` khi gọi specialties/create
   (75–77) và filtered list (122–123); EXECUTE cho authenticated và deny
@@ -1859,16 +1859,16 @@ registry là debt, không phải kết luận đây là pure migration-specific.
 #994 chỉ reconcile tài liệu/tests; giữ nguyên SQL, active registry và selector.
 Selector legacy vẫn chọn đủ 78 default-safe tests, nên coverage specialty hiện
 không bị mất. Snapshot tổng hợp hiện tại có 77 phân loại lịch sử cộng 1 mixed
-specialty; registry vẫn có 19 migration-specific, trong đó specialty là scope
-debt. Đây không phải approval cho Chunk 5/6 hay dynamic semantic PASS.
+specialty. Đây không phải approval cho Chunk 5/6 hay dynamic semantic PASS.
 
 Follow-up [#995](https://github.com/thienchi2109/qltbyt-nam-phong/issues/995):
-trước Chunk 6 phải giải quyết scope debt specialty: giữ mixed test trong
-core-security tạm thời hoặc tách security/business với coverage tương đương,
-giữ ba exact migration mappings cho business half. Không được bật selector
-khi security assertions này có thể bị loại vì migration không còn pending.
+#995 sửa scope registry thành core-security tạm thời, giữ nguyên SQL và ba
+exact migration mappings. Security coverage được giữ cả khi migration không
+còn pending; extraction security/business vẫn là công việc Chunk 4 sau này.
 
 Regression scope giữ count lịch sử 77/18, bổ sung đúng specialty path và ba
 mapping, rồi so sánh toàn bộ selected paths và metadata với registry current.
 Các split regression đọc registry current được cập nhật 78 sau khi tái hiện
 11 lỗi count; các kiểm tra mixed original/companion chưa active giữ nguyên.
+Registry hiện tại có 18 migration-specific và 60 core-security; specialty nằm
+trong core-security để không làm mất denial/ACL coverage.

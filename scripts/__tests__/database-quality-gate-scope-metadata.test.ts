@@ -91,7 +91,7 @@ describe("Chunk 3 compatible SQL test scope metadata", () => {
     expect([...scopes.values()].filter((scope) => scope === "migration-specific")).toHaveLength(18)
     // #995: historical inventory stays pinned; specialty is mixed scope debt before Chunk 6.
     const specialtyPath = "supabase/tests/technical_configuration_dossier_specialty_phase_gate.sql"
-    scopes.set(specialtyPath, "migration-specific")
+    scopes.set(specialtyPath, "core-security")
     const parsed = parseSqlTestRegistry(registry)!
     expect(parsed).toBeDefined()
     const selected = selectDefaultSafeSqlTests(registry)

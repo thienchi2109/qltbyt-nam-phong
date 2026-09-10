@@ -1237,7 +1237,7 @@
       "safety": "default-safe",
       "timeoutSeconds": 30,
       "transactionContract": "rollback-required",
-      "gateScope": "migration-specific"
+      "gateScope": "core-security"
     }
   ]
 }
