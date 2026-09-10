@@ -78,7 +78,11 @@ describe("technical configuration dossier Phase 2 search migration", () => {
     const migrationFile = migrationFiles[0] ?? ""
     const migrationTimestamp = getMigrationTimestamp(migrationFile)
     const predecessorFiles = readdirSync(MIGRATIONS_DIR).filter((file) => {
-      if (!file.endsWith(".sql") || file === migrationFile) {
+      if (
+        !file.endsWith(".sql") ||
+        !/^\d{14}_/.test(file) ||
+        getMigrationTimestamp(file) >= migrationTimestamp
+      ) {
         return false
       }
 
@@ -218,6 +222,7 @@ describe("technical configuration dossier Phase 2 search migration", () => {
     ).toEqual([
       {
         evidence: ["OpenSpec add-technical-configuration-dossier-search Phase 2"],
+        gateScope: "core-security",
         fixtureContract: "isolated-fixture",
         path: "supabase/tests/technical_configuration_dossier_search_phase_gate.sql",
         purpose: "phase-gate",

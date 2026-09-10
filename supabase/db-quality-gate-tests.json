@@ -1220,6 +1220,23 @@
       "timeoutSeconds": 30,
       "transactionContract": "rollback-required",
       "gateScope": "core-security"
+    },
+    {
+      "evidence": [
+        "docs/superpowers/plans/2026-09-10-technical-configuration-specialty.md: Chunk 1"
+      ],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/technical_configuration_dossier_specialty_phase_gate.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20260910100000_technical_configuration_dossier_specialty.sql",
+        "supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql"
+      ],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }

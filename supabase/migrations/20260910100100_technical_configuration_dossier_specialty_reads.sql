@@ -1,0 +1,260 @@
+-- Chunk 1: additive payloads and a dormant paginated options RPC.
+BEGIN;
+CREATE OR REPLACE FUNCTION public.technical_configuration_dossiers_get(
+  p_id UUID
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_data JSONB;
+BEGIN
+  PERFORM public._technical_configuration_require_global_user();
+
+  SELECT jsonb_build_object(
+    'id', d.id,
+    'device_type_name', d.device_type_name,
+    'name', d.name,
+    'description', d.description,
+    'specialty', d.specialty,
+    'revision', d.revision,
+    'archived_at', d.archived_at,
+    'archived_by', d.archived_by,
+    'created_at', d.created_at,
+    'created_by', d.created_by,
+    'updated_at', d.updated_at,
+    'updated_by', d.updated_by
+  )
+  INTO v_data
+  FROM public.technical_configuration_dossiers d
+  WHERE d.id = p_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'not_found' USING ERRCODE = 'PT404';
+  END IF;
+
+  RETURN jsonb_build_object('data', v_data);
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.technical_configuration_dossiers_list(
+  p_page INTEGER DEFAULT 1,
+  p_page_size INTEGER DEFAULT 20,
+  p_include_archived BOOLEAN DEFAULT false,
+  p_search TEXT DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+DECLARE
+  v_result JSONB;
+  v_normalized_search TEXT;
+  v_index_token TEXT;
+BEGIN
+  PERFORM public._technical_configuration_require_global_user();
+
+  IF p_page IS NULL
+     OR p_page_size IS NULL
+     OR p_page < 1
+     OR p_page_size < 1
+     OR p_page_size > 100
+     OR pg_catalog.char_length(p_search) > 200 THEN
+    RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422';
+  END IF;
+
+  v_normalized_search := NULLIF(public._normalize_search_text(p_search), '');
+  SELECT token
+  INTO v_index_token
+  FROM (
+    SELECT DISTINCT token
+    FROM pg_catalog.regexp_split_to_table(
+      v_normalized_search,
+      '[[:space:]]+'
+    ) AS tokens(token)
+    WHERE token <> ''
+  ) distinct_tokens
+  ORDER BY pg_catalog.char_length(token) DESC, token
+  LIMIT 1;
+
+  WITH search_tokens AS MATERIALIZED (
+    SELECT DISTINCT token
+    FROM pg_catalog.regexp_split_to_table(
+      v_normalized_search,
+      '[[:space:]]+'
+    ) AS tokens(token)
+    WHERE token <> ''
+  ),
+  candidate_ids AS MATERIALIZED (
+    SELECT d.id
+    FROM public.technical_configuration_dossiers d
+    WHERE public._normalize_search_text(d.name)
+      LIKE '%' || public._sanitize_ilike_pattern(v_index_token) || '%' ESCAPE E'\\'
+    UNION
+    SELECT d.id
+    FROM public.technical_configuration_dossiers d
+    WHERE public._normalize_search_text(d.device_type_name)
+      LIKE '%' || public._sanitize_ilike_pattern(v_index_token) || '%' ESCAPE E'\\'
+  ),
+  candidate_dossiers AS MATERIALIZED (
+    SELECT
+      d.id,
+      d.device_type_name,
+      d.name,
+      d.description,
+      d.specialty,
+      d.revision,
+      d.archived_at,
+      d.archived_by,
+      d.created_at,
+      d.created_by,
+      d.updated_at,
+      d.updated_by
+    FROM public.technical_configuration_dossiers d
+    WHERE (p_include_archived OR d.archived_at IS NULL)
+      AND (
+        v_normalized_search IS NULL
+        OR EXISTS (
+          SELECT 1
+          FROM candidate_ids candidate
+          WHERE candidate.id = d.id
+        )
+      )
+  ),
+  filtered_dossiers AS MATERIALIZED (
+    SELECT
+      d.*,
+      CASE
+        WHEN v_normalized_search IS NULL THEN 0
+        WHEN public._normalize_search_text(d.name) = v_normalized_search
+          OR public._normalize_search_text(d.device_type_name) = v_normalized_search THEN 0
+        WHEN public._normalize_search_text(d.name) LIKE public._sanitize_ilike_pattern(v_normalized_search) || '%' ESCAPE E'\\'
+          OR public._normalize_search_text(d.device_type_name) LIKE public._sanitize_ilike_pattern(v_normalized_search) || '%' ESCAPE E'\\' THEN 1
+        ELSE 2
+      END AS search_rank
+    FROM candidate_dossiers d
+    WHERE (
+      v_normalized_search IS NULL
+      OR NOT EXISTS (
+        SELECT 1
+        FROM search_tokens search_token
+        WHERE public._normalize_search_text(d.name)
+            NOT LIKE '%' || public._sanitize_ilike_pattern(search_token.token) || '%' ESCAPE E'\\'
+          AND public._normalize_search_text(d.device_type_name)
+            NOT LIKE '%' || public._sanitize_ilike_pattern(search_token.token) || '%' ESCAPE E'\\'
+      )
+    )
+  ),
+  dossier_page AS MATERIALIZED (
+    SELECT filtered.*
+    FROM filtered_dossiers filtered
+    ORDER BY filtered.search_rank, filtered.updated_at DESC, filtered.id
+    LIMIT p_page_size
+    OFFSET (p_page - 1)::BIGINT * p_page_size
+  ),
+  locked_dossiers AS (
+    SELECT DISTINCT v.dossier_id
+    FROM public.technical_configuration_baseline_versions v
+    JOIN dossier_page page
+      ON page.id = v.dossier_id
+    WHERE v.status = 'locked'
+  ),
+  paged AS (
+    SELECT
+      page.*,
+      (
+        page.archived_at IS NULL
+        AND locked.dossier_id IS NULL
+      ) AS can_delete
+    FROM dossier_page page
+    LEFT JOIN locked_dossiers locked
+      ON locked.dossier_id = page.id
+  )
+  SELECT jsonb_build_object(
+    'data',
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', p.id,
+            'device_type_name', p.device_type_name,
+            'name', p.name,
+            'description', p.description,
+            'specialty', p.specialty,
+            'revision', p.revision,
+            'archived_at', p.archived_at,
+            'archived_by', p.archived_by,
+            'created_at', p.created_at,
+            'created_by', p.created_by,
+            'updated_at', p.updated_at,
+            'updated_by', p.updated_by,
+            'can_delete', p.can_delete
+          )
+          ORDER BY p.search_rank, p.updated_at DESC, p.id
+        )
+        FROM paged p
+      ),
+      '[]'::JSONB
+    ),
+    'total',
+    (
+      SELECT count(*)
+      FROM filtered_dossiers
+    ),
+    'page',
+    p_page,
+    'page_size',
+    p_page_size
+  )
+  INTO v_result;
+
+  RETURN v_result;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.technical_configuration_dossiers_specialties(
+  p_page INTEGER DEFAULT 1,
+  p_page_size INTEGER DEFAULT 100,
+  p_search TEXT DEFAULT NULL
+)
+RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_result JSONB;
+  v_search TEXT;
+BEGIN
+  PERFORM public._technical_configuration_require_global_user();
+  IF p_page IS NULL OR p_page < 1 OR p_page_size IS NULL
+     OR p_page_size < 1 OR p_page_size > 100 OR char_length(p_search) > 200 THEN
+    RAISE EXCEPTION 'validation_error' USING ERRCODE = 'PT422';
+  END IF;
+  v_search := public._technical_configuration_normalize_specialty(p_search);
+  WITH options AS MATERIALIZED (
+    SELECT lower(d.specialty) AS key, min(d.specialty COLLATE "C") AS label
+    FROM public.technical_configuration_dossiers d
+    WHERE d.archived_at IS NULL AND d.specialty IS NOT NULL
+      AND (v_search IS NULL OR lower(d.specialty) LIKE
+        '%' || public._sanitize_ilike_pattern(lower(v_search)) || '%' ESCAPE E'\\')
+    GROUP BY lower(d.specialty)
+  ), paged AS (
+    SELECT key, label FROM options ORDER BY key COLLATE "C"
+    LIMIT p_page_size OFFSET (p_page - 1)::BIGINT * p_page_size
+  )
+  SELECT jsonb_build_object(
+    'data', COALESCE((SELECT jsonb_agg(label ORDER BY key COLLATE "C") FROM paged), '[]'::JSONB),
+    'total', (SELECT count(*) FROM options), 'page', p_page, 'page_size', p_page_size
+  ) INTO v_result;
+  RETURN v_result;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.technical_configuration_dossiers_specialties(INTEGER, INTEGER, TEXT)
+  FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.technical_configuration_dossiers_specialties(INTEGER, INTEGER, TEXT)
+  TO authenticated;
+
+
+COMMIT;
