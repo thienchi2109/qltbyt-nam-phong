@@ -1,5 +1,17 @@
 # Agent Instructions
 
+## Fast Code Search with tgrep
+
+- Local binary: `/root/.local/bin/tgrep`. Use it for repeated content/regex searches; keep `rg` as fallback and for scripts.
+- Run from `/root/qltbyt-nam-phong`. The existing server uses `--index-path /root/.cache/tgrep/qltbyt-nam-phong`; pass this flag on searches too:
+  ```bash
+  tgrep -n 'createExcelWorkbook' . --index-path /root/.cache/tgrep/qltbyt-nam-phong
+  tgrep --files . --index-path /root/.cache/tgrep/qltbyt-nam-phong
+  ```
+- If the server is stopped, start `tgrep serve . --index-path /root/.cache/tgrep/qltbyt-nam-phong` as a persistent process. Reuse a running server; do not assume it survives reboot. Keep it on loopback and keep index artifacts outside Git.
+- Keep `index` and `serve` ignore/exclude/size flags aligned. Wait for initial indexing; verify missing or recently changed results with `rg` because watcher updates are asynchronous. This is text search, not a replacement for Code Review Graph/GitNexus analysis.
+- Route searches through `ctx_execute`/`ctx_batch_execute` and return only relevant snippets/counts, following Context-Mode rules.
+
 ## Context-Mode Routing (MANDATORY)
 
 The `context-mode` MCP server is configured globally for this repo. Its tools (`ctx_execute`, `ctx_batch_execute`, `ctx_execute_file`, `ctx_index`, `ctx_search`, `ctx_fetch_and_index`) protect the agent context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session — these rules are NOT optional.
