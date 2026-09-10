@@ -115,6 +115,11 @@ scripts/__tests__/database-quality-gate-scope-metadata.test.ts`: 5/9 tests
 
 ## Chunk 4 — Tách mixed security assertions, giữ behavior cũ
 
+**Lượt 4r:** Chỉ Entry 35 baseline documents; tách core RLS/ACL/claims và
+business document/citation workflow. Xem [handoff 4r](chunk4r-handoff.md).
+Companions chưa active; SQL gốc và registry giữ nguyên. Selected set hiện tại
+là 78 sau khi thêm specialty test, không còn là 77 của các handoff cũ.
+
 **Lượt 4q:** Batch Entry 29 + 31 (repair lifecycle audit và status/overdue
 summary); đã tách companions và regression, giữ SQL gốc/registry/selected set 77. Xem [handoff 4q](chunk4q-handoff.md). Entry 29 còn vượt 450-line ceiling,
 cần helper extraction trước activation.

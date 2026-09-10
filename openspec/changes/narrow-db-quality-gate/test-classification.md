@@ -749,7 +749,15 @@ chỉ là hướng đi tương lai, chưa tạo hoặc sửa SQL.
   `supabase/tests/technical_configuration_baseline_documents_phase_gate_core_security.sql`
   và
   `supabase/tests/technical_configuration_baseline_documents_phase_gate_migration_specific.sql`;
-  boundary security-vs-workflow chờ extraction thật.
+  Đã tách fixture-only trong lượt 4r, xem [handoff 4r](chunk4r-handoff.md).
+- Boundary đã đối chiếu source: ownership/version mismatch `PT422`, aggregate
+  version isolation và copy-wrapper future-domain exclusion là business;
+  không suy diễn thành tenant authorization chỉ từ tên assertion. Core giữ thêm
+  successful raw-admin document-create witness với ID khác null; business giữ
+  nguyên chuỗi raw-admin/global workflow. Exact migration mapping vẫn chưa chốt.
+- SQL mixed và active registry giữ nguyên; selected set hiện tại là 78 tại
+  `5a68276ad6c87e5ee01c782f9458366b8ad79c78` (specialty test được thêm sau
+  các handoff ghi 77). Chưa có dynamic semantic PASS; Chunk 5/6 chưa bắt đầu.
 
 ### 36. `technical_configuration_baseline_hierarchy_import_apply_phase_gate.sql`
 
