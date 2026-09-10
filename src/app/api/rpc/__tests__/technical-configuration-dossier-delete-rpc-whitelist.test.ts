@@ -16,6 +16,7 @@ const EXPECTED_DOSSIER_RPC_FUNCTION_NAMES = [
   "technical_configuration_dossiers_update",
   "technical_configuration_dossiers_archive",
   "technical_configuration_dossiers_delete",
+  "technical_configuration_dossiers_specialties",
 ] as const
 
 async function invokeRpcProxy(fn: string) {
@@ -32,6 +33,7 @@ describe("technical configuration dossier RPC whitelist", () => {
       updateDossier: "technical_configuration_dossiers_update",
       archiveDossier: "technical_configuration_dossiers_archive",
       deleteDossier: "technical_configuration_dossiers_delete",
+      listDossierSpecialties: "technical_configuration_dossiers_specialties",
     })
     expect(DOSSIER_RPC_FUNCTION_NAMES).toEqual(EXPECTED_DOSSIER_RPC_FUNCTION_NAMES)
   })

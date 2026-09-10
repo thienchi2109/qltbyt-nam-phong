@@ -65,7 +65,9 @@ BEGIN
   WHERE n.nspname = 'public'
     AND p.proname = 'technical_configuration_dossiers_list';
 
-  IF v_signature_count <> 1
+  IF v_signature_count <> 1 + (CASE WHEN to_regprocedure(
+       'public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)'
+     ) IS NULL THEN 0 ELSE 1 END)
      OR to_regprocedure(v_signature) IS NULL
      OR to_regprocedure(
        'public.technical_configuration_dossiers_list(integer,integer,boolean)'

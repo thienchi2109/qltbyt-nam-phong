@@ -7,6 +7,8 @@ import type {
   TechnicalConfigurationDossierGetRpcArgs,
   TechnicalConfigurationDossierListRpcArgs,
   TechnicalConfigurationDossierListWireResponse,
+  TechnicalConfigurationDossierSpecialtiesRpcArgs,
+  TechnicalConfigurationDossierSpecialtiesWireResponse,
   TechnicalConfigurationDossierUpdateRpcArgs,
   TechnicalConfigurationDossierWireResponse,
 } from "./types"
@@ -103,7 +105,29 @@ export function listTechnicalConfigurationDossiers(
   args: TechnicalConfigurationDossierListRpcArgs = {},
   signal?: AbortSignal
 ): Promise<TechnicalConfigurationDossierListWireResponse> {
-  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.listDossiers, args, { signal })
+  const request =
+    args.p_filter_specialty === undefined && args.p_specialty === undefined
+      ? args
+      : {
+          p_page: 1,
+          p_page_size: 20,
+          p_include_archived: false,
+          p_search: null,
+          p_filter_specialty: true,
+          p_specialty: null,
+          ...args,
+        }
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.listDossiers, request, { signal })
+}
+
+/** Lists paginated specialty suggestions visible to the current user. */
+export function listTechnicalConfigurationDossierSpecialties(
+  args: TechnicalConfigurationDossierSpecialtiesRpcArgs = {},
+  signal?: AbortSignal
+): Promise<TechnicalConfigurationDossierSpecialtiesWireResponse> {
+  return callTechnicalConfigurationRpc(DOSSIER_RPC_FUNCTIONS.listDossierSpecialties, args, {
+    signal,
+  })
 }
 
 /** Fetches one configuration dossier by identifier. */

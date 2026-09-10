@@ -24,6 +24,7 @@ const EMPTY_DOSSIERS: TechnicalConfigurationDossierListItemWire[] = []
 const DOSSIER_LIST_REQUEST_IDENTITY_META_KEY = "technicalConfigurationDossierListRequestIdentity"
 
 type DossierListRequestIdentity = {
+  specialty?: string | null
   search: string
   rawSearch: string
   page: number
@@ -42,7 +43,10 @@ function getDossierListRequestIdentity(
     typeof candidate.search !== "string" ||
     typeof candidate.rawSearch !== "string" ||
     typeof candidate.page !== "number" ||
-    typeof candidate.pageSize !== "number"
+    typeof candidate.pageSize !== "number" ||
+    (candidate.specialty !== undefined &&
+      candidate.specialty !== null &&
+      typeof candidate.specialty !== "string")
   ) {
     return null
   }
@@ -54,7 +58,7 @@ function getDossierListRequestIdentity(
  * Owns dossier-list raw/normalized/debounced search, server pagination,
  * and the pinned last-settled request identity for one module.
  */
-export function useTechnicalConfigurationDossierList() {
+export function useTechnicalConfigurationDossierList(specialtyFilter?: string | null) {
   const [searchText, setSearchText] = React.useState("")
   const normalizedSearch = normalizeTechnicalConfigurationDossierSearch(searchText)
   const debouncedSearch = useDebounce(
@@ -68,6 +72,7 @@ export function useTechnicalConfigurationDossierList() {
     rawSearch: "",
     page: 1,
     pageSize: DOSSIER_PAGE_SIZE,
+    specialty: specialtyFilter,
   })
   const placeholderIdentityRef = React.useRef<DossierListRequestIdentity | null>(null)
 
@@ -75,8 +80,10 @@ export function useTechnicalConfigurationDossierList() {
     page: settled.page,
     pageSize: settled.pageSize,
     normalizedSearch: settled.search,
+    specialtyFilter: settled.specialty,
   })
-  const isSettledSearchCurrent = settled.search === debouncedSearch
+  const isSettledSearchCurrent =
+    settled.search === debouncedSearch && settled.specialty === specialtyFilter
 
   const dossierListQuery = useQuery({
     queryKey: listQueryKey,
@@ -88,6 +95,10 @@ export function useTechnicalConfigurationDossierList() {
       }
       if (settled.search !== "") {
         rpcArgs.p_search = settled.search
+      }
+      if (settled.specialty !== undefined) {
+        rpcArgs.p_filter_specialty = true
+        rpcArgs.p_specialty = settled.specialty
       }
 
       return listTechnicalConfigurationDossiers(rpcArgs, signal)
@@ -110,6 +121,7 @@ export function useTechnicalConfigurationDossierList() {
     page: visibleRequestIdentity.page,
     pageSize: visibleRequestIdentity.pageSize,
     normalizedSearch: visibleRequestIdentity.search,
+    specialtyFilter: visibleRequestIdentity.specialty,
   })
   const visibleSearchText =
     normalizedSearch === visibleRequestIdentity.search
@@ -120,7 +132,7 @@ export function useTechnicalConfigurationDossierList() {
   const pagination = useServerPagination({
     totalCount,
     initialPageSize: DOSSIER_PAGE_SIZE,
-    resetKey: normalizedSearch,
+    resetKey: JSON.stringify([normalizedSearch, specialtyFilter === undefined, specialtyFilter]),
   })
 
   React.useEffect(() => {
@@ -131,7 +143,8 @@ export function useTechnicalConfigurationDossierList() {
         current.search === debouncedSearch &&
         current.rawSearch === searchText &&
         current.page === pagination.page &&
-        current.pageSize === pagination.pageSize
+        current.pageSize === pagination.pageSize &&
+        current.specialty === specialtyFilter
       ) {
         return current
       }
@@ -141,9 +154,17 @@ export function useTechnicalConfigurationDossierList() {
         rawSearch: searchText,
         page: pagination.page,
         pageSize: pagination.pageSize,
+        specialty: specialtyFilter,
       }
     })
-  }, [isDebouncePending, debouncedSearch, pagination.page, pagination.pageSize, searchText])
+  }, [
+    isDebouncePending,
+    debouncedSearch,
+    pagination.page,
+    pagination.pageSize,
+    searchText,
+    specialtyFilter,
+  ])
 
   const handlePageChange = React.useCallback(
     (nextPage: number) => {
@@ -172,6 +193,7 @@ export function useTechnicalConfigurationDossierList() {
     listQueryKey,
     visibleListQueryKey,
     visiblePage: visibleRequestIdentity.page,
+    visibleSpecialtyFilter: visibleRequestIdentity.specialty,
     isLoading: dossierListQuery.isLoading,
     isError: dossierListQuery.isError,
     error: dossierListQuery.error,

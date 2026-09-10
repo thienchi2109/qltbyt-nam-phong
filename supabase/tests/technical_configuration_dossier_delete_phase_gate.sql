@@ -323,7 +323,10 @@ BEGIN
 
   PERFORM pg_temp.set_claims('global', v_user_id);
   SELECT pg_get_functiondef(
-    'public.technical_configuration_dossiers_list(integer,integer,boolean,text)'::regprocedure
+    COALESCE(
+      to_regprocedure('public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)'),
+      'public.technical_configuration_dossiers_list(integer,integer,boolean,text)'::regprocedure
+    )
   ) INTO v_list_definition;
   IF position('dossier_page AS MATERIALIZED' IN v_list_definition) = 0
      OR position('locked_dossiers AS' IN v_list_definition) = 0

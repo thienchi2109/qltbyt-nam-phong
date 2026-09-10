@@ -93,6 +93,38 @@ BEGIN
 END;
 $$;
 DO $$
+DECLARE
+  v_label TEXT := 'SpecialtyFilter-' || gen_random_uuid()::TEXT;
+  v_result JSONB;
+  v_user BIGINT;
+BEGIN
+  SELECT id INTO v_user FROM public.nhan_vien ORDER BY id LIMIT 1;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','global','user_id',v_user::TEXT)::TEXT,true);
+  PERFORM public.technical_configuration_dossiers_create('Gate',v_label,NULL,0,NULL);
+  PERFORM public.technical_configuration_dossiers_create('Gate',v_label,NULL,0,'Mắt');
+  PERFORM public.technical_configuration_dossiers_create('Gate',v_label,NULL,0,'MẮT');
+  PERFORM public.technical_configuration_dossiers_create('Gate',v_label,NULL,0,'Mat');
+  v_result := public.technical_configuration_dossiers_list(1,1,false,v_label,true,'  mắt  ');
+  ASSERT v_result->>'total' = '2', 'filter precedes total and pagination';
+  ASSERT jsonb_array_length(v_result->'data') = 1;
+  ASSERT public.technical_configuration_dossiers_list(2,1,false,v_label,true,'MẮT')#>>'{data,0,id}' <> v_result#>>'{data,0,id}';
+  ASSERT public.technical_configuration_dossiers_list(1,20,false,v_label,true,NULL)->>'total' = '1', 'NULL is unclassified';
+  ASSERT public.technical_configuration_dossiers_list(1,20,false,v_label,false,NULL)->>'total' = '4', 'explicit no-filter';
+  ASSERT public.technical_configuration_dossiers_list(1,20,false,v_label) = public.technical_configuration_dossiers_list(1,20,false,v_label,false,NULL), 'old RPC preserves payload and ordering';
+  ASSERT public.technical_configuration_dossiers_list(1,20,false,v_label,true,'Mat')->>'total' = '1', 'accents remain distinct';
+  ASSERT public.technical_configuration_dossiers_list(1,20,false,v_label,true,'M%')->>'total' = '0', 'exact match, no wildcard';
+  ASSERT has_function_privilege('authenticated','public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)','EXECUTE');
+  ASSERT NOT has_function_privilege('anon','public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)','EXECUTE');
+  ASSERT NOT has_function_privilege('service_role','public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)','EXECUTE');
+  ASSERT NOT has_function_privilege('public','public.technical_configuration_dossiers_list(integer,integer,boolean,text,boolean,text)','EXECUTE');
+  PERFORM pg_temp.specialty_expect_error('SELECT public.technical_configuration_dossiers_list(1,20,false,NULL,NULL,NULL)','PT422');
+  PERFORM pg_temp.specialty_expect_error($query$SELECT public.technical_configuration_dossiers_list(1,20,false,NULL,true,'  ')$query$,'PT422');
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','user','user_id',v_user::TEXT)::TEXT,true);
+  PERFORM pg_temp.specialty_expect_error('SELECT public.technical_configuration_dossiers_list(1,20,false,NULL,true,NULL)','42501');
+  RAISE NOTICE 'PASS: server specialty filter, totals, pagination, compatibility and authorization';
+END;
+$$;
+DO $$
 DECLARE v_user BIGINT;
 BEGIN
   SELECT id INTO v_user FROM public.nhan_vien ORDER BY id LIMIT 1;
@@ -111,6 +143,7 @@ BEGIN
   );
   ASSERT v_result#>>'{data,specialty}' = 'Mắt', 'authenticated can call new signature';
   PERFORM public.technical_configuration_dossiers_specialties(1, 20, 'Mắt');
+  PERFORM public.technical_configuration_dossiers_list(1,20,false,NULL,true,'Mắt');
 END;
 $$;
 RESET ROLE;

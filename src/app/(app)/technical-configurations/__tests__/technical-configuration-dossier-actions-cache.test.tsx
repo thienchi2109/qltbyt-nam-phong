@@ -45,6 +45,7 @@ describe("technical configuration dossier action cache", () => {
       ...dossier,
       name: "Cấu hình máy siêu âm tim",
       description: "Metadata đã cập nhật",
+      specialty: null,
       revision: 8,
     }
     const updateArgs: TechnicalConfigurationDossierUpdateRpcArgs = {
@@ -52,6 +53,7 @@ describe("technical configuration dossier action cache", () => {
       p_device_type_name: dossier.device_type_name,
       p_name: updatedDossier.name,
       p_description: updatedDossier.description,
+      p_specialty: updatedDossier.specialty,
       p_expected_revision: dossier.revision,
     }
     const queryClient = createQueryClient()
@@ -83,6 +85,7 @@ describe("technical configuration dossier action cache", () => {
           name: updatedDossier.name,
           revision: 8,
           future_list_only_field: "keep-list",
+          specialty: null,
         },
       ],
     })
@@ -96,12 +99,14 @@ describe("technical configuration dossier action cache", () => {
         name: updatedDossier.name,
         revision: 8,
         future_detail_only_field: "keep-detail",
+        specialty: null,
       },
     })
     expect(result.current.selectedDossier).toMatchObject({
       id: dossier.id,
       name: updatedDossier.name,
       revision: 8,
+      specialty: null,
     })
   })
 
@@ -119,6 +124,7 @@ describe("technical configuration dossier action cache", () => {
       p_device_type_name: "Máy siêu âm tim",
       p_name: "Tên đang sửa",
       p_description: "Mô tả đang sửa",
+      p_specialty: "Mắt",
       p_expected_revision: dossier.revision,
     }
     queryClient.setQueryData(listQueryKey, {
@@ -147,6 +153,7 @@ describe("technical configuration dossier action cache", () => {
       device_type_name: updateArgs.p_device_type_name,
       name: updateArgs.p_name,
       description: updateArgs.p_description,
+      specialty: updateArgs.p_specialty,
       revision: refreshedDossier.revision,
       updated_at: refreshedDossier.updated_at,
     })

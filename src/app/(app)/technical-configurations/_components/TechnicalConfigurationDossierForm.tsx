@@ -107,6 +107,7 @@ export function TechnicalConfigurationDossierForm(
       p_device_type_name: values.deviceTypeName,
       p_name: values.name,
       p_description: values.description || null,
+      p_specialty: editDossier?.specialty ?? null,
     }
 
     try {

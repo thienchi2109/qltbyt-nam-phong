@@ -68,6 +68,7 @@ const dossier: TechnicalConfigurationDossierWire = {
   device_type_name: "Máy siêu âm",
   name: "Cấu hình máy siêu âm",
   description: "Cấu hình chuẩn",
+  specialty: null,
   revision: 1,
   archived_at: null,
   archived_by: null,
@@ -223,6 +224,7 @@ describe("technical configuration dossier shell", () => {
         p_device_type_name: dossier.device_type_name,
         p_name: dossier.name,
         p_description: dossier.description,
+        p_specialty: null,
         p_expected_revision: 0,
       })
     )
@@ -281,7 +283,7 @@ describe("technical configuration dossier shell", () => {
     await user.type(screen.getByLabelText("Loại thiết bị"), createdDossier.device_type_name)
     await user.type(screen.getByLabelText("Tên hồ sơ"), createdDossier.name)
     await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }))
-    await user.click(await screen.findByRole("button", { name: "Danh sách hồ sơ" }))
+    await user.click(await screen.findByRole("button", { name: "Quay lại danh sách hồ sơ" }))
 
     expect(screen.queryByText("Hồ sơ cũ không thể mở")).not.toBeInTheDocument()
   })

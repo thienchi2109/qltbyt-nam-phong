@@ -11,14 +11,16 @@ export function technicalConfigurationDossierListQueryKey({
   page,
   pageSize,
   normalizedSearch,
+  specialtyFilter,
 }: {
   page: number
   pageSize: number
   normalizedSearch: string
+  specialtyFilter?: string | null
 }) {
   return [
     ...TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
-    { page, pageSize, search: normalizedSearch },
+    { page, pageSize, search: normalizedSearch, specialty: specialtyFilter },
   ] as const
 }
 

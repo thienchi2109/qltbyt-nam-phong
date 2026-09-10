@@ -1229,7 +1229,8 @@
       "path": "supabase/tests/technical_configuration_dossier_specialty_phase_gate.sql",
       "requiredForMigrations": [
         "supabase/migrations/20260910100000_technical_configuration_dossier_specialty.sql",
-        "supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql"
+        "supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql",
+        "supabase/migrations/20260910110000_technical_configuration_dossier_specialty_filter.sql"
       ],
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],

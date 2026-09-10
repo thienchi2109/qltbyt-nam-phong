@@ -41,6 +41,7 @@ export const dossier: TechnicalConfigurationDossierListItemWire = {
   device_type_name: "Máy siêu âm",
   name: "Cấu hình máy siêu âm",
   description: "Cấu hình chuẩn",
+  specialty: "Tim mạch",
   revision: 7,
   archived_at: null,
   archived_by: null,

@@ -25,6 +25,7 @@ const dossier: TechnicalConfigurationDossierWire = {
   device_type_name: "Máy siêu âm",
   name: "Cấu hình máy siêu âm",
   description: "Cấu hình chuẩn",
+  specialty: "Tim mạch",
   revision: 7,
   archived_at: null,
   archived_by: null,
@@ -175,6 +176,7 @@ describe("technical configuration dossier form", () => {
         p_device_type_name: "Máy siêu âm tim",
         p_name: "Cấu hình máy siêu âm tim",
         p_description: "Metadata đã cập nhật",
+        p_specialty: "Tim mạch",
         p_expected_revision: 7,
       })
     })

@@ -6,6 +6,7 @@ export const DOSSIER_RPC_FUNCTIONS = {
   updateDossier: "technical_configuration_dossiers_update",
   archiveDossier: "technical_configuration_dossiers_archive",
   deleteDossier: "technical_configuration_dossiers_delete",
+  listDossierSpecialties: "technical_configuration_dossiers_specialties",
 } as const
 
 /** Ordered dossier RPC names for allowlists and contract iteration. */

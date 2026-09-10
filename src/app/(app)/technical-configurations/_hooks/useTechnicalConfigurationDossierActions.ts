@@ -139,6 +139,7 @@ export function useTechnicalConfigurationDossierActions({
           device_type_name: args.p_device_type_name,
           name: args.p_name,
           description: args.p_description,
+          specialty: args.p_specialty,
         }
         mergeDossierIntoQueryCaches(queryClient, origin.listQueryKey, response.data)
         onSelectedDossierChange((current) =>

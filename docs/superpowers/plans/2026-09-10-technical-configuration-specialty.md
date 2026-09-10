@@ -27,8 +27,8 @@
 
 - Re-run trên HEAD `0db7164caf8867d94ed86ff6da6430499229ebc0`: `FAILED`, digest `d5e783ca978d2ea54b75a1a08bf77fb98c0e523148b00da0613cd002caca76eb`, counts `WARNING=1541`, `DANGEROUS=3`, `BLOCKING=17`.
 - Chunk 1-specific dangerous findings là các `GRANT EXECUTE` cho overload create/update và RPC options trong hai migration. Đây là privilege surface được migration khai báo có chủ đích, đi kèm `REVOKE ALL`, và cần cho caller `authenticated`; chưa có bằng chứng migration cấp thừa quyền ngoài contract.
-- Chunk 1-specific blocking `security-definer-execute-grant/revoke` là false positive của harness: mỗi function đều có cặp `REVOKE ALL`/`GRANT EXECUTE` tường minh (migration `20260910100000`, dòng 201-206; migration `20260910100100`, dòng 254-256).
-- Chunk 1-specific blocking `jwt-guards` là false positive parser: create/update/get/list/options đều gọi guard dùng chung trong thân function (`_technical_configuration_require_global_user` hoặc `_technical_configuration_require_editable_dossier`); parser không nhận diện được helper guard này.
+- Đính chính evidence ACL: cặp `REVOKE ALL`/`GRANT EXECUTE` nêu trên chỉ thuộc overload mới và options; create/update cũ và get/list dùng `CREATE OR REPLACE`, giữ ACL sẵn có. Regression catalog trên disposable PostgreSQL 17 xác nhận authenticated có EXECUTE và PUBLIC/anon/service_role không có quyền. Chưa chứng minh nguyên nhân từng finding trong parser, nên không coi nhận định false positive trước đây là chứng nhận static PASS.
+- `jwt-guards`: create/update/get/list/options gọi guard dùng chung (`_technical_configuration_require_global_user` hoặc `_technical_configuration_require_editable_dossier`). Regression quyền truy cập PASS trên disposable DB; chưa truy vết đầy đủ parser để kết luận mọi finding là false positive.
 - `function-overload-ambiguous` là phân loại đúng theo hình thức overload nhưng không phải lỗi migration: overload mới giữ tương thích RPC cũ theo thiết kế Chunk 1; không đổi logic chỉ để vượt gate.
 - Kết luận checkpoint: không sửa migration/harness, không waiver/bypass; static vẫn là blocker và baseline-forward chưa chạy.
 
@@ -38,6 +38,16 @@ Yêu cầu mới nhất: triển khai trực tiếp, không subagent, dừng the
 - **Chunk 2:** hợp đồng typed client/proxy, server filter ba trạng thái và cache/list hook; chỉ bắt đầu sau khi duyệt Chunk 1.
 - **Chunk 3:** form Edit/tạo, cột Chuyên khoa, filter button giống Equipments và kiểm thử tương tác.
 - **Checkpoint live:** riêng biệt, chỉ sau static + baseline-forward hợp lệ cùng commit và quyền ghi live cụ thể.
+
+### Chunk 2: triển khai theo phép tiếp tục của maintainer
+
+- Ngày 2026-09-10, maintainer cho phép qua Chunk 2 dù static Chunk 1 vẫn FAILED. Đây là phép triển khai phase tiếp theo, không phải waiver DB gate hoặc quyền ghi live; không sang Chunk 3.
+- Thêm migration `20260910110000_technical_configuration_dossier_specialty_filter.sql`, sau hai migration Chunk 1. Lọc server-side trong CTE trước COUNT/LIMIT/OFFSET, giữ search ranking và set-based can_delete. Overload sáu tham số dùng `p_filter_specialty` + `p_specialty`: false/NULL = tất cả, true/NULL = chưa phân loại, true/text = nhãn chính xác không phân biệt hoa thường, có phân biệt dấu. Chữ ký bốn tham số giữ defaults và delegate sang cùng truy vấn.
+- Typed payload thêm specialty nullable, create/update yêu cầu p_specialty; form cũ chỉ chuyển tiếp giá trị hiện có (create NULL), chưa thêm control. Options RPC dùng manifest allowlist sẵn có; hook options có pagination độc lập và cùng query root để được invalidation sau mutation. List key và visible request identity giữ filter, reset trang khi đổi filter; cache merge/stale retry giữ specialty.
+- Reuse: dùng RPC transport, query root, pagination và guard/normalizer hiện có. GitNexus tìm được list/detail key; Code Review Graph của worktree trống nên không dùng kết quả zero làm bằng chứng không trùng. Đối chiếu source trực tiếp; không sửa harness hoặc mở rộng gate narrowing.
+- RED: hai test hành vi key/filter fail trước thay đổi hook. SQL test fail vì thiếu overload sáu tham số trên disposable clone chỉ có Chunk 1; sau migration Chunk 2 PASS. Clone `specialty_chunk2_20260910` từ qltbyt_test; CREATE tạm cho postgres chỉ ở clone, không thay đổi restored baseline/live.
+- Regression: 105 tests/17 files PASS; no-explicit-any, diff-only dedupe, typecheck PASS; React Doctor 93/100, no issues. SQL specialty, search, delete, delete-audit PASS (exit 0) trên disposable PostgreSQL 17. Hai assertion cấu trúc search/delete được cập nhật cho overload/delegation; không bỏ kiểm tra hành vi cũ.
+- Static trước commit (dirty input, không chứng nhận commit): INCOMPLETE, digest `473b0f26182037134d4b65cdbfec0c38b43179589bfc9902c964681c31309fc4`, 1541 WARNING / 4 DANGEROUS / 25 BLOCKING; gồm subject-input và registry evidence chưa commit. Phải chạy lại trên commit. Kiểm thử SQL riêng không thay thế baseline-forward chính thức; aggregate gate chưa PASS.
 
 Quyết định kỹ thuật cho Chunk 1:
 
