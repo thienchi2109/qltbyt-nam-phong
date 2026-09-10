@@ -23,6 +23,15 @@
 
 ## Checkpoint thực thi (2026-09-10)
 
+### Static DB Quality Gate evidence (2026-09-10)
+
+- Re-run trên HEAD `0db7164caf8867d94ed86ff6da6430499229ebc0`: `FAILED`, digest `d5e783ca978d2ea54b75a1a08bf77fb98c0e523148b00da0613cd002caca76eb`, counts `WARNING=1541`, `DANGEROUS=3`, `BLOCKING=17`.
+- Chunk 1-specific dangerous findings là các `GRANT EXECUTE` cho overload create/update và RPC options trong hai migration. Đây là privilege surface được migration khai báo có chủ đích, đi kèm `REVOKE ALL`, và cần cho caller `authenticated`; chưa có bằng chứng migration cấp thừa quyền ngoài contract.
+- Chunk 1-specific blocking `security-definer-execute-grant/revoke` là false positive của harness: mỗi function đều có cặp `REVOKE ALL`/`GRANT EXECUTE` tường minh (migration `20260910100000`, dòng 201-206; migration `20260910100100`, dòng 254-256).
+- Chunk 1-specific blocking `jwt-guards` là false positive parser: create/update/get/list/options đều gọi guard dùng chung trong thân function (`_technical_configuration_require_global_user` hoặc `_technical_configuration_require_editable_dossier`); parser không nhận diện được helper guard này.
+- `function-overload-ambiguous` là phân loại đúng theo hình thức overload nhưng không phải lỗi migration: overload mới giữ tương thích RPC cũ theo thiết kế Chunk 1; không đổi logic chỉ để vượt gate.
+- Kết luận checkpoint: không sửa migration/harness, không waiver/bypass; static vẫn là blocker và baseline-forward chưa chạy.
+
 Yêu cầu mới nhất: triển khai trực tiếp, không subagent, dừng theo từng chunk để duyệt.
 
 - **Chunk 1:** DB-only, hai migration forward-only và regression SQL có rollback. Giữ proxy, types, adapter và UI hiện tại. Chưa đánh dấu Task 1 hoàn tất vì phần TypeScript/proxy được chuyển sang checkpoint kích hoạt sau.
