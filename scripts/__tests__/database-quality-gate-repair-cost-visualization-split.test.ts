@@ -16,7 +16,7 @@ it("keeps the three repair report entries in the legacy selected set", () => {
   const selected = selectDefaultSafeSqlTests(registry)
   for (const path of entries)
     expect(selected.some((entry) => entry.path === `supabase/tests/${path}`)).toBe(true)
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
 })
 
 it("registers core and migration-specific companions only in a fixture registry", () => {

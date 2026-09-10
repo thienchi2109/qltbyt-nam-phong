@@ -41,7 +41,7 @@ it("keeps tenant isolation in core and active-repair semantics in business", () 
 it("stages companions without changing selected tests", () => {
   const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
   const selected = selectDefaultSafeSqlTests(registry)
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
   const legacy = selected.find((entry) => entry.path === path)
   expect(legacy).toBeDefined()
   const staged = [

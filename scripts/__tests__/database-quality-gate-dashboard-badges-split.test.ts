@@ -51,7 +51,7 @@ describe("Chunk 4b dashboard badges staged extraction", () => {
   it("keeps active registry selection unchanged and validates staged registration with the harness", () => {
     const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
     const selected = selectDefaultSafeSqlTests(registry)
-    expect(selected).toHaveLength(77)
+    expect(selected).toHaveLength(78)
     const legacy = selected.find((test) => test.path === originalPath)!
     expect(legacy).toBeDefined()
     expect(selected.some((test) => [corePath, businessPath].includes(test.path))).toBe(false)

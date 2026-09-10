@@ -12,7 +12,7 @@ const paths = [
 it("keeps both original tests selected and stages four companions without activation", () => {
   const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
   const selected = selectDefaultSafeSqlTests(registry)
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
   const staged = paths.flatMap((path) => {
     const legacy = selected.find((entry) => entry.path === path)
     expect(legacy).toBeDefined()

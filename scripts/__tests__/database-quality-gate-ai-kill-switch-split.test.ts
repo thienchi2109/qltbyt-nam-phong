@@ -17,9 +17,9 @@ const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", 
 const original = readFileSync(originalPath, "utf8")
 
 describe("Chunk 4a AI kill switch staged extraction", () => {
-  it("keeps the active mixed test and all 77 default-safe paths selected", () => {
+  it("keeps the active mixed test and all 78 default-safe paths selected", () => {
     const selected = selectDefaultSafeSqlTests(registry)
-    expect(selected).toHaveLength(77)
+    expect(selected).toHaveLength(78)
     expect(selected.find((test) => test.path === originalPath)).toBeDefined()
     for (const [, path] of files)
       expect(selected.find((test) => test.path === path)).toBeUndefined()
