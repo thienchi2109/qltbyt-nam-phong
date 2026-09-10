@@ -41,6 +41,10 @@ Yêu cầu mới nhất: triển khai trực tiếp, không subagent, dừng the
 
 ### Chunk 2: triển khai theo phép tiếp tục của maintainer
 
+- Commit implementation: `85e0423bed06bbd6b6c15291c83f62218020653b`. Static exact-commit: FAILED, digest `2f1a09592d64761347d12c57c6a62e1f77207a8682cb53ac673cde05b30026e9`, 1541 WARNING / 4 DANGEROUS / 23 BLOCKING. Pre-push cũng FAILED static (digest `44f0dc127984fab320b044f5a50bf8d5552e7f48b5b89551d062dc6c3c74ab23`); chưa push, không bypass hooks.
+- Baseline-forward run `specialty-chunk2-85e0423` bị timeout cục bộ sau 45 giây, không có report JSON/digest hợp lệ: INCOMPLETE, không phải PASS. Kiểm tra không còn kết nối vào control clone rồi xóa `dq_baseline_control_specialty_chunk2_85e0423`; clone regression `specialty_chunk2_20260910` cũng đã xóa. Không xóa hai clone Chunk 1 từ session trước.
+- Sau bổ sung assertion specialty trong cache merge/stale retry: 6 tests/2 files PASS; các gate TypeScript/format/JSDoc PASS. Aggregate DB gate vẫn BLOCKING. Câu hỏi của maintainer về bypass/apply live chưa phải quyền ghi cụ thể; chưa ghi live và chưa triển khai Chunk 3.
+
 - Ngày 2026-09-10, maintainer cho phép qua Chunk 2 dù static Chunk 1 vẫn FAILED. Đây là phép triển khai phase tiếp theo, không phải waiver DB gate hoặc quyền ghi live; không sang Chunk 3.
 - Thêm migration `20260910110000_technical_configuration_dossier_specialty_filter.sql`, sau hai migration Chunk 1. Lọc server-side trong CTE trước COUNT/LIMIT/OFFSET, giữ search ranking và set-based can_delete. Overload sáu tham số dùng `p_filter_specialty` + `p_specialty`: false/NULL = tất cả, true/NULL = chưa phân loại, true/text = nhãn chính xác không phân biệt hoa thường, có phân biệt dấu. Chữ ký bốn tham số giữ defaults và delegate sang cùng truy vấn.
 - Typed payload thêm specialty nullable, create/update yêu cầu p_specialty; form cũ chỉ chuyển tiếp giá trị hiện có (create NULL), chưa thêm control. Options RPC dùng manifest allowlist sẵn có; hook options có pagination độc lập và cùng query root để được invalidation sau mutation. List key và visible request identity giữ filter, reset trang khi đổi filter; cache merge/stale retry giữ specialty.
