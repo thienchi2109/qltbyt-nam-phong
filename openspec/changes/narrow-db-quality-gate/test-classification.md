@@ -1,5 +1,8 @@
 # Bảng phân loại SQL test — Chunk 2 BATCH1–4
 
+> Snapshot BATCH1–4 bên dưới giữ nguyên provenance 77 entry. Đối chiếu current
+> registry 78 entry và scope debt specialty xem phần bổ sung #994 cuối tài liệu.
+
 ## Phạm vi và provenance
 
 Đây là evidence của Chunk 2 BATCH1–4, đã phân loại đủ 77 entry trong
@@ -1813,3 +1816,59 @@ registry, source, database, Oracle hoặc test runner.
 - Artifact này chỉ cập nhật classification evidence; không sửa SQL/source,
   registry, selector, test execution, DB/Oracle, migration history hoặc live
   behavior. Chunk 3 và các chunk sau vẫn chưa bắt đầu.
+
+## Bổ sung #994 — specialty sau snapshot lịch sử (2026-09-10)
+
+- Subject đối chiếu: `e9a9d94de49cc9463a533de430425783404e767b`.
+- Registry SHA-256:
+  `cb6864441e90253eff0c7270dc68b8ee3b1d3411b3847757a77b1a73aa5fea78`.
+- So với subject BATCH1–4, selected set chỉ thêm
+  `supabase/tests/technical_configuration_dossier_specialty_phase_gate.sql`;
+  không xóa path nào: `77 + 1 = 78`. Không đánh lại số 77 entry lịch sử.
+- SQL SHA-256 tại subject đối chiếu:
+  `5a6dfec0e1fc1ad64fbfe941d1e57807bedc057f00ee6052befd90f976e39fb6`.
+- Registry hiện tại: `phase-gate`, `default-safe`, `isolated-fixture`,
+  `rollback-required`, `psql`, timeout 30 giây; `gateScope: migration-specific`.
+- Exact `requiredForMigrations` đều tồn tại tại subject:
+  `supabase/migrations/20260910100000_technical_configuration_dossier_specialty.sql`,
+  `supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql`,
+  `supabase/migrations/20260910110000_technical_configuration_dossier_specialty_filter.sql`.
+
+### Phân loại theo assertions của specialty
+
+**Mixed, đề xuất core-security tạm thời cho tới khi tách**. Scope hiện tại trong
+registry là debt, không phải kết luận đây là pure migration-specific.
+
+- Security: denied role `user` nhận `42501` khi gọi specialties/create
+  (75–77) và filtered list (122–123); EXECUTE cho authenticated và deny
+  anon/service_role/PUBLIC trên các overload (78–91, 116–119); lời gọi thực
+  dưới `SET LOCAL ROLE authenticated` (136–148). Admin/chuyen_gia create
+  (70–74) trộn positive authorization với payload business.
+- Business: nullable specialty, normalize whitespace/giữ dấu, tương thích
+  client cũ, revision/rollback, validation độ dài, blank/null clearing,
+  overload resolution (28–55); grouping, pagination và archived guard
+  (56–69); filter trước total/pagination, unclassified, exact match không
+  wildcard và tương thích list cũ (102–115), invalid filter input (120–121).
+  Các lỗi PT409/PT422 này là business validation, không phải role denial.
+- Không có assertion tenant isolation trong file này; không suy diễn từ JWT
+  fixture hoặc tên phase-gate. Payload specialty ở positive-role witnesses
+  phải được tách khỏi authorization khi thực hiện extraction.
+
+### Ranh giới và regression
+
+#994 chỉ reconcile tài liệu/tests; giữ nguyên SQL, active registry và selector.
+Selector legacy vẫn chọn đủ 78 default-safe tests, nên coverage specialty hiện
+không bị mất. Snapshot tổng hợp hiện tại có 77 phân loại lịch sử cộng 1 mixed
+specialty; registry vẫn có 19 migration-specific, trong đó specialty là scope
+debt. Đây không phải approval cho Chunk 5/6 hay dynamic semantic PASS.
+
+Follow-up [#995](https://github.com/thienchi2109/qltbyt-nam-phong/issues/995):
+trước Chunk 6 phải giải quyết scope debt specialty: giữ mixed test trong
+core-security tạm thời hoặc tách security/business với coverage tương đương,
+giữ ba exact migration mappings cho business half. Không được bật selector
+khi security assertions này có thể bị loại vì migration không còn pending.
+
+Regression scope giữ count lịch sử 77/18, bổ sung đúng specialty path và ba
+mapping, rồi so sánh toàn bộ selected paths và metadata với registry current.
+Các split regression đọc registry current được cập nhật 78 sau khi tái hiện
+11 lỗi count; các kiểm tra mixed original/companion chưa active giữ nguyên.

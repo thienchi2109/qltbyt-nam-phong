@@ -36,7 +36,7 @@ it("preserves complete scenarios and independent claims in the two companions", 
 it("validates staged metadata while leaving the legacy selected set unchanged", () => {
   const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
   const selected = selectDefaultSafeSqlTests(registry)
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
   const legacy = selected.find((entry) => entry.path === path)
   expect(legacy).toBeDefined()
   const tests = ["core-security", "migration-specific"].map((gateScope) => ({

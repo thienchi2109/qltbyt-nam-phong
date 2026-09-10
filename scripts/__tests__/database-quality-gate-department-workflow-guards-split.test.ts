@@ -13,11 +13,11 @@ const businessPath = path.replace(".sql", "_migration_specific.sql")
 const core = existsSync(corePath) ? readFileSync(corePath, "utf8") : original
 const business = existsSync(businessPath) ? readFileSync(businessPath, "utf8") : original
 
-it("validates staged registration while retaining the original 77 selected tests", () => {
+it("validates staged registration while retaining all 78 selected tests", () => {
   const selected = selectDefaultSafeSqlTests(
     JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
   )
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
   const legacy = selected.find((entry) => entry.path === path)
   expect(legacy).toBeDefined()
   const tests = [corePath, path.replace(".sql", "_claims_core_security.sql"), businessPath].map(

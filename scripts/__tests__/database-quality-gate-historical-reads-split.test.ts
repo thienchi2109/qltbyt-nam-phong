@@ -42,10 +42,10 @@ it("preserves complete regional scope and posture blocks separately from histori
   }
 })
 
-it("validates fixture-only registration and leaves the 77 active tests selected", () => {
+it("validates fixture-only registration and leaves the 78 active tests selected", () => {
   const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
   const selected = selectDefaultSafeSqlTests(registry)
-  expect(selected).toHaveLength(77)
+  expect(selected).toHaveLength(78)
   const legacy = selected.find((entry) => entry.path === path)
   expect(legacy).toBeDefined()
   expect(selected.some((entry) => [corePath, businessPath].includes(entry.path))).toBe(false)

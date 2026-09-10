@@ -74,7 +74,7 @@ describe("Chunk 3 compatible SQL test scope metadata", () => {
     )
   })
 
-  it("matches all approved classifications and preserves the entire legacy selected set", async () => {
+  it("matches historical classifications plus the recorded specialty scope debt without narrowing selection", async () => {
     const registry = JSON.parse(readFileSync("supabase/db-quality-gate-tests.json", "utf8"))
     const document = readFileSync(
       "openspec/changes/narrow-db-quality-gate/test-classification.md",
@@ -89,9 +89,22 @@ describe("Chunk 3 compatible SQL test scope metadata", () => {
     }
     expect(scopes.size).toBe(77)
     expect([...scopes.values()].filter((scope) => scope === "migration-specific")).toHaveLength(18)
+    // #995: historical inventory stays pinned; specialty is mixed scope debt before Chunk 6.
+    const specialtyPath = "supabase/tests/technical_configuration_dossier_specialty_phase_gate.sql"
+    scopes.set(specialtyPath, "migration-specific")
     const parsed = parseSqlTestRegistry(registry)!
     expect(parsed).toBeDefined()
     const selected = selectDefaultSafeSqlTests(registry)
+    expect(selected.find((test) => test.path === specialtyPath)).toMatchObject({
+      safety: "default-safe",
+      fixtureContract: "isolated-fixture",
+      transactionContract: "rollback-required",
+      requiredForMigrations: [
+        "supabase/migrations/20260910100000_technical_configuration_dossier_specialty.sql",
+        "supabase/migrations/20260910100100_technical_configuration_dossier_specialty_reads.sql",
+        "supabase/migrations/20260910110000_technical_configuration_dossier_specialty_filter.sql",
+      ],
+    })
     expect(selected.map((test) => test.path)).toEqual([...scopes.keys()].sort())
     for (const test of selected) expect(test).toHaveProperty("gateScope", scopes.get(test.path))
     const legacy = { ...parsed, tests: parsed.tests.map(({ gateScope: _scope, ...test }) => test) }
