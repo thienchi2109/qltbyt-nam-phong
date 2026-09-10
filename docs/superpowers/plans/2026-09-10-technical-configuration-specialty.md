@@ -126,12 +126,12 @@ Quyết định kỹ thuật cho Chunk 1:
 - Form field `specialty` is optional, trimmed, and submitted as `null` when blank.
 - Table renders `dossier.specialty ?? "Chưa phân loại"`.
 
-- [ ] **Step 1: Add failing form/table tests** for create, edit/backfill of a null specialty, clearing an existing specialty, and the null display label.
-- [ ] **Step 2: Run the focused tests and verify they fail.**
-- [ ] **Step 3: Add the optional combobox/free-text field** with suggestions from the options query; preserve existing form validation and revision payloads. On edit, initialize from the dossier value; blank submits null so users can explicitly clear it.
-- [ ] **Step 4: Add the Chuyên khoa table column** with accessible text and stable rendering for null values.
-- [ ] **Step 5: Wire the options query and mutation callbacks through the existing page/action ownership seam.**
-- [ ] **Step 6: Run the focused form and shell tests and verify they pass.**
+- [x] **Step 1: Add failing form/table tests** for create, edit/backfill of a null specialty, clearing an existing specialty, and the null display label.
+- [x] **Step 2: Run the focused tests and verify they fail.**
+- [x] **Step 3: Add the optional combobox/free-text field** with suggestions from the options query; preserve existing form validation and revision payloads. On edit, initialize from the dossier value; blank submits null so users can explicitly clear it.
+- [x] **Step 4: Add the Chuyên khoa table column** with accessible text and stable rendering for null values.
+- [x] **Step 5: Wire the options query and mutation callbacks through the existing page/action ownership seam.**
+- [x] **Step 6: Run the focused form and shell tests and verify they pass.**
 - [ ] **Step 7: Commit** with `feat: edit and display dossier specialties`.
 
 ### Task 4: Add the Equipments-style specialty filter button
@@ -142,11 +142,11 @@ Quyết định kỹ thuật cho Chunk 1:
 - Modify: `src/app/(app)/technical-configurations/_components/TechnicalConfigurationDossierTable.tsx` only if the existing table owns the toolbar seam
 - Test: `src/app/(app)/technical-configurations/__tests__/technical-configuration-dossier-search-actions.test.tsx`
 
-- [ ] **Step 1: Add failing interaction tests** for opening the filter button, selecting a distinct specialty, selecting “Chưa phân loại”, clearing filters, showing active-filter state, and preserving the existing search text.
-- [ ] **Step 2: Run the focused interaction tests and verify they fail.**
-- [ ] **Step 3: Reuse the shared faceted filter/button pattern used by Equipments; do not introduce a new generic filter abstraction.**
-- [ ] **Step 4: Wire filter selection to the list hook, include “Tất cả”, “Chưa phân loại”, and saved distinct values, and invalidate/refetch only dossier-list queries when needed. Treat “Tất cả” as `undefined` and “Chưa phân loại” as `null`; do not collapse those states.**
-- [ ] **Step 5: Run the focused interaction tests and verify they pass.**
+- [x] **Step 1: Add failing interaction tests** for opening the filter button, selecting a distinct specialty, selecting “Chưa phân loại”, clearing filters, showing active-filter state, and preserving the existing search text.
+- [x] **Step 2: Run the focused interaction tests and verify they fail.**
+- [x] **Step 3: Reuse the shared faceted filter/button pattern used by Equipments; do not introduce a new generic filter abstraction.**
+- [x] **Step 4: Wire filter selection to the list hook, include “Tất cả”, “Chưa phân loại”, and saved distinct values, and invalidate/refetch only dossier-list queries when needed. Treat “Tất cả” as `undefined` and “Chưa phân loại” as `null`; do not collapse those states.**
+- [x] **Step 5: Run the focused interaction tests and verify they pass.**
 - [ ] **Step 6: Commit** with `feat: add specialty filter control to dossier list`.
 
 ### Task 5: Run repository verification and prepare handoff
@@ -159,3 +159,12 @@ Quyết định kỹ thuật cho Chunk 1:
 - [ ] **Step 6:** Run `node scripts/npm-run.js run react-doctor`.
 - [ ] **Step 7:** Run the static migration gate and document static versus baseline-forward status for the exact commit; do not claim aggregate migration PASS without both lanes.
 - [ ] **Step 8:** Review `git diff --check`, confirm no live DB write occurred, and report files/tests plus the separate live-apply approval boundary.
+
+### Chunk 3: checkpoint UI (2026-09-10)
+
+- Form tạo/sửa thêm Chuyên khoa tự do với datalist gợi ý; chuẩn hóa NFC/khoảng trắng, blank về NULL, giới hạn 200 ký tự. Bảng hiển thị NULL là Chưa phân loại.
+- Toolbar dùng FacetedMultiSelectFilter giống Equipments, chọn một nhãn; all/NULL/nhãn có encoding riêng, kể cả nhãn trùng chữ Tất cả hoặc Chưa phân loại. Dùng list hook Chunk 2 để lọc server-side, reset trang và giữ search; clear có thể dùng cache còn mới.
+- Options hook tái sử dụng collectStableTechnicalConfigurationPages để đọc đủ trang; cùng query root để invalidation sau mutation. Có báo lỗi/thử lại. Code Review Graph worktree trống; đối chiếu source bằng tgrep sau GitNexus không trả đúng symbol.
+- RED: 4 form tests và 4 UI tests fail trước khi có control/cột/filter. GREEN cuối: 145 tests/22 files PASS, gồm form/shell/filter, hook/cache/search/pagination và migration contract tests.
+- Format, no-explicit-any, diff-only dedupe, typecheck, JSDoc, diff --check PASS. React Doctor 93/100 với một warning complexity tại TechnicalConfigurationsClient; chưa xác minh warning là baseline hay mới, đính chính mô tả “hiện hữu” ở handoff trước. Chưa có browser QA.
+- Maintainer cho phép commit và sang checkpoint tiếp theo. Checkpoint kế tiếp là verification/pre-live review; không phải quyền apply live. Không thay đổi SQL/harness, không ghi live; static FAILED và baseline-forward INCOMPLETE trước đó giữ nguyên, không suy diễn PASS từ test UI/SQL contract.

@@ -29,6 +29,7 @@ type TechnicalConfigurationDossierFormCommonProps = {
   open: boolean
   isSubmitting: boolean
   errorMessage: string | null
+  specialties?: string[]
   onOpenChange: (open: boolean) => void
 }
 
@@ -49,6 +50,10 @@ const dossierFormSchema = z.object({
   deviceTypeName: z.string().trim().min(1, "Vui lòng nhập loại thiết bị."),
   name: z.string().trim().min(1, "Vui lòng nhập tên hồ sơ."),
   description: z.string().trim(),
+  specialty: z
+    .string()
+    .transform((value) => value.normalize("NFC").replace(/\s+/gu, " ").trim())
+    .pipe(z.string().max(200, "Chuyên khoa tối đa 200 ký tự.")),
 })
 
 type DossierFormValues = z.infer<typeof dossierFormSchema>
@@ -57,6 +62,7 @@ const EMPTY_FORM: DossierFormValues = {
   deviceTypeName: "",
   name: "",
   description: "",
+  specialty: "",
 }
 const DOSSIER_FORM_ID = "technical-configuration-dossier-form"
 
@@ -72,6 +78,7 @@ export function TechnicalConfigurationDossierForm(
             deviceTypeName: editDossier.device_type_name,
             name: editDossier.name,
             description: editDossier.description ?? "",
+            specialty: editDossier.specialty ?? "",
           }
         : EMPTY_FORM,
     [
@@ -80,6 +87,7 @@ export function TechnicalConfigurationDossierForm(
       editDossier?.id,
       editDossier?.name,
       editDossier?.revision,
+      editDossier?.specialty,
     ]
   )
   const form = useForm<DossierFormValues>({
@@ -107,7 +115,7 @@ export function TechnicalConfigurationDossierForm(
       p_device_type_name: values.deviceTypeName,
       p_name: values.name,
       p_description: values.description || null,
-      p_specialty: editDossier?.specialty ?? null,
+      p_specialty: values.specialty || null,
     }
 
     try {
@@ -184,6 +192,30 @@ export function TechnicalConfigurationDossierForm(
                     disabled={props.isSubmitting}
                   />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="specialty"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel htmlFor="technical-configuration-specialty">Chuyên khoa</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    id="technical-configuration-specialty"
+                    list="technical-configuration-specialty-options"
+                    disabled={props.isSubmitting}
+                  />
+                </FormControl>
+                <datalist id="technical-configuration-specialty-options">
+                  {props.specialties?.map((label) => (
+                    <option key={label} value={label} />
+                  ))}
+                </datalist>
                 <FormMessage />
               </FormItem>
             )}

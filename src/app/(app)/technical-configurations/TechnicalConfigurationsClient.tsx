@@ -2,9 +2,8 @@
 
 import * as React from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { AlertCircle, ListChecks, Loader2, Plus, RefreshCw } from "lucide-react"
+import { AlertCircle, ListChecks, Plus, RefreshCw } from "lucide-react"
 
-import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 
@@ -29,7 +28,8 @@ import {
   TECHNICAL_CONFIGURATION_DOSSIER_QUERY_ROOT,
   technicalConfigurationDossierDetailQueryKey,
 } from "./technical-configuration-query-keys"
-import { TECHNICAL_CONFIGURATION_DOSSIER_SEARCH_MAX_LENGTH } from "./technical-configuration-dossier-search"
+import { TechnicalConfigurationDossierToolbar } from "./_components/TechnicalConfigurationDossierToolbar"
+import { useTechnicalConfigurationDossierSpecialties } from "./_hooks/useTechnicalConfigurationDossierSpecialties"
 import type {
   TechnicalConfigurationDossierCreateRpcArgs,
   TechnicalConfigurationDossierWire,
@@ -73,7 +73,9 @@ function getDossierDeleteErrorMessage(error: unknown): string {
 /** Orchestrates dossier listing, lifecycle actions, and workspace selection. */
 export function TechnicalConfigurationsClient() {
   const queryClient = useQueryClient()
-  const dossierList = useTechnicalConfigurationDossierList()
+  const [specialty, setSpecialty] = React.useState<string | null | undefined>(undefined)
+  const dossierList = useTechnicalConfigurationDossierList(specialty)
+  const specialties = useTechnicalConfigurationDossierSpecialties({}, true)
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [openingDossierId, setOpeningDossierId] = React.useState<string | null>(null)
   const [openDossierError, setOpenDossierError] = React.useState<unknown>(null)
@@ -203,19 +205,11 @@ export function TechnicalConfigurationsClient() {
         className="mt-6 min-h-0 flex-1 space-y-4 overflow-y-auto"
         aria-label="Danh sách hồ sơ cấu hình"
       >
-        <ListFilterSearchCard
-          surface="plain"
-          searchValue={dossierList.searchText}
-          onSearchChange={dossierList.handleSearchTextChange}
-          searchPlaceholder="Tìm theo loại thiết bị hoặc tên hồ sơ..."
-          searchMaxLength={TECHNICAL_CONFIGURATION_DOSSIER_SEARCH_MAX_LENGTH}
-          searchEndAddon={
-            dossierList.isSearchPending ? (
-              <span className="flex items-center" role="status" aria-label="Đang tìm kiếm hồ sơ">
-                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-              </span>
-            ) : undefined
-          }
+        <TechnicalConfigurationDossierToolbar
+          list={dossierList}
+          specialties={specialties}
+          specialty={specialty}
+          onSpecialtyChange={setSpecialty}
         />
 
         {listError ? (
@@ -248,6 +242,7 @@ export function TechnicalConfigurationsClient() {
         {!listError ? (
           <TechnicalConfigurationDossierTable
             dossiers={dossierList.dossiers}
+            hasSpecialtyFilter={dossierList.visibleSpecialtyFilter !== undefined}
             emptySearchText={
               dossierList.hasVisibleActiveSearch ? dossierList.visibleSearchText : undefined
             }
@@ -270,6 +265,7 @@ export function TechnicalConfigurationsClient() {
 
       <TechnicalConfigurationDossierForm
         mode="create"
+        specialties={specialties.data?.data}
         open={isCreateOpen}
         isSubmitting={createDossierMutation.isPending}
         errorMessage={
@@ -283,6 +279,7 @@ export function TechnicalConfigurationsClient() {
       {dossierActions.editTarget ? (
         <TechnicalConfigurationDossierForm
           mode="edit"
+          specialties={specialties.data?.data}
           dossier={dossierActions.editTarget}
           open
           isSubmitting={dossierActions.isUpdating}

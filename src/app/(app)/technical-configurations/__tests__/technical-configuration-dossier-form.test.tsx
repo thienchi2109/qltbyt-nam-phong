@@ -68,6 +68,60 @@ function renderEditForm(
 }
 
 describe("technical configuration dossier form", () => {
+  it("creates with a normalized free-text specialty", async () => {
+    const user = userEvent.setup()
+    const { onSubmit } = renderForm()
+    await user.type(screen.getByLabelText("Loại thiết bị"), "Máy siêu âm")
+    await user.type(screen.getByLabelText("Tên hồ sơ"), "Hồ sơ mới")
+    await user.type(screen.getByLabelText("Chuyên khoa"), "  Tim   mạch  ")
+    await user.click(screen.getByRole("button", { name: "Lưu hồ sơ" }))
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          p_specialty: "Tim mạch",
+          p_expected_revision: 0,
+        })
+      )
+    )
+  })
+
+  it.each([null, "Tim mạch"])(
+    "edits specialty from %s and can explicitly clear it",
+    async (specialty) => {
+      const user = userEvent.setup()
+      const { onSubmit } = renderEditForm(undefined, { ...dossier, specialty })
+      const input = screen.getByLabelText("Chuyên khoa")
+      expect(input).toHaveValue(specialty ?? "")
+      await user.clear(input)
+      await user.type(input, "Thần kinh")
+      await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            p_specialty: "Thần kinh",
+            p_expected_revision: 7,
+          })
+        )
+      )
+      await user.clear(input)
+      await user.type(input, "   ")
+      await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenLastCalledWith(expect.objectContaining({ p_specialty: null }))
+      )
+    }
+  )
+
+  it("rejects a specialty longer than the database limit", async () => {
+    const user = userEvent.setup()
+    const { onSubmit } = renderEditForm()
+    await user.clear(screen.getByLabelText("Chuyên khoa"))
+    await user.type(screen.getByLabelText("Chuyên khoa"), "a".repeat(201))
+    await user.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+    expect(await screen.findByText("Chuyên khoa tối đa 200 ký tự.")).toBeInTheDocument()
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
   it("uses the project alias for shared dossier types", () => {
     const componentRoot = path.join(TECHNICAL_CONFIGURATION_ROOT, "_components")
 

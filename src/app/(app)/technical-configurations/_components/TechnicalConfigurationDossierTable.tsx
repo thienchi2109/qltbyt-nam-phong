@@ -31,6 +31,7 @@ export type TechnicalConfigurationDossierListState = "loading" | "pending" | "re
 type TechnicalConfigurationDossierTableProps = {
   dossiers: TechnicalConfigurationDossierListItemWire[]
   emptySearchText?: string
+  hasSpecialtyFilter?: boolean
   isActionPending: boolean
   listState: TechnicalConfigurationDossierListState
   openingDossierId: string | null
@@ -44,6 +45,7 @@ type TechnicalConfigurationDossierTableProps = {
 export function TechnicalConfigurationDossierTable({
   dossiers,
   emptySearchText,
+  hasSpecialtyFilter,
   isActionPending,
   listState,
   openingDossierId,
@@ -82,11 +84,13 @@ export function TechnicalConfigurationDossierTable({
         <h2 className="mt-4 text-base font-semibold">
           {emptySearchText
             ? `Không tìm thấy hồ sơ phù hợp với "${emptySearchText}"`
-            : "Chưa có hồ sơ cấu hình"}
+            : hasSpecialtyFilter
+              ? "Không tìm thấy hồ sơ thuộc chuyên khoa đã chọn"
+              : "Chưa có hồ sơ cấu hình"}
         </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {emptySearchText
-            ? "Thử điều chỉnh từ khóa tìm kiếm."
+          {emptySearchText || hasSpecialtyFilter
+            ? "Thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc."
             : "Tạo hồ sơ đầu tiên để bắt đầu không gian làm việc."}
         </p>
       </div>
@@ -101,6 +105,7 @@ export function TechnicalConfigurationDossierTable({
             <TableRow>
               <TableHead>Hồ sơ</TableHead>
               <TableHead>Loại thiết bị</TableHead>
+              <TableHead>Chuyên khoa</TableHead>
               <TableHead>Cập nhật</TableHead>
               <TableHead className="w-36 text-right">Thao tác</TableHead>
             </TableRow>
@@ -118,6 +123,7 @@ export function TechnicalConfigurationDossierTable({
                     </div>
                   </TableCell>
                   <TableCell>{dossier.device_type_name}</TableCell>
+                  <TableCell>{dossier.specialty ?? "Chưa phân loại"}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {formatVietnamDateTime(dossier.updated_at)}
                   </TableCell>
