@@ -23,7 +23,22 @@ References:
 - https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable
 - https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index
 
-No fixture writes, enabling enqueue, browser/worker/provider send, app deploy or Oracle baseline refresh performed. Live apply installs DB prerequisites only; user-facing Web Push delivery is not activated. Oracle baseline is now behind these four live migrations and requires separately scoped catch-up before future baseline-dependent acceptance.
+No fixture writes, enabling enqueue, browser/worker/provider send or app deploy performed. Live apply installs DB prerequisites only; user-facing Web Push delivery is not activated. The subsequently authorized Oracle catch-up is recorded below.
+
+## Oracle catch-up completed 2026-09-11
+
+Maintainer explicitly authorized catching up persistent Oracle `qltbyt_test` after live apply. Run `webpush-postlive-catchup-20260911` applied the four live-confirmed migrations in order using the maintenance harness at landed source commit `b65060efbdf9bd72d67a229e39ab90aac43342d6`: exit 0, maintenance outcome PASS.
+
+Independent read-back confirms baseline state v2 healthy, high-water `20260911124043`, 20 confirmed manifest entries, all 343 migration records matching the live observation, and the normalized Technical Configurations catalog matching live. Invalid indexes and unvalidated constraints are both zero; postgres CREATE on public is false. The singleton runtime control retains `enqueue_enabled=false`. Two existing `dq_*` databases were observed; no cleanup or ownership claim is made for them.
+
+Artifacts are retained under `/root/Oracle/webpush-catchup-evidence/`. SHA256 values:
+
+- `manifest.json`: `e1786607c286aa5fcfb61eb282c5c7438c1572b1f1f8a707c6b27bc5593cfee4`
+- `after-state.json`: `f8f9f6111440f85f1910790828db53d631bdb96eae4bc1e125b9013232d6994e`
+- `after-observation.json`: `6fb507add3676fd542e06c0bf3b01dae3a5d9ac18470c4a403564e2781ca369d`
+- `b65060efbdf9bd72d67a229e39ab90aac43342d6/catch-up.json`: `f2371ee9b2f7465cadd632f1499173e2f40d079876639564a4c72a0cff9ee2cd`
+
+These are artifact hashes, not a Quality Gate report digest. Maintenance PASS does not change the static/Oracle FAILED results or check tasks 2.4/3.4. The baseline generation changed, so prior baseline-forward results cannot be reused as certification of this new baseline. No additional live writes were performed during catch-up.
 
 ## Direct landing authorized after live apply
 
