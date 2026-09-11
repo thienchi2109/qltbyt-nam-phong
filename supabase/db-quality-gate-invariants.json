@@ -525,6 +525,28 @@
       "rule": "table-access-contract",
       "scope": "table-security",
       "status": "active"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-3-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_runtime_controls.access",
+      "objectIdentity": "public.web_push_runtime_controls",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
     }
   ],
   "schemaVersion": 1

@@ -1254,6 +1254,18 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["openspec/changes/add-web-push-notifications/phase-3-evidence.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/web_push_phase3.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": ["supabase/migrations/20260911030300_web_push_atomic_enqueue.sql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }
