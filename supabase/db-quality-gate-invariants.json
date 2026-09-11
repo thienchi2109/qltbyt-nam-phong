@@ -415,6 +415,116 @@
       "rule": "table-access-contract",
       "scope": "table-security",
       "status": "unresolved"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-2-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_recipient_configs.access",
+      "objectIdentity": "public.web_push_recipient_configs",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-2-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_subscriptions.access",
+      "objectIdentity": "public.web_push_subscriptions",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-2-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_notification_intents.access",
+      "objectIdentity": "public.web_push_notification_intents",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-2-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_notification_deliveries.access",
+      "objectIdentity": "public.web_push_notification_deliveries",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
+    },
+    {
+      "classification": "rpc-only",
+      "evidence": [
+        "openspec/changes/add-web-push-notifications/phase-1-contract.md",
+        "openspec/changes/add-web-push-notifications/phase-2-evidence.md"
+      ],
+      "expected": {
+        "allowedDirectAccess": [],
+        "boundary": "guarded-rpc",
+        "policyIdentities": [],
+        "rls": {
+          "enabled": true,
+          "forced": false
+        }
+      },
+      "id": "public.web_push_worker_nonces.access",
+      "objectIdentity": "public.web_push_worker_nonces",
+      "owner": "postgres",
+      "rule": "table-access-contract",
+      "scope": "table-security",
+      "status": "active"
     }
   ],
   "schemaVersion": 1
