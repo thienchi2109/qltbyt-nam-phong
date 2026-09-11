@@ -926,21 +926,27 @@ BEGIN
 END $$;
 
 -- 7) update path should fail closed when audit_log returns FALSE
-CREATE OR REPLACE FUNCTION public.audit_log(
-  p_action_type text,
-  p_entity_type text DEFAULT NULL::text,
-  p_entity_id bigint DEFAULT NULL::bigint,
-  p_entity_label text DEFAULT NULL::text,
-  p_action_details jsonb DEFAULT NULL::jsonb
-) RETURNS boolean
+CREATE FUNCTION pg_temp.fail_repair_request_audit_log_insert()
+RETURNS trigger
 LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, pg_temp
-AS $function$
+AS $$
 BEGIN
-  RETURN FALSE;
+  RAISE check_violation USING MESSAGE = 'forced repair request audit_log insert failure';
 END;
-$function$;
+$$;
+
+CREATE TRIGGER fail_repair_request_audit_log_insert
+BEFORE INSERT ON public.audit_logs
+FOR EACH ROW
+WHEN (
+  NEW.entity_type = 'repair_request'
+  AND NEW.action_type IN (
+    'repair_request_update',
+    'repair_request_approve',
+    'repair_request_create'
+  )
+)
+EXECUTE FUNCTION pg_temp.fail_repair_request_audit_log_insert();
 
 DO $$
 DECLARE
@@ -1026,6 +1032,12 @@ BEGIN
     );
   EXCEPTION
     WHEN OTHERS THEN
+      IF SQLSTATE <> 'P0001'
+        OR SQLERRM IS DISTINCT FROM 'audit_log failed for repair_request ' || v_request_id
+      THEN
+        RAISE;
+      END IF;
+
       v_error_raised := true;
   END;
 
@@ -1139,6 +1151,12 @@ BEGIN
     );
   EXCEPTION
     WHEN OTHERS THEN
+      IF SQLSTATE <> 'P0001'
+        OR SQLERRM IS DISTINCT FROM 'audit_log failed for repair_request ' || v_request_id
+      THEN
+        RAISE;
+      END IF;
+
       v_error_raised := true;
   END;
 
@@ -1231,6 +1249,12 @@ BEGIN
     );
   EXCEPTION
     WHEN OTHERS THEN
+      IF SQLSTATE <> 'P0001'
+        OR SQLERRM !~ '^audit_log failed for repair_request [0-9]+$'
+      THEN
+        RAISE;
+      END IF;
+
       v_error_raised := true;
   END;
 

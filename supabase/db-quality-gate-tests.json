@@ -504,27 +504,6 @@
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/repair_request_lifecycle_audit_smoke.sql",
-      "baselineDebt": {
-        "sourceSha256": "8dead11c7da6fc3a2dfc78b03c513008869ba901f61465680376e20eda822ba7",
-        "failureSignature": "04bea141b259176648e96ff762a7594bba12810697093ea589f01e8dd1b84209",
-        "sqlState": "42501",
-        "protectedObjects": [
-          "public.yeu_cau_sua_chua",
-          "public.don_vi",
-          "public.nhan_vien",
-          "public.thiet_bi",
-          "public.repair_request_create",
-          "public.repair_request_update",
-          "public.audit_logs",
-          "public.lich_su_thiet_bi",
-          "public.repair_request_approve",
-          "public.repair_request_complete",
-          "public.repair_request_delete",
-          "public.audit_log"
-        ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: permission denied for schema public",
-        "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
-      },
       "purpose": "smoke",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",
