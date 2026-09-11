@@ -45,9 +45,9 @@
 
 **Dependency:** 2. **Boundary:** SQL create-flow và regression tests; không worker/UI/provider. Chạm định nghĩa mới nhất của `repair_request_create`, không sửa migration đã applied.
 
-- [ ] 3.1 Thêm enqueue Web Push có control mặc định tắt, snapshot đúng tenant/recipient/content và logical uniqueness; giữ nguyên khối ZBS, audit và equipment-state behavior.
-- [ ] 3.2 Test commit/rollback, mọi priority, không recipient, no cross-tenant fallback, không backfill recipient mới và controls không ảnh hưởng ZBS.
-- [ ] 3.3 Chứng minh không outbound HTTP trong transaction; ghi rõ DB failure rollback khác với delivery failure sau commit.
+- [x] 3.1 Thêm enqueue Web Push có control mặc định tắt, snapshot đúng tenant/recipient/content và logical uniqueness; giữ nguyên khối ZBS, audit và equipment-state behavior.
+- [x] 3.2 Test commit/rollback, mọi priority, không recipient, no cross-tenant fallback, không backfill recipient mới và controls không ảnh hưởng ZBS.
+- [x] 3.3 Chứng minh không outbound HTTP trong transaction; ghi rõ DB failure rollback khác với delivery failure sau commit.
 - [ ] 3.4 Chạy hai DB lanes cùng commit, đối chiếu ZBS regression và dừng trước live review.
 
 **Exit / rollback:** enqueue tắt khi landing/deploy; bật thử chỉ disposable fixture. Tắt control Web Push để quay lại hành vi cũ, không reset/delete outbox.
