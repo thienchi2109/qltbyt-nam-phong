@@ -34,9 +34,9 @@
 
 **Dependency:** 1. **Boundary:** forward-only additive SQL + SQL tests cho config/subscription/delivery state; không sửa create flow, không API/UI/Go. Target `supabase/migrations` và test registry đúng scope.
 
-- [ ] 2.1 Thêm schema Web Push riêng với recipient user IDs, subscription unique ownership/revision và VAPID key version, logical intent và per-subscription delivery/lease/deadline constraints; cấm client table access trực tiếp.
-- [ ] 2.2 Thêm RPC cấu hình và register/revoke có claims/scope, validation atomic username list, invalid-profile/unknown/unauthorized rejection và admin/global parity; thêm server-internal subject predicate đọc recipient profile từ DB, tenant-level check cho config và request-specific check cho enqueue/dispatch, không dùng worker JWT làm recipient.
-- [ ] 2.3 Test tenant tampering, account switch, duplicate endpoint, username trim/dedupe, invalid list không partial save và revoke idempotency; test subject/read parity cho admin/global, regional_leader, to_qltb đổi current_don_vi, user khoa/phòng rỗng/khác, subject bị xóa/role không hợp lệ và worker identity đặc quyền.
+- [x] 2.1 Thêm schema Web Push riêng với recipient user IDs, subscription unique ownership/revision và VAPID key version, logical intent và per-subscription delivery/lease/deadline constraints; cấm client table access trực tiếp.
+- [x] 2.2 Thêm RPC cấu hình và register/revoke có claims/scope, validation atomic username list, invalid-profile/unknown/unauthorized rejection và admin/global parity; thêm server-internal subject predicate đọc recipient profile từ DB, tenant-level check cho config và request-specific check cho enqueue/dispatch, không dùng worker JWT làm recipient.
+- [x] 2.3 Test tenant tampering, account switch, duplicate endpoint, username trim/dedupe, invalid list không partial save và revoke idempotency; test subject/read parity cho admin/global, regional_leader, to_qltb đổi current_don_vi, user khoa/phòng rỗng/khác, subject bị xóa/role không hợp lệ và worker identity đặc quyền.
 - [ ] 2.4 Chạy hai DB lanes cùng commit, review grants/RLS/source ordering và lưu evidence; chưa live apply nếu chưa được phép.
 
 **Exit / rollback:** schema/RPC kiểm chứng trên disposable DB; additive deploy không tự phát sinh event. Rollback bằng giữ entrypoint chưa kết nối, không DROP để mất dữ liệu.
