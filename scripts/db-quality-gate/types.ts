@@ -46,6 +46,7 @@ export type GateReport = {
   migrationIdentities: MigrationIdentity[]
   outcome: GateOutcome
   requiredChecksComplete?: boolean
+  reviewedMigrationIdentities?: MigrationIdentity[]
   runId: string
   schemaVersion: typeof GATE_SCHEMA_VERSION
   sqlTestExecution?: SqlTestExecutionEvidence

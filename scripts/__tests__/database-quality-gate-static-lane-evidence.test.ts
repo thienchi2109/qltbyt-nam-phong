@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 
 import { afterEach, describe, expect, it } from "vitest"
 
@@ -29,7 +29,106 @@ import {
 
 afterEach(cleanupFixtureRepositories)
 
+type ReviewedMigrationSelector = {
+  subjectCommit: string
+  migrations: Array<{ path: string; sha256: string }>
+}
+
+type SelectorModule = {
+  validateReviewedMigrationSelector: (input: {
+    repositoryRoot: string
+    selector: unknown
+    subjectCommit: string
+  }) =>
+    | { ok: true; selector: ReviewedMigrationSelector }
+    | { ok: false; outcome: "INCOMPLETE"; reason: string }
+}
+
+function selectorFor(repositoryRoot: string, migrationPath: string, content: string) {
+  return {
+    subjectCommit: repositoryHead(repositoryRoot),
+    migrations: [{ path: migrationPath, sha256: sha256(content) }],
+  }
+}
+
 describe("database quality gate static lane evidence binding", () => {
+  it("rejects malformed, untracked, missing, escaped, and byte-mismatched selectors", async () => {
+    const source = await loadDatabaseQualityGateModule<SelectorModule>("static-candidate-evidence")
+    expect(source.validateReviewedMigrationSelector).toBeTypeOf("function")
+
+    const candidate = migration("-- migration\nBEGIN;\nDROP TABLE public.historical;\nCOMMIT;\n")
+    const repository = fixtureWithStaticMetadata(candidate)
+    const valid = selectorFor(repository.root, candidate.path, candidate.sql)
+    const invalidSelectors: Array<[string, unknown]> = [
+      ["absent", undefined],
+      ["empty", { ...valid, migrations: [] }],
+      ["subject mismatch", { ...valid, subjectCommit: "0".repeat(40) }],
+      ["duplicate", { ...valid, migrations: [...valid.migrations, ...valid.migrations] }],
+      ["malformed SHA", { ...valid, migrations: [{ path: candidate.path, sha256: "invalid" }] }],
+      [
+        "normalized hash",
+        {
+          ...valid,
+          migrations: [
+            { path: candidate.path, sha256: sha256(canonicalTerminalNewline(candidate.sql)) },
+          ],
+        },
+      ],
+      [
+        "byte mismatch",
+        { ...valid, migrations: [{ path: candidate.path, sha256: "0".repeat(64) }] },
+      ],
+      [
+        "traversal",
+        {
+          ...valid,
+          migrations: [{ path: "supabase/migrations/../README.md", sha256: "0".repeat(64) }],
+        },
+      ],
+    ]
+
+    for (const [label, selector] of invalidSelectors) {
+      const result = source.validateReviewedMigrationSelector({
+        repositoryRoot: repository.root,
+        selector,
+        subjectCommit: valid.subjectCommit,
+      })
+
+      expect(result, label).toMatchObject({ ok: false, outcome: "INCOMPLETE" })
+    }
+
+    const untrackedPath = "supabase/migrations/20270101000001_untracked.sql"
+    writeFileSync(repository.path(untrackedPath), candidate.sql)
+    const untracked = source.validateReviewedMigrationSelector({
+      repositoryRoot: repository.root,
+      selector: selectorFor(repository.root, untrackedPath, candidate.sql),
+      subjectCommit: valid.subjectCommit,
+    })
+    expect(untracked).toMatchObject({ ok: false, outcome: "INCOMPLETE" })
+
+    rmSync(repository.path(candidate.path))
+    const missing = source.validateReviewedMigrationSelector({
+      repositoryRoot: repository.root,
+      selector: valid,
+      subjectCommit: valid.subjectCommit,
+    })
+    expect(missing).toMatchObject({ ok: false, outcome: "INCOMPLETE" })
+
+    writeFileSync(repository.path(candidate.path), candidate.sql)
+    const escapedPath = `${repository.root}-selector-escape.sql`
+    writeFileSync(escapedPath, candidate.sql)
+    rmSync(repository.path(candidate.path))
+    symlinkSync(escapedPath, repository.path(candidate.path))
+    const escaped = source.validateReviewedMigrationSelector({
+      repositoryRoot: repository.root,
+      selector: valid,
+      subjectCommit: valid.subjectCommit,
+    })
+    rmSync(repository.path(candidate.path))
+    rmSync(escapedPath, { force: true })
+    expect(escaped).toMatchObject({ ok: false, outcome: "INCOMPLETE" })
+  })
+
   it("does not bind a dirty gate harness to HEAD evidence", async () => {
     const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
     const candidate = migration("-- migration\nBEGIN;\nSELECT 1;\nCOMMIT;\n")

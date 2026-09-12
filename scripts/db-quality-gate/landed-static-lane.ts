@@ -106,6 +106,7 @@ export function runStaticLaneForLandedCommit(
       createdAt: input.createdAt,
       repositoryRoot: input.repositoryRoot,
       runId: input.runId,
+      reviewedMigrationSelector: input.reviewedMigrationSelector,
       subjectCommit: input.subjectCommit,
     },
     {
@@ -115,7 +116,7 @@ export function runStaticLaneForLandedCommit(
       unavailable:
         trustedDiff.unavailable ||
         (approvalWorkflow && candidateCommit === undefined) ||
-        changedFiles.length === 0,
+        (changedFiles.length === 0 && input.reviewedMigrationSelector === undefined),
     },
     (dependencies.now ?? (() => new Date()))().toISOString()
   )

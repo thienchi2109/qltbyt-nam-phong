@@ -93,7 +93,10 @@ export function parseGateReport(value: unknown): GateReport | undefined {
   if (
     (value.evidenceAvailable !== undefined && typeof value.evidenceAvailable !== "boolean") ||
     (value.requiredChecksComplete !== undefined &&
-      typeof value.requiredChecksComplete !== "boolean")
+      typeof value.requiredChecksComplete !== "boolean") ||
+    (value.reviewedMigrationIdentities !== undefined &&
+      (!Array.isArray(value.reviewedMigrationIdentities) ||
+        !value.reviewedMigrationIdentities.every(isMigrationIdentity)))
   ) {
     return undefined
   }

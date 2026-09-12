@@ -79,6 +79,13 @@ function normalizedReport(report: GateReport): GateReport {
       Object.entries(report.inputHashes).sort(([left], [right]) => compareStrings(left, right))
     ),
     migrationIdentities: [...report.migrationIdentities].sort(compareMigrationIdentities),
+    ...(report.reviewedMigrationIdentities === undefined
+      ? {}
+      : {
+          reviewedMigrationIdentities: [...report.reviewedMigrationIdentities].sort(
+            compareMigrationIdentities
+          ),
+        }),
   }
 }
 

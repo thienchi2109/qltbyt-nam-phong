@@ -16,6 +16,7 @@ type StaticLaneReportInput = {
     waivers: string
   }
   migrationIdentities: MigrationIdentity[]
+  reviewedMigrationIdentities?: MigrationIdentity[]
   runId: string
   subjectCommit: string
 }
@@ -45,6 +46,9 @@ export function finalizeStaticLaneReport(input: StaticLaneReportInput): GateRepo
     migrationIdentities: input.migrationIdentities,
     outcome,
     requiredChecksComplete: !input.incomplete,
+    ...(input.reviewedMigrationIdentities === undefined
+      ? {}
+      : { reviewedMigrationIdentities: input.reviewedMigrationIdentities }),
     runId: input.runId,
     schemaVersion: GATE_SCHEMA_VERSION,
     subjectCommit: input.subjectCommit,

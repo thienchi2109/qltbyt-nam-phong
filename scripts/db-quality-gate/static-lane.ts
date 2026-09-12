@@ -7,6 +7,7 @@ import { inspectMigrationRepository } from "./migration-repository"
 import { currentHeadCommit } from "./git-evidence"
 import type { TrustedStaticDiff } from "./landed-static-diff"
 import { attachDangerousApprovals } from "./static-approvals"
+import { validateReviewedMigrationSelector } from "./static-candidate-evidence"
 import {
   hasTrustedIdentityBaseline,
   migrationIdentitiesMatch,
@@ -99,6 +100,19 @@ function runStaticLaneInternal(
       changedFiles = []
     }
   }
+  const reviewedSelectorResult =
+    input.reviewedMigrationSelector === undefined
+      ? undefined
+      : validateReviewedMigrationSelector({
+          repositoryRoot: input.repositoryRoot,
+          selector: input.reviewedMigrationSelector,
+          subjectCommit: input.subjectCommit,
+        })
+  const reviewedMigrationPaths = new Set(
+    reviewedSelectorResult?.ok
+      ? reviewedSelectorResult.selector.migrations.map((migration) => migration.path)
+      : []
+  )
   const appliedLockChanged = changedFiles.includes(APPLIED_LOCK_PATH)
   const baselineChanged = changedFiles.includes(BASELINE_PATH)
   const waiversChanged = changedFiles.includes(WAIVERS_PATH)
@@ -139,8 +153,9 @@ function runStaticLaneInternal(
     headCommit === undefined
       ? { hash: "unavailable", matchesCommit: false }
       : gateHarnessEvidence(input.repositoryRoot, headCommit)
-  const changedMigrations = sourceInspection.migrationIdentities.filter((migration) =>
-    changedFiles.includes(migration.path)
+  const changedMigrations = sourceInspection.migrationIdentities.filter(
+    (migration) =>
+      changedFiles.includes(migration.path) || reviewedMigrationPaths.has(migration.path)
   )
   const appliedLock = readAppliedMigrationLockArtifact(input.repositoryRoot, APPLIED_LOCK_PATH)
   const legacyMigrationPaths = new Set(appliedLock?.legacy.map((migration) => migration.path))
@@ -197,6 +212,14 @@ function runStaticLaneInternal(
       staticRuleFindings(input.repositoryRoot, migration, sourceInspection.migrationIdentities)
     ),
   ]
+  const reviewedSelectorFindings =
+    reviewedSelectorResult !== undefined && !reviewedSelectorResult.ok
+      ? [
+          staticBlockingFinding("migration.reviewed-selector", "reviewed-migration-selector", {
+            reason: reviewedSelectorResult.reason,
+          }),
+        ]
+      : []
   const dynamicSqlInspectionIncomplete = checkedFindings.some(
     (finding) => finding.ruleId === "migration.dynamic-sql"
   )
@@ -209,6 +232,7 @@ function runStaticLaneInternal(
         })
   const staticFindings = [
     ...checkedFindings,
+    ...reviewedSelectorFindings,
     ...historicalHygieneWarnings,
     ...(identityBaseline === undefined
       ? [
@@ -281,6 +305,13 @@ function runStaticLaneInternal(
     invariants: expectedStateEvidence.inputHashes.invariants,
     sqlTests: expectedStateEvidence.inputHashes.sqlTests,
     waivers: artifactHash(input.repositoryRoot, WAIVERS_PATH),
+    ...(reviewedSelectorResult === undefined
+      ? {}
+      : {
+          reviewedMigrationSelector: reviewedSelectorResult.ok
+            ? stableJsonSha256(reviewedSelectorResult.selector)
+            : "unavailable",
+        }),
   }
   const approvalAttachment = attachDangerousApprovals({
     approvalEvaluationAt,
@@ -295,6 +326,7 @@ function runStaticLaneInternal(
   const findings = approvalAttachment.findings
   const incomplete =
     subjectEvidenceUnavailable ||
+    (reviewedSelectorResult !== undefined && !reviewedSelectorResult.ok) ||
     subjectMigrationEvidenceUnavailable ||
     !appliedLockMatchesHead ||
     !waiverMatchesHead ||
@@ -314,6 +346,9 @@ function runStaticLaneInternal(
     incomplete,
     inputHashes,
     migrationIdentities: sourceInspection.migrationIdentities,
+    reviewedMigrationIdentities: reviewedSelectorResult?.ok
+      ? reviewedSelectorResult.selector.migrations
+      : undefined,
     runId: input.runId,
     subjectCommit,
   })

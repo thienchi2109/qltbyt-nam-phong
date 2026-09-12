@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs"
+import path from "node:path"
+
 import { aggregateOutcome, finalizeReport, outcomeExitCode, serializeReport } from "./contract"
 import { runOracleDynamicLane } from "./dynamic-lane"
 import { currentHeadCommit, refreshPublicOriginMain } from "./git-evidence"
@@ -39,6 +42,7 @@ type CommandOptions = {
   liveObservationPath?: string
   landedParentCommit?: string
   persistCandidateReport: boolean
+  reviewedMigrationSelectorPath?: string
   runId: string
   staticRunId?: string
   subjectCommit?: string
@@ -65,6 +69,7 @@ const OPTION_NAMES = new Set([
   "--landed-parent-commit",
   "--live-observation",
   "--persist-candidate-report",
+  "--reviewed-migration-selector",
   "--run-id",
   "--static-run-id",
   "--subject-commit",
@@ -96,7 +101,8 @@ function parseOptions(args: string[]): CommandOptions | undefined {
   if (
     lane === undefined ||
     !GATE_LANES.includes(lane as GateLane) ||
-    (persistCandidateReport !== undefined && persistCandidateReport !== "true")
+    (persistCandidateReport !== undefined && persistCandidateReport !== "true") ||
+    (values.has("--reviewed-migration-selector") && lane !== "static")
   ) {
     return undefined
   }
@@ -111,9 +117,22 @@ function parseOptions(args: string[]): CommandOptions | undefined {
     landedParentCommit: values.get("--landed-parent-commit"),
     liveObservationPath: values.get("--live-observation"),
     persistCandidateReport: persistCandidateReport === "true",
+    reviewedMigrationSelectorPath: values.get("--reviewed-migration-selector"),
     runId: values.get("--run-id") ?? "local-contract",
     staticRunId: values.get("--static-run-id"),
     subjectCommit: values.get("--subject-commit"),
+  }
+}
+
+function readReviewedMigrationSelector(repositoryRoot: string, selectorPath: string): unknown {
+  const absolutePath = path.isAbsolute(selectorPath)
+    ? selectorPath
+    : path.resolve(repositoryRoot, selectorPath)
+
+  try {
+    return JSON.parse(readFileSync(absolutePath, "utf8")) as unknown
+  } catch {
+    return null
   }
 }
 
@@ -182,12 +201,17 @@ export function runDatabaseQualityGateCommand(
     try {
       const createdAt =
         options.createdAt ?? (dependencies.clock ?? (() => new Date().toISOString()))()
+      const reviewedMigrationSelector =
+        options.reviewedMigrationSelectorPath === undefined
+          ? undefined
+          : readReviewedMigrationSelector(repositoryRoot, options.reviewedMigrationSelectorPath)
       const report =
         options.landedParentCommit === undefined
           ? (dependencies.runStatic ?? runStaticLane)({
               createdAt,
               repositoryRoot,
               runId: options.runId,
+              reviewedMigrationSelector,
               subjectCommit,
             })
           : dependencies.runLandedStatic === undefined
@@ -197,6 +221,7 @@ export function runDatabaseQualityGateCommand(
                   landedParentCommit: options.landedParentCommit,
                   repositoryRoot,
                   runId: options.runId,
+                  reviewedMigrationSelector,
                   subjectCommit,
                 },
                 { now: () => new Date(createdAt) }
@@ -206,6 +231,7 @@ export function runDatabaseQualityGateCommand(
                 landedParentCommit: options.landedParentCommit,
                 repositoryRoot,
                 runId: options.runId,
+                reviewedMigrationSelector,
                 subjectCommit,
               })
       if (
