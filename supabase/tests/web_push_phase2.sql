@@ -92,13 +92,25 @@ END;
 $$;
 
 DO $$
-DECLARE s jsonb; r jsonb; v_id uuid; v_revision bigint; v_key text; v_i integer;
+DECLARE s jsonb; r jsonb; v_id uuid; v_revision bigint; v_key text; v_i integer; v_has_rollout_controls boolean;
 BEGIN
   -- Public P-256 generator point, not a credential.
   v_key := translate(rtrim(replace(encode(decode(
     '046b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c2964fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b315ececbb6406837bf51f5','hex'),'base64'),E'\n',''),'='),'+/','-_');
   s := jsonb_build_object('endpoint','https://push.example.test/test','keys',jsonb_build_object('p256dh',v_key,'auth','AAAAAAAAAAAAAAAAAAAAAA'));
   PERFORM set_config('request.jwt.claims','{"app_role":"user","user_id":"2147000002"}',true);
+  SELECT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='web_push_runtime_controls'
+      AND column_name='registration_enabled'
+  ) INTO v_has_rollout_controls;
+  IF v_has_rollout_controls THEN
+    EXECUTE 'UPDATE public.web_push_runtime_controls
+      SET registration_enabled=true, registration_canary_don_vi_ids=ARRAY[2147000001]::bigint[],
+          vapid_key_version=$1, vapid_public_key=$2, vapid_fingerprint=$3
+      WHERE singleton'
+      USING 'test-v1', v_key, 'sha256:'||repeat('0',64);
+  END IF;
   r := public.web_push_subscription_register(s,'test-v1'); v_id := (r->>'subscription_id')::uuid; v_revision := (r->>'revision')::bigint;
   ASSERT public.web_push_subscription_register(s,'test-v1')=r, 'same registration idempotent';
   PERFORM set_config('request.jwt.claims','{"app_role":"global","user_id":"2147000001"}',true);
@@ -106,6 +118,12 @@ BEGIN
   PERFORM public.web_push_subscription_revoke(v_id,v_revision);
   ASSERT (SELECT revoked_at IS NULL FROM public.web_push_subscriptions WHERE id=v_id), 'foreign revoke has no effect';
   PERFORM set_config('request.jwt.claims','{"app_role":"user","user_id":"2147000002"}',true);
+  IF v_has_rollout_controls THEN
+    EXECUTE 'UPDATE public.web_push_runtime_controls
+      SET vapid_key_version=$1, vapid_public_key=$2, vapid_fingerprint=$3
+      WHERE singleton'
+      USING 'test-v2', v_key, 'sha256:'||repeat('0',64);
+  END IF;
   r := public.web_push_subscription_register(s,'test-v2');
   ASSERT (r->>'revision')::bigint=v_revision+1, 'key version bumps revision';
   PERFORM pg_temp.web_push_expect_error(format('SELECT public.web_push_subscription_revoke(%L,%s)',v_id,v_revision),'40001');

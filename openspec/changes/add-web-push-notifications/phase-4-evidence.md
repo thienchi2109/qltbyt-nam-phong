@@ -108,3 +108,40 @@ hạn theo thời điểm rotation cố định. Không dùng secret ZBS/VAPID l
 Registration/enqueue/dispatch mặc định false; canary rỗng không cấp việc mới.
 Revoke vẫn hoạt động khi registration tắt. Không live write, enqueue enablement,
 provider send, app/worker deploy, merge main hoặc Phase 5–8 trong lượt này.
+
+## Kết quả và acceptance còn lại
+
+Controller chạy độc lập concurrency proof: hai claim đồng thời nhận hai
+UUID delivery khác nhau; hai accepted reports đồng thời đều applied; intent
+completed với accepted_count=2. Script/log:
+`/root/Oracle/web-push-phase4-evidence/concurrency.cjs`, `concurrency.log`;
+fixture cleanup trong finally. Getter/retention proof ở
+`phase4-retention-getter4.log`: service-only ACL, default-off metadata,
+child-before-parent deletion, tombstone retention/purge và hourly skip PASS.
+
+Trên implementation commit `7b6164c393a38e43d1f4612b40141d8171460daf`:
+
+| Lane             | Kết quả                            | Digest                                                             |
+| ---------------- | ---------------------------------- | ------------------------------------------------------------------ |
+| static           | FAILED: 7 BLOCKING, 7 DANGEROUS    | `f8fd258482516324f02187f5917386ce289b637e9ee596fb6c7a215154127d37` |
+| baseline-forward | FAILED: 81/81 executed, 2 BLOCKING | `9e300e046c1ba5c2bcbc9b2b509d1af073d27d6c4b95248fffec49954fee67c4` |
+
+Static JWT heuristics không hiểu service-role-only ACL/delegated registration
+claims guard; dangerous DELETE là retention/nonce purge có điều kiện,
+authenticated registration grant giữ contract caller hiện hữu. Không sửa gate,
+không thêm guard giả hoặc exemption; lane vẫn FAILED.
+
+Oracle blocker Technical Configurations authorized-user guard có cùng
+SQLSTATE42501/source/signature ở control và candidate; ngoài Phase4 scope.
+Blocker Phase2 `registration_disabled` là fixture bị ảnh hưởng bởi controls mới:
+đã sửa test-only, conditional khi có columns Phase4, không thay default-off.
+Controller chạy Phase2/3/4 đều PASS; old-schema baseline clone cũng chạy Phase2
+PASS. Không bỏ assertion hoặc thêm debt exemption. Final exact-commit lanes
+được chạy lại sau evidence/test commit, với alias final reports như trên.
+
+Tick 4.1–4.4 vì có implementation, tests và review evidence. **4.5 giữ unchecked**;
+aggregate **BLOCKING / INCOMPLETE**, không claim Phase4 Quality Gate PASS.
+Theo dõi acceptance tại [#1000](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1000).
+GitHub read-back hiện #998 CLOSED, #999 OPEN; không đổi trạng thái hai issue này.
+Main không được merge; branch được push theo quyền `--no-verify` đã cấp,
+không suy ra quyền live apply từ commit/push hoặc focused PASS.

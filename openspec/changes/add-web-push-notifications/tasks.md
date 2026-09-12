@@ -56,10 +56,10 @@
 
 **Dependency:** 2. **Boundary:** server endpoints + RPC claim/report và tests; không browser UI, không Go send. Dùng session/claims hiện có và signed internal request pattern riêng Web Push.
 
-- [ ] 4.1 Expose configuration/registration/revoke server routes đúng quyền, không tin client identity, input limits/CSRF-origin protection và lỗi an toàn.
-- [ ] 4.2 Implement claim/fan-out/report có lease fencing, deadline, recheck quyền/config/ownership và per-subscription completion; giữ intent chưa có subscription trong hạn.
-- [ ] 4.3 Implement private worker authentication, replay rejection, bounded requests và separate controls; endpoint disabled phản hồi để worker backoff, revoke vẫn hoạt động; cung cấp public key/version test riêng của môi trường qua cấu hình app, reject registration dùng version không hỗ trợ.
-- [ ] 4.4 Test concurrency/reclaim/stale report, removed recipient, account inactive/mất quyền, successful endpoint không resend vì endpoint khác lỗi và SSRF input boundary.
+- [x] 4.1 Expose configuration/registration/revoke server routes đúng quyền, không tin client identity, input limits/CSRF-origin protection và lỗi an toàn.
+- [x] 4.2 Implement claim/fan-out/report có lease fencing, deadline, recheck quyền/config/ownership và per-subscription completion; giữ intent chưa có subscription trong hạn.
+- [x] 4.3 Implement private worker authentication, replay rejection, bounded requests và separate controls; endpoint disabled phản hồi để worker backoff, revoke vẫn hoạt động; cung cấp public key/version test riêng của môi trường qua cấu hình app, reject registration dùng version không hỗ trợ.
+- [x] 4.4 Test concurrency/reclaim/stale report, removed recipient, account inactive/mất quyền, successful endpoint không resend vì endpoint khác lỗi và SSRF input boundary.
 - [ ] 4.5 Chạy TS gates và DB lanes nếu có SQL, review contract compatibility; deploy mặc định tắt và dừng.
 
 **Exit / rollback:** fake worker chạy contract trên môi trường disposable; không gửi provider. Tắt controls/rollback server release tương thích schema additive.
