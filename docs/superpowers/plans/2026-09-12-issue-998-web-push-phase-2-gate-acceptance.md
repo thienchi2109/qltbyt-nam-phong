@@ -66,11 +66,13 @@ function validateReviewedMigrationSelector(args: ReviewedMigrationSelectorInput)
 
 - The selector scopes static evidence only; baseline-forward keeps its existing pending migration selection and full registry sweep.
 
-- [ ] **Step 1: Write red tests.** Ordinary static without the option remains unchanged; reviewed mode rejects absent/empty selector, subject mismatch, duplicate/untracked path, missing file, malformed SHA, and byte-hash mismatch with `{ ok: false, outcome: "INCOMPLETE" }`.
-- [ ] **Step 2: Run the red test before implementation.** `node scripts/npm-run.js exec vitest run scripts/__tests__/database-quality-gate-static-lane-evidence.test.ts` must fail on the new selector cases.
-- [ ] **Step 3: Implement fail-closed validation.** Reuse existing path/hash helpers; resolve inside exact checkout, compare subject/path/file bytes, and reject every mismatch before static policy classification.
-- [ ] **Step 4: Prove zero pending.** A valid selector for already-live Phase 2 files validates static historical evidence without claiming a pending migration; baseline-forward behavior remains unchanged.
-- [ ] **Step 5: Run the focused test, shared commit gates, and commit `fix(db-gate): scope historical phase2 static evidence`; pause for explicit user approval before Task 2.**
+- [x] **Step 1: Write red tests.** Ordinary static without the option remains unchanged; reviewed mode rejects absent/empty selector, subject mismatch, duplicate/untracked path, missing file, malformed SHA, and byte-hash mismatch with `{ ok: false, outcome: "INCOMPLETE" }`.
+- [x] **Step 2: Run the red test before implementation.** `node scripts/npm-run.js exec vitest run scripts/__tests__/database-quality-gate-static-lane-evidence.test.ts` must fail on the new selector cases.
+- [x] **Step 3: Implement fail-closed validation.** Reuse existing path/hash helpers; resolve inside exact checkout, compare subject/path/file bytes, and reject every mismatch before static policy classification.
+- [x] **Step 4: Prove zero pending.** A valid selector for already-live Phase 2 files validates static historical evidence without claiming a pending migration; baseline-forward behavior remains unchanged.
+- [x] **Step 5: Run the focused test, shared commit gates, and commit `fix(db-gate): scope historical phase2 static evidence`; pause for explicit user approval before Task 2.**
+
+Task 1 evidence note: the prior interrupted agent left the selector tests and implementation without a recoverable RED log, so no RED is claimed for that inherited portion. A separate behavioral RED was observed for the missing digest-bound `reviewedMigrationIdentities` report evidence (12 tests, 1 expected failure), followed by GREEN and the complete verification recorded in the Task 1 handoff.
 
 ### Task 2: Narrow Static SQL Semantics
 
