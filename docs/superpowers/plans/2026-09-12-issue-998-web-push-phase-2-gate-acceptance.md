@@ -90,12 +90,12 @@ Task 1 evidence note: the prior interrupted agent left the selector tests and im
 - Consume parsed definitions, exact overload identities, ACL statements, and reviewed selector evidence.
 - Produce existing finding categories/fingerprints; semantic recognition never erases unresolved security findings.
 
-- [ ] **Step 1: Add red tests for the 11 blockers.** Use `20260911030100_web_push_recipients.sql` and `20260911030200_web_push_subscriptions.sql`; cover public-name internals, argumented `PERFORM`/assignment guards, and the pure key validator.
-- [ ] **Step 2: Run the red tests before implementation.** `node scripts/npm-run.js exec vitest run scripts/__tests__/database-quality-gate-static-policy-rpc.test.ts scripts/__tests__/database-quality-gate-static-policy-delegation-adversarial.test.ts scripts/__tests__/database-quality-gate-static-policy-security.test.ts` must fail on the new semantic cases.
-- [ ] **Step 3: Add adversarial negatives.** Keep blocking for internal predicate exposure, SQL-before-guard, swallowed guard exceptions, wrong overload/cycle proof, and impure `IMMUTABLE` helpers.
-- [ ] **Step 4: Implement exact semantic recognition.** Resolve schema/name/argument types; accept argumented guard calls only when they dominate protected operations. Public naming is not browser exposure proof; `IMMUTABLE` requires a pure body/dependency set.
-- [ ] **Step 5: Preserve fail closed.** Missing ACL evidence and unresolved control flow stay `BLOCKING` or `INCOMPLETE`; never create a waiver for the 11 blockers.
-- [ ] **Step 6: Run focused policy tests, the shared commit gates, and commit `fix(db-gate): recognize guarded web push SQL semantics`.**
+- [x] **Step 1: Add red tests for the 11 blockers.** Use `20260911030100_web_push_recipients.sql` and `20260911030200_web_push_subscriptions.sql`; cover public-name internals, argumented `PERFORM`/assignment guards, and the pure key validator.
+- [x] **Step 2: Run the red tests before implementation.** `node scripts/npm-run.js exec vitest run scripts/__tests__/database-quality-gate-static-policy-rpc.test.ts scripts/__tests__/database-quality-gate-static-policy-delegation-adversarial.test.ts scripts/__tests__/database-quality-gate-static-policy-security.test.ts` must fail on the new semantic cases.
+- [x] **Step 3: Add adversarial negatives.** Keep blocking for internal predicate exposure, SQL-before-guard, swallowed guard exceptions, wrong overload/cycle proof, and impure `IMMUTABLE` helpers.
+- [x] **Step 4: Implement exact semantic recognition.** Resolve schema/name/argument types; accept argumented guard calls only when they dominate protected operations. Public naming is not browser exposure proof; `IMMUTABLE` requires a pure body/dependency set.
+- [x] **Step 5: Preserve fail closed.** Missing ACL evidence and unresolved control flow stay `BLOCKING` or `INCOMPLETE`; never create a waiver for the 11 blockers.
+- [x] **Step 6: Run focused policy tests, the shared commit gates, and commit `fix(db-gate): recognize guarded web push SQL semantics`.**
 
 ```bash
 node scripts/npm-run.js exec vitest run scripts/__tests__/database-quality-gate-static-policy-rpc.test.ts scripts/__tests__/database-quality-gate-static-policy-delegation-adversarial.test.ts scripts/__tests__/database-quality-gate-static-policy-security.test.ts
