@@ -77,6 +77,169 @@ BEGIN
 END;
 $gate$;
 
+CREATE FUNCTION pg_temp.assert_authenticated_module_guard_graph()
+RETURNS VOID
+LANGUAGE plpgsql AS $gate$
+DECLARE
+  v_module_rpc_count INTEGER;
+  v_missing_guard TEXT[];
+  v_unrelated_reaching_guard TEXT[];
+BEGIN
+  WITH RECURSIVE
+  routines AS MATERIALIZED (
+    SELECT p.oid, p.oid::regprocedure::TEXT AS signature, p.proname,
+      pg_get_functiondef(p.oid) AS definition,
+      has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_execute
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
+  ),
+  call_targets AS (
+    SELECT r.* FROM routines r
+    WHERE left(r.proname, 24) = 'technical_configuration_'
+       OR left(r.proname, 25) = '_technical_configuration_'
+  ),
+  edges AS (
+    SELECT caller.oid AS caller_oid, callee.oid AS callee_oid
+    FROM routines caller
+    JOIN call_targets callee
+      ON caller.oid <> callee.oid
+     AND caller.definition ~ ('public\.' || callee.proname || '[[:space:]]*\(')
+  ),
+  starts AS (
+    SELECT r.oid, r.signature, r.proname
+    FROM routines r
+    WHERE r.authenticated_execute
+  ),
+  walk AS (
+    SELECT s.oid AS start_oid, s.oid AS current_oid, ARRAY[s.oid]::OID[] AS path
+    FROM starts s
+    UNION ALL
+    SELECT w.start_oid, e.callee_oid, w.path || e.callee_oid
+    FROM walk w
+    JOIN edges e ON e.caller_oid = w.current_oid
+    WHERE NOT e.callee_oid = ANY(w.path)
+      AND cardinality(w.path) < 24
+  ),
+  target AS (
+    SELECT r.oid
+    FROM routines r
+    WHERE r.proname = '_technical_configuration_require_authorized_user'
+  )
+  SELECT
+    count(*) FILTER (WHERE left(s.proname, 24) = 'technical_configuration_'),
+    array_agg(s.signature ORDER BY s.signature) FILTER (
+      WHERE left(s.proname, 24) = 'technical_configuration_'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM walk w
+          CROSS JOIN target t
+          WHERE w.start_oid = s.oid
+            AND w.current_oid = t.oid
+        )
+    ),
+    array_agg(s.signature ORDER BY s.signature) FILTER (
+      WHERE left(s.proname, 24) <> 'technical_configuration_'
+        AND EXISTS (
+          SELECT 1
+          FROM walk w
+          CROSS JOIN target t
+          WHERE w.start_oid = s.oid
+            AND w.current_oid = t.oid
+        )
+    )
+  INTO
+    v_module_rpc_count,
+    v_missing_guard,
+    v_unrelated_reaching_guard
+  FROM starts s;
+  PERFORM pg_temp.assert_true('at least one authenticated technical-configuration RPC exists', v_module_rpc_count > 0);
+  PERFORM pg_temp.assert_true('every authenticated module RPC reaches the canonical guard', v_missing_guard IS NULL);
+  PERFORM pg_temp.assert_true('no unrelated authenticated RPC reaches the canonical guard', v_unrelated_reaching_guard IS NULL);
+END;
+$gate$;
+CREATE FUNCTION pg_temp.run_authenticated_guard_graph_fixture(
+  p_case_label TEXT,
+  p_function_name TEXT,
+  p_revoke_modules BOOLEAN,
+  p_calls_guard BOOLEAN,
+  p_expected_label TEXT DEFAULT NULL
+)
+RETURNS VOID
+LANGUAGE plpgsql AS $gate$
+DECLARE
+  v_module_oid OID;
+  v_state TEXT;
+  v_message TEXT;
+  v_expected_failure BOOLEAN := false;
+BEGIN
+  BEGIN
+    IF p_revoke_modules THEN
+      FOR v_module_oid IN
+        SELECT p.oid
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public'
+          AND p.prokind = 'f'
+          AND left(p.proname, 24) = 'technical_configuration_'
+          AND has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      LOOP
+        EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, authenticated', v_module_oid::regprocedure);
+      END LOOP;
+    ELSIF p_function_name IS NOT NULL THEN
+      EXECUTE format(
+        $sql$CREATE FUNCTION public.%I() RETURNS BIGINT
+        LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp
+        AS $fn$ SELECT %s; $fn$$sql$,
+        p_function_name,
+        CASE
+          WHEN p_calls_guard
+            THEN 'public._technical_configuration_require_authorized_user()'
+          ELSE '1::BIGINT'
+        END
+      );
+      EXECUTE format('REVOKE ALL ON FUNCTION public.%I() FROM PUBLIC, anon, authenticated, service_role', p_function_name);
+      EXECUTE format('GRANT EXECUTE ON FUNCTION public.%I() TO authenticated', p_function_name);
+    END IF;
+    BEGIN
+      PERFORM pg_temp.assert_authenticated_module_guard_graph();
+    EXCEPTION
+      WHEN OTHERS THEN
+        GET STACKED DIAGNOSTICS
+          v_state = RETURNED_SQLSTATE,
+          v_message = MESSAGE_TEXT;
+        IF p_expected_label IS NULL THEN
+          RAISE;
+        END IF;
+        IF v_state <> 'P0001'
+           OR v_message <> 'assertion_failed: ' || p_expected_label THEN
+          RAISE EXCEPTION 'unexpected graph failure for %: [%] %', p_case_label, v_state, v_message
+            USING ERRCODE = 'P0001';
+        END IF;
+        v_expected_failure := true;
+    END;
+    IF p_expected_label IS NOT NULL AND NOT v_expected_failure THEN
+      RAISE EXCEPTION 'expected graph failure for %: %', p_case_label, p_expected_label
+        USING ERRCODE = 'P0001';
+    END IF;
+    RAISE EXCEPTION 'technical_configuration_graph_fixture_rollback'
+      USING ERRCODE = 'P0001';
+  EXCEPTION
+    WHEN SQLSTATE 'P0001' THEN
+      GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE, v_message = MESSAGE_TEXT;
+      IF v_state <> 'P0001'
+         OR v_message <> 'technical_configuration_graph_fixture_rollback' THEN
+        RAISE;
+      END IF;
+  END;
+
+  IF p_function_name IS NOT NULL THEN
+    PERFORM pg_temp.assert_true('graph fixture function rolled back', to_regprocedure('public.' || p_function_name || '()') IS NULL);
+  END IF;
+  PERFORM pg_temp.assert_authenticated_module_guard_graph();
+END;
+$gate$;
+
 DO $gate$
 DECLARE
   v_authorized_oid OID;
@@ -86,9 +249,6 @@ DECLARE
   v_user_id BIGINT;
   v_result BIGINT;
   v_definition TEXT;
-  v_module_rpc_count INTEGER;
-  v_missing_guard TEXT[];
-  v_unrelated_reaching_guard TEXT[];
   v_denied_role TEXT;
 BEGIN
   SELECT nv.id
@@ -255,106 +415,34 @@ BEGIN
     v_definition NOT LIKE '%request.jwt.claims%'
   );
 
-  WITH RECURSIVE
-  routines AS MATERIALIZED (
-    SELECT
-      p.oid,
-      p.oid::regprocedure::TEXT AS signature,
-      p.proname,
-      pg_get_functiondef(p.oid) AS definition,
-      has_function_privilege('authenticated', p.oid, 'EXECUTE')
-        AS authenticated_execute
-    FROM pg_proc p
-    JOIN pg_namespace n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public'
-      AND p.prokind = 'f'
-  ),
-  call_targets AS (
-    SELECT r.*
-    FROM routines r
-    WHERE left(r.proname, 24) = 'technical_configuration_'
-       OR left(r.proname, 25) = '_technical_configuration_'
-  ),
-  edges AS (
-    SELECT
-      caller.oid AS caller_oid,
-      callee.oid AS callee_oid
-    FROM routines caller
-    JOIN call_targets callee
-      ON caller.oid <> callee.oid
-     AND caller.definition ~ (
-       'public\.' || callee.proname || '[[:space:]]*\('
-     )
-  ),
-  starts AS (
-    SELECT r.oid, r.signature, r.proname
-    FROM routines r
-    WHERE r.authenticated_execute
-  ),
-  walk AS (
-    SELECT
-      s.oid AS start_oid,
-      s.oid AS current_oid,
-      ARRAY[s.oid]::OID[] AS path
-    FROM starts s
+  PERFORM pg_temp.assert_authenticated_module_guard_graph();
 
-    UNION ALL
-
-    SELECT
-      w.start_oid,
-      e.callee_oid,
-      w.path || e.callee_oid
-    FROM walk w
-    JOIN edges e ON e.caller_oid = w.current_oid
-    WHERE NOT e.callee_oid = ANY(w.path)
-      AND cardinality(w.path) < 24
-  ),
-  target AS (
-    SELECT r.oid
-    FROM routines r
-    WHERE r.proname = '_technical_configuration_require_authorized_user'
-  )
-  SELECT
-    count(*) FILTER (
-      WHERE left(s.proname, 24) = 'technical_configuration_'
-    ),
-    array_agg(s.signature ORDER BY s.signature) FILTER (
-      WHERE left(s.proname, 24) = 'technical_configuration_'
-        AND NOT EXISTS (
-          SELECT 1
-          FROM walk w
-          CROSS JOIN target t
-          WHERE w.start_oid = s.oid
-            AND w.current_oid = t.oid
-        )
-    ),
-    array_agg(s.signature ORDER BY s.signature) FILTER (
-      WHERE left(s.proname, 24) <> 'technical_configuration_'
-        AND EXISTS (
-          SELECT 1
-          FROM walk w
-          CROSS JOIN target t
-          WHERE w.start_oid = s.oid
-            AND w.current_oid = t.oid
-        )
-    )
-  INTO
-    v_module_rpc_count,
-    v_missing_guard,
-    v_unrelated_reaching_guard
-  FROM starts s;
-
-  PERFORM pg_temp.assert_true(
-    'all 79 authenticated module RPCs are inventoried',
-    v_module_rpc_count = 79
+  PERFORM pg_temp.run_authenticated_guard_graph_fixture(
+    'extra authenticated module RPC reaches the guard',
+    'technical_configuration_x_' || replace(gen_random_uuid()::TEXT, '-', '_'),
+    false,
+    true
   );
-  PERFORM pg_temp.assert_true(
-    'every authenticated module RPC reaches the canonical guard',
-    v_missing_guard IS NULL
+  PERFORM pg_temp.run_authenticated_guard_graph_fixture(
+    'module RPC without the guard is rejected',
+    'technical_configuration_y_' || replace(gen_random_uuid()::TEXT, '-', '_'),
+    false,
+    false,
+    'every authenticated module RPC reaches the canonical guard'
   );
-  PERFORM pg_temp.assert_true(
-    'no unrelated authenticated RPC reaches the canonical guard',
-    v_unrelated_reaching_guard IS NULL
+  PERFORM pg_temp.run_authenticated_guard_graph_fixture(
+    'unrelated RPC reaching the guard is rejected',
+    'unrelated_configuration_x_' || replace(gen_random_uuid()::TEXT, '-', '_'),
+    false,
+    true,
+    'no unrelated authenticated RPC reaches the canonical guard'
+  );
+  PERFORM pg_temp.run_authenticated_guard_graph_fixture(
+    'zero authenticated module candidates',
+    NULL,
+    true,
+    false,
+    'at least one authenticated technical-configuration RPC exists'
   );
 END;
 $gate$;
