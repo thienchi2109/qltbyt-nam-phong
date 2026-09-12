@@ -29,7 +29,8 @@ export function closingParenthesis(content: string, openingIndex: number): numbe
   return content.length
 }
 
-function splitFunctionArguments(value: string): string[] {
+/** Splits a function argument list without breaking nested type modifiers. */
+export function splitFunctionArguments(value: string): string[] {
   const argumentsList: string[] = []
   let depth = 0
   let start = 0
@@ -44,6 +45,20 @@ function splitFunctionArguments(value: string): string[] {
   argumentsList.push(value.slice(start))
 
   return argumentsList.map((argument) => argument.trim()).filter(Boolean)
+}
+
+/** Extracts normalized input parameter names when declarations provide them. */
+export function normalizedArgumentNames(value: string): string[] {
+  return splitFunctionArguments(value).flatMap((argument) => {
+    const declaration = withoutArgumentDefault(argument).trim()
+    const withoutMode = declaration.replace(/^(?:inout|in|variadic)\s+/iu, "")
+    if (/^out\s+/iu.test(declaration)) {
+      return []
+    }
+    const name = /^("(?:[^"]|"")+"|[a-zA-Z_][a-zA-Z0-9_]*)\s+/u.exec(withoutMode)?.[1]
+
+    return name === undefined ? [] : [normalizedIdentifier(name)]
+  })
 }
 
 function withoutArgumentDefault(value: string): string {

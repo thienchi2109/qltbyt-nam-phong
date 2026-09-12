@@ -1,7 +1,8 @@
-import { loadDatabaseQualityGateModule } from "./database-quality-gate-test-support"
+import { loadDatabaseQualityGateModule, sha256 } from "./database-quality-gate-test-support"
 import {
   fixtureWithStaticMetadata,
   migration,
+  repositoryHead,
   runStatic,
   StaticLaneModule,
 } from "./database-quality-gate-static-test-support"
@@ -66,4 +67,17 @@ export async function runCandidateWithHistory(
   )
 
   return runStatic(source, repository.root, [candidate.path])
+}
+
+export async function runReviewedCandidates(migrations: Array<{ path: string; sql: string }>) {
+  const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
+  const repository = fixtureWithStaticMetadata(
+    ...migrations.map((entry) => migration(entry.sql, entry.path))
+  )
+  const subjectCommit = repositoryHead(repository.root)
+
+  return runStatic(source, repository.root, [], undefined, subjectCommit, {
+    subjectCommit,
+    migrations: migrations.map((entry) => ({ path: entry.path, sha256: sha256(entry.sql) })),
+  })
 }

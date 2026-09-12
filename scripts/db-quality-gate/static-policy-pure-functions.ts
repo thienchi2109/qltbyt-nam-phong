@@ -5,10 +5,17 @@ import type { SqlFunctionBlock } from "./static-policy-objects"
 const PURE_SQL_BUILTINS = new Set([
   "btrim",
   "coalesce",
+  "decode",
+  "encode",
+  "get_byte",
   "lower",
+  "mod",
   "nullif",
   "normalize",
+  "octet_length",
   "regexp_replace",
+  "replace",
+  "rtrim",
   "translate",
 ])
 const PURE_SQL_FORBIDDEN_WORDS = new Set([
@@ -28,11 +35,14 @@ const PURE_SQL_FORBIDDEN_WORDS = new Set([
 ])
 
 /** Recognizes only immutable internal SQL helpers with a small, non-sensitive call surface. */
-export function isPureImmutableInternalFunction(functionBlock: SqlFunctionBlock): boolean {
+export function isPureImmutableInternalFunction(
+  functionBlock: SqlFunctionBlock,
+  internalHelper = functionBlock.name.startsWith("public._")
+): boolean {
   const declaration = maskSqlCommentsAndLiterals(functionBlock.declaration)
   if (
-    !functionBlock.name.startsWith("public._") ||
-    !/\bLANGUAGE\s+SQL\b/iu.test(declaration) ||
+    !internalHelper ||
+    !/\bLANGUAGE\s+(?:SQL|plpgsql)\b/iu.test(declaration) ||
     !/\bIMMUTABLE\b/iu.test(declaration) ||
     /\bSECURITY\s+DEFINER\b/iu.test(declaration)
   ) {

@@ -168,7 +168,8 @@ function runStaticLaneInternal(
       staticLegacyHygieneWarnings(
         input.repositoryRoot,
         migration,
-        sourceInspection.migrationIdentities
+        sourceInspection.migrationIdentities,
+        reviewedMigrationPaths
       )
     )
   const waivers = readWaiverRegistryArtifact(input.repositoryRoot, WAIVERS_PATH)
@@ -209,7 +210,12 @@ function runStaticLaneInternal(
     ...waiverFindings,
     ...expectedStateEvidence.findings,
     ...changedMigrations.flatMap((migration) =>
-      staticRuleFindings(input.repositoryRoot, migration, sourceInspection.migrationIdentities)
+      staticRuleFindings(
+        input.repositoryRoot,
+        migration,
+        sourceInspection.migrationIdentities,
+        reviewedMigrationPaths
+      )
     ),
   ]
   const reviewedSelectorFindings =

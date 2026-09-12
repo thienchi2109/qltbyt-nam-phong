@@ -187,7 +187,8 @@ export function runStatic(
   repositoryRoot: string,
   changedFiles: string[],
   baseRef?: string,
-  subjectCommit = repositoryHead(repositoryRoot)
+  subjectCommit = repositoryHead(repositoryRoot),
+  reviewedMigrationSelector?: unknown
 ) {
   return source.runStaticLane({
     baseRef,
@@ -195,6 +196,7 @@ export function runStatic(
     createdAt: "2026-08-16T15:00:00Z",
     repositoryRoot,
     runId: "phase-2-static",
+    reviewedMigrationSelector,
     subjectCommit,
   })
 }

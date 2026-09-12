@@ -3,11 +3,13 @@ import {
   closingParenthesis,
   FUNCTION_IDENTIFIER,
   functionIdentity,
+  normalizedArgumentNames,
   normalizedArgumentTypes,
   normalizedIdentifier,
 } from "./static-sql-function-identity"
 
 export type SqlFunctionBlock = {
+  argumentNames: string[]
   argumentTypes: string[]
   body: string
   bodyStart: number
@@ -40,6 +42,7 @@ export function functionBlocks(content: string): SqlFunctionBlock[] {
       statementSql.slice(argumentStart, argumentEnd),
       true
     )
+    const argumentNames = normalizedArgumentNames(statementSql.slice(argumentStart, argumentEnd))
     const bodyMatch = /\bAS\s+(\$[a-zA-Z0-9_]*\$)/iu.exec(functionContent)
     const bodyStart =
       bodyMatch?.index === undefined
@@ -51,6 +54,7 @@ export function functionBlocks(content: string): SqlFunctionBlock[] {
     const name = normalizedIdentifier(match[1])
 
     return {
+      argumentNames,
       argumentTypes,
       body:
         bodyStart === undefined || bodyEnd === undefined || bodyEnd === -1
@@ -301,5 +305,5 @@ export function isInternalPublicHelper(functionBlock: SqlFunctionBlock): boolean
 
 /** Identifies a public Data API RPC entrypoint rather than an internal helper. */
 export function isCallablePublicRpc(functionBlock: SqlFunctionBlock): boolean {
-  return isPublicNonTriggerFunction(functionBlock) && !isInternalPublicHelper(functionBlock)
+  return isPublicNonTriggerFunction(functionBlock)
 }

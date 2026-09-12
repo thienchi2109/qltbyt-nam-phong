@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+
 import { afterEach, describe, expect, it } from "vitest"
 
 import {
@@ -10,10 +12,107 @@ import {
   runStatic,
   StaticLaneModule,
 } from "./database-quality-gate-static-test-support"
+import { runReviewedCandidates } from "./database-quality-gate-static-policy-delegation-test-support"
 
 afterEach(cleanupFixtureRepositories)
 
 describe("database quality gate static SQL RPC policies", () => {
+  it("recognizes the real Phase 2 recipient semantics without waiving dangerous SQL", async () => {
+    const recipientsPath = "supabase/migrations/20260911030100_web_push_recipients.sql"
+    const subscriptionsPath = "supabase/migrations/20260911030200_web_push_subscriptions.sql"
+    const migrations = [
+      { path: recipientsPath, sql: readFileSync(recipientsPath, "utf8") },
+      { path: subscriptionsPath, sql: readFileSync(subscriptionsPath, "utf8") },
+    ]
+    const findings = (await runReviewedCandidates(migrations)).findings
+
+    expect(findings.filter(({ ruleId }) => ruleId === "migration.jwt-guards")).toEqual([])
+    expect(
+      findings.filter(({ ruleId }) => ruleId === "migration.internal-helper-execute-grant")
+    ).toEqual([])
+    expect(
+      findings.filter(({ ruleId }) => ruleId === "migration.security-definer-execute-grant")
+    ).toEqual([])
+    expect(
+      findings.filter(
+        ({ classification, ruleId }) =>
+          classification === "DANGEROUS" && ruleId === "migration.dangerous-statement"
+      )
+    ).toHaveLength(5)
+  })
+
+  it.each(["authenticated", "anon"])(
+    "fails closed when an authorization helper is granted to %s",
+    async (role) => {
+      const recipientsPath = "supabase/migrations/20260911030100_web_push_recipients.sql"
+      const subscriptionsPath = "supabase/migrations/20260911030200_web_push_subscriptions.sql"
+      const recipients = readFileSync(recipientsPath, "utf8").replace(
+        "REVOKE ALL ON FUNCTION public.web_push_config_authorize(bigint) FROM PUBLIC, anon, authenticated, service_role;",
+        `GRANT EXECUTE ON FUNCTION public.web_push_config_authorize(bigint) TO ${role};`
+      )
+      const findings = (
+        await runReviewedCandidates([
+          { path: recipientsPath, sql: recipients },
+          { path: subscriptionsPath, sql: readFileSync(subscriptionsPath, "utf8") },
+        ])
+      ).findings
+
+      expect(findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ ruleId: "migration.internal-helper-execute-grant" }),
+        ])
+      )
+    }
+  )
+
+  it.each([
+    "clock_timestamp() + interval '1 second'",
+    "public.clock_timestamp()",
+    "(SELECT clock_timestamp())",
+  ])("rejects the declaration initializer %s", async (initializer) => {
+    const recipientsPath = "supabase/migrations/20260911030100_web_push_recipients.sql"
+    const subscriptionsPath = "supabase/migrations/20260911030200_web_push_subscriptions.sql"
+    const subscriptions = readFileSync(subscriptionsPath, "utf8").replace(
+      "v_now timestamptz := clock_timestamp();",
+      `v_now timestamptz := ${initializer};`
+    )
+    const findings = (
+      await runReviewedCandidates([
+        { path: recipientsPath, sql: readFileSync(recipientsPath, "utf8") },
+        { path: subscriptionsPath, sql: subscriptions },
+      ])
+    ).findings
+
+    expect(findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ ruleId: "migration.jwt-guards" })])
+    )
+  })
+
+  it.each([
+    ["wrong tenant argument", "PERFORM public.web_push_config_authorize(p_don_vi + 1);"],
+    [
+      "protected SQL before the argumented guard",
+      "PERFORM public.persist_module_change();\n  PERFORM public.web_push_config_authorize(p_don_vi);",
+    ],
+  ])("rejects %s", async (_name, replacement) => {
+    const recipientsPath = "supabase/migrations/20260911030100_web_push_recipients.sql"
+    const subscriptionsPath = "supabase/migrations/20260911030200_web_push_subscriptions.sql"
+    const recipients = readFileSync(recipientsPath, "utf8").replace(
+      "PERFORM public.web_push_config_authorize(p_don_vi);",
+      replacement
+    )
+    const findings = (
+      await runReviewedCandidates([
+        { path: recipientsPath, sql: recipients },
+        { path: subscriptionsPath, sql: readFileSync(subscriptionsPath, "utf8") },
+      ])
+    ).findings
+
+    expect(findings).toEqual(
+      expect.arrayContaining([expect.objectContaining({ ruleId: "migration.jwt-guards" })])
+    )
+  })
+
   it("requires authenticated-only execute grants and PUBLIC revoke for SECURITY DEFINER RPCs", async () => {
     const source = await loadDatabaseQualityGateModule<StaticLaneModule>("static-lane")
     const candidate = migration(

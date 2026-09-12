@@ -8,7 +8,6 @@ import {
   functionBlocks,
   functionGrantGrantees,
   functionRevokeGrantees,
-  isInternalPublicHelper,
 } from "./static-policy-objects"
 import type { SqlFunctionBlock } from "./static-policy-objects"
 import type { MigrationIdentity } from "./types"
@@ -27,14 +26,17 @@ export function historicalFunctionDefinitions(
   repositoryRoot: string,
   migration: MigrationIdentity,
   allMigrations: MigrationIdentity[],
-  currentContent: string
+  currentContent: string,
+  reviewedMigrationPaths: ReadonlySet<string> = new Set()
 ): StaticFunctionDefinition[] {
   const definitions = new Map<string, StaticFunctionDefinition>()
-  const priorMigrations = allMigrations
-    .filter((entry) => compareStrings(entry.path, migration.path) < 0)
-    .sort((left, right) => compareStrings(left.path, right.path))
+  const orderedMigrations = [...allMigrations].sort((left, right) =>
+    compareStrings(left.path, right.path)
+  )
 
-  for (const entry of priorMigrations) {
+  for (const entry of orderedMigrations.filter(
+    (candidate) => compareStrings(candidate.path, migration.path) < 0
+  )) {
     const content = readFileSync(sourceFilePath(repositoryRoot, entry.path), "utf8")
     for (const functionBlock of functionBlocks(content)) {
       definitions.set(functionBlock.identity, { content, functionBlock })
@@ -43,14 +45,25 @@ export function historicalFunctionDefinitions(
   for (const functionBlock of functionBlocks(currentContent)) {
     definitions.set(functionBlock.identity, { content: currentContent, functionBlock })
   }
+  for (const entry of orderedMigrations.filter(
+    (candidate) =>
+      reviewedMigrationPaths.has(migration.path) &&
+      reviewedMigrationPaths.has(candidate.path) &&
+      compareStrings(candidate.path, migration.path) > 0
+  )) {
+    const content = readFileSync(sourceFilePath(repositoryRoot, entry.path), "utf8")
+    for (const functionBlock of functionBlocks(content)) {
+      if (!definitions.has(functionBlock.identity)) {
+        definitions.set(functionBlock.identity, { content, functionBlock })
+      }
+    }
+  }
 
   return [...definitions.values()]
 }
 
 /** Keeps only unambiguous internal helpers whose ACL proves non-callability. */
-export function safeInternalFunctionTargets(
-  definitions: StaticFunctionDefinition[]
-): Set<SqlFunctionBlock> {
+export function safeInternalFunctionTargets(definitions: StaticFunctionDefinition[]): Set<string> {
   const overloadedFunctionNames = ambiguousFunctionNames(
     definitions.map((definition) => definition.functionBlock)
   )
@@ -63,11 +76,11 @@ export function safeInternalFunctionTargets(
         const revokeGrantees = functionRevokeGrantees(content, functionBlock)
 
         return (
-          isInternalPublicHelper(functionBlock) &&
+          functionBlock.name.startsWith("public.") &&
           ["anon", "authenticated", "public"].every((grantee) => revokeGrantees.has(grantee)) &&
           !["anon", "authenticated", "public"].some((grantee) => grantees.has(grantee))
         )
       })
-      .map(({ functionBlock }) => functionBlock)
+      .map(({ functionBlock }) => functionBlock.identity)
   )
 }

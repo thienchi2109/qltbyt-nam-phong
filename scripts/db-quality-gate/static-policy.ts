@@ -11,7 +11,6 @@ import {
   hasPublicFunctionRevoke,
   isCallablePublicRpc,
   isExplicitGrantContractPresent,
-  isInternalPublicHelper,
   isPublicNonTriggerFunction,
   tableNames,
   unqualifiedTableNames,
@@ -23,7 +22,10 @@ import {
 } from "./static-policy-authorization"
 import { isPureImmutableInternalFunction } from "./static-policy-pure-functions"
 import { compareStrings } from "./serialization"
-import { failClosedJwtAuthorizedFunctions } from "./static-sql-authorization"
+import {
+  authorizationHelperIdentities,
+  failClosedJwtAuthorizedFunctions,
+} from "./static-sql-authorization"
 import { topLevelStatements } from "./static-sql-statements"
 import { hasRawLikePattern, maskSqlCommentsAndLiterals, tokenizeSqlSegment } from "./static-sql"
 import type { GateFinding, MigrationIdentity } from "./types"
@@ -144,7 +146,8 @@ function dynamicSqlFindings(migrationPath: string, content: string): GateFinding
 export function staticRuleFindings(
   repositoryRoot: string,
   migration: MigrationIdentity,
-  allMigrations: MigrationIdentity[]
+  allMigrations: MigrationIdentity[],
+  reviewedMigrationPaths: ReadonlySet<string> = new Set()
 ): GateFinding[] {
   const content = readFileSync(sourceFilePath(repositoryRoot, migration.path), "utf8")
   const findings: GateFinding[] = []
@@ -187,7 +190,8 @@ export function staticRuleFindings(
     repositoryRoot,
     migration,
     allMigrations,
-    content
+    content,
+    reviewedMigrationPaths
   )
   const availableFunctions = availableDefinitions.map((entry) => entry.functionBlock)
   const overloadedFunctionNames = ambiguousFunctionNames(functions)
@@ -200,9 +204,10 @@ export function staticRuleFindings(
     )
   }
   const safeInternalTargets = safeInternalFunctionTargets(availableDefinitions)
+  const authorizationHelpers = authorizationHelperIdentities(functions, availableFunctions)
   const jwtAuthorized = failClosedJwtAuthorizedFunctions(
     functions,
-    (functionBlock) => safeInternalTargets.has(functionBlock),
+    (functionBlock) => safeInternalTargets.has(functionBlock.identity),
     (functionBlock) =>
       migration.path ===
         "supabase/migrations/20260824132410_add_technical_configuration_authorized_user_guard.sql" &&
@@ -213,15 +218,22 @@ export function staticRuleFindings(
   for (const functionBlock of functions) {
     const declaration = maskSqlCommentsAndLiterals(functionBlock.declaration)
     const publicFunction = isPublicNonTriggerFunction(functionBlock)
-    const internalHelper = isInternalPublicHelper(functionBlock)
-    const callablePublicRpc = isCallablePublicRpc(functionBlock)
+    const safeInternalHelper = safeInternalTargets.has(functionBlock.identity)
+    const internalHelper =
+      functionBlock.name.slice("public.".length).startsWith("_") ||
+      authorizationHelpers.has(functionBlock.identity)
+    const callablePublicRpc = isCallablePublicRpc(functionBlock) && !safeInternalHelper
     const securityDefiner = /\bSECURITY\s+DEFINER\b/iu.test(declaration)
     const grantGrantees = functionGrantGrantees(content, functionBlock)
     const revokeGrantees = functionRevokeGrantees(content, functionBlock)
 
     if (
       publicFunction &&
-      !isPureImmutableInternalFunction(functionBlock) &&
+      !(
+        safeInternalHelper &&
+        /\bRETURNS\s+(?:SETOF\s+)?boolean\b[\s\S]*\bSTABLE\b/iu.test(declaration)
+      ) &&
+      !isPureImmutableInternalFunction(functionBlock, safeInternalHelper) &&
       !jwtAuthorized.has(functionBlock)
     ) {
       findings.push(
@@ -340,9 +352,10 @@ export function staticRuleFindings(
 export function staticLegacyHygieneWarnings(
   repositoryRoot: string,
   migration: MigrationIdentity,
-  allMigrations: MigrationIdentity[]
+  allMigrations: MigrationIdentity[],
+  reviewedMigrationPaths: ReadonlySet<string> = new Set()
 ): GateFinding[] {
-  return staticRuleFindings(repositoryRoot, migration, allMigrations)
+  return staticRuleFindings(repositoryRoot, migration, allMigrations, reviewedMigrationPaths)
     .filter((finding) => finding.classification === "BLOCKING")
     .map((finding) => ({
       ...finding,
