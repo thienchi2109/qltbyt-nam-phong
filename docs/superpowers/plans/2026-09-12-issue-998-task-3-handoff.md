@@ -28,8 +28,11 @@
 
 ## Ranh giới runtime và bước tiếp theo
 
-- Baseline-forward Oracle: `INCOMPLETE / PENDING`; chưa có report hoặc digest để xác nhận SQL runtime PASS.
-- Người thực hiện tiếp theo chỉ chạy đúng một disposable Oracle clone theo candidate SHA; không mutate persistent `qltbyt_test` và không đụng live DB.
-- Cleanup remote clone chưa được xác minh vì chưa có xác nhận từ executor; không suy diễn từ việc checkout local không còn process runner.
-- Khi tiếp tục, kiểm tra run/clone state hiện có trước khi tạo run mới, rồi đối chiếu exact candidate SHA và source hash.
+- Baseline-forward Oracle đã thực thi một lần với run `issue-998-task3-e018f5ca-20260912`, subject đúng candidate SHA; `evidenceAvailable=true`, `requiredChecksComplete=true`, kết quả `FAILED`.
+- Report digest: `2dca94a578ca3d073569018f8f5b7d74aee37f47e03b245c54ebb8fb1e41fcd9`; control/candidate đều chạy `80/80`.
+- Fixture Task3 thất bại với SQLSTATE `42501` và `permission-denied`; source hash khớp `b303fadfe7992b21e59611f95bba508213aa6dfcada09508282c44377a433c65`. Đây là failure runtime thực tế, không phải SQL PASS.
+- `web_push_phase2` đã được attempted/executed/selected và không có failure finding trong control/candidate theo runner report contract; trạng thái pass chi tiết của entry không được report surface riêng.
+- Các blocker baseline khác được giữ nguyên: `repair_cost_usage` với `P0001` và các technical-configuration debt signature `permission-denied`.
+- Cleanup disposable clone đã được parent xác minh bằng read-only Oracle catalog (`exit=0`): `0` database `dq_*`, `0` activity trên `dq_*`, `0` advisory lock. Không có live DB write.
+- Task3 vẫn chưa accepted vì fixture failure; không tạo run Oracle mới trong closeout này. Khi tiếp tục, kiểm tra run state hiện có trước và đối chiếu exact candidate SHA/source hash.
 - Task 4, OpenSpec `2.4` và các waiver vẫn giữ nguyên trạng thái chưa hoàn tất.
