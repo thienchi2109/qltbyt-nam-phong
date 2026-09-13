@@ -206,6 +206,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
 BEGIN
+  PERFORM public.web_push_config_authorize(p_don_vi);
   RETURN public.web_push_recipient_config_set_with_self_action(p_don_vi, p_usernames, 'none');
 END;
 $function$;
@@ -229,9 +230,10 @@ DECLARE
   v_protected_count INTEGER;
   v_protected_overlap INTEGER;
   v_existing_owner BIGINT;
-  v_self_action TEXT := LOWER(BTRIM(COALESCE(p_self_action, 'none')));
+  v_self_action TEXT;
 BEGIN
   PERFORM public.web_push_config_authorize(p_don_vi);
+  v_self_action := LOWER(BTRIM(COALESCE(p_self_action, 'none')));
   v_caller_id := public.web_push_session_user_id();
 
   IF v_self_action NOT IN ('none', 'add', 'remove') THEN

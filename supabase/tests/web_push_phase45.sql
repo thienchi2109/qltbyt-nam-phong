@@ -23,6 +23,46 @@ INSERT INTO public.nhan_vien(id,username,password,role,don_vi,dia_ban_id) VALUES
   (2147000004,'wp45-manager-b','unused','to_qltb',2147000002,2147000001),
   (2147000005,'wp45-user','unused','user',2147000001,2147000001);
 
+SET LOCAL ROLE authenticated;
+DO $$
+BEGIN
+  PERFORM set_config('request.jwt.claims','{}',true);
+  BEGIN
+    PERFORM public.web_push_recipient_config_set(2147000001,'{}');
+    RAISE EXCEPTION 'Legacy config accepted missing identity';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.web_push_recipient_config_set_with_self_action(2147000001,'{}','add');
+    RAISE EXCEPTION 'Self config accepted missing identity';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  BEGIN
+    PERFORM public.repair_request_create(2147000001,'Unauthorized',NULL,NULL,'Tester',NULL,NULL);
+    RAISE EXCEPTION 'Repair creation accepted missing claims';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  PERFORM set_config('request.jwt.claims','{"role":"service_role","app_role":"global","user_id":"2147000001"}',true);
+  BEGIN
+    PERFORM public.web_push_delivery_claim('{}');
+    RAISE EXCEPTION 'Authenticated role bypassed worker ACL using claims';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+  RAISE NOTICE 'PASS: direct authenticated calls cannot bypass config, repair or worker boundaries';
+END;
+$$;
+SET LOCAL ROLE anon;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.web_push_delivery_claim('{}');
+    RAISE EXCEPTION 'Anon bypassed worker ACL';
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
+END;
+$$;
+RESET ROLE;
+
 DO $$
 DECLARE r jsonb; before_config jsonb;
 BEGIN
