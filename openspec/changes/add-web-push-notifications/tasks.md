@@ -10,7 +10,7 @@
 
 - Mọi checkbox để trống cho đến khi có bằng chứng. Phase 1 là contract/baseline; hoàn thành artifacts Phase 1 không có nghĩa các phase runtime/deploy đã được thực hiện.
 - Mỗi phase là một đơn vị review và landing riêng. Chỉ thực hiện phase được maintainer giao, báo kết quả rồi dừng; không tự nhảy sang phase sau hoặc live deploy.
-- Phụ thuộc: 1 -> 2; 3 và 4 cần 2; Phase 4.5 đã hoạch định cần behavior hiện có của Phase 2–4 và phải đi trước 5; 5 cần 3+4+4.5 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
+- Phụ thuộc: 1 -> 2; 3 và 4 cần 2; implementation Phase 4.5 đã landed/live và phải đi trước 5 (giữ nguyên historical task section bên dưới); 5 cần 3+4+4.5 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
 - Phase có SQL phải giữ migration immutable, chạy static và Oracle baseline-forward trên disposable DB cùng exact landed commit. Report hai lane riêng; live apply cần quyền cụ thể qua Supabase MCP.
 - Phase TS/TSX chạy format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused tests -> React Doctor. Semantic reuse check khi thêm logic dùng chung; không full-suite/full-dedupe mặc định.
 - Phase Go có runnable checks cho claim/report errors, provider responses, crash recovery, SSRF và payload; chọn thư viện Web Push bảo trì tốt thay vì tự viết crypto.
@@ -79,39 +79,39 @@
 
 ## Phase 5 - UI cấu hình, opt-in và service worker
 
-**Phụ thuộc:** 3+4+Phase 4.5 đã hoạch định, gồm public key/version test được Phase 4 cung cấp và candidate/config contract được Phase 4.5 verify; không cần Go chạy. **Ranh giới:** chỉ frontend/browser lifecycle và tests; không backend/API/RPC/SQL migration/live write, không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold. Mỗi chunk là một điểm dừng review; không tự chuyển chunk kế tiếp.
+**Phụ thuộc:** 3+4+Phase 4.5 đã landed và live, gồm public key/version test từ Phase 4 và candidate/config contract đã verify từ Phase 4.5; maintenance catch-up của #1001 đã đóng theo evidence hiện hành; không cần Go chạy. **Ranh giới:** chỉ frontend/browser lifecycle và tests; không backend/API/RPC/SQL migration/live write, không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold. Năm chunk dưới đây là các điểm dừng review độc lập; không tự chuyển chunk kế tiếp.
 
-### Chunk 1/5 - Authorized account picker
+### Chunk 1/5 - Recipient account picker
 
-- [ ] 5.1 Thêm UI cấu hình theo đơn vị cho `global/admin/to_qltb` bằng searchable multi-select account hiện hữu trong Phase 4.5 server-authorized scope; option hiển thị `full_name` + `username`, chọn/bỏ chọn bằng chuột hoặc bàn phím, có loading/error/empty states, giữ selection đầy đủ từ config GET khi search/reload lỗi và lưu atomic. UI dùng adapter giữ identity để hiển thị; stale/ineligible normal entry có status flag và caller có quyền được explicit remove, còn protected self-entry của caller khác chỉ read-only; chỉ Save sau khi tải đủ full config và hỗ trợ `self_action`; không gọi account-list RPC trực tiếp.
-- **Acceptance/tests:** chứng minh đúng scope từng role, tìm theo tên/username, explicit remove stale normal entry, search/reload không mất stale selection, không Save khi full config chưa tải đủ, keyboard/focus/accessible labels, empty/loading/error và invalid/partial-save rejection.
-- **Stop/review:** nếu Phase 4.5 candidate/config backend chưa verified, dừng trước runtime UI và báo dependency; không thêm RPC/SQL/backend trong Phase 5.
+- [ ] 5.1 Thêm UI cấu hình recipient riêng theo từng `don_vi` cho `admin/global/to_qltb` bằng searchable multi-select các account có sẵn trong Phase 4.5 server-authorized scope; option hiển thị `full_name` + `username`, chọn/bỏ chọn bằng chuột hoặc bàn phím, có loading/error/empty states. Không nhận username nhập tự do hoặc chuỗi phân cách bằng dấu phẩy. Adapter giữ identity ổn định và full config GET, không làm mất selection khi search/reload lỗi; chỉ Save sau khi tải đủ config, gửi `self_action` rõ ràng và dựa trên atomic server contract. Placement đã chốt là route authenticated `/notifications` dùng chung cho mọi role đã đăng nhập; header bell giữ dialog hiện có và thêm đúng link text `Cài đặt nhận thông báo` tới route này, không thêm sidebar item hoặc link trùng user-menu, giữ nguyên đổi mật khẩu/Đăng xuất. Chỉ `to_qltb/admin/global` thấy recipient config; `admin/global` có target selector cross-unit, `to_qltb` chỉ effective unit.
+- **Acceptance/tests:** chứng minh đúng scope từng role và isolation theo đơn vị, tìm theo tên/username, keyboard/focus/accessible labels, empty/loading/error, không có ô nhập username/CSV, không Save khi full config chưa tải đủ và giữ selection qua search/reload. Protected/stale status và quyền remove được kiểm tra ở Chunk 5.2 nhưng picker phải giữ các identity đó.
+- **Stop/review:** chỉ tiêu thụ candidate/config contract đã landed; không thêm hoặc sửa RPC/SQL/API/backend trong Phase 5.
 
-### Chunk 2/5 - Voluntary opt-in
+### Chunk 2/5 - Configuration status and edit rights
 
-- [ ] 5.2 Thêm bật/tắt thông báo tự nguyện trong app, preview nội dung màn hình khóa, permission/unsupported/blocked states và hướng dẫn Home Screen iOS/iPadOS; dùng public key/version từ Phase 4 và hiển thị yêu cầu đăng ký lại khi key version thay đổi.
-- **Acceptance/tests:** chỉ gọi permission/subscription từ user gesture; denied/unsupported không prompt lặp, app vẫn dùng được, key mismatch yêu cầu resubscribe và không gửi identity do client tự khai.
-- **Stop/review:** giữ registration mặc định tắt, không cần Go/provider/live send; dừng để review sau focused user-event tests.
+- [ ] 5.2 Hiển thị trạng thái cấu hình theo từng đơn vị, gồm protected self-entry, stale/ineligible recipient, trạng thái hợp lệ/lỗi và quyền edit tương ứng. Protected self-entry của caller khác chỉ read-only; stale/ineligible normal entry được flag và cho caller có quyền explicit remove; mọi entry không bị xóa ngầm khi reload, search hoặc save thất bại. Giữ ma trận `admin/global` target bất kỳ, `to_qltb` chỉ effective unit và không cấp quyền đọc repair request.
+- **Acceptance/tests:** user-event tests cho read-only protected entry, explicit remove stale/ineligible, giữ protected entry khi save bình thường, invalid normal entry không partial-save, empty config và lỗi config GET/PUT. Kiểm tra mọi danh sách vẫn tách theo `don_vi` và không fallback B/global.
+- **Stop/review:** chỉ hiển thị metadata từ contract đã landed; không suy diễn quyền từ client role/identity và không thêm RPC/SQL/API/backend.
 
-### Chunk 3/5 - Existing PWA/service worker
+### Chunk 3/5 - Web Push subscription opt-in
 
-- [ ] 5.3 Tái sử dụng `public/manifest.json`, metadata `src/app/layout.tsx`, Serwist `next.config.ts`/`src/sw.ts` và registration `/sw.js` trong `pwa-install-prompt`; kiểm kê/bổ sung icons/start_url/scope/display standalone/HTTPS để cài Home Screen, không đăng ký worker thứ hai cùng scope, không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
-- **Acceptance/tests:** kiểm tra cùng worker/scope, payload text-only đúng budget/tag, foreground/background không double-display, click giữ same-origin và quyền hiện tại.
-- **Stop/review:** không redesign offline cache hoặc sửa provider/Go; dừng sau worker-focused tests và source review.
+- [ ] 5.3 Thêm UI đăng ký subscription Web Push bằng user gesture trên `/notifications`, permission prompt, enabled/disabled/error/unsupported/blocked states, accessible feedback, preview nội dung màn hình khóa và hướng dẫn Home Screen iOS/iPadOS cho mọi role đã đăng nhập. Tái sử dụng registration `/sw.js` và worker hiện có; không đăng ký worker thứ hai cùng scope, không gửi identity do client tự khai. Dùng public key/version từ Phase 4 và yêu cầu resubscribe khi version mismatch; registration mặc định tắt. Recipient config không hiển thị cho role ngoài `to_qltb/admin/global`.
+- **Acceptance/tests:** permission/subscription chỉ được gọi sau thao tác người dùng; denied/unsupported không prompt lặp và app vẫn dùng được; key mismatch hiển thị resubscribe; kiểm tra labels, focus, live/status feedback, cùng worker/scope và không thêm offline/auth-data cache.
+- **Stop/review:** không gọi Go/provider trực tiếp, không đổi API/RPC/backend/SQL và dừng sau focused user-event tests cho opt-in.
 
-### Chunk 4/5 - Revoke and account lifecycle
+### Chunk 4/5 - Notification operation status and recovery
 
-- [ ] 5.4 Gắn revoke vào disable/logout/account switch; test offline cleanup không chặn logout vô hạn, multi-browser độc lập và không tự đổi owner.
-- **Acceptance/tests:** reachable backend revoke đúng subscription/revision; offline logout local cleanup + retry bounded; switch account không tái sử dụng owner cũ; một browser lỗi không làm mất browser khác.
-- **Stop/review:** không claim remote revoke/provider withdrawal khi offline; dừng sau lifecycle user-event tests.
+- [ ] 5.4 Hiển thị trạng thái local của thao tác thông báo và cấu hình browser, gồm loading/enabled/disabled/success/error/cancelled, retry bounded cho request lỗi, cancel thao tác đang chờ và refresh/reload rehydrate không làm mất trạng thái hợp lệ. Gắn revoke vào disable/logout/account switch; offline cleanup không chặn logout vô hạn, local unsubscribe và retry cleanup khi có thể, multi-browser độc lập và không đổi owner. Không có delivery-status API trong scope này: không retry delivery/provider, không claim provider accepted là delivered/read.
+- **Acceptance/tests:** user-event tests cho retry/cancel/error, refresh/reload, reachable revoke đúng subscription/revision, offline logout local cleanup, account switch không dùng owner cũ và một browser lỗi không làm mất browser khác. Status copy phải phân biệt request đã gửi, chưa xác nhận và bị hủy.
+- **Stop/review:** không claim remote revoke/provider withdrawal khi offline, không thêm delivery endpoint/worker call/API/RPC/SQL/backend; dừng sau lifecycle user-event tests.
 
-### Chunk 5/5 - Integrated verification
+### Chunk 5/5 - Page integration, worker integration and polish
 
-- [ ] 5.5 Chạy TS gates, user-event tests cho cả bốn chunk và browser checks có fake push; đối chiếu config/opt-in/worker/revoke, registration mặc định tắt, chưa production send.
-- **Acceptance/tests:** format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused tests -> React Doctor; báo rõ các platform checks chưa chạy và không tick Phase 5 nếu thiếu evidence.
-- **Stop/review:** chỉ handoff sau khi bốn chunk trước đã được review; không chuyển sang Phase 6/7, không live apply/deploy và không sửa #1000/gate debt.
+- [ ] 5.5 Tích hợp UI vào route authenticated `/notifications` và header link `Cài đặt nhận thông báo`, hoàn thiện responsive/accessibility và polish; giữ nguyên bell dialog, đổi mật khẩu/Đăng xuất, không thêm sidebar item hoặc duplicate user-menu link. Nối service worker push/click, safe text-only payload rendering, Unicode-safe truncation/tag, foreground không double-display và same-origin deep link qua login/quyền hiện hành. Chạy focused user-event tests cho cả 5.1–5.4, không thêm backend scope.
+- **Acceptance/tests:** format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused user-event tests -> React Doctor; kiểm tra desktop/mobile, keyboard/focus/live feedback, manifest/worker cùng scope, registration mặc định tắt, chưa production send và báo rõ platform checks chưa chạy.
+- **Stop/review:** chỉ handoff sau khi bốn chunk trước đã được review và placement decision `/notifications` đã được ghi; không chuyển sang Phase 6/7, không live apply/deploy và không sửa #1000/gate debt.
 
-**Exit / rollback:** UI/worker không phụ thuộc Firebase, không đổi ZBS. Tắt registration UI nhưng giữ revoke; rollback worker theo version đã kiểm thử. Historical tasks 2.4/3.4/4.5, #1000, static/baseline-forward FAILED và mọi controls mặc định false vẫn giữ nguyên.
+**Exit / rollback:** UI/worker không phụ thuộc Firebase, không đổi ZBS hoặc backend/API/RPC/SQL. Tắt registration UI nhưng giữ local/reachable revoke cleanup; rollback worker theo version đã kiểm thử. Historical tasks 2.4/3.4/4.5, #1000, raw Quality Gate outcomes và mọi controls mặc định false vẫn giữ nguyên.
 
 ## Phase 6 - Go worker và Docker artifact, chưa production send
 

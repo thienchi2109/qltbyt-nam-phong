@@ -17,7 +17,7 @@ Hệ thống SHALL thêm Web Push cho mọi `repair_request_created`, bảo toà
 
 ### Requirement: Tenant Scoped Account Configuration
 
-Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị và cung cấp searchable multi-select account hiện hữu theo caller scope. `admin/global` được target bất kỳ đơn vị nào nhưng chỉ thêm recipient thường có role `to_qltb` và effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` MAY tự add/remove protected self-enrollment ở bất kỳ đơn vị nào; caller khác SHALL thấy read-only và backend SHALL preserve entry đó trong atomic save. Option SHALL hiển thị `full_name` và `username`, hỗ trợ chọn/bỏ chọn bằng chuột hoặc bàn phím và trạng thái loading/error/empty. Candidate SHALL chỉ đến từ server-authorized scope. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
+Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị và cung cấp searchable multi-select account hiện hữu theo caller scope. Màn hình recipient config chỉ dành cho `admin/global/to_qltb`; các role đã đăng nhập khác chỉ thấy hướng dẫn/trạng thái browser opt-in. `admin/global` được target bất kỳ đơn vị nào nhưng chỉ thêm recipient thường có role `to_qltb` và effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` MAY tự add/remove protected self-enrollment ở bất kỳ đơn vị nào; caller khác SHALL thấy read-only và backend SHALL preserve entry đó trong atomic save. Option SHALL hiển thị `full_name` và `username`, hỗ trợ chọn/bỏ chọn bằng chuột hoặc bàn phím và trạng thái loading/error/empty; UI SHALL NOT nhận username nhập tự do hoặc chuỗi phân cách bằng dấu phẩy. Candidate SHALL chỉ đến từ server-authorized scope. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
 
 #### Scenario: Valid list
 
@@ -30,6 +30,7 @@ Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị v
 - **WHEN** candidate list đang tải, tải lỗi hoặc không có account trong scope
 - **THEN** UI hiển thị trạng thái tương ứng, không cho lưu recipient ngoài scope và không làm mất selection hiện tại, kể cả stale entry, do lỗi tải lại
 - **AND** lỗi lưu vẫn atomic, không lưu một phần
+- **AND** UI SHALL giữ identity và selection từ full config GET khi candidate search/reload lỗi hoặc trả về trang khác, kể cả stale entry
 
 #### Scenario: Scope target của caller và protected self
 
@@ -48,9 +49,15 @@ Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị v
 - **WHEN** bất kỳ username không tồn tại, inactive, không đủ quyền hoặc caller vượt scope
 - **THEN** server từ chối, không lưu một phần và UI báo lỗi phù hợp không lộ dữ liệu ngoài scope
 
+#### Scenario: Configuration status and edit rights
+
+- **WHEN** UI hiển thị cấu hình có protected self-entry, stale/ineligible entry hoặc trạng thái tải/lưu đang diễn ra
+- **THEN** protected self-entry của caller khác SHALL read-only, stale/ineligible normal entry SHALL được flag và caller có quyền SHALL có thể explicit remove
+- **AND** UI SHALL hiển thị trạng thái và quyền thao tác tương ứng, không làm mất entry khi search/reload hoặc tự fallback sang đơn vị khác
+
 ### Requirement: In App Notification Registration
 
-Hệ thống SHALL cho người dùng tự bật/tắt thông báo trong app trên từng browser. Server SHALL lấy identity từ NextAuth session, kiểm tra ownership và input subscription; quản trị viên SHALL NOT cấp browser permission thay người nhận.
+Hệ thống SHALL cho mọi người dùng đã đăng nhập tự bật/tắt thông báo trong app trên từng browser tại route authenticated `/notifications`. Server SHALL lấy identity từ NextAuth session, kiểm tra ownership và input subscription; quản trị viên SHALL NOT cấp browser permission thay người nhận.
 
 #### Scenario: Explicit opt in
 
@@ -63,6 +70,19 @@ Hệ thống SHALL cho người dùng tự bật/tắt thông báo trong app tr�
 - **WHEN** quyền bị chặn/từ chối hoặc browser không hỗ trợ
 - **THEN** không tạo subscription, không prompt lặp lại và app vẫn hoạt động
 - **AND** UI hướng dẫn cài Home Screen app khi iOS/iPadOS yêu cầu
+
+#### Scenario: Registration feedback and key version
+
+- **WHEN** người dùng bắt đầu hoặc hủy thao tác đăng ký trên browser
+- **THEN** UI SHALL hiển thị accessible loading/success/disabled/error/cancelled feedback, chỉ gọi permission/subscription sau user gesture và không prompt lặp khi denied/unsupported
+- **AND** key version mismatch SHALL yêu cầu resubscribe; UI SHALL không tự khai identity hoặc quyền thay server
+
+#### Scenario: Shared authenticated notification settings surface
+
+- **WHEN** người dùng đã đăng nhập mở phần cài đặt nhận thông báo từ header bell
+- **THEN** dialog thông báo hiện có SHALL vẫn giữ nguyên và có link với text chính xác `Cài đặt nhận thông báo` tới `/notifications`
+- **AND** `/notifications` SHALL hiển thị hướng dẫn và trạng thái browser opt-in cho mọi role đã đăng nhập; recipient config chỉ hiển thị cho `to_qltb/admin/global` theo phạm vi đơn vị
+- **AND** SHALL không có mục sidebar hoặc link trùng trong user menu, còn đổi mật khẩu/Đăng xuất SHALL giữ nguyên
 
 #### Scenario: Forged ownership or unsafe endpoint
 
@@ -89,6 +109,12 @@ Hệ thống SHALL hỗ trợ nhiều browser cho một account, thu hồi subsc
 - **WHEN** logout xảy ra lúc backend không reachable
 - **THEN** không chặn logout vô hạn, thực hiện local unsubscribe và retry cleanup khi có thể
 - **AND** không tuyên bố đã thu hồi server hoặc bản tin provider đã nhận khi chưa có bằng chứng
+
+#### Scenario: Browser operation status and reload
+
+- **WHEN** thao tác đăng ký, revoke, logout cleanup hoặc refresh/reload gặp pending, cancel, lỗi mạng hay khôi phục thành công
+- **THEN** UI SHALL hiển thị trạng thái local, cho phép retry bounded/cancel thao tác phù hợp và rehydrate state mà không mất lựa chọn hoặc owner hiện tại
+- **AND** UI SHALL NOT suy diễn delivery/provider accepted thành delivered/read hoặc gọi retry delivery khi contract không có delivery-status API
 
 ### Requirement: Transactional Notification Intent
 
