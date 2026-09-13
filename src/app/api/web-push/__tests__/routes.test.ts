@@ -158,7 +158,7 @@ describe("web push API routes", () => {
 
     expect(response.status).toBe(200)
     expect(mocks.fetch).toHaveBeenCalledWith(
-      "https://supabase.example/rest/v1/rpc/web_push_recipient_config_set",
+      "https://supabase.example/rest/v1/rpc/web_push_recipient_config_set_with_self_action",
       expect.objectContaining({
         body: expect.stringContaining('"p_self_action":"add"'),
       })
