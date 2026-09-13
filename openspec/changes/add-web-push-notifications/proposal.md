@@ -7,7 +7,7 @@ Change ID `add-web-push-notifications` phản ánh hướng dedicated Go Web Pus
 ## What Changes
 
 - Thêm kênh Web Push cho `repair_request_created`, mọi mức ưu tiên; giữ nguyên ZBS phone recipients, outbox, dispatcher, credentials và hành vi gửi.
-- Cấu hình recipient theo đơn vị: nhập username phân cách bằng dấu phẩy, trim, loại trùng, resolve thành user ID ổn định; lỗi bất kỳ tài khoản nào thì không lưu một phần.
+- Cấu hình recipient theo đơn vị bằng searchable multi-select account hiện hữu trong scope được server cấp; option hiển thị `full_name` và `username`, cho phép chọn/bỏ chọn bằng chuột hoặc bàn phím. UI giữ user ID/username để hiển thị nhưng adapter vẫn gửi chuỗi username theo contract v1; lỗi bất kỳ tài khoản nào thì không lưu một phần.
 - `global/admin` cấu hình theo đơn vị được chọn; `to_qltb` chỉ trong phạm vi đơn vị được phép quản lý. Cấu hình recipient không cấp quyền xem yêu cầu.
 - Người dùng tự bấm bật/tắt thông báo ngay trong app trên từng trình duyệt. Identity lấy từ NextAuth server session; không dùng `auth.users` UUID hoặc user ID do client tự khai.
 - Supabase giữ cấu hình, subscription và Web Push outbox riêng. Transaction tạo repair request ghi ý định gửi; không gọi mạng trong transaction.
@@ -27,7 +27,7 @@ Change ID `add-web-push-notifications` phản ánh hướng dedicated Go Web Pus
 ## Impact
 
 - Affected spec: `notifications` (new capability); [spec](specs/notifications/spec.md), [design](design.md), [phased tasks](tasks.md).
-- QLTBYT: session-authenticated configuration/subscription endpoints, UI quản trị và opt-in, service worker, private worker endpoints; tái sử dụng quyền và deep link hiện hành.
+- QLTBYT: session-authenticated candidate/configuration/subscription endpoints, UI quản trị và opt-in, service worker, private worker endpoints; tái sử dụng quyền và deep link hiện hành. Candidate lookup phải lọc scope ở server; không dùng account-list endpoint global-only làm nguồn chung cho mọi role.
 - Database: forward-only Web Push schema/RPC và cập nhật `repair_request_create` có giữ nguyên enqueue ZBS. Bắt buộc static + Oracle baseline-forward PASS cùng exact commit trước live review; live write cần quyền riêng qua Supabase MCP.
 - Oracle: artifact Go/Docker riêng, secrets/health/rollout runbook; deployment đích là Oracle VM, không phải workspace Codex này.
 - Related change: [ZBS phone notifications](../add-zalo-repair-request-zbs-phone-notifications/proposal.md). Không tick hoặc sửa tasks của change ZBS.

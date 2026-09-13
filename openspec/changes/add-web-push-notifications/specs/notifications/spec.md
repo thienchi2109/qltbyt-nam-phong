@@ -17,13 +17,19 @@ Hệ thống SHALL thêm Web Push cho mọi `repair_request_created`, bảo toà
 
 ### Requirement: Tenant Scoped Account Configuration
 
-Hệ thống SHALL cung cấp cấu hình username phân cách bằng dấu phẩy theo đơn vị; global/admin được chọn đơn vị, to_qltb chỉ cấu hình đơn vị được phép quản lý. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
+Hệ thống SHALL cung cấp searchable multi-select account hiện hữu theo đơn vị; global/admin được chọn đơn vị, to_qltb chỉ cấu hình đơn vị được phép quản lý. Option SHALL hiển thị `full_name` và `username`, hỗ trợ chọn/bỏ chọn bằng chuột hoặc bàn phím và trạng thái loading/error/empty. Candidate SHALL chỉ đến từ server-authorized scope. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
 
 #### Scenario: Valid list
 
-- **WHEN** người có quyền lưu danh sách username hợp lệ
-- **THEN** server trim, loại trùng, resolve username theo quy tắc hiện hành và lưu từng user ID ổn định
+- **WHEN** người có quyền tìm và chọn danh sách account hợp lệ
+- **THEN** UI giữ selected account identity để hiển thị, adapter gửi username serialization theo contract v1, server trim, loại trùng, resolve username theo quy tắc hiện hành và lưu từng user ID ổn định
 - **AND** danh sách rỗng tắt recipient Web Push của đơn vị
+
+#### Scenario: Candidate picker states
+
+- **WHEN** candidate list đang tải, tải lỗi hoặc không có account trong scope
+- **THEN** UI hiển thị trạng thái tương ứng, không cho lưu recipient ngoài scope và không làm mất selection hiện tại do lỗi tải lại
+- **AND** lỗi lưu vẫn atomic, không lưu một phần
 
 #### Scenario: Invalid or unauthorized list
 

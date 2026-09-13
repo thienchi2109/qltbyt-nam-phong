@@ -66,15 +66,39 @@
 
 ## Phase 5 - UI cấu hình, opt-in và service worker
 
-**Dependency:** 3+4, gồm public key/version test được Phase 4 cung cấp; không cần Go chạy. **Boundary:** QLTBYT UI/browser lifecycle và tests; không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold.
+**Dependency:** 3+4, gồm public key/version test được Phase 4 cung cấp; không cần Go chạy. **Boundary:** QLTBYT UI/browser lifecycle và tests; không Go/Oracle deploy, SQL migration hoặc live write. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold. Mỗi chunk là một điểm dừng review; không tự chuyển chunk kế tiếp.
 
-- [ ] 5.1 Thêm UI cấu hình theo đơn vị cho global/admin/to_qltb, comma-separated username list, atomic errors và trạng thái không có recipient.
+### Chunk 1/5 - Authorized account picker
+
+- [ ] 5.1 Thêm UI cấu hình theo đơn vị cho `global/admin/to_qltb` bằng searchable multi-select account hiện hữu trong scope server-authorized; option hiển thị `full_name` + `username`, chọn/bỏ chọn bằng chuột hoặc bàn phím, có loading/error/empty states, giữ selection khi reload lỗi và lưu atomic. UI dùng adapter giữ identity để hiển thị nhưng serialize `username` theo PUT contract v1; không dùng trực tiếp `user_list_for_admin` hoặc `don_vi_user_hierarchy` làm candidate source chung.
+- **Acceptance/tests:** chứng minh đúng scope từng role, tìm theo tên/username, remove selection, keyboard/focus/accessible labels, empty/loading/error và invalid/partial-save rejection.
+- **Stop/review:** nếu chưa có server-authenticated candidate adapter trả `{user_id, username, full_name}` theo scope, dừng trước runtime UI và báo backend/API dependency; không thêm RPC/SQL trong chunk này.
+
+### Chunk 2/5 - Voluntary opt-in
+
 - [ ] 5.2 Thêm bật/tắt thông báo tự nguyện trong app, preview nội dung màn hình khóa, permission/unsupported/blocked states và hướng dẫn Home Screen iOS/iPadOS; dùng public key/version từ Phase 4 và hiển thị yêu cầu đăng ký lại khi key version thay đổi.
-- [ ] 5.3 Tái sử dụng public/manifest.json, metadata src/app/layout.tsx, Serwist next.config.ts/src/sw.ts và registration /sw.js trong pwa-install-prompt; kiểm kê/bổ sung icons/start_url/scope/display standalone/HTTPS để cài Home Screen được, không đăng ký worker thứ hai cùng scope; không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
-- [ ] 5.4 Gắn revoke vào disable/logout/account switch; test offline cleanup không chặn logout vô hạn, multi-browser độc lập và không tự đổi owner.
-- [ ] 5.5 Chạy TS gates, user-event tests và browser checks có fake push; registration mặc định tắt, chưa production send.
+- **Acceptance/tests:** chỉ gọi permission/subscription từ user gesture; denied/unsupported không prompt lặp, app vẫn dùng được, key mismatch yêu cầu resubscribe và không gửi identity do client tự khai.
+- **Stop/review:** giữ registration mặc định tắt, không cần Go/provider/live send; dừng để review sau focused user-event tests.
 
-**Exit / rollback:** UI/worker không phụ thuộc Firebase, không đổi ZBS. Tắt registration UI nhưng giữ revoke; rollback worker theo version đã kiểm thử.
+### Chunk 3/5 - Existing PWA/service worker
+
+- [ ] 5.3 Tái sử dụng `public/manifest.json`, metadata `src/app/layout.tsx`, Serwist `next.config.ts`/`src/sw.ts` và registration `/sw.js` trong `pwa-install-prompt`; kiểm kê/bổ sung icons/start_url/scope/display standalone/HTTPS để cài Home Screen, không đăng ký worker thứ hai cùng scope, không thêm offline/auth-data cache. Thêm service worker push/click, safe payload rendering, Unicode-safe truncation/tag, foreground không double-display và deep link qua login/quyền.
+- **Acceptance/tests:** kiểm tra cùng worker/scope, payload text-only đúng budget/tag, foreground/background không double-display, click giữ same-origin và quyền hiện tại.
+- **Stop/review:** không redesign offline cache hoặc sửa provider/Go; dừng sau worker-focused tests và source review.
+
+### Chunk 4/5 - Revoke and account lifecycle
+
+- [ ] 5.4 Gắn revoke vào disable/logout/account switch; test offline cleanup không chặn logout vô hạn, multi-browser độc lập và không tự đổi owner.
+- **Acceptance/tests:** reachable backend revoke đúng subscription/revision; offline logout local cleanup + retry bounded; switch account không tái sử dụng owner cũ; một browser lỗi không làm mất browser khác.
+- **Stop/review:** không claim remote revoke/provider withdrawal khi offline; dừng sau lifecycle user-event tests.
+
+### Chunk 5/5 - Integrated verification
+
+- [ ] 5.5 Chạy TS gates, user-event tests cho cả bốn chunk và browser checks có fake push; đối chiếu config/opt-in/worker/revoke, registration mặc định tắt, chưa production send.
+- **Acceptance/tests:** format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused tests -> React Doctor; báo rõ các platform checks chưa chạy và không tick Phase 5 nếu thiếu evidence.
+- **Stop/review:** chỉ handoff sau khi bốn chunk trước đã được review; không chuyển sang Phase 6/7, không live apply/deploy và không sửa #1000/gate debt.
+
+**Exit / rollback:** UI/worker không phụ thuộc Firebase, không đổi ZBS. Tắt registration UI nhưng giữ revoke; rollback worker theo version đã kiểm thử. Historical tasks 2.4/3.4/4.5, #1000, static/baseline-forward FAILED và mọi controls mặc định false vẫn giữ nguyên.
 
 ## Phase 6 - Go worker và Docker artifact, chưa production send
 

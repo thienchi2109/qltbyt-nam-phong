@@ -37,6 +37,12 @@ Browser API (Phase 4):
 
 Các route private yêu cầu NextAuth server session, same-origin cho mutation và CSRF protection của route (không mặc định NextAuth bảo vệ custom route). Không nhận user_id/role/scope client cho registration. `Cache-Control: no-store` cho tất cả API kể cả public-key để tránh key/flag cũ. Config split dấu phẩy, trim, bỏ token rỗng, lowercase như `authenticate_user_dual_mode`, dedupe rồi resolve toàn bộ theo `lower(nhan_vien.username)`; ambiguity nhiều user cùng normalized username cũng reject. Chuỗi rỗng xóa config; max 100 recipients/tenant, input 8 KiB, username tối đa 256 UTF-8 bytes. Lỗi trả chung `invalid_recipients`, không tiết lộ tài khoản ngoài scope. Register lặp cùng owner/endpoint/keys/version đang active trả cùng ID/revision, không tạo delivery mới; thay keys/version hoặc re-enable tăng revision và hủy pending revision cũ. Revoke với revision cũ trả conflict, không thu hồi nhầm registration mới; không lộ subscription của owner khác.
 
+### Phase 5 candidate picker clarification (wire unchanged)
+
+Phase 5 có thể hiển thị option `{user_id, username, full_name}` và giữ selected identity ở UI, nhưng mutation vẫn serialize thành `usernames: "a, b"` theo API v1 ở trên. Picker có thể gửi `don_vi_id` được chọn như một target không tin cậy; server phải derive identity/role/scope từ session và authorize target, không chấp nhận role/tenant/identity do client khai. Candidate list phải đi qua server-authenticated adapter/RPC có search và pagination/limit bounded, chỉ trả minimal fields (`user_id`, `username`, `full_name`) trong scope hiện hành; browser không đọc `nhan_vien` trực tiếp.
+
+`user_list_for_admin()` hiện là global/admin-only, không nhận đơn vị; `don_vi_user_hierarchy(p_q, p_only_active)` là global-only và trả user theo `current_don_vi`. Hai nguồn hiện hữu không phải candidate API dùng chung cho Phase 5, đặc biệt không đủ cho `to_qltb`. Exact adapter/API/RPC là implementation dependency cần chốt trước runtime; mọi thay đổi backend/API/RPC phải được báo cáo và phê duyệt riêng trước implementation. Không thay đổi wire v1, grants, SQL migration hoặc historical gate status trong clarification này.
+
 ## 2. Worker wire v1 và chống replay
 
 Chỉ `POST /api/internal/web-push/v1/claim` và `POST /api/internal/web-push/v1/report`, HTTPS origin cấu hình cố định, không query/trailing slash/redirect. Content-Type `application/json`, UTF-8, không compression. Response JSON dùng version 1; lỗi `{version:1,error:{code,retry_after_seconds?}}`, không stack/SQL/provider raw body.
