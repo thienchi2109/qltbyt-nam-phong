@@ -10,7 +10,7 @@
 
 - Mọi checkbox để trống cho đến khi có bằng chứng. Phase 1 là contract/baseline; hoàn thành artifacts Phase 1 không có nghĩa các phase runtime/deploy đã được thực hiện.
 - Mỗi phase là một đơn vị review và landing riêng. Chỉ thực hiện phase được maintainer giao, báo kết quả rồi dừng; không tự nhảy sang phase sau hoặc live deploy.
-- Dependency: 1 -> 2; 3 và 4 cần 2; 5 cần 3+4 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
+- Phụ thuộc: 1 -> 2; 3 và 4 cần 2; Phase 4.5 đã hoạch định cần behavior hiện có của Phase 2–4 và phải đi trước 5; 5 cần 3+4+4.5 và public key/version test từ 4; 6 cần 1 và contract 4; 7 cần 5+6; 8 cần 7. Không gộp DB + UI + worker + production trong một PR.
 - Phase có SQL phải giữ migration immutable, chạy static và Oracle baseline-forward trên disposable DB cùng exact landed commit. Report hai lane riêng; live apply cần quyền cụ thể qua Supabase MCP.
 - Phase TS/TSX chạy format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused tests -> React Doctor. Semantic reuse check khi thêm logic dùng chung; không full-suite/full-dedupe mặc định.
 - Phase Go có runnable checks cho claim/report errors, provider responses, crash recovery, SSRF và payload; chọn thư viện Web Push bảo trì tốt thay vì tự viết crypto.
@@ -64,15 +64,28 @@
 
 **Exit / rollback:** fake worker chạy contract trên môi trường disposable; không gửi provider. Tắt controls/rollback server release tương thích schema additive.
 
+## Phase 4.5 - Candidate và protected config backend/API (đã hoạch định, tách biệt historical task 4.5)
+
+**Phụ thuộc:** behavior và contract review của Phase 2–4. **Ranh giới:** forward-only migration, RPC/API adapter, authorization/eligibility tests và exact-commit DB evidence; không làm UI Phase 5, không sửa applied migration, không live apply mặc định.
+
+- [ ] 4.5.1 Tạo forward-only additive migration/RPC support cho bounded candidate search/pagination và config metadata: entry stale/ineligible hiện có, protected self-membership, `status`, `protected`, `editable`; không sửa/xóa migration đã applied.
+- [ ] 4.5.2 Enforce caller scope cho candidate/config get/set: `admin/global` target bất kỳ đơn vị nào nhưng chỉ add normal `to_qltb` có effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` self-action add/remove ở bất kỳ target tạo protected entry; caller khác chỉ read-only và atomic save phải preserve entry.
+- [ ] 4.5.3 Thêm server-authenticated API adapter với `don_vi_id` không tin cậy, search/limit/cursor có giới hạn, field candidate tối thiểu và `self_action` tường minh; giữ browser config amendment nhất quán, worker wire v1 không đổi. Config GET trả toàn bộ entry hiện có để flag và explicit remove; candidate lookup loại các entry invalid/stale khỏi candidate mới.
+- [ ] 4.5.4 Đồng bộ eligibility của configuration, enqueue và claim/retry theo cùng rule role/effective-unit của recipient thường cùng ngoại lệ protected self; giữ các gate quyền đọc request tách biệt và nguyên trạng, để configuration không cấp quyền truy cập request. Config actual rỗng thì không push; protected self-entry còn lại vẫn nhận.
+- [ ] 4.5.5 Thêm security/regression tests cho isolation theo đơn vị, target scope của caller, bảo vệ entry của admin/global khác, hiển thị và skip stale/ineligible, từ chối atomic khi giữ normal invalid, explicit removal được phép, ownership của self-action, giữ protected entry khi `self_action=none`, full-config load trước Save, search/reload không làm mất stale selection, empty-list behavior và fan-out event-A chỉ tới recipient A.
+- [ ] 4.5.6 Chạy static và Oracle baseline-forward trên cùng exact landed commit, giữ evidence/digest riêng và dừng trước live review; mọi live apply vẫn cần Supabase MCP authorization riêng.
+
+**Exit / rollback:** release additive với controls false; rollback bằng cách tắt candidate/config amendment entrypoint nhưng giữ nguyên entry hiện có. Phase hoạch định này không tick hoặc diễn giải lại historical task 4.5, tasks 2.4/3.4, #1000 hoặc evidence FAILED gate trước đó.
+
 ## Phase 5 - UI cấu hình, opt-in và service worker
 
-**Dependency:** 3+4, gồm public key/version test được Phase 4 cung cấp; không cần Go chạy. **Boundary:** QLTBYT UI/browser lifecycle và tests; không Go/Oracle deploy, SQL migration hoặc live write. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold. Mỗi chunk là một điểm dừng review; không tự chuyển chunk kế tiếp.
+**Phụ thuộc:** 3+4+Phase 4.5 đã hoạch định, gồm public key/version test được Phase 4 cung cấp và candidate/config contract được Phase 4.5 verify; không cần Go chạy. **Ranh giới:** chỉ frontend/browser lifecycle và tests; không backend/API/RPC/SQL migration/live write, không Go/Oracle deploy. Tái sử dụng RBAC, signout và repair deep link hiện có; không khôi phục Firebase scaffold. Mỗi chunk là một điểm dừng review; không tự chuyển chunk kế tiếp.
 
 ### Chunk 1/5 - Authorized account picker
 
-- [ ] 5.1 Thêm UI cấu hình theo đơn vị cho `global/admin/to_qltb` bằng searchable multi-select account hiện hữu trong scope server-authorized; option hiển thị `full_name` + `username`, chọn/bỏ chọn bằng chuột hoặc bàn phím, có loading/error/empty states, giữ selection khi reload lỗi và lưu atomic. UI dùng adapter giữ identity để hiển thị nhưng serialize `username` theo PUT contract v1; không dùng trực tiếp `user_list_for_admin` hoặc `don_vi_user_hierarchy` làm candidate source chung.
-- **Acceptance/tests:** chứng minh đúng scope từng role, tìm theo tên/username, remove selection, keyboard/focus/accessible labels, empty/loading/error và invalid/partial-save rejection.
-- **Stop/review:** nếu chưa có server-authenticated candidate adapter trả `{user_id, username, full_name}` theo scope, dừng trước runtime UI và báo backend/API dependency; không thêm RPC/SQL trong chunk này.
+- [ ] 5.1 Thêm UI cấu hình theo đơn vị cho `global/admin/to_qltb` bằng searchable multi-select account hiện hữu trong Phase 4.5 server-authorized scope; option hiển thị `full_name` + `username`, chọn/bỏ chọn bằng chuột hoặc bàn phím, có loading/error/empty states, giữ selection đầy đủ từ config GET khi search/reload lỗi và lưu atomic. UI dùng adapter giữ identity để hiển thị; stale/ineligible normal entry có status flag và caller có quyền được explicit remove, còn protected self-entry của caller khác chỉ read-only; chỉ Save sau khi tải đủ full config và hỗ trợ `self_action`; không gọi account-list RPC trực tiếp.
+- **Acceptance/tests:** chứng minh đúng scope từng role, tìm theo tên/username, explicit remove stale normal entry, search/reload không mất stale selection, không Save khi full config chưa tải đủ, keyboard/focus/accessible labels, empty/loading/error và invalid/partial-save rejection.
+- **Stop/review:** nếu Phase 4.5 candidate/config backend chưa verified, dừng trước runtime UI và báo dependency; không thêm RPC/SQL/backend trong Phase 5.
 
 ### Chunk 2/5 - Voluntary opt-in
 

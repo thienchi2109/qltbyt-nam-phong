@@ -17,19 +17,31 @@ Hệ thống SHALL thêm Web Push cho mọi `repair_request_created`, bảo toà
 
 ### Requirement: Tenant Scoped Account Configuration
 
-Hệ thống SHALL cung cấp searchable multi-select account hiện hữu theo đơn vị; global/admin được chọn đơn vị, to_qltb chỉ cấu hình đơn vị được phép quản lý. Option SHALL hiển thị `full_name` và `username`, hỗ trợ chọn/bỏ chọn bằng chuột hoặc bàn phím và trạng thái loading/error/empty. Candidate SHALL chỉ đến từ server-authorized scope. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
+Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị và cung cấp searchable multi-select account hiện hữu theo caller scope. `admin/global` được target bất kỳ đơn vị nào nhưng chỉ thêm recipient thường có role `to_qltb` và effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` MAY tự add/remove protected self-enrollment ở bất kỳ đơn vị nào; caller khác SHALL thấy read-only và backend SHALL preserve entry đó trong atomic save. Option SHALL hiển thị `full_name` và `username`, hỗ trợ chọn/bỏ chọn bằng chuột hoặc bàn phím và trạng thái loading/error/empty. Candidate SHALL chỉ đến từ server-authorized scope. Recipient SHALL active và đủ quyền xem yêu cầu tương ứng; cấu hình SHALL NOT cấp thêm quyền.
 
 #### Scenario: Valid list
 
 - **WHEN** người có quyền tìm và chọn danh sách account hợp lệ
-- **THEN** UI giữ selected account identity để hiển thị, adapter gửi username serialization theo contract v1, server trim, loại trùng, resolve username theo quy tắc hiện hành và lưu từng user ID ổn định
-- **AND** danh sách rỗng tắt recipient Web Push của đơn vị
+- **THEN** UI giữ selected account identity để hiển thị, adapter gửi username serialization theo browser config contract, server trim, loại trùng, resolve username theo quy tắc hiện hành và lưu từng user ID ổn định
+- **AND** danh sách actual rỗng tắt recipient Web Push của đơn vị; protected self-enrollment còn lại vẫn là recipient
 
 #### Scenario: Candidate picker states
 
 - **WHEN** candidate list đang tải, tải lỗi hoặc không có account trong scope
-- **THEN** UI hiển thị trạng thái tương ứng, không cho lưu recipient ngoài scope và không làm mất selection hiện tại do lỗi tải lại
+- **THEN** UI hiển thị trạng thái tương ứng, không cho lưu recipient ngoài scope và không làm mất selection hiện tại, kể cả stale entry, do lỗi tải lại
 - **AND** lỗi lưu vẫn atomic, không lưu một phần
+
+#### Scenario: Scope target của caller và protected self
+
+- **WHEN** `admin/global` chọn target bất kỳ hoặc `to_qltb` chọn target khác effective unit `coalesce(current_don_vi, don_vi)` của chính mình
+- **THEN** server authorize target từ session và từ chối caller vượt scope; client không tự khai role, identity hoặc quyền
+- **AND** `admin/global` tự add/remove protected self-enrollment bằng explicit self-action, còn caller khác không được sửa entry đó
+
+#### Scenario: Recipient stale hoặc không còn đủ điều kiện
+
+- **WHEN** config GET gặp recipient đã stale/ineligible hoặc không còn là normal `to_qltb` của effective unit
+- **THEN** GET vẫn trả entry với trạng thái để UI flag; candidate lookup không trả entry đó như candidate mới; enqueue/claim bỏ qua và không tự chuyển đơn vị
+- **AND** save từ chối nếu request thêm/giữ lựa chọn normal invalid, nhưng caller có quyền được explicit remove stale normal entry; protected self entry của caller khác chỉ read-only, mọi protected entry được giữ nếu không có self-action hợp lệ và invalid protected entry không chặn normal save
 
 #### Scenario: Invalid or unauthorized list
 
