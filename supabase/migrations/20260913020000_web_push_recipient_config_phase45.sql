@@ -206,11 +206,11 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $function$
 BEGIN
-  RETURN public.web_push_recipient_config_set(p_don_vi, p_usernames, 'none');
+  RETURN public.web_push_recipient_config_set_with_self_action(p_don_vi, p_usernames, 'none');
 END;
 $function$;
 
-CREATE FUNCTION public.web_push_recipient_config_set(
+CREATE FUNCTION public.web_push_recipient_config_set_with_self_action(
   p_don_vi BIGINT,
   p_usernames TEXT[],
   p_self_action TEXT
@@ -347,10 +347,10 @@ REVOKE ALL ON FUNCTION public.web_push_recipient_config_get(BIGINT)
   FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.web_push_recipient_config_set(bigint,text[])
   FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON FUNCTION public.web_push_recipient_config_set(bigint,text[],text)
+REVOKE ALL ON FUNCTION public.web_push_recipient_config_set_with_self_action(bigint,text[],text)
   FROM PUBLIC, anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_get(BIGINT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_set(BIGINT, TEXT[]) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_set(bigint,text[],text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_set_with_self_action(bigint,text[],text) TO authenticated;
 
 COMMIT;

@@ -52,7 +52,7 @@ export async function PUT(req: NextRequest) {
     if (isUnsupportedVersion(value)) throw new WebPushApiError(400, "unsupported_version")
     if (!parsed) throw new WebPushApiError(400, "invalid_request")
     const response = await callSessionRpc(
-      "web_push_recipient_config_set",
+      "web_push_recipient_config_set_with_self_action",
       { p_don_vi: parsed.donViId, p_usernames: parsed.usernames, p_self_action: parsed.selfAction },
       user
     )

@@ -24,7 +24,7 @@ describe("Web Push Phase 4.5 migration", () => {
       "REVOKE ALL ON FUNCTION public.web_push_recipient_config_set(bigint,text[])"
     )
     expect(source).toContain(
-      "GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_set(bigint,text[],text)"
+      "GRANT EXECUTE ON FUNCTION public.web_push_recipient_config_set_with_self_action(bigint,text[],text)"
     )
   })
 
