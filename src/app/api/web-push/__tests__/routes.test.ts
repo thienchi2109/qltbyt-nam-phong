@@ -72,6 +72,48 @@ describe("web push API routes", () => {
     expect(await response.json()).toEqual({ version: 1, don_vi_id: "7", recipients: [] })
   })
 
+  it("returns full config metadata for stale and protected entries", async () => {
+    mocks.fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          version: 1,
+          don_vi_id: "7",
+          recipients: [
+            {
+              user_id: "123",
+              username: "stale-user",
+              full_name: "Stale User",
+              status: "ineligible",
+              protected: false,
+              editable: true,
+            },
+            {
+              user_id: "456",
+              username: "admin-user",
+              full_name: "Admin User",
+              status: "eligible",
+              protected: true,
+              editable: false,
+            },
+          ],
+        }),
+        { headers: { "content-type": "application/json" } }
+      )
+    )
+
+    const response = await getConfig(request("https://app.example/api/web-push/config?don_vi_id=7"))
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      version: 1,
+      don_vi_id: "7",
+      recipients: expect.arrayContaining([
+        expect.objectContaining({ status: "ineligible", protected: false, editable: true }),
+        expect.objectContaining({ status: "eligible", protected: true, editable: false }),
+      ]),
+    })
+  })
+
   it("rejects cross-origin config mutations before calling Supabase", async () => {
     const response = await putConfig(
       request("https://app.example/api/web-push/config", {
@@ -97,6 +139,30 @@ describe("web push API routes", () => {
     expect(response.status).toBe(400)
     expect(await response.json()).toEqual({ version: 1, error: { code: "unsupported_version" } })
     expect(mocks.fetch).not.toHaveBeenCalled()
+  })
+
+  it("forwards an explicit protected self action to the amended config RPC", async () => {
+    mocks.fetch.mockResolvedValue(
+      new Response(JSON.stringify({ version: 1, don_vi_id: "7", recipients: [] }), {
+        headers: { "content-type": "application/json" },
+      })
+    )
+
+    const response = await putConfig(
+      request("https://app.example/api/web-push/config", {
+        method: "PUT",
+        headers: { "content-type": "application/json", origin: "https://app.example" },
+        body: JSON.stringify({ version: 1, don_vi_id: "7", usernames: "", self_action: "add" }),
+      })
+    )
+
+    expect(response.status).toBe(200)
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "https://supabase.example/rest/v1/rpc/web_push_recipient_config_set",
+      expect.objectContaining({
+        body: expect.stringContaining('"p_self_action":"add"'),
+      })
+    )
   })
 
   it("keeps registration disabled while leaving revoke available", async () => {

@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest) {
     if (!parsed) throw new WebPushApiError(400, "invalid_request")
     const response = await callSessionRpc(
       "web_push_recipient_config_set",
-      { p_don_vi: parsed.donViId, p_usernames: parsed.usernames },
+      { p_don_vi: parsed.donViId, p_usernames: parsed.usernames, p_self_action: parsed.selfAction },
       user
     )
     if (!validateConfigResponse(response)) throw new WebPushApiError(503, "unavailable", 60)

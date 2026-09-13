@@ -1,9 +1,9 @@
+import { isRecord, exactKeys, versionIsOne, parsePositiveBigint } from "./validation-common"
+export { parsePositiveBigint } from "./validation-common"
+export { parseConfigPutRequest, validateConfigResponse } from "./config-validation"
+export type { ConfigPutRequest } from "./config-validation"
 import { parseStrictJson, validateSubscriptionInput, type WebPushSubscriptionInput } from "./wire"
 
-export type ConfigPutRequest = {
-  donViId: string
-  usernames: string[]
-}
 export type SubscriptionRegisterRequest = {
   vapidKeyVersion: string
   subscription: WebPushSubscriptionInput
@@ -45,11 +45,9 @@ export type ReportRequest = {
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
-const DECIMAL = /^[1-9][0-9]*$/
 const WORKER_ID = /^[a-z0-9-]{1,64}$/
 const VAPID_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 const VAPID_FINGERPRINT = /^sha256:[0-9a-f]{64}$/
-const MAX_BIGINT = BigInt("9223372036854775807")
 const OUTCOMES = new Set<ReportOutcome>([
   "accepted",
   "endpoint_gone",
@@ -61,33 +59,6 @@ const OUTCOMES = new Set<ReportOutcome>([
   "unsafe_endpoint",
 ])
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-}
-
-function exactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
-  const keys = Object.keys(value)
-  return (
-    keys.length === expected.length &&
-    expected.every((key) => Object.prototype.hasOwnProperty.call(value, key))
-  )
-}
-
-function versionIsOne(value: unknown): value is 1 {
-  return typeof value === "number" && Number.isInteger(value) && value === 1
-}
-
-/** Parses a positive integer value into its canonical decimal string. */
-export function parsePositiveBigint(value: unknown): string | null {
-  if (typeof value !== "string" || !DECIMAL.test(value)) return null
-  try {
-    const parsed = BigInt(value)
-    return parsed <= MAX_BIGINT ? value : null
-  } catch {
-    return null
-  }
-}
 
 /** Detects a numeric protocol version other than version one. */
 export function isUnsupportedVersion(value: unknown): boolean {
@@ -102,39 +73,6 @@ export function isUnsupportedVersion(value: unknown): boolean {
 /** Validates a unit identifier from a query string. */
 export function parseDonViId(value: string | null): string | null {
   return parsePositiveBigint(value)
-}
-
-/** Validates a recipient configuration mutation request. */
-export function parseConfigPutRequest(value: unknown): ConfigPutRequest | null {
-  if (
-    !isRecord(value) ||
-    !exactKeys(value, ["version", "don_vi_id", "usernames"]) ||
-    !versionIsOne(value.version)
-  ) {
-    return null
-  }
-  const donViId = parsePositiveBigint(value.don_vi_id)
-  if (
-    !donViId ||
-    typeof value.usernames !== "string" ||
-    new TextEncoder().encode(value.usernames).byteLength > 8192
-  ) {
-    return null
-  }
-  const inputNames = [
-    ...new Set(
-      value.usernames
-        .split(",")
-        .map((name) => name.trim())
-        .filter(Boolean)
-    ),
-  ]
-  if (inputNames.some((name) => new TextEncoder().encode(name).byteLength > 256)) return null
-  const names = [...new Set(inputNames.map((name) => name.toLowerCase()))]
-  if (names.length > 100 || names.some((name) => new TextEncoder().encode(name).byteLength > 256)) {
-    return null
-  }
-  return { donViId, usernames: names }
 }
 
 /** Validates a browser subscription registration request. */
@@ -387,34 +325,6 @@ export function validateReportResponse(value: unknown): Record<string, unknown> 
         typeof item.delivery_id !== "string" ||
         !UUID.test(item.delivery_id) ||
         (item.result !== "applied" && item.result !== "duplicate" && item.result !== "stale")
-    )
-  ) {
-    return null
-  }
-  return value
-}
-
-/** Validates and narrows a recipient configuration response envelope. */
-export function validateConfigResponse(value: unknown): Record<string, unknown> | null {
-  if (
-    !isRecord(value) ||
-    !exactKeys(value, ["version", "don_vi_id", "recipients"]) ||
-    value.version !== 1
-  )
-    return null
-  if (
-    !parsePositiveBigint(value.don_vi_id) ||
-    !Array.isArray(value.recipients) ||
-    value.recipients.length > 100
-  )
-    return null
-  if (
-    value.recipients.some(
-      (recipient) =>
-        !isRecord(recipient) ||
-        !exactKeys(recipient, ["user_id", "username"]) ||
-        !parsePositiveBigint(recipient.user_id) ||
-        typeof recipient.username !== "string"
     )
   ) {
     return null
