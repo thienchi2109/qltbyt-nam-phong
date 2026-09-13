@@ -358,14 +358,8 @@ BEGIN
 END;
 $function$;
 
-REVOKE ALL ON FUNCTION public.web_push_subscription_register(jsonb, text)
-  FROM PUBLIC, anon, authenticated, service_role;
-REVOKE ALL ON FUNCTION public.web_push_worker_nonce_consume(text, text)
-  FROM PUBLIC, anon, authenticated, service_role;
 REVOKE ALL ON FUNCTION public.web_push_delivery_claim(jsonb)
   FROM PUBLIC, anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.web_push_subscription_register(jsonb, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.web_push_worker_nonce_consume(text, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.web_push_delivery_claim(jsonb) TO service_role;
 
 COMMIT;
