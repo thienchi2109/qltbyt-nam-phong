@@ -39,6 +39,10 @@ Fixture retry ban đầu đặt lease hết hạn trước `leased_at`, vi phạ
 
 ## Trạng thái Quality Gate
 
+Theo chỉ đạo maintainer, DB Quality Gate được waive cho lần closeout này. Raw
+static/baseline-forward `FAILED` vẫn được giữ nguyên làm giới hạn kiểm chứng;
+việc waive không phải là chứng nhận hai lane PASS và không bao gồm live apply.
+
 Static checkpoint `9513ccab`: INCOMPLETE, digest
 `fc710729c00100c1bc36711928fddc48ea885bf43c88f748885329ea04e9b945`, report
 `/root/Oracle/web-push-phase45-evidence/9513ccab-static.json`.
