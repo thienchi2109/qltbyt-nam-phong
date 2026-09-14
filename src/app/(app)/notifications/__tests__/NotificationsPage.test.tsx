@@ -67,7 +67,6 @@ function mount() {
 }
 const saveButton = () => screen.getByRole("button", { name: "Lưu người nhận" })
 const aliceBox = () => screen.getByRole("checkbox", { name: "Alice Nguyen (alice)" })
-
 beforeEach(() => {
   vi.clearAllMocks()
   session()
@@ -120,7 +119,7 @@ describe("NotificationsPage recipient configuration", () => {
     })
     expect(
       mocks.fetch.mock.calls
-        .filter(([, init]) => !init?.method)
+        .filter(([url, init]) => !init?.method && /\/config|\/candidates/.test(String(url)))
         .every(([url]) => String(url).includes("don_vi_id=9"))
     ).toBe(true)
   })

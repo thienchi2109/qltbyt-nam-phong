@@ -1,6 +1,6 @@
 # Phase 5 - Evidence và handoff artifacts
 
-Ngày 2026-09-13. Phạm vi lượt này chỉ khảo sát và chỉnh tài liệu; chưa triển khai UI Phase 5.
+Ngày 2026-09-14. Chunk 5.3 đã có frontend diff trong worktree riêng; chưa landing/push.
 
 ## Baseline và phạm vi
 
@@ -28,13 +28,18 @@ Ngày 2026-09-13. Phạm vi lượt này chỉ khảo sát và chỉnh tài li�
 
 ## Evidence và giới hạn
 
-- Luna-max khảo sát/chỉnh artifacts; agent chính đọc diff và chạy độc lập `openspec validate add-web-push-notifications --strict` và `git diff --check`: PASS trước closeout.
+- Chunk 5.3 implementation: Web Push opt-in UI trên `/notifications`, permission/user-gesture states, public-key/version handling, worker reuse, lock-screen preview và collapsed iOS/iPadOS Home Screen guidance. Không đổi backend/API/RPC/SQL.
+- TDD evidence: RED 7/7 trên `origin/main` (`/tmp/web-push-53-red.log`, SHA-256 `5882d80fa000bf9e6e6e4d769aaafddb11a9efa43128f86ec14985661305fde3`); GREEN 31/31 trước review, sau regression additions focused suite 32/32 PASS.
+- Dynamic review findings P1 stale VAPID artifact và P2 public-key preflight dead-end đã được sửa và có regression tests.
+- Independent staged verification: format, no-explicit-any, dedupe, typecheck PASS; focused 32/32 PASS; diff-only React Doctor 84/100 with 3 findings on new opt-in component. These findings remain an explicit review concern and must be resolved or accepted before landing.
+
+- Agent chính đã review động diff, đọc toàn bộ file mới, và chạy độc lập `git diff --check`, focused tests và staged gates.
 - Dynamic reviewer báo 5 file/21 focused user-event tests hiện có PASS, exit 0, bao phủ shell/bell/tenant/users UI. Đây là baseline UI hiện có, không chứng minh Phase 5 đã chạy.
 - Browser smoke bằng Chrome/agent-browser trên Next local gặp redirect `/api/auth/error?error=Configuration`; authenticated DOM interaction chưa kiểm chứng. Server tạm đã dừng. Không claim browser Phase 5 PASS.
 - Không chạy lại Phase 4.5 hoặc DB Gate; giữ nguyên kết quả lịch sử. Không live write, deploy, bật registration hay gửi push.
 
 ## Handoff tiếp theo
 
-Chỉ bắt đầu Chunk 5.1 khi maintainer giao triển khai; dùng quyết định placement đã chốt, giữ các chunk sau unchecked. Khóa hành vi bằng focused user-event tests, kiểm tra quyền truy cập route cho `to_qltb`, bảo toàn bell dialog và full-config selection. Chạy các TS/React gates theo repo khi có runtime diff. Browser auth limitation cần kiểm chứng lại khi môi trường authenticated sẵn sàng.
+Tiếp theo: xử lý 3 React Doctor findings của Chunk 5.3, chạy lại toàn bộ gates, rồi mới tick 5.3 và landing/push. Giữ 5.4/5.5 và Phase 4.5/DB Gate ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng.
 
 Maintainer đã yêu cầu commit và push bộ artifacts trên `main`; SHA landing và kết quả sync được báo trong phản hồi closeout, không suy diễn từ việc tạo tài liệu này.
