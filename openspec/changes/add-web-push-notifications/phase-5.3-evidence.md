@@ -7,7 +7,7 @@ Updated 2026-09-14 after dynamic diff review.
 - Frontend/UI only on authenticated `/notifications`.
 - Added browser Web Push opt-in with explicit user gesture, permission handling, public key/version consumption, lock-screen preview, and iPhone/iPad Home Screen guidance.
 - Reused the existing `/sw.js` registration through `navigator.serviceWorker.ready`; no second worker registration, identity payload, Go/provider call, API/RPC/SQL change, migration, or live operation.
-- `tasks.md` remains unchanged; Chunk 5.4 and later remain unchecked.
+- `tasks.md` marks only Chunk 5.3 complete; Chunk 5.4 and later remain unchecked; Chunk 5.4 and later remain unchecked.
 - Approved Stitch V2 direction: rounded primary panel, one current status, compact lock-screen preview, collapsed iOS guidance.
 
 ## Behavioral evidence
@@ -22,17 +22,17 @@ Updated 2026-09-14 after dynamic diff review.
 - `verify:no-explicit-any`: PASS
 - `verify:dedupe`: PASS (diff-only)
 - `typecheck`: PASS
-- `react-doctor`: diff-only 84/100 with 3 findings in the new opt-in component (fetch in effect, PushManager subscription cleanup heuristic, and control-flow complexity); full-repository baseline remains 49/100 with 296 existing findings.
+- `react-doctor`: diff-only 100/100, no findings on the 5 changed files after the state/data-fetch refactor; full-repository baseline remains 49/100 with 296 existing findings.
 - `openspec validate add-web-push-notifications --strict`: PASS
 
 Verification bundle: `/tmp/web-push-53-verification/manifest-v3.txt`, captured
 2026-09-14 14:16:25-14:16:54 UTC; every listed command exited 0. The final
 focused log is `/tmp/web-push-53-green.log` (SHA-256
 `93612aa26d1516c16da685f02c420084a15d9b40c36f522215fc3aa0e9c62dbf`) and
-reports 2 files / 31 tests PASS. The opt-in-only log is
+reports the earlier pre-refactor 2 files / 31 tests PASS. The opt-in-only log is
 `/tmp/web-push-53-green-opt-in.log` (SHA-256
 `e47040c9a7fafd7aa1e4a14787ffbff11bd43bdd749c7a62015a464ad4bb314d`) and
-reports 1 file / 7 tests PASS. The RED baseline log is
+reports the earlier pre-refactor 1 file / 7 tests PASS. The RED baseline log is
 `/tmp/web-push-53-red.log` (SHA-256
 `5882d80fa000bf9e6e6e4d769aaafddb11a9efa43128f86ec14985661305fde3`): the
 same new opt-in suite ran against `origin/main` and failed 7/7 because the
@@ -48,4 +48,4 @@ is the scoped PASS above; the full scan is retained as baseline context.
 
 - Browser-authenticated/platform matrix was not run; evidence covers DOM/user-event contracts only.
 - No live database operation, migration, provider delivery, or DB quality gate was run.
-- Dynamic review found and Luna addressed stale-key retry and initial public-key error dead-end; these are covered by the added regression tests.
+- Dynamic review found stale-key retry and initial public-key error dead-end; the implementation now refetches rotated key material and exposes preflight retry, covered by the 8-test opt-in suite. Final focused verification is 32/32 PASS and final diff-only React Doctor is 100/100.

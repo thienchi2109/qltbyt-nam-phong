@@ -31,7 +31,7 @@ Ngày 2026-09-14. Chunk 5.3 đã có frontend diff trong worktree riêng; chưa 
 - Chunk 5.3 implementation: Web Push opt-in UI trên `/notifications`, permission/user-gesture states, public-key/version handling, worker reuse, lock-screen preview và collapsed iOS/iPadOS Home Screen guidance. Không đổi backend/API/RPC/SQL.
 - TDD evidence: RED 7/7 trên `origin/main` (`/tmp/web-push-53-red.log`, SHA-256 `5882d80fa000bf9e6e6e4d769aaafddb11a9efa43128f86ec14985661305fde3`); GREEN 31/31 trước review, sau regression additions focused suite 32/32 PASS.
 - Dynamic review findings P1 stale VAPID artifact và P2 public-key preflight dead-end đã được sửa và có regression tests.
-- Independent staged verification: format, no-explicit-any, dedupe, typecheck PASS; focused 32/32 PASS; diff-only React Doctor 84/100 with 3 findings on new opt-in component. These findings remain an explicit review concern and must be resolved or accepted before landing.
+- Independent staged verification: format, no-explicit-any, dedupe, typecheck PASS; focused 32/32 PASS; opt-in 8/8 PASS; diff-only React Doctor final diff-only scan: 100/100, no findings on the 5 changed files. Full-repository baseline remains 49/100 with 296 pre-existing findings.
 
 - Agent chính đã review động diff, đọc toàn bộ file mới, và chạy độc lập `git diff --check`, focused tests và staged gates.
 - Dynamic reviewer báo 5 file/21 focused user-event tests hiện có PASS, exit 0, bao phủ shell/bell/tenant/users UI. Đây là baseline UI hiện có, không chứng minh Phase 5 đã chạy.
