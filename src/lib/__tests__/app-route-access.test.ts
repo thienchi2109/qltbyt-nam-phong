@@ -21,6 +21,7 @@ const DEVICE_QUOTA_ROUTES = [
 const AUTHENTICATED_ROUTES = [
   "/access-denied",
   "/dashboard",
+  "/notifications",
   "/equipment",
   "/forms/handover",
   "/maintenance",
@@ -101,7 +102,8 @@ describe("app route access policy", () => {
     for (const rule of APP_ROUTE_ACCESS_RULES) {
       if (
         rule.pathPrefix !== "/technical-configurations" &&
-        rule.pathPrefix !== ACCESS_DENIED_PATH
+        rule.pathPrefix !== ACCESS_DENIED_PATH &&
+        rule.pathPrefix !== "/notifications"
       ) {
         expect(canAccessAppRoute(rule.pathPrefix, "chuyen_gia")).toBe(false)
       }
@@ -127,6 +129,11 @@ describe("app route access policy", () => {
       }
     }
   )
+
+  it("keeps notification settings reachable for the technical configuration expert role", () => {
+    expect(canAccessAppRoute("/notifications", "chuyen_gia")).toBe(true)
+    expect(canAccessAppRoute("/notifications", " CHUYEN_GIA ")).toBe(true)
+  })
 
   it("matches descendants and trailing slashes without matching similar prefixes", () => {
     expect(getAppRouteAccessPolicy("/users/42")).toBe("global")

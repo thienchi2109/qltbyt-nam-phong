@@ -25,6 +25,7 @@ export const APP_ROUTE_ACCESS_RULES = [
   { pathPrefix: "/users", policy: "global" },
   { pathPrefix: "/device-quota", policy: "deviceQuota" },
   { pathPrefix: "/dashboard", policy: "authenticated" },
+  { pathPrefix: "/notifications", policy: "authenticated" },
   { pathPrefix: "/equipment", policy: "authenticated" },
   { pathPrefix: "/forms", policy: "authenticated" },
   { pathPrefix: "/maintenance", policy: "authenticated" },
@@ -64,7 +65,7 @@ export function canAccessAppRoute(pathname: string, role: string | null | undefi
     return canAccessTechnicalConfigurations(role)
   }
 
-  if (isTechnicalConfigurationExpertRole(role)) {
+  if (isTechnicalConfigurationExpertRole(role) && pathname !== "/notifications") {
     return pathname === ACCESS_DENIED_PATH
   }
 

@@ -40,13 +40,7 @@ describe("NotificationBellDialog", () => {
   it("includes maintenance count in the total badge and dialog content", async () => {
     const user = userEvent.setup()
 
-    render(
-      <NotificationBellDialog
-        repairCount={2}
-        transferCount={3}
-        maintenanceCount={4}
-      />
-    )
+    render(<NotificationBellDialog repairCount={2} transferCount={3} maintenanceCount={4} />)
 
     expect(screen.getByText("9")).toBeInTheDocument()
 
@@ -57,22 +51,17 @@ describe("NotificationBellDialog", () => {
 
     expect(maintenanceSection).not.toBeNull()
     expect(
-      within(maintenanceSection!).getByText("Có 4 kế hoạch bảo trì đã được duyệt đang chờ triển khai.")
+      within(maintenanceSection!).getByText(
+        "Có 4 kế hoạch bảo trì đã được duyệt đang chờ triển khai."
+      )
     ).toBeInTheDocument()
-    expect(within(maintenanceSection!).getByRole("link", { name: "Xem chi tiết →" })).toHaveAttribute(
-      "href",
-      "/maintenance"
-    )
+    expect(
+      within(maintenanceSection!).getByRole("link", { name: "Xem chi tiết →" })
+    ).toHaveAttribute("href", "/maintenance")
   })
 
   it("shows the exact total badge count above 9", () => {
-    render(
-      <NotificationBellDialog
-        repairCount={4}
-        transferCount={4}
-        maintenanceCount={4}
-      />
-    )
+    render(<NotificationBellDialog repairCount={4} transferCount={4} maintenanceCount={4} />)
 
     expect(screen.getByText("12")).toBeInTheDocument()
   })
@@ -80,13 +69,7 @@ describe("NotificationBellDialog", () => {
   it("closes the dialog after clicking a detail link", async () => {
     const user = userEvent.setup()
 
-    render(
-      <NotificationBellDialog
-        repairCount={2}
-        transferCount={0}
-        maintenanceCount={0}
-      />
-    )
+    render(<NotificationBellDialog repairCount={2} transferCount={0} maintenanceCount={0} />)
 
     await user.click(screen.getByRole("button", { name: /mở thông báo/i }))
     expect(screen.getByText("Thông báo và Cảnh báo (2)")).toBeInTheDocument()
@@ -95,6 +78,20 @@ describe("NotificationBellDialog", () => {
 
     await waitFor(() =>
       expect(screen.queryByText("Thông báo và Cảnh báo (2)")).not.toBeInTheDocument()
+    )
+  })
+
+  it("links the existing bell dialog to notification settings without changing its counts", async () => {
+    const user = userEvent.setup()
+
+    render(<NotificationBellDialog repairCount={2} />)
+
+    await user.click(screen.getByRole("button", { name: /mở thông báo/i }))
+
+    expect(screen.getByText("Thông báo và Cảnh báo (2)")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Cài đặt nhận thông báo" })).toHaveAttribute(
+      "href",
+      "/notifications"
     )
   })
 })

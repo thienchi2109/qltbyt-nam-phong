@@ -16,14 +16,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { AppNotificationBadge } from "@/components/app-notification-badge"
 
 interface NotificationBellDialogProps {
-  allRepairRequests?: Array<{ trang_thai?: string }>;
-  allTransferRequests?: Array<{ trang_thai?: string }>;
+  allRepairRequests?: Array<{ trang_thai?: string }>
+  allTransferRequests?: Array<{ trang_thai?: string }>
   // Optional direct counts (preferred). When provided, component won't re-count from arrays
-  repairCount?: number;
-  transferCount?: number;
-  maintenanceCount?: number;
+  repairCount?: number
+  transferCount?: number
+  maintenanceCount?: number
 }
 
+/** Displays current alerts and the notification settings link. */
 export function NotificationBellDialog({
   allRepairRequests,
   allTransferRequests,
@@ -31,32 +32,29 @@ export function NotificationBellDialog({
   transferCount: transferCountProp,
   maintenanceCount: maintenanceCountProp = 0,
 }: NotificationBellDialogProps) {
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false)
   const handleDetailClick = React.useCallback(() => {
     setIsOpen(false)
   }, [])
 
   // Support either direct counts or fallback to array-based counting for backward compatibility
   const repairCount =
-    typeof repairCountProp === 'number'
+    typeof repairCountProp === "number"
       ? repairCountProp
-      : (allRepairRequests?.filter((req) =>
-          req.trang_thai === 'Chờ xử lý' || req.trang_thai === 'Đã duyệt'
-        )?.length || 0);
-  
+      : allRepairRequests?.filter(
+          (req) => req.trang_thai === "Chờ xử lý" || req.trang_thai === "Đã duyệt"
+        )?.length || 0
+
   const transferCount =
-    typeof transferCountProp === 'number'
+    typeof transferCountProp === "number"
       ? transferCountProp
-      : (allTransferRequests?.filter((req) =>
-          req.trang_thai === 'cho_duyet' || req.trang_thai === 'da_duyet'
-        )?.length || 0);
+      : allTransferRequests?.filter(
+          (req) => req.trang_thai === "cho_duyet" || req.trang_thai === "da_duyet"
+        )?.length || 0
 
-  const maintenanceCount =
-    typeof maintenanceCountProp === "number" ? maintenanceCountProp : 0
+  const maintenanceCount = typeof maintenanceCountProp === "number" ? maintenanceCountProp : 0
 
-  const totalAlertsCount = repairCount + transferCount + maintenanceCount;
-
-  
+  const totalAlertsCount = repairCount + transferCount + maintenanceCount
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -77,6 +75,12 @@ export function NotificationBellDialog({
           <DialogDescription>Xem các cảnh báo quan trọng tại đây.</DialogDescription>
         </DialogHeader>
 
+        <Button variant="link" className="w-fit p-0" asChild>
+          <Link href="/notifications" onClick={handleDetailClick}>
+            Cài đặt nhận thông báo
+          </Link>
+        </Button>
+
         <ScrollArea className="flex-grow pr-6 -mr-6">
           {totalAlertsCount === 0 ? (
             <div className="py-10 text-center text-muted-foreground">
@@ -96,7 +100,9 @@ export function NotificationBellDialog({
                       Có {repairCount} yêu cầu sửa chữa đang chờ xử lý hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/repair-requests" onClick={handleDetailClick}>Xem chi tiết →</Link>
+                      <Link href="/repair-requests" onClick={handleDetailClick}>
+                        Xem chi tiết →
+                      </Link>
                     </Button>
                   </div>
                 </section>
@@ -113,7 +119,9 @@ export function NotificationBellDialog({
                       Có {transferCount} yêu cầu luân chuyển đang chờ duyệt hoặc đã được duyệt.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/transfers" onClick={handleDetailClick}>Xem chi tiết →</Link>
+                      <Link href="/transfers" onClick={handleDetailClick}>
+                        Xem chi tiết →
+                      </Link>
                     </Button>
                   </div>
                 </section>
@@ -130,7 +138,9 @@ export function NotificationBellDialog({
                       Có {maintenanceCount} kế hoạch bảo trì đã được duyệt đang chờ triển khai.
                     </p>
                     <Button variant="link" className="p-0 h-auto text-sm" asChild>
-                      <Link href="/maintenance" onClick={handleDetailClick}>Xem chi tiết →</Link>
+                      <Link href="/maintenance" onClick={handleDetailClick}>
+                        Xem chi tiết →
+                      </Link>
                     </Button>
                   </div>
                 </section>
@@ -140,5 +150,5 @@ export function NotificationBellDialog({
         </ScrollArea>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
