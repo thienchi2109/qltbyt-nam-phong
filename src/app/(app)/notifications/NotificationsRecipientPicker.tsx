@@ -24,6 +24,24 @@ import {
   type Recipient,
 } from "./NotificationsRecipientPickerTypes"
 
+type SelfAction = "none" | "remove"
+type SaveSnapshot = {
+  draftRecipients: Record<string, Recipient>
+  serverRecipients: Record<string, Recipient>
+  selfAction: SelfAction
+}
+type SaveInput = { usernames: string; selfAction: SelfAction }
+
+function recipientStatusLabel(status: Recipient["status"]): string {
+  return status === "ineligible" ? "Không còn đủ điều kiện" : "Hợp lệ"
+}
+
+function recipientRemovalLabel(recipient: Recipient): string {
+  return recipient.protected
+    ? `Gỡ tự nhận ${displayRecipientName(recipient)}`
+    : `Gỡ người nhận ${displayRecipientName(recipient)}`
+}
+
 /** Exposes recipient configuration only for roles authorized by the existing API. */
 export function NotificationsRecipientPicker({ user }: { user: Session["user"] }) {
   const { selectedFacilityId, showSelector } = useTenantSelection()
@@ -60,6 +78,8 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
   const client = useQueryClient()
   const [search, setSearch] = React.useState("")
   const [draft, setDraft] = React.useState<Record<string, Recipient> | null>(null)
+  const [selfAction, setSelfAction] = React.useState<SelfAction>("none")
+  const saveSnapshot = React.useRef<SaveSnapshot | null>(null)
   const configKey = ["web-push", scope, "config"]
   const config = useQuery({
     queryKey: configKey,
@@ -110,12 +130,17 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
   const selected = draft ?? recipientMapFromConfig(config.data ?? [])
   const save = useMutation({
     retry: false,
-    mutationFn: async (usernames: string) => {
+    mutationFn: async ({ usernames, selfAction }: SaveInput) => {
       const payload = await readResponse(
         await fetch("/api/web-push/config", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ version: 1, don_vi_id: target, usernames, self_action: "none" }),
+          body: JSON.stringify({
+            version: 1,
+            don_vi_id: target,
+            usernames,
+            self_action: selfAction,
+          }),
         })
       )
       const recipients = parseConfigPayload(payload, target)
@@ -123,10 +148,18 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
       return recipients
     },
     onSuccess: async (recipients) => {
+      saveSnapshot.current = null
       await client.cancelQueries({ queryKey: configKey, exact: true })
       client.setQueryData(configKey, recipients)
       // The atomic PUT returns full config; mark stale without overwriting it with a second GET.
       await client.invalidateQueries({ queryKey: configKey, exact: true, refetchType: "none" })
+    },
+    onError: () => {
+      const snapshot = saveSnapshot.current
+      if (!snapshot) return
+      setDraft({ ...snapshot.serverRecipients, ...snapshot.draftRecipients })
+      setSelfAction(snapshot.selfAction)
+      saveSnapshot.current = null
     },
   })
   const ready = config.isSuccess && !config.isFetching && !save.isPending
@@ -137,11 +170,16 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
         .map((candidate) => [candidate.user_id, candidate])
     ).values(),
   ]
-  const absent = Object.values(selected).filter(
+  const configured = Object.values(selected).filter(
     (recipient) => !options.some((candidate) => candidate.user_id === recipient.user_id)
   )
   const toggle = (candidate: Candidate) => {
-    if (!ready || selected[candidate.user_id]?.protected) return
+    if (
+      !ready ||
+      selected[candidate.user_id]?.protected ||
+      selected[candidate.user_id]?.editable === false
+    )
+      return
     const next = { ...selected }
     if (next[candidate.user_id]) delete next[candidate.user_id]
     else
@@ -152,6 +190,14 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
         editable: true,
       }
     setDraft(next)
+    save.reset()
+  }
+  const toggleRemoval = (recipient: Recipient) => {
+    if (!ready || !recipient.editable) return
+    const next = { ...selected }
+    delete next[recipient.user_id]
+    setDraft(next)
+    if (recipient.protected) setSelfAction("remove")
     save.reset()
   }
   const reload = () => {
@@ -178,18 +224,40 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
         />
       </div>
       <p aria-live="polite">Đã chọn: {Object.keys(selected).length}</p>
-      {absent.length ? (
+      {configured.length ? (
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Đang cấu hình</h3>
-          {absent.map((recipient) => (
+          {configured.map((recipient) => (
             <div
               key={recipient.user_id}
               className="flex items-center justify-between gap-3 rounded-md border p-3 text-sm"
             >
-              <span className="break-words">{displayRecipientName(recipient)}</span>
+              <div className="min-w-0 space-y-1">
+                <span className="block break-words">{displayRecipientName(recipient)}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {recipient.protected ? "Được bảo vệ" : "Người nhận thường"} ·{" "}
+                  {recipientStatusLabel(recipient.status)}
+                </span>
+                {!recipient.editable ? (
+                  <span className="block text-xs text-muted-foreground">Chỉ xem</span>
+                ) : null}
+              </div>
+              {recipient.editable ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!ready}
+                  onClick={() => toggleRemoval(recipient)}
+                >
+                  {recipientRemovalLabel(recipient)}
+                </Button>
+              ) : null}
             </div>
           ))}
         </div>
+      ) : null}
+      {config.isSuccess && Object.keys(selected).length === 0 ? (
+        <p role="status">Chưa có người nhận nào được cấu hình.</p>
       ) : null}
       {candidates.isError ? (
         <div className="space-y-2">
@@ -209,11 +277,20 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
             <input
               type="checkbox"
               checked={Boolean(selected[candidate.user_id])}
-              disabled={!ready || Boolean(selected[candidate.user_id]?.protected)}
+              disabled={
+                !ready ||
+                Boolean(selected[candidate.user_id]?.protected) ||
+                selected[candidate.user_id]?.editable === false
+              }
               onChange={() => toggle(candidate)}
               aria-label={displayRecipientName(candidate)}
             />
             <span className="min-w-0 break-words">{displayRecipientName(candidate)}</span>
+            {selected[candidate.user_id] ? (
+              <span className="text-xs text-muted-foreground">
+                {recipientStatusLabel(selected[candidate.user_id].status)}
+              </span>
+            ) : null}
           </label>
         ))}
       </div>
@@ -242,8 +319,22 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
           type="button"
           disabled={!ready}
           onClick={() => {
-            if (ready)
-              save.mutate(selectedRecipientNames(selected), { onSuccess: () => setDraft(null) })
+            if (ready) {
+              saveSnapshot.current = {
+                draftRecipients: selected,
+                serverRecipients: recipientMapFromConfig(config.data ?? []),
+                selfAction,
+              }
+              save.mutate(
+                { usernames: selectedRecipientNames(selected), selfAction },
+                {
+                  onSuccess: () => {
+                    setDraft(null)
+                    setSelfAction("none")
+                  },
+                }
+              )
+            }
           }}
         >
           {save.isPending ? "Đang lưu..." : "Lưu người nhận"}

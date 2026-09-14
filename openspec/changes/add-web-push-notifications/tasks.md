@@ -89,7 +89,7 @@
 
 ### Chunk 2/5 - Configuration status and edit rights
 
-- [ ] 5.2 Hiển thị trạng thái cấu hình theo từng đơn vị, gồm protected self-entry, stale/ineligible recipient, trạng thái hợp lệ/lỗi và quyền edit tương ứng. Protected self-entry của caller khác chỉ read-only; stale/ineligible normal entry được flag và cho caller có quyền explicit remove; mọi entry không bị xóa ngầm khi reload, search hoặc save thất bại. Giữ ma trận `admin/global` target bất kỳ, `to_qltb` chỉ effective unit và không cấp quyền đọc repair request.
+- [x] 5.2 Hiển thị trạng thái cấu hình theo từng đơn vị, gồm protected self-entry, stale/ineligible recipient, trạng thái hợp lệ/lỗi và quyền edit tương ứng. Protected self-entry của caller khác chỉ read-only; stale/ineligible normal entry được flag và cho caller có quyền explicit remove; mọi entry không bị xóa ngầm khi reload, search hoặc save thất bại. Giữ ma trận `admin/global` target bất kỳ, `to_qltb` chỉ effective unit và không cấp quyền đọc repair request.
 - **Acceptance/tests:** user-event tests cho read-only protected entry, explicit remove stale/ineligible, giữ protected entry khi save bình thường, invalid normal entry không partial-save, empty config và lỗi config GET/PUT. Kiểm tra mọi danh sách vẫn tách theo `don_vi` và không fallback B/global.
 - **Stop/review:** chỉ hiển thị metadata từ contract đã landed; không suy diễn quyền từ client role/identity và không thêm RPC/SQL/API/backend.
 

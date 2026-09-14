@@ -22,6 +22,14 @@ const protectedAdmin = {
   protected: true,
   editable: false,
 }
+const protectedSelf = {
+  user_id: "99",
+  username: "self-admin",
+  full_name: "Self Admin",
+  status: "eligible",
+  protected: true,
+  editable: true,
+}
 const stale = {
   user_id: "13",
   username: "stale",
@@ -71,7 +79,7 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-describe("NotificationsPage Chunk 5.1", () => {
+describe("NotificationsPage recipient configuration", () => {
   it.each(["technician", "user", "qltb_khoa", "regional_leader", "technical_configuration_expert"])(
     "shows guidance without recipient requests for %s",
     (role) => {
@@ -242,6 +250,137 @@ describe("NotificationsPage Chunk 5.1", () => {
     await screen.findByRole("alert")
     expect(aliceBox()).toBeChecked()
     expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1)
+  })
+  it("shows status metadata and keeps another caller's protected entry read-only", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(
+        String(input).includes("/config")
+          ? config("7", [protectedAdmin, stale])
+          : candidates("7", [alice])
+      )
+    )
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+
+    expect(screen.getByText(/Được bảo vệ/)).toBeInTheDocument()
+    expect(screen.getByText("Chỉ xem")).toBeInTheDocument()
+    expect(screen.getByText(/Không còn đủ điều kiện/)).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Gỡ.*Admin \(admin\)/i })).not.toBeInTheDocument()
+  })
+  it("explicitly removes stale normal entries while preserving protected entries", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
+      init?.method === "PUT"
+        ? Promise.resolve(config("7", [protectedAdmin]))
+        : Promise.resolve(
+            String(input).includes("/config")
+              ? config("7", [protectedAdmin, stale])
+              : candidates("7", [alice])
+          )
+    )
+    const user = userEvent.setup()
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+
+    await user.click(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" }))
+    expect(screen.queryByText("Stale (stale)")).not.toBeInTheDocument()
+    await user.click(saveButton())
+
+    const put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
+    expect(JSON.parse(put?.[1].body)).toMatchObject({
+      usernames: "",
+      self_action: "none",
+    })
+    expect(screen.getByText("Admin (admin)")).toBeInTheDocument()
+  })
+  it("restores an explicitly removed entry when PUT fails", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
+      Promise.resolve(
+        init?.method === "PUT"
+          ? response({}, 500)
+          : String(input).includes("/config")
+            ? config("7", [protectedAdmin, stale])
+            : candidates("7", [alice])
+      )
+    )
+    const user = userEvent.setup()
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+
+    await user.click(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" }))
+    await user.click(saveButton())
+    await screen.findByRole("alert")
+    expect(screen.getByText("Stale (stale)")).toBeInTheDocument()
+  })
+  it("does not partially save an invalid normal entry", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
+      Promise.resolve(
+        init?.method === "PUT"
+          ? response({ version: 1, error: { code: "invalid_recipients" } }, 400)
+          : String(input).includes("/config")
+            ? config("7", [stale])
+            : candidates("7", [alice])
+      )
+    )
+    const user = userEvent.setup()
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await user.click(aliceBox())
+    await user.click(saveButton())
+
+    await screen.findByRole("alert")
+    expect(screen.getByText("Stale (stale)")).toBeInTheDocument()
+    expect(aliceBox()).toBeChecked()
+    expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1)
+  })
+  it("preserves an editable protected self-entry on normal save and sends explicit removal", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === "PUT") {
+        const body = JSON.parse(String(init.body)) as { self_action: string }
+        return Promise.resolve(
+          body.self_action === "remove"
+            ? config("7", [selectedAlice])
+            : config("7", [protectedSelf, selectedAlice])
+        )
+      }
+      return Promise.resolve(
+        String(input).includes("/config")
+          ? config("7", [protectedSelf, selectedAlice])
+          : candidates("7", [alice])
+      )
+    })
+    const user = userEvent.setup()
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await user.click(saveButton())
+
+    let put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
+    expect(JSON.parse(put?.[1].body)).toMatchObject({ usernames: "alice", self_action: "none" })
+    await screen.findByText("Đã lưu danh sách người nhận.")
+
+    await user.click(screen.getByRole("button", { name: "Gỡ tự nhận Self Admin (self-admin)" }))
+    await user.click(saveButton())
+    put = mocks.fetch.mock.calls.filter(([, init]) => init?.method === "PUT").at(-1)
+    expect(JSON.parse(put?.[1].body)).toMatchObject({ usernames: "alice", self_action: "remove" })
+    await waitFor(() =>
+      expect(screen.queryByText("Self Admin (self-admin)")).not.toBeInTheDocument()
+    )
+  })
+  it("keeps the empty configuration state safe when config GET fails", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(String(input).includes("/config") ? response({}, 500) : candidates("7", []))
+    )
+    mount()
+    await screen.findByRole("alert")
+    expect(saveButton()).toBeDisabled()
+    expect(screen.queryByText("Chưa có người nhận nào được cấu hình.")).not.toBeInTheDocument()
+  })
+  it("shows an explicit empty configuration state", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(String(input).includes("/config") ? config("7", []) : candidates("7", []))
+    )
+    mount()
+    await waitFor(() => expect(saveButton()).toBeEnabled())
+    expect(screen.getByText("Chưa có người nhận nào được cấu hình.")).toBeInTheDocument()
   })
   it("isolates old config and Save responses when the target changes", async () => {
     const saving = deferred()
