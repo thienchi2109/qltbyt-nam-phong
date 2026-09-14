@@ -95,7 +95,7 @@
 
 ### Chunk 3/5 - Web Push subscription opt-in
 
-- [ ] 5.3 Thêm UI đăng ký subscription Web Push bằng user gesture trên `/notifications`, permission prompt, enabled/disabled/error/unsupported/blocked states, accessible feedback, preview nội dung màn hình khóa và hướng dẫn Home Screen iOS/iPadOS cho mọi role đã đăng nhập. Tái sử dụng registration `/sw.js` và worker hiện có; không đăng ký worker thứ hai cùng scope, không gửi identity do client tự khai. Dùng public key/version từ Phase 4 và yêu cầu resubscribe khi version mismatch; registration mặc định tắt. Recipient config không hiển thị cho role ngoài `to_qltb/admin/global`.
+- [x] 5.3 Thêm UI đăng ký subscription Web Push bằng user gesture trên `/notifications`, permission prompt, enabled/disabled/error/unsupported/blocked states, accessible feedback, preview nội dung màn hình khóa và hướng dẫn Home Screen iOS/iPadOS cho mọi role đã đăng nhập. Tái sử dụng registration `/sw.js` và worker hiện có; không đăng ký worker thứ hai cùng scope, không gửi identity do client tự khai. Dùng public key/version từ Phase 4 và yêu cầu resubscribe khi version mismatch; registration mặc định tắt. Recipient config không hiển thị cho role ngoài `to_qltb/admin/global`.
 - **Acceptance/tests:** permission/subscription chỉ được gọi sau thao tác người dùng; denied/unsupported không prompt lặp và app vẫn dùng được; key mismatch hiển thị resubscribe; kiểm tra labels, focus, live/status feedback, cùng worker/scope và không thêm offline/auth-data cache.
 - **Stop/review:** không gọi Go/provider trực tiếp, không đổi API/RPC/backend/SQL và dừng sau focused user-event tests cho opt-in.
 
