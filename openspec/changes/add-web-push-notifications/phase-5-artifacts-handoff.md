@@ -1,6 +1,6 @@
 # Phase 5 - Evidence và handoff artifacts
 
-Ngày 2026-09-14. Chunk 5.3 đã có frontend diff trong worktree riêng; chưa landing/push.
+Ngày 2026-09-14. Chunk 5.3 đã landing trực tiếp trên `main` tại commit `36c86464971016665deef15fbaa6b2eab6f5de14`; `main` và `origin/main` đồng bộ.
 
 ## Baseline và phạm vi
 
@@ -40,6 +40,6 @@ Ngày 2026-09-14. Chunk 5.3 đã có frontend diff trong worktree riêng; chưa 
 
 ## Handoff tiếp theo
 
-Tiếp theo: xử lý 3 React Doctor findings của Chunk 5.3, chạy lại toàn bộ gates, rồi mới tick 5.3 và landing/push. Giữ 5.4/5.5 và Phase 4.5/DB Gate ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng.
+Chunk 5.3 đã hoàn tất và đã landing/push. Tiếp theo chỉ bắt đầu Chunk 5.4 khi maintainer giao; giữ 5.5 và các phase ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng. Giữ 5.4/5.5 và Phase 4.5/DB Gate ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng.
 
-Maintainer đã yêu cầu commit và push bộ artifacts trên `main`; SHA landing và kết quả sync được báo trong phản hồi closeout, không suy diễn từ việc tạo tài liệu này.
+Post-landing verification: focused notifications suites 32/32 PASS từ `/tmp/web-push-53-landed-tests.log`; `git rev-parse HEAD origin/main` cùng trả về `36c86464971016665deef15fbaa6b2eab6f5de14`.
