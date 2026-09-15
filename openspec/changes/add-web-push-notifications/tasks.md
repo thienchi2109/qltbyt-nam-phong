@@ -101,7 +101,7 @@
 
 ### Chunk 4/5 - Notification operation status and recovery
 
-- [ ] 5.4 Hiển thị trạng thái local của thao tác thông báo và cấu hình browser, gồm loading/enabled/disabled/success/error/cancelled, retry bounded cho request lỗi, cancel thao tác đang chờ và refresh/reload rehydrate không làm mất trạng thái hợp lệ. Gắn revoke vào disable/logout/account switch; offline cleanup không chặn logout vô hạn, local unsubscribe và retry cleanup khi có thể, multi-browser độc lập và không đổi owner. Không có delivery-status API trong scope này: không retry delivery/provider, không claim provider accepted là delivered/read.
+- [x] 5.4 Hiển thị trạng thái local của thao tác thông báo và cấu hình browser, gồm loading/enabled/disabled/success/error/cancelled, retry bounded cho request lỗi, cancel thao tác đang chờ và refresh/reload rehydrate không làm mất trạng thái hợp lệ. Gắn revoke vào disable/logout/account switch; offline cleanup không chặn logout vô hạn, local unsubscribe và retry cleanup khi có thể, multi-browser độc lập và không đổi owner. Không có delivery-status API trong scope này: không retry delivery/provider, không claim provider accepted là delivered/read.
 - **Acceptance/tests:** user-event tests cho retry/cancel/error, refresh/reload, reachable revoke đúng subscription/revision, offline logout local cleanup, account switch không dùng owner cũ và một browser lỗi không làm mất browser khác. Status copy phải phân biệt request đã gửi, chưa xác nhận và bị hủy.
 - **Stop/review:** không claim remote revoke/provider withdrawal khi offline, không thêm delivery endpoint/worker call/API/RPC/SQL/backend; dừng sau lifecycle user-event tests.
 

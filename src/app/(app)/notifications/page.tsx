@@ -27,7 +27,7 @@ function NotificationsPageContent({ user }: { user: Session["user"] }) {
         </p>
       </section>
 
-      <NotificationsPushOptIn />
+      <NotificationsPushOptIn userId={String(user.id)} />
 
       <NotificationsRecipientPicker user={user} />
     </main>

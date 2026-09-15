@@ -2,9 +2,13 @@
 
 import React from "react"
 import type { Session } from "next-auth"
-import { SessionProvider, signOut } from "next-auth/react"
+import { SessionProvider, signOut, useSession } from "next-auth/react"
 
 import { subscribeAuthSignout } from "@/lib/auth-signout-broadcast"
+import {
+  cleanupBrowserSubscription,
+  discardLocalBrowserSubscription,
+} from "@/lib/web-push/browser-lifecycle"
 
 type Props = {
   children: React.ReactNode
@@ -12,21 +16,43 @@ type Props = {
 }
 
 function AuthSignoutBroadcastListener(): null {
+  const { data: session, status } = useSession()
+  const userId = session?.user?.id == null ? null : String(session.user.id)
+  const authenticatedUserId = status === "authenticated" ? userId : null
+  const previousUserIdRef = React.useRef<string | null>(authenticatedUserId)
+
+  React.useEffect(() => {
+    const previousUserId = previousUserIdRef.current
+    if (status === "loading") return
+    if (authenticatedUserId && previousUserId && previousUserId !== authenticatedUserId) {
+      discardLocalBrowserSubscription(previousUserId).catch(() => undefined)
+    }
+    if (!authenticatedUserId && previousUserId) {
+      discardLocalBrowserSubscription(previousUserId).catch(() => undefined)
+    }
+    previousUserIdRef.current = authenticatedUserId
+  }, [authenticatedUserId, status])
+
   React.useEffect(() => {
     return subscribeAuthSignout((payload) => {
-      const signOutPromise = signOut({ callbackUrl: payload.callbackUrl })
-      signOutPromise.catch((error: unknown) => {
-        console.error("subscribeAuthSignout failed to sign out", {
-          callbackUrl: payload.callbackUrl,
-          error,
-        })
-      })
+      void (async () => {
+        try {
+          if (authenticatedUserId) await cleanupBrowserSubscription(authenticatedUserId)
+          await signOut({ callbackUrl: payload.callbackUrl })
+        } catch (error: unknown) {
+          console.error("subscribeAuthSignout failed to sign out", {
+            callbackUrl: payload.callbackUrl,
+            error,
+          })
+        }
+      })()
     })
-  }, [])
+  }, [authenticatedUserId])
 
   return null
 }
 
+/** Web Push lifecycle entrypoint. */
 export function NextAuthSessionProvider({ children, session }: Props) {
   return (
     <SessionProvider session={session} refetchInterval={60} refetchOnWindowFocus>

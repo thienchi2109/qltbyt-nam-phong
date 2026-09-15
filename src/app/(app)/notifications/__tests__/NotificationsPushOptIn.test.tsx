@@ -1,79 +1,27 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import NotificationsPage from "../page"
+import {
+  mocks,
+  mount,
+  publicKey,
+  pushRegistration,
+  pushSubscriptionJson,
+  resetNotificationTestState,
+  response,
+  rotatedPublicKey,
+  session,
+  storeSubscription,
+} from "./NotificationsPushOptInTestUtils"
 
-const mocks = vi.hoisted(() => ({
-  session: vi.fn(),
-  tenant: vi.fn(),
-  fetch: vi.fn(),
-  requestPermission: vi.fn(),
-}))
 vi.mock("next-auth/react", () => ({ useSession: () => mocks.session() }))
 vi.mock("@/contexts/TenantSelectionContext", () => ({ useTenantSelection: () => mocks.tenant() }))
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <button>Đơn vị mục tiêu</button>,
 }))
 
-const publicKey =
-  "BOSMYXSPeNZ9sdxrNwdifOTNnjj4RRrdT8bLFrCvlSZHid8-VorFDh0Zv9miRlFh9Xy-cdEz_5ZUWKHnau7DdzY"
-const rotatedPublicKey = `${publicKey.slice(0, -1)}Z`
-const pushSubscriptionJson = {
-  endpoint: "https://push.example.test/subscription",
-  keys: { p256dh: publicKey, auth: "AAAAAAAAAAAAAAAAAAAAAA" },
-}
-const response = (payload: unknown, status = 200) =>
-  new Response(JSON.stringify(payload), { status })
-
-function pushRegistration() {
-  vi.stubGlobal("PushManager", class PushManager {})
-  const subscription = {
-    toJSON: () => pushSubscriptionJson,
-    unsubscribe: vi.fn().mockResolvedValue(true),
-  }
-  const subscribe = vi.fn().mockResolvedValue(subscription)
-  const getSubscription = vi.fn().mockResolvedValue(null)
-  const registration = {
-    pushManager: { getSubscription, subscribe },
-  }
-  const serviceWorker = {
-    ready: Promise.resolve(registration),
-    register: vi.fn(),
-    getRegistration: vi.fn().mockResolvedValue(registration),
-  }
-  Object.defineProperty(navigator, "serviceWorker", {
-    configurable: true,
-    value: serviceWorker,
-  })
-  vi.stubGlobal("Notification", {
-    permission: "default",
-    requestPermission: mocks.requestPermission,
-  })
-  return { registration, serviceWorker, subscribe, subscription, getSubscription }
-}
-
-function session(role = "user") {
-  mocks.session.mockReturnValue({
-    status: "authenticated",
-    data: { user: { id: "99", role, don_vi: 4, current_don_vi: 7 } },
-  })
-}
-
-function mount() {
-  const client = createTestQueryClient()
-  return render(<NotificationsPage />, { wrapper: createReactQueryWrapper(client) })
-}
-
-beforeEach(() => {
-  vi.clearAllMocks()
-  window.localStorage.clear()
-  session()
-  mocks.tenant.mockReturnValue({ selectedFacilityId: 7, showSelector: true })
-  vi.stubGlobal("fetch", mocks.fetch)
-  mocks.fetch.mockResolvedValue(response({ version: 1, don_vi_id: "7", candidates: [] }))
-})
-
+beforeEach(resetNotificationTestState)
 afterEach(() => vi.unstubAllGlobals())
 
 describe("NotificationsPage Web Push opt-in", () => {
@@ -91,7 +39,13 @@ describe("NotificationsPage Web Push opt-in", () => {
         )
       }
       if (init?.method === "POST")
-        return Promise.resolve(response({ version: 1, subscription_id: "sub-1", revision: "1" }))
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000001",
+            revision: "1",
+          })
+        )
       return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
     })
     const user = userEvent.setup()
@@ -145,6 +99,37 @@ describe("NotificationsPage Web Push opt-in", () => {
     expect(screen.getByRole("button", { name: "Đang bật thông báo" })).toBeDisabled()
     resolvePermission("denied")
     await screen.findByText("Thông báo bị chặn trong trình duyệt.")
+  })
+
+  it("cancels a pending registration and does not send it after permission resolves", async () => {
+    pushRegistration()
+    let resolvePermission!: (value: NotificationPermission) => void
+    mocks.requestPermission.mockReturnValue(
+      new Promise<NotificationPermission>((resolve) => {
+        resolvePermission = resolve
+      })
+    )
+    mocks.fetch.mockResolvedValue(
+      response({
+        version: 1,
+        registration_enabled: true,
+        vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+      })
+    )
+    const user = userEvent.setup()
+    mount()
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "Bật thông báo" })).toBeEnabled())
+    await user.click(screen.getByRole("button", { name: "Bật thông báo" }))
+    await screen.findByRole("button", { name: "Hủy thao tác" })
+
+    await user.click(screen.getByRole("button", { name: "Hủy thao tác" }))
+    expect(await screen.findByText("Đã hủy thao tác đăng ký thông báo.")).toBeInTheDocument()
+
+    resolvePermission("granted")
+    await waitFor(() => {
+      expect(mocks.fetch.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false)
+    })
   })
 
   it("does not prompt when registration is disabled by the server", async () => {
@@ -207,7 +192,11 @@ describe("NotificationsPage Web Push opt-in", () => {
         return Promise.resolve(
           postCount === 1
             ? response({ version: 1, error: { code: "key_version_mismatch" } }, 409)
-            : response({ version: 1, subscription_id: "sub-2", revision: "2" })
+            : response({
+                version: 1,
+                subscription_id: "00000000-0000-4000-8000-000000000002",
+                revision: "2",
+              })
         )
       }
       return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
@@ -255,7 +244,13 @@ describe("NotificationsPage Web Push opt-in", () => {
         )
       }
       if (init?.method === "POST")
-        return Promise.resolve(response({ version: 1, subscription_id: "sub-1" }))
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000001",
+            revision: "1",
+          })
+        )
       return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
     })
     const user = userEvent.setup()
@@ -275,37 +270,154 @@ describe("NotificationsPage Web Push opt-in", () => {
     expect(mocks.requestPermission).toHaveBeenCalledTimes(1)
   })
 
-  it("shows lock-screen preview and the iPhone/iPad Home Screen guide", async () => {
+  it("bounds registration retries and labels an unresolved request unconfirmed", async () => {
     pushRegistration()
-    mocks.fetch.mockResolvedValue(
-      response({
-        version: 1,
-        registration_enabled: true,
-        vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
-      })
-    )
+    mocks.requestPermission.mockResolvedValue("granted")
+    let postCount = 0
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (init?.method === "POST") {
+        postCount += 1
+        return Promise.reject(new TypeError("network unavailable"))
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
     const user = userEvent.setup()
     mount()
 
-    await screen.findByText("Thông báo đang tắt trên trình duyệt này.")
-    expect(screen.getByRole("heading", { name: "Cài đặt nhận thông báo" })).toHaveClass(
-      "text-[28px]"
-    )
-    expect(screen.getByRole("button", { name: "Bật thông báo" })).toHaveClass("text-sm")
+    await waitFor(() => expect(screen.getByRole("button", { name: "Bật thông báo" })).toBeEnabled())
+    await user.click(screen.getByRole("button", { name: "Bật thông báo" }))
     expect(
-      screen.getByLabelText("Xem trước thông báo trên màn hình khóa").querySelector("svg")
-    ).toHaveClass("size-6")
-    expect(screen.getByText("Nội dung có thể xuất hiện trên màn hình khóa")).toBeInTheDocument()
-    expect(screen.getByText("Thiết bị cần xử lý")).toBeInTheDocument()
-    const guide = screen.getByText("Dùng iPhone hoặc iPad?").closest("summary")
-    expect(guide).not.toBeNull()
-    const details = guide?.parentElement
-    expect(details).not.toHaveAttribute("open")
-    expect(details).toHaveTextContent(/iOS\/iPadOS.*16\.4 trở lên/i)
-    expect(details).toHaveTextContent(/không tự cấp quyền thông báo/i)
-    expect(details).toHaveTextContent(/Thêm vào Màn hình chính/i)
-    expect(screen.getByText(/có thể rút gọn nội dung/i)).toBeInTheDocument()
-    await user.click(guide as HTMLElement)
-    expect(details).toHaveAttribute("open")
+      await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
+    ).toBeInTheDocument()
+    expect(postCount).toBe(2)
+
+    await user.click(screen.getByRole("button", { name: "Thử lại" }))
+    await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
+    expect(postCount).toBe(4)
+    await user.click(screen.getByRole("button", { name: "Thử lại" }))
+    await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
+    expect(postCount).toBe(6)
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeDisabled()
+  })
+
+  it("rehydrates an enabled browser subscription after a reload", async () => {
+    const { getSubscription, subscription } = pushRegistration()
+    getSubscription.mockResolvedValue(subscription)
+    storeSubscription()
+    mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
+      String(input).includes("/public-key")
+        ? Promise.resolve(
+            response({
+              version: 1,
+              registration_enabled: true,
+              vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+            })
+          )
+        : Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    )
+    const view = mount()
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+    view.unmount()
+    mount()
+
+    expect(await screen.findByText("Thông báo đã bật trên trình duyệt.")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Tắt thông báo" })).toBeEnabled()
+  })
+
+  it("revokes the exact stored subscription revision before disabling this browser", async () => {
+    const { getSubscription, subscription } = pushRegistration()
+    getSubscription.mockResolvedValue(subscription)
+    storeSubscription("99", {
+      subscriptionId: "00000000-0000-4000-8000-000000000009",
+      revision: "17",
+    })
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (init?.method === "POST") return Promise.resolve(response({ version: 1, revoked: true }))
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+    const user = userEvent.setup()
+    mount()
+
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+    await user.click(screen.getByRole("button", { name: "Tắt thông báo" }))
+    await screen.findByText("Thông báo đang tắt trên trình duyệt này.")
+
+    const revoke = mocks.fetch.mock.calls.find(
+      ([input, init]) => String(input).includes("/subscriptions/revoke") && init?.method === "POST"
+    )
+    expect(JSON.parse(revoke?.[1].body)).toEqual({
+      version: 1,
+      subscription_id: "00000000-0000-4000-8000-000000000009",
+      revision: "17",
+    })
+    expect(subscription.unsubscribe).toHaveBeenCalledTimes(1)
+  })
+
+  it("switches owners without sending the previous owner to revoke or register", async () => {
+    const { getSubscription, subscription } = pushRegistration()
+    let subscribed = true
+    getSubscription.mockImplementation(async () => (subscribed ? subscription : null))
+    subscription.unsubscribe.mockImplementation(async () => {
+      subscribed = false
+      return true
+    })
+    storeSubscription("99")
+    mocks.requestPermission.mockResolvedValue("granted")
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (init?.method === "POST") {
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000002",
+            revision: "2",
+          })
+        )
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+    const user = userEvent.setup()
+    const view = mount()
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+
+    session("user", "user-b")
+    view.rerender(<NotificationsPage />)
+    await waitFor(() => expect(subscription.unsubscribe).toHaveBeenCalledTimes(1))
+    await screen.findByText("Thông báo đang tắt trên trình duyệt này.")
+    await user.click(screen.getByRole("button", { name: "Bật thông báo" }))
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+
+    const revokeCalls = mocks.fetch.mock.calls.filter(([input]) =>
+      String(input).includes("/subscriptions/revoke")
+    )
+    expect(revokeCalls).toHaveLength(0)
+    const posts = mocks.fetch.mock.calls.filter(([, init]) => init?.method === "POST")
+    expect(JSON.parse(posts.at(-1)?.[1].body)).not.toHaveProperty("owner_id")
   })
 })

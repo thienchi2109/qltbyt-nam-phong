@@ -98,7 +98,7 @@ export function AppLayoutShell({ children, user }: AppLayoutShellProps) {
 function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShellContentProps) {
   const pathname = usePathname()
   const isTechnicalConfigurationsRoute = pathname.startsWith("/technical-configurations")
-  const { status, update } = useSession()
+  const { data: session, status, update } = useSession()
   const { selectedFacilityId, shouldFetchData } = useTenantSelection()
   const hasHandledSessionExitRef = React.useRef(false)
   const [uiState, dispatchUi] = React.useReducer(appLayoutUiReducer, initialAppLayoutUiState)
@@ -125,8 +125,12 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
     hasHandledSessionExitRef.current = true
     dispatchUi({ type: "setSigningOut", isSigningOut: true })
     clearAllEquipmentFilters()
-    void signOut({ callbackUrl: "/" })
-  }, [])
+    void signOutWithReason({
+      callbackUrl: "/",
+      reason: "session_expired",
+      userId: session?.user?.id,
+    })
+  }, [session?.user?.id])
 
   const handleSignOut = React.useCallback(() => {
     if (hasHandledSessionExitRef.current) {
@@ -139,11 +143,12 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
     void signOutWithReason({
       updateSession: update,
       reason: "user_initiated",
+      userId: session?.user?.id,
     }).catch(() => {
       hasHandledSessionExitRef.current = false
       dispatchUi({ type: "setSigningOut", isSigningOut: false })
     })
-  }, [update])
+  }, [session?.user?.id, update])
 
   React.useEffect(() => {
     if (status === "unauthenticated") {

@@ -78,25 +78,25 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
   const [showPasswords, setShowPasswords] = React.useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   })
-  
+
   const [formData, setFormData] = React.useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   })
 
   const resetForm = React.useCallback(() => {
     setFormData({
       currentPassword: "",
       newPassword: "",
-      confirmPassword: ""
+      confirmPassword: "",
     })
     setShowPasswords({
       current: false,
       new: false,
-      confirm: false
+      confirm: false,
     })
   }, [])
 
@@ -116,6 +116,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
         updateSession: update,
         reason: "forced_password_change",
         delayMs: 1_500,
+        userId: currentUserId == null ? null : String(currentUserId),
       })
     } catch {
       toast({
@@ -124,16 +125,16 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
         description: "Mật khẩu đã được thay đổi. Vui lòng đăng xuất thủ công hoặc tải lại trang.",
       })
     }
-  }, [toast, update])
+  }, [currentUserId, toast, update])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!user) {
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không thể xác định người dùng hiện tại."
+        description: "Không thể xác định người dùng hiện tại.",
       })
       return
     }
@@ -142,7 +143,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin."
+        description: "Vui lòng điền đầy đủ thông tin.",
       })
       return
     }
@@ -151,7 +152,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Mật khẩu mới và xác nhận mật khẩu không khớp."
+        description: "Mật khẩu mới và xác nhận mật khẩu không khớp.",
       })
       return
     }
@@ -164,7 +165,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
         toast({
           variant: "destructive",
           title: "Lỗi",
-          description: "Không xác định được người dùng hiện tại."
+          description: "Không xác định được người dùng hiện tại.",
         })
         return
       }
@@ -182,14 +183,14 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
         toast({
           variant: "destructive",
           title: "Lỗi",
-          description: data?.message || "Mật khẩu hiện tại không đúng."
+          description: data?.message || "Mật khẩu hiện tại không đúng.",
         })
         return
       }
 
       toast({
         title: "Thành công",
-        description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật."
+        description: data.message || "Đã thay đổi mật khẩu thành công với mã hóa bảo mật.",
       })
 
       handleOpenChange(false)
@@ -215,9 +216,9 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
   }
 
   const togglePasswordVisibility = (field: keyof typeof showPasswords) => {
-    setShowPasswords(prev => ({
+    setShowPasswords((prev) => ({
       ...prev,
-      [field]: !prev[field]
+      [field]: !prev[field],
     }))
   }
 
@@ -226,9 +227,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Thay đổi mật khẩu</DialogTitle>
-          <DialogDescription>
-            Nhập mật khẩu hiện tại và mật khẩu mới để thay đổi.
-          </DialogDescription>
+          <DialogDescription>Nhập mật khẩu hiện tại và mật khẩu mới để thay đổi.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -239,7 +238,9 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   id="current-password"
                   type={showPasswords.current ? "text" : "password"}
                   value={formData.currentPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, currentPassword: e.target.value }))
+                  }
                   placeholder="Nhập mật khẩu hiện tại"
                   disabled={isSubmitting}
                   required
@@ -250,7 +251,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => togglePasswordVisibility('current')}
+                  onClick={() => togglePasswordVisibility("current")}
                   disabled={isSubmitting}
                 >
                   {showPasswords.current ? (
@@ -268,7 +269,9 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   id="new-password"
                   type={showPasswords.new ? "text" : "password"}
                   value={formData.newPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, newPassword: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
                   placeholder="Nhập mật khẩu mới"
                   disabled={isSubmitting}
                   required
@@ -279,14 +282,10 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => togglePasswordVisibility('new')}
+                  onClick={() => togglePasswordVisibility("new")}
                   disabled={isSubmitting}
                 >
-                  {showPasswords.new ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
+                  {showPasswords.new ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </Button>
               </div>
             </div>
@@ -297,7 +296,9 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   id="confirm-password"
                   type={showPasswords.confirm ? "text" : "password"}
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  }
                   placeholder="Nhập lại mật khẩu mới"
                   disabled={isSubmitting}
                   required
@@ -308,7 +309,7 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                  onClick={() => togglePasswordVisibility('confirm')}
+                  onClick={() => togglePasswordVisibility("confirm")}
                   disabled={isSubmitting}
                 >
                   {showPasswords.confirm ? (
@@ -338,4 +339,4 @@ function ChangePasswordDialogContent({ open, onOpenChange }: ChangePasswordDialo
       </DialogContent>
     </Dialog>
   )
-} 
+}

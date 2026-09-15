@@ -1,6 +1,7 @@
 import { signOut } from "next-auth/react"
 
 import { broadcastAuthSignout } from "@/lib/auth-signout-broadcast"
+import { cleanupBrowserSubscription } from "@/lib/web-push/browser-lifecycle"
 import type { AuthPendingSignoutReason } from "@/types/auth"
 
 type SignOutReasonUpdate = {
@@ -14,6 +15,7 @@ type SignOutWithReasonOptions = {
   reason: AuthPendingSignoutReason
   delayMs?: number
   callbackUrl?: string
+  userId?: string | null
 }
 
 const UPDATE_SESSION_TIMEOUT_MS = 1_000
@@ -38,12 +40,18 @@ async function persistReasonWithTimeout(
   }
 }
 
+/** Web Push lifecycle entrypoint. */
 export async function signOutWithReason({
   updateSession,
   reason,
   delayMs = 0,
   callbackUrl = "/",
+  userId,
 }: SignOutWithReasonOptions): Promise<void> {
+  if (userId) {
+    await cleanupBrowserSubscription(String(userId))
+  }
+
   if (updateSession) {
     await persistReasonWithTimeout(updateSession, reason)
   }

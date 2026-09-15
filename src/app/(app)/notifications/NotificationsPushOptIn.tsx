@@ -5,212 +5,53 @@ import { useQuery } from "@tanstack/react-query"
 import { Bell, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  cleanupBrowserSubscription,
+  discardLocalBrowserSubscription,
+  readBrowserSubscriptionRecord,
+  retryBrowserSubscriptionCleanup,
+  waitForPendingBrowserSubscriptionCleanup,
+  writeBrowserSubscriptionRecord,
+} from "@/lib/web-push/browser-lifecycle"
 import { HomeScreenGuide, LockScreenPreview } from "./NotificationsPushOptInGuidance"
-
-type VapidArtifact = { version: string; public_key: string }
-type PublicKeyPayload = {
-  registration_enabled: boolean
-  vapid: VapidArtifact | null
-}
-type PushState =
-  "loading" | "idle" | "enabled" | "disabled" | "blocked" | "unsupported" | "resubscribe" | "error"
-
-const VAPID_VERSION_STORAGE_KEY = "web-push-vapid-key-version"
-const SERVICE_WORKER_READY_TIMEOUT_MS = 8000
-
-function supportsWebPush(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.Notification !== "undefined" &&
-    "serviceWorker" in navigator &&
-    typeof window.PushManager !== "undefined"
-  )
-}
-
-function decodeBase64Url(value: string): Uint8Array<ArrayBuffer> {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=")
-  const binary = window.atob(padded)
-  const bytes = new Uint8Array(new ArrayBuffer(binary.length))
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
-
-async function readResponse(response: Response): Promise<Record<string, unknown>> {
-  let payload: unknown = null
-  try {
-    payload = await response.json()
-  } catch {
-    payload = null
-  }
-  if (!response.ok) {
-    const code =
-      payload && typeof payload === "object" && !Array.isArray(payload) && "error" in payload
-        ? (payload.error as { code?: unknown } | null)?.code
-        : null
-    throw new Error(typeof code === "string" ? code : "request_failed")
-  }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("invalid_response")
-  }
-  return payload as Record<string, unknown>
-}
-
-function waitForServiceWorker(): Promise<ServiceWorkerRegistration> {
-  let timeout: ReturnType<typeof setTimeout> | undefined
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeout = setTimeout(
-      () => reject(new Error("service_worker_timeout")),
-      SERVICE_WORKER_READY_TIMEOUT_MS
-    )
-  })
-  return Promise.race([navigator.serviceWorker.ready, timeoutPromise]).finally(() => {
-    if (timeout) clearTimeout(timeout)
-  })
-}
-
-async function readPublicKey(): Promise<PublicKeyPayload> {
-  const payload = await readResponse(await fetch("/api/web-push/public-key"))
-  const vapid = payload.vapid
-  if (
-    payload.version !== 1 ||
-    typeof payload.registration_enabled !== "boolean" ||
-    !(vapid === null || (typeof vapid === "object" && vapid !== null))
-  ) {
-    throw new Error("invalid_response")
-  }
-  if (!vapid) return { registration_enabled: false, vapid: null }
-  const artifact = vapid as Record<string, unknown>
-  if (typeof artifact.version !== "string" || typeof artifact.public_key !== "string") {
-    throw new Error("invalid_response")
-  }
-  return {
-    registration_enabled: payload.registration_enabled,
-    vapid: { version: artifact.version, public_key: artifact.public_key },
-  }
-}
-
-function subscriptionPayload(subscription: PushSubscription) {
-  const value = subscription.toJSON()
-  if (!value.endpoint || !value.keys?.p256dh || !value.keys.auth) {
-    throw new Error("invalid_subscription")
-  }
-  return {
-    endpoint: value.endpoint,
-    keys: { p256dh: value.keys.p256dh, auth: value.keys.auth },
-  }
-}
-
-function errorCode(error: unknown): string {
-  return error instanceof Error ? error.message : "request_failed"
-}
-
-function statusText(state: PushState): string {
-  switch (state) {
-    case "loading":
-      return "Đang kiểm tra khả năng nhận thông báo..."
-    case "idle":
-      return "Thông báo đang tắt trên trình duyệt này."
-    case "enabled":
-      return "Thông báo đã bật trên trình duyệt."
-    case "disabled":
-      return "Đăng ký thông báo đang tạm tắt."
-    case "blocked":
-      return "Thông báo bị chặn trong trình duyệt."
-    case "unsupported":
-      return "Trình duyệt này chưa hỗ trợ thông báo Web Push."
-    case "resubscribe":
-      return "Cần đăng ký lại thông báo để dùng khóa bảo mật mới."
-    case "error":
-      return "Không thể bật thông báo trên trình duyệt. Vui lòng thử lại."
-  }
-}
-
-function initialState(artifact: PublicKeyPayload | undefined, rotated = false): PushState {
-  if (!artifact?.registration_enabled || !artifact.vapid) return "disabled"
-  const stored = window.localStorage.getItem(VAPID_VERSION_STORAGE_KEY)
-  return rotated || (stored !== null && stored !== artifact.vapid.version) ? "resubscribe" : "idle"
-}
-
-/** Registers durable browser state only after an explicit permission gesture. */
-async function registerPush(vapid: VapidArtifact, forceResubscribe: boolean) {
-  const registration = await waitForServiceWorker()
-  if (!registration.pushManager) throw new Error("unsupported")
-  let subscription = await registration.pushManager.getSubscription()
-  const storedVersion = window.localStorage.getItem(VAPID_VERSION_STORAGE_KEY)
-  if (
-    subscription &&
-    (forceResubscribe || (storedVersion !== null && storedVersion !== vapid.version))
-  ) {
-    await subscription.unsubscribe()
-    subscription = null
-  }
-  subscription ??= await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: decodeBase64Url(vapid.public_key),
-  })
-  const response = await fetch("/api/web-push/subscriptions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      version: 1,
-      vapid_key_version: vapid.version,
-      subscription: subscriptionPayload(subscription),
-    }),
-  })
-  const payload = await readResponse(response)
-  if (payload.version !== 1 || typeof payload.subscription_id !== "string") {
-    throw new Error("invalid_response")
-  }
-  window.localStorage.setItem(VAPID_VERSION_STORAGE_KEY, vapid.version)
-}
-
-async function readPreflight() {
-  if (!supportsWebPush()) return { state: "unsupported" as const, artifact: null }
-  if (Notification.permission === "denied") return { state: "blocked" as const, artifact: null }
-  const artifact = await readPublicKey()
-  return { state: initialState(artifact), artifact }
-}
-
-function displayState(
-  busy: boolean,
-  fetching: boolean,
-  failed: boolean,
-  result: PushState | null,
-  initial?: PushState
-): PushState {
-  if (busy || fetching) return "loading"
-  if (failed) return "error"
-  return result ?? initial ?? "loading"
-}
-
-function rotationState(artifact: PublicKeyPayload | null | undefined): PushState {
-  return artifact?.registration_enabled && artifact.vapid ? "resubscribe" : "disabled"
-}
-
-function registrationErrorState(error: unknown): PushState {
-  const code = errorCode(error)
-  if (code === "disabled") return "disabled"
-  if (code === "unsupported") return "unsupported"
-  return "error"
-}
-
-// Called synchronously by the click handler before any network or worker await.
-function requestPermission(): Promise<NotificationPermission> {
-  return Notification.permission === "default"
-    ? Notification.requestPermission()
-    : Promise.resolve(Notification.permission)
-}
+import {
+  VAPID_VERSION_STORAGE_KEY,
+  displayState,
+  errorCode,
+  readPreflight,
+  registerPush,
+  registrationErrorState,
+  requestPermission,
+  rotationState,
+  statusText,
+  type PushState,
+} from "./NotificationsPushOptInLifecycle"
 
 /** Keeps public-key fetching separate from the result of an explicit opt-in. */
-export function NotificationsPushOptIn() {
+type PushOperation = {
+  id: number
+  controller: AbortController
+  kind: "register" | "revoke"
+}
+
+/** Web Push lifecycle entrypoint. */
+export function NotificationsPushOptIn({ userId }: { userId: string }) {
   const [result, setResult] = React.useState<PushState | null>(null)
   const [busy, setBusy] = React.useState(false)
+  const [operationKind, setOperationKind] = React.useState<"register" | "revoke">("register")
+  const [operationPhase, setOperationPhase] = React.useState<"preparing" | "requesting">(
+    "preparing"
+  )
+  const [retryExhausted, setRetryExhausted] = React.useState(false)
+  const operationRef = React.useRef<PushOperation | null>(null)
+  const operationIdRef = React.useRef(0)
+  const registrationAttemptsRef = React.useRef(0)
+  const previousOwnerRef = React.useRef(userId)
+  const ownerCleanupRef = React.useRef<Promise<unknown>>(Promise.resolve())
+  const ownerCleanupFailedRef = React.useRef(false)
   const preflight = useQuery({
-    queryKey: ["web-push", "public-key"],
-    queryFn: readPreflight,
+    queryKey: ["web-push", "public-key", userId],
+    queryFn: () => readPreflight(userId),
     retry: false,
     staleTime: 0,
     gcTime: 0,
@@ -225,11 +66,102 @@ export function NotificationsPushOptIn() {
     result,
     preflight.data?.state
   )
+  const persistedRevoke = readBrowserSubscriptionRecord(userId)?.status === "revoking"
   const actionDisabled =
-    busy || ["loading", "disabled", "blocked", "unsupported", "enabled"].includes(state)
+    busy ||
+    retryExhausted ||
+    ["loading", "disabled", "blocked", "unsupported", "enabled"].includes(state)
+
+  React.useEffect(() => {
+    const previousOwner = previousOwnerRef.current
+    if (previousOwner !== userId) {
+      operationRef.current?.controller.abort()
+      operationRef.current = null
+      setBusy(false)
+      setResult(null)
+      setRetryExhausted(false)
+      setOperationKind("register")
+      registrationAttemptsRef.current = 0
+      ownerCleanupFailedRef.current = true
+      const cleanup = discardLocalBrowserSubscription(previousOwner)
+      const trackedCleanup = cleanup
+        .then(() => {
+          if (ownerCleanupRef.current === trackedCleanup) ownerCleanupFailedRef.current = false
+        })
+        .catch(() => undefined)
+      ownerCleanupRef.current = trackedCleanup
+      previousOwnerRef.current = userId
+    }
+  }, [userId])
+
+  React.useEffect(() => {
+    return () => {
+      operationRef.current?.controller.abort()
+    }
+  }, [])
+
+  const isCurrentOperation = (operation: PushOperation): boolean =>
+    operationRef.current?.id === operation.id && !operation.controller.signal.aborted
+
+  const cancelOperation = () => {
+    const operation = operationRef.current
+    if (!operation) return
+    operation.controller.abort()
+    operationRef.current = null
+    setBusy(false)
+    setOperationPhase("preparing")
+    const stored = readBrowserSubscriptionRecord(userId)
+    setOperationKind(operation.kind)
+    if (operation.kind === "revoke" && stored?.subscriptionId && stored.revision) {
+      writeBrowserSubscriptionRecord({ ...stored, status: "revoking" })
+    } else {
+      writeBrowserSubscriptionRecord({
+        version: 1,
+        ownerId: userId,
+        vapidKeyVersion: stored?.vapidKeyVersion ?? preflight.data?.artifact?.vapid?.version ?? "",
+        status: "cancelled",
+        ...(stored?.subscriptionId && stored.revision
+          ? { subscriptionId: stored.subscriptionId, revision: stored.revision }
+          : {}),
+      })
+    }
+    setResult("cancelled")
+  }
+
+  const beginOperation = (kind: "register" | "revoke") => {
+    const operation = {
+      id: operationIdRef.current + 1,
+      controller: new AbortController(),
+      kind,
+    }
+    operationIdRef.current = operation.id
+    operationRef.current = operation
+    setOperationKind(kind)
+    setOperationPhase("preparing")
+    setBusy(true)
+    return operation
+  }
 
   const handleEnable = async () => {
     if (actionDisabled) return
+    if (persistedRevoke) {
+      const operation = beginOperation("revoke")
+      setOperationPhase("requesting")
+      try {
+        const cleanup = await retryBrowserSubscriptionCleanup(userId, operation.controller.signal)
+        if (isCurrentOperation(operation)) {
+          setResult(cleanup === "pending" ? "unconfirmed" : "idle")
+          if (cleanup !== "pending") setOperationKind("register")
+        }
+      } finally {
+        if (operationRef.current?.id === operation.id) {
+          operationRef.current = null
+          setBusy(false)
+          setOperationPhase("preparing")
+        }
+      }
+      return
+    }
     if (preflightError) {
       setResult(null)
       await preflight.refetch()
@@ -237,32 +169,118 @@ export function NotificationsPushOptIn() {
     }
     const vapid = preflight.data?.artifact?.vapid
     if (!vapid) return
-    setBusy(true)
+    if (registrationAttemptsRef.current >= 3) {
+      setRetryExhausted(true)
+      return
+    }
+    registrationAttemptsRef.current += 1
+    const operation = beginOperation("register")
+    // Capture permission in the click handler before waiting on account cleanup.
+    let permissionPromise: Promise<NotificationPermission>
     try {
-      const permission = await requestPermission()
+      permissionPromise = requestPermission()
+      await ownerCleanupRef.current
+      await waitForPendingBrowserSubscriptionCleanup()
+      if (!isCurrentOperation(operation)) return
+      if (ownerCleanupFailedRef.current) {
+        setResult("error")
+        return
+      }
+      const permission = await permissionPromise
+      if (!isCurrentOperation(operation)) return
       if (permission !== "granted") {
         setResult("blocked")
         return
       }
-      await registerPush(vapid, state === "resubscribe")
+      setOperationPhase("requesting")
+      const registered = await registerPush(
+        vapid,
+        state === "resubscribe",
+        operation.controller.signal,
+        () => {
+          if (!isCurrentOperation(operation)) return
+          setOperationPhase("requesting")
+          const stored = readBrowserSubscriptionRecord(userId)
+          writeBrowserSubscriptionRecord({
+            version: 1,
+            ownerId: userId,
+            vapidKeyVersion: vapid.version,
+            status: "unconfirmed",
+            ...(stored?.subscriptionId && stored.revision
+              ? { subscriptionId: stored.subscriptionId, revision: stored.revision }
+              : {}),
+          })
+        }
+      )
+      if (!isCurrentOperation(operation)) return
+      writeBrowserSubscriptionRecord({
+        version: 1,
+        ownerId: userId,
+        vapidKeyVersion: vapid.version,
+        status: "enabled",
+        subscriptionId: registered.subscriptionId,
+        revision: registered.revision,
+        endpoint: registered.endpoint,
+      })
+      window.localStorage.setItem(VAPID_VERSION_STORAGE_KEY, vapid.version)
+      registrationAttemptsRef.current = 0
+      setRetryExhausted(false)
       setResult("enabled")
     } catch (error) {
+      if (!isCurrentOperation(operation)) return
       if (errorCode(error) === "key_version_mismatch") {
         const refreshed = await preflight.refetch()
+        if (!isCurrentOperation(operation)) return
         setResult(rotationState(refreshed.data?.artifact))
       } else {
-        setResult(registrationErrorState(error))
+        const nextState = registrationErrorState(error)
+        setResult(nextState)
+        if (registrationAttemptsRef.current >= 3) setRetryExhausted(true)
       }
     } finally {
-      setBusy(false)
+      if (operationRef.current?.id === operation.id) {
+        operationRef.current = null
+        setBusy(false)
+        setOperationPhase("preparing")
+      }
     }
   }
 
-  const actionLabel = preflightError
-    ? "Thử lại"
-    : state === "resubscribe"
-      ? "Đăng ký lại thông báo"
-      : "Bật thông báo"
+  const handleDisable = async () => {
+    if (busy) return
+    const operation = beginOperation("revoke")
+    try {
+      const cleanup = await cleanupBrowserSubscription(
+        userId,
+        () => {
+          if (isCurrentOperation(operation)) setOperationPhase("requesting")
+        },
+        operation.controller.signal
+      )
+      if (!isCurrentOperation(operation)) return
+      if (cleanup === "pending") {
+        setResult("unconfirmed")
+        return
+      }
+      setOperationKind("register")
+      setResult("idle")
+    } finally {
+      if (operationRef.current?.id === operation.id) {
+        operationRef.current = null
+        setBusy(false)
+        setOperationPhase("preparing")
+      }
+    }
+  }
+
+  const actionLabel =
+    operationKind === "revoke" && persistedRevoke
+      ? "Thử lại"
+      : preflightError || state === "error" || state === "unconfirmed"
+        ? "Thử lại"
+        : state === "resubscribe"
+          ? "Đăng ký lại thông báo"
+          : "Bật thông báo"
   return (
     <Card className="overflow-hidden border-slate-200/80 bg-gradient-to-br from-white via-sky-50/40 to-amber-50/50 shadow-sm">
       <CardHeader className="gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -286,25 +304,47 @@ export function NotificationsPushOptIn() {
           <div className="space-y-4">
             {busy ? (
               <p role="status" aria-live="polite" className="text-sm text-slate-700">
-                Đang chuẩn bị đăng ký thông báo...
+                {operationKind === "revoke"
+                  ? "Đang tắt thông báo trên trình duyệt..."
+                  : operationPhase === "requesting"
+                    ? "Đã gửi yêu cầu đăng ký thông báo..."
+                    : "Đang chuẩn bị đăng ký thông báo..."}
               </p>
             ) : state === "error" ? (
               <p role="alert" aria-live="assertive" className="text-sm text-red-700">
-                {statusText(state)}
+                {statusText(state, operationKind)}
               </p>
             ) : (
               <p role="status" aria-live="polite" className="text-sm text-slate-700">
-                {statusText(state)}
+                {state === "unconfirmed" && (operationKind === "revoke" || persistedRevoke)
+                  ? "Đã tắt cục bộ nhưng chưa xác nhận thu hồi trên máy chủ. Vui lòng thử lại."
+                  : statusText(state, operationKind)}
               </p>
             )}
-            <Button
-              type="button"
-              className="text-sm"
-              onClick={() => void handleEnable()}
-              disabled={actionDisabled}
-            >
-              {busy ? "Đang bật thông báo" : actionLabel}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                className="text-sm"
+                onClick={() => void handleEnable()}
+                disabled={actionDisabled}
+              >
+                {busy
+                  ? operationKind === "revoke"
+                    ? "Đang tắt thông báo"
+                    : "Đang bật thông báo"
+                  : actionLabel}
+              </Button>
+              {busy ? (
+                <Button type="button" variant="outline" onClick={cancelOperation}>
+                  Hủy thao tác
+                </Button>
+              ) : null}
+              {state === "enabled" ? (
+                <Button type="button" variant="outline" onClick={() => void handleDisable()}>
+                  Tắt thông báo
+                </Button>
+              ) : null}
+            </div>
             {state === "blocked" ? (
               <p className="text-sm text-muted-foreground">
                 Hãy cho phép thông báo trong cài đặt trình duyệt rồi quay lại trang này.

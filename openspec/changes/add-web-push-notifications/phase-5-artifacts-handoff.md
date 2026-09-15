@@ -40,6 +40,6 @@ Ngày 2026-09-14. Chunk 5.3 đã landing trực tiếp trên `main` tại commit
 
 ## Handoff tiếp theo
 
-Chunk 5.3 đã hoàn tất và đã landing/push. Tiếp theo chỉ bắt đầu Chunk 5.4 khi maintainer giao; giữ 5.5 và các phase ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng. Giữ 5.4/5.5 và Phase 4.5/DB Gate ngoài phạm vi. Browser auth limitation vẫn cần kiểm chứng khi môi trường authenticated sẵn sàng.
+Chunk 5.4 đã hoàn tất và đang được land trên `main`; 5.5 và Phase 4.5/DB Gate vẫn ngoài phạm vi. Browser auth limitation vẫn được ghi nhận; chưa claim platform smoke PASS.
 
 Post-landing verification: focused notifications suites 32/32 PASS từ `/tmp/web-push-53-landed-tests.log`; `git rev-parse HEAD origin/main` cùng trả về `36c86464971016665deef15fbaa6b2eab6f5de14`.
