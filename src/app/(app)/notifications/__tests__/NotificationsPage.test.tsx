@@ -79,6 +79,20 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe("NotificationsPage recipient configuration", () => {
+  it("exposes a labelled responsive page landmark", () => {
+    mount()
+
+    const main = screen.getByRole("main", { name: "Cài đặt nhận thông báo" })
+    expect(main).toHaveClass("mx-auto", "w-full", "max-w-5xl")
+    expect(screen.getByRole("heading", { name: "Cài đặt nhận thông báo" })).toHaveAttribute(
+      "id",
+      "notifications-page-title"
+    )
+    expect(
+      screen.getByText("Quản lý thông báo trên trình duyệt và danh sách người nhận của đơn vị.")
+    ).toHaveAttribute("id", "notifications-page-description")
+  })
+
   it.each(["technician", "user", "qltb_khoa", "regional_leader", "technical_configuration_expert"])(
     "shows guidance without recipient requests for %s",
     (role) => {

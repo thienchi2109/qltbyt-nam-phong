@@ -17,12 +17,19 @@ export default function NotificationsPage() {
 
 function NotificationsPageContent({ user }: { user: Session["user"] }) {
   return (
-    <main className="mx-auto w-full max-w-5xl space-y-6">
+    <main
+      aria-describedby="notifications-page-description"
+      aria-labelledby="notifications-page-title"
+      className="mx-auto min-w-0 w-full max-w-5xl space-y-6"
+    >
       <section className="space-y-2">
-        <h1 className="text-[28px] leading-9 font-semibold tracking-tight">
+        <h1
+          id="notifications-page-title"
+          className="text-[28px] leading-9 font-semibold tracking-tight"
+        >
           Cài đặt nhận thông báo
         </h1>
-        <p className="text-muted-foreground">
+        <p id="notifications-page-description" className="text-muted-foreground">
           Quản lý thông báo trên trình duyệt và danh sách người nhận của đơn vị.
         </p>
       </section>

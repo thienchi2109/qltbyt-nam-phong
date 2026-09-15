@@ -40,6 +40,15 @@ Ngày 2026-09-14. Chunk 5.3 đã landing trực tiếp trên `main` tại commit
 
 ## Handoff tiếp theo
 
-Chunk 5.4 đã hoàn tất và đang được land trên `main`; 5.5 và Phase 4.5/DB Gate vẫn ngoài phạm vi. Browser auth limitation vẫn được ghi nhận; chưa claim platform smoke PASS.
+Chunk 5.4 đã hoàn tất trên `main`; cập nhật nghiệm thu Chunk 5.5 được ghi ở phần dưới. Phase 4.5/DB Gate vẫn ngoài phạm vi; browser auth limitation vẫn được ghi nhận và không claim platform smoke PASS.
 
 Post-landing verification: focused notifications suites 32/32 PASS từ `/tmp/web-push-53-landed-tests.log`; `git rev-parse HEAD origin/main` cùng trả về `36c86464971016665deef15fbaa6b2eab6f5de14`.
+
+## Cập nhật Chunk 5.5 - đã hoàn tất
+
+Ngày 2026-09-15, implementation Chunk 5.5 đã được nghiệm thu theo baseline `a77c56e45e2530fd0bc88f12b339a5fe5b983230`; task 5.5 đã tick. Evidence chi tiết: [phase-5.5-evidence.md](phase-5.5-evidence.md).
+
+- Đã nối push/click vào worker `/sw.js` hiện có, validate payload text-only với URL/tag canonical, cắt UTF-8 an toàn và thêm accessible responsive landmark cho `/notifications`.
+- Focused 5.1–5.5 suite PASS: 12 files / 87 tests; ordered TS gates và production build PASS; React Doctor diff-only 100/100.
+- TDD RED đã ghi nhận thiếu worker helper imports và unnamed page landmark trước implementation. Browser/platform smoke authenticated vẫn waived do auth environment; không claim platform PASS.
+- Không có backend/API/RPC/SQL/migration/live DB/provider/deploy scope. Dừng trước Phase 6/7, live apply hoặc deploy.

@@ -107,7 +107,7 @@
 
 ### Chunk 5/5 - Page integration, worker integration and polish
 
-- [ ] 5.5 Tích hợp UI vào route authenticated `/notifications` và header link `Cài đặt nhận thông báo`, hoàn thiện responsive/accessibility và polish; giữ nguyên bell dialog, đổi mật khẩu/Đăng xuất, không thêm sidebar item hoặc duplicate user-menu link. Nối service worker push/click, safe text-only payload rendering, Unicode-safe truncation/tag, foreground không double-display và same-origin deep link qua login/quyền hiện hành. Chạy focused user-event tests cho cả 5.1–5.4, không thêm backend scope.
+- [x] 5.5 Tích hợp UI vào route authenticated `/notifications` và header link `Cài đặt nhận thông báo`, hoàn thiện responsive/accessibility và polish; giữ nguyên bell dialog, đổi mật khẩu/Đăng xuất, không thêm sidebar item hoặc duplicate user-menu link. Nối service worker push/click, safe text-only payload rendering, Unicode-safe truncation/tag, foreground không double-display và same-origin deep link qua login/quyền hiện hành. Chạy focused user-event tests cho cả 5.1–5.4, không thêm backend scope.
 - **Acceptance/tests:** format -> no-explicit-any -> diff-only dedupe -> typecheck -> focused user-event tests -> React Doctor; kiểm tra desktop/mobile, keyboard/focus/live feedback, manifest/worker cùng scope, registration mặc định tắt, chưa production send và báo rõ platform checks chưa chạy.
 - **Stop/review:** chỉ handoff sau khi bốn chunk trước đã được review và placement decision `/notifications` đã được ghi; không chuyển sang Phase 6/7, không live apply/deploy và không sửa #1000/gate debt.
 

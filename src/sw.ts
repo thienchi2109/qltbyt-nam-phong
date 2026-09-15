@@ -1,22 +1,31 @@
 /// <reference lib="webworker" />
 
-import { defaultCache } from '@serwist/next/worker';
-import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
-import { Serwist } from 'serwist';
+import { defaultCache } from "@serwist/next/worker"
+import type { PrecacheEntry, SerwistGlobalConfig } from "serwist"
+import { Serwist } from "serwist"
+import { handleNotificationClick, handlePush } from "./lib/web-push/worker-events"
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
-    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
+    __SW_MANIFEST: (PrecacheEntry | string)[] | undefined
   }
 }
 
-declare const self: ServiceWorkerGlobalScope;
+declare const self: ServiceWorkerGlobalScope
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   skipWaiting: true,
   clientsClaim: true,
   runtimeCaching: defaultCache,
-});
+})
 
-serwist.addEventListeners();
+serwist.addEventListeners()
+
+self.addEventListener("push", (event) => {
+  event.waitUntil(handlePush(event, self))
+})
+
+self.addEventListener("notificationclick", (event) => {
+  event.waitUntil(handleNotificationClick(event, self))
+})
