@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -41,14 +40,9 @@ func (s WebPushSender) Send(ctx context.Context, delivery Delivery, key VAPIDKey
 		return ProviderResult{}, err
 	}
 	if response.Body != nil {
-		_, copyErr := io.Copy(io.Discard, response.Body)
-		closeErr := response.Body.Close()
-		if copyErr != nil {
-			return ProviderResult{}, fmt.Errorf("provider response body read: %w", copyErr)
-		}
-		if closeErr != nil {
-			return ProviderResult{}, fmt.Errorf("provider response body close: %w", closeErr)
-		}
+		// HTTP status determines the outcome; cleanup errors must not retry an accepted push.
+		_, _ = io.Copy(io.Discard, response.Body)
+		_ = response.Body.Close()
 	}
 	return ProviderResult{
 		Status:            response.StatusCode,

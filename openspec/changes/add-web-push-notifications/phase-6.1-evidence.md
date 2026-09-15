@@ -17,6 +17,7 @@ Chunks 6.2-6.5 remain deferred.
 - `go test -race ./...`: PASS.
 - `go vet ./...`: PASS.
 - `golangci-lint run ./...`: PASS (0 issues).
+- Provider cleanup failures after an HTTP 2xx are covered and do not convert an accepted delivery into a transient retry.
 - `gofmt -d`, `git diff --check`: PASS.
 - Repository `verify:no-explicit-any`, `verify:dedupe`, `typecheck`: PASS.
 - CLI without VAPID configuration fails closed.
