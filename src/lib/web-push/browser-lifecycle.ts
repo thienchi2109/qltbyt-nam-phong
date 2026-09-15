@@ -1,4 +1,7 @@
-import { parseSubscriptionRevokeRequest, validateSubscriptionRevokeResponse } from "./validation"
+import {
+  parseSubscriptionRevokeRequest,
+  validateSubscriptionRevokeResponse,
+} from "./subscription-validation"
 
 const STORAGE_PREFIX = "qltbyt:web-push:subscription:"
 const STORAGE_VERSION = 1

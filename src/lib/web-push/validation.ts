@@ -1,3 +1,9 @@
+export {
+  parseSubscriptionRevokeRequest,
+  validateSubscriptionRegisterResponse,
+  validateSubscriptionRevokeResponse,
+} from "./subscription-validation"
+export type { SubscriptionRevokeRequest } from "./subscription-validation"
 import { isRecord, exactKeys, versionIsOne, parsePositiveBigint } from "./validation-common"
 export { parsePositiveBigint } from "./validation-common"
 export { parseConfigPutRequest, validateConfigResponse } from "./config-validation"
@@ -7,10 +13,6 @@ import { parseStrictJson, validateSubscriptionInput, type WebPushSubscriptionInp
 export type SubscriptionRegisterRequest = {
   vapidKeyVersion: string
   subscription: WebPushSubscriptionInput
-}
-export type SubscriptionRevokeRequest = {
-  subscriptionId: string
-  revision: string
 }
 export type ClaimRequest = {
   version: 1
@@ -96,20 +98,6 @@ export function parseSubscriptionRegisterRequest(
   } catch {
     return null
   }
-}
-
-/** Validates a browser subscription revoke request. */
-export function parseSubscriptionRevokeRequest(value: unknown): SubscriptionRevokeRequest | null {
-  if (
-    !isRecord(value) ||
-    !exactKeys(value, ["version", "subscription_id", "revision"]) ||
-    !versionIsOne(value.version)
-  ) {
-    return null
-  }
-  if (typeof value.subscription_id !== "string" || !UUID.test(value.subscription_id)) return null
-  const revision = parsePositiveBigint(value.revision)
-  return revision ? { subscriptionId: value.subscription_id, revision } : null
 }
 
 /** Validates a worker delivery claim request. */
@@ -330,31 +318,4 @@ export function validateReportResponse(value: unknown): Record<string, unknown> 
     return null
   }
   return value
-}
-
-/** Validates and narrows a subscription registration response envelope. */
-export function validateSubscriptionRegisterResponse(
-  value: unknown
-): Record<string, unknown> | null {
-  if (
-    !isRecord(value) ||
-    !exactKeys(value, ["version", "subscription_id", "revision"]) ||
-    value.version !== 1 ||
-    typeof value.subscription_id !== "string" ||
-    !UUID.test(value.subscription_id) ||
-    !parsePositiveBigint(value.revision)
-  ) {
-    return null
-  }
-  return value
-}
-
-/** Validates and narrows a subscription revoke response envelope. */
-export function validateSubscriptionRevokeResponse(value: unknown): Record<string, unknown> | null {
-  return isRecord(value) &&
-    exactKeys(value, ["version", "revoked"]) &&
-    value.version === 1 &&
-    value.revoked === true
-    ? value
-    : null
 }

@@ -16,5 +16,8 @@
 
 ## Giới hạn
 
+- Sửa build sau landing `9e1aa84`: browser lifecycle import validator có dependency `wire.ts` kéo `node:net`/`node:crypto` vào client bundle. Tách validator thuần sang `subscription-validation.ts`, giữ API re-export và validation semantics.
+- Production build đã tái hiện lỗi trước sửa, sau sửa compile PASS và generate 44/44 trang; log `/tmp/web-push-build-fixed.log`. Focused 65/65 PASS; React Doctor diff 100/100. Check dependency chạy bằng `node scripts/check-web-push-browser-imports.mjs`.
+
 - Không có browser/platform smoke authenticated mới; evidence là DOM/user-event contracts.
 - Không gửi push, không bật controls, không xác nhận delivered/read hay thu hồi bản tin provider đã nhận.

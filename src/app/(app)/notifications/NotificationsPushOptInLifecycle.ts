@@ -2,7 +2,7 @@ import {
   hasMatchingLocalBrowserSubscription,
   readBrowserSubscriptionRecord,
 } from "@/lib/web-push/browser-lifecycle"
-import { validateSubscriptionRegisterResponse } from "@/lib/web-push/validation"
+import { validateSubscriptionRegisterResponse } from "@/lib/web-push/subscription-validation"
 
 /** Web Push lifecycle entrypoint. */
 export type VapidArtifact = { version: string; public_key: string }
