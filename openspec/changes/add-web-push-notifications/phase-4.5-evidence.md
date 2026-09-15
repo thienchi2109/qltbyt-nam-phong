@@ -3,7 +3,13 @@
 ## Phạm vi
 
 Chỉ backend/RPC/API và migration forward-only. Không UI Phase 5, không Go,
-không live apply, không thay controls mặc định false. Không sửa migration đã apply.
+không thay controls mặc định false. Không sửa migration đã apply.
+
+Live apply status (Supabase MCP, read-only verification 2026-09-15): cả ba
+migration Phase 4.5 đã xuất hiện trong `supabase_migrations.schema_migrations`:
+`20260913094624` (recipient config), `20260913094625` (enqueue eligibility) và
+`20260913094634` (claim/retry eligibility). Đây là xác nhận lịch sử apply live,
+không thay thế DB Quality Gate evidence bên dưới.
 
 - Candidate RPC giới hạn 1–100, tìm kiếm literal và phân trang theo ID.
 - Config GET trả đầy đủ metadata, gồm stale và protected entries.
@@ -41,7 +47,8 @@ Fixture retry ban đầu đặt lease hết hạn trước `leased_at`, vi phạ
 
 Theo chỉ đạo maintainer, DB Quality Gate được waive cho lần closeout này. Raw
 static/baseline-forward `FAILED` vẫn được giữ nguyên làm giới hạn kiểm chứng;
-việc waive không phải là chứng nhận hai lane PASS và không bao gồm live apply.
+việc waive không phải là chứng nhận hai lane PASS. Live apply đã xảy ra và được
+xác nhận riêng bằng migration history ở trên.
 
 Static checkpoint `9513ccab`: INCOMPLETE, digest
 `fc710729c00100c1bc36711928fddc48ea885bf43c88f748885329ea04e9b945`, report
@@ -54,4 +61,5 @@ theo authorization và transaction thực tế. SQL PASS chạy tay không thay 
 baseline-forward. Aggregate vẫn BLOCKING / INCOMPLETE cho tới khi hai lane PASS
 trên cùng exact commit với report/digest đọc được.
 
-Historical tasks 2.4/3.4/4.5 và #1000 giữ nguyên. Chưa tick 4.5.6, chưa live review.
+Historical tasks 2.4/3.4/4.5 và #1000 giữ nguyên. Chưa tick 4.5.6; live apply
+đã được xác nhận, nhưng DB Gate closeout vẫn chưa đạt.
