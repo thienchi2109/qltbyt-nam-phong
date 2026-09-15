@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -40,8 +41,14 @@ func (s WebPushSender) Send(ctx context.Context, delivery Delivery, key VAPIDKey
 		return ProviderResult{}, err
 	}
 	if response.Body != nil {
-		defer response.Body.Close()
-		_, _ = io.Copy(io.Discard, response.Body)
+		_, copyErr := io.Copy(io.Discard, response.Body)
+		closeErr := response.Body.Close()
+		if copyErr != nil {
+			return ProviderResult{}, fmt.Errorf("provider response body read: %w", copyErr)
+		}
+		if closeErr != nil {
+			return ProviderResult{}, fmt.Errorf("provider response body close: %w", closeErr)
+		}
 	}
 	return ProviderResult{
 		Status:            response.StatusCode,

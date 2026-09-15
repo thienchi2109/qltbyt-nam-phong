@@ -169,6 +169,83 @@ func TestHTTPBackendStopsAfterOneReplayRetry(t *testing.T) {
 	}
 }
 
+func TestHTTPBackendRejectsNonContractClaimResponses(t *testing.T) {
+	valid := `{"version":1,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[]}`
+	cases := []struct {
+		name string
+		body string
+		code string
+	}{
+		{name: "unknown field", body: `{"version":1,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[],"extra":true}`, code: "invalid_response"},
+		{name: "case variant field", body: `{"Version":1,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[]}`, code: "invalid_response"},
+		{name: "duplicate field", body: `{"version":1,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[],"deliveries":[]}`, code: "invalid_response"},
+		{name: "trailing json", body: valid + `{}`, code: "invalid_response"},
+		{name: "wrong type", body: `{"version":1,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":"5","deliveries":[]}`, code: "invalid_response"},
+		{name: "null field", body: `{"version":1,"server_time":null,"poll_after_seconds":5,"deliveries":[]}`, code: "invalid_response"},
+		{name: "missing version", body: `{"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[]}`, code: "invalid_response"},
+		{name: "unsupported version", body: `{"version":2,"server_time":"2026-09-15T00:00:00Z","poll_after_seconds":5,"deliveries":[]}`, code: "unsupported_version"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.Header().Set("content-type", "application/json")
+				_, _ = writer.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			backend, err := NewHTTPBackend(server.URL, "test-key-1", base64.StdEncoding.EncodeToString(make([]byte, 32)), server.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = backend.Claim(context.Background(), ClaimRequest{Version: 1, WorkerID: "oracle-web-push-1", Limit: 5, VAPIDKeyVersion: "staging-20260910-01", VAPIDFingerprint: "sha256:" + string(make([]byte, 64))})
+			if err == nil {
+				t.Fatal("Claim() error = nil")
+			}
+			apiErr, ok := err.(*APIError)
+			if !ok || apiErr.Code != tc.code {
+				t.Fatalf("Claim() error = %#v, want code %q", err, tc.code)
+			}
+		})
+	}
+}
+
+func TestHTTPBackendRejectsNonContractErrorResponses(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		code string
+	}{
+		{name: "unknown field", body: `{"version":1,"error":{"code":"replay"},"extra":true}`, code: "invalid_response"},
+		{name: "case variant field", body: `{"Version":1,"error":{"code":"replay"}}`, code: "invalid_response"},
+		{name: "duplicate field", body: `{"version":1,"error":{"code":"replay","code":"replay"}}`, code: "invalid_response"},
+		{name: "trailing json", body: `{"version":1,"error":{"code":"replay"}}{}`, code: "invalid_response"},
+		{name: "wrong type", body: `{"version":1,"error":{"code":"replay","retry_after_seconds":"1"}}`, code: "invalid_response"},
+		{name: "null field", body: `{"version":1,"error":null}`, code: "invalid_response"},
+		{name: "missing version", body: `{"error":{"code":"replay"}}`, code: "invalid_response"},
+		{name: "unsupported version", body: `{"version":2,"error":{"code":"replay"}}`, code: "unsupported_version"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				writer.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = writer.Write([]byte(tc.body))
+			}))
+			defer server.Close()
+			backend, err := NewHTTPBackend(server.URL, "test-key-1", base64.StdEncoding.EncodeToString(make([]byte, 32)), server.Client())
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = backend.Report(context.Background(), ReportRequest{Version: 1, Results: []ReportItem{}})
+			if err == nil {
+				t.Fatal("Report() error = nil")
+			}
+			apiErr, ok := err.(*APIError)
+			if !ok || apiErr.Code != tc.code {
+				t.Fatalf("Report() error = %#v, want code %q", err, tc.code)
+			}
+		})
+	}
+}
+
 func containsSecret(value string) bool {
 	return value == "must-not-escape" || value == `{"secret":"must-not-escape"}`
 }

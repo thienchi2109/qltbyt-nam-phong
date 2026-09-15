@@ -1,12 +1,11 @@
 package webpush
 
 import (
-	"crypto/elliptic"
+	"crypto/ecdh"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"math/big"
 	"os"
 	"regexp"
 	"strings"
@@ -61,13 +60,14 @@ func LoadVAPIDKey(path, version, expectedPublicKey, expectedFingerprint string) 
 }
 
 func deriveVAPIDArtifact(raw []byte) (string, string, error) {
-	curve := elliptic.P256()
-	scalar := new(big.Int).SetBytes(raw)
-	if len(raw) != 32 || scalar.Sign() <= 0 || scalar.Cmp(curve.Params().N) >= 0 {
+	if len(raw) != 32 {
 		return "", "", errors.New("invalid P-256 scalar")
 	}
-	x, y := curve.ScalarBaseMult(raw)
-	point := elliptic.Marshal(curve, x, y)
+	privateKey, err := ecdh.P256().NewPrivateKey(raw)
+	if err != nil {
+		return "", "", errors.New("invalid P-256 scalar")
+	}
+	point := privateKey.PublicKey().Bytes()
 	publicKey := base64.RawURLEncoding.EncodeToString(point)
 	fingerprint := "sha256:" + fmt.Sprintf("%x", sha256.Sum256(point))
 	return publicKey, fingerprint, nil

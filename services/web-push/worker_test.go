@@ -22,6 +22,11 @@ func TestLoadVAPIDKeyDerivesStablePublicArtifact(t *testing.T) {
 	if key.PublicKey == "" || key.Fingerprint == "" || len(key.PublicKey) < 80 {
 		t.Fatalf("derived artifact is incomplete: %+v", key)
 	}
+	const wantPublicKey = "BGsX0fLhLEJH-Lzm5WOkQPJ3A32BLeszoPShOUXYmMKWT-NC4v4af5uO5-tKfA-eFivOM1drMV7Oy7ZAaDe_UfU"
+	const wantFingerprint = "sha256:698bea63dc44a344663ff1429aea10842df27b6b991ef25866b2c6c02cdcc5be"
+	if key.PublicKey != wantPublicKey || key.Fingerprint != wantFingerprint {
+		t.Fatalf("derived artifact = %q/%q, want %q/%q", key.PublicKey, key.Fingerprint, wantPublicKey, wantFingerprint)
+	}
 	if len(key.privateKey) != 32 || key.privateKey[31] != 1 {
 		t.Fatalf("private key was not loaded as raw scalar")
 	}

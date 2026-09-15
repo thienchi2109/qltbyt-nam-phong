@@ -29,6 +29,18 @@ const (
 
 var workerKeyIDPattern = regexp.MustCompile(`^[a-z0-9-]{1,64}$`)
 
+var ErrUnsupportedVersion = errors.New("unsupported worker API version")
+
+type apiErrorEnvelope struct {
+	Version *int          `json:"version"`
+	Error   *apiErrorBody `json:"error"`
+}
+
+type apiErrorBody struct {
+	Code              string `json:"code"`
+	RetryAfterSeconds *int   `json:"retry_after_seconds"`
+}
+
 type APIError struct {
 	Status            int
 	Code              string
@@ -112,7 +124,7 @@ func (b *HTTPBackend) doJSON(ctx context.Context, path string, request, response
 	return lastErr
 }
 
-func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, response interface{}, maxResponse int64) error {
+func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, response interface{}, maxResponse int64) (resultErr error) {
 	rawBody, err := json.Marshal(request)
 	if err != nil {
 		return &APIError{Err: err}
@@ -146,7 +158,11 @@ func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, r
 	if err != nil {
 		return &APIError{Err: err}
 	}
-	defer res.Body.Close()
+	defer func() {
+		if closeErr := res.Body.Close(); closeErr != nil && resultErr == nil {
+			resultErr = &APIError{Status: res.StatusCode, Code: "response_body_close", Err: closeErr}
+		}
+	}()
 	if res.StatusCode < 200 || res.StatusCode > 299 {
 		return readAPIError(res)
 	}
@@ -157,29 +173,52 @@ func (b *HTTPBackend) doJSONAttempt(ctx context.Context, path string, request, r
 	if int64(len(data)) > maxResponse {
 		return &APIError{Status: res.StatusCode, Code: "body_too_large"}
 	}
-	if err := json.Unmarshal(data, response); err != nil {
-		return &APIError{Status: res.StatusCode, Code: "invalid_response", Err: err}
+	if err := decodeStrictJSON(data, response, ""); err != nil {
+		return invalidResponseAPIError(res.StatusCode, err)
+	}
+	if err := validateResponseVersion(data, ""); err != nil {
+		return invalidResponseAPIError(res.StatusCode, err)
 	}
 	return nil
 }
 
 func readAPIError(res *http.Response) error {
-	data, _ := io.ReadAll(io.LimitReader(res.Body, 4097))
-	var envelope struct {
-		Version int `json:"version"`
-		Error   struct {
-			Code              string `json:"code"`
-			RetryAfterSeconds *int   `json:"retry_after_seconds"`
-		} `json:"error"`
+	data, err := io.ReadAll(io.LimitReader(res.Body, 4097))
+	if err != nil {
+		return invalidResponseAPIError(res.StatusCode, err)
 	}
-	if len(data) <= 4096 {
-		_ = json.Unmarshal(data, &envelope)
+	if len(data) > 4096 {
+		return invalidResponseAPIError(res.StatusCode, errors.New("response body too large"))
+	}
+	var envelope apiErrorEnvelope
+	if err := decodeStrictJSON(data, &envelope, "$.error.retry_after_seconds"); err != nil {
+		return invalidResponseAPIError(res.StatusCode, err)
+	}
+	if err := validateResponseVersion(data, "$.error.retry_after_seconds"); err != nil {
+		return invalidResponseAPIError(res.StatusCode, err)
+	}
+	if envelope.Error == nil || envelope.Error.Code == "" {
+		return invalidResponseAPIError(res.StatusCode, errors.New("error envelope is incomplete"))
+	}
+	if envelope.Error.RetryAfterSeconds != nil && *envelope.Error.RetryAfterSeconds < 0 {
+		return invalidResponseAPIError(res.StatusCode, errors.New("retry_after_seconds must be non-negative"))
 	}
 	return &APIError{
 		Status:            res.StatusCode,
 		Code:              envelope.Error.Code,
 		RetryAfterSeconds: firstRetryAfter(envelope.Error.RetryAfterSeconds, res.Header.Get("retry-after"), time.Now()),
 	}
+}
+
+func invalidResponseAPIError(status int, err error) *APIError {
+	return &APIError{Status: status, Code: responseErrorCode(err), Err: fmt.Errorf("%w: %v", ErrInvalidResponse, err)}
+}
+
+func responseErrorCode(err error) string {
+	if errors.Is(err, ErrUnsupportedVersion) {
+		return "unsupported_version"
+	}
+	return "invalid_response"
 }
 
 func firstRetryAfter(value *int, header string, now time.Time) *int {
