@@ -19,6 +19,7 @@ const (
 var (
 	ErrInvalidResponse = errors.New("invalid worker API response")
 	ErrWorkerNotReady  = errors.New("worker is not ready")
+	ErrWorkerPaused    = errors.New("worker is paused")
 )
 
 type WorkerConfig struct {
@@ -29,6 +30,8 @@ type WorkerConfig struct {
 	ExpectedVersion     string
 	ExpectedPublicKey   string
 	ExpectedFingerprint string
+	Paused              bool
+	Metrics             *Metrics
 	Now                 func() time.Time
 	Sleep               func(context.Context, time.Duration) error
 	Jitter              func() float64
@@ -42,6 +45,8 @@ type Worker struct {
 	expectedVersion     string
 	expectedPublicKey   string
 	expectedFingerprint string
+	paused              bool
+	metrics             *Metrics
 	now                 func() time.Time
 	sleep               func(context.Context, time.Duration) error
 	jitter              func() float64
@@ -75,6 +80,8 @@ func NewWorker(config WorkerConfig) *Worker {
 		expectedVersion:     expectedVersion,
 		expectedPublicKey:   expectedPublicKey,
 		expectedFingerprint: expectedFingerprint,
+		paused:              config.Paused,
+		metrics:             config.Metrics,
 		now:                 now,
 		sleep:               sleep,
 		jitter:              jitter,
@@ -109,6 +116,12 @@ func (w *Worker) Run(ctx context.Context) error {
 		if errors.Is(err, ErrVAPIDMismatch) || errors.Is(err, ErrWorkerNotReady) {
 			return err
 		}
+		if errors.Is(err, ErrWorkerPaused) {
+			if err := w.sleep(ctx, time.Minute); err != nil {
+				return err
+			}
+			continue
+		}
 		if !isRetryableWorkerError(err) {
 			return err
 		}
@@ -132,6 +145,9 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
+	if w.paused {
+		return 0, false, ErrWorkerPaused
+	}
 	if err := w.checkReady(); err != nil {
 		return 0, false, err
 	}
@@ -216,6 +232,9 @@ func (w *Worker) sendBatch(ctx context.Context, deliveries []Delivery, now time.
 			select {
 			case sem <- struct{}{}:
 			case <-ctx.Done():
+				if w.metrics != nil {
+					w.metrics.Record("cancelled", 0)
+				}
 				errMu.Lock()
 				if firstErr == nil {
 					firstErr = ctx.Err()
@@ -244,6 +263,13 @@ func (w *Worker) sendBatch(ctx context.Context, deliveries []Delivery, now time.
 }
 
 func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) (ReportItem, error) {
+	started := time.Now()
+	record := func(item ReportItem) ReportItem {
+		if w.metrics != nil {
+			w.metrics.Record(item.Outcome, time.Since(started))
+		}
+		return item
+	}
 	if delivery.VAPIDKeyVersion != w.vapid.Version {
 		return ReportItem{}, ErrVAPIDMismatch
 	}
@@ -257,10 +283,10 @@ func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) 
 		return ReportItem{}, ErrInvalidResponse
 	}
 	if !deadline.After(now) || delivery.TTLSeconds < 1 {
-		return reportItem(delivery, "not_sent_expired", nil, nil), nil
+		return record(reportItem(delivery, "not_sent_expired", nil, nil)), nil
 	}
 	if !lease.After(now) || lease.Sub(now) <= providerTimeout {
-		return reportItem(delivery, "not_sent_lease_expired", nil, nil), nil
+		return record(reportItem(delivery, "not_sent_lease_expired", nil, nil)), nil
 	}
 	remainingTTL := int(deadline.Sub(now) / time.Second)
 	if remainingTTL > 86400 {
@@ -270,7 +296,7 @@ func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) 
 		remainingTTL = delivery.TTLSeconds
 	}
 	if remainingTTL < 1 {
-		return reportItem(delivery, "not_sent_expired", nil, nil), nil
+		return record(reportItem(delivery, "not_sent_expired", nil, nil)), nil
 	}
 	delivery.TTLSeconds = remainingTTL
 	timeout := providerTimeout
@@ -282,9 +308,12 @@ func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) 
 	cancel()
 	if sendErr != nil {
 		if ctx.Err() != nil {
+			if w.metrics != nil {
+				w.metrics.Record("cancelled", time.Since(started))
+			}
 			return ReportItem{}, ctx.Err()
 		}
-		return reportItem(delivery, "transient", nil, nil), nil
+		return record(reportItem(delivery, "transient", nil, nil)), nil
 	}
 	outcome := result.Outcome
 	if outcome == "" {
@@ -294,7 +323,7 @@ func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) 
 	if result.Status > 0 {
 		status = &result.Status
 	}
-	return reportItem(delivery, outcome, status, result.RetryAfterSeconds), nil
+	return record(reportItem(delivery, outcome, status, result.RetryAfterSeconds)), nil
 }
 
 func (w *Worker) reportWithRetry(ctx context.Context, request ReportRequest, lease time.Time, now func() time.Time) error {

@@ -1,0 +1,42 @@
+services:
+  web-push:
+    image: "${WEB_PUSH_IMAGE:?set WEB_PUSH_IMAGE to a digest-pinned image}"
+    restart: unless-stopped
+    init: true
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 10s
+    environment:
+      WEB_PUSH_ORIGIN: "${WEB_PUSH_ORIGIN:?set WEB_PUSH_ORIGIN}"
+      WEB_PUSH_WORKER_ID: "${WEB_PUSH_WORKER_ID:-oracle-web-push-1}"
+      WEB_PUSH_PAUSED: "${WEB_PUSH_PAUSED:-true}"
+      WEB_PUSH_HEALTH_ADDR: "127.0.0.1:8080"
+      WEB_PUSH_VAPID_PRIVATE_KEY_PATH: /run/secrets/web_push_vapid_private_key
+      WEB_PUSH_VAPID_KEY_VERSION: "${WEB_PUSH_VAPID_KEY_VERSION:?set WEB_PUSH_VAPID_KEY_VERSION}"
+      WEB_PUSH_VAPID_PUBLIC_KEY: "${WEB_PUSH_VAPID_PUBLIC_KEY:?set WEB_PUSH_VAPID_PUBLIC_KEY}"
+      WEB_PUSH_VAPID_FINGERPRINT: "${WEB_PUSH_VAPID_FINGERPRINT:?set WEB_PUSH_VAPID_FINGERPRINT}"
+      WEB_PUSH_VAPID_SUBJECT: "${WEB_PUSH_VAPID_SUBJECT:?set WEB_PUSH_VAPID_SUBJECT}"
+      WEB_PUSH_HMAC_KEY_ID: "${WEB_PUSH_HMAC_KEY_ID:?set WEB_PUSH_HMAC_KEY_ID}"
+      WEB_PUSH_HMAC_SECRET: "${WEB_PUSH_HMAC_SECRET:?set WEB_PUSH_HMAC_SECRET}"
+    secrets:
+      - source: web_push_vapid_private_key
+        target: web_push_vapid_private_key
+        uid: "65532"
+        gid: "65532"
+        mode: 0400
+    expose:
+      - "8080"
+    networks:
+      - web_push
+
+secrets:
+  web_push_vapid_private_key:
+    file: "${WEB_PUSH_VAPID_PRIVATE_KEY_FILE:?set WEB_PUSH_VAPID_PRIVATE_KEY_FILE outside Git}"
+
+networks:
+  web_push:
+    driver: bridge
