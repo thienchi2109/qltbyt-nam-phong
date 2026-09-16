@@ -97,6 +97,76 @@ func TestWorkerClaimsSendsAndReportsEachDelivery(t *testing.T) {
 	}
 }
 
+func TestWorkerRecordsFailedMetricForInvalidDelivery(t *testing.T) {
+	key := testVAPIDKey(t)
+	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
+	delivery := testDelivery()
+	delivery.LeaseExpiresAt = now.Add(time.Minute).Format(time.RFC3339)
+	delivery.VAPIDKeyVersion = "other-version"
+	api := &fakeAPI{claim: ClaimResponse{
+		Version:          1,
+		ServerTime:       now.Format(time.RFC3339),
+		PollAfterSeconds: 5,
+		Deliveries:       []Delivery{delivery},
+	}}
+	metrics := NewMetrics()
+	worker := NewWorker(WorkerConfig{
+		API:                 api,
+		Sender:              &fakeSender{result: ProviderResult{Status: 201}},
+		VAPID:               key,
+		ExpectedVersion:     key.Version,
+		ExpectedPublicKey:   key.PublicKey,
+		ExpectedFingerprint: key.Fingerprint,
+		Metrics:             metrics,
+		Now:                 func() time.Time { return now },
+	})
+
+	if err := worker.RunOnce(context.Background()); !errors.Is(err, ErrVAPIDMismatch) {
+		t.Fatalf("RunOnce() error = %v, want ErrVAPIDMismatch", err)
+	}
+	snapshot := metrics.snapshot()
+	if snapshot.failed != 1 || snapshot.latencyCount != 1 {
+		t.Fatalf("metrics snapshot = %+v, want one failed delivery with latency", snapshot)
+	}
+}
+
+func TestWorkerReadinessTracksBackendCycle(t *testing.T) {
+	key := testVAPIDKey(t)
+	now := time.Date(2026, 9, 16, 12, 0, 0, 0, time.UTC)
+	api := &fakeAPI{claim: ClaimResponse{
+		Version:          1,
+		ServerTime:       now.Format(time.RFC3339),
+		PollAfterSeconds: 5,
+		Deliveries:       []Delivery{testDelivery()},
+	}}
+	readiness := make(chan bool, 2)
+	worker := NewWorker(WorkerConfig{
+		API:                 api,
+		Sender:              &fakeSender{result: ProviderResult{Status: 201}},
+		VAPID:               key,
+		ExpectedVersion:     key.Version,
+		ExpectedPublicKey:   key.PublicKey,
+		ExpectedFingerprint: key.Fingerprint,
+		OnReady:             func(ready bool) { readiness <- ready },
+		Now:                 func() time.Time { return now },
+	})
+
+	if err := worker.RunOnce(context.Background()); err != nil {
+		t.Fatalf("successful RunOnce() error = %v", err)
+	}
+	if got := <-readiness; !got {
+		t.Fatal("successful backend cycle reported not ready")
+	}
+
+	api.claimErr = errors.New("backend unavailable")
+	if err := worker.RunOnce(context.Background()); err == nil {
+		t.Fatal("failed RunOnce() error = nil, want backend error")
+	}
+	if got := <-readiness; got {
+		t.Fatal("failed backend cycle reported ready")
+	}
+}
+
 func TestWorkerClampsProviderTTLToRemainingDeadline(t *testing.T) {
 	privateKey := make([]byte, 32)
 	privateKey[31] = 1

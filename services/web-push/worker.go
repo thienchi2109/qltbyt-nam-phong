@@ -32,6 +32,7 @@ type WorkerConfig struct {
 	ExpectedFingerprint string
 	Paused              bool
 	Metrics             *Metrics
+	OnReady             func(bool)
 	Now                 func() time.Time
 	Sleep               func(context.Context, time.Duration) error
 	Jitter              func() float64
@@ -47,6 +48,7 @@ type Worker struct {
 	expectedFingerprint string
 	paused              bool
 	metrics             *Metrics
+	onReady             func(bool)
 	now                 func() time.Time
 	sleep               func(context.Context, time.Duration) error
 	jitter              func() float64
@@ -82,6 +84,7 @@ func NewWorker(config WorkerConfig) *Worker {
 		expectedFingerprint: expectedFingerprint,
 		paused:              config.Paused,
 		metrics:             config.Metrics,
+		onReady:             config.OnReady,
 		now:                 now,
 		sleep:               sleep,
 		jitter:              jitter,
@@ -100,6 +103,7 @@ func (w *Worker) Run(ctx context.Context) error {
 	backoffAttempt := 0
 	for {
 		if err := ctx.Err(); err != nil {
+			w.setReady(false)
 			return err
 		}
 		delay, immediate, err := w.runOnce(ctx)
@@ -109,20 +113,24 @@ func (w *Worker) Run(ctx context.Context) error {
 				continue
 			}
 			if err := w.sleep(ctx, delay); err != nil {
+				w.setReady(false)
 				return err
 			}
 			continue
 		}
 		if errors.Is(err, ErrVAPIDMismatch) || errors.Is(err, ErrWorkerNotReady) {
+			w.setReady(false)
 			return err
 		}
 		if errors.Is(err, ErrWorkerPaused) {
 			if err := w.sleep(ctx, time.Minute); err != nil {
+				w.setReady(false)
 				return err
 			}
 			continue
 		}
 		if !isRetryableWorkerError(err) {
+			w.setReady(false)
 			return err
 		}
 		if isDisabledError(err) {
@@ -139,6 +147,7 @@ func (w *Worker) Run(ctx context.Context) error {
 			backoffAttempt++
 		}
 		if err := w.sleep(ctx, delay); err != nil {
+			w.setReady(false)
 			return err
 		}
 	}
@@ -146,12 +155,15 @@ func (w *Worker) Run(ctx context.Context) error {
 
 func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
 	if w.paused {
+		w.setReady(false)
 		return 0, false, ErrWorkerPaused
 	}
 	if err := w.checkReady(); err != nil {
+		w.setReady(false)
 		return 0, false, err
 	}
 	if w.api == nil || w.sender == nil {
+		w.setReady(false)
 		return 0, false, fmt.Errorf("%w: dependencies unavailable", ErrWorkerNotReady)
 	}
 	claim := ClaimRequest{
@@ -165,29 +177,42 @@ func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
 	response, err := w.api.Claim(claimCtx, claim)
 	cancel()
 	if err != nil {
+		w.setReady(false)
 		return 0, false, err
 	}
 	if !validClaimResponse(response) {
+		w.setReady(false)
 		return 0, false, ErrInvalidResponse
 	}
 	serverNow, err := parseTime(response.ServerTime)
 	if err != nil {
+		w.setReady(false)
 		return 0, false, ErrInvalidResponse
 	}
 	serverOffset := serverNow.Sub(w.now().UTC())
 	results, earliestLease, err := w.sendBatch(ctx, response.Deliveries, serverNow)
 	if err != nil {
+		w.setReady(false)
 		return 0, false, err
 	}
 	if len(results) == 0 {
+		w.setReady(true)
 		return pollDelay(response), false, nil
 	}
 	if err := w.reportWithRetry(ctx, ReportRequest{Version: 1, Results: results}, earliestLease, func() time.Time {
 		return w.now().UTC().Add(serverOffset)
 	}); err != nil {
+		w.setReady(false)
 		return 0, false, err
 	}
+	w.setReady(true)
 	return pollDelay(response), len(response.Deliveries) == claimLimit, nil
+}
+
+func (w *Worker) setReady(ready bool) {
+	if w.onReady != nil {
+		w.onReady(ready)
+	}
 }
 
 func (w *Worker) checkReady() error {
@@ -264,22 +289,28 @@ func (w *Worker) sendBatch(ctx context.Context, deliveries []Delivery, now time.
 
 func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) (ReportItem, error) {
 	started := time.Now()
-	record := func(item ReportItem) ReportItem {
+	recordOutcome := func(outcome string) {
 		if w.metrics != nil {
-			w.metrics.Record(item.Outcome, time.Since(started))
+			w.metrics.Record(outcome, time.Since(started))
 		}
+	}
+	record := func(item ReportItem) ReportItem {
+		recordOutcome(item.Outcome)
 		return item
 	}
 	if delivery.VAPIDKeyVersion != w.vapid.Version {
+		recordOutcome("failed")
 		return ReportItem{}, ErrVAPIDMismatch
 	}
 	now = now.UTC()
 	deadline, err := parseTime(delivery.Deadline)
 	if err != nil {
+		recordOutcome("failed")
 		return ReportItem{}, ErrInvalidResponse
 	}
 	lease, err := parseTime(delivery.LeaseExpiresAt)
 	if err != nil {
+		recordOutcome("failed")
 		return ReportItem{}, ErrInvalidResponse
 	}
 	if !deadline.After(now) || delivery.TTLSeconds < 1 {
@@ -308,9 +339,7 @@ func (w *Worker) sendOne(ctx context.Context, delivery Delivery, now time.Time) 
 	cancel()
 	if sendErr != nil {
 		if ctx.Err() != nil {
-			if w.metrics != nil {
-				w.metrics.Record("cancelled", time.Since(started))
-			}
+			recordOutcome("cancelled")
 			return ReportItem{}, ctx.Err()
 		}
 		return record(reportItem(delivery, "transient", nil, nil)), nil

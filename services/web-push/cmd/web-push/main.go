@@ -58,7 +58,7 @@ func main() {
 	}
 
 	metrics := webpush.NewMetrics()
-	health := webpush.NewHealthState(true, cfg.paused, metrics)
+	health := webpush.NewHealthState(cfg.paused, metrics)
 	server := &http.Server{
 		Addr:              cfg.healthAddress,
 		Handler:           health.Handler(),
@@ -77,6 +77,7 @@ func main() {
 		ExpectedFingerprint: cfg.vapidFingerprint,
 		Paused:              cfg.paused,
 		Metrics:             metrics,
+		OnReady:             health.SetReady,
 	})
 
 	healthErr := make(chan error, 1)

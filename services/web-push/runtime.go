@@ -43,11 +43,12 @@ type HealthState struct {
 	metrics *Metrics
 }
 
-func NewHealthState(ready, paused bool, metrics *Metrics) *HealthState {
+// NewHealthState starts fail-closed; the worker marks readiness after runtime checks.
+func NewHealthState(paused bool, metrics *Metrics) *HealthState {
 	if metrics == nil {
 		metrics = NewMetrics()
 	}
-	return &HealthState{ready: ready, paused: paused, metrics: metrics}
+	return &HealthState{paused: paused, metrics: metrics}
 }
 
 func (s *HealthState) SetReady(ready bool) {

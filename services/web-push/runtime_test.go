@@ -56,8 +56,9 @@ func TestHealthReadinessAndMetricsExposeOnlyBoundedLocalState(t *testing.T) {
 	metrics.Record("accepted", time.Second)
 	metrics.Record("transient", 2*time.Second)
 	metrics.Record("not_sent_expired", 3*time.Second)
-	state := NewHealthState(true, false, metrics)
+	state := NewHealthState(false, metrics)
 	handler := state.Handler()
+	state.SetReady(true)
 
 	assertHTTP := func(path string, wantStatus int, wantBody string) {
 		t.Helper()
@@ -92,6 +93,25 @@ func TestHealthReadinessAndMetricsExposeOnlyBoundedLocalState(t *testing.T) {
 		if strings.Contains(strings.ToLower(body), forbidden) {
 			t.Fatalf("metrics contain forbidden value %q: %q", forbidden, body)
 		}
+	}
+}
+
+func TestHealthStateStartsFailClosedUntilRuntimeMarksReady(t *testing.T) {
+	state := NewHealthState(false, NewMetrics())
+	handler := state.Handler()
+
+	request := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusServiceUnavailable || recorder.Body.String() != "not_ready\n" {
+		t.Fatalf("initial /readyz = %d %q, want 503 not_ready", recorder.Code, recorder.Body.String())
+	}
+
+	state.SetReady(true)
+	recorder = httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != "ready\n" {
+		t.Fatalf("marked-ready /readyz = %d %q, want 200 ready", recorder.Code, recorder.Body.String())
 	}
 }
 
