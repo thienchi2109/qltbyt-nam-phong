@@ -1,6 +1,6 @@
 # Phase 6.4 Handoff
 
-Chunk 6.4 hiện có thay đổi local cho Go runtime, Docker artifact và Oracle runbook; main agent review vẫn pending.
+Chunk 6.4 có commit local `afee32639e5dc8e3371ced9449f4ac410ce7ac0d` cho Go runtime, Docker artifact và Oracle runbook; main agent review vẫn pending.
 
 Đã thêm pause fail-closed/default paused ở binary config, private health/readiness loopback `127.0.0.1:8080`, bounded metrics, stable log codes, VAPID artifact checks, static non-root image và Compose secret mount. VAPID rotation/resubscribe/rollback chỉ được mô tả cho vận hành tương lai; private key không được tạo hoặc regenerate trong container.
 

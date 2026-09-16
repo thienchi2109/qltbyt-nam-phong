@@ -1,6 +1,6 @@
 # Phase 6.4 Evidence
 
-Ngày 2026-09-16. Base trước local landing: `df26807704e698b487b746dbe0a0e3db47c98446`.
+Ngày 2026-09-16. Commit local kiểm chứng: `afee32639e5dc8e3371ced9449f4ac410ce7ac0d`.
 
 ## Phạm vi
 
@@ -48,7 +48,7 @@ Từ `services/web-push/`:
 Local image build được phép trong Chunk 6.4 và đã chạy:
 
 ```text
-docker build -f services/web-push/Dockerfile -t qltbyt-web-push:df26807704e698b487b746dbe0a0e3db47c98446 services/web-push
+docker build -f services/web-push/Dockerfile -t qltbyt-web-push:afee32639e5dc8e3371ced9449f4ac410ce7ac0d services/web-push
 ```
 
 `docker image inspect` xác nhận entrypoint `/usr/local/bin/web-push` và user `65532:65532`.
