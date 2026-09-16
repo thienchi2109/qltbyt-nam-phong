@@ -119,7 +119,7 @@
 
 - [ ] 6.1 Implement poll/claim/send/report loop có timeout, backoff và graceful shutdown; dùng Web Push library, VAPID private key qua secret; readiness kiểm tra derived public key/fingerprint khớp app contract Phase 4, mismatch không claim/send; không durable queue/database.
 - [ ] 6.2 Validate outbound HTTPS endpoint và resolved addresses, chặn private/link-local/redirect bypass; bound payload/TTL và map 404/410/429/5xx/config errors đúng contract.
-- [ ] 6.3 Test provider accepted/report lost, worker crash/reclaim, stale lease, deadline và từng subscription; không báo accepted thành delivered/read.
+- [x] 6.3 Test provider accepted/report lost, worker crash/reclaim, stale lease, deadline và từng subscription; không báo accepted thành delivered/read. [Mock evidence và giới hạn](phase-6.3-evidence.md), [handoff local](phase-6.3-handoff.md).
 - [ ] 6.4 Tạo Docker image, private health/readiness, minimal metrics/log redaction và VAPID persistence/controlled rotation/resubscribe/rollback runbook cho Oracle, không regenerate key khi restart; mặc định paused.
 - [ ] 6.5 Chạy Go checks/container smoke trên mocks, xác nhận image không chứa secrets, review artifact và dừng.
 
