@@ -84,7 +84,7 @@ func outcomeForStatus(status int) string {
 		return "endpoint_gone"
 	case status == 401 || status == 403:
 		return "credential_error"
-	case status == 408 || status == 429 || status >= 500:
+	case status == 408 || status == 429 || (status >= 500 && status <= 599):
 		return "transient"
 	default:
 		return "permanent"

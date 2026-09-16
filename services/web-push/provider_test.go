@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/netip"
 	"testing"
 	"time"
 )
@@ -39,7 +40,13 @@ func TestProviderAcceptedSurvivesBodyCleanupFailure(t *testing.T) {
 		delivery := testDelivery()
 		delivery.Keys = SubscriptionKeys{P256DH: key.PublicKey, Auth: base64.RawURLEncoding.EncodeToString(make([]byte, 16))}
 		body := &failingProviderBody{readErr: readErr}
-		sender := WebPushSender{Subject: "mailto:test@example.test", HTTPClient: providerResponseClient{body: body}}
+		sender := WebPushSender{
+			Subject:    "mailto:test@example.test",
+			httpClient: providerResponseClient{body: body},
+			resolve: func(context.Context, string) ([]netip.Addr, error) {
+				return []netip.Addr{netip.MustParseAddr("8.8.8.8")}, nil
+			},
+		}
 		result, err := sender.Send(context.Background(), delivery, key, time.Second)
 		if err != nil || result.Outcome != "accepted" || result.Status != http.StatusCreated || !body.closed {
 			t.Fatalf("accepted response lost: result=%+v err=%v closed=%v", result, err, body.closed)
