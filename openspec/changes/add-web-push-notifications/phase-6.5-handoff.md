@@ -9,4 +9,6 @@
 - RED isolated temp: smoke mutant chỉ đọc stdout làm harness exit `1` tại `fault unexpectedly passed`; smoke đúng full-output exit `0`/in `PASS`. GREEN tại harness commit `c035ce8c9bceafe9bc0e62c845ccd9acb2cf914c`; stderr-secret shim trả exit `0` và đi qua audit thành công, không ép `[REDACTED]` trên failure message.
 - Gates: format, no-explicit-any, diff-only dedupe, typecheck, React Doctor `100/100` PASS. Go test/vet/build giữ nguyên PASS đã kiểm chứng trước đó; runtime Go không đổi.
 - Giới hạn: mock-only/paused, không provider thật, browser, SQL/live DB, Oracle, deploy, Phase 7 hoặc Phase 8; audit không claim arbitrary-secret absence.
-- 6.5 checkbox vẫn pending independent review của parent; không tự tick hoặc diễn giải phase khác.
+- Main agent đã review và kiểm chứng độc lập tại `fceb32e1`: normal smoke/full regression PASS, stdout-only mutant và wrong-image negative đều bị từ chối đúng; gates PASS và Docker cleanup không còn resource. Chỉ tick 6.5, không diễn giải phase khác. Không push; maintainer quyết định bước tiếp theo.
+
+Main closeout: xem mục “Main agent review và closeout local” trong [evidence](phase-6.5-evidence.md) cho kết quả kiểm chứng độc lập và các giới hạn còn lại.

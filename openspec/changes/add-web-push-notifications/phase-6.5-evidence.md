@@ -76,4 +76,18 @@ Stage capture: `history` -> `read image history`; `layer-list` -> `list image la
 - Audit chỉ chứng minh absence của các generated test values và path/config patterns được nêu ở trên; không claim absence của mọi secret arbitrary hoặc mọi biến thể encoding. Sentinel stderr là giá trị sinh riêng cho test, không phải secret thật.
 - Image ID là local content ID; pin immutable ID ngăn tag đổi subject sau validation trong harness nhưng không thay thế provenance/signature verification.
 - Normal smoke và fault regression là paused/mock-only; negative image check chỉ chứng minh regression harness fail closed khi prerequisite sai, không chứng minh image provenance.
-- Independent review của parent agent còn pending. Giữ checkbox 6.5 và các phase khác nguyên trạng cho tới khi review độc lập xác nhận evidence này.
+- Main agent đã review trực tiếp và kiểm chứng độc lập; chỉ tick 6.5 theo phạm vi local/mock bên dưới. Không thay đổi các checkbox khác.
+
+## Main agent review và closeout local
+
+Reviewed HEAD `fceb32e1d830ac27dbb41b0212edf937dbea8fad`, harness `c035ce8c9bceafe9bc0e62c845ccd9acb2cf914c`. Main agent đã đối chiếu narrow diff và chạy độc lập:
+
+- Normal paused container smoke: PASS; image ID đúng như artifact ở trên, restart cùng container/mount giữ nguyên key, cleanup verified.
+- Full fault regression: PASS; stderr sentinel đi qua command exit 0 rồi bị assertion quét logs phát hiện; exact marker/stage vẫn bắt buộc.
+- Mutation check trong bản sao tạm: thay `const logs = text(logsProcess)` bằng stdout-only; regression exit 1 tại `logs-stderr-secret fault unexpectedly passed`, không in regression PASS. Bản sao được xóa, working tree không bị sửa bởi mutation.
+- All-zero expected image ID: exit 1 tại baseline prerequisite, không in regression PASS.
+- Explicit Prettier, `DEDUPE_BASE=bc9ddbe3` diff-only gate, typecheck, React Doctor 100/100, OpenSpec strict và diff check: PASS. No-explicit-any SKIP vì không đổi TypeScript.
+- Full Go test/race/vet/gofmt/golangci-lint/build đã được main agent chạy PASS tại `d605d751`; Go/runtime/image không thay đổi trong correction này, tái sử dụng kết quả đó.
+- Kiểm tra Docker sau lượt cuối: direct/test containers 0, Compose containers 0, Compose networks 0.
+
+Không còn finding chặn trong phạm vi 6.5. Giữ giới hạn đã ghi: container smoke chỉ paused path, enabled flow dựa vào Go mocks; secret audit chỉ kiểm tra test values/patterns; có lịch sử probe flake và không tuyên bố production readiness. Chỉ tick 6.5, không tick phase khác, không push; dừng để maintainer quyết định.
