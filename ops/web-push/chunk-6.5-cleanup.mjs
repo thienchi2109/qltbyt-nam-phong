@@ -19,7 +19,13 @@ export function createCleanup({
       if (remaining.status === null) {
         throw new Error(`remove ${name}: cleanup verification command did not start`)
       }
-      if (remaining.status !== 0) {
+      const missing =
+        remaining.status === 1 &&
+        /no such (object|container)|not found/i.test(remaining.stderr || "")
+      if (remaining.status !== 0 && !missing) {
+        throw new Error(`remove ${name}: cleanup verification command failed`)
+      }
+      if (missing) {
         containers.delete(name)
         if (removal.status !== 0 || commandFailure)
           throw new Error(`remove ${name}: cleanup command failed after resource removal`)
