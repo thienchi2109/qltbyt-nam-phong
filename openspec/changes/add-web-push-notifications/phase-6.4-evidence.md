@@ -12,7 +12,7 @@ Chunk này chỉ triển khai Go/runtime, Docker build artifact và runbook Orac
 - Startup log chỉ ghi stable error code; metrics không có endpoint, payload, key, HMAC, phone hoặc backlog.
 - Static non-root Docker image, Compose secret mount và runbook pause/rotation/resubscribe/rollback.
 
-Không sửa `tasks.md`, SQL/live DB, provider thật, browser, Oracle hoặc production deploy.
+Không sửa SQL/live DB, provider thật, browser, Oracle hoặc production deploy. Main agent chỉ tick 6.4 sau review và gates bên dưới.
 
 ## TDD RED -> GREEN
 
@@ -83,7 +83,7 @@ WEB_PUSH_IMAGE=qltbyt-web-push:f03fce28 WEB_PUSH_ORIGIN=https://example.invalid 
 - Đây là local image build, chưa chạy container smoke, chưa audit filesystem/image layers/secrets và chưa provider send; các việc đó thuộc 6.5.
 - Khi paused, readiness bật sau local VAPID/config preflight và trả `200 paused` mà không claim; khi dispatch bật, readiness chỉ bật sau một claim/report cycle hợp lệ với backend. Cả hai trạng thái đều không phải bằng chứng subscription catalog, registration hoặc provider tương thích. Runbook yêu cầu remote read-only check riêng trước khi bật.
 - Mock/unit tests không chứng minh Oracle/network/secret store thật.
-- Main agent review đang pending; không tick 6.4 hoặc 6.5 trong `tasks.md` từ evidence này.
+- Main agent review hoàn tất ngày 2026-09-17; chỉ tick 6.4. Giữ 6.5 và mọi checkbox khác nguyên trạng.
 
 ## Follow-up review 2026-09-17
 
@@ -116,7 +116,21 @@ Local image verification sau correction cũng PASS:
 
 ```text
 docker build -f services/web-push/Dockerfile -t qltbyt-web-push:e400da83 services/web-push
-docker image inspect: entrypoint=["/usr/local/bin/web-push"] user="65532:65532" digest=sha256:2d15979384b9e965a5a561dcf33b0fd390f4354c31d53d068e33be1fb7891ac4
+docker image inspect: entrypoint=["/usr/local/bin/web-push"] user="65532:65532" image_id=sha256:2d15979384b9e965a5a561dcf33b0fd390f4354c31d53d068e33be1fb7891ac4
 ```
 
 Đây vẫn chỉ là local image build; không chạy container smoke hay image secrets audit thuộc 6.5.
+
+## Main agent review và verification cuối — 2026-09-17
+
+Reviewed HEAD `c66c387ded743929d2c95445ee3ae09c10f1fdce`, runtime correction `e400da839c618581f522be349fd8eddffa28668b`. Main agent trực tiếp review logic, cấu trúc, tests, Docker/Compose, runbook và compliance với contract; không còn finding chặn trong phạm vi 6.4. Finding ban đầu nói metrics chưa được nối vào worker là sai: `w.metrics.Record` đã tồn tại; follow-up bổ sung coverage nhánh lỗi và sửa semantics retry.
+
+Kiểm chứng độc lập:
+
+- Go tests `-count=1`, race `-count=1`, vet, gofmt, golangci-lint (0 issues), build: PASS.
+- Repo typecheck: PASS. No-explicit-any/dedupe và React Doctor diff-only: SKIP vì không đổi JS/TS/React.
+- Focused Vitest worker-routes + wire: 11 PASS; phase4-worker integration: 1 SKIP vì không cấu hình disposable database; không coi là bằng chứng DB integration.
+- Repo format gate: SKIP trên clean main; explicit Prettier check trên Compose/runbook/evidence/handoff: PASS. Git diff check và OpenSpec strict validation: PASS.
+- Compose config với placeholder: PASS. Local image `qltbyt-web-push:e400da83` có entrypoint `/usr/local/bin/web-push`, UID/GID `65532:65532`; SHA ở trên là image ID, `RepoDigests=[]`, chưa có registry digest/publish.
+
+Giới hạn: counters chỉ phản ánh local outcomes; wire hiện tại không cung cấp số retry thực tế backend. Paused readiness chỉ xác nhận local preflight, không xác nhận remote/provider. Chưa chạy 6.5 container smoke/image secrets audit, live DB, provider thật hoặc deploy. Không push; maintainer quyết định bước tiếp theo.
