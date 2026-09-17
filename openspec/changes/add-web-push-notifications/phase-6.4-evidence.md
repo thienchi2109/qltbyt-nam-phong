@@ -111,3 +111,12 @@ ok   github.com/qltbyt-nam-phong/web-push/cmd/web-push [no tests to run]
 `transient` chỉ là retryable local outcome; `not_sent_lease_expired` chỉ ghi nhận backend-owned follow-up. Không có metric nào tuyên bố backend đã retry, cancel hoặc expiry schedule. Invalid VAPID/config vẫn chạy qua `checkReady` trước nhánh paused; shutdown vẫn hạ readiness.
 
 Verification sau correction trong `services/web-push/`: `gofmt` check PASS, `go test -count=1 ./...` PASS, `go test -race ./...` PASS, `go vet ./...` PASS, `golangci-lint run ./...` PASS (0 issues) và `go build ./...` PASS.
+
+Local image verification sau correction cũng PASS:
+
+```text
+docker build -f services/web-push/Dockerfile -t qltbyt-web-push:e400da83 services/web-push
+docker image inspect: entrypoint=["/usr/local/bin/web-push"] user="65532:65532" digest=sha256:2d15979384b9e965a5a561dcf33b0fd390f4354c31d53d068e33be1fb7891ac4
+```
+
+Đây vẫn chỉ là local image build; không chạy container smoke hay image secrets audit thuộc 6.5.
