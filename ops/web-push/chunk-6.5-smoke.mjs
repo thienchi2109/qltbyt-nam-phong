@@ -6,12 +6,15 @@ import os from "node:os"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { spawnSync } from "node:child_process"
+import { createCleanup } from "./chunk-6.5-cleanup.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const imageSha = run("git", ["rev-parse", "--short=12", "HEAD"]).stdout.trim()
 const image = process.env.WEB_PUSH_IMAGE || `qltbyt-web-push:${imageSha}`
+const expectedImageId = process.env.WEB_PUSH_EXPECTED_IMAGE_ID || ""
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "web-push-chunk65-"))
-const containers = []
+const containers = new Set()
+const composeProjects = new Map()
 const result = { image, checks: [] }
 const rawPrivateKey = Buffer.alloc(32, 1)
 const ecdh = crypto.createECDH("prime256v1")
@@ -25,11 +28,7 @@ const marker = `CHUNK65_TEST_MARKER_${crypto.randomBytes(18).toString("hex")}`
 const secretPath = path.join(tempDir, "vapid.key")
 const invalidSecretPath = path.join(tempDir, "invalid.key")
 const markerPath = path.join(tempDir, "marker.txt")
-fs.writeFileSync(secretPath, `${privateKey}\n`, { mode: 0o400 })
-fs.writeFileSync(invalidSecretPath, "invalid-test-key\n", { mode: 0o400 })
-fs.writeFileSync(markerPath, `${marker}\n`, { mode: 0o600 })
-fs.chownSync(secretPath, 65532, 65532)
-fs.chownSync(invalidSecretPath, 65532, 65532)
+const secretNeedles = [privateKey, hmacSecret, marker]
 
 function run(command, args, options = {}) {
   return spawnSync(command, args, { cwd: root, encoding: "utf8", ...options })
@@ -47,9 +46,22 @@ function text(process) {
   return `${process.stdout || ""}\n${process.stderr || ""}`.trim()
 }
 
+function redactSecrets(value) {
+  let redacted = String(value || "")
+  for (const needle of secretNeedles) {
+    if (needle) redacted = redacted.split(needle).join("[REDACTED]")
+  }
+  return redacted
+}
+
+function containsSecret(value) {
+  const bytes = Buffer.isBuffer(value) ? value : Buffer.from(String(value || ""))
+  return secretNeedles.some((needle) => bytes.includes(Buffer.from(needle)))
+}
+
 function must(process, label) {
   if (process.status !== 0) {
-    throw new Error(`${label}: ${text(process).slice(-1000)}`)
+    throw new Error(`${label}: ${redactSecrets(text(process)).slice(-1000)}`)
   }
   return (process.stdout || "").trim()
 }
@@ -77,8 +89,22 @@ function inspect(target) {
   return parsed[0]
 }
 
-function removeContainer(name) {
-  if (name) docker(["rm", "-f", name])
+function mountedSecretHash(container) {
+  const output = must(
+    docker([
+      "run",
+      "--rm",
+      "--volumes-from",
+      container,
+      "busybox:1.36",
+      "sha256sum",
+      "/run/secrets/web_push_vapid_private_key",
+    ]),
+    "read mounted test key hash"
+  )
+  const hash = output.match(/^[0-9a-f]{64}/)?.[0]
+  if (!hash) throw new Error("mounted test key hash: invalid output")
+  return hash
 }
 
 function serviceArgs(name, secret = secretPath, extra = {}, detached = true, remove = false) {
@@ -141,14 +167,22 @@ function waitFor(container, endpoint, expected) {
     Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
   }
   throw new Error(
-    `probe ${endpoint} did not return expected body: ${lastResponse?.status} ${text(lastResponse)}`
+    `probe ${endpoint} did not return expected body: ${lastResponse?.status} ${redactSecrets(text(lastResponse))}`
   )
 }
 
 function imageAudit() {
+  check(Boolean(expectedImageId), "expected image ID is provided")
+  check(/^sha256:[0-9a-f]{64}$/.test(expectedImageId), "expected image ID is a SHA-256 content ID")
   const metadata = inspect(image)
   result.imageId = metadata.Id
+  result.expectedImageId = expectedImageId
   result.repoDigests = metadata.RepoDigests || []
+  check(metadata.Id === expectedImageId, "image ID matches expected content ID")
+  check(
+    !containsSecret(JSON.stringify(metadata)),
+    "image metadata excludes generated runtime secrets"
+  )
   check(metadata.Config.User === "65532:65532", "image user is 65532:65532")
   check(
     JSON.stringify(metadata.Config.Entrypoint) === JSON.stringify(["/usr/local/bin/web-push"]),
@@ -162,26 +196,25 @@ function imageAudit() {
   )
   check(result.repoDigests.length === 0, "image has no registry digest or publish")
 
-  const history = text(docker(["history", "--no-trunc", image]))
-  check(
-    !history.includes(privateKey) && !history.includes(marker),
-    "image history excludes test secret and marker"
-  )
+  const history = must(docker(["history", "--no-trunc", image]), "read image history")
+  check(!containsSecret(history), "image history excludes generated runtime secrets")
 
   const rootfsContainer = must(docker(["create", image]), "create final filesystem audit container")
+  containers.add(rootfsContainer)
   const rootfsTar = path.join(tempDir, "rootfs.tar")
   try {
     must(docker(["export", "-o", rootfsTar, rootfsContainer]), "export final filesystem")
   } finally {
     removeContainer(rootfsContainer)
   }
-  const rootfsPaths = text(run("tar", ["-tf", rootfsTar]))
+  check(
+    !containsSecret(fs.readFileSync(rootfsTar)),
+    "final filesystem archive excludes generated runtime secrets"
+  )
+  const rootfsPaths = must(run("tar", ["-tf", rootfsTar]), "list final filesystem")
     .split(/\r?\n/)
     .filter(Boolean)
-  check(
-    rootfsPaths.includes("usr/local/bin/web-push"),
-    "final filesystem contains only web-push binary"
-  )
+  check(rootfsPaths.includes("usr/local/bin/web-push"), "final filesystem contains web-push binary")
   check(
     rootfsPaths.includes("etc/ssl/certs/ca-certificates.crt"),
     "final filesystem contains CA bundle"
@@ -207,14 +240,12 @@ function imageAudit() {
   check(layers.length > 0, "image archive has layer tar")
   const layerPaths = []
   for (const layer of layers) {
-    layerPaths.push(
-      ...text(run("tar", ["-tf", layer]))
-        .split(/\r?\n/)
-        .filter(Boolean)
-    )
+    const paths = must(run("tar", ["-tf", layer]), `list image layer ${path.basename(layer)}`)
+      .split(/\r?\n/)
+      .filter(Boolean)
+    layerPaths.push(...paths)
     const bytes = fs.readFileSync(layer)
-    check(!bytes.includes(Buffer.from(privateKey)), "image layer excludes test secret")
-    check(!bytes.includes(Buffer.from(marker)), "image layer excludes test marker")
+    check(!containsSecret(bytes), "image layer excludes generated runtime secrets")
   }
   check(
     !layerPaths.some((entry) => /run\/secrets|\.env|\.key$|\.pem$|marker/i.test(entry)),
@@ -224,9 +255,11 @@ function imageAudit() {
 
 function directSmoke() {
   const name = `chunk65-direct-${crypto.randomBytes(4).toString("hex")}`
-  containers.push(name)
+  containers.add(name)
   const id = must(docker(serviceArgs(name)), "start direct paused smoke")
   const metadata = inspect(name)
+  const secretBytes = fs.readFileSync(secretPath)
+  const secretHash = crypto.createHash("sha256").update(secretBytes).digest("hex")
   check(metadata.HostConfig.ReadonlyRootfs === true, "direct container has read-only rootfs")
   check(metadata.Config.User === "65532:65532", "direct container runs as nonroot")
   check(
@@ -237,10 +270,12 @@ function directSmoke() {
     (entry) => entry.Destination === "/run/secrets/web_push_vapid_private_key"
   )
   check(Boolean(mount && mount.RW === false), "secret mount is read-only")
+  const mountedHash = mountedSecretHash(id)
+  check(mountedHash === secretHash, "direct container mounts expected test key bytes")
   if (!waitFor(id, "/healthz", "ok\n")) {
     const state = inspect(name).State
     throw new Error(
-      `private health probe failed: ${state.Status}/${state.ExitCode} ${text(docker(["logs", name]))}`
+      `private health probe failed: ${state.Status}/${state.ExitCode} ${redactSecrets(text(docker(["logs", name])))}`
     )
   }
   check(true, "private health probe works in shared network namespace")
@@ -250,10 +285,7 @@ function directSmoke() {
     metrics.includes("web_push_deliveries_accepted_total 0"),
     "metrics endpoint is reachable without sensitive labels"
   )
-  check(
-    !metrics.includes(marker) && !metrics.includes(privateKey),
-    "metrics excludes test secret and marker"
-  )
+  check(!containsSecret(metrics), "metrics excludes generated runtime secrets")
   const diff = text(docker(["diff", name]))
     .split(/\r?\n/)
     .filter(Boolean)
@@ -266,7 +298,42 @@ function directSmoke() {
     must(docker(["wait", name]), "wait direct shutdown") === "0",
     "direct shutdown exit code is zero"
   )
-  removeContainer(name)
+  must(docker(["start", name]), "restart direct paused smoke")
+  const restartedMetadata = inspect(name)
+  const restartedMount = (restartedMetadata.Mounts || []).find(
+    (entry) => entry.Destination === "/run/secrets/web_push_vapid_private_key"
+  )
+  check(restartedMetadata.Id === id, "restart reuses the same direct container")
+  check(
+    Boolean(
+      restartedMount && restartedMount.RW === false && restartedMount.Source === mount.Source
+    ),
+    "restart reuses the same read-only test key mount"
+  )
+  check(
+    Buffer.compare(fs.readFileSync(secretPath), secretBytes) === 0,
+    "restart leaves test key bytes unchanged"
+  )
+  check(
+    crypto.createHash("sha256").update(fs.readFileSync(secretPath)).digest("hex") === secretHash,
+    "restart leaves test key hash unchanged"
+  )
+  check(mountedSecretHash(id) === secretHash, "restart preserves mounted test key hash")
+  check(waitFor(id, "/healthz", "ok\n"), "restarted private health probe works")
+  check(waitFor(id, "/readyz", "paused"), "restarted private readiness remains paused")
+  const restartedMetrics = must(probe(id, "/metrics"), "read private metrics after restart")
+  check(
+    restartedMetrics.includes("web_push_deliveries_accepted_total 0"),
+    "restart performs no delivery"
+  )
+  check(!containsSecret(restartedMetrics), "restarted metrics exclude generated runtime secrets")
+  must(docker(["stop", "-t", "5", name]), "stop restarted direct smoke")
+  check(
+    must(docker(["wait", name]), "wait restarted shutdown") === "0",
+    "restarted shutdown exit code is zero"
+  )
+  const logs = must(docker(["logs", name]), "read direct smoke logs")
+  check(!containsSecret(logs), "direct logs exclude generated runtime secrets")
 }
 
 function failClosedSmoke() {
@@ -307,13 +374,15 @@ function composeSmoke() {
   delete composeEnvironment.WEB_PUSH_PAUSED
   const base = ["-p", project, "-f", composeFile]
   const config = compose([...base, "config", "--quiet"], { env: composeEnvironment })
-  if (config.status !== 0) throw new Error(`compose config failed: ${text(config).slice(-1000)}`)
+  must(config, "compose config")
   check(true, "compose config accepts placeholder runtime wiring")
+  composeProjects.set(project, { base, env: composeEnvironment })
   try {
-    check(
-      compose([...base, "up", "-d", "--no-build"], { env: composeEnvironment }).status === 0,
-      "compose service starts with mounted test key"
+    must(
+      compose([...base, "up", "-d", "--no-build"], { env: composeEnvironment }),
+      "compose service start"
     )
+    check(true, "compose service starts with mounted test key")
     const id = must(
       compose([...base, "ps", "-q", "web-push"], { env: composeEnvironment }),
       "compose container id"
@@ -331,13 +400,28 @@ function composeSmoke() {
     )
     check(Boolean(mount && mount.RW === false), "compose secret mount is read-only")
     check(waitFor(id, "/readyz", "paused"), "compose private readiness returns paused")
-    compose([...base, "stop", "-t", "5"], { env: composeEnvironment })
+    must(compose([...base, "stop", "-t", "5"], { env: composeEnvironment }), "stop Compose service")
   } finally {
-    compose([...base, "down", "--remove-orphans"], { env: composeEnvironment })
+    cleanupComposeProject(project)
   }
 }
 
+const { cleanupComposeProject, cleanupResources, removeContainer } = createCleanup({
+  check,
+  compose,
+  composeProjects,
+  containers,
+  docker,
+  redactSecrets,
+  tempDir,
+})
+
 try {
+  fs.writeFileSync(secretPath, `${privateKey}\n`, { mode: 0o400 })
+  fs.writeFileSync(invalidSecretPath, "invalid-test-key\n", { mode: 0o400 })
+  fs.writeFileSync(markerPath, `${marker}\n`, { mode: 0o600 })
+  fs.chownSync(secretPath, 65532, 65532)
+  fs.chownSync(invalidSecretPath, 65532, 65532)
   must(docker(["image", "inspect", image]), "locate exact source image")
   imageAudit()
   directSmoke()
@@ -346,13 +430,18 @@ try {
   result.status = "PASS"
   result.keyVersion = "chunk65-test"
   result.fingerprint = fingerprint
-  console.log(JSON.stringify(result, null, 2))
 } catch (error) {
   result.status = "FAIL"
-  result.error = String(error?.message || error)
-  console.log(JSON.stringify(result, null, 2))
+  result.error = redactSecrets(error?.message || error)
   process.exitCode = 1
-} finally {
-  for (const name of containers.reverse()) removeContainer(name)
-  fs.rmSync(tempDir, { recursive: true, force: true })
 }
+
+try {
+  cleanupResources()
+} catch (error) {
+  result.status = "FAIL"
+  result.error = [result.error, redactSecrets(error?.message || error)].filter(Boolean).join("; ")
+  process.exitCode = 1
+}
+
+console.log(JSON.stringify(result, null, 2))
