@@ -4,15 +4,15 @@ Ngày 2026-09-17. Phạm vi chỉ gồm Go checks, local image audit và mock-on
 
 ## Artifact được kiểm chứng
 
-- Commit source/runtime kiểm chứng: `bc9ddbe31497cf902b0f48c019fdf6d4132d72a0`.
+- Commit source/runtime kiểm chứng: `280bbead03d0dcd3114687f6e3dee7a51296c6ca`.
 - Build command:
 
   ```text
-  docker build --pull=false --no-cache -f services/web-push/Dockerfile -t qltbyt-web-push:bc9ddbe31497 services/web-push
+  docker build --pull=false --no-cache -f services/web-push/Dockerfile -t qltbyt-web-push:280bbead03d0 services/web-push
   ```
 
-- Image: `qltbyt-web-push:bc9ddbe31497`.
-- Image ID: `sha256:84c878f3a7ea5ebebcf9df3d0ff2dd72f999f2697d23dce471072e8f7832c1fe`.
+- Image: `qltbyt-web-push:280bbead03d0`.
+- Image ID: `sha256:35fe490293289ad7d2f9c1882c0c08f81a013bfac78adb8873f2601b42717e91`.
 - `docker image inspect`: entrypoint `/usr/local/bin/web-push`, user `65532:65532`, `RepoDigests=[]`; image chỉ là local artifact, chưa publish registry.
 - Build context chỉ lấy `services/web-push/`; `.dockerignore` loại `.git`, `.env*`, `*.key`, `*.pem`, `coverage` và `tmp`.
 
@@ -21,7 +21,7 @@ Ngày 2026-09-17. Phạm vi chỉ gồm Go checks, local image audit và mock-on
 Runnable check:
 
 ```text
-node ops/web-push/chunk-6.5-smoke.mjs
+WEB_PUSH_IMAGE=qltbyt-web-push:280bbead03d0 node ops/web-push/chunk-6.5-smoke.mjs
 ```
 
 Kết quả: `PASS`, exit `0`. Script tạo VAPID test key và marker tạm ngoài Git, chỉ in fingerprint public và không in private key/HMAC/marker; mọi file tạm và container/project Compose được dọn trong `finally`.
