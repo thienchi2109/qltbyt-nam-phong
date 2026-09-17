@@ -16,6 +16,8 @@
 - Phase Go có runnable checks cho claim/report errors, provider responses, crash recovery, SSRF và payload; chọn thư viện Web Push bảo trì tốt thay vì tự viết crypto.
 - Đổi scope hoặc phát hiện blocker thì báo trong handoff, không âm thầm thêm phase. Không sửa ZBS artifacts, credentials hoặc hành vi trong change này.
 
+**Waiver closeout (2026-09-17):** maintainer chấp thuận waive DB Gate 2.4, 3.4, Phase 4.5 lịch sử và Phase 4.5.6 cho việc khép các gap trước và tiếp tục chuẩn bị Phase 7 theo chỉ đạo maintainer; giữ nguyên kết quả thô `FAILED`/`INCOMPLETE`, không chứng nhận gate nào là `PASS` và không cấp quyền live write/deploy. Xem [handoff đối soát](reconciliation-handoff-2026-09-17.md).
+
 ## Phase 1 - Chốt contract kỹ thuật và regression baseline
 
 **Boundary:** artifacts/contract fixtures và tests bảo vệ hành vi; chưa runtime, SQL, UI hay deploy. Đọc `src/auth`, RPC claims, ZBS enqueue/dispatcher, DQSS client và deep-link helper.
@@ -68,11 +70,11 @@
 
 **Phụ thuộc:** behavior và contract review của Phase 2–4. **Ranh giới:** forward-only migration, RPC/API adapter, authorization/eligibility tests và exact-commit DB evidence; không làm UI Phase 5, không sửa applied migration, không live apply mặc định.
 
-- [ ] 4.5.1 Tạo forward-only additive migration/RPC support cho bounded candidate search/pagination và config metadata: entry stale/ineligible hiện có, protected self-membership, `status`, `protected`, `editable`; không sửa/xóa migration đã applied.
-- [ ] 4.5.2 Enforce caller scope cho candidate/config get/set: `admin/global` target bất kỳ đơn vị nào nhưng chỉ add normal `to_qltb` có effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` self-action add/remove ở bất kỳ target tạo protected entry; caller khác chỉ read-only và atomic save phải preserve entry.
-- [ ] 4.5.3 Thêm server-authenticated API adapter với `don_vi_id` không tin cậy, search/limit/cursor có giới hạn, field candidate tối thiểu và `self_action` tường minh; giữ browser config amendment nhất quán, worker wire v1 không đổi. Config GET trả toàn bộ entry hiện có để flag và explicit remove; candidate lookup loại các entry invalid/stale khỏi candidate mới.
-- [ ] 4.5.4 Đồng bộ eligibility của configuration, enqueue và claim/retry theo cùng rule role/effective-unit của recipient thường cùng ngoại lệ protected self; giữ các gate quyền đọc request tách biệt và nguyên trạng, để configuration không cấp quyền truy cập request. Config actual rỗng thì không push; protected self-entry còn lại vẫn nhận.
-- [ ] 4.5.5 Thêm security/regression tests cho isolation theo đơn vị, target scope của caller, bảo vệ entry của admin/global khác, hiển thị và skip stale/ineligible, từ chối atomic khi giữ normal invalid, explicit removal được phép, ownership của self-action, giữ protected entry khi `self_action=none`, full-config load trước Save, search/reload không làm mất stale selection, empty-list behavior và fan-out event-A chỉ tới recipient A.
+- [x] 4.5.1 Tạo forward-only additive migration/RPC support cho bounded candidate search/pagination và config metadata: entry stale/ineligible hiện có, protected self-membership, `status`, `protected`, `editable`; không sửa/xóa migration đã applied.
+- [x] 4.5.2 Enforce caller scope cho candidate/config get/set: `admin/global` target bất kỳ đơn vị nào nhưng chỉ add normal `to_qltb` có effective unit `coalesce(current_don_vi, don_vi)` trùng target; `to_qltb` chỉ target effective unit của chính mình. `admin/global` self-action add/remove ở bất kỳ target tạo protected entry; caller khác chỉ read-only và atomic save phải preserve entry.
+- [x] 4.5.3 Thêm server-authenticated API adapter với `don_vi_id` không tin cậy, search/limit/cursor có giới hạn, field candidate tối thiểu và `self_action` tường minh; giữ browser config amendment nhất quán, worker wire v1 không đổi. Config GET trả toàn bộ entry hiện có để flag và explicit remove; candidate lookup loại các entry invalid/stale khỏi candidate mới.
+- [x] 4.5.4 Đồng bộ eligibility của configuration, enqueue và claim/retry theo cùng rule role/effective-unit của recipient thường cùng ngoại lệ protected self; giữ các gate quyền đọc request tách biệt và nguyên trạng, để configuration không cấp quyền truy cập request. Config actual rỗng thì không push; protected self-entry còn lại vẫn nhận.
+- [x] 4.5.5 Thêm security/regression tests cho isolation theo đơn vị, target scope của caller, bảo vệ entry của admin/global khác, hiển thị và skip stale/ineligible, từ chối atomic khi giữ normal invalid, explicit removal được phép, ownership của self-action, giữ protected entry khi `self_action=none`, full-config load trước Save, search/reload không làm mất stale selection, empty-list behavior và fan-out event-A chỉ tới recipient A.
 - [ ] 4.5.6 Chạy static và Oracle baseline-forward trên cùng exact landed commit, giữ evidence/digest riêng và dừng trước live review; mọi live apply vẫn cần Supabase MCP authorization riêng.
 
 **Exit / rollback:** release additive với controls false; rollback bằng cách tắt candidate/config amendment entrypoint nhưng giữ nguyên entry hiện có. Phase hoạch định này không tick hoặc diễn giải lại historical task 4.5, tasks 2.4/3.4, #1000 hoặc evidence FAILED gate trước đó.
@@ -117,8 +119,8 @@
 
 **Dependency:** 1 + wire contract 4. **Boundary:** source Go/build/tests/runbook trong location phase 1; mock QLTBYT/provider. Không Supabase credentials/SQL, không live Oracle mutation.
 
-- [ ] 6.1 Implement poll/claim/send/report loop có timeout, backoff và graceful shutdown; dùng Web Push library, VAPID private key qua secret; readiness kiểm tra derived public key/fingerprint khớp app contract Phase 4, mismatch không claim/send; không durable queue/database.
-- [ ] 6.2 Validate outbound HTTPS endpoint và resolved addresses, chặn private/link-local/redirect bypass; bound payload/TTL và map 404/410/429/5xx/config errors đúng contract.
+- [x] 6.1 Implement poll/claim/send/report loop có timeout, backoff và graceful shutdown; dùng Web Push library, VAPID private key qua secret; readiness kiểm tra derived public key/fingerprint khớp app contract Phase 4, mismatch không claim/send; không durable queue/database.
+- [x] 6.2 Validate outbound HTTPS endpoint và resolved addresses, chặn private/link-local/redirect bypass; bound payload/TTL và map 404/410/429/5xx/config errors đúng contract.
 - [x] 6.3 Test provider accepted/report lost, worker crash/reclaim, stale lease, deadline và từng subscription; không báo accepted thành delivered/read. [Mock evidence và giới hạn](phase-6.3-evidence.md), [handoff local](phase-6.3-handoff.md).
 - [x] 6.4 Tạo Docker image, private health/readiness, minimal metrics/log redaction và VAPID persistence/controlled rotation/resubscribe/rollback runbook cho Oracle, không regenerate key khi restart; mặc định paused.
 - [x] 6.5 Chạy Go checks/container smoke trên mocks, xác nhận image không chứa secrets, review artifact và dừng.
@@ -131,7 +133,8 @@
 
 - [ ] 7.1 Chứng minh create -> independent outboxes -> authenticated Oracle-style worker -> provider acceptance, đo target 60 giây khi khỏe và TTL <= remaining 24 giờ.
 - [ ] 7.2 Fault injection backend/Go/provider outage, partial delivery, credential failure, logout/revocation, concurrent workers và expired backlog; đọc lại state làm evidence.
-- [ ] 7.3 Kiểm chứng Chrome/Edge desktop, Android Chrome/Edge, Firefox desktop, iOS/iPadOS: thêm Home Screen từ app, mở installed standalone, xác nhận manifest/scope/registration rồi user-gesture opt-in, foreground/background, click/login, payload dài, logout/account switch; ghi OS/browser/version, thiếu thiết bị thì incomplete.
+- [x] 7.3 Kiểm chứng Chrome/Edge desktop, Android Chrome/Edge, Firefox desktop, iOS/iPadOS: thêm Home Screen từ app, mở installed standalone, xác nhận manifest/scope/registration rồi user-gesture opt-in, foreground/background, click/login, payload dài, logout/account switch; ghi OS/browser/version, thiếu thiết bị thì incomplete.
+  - **Chấp thuận của maintainer (do maintainer báo cáo, 2026-09-17):** đã chấp thuận kiểm tra UI/browser trên production và đối soát checkbox này; đồng thời waive việc thu thập ma trận OS/browser/version trong phiên này. Phiên này không lưu version OS/browser, ma trận yêu cầu hoặc evidence từng thiết bị; không suy ra mọi nền tảng đã được test và không chứng minh provider E2E, fault injection, ZBS regression hoặc hoàn thành Phase 7.
 - [ ] 7.4 Chạy ZBS regressions và đối chiếu cùng request không bị đổi phone recipient, enqueue count, retry state; Web Push disable không ảnh hưởng ZBS.
 - [ ] 7.5 Review kết quả và runbook enable/pause/rollback/retention, xác nhận toàn bộ gates hoặc blockers trước production review.
 
