@@ -54,13 +54,27 @@ function must(process, label) {
   return (process.stdout || "").trim()
 }
 
+function parseJson(value, label) {
+  try {
+    return JSON.parse(value)
+  } catch {
+    throw new Error(`${label}: invalid JSON`)
+  }
+}
+
 function check(condition, label) {
   if (!condition) throw new Error(label)
   result.checks.push(label)
 }
 
 function inspect(target) {
-  return JSON.parse(must(docker(["inspect", target]), `inspect ${target}`))[0]
+  const parsed = parseJson(
+    must(docker(["inspect", target]), `inspect ${target}`),
+    `inspect ${target}`
+  )
+  if (!Array.isArray(parsed) || parsed.length === 0)
+    throw new Error(`inspect ${target}: empty response`)
+  return parsed[0]
 }
 
 function removeContainer(name) {
@@ -182,7 +196,11 @@ function imageAudit() {
   const archiveRoot = path.join(tempDir, "saved")
   fs.mkdirSync(archiveRoot)
   must(run("tar", ["-xf", archivePath, "-C", archiveRoot]), "extract image archive")
-  const manifest = JSON.parse(fs.readFileSync(path.join(archiveRoot, "manifest.json"), "utf8"))
+  const manifest = parseJson(
+    fs.readFileSync(path.join(archiveRoot, "manifest.json"), "utf8"),
+    "image manifest"
+  )
+  if (!Array.isArray(manifest)) throw new Error("image manifest: expected an array")
   const layers = manifest
     .flatMap((entry) => entry.Layers || [])
     .map((entry) => path.join(archiveRoot, entry))
