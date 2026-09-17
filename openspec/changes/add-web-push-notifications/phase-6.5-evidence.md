@@ -4,7 +4,7 @@ Ngày 2026-09-17. Phạm vi chỉ gồm Go checks, local image audit và mock-on
 
 ## Artifact được kiểm chứng
 
-- Smoke harness và regression source sau correction: commit `ac1289ec5e2569ac45d0d1a51dc9c9d4c0fc448e`.
+- Main smoke source sau correction: commit `ac1289ec5e2569ac45d0d1a51dc9c9d4c0fc448e`; regression harness sửa stderr-success audit: commit `c035ce8c9bceafe9bc0e62c845ccd9acb2cf914c`.
 - Source/runtime commit của image có sẵn: `280bbead03d0dcd3114687f6e3dee7a51296c6ca`.
 - Build command của image:
 
@@ -49,7 +49,11 @@ Runnable regression:
 node ops/web-push/chunk-6.5-smoke-regression.mjs
 ```
 
-RED trước correction: all-zero `WEB_PUSH_EXPECTED_IMAGE_ID` vẫn làm regression cũ exit `0`/in `PASS` vì child chỉ fail ở image preflight; logs chỉ lấy stdout; các operation sau audit vẫn nhận mutable tag. GREEN tại harness commit `ac1289ec5e2569ac45d0d1a51dc9c9d4c0fc448e`: regression kiểm tra image prerequisite đúng ID, fault marker đúng mode, expected error stage và resource baseline; các fault `history`, layer `tar -tf`, `rm -f`, Compose `stop`, Compose `down` và stderr-secret đều fail đúng stage, không lộ marker/sentinel. Negative check với all-zero ID exit `1`, không có regression `PASS`; immutable-tag guard chứng minh không operation sau validation dùng requested tag.
+RED isolated trước correction: bản sao tạm với smoke mutant đổi `const logs = text(logsProcess)` thành chỉ đọc `stdout` làm regression harness exit `1` tại `fault unexpectedly passed`; bản sao smoke đúng full-output vẫn exit `0`/in `PASS`. Đây là bằng chứng regression bắt được việc bỏ qua stderr của successful `docker logs`; mỗi bản sao và resource Docker đều được dọn sau run.
+
+GREEN tại harness commit `c035ce8c9bceafe9bc0e62c845ccd9acb2cf914c`: mode `logs-stderr-secret` ghi sentinel vào stderr rồi passthrough Docker với exit `0`, yêu cầu stage `direct logs exclude generated runtime secrets`, giữ fault marker và không yêu cầu `[REDACTED]` cho nhánh leak thành công. Các mode `history`, `layer-list`, `cleanup-rm`, `compose-stop`, `compose-down` vẫn fail đúng stage; child status là `FAIL` cho cả sáu mode, harness exit `0`/in `PASS`, không lộ sentinel.
+
+Stage capture: `history` -> `read image history`; `layer-list` -> `list image layer`; `cleanup-rm` -> `cleanup command failed`; `compose-stop` -> `stop Compose service`; `compose-down` -> `compose ... cleanup command failed`; `logs-stderr-secret` -> `direct logs exclude generated runtime secrets`. Immutable-tag guard tiếp tục chứng minh không operation sau validation dùng requested tag.
 
 ## Verification
 
@@ -58,6 +62,7 @@ RED trước correction: all-zero `WEB_PUSH_EXPECTED_IMAGE_ID` vẫn làm regres
 - `node scripts/npm-run.js run verify:dedupe`: PASS, diff-only.
 - `node scripts/npm-run.js run typecheck`: PASS.
 - `node ops/web-push/chunk-6.5-smoke-regression.mjs`: PASS.
+- Một attempt đầu trong batch gate dừng `FAIL` ở `compose-stop` vì direct `/healthz` preflight trả `0 ok` trước khi fault marker được kích hoạt; harness không che preflight failure. Chạy lại cùng exact command sau đó PASS exit `0`, không đổi source/runtime.
 - `node scripts/npm-run.js run react-doctor`: PASS, score `100/100`, diff scan.
 - `WEB_PUSH_EXPECTED_IMAGE_ID=sha256:0000000000000000000000000000000000000000000000000000000000000000 node ops/web-push/chunk-6.5-smoke-regression.mjs`: expected `FAIL`, exit `1`, không in regression `PASS` (negative harness check).
 - `cd services/web-push && go test -count=1 ./...`: PASS.
