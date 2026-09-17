@@ -4,7 +4,7 @@ Ngày 2026-09-17. Phạm vi chỉ gồm Go checks, local image audit và mock-on
 
 ## Artifact được kiểm chứng
 
-- Smoke harness và regression source: commit `ca5e78653f9c6bcc1d046b2c05434287041e4bc5`.
+- Smoke harness và regression source: commit `6ca6c5c66687400321fad46f58de7be2a61bd822`.
 - Source/runtime commit của image có sẵn: `280bbead03d0dcd3114687f6e3dee7a51296c6ca`.
 - Build command của image:
 
@@ -49,7 +49,7 @@ Runnable regression:
 node ops/web-push/chunk-6.5-smoke-regression.mjs
 ```
 
-RED trước correction: injected `docker history` failure bị script cũ bỏ qua và toàn run trả `PASS`. GREEN tại harness commit `ca5e78653f9c6bcc1d046b2c05434287041e4bc5`: các fault `history`, layer `tar -tf`, `rm -f`, Compose `stop` và Compose `down` đều trả non-zero/JSON `FAIL`, không có `PASS`, không lộ marker; container và Compose network sau mỗi case bằng baseline trước test.
+RED trước correction: injected `docker history` failure bị script cũ bỏ qua và toàn run trả `PASS`. GREEN tại harness commit `6ca6c5c66687400321fad46f58de7be2a61bd822`: các fault `history`, layer `tar -tf`, `rm -f`, Compose `stop` và Compose `down` đều trả non-zero/JSON `FAIL`, không có `PASS`, không lộ marker; container và Compose network sau mỗi case bằng baseline trước test.
 
 ## Verification
 
