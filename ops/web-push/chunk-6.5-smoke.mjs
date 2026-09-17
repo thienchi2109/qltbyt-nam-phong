@@ -10,12 +10,13 @@ import { createCleanup } from "./chunk-6.5-cleanup.mjs"
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const imageSha = run("git", ["rev-parse", "--short=12", "HEAD"]).stdout.trim()
-const image = process.env.WEB_PUSH_IMAGE || `qltbyt-web-push:${imageSha}`
+const requestedImage = process.env.WEB_PUSH_IMAGE || `qltbyt-web-push:${imageSha}`
 const expectedImageId = process.env.WEB_PUSH_EXPECTED_IMAGE_ID || ""
+let verifiedImageId = ""
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "web-push-chunk65-"))
 const containers = new Set()
 const composeProjects = new Map()
-const result = { image, checks: [] }
+const result = { image: requestedImage, requestedImage, checks: [] }
 const rawPrivateKey = Buffer.alloc(32, 1)
 const ecdh = crypto.createECDH("prime256v1")
 ecdh.setPrivateKey(rawPrivateKey)
@@ -25,27 +26,24 @@ const publicKey = publicBytes.toString("base64url")
 const fingerprint = `sha256:${crypto.createHash("sha256").update(publicBytes).digest("hex")}`
 const hmacSecret = crypto.randomBytes(32).toString("base64url")
 const marker = `CHUNK65_TEST_MARKER_${crypto.randomBytes(18).toString("hex")}`
+const testSecret = process.env.CHUNK65_TEST_SECRET || ""
 const secretPath = path.join(tempDir, "vapid.key")
 const invalidSecretPath = path.join(tempDir, "invalid.key")
 const markerPath = path.join(tempDir, "marker.txt")
-const secretNeedles = [privateKey, hmacSecret, marker]
-
+const secretNeedles = [privateKey, hmacSecret, marker, testSecret].filter(Boolean)
+const secretNeedleSet = new Set(secretNeedles)
 function run(command, args, options = {}) {
   return spawnSync(command, args, { cwd: root, encoding: "utf8", ...options })
 }
-
 function docker(args, options) {
   return run("docker", args, options)
 }
-
 function compose(args, options) {
   return docker(["compose", ...args], options)
 }
-
 function text(process) {
   return `${process.stdout || ""}\n${process.stderr || ""}`.trim()
 }
-
 function redactSecrets(value) {
   let redacted = String(value || "")
   for (const needle of secretNeedles) {
@@ -53,19 +51,19 @@ function redactSecrets(value) {
   }
   return redacted
 }
-
 function containsSecret(value) {
   const bytes = Buffer.isBuffer(value) ? value : Buffer.from(String(value || ""))
-  return secretNeedles.some((needle) => bytes.includes(Buffer.from(needle)))
+  for (const needle of secretNeedleSet) {
+    if (bytes.indexOf(Buffer.from(needle)) !== -1) return true
+  }
+  return false
 }
-
 function must(process, label) {
   if (process.status !== 0) {
     throw new Error(`${label}: ${redactSecrets(text(process)).slice(-1000)}`)
   }
   return (process.stdout || "").trim()
 }
-
 function parseJson(value, label) {
   try {
     return JSON.parse(value)
@@ -73,12 +71,10 @@ function parseJson(value, label) {
     throw new Error(`${label}: invalid JSON`)
   }
 }
-
 function check(condition, label) {
   if (!condition) throw new Error(label)
   result.checks.push(label)
 }
-
 function inspect(target) {
   const parsed = parseJson(
     must(docker(["inspect", target]), `inspect ${target}`),
@@ -88,7 +84,6 @@ function inspect(target) {
     throw new Error(`inspect ${target}: empty response`)
   return parsed[0]
 }
-
 function mountedSecretHash(container) {
   const output = must(
     docker([
@@ -106,7 +101,6 @@ function mountedSecretHash(container) {
   if (!hash) throw new Error("mounted test key hash: invalid output")
   return hash
 }
-
 function serviceArgs(name, secret = secretPath, extra = {}, detached = true, remove = false) {
   const args = ["run"]
   if (detached) args.push("-d")
@@ -139,10 +133,9 @@ function serviceArgs(name, secret = secretPath, extra = {}, detached = true, rem
     ...extra,
   }
   for (const [key, value] of Object.entries(environment)) args.push("--env", `${key}=${value}`)
-  args.push(image)
+  args.push(verifiedImageId)
   return args
 }
-
 function probe(container, endpoint) {
   return docker([
     "run",
@@ -157,7 +150,6 @@ function probe(container, endpoint) {
     `http://127.0.0.1:8080${endpoint}`,
   ])
 }
-
 function waitFor(container, endpoint, expected) {
   let lastResponse
   for (let attempt = 0; attempt < 30; attempt += 1) {
@@ -170,15 +162,15 @@ function waitFor(container, endpoint, expected) {
     `probe ${endpoint} did not return expected body: ${lastResponse?.status} ${redactSecrets(text(lastResponse))}`
   )
 }
-
 function imageAudit() {
   check(Boolean(expectedImageId), "expected image ID is provided")
   check(/^sha256:[0-9a-f]{64}$/.test(expectedImageId), "expected image ID is a SHA-256 content ID")
-  const metadata = inspect(image)
+  const metadata = inspect(requestedImage)
   result.imageId = metadata.Id
   result.expectedImageId = expectedImageId
   result.repoDigests = metadata.RepoDigests || []
   check(metadata.Id === expectedImageId, "image ID matches expected content ID")
+  verifiedImageId = metadata.Id
   check(
     !containsSecret(JSON.stringify(metadata)),
     "image metadata excludes generated runtime secrets"
@@ -196,11 +188,17 @@ function imageAudit() {
   )
   check(result.repoDigests.length === 0, "image has no registry digest or publish")
 
-  const history = must(docker(["history", "--no-trunc", image]), "read image history")
+  const history = must(docker(["history", "--no-trunc", verifiedImageId]), "read image history")
   check(!containsSecret(history), "image history excludes generated runtime secrets")
-
-  const rootfsContainer = must(docker(["create", image]), "create final filesystem audit container")
+  const rootfsContainer = must(
+    docker(["create", verifiedImageId]),
+    "create final filesystem audit container"
+  )
   containers.add(rootfsContainer)
+  check(
+    inspect(rootfsContainer).Image === verifiedImageId,
+    "filesystem audit uses verified image ID"
+  )
   const rootfsTar = path.join(tempDir, "rootfs.tar")
   try {
     must(docker(["export", "-o", rootfsTar, rootfsContainer]), "export final filesystem")
@@ -223,9 +221,8 @@ function imageAudit() {
     !rootfsPaths.some((entry) => /run\/secrets|\.env|\.key$|\.pem$|marker/i.test(entry)),
     "final filesystem excludes secret paths"
   )
-
   const archivePath = path.join(tempDir, "image.tar")
-  must(docker(["save", "-o", archivePath, image]), "save image archive")
+  must(docker(["save", "-o", archivePath, verifiedImageId]), "save image archive")
   const archiveRoot = path.join(tempDir, "saved")
   fs.mkdirSync(archiveRoot)
   must(run("tar", ["-xf", archivePath, "-C", archiveRoot]), "extract image archive")
@@ -260,6 +257,7 @@ function directSmoke() {
   const metadata = inspect(name)
   const secretBytes = fs.readFileSync(secretPath)
   const secretHash = crypto.createHash("sha256").update(secretBytes).digest("hex")
+  check(metadata.Image === verifiedImageId, "direct container uses verified image ID")
   check(metadata.HostConfig.ReadonlyRootfs === true, "direct container has read-only rootfs")
   check(metadata.Config.User === "65532:65532", "direct container runs as nonroot")
   check(
@@ -332,28 +330,31 @@ function directSmoke() {
     must(docker(["wait", name]), "wait restarted shutdown") === "0",
     "restarted shutdown exit code is zero"
   )
-  const logs = must(docker(["logs", name]), "read direct smoke logs")
+  const logsProcess = docker(["logs", name])
+  must(logsProcess, "read direct smoke logs")
+  const logs = text(logsProcess)
   check(!containsSecret(logs), "direct logs exclude generated runtime secrets")
 }
-
 function failClosedSmoke() {
   const mismatch = `chunk65-mismatch-${crypto.randomBytes(4).toString("hex")}`
   const mismatchProcess = docker(
     serviceArgs(mismatch, secretPath, { WEB_PUSH_VAPID_PUBLIC_KEY: "wrong" }, false, true)
   )
+  const mismatchOutput = text(mismatchProcess)
   check(
     mismatchProcess.status === 1 &&
-      text(mismatchProcess).includes("web_push_error code=vapid_artifact_mismatch"),
+      mismatchOutput.includes("web_push_error code=vapid_artifact_mismatch"),
     "mismatched public artifact fails closed"
   )
-
+  check(!containsSecret(mismatchOutput), "mismatched artifact output excludes generated secrets")
   const invalid = `chunk65-invalid-${crypto.randomBytes(4).toString("hex")}`
   const invalidProcess = docker(serviceArgs(invalid, invalidSecretPath, {}, false, true))
+  const invalidOutput = text(invalidProcess)
   check(
-    invalidProcess.status === 1 &&
-      text(invalidProcess).includes("web_push_error code=vapid_unavailable"),
+    invalidProcess.status === 1 && invalidOutput.includes("web_push_error code=vapid_unavailable"),
     "invalid key fails closed"
   )
+  check(!containsSecret(invalidOutput), "invalid key output excludes generated secrets")
 }
 
 function composeSmoke() {
@@ -361,7 +362,7 @@ function composeSmoke() {
   const composeFile = path.join(root, "ops/web-push/docker-compose.yml")
   const composeEnvironment = {
     ...process.env,
-    WEB_PUSH_IMAGE: image,
+    WEB_PUSH_IMAGE: verifiedImageId,
     WEB_PUSH_ORIGIN: "https://backend.invalid",
     WEB_PUSH_VAPID_KEY_VERSION: "chunk65-test",
     WEB_PUSH_VAPID_PUBLIC_KEY: publicKey,
@@ -422,7 +423,7 @@ try {
   fs.writeFileSync(markerPath, `${marker}\n`, { mode: 0o600 })
   fs.chownSync(secretPath, 65532, 65532)
   fs.chownSync(invalidSecretPath, 65532, 65532)
-  must(docker(["image", "inspect", image]), "locate exact source image")
+  must(docker(["image", "inspect", requestedImage]), "locate exact source image")
   imageAudit()
   directSmoke()
   failClosedSmoke()
