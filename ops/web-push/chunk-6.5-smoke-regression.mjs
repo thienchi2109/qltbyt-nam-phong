@@ -20,7 +20,7 @@ const expectedFailureStages = {
   "cleanup-rm": /cleanup command failed/,
   "compose-stop": /stop Compose service/,
   "compose-down": /compose .* cleanup command failed/,
-  "logs-stderr-secret": /read direct smoke logs/,
+  "logs-stderr-secret": /direct logs exclude generated runtime secrets/,
 }
 
 function writeExecutable(file, source) {
@@ -83,8 +83,11 @@ const shouldFail =
 if (shouldFail && !fs.existsSync(state)) {
   fs.writeFileSync(state, "injected")
   fs.writeFileSync(faultMarker, process.env.CHUNK65_FAULT + "\\n")
-  if (mode === "logs-stderr-secret") process.stderr.write(process.env.CHUNK65_TEST_SECRET + "\\n")
-  process.exit(42)
+  if (mode === "logs-stderr-secret") {
+    process.stderr.write(process.env.CHUNK65_TEST_SECRET + "\\n")
+  } else {
+    process.exit(42)
+  }
 }
 const result = spawnSync(${JSON.stringify(docker)}, args, { stdio: "inherit" })
 if (result.error) process.exit(127)
@@ -141,7 +144,6 @@ process.exit(result.status ?? 1)`
     assert.equal(fs.readFileSync(faultMarker, "utf8"), `${mode}\n`)
     assert.doesNotMatch(output, /CHUNK65_TEST_MARKER_/)
     if (mode === "logs-stderr-secret") {
-      assert.match(output, /\[REDACTED\]/)
       assert.doesNotMatch(output, new RegExp(logSecret))
     }
   } finally {
