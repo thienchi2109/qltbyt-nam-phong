@@ -13,6 +13,8 @@ type Metrics struct {
 	accepted       uint64
 	failed         uint64
 	retried        uint64
+	retryable      uint64
+	backendOwned   uint64
 	cancelled      uint64
 	expired        uint64
 	latencyCount   uint64
@@ -23,6 +25,8 @@ type metricSnapshot struct {
 	accepted       uint64
 	failed         uint64
 	retried        uint64
+	retryable      uint64
+	backendOwned   uint64
 	cancelled      uint64
 	expired        uint64
 	latencyCount   uint64
@@ -41,8 +45,12 @@ func (m *Metrics) Record(outcome string, latency time.Duration) {
 	switch outcome {
 	case "accepted":
 		m.accepted++
-	case "transient", "retry", "retried", "not_sent_lease_expired":
+	case "retried":
 		m.retried++
+	case "transient", "retry", "retryable":
+		m.retryable++
+	case "not_sent_lease_expired", "backend_owned":
+		m.backendOwned++
 	case "cancelled", "canceled":
 		m.cancelled++
 	case "expired", "not_sent_expired":
@@ -63,6 +71,8 @@ func (m *Metrics) snapshot() metricSnapshot {
 		accepted:       m.accepted,
 		failed:         m.failed,
 		retried:        m.retried,
+		retryable:      m.retryable,
+		backendOwned:   m.backendOwned,
 		cancelled:      m.cancelled,
 		expired:        m.expired,
 		latencyCount:   m.latencyCount,
@@ -82,6 +92,8 @@ func (m *Metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_accepted_total counter\nweb_push_deliveries_accepted_total %d\n", s.accepted)
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_failed_total counter\nweb_push_deliveries_failed_total %d\n", s.failed)
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_retried_total counter\nweb_push_deliveries_retried_total %d\n", s.retried)
+	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_retryable_total counter\nweb_push_deliveries_retryable_total %d\n", s.retryable)
+	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_backend_owned_total counter\nweb_push_deliveries_backend_owned_total %d\n", s.backendOwned)
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_cancelled_total counter\nweb_push_deliveries_cancelled_total %d\n", s.cancelled)
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_deliveries_expired_total counter\nweb_push_deliveries_expired_total %d\n", s.expired)
 	_, _ = fmt.Fprintf(w, "# TYPE web_push_send_latency_seconds summary\nweb_push_send_latency_seconds_count %d\nweb_push_send_latency_seconds_sum %.6f\n", s.latencyCount, s.latencySeconds)

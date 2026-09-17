@@ -154,13 +154,13 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) runOnce(ctx context.Context) (time.Duration, bool, error) {
-	if w.paused {
-		w.setReady(false)
-		return 0, false, ErrWorkerPaused
-	}
 	if err := w.checkReady(); err != nil {
 		w.setReady(false)
 		return 0, false, err
+	}
+	if w.paused {
+		w.setReady(true)
+		return 0, false, ErrWorkerPaused
 	}
 	if w.api == nil || w.sender == nil {
 		w.setReady(false)

@@ -15,7 +15,7 @@ Tài liệu này mô tả quy trình tương lai cho notification service trên 
 3. Cấu hình public artifact gồm `WEB_PUSH_VAPID_KEY_VERSION`, `WEB_PUSH_VAPID_PUBLIC_KEY`, `WEB_PUSH_VAPID_FINGERPRINT` và `WEB_PUSH_VAPID_SUBJECT`. Go derive public key/fingerprint từ file private và so khớp artifact trước readiness và trước mỗi claim.
 4. Restart chỉ đọc lại file secret đã provision. Service không có nhánh tạo hoặc regenerate key. Thiếu file, key hỏng hoặc artifact lệch phải giữ readiness fail và không claim/send.
 
-`/readyz` chỉ chứng minh process đã nạp được private key và artifact cấu hình khớp. Đây không phải bằng chứng QLTBYT runtime controls, subscription catalog, registration hoặc provider từ xa đã khớp. Trước khi bật production, operator phải thực hiện riêng các kiểm tra read-only của hệ thống sở hữu public artifact và ghi nhận version/fingerprint; không dùng một HTTP 200 local để tuyên bố remote compatibility.
+`/readyz` chỉ chứng minh process đã nạp được private key và artifact cấu hình khớp. Khi paused, preflight cục bộ hợp lệ trả `200 paused` để operator có thể kiểm tra trước khi bật dispatch mà không claim. Khi dispatch được bật, readiness vẫn fail-closed cho tới khi có một chu kỳ claim/report backend hợp lệ. Đây không phải bằng chứng QLTBYT runtime controls, subscription catalog, registration hoặc provider từ xa đã khớp. Trước khi bật production, operator phải thực hiện riêng các kiểm tra read-only của hệ thống sở hữu public artifact và ghi nhận version/fingerprint; không dùng một HTTP 200 local để tuyên bố remote compatibility.
 
 ## Controlled rotation
 
@@ -38,6 +38,6 @@ Thực hiện tuần tự, với cả registration và dispatch đều tắt:
 
 ## Quan sát và xử lý sự cố
 
-- Metrics chỉ có counter low-cardinality cho `accepted`, `failed`, `retried`, `cancelled`, `expired` và latency quan sát được. `accepted` là provider acceptance, không phải delivered hoặc read; backlog thuộc backend và không được worker tự bịa.
+- Metrics chỉ có counter low-cardinality cho `accepted`, `failed`, `retried`, `retryable`, `backend_owned`, `cancelled`, `expired` và latency quan sát được. `retryable` là outcome transient cục bộ cần backend xử lý tiếp; `backend_owned` ghi nhận lease đã quá gần hạn để worker gửi và không đếm lịch retry/cancel/expiry của backend. Worker không tăng `retried` từ hai outcome này. `accepted` là provider acceptance, không phải delivered hoặc read; backlog thuộc backend và không được worker tự bịa.
 - Log chỉ dùng mã lỗi ổn định. Không ghi endpoint subscription, payload, p256dh/auth, private/public key, fingerprint đầy đủ, HMAC hoặc số điện thoại.
 - Nếu readiness không khớp hoặc control plane trả disabled, giữ paused, không claim/send. Không sửa key trực tiếp trong container và không dump environment để chẩn đoán.

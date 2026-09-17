@@ -92,7 +92,7 @@ func (s *HealthState) readyz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if paused {
-		writeHealth(w, http.StatusServiceUnavailable, "paused\n")
+		writeHealth(w, http.StatusOK, "paused\n")
 		return
 	}
 	writeHealth(w, http.StatusOK, "ready\n")

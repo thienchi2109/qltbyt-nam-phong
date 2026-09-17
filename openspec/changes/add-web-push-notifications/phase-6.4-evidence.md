@@ -52,7 +52,7 @@ ok   github.com/qltbyt-nam-phong/web-push
 ok   github.com/qltbyt-nam-phong/web-push/cmd/web-push [no tests to run]
 ```
 
-Các test GREEN bảo vệ pause parsing/fail-closed, no-claim, readiness chỉ bật sau claim/report backend thành công và hạ xuống khi backend lỗi/shutdown, loopback binding, bounded metrics, outcome/latency recording và startup log redaction. Accepted vẫn chỉ là provider acceptance, không phải delivered/read. Existing VAPID tests bảo vệ artifact derivation/persistence semantics; không có nhánh regenerate khi restart.
+Các test GREEN bảo vệ pause parsing/fail-closed, no-claim, local readiness preflight khi paused, readiness sau claim/report khi dispatch bật và hạ xuống khi backend lỗi/shutdown, loopback binding, bounded metrics, outcome/latency recording và startup log redaction. Accepted vẫn chỉ là provider acceptance, không phải delivered/read. Existing VAPID tests bảo vệ artifact derivation/persistence semantics; không có nhánh regenerate khi restart.
 
 ## Verification
 
@@ -81,6 +81,33 @@ WEB_PUSH_IMAGE=qltbyt-web-push:f03fce28 WEB_PUSH_ORIGIN=https://example.invalid 
 ## Giới hạn và review gate
 
 - Đây là local image build, chưa chạy container smoke, chưa audit filesystem/image layers/secrets và chưa provider send; các việc đó thuộc 6.5.
-- Readiness chỉ bật sau local VAPID/config validation và một claim/report cycle hợp lệ với backend; đây không phải bằng chứng subscription catalog, registration hoặc provider tương thích. Runbook yêu cầu remote read-only check riêng trước khi bật.
+- Khi paused, readiness bật sau local VAPID/config preflight và trả `200 paused` mà không claim; khi dispatch bật, readiness chỉ bật sau một claim/report cycle hợp lệ với backend. Cả hai trạng thái đều không phải bằng chứng subscription catalog, registration hoặc provider tương thích. Runbook yêu cầu remote read-only check riêng trước khi bật.
 - Mock/unit tests không chứng minh Oracle/network/secret store thật.
 - Main agent review đang pending; không tick 6.4 hoặc 6.5 trong `tasks.md` từ evidence này.
+
+## Follow-up review 2026-09-17
+
+Review này xử lý đúng hai finding readiness/metrics trên nền `63372c2b` bằng một worktree cô lập; main working tree không bị reset.
+
+RED, chạy từ `services/web-push/` sau khi thêm hai regression tests vào worktree baseline:
+
+```text
+go test -count=1 -run 'TestPausedWorkerPreflightMarksLocalReadinessWithoutClaim|TestMetricsDoNotReportRetryBeforeItOccurs' ./...
+--- FAIL: TestPausedWorkerPreflightMarksLocalReadinessWithoutClaim
+    paused /readyz = 503 "not_ready\n", want 200 paused
+--- FAIL: TestMetricsDoNotReportRetryBeforeItOccurs
+    metrics missing "web_push_deliveries_retried_total 0\n"; baseline reported retried_total 2
+FAIL
+```
+
+GREEN sau khi chuyển local VAPID preflight trước nhánh paused, trả `200 paused` cho state đã preflight, và tách `retryable_total`/`backend_owned_total` khỏi `retried_total`:
+
+```text
+go test -count=1 -run 'TestPausedWorkerPreflightMarksLocalReadinessWithoutClaim|TestMetricsDoNotReportRetryBeforeItOccurs' ./...
+ok   github.com/qltbyt-nam-phong/web-push
+ok   github.com/qltbyt-nam-phong/web-push/cmd/web-push [no tests to run]
+```
+
+`transient` chỉ là retryable local outcome; `not_sent_lease_expired` chỉ ghi nhận backend-owned follow-up. Không có metric nào tuyên bố backend đã retry, cancel hoặc expiry schedule. Invalid VAPID/config vẫn chạy qua `checkReady` trước nhánh paused; shutdown vẫn hạ readiness.
+
+Verification sau correction trong `services/web-push/`: `gofmt` check PASS, `go test -count=1 ./...` PASS, `go test -race ./...` PASS, `go vet ./...` PASS, `golangci-lint run ./...` PASS (0 issues) và `go build ./...` PASS.
