@@ -71,7 +71,7 @@ func (s WebPushSender) Send(ctx context.Context, delivery Delivery, key VAPIDKey
 			Auth:   delivery.Keys.Auth,
 		},
 	}, &webpushlib.Options{
-		Subscriber:      s.Subject,
+		Subscriber:      strings.TrimPrefix(s.Subject, "mailto:"),
 		TTL:             delivery.TTLSeconds,
 		VAPIDPublicKey:  key.PublicKey,
 		VAPIDPrivateKey: key.privateKeyEncoded,

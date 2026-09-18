@@ -1,0 +1,159 @@
+# Phase 7A - Handoff chuẩn bị 7B
+
+Ngày 2026-09-17. [Evidence khảo sát](phase-7A-evidence.md) gắn với subject
+`bcfbce97ca671e7c5284ad14cb69a90b26fc0e17`. Chưa đủ điều kiện chạy 7B.
+
+## Quyết định maintainer sau khảo sát
+
+- Dùng `qltbyt_test` làm nguồn clone sang DB riêng cho 7B; maintainer đã chọn
+  phương án clone, không dùng trực tiếp restored baseline. Được tạo clone riêng
+  có tên không trùng; chưa có evidence tạo thành công ở thời điểm ghi quyết định.
+- Scope tài khoản test: `ntchi2` và `admin`, đơn vị `17`. Cần kiểm tra role và
+  eligibility thực tế; tên tài khoản `admin` không tự chứng minh role.
+- Maintainer chọn iPhone Home Screen, URL `https://cvmems.vn`, và yêu cầu agent
+  tạo một repair request test. Scope vẫn là DB clone, đơn vị `17`; agent tự
+  chọn thiết bị phù hợp, đánh dấu request test, chưa xác nhận đã tạo.
+- Read-only HEAD xác nhận `https://cvmems.vn` trả 307 tới
+  `https://www.cvmems.vn/` (Vercel); runbook ZBS production dùng domain `www`.
+  Chưa chứng minh app trên origin này nối DB clone. Cần kiểm tra origin thực tế,
+  subscription iPhone và cấu hình worker test trước khi gửi; không đổi DB app
+  production hoặc tạo request live từ chỉ đạo test trên clone.
+- Quyền clone không bao gồm sửa baseline, deploy app/worker, tạo secrets,
+  bật controls hoặc gửi provider. Dữ liệu subscription sao chép không được coi
+  là danh sách thiết bị đã đồng ý nhận test.
+
+## Bước tiếp theo giao Luna-max
+
+> Cập nhật scope sau khảo sát: maintainer đã chuyển sang live canary đơn vị `18`,
+> recipient `ntchi1` và `admin`, iPhone Home Screen đăng nhập `ntchi1` tại
+> `https://www.cvmems.vn`. Clone được giữ lại, chưa dùng để tạo request. Kế hoạch
+> staging bên dưới là handoff lịch sử, không còn là bước triển khai đang được chọn.
+> Maintainer đã duyệt chuẩn bị VAPID/HMAC, worker Oracle paused và cấu hình app/live
+> registration cho canary; enqueue/dispatch giữ tắt trong lúc chuẩn bị. Một request
+> test thuộc đơn vị `18` chỉ tạo sau readiness. Không lưu thông tin đăng nhập vào docs.
+
+1. Tra cứu runbook Oracle, metadata triển khai và cấu hình hiện có bằng thao tác
+   read-only để xác định staging URL/HTTPS/auth, host worker và DB cách ly cụ thể.
+   Có thể kiểm tra SSH tới host đã được tài liệu hóa; không biến production hoặc
+   restored baseline thành staging. Chỉ báo existence/permissions của secrets.
+2. Đối chiếu image identity, network/health, public VAPID artifact và sự hiện diện
+   của cấu hình HMAC; không gọi claim/report hoặc API có mutation để thử readiness.
+3. Xác định tenant/account test, owner vận hành và scope thiết bị đồng ý nhận.
+   Nếu không tìm thấy trong nguồn hiện có, ghi rõ thông tin cần maintainer cung cấp.
+4. Với từng mục còn thiếu, đưa ra thao tác chuẩn bị cụ thể, môi trường đích,
+   quyền cần thiết, tiêu chí read-back và cleanup. Chưa thực hiện provisioning,
+   deploy, tạo secrets, ghi DB hoặc gửi provider khi chưa được duyệt đúng scope.
+
+## Điều kiện chuyển 7B
+
+- Xác định được app staging HTTPS/auth và DB test cách ly có schema/RPC tương thích.
+- Có worker/image được xác định bất biến, cấu hình staging tương thích, health/network
+  được kiểm chứng; không suy ra remote readiness từ local `200 paused`.
+- Có tenant/account/device scope đã đồng ý, controls và kế hoạch cleanup rõ ràng.
+- Có quyền cụ thể cho deploy/fixture/control mutation và provider test cần cho 7B.
+
+DB gates đã được bypass không được đưa lại thành blocker; giữ nguyên lịch sử.
+Không mở lại browser acceptance 7.3. Không tick 7.1/7.2/7.4/7.5 hoặc Phase 8 chỉ
+vì inventory đầy đủ. Báo cáo PASS/BLOCKED/UNKNOWN theo bằng chứng thực tế, không
+khẳng định môi trường chưa tồn tại chỉ vì chưa tìm được cấu hình.
+
+## Handoff sau sửa HMAC production ngày 2026-09-18
+
+- Root cause HTTP 401: secret worker là cùng 32 bytes nhưng đang ở base64url
+  không padding; Go worker chấp nhận dạng này, trong khi Node backend chỉ chấp
+  nhận base64 chuẩn có padding theo `signWebPushRequest`.
+- Đã canonicalize cùng bytes thành giá trị base64 chuẩn 44 ký tự và cập nhật
+  `WEB_PUSH_HMAC_CURRENT_SECRET` production. Không rotate key, không sửa runtime,
+  không đổi `WEB_PUSH_HMAC_CURRENT_KEY_ID`.
+- Deployment exact source đã READY: `dpl_5eFKaKiQyvhjY6qswBXb9HkHwxQ9`, SHA
+  `c1d36f629b4c67004f1b3854e0ab3c6029309dcd`, alias production gồm
+  `www.cvmems.vn` và `cvmems.vn`.
+- Verification bounded: signed claim hợp lệ trả `503 disabled` với retry `60`;
+  signature bị sửa trả `401 unauthorized`. Vì `dispatch_enabled=false`, probe
+  không claim, không consume nonce, không gửi provider.
+- Main phải giữ read-back `registration=true`, `enqueue=false`,
+  `dispatch=false`, request `532` pending và deliveries `0`; không reset deadline,
+  không enable controls, không tạo request mới. Worker Oracle vẫn paused; việc
+  kiểm tra health/ready là read-only độc lập.
+- Đây là auth/kill-switch contract PASS cho canary, không phải provider hoặc
+  browser E2E PASS. Không tick Phase 7A/7B/Phase 8 hoàn tất từ kết quả này.
+
+Safe check duy nhất cần lặp lại: dùng bounded signed-claim probe đọc secret local
+không in nội dung, canonicalize base64 trước khi HMAC, rồi chỉ báo status/code/
+retry-after/byte-length. Valid phải là `503/disabled/60`; invalid phải là
+`401/unauthorized`; giữ enqueue/dispatch tắt trong toàn bộ lượt kiểm tra.
+
+## Handoff sau retry live canary ngày 2026-09-18
+
+- Retry bounded của đúng request `532` đã terminal: delivery
+  `2bcb13db-2d3d-4489-9bdd-5cc30228f30a`, attempt `1`, `credential_error`,
+  provider HTTP `403`; Apple Web Push, hostname `web.push.apple.com`. Không có
+  detailed/sanitized provider reason và không có acceptance; chưa có bằng chứng
+  iPhone hiển thị.
+- Controls sau cleanup là `registration=true`, `enqueue=false`,
+  `dispatch=false`; worker paused và readiness `200 paused` được verify độc lập
+  (container PID `853374`, restart `0`). Không reset TTL/deadline, không tạo
+  request mới và không xử lý backlog ngoài canary.
+- Giữ Phase 7A/7B/browser E2E ở trạng thái chưa PASS. Mọi chẩn đoán nguyên nhân
+  VAPID JWT/key/audience/expiry hoặc retry tương lai cần maintainer authorize
+  riêng.
+
+## Handoff sau acceptance và receipt của canary ngày 2026-09-18
+
+- Request `535` đã được nhận bởi provider: delivery
+  `901f08da-a1d1-41cd-b7c4-e4ac77627049`, attempt `1`, outcome `accepted`, HTTP
+  `201`, terminal lúc `2026-09-18T11:55:50.050526Z`. Maintainer báo iPhone đã
+  nhận notification; đây là maintainer-reported receipt, không phải browser E2E
+  độc lập.
+- Không dùng khoảng từ lúc tạo request `07:39:38Z` đến acceptance để claim
+  ngưỡng `60 seconds`, vì canary chờ worker/dispatch pause và thao tác đăng nhập
+  lại thủ công. Không tick toàn bộ Phase 7A/7B/Phase 8.
+- Cleanup đã hoàn tất: `registration=true`, `enqueue=false`, `dispatch=false`,
+  canary arrays `[18]`; worker fixed image paused và readiness `200 paused`.
+
+## Handoff kiểm tra local VAPID subject ngày 2026-09-18
+
+- RED xác nhận `mailto:` bị double-prefix trong VAPID `sub`; fix local dùng
+  `strings.TrimPrefix` trước khi gọi `webpush-go`.
+- GREEN table-driven bao phủ `mailto:`, `https:` preservation và raw email;
+  full Go checks (`test`, `race`, `vet`, `build`, `gofmt`, `golangci-lint`) PASS.
+- Source chưa deploy; chưa gọi hoặc retry provider. Giữ nguyên boundary
+  readiness/7B/browser E2E chưa PASS và cần user-facing authorization trước
+  mọi deploy/send.
+
+## Handoff artifact VAPID subject fix paused ngày 2026-09-18
+
+- Build artifact `linux/arm64` xuất phát từ commit
+  `bcfbce97ca671e7c5284ad14cb69a90b26fc0e17`, reviewed diff SHA
+  `b33fd1af9b82eff74ca3376b202cee4f88c49617c324e79728aa7efa21967b06`;
+  local image `sha256:0066a20585f2208af148613a5bd10dee1044a8513af852e0e6befb6b4d72f61f`,
+  remote Oracle image `sha256:fd50044094241dae43320b379418715121c8aa89d17745f6a3d075a555efc4d5`.
+  Dockerfile tạm đã được xoá sau khi build; không coi source tree là clean commit.
+- Oracle canary đã pin `WEB_PUSH_IMAGE` theo remote digest và recreate paused
+  thành công: container ID `6c929470eda87c03e803bce8af750e8613fbd2a292e6293d32b8e38bc46be053`,
+  `restart_count=0`, `/healthz 200 ok`, `/readyz 200 paused`, không published
+  port. VAPID/HMAC metadata được kiểm tra presence mà không lộ giá trị.
+- Giữ nguyên boundary 7A: không DB write, không tạo request/enqueue/claim/dispatch,
+  không provider call; chưa có browser E2E hoặc provider acceptance. Không enable
+  dispatch/ping user từ handoff này.
+
+## Handoff authoritative sau closeout canary ngày 2026-09-18
+
+- Request `535` là canary thành công: delivery
+  `901f08da-a1d1-41cd-b7c4-e4ac77627049`, attempt `1`, outcome `accepted`, HTTP
+  `201`, terminal `2026-09-18T11:55:50.050526Z`. Maintainer xác nhận iPhone
+  hiển thị notification; đây là receipt do maintainer báo lại, không phải browser
+  E2E độc lập. Không claim SLA `60 seconds` vì request tạo lúc `07:39:38Z` và
+  acceptance xảy ra sau pause/login thủ công.
+- Final read-back: `registration=true`, `enqueue=false`, `dispatch=false`,
+  canary arrays `[18]`; worker fixed image paused và readiness `200 paused`.
+  Request `532` `credential_error`/HTTP `403` được giữ là historical result.
+- Provider fix và regression đã được verify bằng `go test ./...`,
+  `go test -race ./...`, `go vet ./...` và `go build ./...`.
+- UX follow-up [Issue #1002](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1002)
+  bao phủ numeric app icon badge và lockscreen/banner reproduction. Phạm vi
+  phải tách `NotificationOptions.badge` là image khỏi numeric Badging API, có
+  feature detection, accessibility fallback, clear/reconcile ownership và
+  evidence theo iOS version/settings; không hứa native banner/lockscreen.
+- Không đánh dấu toàn bộ Phase 7A/7B/Phase 8 hoàn tất; session expiry/revoke và
+  ZBS independence còn ở các boundary điều tra riêng.
