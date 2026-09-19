@@ -27,7 +27,6 @@ import {
 type SelfAction = "none" | "remove"
 type SaveSnapshot = {
   draftRecipients: Record<string, Recipient>
-  serverRecipients: Record<string, Recipient>
   selfAction: SelfAction
 }
 type SaveInput = { usernames: string; selfAction: SelfAction }
@@ -127,7 +126,13 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
       return page
     },
   })
-  const selected = draft ?? recipientMapFromConfig(config.data ?? [])
+  const savedRecipients = recipientMapFromConfig(config.data ?? [])
+  const selected = draft ?? savedRecipients
+  const dirty =
+    draft !== null &&
+    (selfAction !== "none" ||
+      Object.keys(draft).length !== Object.keys(savedRecipients).length ||
+      Object.keys(draft).some((userId) => !savedRecipients[userId]))
   const save = useMutation({
     retry: false,
     mutationFn: async ({ usernames, selfAction }: SaveInput) => {
@@ -157,7 +162,7 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
     onError: () => {
       const snapshot = saveSnapshot.current
       if (!snapshot) return
-      setDraft({ ...snapshot.serverRecipients, ...snapshot.draftRecipients })
+      setDraft(snapshot.draftRecipients)
       setSelfAction(snapshot.selfAction)
       saveSnapshot.current = null
     },
@@ -170,9 +175,15 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
         .map((candidate) => [candidate.user_id, candidate])
     ).values(),
   ]
-  const configured = Object.values(selected).filter(
-    (recipient) => !options.some((candidate) => candidate.user_id === recipient.user_id)
-  )
+  const configured = [
+    ...new Map(
+      [...Object.values(savedRecipients), ...Object.values(selected)]
+        .filter(
+          (recipient) => !options.some((candidate) => candidate.user_id === recipient.user_id)
+        )
+        .map((recipient) => [recipient.user_id, recipient] as const)
+    ).values(),
+  ]
   const toggle = (candidate: Candidate) => {
     if (
       !ready ||
@@ -182,22 +193,32 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
       return
     const next = { ...selected }
     if (next[candidate.user_id]) delete next[candidate.user_id]
-    else
-      next[candidate.user_id] = {
+    else {
+      const saved = savedRecipients[candidate.user_id]
+      next[candidate.user_id] = saved ?? {
         ...candidate,
         status: "eligible",
         protected: false,
         editable: true,
       }
+      if (saved?.protected) setSelfAction("none")
+    }
     setDraft(next)
     save.reset()
   }
   const toggleRemoval = (recipient: Recipient) => {
     if (!ready || !recipient.editable) return
     const next = { ...selected }
-    delete next[recipient.user_id]
+    if (next[recipient.user_id]) {
+      delete next[recipient.user_id]
+      if (recipient.protected) setSelfAction("remove")
+    } else {
+      const saved = savedRecipients[recipient.user_id]
+      if (!saved) return
+      next[recipient.user_id] = saved
+      if (saved.protected) setSelfAction("none")
+    }
     setDraft(next)
-    if (recipient.protected) setSelfAction("remove")
     save.reset()
   }
   const reload = () => {
@@ -220,6 +241,7 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
           role="searchbox"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
+          disabled={save.isPending}
           placeholder="Tìm theo họ tên hoặc username"
         />
       </div>
@@ -235,6 +257,11 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
               <div className="min-w-0 space-y-1">
                 <span className="block break-words">{displayRecipientName(recipient)}</span>
                 <span className="block text-xs text-muted-foreground">
+                  {savedRecipients[recipient.user_id] && !selected[recipient.user_id]
+                    ? "Đã cấu hình · Chờ gỡ · Chưa lưu"
+                    : savedRecipients[recipient.user_id]
+                      ? "Đã cấu hình"
+                      : "Chưa lưu"}{" "}
                   {recipient.protected ? "Được bảo vệ" : "Người nhận thường"} ·{" "}
                   {recipientStatusLabel(recipient.status)}
                 </span>
@@ -249,20 +276,26 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
                   disabled={!ready}
                   onClick={() => toggleRemoval(recipient)}
                 >
-                  {recipientRemovalLabel(recipient)}
+                  {selected[recipient.user_id]
+                    ? recipientRemovalLabel(recipient)
+                    : `Hoàn tác gỡ ${displayRecipientName(recipient)}`}
                 </Button>
               ) : null}
             </div>
           ))}
         </div>
       ) : null}
-      {config.isSuccess && Object.keys(selected).length === 0 ? (
+      {config.isSuccess && Object.keys(selected).length === 0 && configured.length === 0 ? (
         <p role="status">Chưa có người nhận nào được cấu hình.</p>
       ) : null}
       {candidates.isError ? (
         <div className="space-y-2">
           <p role="alert">Không thể tải danh sách tài khoản trong phạm vi được phép.</p>
-          <Button variant="outline" onClick={() => void candidates.refetch()}>
+          <Button
+            variant="outline"
+            disabled={save.isPending}
+            onClick={() => void candidates.refetch()}
+          >
             Thử lại tìm kiếm
           </Button>
         </div>
@@ -288,8 +321,11 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
             <span className="min-w-0 break-words">{displayRecipientName(candidate)}</span>
             {selected[candidate.user_id] ? (
               <span className="text-xs text-muted-foreground">
+                {savedRecipients[candidate.user_id] ? "Đã cấu hình" : "Chưa lưu"} ·{" "}
                 {recipientStatusLabel(selected[candidate.user_id].status)}
               </span>
+            ) : savedRecipients[candidate.user_id] && dirty ? (
+              <span className="text-xs text-muted-foreground">Đã cấu hình · Chờ gỡ · Chưa lưu</span>
             ) : null}
           </label>
         ))}
@@ -300,7 +336,7 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
       {candidates.hasNextPage ? (
         <Button
           variant="outline"
-          disabled={candidates.isFetching}
+          disabled={candidates.isFetching || save.isPending}
           onClick={() => void candidates.fetchNextPage()}
         >
           Tải thêm tài khoản
@@ -317,12 +353,11 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
         </Button>
         <Button
           type="button"
-          disabled={!ready}
+          disabled={!ready || !dirty}
           onClick={() => {
-            if (ready) {
+            if (ready && dirty) {
               saveSnapshot.current = {
                 draftRecipients: selected,
-                serverRecipients: recipientMapFromConfig(config.data ?? []),
                 selfAction,
               }
               save.mutate(
@@ -337,16 +372,13 @@ function RecipientEditor({ target, scope }: { target: string; scope: string }) {
             }
           }}
         >
-          {save.isPending ? "Đang lưu..." : "Lưu người nhận"}
+          {save.isPending ? "Đang lưu…" : "Lưu người nhận"}
         </Button>
       </div>
       {save.isError ? (
-        <p role="alert">
-          Không thể xác nhận lưu danh sách người nhận. Vui lòng tải lại cấu hình để kiểm tra trước
-          khi thử lại.
-        </p>
+        <p role="alert">Không thể lưu cấu hình người nhận. Vui lòng thử lại.</p>
       ) : null}
-      {save.isSuccess ? <p role="status">Đã lưu danh sách người nhận.</p> : null}
+      {save.isSuccess ? <p role="status">Đã lưu cấu hình</p> : null}
     </div>
   )
 }

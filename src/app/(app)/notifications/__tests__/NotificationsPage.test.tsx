@@ -120,9 +120,12 @@ describe("NotificationsPage recipient configuration", () => {
     )
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByRole("checkbox", { name: "Alice Nguyen (alice)" })
+    await waitFor(() => expect(saveButton()).toBeDisabled())
     expect(screen.queryByRole("button", { name: "Đơn vị mục tiêu" })).not.toBeInTheDocument()
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
+    await waitFor(() => expect(saveButton()).toBeEnabled())
     await user.click(saveButton())
     const put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
     expect(JSON.parse(put?.[1].body)).toEqual({
@@ -136,6 +139,34 @@ describe("NotificationsPage recipient configuration", () => {
         .filter(([url, init]) => !init?.method && /\/config|\/candidates/.test(String(url)))
         .every(([url]) => String(url).includes("don_vi_id=9"))
     ).toBe(true)
+  })
+  it("enables Save only for a dirty draft and labels saved versus unsaved recipients", async () => {
+    mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
+      Promise.resolve(
+        String(input).includes("/config")
+          ? config("7", [selectedAlice])
+          : candidates("7", [alice, bob])
+      )
+    )
+    const user = userEvent.setup()
+    mount()
+
+    await waitFor(() => expect(saveButton()).toBeDisabled())
+    expect(await screen.findByText(/Đã cấu hình/)).toBeInTheDocument()
+
+    await user.click(aliceBox())
+    expect(saveButton()).toBeEnabled()
+    expect(screen.getByText(/Chưa lưu/)).toBeInTheDocument()
+
+    await user.click(aliceBox())
+    expect(saveButton()).toBeDisabled()
+    expect(screen.queryByText(/Chưa lưu/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole("checkbox", { name: "Bob Tran (bob)" }))
+    expect(saveButton()).toBeEnabled()
+    expect(screen.getByText(/Chưa lưu/)).toBeInTheDocument()
+    await user.click(screen.getByRole("checkbox", { name: "Bob Tran (bob)" }))
+    expect(saveButton()).toBeDisabled()
   })
   it("gates editing and Save until full config arrives, then supports keyboard selection", async () => {
     const loading = deferred()
@@ -167,8 +198,8 @@ describe("NotificationsPage recipient configuration", () => {
     })
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
-    expect(screen.getByText("Admin (admin)")).toBeInTheDocument()
+    await screen.findByText("Admin (admin)")
+    expect(saveButton()).toBeDisabled()
     expect(screen.getByText("Stale (stale)")).toBeInTheDocument()
     await user.click(aliceBox())
     await user.click(screen.getByRole("button", { name: "Tải thêm tài khoản" }))
@@ -189,7 +220,8 @@ describe("NotificationsPage recipient configuration", () => {
     })
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByRole("checkbox", { name: "Alice Nguyen (alice)" })
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
     await user.click(screen.getByRole("button", { name: "Tải lại cấu hình" }))
     await screen.findByRole("alert")
@@ -202,7 +234,8 @@ describe("NotificationsPage recipient configuration", () => {
   it("does not overwrite a draft on background config refresh", async () => {
     const user = userEvent.setup()
     const { client } = mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByRole("checkbox", { name: "Alice Nguyen (alice)" })
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
     await act(async () => {
       await client.refetchQueries({ type: "active" })
@@ -214,56 +247,27 @@ describe("NotificationsPage recipient configuration", () => {
     mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
       init?.method === "PUT"
         ? saving.promise
-        : Promise.resolve(String(input).includes("/config") ? config() : candidates())
-    )
-    const user = userEvent.setup()
-    mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
-    await user.click(aliceBox())
-    await user.click(saveButton())
-    expect(aliceBox()).toBeDisabled()
-    await user.click(aliceBox())
-    await act(async () => saving.resolve(config("7", [selectedAlice])))
-    await waitFor(() => expect(saveButton()).toBeEnabled())
-    expect(aliceBox()).toBeChecked()
-    expect(screen.getByText("Đã lưu danh sách người nhận.")).toBeInTheDocument()
-  })
-
-  it("preserves protected entries outside normal username serialization", async () => {
-    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
-      init?.method === "PUT"
-        ? Promise.resolve(config("7", [protectedAdmin]))
         : Promise.resolve(
-            String(input).includes("/config") ? config("7", [protectedAdmin]) : candidates()
+            String(input).includes("/config") ? config() : candidates("7", [alice], "13")
           )
     )
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
-    await user.click(saveButton())
-    const put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
-    expect(JSON.parse(put?.[1].body).usernames).toBe("")
-    expect(JSON.parse(put?.[1].body).self_action).toBe("none")
-  })
-  it("preserves a failed Save draft without retrying the mutation", async () => {
-    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
-      Promise.resolve(
-        init?.method === "PUT"
-          ? response({}, 500)
-          : String(input).includes("/config")
-            ? config()
-            : candidates()
-      )
-    )
-    const user = userEvent.setup()
-    mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByRole("checkbox", { name: "Alice Nguyen (alice)" })
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
     await user.click(saveButton())
-    await screen.findByRole("alert")
+    expect(aliceBox()).toBeDisabled()
+    expect(screen.getByRole("searchbox", { name: "Tìm tài khoản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Tải thêm tài khoản" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Đang lưu…" })).toBeDisabled()
+    await user.click(aliceBox())
+    await act(async () => saving.resolve(config("7", [selectedAlice])))
+    await waitFor(() => expect(saveButton()).toBeDisabled())
     expect(aliceBox()).toBeChecked()
-    expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === "PUT")).toHaveLength(1)
+    expect(screen.getByText("Đã lưu cấu hình")).toBeInTheDocument()
   })
+
   it("shows status metadata and keeps another caller's protected entry read-only", async () => {
     mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
       Promise.resolve(
@@ -273,43 +277,21 @@ describe("NotificationsPage recipient configuration", () => {
       )
     )
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByText("Admin (admin)")
 
     expect(screen.getByText(/Được bảo vệ/)).toBeInTheDocument()
     expect(screen.getByText("Chỉ xem")).toBeInTheDocument()
     expect(screen.getByText(/Không còn đủ điều kiện/)).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /Gỡ.*Admin \(admin\)/i })).not.toBeInTheDocument()
   })
-  it("explicitly removes stale normal entries while preserving protected entries", async () => {
-    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
-      init?.method === "PUT"
-        ? Promise.resolve(config("7", [protectedAdmin]))
-        : Promise.resolve(
-            String(input).includes("/config")
-              ? config("7", [protectedAdmin, stale])
-              : candidates("7", [alice])
-          )
-    )
-    const user = userEvent.setup()
-    mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
-
-    await user.click(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" }))
-    expect(screen.queryByText("Stale (stale)")).not.toBeInTheDocument()
-    await user.click(saveButton())
-
-    const put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
-    expect(JSON.parse(put?.[1].body)).toMatchObject({
-      usernames: "",
-      self_action: "none",
-    })
-    expect(screen.getByText("Admin (admin)")).toBeInTheDocument()
-  })
-  it("restores an explicitly removed entry when PUT fails", async () => {
+  it("keeps a removed off-page entry visible through failure and retry", async () => {
+    let puts = 0
     mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
       Promise.resolve(
         init?.method === "PUT"
-          ? response({}, 500)
+          ? ++puts === 1
+            ? response({}, 500)
+            : config("7", [protectedAdmin])
           : String(input).includes("/config")
             ? config("7", [protectedAdmin, stale])
             : candidates("7", [alice])
@@ -317,12 +299,23 @@ describe("NotificationsPage recipient configuration", () => {
     )
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" })).toBeEnabled()
+    )
 
     await user.click(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" }))
     await user.click(saveButton())
+    const put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
+    expect(JSON.parse(put?.[1].body)).toMatchObject({ usernames: "", self_action: "none" })
     await screen.findByRole("alert")
     expect(screen.getByText("Stale (stale)")).toBeInTheDocument()
+    expect(screen.getAllByText(/Đã cấu hình/).length).toBeGreaterThan(0)
+    expect(screen.getByText(/Chờ gỡ · Chưa lưu/)).toBeInTheDocument()
+    expect(saveButton()).toBeEnabled()
+    await user.click(saveButton())
+    await waitFor(() => expect(screen.queryByText("Stale (stale)")).not.toBeInTheDocument())
+    expect(screen.getByText("Admin (admin)")).toBeInTheDocument()
+    expect(screen.getByText("Đã lưu cấu hình")).toBeInTheDocument()
   })
   it("does not partially save an invalid normal entry", async () => {
     mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) =>
@@ -336,7 +329,7 @@ describe("NotificationsPage recipient configuration", () => {
     )
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
     await user.click(saveButton())
 
@@ -357,18 +350,21 @@ describe("NotificationsPage recipient configuration", () => {
       }
       return Promise.resolve(
         String(input).includes("/config")
-          ? config("7", [protectedSelf, selectedAlice])
+          ? config("7", [protectedSelf, selectedAlice, stale])
           : candidates("7", [alice])
       )
     })
     const user = userEvent.setup()
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" })).toBeEnabled()
+    )
+    await user.click(screen.getByRole("button", { name: "Gỡ người nhận Stale (stale)" }))
     await user.click(saveButton())
 
     let put = mocks.fetch.mock.calls.find(([, init]) => init?.method === "PUT")
     expect(JSON.parse(put?.[1].body)).toMatchObject({ usernames: "alice", self_action: "none" })
-    await screen.findByText("Đã lưu danh sách người nhận.")
+    await screen.findByText("Đã lưu cấu hình")
 
     await user.click(screen.getByRole("button", { name: "Gỡ tự nhận Self Admin (self-admin)" }))
     await user.click(saveButton())
@@ -392,7 +388,7 @@ describe("NotificationsPage recipient configuration", () => {
       Promise.resolve(String(input).includes("/config") ? config("7", []) : candidates("7", []))
     )
     mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await screen.findByText("Chưa có người nhận nào được cấu hình.")
     expect(screen.getByText("Chưa có người nhận nào được cấu hình.")).toBeInTheDocument()
   })
   it("isolates old config and Save responses when the target changes", async () => {
@@ -408,7 +404,7 @@ describe("NotificationsPage recipient configuration", () => {
     })
     const user = userEvent.setup()
     const view = mount()
-    await waitFor(() => expect(saveButton()).toBeEnabled())
+    await waitFor(() => expect(aliceBox()).toBeEnabled())
     await user.click(aliceBox())
     await user.click(saveButton())
     target(9)
@@ -417,7 +413,7 @@ describe("NotificationsPage recipient configuration", () => {
     expect(screen.getByText("Đã chọn: 0")).toBeInTheDocument()
     await act(async () => saving.resolve(config("7", [selectedAlice])))
     expect(screen.queryByText("Alice Nguyen (alice)")).not.toBeInTheDocument()
-    expect(screen.queryByText("Đã lưu danh sách người nhận.")).not.toBeInTheDocument()
+    expect(screen.queryByText("Đã lưu cấu hình")).not.toBeInTheDocument()
   })
   it("rejects malformed full config instead of enabling destructive Save", async () => {
     mocks.fetch.mockImplementation((input: RequestInfo | URL) =>
