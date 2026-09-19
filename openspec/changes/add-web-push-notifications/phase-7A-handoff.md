@@ -157,3 +157,75 @@ retry-after/byte-length. Valid phải là `503/disabled/60`; invalid phải là
   evidence theo iOS version/settings; không hứa native banner/lockscreen.
 - Không đánh dấu toàn bộ Phase 7A/7B/Phase 8 hoàn tất; session expiry/revoke và
   ZBS independence còn ở các boundary điều tra riêng.
+
+## Handoff authoritative sau activation all-tenant ngày 2026-09-19
+
+### Current state
+
+- Runtime live hiện là `registration=true`, `enqueue=true`, `dispatch=true`.
+  Cả `registration_canary_don_vi_ids` và `dispatch_canary_don_vi_ids` cùng là
+  snapshot `28` active units, SHA-256
+  `6f1622f49d7399a2d08b7facbb43612db111819d94ad8c7d26d756d426e36949`.
+- Worker hiện là container `web-push-live-canary-web-push-1`, worker ID
+  `oracle-web-push-live-canary-20260917`, image digest
+  `sha256:fd50044094241dae43320b379418715121c8aa89d17745f6a3d075a555efc4d5`,
+  `WEB_PUSH_PAUSED=false`, restart `0`, `/healthz=200 ok`, `/readyz=200 ready`.
+  Inventory chỉ chứng minh host Oracle đã thấy một worker; không claim global
+  worker exclusivity.
+- Final live read-back lúc `2026-09-19T05:27:01Z` có backlog mở bằng `0`; không
+  có test request, test push, recipient mutation, image build/pull hoặc provider
+  acceptance mới. Terminal `credential_error` cũ giữ nguyên để monitor.
+- Earlier sections mô tả trạng thái canary paused `[18]`; đó là historical
+  pre-activation state. Operator kế tiếp phải dùng section này làm current
+  authoritative state, không tự pause hoặc restore `[18]` nếu không có rollback.
+
+### Rollback đã được approve
+
+Nếu có operational error, pause worker trước bằng env file hiện hữu và recreate
+cùng image digest; sau đó guarded-update singleton controls về:
+
+```text
+registration_canary_don_vi_ids = [18]
+dispatch_canary_don_vi_ids     = [18]
+registration_enabled           = true
+enqueue_enabled                = false
+dispatch_enabled               = false
+```
+
+Read-back controls và health sau rollback. Không xoá history, không chạy
+retention/cleanup và không reset deadline. Rollout approval này không phải blanket
+authorization cho các live write khác; mỗi migration, recipient change, worker
+config change hoặc provider test mới cần operation-specific permission.
+
+### Next boundary
+
+- Quan sát read-only các real events tương lai trong một cửa sổ ngắn; không tạo
+  test request hoặc explicit test push chỉ để lấy evidence. `accepted=0` vẫn là
+  kết quả hợp lệ khi chưa có event thật.
+- Không tick `7.1`, `7.2`, `7.4`, `7.5`, `8` hoặc claim full Phase 7A/7B từ
+  rollout này. Session lifecycle evidence và ZBS independence giữ boundary
+  riêng; fault checks rộng hơn vẫn deferred.
+- Snapshot 28 không auto-include future units. [Issue #1003](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1003)
+  giữ phần design/implementation đó cho approval riêng; không thêm UI/dashboard
+  hoặc MCP auto-all trong rollout này.
+
+## Handoff authoritative sau timing test 7.1 ngày 2026-09-19
+
+- Request mock duy nhất `536` của equipment `8392` đã đi qua create → intent →
+  worker/provider tự nhiên: created `08:00:33.476415Z`, materialized
+  `08:00:36.341476Z`, terminal `08:00:37.504832Z`, `accepted`/HTTP `201`,
+  attempt `1`, `failed_count=0`. Request-to-terminal `4.028417s` là upper bound
+  theo completion timestamp; không có network-accept timestamp riêng.
+- Deadline persisted là `2026-09-20T08:00:33.476415Z`, đúng `+86400s`. Chưa có
+  wire-TTL, near-expiry, retry hoặc max-24-hour evidence; lease fields đã clear
+  sau terminal nên không claim claim/send timestamp. Maintainer đã báo iPhone
+  nhận notification thành công.
+- Current live state sau read-back vẫn là `registration=true`, `enqueue=true`,
+  `dispatch=true`, allowlists `28`, worker ready; backlog mở và retry/expired
+  state đều `0`. Không pause worker và không quay lại historical `[18]` state.
+- Các hướng dẫn pre-test ở `Next boundary` bên trên (`accepted=0`/không tick
+  7.1) là historical; section này supersede riêng cho 7.1 và không thay đổi
+  boundary chưa hoàn tất của 7.2, 7.4, 7.5 hoặc Phase 8.
+- Đây là maintainer-accepted completion của 7.1 trên sample được authorize,
+  không phải blanket PASS cho 7.2/7.4/7.5/Phase 8. Request `536` giữ nguyên như
+  historical normal repair record; không cleanup/delete/reset hay tạo request khác.

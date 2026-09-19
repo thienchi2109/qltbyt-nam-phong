@@ -209,3 +209,88 @@ provider/browser E2E vẫn chưa được tick PASS.
   Không xem provider acceptance là guarantee native banner/lockscreen.
 - Không tick toàn bộ Phase 7A/7B/Phase 8; các vấn đề session expiry/revoke và
   ZBS independence vẫn theo dõi ở boundary riêng.
+
+## Evidence authoritative sau activation all-tenant ngày 2026-09-19
+
+- Phạm vi đã được maintainer authorize một lần cho đúng snapshot `28` đơn vị
+  đang active: mở cả registration/dispatch allowlist, bật enqueue/dispatch và
+  unpause worker hiện hữu. Không tạo recipient, request kiểm thử, explicit test
+  push, staging, image mới, build hoặc pull.
+- Preflight Supabase MCP lúc `2026-09-19T05:21:15Z`: `28` active units, `0`
+  inactive units; snapshot sắp xếp theo `public.don_vi.active` có SHA-256
+  `6f1622f49d7399a2d08b7facbb43612db111819d94ad8c7d26d756d426e36949`.
+  Hai allowlist cũ đều đúng `[18]`; intent/delivery backlog mở đều `0`.
+- Guarded live write đã đặt `registration_canary_don_vi_ids` và
+  `dispatch_canary_don_vi_ids` thành cùng snapshot `28` IDs; sau đó bật tuần tự
+  `enqueue_enabled` rồi `dispatch_enabled`. Parent independent read-back lúc
+  `2026-09-19T05:28:02.768758Z` xác nhận cả ba flags `TRUE`, hai arrays count
+  `28`, cùng scope và khớp active-unit snapshot.
+- Final read-back lúc `2026-09-19T05:27:01Z`: `registration_enabled=true`,
+  `enqueue_enabled=true`, `dispatch_enabled=true`, VAPID ready; allowlists
+  count `28`, equal và khớp snapshot. Backlog vẫn `0` open intents, `0` open
+  deliveries, `0` pending-unmaterialized, `0` retry-due và `0` expired leases.
+  Lịch sử terminal không đổi: `2 completed` intents, `1 accepted` delivery và
+  `1 credential_error` delivery; không có event mới để claim provider acceptance.
+- Inventory recipient toàn tenant: chỉ unit `18` có `1` ordinary config và `1`
+  eligible recipient; `27` units còn lại không có config. Full subscription
+  read-only inventory có `4` rows/`2` owned users: `2` active, `2` revoked,
+  không orphan; cả `2` active rows khớp VAPID version và authorization epoch.
+  Một active row thuộc configured/eligible user; một row ngoài recipient config
+  nên không được enqueue/dispatch.
+- Worker guard lúc `2026-09-19T05:24:48Z` chỉ thấy một Docker Web Push
+  production container trên Oracle; đây là inventory giới hạn của host, không
+  phải bằng chứng độc quyền toàn hệ thống. Worker ID là
+  `oracle-web-push-live-canary-20260917`, image giữ nguyên
+  `sha256:fd50044094241dae43320b379418715121c8aa89d17745f6a3d075a555efc4d5`,
+  restart `0`, HMAC key ID presence được xác nhận mà không in secret.
+- Chỉ thay `WEB_PUSH_PAUSED=true` thành `false` trong
+  `/opt/web-push-live-canary/config/worker.env`; owner/mode không đổi. Compose
+  recreate service `web-push` dùng `--pull never`, không build/pull. Sau đó
+  `/healthz=200 ok`, `/readyz=200 ready`, `paused=false`, image không đổi,
+  restart `0`; cửa sổ log ngắn không có error/claim/report. Không có provider
+  acceptance mới vì không có event thực.
+- Vercel production deployment vẫn `READY`, source SHA
+  `a653bb2033f41964634213c48177683d79f66cba`, aliases `www.cvmems.vn` và
+  `cvmems.vn`. SHA source ứng dụng và worker image digest là hai evidence
+  riêng; không suy luận image được build từ commit Next này.
+
+## Boundary sau activation
+
+- Đây là rollout live đã được authorize, không phải bằng chứng browser E2E,
+  SLA, native notification receipt hoặc toàn bộ Phase 7A/7B/Phase 8 hoàn tất.
+  DB gate `FAILED/INCOMPLETE` vẫn là waiver đã được maintainer chấp thuận, không
+  relabel thành `PASS`; browser E2E waiver cũng không thành `PASS`.
+- Current snapshot không tự bao gồm unit mới trong tương lai. Auto-all/future
+  unit design và implementation được deferred tại [Issue #1003](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1003).
+  Managers vẫn phải cấu hình recipient và user opt-in theo quy trình hiện hành;
+  không đổi identity hoặc thêm recipient trong rollout này.
+- Next step an toàn là quan sát read-only ngắn các event thật đầu tiên, chỉ
+  aggregate status/deadline/outcome và health worker; không tạo test request,
+  không provision staging và không chạy manual claim/report. Các kiểm tra fault
+  rộng hơn và ZBS independence vẫn deferred, không coi là PASS.
+
+## Evidence live timing test Phase 7.1 ngày 2026-09-19
+
+- Sau authorization riêng cho đúng một mock fixture của đơn vị `18`, tạo request
+  bình thường có marker `[TEST][PHASE7.1][LATENCY]` trên equipment `8392`; không
+  đổi controls, recipient, subscription hoặc worker. Request `536` vẫn được giữ
+  lại như historical repair record, không cleanup/delete/reset.
+- Request tạo lúc `2026-09-19T08:00:33.476415Z`; intent materialize lúc
+  `2026-09-19T08:00:36.341476Z`; delivery terminal lúc
+  `2026-09-19T08:00:37.504832Z`, `accepted`, provider HTTP `201`, attempt `1`,
+  `failed_count=0`. Terminal-minus-created là `4.028417s`; đây là upper bound
+  theo provider report completion timestamp, không phải network-accept timestamp
+  riêng vì timestamp đó không được lưu. Materialized-minus-terminal là
+  `1.163356s`.
+- Intent/delivery cùng giữ deadline `2026-09-20T08:00:33.476415Z`, đúng `86400`
+  giây sau created time. Đây là evidence persisted deadline; không claim provider
+  wire TTL, near-expiry behavior, retry behavior hoặc max-24-hour observation.
+  Claim/send timestamps không còn trong read-back vì terminal completion đã clear
+  lease fields.
+- Final read-back giữ `registration=true`, `enqueue=true`, `dispatch=true`,
+  allowlists count `28`; open intents/deliveries, pending-unmaterialized,
+  retry-due và expired leases đều `0`. Maintainer báo iPhone đã nhận notification;
+  đây là device receipt do maintainer báo, không phải browser E2E độc lập.
+- Maintainer chấp thuận đóng checkbox 7.1 trên sample live được authorize. Giới
+  hạn wire TTL và các lane chưa đo vẫn được ghi rõ ở đây, không relabel thành
+  `PASS` và không mở rộng sang 7.2, 7.4, 7.5 hoặc Phase 8.
