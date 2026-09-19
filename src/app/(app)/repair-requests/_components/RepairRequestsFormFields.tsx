@@ -62,6 +62,12 @@ export function RepairRequestsFormFields({
   const repairUnitId = `${fieldIdPrefix}-repair-unit`
   const externalCompanyId = `${fieldIdPrefix}-external-company`
   const desiredDateId = `${fieldIdPrefix}-desired-date`
+  const [isDesiredDatePopoverOpen, setIsDesiredDatePopoverOpen] = React.useState(false)
+
+  const handleDesiredDateSelect = (date: Date | undefined) => {
+    onDesiredDateChange(date)
+    if (date) setIsDesiredDatePopoverOpen(false)
+  }
 
   return (
     <>
@@ -89,7 +95,7 @@ export function RepairRequestsFormFields({
       </div>
       <div className="space-y-2">
         <Label htmlFor={desiredDateId}>Ngày mong muốn hoàn thành (nếu có)</Label>
-        <Popover>
+        <Popover open={isDesiredDatePopoverOpen} onOpenChange={setIsDesiredDatePopoverOpen}>
           <PopoverTrigger asChild>
             <Button
               id={desiredDateId}
@@ -108,7 +114,7 @@ export function RepairRequestsFormFields({
             <Calendar
               mode="single"
               selected={desiredDate}
-              onSelect={onDesiredDateChange}
+              onSelect={handleDesiredDateSelect}
               initialFocus
               disabled={isDateDisabled}
             />

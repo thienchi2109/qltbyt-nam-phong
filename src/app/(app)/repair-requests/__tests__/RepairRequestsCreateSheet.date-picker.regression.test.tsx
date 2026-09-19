@@ -121,10 +121,23 @@ describe("repair request date picker", () => {
 
     render(<RepairRequestsCreateSheet />)
 
-    await user.click(screen.getByRole("button", { name: /Ngày mong muốn hoàn thành/ }))
+    const dateTrigger = screen.getByRole("button", { name: /Ngày mong muốn hoàn thành/ })
+    await user.click(dateTrigger)
     await user.click(getTargetDayButton())
 
+    expect(screen.queryByRole("grid", { hidden: true })).not.toBeInTheDocument()
+    expect(dateTrigger).toHaveAttribute("aria-expanded", "false")
+    expect(dateTrigger).toHaveFocus()
     expect(screen.getByText(format(targetDate, "dd/MM/yyyy"))).toBeInTheDocument()
+
+    await user.click(dateTrigger)
+    expect(dateTrigger).toHaveAttribute("aria-expanded", "true")
+    expect(getTargetDayButton().closest('[role="gridcell"]')).toHaveAttribute(
+      "aria-selected",
+      "true"
+    )
+    await user.click(dateTrigger)
+    expect(dateTrigger).toHaveAttribute("aria-expanded", "false")
 
     await user.type(screen.getByLabelText("Mô tả sự cố"), "Mất nguồn đột ngột")
     await user.click(screen.getByRole("button", { name: "Gửi yêu cầu" }))
