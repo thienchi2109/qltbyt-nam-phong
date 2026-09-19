@@ -3,12 +3,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   signOut: vi.fn(),
   updateSession: vi.fn(),
+  cleanupBrowserSubscription: vi.fn(),
   broadcastPostMessage: vi.fn(),
   broadcastClose: vi.fn(),
 }))
 
 vi.mock("next-auth/react", () => ({
   signOut: (...args: unknown[]) => mocks.signOut(...args),
+}))
+
+vi.mock("@/lib/web-push/browser-lifecycle", () => ({
+  cleanupBrowserSubscription: (...args: unknown[]) => mocks.cleanupBrowserSubscription(...args),
 }))
 
 import { signOutWithReason } from "../auth-signout"
@@ -48,6 +53,7 @@ describe("signOutWithReason", () => {
     vi.stubGlobal("BroadcastChannel", FakeBroadcastChannel)
     window.localStorage.clear()
     mocks.updateSession.mockResolvedValue(undefined)
+    mocks.cleanupBrowserSubscription.mockResolvedValue("remote")
   })
 
   afterEach(() => {
@@ -109,6 +115,26 @@ describe("signOutWithReason", () => {
     })
 
     expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+
+  it("keeps security cleanup for forced password changes only", async () => {
+    await signOutWithReason({
+      reason: "forced_password_change",
+      userId: "owner-a",
+    })
+
+    await signOutWithReason({
+      reason: "session_expired",
+      userId: "owner-a",
+    })
+
+    await signOutWithReason({
+      reason: "user_initiated",
+      userId: "owner-a",
+    })
+
+    expect(mocks.cleanupBrowserSubscription).toHaveBeenCalledOnce()
+    expect(mocks.cleanupBrowserSubscription).toHaveBeenCalledWith("owner-a")
   })
 
   it("broadcasts signout intent to sibling tabs before redirecting the current tab", async () => {

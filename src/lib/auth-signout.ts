@@ -48,7 +48,7 @@ export async function signOutWithReason({
   callbackUrl = "/",
   userId,
 }: SignOutWithReasonOptions): Promise<void> {
-  if (userId) {
+  if (reason === "forced_password_change" && userId) {
     await cleanupBrowserSubscription(String(userId))
   }
 

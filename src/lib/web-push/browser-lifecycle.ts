@@ -55,19 +55,23 @@ function isValidRecord(value: unknown, ownerId: string): value is BrowserSubscri
   )
 }
 
-/** Web Push lifecycle entrypoint. */
-export async function hasMatchingLocalBrowserSubscription(ownerId: string): Promise<boolean> {
+async function probeMatchingLocalBrowserSubscription(ownerId: string): Promise<boolean> {
   const record = readBrowserSubscriptionRecord(ownerId)
   if (!record?.endpoint || typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
     return false
   }
+  const registration = await withTimeout(navigator.serviceWorker.ready, CLEANUP_TIMEOUT_MS)
+  const subscription = await withTimeout(
+    registration.pushManager.getSubscription(),
+    CLEANUP_TIMEOUT_MS
+  )
+  return subscription?.endpoint === record.endpoint
+}
+
+/** Web Push lifecycle entrypoint. */
+export async function hasMatchingLocalBrowserSubscription(ownerId: string): Promise<boolean> {
   try {
-    const registration = await withTimeout(navigator.serviceWorker.ready, CLEANUP_TIMEOUT_MS)
-    const subscription = await withTimeout(
-      registration.pushManager.getSubscription(),
-      CLEANUP_TIMEOUT_MS
-    )
-    return subscription?.endpoint === record.endpoint
+    return await probeMatchingLocalBrowserSubscription(ownerId)
   } catch {
     return false
   }
@@ -82,6 +86,30 @@ export function readBrowserSubscriptionRecord(ownerId: string): BrowserSubscript
   } catch {
     return null
   }
+}
+
+/** Lists persisted owners whose browser subscription may still need isolation. */
+export function readStoredBrowserSubscriptionOwnerIds(): string[] {
+  if (typeof window === "undefined") return []
+  const ownerIds = new Set<string>()
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (!key?.startsWith(STORAGE_PREFIX)) continue
+      try {
+        const value: unknown = JSON.parse(window.localStorage.getItem(key) ?? "null")
+        const ownerId = isRecord(value) && typeof value.ownerId === "string" ? value.ownerId : null
+        if (ownerId && isValidRecord(value, ownerId) && value.status !== "cancelled") {
+          ownerIds.add(ownerId)
+        }
+      } catch {
+        // Ignore unrelated or malformed browser storage entries.
+      }
+    }
+  } catch {
+    // Browser storage is best effort; the browser subscription remains authoritative.
+  }
+  return [...ownerIds]
 }
 
 /** Web Push lifecycle entrypoint. */
@@ -271,6 +299,15 @@ export async function discardLocalBrowserSubscription(ownerId: string): Promise<
 export async function waitForPendingBrowserSubscriptionCleanup(): Promise<void> {
   while (localDiscardInFlight.size > 0) {
     await Promise.all([...localDiscardInFlight.values()])
+  }
+  const revokingOwnerIds = readStoredBrowserSubscriptionOwnerIds().filter(
+    (ownerId) => readBrowserSubscriptionRecord(ownerId)?.status === "revoking"
+  )
+  const matchingOwners = await Promise.all(
+    revokingOwnerIds.map((ownerId) => probeMatchingLocalBrowserSubscription(ownerId))
+  )
+  if (matchingOwners.some(Boolean)) {
+    throw new Error("web_push_cleanup_failed")
   }
 }
 

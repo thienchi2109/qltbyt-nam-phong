@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(() => ({ data: null })),
   cleanupBrowserSubscription: vi.fn(),
   discardLocalBrowserSubscription: vi.fn(),
+  readStoredBrowserSubscriptionOwnerIds: vi.fn(() => []),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -22,6 +23,7 @@ vi.mock("@/lib/web-push/browser-lifecycle", () => ({
   cleanupBrowserSubscription: (...args: unknown[]) => mocks.cleanupBrowserSubscription(...args),
   discardLocalBrowserSubscription: (...args: unknown[]) =>
     mocks.discardLocalBrowserSubscription(...args),
+  readStoredBrowserSubscriptionOwnerIds: () => mocks.readStoredBrowserSubscriptionOwnerIds(),
 }))
 
 import { NextAuthSessionProvider } from "../session-provider"
@@ -190,7 +192,7 @@ describe("NextAuthSessionProvider", () => {
     consoleErrorSpy.mockRestore()
   })
 
-  it("cleans the last authenticated owner across an A-to-null-to-B transition", async () => {
+  it("preserves the previous owner through logout and cleans it before a new owner", async () => {
     mocks.useSession.mockReturnValue({
       status: "authenticated",
       data: { user: { id: "owner-a" } },
@@ -208,9 +210,7 @@ describe("NextAuthSessionProvider", () => {
       </NextAuthSessionProvider>
     )
 
-    await waitFor(() => {
-      expect(mocks.discardLocalBrowserSubscription).toHaveBeenCalledWith("owner-a")
-    })
+    expect(mocks.discardLocalBrowserSubscription).not.toHaveBeenCalled()
 
     mocks.useSession.mockReturnValue({
       status: "authenticated",
@@ -222,6 +222,37 @@ describe("NextAuthSessionProvider", () => {
       </NextAuthSessionProvider>
     )
     await waitFor(() => expect(mocks.discardLocalBrowserSubscription).toHaveBeenCalledTimes(1))
+  })
+
+  it("preserves the previous owner across same-account relogin", async () => {
+    mocks.useSession.mockReturnValue({
+      status: "authenticated",
+      data: { user: { id: "owner-a" } },
+    })
+    const view = render(
+      <NextAuthSessionProvider session={null}>
+        <div>child</div>
+      </NextAuthSessionProvider>
+    )
+
+    mocks.useSession.mockReturnValue({ status: "unauthenticated", data: null })
+    view.rerender(
+      <NextAuthSessionProvider session={null}>
+        <div>child</div>
+      </NextAuthSessionProvider>
+    )
+
+    mocks.useSession.mockReturnValue({
+      status: "authenticated",
+      data: { user: { id: "owner-a" } },
+    })
+    view.rerender(
+      <NextAuthSessionProvider session={null}>
+        <div>child</div>
+      </NextAuthSessionProvider>
+    )
+
+    expect(mocks.discardLocalBrowserSubscription).not.toHaveBeenCalled()
   })
 
   it("keeps the previous owner across session loading and cleans it once before a new owner", async () => {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react"
+import { act, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import NotificationsPage from "../page"
@@ -80,6 +80,56 @@ describe("NotificationsPage browser lifecycle", () => {
     expect(mocks.fetch.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1)
   })
 
+  it("blocks the new owner from registering when previous-owner cleanup fails", async () => {
+    const { getSubscription, subscription } = pushRegistration()
+    getSubscription.mockResolvedValue(subscription)
+    subscription.unsubscribe.mockRejectedValue(new Error("browser cleanup failed"))
+    storeSubscription("99")
+    mocks.requestPermission.mockResolvedValue("granted")
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (url.endsWith("/subscriptions") && init?.method === "POST") {
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000013",
+            revision: "21",
+          })
+        )
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+
+    const user = userEvent.setup()
+    const view = mount()
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+
+    session("user", "100")
+    view.rerender(<NotificationsPage />)
+    await waitFor(() => expect(subscription.unsubscribe).toHaveBeenCalledOnce())
+
+    await user.click(await screen.findByRole("button", { name: "Bật thông báo" }))
+    await screen.findByText("Không thể bật thông báo trên trình duyệt. Vui lòng thử lại.")
+
+    expect(
+      mocks.fetch.mock.calls.filter(
+        ([input, init]) => String(input).endsWith("/subscriptions") && init?.method === "POST"
+      )
+    ).toHaveLength(0)
+    expect(window.localStorage.getItem("qltbyt:web-push:subscription:99")).toContain(
+      '"status":"revoking"'
+    )
+  })
+
   it("cancels a pending revoke without allowing its late response to overwrite the UI", async () => {
     const { getSubscription, subscription } = pushRegistration()
     getSubscription.mockResolvedValue(subscription)
@@ -115,10 +165,20 @@ describe("NotificationsPage browser lifecycle", () => {
     await user.click(screen.getByRole("button", { name: "Hủy thao tác" }))
     await screen.findByText("Đã hủy thao tác tắt thông báo.")
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeEnabled()
+    expect(window.localStorage.getItem("qltbyt:web-push:subscription:99")).toContain(
+      '"status":"revoking"'
+    )
 
-    resolveRevoke(response({ version: 1, revoked: true }))
+    await act(async () => {
+      resolveRevoke(response({ version: 1, revoked: true }))
+      await Promise.resolve()
+      await Promise.resolve()
+    })
     await waitFor(() => {
       expect(screen.getByText("Đã hủy thao tác tắt thông báo.")).toBeInTheDocument()
     })
+    expect(window.localStorage.getItem("qltbyt:web-push:subscription:99")).toContain(
+      '"status":"revoking"'
+    )
   })
 })
