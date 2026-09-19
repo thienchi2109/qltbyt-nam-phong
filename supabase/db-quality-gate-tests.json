@@ -1240,7 +1240,10 @@
       "path": "supabase/tests/web_push_phase3.sql",
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
-      "requiredForMigrations": ["supabase/migrations/20260911030300_web_push_atomic_enqueue.sql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20260911030300_web_push_atomic_enqueue.sql",
+        "supabase/migrations/20260919120000_web_push_repair_message_copy.sql"
+      ],
       "safety": "default-safe",
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",

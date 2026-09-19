@@ -30,7 +30,7 @@ BEGIN
   v_enabled_id := public.repair_request_create(2146000001,'Mất nguồn','Scope',NULL,'Requester',NULL,NULL);
   ASSERT (SELECT count(*)=1 FROM public.web_push_notification_intents WHERE request_id=v_enabled_id), 'enabled create must enqueue recipient without subscription';
   SELECT id,payload INTO STRICT v_intent,v_payload FROM public.web_push_notification_intents WHERE request_id=v_enabled_id;
-  ASSERT v_payload=jsonb_build_object('version',1,'notification_id',v_intent::text,'title','Máy siêu âm','body',E'Chấn thương\nMất nguồn',
+  ASSERT v_payload=jsonb_build_object('version',1,'notification_id',v_intent::text,'title','Yêu cầu sửa chữa thiết bị mới','body',E'Chấn thương đề nghị sửa chữa thiết bị Máy siêu âm.\nTình trạng hư hỏng: Mất nguồn.',
     'url','/repair-requests?action=view&requestId='||v_enabled_id,'tag','repair-request:'||v_enabled_id), 'exact content and navigation snapshot';
   ASSERT (SELECT recipient_user_id=2146000002 AND don_vi_id=2146000001 AND status='pending'
     AND deadline=created_at+interval '24 hours' AND materialized_at IS NULL
@@ -127,25 +127,53 @@ $$;
 DROP TRIGGER web_push_phase3_fault ON public.web_push_notification_intents;
 
 DO $$
-DECLARE v_id integer; v_payload jsonb; v_text text;
+DECLARE
+  v_id integer;
+  v_payload jsonb;
+  v_text text;
+  v_body text;
+  v_first_line text;
+  v_department_text text;
+  v_title_text text;
+  v_issue_text text;
+  v_issue_marker text := E'\nTình trạng hư hỏng: ';
+  v_title_marker text := ' đề nghị sửa chữa thiết bị ';
+  v_issue_start integer;
+  v_title_start integer;
 BEGIN
   UPDATE public.nhan_vien SET role='to_qltb' WHERE id=2146000002;
   UPDATE public.thiet_bi SET khoa_phong_quan_ly=NULL WHERE id=2146000001;
+  ASSERT (SELECT ten_thiet_bi='Máy siêu âm' AND khoa_phong_quan_ly IS NULL
+    FROM public.thiet_bi WHERE id=2146000001), 'null fixture clears department only';
   v_id := public.repair_request_create(2146000001,'Issue',NULL,NULL,'Requester',NULL,NULL);
   SELECT payload INTO STRICT v_payload FROM public.web_push_notification_intents WHERE request_id=v_id;
-  ASSERT v_payload->>'body'=E'Chưa có thông tin\nIssue', 'null department placeholder';
+  ASSERT v_payload->>'title'='Yêu cầu sửa chữa thiết bị mới'
+    AND v_payload->>'body'=E'Chưa có thông tin đề nghị sửa chữa thiết bị Máy siêu âm.\nTình trạng hư hỏng: Issue.', 'null department keeps equipment name';
   v_payload := public.web_push_payload_v1(gen_random_uuid(),v_id,NULL,NULL,NULL);
-  ASSERT v_payload->>'title'='Chưa có thông tin' AND v_payload->>'body'=E'Chưa có thông tin\nChưa có thông tin', 'null formatter fields use placeholders';
+  ASSERT v_payload->>'title'='Yêu cầu sửa chữa thiết bị mới' AND v_payload->>'body'=E'Chưa có thông tin đề nghị sửa chữa thiết bị Chưa có thông tin.\nTình trạng hư hỏng: Chưa có thông tin.', 'null formatter fields use placeholders';
   UPDATE public.thiet_bi SET ten_thiet_bi=repeat('😀',100),khoa_phong_quan_ly=repeat('😀',100) WHERE id=2146000001;
   FOREACH v_text IN ARRAY ARRAY[repeat('😀',5000),repeat(E'\001"\\\n',2000)] LOOP
     v_id := public.repair_request_create(2146000001,v_text,NULL,NULL,'Requester',NULL,NULL);
     SELECT payload INTO STRICT v_payload FROM public.web_push_notification_intents WHERE request_id=v_id;
     ASSERT octet_length(v_payload::text)<=3072, 'serialized payload bound includes escaping';
-    ASSERT octet_length(v_payload->>'title')<=256 AND right(v_payload->>'title',1)='…', 'Unicode title cap and ellipsis';
-    ASSERT octet_length(split_part(v_payload->>'body',E'\n',1))<=256, 'department byte cap';
-    ASSERT octet_length(substr(v_payload->>'body',strpos(v_payload->>'body',E'\n')+1))<=1800, 'issue byte cap';
-    ASSERT right(v_payload->>'body',1)='…', 'truncated issue signals ellipsis';
+    ASSERT v_payload->>'title'='Yêu cầu sửa chữa thiết bị mới', 'stable notification title';
+    v_body := v_payload->>'body';
+    v_issue_start := strpos(v_body,v_issue_marker);
+    ASSERT v_issue_start>0, 'new body issue marker';
+    v_first_line := left(v_body,v_issue_start-1);
+    v_title_start := strpos(v_first_line,v_title_marker);
+    ASSERT v_title_start>0, 'new body equipment marker';
+    v_department_text := left(v_first_line,v_title_start-1);
+    v_title_text := substr(v_first_line,v_title_start+char_length(v_title_marker),
+      char_length(v_first_line)-(v_title_start+char_length(v_title_marker)));
+    v_issue_text := substr(v_body,v_issue_start+char_length(v_issue_marker),
+      char_length(v_body)-(v_issue_start+char_length(v_issue_marker)));
+    ASSERT octet_length(v_department_text)<=256 AND right(v_department_text,1)='…', 'department UTF-8 cap and ellipsis';
+    ASSERT octet_length(v_title_text)<=256 AND right(v_title_text,1)='…', 'equipment UTF-8 cap and ellipsis';
+    ASSERT octet_length(v_issue_text)<=1800 AND right(v_issue_text,1)='…', 'issue UTF-8 cap and ellipsis';
+    ASSERT right(v_first_line,1)='.' AND right(v_body,1)='.', 'copy punctuation is preserved';
     ASSERT v_payload->>'url'='/repair-requests?action=view&requestId='||v_id, 'payload clipping preserves URL';
+    ASSERT v_payload->>'tag'='repair-request:'||v_id, 'payload clipping preserves tag';
   END LOOP;
   ASSERT NOT has_table_privilege('authenticated','public.web_push_runtime_controls','SELECT,INSERT,UPDATE,DELETE'), 'browser cannot read/write controls';
   ASSERT NOT has_table_privilege('anon','public.web_push_runtime_controls','SELECT,INSERT,UPDATE,DELETE'), 'anon cannot read/write controls';
