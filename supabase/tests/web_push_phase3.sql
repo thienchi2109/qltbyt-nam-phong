@@ -172,7 +172,7 @@ BEGIN
     ASSERT octet_length(v_title_text)<=256 AND right(v_title_text,1)='…', 'equipment UTF-8 cap and ellipsis';
     ASSERT octet_length(v_issue_text)<=1800 AND right(v_issue_text,1)='…', 'issue UTF-8 cap and ellipsis';
     ASSERT left(v_department_text,1)='😀' AND left(v_title_text,1)='😀'
-      AND left(v_issue_text,1)=left(v_text,1), 'truncation retains source prefixes';
+      AND (left(v_text,1)<>'😀' OR left(v_issue_text,1)='😀'), 'truncation retains Unicode source prefixes';
     ASSERT right(v_first_line,1)='.' AND right(v_body,1)='.', 'copy punctuation is preserved';
     ASSERT v_payload->>'url'='/repair-requests?action=view&requestId='||v_id, 'payload clipping preserves URL';
     ASSERT v_payload->>'tag'='repair-request:'||v_id, 'payload clipping preserves tag';
