@@ -64,6 +64,7 @@ firestore-debug.log
 # DevOps and Local Development
 # Include templates but exclude actual env files
 .env.local
+.jev-usage.json
 .env.production.local
 .env.development.local
 .env.test.local
