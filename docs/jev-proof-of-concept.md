@@ -1,5 +1,7 @@
 # Jev proof of concept
 
+The repository also installs TypeSafe's official project-local agent skill at `.agents/skills/typesafe-ai`. This is an agent instruction package for Codex and similar tools, not an MCP server; it explains Jev's primitives, confidence handling, and design patterns.
+
 This repository keeps deterministic checks (formatting, typecheck, SQL quality gates, and tests) in control. Jev is used only for an explicitly enabled, manual decision after staging a SQL migration diff:
 
 ```sh
