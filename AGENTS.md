@@ -177,6 +177,13 @@ IMPORTANT: Use `edit_file` over `str_replace` or full file writes. It works with
 
 ## Skill Enforcement
 
+### TypeSafe / Jev
+
+- Use the installed `typesafe-ai` skill (`.agents/skills/typesafe-ai/SKILL.md`) when a task needs a structured semantic judgment, such as routing an ambiguous implementation plan, ranking evidence, or deciding whether to escalate a review.
+- Keep deterministic rules, tests, SQL quality gates, and execution in code. Jev is advisory and must not replace those checks.
+- Jev API calls are manual and opt-in only (`JEV_MODE=enabled`); do not call Jev from CI, per-request runtime paths, or per-file automation. Use the global `TYPESAFE_API_KEY` environment variable and never commit or print it.
+- Prefer one request containing independent `Choice`, `Score`, or `Noul` questions. Treat low confidence as an escalation signal, not as permission to act automatically.
+
 - The global skill `karpathy-coding-heuristics` is available in this environment. For non-trivial coding, refactoring, and code review tasks, explicitly consider invoking it to preserve Andrej Karpathy's core heuristics: surface meaningful assumptions, prefer the simplest sufficient design, keep diffs surgical, and define concrete verification before claiming success.
 - Treat `karpathy-coding-heuristics` as a heuristic overlay, not a replacement for stricter required workflows. User instructions, repo instructions, and mandatory skills/checks still take precedence.
 - For any task that generates or materially edits TypeScript/React code (`.ts`, `.tsx`, React components, hooks, client/server UI logic), you MUST invoke the `react-best-practices` skill first (or `vercel-react-best-practices` if that is the available skill name in the session).
