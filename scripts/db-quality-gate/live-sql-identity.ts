@@ -38,7 +38,17 @@ const REVIEWED_PHASE45 = [
   },
 ] as const
 
-const REVIEWED_IDENTITIES = [REVIEWED_FOUNDATION, ...REVIEWED_PHASE45] as const
+/** Exact live/source mapping for the Issue #1002 message-copy migration. */
+const REVIEWED_ISSUE1002 = {
+  liveName: "web_push_repair_message_copy",
+  liveVersion: "20260920013050",
+  path: "supabase/migrations/20260919120000_web_push_repair_message_copy.sql",
+  sha256: "a771382ab0e70a002794fdf9ba1477f8bba12aab605d1db5fd277ff9fc45f1b9",
+  liveSqlSha256: "d6fc5276f729c35a8f8d535265a0b4dc27e7859c11aef7c609bc1b5017d8ca15",
+  liveSqlPath: "supabase/db-quality-gate-live-sql/20260920013050.sql",
+} as const
+
+const REVIEWED_IDENTITIES = [REVIEWED_FOUNDATION, ...REVIEWED_PHASE45, REVIEWED_ISSUE1002] as const
 
 /** Matches all four identity fields; a mismatch retains the strict default contract. */
 export function reviewedLiveSqlIdentity(migration: ConfirmedLiveMigration) {
