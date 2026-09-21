@@ -229,3 +229,59 @@ config change hoặc provider test mới cần operation-specific permission.
 - Đây là maintainer-accepted completion của 7.1 trên sample được authorize,
   không phải blanket PASS cho 7.2/7.4/7.5/Phase 8. Request `536` giữ nguyên như
   historical normal repair record; không cleanup/delete/reset hay tạo request khác.
+
+## Handoff Issue #1003 - auto-allowlist đơn vị mới (Task 4, 2026-09-21)
+
+Phần này bổ sung runbook cho migration #1003; các section rollout 28 đơn vị ở
+trên vẫn là lịch sử và không bị rewrite.
+
+- Luồng application RPC `don_vi_create` append ID đơn vị mới đúng một lần vào
+  cả `registration_canary_don_vi_ids` và `dispatch_canary_don_vi_ids` trong cùng
+  transaction. Các ID/flag hiện có được giữ nguyên; không backfill 28 active ID lịch sử,
+  không đổi policy active/reactivate, không thêm mode/UI/trigger/job hay active
+  rule mới.
+- Canary vì vậy tăng theo các lần tạo đơn vị được hỗ trợ. Append allowlist không
+  tự bật `registration_enabled`, `enqueue_enabled` hoặc `dispatch_enabled` và
+  không tạo recipient/subscription/delivery. Recipient vẫn cần config đúng đơn
+  vị, browser opt-in và authorization hiện hành; pending intent hiện có vẫn có
+  thể resume trước deadline nếu ID được include lại.
+- Nếu operator gỡ ID khỏi allowlist, các lần tạo/cập nhật đơn vị khác không tự
+  thêm lại ID đó. Emergency off dùng các kill switch hiện hữu
+  (`registration_enabled`, `enqueue_enabled`, `dispatch_enabled`); pause theo
+  switch giữ nguyên deadline/state và không hứa thu hồi notification đã
+  in-flight.
+
+### Evidence tracked cho Task 4
+
+- Implementation subject trước commit tài liệu: `680abc47ab35abdc5f14f1f552e170454b54d1f2`.
+  Migration 97 dòng, SHA-256
+  `d6c8b78df44dad8a189a43da91713cdd5f3c1e090b0b1322504a213904aae86e`; SQL test
+  444 dòng, SHA-256
+  `b98ed00a23e196c9bb12122ac27cbb8d144de4d1d1b6c1e42d3543f68aa862fe`.
+- RED disposable run `/tmp/issue1003-red-888ec1d9-r6.stdout.log`: lock,
+  preflight và clone thành công; test fail đúng `P0004`,
+  `failureSignature=b7554f7fa940864414f7e42ceeb1f49cf6b152416892ea333898bc482f600747`,
+  `stderrSha256=b14073b409e91caeb9ee0e2119e52dc5f98b289a46b113d21889227ccca7593c`;
+  drop/unlock thành công.
+- GREEN disposable run `/tmp/issue1003-green-888ec1d9-r6.stdout.log`: lock,
+  preflight, clone, apply, test, drop và unlock đều thành công. Đây là focused
+  disposable evidence, không phải formal Oracle baseline-forward PASS.
+- Local static report `/tmp/issue1003-static-888ec1d9-r2.json` có run
+  `issue1003-static-888ec1d9-r2`, subject
+  `888ec1d941932ac7a48d532621e79c363b54f6a1`, digest
+  `5629a563f6d67e07643e18719726e636fb8e89a12c61591961333d97055e0fbd`, outcome
+  `FAILED`. Finding mới gồm `dangerous-statement` cho GRANT EXECUTE hiện hữu,
+  `jwt-guards` kế thừa contract role-only và `security-definer-search-path` do
+  parser chỉ nhận `public,pg_temp`; SQL dùng prefix `pg_catalog` tường minh ở
+  phần cần thiết. Đây là giới hạn cần review logic, không sửa SQL để hợp parser,
+  không thêm waiver và không hạ gate.
+- Formal static và Oracle baseline-forward của exact documentation commit đều
+  `NOT RUN at document commit`. Các report exact HEAD về sau phải nằm ngoài
+  repository và ngoài handoff này trong external quality-gate storage; section
+  này không tự chứng nhận hai lane PASS và không ghi SHA của chính commit tài liệu.
+
+### Boundary vận hành
+
+Không có live apply, recipient mutation, worker deploy hoặc provider test trong
+Task 4. Issue #1003 chưa được đánh dấu deployed; việc áp dụng migration vẫn cần
+quyền operation-specific qua Supabase MCP theo runbook hiện hành.

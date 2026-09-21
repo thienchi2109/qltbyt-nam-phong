@@ -266,7 +266,7 @@ ID được DB sinh mới, nên append một lần trong RPC đủ; không thêm
 **Modify:** ba file OpenSpec trong file map và `supabase/db-quality-gate-tests.json`.
 **Create:** `openspec/changes/add-web-push-notifications/issue-1003-evidence.md`.
 
-- [ ] **Step 1:** Thêm registry entry bắt buộc dưới đây vào mảng tests; không đổi safety/gateScope của các test lịch sử.
+- [x] **Step 1:** Thêm registry entry bắt buộc dưới đây vào mảng tests; không đổi safety/gateScope của các test lịch sử.
 
 ```json
 {
@@ -285,9 +285,9 @@ ID được DB sinh mới, nên append một lần trong RPC đủ; không thêm
 }
 ```
 
-- [ ] **Step 2:** Thêm scenario vào spec: new unit auto-append; thiếu config/permission không nhận; manual remove không tự thêm lại; failed create rollback; kill switches/canary giữ hiệu lực. Không đổi eligibility inactive/reactivate.
-- [ ] **Step 3:** Thêm ghi chú runbook vào handoff: snapshot 28 là lịch sử rollout; sau migration, RPC append tự động. Canary không còn là tập cố định qua các lần tạo đơn vị: đơn vị mới vẫn được append, muốn ngừng mọi gửi dùng kill switch. Không tự bật flags hoặc backfill 28 IDs.
-- [ ] **Step 4:** Thêm checklist #1003 và ghi evidence tracked: RED/GREEN, local static, migration/test hashes, giới hạn. Formal static/baseline-forward ghi `NOT RUN at document commit`; kết quả exact HEAD về sau nằm ở external reports + handoff. Không ghi SHA của chính commit chứa file vào file đó. Chưa tick baseline-forward/live apply nếu chưa có bằng chứng tương ứng.
+- [x] **Step 2:** Thêm scenario vào spec: new unit auto-append; thiếu config/permission không nhận; manual remove không tự thêm lại; failed create rollback; kill switches/canary giữ hiệu lực. Không đổi eligibility inactive/reactivate.
+- [x] **Step 3:** Thêm ghi chú runbook vào handoff: snapshot 28 là lịch sử rollout; sau migration, RPC append tự động. Canary không còn là tập cố định qua các lần tạo đơn vị: đơn vị mới vẫn được append, muốn ngừng mọi gửi dùng kill switch. Không tự bật flags hoặc backfill 28 IDs.
+- [x] **Step 4:** Thêm checklist #1003 và ghi evidence tracked: RED/GREEN, local static, migration/test hashes, giới hạn. Formal static/baseline-forward ghi `NOT RUN at document commit`; kết quả exact HEAD về sau nằm ở external reports + handoff. Không ghi SHA của chính commit chứa file vào file đó. Chưa tick baseline-forward/live apply nếu chưa có bằng chứng tương ứng.
 
 ### Task 5: Kiểm chứng, commit và ranh giới live
 

@@ -172,3 +172,32 @@ authorize, còn formal acceptance của Phase 7/8 vẫn partial.
 
 Managers vẫn phải cấu hình recipient và user opt-in. Snapshot hiện tại không
 auto-include unit tương lai; phần design/implementation này giữ ở [Issue #1003](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1003).
+
+## Issue #1003 - Task 4: Tài liệu và registry
+
+**Phạm vi:** ghi nhận contract auto-allowlist cho `don_vi_create`, registry cho
+migration-specific SQL test và evidence của các lượt kiểm chứng disposable. Không
+đụng SQL/TS/worker trong task tài liệu này; không live apply/deploy.
+
+Dòng snapshot 28 ở reconciliation phía trên giữ nguyên như trạng thái lịch sử;
+checklist này ghi hành vi sau migration cho đơn vị mới.
+
+- [x] 1003.1 Đăng ký `supabase/tests/web_push_new_unit_allowlist.sql` với
+      `requiredForMigrations` trỏ tới migration #1003, `default-safe`,
+      `isolated-fixture`, `rollback-required`, `psql`, timeout 60 giây và
+      `migration-specific`; không đổi gate/security scope của test cũ.
+- [x] 1003.2 Bổ sung spec cho append một lần vào cả hai allowlist, giữ arrays/flags,
+      rollback atomically, manual remove, kill switch/canary, không backfill và vẫn
+      yêu cầu recipient config, browser opt-in, authorization.
+- [x] 1003.3 Bổ sung runbook handoff: snapshot 28 là lịch sử; canary tăng khi
+      `don_vi_create` thành công; emergency off dùng kill switches hiện hữu; không tự
+      bật flags hoặc backfill.
+- [x] 1003.4 Ghi evidence RED/GREEN, file hashes, local static report và các giới
+      hạn. Giữ nguyên raw `FAILED`/waiver history; không biến parser findings thành
+      gate PASS.
+- [ ] 1003.5 Formal static lane trên exact documentation commit: `NOT RUN at
+document commit`.
+- [ ] 1003.6 Oracle baseline-forward trên exact documentation commit: `NOT RUN at
+document commit`.
+- [ ] 1003.7 Live apply/deploy hoặc đánh dấu Issue #1003 đã deployed: chưa có
+      authorization/evidence trong task này.

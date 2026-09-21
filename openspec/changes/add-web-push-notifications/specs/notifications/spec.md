@@ -55,6 +55,33 @@ Hệ thống SHALL duy trì danh sách recipient riêng theo từng đơn vị v
 - **THEN** protected self-entry của caller khác SHALL read-only, stale/ineligible normal entry SHALL được flag và caller có quyền SHALL có thể explicit remove
 - **AND** UI SHALL hiển thị trạng thái và quyền thao tác tương ứng, không làm mất entry khi search/reload hoặc tự fallback sang đơn vị khác
 
+### Requirement: New Unit Web Push Allowlist Synchronization
+
+Luồng tạo đơn vị được hỗ trợ qua RPC `don_vi_create` SHALL append ID đơn vị mới, đúng một lần, vào cả `registration_canary_don_vi_ids` và `dispatch_canary_don_vi_ids` trong cùng transaction. Luồng này SHALL giữ nguyên các ID đã có và mọi flag runtime; SHALL NOT backfill 28 active units của rollout lịch sử, thay đổi policy active/reactivate, thêm mode/UI/trigger/job hoặc sửa điều kiện recipient.
+
+#### Scenario: Successful new unit creation
+
+- **WHEN** `don_vi_create` tạo đơn vị thành công qua application RPC
+- **THEN** ID mới xuất hiện trong cả hai allowlist sau commit, không bị nhân đôi, còn các ID và `registration_enabled`/`enqueue_enabled`/`dispatch_enabled` trước đó giữ nguyên
+- **AND** canary có thể tăng theo từng lần tạo đơn vị mới mà không tự bật flag hoặc tạo backfill cho 28 ID lịch sử
+
+#### Scenario: Recipient prerequisites remain required
+
+- **WHEN** đơn vị mới đã nằm trong allowlist nhưng chưa có recipient config, browser opt-in hoặc authorization hiện hành phù hợp
+- **THEN** không có delivery Web Push cho đơn vị đó; allowlist không cấp quyền, không thay thế cấu hình recipient và không fallback sang đơn vị/tài khoản khác
+
+#### Scenario: Failed creation rolls back the append
+
+- **WHEN** `don_vi_create` thất bại hoặc transaction rollback trước commit
+- **THEN** không còn đơn vị mới và không có cập nhật một phần ở một trong hai allowlist
+- **AND** các flag, arrays và pending state có sẵn được giữ nguyên
+
+#### Scenario: Manual removal and emergency controls
+
+- **WHEN** operator gỡ ID mới khỏi allowlist hoặc tắt registration/enqueue/dispatch bằng kill switch
+- **THEN** lần tạo/cập nhật đơn vị khác không tự thêm lại ID đã gỡ, còn kill switch và canary hiện hành vẫn giới hạn gửi theo flag/config đã đặt
+- **AND** pending intent đã tồn tại có thể resume trước deadline nếu ID được include lại; việc không backfill không hủy pending intent hiện có
+
 ### Requirement: In App Notification Registration
 
 Hệ thống SHALL cho mọi người dùng đã đăng nhập tự bật/tắt thông báo trong app trên từng browser tại route authenticated `/notifications`. Server SHALL lấy identity từ NextAuth session, kiểm tra ownership và input subscription; quản trị viên SHALL NOT cấp browser permission thay người nhận.
