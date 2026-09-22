@@ -69,6 +69,8 @@ Shared core MUST NOT import QLTBYT packages, know QLTBYT RPC names, assume `don_
 
 ### Capability adapter boundary
 
+Before Phase 2, Phase 0 SHALL record and review the QLTBYT data-access authentication decision: BFF-issued short-lived scoped credentials, adapter-held signing credentials, or an application-owned BFF RPC broker. The decision MUST define secret custody and blast radius, credential TTL/audience, claims derived only from trusted identity, rejection of browser-supplied credentials/claims, cancellation and audit propagation, and bounded quota cleanup authorization after abort. The existing `src/lib/ai/server-rpc.ts` mints Supabase JWTs using `SUPABASE_JWT_SECRET`; signed BFF-to-Go identity alone does not replace that authentication. Copying this project-wide secret into shared core MUST NOT be an implicit implementation choice. New database authentication/provisioning requires a separate SQL gate. Phase 2 remains blocked until this decision is reviewed and SHALL verify its negative cases before completion.
+
 Each app capability SHALL provide a descriptor, context builder, prompt fragments, tool definitions/executors, authorization policy, artifact schemas and optional workflow hooks. The registry selects a capability by signed `app_id` + `capability_id` + version; those IDs are routing values, not permission by themselves.
 
 The QLTBYT adapter SHALL own:
@@ -149,6 +151,15 @@ The HTTP response SHALL use `Content-Type: text/event-stream` for an accepted st
 The BFF SHALL propagate browser disconnect/abort to the Go request. The forwarded deadline SHALL preserve the remaining BFF budget and SHALL NOT reset to 55 seconds when the request reaches Go. Go SHALL cap its own work budget at 55 seconds from the original request start, leaving up to 5 seconds for cleanup inside the existing 60-second BFF route budget. Go SHALL cancel the Eino context and propagate cancellation to provider, tool executor and app adapters. A cancellation MUST stop new model/tool work, then use a detached bounded cleanup context to finalize the reservation with observed status even after the HTTP request context is canceled.
 
 Every observed provider call across primary tool-loop steps, attempted retries and secondary repair-draft extraction SHALL contribute once to one usage lifecycle; per-step usage MUST NOT be double-counted with provider cumulative totals. Finalization MUST be idempotent under retry, use bounded retry/reconciliation, and distinguish observed usage, error-with-usage and error-without-usage. Unknown usage MUST remain unknown; it MUST NOT be converted to zero merely to close a reservation.
+
+### Phase 0 quota decisions required before Phase 3
+
+Review bổ sung có Jev hỗ trợ đã xác định hai khoảng trống; kết luận dựa trên repository source, chưa phải xác minh live DB. Đây là đầu ra bắt buộc của Phase 0 (tasks 0.7/0.8), không phải hai cơ chế đã được triển khai.
+
+1. **Hard crash recovery/accounting:** detached context không tồn tại sau SIGKILL/OOM. Trong `supabase/migrations/20260521154307_ai_quota_review_hardening.sql:106`, expiry giảm `reserved` và đặt `expired` mà không tăng `count`; tại dòng 302, finalize bỏ qua reservation không còn `reserved`. Vì vậy idempotency và TTL không tự phục hồi usage sau crash. Quyết định MUST mô tả trạng thái phục hồi, nơi lưu, thời điểm ghi, cách khôi phục trước/sau expiry và tests; hoặc ghi rõ giới hạn mất accounting để người dùng phê duyệt. Không được tự coi giới hạn này là đã được chấp nhận.
+2. **Unknown/partial usage mapping:** cùng migration tại dòng 271 chuyển NULL token/cost thành 0; dòng 276 chỉ chấp nhận `success`, `error_with_usage`, `error_no_usage`. Quyết định MUST định nghĩa bảng known-zero/known-positive/partial/unknown, quota status, numeric fields, nơi lưu uncertainty và cách consumer phân biệt unknown với measured-zero. Nếu dùng số 0 làm compatibility sentinel, nó MUST có dấu hiệu uncertainty phân biệt được; không được trình bày như số đo thật hoặc tự refund request.
+
+Phase 3 MUST NOT bắt đầu trước khi cả hai quyết định được review. Phase 3 mới kiểm chứng chúng bằng fault injection và contract tests; không mặc định phải thêm queue/database/platform. Nếu cần đổi SQL, phải tách change với quality gates và live-write approval riêng, không nới scope ngầm. Một giới hạn được người dùng chấp nhận phải được phản ánh nhất quán trong normative spec trước implementation, không chỉ ghi trong ghi chú.
 
 ## Deployment and Operations
 

@@ -140,6 +140,30 @@ The system SHALL propagate BFF/browser abort through HTTP, Eino, provider calls 
 - **WHEN** the primary response and secondary repair-draft extraction both run
 - **THEN** observed usage from every primary tool-loop step, attempted retry and the secondary extraction belongs once to the same request lifecycle before finalization, without double-counting cumulative usage
 
+### Requirement: Quota Recovery and Uncertainty Decision Gate
+
+Phase 0 SHALL produce reviewed decisions for hard-crash recovery/accounting and the mapping of known-zero, known-positive, partial and unknown provider usage to the unchanged QLTBYT quota contract. Phase 3 MUST NOT begin until both decisions are reviewed. Detached cleanup and reservation expiry MUST NOT be treated as evidence of recovery after process loss. Decisions requiring SQL changes MUST name a separate gated dependency and MUST NOT silently expand this change's database scope.
+
+The crash decision SHALL identify recovery state, storage, write ordering, restart behavior before and after reservation expiry, and testable guarantees; alternatively, a weaker accounting guarantee MUST receive explicit user approval and be reflected in the normative spec before implementation. The usage decision SHALL identify status mapping, numeric fields, the location of the uncertainty marker and how consumers distinguish unknown from measured-zero. A zero compatibility sentinel MUST retain that distinction and MUST NOT silently refund a request. Phase 3 SHALL verify both decisions using crash fault injection and mapping/idempotency tests.
+
+#### Scenario: Quota decision is unresolved
+
+- **WHEN** either Phase 0 quota decision lacks reviewed guarantees, storage/mapping semantics or required approval
+- **THEN** Phase 3 does not begin
+- **AND** a passing graceful-cancellation test or a nonzero reservation TTL does not waive the gate
+
+#### Scenario: Provider work precedes process loss
+
+- **WHEN** fault injection kills the process after provider work but before quota finalization, including restart after reservation expiry
+- **THEN** the Phase 3 evidence demonstrates the reviewed recovery behavior or the explicitly approved accounting limit
+- **AND** it does not claim successful recovery from an expired reservation that the existing finalize RPC ignores
+
+#### Scenario: Provider usage is partial or unknown
+
+- **WHEN** the quota adapter records incomplete usage using the existing numeric RPC fields
+- **THEN** the reviewed mapping retains an identifiable uncertainty marker at its designated storage boundary
+- **AND** tests distinguish this record from trustworthy measured-zero without an implicit schema change
+
 ### Requirement: QLTBYT Capability Parity
 
 The QLTBYT capability SHALL preserve the current assistant behavior before cutover, including intent routing, tool allowlist, read-only operational tools, tenant/facility policy, evidence envelopes, troubleshooting/report artifacts, repair-request draft session behavior and draft-only/no-submit semantics. QLTBYT Supabase/RPC access and `ai_quota_*` policy SHALL remain inside the QLTBYT adapter.
@@ -167,6 +191,12 @@ The system SHALL preserve the current role, tenant and facility authorization se
 
 - **WHEN** the signed identity context and requested facility/tenant context do not satisfy QLTBYT policy
 - **THEN** the capability refuses the tool call or returns safe guidance before retrieving cross-scope data
+
+#### Scenario: Data-access authentication is not yet decided
+
+- **WHEN** Phase 2 is proposed without a reviewed Phase 0 decision for QLTBYT Go-to-Supabase/RPC authentication
+- **THEN** Phase 2 SHALL remain blocked until the decision specifies the application-owned mechanism, secret custody and blast radius, TTL/audience, trusted claim derivation, rejection of browser-supplied credentials/claims, cancellation/audit propagation and bounded quota cleanup authorization; project-wide JWT signing authority MUST NOT be implicitly assigned to shared core
+- **AND** Phase 2 acceptance SHALL require negative tests for expired/wrong-audience credentials, forged claims, invalid scope and missing secrets, plus cancellation/audit and cleanup evidence; new database authentication requires a separate SQL gate
 
 #### Scenario: Privileged user lacks required facility scope
 

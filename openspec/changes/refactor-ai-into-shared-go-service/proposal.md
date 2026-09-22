@@ -17,6 +17,7 @@ Change đang chờ `add-assistant-repair-request-draft-orchestration` vẫn là 
 - Yêu cầu request cancellation thật và quota finalization idempotent: retry không được tạo hiệu lực tính quota lặp, đồng thời có bounded retry/reconciliation khi process crash. Usage của secondary structured draft extraction phải được cộng vào lifecycle; provider usage không biết hoặc không đầy đủ SHALL không bị coi là zero để hoàn tiền.
 - Định nghĩa contract cho Cloudflare, HMAC, replay protection, Oracle VM health/readiness, graceful drain, image rollback, secret handling và acceptance tests.
 - Thêm second-app capability fixture làm boundary test. Fixture này SHALL compile và exercise shared core mà không import package QLTBYT.
+- Phase 0 MUST chốt hai quyết định quota: recovery sau hard crash và mapping usage unknown/partial vào contract DB hiện hữu. Chưa có quyết định được review thì không bắt đầu Phase 3; không coi detached cleanup hoặc reservation TTL là bằng chứng đã giải quyết crash recovery.
 
 ## Non-Goals
 

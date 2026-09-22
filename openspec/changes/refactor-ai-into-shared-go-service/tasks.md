@@ -14,10 +14,13 @@ Bằng chứng nghiệm thu: Fixture cho request/auth/intent/tool/stream/draft/q
 - [ ] 0.2 Ghi nhận parity của predecessor repair-request draft, giữ draft-only/no-submit và không đánh dấu checklist predecessor.
 - [ ] 0.3 Chạy Eino spike với provider giả cho stream, tool loop, structured extraction, tổng usage primary + secondary và cancellation thật.
 - [ ] 0.4 Ghi nhận transport/model options thực tế đã cấu hình ở chế độ read-only; dùng stub HTTP chứng minh SDK/adapter compatibility, còn paid/provider smoke để gate riêng.
-- [ ] 0.5 Chứng minh HMAC, issuer/audience, body digest, key registry, key rotation và nonce replay; replay qua restart/rotation phải fail-closed, không dựa vào boot time đơn độc.
+- [ ] 0.5 Chứng minh HMAC, issuer/audience, body digest, key registry, key rotation và nonce replay; replay qua restart/rotation phải fail-closed. Khi không khôi phục verified replay snapshot, readiness phải false và từ chối request đủ maximum prior-request validity + allowed clock skew; sau đó chỉ nhận request khi nonce guard và key registry hợp lệ. Chỉ so request timestamp với boot time không thay thế được quarantine này.
 - [ ] 0.6 Chứng minh abort dừng provider/tool work và finalize usage theo trạng thái quan sát được.
+- [ ] 0.7 Ghi quyết định recovery/accounting khi process bị SIGKILL/OOM sau khi provider đã phát sinh usage nhưng trước finalize: chọn cơ chế đủ bền vững và bằng chứng phục hồi trước/sau expiry, hoặc trình rõ giới hạn mất accounting để người dùng duyệt. Không dùng detached cleanup/TTL làm bằng chứng recovery; nếu cần SQL thì tách change có quality gates và approval riêng.
+- [ ] 0.8 Ghi bảng mapping usage known-zero/known-positive/partial/unknown sang quota status, numeric fields và nơi lưu dấu hiệu uncertainty; đối chiếu `ai_quota_finalize` hiện chỉ có ba status và chuyển NULL thành 0. Chỉ rõ cách phân biệt zero thật với số chưa biết, request quota bảo thủ và test dự kiến; không tự thêm schema.
+- [ ] 0.9 Chốt và review cơ chế QLTBYT Go → Supabase/RPC authentication: BFF cấp scoped token ngắn hạn, adapter giữ signing secret hoặc BFF RPC broker. Ghi rõ nơi giữ secret, blast radius, TTL/audience, cách suy ra claims từ trusted identity, từ chối credential/claims do browser cung cấp, propagation cancellation/audit và quyền cleanup quota sau abort. Không mặc định đưa project-wide signing secret vào shared core; DB auth mới cần SQL gate riêng.
 
-Điểm dừng/review: Dừng trước khi scaffold full migration; thiếu stream, provider-options, cancellation, usage hoặc replay proof thì chưa sang Phase 1.
+Điểm dừng/review: Dừng trước khi scaffold full migration; thiếu stream, provider-options, cancellation, usage, replay proof hoặc quyết định 0.7/0.8/0.9 được review thì chưa sang Phase 1. Quyết định thiết kế đạt không thay thế test implementation tại Phase 2/3.
 
 Deploy/live DB: Chỉ local/mock/stub; không deploy, không ghi live DB, không migration/DDL.
 
@@ -44,7 +47,7 @@ Deploy/live DB: Chỉ build/test local; chưa tạo release container, chưa g�
 
 Phạm vi/sở hữu: QLTBYT capability adapter trong `services/ai-service/**`, gồm prompt, intent, tools, artifacts, signed claims, tenant/facility policy và RPC/Supabase access.
 
-Phụ thuộc: Phase 1 core/adapter contracts; phải xác nhận các RPC/policy primitive hiện hữu.
+Phụ thuộc: Phase 1 core/adapter contracts và quyết định authentication 0.9 đã review; phải xác nhận các RPC/policy primitive hiện hữu. Chưa chốt 0.9 thì không bắt đầu Phase 2.
 
 Bằng chứng nghiệm thu: Authorization, parser/catalog, timeout/limit, audit redaction và prompt/compaction tests.
 
@@ -54,6 +57,7 @@ Bằng chứng nghiệm thu: Authorization, parser/catalog, timeout/limit, audit
 - [ ] 2.4 Emit audit query đã sanitize bằng request ID, capability, subject, SQL shape/hash, scope và outcome; không lưu raw prompt hoặc sensitive result.
 - [ ] 2.5 Compaction bounded cho tool/RPC results trước model; clarification không bị compaction hoặc model-execution budget gate loại bỏ.
 - [ ] 2.6 Viết test chứng minh thiếu role/connection hoặc DB audit path thì tool disabled; stdout/log redacted không thay thế audit DB, còn nhu cầu DDL/audit schema được ghi thành SQL change và quality gate riêng.
+- [ ] 2.7 Kiểm chứng cơ chế authentication đã chọn ở 0.9 bằng negative tests cho credential hết hạn/sai audience, claims giả từ browser, scope sai và secret thiếu; chứng minh cancellation/audit propagation và bounded quota cleanup không mở rộng quyền.
 
 Điểm dừng/review: Không bật `query_database` khi guardrail hoặc audit path chưa đủ; mọi SQL provisioning là scope riêng, chưa được ủy quyền ở đây.
 
@@ -63,7 +67,7 @@ Deploy/live DB: Mock/local hoặc read-only boundary; không tự ý ghi live DB
 
 Phạm vi/sở hữu: QLTBYT draft workflow, secondary extraction, quota lifecycle, kill-switch, compaction budget và usage metrics.
 
-Phụ thuộc: Phase 2 QLTBYT RPC/policy và Phase 0 usage/cancellation proof.
+Phụ thuộc: Phase 2 QLTBYT RPC/policy, Phase 0 usage/cancellation proof và quyết định 0.7/0.8 đã được review. Thiếu một quyết định thì chặn bắt đầu Phase 3; nếu quyết định cần SQL, dependency SQL phải hoàn tất gate phù hợp trước phần implementation phụ thuộc.
 
 Bằng chứng nghiệm thu: Draft parity, quota idempotency/reconciliation, unknown-usage, kill-switch và TTL tests.
 
@@ -73,6 +77,8 @@ Bằng chứng nghiệm thu: Draft parity, quota idempotency/reconciliation, unk
 - [ ] 3.4 Giữ unknown usage là unknown, không tự invent token count, không coi là zero để refund hoặc đóng reservation giả.
 - [ ] 3.5 Giữ kill-switch: environment override thắng, DB status cache TTL ngắn, read error dùng error TTL ngắn và fail closed trước model/tool work.
 - [ ] 3.6 Xác nhận `quotaTTL >= 120s` và đủ cho worst-case elapsed từ reserve tới finalize; drain 60-90s không kéo dài request deadline, không cộng máy móc deadline 55s với thời gian drain, và phải ghi metric usage classification.
+- [ ] 3.7 Kiểm chứng quyết định 0.7 bằng fault injection ở ranh giới reserve/provider/finalize và restart trước/sau reservation expiry; chứng minh recovery hoặc giới hạn đã được duyệt, không claim full recovery chỉ từ graceful shutdown.
+- [ ] 3.8 Kiểm chứng bảng mapping 0.8 với known-zero, partial, unknown và finalize lặp; chứng minh uncertainty vẫn phân biệt được với measured-zero tại nơi lưu đã chọn, không silently refund hoặc double-count.
 
 Điểm dừng/review: Review domain safety và quota evidence; thiếu secondary usage, unknown semantics hoặc kill-switch fail-closed thì chưa sang transport.
 
