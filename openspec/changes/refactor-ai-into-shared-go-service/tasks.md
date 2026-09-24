@@ -4,23 +4,23 @@ Kiến trúc đã duyệt là shared Go + Eino core app-neutral; QLTBYT capabili
 
 ## Phase 0 - Baseline, fixture và compatibility proof
 
-Phạm vi/sở hữu: Characterization của `/api/chat`, `src/lib/ai/**`, draft/quota/stream fixtures và Eino compatibility spike.
+Phạm vi/sở hữu: Characterization của route hiện tại `/api/chat` và `src/lib/ai/**`. Route này đã gọi `maybeBuildRepairRequestDraftArtifact`. Predecessor `add-assistant-repair-request-draft-orchestration` là ngữ cảnh spec, không phải baseline duy nhất, và checklist của predecessor không được sửa.
 
-Phụ thuộc: Route hiện tại và predecessor `add-assistant-repair-request-draft-orchestration`; không sửa checklist predecessor.
+Phụ thuộc: Route hiện tại và predecessor ở trên; không sửa checklist predecessor.
 
 Bằng chứng nghiệm thu: Fixture cho request/auth/intent/tool/stream/draft/quota/error, compatibility report, provider adapter report và security report.
 
-- [ ] 0.1 Đóng băng fixture cho cả mixed tool envelope và raw draft output, gồm text, tool, artifact, sanitized error và terminal stream.
-- [ ] 0.2 Ghi nhận parity của predecessor repair-request draft, giữ draft-only/no-submit và không đánh dấu checklist predecessor.
-- [ ] 0.3 Chạy Eino spike với provider giả cho stream, tool loop, structured extraction, tổng usage primary + secondary và cancellation thật.
-- [ ] 0.4 Ghi nhận transport/model options thực tế đã cấu hình ở chế độ read-only; dùng stub HTTP chứng minh SDK/adapter compatibility, còn paid/provider smoke để gate riêng.
-- [ ] 0.5 Chứng minh HMAC, issuer/audience, body digest, key registry, key rotation và nonce replay; replay qua restart/rotation phải fail-closed. Khi không khôi phục verified replay snapshot, readiness phải false và từ chối request đủ maximum prior-request validity + allowed clock skew; sau đó chỉ nhận request khi nonce guard và key registry hợp lệ. Chỉ so request timestamp với boot time không thay thế được quarantine này.
+- [ ] 0.1 Đóng băng fixture UI/tool cho cả mixed tool envelope và raw draft output, gồm text, tool, artifact, sanitized error và terminal stream. Fixture này không đóng băng accounting hiện tại, gồm `classifyStreamFailure` đang ép usage thiếu thành 0 và luôn trả `error_with_usage`.
+- [ ] 0.2 Ghi nhận parity draft của route hiện tại, nơi `maybeBuildRepairRequestDraftArtifact` đã chạy. Giữ draft-only/no-submit. Predecessor chỉ là ngữ cảnh; không đánh dấu checklist predecessor.
+- [ ] 0.3 Chạy Eino spike với provider giả cho stream, tool loop, structured extraction, tổng usage primary + secondary và cancellation thật. Secondary usage trong spike là accounting đích, không phải bằng chứng rằng route hiện tại đã cộng usage đó vào reservation.
+- [ ] 0.4 Lập inventory read-only các transport hiện có: `gateway` (default, default model `google/gemini-3.1-flash-lite-preview`), `google` và `openai-compatible`, cùng model options đã cấu hình. Ghi Google in-process key pool, rotation khi quota error, hourly exhaustion reset, và cách route dùng `getKeyPoolSize`. Quyết định giữ behavior còn cần hỗ trợ, hoặc review retire path không dùng; không tự port mọi nhánh. Dùng stub HTTP chứng minh SDK/adapter compatibility cho path được giữ; paid/provider smoke để gate riêng.
+- [ ] 0.5 Trước security proof, ghi và review tham số HMAC: thuật toán và encoding chữ ký, tên header, đơn vị timestamp, clock skew cho phép, cửa sổ validity/replay, và sức chứa nonce hữu hạn. Proof chỉ chạy sau bản ghi đó và phải dùng đúng các giá trị đã ghi. Chứng minh HMAC, issuer/audience, body digest, key registry, key rotation và nonce replay; replay qua restart/rotation phải fail-closed. MVP không có verified replay snapshot. Readiness phải false và từ chối request trong toàn bộ maximum prior-request validity cộng allowed clock skew; sau đó chỉ nhận request khi nonce guard và key registry hợp lệ. Chỉ so request timestamp với boot time không thay thế được quarantine này.
 - [ ] 0.6 Chứng minh abort dừng provider/tool work và finalize usage theo trạng thái quan sát được.
-- [ ] 0.7 Ghi quyết định recovery/accounting khi process bị SIGKILL/OOM sau khi provider đã phát sinh usage nhưng trước finalize: chọn cơ chế đủ bền vững và bằng chứng phục hồi trước/sau expiry, hoặc trình rõ giới hạn mất accounting để người dùng duyệt. Không dùng detached cleanup/TTL làm bằng chứng recovery; nếu cần SQL thì tách change có quality gates và approval riêng.
-- [ ] 0.8 Ghi bảng mapping usage known-zero/known-positive/partial/unknown sang quota status, numeric fields và nơi lưu dấu hiệu uncertainty; đối chiếu `ai_quota_finalize` hiện chỉ có ba status và chuyển NULL thành 0. Chỉ rõ cách phân biệt zero thật với số chưa biết, request quota bảo thủ và test dự kiến; không tự thêm schema.
-- [ ] 0.9 Chốt và review cơ chế QLTBYT Go → Supabase/RPC authentication: BFF cấp scoped token ngắn hạn, adapter giữ signing secret hoặc BFF RPC broker. Ghi rõ nơi giữ secret, blast radius, TTL/audience, cách suy ra claims từ trusted identity, từ chối credential/claims do browser cung cấp, propagation cancellation/audit và quyền cleanup quota sau abort. Không mặc định đưa project-wide signing secret vào shared core; DB auth mới cần SQL gate riêng.
+- [ ] 0.7 Ghi quyết định recovery/accounting khi process bị SIGKILL/OOM sau khi provider đã phát sinh usage nhưng trước finalize. Đây là quyết định accounting, tách khỏi fixture parity UI/tool. Chọn cơ chế đủ bền vững và bằng chứng phục hồi trước/sau expiry, hoặc trình rõ giới hạn mất accounting để người dùng duyệt. Không dùng detached cleanup/TTL làm bằng chứng recovery; nếu cần SQL thì tách change có quality gates và approval riêng.
+- [ ] 0.8 Ghi bảng mapping usage known-zero/known-positive/partial/unknown sang quota status, numeric fields và nơi lưu dấu hiệu uncertainty. Đây là sửa accounting có chủ đích, không phải parity UI/tool. Đối chiếu `ai_quota_finalize` hiện chỉ có ba status và chuyển NULL thành 0. Giữ lựa chọn zero compatibility sentinel kèm uncertainty marker phân biệt được; không bịa status mới và không DDL. Bảng đã review trở thành normative trước Phase 3. Chỉ rõ cách phân biệt zero thật với số chưa biết, request quota bảo thủ và test dự kiến.
+- [ ] 0.9 Chốt và review cơ chế QLTBYT Go → Supabase/RPC authentication, và gọi tên `assistant_query_database_audit_log` trong quyết định credential đó: BFF cấp scoped token ngắn hạn, adapter giữ signing secret hoặc BFF RPC broker. Ghi rõ nơi giữ secret, blast radius, TTL/audience, cách suy ra claims từ trusted identity, từ chối credential/claims do browser cung cấp — gồm việc writer hiện tại copy cookie sang `POST /api/rpc/assistant_query_database_audit_log` — propagation cancellation/audit và quyền cleanup quota sau abort. Caller credential của audit RPC phải mang numeric `user_id` claim. Không mặc định đưa project-wide signing secret vào shared core; DB auth mới cần SQL gate riêng.
 
-Điểm dừng/review: Dừng trước khi scaffold full migration; thiếu stream, provider-options, cancellation, usage, replay proof hoặc quyết định 0.7/0.8/0.9 được review thì chưa sang Phase 1. Quyết định thiết kế đạt không thay thế test implementation tại Phase 2/3.
+Điểm dừng/review: Dừng trước khi scaffold full migration. Chưa sang Phase 1 khi thiếu một proof bắt buộc (stream, provider inventory và options, cancellation, usage, hoặc replay sau khi đã ghi tham số HMAC) hoặc khi quyết định 0.7, 0.8 hoặc 0.9 chưa được review. Gate Phase 2 cho 0.9 và gate Phase 3 cho 0.7/0.8 là defense in depth. Quyết định thiết kế đạt không thay thế test implementation tại các phase sau.
 
 Deploy/live DB: Chỉ local/mock/stub; không deploy, không ghi live DB, không migration/DDL.
 
@@ -28,11 +28,11 @@ Deploy/live DB: Chỉ local/mock/stub; không deploy, không ghi live DB, không
 
 Phạm vi/sở hữu: `services/ai-service/**` với request, registry, Eino execution, provider adapter, normalized events, usage interface, cancellation và sanitized errors.
 
-Phụ thuộc: Phase 0 compatibility proof và version Eino/provider đã pin.
+Phụ thuộc: Phase 0 compatibility/security proof, bản ghi HMAC đã review, version Eino/provider đã pin, và quyết định 0.7/0.8/0.9 đã được review. Thiếu proof hoặc một trong ba quyết định chưa được review thì không bắt đầu Phase 1. Gate Phase 2 và Phase 3 phía dưới là defense in depth.
 
 Bằng chứng nghiệm thu: Go unit/contract tests, provider mock tests, boundary test và second-app compile/run report.
 
-- [ ] 1.1 Tạo Go module tối thiểu, pin Eino và chỉ thêm provider integration cần cho behavior hiện tại.
+- [ ] 1.1 Tạo Go module tối thiểu, pin version Go toolchain và Eino, và chỉ thêm provider integration cho behavior Phase 0 quyết định giữ. Vercel không build module này. Change này không thêm CI platform mới.
 - [ ] 1.2 Định nghĩa protocol/version, request correlation, capability descriptor, normalized text/tool/artifact/error event và usage contract app-neutral.
 - [ ] 1.3 Implement Eino model/tool loop, workflow cancellation, tool-step/input/output limits và bounded retry policy; giữ nguyên user Eino code đã tương thích, chỉ bọc adapter tối thiểu, không rewrite vô cớ.
 - [ ] 1.4 Đặt model options, streaming, tool calls, structured extraction và usage sau provider adapter; không đưa provider SDK vào capability.
@@ -47,15 +47,15 @@ Deploy/live DB: Chỉ build/test local; chưa tạo release container, chưa g�
 
 Phạm vi/sở hữu: QLTBYT capability adapter trong `services/ai-service/**`, gồm prompt, intent, tools, artifacts, signed claims, tenant/facility policy và RPC/Supabase access.
 
-Phụ thuộc: Phase 1 core/adapter contracts và quyết định authentication 0.9 đã review; phải xác nhận các RPC/policy primitive hiện hữu. Chưa chốt 0.9 thì không bắt đầu Phase 2.
+Phụ thuộc: Phase 1 core/adapter contracts và quyết định authentication 0.9 đã review ở Phase 0, gồm credential cho `assistant_query_database_audit_log`. Gate này là defense in depth: 0.9 chưa review thì Phase 1 đã bị chặn, và Phase 2 vẫn không bắt đầu. Phải xác nhận các RPC/policy primitive hiện hữu.
 
 Bằng chứng nghiệm thu: Authorization, parser/catalog, timeout/limit, audit redaction và prompt/compaction tests.
 
 - [ ] 2.1 Đưa prompt, intent routing, tool allowlist, evidence rules và artifact schemas vào QLTBYT adapter.
 - [ ] 2.2 Implement RPC/Supabase adapter với signed user claims, `admin` = `global`, tenant/facility scope và không cấp broad `service_role`.
 - [ ] 2.3 Giữ `query_database` QLTBYT-only, dùng `ai_query_tool` read-only role/connection, approved schema/catalog, statement allowlist, timeout, row/cell limit và cấm DDL/DCL/write.
-- [ ] 2.4 Emit audit query đã sanitize bằng request ID, capability, subject, SQL shape/hash, scope và outcome; không lưu raw prompt hoặc sensitive result.
-- [ ] 2.5 Compaction bounded cho tool/RPC results trước model; clarification không bị compaction hoặc model-execution budget gate loại bỏ.
+- [ ] 2.4 Gọi `assistant_query_database_audit_log` với các field RPC đang bắt buộc: `p_sql_shape` đã sanitize, nonempty, tối đa 1000 ký tự (hash không thay thế shape), `p_tool_path` đúng `query_database`, `p_status`, `p_latency_ms`, `p_effective_facility_id`, `p_facility_source` là `selected` hoặc `session`, và `p_error_class` khi failure. Credential mang numeric `user_id` claim. Tiếp tục gửi các field optional mà audited executor hiện gửi: `p_row_count`, `p_payload_bytes`, `p_requested_facility_id`, `p_session_facility_id`, `p_raw_role`. Success: execute, audit, rồi mới release; audit failure trên success chặn release. Failure: audit best-effort, nuốt lỗi audit, ném lại lỗi SQL gốc. Không trả kết quả success rỗng. Operational log không lưu raw prompt hoặc sensitive result.
+- [ ] 2.5 Compaction bounded cho tool/RPC results trước model; clarification không bị compaction hoặc model-execution budget gate loại bỏ. Clarification trả về trước reserve không tiêu thụ reservation.
 - [ ] 2.6 Viết test chứng minh thiếu role/connection hoặc DB audit path thì tool disabled; stdout/log redacted không thay thế audit DB, còn nhu cầu DDL/audit schema được ghi thành SQL change và quality gate riêng.
 - [ ] 2.7 Kiểm chứng cơ chế authentication đã chọn ở 0.9 bằng negative tests cho credential hết hạn/sai audience, claims giả từ browser, scope sai và secret thiếu; chứng minh cancellation/audit propagation và bounded quota cleanup không mở rộng quyền.
 
@@ -67,16 +67,16 @@ Deploy/live DB: Mock/local hoặc read-only boundary; không tự ý ghi live DB
 
 Phạm vi/sở hữu: QLTBYT draft workflow, secondary extraction, quota lifecycle, kill-switch, compaction budget và usage metrics.
 
-Phụ thuộc: Phase 2 QLTBYT RPC/policy, Phase 0 usage/cancellation proof và quyết định 0.7/0.8 đã được review. Thiếu một quyết định thì chặn bắt đầu Phase 3; nếu quyết định cần SQL, dependency SQL phải hoàn tất gate phù hợp trước phần implementation phụ thuộc.
+Phụ thuộc: Phase 2 QLTBYT RPC/policy, Phase 0 usage/cancellation proof và quyết định 0.7/0.8 đã được review. Đây là defense in depth: thiếu review thì Phase 1 đã bị chặn, và Phase 3 vẫn không bắt đầu. Mapping 0.8 phải đã nằm trong normative spec trước implementation Phase 3. Nếu quyết định cần SQL, dependency SQL phải hoàn tất gate phù hợp trước phần implementation phụ thuộc.
 
 Bằng chứng nghiệm thu: Draft parity, quota idempotency/reconciliation, unknown-usage, kill-switch và TTL tests.
 
-- [ ] 3.1 Chuyển repair-request draft orchestration, secondary structured extraction và artifact mapping vào adapter; vẫn advisory draft-only/no-submit.
-- [ ] 3.2 Tích hợp `ai_quota_reserve` và `ai_quota_finalize` vào một lifecycle cho cả primary và secondary usage.
-- [ ] 3.3 Làm finalize idempotent với bounded retry/reconciliation; phân biệt observed usage, error-with-usage và error-without-usage.
-- [ ] 3.4 Giữ unknown usage là unknown, không tự invent token count, không coi là zero để refund hoặc đóng reservation giả.
-- [ ] 3.5 Giữ kill-switch: environment override thắng, DB status cache TTL ngắn, read error dùng error TTL ngắn và fail closed trước model/tool work.
-- [ ] 3.6 Xác nhận `quotaTTL >= 120s` và đủ cho worst-case elapsed từ reserve tới finalize; drain 60-90s không kéo dài request deadline, không cộng máy móc deadline 55s với thời gian drain, và phải ghi metric usage classification.
+- [ ] 3.1 Chuyển repair-request draft orchestration, secondary structured extraction và artifact mapping vào adapter; vẫn advisory draft-only/no-submit. Giữ parity UI/artifact; việc đưa secondary usage vào quota lifecycle là sửa accounting, không phải đóng băng hành vi `onFinish` hiện tại.
+- [ ] 3.2 Tích hợp `ai_quota_reserve` và `ai_quota_finalize` vào một lifecycle cho cả primary và secondary usage theo mapping 0.8.
+- [ ] 3.3 Làm finalize idempotent với bounded retry/reconciliation; phân biệt observed usage, error-with-usage và error-without-usage. Evidence của bounded cleanup, failure handling và reconciliation phải nằm trong allowance đề xuất ở 4.5; proof thất bại thì dừng để normative amendment đã review.
+- [ ] 3.4 Áp dụng mapping 0.8 đã trở thành normative. Không trình bày unknown/partial như measured-zero, không tự invent token count, không bịa status mới và không DDL. Nếu dùng 0 làm compatibility sentinel thì phải có uncertainty marker phân biệt được, và không dùng sentinel đó để refund hoặc đóng reservation giả.
+- [ ] 3.5 Giữ kill-switch: environment override thắng, cache 8 giây sau lần đọc database thành công, cache 2 giây sau lỗi đọc database, và fail closed trước model/tool work.
+- [ ] 3.6 Xác nhận `quotaTTL >= 120s` và đủ cho worst-case elapsed từ reserve tới finalize. Drain grace là trần 60-90 giây, không kéo dài request deadline và không phải khoảng gián đoạn cố định bắt buộc; không cộng máy móc deadline 55 giây với thời gian drain. Budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup nằm trong 60 giây hiện có. Ghi metric usage classification.
 - [ ] 3.7 Kiểm chứng quyết định 0.7 bằng fault injection ở ranh giới reserve/provider/finalize và restart trước/sau reservation expiry; chứng minh recovery hoặc giới hạn đã được duyệt, không claim full recovery chỉ từ graceful shutdown.
 - [ ] 3.8 Kiểm chứng bảng mapping 0.8 với known-zero, partial, unknown và finalize lặp; chứng minh uncertainty vẫn phân biệt được với measured-zero tại nơi lưu đã chọn, không silently refund hoặc double-count.
 
@@ -93,10 +93,10 @@ Phụ thuộc: Phase 0 security proof, Phase 1 core, Phase 2 policy và Phase 3 
 Bằng chứng nghiệm thu: HTTP/SSE contract, event ordering, auth/replay, abort, deadline, admission và sanitized-error tests.
 
 - [ ] 4.1 Implement `POST /v1/chat` với protocol/capability version, body/message/tool-step limits và request correlation.
-- [ ] 4.2 Verify signed identity envelope gồm issuer/audience, timestamp skew, body digest, key ID, nonce uniqueness và capability authorization.
+- [ ] 4.2 Verify signed identity envelope bằng tham số HMAC đã ghi ở 0.5: issuer/audience, timestamp skew, body digest, key ID, nonce uniqueness và capability authorization. Dùng full validity cộng clock-skew quarantine. MVP không có verified-snapshot exception.
 - [ ] 4.3 Encode Vercel AI SDK UI Message Stream v1, giữ text/tool/artifact/error parts và completion order draft trước terminal `finish`/`DONE`.
 - [ ] 4.4 Propagate browser disconnect/abort qua HTTP, Eino, provider, tool và RPC; cancellation không tạo work mới.
-- [ ] 4.5 Đặt BFF budget mặc định 60s; Go nhận phần deadline còn lại sau ingress/network margin và cleanup budget, có hard cap tối đa 55s nhưng không reset mỗi request thành 55s khi vừa tới Go; admission quá tải trả stable retryable error.
+- [ ] 4.5 Giữ BFF budget mặc định 60 giây, đúng `maxDuration` hiện tại. Budget đề xuất: Go làm việc tối đa 55 giây tính từ đầu request gốc, cleanup tối đa 5 giây trong cùng 60 giây đó. Go nhận phần deadline còn lại sau ingress/network margin và không reset mỗi request thành 55 giây khi vừa tới Go. Phải có evidence cho bounded cleanup, failure handling và reconciliation trong allowance này. Nếu proof thất bại, dừng để sửa normative đã được review; không kết luận 5 giây là không đủ khi chưa có evidence. Admission quá tải trả stable retryable error.
 - [ ] 4.6 Giữ `/healthz`/`/readyz` local/private, pre-stream JSON và post-stream sanitized error, `X-Request-ID`, không log prompt/SQL/token/secret.
 
 Điểm dừng/review: Dừng nếu auth/replay không fail closed, SSE drift, abort không xuyên suốt hoặc deadline không đủ cleanup budget.
@@ -130,11 +130,11 @@ Phụ thuộc: Phase 4 service contract và Phase 5 dark BFF; operator hostname/
 
 Bằng chứng nghiệm thu: Image digest, secret/config scan, local health/readiness, Tunnel route, drain/rollback và redacted observability report.
 
-- [ ] 6.1 Tạo image digest-addressed cho Go service, secrets ngoài image, loopback/private bind và resource limits.
+- [ ] 6.1 Tạo image digest-addressed cho Go service bằng Go toolchain đã pin ở Phase 1, secrets ngoài image, loopback/private bind và resource limits. Credential của container tách khỏi `qltbyt_test`. Vercel không build `services/ai-service`. Change này không thêm CI platform mới.
 - [ ] 6.2 Cấu hình Tunnel + Access cho chat SSE; raw service port không public, Access client secret chỉ ở trusted BFF.
 - [ ] 6.3 Đảm bảo `/healthz` và `/readyz` chỉ probe local/private; readiness gồm config/provider/capability/replay guard, không unsafe model call.
-- [ ] 6.4 Implement readiness false, stop admission, graceful drain 60-90s, active-stream deadline, cancellation và bounded quota reconciliation.
-- [ ] 6.5 Retain verified previous Go image/config khi đã có; ở first deploy chưa có image trước đó thì rollback unavailable phải fail closed/giữ service unavailable, và không tạo fallback về old Next.js orchestrator.
+- [ ] 6.4 Implement readiness false, stop admission, graceful drain với trần 60-90 giây (trần tối đa, không phải khoảng gián đoạn cố định bắt buộc; process idle được thoát sớm). Timeout dừng của container/orchestrator phải bao selected drain period cộng bounded cleanup margin và không SIGKILL trước khi drain cùng cleanup hoàn tất. Grace này tách khỏi reservation TTL và deadline request 55+5. Giữ active-stream deadline, cancellation và bounded quota reconciliation.
+- [ ] 6.5 Retain verified previous Go image/config khi đã có. Dark first deploy chưa có image trước đó mà thất bại thì để candidate unavailable và chặn cutover; việc đó không tự tắt chat production hiện tại. Sau cutover không tạo fallback về Next.js orchestrator.
 - [ ] 6.6 Ghi logs/metrics chỉ gồm request ID, app/capability, provider/model, latency, outcome, usage classification; không có sensitive content.
 
 Điểm dừng/review: Review ops artifacts trước khi chạm Oracle VM; thiếu local-only health hoặc raw-port isolation thì không deploy.
@@ -152,8 +152,8 @@ Bằng chứng nghiệm thu: Exact image digest, redacted VM/Tunnel logs, smoke 
 - [ ] 7.1 Ghi authorization cụ thể trước khi deploy; readiness phải false cho tới khi config/provider/capability/replay guard khởi tạo xong.
 - [ ] 7.2 Deploy đúng một Go replica theo image digest qua Tunnel/Access, không expose raw port.
 - [ ] 7.3 Chạy smoke bằng test data: local health/readiness, chat SSE qua Tunnel, HMAC/replay, tool/RPC policy, draft, provider error và UI stream.
-- [ ] 7.4 Chạy cancel/abort, primary+secondary usage, idempotent finalize, unknown usage, drain 60-90s và `quotaTTL >= 120s`.
-- [ ] 7.5 Kiểm tra secret không ở image/log, không có fallback old runtime; khi smoke fail chỉ rollback nếu có verified Go image trước đó, còn first deploy không có image trước đó phải fail closed/giữ unavailable.
+- [ ] 7.4 Chạy cancel/abort, primary+secondary usage, idempotent finalize, unknown usage, drain grace tối đa 60-90 giây và `quotaTTL >= 120s`.
+- [ ] 7.5 Kiểm tra secret không ở image/log. Sau cutover không có fallback old runtime. Dark smoke fail khi chưa có verified Go image trước đó thì chặn cutover và không tự tắt chat production hiện tại. Rollback image chỉ khi image Go trước đó tồn tại.
 - [ ] 7.6 Nếu agent-run smoke chạm runtime quota/audit thật, liệt kê chính xác các operation và xin approval riêng; nếu không, chỉ dùng mock/disposable và không claim live PASS.
 
 Điểm dừng/review: Dừng tại dark VM; thiếu evidence hoặc smoke failure block cutover và phải review trước lần thử lại.
@@ -172,8 +172,8 @@ Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, a
 - [ ] 8.2 Xác nhận PASS cần đủ evidence bắt buộc trên cùng subject commit/digest; thiếu evidence là `BLOCKING / INCOMPLETE`, không claim DONE.
 - [ ] 8.3 Chỉ sau explicit authorization direct cutover, chuyển `/api/chat` sang Go backend và giữ nguyên browser/Vercel AI SDK contract.
 - [ ] 8.4 Sau cutover, production runtime phải thực hiện `ai_quota_reserve`/`ai_quota_finalize` và sanitized SQL audit theo capability policy; đây là behavior bắt buộc, không được tắt để né test.
-- [ ] 8.5 Không có runtime fallback về Next.js model/tool orchestration; rollback chỉ khôi phục Go image/config đã verify khi image trước đó tồn tại, còn first deploy không có image trước đó phải fail closed/giữ unavailable.
-- [ ] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, service deadline ngắn hơn BFF 60s, drain 60-90s, full primary+secondary usage và `openspec validate ... --strict`.
+- [ ] 8.5 Sau cutover không có runtime fallback về Next.js model/tool orchestration. Rollback chỉ khôi phục Go image/config đã verify khi image trước đó tồn tại. Nếu sau cutover không còn image Go trước đó và candidate fail, route đã cutover ở trạng thái unavailable. Dark first deploy thất bại thì khác: nó chỉ chặn cutover và không tự tắt chat production hiện tại.
+- [ ] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup trong BFF 60 giây, drain grace tối đa 60-90 giây, full primary+secondary usage và `openspec validate ... --strict`.
 
 Điểm dừng/review: Nếu cần agent-run live smoke, phải có approval cho đúng các quota reserve/finalize và audit operations; nếu không thì smoke là mock/disposable và không được ghi live PASS.
 
