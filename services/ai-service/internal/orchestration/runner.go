@@ -260,7 +260,7 @@ func (r *Runner) finish(ctx context.Context, request protocol.Request, reservati
 
 func (r *Runner) finalize(parent context.Context, reservationID string, calls []usage.CallUsage, observation usage.Observation) (usage.Reconciliation, error) {
 	budget := r.Cleanup
-	if budget <= 0 {
+	if budget <= 0 || budget > protocol.CleanupBudget {
 		budget = protocol.CleanupBudget
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), budget)

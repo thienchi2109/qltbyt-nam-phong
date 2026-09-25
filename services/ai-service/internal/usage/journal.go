@@ -3,6 +3,7 @@ package usage
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -59,7 +60,14 @@ func readJournal(path string) ([]journalLine, error) {
 	return lines, nil
 }
 
-func appendJournal(path string, line journalLine) error {
+// journalSync is the durability wait. Tests replace it to prove cleanup does not
+// wait out a stuck Sync.
+var journalSync = func(file *os.File) error { return file.Sync() }
+
+func appendJournal(ctx context.Context, path string, line journalLine) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, journalFileMode)
 	if err != nil {
 		return err
@@ -68,14 +76,26 @@ func appendJournal(path string, line journalLine) error {
 	if err == nil {
 		_, err = file.Write(append(payload, '\n'))
 	}
-	if err == nil {
-		err = file.Sync()
-	}
-	closeErr := file.Close()
 	if err != nil {
+		_ = file.Close()
 		return err
 	}
-	return closeErr
+	done := make(chan error, 1)
+	go func() {
+		syncErr := journalSync(file)
+		closeErr := file.Close()
+		if syncErr != nil {
+			done <- syncErr
+			return
+		}
+		done <- closeErr
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func formatExpiry(value time.Time) string {

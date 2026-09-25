@@ -35,6 +35,21 @@ func TestCleanupAllowsFinalizeOnlyWithReservation(t *testing.T) {
 	}
 }
 
+func TestFinalizeQuotaPreservesRunnerCleanupDeadline(t *testing.T) {
+	broker := &spyBroker{wait: true, start: make(chan struct{})}
+	assistant := testAssistant(broker, nil)
+	assistant.Cleanup = 5 * time.Second
+	cred := testCredential("technician", facilityPtr(2), nil)
+	caller := quotaCaller{assistant: assistant, cred: cred, scope: resolveScope(cred, false)}
+	parent, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	err := caller.FinalizeQuota(parent, "res-deadline", "success", 1, 1)
+	if !errors.Is(err, context.DeadlineExceeded) || time.Since(started) > time.Second {
+		t.Fatalf("err=%v elapsed=%s", err, time.Since(started))
+	}
+}
+
 func TestCleanupDeadlineCutsHungFinalize(t *testing.T) {
 	cred := testCredential("admin", nil, facilityPtr(7))
 	waiter := &spyBroker{wait: true, start: make(chan struct{})}

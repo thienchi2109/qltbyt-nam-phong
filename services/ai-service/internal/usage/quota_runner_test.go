@@ -182,6 +182,69 @@ func TestClarificationSkipsKillSwitchAndReserve(t *testing.T) {
 	}
 }
 
+func TestKillSwitchCancellationStaysCancelled(t *testing.T) {
+	started := make(chan struct{})
+	caller := &cancelDuringKillSwitch{started: started}
+	book, err := usage.NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, caller)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opens := 0
+	runner := &orchestration.Runner{
+		Registry: registryWith(t, quotaCapability{caller: caller}),
+		Usage:    book,
+		Open: func(context.Context, protocol.Request) (orchestration.ModelSession, error) {
+			opens++
+			return nil, nil
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	type runResult struct {
+		err error
+	}
+	done := make(chan runResult, 1)
+	go func() {
+		_, err := runner.Run(ctx, quotaRequest())
+		done <- runResult{err: err}
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("kill switch did not start")
+	}
+	cancel()
+	select {
+	case result := <-done:
+		var serviceErr *protocol.Error
+		if !errors.As(result.err, &serviceErr) || serviceErr.Code != protocol.CodeCancelled || !errors.Is(result.err, context.Canceled) || opens != 0 || caller.reserves != 0 {
+			t.Fatalf("err=%v opens=%d reserves=%d", result.err, opens, caller.reserves)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("canceled kill switch did not return")
+	}
+}
+
+type cancelDuringKillSwitch struct {
+	started  chan struct{}
+	once     sync.Once
+	reserves int
+}
+
+func (c *cancelDuringKillSwitch) KillSwitch(ctx context.Context) (bool, string, error) {
+	c.once.Do(func() { close(c.started) })
+	<-ctx.Done()
+	return false, "", ctx.Err()
+}
+
+func (c *cancelDuringKillSwitch) ReserveQuota(context.Context, *int64) (string, error) {
+	c.reserves++
+	return "res-cancel", nil
+}
+
+func (c *cancelDuringKillSwitch) FinalizeQuota(context.Context, string, string, int64, int64) error {
+	return nil
+}
+
 func TestRunnerCleanupDeadlineCutsHungFinalize(t *testing.T) {
 	spy := &runnerCaller{reserveID: "res-clean"}
 	book, err := usage.NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, spy)
@@ -191,6 +254,7 @@ func TestRunnerCleanupDeadlineCutsHungFinalize(t *testing.T) {
 	var deadline time.Duration
 	spyHang := false
 	runner := &orchestration.Runner{
+		Cleanup:  10 * time.Second,
 		Registry: registryWith(t, quotaCapability{caller: &deadlineCaller{inner: spy, deadline: &deadline, hang: &spyHang}}),
 		Usage:    book,
 		Open: func(context.Context, protocol.Request) (orchestration.ModelSession, error) {

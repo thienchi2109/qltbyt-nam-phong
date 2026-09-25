@@ -82,65 +82,12 @@ func (b *QuotaBook) Classifications() map[string]int64 {
 	return out
 }
 
-// Reserve checks the duplicate slot and kill switch, then the quota RPC, then the intent.
-func (b *QuotaBook) Reserve(ctx context.Context, request ReserveRequest) (Reservation, error) {
-	if request.Caller == nil {
-		return Reservation{}, protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The quota caller is missing.", false)
-	}
-	if request.RequestID == "" {
-		return Reservation{}, protocol.NewError(400, protocol.CodeInvalidRequest, "The request is missing a routing identifier.", false)
-	}
-	if err := ctx.Err(); err != nil {
-		return Reservation{}, err
-	}
-	b.mu.Lock()
-	_, duplicate := b.byReq[request.RequestID]
-	b.mu.Unlock()
-	if duplicate {
-		return Reservation{}, alreadyReserved()
-	}
-	blocked, _, err := request.Caller.KillSwitch(ctx)
-	if err != nil || blocked {
-		return Reservation{}, protocol.NewError(429, protocol.CodeLimitExceeded, KillSwitchMessage, true)
-	}
-	reservationID, err := request.Caller.ReserveQuota(ctx, request.TenantID)
-	if err != nil {
-		return Reservation{}, err
-	}
-	if reservationID == "" {
-		return Reservation{}, protocol.NewError(502, protocol.CodeProviderFailure, "The quota reservation is missing.", false)
-	}
-	ttl := request.TTL
-	if ttl < protocol.ReservationTTL {
-		ttl = protocol.ReservationTTL
-	}
-	expires := b.now().Add(ttl)
-	line := journalLine{
-		Kind: kindProviderIntent, ReservationID: reservationID, RequestID: request.RequestID,
-		AttemptID: "1", ExpiresAt: formatExpiry(expires),
-	}
-	b.mu.Lock()
-	if _, exists := b.byReq[request.RequestID]; exists {
-		b.mu.Unlock()
-		_ = request.Caller.FinalizeQuota(ctx, reservationID, rpcErrorNoUsage, 0, 0)
-		return Reservation{}, alreadyReserved()
-	}
-	if err := b.appendLine(line); err != nil {
-		b.mu.Unlock()
-		_ = request.Caller.FinalizeQuota(ctx, reservationID, rpcErrorNoUsage, 0, 0)
-		return Reservation{}, err
-	}
-	b.slots[reservationID] = &quotaSlot{
-		requestID: request.RequestID, expires: expires, caller: request.Caller,
-		attemptOrder: []string{"1"}, intents: map[string]struct{}{"1": {}}, usages: map[string]CallUsage{},
-	}
-	b.byReq[request.RequestID] = reservationID
-	b.mu.Unlock()
-	return Reservation{ID: reservationID, RequestID: request.RequestID, ExpiresAt: expires}, nil
-}
-
 // Observe appends usage_observed and syncs it before any quota finalize RPC.
-func (b *QuotaBook) Observe(_ context.Context, reservationID string, call CallUsage) error {
+// A done cleanup context fails the write instead of blocking in Sync.
+func (b *QuotaBook) Observe(ctx context.Context, reservationID string, call CallUsage) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	slot, err := b.open(reservationID)
@@ -156,14 +103,14 @@ func (b *QuotaBook) Observe(_ context.Context, reservationID string, call CallUs
 			Kind: kindProviderIntent, ReservationID: reservationID, RequestID: slot.requestID,
 			AttemptID: attempt, ExpiresAt: formatExpiry(slot.expires),
 		}
-		if err := b.appendLine(intent); err != nil {
+		if err := b.appendLine(ctx, intent); err != nil {
 			slot.lost = true
 			return err
 		}
 		slot.intents[attempt] = struct{}{}
 		slot.attemptOrder = append(slot.attemptOrder, attempt)
 	}
-	if err := b.appendLine(lineFromCall(reservationID, slot.requestID, attempt, call)); err != nil {
+	if err := b.appendLine(ctx, lineFromCall(reservationID, slot.requestID, attempt, call)); err != nil {
 		slot.lost = true
 		return err
 	}
@@ -215,7 +162,7 @@ func (b *QuotaBook) finish(ctx context.Context, reservationID string, observatio
 	}
 	if !asOf.Before(slot.expires) {
 		b.mu.Unlock()
-		return b.markExpired(reservationID)
+		return b.markExpired(ctx, reservationID)
 	}
 	decided, attempts := decideUsage(slot, observation, recovery)
 	caller := slot.caller
@@ -243,7 +190,7 @@ func (b *QuotaBook) finish(ctx context.Context, reservationID string, observatio
 	}
 	record := reconcile(decided, attempts)
 	record.ReservationID = reservationID
-	return b.markFinal(reservationID, requestID, status, record)
+	return b.markFinal(ctx, reservationID, requestID, status, record)
 }
 
 func decideUsage(slot *quotaSlot, passed Observation, recovery bool) (Observation, int) {
@@ -276,7 +223,7 @@ func decideUsage(slot *quotaSlot, passed Observation, recovery bool) (Observatio
 	return Aggregate(calls), len(calls)
 }
 
-func (b *QuotaBook) markFinal(reservationID, requestID, rpcStatus string, record Reconciliation) (Reconciliation, error) {
+func (b *QuotaBook) markFinal(ctx context.Context, reservationID, requestID, rpcStatus string, record Reconciliation) (Reconciliation, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	slot, err := b.open(reservationID)
@@ -287,7 +234,7 @@ func (b *QuotaBook) markFinal(reservationID, requestID, rpcStatus string, record
 		return *slot.final, nil
 	}
 	line := lineFromReconciliation(kindFinalized, requestID, rpcStatus, record)
-	if err := b.appendLine(line); err != nil {
+	if err := b.appendLine(ctx, line); err != nil {
 		return Reconciliation{}, err
 	}
 	stored := record
@@ -296,7 +243,7 @@ func (b *QuotaBook) markFinal(reservationID, requestID, rpcStatus string, record
 	return stored, nil
 }
 
-func (b *QuotaBook) markExpired(reservationID string) (Reconciliation, error) {
+func (b *QuotaBook) markExpired(ctx context.Context, reservationID string) (Reconciliation, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	slot, err := b.open(reservationID)
@@ -314,7 +261,7 @@ func (b *QuotaBook) markExpired(reservationID string) (Reconciliation, error) {
 		Attempts:      len(slot.usages),
 	}
 	line := lineFromReconciliation(kindExpired, slot.requestID, "", record)
-	if err := b.appendLine(line); err != nil {
+	if err := b.appendLine(ctx, line); err != nil {
 		return Reconciliation{}, err
 	}
 	stored := record
@@ -388,12 +335,15 @@ func (b *QuotaBook) open(reservationID string) (*quotaSlot, error) {
 	return slot, nil
 }
 
-func (b *QuotaBook) appendLine(line journalLine) error {
+func (b *QuotaBook) appendLine(ctx context.Context, line journalLine) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if b.failAppends > 0 {
 		b.failAppends--
 		return errors.New("usage journal write failed")
 	}
-	return appendJournal(b.journalPath(), line)
+	return appendJournal(ctx, b.journalPath(), line)
 }
 
 func (b *QuotaBook) journalPath() string {

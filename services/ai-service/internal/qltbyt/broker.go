@@ -71,8 +71,9 @@ func (g gate) Call(ctx context.Context, cred Credential, rpc string, payload jso
 	return g.inner.Call(ctx, cred, rpc, payload)
 }
 
-// Cleanup uses a detached context of at most five seconds. It keeps the
-// original user and facility and cannot call a new RPC.
+// Cleanup detaches parent cancellation so an already-canceled audit can still
+// finish inside its own budget. It does not extend a parent deadline: quota
+// finalize stops when the runner cleanup deadline fires.
 func (g gate) Cleanup(parent context.Context, cred Credential, rpc string, payload json.RawMessage) (json.RawMessage, error) {
 	if err := g.authorize(cred, rpc, true); err != nil {
 		return nil, err
@@ -83,7 +84,17 @@ func (g gate) Cleanup(parent context.Context, cred Credential, rpc string, paylo
 	if err := rejectWidenedPayload(cred, payload); err != nil {
 		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), g.cleanupBudget())
+	budget := g.cleanupBudget()
+	if deadline, ok := parent.Deadline(); ok {
+		remaining := time.Until(deadline)
+		if remaining <= 0 {
+			return nil, context.DeadlineExceeded
+		}
+		if remaining < budget {
+			budget = remaining
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), budget)
 	defer cancel()
 	if g.inner == nil {
 		return nil, protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The data broker is unavailable.", false)
