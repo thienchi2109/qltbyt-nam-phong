@@ -54,6 +54,17 @@ Trong `services/ai-service`, ngày 2026-09-25:
 - Quota rotation dùng key index trả về cùng model vừa tạo. Request đồng thời đổi pool không làm failure của key A bị ghi vào key B.
 - Transport `google` bỏ prefix `google/` trước Gemini API. Gateway vẫn giữ model id có prefix.
 - `Authorize` trả `context.Canceled` hoặc deadline giữ mã cancellation, không thành 403.
+- Re-review commit `19a496c9` confirmed all three Important findings are fixed;
+  `go test`, `-race`, `go vet`, `gofmt` and strict OpenSpec validation pass.
+
+## Non-blocking follow-ups
+
+- `internal/orchestration/meter.go` currently forwards provider stream errors
+  through the Eino pipe; verify writer-close/error propagation when Phase 2 adds
+  the HTTP stream boundary.
+- Core protocol errors are English by design. The Phase 2 BFF HTTP boundary
+  must translate user-facing errors to Vietnamese; this is not a Phase 1
+  blocker because Phase 1 has no HTTP surface.
 
 ## Chưa làm
 
