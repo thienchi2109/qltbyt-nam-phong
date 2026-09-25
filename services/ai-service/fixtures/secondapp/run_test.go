@@ -22,8 +22,8 @@ type session struct {
 func (s session) KeyIndex() int          { return 0 }
 func (s session) AttemptLimit() int      { return 1 }
 func (s session) RotateOnQuota(int) bool { return false }
-func (s session) ChatModel(context.Context) (model.ToolCallingChatModel, error) {
-	return s.chat, nil
+func (s session) ChatModel(context.Context) (model.ToolCallingChatModel, int, error) {
+	return s.chat, 0, nil
 }
 func (s session) StructuredModel(context.Context) (model.ToolCallingChatModel, error) {
 	return s.chat, nil

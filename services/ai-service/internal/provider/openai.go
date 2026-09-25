@@ -71,8 +71,8 @@ func (s *openAISession) AttemptLimit() int { return 1 }
 
 func (s *openAISession) RotateOnQuota(int) bool { return false }
 
-func (s *openAISession) ChatModel(context.Context) (model.ToolCallingChatModel, error) {
-	return s.chat, nil
+func (s *openAISession) ChatModel(context.Context) (model.ToolCallingChatModel, int, error) {
+	return s.chat, 0, nil
 }
 
 func (s *openAISession) StructuredModel(context.Context) (model.ToolCallingChatModel, error) {

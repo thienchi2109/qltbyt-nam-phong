@@ -37,14 +37,32 @@ func (s *staticSession) RotateOnQuota(int) bool {
 	s.index++
 	return true
 }
-func (s *staticSession) ChatModel(context.Context) (model.ToolCallingChatModel, error) {
-	return s.chat, nil
+func (s *staticSession) ChatModel(context.Context) (model.ToolCallingChatModel, int, error) {
+	return s.chat, s.index, nil
 }
 func (s *staticSession) StructuredModel(context.Context) (model.ToolCallingChatModel, error) {
 	if s.structured != nil {
 		return s.structured, nil
 	}
 	return s.chat, nil
+}
+
+type cancelAuthorizeCapability struct{}
+
+func (cancelAuthorizeCapability) Descriptor() capability.Descriptor {
+	return capability.Descriptor{AppID: "second-app", CapabilityID: "echo", Version: "v1"}
+}
+func (cancelAuthorizeCapability) Authorize(ctx context.Context, _ protocol.Request) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return context.Canceled
+}
+func (cancelAuthorizeCapability) Prepare(context.Context, protocol.Request) (capability.Prepared, error) {
+	return capability.Prepared{}, nil
+}
+func (cancelAuthorizeCapability) AfterPrimary(context.Context, protocol.Request, capability.PrimaryOutput) (capability.FollowUp, error) {
+	return capability.FollowUp{}, nil
 }
 
 type echoCapability struct {

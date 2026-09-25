@@ -59,6 +59,10 @@ func Resolve(env map[string]string) (Resolved, error) {
 			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The gateway model id must include a provider prefix.", false)
 		}
 	case protocol.TransportGoogle:
+		model = normalizeGeminiModel(model)
+		if model == "" {
+			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The google transport is missing its model.", false)
+		}
 	case protocol.TransportOpenAICompatible:
 		if explicitModel == "" {
 			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "An explicit model is required for the openai-compatible transport.", false)
@@ -119,9 +123,14 @@ func GoogleKeys(env map[string]string) []string {
 	return nil
 }
 
+// normalizeGeminiModel strips the gateway provider prefix before the Gemini API.
+func normalizeGeminiModel(model string) string {
+	return strings.TrimPrefix(strings.TrimSpace(model), "google/")
+}
+
 // ThinkingLevel returns medium for Gemini model IDs and empty for every other model.
 func ThinkingLevel(model string) string {
-	model = strings.TrimPrefix(model, "google/")
+	model = normalizeGeminiModel(model)
 	if strings.HasPrefix(model, "gemini-") {
 		return "medium"
 	}

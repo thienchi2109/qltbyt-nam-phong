@@ -59,6 +59,9 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 		return Result{}, publicError(request.RequestID, err)
 	}
 	if err := item.Authorize(ctx, request); err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return Result{}, publicError(request.RequestID, err)
+		}
 		return Result{}, unauthorized(err).WithRequest(request.RequestID)
 	}
 	prepared, err := item.Prepare(ctx, request)
@@ -133,7 +136,7 @@ func (r *Runner) modelLoop(ctx context.Context, session ModelSession, messages [
 		if err := ctx.Err(); err != nil {
 			return "", err
 		}
-		chat, err := session.ChatModel(ctx)
+		chat, keyIndex, err := session.ChatModel(ctx)
 		if err != nil {
 			return "", err
 		}
@@ -149,7 +152,7 @@ func (r *Runner) modelLoop(ctx context.Context, session ModelSession, messages [
 		}
 		lastErr = err
 		_, emitted := state.snapshot()
-		retry := text == "" && !emitted && trace.startedCount() == 0 && ctx.Err() == nil && isQuotaError(err) && attempt < attempts && session.RotateOnQuota(session.KeyIndex())
+		retry := text == "" && !emitted && trace.startedCount() == 0 && ctx.Err() == nil && isQuotaError(err) && attempt < attempts && session.RotateOnQuota(keyIndex)
 		if !retry {
 			return text, err
 		}

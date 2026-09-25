@@ -28,6 +28,23 @@ func TestResolveRetainsThreeTransports(t *testing.T) {
 	}
 }
 
+func TestGoogleTransportStripsProviderPrefix(t *testing.T) {
+	resolved, err := Resolve(map[string]string{
+		"AI_PROVIDER": "google",
+		"AI_MODEL":    "google/gemini-3.1-flash-lite-preview",
+	})
+	if err != nil || resolved.Transport != protocol.TransportGoogle || resolved.Model != "gemini-3.1-flash-lite-preview" {
+		t.Fatalf("google = %+v %v", resolved, err)
+	}
+	gateway, err := Resolve(map[string]string{
+		"AI_PROVIDER":           "gateway",
+		"AI_DEFAULT_CHAT_MODEL": "google/gemini-3.1-flash-lite-preview",
+	})
+	if err != nil || gateway.Model != "google/gemini-3.1-flash-lite-preview" {
+		t.Fatalf("gateway = %+v %v", gateway, err)
+	}
+}
+
 func TestThinkingLevelOnlyForGemini(t *testing.T) {
 	if ThinkingLevel("google/gemini-3.1-flash-lite-preview") != "medium" {
 		t.Fatal("gateway gemini model lost medium thinking")

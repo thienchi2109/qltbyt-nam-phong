@@ -15,7 +15,7 @@ type Session interface {
 	KeyIndex() int
 	AttemptLimit() int
 	RotateOnQuota(failedIndex int) bool
-	ChatModel(ctx context.Context) (model.ToolCallingChatModel, error)
+	ChatModel(ctx context.Context) (model.ToolCallingChatModel, int, error)
 	StructuredModel(ctx context.Context) (model.ToolCallingChatModel, error)
 }
 

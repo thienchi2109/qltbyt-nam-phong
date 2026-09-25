@@ -42,12 +42,18 @@ paid-provider smoke. Các quyết định Phase 0 được giữ nguyên.
 
 Trong `services/ai-service`, ngày 2026-09-25:
 
-- `go test -count=1 ./...`: PASS, 24 tests
+- `go test -count=1 ./...`: PASS, 29 tests
 - `go test -race -count=1 ./...`: PASS
 - `go vet ./...`: PASS
 - `go mod verify`: PASS
 - `gofmt -l .`: không có file
 - `openspec validate refactor-ai-into-shared-go-service --strict`: PASS
+
+## Review follow-up
+
+- Quota rotation dùng key index trả về cùng model vừa tạo. Request đồng thời đổi pool không làm failure của key A bị ghi vào key B.
+- Transport `google` bỏ prefix `google/` trước Gemini API. Gateway vẫn giữ model id có prefix.
+- `Authorize` trả `context.Canceled` hoặc deadline giữ mã cancellation, không thành 403.
 
 ## Chưa làm
 

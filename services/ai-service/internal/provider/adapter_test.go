@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"example.com/shared-ai-service/internal/protocol"
 	"github.com/cloudwego/eino/schema"
@@ -85,7 +86,7 @@ func TestRetainedTransportsAgainstLocalStubs(t *testing.T) {
 			if transport.Transport == protocol.TransportOpenAICompatible && session.ThinkingLevel() != "" {
 				t.Fatalf("non-gemini thinking = %q", session.ThinkingLevel())
 			}
-			chat, err := session.ChatModel(ctx)
+			chat, _, err := session.ChatModel(ctx)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -134,7 +135,7 @@ func TestRetainedTransportsAgainstLocalStubs(t *testing.T) {
 	if googleSession.ThinkingLevel() != "medium" || googleSession.AttemptLimit() != 1 {
 		t.Fatalf("google session = %s attempts %d", googleSession.ThinkingLevel(), googleSession.AttemptLimit())
 	}
-	chat, err := googleSession.ChatModel(ctx)
+	chat, _, err := googleSession.ChatModel(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,6 +176,77 @@ func TestRetainedTransportsAgainstLocalStubs(t *testing.T) {
 	thinking, _ := generation["thinkingConfig"].(map[string]any)
 	if thinking["thinkingLevel"] != "MEDIUM" {
 		t.Fatalf("thinking config = %#v", generation)
+	}
+}
+
+func TestPrefixedGeminiModelUsesNativePath(t *testing.T) {
+	var path string
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		path = request.URL.Path
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(writer, `{"candidates":[{"content":{"role":"model","parts":[{"text":"ok"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2}}`)
+	}))
+	defer server.Close()
+
+	session, err := Open(context.Background(), Config{
+		Transport:  protocol.TransportGoogle,
+		Model:      "google/gemini-3.1-flash-lite-preview",
+		APIKeys:    []string{"key-a"},
+		BaseURL:    server.URL + "/",
+		HTTPClient: server.Client(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.ModelName() != "gemini-3.1-flash-lite-preview" {
+		t.Fatalf("model = %q", session.ModelName())
+	}
+	chat, leased, err := session.ChatModel(context.Background())
+	if err != nil || leased != 0 {
+		t.Fatalf("lease = %d %v", leased, err)
+	}
+	if _, err := chat.Generate(context.Background(), []*schema.Message{schema.UserMessage("hello")}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(path, "google/") || strings.Contains(path, "google%2F") || strings.Contains(path, "google%2f") {
+		t.Fatalf("prefixed model path = %s", path)
+	}
+	if !strings.Contains(path, "/models/gemini-3.1-flash-lite-preview:") {
+		t.Fatalf("native model path = %s", path)
+	}
+}
+
+func TestConcurrentRotationMarksTheLeasedKey(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	session, err := newGoogleSession(Config{
+		Model:   "google/gemini-test",
+		APIKeys: []string{"key-a", "key-b"},
+		Now:     func() time.Time { return now },
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, leased, err := session.ChatModel(context.Background())
+	if err != nil || leased != 0 {
+		t.Fatalf("lease = %d %v", leased, err)
+	}
+	moved := make(chan struct{})
+	go func() {
+		defer close(moved)
+		if !session.RotateOnQuota(0) {
+			t.Error("concurrent rotation failed")
+		}
+	}()
+	<-moved
+	if session.KeyIndex() == leased {
+		t.Fatal("active index still matches the leased key")
+	}
+	if !session.RotateOnQuota(leased) {
+		t.Fatal("rotating the leased key failed")
+	}
+	index, key, ok := session.pool.current(now)
+	if !ok || index != 1 || key != "key-b" {
+		t.Fatalf("current key = (%d,%q,%v)", index, key, ok)
 	}
 }
 

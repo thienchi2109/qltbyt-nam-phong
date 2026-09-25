@@ -43,9 +43,13 @@ func newGoogleSession(cfg Config) (*googleSession, error) {
 	if maxTokens <= 0 {
 		maxTokens = protocol.DefaultMaxOutputTokens
 	}
+	modelName := normalizeGeminiModel(cfg.Model)
+	if modelName == "" {
+		return nil, protocol.NewError(500, protocol.CodeInvalidRequest, "The google transport is missing its model.", false)
+	}
 	return &googleSession{
-		modelName:   cfg.Model,
-		thinking:    ThinkingLevel(cfg.Model),
+		modelName:   modelName,
+		thinking:    ThinkingLevel(modelName),
 		maxTokens:   maxTokens,
 		temperature: cfg.Temperature,
 		baseURL:     cfg.BaseURL,
@@ -81,24 +85,25 @@ func (s *googleSession) RotateOnQuota(failedIndex int) bool {
 	return s.pool.rotate(s.now(), failedIndex)
 }
 
-func (s *googleSession) ChatModel(ctx context.Context) (model.ToolCallingChatModel, error) {
+func (s *googleSession) ChatModel(ctx context.Context) (model.ToolCallingChatModel, int, error) {
 	return s.model(ctx, false)
 }
 
 func (s *googleSession) StructuredModel(ctx context.Context) (model.ToolCallingChatModel, error) {
-	return s.model(ctx, true)
+	chat, _, err := s.model(ctx, true)
+	return chat, err
 }
 
-func (s *googleSession) model(ctx context.Context, structured bool) (model.ToolCallingChatModel, error) {
+func (s *googleSession) model(ctx context.Context, structured bool) (model.ToolCallingChatModel, int, error) {
 	index, key, ok := s.pool.current(s.now())
 	if !ok {
-		return nil, protocol.NewError(503, protocol.CodeProviderQuota, "The model provider is temporarily unavailable.", true)
+		return nil, 0, protocol.NewError(503, protocol.CodeProviderQuota, "The model provider is temporarily unavailable.", true)
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	cachedKey := cacheKey{index: index, structured: structured}
 	if cached := s.cache[cachedKey]; cached != nil {
-		return cached, nil
+		return cached, index, nil
 	}
 	clientCfg := &genai.ClientConfig{
 		APIKey:     key,
@@ -110,7 +115,7 @@ func (s *googleSession) model(ctx context.Context, structured bool) (model.ToolC
 	}
 	client, err := genai.NewClient(ctx, clientCfg)
 	if err != nil {
-		return nil, protocol.NewError(500, protocol.CodeProviderFailure, "The model transport could not be configured.", false).WithCause(err)
+		return nil, 0, protocol.NewError(500, protocol.CodeProviderFailure, "The model transport could not be configured.", false).WithCause(err)
 	}
 	geminiCfg := &gemini.Config{
 		Client:      client,
@@ -126,8 +131,8 @@ func (s *googleSession) model(ctx context.Context, structured bool) (model.ToolC
 	}
 	chat, err := gemini.NewChatModel(ctx, geminiCfg)
 	if err != nil {
-		return nil, protocol.NewError(500, protocol.CodeProviderFailure, "The model transport could not be configured.", false).WithCause(err)
+		return nil, 0, protocol.NewError(500, protocol.CodeProviderFailure, "The model transport could not be configured.", false).WithCause(err)
 	}
 	s.cache[cachedKey] = chat
-	return chat, nil
+	return chat, index, nil
 }
