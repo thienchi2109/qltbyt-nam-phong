@@ -88,6 +88,39 @@ func TestFinalizeAfterExpiryDoesNotBecomeMeasuredZero(t *testing.T) {
 	}
 }
 
+type rejectingCaller struct{}
+
+func (rejectingCaller) KillSwitch(context.Context) (bool, string, error) {
+	return false, "", errors.New("memory called the quota caller")
+}
+
+func (rejectingCaller) ReserveQuota(context.Context, *int64) (string, error) {
+	return "", errors.New("memory called the quota caller")
+}
+
+func (rejectingCaller) FinalizeQuota(context.Context, string, string, int64, int64) error {
+	return errors.New("memory called the quota caller")
+}
+
+func TestMemoryIgnoresQuotaCallerAndTenant(t *testing.T) {
+	book := NewMemory(func() time.Time { return time.Unix(1_700_000_000, 0) })
+	tenant := int64(9)
+	reservation, err := book.Reserve(context.Background(), ReserveRequest{
+		RequestID: "req-tenant",
+		UserID:    "42",
+		TenantID:  &tenant,
+		Role:      "admin",
+		Caller:    rejectingCaller{},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, err := book.Finalize(context.Background(), reservation.ID, Classify(CallUsage{}))
+	if err != nil || !record.Refund || record.Uncertainty != UncertaintyNoProviderWork {
+		t.Fatalf("record = %+v err=%v", record, err)
+	}
+}
+
 func TestReserveRejectsDuplicateRequestID(t *testing.T) {
 	book := NewMemory(func() time.Time { return time.Unix(1_700_000_000, 0) })
 	if _, err := book.Reserve(context.Background(), ReserveRequest{RequestID: "req-1"}); err != nil {

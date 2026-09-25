@@ -69,7 +69,7 @@ func testRequest(t *testing.T, cred Credential, text string, tools []string) pro
 }
 
 func testAssistant(broker Broker, query QueryExecutor) Assistant {
-	return Assistant{Broker: broker, Secret: testSecret(), Query: query, Now: func() time.Time { return fixedNow }}
+	return activate(Assistant{Broker: broker, Secret: testSecret(), Query: query, Now: func() time.Time { return fixedNow }})
 }
 
 type spyCall struct {
@@ -79,13 +79,14 @@ type spyCall struct {
 }
 
 type spyBroker struct {
-	mu    sync.Mutex
-	calls []spyCall
-	fail  map[string]error
-	body  json.RawMessage
-	wait  bool
-	start chan struct{}
-	once  sync.Once
+	mu     sync.Mutex
+	calls  []spyCall
+	fail   map[string]error
+	body   json.RawMessage
+	bodies map[string]json.RawMessage
+	wait   bool
+	start  chan struct{}
+	once   sync.Once
 }
 
 func (s *spyBroker) Call(ctx context.Context, cred Credential, rpc string, payload json.RawMessage) (json.RawMessage, error) {
@@ -101,6 +102,9 @@ func (s *spyBroker) Call(ctx context.Context, cred Credential, rpc string, paylo
 	s.mu.Unlock()
 	if err := s.fail[rpc]; err != nil {
 		return nil, err
+	}
+	if raw, ok := s.bodies[rpc]; ok {
+		return append(json.RawMessage(nil), raw...), nil
 	}
 	if len(s.body) > 0 {
 		return append(json.RawMessage(nil), s.body...), nil

@@ -31,6 +31,13 @@ const (
 	RPCAudit         = "assistant_query_database_audit_log"
 	RPCQuotaReserve  = "ai_quota_reserve"
 	RPCQuotaFinalize = "ai_quota_finalize"
+	RPCKillSwitch    = "ai_kill_switch_status"
+
+	QuotaRateWindowMS   = 60_000
+	QuotaRateMax        = 10
+	QuotaUserDailyMax   = 150
+	QuotaTenantDailyMax = 1_500
+	QuotaGlobalDailyMax = 5_000
 
 	FacilityRequiredMessage   = "Anh/chị vui lòng chọn cơ sở y tế tại bộ lọc đơn vị trên thanh điều hướng (phía trên bên trái màn hình) trước khi sử dụng trợ lý tra cứu."
 	UnresolvedFacilityMessage = "Unable to resolve facility context for tool execution."

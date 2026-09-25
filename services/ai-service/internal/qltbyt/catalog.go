@@ -75,9 +75,14 @@ func isCatalogRPC(rpc string) bool {
 }
 
 func chatRPCAllowed(rpc string) bool {
-	return rpc == RPCAudit || isCatalogRPC(rpc)
+	switch rpc {
+	case RPCAudit, RPCQuotaReserve, RPCQuotaFinalize, RPCKillSwitch:
+		return true
+	default:
+		return isCatalogRPC(rpc)
+	}
 }
 
 func knownRPC(rpc string) bool {
-	return chatRPCAllowed(rpc) || rpc == RPCQuotaReserve || rpc == RPCQuotaFinalize
+	return chatRPCAllowed(rpc)
 }

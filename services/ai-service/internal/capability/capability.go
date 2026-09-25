@@ -5,6 +5,7 @@ import (
 	"context"
 
 	"example.com/shared-ai-service/internal/protocol"
+	"example.com/shared-ai-service/internal/usage"
 	"github.com/cloudwego/eino/schema"
 )
 
@@ -23,6 +24,9 @@ type Tool struct {
 	Description string
 	Parameters  map[string]*schema.ParameterInfo
 	Run         func(ctx context.Context, argumentsJSON string) (string, error)
+	// ModelOutput compacts the UI output before it is sent back to the provider.
+	// Nil returns the UI output unchanged. The trace keeps the original string.
+	ModelOutput func(uiOutput string) string
 }
 
 // Prepared is the capability view of one request before model execution.
@@ -33,12 +37,20 @@ type Prepared struct {
 	// An empty Tools slice with RestrictTools set offers no tools.
 	RestrictTools bool
 	Clarification string
+	// Quota fields are optional. The neutral memory lifecycle ignores them.
+	QuotaUserID   string
+	QuotaTenantID *int64
+	QuotaRole     string
+	QuotaCaller   usage.QuotaCaller
 }
 
 // FollowUp is optional work the capability owns after the primary model result.
 type FollowUp struct {
 	Artifacts  []protocol.Artifact
 	Extraction []protocol.Message
+	// MapExtraction turns extraction text into artifacts. Nil means no mapping.
+	// A mapping error emits no artifact; the runner still records extraction usage.
+	MapExtraction func(text string) ([]protocol.Artifact, error)
 }
 
 // PrimaryOutput is the text and tool transcript the capability may inspect.

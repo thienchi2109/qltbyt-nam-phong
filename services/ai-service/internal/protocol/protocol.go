@@ -54,7 +54,11 @@ const (
 	DefaultMaxToolInputChars = 120_000
 	DefaultMaxToolOutput     = 120_000
 	ReservationTTL           = 120 * time.Second
+	WorkBudget               = 55 * time.Second
 	CleanupBudget            = 5 * time.Second
+	RouteBudget              = WorkBudget + CleanupBudget
+	DrainGraceMin            = 60 * time.Second
+	DrainGraceMax            = 90 * time.Second
 	DefaultGatewayModel      = "google/gemini-3.1-flash-lite-preview"
 	DefaultGoogleModel       = "gemini-3.1-flash-lite-preview"
 )

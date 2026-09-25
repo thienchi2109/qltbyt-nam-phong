@@ -343,11 +343,15 @@ func TestChatPathDoesNotCallQuotaRPCs(t *testing.T) {
 	if !strings.Contains(calls[0].Payload, `"p_user_id":"42"`) || strings.Contains(calls[0].Payload, `"p_user_id":42`) {
 		t.Fatalf("user id must be a JSON string: %s", calls[0].Payload)
 	}
-	if _, err := assistant.gate().Call(context.Background(), cred, RPCQuotaReserve, nil); err == nil {
-		t.Fatal("chat path called quota reserve")
+	if _, err := assistant.gate().Call(context.Background(), cred, RPCQuotaReserve, []byte(`{"p_user_id":"42"}`)); err != nil {
+		t.Fatalf("chat path rejected quota reserve: %v", err)
 	}
-	if len(broker.snapshot()) != 1 {
-		t.Fatal("quota reserve reached the broker")
+	if _, err := assistant.gate().Call(context.Background(), cred, RPCKillSwitch, []byte(`{}`)); err != nil {
+		t.Fatalf("chat path rejected kill switch: %v", err)
+	}
+	calls = broker.snapshot()
+	if len(calls) != 3 || calls[1].RPC != RPCQuotaReserve || calls[2].RPC != RPCKillSwitch {
+		t.Fatalf("calls = %+v", calls)
 	}
 }
 

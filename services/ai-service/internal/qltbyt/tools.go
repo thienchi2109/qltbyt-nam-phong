@@ -99,8 +99,13 @@ func (a Assistant) bindTools(cred Credential, scope Scope, requestID string, nam
 					if err != nil {
 						return "", err
 					}
-					return string(encoded), nil
+					full := string(encoded)
+					if err := a.acceptToolOutput(requestID, full); err != nil {
+						return "", err
+					}
+					return full, nil
 				},
+				ModelOutput: modelFacingOutput,
 			})
 			continue
 		}
@@ -116,6 +121,7 @@ func (a Assistant) bindTools(cred Credential, scope Scope, requestID string, nam
 			Run: func(ctx context.Context, arguments string) (string, error) {
 				return a.runCatalog(ctx, cred, scope, requestID, boundSpec, arguments)
 			},
+			ModelOutput: modelFacingOutput,
 		})
 	}
 	return tools
@@ -142,7 +148,11 @@ func (a Assistant) runCatalog(ctx context.Context, cred Credential, scope Scope,
 		a.record(requestID, "rpc_error")
 		return "", protocol.NewError(502, protocol.CodeProviderFailure, "The read-only tool failed.", false)
 	}
-	return string(compacted), nil
+	full := string(compacted)
+	if err := a.acceptToolOutput(requestID, full); err != nil {
+		return "", err
+	}
+	return full, nil
 }
 
 func messageBytes(messages []protocol.Message) int {

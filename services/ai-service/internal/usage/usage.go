@@ -42,13 +42,28 @@ type Observation struct {
 	Knowledge       string
 }
 
-// ReserveRequest identifies one run. It deliberately has no tenant field.
+// QuotaCaller is the application quota database. Memory ignores it.
+// A nil caller is normal for Memory and fail-closed for QuotaBook.
+type QuotaCaller interface {
+	KillSwitch(ctx context.Context) (blocked bool, cacheSource string, err error)
+	ReserveQuota(ctx context.Context, tenantID *int64) (reservationID string, err error)
+	FinalizeQuota(ctx context.Context, reservationID string, status string, inputTokens, outputTokens int64) error
+}
+
+// KillSwitchMessage is the stable protocol text for an active switch.
+const KillSwitchMessage = "AI usage is temporarily disabled."
+
+// ReserveRequest identifies one run. Memory ignores the quota fields.
 type ReserveRequest struct {
 	RequestID         string
 	AppID             string
 	CapabilityID      string
 	CapabilityVersion string
 	TTL               time.Duration
+	UserID            string
+	TenantID          *int64
+	Role              string
+	Caller            QuotaCaller
 }
 
 // Reservation is the held accounting slot for one run.

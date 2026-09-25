@@ -89,6 +89,10 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 		CapabilityID:      request.CapabilityID,
 		CapabilityVersion: request.CapabilityVersion,
 		TTL:               protocol.ReservationTTL,
+		UserID:            prepared.QuotaUserID,
+		TenantID:          prepared.QuotaTenantID,
+		Role:              prepared.QuotaRole,
+		Caller:            prepared.QuotaCaller,
 	})
 	if err != nil {
 		return Result{}, publicError(request.RequestID, err)
@@ -118,10 +122,16 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 		if hookErr != nil {
 			runErr = hookErr
 		} else {
-			artifacts = follow.Artifacts
+			artifacts = append([]protocol.Artifact(nil), follow.Artifacts...)
 			if len(follow.Extraction) > 0 {
-				if extractErr := r.extract(ctx, session, follow.Extraction, state); extractErr != nil {
+				extracted, extractErr := r.extract(ctx, session, follow.Extraction, state)
+				if extractErr != nil {
 					runErr = extractErr
+				} else if follow.MapExtraction != nil {
+					mapped, mapErr := follow.MapExtraction(extracted)
+					if mapErr == nil {
+						artifacts = append(artifacts, mapped...)
+					}
 				}
 				calls, _ = state.snapshot()
 			}
@@ -207,20 +217,23 @@ func readStream(ctx context.Context, chat model.ToolCallingChatModel, messages [
 	}
 }
 
-func (r *Runner) extract(ctx context.Context, session ModelSession, messages []protocol.Message, state *meterState) error {
+func (r *Runner) extract(ctx context.Context, session ModelSession, messages []protocol.Message, state *meterState) (string, error) {
 	if err := ctx.Err(); err != nil {
-		return err
+		return "", err
 	}
 	converted, err := protocol.ToSchemaMessages(messages)
 	if err != nil {
-		return err
+		return "", err
 	}
 	chat, err := session.StructuredModel(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
-	_, err = newMeteringModel(chat, state).Generate(ctx, converted)
-	return err
+	message, err := newMeteringModel(chat, state).Generate(ctx, converted)
+	if err != nil || message == nil {
+		return "", err
+	}
+	return message.Content, nil
 }
 
 func (r *Runner) finish(ctx context.Context, request protocol.Request, reservationID string, calls []usage.CallUsage, tools []capability.ToolResult, artifacts []protocol.Artifact, text string, runErr error) (Result, error) {

@@ -2,6 +2,8 @@ package qltbyt
 
 import (
 	"context"
+	"strconv"
+	"sync"
 	"time"
 
 	"example.com/shared-ai-service/internal/capability"
@@ -17,6 +19,10 @@ type Assistant struct {
 	Now     func() time.Time
 	Log     RedactedLog
 	Cleanup time.Duration
+	// budgets is a pointer so registration copies share one map.
+	// A mutex stored by value would be copied with the Assistant.
+	budgets *sync.Map
+	kill    *killSwitchState
 }
 
 // Register adds assistant-chat to a registry the neutral server already owns.
@@ -24,7 +30,17 @@ func Register(reg *registry.Registry, assistant Assistant) error {
 	if reg == nil {
 		return protocol.NewError(500, protocol.CodeInvalidRequest, "The capability registry is missing.", false)
 	}
-	return reg.Register(assistant)
+	return reg.Register(activate(assistant))
+}
+
+func activate(assistant Assistant) Assistant {
+	if assistant.budgets == nil {
+		assistant.budgets = &sync.Map{}
+	}
+	if assistant.kill == nil {
+		assistant.kill = &killSwitchState{}
+	}
+	return assistant
 }
 
 func (a Assistant) Descriptor() capability.Descriptor {
@@ -71,6 +87,7 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 	if messageBytes(history) > CompactedInputLimit {
 		return capability.Prepared{}, protocol.NewError(400, protocol.CodeLimitExceeded, "Request exceeds compacted context limit.", false)
 	}
+	a.storeBudget(request.RequestID, messageBytes(history))
 	var facilityID int64
 	if len(names) > 0 || scope.EffectiveFacilityID > 0 {
 		facilityID = scope.EffectiveFacilityID
@@ -84,15 +101,27 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 	messages := make([]protocol.Message, 0, len(history)+1)
 	messages = append(messages, protocol.Message{Role: protocol.RoleSystem, Content: prompt})
 	messages = append(messages, history...)
+	var tenantID *int64
+	if scope.EffectiveFacilityID > 0 {
+		value := scope.EffectiveFacilityID
+		tenantID = &value
+	}
 	return capability.Prepared{
 		Messages:      messages,
 		Tools:         a.bindTools(cred, scope, request.RequestID, names),
 		RestrictTools: true,
+		QuotaUserID:   strconv.FormatInt(cred.UserID, 10),
+		QuotaTenantID: tenantID,
+		QuotaRole:     cred.RawRole,
+		QuotaCaller:   quotaCaller{assistant: a, cred: cred, scope: scope},
 	}, nil
 }
 
-func (a Assistant) AfterPrimary(context.Context, protocol.Request, capability.PrimaryOutput) (capability.FollowUp, error) {
-	return capability.FollowUp{}, nil
+func (a Assistant) AfterPrimary(ctx context.Context, request protocol.Request, primary capability.PrimaryOutput) (capability.FollowUp, error) {
+	if err := ctx.Err(); err != nil {
+		return capability.FollowUp{}, err
+	}
+	return a.repairFollowUp(request, primary), nil
 }
 
 func (a Assistant) credential(request protocol.Request) (Credential, error) {

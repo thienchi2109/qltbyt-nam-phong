@@ -91,6 +91,9 @@ func (t *limitedTool) InvokableRun(ctx context.Context, arguments string, _ ...t
 		Arguments: arguments,
 		Output:    output,
 	})
+	if t.spec.ModelOutput != nil {
+		return t.spec.ModelOutput(output), nil
+	}
 	return output, nil
 }
 

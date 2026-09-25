@@ -1,6 +1,7 @@
 package qltbyt
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strconv"
@@ -76,6 +77,9 @@ func (g gate) Cleanup(parent context.Context, cred Credential, rpc string, paylo
 	if err := g.authorize(cred, rpc, true); err != nil {
 		return nil, err
 	}
+	if rpc == RPCQuotaFinalize && !finalizePayloadAllowed(payload) {
+		return nil, protocol.NewError(403, protocol.CodeUnauthorized, "Cleanup cannot call quota finalize.", false)
+	}
 	if err := rejectWidenedPayload(cred, payload); err != nil {
 		return nil, err
 	}
@@ -98,10 +102,10 @@ func (g gate) authorize(cred Credential, rpc string, cleanup bool) error {
 		return protocol.NewError(403, protocol.CodeUnauthorized, "The RPC is not allowlisted.", false)
 	}
 	if cleanup {
-		if rpc != RPCAudit {
-			return protocol.NewError(403, protocol.CodeUnauthorized, "Cleanup cannot call a new RPC.", false)
+		if rpc == RPCAudit || rpc == RPCQuotaFinalize {
+			return nil
 		}
-		return nil
+		return protocol.NewError(403, protocol.CodeUnauthorized, "Cleanup cannot call a new RPC.", false)
 	}
 	if !chatRPCAllowed(rpc) {
 		return protocol.NewError(403, protocol.CodeUnauthorized, "The chat path cannot call that RPC.", false)
@@ -114,6 +118,25 @@ func (g gate) cleanupBudget() time.Duration {
 		return CleanupMax
 	}
 	return g.cleanup
+}
+
+func finalizePayloadAllowed(payload json.RawMessage) bool {
+	if len(bytes.TrimSpace(payload)) == 0 {
+		return false
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &fields); err != nil || len(fields) == 0 {
+		return false
+	}
+	raw, ok := fields["p_reservation_id"]
+	if !ok {
+		return false
+	}
+	var id string
+	if err := json.Unmarshal(raw, &id); err != nil {
+		return false
+	}
+	return strings.TrimSpace(id) != ""
 }
 
 func rejectWidenedPayload(cred Credential, payload json.RawMessage) error {
