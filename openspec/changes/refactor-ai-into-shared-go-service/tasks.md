@@ -32,12 +32,12 @@ Phụ thuộc: Phase 0 compatibility/security proof, bản ghi HMAC đã review,
 
 Bằng chứng nghiệm thu: Go unit/contract tests, provider mock tests, boundary test và second-app compile/run report.
 
-- [ ] 1.1 Tạo Go module tối thiểu, pin version Go toolchain và Eino, và chỉ thêm provider integration cho behavior Phase 0 quyết định giữ. Vercel không build module này. Change này không thêm CI platform mới.
-- [ ] 1.2 Định nghĩa protocol/version, request correlation, capability descriptor, normalized text/tool/artifact/error event và usage contract app-neutral.
-- [ ] 1.3 Implement Eino model/tool loop, workflow cancellation, tool-step/input/output limits và bounded retry policy; giữ nguyên user Eino code đã tương thích, chỉ bọc adapter tối thiểu, không rewrite vô cớ.
-- [ ] 1.4 Đặt model options, streaming, tool calls, structured extraction và usage sau provider adapter; không đưa provider SDK vào capability.
-- [ ] 1.5 Implement capability registry versioned lookup; core không import QLTBYT, `don_vi`, RPC, `ai_quota_*` hoặc Supabase global assumption.
-- [ ] 1.6 Thêm second-app fixture compile/run shared core mà không import package hoặc default identifier QLTBYT.
+- [x] 1.1 Tạo Go module tối thiểu, pin version Go toolchain và Eino, và chỉ thêm provider integration cho behavior Phase 0 quyết định giữ. Vercel không build module này. Change này không thêm CI platform mới.
+- [x] 1.2 Định nghĩa protocol/version, request correlation, capability descriptor, normalized text/tool/artifact/error event và usage contract app-neutral.
+- [x] 1.3 Implement Eino model/tool loop, workflow cancellation, tool-step/input/output limits và bounded retry policy; giữ nguyên user Eino code đã tương thích, chỉ bọc adapter tối thiểu, không rewrite vô cớ.
+- [x] 1.4 Đặt model options, streaming, tool calls, structured extraction và usage sau provider adapter; không đưa provider SDK vào capability.
+- [x] 1.5 Implement capability registry versioned lookup; core không import QLTBYT, `don_vi`, RPC, `ai_quota_*` hoặc Supabase global assumption.
+- [x] 1.6 Thêm second-app fixture compile/run shared core mà không import package hoặc default identifier QLTBYT.
 
 Điểm dừng/review: Review boundary shared core trước khi đưa prompt, authorization hoặc RPC QLTBYT vào service.
 

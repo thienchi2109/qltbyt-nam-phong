@@ -55,5 +55,7 @@ Supabase, migration hoặc production cutover.
 
 ## Bước tiếp theo
 
-Chờ user duyệt rõ việc bắt đầu Phase 1. Khi được duyệt, chỉ triển khai đúng
-Phase 1 và giữ các phase sau ở trạng thái chưa tick.
+User đã duyệt bắt đầu Phase 1 vào 2026-09-25. Implementation nằm trên nhánh
+`feat/shared-ai-service-phase1`, tách từ `337d7dc4`. Handoff Phase 1 là
+`phase-1/handoff.md`. Các quyết định trong file này không đổi. Phase 2 trở đi
+vẫn chờ duyệt riêng.
