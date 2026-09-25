@@ -113,3 +113,7 @@ Mốc xử lý và điều kiện chặn của từng hạng mục nằm trong b
 ## Chưa làm
 
 Phase 3 trở đi chưa bắt đầu và chưa được tick. Chưa chuyển repair-draft orchestration, chưa chạy secondary extraction, chưa gọi `ai_quota_reserve` / `ai_quota_finalize` trên chat path, chưa kill-switch, chưa status quota mới, chưa DDL. Task 4.x và 5.x không được tick dù ingress HMAC/stream đã có bản local để khóa contract Phase 2. Vector HMAC dùng secret test, không ghi vào env production.
+
+## Final review and landing
+
+Reviewer `gpt-5.6-luna` đối chiếu `b10d8595...d47c3457`: không còn Critical/Important findings. Review xác nhận guard, cancellation, timeout audit, sanitization và `SQLExecutor` read-only contract. Focused `go test ./internal/qltbyt` PASS. PostgreSQL driver/grants, production wiring, live DB và deployment vẫn là deferred boundary.
