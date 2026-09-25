@@ -71,14 +71,14 @@ Phụ thuộc: Phase 2 QLTBYT RPC/policy, Phase 0 usage/cancellation proof và q
 
 Bằng chứng nghiệm thu: Draft parity, quota idempotency/reconciliation, unknown-usage, kill-switch và TTL tests.
 
-- [ ] 3.1 Chuyển repair-request draft orchestration, secondary structured extraction và artifact mapping vào adapter; vẫn advisory draft-only/no-submit. Giữ parity UI/artifact; việc đưa secondary usage vào quota lifecycle là sửa accounting, không phải đóng băng hành vi `onFinish` hiện tại.
-- [ ] 3.2 Tích hợp `ai_quota_reserve` và `ai_quota_finalize` vào một lifecycle cho cả primary và secondary usage theo mapping 0.8.
-- [ ] 3.3 Làm finalize idempotent với bounded retry/reconciliation; phân biệt observed usage, error-with-usage và error-without-usage. Evidence của bounded cleanup, failure handling và reconciliation phải nằm trong allowance đề xuất ở 4.5; proof thất bại thì dừng để normative amendment đã review.
-- [ ] 3.4 Áp dụng mapping 0.8 đã trở thành normative. Không trình bày unknown/partial như measured-zero, không tự invent token count, không bịa status mới và không DDL. Nếu dùng 0 làm compatibility sentinel thì phải có uncertainty marker phân biệt được, và không dùng sentinel đó để refund hoặc đóng reservation giả.
-- [ ] 3.5 Giữ kill-switch: environment override thắng, cache 8 giây sau lần đọc database thành công, cache 2 giây sau lỗi đọc database, và fail closed trước model/tool work.
-- [ ] 3.6 Xác nhận `quotaTTL >= 120s` và đủ cho worst-case elapsed từ reserve tới finalize. Drain grace là trần 60-90 giây, không kéo dài request deadline và không phải khoảng gián đoạn cố định bắt buộc; không cộng máy móc deadline 55 giây với thời gian drain. Budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup nằm trong 60 giây hiện có. Ghi metric usage classification.
-- [ ] 3.7 Kiểm chứng quyết định 0.7 bằng fault injection ở ranh giới reserve/provider/finalize và restart trước/sau reservation expiry; chứng minh recovery hoặc giới hạn đã được duyệt, không claim full recovery chỉ từ graceful shutdown.
-- [ ] 3.8 Kiểm chứng bảng mapping 0.8 với known-zero, partial, unknown và finalize lặp; chứng minh uncertainty vẫn phân biệt được với measured-zero tại nơi lưu đã chọn, không silently refund hoặc double-count.
+- [x] 3.1 Chuyển repair-request draft orchestration, secondary structured extraction và artifact mapping vào adapter; vẫn advisory draft-only/no-submit. Giữ parity UI/artifact; việc đưa secondary usage vào quota lifecycle là sửa accounting, không phải đóng băng hành vi `onFinish` hiện tại.
+- [x] 3.2 Tích hợp `ai_quota_reserve` và `ai_quota_finalize` vào một lifecycle cho cả primary và secondary usage theo mapping 0.8.
+- [x] 3.3 Làm finalize idempotent với bounded retry/reconciliation; phân biệt observed usage, error-with-usage và error-without-usage. Evidence của bounded cleanup, failure handling và reconciliation phải nằm trong allowance đề xuất ở 4.5; proof thất bại thì dừng để normative amendment đã review.
+- [x] 3.4 Áp dụng mapping 0.8 đã trở thành normative. Không trình bày unknown/partial như measured-zero, không tự invent token count, không bịa status mới và không DDL. Nếu dùng 0 làm compatibility sentinel thì phải có uncertainty marker phân biệt được, và không dùng sentinel đó để refund hoặc đóng reservation giả.
+- [x] 3.5 Giữ kill-switch: environment override thắng, cache 8 giây sau lần đọc database thành công, cache 2 giây sau lỗi đọc database, và fail closed trước model/tool work.
+- [x] 3.6 Xác nhận `quotaTTL >= 120s` và đủ cho worst-case elapsed từ reserve tới finalize. Drain grace là trần 60-90 giây, không kéo dài request deadline và không phải khoảng gián đoạn cố định bắt buộc; không cộng máy móc deadline 55 giây với thời gian drain. Budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup nằm trong 60 giây hiện có. Ghi metric usage classification.
+- [x] 3.7 Kiểm chứng quyết định 0.7 bằng fault injection ở ranh giới reserve/provider/finalize và restart trước/sau reservation expiry; chứng minh recovery hoặc giới hạn đã được duyệt, không claim full recovery chỉ từ graceful shutdown.
+- [x] 3.8 Kiểm chứng bảng mapping 0.8 với known-zero, partial, unknown và finalize lặp; chứng minh uncertainty vẫn phân biệt được với measured-zero tại nơi lưu đã chọn, không silently refund hoặc double-count.
 
 Điểm dừng/review: Review domain safety và quota evidence; thiếu secondary usage, unknown semantics hoặc kill-switch fail-closed thì chưa sang transport.
 

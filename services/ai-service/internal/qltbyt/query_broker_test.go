@@ -315,7 +315,7 @@ func TestQueryDatabaseEnvelopeKeepsRowsAndChart(t *testing.T) {
 	}
 }
 
-func TestChatPathDoesNotCallQuotaRPCs(t *testing.T) {
+func TestCatalogSkipsQuotaWhileChatAllowsReserve(t *testing.T) {
 	if !knownRPC(RPCQuotaReserve) || !knownRPC(RPCQuotaFinalize) {
 		t.Fatal("quota RPC names are not known")
 	}
