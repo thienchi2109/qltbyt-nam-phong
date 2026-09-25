@@ -1,0 +1,85 @@
+{
+  "schema_version": "phase0-ui-tool-parity-v1",
+  "baseline": {
+    "route": "/api/chat",
+    "stream": "Vercel AI SDK UI Message Stream",
+    "source": "src/app/api/chat/route.ts"
+  },
+  "cases": [
+    {
+      "id": "text-and-terminal",
+      "parts": [
+        { "type": "text", "text": "Thiết bị đang hoạt động bình thường." },
+        { "type": "terminal", "marker": "finish/DONE" }
+      ]
+    },
+    {
+      "id": "mixed-tool-envelope",
+      "parts": [
+        {
+          "type": "tool-input-available",
+          "toolCallId": "equipmentLookup-42",
+          "toolName": "equipmentLookup",
+          "input": { "equipment_id": 42 }
+        },
+        {
+          "type": "tool-output-available",
+          "toolCallId": "equipmentLookup-42",
+          "output": { "equipment": { "thiet_bi_id": 42 } }
+        },
+        {
+          "type": "artifact",
+          "kind": "report/chart",
+          "output": { "title": "Equipment report", "rows": [] }
+        },
+        { "type": "terminal", "marker": "finish/DONE" }
+      ]
+    },
+    {
+      "id": "raw-repair-draft-output",
+      "draft_only": true,
+      "submit": false,
+      "parts": [
+        {
+          "type": "tool-input-available",
+          "toolCallId": "generateRepairRequestDraft-42",
+          "toolName": "generateRepairRequestDraft",
+          "input": {
+            "thiet_bi_id": 42,
+            "mo_ta_su_co": "Không khởi động",
+            "hang_muc_sua_chua": "Kiểm tra nguồn"
+          }
+        },
+        {
+          "type": "tool-output-available",
+          "toolCallId": "generateRepairRequestDraft-42",
+          "output": {
+            "kind": "repairRequestDraft",
+            "draftOnly": true,
+            "source": "assistant",
+            "confidence": "high",
+            "equipment": { "thiet_bi_id": 42 },
+            "formData": {
+              "thiet_bi_id": 42,
+              "mo_ta_su_co": "Không khởi động",
+              "hang_muc_sua_chua": "Kiểm tra nguồn"
+            }
+          }
+        },
+        { "type": "terminal", "marker": "finish/DONE" }
+      ]
+    },
+    {
+      "id": "sanitized-error",
+      "parts": [
+        {
+          "type": "error",
+          "code": "ai_usage_limited",
+          "reason": "user_quota",
+          "message": "AI usage quota exceeded for this user.",
+          "retryAfterMs": 60000
+        }
+      ]
+    }
+  ]
+}
