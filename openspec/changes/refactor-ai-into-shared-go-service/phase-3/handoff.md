@@ -4,6 +4,14 @@ Ngày: 2026-09-25
 Nhánh: `feat/shared-ai-service-phase3`  
 Base: `c603e31f4b70bc58ba51e16715f9f74a7cac9256`
 
+## Commit
+
+- `c898d3f1` feat(ai): add phase 3 draft quota and kill switch
+- `f90c9d5f` fix(ai): bound phase 3 cleanup and reservation claims
+- `20cc4a46` docs(ai): record phase 3 quota evidence
+
+Review fresh-context trên `c603e31f..c898d3f1` không có Critical và có 3 Important. Cả ba được xử lý trong `f90c9d5f` và được đối chiếu lại là đã xử lý, không phát sinh Critical hoặc Important mới.
+
 ## Trạng thái
 
 Phase 3 đã chuyển draft orchestration, secondary extraction, budget ngữ cảnh cộng dồn, lifecycle `ai_quota_reserve` / `ai_quota_finalize`, kill-switch, và kiểm chứng crash recovery vào adapter QLTBYT. Evidence nằm ở `phase-3/phase-3-evidence.md`. Checklist 3.1–3.8 được tick vì có test trong change này. Checklist Phase 0–2 và Phase 4 trở đi không bị sửa.
