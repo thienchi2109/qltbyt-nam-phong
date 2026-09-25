@@ -2,9 +2,7 @@ package qltbyt
 
 import (
 	"context"
-	"encoding/json"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"example.com/shared-ai-service/internal/capability"
@@ -87,8 +85,12 @@ func (a Assistant) bindTools(cred Credential, scope Scope, requestID string, nam
 			tools = append(tools, capability.Tool{
 				Name:        QueryToolName,
 				Description: "Run exactly one read-only SELECT on the ai_readonly semantic layer. Do not call set_config.",
+				Parameters:  toolParameters(QueryToolName),
 				Run: func(ctx context.Context, arguments string) (string, error) {
-					sql, reasoning := queryArguments(arguments)
+					sql, reasoning, err := validatedQueryArguments(arguments)
+					if err != nil {
+						return "", err
+					}
 					raw, err := a.executeQuery(ctx, cred, scope, scope.EffectiveFacilityID, sql, requestID)
 					if err != nil {
 						return "", err
@@ -110,6 +112,7 @@ func (a Assistant) bindTools(cred Credential, scope Scope, requestID string, nam
 		tools = append(tools, capability.Tool{
 			Name:        boundSpec.Name,
 			Description: boundSpec.Description,
+			Parameters:  toolParameters(boundSpec.Name),
 			Run: func(ctx context.Context, arguments string) (string, error) {
 				return a.runCatalog(ctx, cred, scope, requestID, boundSpec, arguments)
 			},
@@ -140,51 +143,6 @@ func (a Assistant) runCatalog(ctx context.Context, cred Credential, scope Scope,
 		return "", protocol.NewError(502, protocol.CodeProviderFailure, "The read-only tool failed.", false)
 	}
 	return string(compacted), nil
-}
-
-func buildRPCPayload(name, arguments string, scope Scope, cred Credential) (json.RawMessage, error) {
-	fields := map[string]json.RawMessage{}
-	if strings.TrimSpace(arguments) != "" {
-		if err := json.Unmarshal([]byte(arguments), &fields); err != nil {
-			return nil, protocol.NewError(400, protocol.CodeInvalidRequest, "The tool arguments are not valid.", false)
-		}
-	}
-	if name == "categorySuggestion" {
-		device := fields["device_name"]
-		fields = map[string]json.RawMessage{}
-		if len(device) > 0 {
-			fields["p_device_name"] = device
-		}
-	}
-	delete(fields, "p_don_vi")
-	delete(fields, "p_user_id")
-	facility, err := json.Marshal(scope.EffectiveFacilityID)
-	if err != nil {
-		return nil, err
-	}
-	user, err := json.Marshal(strconv.FormatInt(cred.UserID, 10))
-	if err != nil {
-		return nil, err
-	}
-	fields["p_don_vi"] = facility
-	fields["p_user_id"] = user
-	return json.Marshal(fields)
-}
-
-func queryArguments(arguments string) (string, string) {
-	var payload struct {
-		SQL       string `json:"sql"`
-		Reasoning string `json:"reasoning"`
-	}
-	if err := json.Unmarshal([]byte(arguments), &payload); err != nil || strings.TrimSpace(payload.SQL) == "" {
-		return arguments, ""
-	}
-	return payload.SQL, strings.TrimSpace(payload.Reasoning)
-}
-
-func sqlFromArgs(arguments string) string {
-	sql, _ := queryArguments(arguments)
-	return sql
 }
 
 func messageBytes(messages []protocol.Message) int {

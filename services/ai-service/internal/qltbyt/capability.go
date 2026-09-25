@@ -59,13 +59,17 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 	if decision.Clarify != "" {
 		return capability.Prepared{Clarification: decision.Clarify}, nil
 	}
-	if messageBytes(request.Messages) > CompactedInputLimit {
-		return capability.Prepared{}, protocol.NewError(400, protocol.CodeLimitExceeded, "Request exceeds compacted context limit.", false)
-	}
 	names := a.runnableNames(decision.Tools)
 	scope := resolveScope(cred, len(names) > 0)
 	if scope.Guidance != "" {
 		return capability.Prepared{Clarification: scope.Guidance}, nil
+	}
+	history := make([]protocol.Message, 0, len(request.Messages))
+	for _, message := range request.Messages {
+		history = append(history, compactHistoryMessage(message))
+	}
+	if messageBytes(history) > CompactedInputLimit {
+		return capability.Prepared{}, protocol.NewError(400, protocol.CodeLimitExceeded, "Request exceeds compacted context limit.", false)
 	}
 	var facilityID int64
 	if len(names) > 0 || scope.EffectiveFacilityID > 0 {
@@ -77,11 +81,9 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 		FacilityName:   displayName(request),
 		PrivilegedRole: promptPrivileged(cred.RawRole),
 	})
-	messages := make([]protocol.Message, 0, len(request.Messages)+1)
+	messages := make([]protocol.Message, 0, len(history)+1)
 	messages = append(messages, protocol.Message{Role: protocol.RoleSystem, Content: prompt})
-	for _, message := range request.Messages {
-		messages = append(messages, compactHistoryMessage(message))
-	}
+	messages = append(messages, history...)
 	return capability.Prepared{
 		Messages:      messages,
 		Tools:         a.bindTools(cred, scope, request.RequestID, names),

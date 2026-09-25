@@ -44,7 +44,7 @@ Provisioning role/connection `ai_query_tool` và schema/RPC audit vẫn là SQL 
 
 ## Kiểm tra đã chạy
 
-Trong `services/ai-service`, ngày 2026-09-25, chạy lại sau khi sửa hai finding Important:
+Trong `services/ai-service`, ngày 2026-09-25, chạy lại sau khi sửa guard SQL, schema tool, argument null, và budget compaction:
 
 - `gofmt -l .`: không có file
 - `go test -count=1 ./...`: PASS
@@ -60,6 +60,22 @@ Từ root repo:
 - `/usr/bin/openspec validate refactor-ai-into-shared-go-service --strict`: PASS
 
 `golang.org/x/text v0.26.0` được đưa lên require trực tiếp cho chuẩn hóa intent. Các pin Go 1.24.0, toolchain go1.26.5, eino v0.9.21, openai adapter v0.1.13, gemini v0.1.36, và genai v1.70.0 không đổi.
+
+## Review follow-up 2
+
+Bốn finding Important được xử lý trước khi chấp nhận Phase 2:
+
+- Guard SQL không còn coi identifier trong ngoặc kép là literal. `"public"`, `"set_config"(` và `SELECT … INTO TEMP/TEMPORARY/UNLOGGED` bị từ chối. Chuỗi trong ngoặc đơn vẫn không bị hiểu là từ khóa.
+- Mọi quan hệ `ai_readonly.*` và mọi đích `FROM`/`JOIN` phải là view đã duyệt (`equipment_search`, `maintenance_facts`, `repair_facts`, `usage_facts`, `quota_facts`) hoặc CTE không có schema. `ai_readonly.internal_view` có test riêng.
+- Argument `null` không panic. Mười catalog tool đều trả lỗi request. `categorySuggestion` thiếu `device_name` bị từ chối trước broker.
+- Schema tham số được gắn vào tool Eino và được kiểm tra trên server: đúng field, kiểu, giới hạn, và không nhận field lạ. `query_database` bắt buộc `sql` và `reasoning`. `p_don_vi`/`p_user_id` vẫn do server ghi đè.
+- Budget compaction đo history sau khi bỏ `uiArtifact`. Clarification cơ sở và clarification intent trả về trước gate đó.
+
+`p_sql_shape` vẫn là câu SQL đã chuẩn hóa khoảng trắng và cắt tối đa 1000 ký tự. Đó là shape literal đã sanitize, không phải hash và không phải bản xóa literal. Audit DB giữ shape đó vì spec yêu cầu shape; operational log vẫn không ghi SQL. Đây không phải blocker riêng.
+
+Lỗi executor lạ vẫn có thể đi qua biên tool nội bộ. Chưa chứng minh lỗi đó tới model hoặc browser; lỗi terminal HTTP vẫn đi qua `publicError`. Đây là residual cần hardening, không phải kết luận đã rò ra ngoài.
+
+Budget ngữ cảnh cộng dồn để sang Phase 3. Không bỏ `uiArtifact` của lượt hiện tại. Provisioning SQL và encoder Vercel AI SDK UI Message Stream vẫn để đúng phase sau.
 
 ## Review follow-up
 

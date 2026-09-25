@@ -29,6 +29,38 @@ func TestQueryGuardAcceptsReadOnlyStatements(t *testing.T) {
 	if !strings.Contains(literal.Statement, "contains E'' marker") {
 		t.Fatalf("literal = %s", literal.Statement)
 	}
+	quoted, err := validateSQL(`select "equipment_id" from "ai_readonly"."equipment_search"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(quoted.Statement, `"ai_readonly"."equipment_search"`) {
+		t.Fatalf("quoted = %s", quoted.Statement)
+	}
+	kept, err := validateSQL("select 'into temp public.set_config' as note from ai_readonly.equipment_search")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(kept.SQLShape, "into temp") {
+		t.Fatalf("shape = %s", kept.SQLShape)
+	}
+}
+
+func TestQueryGuardRejectsUnapprovedCatalog(t *testing.T) {
+	cases := []string{
+		"select id from ai_readonly.internal_view",
+		`select id from "ai_readonly"."internal_view"`,
+		"select id from internal_view",
+		"select id from thiet_bi",
+	}
+	for _, sql := range cases {
+		t.Run(sql, func(t *testing.T) {
+			_, err := validateSQL(sql)
+			var sqlErr *SQLError
+			if !errors.As(err, &sqlErr) || sqlErr.Code != "unapproved_relation" {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
 }
 
 func TestQueryGuardRejectsUnsafeStatements(t *testing.T) {
@@ -51,6 +83,11 @@ func TestQueryGuardRejectsUnsafeStatements(t *testing.T) {
 		{sql: "select 1 where set_config('app.current_facility_id', '2', true) is not null", code: "forbidden_function"},
 		{sql: "select $$'$$ || set_config('app.current_facility_id', '2', true)", code: "invalid_statement"},
 		{sql: "select E'x\\'' from public.thiet_bi", code: "invalid_statement"},
+		{sql: `select id from "public".thiet_bi`, code: "forbidden_schema"},
+		{sql: `select "set_config"('app.current_facility_id', '2', true)`, code: "forbidden_function"},
+		{sql: "select 1 into temp secret_table", code: "forbidden_keyword"},
+		{sql: "select 1 into temporary secret_table", code: "forbidden_keyword"},
+		{sql: "select 1 into unlogged secret_table", code: "forbidden_keyword"},
 	}
 	for _, test := range cases {
 		t.Run(test.code+" "+test.sql, func(t *testing.T) {

@@ -37,7 +37,20 @@ var (
 	blockCommentPattern      = regexp.MustCompile(`(?s)/\*([\s\S]*?)\*/`)
 	lineCommentPattern       = regexp.MustCompile(`--([^\n\r]*)`)
 	selectPattern            = regexp.MustCompile(`(?i)^(select|with)\b`)
+	intoPattern              = regexp.MustCompile(`(?i)\binto\b`)
+	quotedIdentPattern       = regexp.MustCompile(`"([A-Za-z_][\w$]*)"`)
+	aiReadonlyRefPattern     = regexp.MustCompile(`(?i)\bai_readonly\s*\.\s*([A-Za-z_][\w$]*)`)
+	relationPattern          = regexp.MustCompile(`(?i)\b(?:from|join)\s+(?:([A-Za-z_][\w$]*)\s*\.\s*)?([A-Za-z_][\w$]*)`)
+	ctePattern               = regexp.MustCompile(`(?i)(?:\bwith\b|\brecursive\b|,)\s*([A-Za-z_][\w$]*)\s+as\s*\(`)
 )
+
+var approvedViews = map[string]struct{}{
+	"equipment_search":  {},
+	"maintenance_facts": {},
+	"repair_facts":      {},
+	"usage_facts":       {},
+	"quota_facts":       {},
+}
 
 func validateSQL(sql string) (validatedSQL, error) {
 	if dollarQuotePattern.MatchString(sql) {
@@ -46,7 +59,7 @@ func validateSQL(sql string) (validatedSQL, error) {
 	commentText := normalizeSpace(extractCommentText(sql))
 	withoutComments := stripSQLComments(sql)
 	normalized := normalizeSpace(withoutComments)
-	masked := normalizeSpace(maskQuotedText(withoutComments))
+	masked := normalizeSpace(maskSingleQuotes(withoutComments))
 	if normalized == "" {
 		return validatedSQL{}, sqlError("invalid_statement", "SQL is required.")
 	}
@@ -60,10 +73,17 @@ func validateSQL(sql string) (validatedSQL, error) {
 	if !selectPattern.MatchString(statement) {
 		return validatedSQL{}, sqlError("invalid_statement", "Only SELECT statements are allowed.")
 	}
+	scan := normalizeSpace(revealQuotedIdentifiers(maskSingleQuotes(withoutComments)))
 	if err := assertSQLSurface(commentText); err != nil {
 		return validatedSQL{}, err
 	}
-	if err := assertSQLSurface(masked); err != nil {
+	if err := assertSQLSurface(scan); err != nil {
+		return validatedSQL{}, err
+	}
+	if intoPattern.MatchString(commentText) || intoPattern.MatchString(scan) {
+		return validatedSQL{}, sqlError("forbidden_keyword", "Forbidden SQL keyword detected.")
+	}
+	if err := assertApprovedRelations(scan); err != nil {
 		return validatedSQL{}, err
 	}
 	return validatedSQL{Statement: statement, SQLShape: statement}, nil
@@ -120,7 +140,47 @@ func stripSQLComments(sql string) string {
 	return lineCommentPattern.ReplaceAllString(withoutBlock, " ")
 }
 
-func maskQuotedText(sql string) string {
+func assertApprovedRelations(scan string) error {
+	ctes := map[string]struct{}{}
+	for _, match := range ctePattern.FindAllStringSubmatch(scan, -1) {
+		if len(match) > 1 {
+			ctes[strings.ToLower(match[1])] = struct{}{}
+		}
+	}
+	for _, match := range aiReadonlyRefPattern.FindAllStringSubmatch(scan, -1) {
+		if len(match) < 2 || !approvedView(match[1]) {
+			return sqlError("unapproved_relation", "Only approved ai_readonly views are queryable.")
+		}
+	}
+	for _, match := range relationPattern.FindAllStringSubmatch(scan, -1) {
+		if len(match) < 3 {
+			continue
+		}
+		schemaName := strings.ToLower(match[1])
+		name := strings.ToLower(match[2])
+		if schemaName != "" && schemaName != "ai_readonly" {
+			return sqlError("forbidden_schema", "Only the ai_readonly schema is queryable.")
+		}
+		if _, ok := ctes[name]; ok && schemaName == "" {
+			continue
+		}
+		if !approvedView(name) {
+			return sqlError("unapproved_relation", "Only approved ai_readonly views are queryable.")
+		}
+	}
+	return nil
+}
+
+func approvedView(name string) bool {
+	_, ok := approvedViews[strings.ToLower(name)]
+	return ok
+}
+
+func revealQuotedIdentifiers(sql string) string {
+	return quotedIdentPattern.ReplaceAllString(sql, "$1")
+}
+
+func maskSingleQuotes(sql string) string {
 	var masked strings.Builder
 	var quote rune
 	runes := []rune(sql)
@@ -131,7 +191,7 @@ func maskQuotedText(sql string) string {
 			next = runes[index+1]
 		}
 		if quote == 0 {
-			if char == '\'' || char == '"' {
+			if char == '\'' {
 				quote = char
 				masked.WriteByte(' ')
 			} else {

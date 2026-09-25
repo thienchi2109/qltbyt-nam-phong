@@ -235,7 +235,7 @@ func TestCurrentTurnKeepsEvidenceAndHistoryStripsIt(t *testing.T) {
 	assistant := testAssistant(broker, &spyQuery{})
 	cred := testCredential("technician", facilityPtr(2), nil)
 	scope := resolveScope(cred, true)
-	quota, err := assistant.runCatalog(context.Background(), cred, scope, "req-quota", catalogMust("deviceQuotaLookup"), `{}`)
+	quota, err := assistant.runCatalog(context.Background(), cred, scope, "req-quota", catalogMust("deviceQuotaLookup"), `{"p_thiet_bi_id":7}`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestChatPathDoesNotCallQuotaRPCs(t *testing.T) {
 	if scope.EffectiveFacilityID != 2 || scope.FacilitySource != facilitySourceSession {
 		t.Fatalf("scope = %+v", scope)
 	}
-	raw, err := assistant.runCatalog(context.Background(), cred, scope, "req-dept", catalogMust("departmentList"), `{"p_don_vi":999,"name":"Khoa"}`)
+	raw, err := assistant.runCatalog(context.Background(), cred, scope, "req-dept", catalogMust("departmentList"), `{}`)
 	if err != nil {
 		t.Fatal(err)
 	}

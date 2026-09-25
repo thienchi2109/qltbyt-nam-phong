@@ -60,6 +60,40 @@ func TestClarificationSkipsReserveOpenAndBudget(t *testing.T) {
 	}
 }
 
+func TestFacilityClarificationPrecedesCompactionBudget(t *testing.T) {
+	assistant := testAssistant(&spyBroker{}, &spyQuery{})
+	text := "yêu cầu sửa chữa đang tồn đọng" + strings.Repeat(" z", 30000)
+	if len(text) <= CompactedInputLimit {
+		t.Fatal("fixture is not over the compacted budget")
+	}
+	prepared, err := assistant.Prepare(context.Background(), testRequest(t, testCredential("admin", nil, nil), text, []string{"equipmentLookup", "repairSummary"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepared.Clarification != FacilityRequiredMessage {
+		t.Fatalf("clarification = %q", prepared.Clarification)
+	}
+}
+
+func TestCompactionBudgetMeasuresHistoryAfterArtifactStrip(t *testing.T) {
+	assistant := testAssistant(&spyBroker{}, &spyQuery{})
+	request := testRequest(t, testCredential("technician", facilityPtr(2), nil), "Xin chào", []string{"equipmentLookup"})
+	request.Messages = append(request.Messages, protocol.Message{
+		Role:    protocol.RoleTool,
+		Content: `{"modelSummary":{"summaryText":"equipmentLookup: 1 result(s)."},"uiArtifact":{"rawPayload":{"blob":"` + strings.Repeat("H", 50000) + `"}}}`,
+	})
+	if messageBytes(request.Messages) <= CompactedInputLimit {
+		t.Fatal("raw history is not over the budget")
+	}
+	prepared, err := assistant.Prepare(context.Background(), request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if messageBytes(prepared.Messages) == 0 || strings.Contains(prepared.Messages[len(prepared.Messages)-1].Content, "HHHH") {
+		t.Fatalf("history = %#v", prepared.Messages)
+	}
+}
+
 func TestProceedingRequestHitsCompactionBudgetBeforeReserve(t *testing.T) {
 	assistant := testAssistant(&spyBroker{}, &spyQuery{})
 	reg := registry.New()
