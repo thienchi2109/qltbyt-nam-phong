@@ -27,8 +27,11 @@ type Tool struct {
 
 // Prepared is the capability view of one request before model execution.
 type Prepared struct {
-	Messages      []protocol.Message
-	Tools         []Tool
+	Messages []protocol.Message
+	Tools    []Tool
+	// RestrictTools binds Tools exactly and ignores the request tool list.
+	// An empty Tools slice with RestrictTools set offers no tools.
+	RestrictTools bool
 	Clarification string
 }
 

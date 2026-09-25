@@ -51,13 +51,13 @@ Phụ thuộc: Phase 1 core/adapter contracts và quyết định authentication
 
 Bằng chứng nghiệm thu: Authorization, parser/catalog, timeout/limit, audit redaction và prompt/compaction tests.
 
-- [ ] 2.1 Đưa prompt, intent routing, tool allowlist, evidence rules và artifact schemas vào QLTBYT adapter.
-- [ ] 2.2 Implement RPC/Supabase adapter với signed user claims, `admin` = `global`, tenant/facility scope và không cấp broad `service_role`.
-- [ ] 2.3 Giữ `query_database` QLTBYT-only, dùng `ai_query_tool` read-only role/connection, approved schema/catalog, statement allowlist, timeout, row/cell limit và cấm DDL/DCL/write.
-- [ ] 2.4 Gọi `assistant_query_database_audit_log` với các field RPC đang bắt buộc: `p_sql_shape` đã sanitize, nonempty, tối đa 1000 ký tự (hash không thay thế shape), `p_tool_path` đúng `query_database`, `p_status`, `p_latency_ms`, `p_effective_facility_id`, `p_facility_source` là `selected` hoặc `session`, và `p_error_class` khi failure. Credential mang numeric `user_id` claim. Tiếp tục gửi các field optional mà audited executor hiện gửi: `p_row_count`, `p_payload_bytes`, `p_requested_facility_id`, `p_session_facility_id`, `p_raw_role`. Success: execute, audit, rồi mới release; audit failure trên success chặn release. Failure: audit best-effort, nuốt lỗi audit, ném lại lỗi SQL gốc. Không trả kết quả success rỗng. Operational log không lưu raw prompt hoặc sensitive result.
-- [ ] 2.5 Compaction bounded cho tool/RPC results trước model; clarification không bị compaction hoặc model-execution budget gate loại bỏ. Clarification trả về trước reserve không tiêu thụ reservation.
-- [ ] 2.6 Viết test chứng minh thiếu role/connection hoặc DB audit path thì tool disabled; stdout/log redacted không thay thế audit DB, còn nhu cầu DDL/audit schema được ghi thành SQL change và quality gate riêng.
-- [ ] 2.7 Kiểm chứng cơ chế authentication đã chọn ở 0.9 bằng negative tests cho credential hết hạn/sai audience, claims giả từ browser, scope sai và secret thiếu; chứng minh cancellation/audit propagation và bounded quota cleanup không mở rộng quyền.
+- [x] 2.1 Đưa prompt, intent routing, tool allowlist, evidence rules và artifact schemas vào QLTBYT adapter.
+- [x] 2.2 Implement RPC/Supabase adapter với signed user claims, `admin` = `global`, tenant/facility scope và không cấp broad `service_role`.
+- [x] 2.3 Giữ `query_database` QLTBYT-only, dùng `ai_query_tool` read-only role/connection, approved schema/catalog, statement allowlist, timeout, row/cell limit và cấm DDL/DCL/write.
+- [x] 2.4 Gọi `assistant_query_database_audit_log` với các field RPC đang bắt buộc: `p_sql_shape` đã sanitize, nonempty, tối đa 1000 ký tự (hash không thay thế shape), `p_tool_path` đúng `query_database`, `p_status`, `p_latency_ms`, `p_effective_facility_id`, `p_facility_source` là `selected` hoặc `session`, và `p_error_class` khi failure. Credential mang numeric `user_id` claim. Tiếp tục gửi các field optional mà audited executor hiện gửi: `p_row_count`, `p_payload_bytes`, `p_requested_facility_id`, `p_session_facility_id`, `p_raw_role`. Success: execute, audit, rồi mới release; audit failure trên success chặn release. Failure: audit best-effort, nuốt lỗi audit, ném lại lỗi SQL gốc. Không trả kết quả success rỗng. Operational log không lưu raw prompt hoặc sensitive result.
+- [x] 2.5 Compaction bounded cho tool/RPC results trước model; clarification không bị compaction hoặc model-execution budget gate loại bỏ. Clarification trả về trước reserve không tiêu thụ reservation.
+- [x] 2.6 Viết test chứng minh thiếu role/connection hoặc DB audit path thì tool disabled; stdout/log redacted không thay thế audit DB, còn nhu cầu DDL/audit schema được ghi thành SQL change và quality gate riêng.
+- [x] 2.7 Kiểm chứng cơ chế authentication đã chọn ở 0.9 bằng negative tests cho credential hết hạn/sai audience, claims giả từ browser, scope sai và secret thiếu; chứng minh cancellation/audit propagation và bounded quota cleanup không mở rộng quyền.
 
 Điểm dừng/review: Không bật `query_database` khi guardrail hoặc audit path chưa đủ; mọi SQL provisioning là scope riêng, chưa được ủy quyền ở đây.
 

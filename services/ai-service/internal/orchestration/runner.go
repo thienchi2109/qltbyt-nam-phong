@@ -71,7 +71,11 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 	if text := strings.TrimSpace(prepared.Clarification); text != "" {
 		return Result{Events: clarificationEvents(request.RequestID, text)}, nil
 	}
-	selected, err := selectTools(prepared.Tools, request.RequestedTools)
+	requestedTools := request.RequestedTools
+	if prepared.RestrictTools {
+		requestedTools = toolNames(prepared.Tools)
+	}
+	selected, err := selectTools(prepared.Tools, requestedTools)
 	if err != nil {
 		return Result{}, publicError(request.RequestID, err)
 	}
@@ -268,6 +272,14 @@ func modelMessages(prompts []string, messages []protocol.Message) ([]*schema.Mes
 	}
 	combined = append(combined, messages...)
 	return protocol.ToSchemaMessages(combined)
+}
+
+func toolNames(tools []capability.Tool) []string {
+	names := make([]string, len(tools))
+	for i := range tools {
+		names[i] = tools[i].Name
+	}
+	return names
 }
 
 func selectTools(offered []capability.Tool, requested []string) ([]capability.Tool, error) {

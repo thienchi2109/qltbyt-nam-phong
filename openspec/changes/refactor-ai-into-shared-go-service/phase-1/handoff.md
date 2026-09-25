@@ -41,3 +41,5 @@ authorization và RPC của QLTBYT vào adapter.
   stream writer khi Phase 2 thêm HTTP streaming boundary.
 - Protocol errors hiện là tiếng Anh; BFF Phase 2 chịu trách nhiệm dịch lỗi
   hướng người dùng sang tiếng Việt tại HTTP boundary.
+
+Phase 2 đã bắt đầu trên nhánh `feat/shared-ai-service-phase2` từ commit `ac1599c378a6162b3fd0e2262d891b80827d67fa`. Quyết định Phase 1 ở trên không đổi.

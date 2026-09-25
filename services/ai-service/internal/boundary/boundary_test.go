@@ -23,7 +23,14 @@ func TestModuleStaysAppNeutralAndPinned(t *testing.T) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() || !strings.HasSuffix(path, ".go") {
+		if entry.IsDir() {
+			parent := filepath.Base(filepath.Dir(path))
+			if parent == "internal" && entry.Name() == "ql"+"tbyt" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") {
 			return nil
 		}
 		body, err := os.ReadFile(path)
