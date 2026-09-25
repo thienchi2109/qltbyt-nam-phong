@@ -133,6 +133,23 @@ For an accepted request, the Go service SHALL return the Vercel AI SDK UI Messag
 - **WHEN** a provider or capability error occurs after stream output has begun
 - **THEN** the service emits a sanitized UI error event correlated by the existing `X-Request-ID` response header and closes the stream without exposing prompt, SQL, token or secret content
 
+### Requirement: QLTBYT Markdown Table Presentation
+
+In Phase 5, the QLTBYT prompt SHALL instruct the model to default to Markdown tables for multiple items sharing comparable attributes, including equipment lists, maintenance schedules and comparisons. It SHALL prefer 3–5 concise columns, mark unavailable values as “Chưa có dữ liệu”, and prohibit inventing values to fill cells. Explanations, procedures and clarifications MAY use prose or lists. Existing tool/artifact cards SHALL retain their contracts. This enhancement SHALL remain on the dark path until separately authorized cutover.
+
+#### Scenario: Tabular response crosses stream chunks
+
+- **WHEN** a fixture streams a Markdown table through the dark BFF with chunk boundaries inside headers, delimiters and cells
+- **THEN** the completed response renders all expected rows and columns using the existing Markdown renderer
+- **AND** fixtures cover Unicode, escaped pipe characters and safe rendering of untrusted cell content
+- **AND** wide tables scroll horizontally within their container on mobile without widening the page
+
+#### Scenario: Presentation guidance preserves non-tabular behavior
+
+- **WHEN** Phase 5 validates the QLTBYT prompt and UI fixtures
+- **THEN** the prompt includes the table preference and missing-data rules while allowing prose/list explanations and preserving artifact cards
+- **AND** deterministic prompt/renderer tests do not claim guaranteed provider compliance or require an unapproved paid provider call
+
 ### Requirement: Cancellation and Usage Lifecycle
 
 The system SHALL propagate BFF/browser abort through HTTP, Eino, provider calls and capability tool/RPC calls. The forwarded deadline SHALL preserve the remaining BFF budget and MUST NOT reset when the request reaches Go. The proposed budget inside the current 60-second route `maxDuration` is at most 55 seconds of Go work from the original request start plus up to 5 seconds of cleanup. Acceptance MUST include evidence that bounded cleanup, failure handling, and reconciliation fit that cleanup allowance. If that proof fails, the budget changes only through a reviewed normative amendment; the requirement does not claim that 5 seconds is insufficient without that evidence. Cleanup SHALL use a detached bounded context so quota finalization can complete after HTTP cancellation. The shared usage interface SHALL support reservation, observed usage, finalization status and reconciliation metadata. Finalization MUST be idempotent under retry, use bounded retry/reconciliation, and distinguish observed usage, error-with-usage and error-without-usage. Unknown or partial provider usage MUST NOT be presented as measured zero or silently refunded. A numeric zero MAY remain only as the existing compatibility sentinel together with the reviewed uncertainty marker. The adapter MUST NOT invent a quota status or schema. A clarification returned before reserve consumes no reservation.

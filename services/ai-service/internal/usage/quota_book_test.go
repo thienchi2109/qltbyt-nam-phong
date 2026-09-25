@@ -167,6 +167,49 @@ func TestQuotaMappingAndIdempotentFinalize(t *testing.T) {
 	_ = clock
 }
 
+func TestObserveAppendFailurePersistsKnownUsageBeforeFinalize(t *testing.T) {
+	dir := t.TempDir()
+	spy := &spyCaller{reserveID: "res-observe-retry"}
+	now := time.Unix(1_700_000_000, 0).UTC()
+	book, err := NewQuotaBook(dir, func() time.Time { return now }, spy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := book.Reserve(context.Background(), ReserveRequest{RequestID: "req-observe-retry", Caller: spy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, output := 10, 2
+	call := CallUsage{ProviderStarted: true, InputTokens: &input, OutputTokens: &output}
+	book.FailNextAppends(1)
+	if err := book.Observe(context.Background(), reservation.ID, call); err == nil {
+		t.Fatal("injected observation append succeeded")
+	}
+	record, err := book.Finalize(context.Background(), reservation.ID, Aggregate([]CallUsage{call}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spy.finalizeCount() != 1 || spy.finalizes[0].status != rpcSuccess || spy.finalizes[0].in != 10 || spy.finalizes[0].out != 2 {
+		t.Fatalf("finalize = %+v", spy.finalizes)
+	}
+	if !record.Measured || record.InputTokens == nil || *record.InputTokens != 10 || record.OutputTokens == nil || *record.OutputTokens != 2 {
+		t.Fatalf("record = %+v", record)
+	}
+	lines, err := readJournal(filepath.Join(dir, journalName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed := false
+	for _, line := range lines {
+		if line.Kind == kindUsageObserved && line.ReservationID == reservation.ID && line.InputTokens != nil && *line.InputTokens == 10 && line.OutputTokens != nil && *line.OutputTokens == 2 {
+			observed = true
+		}
+	}
+	if !observed {
+		t.Fatal("known usage was not durable before finalization")
+	}
+}
+
 func TestFinalizeRetriesRPCAtMostTwice(t *testing.T) {
 	spy := &spyCaller{reserveID: "res-retry", finalizeFails: 1}
 	book, err := NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, spy)
@@ -354,5 +397,43 @@ func TestRecoveryOfIntentWithoutObservationIsUnknown(t *testing.T) {
 	}
 	if spy.finalizeCount() != 1 {
 		t.Fatalf("replay finalized again: %d", spy.finalizeCount())
+	}
+}
+
+func TestRecoveryKeepsKnownUsageWhenLaterIntentIsUnobserved(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0).UTC()
+	dir := t.TempDir()
+	spy := &spyCaller{reserveID: "res-partial-replay"}
+	book, err := NewQuotaBook(dir, func() time.Time { return now }, spy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := book.Reserve(context.Background(), ReserveRequest{RequestID: "req-partial-replay", Caller: spy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	input, output := 10, 2
+	if err := book.Observe(context.Background(), reservation.ID, CallUsage{ProviderStarted: true, InputTokens: &input, OutputTokens: &output}); err != nil {
+		t.Fatal(err)
+	}
+	if err := appendJournal(context.Background(), book.journalPath(), journalLine{
+		Kind: kindProviderIntent, ReservationID: reservation.ID, RequestID: reservation.RequestID,
+		AttemptID: "2", ExpiresAt: formatExpiry(reservation.ExpiresAt),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	restarted, err := NewQuotaBook(dir, func() time.Time { return now }, spy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := restarted.Recover(now); err != nil {
+		t.Fatal(err)
+	}
+	if spy.finalizeCount() != 1 || spy.finalizes[0].status != rpcErrorWithUsage || spy.finalizes[0].in != 10 || spy.finalizes[0].out != 2 {
+		t.Fatalf("partial replay = %+v", spy.finalizes)
+	}
+	record, err := restarted.Finalize(context.Background(), reservation.ID, Observation{})
+	if err != nil || record.Knowledge != KnowledgePartial || record.InputTokens == nil || *record.InputTokens != 10 || record.OutputTokens == nil || *record.OutputTokens != 2 || record.Attempts != 2 {
+		t.Fatalf("partial record = %+v err=%v", record, err)
 	}
 }

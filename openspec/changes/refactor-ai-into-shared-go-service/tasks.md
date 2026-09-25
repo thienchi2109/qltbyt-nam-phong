@@ -117,6 +117,8 @@ Bằng chứng nghiệm thu: BFF contract, UI/user-event, stream passthrough, br
 - [ ] 5.4 Thêm UI fixtures cho text, tool card, report/chart, repair draft, sanitized error, stop/cancel và stream completion.
 - [ ] 5.5 Chạy browser/user-event contract chứng minh abort truyền tới dark Go path và không đổi current UI behavior.
 - [ ] 5.6 Ghi rõ dark path không phải fallback runtime; chỉ là đường kiểm thử trước cutover.
+- [ ] 5.7 Tăng hướng dẫn prompt QLTBYT: mặc định dùng bảng Markdown cho nhiều mục cùng thuộc tính (thiết bị, lịch bảo trì, so sánh); ưu tiên 3–5 cột, ô ngắn, dữ liệu thiếu ghi “Chưa có dữ liệu”, không suy diễn. Giữ đoạn văn/danh sách cho giải thích, thao tác và clarification; giữ nguyên tool/artifact cards.
+- [ ] 5.8 Thêm fixtures bảng Markdown qua dark BFF/stream với chunk cắt giữa header, delimiter và cell; xác nhận bảng cuối đủ dòng/cột, Unicode, pipe được escape, nội dung ô an toàn và cuộn ngang trên mobile không tràn trang. Dùng prompt contract và renderer fixtures, không coi đó là bảo đảm provider luôn trả bảng; không paid provider smoke nếu chưa được duyệt.
 
 Điểm dừng/review: Review dark evidence với UI owner; chưa có cutover authorization thì không đổi current `/api/chat` traffic.
 

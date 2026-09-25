@@ -22,6 +22,8 @@ Baseline draft là route hiện tại `/api/chat`, nơi repair-draft builder đ�
 - Thêm second-app capability fixture làm boundary test. Fixture này SHALL compile và exercise shared core mà không import package QLTBYT.
 - Phase 0 MUST chốt tham số HMAC, recovery sau hard crash (0.7), mapping usage unknown/partial (0.8) và credential decision (0.9) cho `assistant_query_database_audit_log`. Thiếu proof hoặc 0.7/0.8/0.9 chưa được review thì chặn Phase 1. Gate Phase 2 cho 0.9 và gate Phase 3 cho 0.7/0.8 là defense in depth. Mapping 0.8 trở thành normative trước Phase 3. Không coi detached cleanup hoặc reservation TTL là bằng chứng đã giải quyết crash recovery.
 
+- Phase 5 tăng ưu tiên bảng Markdown cho danh sách/so sánh QLTBYT, kèm fixtures stream/render và mobile. Đây là cải thiện trình bày có chủ đích; không thuộc fixes Phase 3 và không cho phép đổi traffic production.
+
 ## Non-Goals
 
 - MVP không tích hợp Bifrost.

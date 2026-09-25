@@ -13,8 +13,33 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
+type blockingCleanupMemory struct {
+	*usage.Memory
+	observeDeadline  chan time.Time
+	finalizeDeadline chan time.Time
+}
+
+func (m *blockingCleanupMemory) Observe(ctx context.Context, _ string, _ usage.CallUsage) error {
+	deadline, _ := ctx.Deadline()
+	m.observeDeadline <- deadline
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func (m *blockingCleanupMemory) Finalize(ctx context.Context, _ string, _ usage.Observation) (usage.Reconciliation, error) {
+	deadline, _ := ctx.Deadline()
+	m.finalizeDeadline <- deadline
+	<-ctx.Done()
+	return usage.Reconciliation{}, ctx.Err()
+}
+
 func TestToolLoopFinalizesMeasuredUsage(t *testing.T) {
+	startedCalls, providerCalls := 0, 0
 	modelStub := &testmodel.Scripted{GenerateFunc: func(_ context.Context, input []*schema.Message) (*schema.Message, error) {
+		providerCalls++
+		if startedCalls != providerCalls {
+			t.Fatalf("provider call %d started without durable intent %d", providerCalls, providerCalls)
+		}
 		if len(input) > 0 && input[len(input)-1].Role == schema.Tool {
 			return testmodel.UsageMessage("tool result accepted", "stop", 3, 2), nil
 		}
@@ -26,7 +51,8 @@ func TestToolLoopFinalizesMeasuredUsage(t *testing.T) {
 		return message, nil
 	}}
 	session := &staticSession{chat: modelStub}
-	runner, _, opens := newRunner(t, echoCapability{tool: "lookup_item"}, session)
+	runner, book, opens := newRunner(t, echoCapability{tool: "lookup_item"}, session)
+	runner.Usage = &startTrackingMemory{Memory: book, started: &startedCalls}
 	request := testRequest()
 	request.RequestedTools = []string{"lookup_item"}
 	result, err := runner.Run(context.Background(), request)
@@ -39,6 +65,9 @@ func TestToolLoopFinalizesMeasuredUsage(t *testing.T) {
 	if result.Reconciliation.InputTokens == nil || *result.Reconciliation.InputTokens != 7 || *result.Reconciliation.OutputTokens != 3 || result.Reconciliation.Attempts != 2 {
 		t.Fatalf("tokens = %+v %+v attempts=%d", result.Reconciliation.InputTokens, result.Reconciliation.OutputTokens, result.Reconciliation.Attempts)
 	}
+	if startedCalls != 2 || providerCalls != 2 {
+		t.Fatalf("started calls=%d provider calls=%d", startedCalls, providerCalls)
+	}
 	if !hasEventSequence(result.Events, protocol.EventStart, protocol.EventToolCall, protocol.EventToolResult, protocol.EventText, protocol.EventFinish, protocol.EventDone) {
 		t.Fatalf("events = %#v", eventTypes(result.Events))
 	}
@@ -48,6 +77,19 @@ func TestToolLoopFinalizesMeasuredUsage(t *testing.T) {
 	if !strings.Contains(modelStub.Inputs[0][0].Content, "Be brief.") {
 		t.Fatal("prompt fragment was not prepended")
 	}
+}
+
+type startTrackingMemory struct {
+	*usage.Memory
+	started *int
+}
+
+func (m *startTrackingMemory) StartCall(ctx context.Context, reservationID string) error {
+	if err := m.Memory.StartCall(ctx, reservationID); err != nil {
+		return err
+	}
+	*m.started++
+	return nil
 }
 
 func TestClarificationDoesNotReserveOrOpenProvider(t *testing.T) {
@@ -78,16 +120,20 @@ func TestUnknownCapabilityDoesNotOpenProvider(t *testing.T) {
 }
 
 func TestQuotaRetryStopsAfterOutputAndKeepsUnknownDistinct(t *testing.T) {
-	var calls int
+	var calls, startedCalls int
 	modelStub := &testmodel.Scripted{GenerateFunc: func(context.Context, []*schema.Message) (*schema.Message, error) {
 		calls++
+		if startedCalls != calls {
+			t.Fatalf("retry call %d started without intent", calls)
+		}
 		if calls == 1 {
 			return nil, errors.New("status 429 quota exceeded")
 		}
 		return testmodel.UsageMessage("recovered", "stop", 2, 2), nil
 	}}
 	session := &staticSession{chat: modelStub, limit: 2}
-	runner, _, _ := newRunner(t, echoCapability{}, session)
+	runner, book, _ := newRunner(t, echoCapability{}, session)
+	runner.Usage = &startTrackingMemory{Memory: book, started: &startedCalls}
 	result, err := runner.Run(context.Background(), testRequest())
 	if err != nil {
 		t.Fatal(err)
@@ -136,6 +182,39 @@ func TestCancellationAfterProviderStartDoesNotRefund(t *testing.T) {
 		}
 	case <-time.After(time.Second):
 		t.Fatal("run did not return")
+	}
+}
+
+func TestCancellationSharesOneCleanupDeadlineAcrossObserveAndFinalize(t *testing.T) {
+	const budget = 100 * time.Millisecond
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	modelStub := &testmodel.Scripted{GenerateFunc: func(context.Context, []*schema.Message) (*schema.Message, error) {
+		cancel()
+		return testmodel.UsageMessage("done", "stop", 10, 2), nil
+	}}
+	runner, memory, _ := newRunner(t, echoCapability{}, &staticSession{chat: modelStub})
+	book := &blockingCleanupMemory{
+		Memory:           memory,
+		observeDeadline:  make(chan time.Time, 1),
+		finalizeDeadline: make(chan time.Time, 1),
+	}
+	runner.Usage = book
+	runner.Cleanup = budget
+	started := time.Now()
+	done := make(chan struct{})
+	go func() {
+		_, _ = runner.Run(ctx, testRequest())
+		close(done)
+	}()
+	observeDeadline := <-book.observeDeadline
+	finalizeDeadline := <-book.finalizeDeadline
+	<-done
+	if finalizeDeadline.After(observeDeadline.Add(10 * time.Millisecond)) {
+		t.Fatalf("finalize deadline %s exceeds observe deadline %s", finalizeDeadline, observeDeadline)
+	}
+	if elapsed := time.Since(started); elapsed > budget+50*time.Millisecond {
+		t.Fatalf("canceled run took %s with a shared cleanup budget of %s", elapsed, budget)
 	}
 }
 

@@ -87,7 +87,10 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 	if messageBytes(history) > CompactedInputLimit {
 		return capability.Prepared{}, protocol.NewError(400, protocol.CodeLimitExceeded, "Request exceeds compacted context limit.", false)
 	}
-	a.storeBudget(request.RequestID, messageBytes(history))
+	budget, err := a.claimBudget(request.RequestID, messageBytes(history))
+	if err != nil {
+		return capability.Prepared{}, err
+	}
 	var facilityID int64
 	if len(names) > 0 || scope.EffectiveFacilityID > 0 {
 		facilityID = scope.EffectiveFacilityID
@@ -106,7 +109,7 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 		value := scope.EffectiveFacilityID
 		tenantID = &value
 	}
-	return capability.Prepared{
+	prepared := capability.Prepared{
 		Messages:      messages,
 		Tools:         a.bindTools(cred, scope, request.RequestID, names),
 		RestrictTools: true,
@@ -114,7 +117,11 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 		QuotaTenantID: tenantID,
 		QuotaRole:     cred.RawRole,
 		QuotaCaller:   quotaCaller{assistant: a, cred: cred, scope: scope},
-	}, nil
+	}
+	if budget != nil {
+		prepared.Cleanup = func() { a.releaseBudget(request.RequestID, budget) }
+	}
+	return prepared, nil
 }
 
 func (a Assistant) AfterPrimary(ctx context.Context, request protocol.Request, primary capability.PrimaryOutput) (capability.FollowUp, error) {

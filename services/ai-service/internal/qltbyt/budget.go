@@ -30,17 +30,24 @@ func (a Assistant) budgetSlot(requestID string) *budgetSlot {
 	return loaded
 }
 
-func (a Assistant) storeBudget(requestID string, used int) {
-	slot := a.budgetSlot(requestID)
-	if slot == nil {
-		return
+func (a Assistant) claimBudget(requestID string, used int) (*budgetSlot, error) {
+	if a.budgets == nil || requestID == "" {
+		return nil, nil
 	}
-	slot.mu.Lock()
-	slot.used = used
-	slot.mu.Unlock()
+	slot := &budgetSlot{used: used}
+	if _, loaded := a.budgets.LoadOrStore(requestID, slot); loaded {
+		return nil, protocol.NewError(409, protocol.CodeInvalidRequest, "The request is already reserved.", false)
+	}
+	return slot, nil
 }
 
-func (a Assistant) acceptToolOutput(requestID, full string) error {
+func (a Assistant) releaseBudget(requestID string, slot *budgetSlot) {
+	if a.budgets != nil && slot != nil {
+		a.budgets.CompareAndDelete(requestID, slot)
+	}
+}
+
+func (a Assistant) acceptToolOutput(requestID, arguments, full string) error {
 	compacted := modelFacingOutput(full)
 	slot := a.budgetSlot(requestID)
 	used := 0
@@ -49,11 +56,11 @@ func (a Assistant) acceptToolOutput(requestID, full string) error {
 		defer slot.mu.Unlock()
 		used = slot.used
 	}
-	if used+len(full) > CompactedInputLimit {
+	if used+len(arguments)+len(full) > CompactedInputLimit {
 		return protocol.NewError(400, protocol.CodeLimitExceeded, "Request exceeds compacted context limit.", false)
 	}
 	if slot != nil {
-		slot.used += len(compacted)
+		slot.used += len(arguments) + len(compacted)
 	}
 	return nil
 }

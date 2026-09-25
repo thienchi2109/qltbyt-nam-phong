@@ -33,6 +33,7 @@ type Tool struct {
 type Prepared struct {
 	Messages []protocol.Message
 	Tools    []Tool
+	Cleanup  func()
 	// RestrictTools binds Tools exactly and ignores the request tool list.
 	// An empty Tools slice with RestrictTools set offers no tools.
 	RestrictTools bool

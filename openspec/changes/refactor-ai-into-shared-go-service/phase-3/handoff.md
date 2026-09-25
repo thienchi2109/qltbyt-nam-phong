@@ -20,6 +20,23 @@ Không có runtime production change. `src/app/api/chat/route.ts` không đổi.
 
 Accounting sau reservation expiry vẫn là `expired-uncertain`: không measured, không refund. Replay và finalize trước expiry không đổi. Request id trùng trả 409 trước reserve RPC thứ hai và trước khi mở provider, kể cả khi lần đầu refund vì provider chưa chạy.
 
+## Tám finding đã xử lý trong working tree
+
+Verification ran at `HEAD 5ee03b9e`; the follow-up changes are uncommitted.
+
+1. Mỗi provider call ghi intent trước khi bắt đầu và sync usage observation trước khi call tiếp theo. Runner integration test đọc `usage.journal` ngay trước call thứ hai. Recovery giữ 10/2 token đã biết khi intent sau cùng chưa có observation.
+2. Khi append observation lỗi, usage được giữ pending và retry bền vững trước finalize. `TestObserveAppendFailurePersistsKnownUsageBeforeFinalize` xác nhận quota RPC nhận 10/2 token đã đo.
+3. Journal lock, Open, Write và Sync bị giới hạn bởi cleanup context. Caller có thể timeout khi I/O đang chạy; I/O còn lại vẫn giữ FIFO order. Các test bao gồm blocked Sync, chờ lock và FIFO Open.
+4. Empty, malformed, thiếu `enabled` hoặc sai kiểu payload kill-switch đều fail-closed trong cache 2 giây. Payload hợp lệ cache 8 giây; `AI_KILL_SWITCH=on` chặn trước DB.
+5. Budget slot dùng `LoadOrStore`; Cleanup chỉ xóa slot nó sở hữu. Runner defer Cleanup sau Prepare thành công cho cả lỗi Open và completion. Tests khóa duplicate ownership, provider-open failure, thành công và clarification.
+6. Tool accounting đưa arguments vào budget; mức tăng được chấp nhận là arguments cộng compacted output, còn raw full output vẫn phải nằm trong ceiling để artifact lớn không lọt qua compaction.
+7. Stream terminal error không tới runner cho tới khi `Observe` xong. Cancellation đóng source reader idempotently, chờ forwarder trong cleanup budget, rồi mới snapshot usage/finalize. Tests: `TestForwardStreamPersistsUsageBeforeDeliveringProviderError`, `TestForwardStreamDeliversErrorToOpenReader`, `TestForwardStreamDropsErrorWhenReaderIsClosed`, `TestRunnerStreamCancellationPersistsReceivedUsageBeforeFinalize`.
+8. Cancellation dùng đúng một detached deadline chung cho stream wait, `Observe` và `Finalize`; operation sau không được cấp lại cleanup budget đầy đủ. `TestCancellationSharesOneCleanupDeadlineAcrossObserveAndFinalize` xác nhận deadline được chia sẻ.
+
+`quota_book.go` có 433 dòng sau khi chuyển replay helpers sang `quota_book_recovery.go`, dưới ceiling 450 dòng.
+
+Sau hai finding follow-up, các gate đã chạy trong `services/ai-service`: `go test ./...`, `go test -race ./...`, `go vet ./...`, `gofmt -l .`, và `node scripts/npm-run.js run format:check` đều PASS. `openspec validate refactor-ai-into-shared-go-service --strict` cũng PASS.
+
 ## Quyết định giữ
 
 - Undercount chỉ được chấp nhận khi recovery bắt đầu tại hoặc sau expiry. Known zero khác unknown/partial. Không refund usage không biết.
@@ -34,9 +51,7 @@ Accounting sau reservation expiry vẫn là `expired-uncertain`: không measured
 
 ## Residual
 
-- Body `ai_kill_switch_status` rỗng hoặc không parse được đang bị coi là tắt và cache 8 giây. Lỗi transport vẫn fail-closed 2 giây. Phải xử lý trước khi kill-switch đọc RPC thật ở Phase 4 hoặc Phase 5: payload không parse được phải đi vào cache fail-closed 2 giây.
 - Session draft kết thúc khi content chứa đúng substring `"kind":"repairRequestDraft"`. Shape part `tool-generateRepairRequestDraft` của UI chưa được nhận diện riêng. Phải khóa lại trước fixture UI Phase 5, không để lượt sau extract lại một draft đã hoàn tất dưới shape khác.
-- `quota_book.go` còn 376 dòng, dưới trần 450. Tách reload journal trước khi thêm accounting mới.
 - Test hằng số chứng minh drain không được cộng vào 55 giây. Chưa có deadline HTTP thật dùng các hằng số đó. Phase 4 và Phase 6 mới thực thi deadline và stop timeout.
 - Chưa có test riêng cho `Attempts` khi retry lỗi quota rồi rotate key. Meter hiện ghi từng lần `Generate`. Bổ sung test này trước cutover Phase 8.
 - `Sync` journal bị bỏ chờ khi cleanup hết hạn, nhưng goroutine sync vẫn có thể ghi xong sau đó. Caller không đợi. Không coi đường này là hủy được lệnh sync. Phase 4 phải giữ nguyên giới hạn này khi nối cleanup HTTP.
@@ -60,3 +75,7 @@ Accounting sau reservation expiry vẫn là `expired-uncertain`: không measured
 Facility rejection trước executor vẫn không tạo SQL failure audit. `p_sql_shape` rỗng dùng `empty`. Literal trong audit DB vẫn là quyết định đã chấp nhận. Route production vẫn gọi `src/lib/ai/usage-metering.ts`; lifecycle Go không thay đường đó.
 
 Dừng trước Phase 4. Bảng trên không cấp phép bắt đầu phase sau, deploy, hoặc live write. Không sửa predecessor checklist.
+
+## Bổ sung boundary Phase 5: bảng Markdown
+
+Theo yêu cầu người dùng, Phase 5 thực hiện tasks 5.7–5.8: tăng ưu tiên bảng Markdown cho danh sách/so sánh, quy tắc dữ liệu thiếu và fixtures dark stream/render/mobile. Chi tiết normative nằm trong proposal/design/spec/tasks. Hai task vẫn chưa tick; Phase 3 không đổi prompt hay renderer production.

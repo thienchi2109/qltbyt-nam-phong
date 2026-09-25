@@ -6,13 +6,63 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
+	"sync"
 	"time"
 )
 
 const journalFileMode os.FileMode = 0o600
 
 var errTornJournal = errors.New("torn usage journal")
+
+type contextGate struct {
+	token chan struct{}
+}
+
+func newContextGate() contextGate { return contextGate{token: make(chan struct{}, 1)} }
+
+func (g *contextGate) Lock() { g.token <- struct{}{} }
+
+func (g *contextGate) LockContext(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	select {
+	case g.token <- struct{}{}:
+		if err := ctx.Err(); err != nil {
+			g.Unlock()
+			return err
+		}
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (g *contextGate) Unlock() { <-g.token }
+
+var journalGates sync.Map
+
+func journalGate(path string) *contextGate {
+	key, err := filepath.Abs(path)
+	if err == nil {
+		path = key
+	}
+	created := newContextGate()
+	gate, _ := journalGates.LoadOrStore(path, &created)
+	return gate.(*contextGate)
+}
+
+func waitJournal(ctx context.Context, path string) error {
+	gate := journalGate(path)
+	if err := gate.LockContext(ctx); err != nil {
+		return err
+	}
+	gate.Unlock()
+	return nil
+}
 
 type journalLine struct {
 	Kind          string `json:"kind"`
@@ -64,31 +114,37 @@ func readJournal(path string) ([]journalLine, error) {
 // wait out a stuck Sync.
 var journalSync = func(file *os.File) error { return file.Sync() }
 
+var journalOpenFile = os.OpenFile
+
 func appendJournal(ctx context.Context, path string, line journalLine) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, journalFileMode)
+	payload, err := json.Marshal(line)
 	if err != nil {
 		return err
 	}
-	payload, err := json.Marshal(line)
-	if err == nil {
-		_, err = file.Write(append(payload, '\n'))
-	}
-	if err != nil {
-		_ = file.Close()
+	gate := journalGate(path)
+	if err := gate.LockContext(ctx); err != nil {
 		return err
 	}
 	done := make(chan error, 1)
 	go func() {
-		syncErr := journalSync(file)
-		closeErr := file.Close()
-		if syncErr != nil {
-			done <- syncErr
+		defer gate.Unlock()
+		file, openErr := journalOpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, journalFileMode)
+		if openErr != nil {
+			done <- openErr
 			return
 		}
-		done <- closeErr
+		n, writeErr := file.Write(append(payload, '\n'))
+		if writeErr == nil && n != len(payload)+1 {
+			writeErr = io.ErrShortWrite
+		}
+		var syncErr error
+		if writeErr == nil {
+			syncErr = journalSync(file)
+		}
+		done <- errors.Join(writeErr, syncErr, file.Close())
 	}()
 	select {
 	case err := <-done:

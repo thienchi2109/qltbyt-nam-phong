@@ -47,6 +47,7 @@ func TestRepairDraftEmitsArtifactWithoutSubmit(t *testing.T) {
 			t.Fatalf("model tool list included %s", tool.Name)
 		}
 	}
+	prepared.Cleanup()
 	reg := registry.New()
 	if err := Register(reg, assistant); err != nil {
 		t.Fatal(err)
@@ -61,6 +62,9 @@ func TestRepairDraftEmitsArtifactWithoutSubmit(t *testing.T) {
 	result, err := runner.Run(context.Background(), request)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if _, ok := assistant.budgets.Load(request.RequestID); ok {
+		t.Fatal("successful runner execution retained its budget slot")
 	}
 	if extracts != 1 {
 		t.Fatalf("extraction calls = %d", extracts)
@@ -179,7 +183,7 @@ func TestMissingAndInvalidExtractionEmitNoArtifact(t *testing.T) {
 func TestExtractionPromptDoesNotFitTheRemainingBudget(t *testing.T) {
 	assistant := testAssistant(&spyBroker{}, &spyQuery{})
 	request := testRequest(t, testCredential("technician", facilityPtr(2), nil), "Tạo phiếu sửa chữa", nil)
-	assistant.storeBudget(request.RequestID, CompactedInputLimit-8)
+	assistant.budgetSlot(request.RequestID).used = CompactedInputLimit - 8
 	follow := assistant.repairFollowUp(request, capability.PrimaryOutput{ToolResults: []capability.ToolResult{{
 		Name: "equipmentLookup", Output: `{"followUpContext":{"equipment":[{"thiet_bi_id":7}]}}`,
 	}}})

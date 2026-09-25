@@ -89,6 +89,7 @@ type Reconciliation struct {
 // Lifecycle collects observations and finalizes them once per reservation.
 type Lifecycle interface {
 	Reserve(ctx context.Context, request ReserveRequest) (Reservation, error)
+	StartCall(ctx context.Context, reservationID string) error
 	Observe(ctx context.Context, reservationID string, call CallUsage) error
 	Finalize(ctx context.Context, reservationID string, observation Observation) (Reconciliation, error)
 }
@@ -263,6 +264,17 @@ func (m *Memory) Observe(_ context.Context, reservationID string, call CallUsage
 	}
 	item.observations = append(item.observations, call)
 	return nil
+}
+
+// StartCall keeps the lifecycle contract aligned with durable implementations.
+func (m *Memory) StartCall(ctx context.Context, reservationID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	_, err := m.open(reservationID)
+	return err
 }
 
 // Finalize records the aggregate once. After expiry the record stays uncertain

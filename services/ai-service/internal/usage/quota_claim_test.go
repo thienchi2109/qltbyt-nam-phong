@@ -3,9 +3,12 @@ package usage
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -114,9 +117,11 @@ func TestObserveStopsWhenCleanupContextIsDone(t *testing.T) {
 	prev := journalSync
 	started := make(chan struct{})
 	release := make(chan struct{})
+	syncDone := make(chan struct{})
 	journalSync = func(file *os.File) error {
 		close(started)
 		<-release
+		defer close(syncDone)
 		return prev(file)
 	}
 	defer func() { journalSync = prev }()
@@ -140,4 +145,113 @@ func TestObserveStopsWhenCleanupContextIsDone(t *testing.T) {
 		t.Fatal("observe waited for the stuck sync")
 	}
 	close(release)
+	<-syncDone
+}
+
+func TestFinalizeLockWaitHonorsCleanupContext(t *testing.T) {
+	spy := &spyCaller{reserveID: "res-lock"}
+	book, err := NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, spy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := book.Reserve(context.Background(), ReserveRequest{RequestID: "req-lock", Caller: spy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousSync := journalSync
+	started, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	journalSync = func(file *os.File) error {
+		once.Do(func() {
+			close(started)
+			<-release
+		})
+		return previousSync(file)
+	}
+	defer func() {
+		select {
+		case <-release:
+		default:
+			close(release)
+		}
+		journalSync = previousSync
+	}()
+	input := 1
+	observed := make(chan error, 1)
+	go func() {
+		observed <- book.Observe(context.Background(), reservation.ID, CallUsage{ProviderStarted: true, InputTokens: &input, OutputTokens: &input})
+	}()
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("journal sync did not start")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	startedAt := time.Now()
+	_, err = book.Finalize(ctx, reservation.ID, Observation{})
+	if !errors.Is(err, context.DeadlineExceeded) || time.Since(startedAt) >= 100*time.Millisecond || spy.finalizeCount() != 0 {
+		t.Fatalf("finalize wait=%v err=%v rpc calls=%d", time.Since(startedAt), err, spy.finalizeCount())
+	}
+	close(release)
+	if err := <-observed; err != nil {
+		t.Fatal(err)
+	}
+	journalSync = previousSync
+	if _, err := book.Finalize(context.Background(), reservation.ID, Observation{}); err != nil || spy.finalizeCount() != 1 {
+		t.Fatalf("finalize after sync err=%v calls=%d", err, spy.finalizeCount())
+	}
+}
+
+func TestJournalFIFOOpenHonorsCleanupContext(t *testing.T) {
+	spy := &spyCaller{reserveID: "res-fifo"}
+	book, err := NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, spy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reservation, err := book.Reserve(context.Background(), ReserveRequest{RequestID: "req-fifo", Caller: spy})
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(book.dir, journalName)
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := syscall.Mkfifo(path, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	input := 1
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	errCh := make(chan error, 1)
+	startedAt := time.Now()
+	go func() {
+		errCh <- book.Observe(ctx, reservation.ID, CallUsage{ProviderStarted: true, InputTokens: &input, OutputTokens: &input})
+	}()
+	var observeErr error
+	timedOut := false
+	select {
+	case observeErr = <-errCh:
+	case <-time.After(100 * time.Millisecond):
+		timedOut = true
+	}
+	readerDone := make(chan error, 1)
+	go func() {
+		file, err := os.Open(path)
+		if err != nil {
+			readerDone <- err
+			return
+		}
+		_, copyErr := io.Copy(io.Discard, file)
+		readerDone <- errors.Join(copyErr, file.Close())
+	}()
+	if timedOut {
+		observeErr = <-errCh
+	}
+	if err := <-readerDone; err != nil {
+		t.Fatal(err)
+	}
+	if timedOut || !errors.Is(observeErr, context.DeadlineExceeded) || time.Since(startedAt) >= 100*time.Millisecond {
+		t.Fatalf("observe wait=%v err=%v timed out waiting=%v", time.Since(startedAt), observeErr, timedOut)
+	}
 }

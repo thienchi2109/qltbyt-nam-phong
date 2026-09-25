@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"example.com/shared-ai-service/internal/capability"
@@ -68,6 +69,9 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 	if err != nil {
 		return Result{}, publicError(request.RequestID, err)
 	}
+	if prepared.Cleanup != nil {
+		defer prepared.Cleanup()
+	}
 	if text := strings.TrimSpace(prepared.Clarification); text != "" {
 		return Result{Events: clarificationEvents(request.RequestID, text)}, nil
 	}
@@ -97,9 +101,11 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 	if err != nil {
 		return Result{}, publicError(request.RequestID, err)
 	}
+	cleanup := newCleanupScope(ctx, r.cleanupBudget())
+	defer cleanup.Close()
 	session, err := r.Open(ctx, request)
 	if err != nil {
-		return r.finish(ctx, request, reservation.ID, nil, nil, nil, "", err)
+		return r.finish(cleanup, request, reservation.ID, nil, nil, nil, "", err)
 	}
 
 	bound, trace, err := bindTools(selected, toolLimits{
@@ -108,11 +114,16 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 		maxOutput: limits.MaxToolOutput,
 	})
 	if err != nil {
-		return r.finish(ctx, request, reservation.ID, nil, nil, nil, "", err)
+		return r.finish(cleanup, request, reservation.ID, nil, nil, nil, "", err)
 	}
-	state := &meterState{}
+	state := &meterState{start: func(callCtx context.Context) error {
+		return r.Usage.StartCall(callCtx, reservation.ID)
+	}, observe: func(callCtx context.Context, call usage.CallUsage) error {
+		ctx, cancel := cleanup.operation(callCtx)
+		defer cancel()
+		return r.Usage.Observe(ctx, reservation.ID, call)
+	}}
 	text, runErr := r.modelLoop(ctx, session, messages, bound, trace, limits, state, stream && len(bound) == 0)
-	calls, _ := state.snapshot()
 	var artifacts []protocol.Artifact
 	if runErr == nil {
 		follow, hookErr := item.AfterPrimary(ctx, request, capability.PrimaryOutput{
@@ -133,11 +144,17 @@ func (r *Runner) execute(ctx context.Context, request protocol.Request, stream b
 						artifacts = append(artifacts, mapped...)
 					}
 				}
-				calls, _ = state.snapshot()
 			}
 		}
 	}
-	return r.finish(ctx, request, reservation.ID, calls, trace.snapshot(), artifacts, text, runErr)
+	if err := state.waitStreams(cleanup.start()); err != nil {
+		runErr = errors.Join(runErr, err)
+	}
+	if ctx.Err() != nil {
+		runErr = errors.Join(runErr, state.streamError())
+	}
+	calls, _ := state.snapshot()
+	return r.finish(cleanup, request, reservation.ID, calls, trace.snapshot(), artifacts, text, runErr)
 }
 
 func (r *Runner) modelLoop(ctx context.Context, session ModelSession, messages []*schema.Message, tools []tool.BaseTool, trace *toolTrace, limits protocol.Limits, state *meterState, directStream bool) (string, error) {
@@ -198,15 +215,22 @@ func readStream(ctx context.Context, chat model.ToolCallingChatModel, messages [
 	if err != nil {
 		return "", err
 	}
-	defer reader.Close()
+	var closeReader sync.Once
+	closeSource := func() { closeReader.Do(reader.Close) }
+	stopClose := context.AfterFunc(ctx, closeSource)
+	defer stopClose()
+	defer closeSource()
 	var text strings.Builder
 	for {
 		chunk, recvErr := reader.Recv()
 		if errors.Is(recvErr, io.EOF) {
+			if err := ctx.Err(); err != nil {
+				return text.String(), err
+			}
 			return text.String(), nil
 		}
 		if recvErr != nil {
-			return text.String(), recvErr
+			return text.String(), errors.Join(ctx.Err(), recvErr)
 		}
 		if chunk != nil {
 			text.WriteString(chunk.Content)
@@ -236,12 +260,12 @@ func (r *Runner) extract(ctx context.Context, session ModelSession, messages []p
 	return message.Content, nil
 }
 
-func (r *Runner) finish(ctx context.Context, request protocol.Request, reservationID string, calls []usage.CallUsage, tools []capability.ToolResult, artifacts []protocol.Artifact, text string, runErr error) (Result, error) {
+func (r *Runner) finish(cleanup *cleanupScope, request protocol.Request, reservationID string, calls []usage.CallUsage, tools []capability.ToolResult, artifacts []protocol.Artifact, text string, runErr error) (Result, error) {
 	observation := usage.Aggregate(calls)
 	if len(calls) == 0 {
 		observation = usage.Classify(usage.CallUsage{})
 	}
-	reconciliation, err := r.finalize(ctx, reservationID, calls, observation)
+	reconciliation, err := r.finalize(cleanup, reservationID, observation)
 	if err != nil {
 		runErr = errors.Join(runErr, err)
 	}
@@ -258,21 +282,16 @@ func (r *Runner) finish(ctx context.Context, request protocol.Request, reservati
 	return result, serviceErr
 }
 
-func (r *Runner) finalize(parent context.Context, reservationID string, calls []usage.CallUsage, observation usage.Observation) (usage.Reconciliation, error) {
-	budget := r.Cleanup
-	if budget <= 0 || budget > protocol.CleanupBudget {
-		budget = protocol.CleanupBudget
+func (r *Runner) finalize(cleanup *cleanupScope, reservationID string, observation usage.Observation) (usage.Reconciliation, error) {
+	record, err := r.Usage.Finalize(cleanup.start(), reservationID, observation)
+	return record, err
+}
+
+func (r *Runner) cleanupBudget() time.Duration {
+	if r.Cleanup <= 0 || r.Cleanup > protocol.CleanupBudget {
+		return protocol.CleanupBudget
 	}
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), budget)
-	defer cancel()
-	var observeErr error
-	for _, call := range calls {
-		if err := r.Usage.Observe(ctx, reservationID, call); err != nil {
-			observeErr = errors.Join(observeErr, err)
-		}
-	}
-	record, err := r.Usage.Finalize(ctx, reservationID, observation)
-	return record, errors.Join(observeErr, err)
+	return r.Cleanup
 }
 
 func modelMessages(prompts []string, messages []protocol.Message) ([]*schema.Message, error) {

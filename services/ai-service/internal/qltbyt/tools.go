@@ -100,7 +100,7 @@ func (a Assistant) bindTools(cred Credential, scope Scope, requestID string, nam
 						return "", err
 					}
 					full := string(encoded)
-					if err := a.acceptToolOutput(requestID, full); err != nil {
+					if err := a.acceptToolOutput(requestID, arguments, full); err != nil {
 						return "", err
 					}
 					return full, nil
@@ -149,7 +149,7 @@ func (a Assistant) runCatalog(ctx context.Context, cred Credential, scope Scope,
 		return "", protocol.NewError(502, protocol.CodeProviderFailure, "The read-only tool failed.", false)
 	}
 	full := string(compacted)
-	if err := a.acceptToolOutput(requestID, full); err != nil {
+	if err := a.acceptToolOutput(requestID, arguments, full); err != nil {
 		return "", err
 	}
 	return full, nil

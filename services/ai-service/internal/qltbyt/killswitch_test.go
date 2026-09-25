@@ -62,6 +62,29 @@ func TestKillSwitchEnvCacheAndFailClosed(t *testing.T) {
 			t.Fatalf("error cache lived past 2s: %d", len(broker.snapshot()))
 		}
 	})
+	t.Run("malformed database payload fails closed for two seconds", func(t *testing.T) {
+		t.Setenv("AI_KILL_SWITCH", "off")
+		for _, payload := range []string{"", "[]", "{}", `{"enabled":null}`, `{"enabled":"false"}`, "not-json"} {
+			t.Run(payload, func(t *testing.T) {
+				now := fixedNow
+				broker := &spyBroker{bodies: map[string]json.RawMessage{RPCKillSwitch: []byte(payload)}}
+				assistant := testAssistant(broker, &spyQuery{})
+				assistant.Now = func() time.Time { return now }
+				caller := callerFor(t, assistant)
+				blocked, source, err := caller.KillSwitch(context.Background())
+				if err != nil || !blocked || source != "db_error_fail_closed" || len(broker.snapshot()) != 1 {
+					t.Fatalf("payload=%q blocked=%v source=%s calls=%d err=%v", payload, blocked, source, len(broker.snapshot()), err)
+				}
+				if _, source, err = caller.KillSwitch(context.Background()); err != nil || source != "db_error_fail_closed" || len(broker.snapshot()) != 1 {
+					t.Fatalf("error cache was not reused: source=%s calls=%d err=%v", source, len(broker.snapshot()), err)
+				}
+				now = now.Add(2 * time.Second)
+				if _, source, err = caller.KillSwitch(context.Background()); err != nil || source != "db_error_fail_closed" || len(broker.snapshot()) != 2 {
+					t.Fatalf("error cache lived past 2s: source=%s calls=%d err=%v", source, len(broker.snapshot()), err)
+				}
+			})
+		}
+	})
 	t.Run("active switch does not open the provider", func(t *testing.T) {
 		t.Setenv("AI_KILL_SWITCH", "on")
 		broker := &spyBroker{}

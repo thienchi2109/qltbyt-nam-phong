@@ -3,6 +3,7 @@ package qltbyt
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"sync"
@@ -47,7 +48,11 @@ func (a Assistant) killSwitch(ctx context.Context, cred Credential) (bool, strin
 		a.storeKill(true, "db_error_fail_closed", now.Add(killSwitchErrorTTL))
 		return true, "db_error_fail_closed", nil
 	}
-	blocked := killSwitchEnabled(raw)
+	blocked, err := killSwitchEnabled(raw)
+	if err != nil {
+		a.storeKill(true, "db_error_fail_closed", now.Add(killSwitchErrorTTL))
+		return true, "db_error_fail_closed", nil
+	}
 	a.storeKill(blocked, "db", now.Add(killSwitchFreshTTL))
 	return blocked, "db", nil
 }
@@ -64,30 +69,39 @@ func (a Assistant) storeKill(blocked bool, source string, expires time.Time) {
 	a.kill.mu.Unlock()
 }
 
-func killSwitchEnabled(raw json.RawMessage) bool {
-	row := firstKillRow(raw)
-	return row.Enabled
+func killSwitchEnabled(raw json.RawMessage) (bool, error) {
+	row, err := firstKillRow(raw)
+	if err != nil {
+		return false, err
+	}
+	if row.Enabled == nil {
+		return false, errors.New("kill switch enabled field is missing")
+	}
+	return *row.Enabled, nil
 }
 
 type killSwitchRow struct {
-	Enabled bool `json:"enabled"`
+	Enabled *bool `json:"enabled"`
 }
 
-func firstKillRow(raw json.RawMessage) killSwitchRow {
+func firstKillRow(raw json.RawMessage) (killSwitchRow, error) {
 	raw = bytesTrim(raw)
 	if len(raw) == 0 {
-		return killSwitchRow{}
+		return killSwitchRow{}, errors.New("empty kill switch payload")
 	}
 	if raw[0] == '[' {
 		var rows []killSwitchRow
-		if err := json.Unmarshal(raw, &rows); err != nil || len(rows) == 0 {
-			return killSwitchRow{}
+		if err := json.Unmarshal(raw, &rows); err != nil {
+			return killSwitchRow{}, err
 		}
-		return rows[0]
+		if len(rows) == 0 {
+			return killSwitchRow{}, errors.New("empty kill switch rows")
+		}
+		return rows[0], nil
 	}
 	var row killSwitchRow
 	if err := json.Unmarshal(raw, &row); err != nil {
-		return killSwitchRow{}
+		return killSwitchRow{}, err
 	}
-	return row
+	return row, nil
 }
