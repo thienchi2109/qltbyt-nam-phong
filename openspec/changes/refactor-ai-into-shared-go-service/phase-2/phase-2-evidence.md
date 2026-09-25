@@ -40,7 +40,7 @@ Phase 2 thêm adapter QLTBYT, broker RPC đã ký, guard `query_database`, ingre
 
 ## SQL gate tách riêng
 
-Provisioning role/connection `ai_query_tool` và schema/RPC audit vẫn là SQL change riêng với quality gate riêng. Phase 2 chỉ có interface và test mock. Không có migration.
+Provisioning role/connection `ai_query_tool` và schema/RPC audit vẫn là SQL change riêng với quality gate riêng. Phase 2 có `SQLExecutor` concrete trên injected `database/sql` và test driver giả; chưa có driver PostgreSQL/pool production hoặc kết nối DB thật. Không có migration. Chỉ dùng executor này cho cấu hình thật sau khi xác minh role, grant, tenant policy và audit path; nếu thiếu thì giữ tool tắt.
 
 ## Kiểm tra đã chạy
 
@@ -77,7 +77,7 @@ Lỗi executor lạ được đổi thành `SQLError` mã `execution_error` và 
 
 Response đã nhận của ingress dùng Vercel AI SDK UI Message Stream v1, header `x-vercel-ai-ui-message-stream: v1`, gồm `text-delta`, tool input/output, `errorText` đã làm sạch, `finish` và `[DONE]`. `/api/chat` không gọi encoder này.
 
-Executor được inject nhận `SessionSettings` (`statement_timeout` 5000ms, `search_path`, `app.current_facility_id`, `app.current_user_id`) và `LimitedStatement` với `limit 101`. Role `ai_query_tool` vẫn là SQL change riêng, không có migration trong change này.
+Ở `b10d8595`, `SessionSettings` và `LimitedStatement` mới là helper được test, chưa có executor gọi chúng. Follow-up 3 bổ sung `SQLExecutor` để áp dụng các settings và câu `LIMIT 101` trong transaction; test driver giả quan sát đường thực thi thật qua `database/sql`. Role `ai_query_tool` vẫn là SQL change riêng.
 
 Budget ngữ cảnh cộng dồn vẫn thuộc Phase 3. Không bỏ `uiArtifact` của lượt hiện tại.
 
@@ -88,7 +88,27 @@ Budget ngữ cảnh cộng dồn vẫn thuộc Phase 3. Không bỏ `uiArtifact`
 - Tool catalog không còn nén mất evidence của lượt hiện tại. `deviceQuotaLookup` giữ `status`/`quota` trong `uiArtifact`; `equipmentLookup` giữ dòng đầy đủ ở `uiArtifact` và follow-up id/mã/tên. `query_database` trả envelope, gồm chart khi dòng là báo cáo nhóm. Lịch sử thì bỏ `uiArtifact`.
 - `p_user_id` là JSON string. Test chat path khóa `"p_user_id":"42"` và không khóa số trần.
 
-Các minor còn lại không chặn Phase 2: schema đối số catalog chưa port đủ Zod; executor lỗi lạ vẫn có thể lộ chuỗi driver trên kênh tool trước `publicError`; facility từ chối trước audit; shape rỗng được ghi `"empty"` để audit nonempty. Chúng không nới tenant và không được dùng để tick Phase 3.
+Các finding cũ về schema đối số và lỗi executor đã được xử lý ở follow-up; không còn coi chúng là residual.
+
+## Review follow-up 3
+
+Các blocker được xử lý trong working tree sau review b10d8595:
+
+- Guard từ chối relation list dạng comma trong `FROM` và Unicode escaped identifier `U&"..."`; danh sách cột, CTE, hàm và `IN (...)` hợp lệ vẫn có regression test. Explicit `JOIN` giữa các quan hệ đã duyệt vẫn được phép. Đây là tập cú pháp giới hạn, không phải full PostgreSQL parser.
+- Timeout do query con được audit failure khi request cha còn sống; cancellation của request cha trả đúng `context.Canceled`/`context.DeadlineExceeded`, không trả raw driver error và không trả rows.
+- Thêm `SQLExecutor` dùng `database/sql` được inject: transaction read-only, kiểm tra `current_user = ai_query_tool` và `transaction_read_only = on`, áp dụng `SessionSettings`, `LimitedStatement` (`limit 101`), row/payload cap và redacted error. Driver giả chứng minh các nhánh này; không mở DB thật.
+
+Bằng chứng RED: trên implementation `b10d8595`, regression cho comma relation list thất bại vì query được nhận; regression timeout thất bại với `context deadline exceeded` thay vì lỗi đã sanitize/audit; regression cancellation thất bại với `driver secret`. Sau sửa, các ca đó PASS. `executor_test.go` kiểm tra thứ tự settings trước query, role sai, transaction không read-only, setting failure, rollback và giới hạn rows/payload. `query_cancellation_test.go` kiểm tra cancellation trong lúc executor chạy và timeout bọc driver message. Không dùng lỗi compile làm bằng chứng RED hành vi.
+
+### Deferred boundary phải giữ nguyên
+
+- Provisioning role/connection `ai_query_tool`, audit RPC/schema và mọi migration/DDL là SQL change riêng, chưa bật query tool trên môi trường thật.
+- Cumulative model-context budget qua nhiều tool step thuộc Phase 3; không bỏ `uiArtifact` của lượt hiện tại để né giới hạn.
+- `src/app/api/chat/route.ts` production không đổi; chưa deploy, cutover, Cloudflare/Tunnel, live DB write hoặc paid-provider smoke.
+- Encoder UI Message Stream v1 hiện chỉ khóa contract local cho ingress; chưa là bằng chứng cutover production hoặc hoàn tất task Phase 4.
+- Literal trong `p_sql_shape` vẫn được giữ theo quyết định đã chốt: normalized shape tối đa 1000 ký tự trong audit DB; operational log chỉ ghi request id/error class.
+
+Mốc xử lý và điều kiện chặn của từng hạng mục nằm trong bảng boundary ở `handoff.md`. Acceptance chỉ bao phủ local/mock hiện tại; không suy ra full parser, driver PostgreSQL, quyền DB thật hoặc stream production đã được chứng nhận.
 
 ## Chưa làm
 

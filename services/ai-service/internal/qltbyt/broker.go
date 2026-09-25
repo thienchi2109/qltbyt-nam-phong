@@ -29,6 +29,7 @@ type QueryCall struct {
 	MaxPayloadBytes int
 	FacilityID      int64
 	UserID          int64
+	Role            string
 }
 
 type QueryResult struct {

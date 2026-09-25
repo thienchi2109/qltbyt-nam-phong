@@ -99,3 +99,35 @@ func TestQueryGuardRejectsUnsafeStatements(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryGuardRejectsRelationListsAndEscapedIdentifiers(t *testing.T) {
+	for _, sql := range []string{
+		"select * from ai_readonly.equipment_search, pg_roles",
+		"select * from ai_readonly.equipment_search, other_schema.secret_table",
+		`select U&"\0073et_config"('app.current_facility_id', '2', true)`,
+		`select * from ai_readonly.equipment_search as "where", pg_roles`,
+		"select * from (select * from ai_readonly.equipment_search limit 1) e, pg_roles",
+	} {
+		t.Run(sql, func(t *testing.T) {
+			if _, err := validateSQL(sql); err == nil {
+				t.Fatalf("accepted unsafe relation or identifier: %s", sql)
+			}
+		})
+	}
+}
+
+func TestQueryGuardAllowsColumnLists(t *testing.T) {
+	for _, sql := range []string{
+		"select equipment_id, ten_thiet_bi from ai_readonly.equipment_search",
+		"with a as (select equipment_id from equipment_search), b as (select equipment_id from repair_facts) select a.equipment_id from a join b on a.equipment_id = b.equipment_id",
+		"select equipment_id from equipment_search where equipment_id in (1, 2) order by equipment_id, ten_thiet_bi",
+		"select coalesce(ten_thiet_bi, 'unknown') from equipment_search",
+		`select 'U&"example"' from equipment_search`,
+	} {
+		t.Run(sql, func(t *testing.T) {
+			if _, err := validateSQL(sql); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

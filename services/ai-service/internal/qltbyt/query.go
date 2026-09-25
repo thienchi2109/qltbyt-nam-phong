@@ -31,6 +31,9 @@ func (a Assistant) queryEnabled() bool {
 }
 
 func (a Assistant) executeQuery(ctx context.Context, cred Credential, scope Scope, facilityID int64, sql, requestID string) (json.RawMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if !a.queryEnabled() {
 		return nil, sqlError("disabled", "query_database is disabled.")
 	}
@@ -53,11 +56,12 @@ func (a Assistant) executeQuery(ctx context.Context, cred Credential, scope Scop
 		MaxPayloadBytes: QueryMaxPayload,
 		FacilityID:      scope.EffectiveFacilityID,
 		UserID:          cred.UserID,
+		Role:            scope.NormalizedRole,
 	})
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if execErr != nil {
-		if ctx.Err() != nil || errors.Is(execErr, context.Canceled) || errors.Is(execErr, context.DeadlineExceeded) {
-			return nil, execErr
-		}
 		a.auditFailure(ctx, cred, scope, requestID, sanitizedShape(validated.SQLShape), errorClass(execErr), started)
 		return nil, publicQueryError(execErr)
 	}
@@ -171,6 +175,7 @@ func SessionSettings(call QueryCall) [][2]string {
 		{"search_path", call.SearchPath},
 		{"app.current_facility_id", strconv.FormatInt(call.FacilityID, 10)},
 		{"app.current_user_id", strconv.FormatInt(call.UserID, 10)},
+		{"app.current_role", call.Role},
 	}
 }
 

@@ -42,6 +42,7 @@ var (
 	aiReadonlyRefPattern     = regexp.MustCompile(`(?i)\bai_readonly\s*\.\s*([A-Za-z_][\w$]*)`)
 	relationPattern          = regexp.MustCompile(`(?i)\b(?:from|join)\s+(?:([A-Za-z_][\w$]*)\s*\.\s*)?([A-Za-z_][\w$]*)`)
 	ctePattern               = regexp.MustCompile(`(?i)(?:\bwith\b|\brecursive\b|,)\s*([A-Za-z_][\w$]*)\s+as\s*\(`)
+	unicodeIdentPattern      = regexp.MustCompile(`(?i)\bU&\s*"`)
 )
 
 var approvedViews = map[string]struct{}{
@@ -53,6 +54,9 @@ var approvedViews = map[string]struct{}{
 }
 
 func validateSQL(sql string) (validatedSQL, error) {
+	if unicodeIdentPattern.MatchString(maskSingleQuotes(sql)) {
+		return validatedSQL{}, sqlError("invalid_statement", "Unicode escaped identifiers are not allowed.")
+	}
 	if dollarQuotePattern.MatchString(sql) {
 		return validatedSQL{}, sqlError("invalid_statement", "Dollar-quoted strings are not allowed.")
 	}
@@ -74,6 +78,9 @@ func validateSQL(sql string) (validatedSQL, error) {
 		return validatedSQL{}, sqlError("invalid_statement", "Only SELECT statements are allowed.")
 	}
 	scan := normalizeSpace(revealQuotedIdentifiers(maskSingleQuotes(withoutComments)))
+	if err := rejectCommaRelations(maskSingleQuotes(withoutComments)); err != nil {
+		return validatedSQL{}, err
+	}
 	if err := assertSQLSurface(commentText); err != nil {
 		return validatedSQL{}, err
 	}
