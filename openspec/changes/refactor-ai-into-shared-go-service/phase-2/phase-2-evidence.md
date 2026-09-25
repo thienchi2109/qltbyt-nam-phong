@@ -73,9 +73,13 @@ Bốn finding Important được xử lý trước khi chấp nhận Phase 2:
 
 `p_sql_shape` vẫn là câu SQL đã chuẩn hóa khoảng trắng và cắt tối đa 1000 ký tự. Đó là shape literal đã sanitize, không phải hash và không phải bản xóa literal. Audit DB giữ shape đó vì spec yêu cầu shape; operational log vẫn không ghi SQL. Đây không phải blocker riêng.
 
-Lỗi executor lạ vẫn có thể đi qua biên tool nội bộ. Chưa chứng minh lỗi đó tới model hoặc browser; lỗi terminal HTTP vẫn đi qua `publicError`. Đây là residual cần hardening, không phải kết luận đã rò ra ngoài.
+Lỗi executor lạ được đổi thành `SQLError` mã `execution_error` và câu cố định trước khi rời tool. Chuỗi driver không còn trong `Error()`. Hủy context vẫn trả lỗi context. Audit vẫn ghi `execution_error`.
 
-Budget ngữ cảnh cộng dồn để sang Phase 3. Không bỏ `uiArtifact` của lượt hiện tại. Provisioning SQL và encoder Vercel AI SDK UI Message Stream vẫn để đúng phase sau.
+Response đã nhận của ingress dùng Vercel AI SDK UI Message Stream v1, header `x-vercel-ai-ui-message-stream: v1`, gồm `text-delta`, tool input/output, `errorText` đã làm sạch, `finish` và `[DONE]`. `/api/chat` không gọi encoder này.
+
+Executor được inject nhận `SessionSettings` (`statement_timeout` 5000ms, `search_path`, `app.current_facility_id`, `app.current_user_id`) và `LimitedStatement` với `limit 101`. Role `ai_query_tool` vẫn là SQL change riêng, không có migration trong change này.
+
+Budget ngữ cảnh cộng dồn vẫn thuộc Phase 3. Không bỏ `uiArtifact` của lượt hiện tại.
 
 ## Review follow-up
 

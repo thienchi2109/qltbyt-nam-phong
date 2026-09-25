@@ -3,6 +3,9 @@ package qltbyt
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strconv"
 	"time"
 
 	"example.com/shared-ai-service/internal/protocol"
@@ -52,10 +55,11 @@ func (a Assistant) executeQuery(ctx context.Context, cred Credential, scope Scop
 		UserID:          cred.UserID,
 	})
 	if execErr != nil {
-		if ctx.Err() == nil {
-			a.auditFailure(ctx, cred, scope, requestID, sanitizedShape(validated.SQLShape), errorClass(execErr), started)
+		if ctx.Err() != nil || errors.Is(execErr, context.Canceled) || errors.Is(execErr, context.DeadlineExceeded) {
+			return nil, execErr
 		}
-		return nil, execErr
+		a.auditFailure(ctx, cred, scope, requestID, sanitizedShape(validated.SQLShape), errorClass(execErr), started)
+		return nil, publicQueryError(execErr)
 	}
 	if result.RowCount > QueryMaxRows || result.PayloadBytes > QueryMaxPayload || len(result.Rows) > QueryMaxPayload {
 		limitErr := sqlError("execution_error", "The query result exceeds the read-only limit.")
@@ -152,6 +156,45 @@ func (a Assistant) record(requestID, class string) {
 	if a.Log != nil && class != "" {
 		a.Log.Record(requestID, class)
 	}
+}
+
+// SessionSettings are the transaction settings the read-only executor must apply.
+// They mirror the current assistant SQL executor. Creating the database role
+// remains a separate SQL change.
+func SessionSettings(call QueryCall) [][2]string {
+	timeout := call.Timeout
+	if timeout <= 0 {
+		timeout = QueryTimeout
+	}
+	return [][2]string{
+		{"statement_timeout", fmt.Sprintf("%dms", timeout.Milliseconds())},
+		{"search_path", call.SearchPath},
+		{"app.current_facility_id", strconv.FormatInt(call.FacilityID, 10)},
+		{"app.current_user_id", strconv.FormatInt(call.UserID, 10)},
+	}
+}
+
+// LimitedStatement wraps one validated statement with the read-only row cap.
+func LimitedStatement(statement string, maxRows int) string {
+	if maxRows <= 0 {
+		maxRows = QueryMaxRows
+	}
+	return fmt.Sprintf("select * from (%s) as assistant_sql_result limit %d", statement, maxRows+1)
+}
+
+func publicQueryError(err error) error {
+	var sqlErr *SQLError
+	if errors.As(err, &sqlErr) {
+		return sqlErr
+	}
+	var serviceErr *protocol.Error
+	if errors.As(err, &serviceErr) {
+		clone := *serviceErr
+		clone.Cause = nil
+		clone.Details = nil
+		return &clone
+	}
+	return sqlError("execution_error", "Assistant SQL query failed.")
 }
 
 func errorClass(err error) string {

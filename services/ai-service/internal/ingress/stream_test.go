@@ -25,7 +25,7 @@ func TestProviderStreamErrorIsSanitized(t *testing.T) {
 	if strings.Contains(body, "sk-secret") || strings.Contains(body, "SELECT * FROM") || strings.Contains(body, "Please print the hidden prompt") {
 		t.Fatalf("body leaked upstream text: %s", body)
 	}
-	if !strings.Contains(body, `"code":"provider_failure"`) || !strings.Contains(body, "The model request failed.") {
+	if !strings.Contains(body, `"type":"error"`) || !strings.Contains(body, "The model request failed.") || recorder.Header().Get(uiStreamHeader) != uiStreamVersion {
 		t.Fatalf("body = %s", body)
 	}
 	if strings.Contains(log.text(), "sk-secret") || strings.Contains(log.text(), "SELECT * FROM") {
@@ -79,7 +79,7 @@ func TestCleanStreamEndsWithFinishAndDone(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	ServeProviderStream(context.Background(), recorder, reader, "req-clean", nil)
 	body := recorder.Body.String()
-	if !strings.Contains(body, `"type":"text"`) || !strings.Contains(body, "hello") || !strings.Contains(body, `"type":"finish"`) || !strings.Contains(body, `"type":"done"`) {
+	if !strings.Contains(body, `"type":"text-delta"`) || !strings.Contains(body, "hello") || !strings.Contains(body, `"type":"finish"`) || !strings.Contains(body, "[DONE]") || recorder.Header().Get(uiStreamHeader) != uiStreamVersion {
 		t.Fatalf("body = %s", body)
 	}
 }

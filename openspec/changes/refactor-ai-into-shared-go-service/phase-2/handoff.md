@@ -33,10 +33,8 @@ Accounting sau reservation expiry vẫn là `expired-uncertain`: không measured
 
 Dừng trước Phase 3. Phase 3 chỉ bắt đầu khi user duyệt. Phase 3 mới chuyển draft orchestration, secondary extraction, `ai_quota_reserve` / `ai_quota_finalize`, và kill-switch.
 
-## Residual không chặn review Phase 2
+## Residual còn lại
 
 - Cutover `/api/chat` chưa làm. Mapper quota app tồn tại nhưng chưa được chat gọi.
-- SSE ở ingress là event trung lập cho contract này, chưa phải encoder Vercel AI SDK UI Message Stream của task 4.3.
-- Chưa có provisioning SQL cho `ai_query_tool` hay audit. Không bật `query_database` trên môi trường thật khi chưa có gate đó.
-- Lỗi driver bất thường vẫn có thể đi qua biên tool nội bộ trước `publicError`. Chưa có bằng chứng lỗi đó tới model hoặc browser.
+- Role và connection `ai_query_tool` vẫn là SQL change riêng. Adapter truyền `SessionSettings` và `LimitedStatement` cho executor inject, nhưng không có migration và không bật tool trên môi trường thật.
 - Budget ngữ cảnh cộng dồn thuộc Phase 3. Không tự bỏ `uiArtifact` của lượt tool hiện tại.

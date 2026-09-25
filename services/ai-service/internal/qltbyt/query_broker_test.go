@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -87,6 +88,15 @@ func TestSuccessfulQueryAuditsBeforeRelease(t *testing.T) {
 	if err != nil || string(rows) != `[{"equipment_id":1}]` || executor.count() != 1 {
 		t.Fatalf("rows %s err %v calls %d", rows, err, executor.count())
 	}
+	queryCall := executor.calls[0]
+	if queryCall.SearchPath != QuerySearchPath || queryCall.Timeout != QueryTimeout || queryCall.MaxRows != QueryMaxRows || queryCall.MaxPayloadBytes != QueryMaxPayload || queryCall.FacilityID != 4 || queryCall.UserID != 42 {
+		t.Fatalf("query call = %+v", queryCall)
+	}
+	settings := SessionSettings(queryCall)
+	joined := fmt.Sprint(settings)
+	if !strings.Contains(joined, "5000ms") || !strings.Contains(joined, QuerySearchPath) || !strings.Contains(joined, "app.current_facility_id") || !strings.Contains(LimitedStatement(queryCall.Statement, queryCall.MaxRows), "limit 101") {
+		t.Fatalf("settings = %s", joined)
+	}
 	calls := broker.snapshot()
 	if len(calls) != 1 || calls[0].RPC != RPCAudit || calls[0].UserID != 42 || !strings.Contains(calls[0].Payload, `"p_status":"success"`) || !strings.Contains(calls[0].Payload, `"p_row_count":1`) || !strings.Contains(calls[0].Payload, `"p_facility_source":"session"`) || !strings.Contains(calls[0].Payload, `"p_tool_path":"query_database"`) {
 		t.Fatalf("audit = %+v", calls)
@@ -100,7 +110,8 @@ func TestFailureAuditPreservesOriginalError(t *testing.T) {
 	assistant := testAssistant(broker, executor)
 	scope := resolvedScope(t, "technician", 2)
 	_, err := assistant.executeQuery(context.Background(), testCredential("technician", facilityPtr(2), nil), scope, scope.EffectiveFacilityID, "select equipment_id from ai_readonly.equipment_search", "req-fail")
-	if !errors.Is(err, original) {
+	var sqlErr *SQLError
+	if !errors.As(err, &sqlErr) || sqlErr.Code != "execution_error" || strings.Contains(err.Error(), "marker-EXEC") || errors.Is(err, original) {
 		t.Fatalf("err = %v", err)
 	}
 	if executor.count() != 1 || len(broker.snapshot()) != 1 {

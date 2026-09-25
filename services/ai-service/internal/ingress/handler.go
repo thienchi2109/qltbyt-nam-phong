@@ -85,24 +85,17 @@ func (h *Handler) now() time.Time {
 func (h *Handler) writeEvents(w http.ResponseWriter, requestID string, events []protocol.Event) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set(uiStreamHeader, uiStreamVersion)
 	w.Header().Set(HeaderRequest, requestID)
-	for _, event := range events {
-		payload := streamEvent{Type: event.Type, RequestID: requestID}
-		switch event.Type {
-		case protocol.EventText:
-			payload.Text = event.Text
-		case protocol.EventError:
-			if event.Error != nil {
-				payload.Code = event.Error.Code
-				payload.Message = event.Error.Message
-				payload.Retryable = event.Error.Retryable
-				loggerOrNop(h.Log).Record(requestID, event.Error.Code)
-			}
-		case protocol.EventDone:
-			loggerOrNop(h.Log).Record(requestID, protocol.EventDone)
+	chunks, _ := uiChunks(requestID, events)
+	for _, chunk := range chunks {
+		if chunk.Type == "error" {
+			loggerOrNop(h.Log).Record(requestID, "error")
 		}
-		writeStreamData(w, payload)
+		writeStreamData(w, chunk)
 	}
+	writeStreamRaw(w, "[DONE]")
+	loggerOrNop(h.Log).Record(requestID, protocol.EventDone)
 }
 
 func readRawBody(r *http.Request) ([]byte, error) {
