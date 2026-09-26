@@ -23,6 +23,7 @@ Baseline draft là route hiện tại `/api/chat`, nơi repair-draft builder đ�
 - Phase 0 MUST chốt tham số HMAC, recovery sau hard crash (0.7), mapping usage unknown/partial (0.8) và credential decision (0.9) cho `assistant_query_database_audit_log`. Thiếu proof hoặc 0.7/0.8/0.9 chưa được review thì chặn Phase 1. Gate Phase 2 cho 0.9 và gate Phase 3 cho 0.7/0.8 là defense in depth. Mapping 0.8 trở thành normative trước Phase 3. Không coi detached cleanup hoặc reservation TTL là bằng chứng đã giải quyết crash recovery.
 
 - Phase 5 tăng ưu tiên bảng Markdown cho danh sách/so sánh QLTBYT, kèm fixtures stream/render và mobile. Đây là cải thiện trình bày có chủ đích; không thuộc fixes Phase 3 và không cho phép đổi traffic production.
+- Phase 5.9 thêm provider adapter và fallback deterministic theo chuỗi cặp provider/model đã duyệt (NVIDIA `google/gemma-4-31b-it` -> Google Gemini `gemini-3.5-flash-lite`). Fallback chỉ xảy ra trước khi stream bắt đầu, tối đa hai attempts, dùng fake adapters trong evidence và không thay đổi production route.
 
 ## Non-Goals
 
@@ -32,6 +33,7 @@ Baseline draft là route hiện tại `/api/chat`, nơi repair-draft builder đ�
 - Không tự động tạo hoặc submit repair request; draft vẫn là advisory artifact và do UI quyết định handoff.
 - Proposal này không có agent-run live database migration, DDL, hoặc administrative/live-data write. Runtime chat vẫn phải gọi các application-owned `ai_quota_*` và `assistant_query_database_audit_log`. Accounting quota theo mapping đã review, không đóng băng việc ép usage thiếu thành measured-zero. Việc gọi các RPC đó không phải quyền tự ý thay đổi schema hay chạy ad-hoc SQL. Nếu sau này cần DDL cho durable nonce/replay state hoặc service-specific authorization, việc đó MUST là SQL change riêng với quality gates riêng và explicit live-write approval.
 - Sau cutover không runtime fallback về Next.js orchestration cũ. Operational rollback là revert image/configuration của Go về một Go release đã verify. Dark first deploy thất bại chặn cutover và không tự tắt chat production hiện tại. Drain grace là trần tối đa, không phải khoảng gián đoạn cố định bắt buộc.
+- Provider fallback không phải fallback về Next.js. Phase 5.9 không thêm circuit breaker/cooldown, weighted routing, DB/RPC/schema, paid-provider smoke hoặc live credential handling.
 
 ## Impact
 

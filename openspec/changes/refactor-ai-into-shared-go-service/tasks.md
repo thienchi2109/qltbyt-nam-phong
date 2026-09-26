@@ -120,6 +120,20 @@ Bằng chứng nghiệm thu: BFF contract, UI/user-event, stream passthrough, br
 - [x] 5.7 Tăng hướng dẫn prompt QLTBYT: mặc định dùng bảng Markdown cho nhiều mục cùng thuộc tính (thiết bị, lịch bảo trì, so sánh); ưu tiên 3–5 cột, ô ngắn, dữ liệu thiếu ghi “Chưa có dữ liệu”, không suy diễn. Giữ đoạn văn/danh sách cho giải thích, thao tác và clarification; giữ nguyên tool/artifact cards. (Evidence: [Phase 5 evidence](phase-5/phase-5-evidence.md), system prompt/version tests.)
 - [x] 5.8 Thêm fixtures bảng Markdown qua dark BFF/stream với chunk cắt giữa header, delimiter và cell; xác nhận bảng cuối đủ dòng/cột, Unicode, pipe được escape, nội dung ô an toàn và cuộn ngang trên mobile không tràn trang. Dùng prompt contract và renderer fixtures, không coi đó là bảo đảm provider luôn trả bảng; không paid provider smoke nếu chưa được duyệt. (Evidence: [Phase 5 evidence](phase-5/phase-5-evidence.md), direct renderer and composed dark transport tests.)
 
+## Phase 5.9 - Provider adapter và fallback theo cặp provider/model
+
+Phạm vi/sở hữu: Dark Go/BFF provider contract và deterministic orchestration tests; không đổi production route.
+
+Phụ thuộc: Phase 1 provider transport và Phase 5 dark BFF. Chuỗi mục tiêu là NVIDIA `google/gemma-4-31b-it` -> Google Gemini `gemini-3.5-flash-lite`, nhưng test Phase 5.9 dùng fake adapters; không commit hoặc yêu cầu credential thật.
+
+Bằng chứng nghiệm thu: Adapter mapping, capability/model compatibility, quota classification, fallback-before-stream, attempt/usage attribution và fail-closed config tests.
+
+- [ ] 5.9.1 Định nghĩa typed provider adapter cho chat streaming, normalized events và provider-specific errors; adapter tự map quota exhaustion/rate-limit được duyệt, không để orchestration parse raw strings.
+- [ ] 5.9.2 Cấu hình deterministic ordered fallback chain bằng các cặp provider/model đã duyệt; cho phép A -> B khi capability, context, tool schema và policy tương thích. Mỗi cặp tối đa một attempt, tổng hard ceiling mặc định hai attempts.
+- [ ] 5.9.3 Chỉ fallback trước khi stream phát ra; không đổi provider/model giữa stream. Ghi redacted metadata cho từng attempt và request-level outcome, không ghi prompt/output/raw payload.
+- [ ] 5.9.4 Fail closed khi config thiếu secret, duplicate priority, model không tương thích hoặc không còn cặp hợp lệ; không gọi model để kiểm tra readiness.
+- [ ] 5.9.5 Viết deterministic fake-adapter tests cho primary success, quota exhaustion -> fallback, fallback failure, no-provider, attempt ceiling và usage attribution. Chưa circuit breaker/cooldown, weighted routing, paid-provider smoke, DB/RPC/schema hoặc production cutover.
+
 Điểm dừng/review: Review dark evidence với UI owner; chưa có cutover authorization thì không đổi current `/api/chat` traffic.
 
 Deploy/live DB: Dark-only, không production routing, không live traffic, không live DB write.

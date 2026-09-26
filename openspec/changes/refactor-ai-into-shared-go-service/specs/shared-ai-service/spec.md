@@ -271,6 +271,34 @@ The system SHALL preserve the current role, tenant and facility authorization se
 - **AND** a successful database read is cached for 8 seconds
 - **AND** read-only/RPC output is compacted before model execution without applying that gate, or quota reserve, to clarification responses
 
+### Requirement: Provider Adapter and Approved Fallback
+
+The dark Go/BFF path SHALL use a typed chat-streaming provider adapter that normalizes events, usage and provider-specific errors. It SHALL support an ordered chain of approved provider/model pairs, initially NVIDIA `google/gemma-4-31b-it` followed by Google Gemini `gemini-3.5-flash-lite`. A pair MUST pass capability, context, tool-schema and policy compatibility checks. Only quota-exhausted or explicitly approved rate-limit errors MAY advance to the next pair, and only before the first stream event. Each pair SHALL receive at most one attempt and the chain SHALL stop after two attempts. Orchestration SHALL not parse raw provider error strings or expose raw provider payloads. Phase 5.9 evidence SHALL use deterministic fake adapters and redacted per-attempt/request metadata; circuit breakers, cooldowns, weighted routing, paid-provider smoke, DB/RPC/schema changes and production cutover are outside this requirement.
+
+#### Scenario: Primary provider succeeds
+
+- **WHEN** the first configured provider/model returns a valid stream
+- **THEN** the service emits that stream without invoking the fallback pair
+- **AND** the request metadata identifies the actual provider/model without sensitive content
+
+#### Scenario: Quota exhaustion falls back before streaming
+
+- **WHEN** the first pair returns the normalized quota-exhausted error before emitting any stream event
+- **THEN** the service invokes the next compatible provider/model pair once
+- **AND** the client receives only the fallback stream
+- **AND** metadata records both redacted attempts and the request-level outcome
+
+#### Scenario: Mid-stream failure does not switch providers
+
+- **WHEN** a provider fails after stream output has begun
+- **THEN** the service does not switch provider/model within that request
+- **AND** it cancels or completes the request according to the normalized error contract
+
+#### Scenario: No compatible fallback exists
+
+- **WHEN** all configured pairs are exhausted or configuration has no valid compatible pair
+- **THEN** the service returns a stable provider-unavailable/quota outcome without exposing raw provider details
+
 ### Requirement: Oracle VM Deployment and Health
 
 The Go service SHALL deploy as one active container on the Oracle VM with secrets outside the image, loopback/private binding and no publicly exposed raw service port. The Go module and image SHALL pin one Go toolchain. Vercel MUST NOT build `services/ai-service`. This change MUST NOT add a new CI platform. The container MUST NOT use `qltbyt_test` credentials. Cloudflare Tunnel SHALL provide chat ingress. `/healthz` and `/readyz` SHALL be available only to local/private operator probes and MUST NOT be published through the Tunnel hostname. `/healthz` SHALL report process health and `/readyz` SHALL report configuration, provider, capability and replay-guard readiness. The service SHALL enforce bounded concurrent admission, reject new requests rather than evict live replay entries when the nonce map is full, enforce resource limits, use the proposed budget of at most 55 seconds of work plus up to 5 seconds of cleanup inside the existing 60-second BFF budget, and use a reservation TTL of at least 120 seconds. Acceptance of that budget MUST include bounded cleanup, failure, and reconciliation evidence; a failed proof requires a reviewed normative amendment and does not by itself declare 5 seconds insufficient.
