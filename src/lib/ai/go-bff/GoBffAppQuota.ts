@@ -1,6 +1,6 @@
 /**
- * Future app-quota client shape. Phase 2 does not call this from chat.
- * provider_quota must not be relabeled as ai_usage_limited.
+ * App-quota client shape retained for callers that already have a local quota
+ * decision. Provider quota is a separate protocol error.
  */
 export interface GoBffAppQuotaPayload {
   code: "ai_usage_limited"
@@ -9,7 +9,7 @@ export interface GoBffAppQuotaPayload {
   retryAfterMs: number
 }
 
-/** Builds the unused app-quota payload. Chat does not call this in Phase 2. */
+/** Builds the app-quota payload without changing provider_quota semantics. */
 export function mapUnusedAppQuotaPayload(retryAfterMs: number): GoBffAppQuotaPayload {
   return {
     code: "ai_usage_limited",

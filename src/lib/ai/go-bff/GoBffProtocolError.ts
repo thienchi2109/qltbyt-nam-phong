@@ -38,6 +38,20 @@ export interface TranslatedGoProtocolError {
   }
 }
 
+export interface MappedGoAppQuotaError {
+  status: 429
+  requestId: string
+  retryAfterSeconds: number
+  body: {
+    error: {
+      code: "ai_usage_limited"
+      reason: string
+      message: string
+      retryAfterMs: number
+    }
+  }
+}
+
 function isProtocolCode(value: unknown): value is GoProtocolErrorCode {
   return typeof value === "string" && Object.prototype.hasOwnProperty.call(protocolMessages, value)
 }
@@ -69,10 +83,41 @@ function httpStatusFor(code: GoProtocolErrorCode, status: unknown): number {
   }
 }
 
+function safeRetryAfterMs(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? Math.min(Math.floor(value), 86_400_000)
+    : 60_000
+}
+
+/** Maps the QLTBYT application quota boundary to the existing browser contract. */
+export function mapGoAppQuotaError(
+  payload: GoProtocolErrorBody,
+  headerRequestID?: string | null
+): MappedGoAppQuotaError | null {
+  if (payload.code !== "limit_exceeded" || payload.status !== 429) {
+    return null
+  }
+  const requestId = safeRequestID(headerRequestID) || safeRequestID(payload.request_id)
+  const retryAfterMs = safeRetryAfterMs(payload.retry_after_ms)
+  return {
+    status: 429,
+    requestId,
+    retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)),
+    body: {
+      error: {
+        code: "ai_usage_limited",
+        reason: "quota",
+        message: "Anh/chị đã dùng hết lượt trợ lý trong kỳ này.",
+        retryAfterMs,
+      },
+    },
+  }
+}
+
 /**
  * Maps a Go protocol error into a BFF response.
  * The Vietnamese message is fixed per code. Upstream message text and details are dropped.
- * provider_quota stays provider_quota; app quota is a separate unused mapper.
+ * provider_quota stays provider_quota; app quota is handled by mapGoAppQuotaError.
  */
 export function translateGoProtocolError(
   payload: GoProtocolErrorBody,

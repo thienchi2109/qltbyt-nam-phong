@@ -111,12 +111,12 @@ Phụ thuộc: Phase 4 authenticated service và parity fixtures Phase 0-3.
 
 Bằng chứng nghiệm thu: BFF contract, UI/user-event, stream passthrough, browser abort và configuration fail-closed tests.
 
-- [ ] 5.1 Thêm dark BFF path validate session, shape canonical request, sign envelope và proxy Go stream.
-- [ ] 5.2 Giữ browser request shape, Vercel AI SDK, current tool/artifact renderers và mixed/raw output compatibility; bảo toàn `error.code=ai_usage_limited`, `reason`, `retryAfterMs` và countdown bằng mapping từ generic Go error.
-- [ ] 5.3 Đặt Cloudflare Access service-token headers và HMAC credentials trong server-only secrets; thiếu/invalid config fail closed.
-- [ ] 5.4 Thêm UI fixtures cho text, tool card, report/chart, repair draft, sanitized error, stop/cancel và stream completion.
-- [ ] 5.5 Chạy browser/user-event contract chứng minh abort truyền tới dark Go path và không đổi current UI behavior.
-- [ ] 5.6 Ghi rõ dark path không phải fallback runtime; chỉ là đường kiểm thử trước cutover.
+- [x] 5.1 Thêm dark BFF path validate session, shape canonical request, sign envelope và proxy Go stream. (Evidence: [Phase 5 evidence](phase-5-evidence.md), route/request/signing tests.)
+- [x] 5.2 Giữ browser request shape, Vercel AI SDK, current tool/artifact renderers và mixed/raw output compatibility; bảo toàn `error.code=ai_usage_limited`, `reason`, `retryAfterMs` và countdown bằng mapping từ generic Go error. (Evidence: [Phase 5 evidence](phase-5-evidence.md), proxy/protocol/UI tests.)
+- [x] 5.3 Đặt Cloudflare Access service-token headers và HMAC credentials trong server-only secrets; thiếu/invalid config fail closed. (Evidence: [Phase 5 evidence](phase-5-evidence.md), config/proxy tests.)
+- [x] 5.4 Thêm UI fixtures cho text, tool card, report/chart, repair draft, sanitized error, stop/cancel và stream completion. (Evidence: [Phase 5 evidence](phase-5-evidence.md), `phase-5/fixtures/ui-contract.json`.)
+- [x] 5.5 Chạy browser/user-event contract chứng minh abort truyền tới dark Go path và không đổi current UI behavior. (Evidence: [Phase 5 evidence](phase-5-evidence.md), `assistant-dark-transport.test.tsx`, `AssistantPanel.error-state.test.tsx` và proxy signal tests.)
+- [x] 5.6 Ghi rõ dark path không phải fallback runtime; chỉ là đường kiểm thử trước cutover. (Evidence: [Phase 5 evidence](phase-5-evidence.md), production route guard and handoff.)
 - [ ] 5.7 Tăng hướng dẫn prompt QLTBYT: mặc định dùng bảng Markdown cho nhiều mục cùng thuộc tính (thiết bị, lịch bảo trì, so sánh); ưu tiên 3–5 cột, ô ngắn, dữ liệu thiếu ghi “Chưa có dữ liệu”, không suy diễn. Giữ đoạn văn/danh sách cho giải thích, thao tác và clarification; giữ nguyên tool/artifact cards.
 - [ ] 5.8 Thêm fixtures bảng Markdown qua dark BFF/stream với chunk cắt giữa header, delimiter và cell; xác nhận bảng cuối đủ dòng/cột, Unicode, pipe được escape, nội dung ô an toàn và cuộn ngang trên mobile không tràn trang. Dùng prompt contract và renderer fixtures, không coi đó là bảo đảm provider luôn trả bảng; không paid provider smoke nếu chưa được duyệt.
 

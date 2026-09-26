@@ -1,15 +1,15 @@
-import { z } from 'zod'
+import { z } from "zod"
 
-const selectedFacilityIdSchema = z.preprocess(value => {
+const selectedFacilityIdSchema = z.preprocess((value) => {
   if (value === null || value === undefined) {
     return undefined
   }
 
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     return value
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     const trimmed = value.trim()
     if (!trimmed) {
       return undefined
@@ -21,6 +21,7 @@ const selectedFacilityIdSchema = z.preprocess(value => {
   return undefined
 }, z.number().int().positive().safe().optional())
 
+/** Validates the browser chat payload shared by production and dark paths. */
 export const chatRequestSchema = z.object({
   messages: z.array(z.unknown()).min(1),
   requestedTools: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
@@ -28,4 +29,4 @@ export const chatRequestSchema = z.object({
   selectedFacilityName: z.string().trim().max(200).nullish(),
 })
 
-type ChatRequest = z.infer<typeof chatRequestSchema>
+export type ChatRequest = z.infer<typeof chatRequestSchema>

@@ -18,9 +18,7 @@ describe("AssistantMarkdownRenderer", () => {
   })
 
   it("renders fenced code blocks without language as block code", () => {
-    const { container } = render(
-      <AssistantMarkdownRenderer content={"```\nSELECT 1;\n```"} />
-    )
+    const { container } = render(<AssistantMarkdownRenderer content={"```\nSELECT 1;\n```"} />)
 
     const code = container.querySelector("code")
     expect(code).toBeInTheDocument()
