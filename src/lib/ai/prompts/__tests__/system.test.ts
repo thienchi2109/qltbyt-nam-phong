@@ -136,8 +136,21 @@ describe('system prompt module', () => {
     expect(prompt).toContain('metadata')
   })
 
-  it('prompt version is v2.6.1 after direct-manager grounding hardening', () => {
-    expect(SYSTEM_PROMPT_VERSION).toBe('v2.6.1')
+  it('prompt version and table guidance match the Phase 5.7 contract', () => {
+    const prompt = buildSystemPrompt({
+      role: 'admin',
+      userId: 'u1',
+      selectedFacilityId: 2,
+    })
+
+    expect(SYSTEM_PROMPT_VERSION).toBe('v2.7.0')
+    expect(prompt).toContain('nhiều mục cùng thuộc tính')
+    expect(prompt).toContain('bảng Markdown')
+    expect(prompt).toContain('3–5 cột')
+    expect(prompt).toContain('Chưa có dữ liệu')
+    expect(prompt).toContain('không được suy diễn')
+    expect(prompt).toContain('đoạn văn hoặc danh sách')
+    expect(prompt).toContain('tool/artifact cards')
   })
 
   it('grounds query_database to the ai_readonly semantic surface', () => {

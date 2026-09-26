@@ -31,6 +31,7 @@ describe("shared AI Phase 5 UI fixtures", () => {
         "sanitized-error",
         "stop-cancel",
         "stream-completion",
+        "markdown-table",
       ])
     )
     const draft = fixture.cases.find((item) => item.id === "repair-draft")?.payload
@@ -65,5 +66,36 @@ describe("shared AI Phase 5 UI fixtures", () => {
       "finish",
       "DONE",
     ])
+
+    const markdownTable = fixture.cases.find((item) => item.id === "markdown-table")?.payload as {
+      chunks: string[]
+      expected: {
+        columns: string[]
+        rows: string[][]
+        unicode: boolean
+        escaped_pipe: boolean
+        safe_cells: boolean
+      }
+      layout: { overflow_x_auto: boolean; min_w_0: boolean }
+    }
+    expect(markdownTable.chunks).toHaveLength(5)
+    expect(markdownTable.chunks[0]).toContain("| Tình")
+    expect(markdownTable.chunks[1]).toContain("| -")
+    expect(markdownTable.chunks[2]).toContain("| Máy siêu âm")
+    expect(markdownTable.chunks[2]).toContain("Chưa")
+    expect(markdownTable.chunks[3]).toContain(" có dữ")
+    expect(markdownTable.chunks[3]).toContain("\\|")
+    expect(markdownTable.chunks[4]).toContain("onerror")
+    expect(markdownTable.expected).toEqual({
+      columns: ["Thiết bị", "Tình trạng", "Ghi chú"],
+      rows: [
+        ["Máy siêu âm", "Hoạt động", "Chưa có dữ liệu"],
+        ["Máy X|Y", "Hỏng", '<img src=x onerror="alert(1)">'],
+      ],
+      unicode: true,
+      escaped_pipe: true,
+      safe_cells: true,
+    })
+    expect(markdownTable.layout).toEqual({ overflow_x_auto: true, min_w_0: true })
   })
 })

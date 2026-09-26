@@ -51,7 +51,7 @@ const markdownComponents: React.ComponentProps<typeof Markdown>["components"] = 
         )
     },
     table: ({ children }) => (
-        <div className="my-2 overflow-x-auto rounded-lg border border-border">
+        <div className="my-2 min-w-0 overflow-x-auto rounded-lg border border-border">
             <table className="w-full text-xs border-collapse">{children}</table>
         </div>
     ),

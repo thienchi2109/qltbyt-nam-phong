@@ -69,6 +69,32 @@
       "payload": {
         "events": ["start", "text-delta", "tool-output-available", "finish", "DONE"]
       }
+    },
+    {
+      "id": "markdown-table",
+      "payload": {
+        "chunks": [
+          "| Thiết bị | Tình",
+          " trạng | Ghi chú |\n| -",
+          "-- | --- | --- |\n| Máy siêu âm | Hoạt động | Chưa",
+          " có dữ liệu |\n| Máy X\\|Y | Hỏng | ",
+          "<img src=x onerror=\"alert(1)\"> |\n"
+        ],
+        "expected": {
+          "columns": ["Thiết bị", "Tình trạng", "Ghi chú"],
+          "rows": [
+            ["Máy siêu âm", "Hoạt động", "Chưa có dữ liệu"],
+            ["Máy X|Y", "Hỏng", "<img src=x onerror=\"alert(1)\">"]
+          ],
+          "unicode": true,
+          "escaped_pipe": true,
+          "safe_cells": true
+        },
+        "layout": {
+          "overflow_x_auto": true,
+          "min_w_0": true
+        }
+      }
     }
   ]
 }

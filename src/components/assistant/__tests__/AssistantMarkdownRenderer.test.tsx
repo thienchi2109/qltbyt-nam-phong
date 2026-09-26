@@ -37,4 +37,33 @@ describe("AssistantMarkdownRenderer", () => {
     expect(code).toHaveClass("language-sql")
     expect(code).toHaveClass("block")
   })
+
+  it("renders streamed-table content with safe cells and a mobile overflow contract", () => {
+    const hostileCell = '<img src=x onerror="alert(1)">'
+    const content = [
+      "| Thiết bị | Tình trạng | Ghi chú |",
+      "| --- | --- | --- |",
+      "| Máy siêu âm | Hoạt động | Chưa có dữ liệu |",
+      `| Máy X\\|Y | Hỏng | ${hostileCell} |`,
+    ].join("\n")
+
+    const { container } = render(<AssistantMarkdownRenderer content={content} />)
+    const scrollContainer = container.querySelector("div.overflow-x-auto")
+    const table = scrollContainer?.querySelector("table")
+
+    expect(scrollContainer).toHaveClass("min-w-0")
+    expect(table).toBeInTheDocument()
+    expect(table?.querySelectorAll("thead th")).toHaveLength(3)
+    expect(table?.querySelectorAll("tbody tr")).toHaveLength(2)
+    expect(
+      Array.from(table?.querySelectorAll("tbody tr") ?? []).every(
+        (row) => row.querySelectorAll("td").length === 3,
+      ),
+    ).toBe(true)
+    expect(table).toHaveTextContent("Máy X|Y")
+    expect(table).toHaveTextContent("Chưa có dữ liệu")
+    expect(table).toHaveTextContent("Hỏng")
+    expect(container.querySelector("img")).not.toBeInTheDocument()
+    expect(container.querySelector("[onerror]")).not.toBeInTheDocument()
+  })
 })

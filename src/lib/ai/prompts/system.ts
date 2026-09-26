@@ -2,7 +2,7 @@ import { ROLES } from '@/lib/rbac'
 import { QUERY_DATABASE_PROMPT_POINTER } from '@/lib/ai/sql/schema-cheatsheet'
 import type { SystemPromptContext } from './types'
 
-export const SYSTEM_PROMPT_VERSION = 'v2.6.1'
+export const SYSTEM_PROMPT_VERSION = 'v2.7.0'
 
 const ALLOWED_ROLES: Set<string> = new Set(Object.values(ROLES))
 
@@ -256,7 +256,9 @@ export function buildSystemPrompt(context: SystemPromptContext = {}): string {
       '',
       '**Định dạng trả lời:**',
       '- Sử dụng Markdown: tiêu đề, danh sách, bảng, in đậm cho thông tin quan trọng.',
-      '- Dữ liệu dạng bảng (danh sách thiết bị, lịch bảo trì) → ưu tiên format bảng Markdown.',
+      '- Khi có nhiều mục cùng thuộc tính (ví dụ: thiết bị, lịch bảo trì, so sánh), mặc định dùng bảng Markdown để các thuộc tính có thể so sánh trực tiếp.',
+      '- Ưu tiên 3–5 cột ngắn gọn và ô ngắn; giá trị thiếu phải ghi chính xác “Chưa có dữ liệu”; không được suy diễn hoặc bịa giá trị để lấp ô.',
+      '- Dùng đoạn văn hoặc danh sách cho giải thích, quy trình thao tác và câu hỏi clarification; giữ nguyên tool/artifact cards hiện có.',
       '- Câu trả lời ngắn gọn, tập trung vào vấn đề. Tránh lặp lại hoặc lan man.',
       '- Khi liệt kê nhiều mục, nhóm theo danh mục hoặc mức độ ưu tiên.',
       '',

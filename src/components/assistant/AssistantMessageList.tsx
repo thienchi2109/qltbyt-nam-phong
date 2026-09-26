@@ -72,7 +72,7 @@ export function AssistantMessageList({
         <div
             ref={containerRef}
             onScroll={handleScroll}
-            className="flex-1 overflow-y-auto px-4 py-3 space-y-3"
+            className="flex-1 min-w-0 overflow-y-auto px-4 py-3 space-y-3"
             role="log"
             aria-live="polite"
         >
@@ -121,7 +121,7 @@ function MessageBubble({
 
             <div
                 className={cn(
-                    "space-y-0.5",
+                    "min-w-0 space-y-0.5",
                     isUser ? "max-w-[85%] ml-12" : "max-w-[88%] mr-12",
                 )}
             >
