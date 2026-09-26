@@ -93,9 +93,10 @@ func testHandler(t *testing.T, started time.Time, key Key, opens *atomic.Int32, 
 		t.Fatal(err)
 	}
 	return &Handler{
-		Guard:    NewReplayGuard(started, []Key{key}),
-		Registry: reg,
-		Now:      func() time.Time { return started.Add(Quarantine) },
+		Guard:     NewReplayGuard(started, []Key{key}),
+		Registry:  reg,
+		Admission: NewAdmission(16),
+		Now:       func() time.Time { return started.Add(Quarantine) },
 		Runner: &orchestration.Runner{
 			Registry: reg,
 			Usage:    usage.NewMemory(func() time.Time { return started }),

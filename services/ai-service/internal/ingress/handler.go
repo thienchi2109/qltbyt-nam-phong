@@ -1,6 +1,7 @@
 package ingress
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -16,16 +17,21 @@ const maxBodyBytes = 1 << 20
 
 // Handler is the neutral POST /v1/chat boundary. It does not know any app adapter.
 type Handler struct {
-	Guard    *ReplayGuard
-	Registry *registry.Registry
-	Runner   *orchestration.Runner
-	Now      func() time.Time
-	Log      Log
+	Guard     *ReplayGuard
+	Registry  *registry.Registry
+	Runner    *orchestration.Runner
+	Admission *Admission
+	Now       func() time.Time
+	Log       Log
 }
 
 // ServeHTTP verifies the signed envelope before any model call.
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestID := requestIDFrom(r)
+	if r.Method == http.MethodGet && (r.URL.Path == "/healthz" || r.URL.Path == "/readyz") {
+		h.serveProbe(w, r.URL.Path == "/readyz")
+		return
+	}
 	if r.Method != http.MethodPost || r.URL.Path != Path {
 		writeProtocolError(w, requestID, protocol.NewError(http.StatusNotFound, protocol.CodeInvalidRequest, "The request is not supported.", false), h.Log)
 		return
@@ -67,12 +73,50 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProtocolError(w, requestID, authenticationError(err), h.Log)
 		return
 	}
-	result, runErr := h.Runner.Stream(r.Context(), request)
+	if !h.Admission.acquire() {
+		h.Guard.Release(authenticated.RequestID)
+		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeLimitExceeded, "The service is not accepting new requests.", true), h.Log)
+		return
+	}
+	if h.Admission != nil {
+		defer h.Admission.release()
+	}
+	ctx, cancel := requestContext(r.Context())
+	defer cancel()
+	result, runErr := h.Runner.Stream(ctx, request)
 	if len(result.Events) == 0 {
 		writeProtocolError(w, requestID, publicOrFallback(requestID, runErr), h.Log)
 		return
 	}
-	h.writeEvents(w, requestID, result.Events)
+	if err := h.writeEvents(w, requestID, result.Events); err != nil {
+		// writeEvents records the sanitized disconnect outcome; stop without
+		// attempting to write a second response after the client is gone.
+		return
+	}
+}
+
+func requestContext(parent context.Context) (context.Context, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	if deadline, ok := parent.Deadline(); ok {
+		// Reserve the shared cleanup allowance inside the caller's original
+		// deadline; the runner owns detached reconciliation after cancellation.
+		return context.WithDeadline(parent, deadline.Add(-protocol.CleanupBudget))
+	}
+	return context.WithTimeout(parent, protocol.WorkBudget)
+}
+
+func (h *Handler) serveProbe(w http.ResponseWriter, ready bool) {
+	status := http.StatusOK
+	state := "ok"
+	if ready && (h.Guard == nil || !h.Guard.Ready(h.now()) || h.Registry == nil || h.Runner == nil || h.Runner.Open == nil || h.Runner.Usage == nil || !h.Admission.ready()) {
+		status = http.StatusServiceUnavailable
+		state = "not_ready"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	_ = json.NewEncoder(w).Encode(map[string]string{"status": state})
 }
 
 func (h *Handler) now() time.Time {
@@ -82,7 +126,7 @@ func (h *Handler) now() time.Time {
 	return time.Now()
 }
 
-func (h *Handler) writeEvents(w http.ResponseWriter, requestID string, events []protocol.Event) {
+func (h *Handler) writeEvents(w http.ResponseWriter, requestID string, events []protocol.Event) error {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set(uiStreamHeader, uiStreamVersion)
@@ -92,10 +136,17 @@ func (h *Handler) writeEvents(w http.ResponseWriter, requestID string, events []
 		if chunk.Type == "error" {
 			loggerOrNop(h.Log).Record(requestID, "error")
 		}
-		writeStreamData(w, chunk)
+		if err := writeStreamData(w, chunk); err != nil {
+			loggerOrNop(h.Log).Record(requestID, "client_disconnected")
+			return err
+		}
 	}
-	writeStreamRaw(w, "[DONE]")
+	if err := writeStreamRaw(w, "[DONE]"); err != nil {
+		loggerOrNop(h.Log).Record(requestID, "client_disconnected")
+		return err
+	}
 	loggerOrNop(h.Log).Record(requestID, protocol.EventDone)
+	return nil
 }
 
 func readRawBody(r *http.Request) ([]byte, error) {

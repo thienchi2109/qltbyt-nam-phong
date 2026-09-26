@@ -14,9 +14,9 @@ import (
 // ServeProviderStream writes provider chunks as they arrive.
 // On client cancel it closes the reader so a later Send observes the reader
 // side as closed. It never closes the writer; the forwarder owns writer.Close.
-func ServeProviderStream(ctx context.Context, w http.ResponseWriter, reader *schema.StreamReader[*schema.Message], requestID string, log Log) {
+func ServeProviderStream(ctx context.Context, w http.ResponseWriter, reader *schema.StreamReader[*schema.Message], requestID string, log Log) error {
 	if reader == nil {
-		return
+		return nil
 	}
 	var closeOnce sync.Once
 	closeReader := func() { closeOnce.Do(func() { reader.Close() }) }
@@ -40,79 +40,111 @@ func ServeProviderStream(ctx context.Context, w http.ResponseWriter, reader *sch
 	if requestID != "" {
 		w.Header().Set(HeaderRequest, requestID)
 	}
-	writeStreamData(w, uiChunk{Type: "start", MessageID: requestID})
-	writeStreamData(w, uiChunk{Type: "start-step"})
+	if err := writeStreamData(w, uiChunk{Type: "start", MessageID: requestID}); err != nil {
+		return err
+	}
+	if err := writeStreamData(w, uiChunk{Type: "start-step"}); err != nil {
+		return err
+	}
 	textID := "text-1"
 	textOpen := false
 	sawError := false
-	openText := func() {
+	openText := func() error {
 		if !textOpen {
-			writeStreamData(w, uiChunk{Type: "text-start", ID: textID})
+			if err := writeStreamData(w, uiChunk{Type: "text-start", ID: textID}); err != nil {
+				return err
+			}
 			textOpen = true
 		}
+		return nil
 	}
-	closeText := func() {
+	closeText := func() error {
 		if textOpen {
-			writeStreamData(w, uiChunk{Type: "text-end", ID: textID})
+			if err := writeStreamData(w, uiChunk{Type: "text-end", ID: textID}); err != nil {
+				return err
+			}
 			textOpen = false
 		}
+		return nil
 	}
 	for {
 		if err := ctx.Err(); err != nil {
 			closeReader()
-			closeText()
+			_ = closeText()
 			loggerOrNop(log).Record(requestID, protocolCancelled())
-			return
+			return err
 		}
 		chunk, err := reader.Recv()
 		if ctx.Err() != nil {
 			closeReader()
-			closeText()
+			_ = closeText()
 			loggerOrNop(log).Record(requestID, protocolCancelled())
-			return
+			return ctx.Err()
 		}
 		if errors.Is(err, io.EOF) {
-			closeText()
+			if writeErr := closeText(); writeErr != nil {
+				return writeErr
+			}
 			reason := "stop"
 			if sawError {
 				reason = "error"
 			}
-			writeStreamData(w, uiChunk{Type: "finish-step"})
-			writeStreamData(w, uiChunk{Type: "finish", FinishReason: reason})
-			writeStreamRaw(w, "[DONE]")
+			if writeErr := writeStreamData(w, uiChunk{Type: "finish-step"}); writeErr != nil {
+				return writeErr
+			}
+			if writeErr := writeStreamData(w, uiChunk{Type: "finish", FinishReason: reason}); writeErr != nil {
+				return writeErr
+			}
+			if writeErr := writeStreamRaw(w, "[DONE]"); writeErr != nil {
+				return writeErr
+			}
 			loggerOrNop(log).Record(requestID, "done")
-			return
+			return nil
 		}
 		if err != nil {
 			sawError = true
-			closeText()
+			if writeErr := closeText(); writeErr != nil {
+				return writeErr
+			}
 			safe := SanitizeStreamError(err)
-			writeStreamData(w, uiChunk{Type: "error", ErrorText: safe.Message})
+			if writeErr := writeStreamData(w, uiChunk{Type: "error", ErrorText: safe.Message}); writeErr != nil {
+				return writeErr
+			}
 			loggerOrNop(log).Record(requestID, safe.Code)
 			continue
 		}
 		if chunk != nil && chunk.Content != "" {
-			openText()
-			writeStreamData(w, uiChunk{Type: "text-delta", ID: textID, Delta: chunk.Content})
+			if writeErr := openText(); writeErr != nil {
+				return writeErr
+			}
+			if writeErr := writeStreamData(w, uiChunk{Type: "text-delta", ID: textID, Delta: chunk.Content}); writeErr != nil {
+				return writeErr
+			}
 		}
 	}
 }
 
-func writeStreamData(w http.ResponseWriter, event interface{}) {
+func writeStreamData(w http.ResponseWriter, event interface{}) error {
 	encoded, err := json.Marshal(event)
 	if err != nil {
-		return
+		return err
 	}
-	writeStreamRaw(w, string(encoded))
+	return writeStreamRaw(w, string(encoded))
 }
 
-func writeStreamRaw(w http.ResponseWriter, payload string) {
-	_, _ = w.Write([]byte("data: "))
-	_, _ = w.Write([]byte(payload))
-	_, _ = w.Write([]byte("\n\n"))
+func writeStreamRaw(w http.ResponseWriter, payload string) error {
+	frame := "data: " + payload + "\n\n"
+	n, err := io.WriteString(w, frame)
+	if err != nil {
+		return err
+	}
+	if n != len(frame) {
+		return io.ErrShortWrite
+	}
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()
 	}
+	return nil
 }
 
 func protocolCancelled() string {

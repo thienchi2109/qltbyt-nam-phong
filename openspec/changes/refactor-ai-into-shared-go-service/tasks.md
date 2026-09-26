@@ -92,12 +92,12 @@ Phụ thuộc: Phase 0 security proof, Phase 1 core, Phase 2 policy và Phase 3 
 
 Bằng chứng nghiệm thu: HTTP/SSE contract, event ordering, auth/replay, abort, deadline, admission và sanitized-error tests.
 
-- [ ] 4.1 Implement `POST /v1/chat` với protocol/capability version, body/message/tool-step limits và request correlation.
-- [ ] 4.2 Verify signed identity envelope bằng tham số HMAC đã ghi ở 0.5: issuer/audience, timestamp skew, body digest, key ID, nonce uniqueness và capability authorization. Dùng full validity cộng clock-skew quarantine. MVP không có verified-snapshot exception.
-- [ ] 4.3 Encode Vercel AI SDK UI Message Stream v1, giữ text/tool/artifact/error parts và completion order draft trước terminal `finish`/`DONE`.
-- [ ] 4.4 Propagate browser disconnect/abort qua HTTP, Eino, provider, tool và RPC; cancellation không tạo work mới.
-- [ ] 4.5 Giữ BFF budget mặc định 60 giây, đúng `maxDuration` hiện tại. Budget đề xuất: Go làm việc tối đa 55 giây tính từ đầu request gốc, cleanup tối đa 5 giây trong cùng 60 giây đó. Go nhận phần deadline còn lại sau ingress/network margin và không reset mỗi request thành 55 giây khi vừa tới Go. Phải có evidence cho bounded cleanup, failure handling và reconciliation trong allowance này. Nếu proof thất bại, dừng để sửa normative đã được review; không kết luận 5 giây là không đủ khi chưa có evidence. Admission quá tải trả stable retryable error.
-- [ ] 4.6 Giữ `/healthz`/`/readyz` local/private, pre-stream JSON và post-stream sanitized error, `X-Request-ID`, không log prompt/SQL/token/secret.
+- [x] 4.1 Implement `POST /v1/chat` với protocol/capability version, body/message/tool-step limits và request correlation.
+- [x] 4.2 Verify signed identity envelope bằng tham số HMAC đã ghi ở 0.5: issuer/audience, timestamp skew, body digest, key ID, nonce uniqueness và capability authorization. Dùng full validity cộng clock-skew quarantine. MVP không có verified-snapshot exception.
+- [x] 4.3 Encode Vercel AI SDK UI Message Stream v1, giữ text/tool/artifact/error parts và completion order draft trước terminal `finish`/`DONE`.
+- [x] 4.4 Propagate browser disconnect/abort qua HTTP, Eino, provider, tool và RPC; cancellation không tạo work mới.
+- [x] 4.5 Giữ BFF budget mặc định 60 giây, đúng `maxDuration` hiện tại. Budget đề xuất: Go làm việc tối đa 55 giây tính từ đầu request gốc, cleanup tối đa 5 giây trong cùng 60 giây đó. Go nhận phần deadline còn lại sau ingress/network margin và không reset mỗi request thành 55 giây khi vừa tới Go. Phải có evidence cho bounded cleanup, failure handling và reconciliation trong allowance này. Nếu proof thất bại, dừng để sửa normative đã được review; không kết luận 5 giây là không đủ khi chưa có evidence. Admission quá tải trả stable retryable error.
+- [x] 4.6 Giữ `/healthz`/`/readyz` local/private, pre-stream JSON và post-stream sanitized error, `X-Request-ID`, không log prompt/SQL/token/secret.
 
 Điểm dừng/review: Dừng nếu auth/replay không fail closed, SSE drift, abort không xuyên suốt hoặc deadline không đủ cleanup budget.
 

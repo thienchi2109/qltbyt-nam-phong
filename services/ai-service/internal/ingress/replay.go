@@ -35,18 +35,34 @@ type ReplayGuard struct {
 	readyAt time.Time
 	keys    map[string]Key
 	seen    map[string]time.Time
+	valid   bool
 }
 
 // NewReplayGuard starts a guard that rejects every request until quarantine ends.
 func NewReplayGuard(started time.Time, keys []Key) *ReplayGuard {
 	indexed := make(map[string]Key, len(keys))
+	valid := len(keys) > 0
 	for _, key := range keys {
+		if key.ID == "" || key.ID != stringsTrim(key.ID) || len(key.Secret) == 0 ||
+			key.Issuer == "" || key.Issuer != stringsTrim(key.Issuer) ||
+			key.Audience == "" || key.Audience != stringsTrim(key.Audience) ||
+			key.AppID == "" || key.AppID != stringsTrim(key.AppID) ||
+			key.CapabilityID == "" || key.CapabilityID != stringsTrim(key.CapabilityID) {
+			valid = false
+			continue
+		}
+		if _, exists := indexed[key.ID]; exists {
+			valid = false
+			delete(indexed, key.ID)
+			continue
+		}
 		indexed[key.ID] = key
 	}
 	return &ReplayGuard{
 		readyAt: started.Add(Quarantine),
 		keys:    indexed,
 		seen:    make(map[string]time.Time),
+		valid:   valid && len(indexed) > 0,
 	}
 }
 
@@ -55,7 +71,7 @@ func (g *ReplayGuard) Ready(now time.Time) bool {
 	if g == nil {
 		return false
 	}
-	return !now.Before(g.readyAt)
+	return g.valid && !now.Before(g.readyAt)
 }
 
 // Authenticated is a request that passed signature checks and is not yet admitted.
@@ -118,6 +134,18 @@ func (g *ReplayGuard) Admit(now time.Time, request Authenticated) error {
 	return nil
 }
 
+// Release removes a nonce when admission fails before provider work begins.
+// It is intentionally narrow: callers may only release a request they just
+// admitted after a bounded service gate rejected it.
+func (g *ReplayGuard) Release(requestID string) {
+	if g == nil || requestID == "" {
+		return
+	}
+	g.mu.Lock()
+	delete(g.seen, requestID)
+	g.mu.Unlock()
+}
+
 // Contains reports whether a live nonce is still stored. It is for tests.
 func (g *ReplayGuard) Contains(requestID string) bool {
 	g.mu.Lock()
@@ -143,8 +171,12 @@ func bindingMatches(key Key, requestID string, body []byte) error {
 		CapabilityVersion string `json:"capability_version"`
 		RequestID         string `json:"request_id"`
 		Identity          struct {
-			Issuer   string `json:"issuer"`
-			Audience string `json:"audience"`
+			Issuer     string `json:"issuer"`
+			Audience   string `json:"audience"`
+			TrustedApp struct {
+				AppID         string   `json:"app_id"`
+				CapabilityIDs []string `json:"capability_ids"`
+			} `json:"trusted_app"`
 		} `json:"identity"`
 	}
 	if err := json.Unmarshal(body, &parsed); err != nil {
@@ -160,10 +192,24 @@ func bindingMatches(key Key, requestID string, body []byte) error {
 		parsed.Identity.Issuer == "" ||
 		parsed.Identity.Issuer != key.Issuer ||
 		parsed.Identity.Audience == "" ||
-		parsed.Identity.Audience != key.Audience {
+		parsed.Identity.Audience != key.Audience ||
+		(parsed.Identity.TrustedApp.AppID != "" && parsed.Identity.TrustedApp.AppID != key.AppID) ||
+		!capabilityClaimMatches(parsed.Identity.TrustedApp.CapabilityIDs, key.CapabilityID) {
 		return ErrUnauthenticated
 	}
 	return nil
+}
+
+func capabilityClaimMatches(claims []string, capabilityID string) bool {
+	if len(claims) == 0 {
+		return true
+	}
+	for _, claim := range claims {
+		if claim == capabilityID {
+			return true
+		}
+	}
+	return false
 }
 
 func stringsTrim(value string) string {
