@@ -60,17 +60,18 @@ registry, broker and query executor MUST be the same live tuple used by
 `/readyz`; a non-nil interface, test double, secret check or registry-only
 lookup is not sufficient for readiness.
 
-The broker's remote counterpart is a separate application-owned BFF broker
-endpoint. Phase 7.5A MUST choose and record its concrete route, request and
-response schemas, allowlisted RPCs, timeout, cancellation propagation, trusted
-BFF credential source and redaction rules before implementation. The endpoint
-issues a short-lived broker token with `iss=nextjs-bff` and
-`aud=qltbyt-rpc-broker-v1`; its TTL MUST be at most 120 seconds and its clock
-policy is part of that contract. Browser cookies, browser claims and
-`SUPABASE_JWT_SECRET` MUST NOT cross into Go. An authenticated Access lane is
-valid only when it proves the trusted BFF credential source; an Access header
-supplied by a browser or an unbound disposable fixture is not production
-authentication evidence.
+The broker's remote counterpart is the application-owned, server-only
+`POST /api/internal/ai/broker/v1` endpoint. Its request/response schemas,
+allowlisted RPCs, timeout, cancellation propagation, trusted BFF credential
+source and redaction rules are normative in the [7.5A contract/ADR](phase-7.5/phase-7.5a-contract.md).
+The server-side BFF mints and the endpoint verifies the existing compact HMAC
+broker token with `iss=nextjs-bff` and `aud=qltbyt-rpc-broker-v1`; its TTL MUST
+be at most 120 seconds and its strict UTC clock policy is part of that
+contract. Browser
+cookies, browser claims and `SUPABASE_JWT_SECRET` MUST NOT cross into Go. An
+authenticated Access lane is valid only when it proves the trusted BFF
+credential source; an Access header supplied by a browser or an unbound
+disposable fixture is not production authentication evidence.
 
 `AI_DATABASE_URL` is an external pooler URL for the dedicated
 `ai_query_tool` read-only role. The Go query executor MUST enforce read-only
@@ -112,6 +113,14 @@ The QLTBYT adapter SHALL own:
 - repair-request draft session, secondary structured extraction and UI artifact mapping.
 
 `query_database` SHALL remain a QLTBYT-only tool. Its `QueryExecutor` MUST use external-pooler `AI_DATABASE_URL` with a dedicated `ai_query_tool` read-only connection/role (or an already approved equivalent), explicit SQL parser/statement allowlist, approved schema/catalog, tenant/facility scope checks, statement timeout, row/cell limits and no DDL/DCL/write transaction. Each attempt SHALL call `public.assistant_query_database_audit_log` through the internal `Broker` and separate BFF broker endpoint. The call MUST send a sanitized nonempty `p_sql_shape` of at most 1000 characters; a hash MUST NOT replace that shape. It MUST send `p_tool_path` exactly `query_database`, `p_status` of `success` or `failure`, nonnegative `p_latency_ms`, `p_effective_facility_id`, and `p_facility_source` of `selected` or `session`. Failure status MUST include a nonempty `p_error_class`. The broker token MUST carry a numeric `user_id` claim and the fixed issuer/audience above. The adapter MUST also send the optional fields the current audited executor sends when present: `p_row_count`, `p_payload_bytes`, `p_requested_facility_id`, `p_session_facility_id`, and `p_raw_role`. On success the order MUST be execute, then audit, then release; audit failure on that path blocks release. On failure the audit is best-effort: an audit failure is swallowed and the original SQL error is rethrown. The adapter MUST NOT return an empty successful result because the audit failed. Operational logs remain separate and MUST omit raw identity, prompt, SQL and sensitive result data. If the dedicated role, external pooler or audit path is not already available, provisioning/read-back MUST be a separate SQL gate before this tool is enabled.
+
+The audit telemetry fields are not caller-controlled scope. The BFF derives
+`p_requested_facility_id`, `p_session_facility_id`, `p_raw_role` and
+`p_facility_source` from the verified broker credential and resolved scope;
+the Go adapter MUST reject or overwrite untrusted overrides. The existing
+operation-less `Broker.Call` interface is contract evidence only; 7.5C must
+preserve wire `operation=call|cleanup` with a separate bounded cleanup method
+or an equivalent operation-aware adapter.
 
 The QLTBYT adapter SHALL preserve the current kill-switch contract: an environment emergency override wins, a successful database read is cached for 8 seconds, a database read error fails closed and is cached for 2 seconds, and the service does not start model/tool work while the switch is active. Read-only/RPC tool results SHALL be compacted before model execution using the existing bounded message/input budgets. A clarification returned before `reserveUsage`, as the current route does, SHALL NOT be compacted or rejected by the model-execution budget gate, and it MUST consume no quota reservation.
 

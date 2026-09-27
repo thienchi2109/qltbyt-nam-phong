@@ -222,7 +222,16 @@ The QLTBYT capability SHALL preserve current UI and tool behavior before cutover
 
 ### Requirement: Tenant and Data Security
 
-The system SHALL preserve the current role, tenant and facility authorization semantics at the QLTBYT capability boundary, including normalization of equivalent global/admin roles. QLTBYT adapters MUST use scoped authenticated claims for RPC/data access and MUST NOT replace RLS/policy checks with an unrestricted service credential. The QLTBYT `query_database` tool MUST use a dedicated `ai_query_tool` read-only connection/role or an already approved equivalent, an explicit SQL parser/statement allowlist, approved schema/catalog, tenant/facility scope checks, statement timeout, row/cell limits, and `public.assistant_query_database_audit_log`. Phase 0.9 SHALL name that RPC in the caller-credential decision. The audit call MUST send a sanitized nonempty `p_sql_shape` of at most 1000 characters; a hash MUST NOT replace it. It MUST send `p_tool_path` exactly `query_database`, `p_status` of `success` or `failure`, nonnegative `p_latency_ms`, `p_effective_facility_id`, and `p_facility_source` of `selected` or `session`. A failure status MUST include a nonempty `p_error_class`. The caller credential MUST carry a numeric `user_id` claim. The adapter MUST also send the optional fields the current audited executor sends when it has them: `p_row_count`, `p_payload_bytes`, `p_requested_facility_id`, `p_session_facility_id`, and `p_raw_role`. On success the order MUST be execute, then audit, then release; audit failure on that path blocks release. On failure the audit is best-effort: an audit failure is swallowed and the original SQL error is rethrown. The adapter MUST NOT return an empty successful result because the audit failed. Operational logs MUST omit raw identity, prompt, SQL and sensitive result data. The tool MUST reject DDL, DCL and write transactions. If that connection or audit path does not exist, enabling the tool requires a separate SQL change and database quality gate. The QLTBYT adapter SHALL preserve the environment/database kill-switch behavior, an 8 second cache after a successful database read, a 2 second cache after a database read error, and fail-closed database errors. It SHALL compact read-only/RPC outputs under existing bounded input budgets while leaving clarification responses outside that model-execution budget gate and outside quota reserve. The service MUST redact sensitive prompts, messages, SQL, provider tokens, identity claims and secret headers from operational logs.
+The system SHALL preserve the current role, tenant and facility authorization semantics at the QLTBYT capability boundary, including normalization of equivalent global/admin roles. QLTBYT adapters MUST use scoped authenticated claims for RPC/data access and MUST NOT replace RLS/policy checks with an unrestricted service credential. The QLTBYT `query_database` tool MUST use a dedicated `ai_query_tool` read-only connection/role or an already approved equivalent, an explicit SQL parser/statement allowlist, approved schema/catalog, tenant/facility scope checks, statement timeout, row/cell limits, and `public.assistant_query_database_audit_log`. Phase 0.9 SHALL name that RPC in the caller-credential decision. The audit call MUST send a sanitized nonempty `p_sql_shape` of at most 1000 characters; a hash MUST NOT replace it. It MUST send `p_tool_path` exactly `query_database`, `p_status` of `success` or `failure`, nonnegative `p_latency_ms`, `p_effective_facility_id`, and `p_facility_source` of `selected` or `session`. A failure status MUST include a nonempty `p_error_class`. The caller credential MUST carry a numeric `user_id` claim. The audit boundary MAY include `p_row_count` and `p_payload_bytes` when known. The BFF MUST derive `p_requested_facility_id`, `p_session_facility_id`, `p_raw_role` and `p_facility_source` from the verified broker credential/scope; the Go adapter MUST NOT treat those fields as caller-controlled authority or send unverified overrides. On success the order MUST be execute, then audit, then release; audit failure on that path blocks release. On failure the audit is best-effort: an audit failure is swallowed and the original SQL error is rethrown. The adapter MUST NOT return an empty successful result because the audit failed. Operational logs MUST omit raw identity, prompt, SQL and sensitive result data. The tool MUST reject DDL, DCL and write transactions. If that connection or audit path does not exist, enabling the tool requires a separate SQL change and database quality gate. The QLTBYT adapter SHALL preserve the environment/database kill-switch behavior, an 8 second cache after a successful database read, a 2 second cache after a database read error, and fail-closed database errors. It SHALL compact read-only/RPC outputs under existing bounded input budgets while leaving clarification responses outside that model-execution budget gate and outside quota reserve. The service MUST redact sensitive prompts, messages, SQL, provider tokens, identity claims and secret headers from operational logs.
+
+The audit boundary MAY include `p_row_count` and `p_payload_bytes` when known.
+The BFF MUST derive `p_requested_facility_id`, `p_session_facility_id`,
+`p_raw_role` and `p_facility_source` from the verified broker
+credential/scope; the Go adapter MUST NOT treat those fields as
+caller-controlled authority or send unverified overrides. On success the
+order MUST be execute, then audit, then release; audit failure on that path
+blocks release. On failure the audit is best-effort: an audit failure is
+swallowed and the original SQL error is rethrown.
 
 #### Scenario: Tenant mismatch is supplied
 
@@ -302,11 +311,13 @@ The dark Go/BFF path SHALL use a typed chat-streaming provider adapter that norm
 ### Requirement: Broker Composition and Query Readiness Gate
 
 The QLTBYT capability SHALL use an internal Go `Broker` composition for
-application-owned RPC calls and a separate application-owned BFF broker
-endpoint for the remote RPC boundary. Phase 7.5A SHALL choose and record the
-endpoint route, request/response schema, allowlist, timeout, cancellation and
-trusted BFF credential source before Phase 7.5B implementation. Broker tokens
-SHALL be short-lived (maximum `120s`) and contain `iss=nextjs-bff`,
+application-owned RPC calls and the application-owned server-only
+`POST /api/internal/ai/broker/v1` BFF broker endpoint for the remote RPC
+boundary. The normative route, request/response schema, allowlist, timeout,
+cancellation, error redaction and trusted BFF credential source are recorded in
+the [Phase 7.5A contract/ADR](../../phase-7.5/phase-7.5a-contract.md) before
+Phase 7.5B implementation. Broker tokens SHALL be short-lived (maximum `120s`)
+and contain `iss=nextjs-bff`,
 `aud=qltbyt-rpc-broker-v1`, a numeric `user_id` and only trusted role/facility
 scope. Browser cookies, browser-supplied claims and `SUPABASE_JWT_SECRET` MUST
 NOT enter Go. An authenticated Cloudflare Access lane SHALL be accepted only
@@ -338,8 +349,54 @@ authorization.
 - **THEN** the endpoint issues a token with `iss=nextjs-bff`,
   `aud=qltbyt-rpc-broker-v1`, numeric `user_id`, scoped facility claims and a
   TTL no greater than `120s`
+- **AND** every present facility claim is a positive integer; runtime rejection
+  of zero, negative, non-integer or nonnumeric facility claims is evidenced in
+  7.5C, not assumed from the contract document
 - **AND** the token and response are redacted from browser-visible output and
   operational logs
+
+#### Scenario: Broker request uses the versioned server-only route
+
+- **WHEN** the Go `Broker` calls `POST /api/internal/ai/broker/v1` through the
+  trusted private/Tunnel/Access path with `Authorization: Bearer <broker-token>`,
+  a matching `X-Request-ID`, `protocol_version: "v1"`, an exact allowlisted RPC
+  and an object payload
+- **THEN** the BFF validates the token, scope, request size and RPC arguments
+  before invoking the server-side RPC adapter
+- **AND** the payload is the strict per-RPC schema from the 7.5A ADR; protected
+  user/facility/audit fields are derived by the BFF and cannot be caller
+  controlled
+- **AND** the response enforces the ADR's per-RPC result field/row/item limits
+  and hard `64 KiB` UTF-8 success-body cap
+- **AND** a success returns `200 application/json` with the request ID, exact
+  RPC name and validated `result`; no token, cookie, SQL or secret is returned
+
+#### Scenario: Broker rejects unsafe or unavailable work with stable errors
+
+- **WHEN** the request has a missing/invalid credential, unknown RPC, widened
+  scope, malformed or oversized body, cancellation, unavailable dependency or
+  downstream RPC failure, or its upstream result exceeds a schema/size limit
+- **THEN** the route returns the contract status (`401`, `403`, `400`/`413`,
+  `499`, `503` or sanitized `502`) with a stable redacted `{error:{code,
+message,retryable,request_id}}` body and `X-Request-ID`; an oversized result
+  uses `result_too_large` and no partial result is returned
+- **AND** a missing or invalid request ID is rejected before RPC with `400`,
+  and the server generates the compliant response correlation ID used by that
+  error body/header
+- **AND** raw SQL, rows, database/provider messages, credentials and secrets
+  are absent from the body and operational logs
+
+#### Scenario: Cleanup is bounded and cannot widen authority
+
+- **WHEN** cancellation triggers a cleanup call with `operation: "cleanup"`
+- **THEN** only `assistant_query_database_audit_log` or
+  `ai_quota_finalize` is accepted, the same user/facility scope is enforced,
+  and the detached cleanup budget is at most `5s`
+- **AND** the operation is preserved by the Go transport; the current
+  operation-less `Broker.Call` interface is not implementation evidence, and
+  7.5C must add an operation-aware or separate cleanup boundary
+- **AND** reserve, catalog RPCs, new facilities and retries that create a
+  second quota reservation are rejected
 
 #### Scenario: Browser or project-wide secret is presented to Go
 

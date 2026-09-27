@@ -13,10 +13,15 @@ starting the next package.
 and registry interfaces.
 
 **Owner:** architecture/spec owner. **Output:** a reviewed concrete BFF broker
-route, request/response schemas, allowlist, timeout/cancellation, redaction,
-trusted BFF credential source and token contract:
+route `POST /api/internal/ai/broker/v1`, request/response schemas, allowlist,
+timeout/cancellation, redaction, trusted BFF credential source and token
+contract, recorded in [phase-7.5a-contract.md](phase-7.5a-contract.md):
 `iss=nextjs-bff`, `aud=qltbyt-rpc-broker-v1`, numeric `user_id`, maximum TTL
 `120s`, role/facility scope and clock policy.
+
+**Package status:** `READY FOR REVIEW` — the docs contract is recorded and
+reconciled; exact landed subject commit/config binding and reviewer sign-off are
+still required before this package is labelled `PASS`.
 
 **Stop:** no route/credential source/allowlist/TTL review, or any design that
 requires browser cookies, browser claims or `SUPABASE_JWT_SECRET` in Go.
