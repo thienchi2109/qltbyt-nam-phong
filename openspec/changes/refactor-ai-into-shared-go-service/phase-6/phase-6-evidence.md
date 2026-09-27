@@ -1,7 +1,7 @@
 # Phase 6 Evidence
 
-Ngày: 2026-09-27  
-Base commit: `dfb5addb92b6ec9baa487b688cbb679ebec28871`  
+Ngày: 2026-09-27
+Base commit: `683c4b2f`
 Phạm vi: chỉ artefact Phase 6.1, 6.2 và 6.5 trên working tree; không sửa Phase 5.1–5.9, không cutover, không DB/live write, không Phase 7 VM smoke và không paid-provider smoke.
 
 Provider configuration boundary: Phase 6 prepares the approved provider chain,
@@ -33,23 +33,23 @@ Review-fix state: working tree chưa commit. Maintainer phải thay base/evidenc
 
 ## Contract evidence
 
-| Check                                                                                                   | Kết quả          | Ghi chú                                                                                                                                                                                       |
-| ------------------------------------------------------------------------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docker build --check --pull=false -f services/ai-service/Dockerfile services/ai-service`               | PASS             | Dockerfile parse/build metadata không warning; không phải full image build.                                                                                                                   |
-| `docker build --pull=false --no-cache --build-arg VCS_REF=dfb5addb92b6ec9baa487b688cbb679ebec28871 ...` | PASS (local)     | Local image `sha256:aab53071ed24e64ee75205604cd0186b7b5360706c87cf257ff9f90aa61bafb8`; entrypoint `/usr/local/bin/ai-service`, user `65532:65532`; `RepoDigests=[]` vì chưa publish registry. |
-| `docker compose ... config --quiet` với bốn secret file tạm mode `0600`                                 | PASS             | Compose render được, không publish port và giữ secret ngoài image.                                                                                                                            |
-| Local container smoke với fake external secret files, `--network host`, `--read-only`                   | PASS             | `/healthz` trả `200 {"status":"ok"}`; `/readyz` trả `503 not_ready` trong replay quarantine; không gọi model/provider thật.                                                                   |
-| `go test ./...` trong `services/ai-service`                                                             | PASS             | Full module suite pass sau khi entrypoint được giữ app-neutral.                                                                                                                               |
-| `go vet ./...` trong `services/ai-service`                                                              | PASS             | Không có output.                                                                                                                                                                              |
-| `gofmt -l cmd internal`                                                                                 | PASS             | Không có file chưa format.                                                                                                                                                                    |
-| `systemd-analyze verify qltbyt-ai-service.service`                                                      | PASS             | Unit Compose hợp lệ.                                                                                                                                                                          |
-| `systemd-analyze verify cloudflared-ai-service.service`                                                 | INCOMPLETE       | Máy kiểm tra không có `/usr/bin/cloudflared`; không phải bằng chứng Tunnel đã deploy.                                                                                                         |
-| `validate-config.mjs` với digest + secret files ngoài repo                                              | PASS             | Không ghi secret vào output.                                                                                                                                                                  |
-| `validate-config.mjs` với image tag `:latest`                                                           | PASS (rejection) | Mutable image bị từ chối.                                                                                                                                                                     |
-| `validate-config.mjs` với secret file mode `0644`                                                       | PASS (rejection) | Group/world-readable secret bị từ chối.                                                                                                                                                       |
-| `npx prettier --check` cho ESM/Markdown artifacts                                                       | PASS             |                                                                                                                                                                                               |
-| `git diff --check`                                                                                      | PASS             |                                                                                                                                                                                               |
-| `node ops/ai-service/artifact-contract.mjs`                                                             | PASS             | Kiểm tra entrypoint tồn tại, loader bốn `*_FILE`, real `go build ./cmd/ai-service` và `go test ./cmd/ai-service`, cùng các artifact contract.                                                 |
+| Check                                                                                     | Kết quả          | Ghi chú                                                                                                                                                |
+| ----------------------------------------------------------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `docker build --check --pull=false -f services/ai-service/Dockerfile services/ai-service` | PASS             | Dockerfile parse/build metadata không warning; không phải full image build.                                                                            |
+| `docker build --pull=false --no-cache --build-arg VCS_REF=683c4b2f ...`                   | PASS (local)     | Local image build passed for the landed commit; entrypoint `/usr/local/bin/ai-service`, user `65532:65532`; `RepoDigests=[]` vì chưa publish registry. |
+| `docker compose ... config --quiet` với bốn secret file tạm mode `0600`                   | PASS             | Compose render được, không publish port và giữ secret ngoài image.                                                                                     |
+| Local container smoke với fake external secret files, `--network host`, `--read-only`     | PASS             | `/healthz` trả `200 {"status":"ok"}`; `/readyz` trả `503 not_ready` trong replay quarantine; không gọi model/provider thật.                            |
+| `go test ./...` trong `services/ai-service`                                               | PASS             | Full module suite pass sau khi entrypoint được giữ app-neutral.                                                                                        |
+| `go vet ./...` trong `services/ai-service`                                                | PASS             | Không có output.                                                                                                                                       |
+| `gofmt -l cmd internal`                                                                   | PASS             | Không có file chưa format.                                                                                                                             |
+| `systemd-analyze verify qltbyt-ai-service.service`                                        | PASS             | Unit Compose hợp lệ.                                                                                                                                   |
+| `systemd-analyze verify cloudflared-ai-service.service`                                   | INCOMPLETE       | Máy kiểm tra không có `/usr/bin/cloudflared`; không phải bằng chứng Tunnel đã deploy.                                                                  |
+| `validate-config.mjs` với digest + secret files ngoài repo                                | PASS             | Không ghi secret vào output.                                                                                                                           |
+| `validate-config.mjs` với image tag `:latest`                                             | PASS (rejection) | Mutable image bị từ chối.                                                                                                                              |
+| `validate-config.mjs` với secret file mode `0644`                                         | PASS (rejection) | Group/world-readable secret bị từ chối.                                                                                                                |
+| `npx prettier --check` cho ESM/Markdown artifacts                                         | PASS             |                                                                                                                                                        |
+| `git diff --check`                                                                        | PASS             |                                                                                                                                                        |
+| `node ops/ai-service/artifact-contract.mjs`                                               | PASS             | Kiểm tra entrypoint tồn tại, loader bốn `*_FILE`, real `go build ./cmd/ai-service` và `go test ./cmd/ai-service`, cùng các artifact contract.          |
 
 ## Build và secret boundary
 
@@ -60,7 +60,7 @@ Dockerfile chạy `go build ./cmd/ai-service`; entrypoint hiện đã build/test
 - `NVIDIA_API_KEY_FILE`
 - `GOOGLE_GENERATIVE_AI_API_KEYS_FILE`
 
-Provider config đọc giá trị `NVIDIA_API_KEY` và `GOOGLE_GENERATIVE_AI_API_KEYS`; entrypoint hiện đọc bốn file, map provider values vào process memory và không log/ghi lại secret. HMAC/Broker files được nạp vào `ingress.Key` trước khi mở listener. Không được đưa secret vào Dockerfile, image layer, Git, Vercel hoặc `qltbyt_test`.
+Provider config đọc giá trị `NVIDIA_API_KEY` và `GOOGLE_GENERATIVE_AI_API_KEYS`; entrypoint hiện đọc bốn file, map provider values vào process memory và không log/ghi lại secret. HMAC được nạp vào `ingress.Key`; broker secret hiện chỉ được đọc và kiểm tra readiness, vì broker wiring vẫn thuộc composition/Phase 7. Không được đưa secret vào Dockerfile, image layer, Git, Vercel hoặc `qltbyt_test`.
 
 ## Deferred boundary
 

@@ -1,7 +1,7 @@
 # Phase 6 Handoff
 
-Ngày: 2026-09-27  
-Base commit: `dfb5addb92b6ec9baa487b688cbb679ebec28871`
+Ngày: 2026-09-27
+Base commit: `683c4b2f`
 
 Artefact ownership đã hoàn tất cho Phase 6.1/6.2/6.5 trên working tree: Dockerfile digest-pinned, Compose host-loopback hardening, external secret templates, Cloudflare path/Access boundary, systemd units, rollback runbook và fail-closed validators.
 
@@ -44,7 +44,9 @@ Entrypoint contract đã được runtime owner triển khai và phải giữ c�
 
 1. Build từ `./cmd/ai-service` và bind cố định `127.0.0.1:8080`.
 2. Đọc bốn `*_FILE` path do Compose mount, không log secret; map provider files thành `NVIDIA_API_KEY`/`GOOGLE_GENERATIVE_AI_API_KEYS` trước `provider.ChainConfigFromEnv`.
-3. Nạp HMAC/Broker secret vào ingress key/guard, expose `/healthz` và `/readyz`, wire `Lifecycle` với drain `60s` + cleanup `5s`.
+3. Nạp HMAC secret vào ingress key/guard; đọc và kiểm tra broker secret qua
+   readiness gate (broker/query wiring thuộc composition/Phase 7); expose
+   `/healthz` và `/readyz`, wire `Lifecycle` với drain `60s` + cleanup `5s`.
 4. Trả lỗi startup/readiness fail-closed khi file thiếu, rỗng, không regular hoặc permission không an toàn.
 
 Sau khi land, chạy lại `node ops/ai-service/artifact-contract.mjs` và full image build/digest publication cho exact commit. Phase 7 dark VM smoke và mọi live/cutover action vẫn là boundary riêng cần authorization.
