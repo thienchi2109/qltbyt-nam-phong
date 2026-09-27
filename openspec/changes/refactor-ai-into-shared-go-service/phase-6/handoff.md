@@ -50,3 +50,30 @@ Entrypoint contract đã được runtime owner triển khai và phải giữ c�
 4. Trả lỗi startup/readiness fail-closed khi file thiếu, rỗng, không regular hoặc permission không an toàn.
 
 Sau khi land, chạy lại `node ops/ai-service/artifact-contract.mjs` và full image build/digest publication cho exact commit. Phase 7 dark VM smoke và mọi live/cutover action vẫn là boundary riêng cần authorization.
+
+## Phase 7 execution checklist
+
+Phase 7 owner phải thực hiện và ghi evidence theo đúng thứ tự sau:
+
+1. SSH vào Oracle VM và checkout exact commit `99201e69`; không dùng working tree khác.
+2. Build `services/ai-service` trực tiếp trên Oracle bằng Dockerfile đã pin; ghi image ID, `VCS_REF`, user `65532:65532` và entrypoint.
+3. Tạo bốn secret files ngoài image/repository, owner root, mode `0600`:
+   `/etc/qltbyt-ai/secrets/hmac.secret`, `broker.secret`, `nvidia.api-key`,
+   `google.api-keys`. Không ghi secret value vào evidence/log.
+4. Nạp provider config:
+   `AI_PROVIDER_CHAIN=nvidia/google/gemma-4-31b-it,google/gemini-3.5-flash-lite`,
+   `NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1/chat/completions`,
+   `GOOGLE_GENERATIVE_AI_BASE_URL=https://generativelanguage.googleapis.com`,
+   cùng hai `*_FILE` paths; validate bằng `validate-config.mjs`.
+5. Start Compose/systemd với bind `127.0.0.1:8080`; ghi `/healthz=200` và
+   `/readyz=200` chỉ sau khi capability/provider composition đã đăng ký đầy đủ.
+   Thiếu config/provider/capability phải giữ `/readyz=503`.
+6. Cấu hình Cloudflare Tunnel/Access cho hostname đã được maintainer cấp; chỉ
+   route `/v1/chat`, không publish `/healthz` hoặc `/readyz`, và giữ raw port private.
+7. Chạy dark smoke: HMAC/admission, SSE, cancellation, redacted logs/metrics,
+   stop admission, drain tối đa `60s` + cleanup `5s`, rollback image/config.
+8. Lưu evidence gồm exact commit, image ID/digest, config validation, probe
+   responses/statuses, Tunnel/Access result, drain/rollback result và deferred items.
+
+Phase 7 không được cutover `/api/chat`, sửa live DB/migration hoặc coi smoke là
+ủy quyền production. Phase 8 cần acceptance exact-commit và approval riêng.

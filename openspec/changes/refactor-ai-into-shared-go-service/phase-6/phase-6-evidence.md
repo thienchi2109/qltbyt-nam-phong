@@ -67,3 +67,30 @@ Provider config đọc giá trị `NVIDIA_API_KEY` và `GOOGLE_GENERATIVE_AI_API
 - Publish/record registry digest và giữ previous verified digest/config; local build hiện chỉ có `RepoDigests=[]`.
 - Provision Cloudflare Tunnel/Access trên Oracle VM và chạy dark VM smoke ở Phase 7 sau operation-specific authorization.
 - Không thực hiện live provider call, production cutover, rollback thực tế, migration hay DB write trong lượt này.
+
+## Phase 7 handoff requirements
+
+The next phase is the Oracle dark deployment, not a registry promotion. The
+owner must use exact commit `99201e69`, build the image on the Oracle VM, and
+record the image ID plus `VCS_REF`. Before start, obtain operation-specific
+authorization for SSH/build/start and provider validation.
+
+Required external files, all root-owned and mode `0600`, are:
+
+- `/etc/qltbyt-ai/secrets/hmac.secret`
+- `/etc/qltbyt-ai/secrets/broker.secret`
+- `/etc/qltbyt-ai/secrets/nvidia.api-key`
+- `/etc/qltbyt-ai/secrets/google.api-keys`
+
+Required provider configuration is NVIDIA `google/gemma-4-31b-it` first and
+Google `gemini-3.5-flash-lite` fallback, with both provider base URLs and both
+`*_FILE` paths. Validate without printing secret values. Probe local
+`/healthz`/`/readyz`, register the approved capability composition before
+expecting readiness `200`, and keep readiness `503` when any required config or
+capability is absent.
+
+Tunnel evidence must show hostname/Access routing only for `/v1/chat`; raw
+`127.0.0.1:8080`, `/healthz`, and `/readyz` remain private. Record SSE/HMAC,
+cancellation, redacted observability, drain (`60s` plus `5s` cleanup), and
+rollback image/config results. Do not perform `/api/chat` cutover, live DB or
+migration writes, or treat Phase 7 smoke as Phase 8 authorization.
