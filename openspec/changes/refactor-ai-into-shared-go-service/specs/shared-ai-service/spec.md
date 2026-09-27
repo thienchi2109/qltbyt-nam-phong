@@ -299,14 +299,97 @@ The dark Go/BFF path SHALL use a typed chat-streaming provider adapter that norm
 - **WHEN** all configured pairs are exhausted or configuration has no valid compatible pair
 - **THEN** the service returns a stable provider-unavailable/quota outcome without exposing raw provider details
 
+### Requirement: Broker Composition and Query Readiness Gate
+
+The QLTBYT capability SHALL use an internal Go `Broker` composition for
+application-owned RPC calls and a separate application-owned BFF broker
+endpoint for the remote RPC boundary. Phase 7.5A SHALL choose and record the
+endpoint route, request/response schema, allowlist, timeout, cancellation and
+trusted BFF credential source before Phase 7.5B implementation. Broker tokens
+SHALL be short-lived (maximum `120s`) and contain `iss=nextjs-bff`,
+`aud=qltbyt-rpc-broker-v1`, a numeric `user_id` and only trusted role/facility
+scope. Browser cookies, browser-supplied claims and `SUPABASE_JWT_SECRET` MUST
+NOT enter Go. An authenticated Cloudflare Access lane SHALL be accepted only
+when the credential source is the trusted BFF path.
+
+The QLTBYT `QueryExecutor` SHALL use external-pooler `AI_DATABASE_URL` with the
+dedicated `ai_query_tool` read-only role and the existing parser/catalog,
+scope, timeout and row/payload guardrails. Role, grant, password and catalog
+provisioning/read-back SHALL be a separate SQL gate; this change SHALL NOT
+imply a live migration or live database write. The Go readiness contract SHALL
+return `200` only when the real `Broker`, real `QueryExecutor` and registered
+`qltbyt/assistant-chat/v1` capability form one valid tuple. Missing, dummy,
+test-only or registry-only wiring SHALL remain not ready. Disposable wiring
+proof MAY establish contract behavior, but SHALL NOT certify production.
+
+Phase 7.5 SHALL be dispatched as independent packages `7.5A` contract/ADR,
+`7.5B` BFF broker endpoint, `7.5C` Go broker/capability composition, `7.5D`
+QueryExecutor/pooler composition, `7.5E` SQL gate, `7.5F` disposable
+auth/readiness acceptance and `7.5G` Oracle activation. Each package SHALL
+record prerequisites, owner, outputs, stop condition and explicit exclusions.
+Completion of any package SHALL NOT open Phase 8 `/api/chat` cutover, Phase 9
+cleanup, live DB/migration work or paid-provider smoke without separate
+authorization.
+
+#### Scenario: BFF broker token is minted from trusted identity
+
+- **WHEN** an authenticated server-side BFF calls the broker endpoint with a
+  valid session and allowlisted RPC
+- **THEN** the endpoint issues a token with `iss=nextjs-bff`,
+  `aud=qltbyt-rpc-broker-v1`, numeric `user_id`, scoped facility claims and a
+  TTL no greater than `120s`
+- **AND** the token and response are redacted from browser-visible output and
+  operational logs
+
+#### Scenario: Browser or project-wide secret is presented to Go
+
+- **WHEN** a browser sends a cookie/claim or a caller attempts to send
+  `SUPABASE_JWT_SECRET` as Go authentication
+- **THEN** the broker/Go path rejects it before RPC, query or model work
+
+#### Scenario: Readiness lacks a real composition member
+
+- **WHEN** Broker, QueryExecutor or the `qltbyt/assistant-chat/v1` registry
+  member is missing, invalid, test-only or disconnected from the other two
+- **THEN** `/readyz` remains `503` and no chat work is accepted
+
+#### Scenario: Readiness has the real tuple
+
+- **WHEN** the trusted BFF credential source, real Broker, external-pooler
+  read-only QueryExecutor and registered capability are all wired on one
+  subject configuration
+- **THEN** `/readyz` may return `200` without making an unsafe model call or
+  database write
+
+#### Scenario: Disposable proof is not production certification
+
+- **WHEN** 7.5F proves token, Access, broker, query guardrail and readiness
+  behavior with disposable or mocked dependencies
+- **THEN** evidence is labeled `DISPOSABLE ONLY` and cannot satisfy production
+  certification or authorize live SQL, cutover or paid-provider smoke
+
+#### Scenario: SQL role gate is incomplete
+
+- **WHEN** the dedicated `ai_query_tool` role, external-pooler credential or
+  catalog read-back has no separate SQL-gate evidence
+- **THEN** production QueryExecutor activation and Oracle readiness claim stop
+  with `BLOCKING / INCOMPLETE`, while no live migration or write is attempted
+
 ### Requirement: Oracle VM Deployment and Health
 
-The Go service SHALL deploy as one active container on the Oracle VM with secrets outside the image, loopback/private binding and no publicly exposed raw service port. The Go module and image SHALL pin one Go toolchain. Vercel MUST NOT build `services/ai-service`. This change MUST NOT add a new CI platform. The container MUST NOT use `qltbyt_test` credentials. Cloudflare Tunnel SHALL provide chat ingress. `/healthz` and `/readyz` SHALL be available only to local/private operator probes and MUST NOT be published through the Tunnel hostname. `/healthz` SHALL report process health and `/readyz` SHALL report configuration, provider, capability and replay-guard readiness. The service SHALL enforce bounded concurrent admission, reject new requests rather than evict live replay entries when the nonce map is full, enforce resource limits, use the proposed budget of at most 55 seconds of work plus up to 5 seconds of cleanup inside the existing 60-second BFF budget, and use a reservation TTL of at least 120 seconds. Acceptance of that budget MUST include bounded cleanup, failure, and reconciliation evidence; a failed proof requires a reviewed normative amendment and does not by itself declare 5 seconds insufficient.
+The Go service SHALL deploy as one active container on the Oracle VM with secrets outside the image, loopback/private binding and no publicly exposed raw service port. The Go module and image SHALL pin one Go toolchain. Vercel MUST NOT build `services/ai-service`. This change MUST NOT add a new CI platform. The container MUST NOT use `qltbyt_test` credentials. Cloudflare Tunnel SHALL provide chat ingress. `/healthz` and `/readyz` SHALL be available only to local/private operator probes and MUST NOT be published through the Tunnel hostname. `/healthz` SHALL report process health and `/readyz` SHALL report configuration, provider, capability, replay-guard and the real `Broker` + `QueryExecutor` + `qltbyt/assistant-chat/v1` registry tuple readiness. A test double, broker-secret-only or registry-only check MUST remain not ready. The authenticated Access lane MUST use the trusted BFF credential source. The service SHALL enforce bounded concurrent admission, reject new requests rather than evict live replay entries when the nonce map is full, enforce resource limits, use the proposed budget of at most 55 seconds of work plus up to 5 seconds of cleanup inside the existing 60-second BFF budget, and use a reservation TTL of at least 120 seconds. Acceptance of that budget MUST include bounded cleanup, failure, and reconciliation evidence; a failed proof requires a reviewed normative amendment and does not by itself declare 5 seconds insufficient.
 
-#### Scenario: Service starts with valid configuration
+#### Scenario: Service starts with valid production composition
 
-- **WHEN** the container loads valid external secrets, provider configuration and the registered QLTBYT capability
-- **THEN** `/healthz` succeeds and `/readyz` becomes ready without performing an unsafe model or database write
+- **WHEN** the container loads valid external secrets, provider and replay
+  configuration, a trusted BFF Access credential source, a real Go `Broker`,
+  an external-pooler `QueryExecutor` using `AI_DATABASE_URL` and the dedicated
+  `ai_query_tool` read-only role, the registered `qltbyt/assistant-chat/v1`
+  capability, and accepted SQL role/read-back evidence
+- **THEN** `/healthz` succeeds and `/readyz` becomes `200` without performing
+  an unsafe model call or database write
+- **AND** the same probe remains `503` when any tuple member, trusted source or
+  SQL/read-back prerequisite is missing, dummy, test-only or disconnected
 
 #### Scenario: Required secret is missing
 
@@ -360,7 +443,7 @@ On deploy or termination, the service SHALL mark readiness false, stop accepting
 
 ### Requirement: Phased Implementation Gates
 
-The implementation SHALL follow the ten phases `0` through `9` in `tasks.md` and the design migration plan. Each phase SHALL have a prerequisite, acceptance evidence and explicit stop/review gate. Missing Phase 0 proofs, or decisions 0.7, 0.8, or 0.9 not yet reviewed, MUST block Phase 1. The Phase 2 gate for decision 0.9 and the Phase 3 gate for decisions 0.7 and 0.8 remain defense in depth. Phases `0` through `6` MUST NOT change production chat routing or imply live database writes; phase `7` SHALL be authorized dark VM/Tunnel smoke only; phase `8` SHALL be the sole direct cutover after exact-commit acceptance and explicit approval; phase `9` SHALL be cleanup after stable operation. Completing a phase MUST NOT automatically authorize the next phase.
+The implementation SHALL follow the ten phases `0` through `9` in `tasks.md` and the design migration plan, with independently dispatchable packages `7.5A` through `7.5G` between phases `7` and `8`. Each phase and package SHALL have a prerequisite, owner, acceptance evidence and explicit stop/review gate. Missing Phase 0 proofs, or decisions 0.7, 0.8, or 0.9 not yet reviewed, MUST block Phase 1. The Phase 2 gate for decision 0.9 and the Phase 3 gate for decisions 0.7 and 0.8 remain defense in depth. Phases `0` through `6` MUST NOT change production chat routing or imply live database writes; phase `7` SHALL be authorized dark VM/Tunnel smoke only; phase `7.5A–G` SHALL not authorize `/api/chat` cutover, Phase 9 cleanup, live DB/migration work or paid-provider smoke without separate authorization; phase `8` SHALL be the sole direct cutover after exact-commit acceptance and explicit approval; phase `9` SHALL be cleanup after stable operation. Completing a phase or package MUST NOT automatically authorize the next phase.
 
 #### Scenario: Phase gate is incomplete
 
@@ -375,7 +458,7 @@ The implementation SHALL follow the ten phases `0` through `9` in `tasks.md` and
 
 #### Scenario: Direct cutover is authorized
 
-- **WHEN** phases `0` through `7` have passing evidence, the exact implementation commit passes phase `8` acceptance, and explicit cutover approval is recorded
+- **WHEN** phases `0` through `7` and packages `7.5A` through `7.5G` have passing evidence, the exact implementation commit passes phase `8` acceptance, and explicit cutover approval is recorded
 - **THEN** `/api/chat` switches to Go as its sole runtime backend without a legacy fallback
 - **AND** the previous verified Go image remains the operational rollback target when one exists
 

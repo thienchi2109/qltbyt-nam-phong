@@ -1,6 +1,6 @@
 # Kế hoạch triển khai
 
-Kiến trúc đã duyệt là shared Go + Eino core app-neutral; QLTBYT capability adapter sở hữu `don_vi`, RPC, policy, prompt và domain tools; UI vẫn dùng Vercel AI SDK; chat đi qua Cloudflare Tunnel/Access + HMAC. MVP là một replica, không Bifrost, không platform onboarding, không server-side chat persistence. SQL/schema change không được ngầm thêm vào change này; nếu cần phải tách gated change riêng.
+Kiến trúc đã duyệt là shared Go + Eino core app-neutral; QLTBYT capability adapter sở hữu `don_vi`, RPC, policy, prompt và domain tools; UI vẫn dùng Vercel AI SDK; chat đi qua Cloudflare Tunnel/Access + HMAC. MVP là một replica, không Bifrost, không platform onboarding, không server-side chat persistence. SQL/schema change không được ngầm thêm vào change này; nếu cần phải tách gated change riêng. Phase 7.5 là một inter-phase orchestration gate gồm các package độc lập; không package nào mặc nhiên dispatch hoặc hoàn tất package khác.
 
 ## Phase 0 - Baseline, fixture và compatibility proof
 
@@ -18,7 +18,7 @@ Bằng chứng nghiệm thu: Fixture cho request/auth/intent/tool/stream/draft/q
 - [x] 0.6 Chứng minh abort dừng provider/tool work và finalize usage theo trạng thái quan sát được.
 - [x] 0.7 Ghi quyết định recovery/accounting khi process bị SIGKILL/OOM sau khi provider đã phát sinh usage nhưng trước finalize. Append-only journal chứng minh recovery trước expiry và ghi nhận unknown khi quan sát bị mất. User chấp thuận ngày 2026-09-25 rằng crash recovery chỉ bắt đầu sau reservation expiry có thể để provider cost đã phát sinh nhưng DB quota/token accounting bị undercount vì `ai_quota_finalize` bỏ qua reservation hết hạn; chấp thuận này không bao gồm mất accounting trước expiry. Không dùng detached cleanup/TTL làm bằng chứng recovery; nếu cần SQL thì tách change có quality gates và approval riêng.
 - [x] 0.8 Ghi bảng mapping usage known-zero/known-positive/partial/unknown sang quota status, numeric fields và nơi lưu dấu hiệu uncertainty. Đây là sửa accounting có chủ đích, không phải parity UI/tool. Đối chiếu `ai_quota_finalize` hiện chỉ có ba status và chuyển NULL thành 0. Giữ zero compatibility sentinel kèm uncertainty marker phân biệt được; missing/invalid usage là `unknown`, `knownZero` vẫn là measured zero, và missing một dimension giữ dimension còn biết dưới `partial`. Không bịa status mới và không DDL. Bảng đã review trở thành normative trước Phase 3.
-- [x] 0.9 Chốt và review cơ chế QLTBYT Go → Supabase/RPC authentication bằng application-owned BFF RPC broker, và gọi tên `assistant_query_database_audit_log` trong quyết định credential đó. BFF giữ `SUPABASE_JWT_SECRET`, cấp envelope ngắn hạn với trusted numeric `user_id`, allowlist RPC, cancellation/audit propagation và bounded cleanup; Go không nhận project-wide signing secret hoặc browser cookie. DB auth mới cần SQL gate riêng.
+- [x] 0.9 Chốt và review cơ chế QLTBYT Go → Supabase/RPC authentication bằng application-owned BFF RPC broker, và gọi tên `assistant_query_database_audit_log` trong quyết định credential đó. BFF giữ `SUPABASE_JWT_SECRET` ở server-only endpoint, cấp broker token ngắn hạn (tối đa `120s`) với `iss=nextjs-bff`, `aud=qltbyt-rpc-broker-v1`, trusted numeric `user_id`, allowlist RPC, cancellation/audit propagation và bounded cleanup; Go không nhận project-wide signing secret hoặc browser cookie. External-pooler `AI_DATABASE_URL`/`ai_query_tool` read-only role và SQL provisioning/read-back là gate riêng của Phase 7.5D–E.
 
 Điểm dừng/review: Dừng trước khi scaffold full migration. Chưa sang Phase 1 khi thiếu một proof bắt buộc hoặc khi quyết định 0.7, 0.8 hoặc 0.9 chưa được review. Phase 0 hiện đã có evidence/review cho 0.1-0.9, nhưng việc hoàn tất Phase 0 không tự động cho phép Phase 1; cần user duyệt bước tiếp theo. Gate Phase 2 cho 0.9 và gate Phase 3 cho 0.7/0.8 là defense in depth. Quyết định thiết kế đạt không thay thế test implementation tại các phase sau.
 
@@ -161,6 +161,10 @@ Deploy/live DB: Chỉ chuẩn bị artifacts/config; chưa deploy VM, chưa gử
 
 Phạm vi/sở hữu: Một replica Go trên Oracle VM, Tunnel/Access dark route và smoke bằng test data/disposable dependencies.
 
+Numbering note: existing Phase 7 checklist item `7.5` remains the secret/no-
+fallback check inside Phase 7. The inter-phase gate below uses lettered IDs
+`7.5A–G`; it does not rename or tick the existing Phase 7 item.
+
 Phụ thuộc: Phase 6 ops artifacts và explicit operation-specific authorization cho dark VM deploy/smoke.
 
 Bằng chứng nghiệm thu: Exact image digest, redacted VM/Tunnel logs, smoke report, request IDs, usage/quota evidence và rollback/drain evidence.
@@ -176,11 +180,176 @@ Bằng chứng nghiệm thu: Exact image digest, redacted VM/Tunnel logs, smoke 
 
 Deploy/live DB: Được deploy dark VM sau authorization; mặc định dùng test data/read-only hoặc mocked DB path và không live DB write. Ngoại lệ duy nhất là smoke runtime quota/audit được ủy quyền riêng, phải liệt kê đúng operation ở 7.6; tuyệt đối không migration/DDL/schema change.
 
+## Phase 7.5 - Broker/query composition và readiness acceptance
+
+Phạm vi/sở hữu: Orchestration gate cho các package độc lập `7.5A` đến
+`7.5G`. Phase này nối dark artifacts với exact-commit acceptance; nó không
+gộp ownership của BFF, Go runtime, SQL gate hay Oracle operations vào một
+dispatch. Mỗi package phải có handoff riêng, exact subject commit và stop
+condition riêng.
+
+### 7.5A - Contract/ADR và route decision
+
+Phụ thuộc: Phase 0.9 đã review; các interface Go `Broker`, `QueryExecutor` và
+capability registry đã tồn tại như contract. Owner/dispatch: architecture/spec
+owner; chỉ sửa proposal/design/tasks/spec/evidence, không sửa runtime.
+
+Bằng chứng đầu ra: ADR/contract ghi route cụ thể của application-owned BFF
+broker endpoint, request/response schema, allowlisted RPCs (tối thiểu
+`assistant_query_database_audit_log`, `ai_quota_reserve` và
+`ai_quota_finalize` theo lifecycle), timeout/cancellation, redaction, trusted
+BFF credential source và broker token claims `iss=nextjs-bff`,
+`aud=qltbyt-rpc-broker-v1`, TTL tối đa `120s`, numeric `user_id`, facility
+scope và clock policy.
+
+- [ ] 7.5A.1 Chốt route, schemas, allowlist, timeout/cancel, token TTL/audience và trusted credential source; link ADR/evidence.
+- [ ] 7.5A.2 Ghi negative cases: browser cookie/claims, `SUPABASE_JWT_SECRET`, expired/wrong-audience token, widened scope, missing BFF credential và audit/quota cleanup.
+- [ ] 7.5A.3 Reconcile proposal/design/spec/tasks và dispatch notes; không tick 7.5B–G từ package này.
+
+Điểm dừng: Dừng nếu route/credential source/TTL/allowlist chưa được review
+hoặc nếu contract đòi browser cookie, project-wide JWT secret hay implicit
+claim authority. Không triển khai endpoint, Go composition, SQL hoặc Oracle.
+
+### 7.5B - Application-owned BFF broker endpoint
+
+Phụ thuộc: `7.5A` PASS và trusted BFF credential source đã được chứng minh.
+Owner/dispatch: Next.js/BFF owner; chỉ sửa endpoint, server-only credential
+path và focused contract tests.
+
+Bằng chứng đầu ra: Endpoint implementation theo route/schema đã chọn, token
+mint/verify evidence, allowlist and scope tests, timeout/cancellation and
+redacted error evidence. Browser không được gọi endpoint như một authority.
+
+- [ ] 7.5B.1 Implement endpoint behind server-only session/credential source; mint broker token tối đa `120s` với issuer/audience cố định.
+- [ ] 7.5B.2 Chứng minh allowlist, numeric user/facility claims, cancellation, bounded cleanup và không forward browser cookie hoặc `SUPABASE_JWT_SECRET` sang Go.
+- [ ] 7.5B.3 Ghi route/config/test hashes để Go composition và acceptance dùng đúng contract.
+
+Điểm dừng: Dừng nếu không có trusted BFF credential source, token claims/TTL
+không khớp `7.5A`, hoặc endpoint cần browser authority. Không sửa `/api/chat`
+cutover, không wire production Go, không SQL/migration/live write và không
+paid-provider smoke.
+
+### 7.5C - Internal Go broker/capability composition
+
+Phụ thuộc: `7.5A` PASS; `7.5B` contract/schema PASS cho integrated path.
+Owner/dispatch: Go runtime owner; wire the internal `Broker` to the separate
+BFF broker endpoint and register the QLTBYT capability. Query pool wiring
+belongs to `7.5D`, and SQL role provisioning belongs to `7.5E`.
+
+Bằng chứng đầu ra: Composition report and tests proving the real Go `Broker`
+uses the `7.5B` endpoint contract, propagates broker token, numeric identity,
+facility scope, timeout/cancellation, audit and quota calls, and registers
+`qltbyt/assistant-chat/v1`. Readiness remains false until `7.5D` also supplies
+the real query executor; a broker-only or registry-only tuple cannot return
+`200`.
+
+- [ ] 7.5C.1 Wire internal Go `Broker` to the BFF broker contract and propagate token, scope, timeout/cancel, audit/quota calls.
+- [ ] 7.5C.2 Register QLTBYT capability `qltbyt/assistant-chat/v1` without treating app/capability IDs as authorization.
+- [ ] 7.5C.3 Prove `/readyz=503` when Broker, QueryExecutor or registry is missing; this package must not claim readiness with only its own components.
+
+Điểm dừng: Dừng nếu broker composition cần browser authority, token source
+không trusted, capability registration bypasses policy, hoặc readiness có thể
+`200` khi query executor chưa có. Không provision role, không live DB write,
+không `/api/chat` cutover.
+
+### 7.5D - External pooler QueryExecutor composition
+
+Phụ thuộc: `7.5A` contract và `7.5C` broker/capability composition PASS.
+Owner/dispatch: Go query/runtime owner; wire a real `QueryExecutor` through
+external-pooler `AI_DATABASE_URL`. SQL role provisioning thuộc `7.5E`, không tự
+tạo trong package này.
+
+Bằng chứng đầu ra: QueryExecutor contract and tests showing the external-pooler
+connection uses an existing approved or disposable dedicated
+`ai_query_tool` read-only role, approved statement/schema catalog,
+tenant/facility scope, timeout, row/payload limits and no DDL/DCL/write. The
+full readiness tuple is `Broker + QueryExecutor + registry`, and readiness is
+`503` for any missing or invalid member and `200` only for the real tuple.
+Production certification of that role waits for the separate `7.5E` read-back
+gate.
+
+- [ ] 7.5D.1 Wire QueryExecutor to external-pooler `AI_DATABASE_URL`; fail closed when URL, role or connection is missing.
+- [ ] 7.5D.2 Enforce read-only transaction, parser/schema allowlist, scope, timeout, row/payload limits and no DDL/DCL/write.
+- [ ] 7.5D.3 Prove `/readyz=503` for missing/wrong QueryExecutor and `/readyz=200` only when Broker + QueryExecutor + `qltbyt/assistant-chat/v1` registry are all real.
+
+Điểm dừng: Dừng nếu QueryExecutor còn test/dummy wiring, external pooler
+read-only contract chưa rõ hoặc readiness có thể `200` khi tuple thiếu. Không
+provision role, không live DB write, không `/api/chat` cutover.
+
+### 7.5E - Separate SQL role/provisioning and read-back gate
+
+Phụ thuộc: `7.5A` contract và `7.5D` connection/role requirements; dispatch
+riêng cho database-quality-gate owner. Package này không nằm trong runtime
+composition dispatch.
+
+Bằng chứng đầu ra: SQL gate report cho dedicated `ai_query_tool` role,
+external pooler credential/`AI_DATABASE_URL` contract, grants/read-only
+constraints, approved catalog and read-back of role/grants/object parity.
+Static và baseline-forward lanes phải được báo cáo riêng theo DB quality-gate
+contract; production/live apply không được suy ra từ disposable PASS.
+
+- [ ] 7.5E.1 Chuẩn bị migration/SQL plan hoặc existing-role mapping, exact subject hash và required grants/read-only assertions.
+- [ ] 7.5E.2 Chạy static + disposable baseline-forward quality gate nếu SQL thay đổi; giữ `BLOCKING / INCOMPLETE` khi lane unavailable.
+- [ ] 7.5E.3 Ghi read-back evidence cho role/pooler/catalog; live apply chỉ là operation-specific approval ngoài Phase 7.5.
+
+Điểm dừng: Dừng khi thiếu gate evidence, role/grant/read-back chưa rõ hoặc
+cần live migration/DDL mà chưa có explicit approval. Không gọi Supabase CLI,
+không apply live SQL qua phase này, không claim production certification từ
+mock/disposable.
+
+### 7.5F - Disposable auth/readiness acceptance
+
+Phụ thuộc: `7.5A`, `7.5B`, `7.5C`, `7.5D`; `7.5E` PASS bắt buộc cho production claim,
+nhưng disposable-only wiring proof có thể chạy để tìm lỗi trước SQL gate.
+Owner/dispatch: integration acceptance owner; dùng disposable/mock dependencies
+và redacted evidence.
+
+Bằng chứng đầu ra: Contract matrix cho BFF token, authenticated Access lane
+trusted credential, broker allowlist, query read-only rejection, audit ordering,
+readiness `503/200`, cancellation and error redaction. Evidence phải gắn exact
+subject commit/config hashes và phân loại rõ `DISPOSABLE ONLY` hay
+`PRODUCTION-CANDIDATE`; disposable PASS không certify production.
+
+- [ ] 7.5F.1 Chạy positive/negative broker token and Access tests; browser-supplied Access credential must fail.
+- [ ] 7.5F.2 Chạy disposable real-tuple wiring/readiness checks, including missing Broker/QueryExecutor/registry and unsafe SQL cases.
+- [ ] 7.5F.3 Reconcile evidence against `7.5A–E`; mark blockers instead of ticking downstream acceptance without proof.
+
+Điểm dừng: Dừng nếu Access lane lacks trusted BFF source, readiness `200` is
+possible without the real tuple, or disposable evidence is being presented as
+production. Không cutover, không cleanup Phase 9, không live DB/migration,
+không paid-provider smoke.
+
+### 7.5G - Oracle activation after prior gates
+
+Phụ thuộc: `7.5A–F` PASS for the exact subject commit, Phase 6 artifacts and
+separate operation-specific authorization for Oracle activation. Owner/dispatch:
+Oracle/runtime operations owner.
+
+Bằng chứng đầu ra: Exact image/config/contract hashes, local `/healthz` and
+`/readyz` responses, private Tunnel/Access route using the trusted BFF source,
+redacted broker/query smoke, drain/rollback evidence and explicit production
+candidate status. Activation may use test/read-only/disposable dependencies;
+live SQL or quota/audit writes require separate operation approval and must be
+listed exactly.
+
+- [ ] 7.5G.1 Activate one Oracle candidate only after all prior package gates; keep raw port and health/readiness private.
+- [ ] 7.5G.2 Verify readiness `200` only with real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` registry tuple and Access credential from trusted BFF.
+- [ ] 7.5G.3 Record blockers and stop at candidate activation; do not change `/api/chat`, start Phase 9 cleanup or claim paid-provider evidence.
+
+Điểm dừng: Oracle activation fails closed on missing prior gate, missing
+trusted credential, tuple mismatch, raw-port exposure or unredacted evidence.
+Phase 8 `/api/chat` cutover and Phase 9 cleanup remain unopened.
+
+Deploy/live DB: Packages `7.5A–D` and `7.5F` are contract/disposable work;
+`7.5E` is a separate SQL quality gate with no live write by default; `7.5G`
+requires explicit Oracle activation authorization. None authorizes Phase 8
+cutover, Phase 9 cleanup, live migration/DDL or paid-provider smoke.
+
 ## Phase 8 - Exact-commit acceptance và direct cutover
 
 Phạm vi/sở hữu: Acceptance manifest của cùng subject commit/image digest, direct `/api/chat` cutover, post-cutover evidence và no-fallback runtime.
 
-Phụ thuộc: Phase 7 dark smoke PASS; không dùng evidence từ commit, image hoặc config khác.
+Phụ thuộc: Phase 7 dark smoke PASS và Phase 7.5F PASS trên cùng subject commit/config; không dùng evidence từ commit, image hoặc config khác.
 
 Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, authorized cutover log, post-cutover smoke và no-fallback assertion.
 
