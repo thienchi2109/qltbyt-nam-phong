@@ -25,7 +25,7 @@ export async function readBoundedBody(
   signal?.addEventListener("abort", onAbort, { once: true })
 
   try {
-    while (true) {
+    const readNext = async (): Promise<void> => {
       if (signal?.aborted) throw new DOMException("The request was aborted.", "AbortError")
       let chunk: ReadableStreamReadResult<Uint8Array>
       try {
@@ -40,13 +40,16 @@ export async function readBoundedBody(
       if (signal?.aborted) throw new DOMException("The request was aborted.", "AbortError")
       if (done) {
         completed = true
-        break
+        return
       }
-      if (!value) continue
-      totalBytes += value.byteLength
-      if (totalBytes > maxBytes) throw new BoundedBodyTooLargeError()
-      chunks.push(value)
+      if (value) {
+        totalBytes += value.byteLength
+        if (totalBytes > maxBytes) throw new BoundedBodyTooLargeError()
+        chunks.push(value)
+      }
+      return readNext()
     }
+    await readNext()
   } finally {
     signal?.removeEventListener("abort", onAbort)
     if (!completed) await reader.cancel().catch(() => undefined)
