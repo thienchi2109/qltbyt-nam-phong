@@ -1,0 +1,75 @@
+services:
+  ai-service:
+    image: "${AI_SERVICE_IMAGE:?set AI_SERVICE_IMAGE to a verified digest-pinned image}"
+    container_name: qltbyt-ai-service
+    restart: unless-stopped
+    init: true
+    network_mode: host
+    read_only: true
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_signal: SIGTERM
+    stop_grace_period: 65s
+    mem_limit: "512m"
+    cpus: "1.0"
+    pids_limit: 128
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      AI_SERVICE_LISTEN_ADDR: "127.0.0.1:8080"
+      AI_SERVICE_DRAIN_GRACE: "60s"
+      AI_SERVICE_CLEANUP_GRACE: "5s"
+      AI_SERVICE_MAX_CONCURRENT: "${AI_SERVICE_MAX_CONCURRENT:-16}"
+      AI_SERVICE_RESERVATION_TTL: "120s"
+      AI_PROVIDER_CHAIN: "${AI_PROVIDER_CHAIN:?set approved provider chain}"
+      NVIDIA_BASE_URL: "${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1/chat/completions}"
+      GOOGLE_GENERATIVE_AI_BASE_URL: "${GOOGLE_GENERATIVE_AI_BASE_URL:-https://generativelanguage.googleapis.com}"
+      AI_SERVICE_HMAC_KEY_ID: "${AI_SERVICE_HMAC_KEY_ID:?set HMAC key id}"
+      AI_SERVICE_HMAC_SECRET_FILE: /run/secrets/ai_service_hmac_secret
+      AI_SERVICE_BROKER_SECRET_FILE: /run/secrets/ai_service_broker_secret
+      NVIDIA_API_KEY_FILE: /run/secrets/nvidia_api_key
+      GOOGLE_GENERATIVE_AI_API_KEYS_FILE: /run/secrets/google_generative_ai_api_keys
+    secrets:
+      - source: ai_service_hmac_secret
+        target: ai_service_hmac_secret
+        uid: "65532"
+        gid: "65532"
+        mode: 0400
+      - source: ai_service_broker_secret
+        target: ai_service_broker_secret
+        uid: "65532"
+        gid: "65532"
+        mode: 0400
+      - source: nvidia_api_key
+        target: nvidia_api_key
+        uid: "65532"
+        gid: "65532"
+        mode: 0400
+      - source: google_generative_ai_api_keys
+        target: google_generative_ai_api_keys
+        uid: "65532"
+        gid: "65532"
+        mode: 0400
+    healthcheck:
+      test: ["CMD", "/busybox", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 2s
+      retries: 3
+      start_period: 10s
+
+secrets:
+  ai_service_hmac_secret:
+    file: "${AI_SERVICE_HMAC_SECRET_FILE:?set external HMAC secret file outside Git}"
+  ai_service_broker_secret:
+    file: "${AI_SERVICE_BROKER_SECRET_FILE:?set external broker secret file outside Git}"
+  nvidia_api_key:
+    file: "${NVIDIA_API_KEY_FILE:?set external NVIDIA key file outside Git}"
+  google_generative_ai_api_keys:
+    file: "${GOOGLE_GENERATIVE_AI_API_KEYS_FILE:?set external Google key pool file outside Git}"

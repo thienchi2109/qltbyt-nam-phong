@@ -1,0 +1,12 @@
+.git
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.crt
+secrets/
+credentials/
+coverage/
+tmp/
+

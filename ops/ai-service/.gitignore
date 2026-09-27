@@ -1,0 +1,6 @@
+*.env
+!*.env.example
+cloudflared/config.yml
+cloudflared/credentials.json
+releases/
+secrets/

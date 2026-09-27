@@ -1,0 +1,15 @@
+# Render this template to /etc/cloudflared/ai-service/config.yml on the Oracle VM.
+# The credentials file is provisioned by cloudflared and must stay outside Git.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /etc/cloudflared/ai-service/credentials.json
+
+ingress:
+  # Only the signed BFF chat endpoint is routed. Health probes stay local/private.
+  - hostname: ai-service.REPLACE_WITH_PRIVATE_ZONE
+    path: ^/v1/chat$
+    service: http://127.0.0.1:8080
+    originRequest:
+      connectTimeout: 10s
+      noTLSVerify: false
+  - service: http_status:404
+

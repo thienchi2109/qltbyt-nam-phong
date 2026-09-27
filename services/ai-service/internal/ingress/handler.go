@@ -21,8 +21,13 @@ type Handler struct {
 	Registry  *registry.Registry
 	Runner    *orchestration.Runner
 	Admission *Admission
-	Now       func() time.Time
-	Log       Log
+	Lifecycle *Lifecycle
+	Metrics   ObservationSink
+	// ConfigReady lets the runtime entrypoint fail readiness closed when
+	// external provider/configuration validation has not completed.
+	ConfigReady func() bool
+	Now         func() time.Time
+	Log         Log
 }
 
 // ServeHTTP verifies the signed envelope before any model call.
@@ -50,6 +55,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	now := h.now()
+	if h.Guard == nil {
+		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeCapabilityUnavailable, "The service is not ready.", true), h.Log)
+		return
+	}
 	authenticated, err := h.Guard.Authenticate(now, r.Header, body)
 	if err != nil {
 		writeProtocolError(w, firstNonEmpty(authenticated.RequestID, requestID), authenticationError(err), h.Log)
@@ -65,6 +74,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeCapabilityUnavailable, "The capability version is unavailable.", false), h.Log)
 		return
 	}
+	if h.ConfigReady != nil && !h.ConfigReady() {
+		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeCapabilityUnavailable, "The service is not ready.", true), h.Log)
+		return
+	}
+	if h.Guard == nil || !h.admission().Ready() {
+		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeLimitExceeded, "The service is not accepting new requests.", true), h.Log)
+		return
+	}
 	if _, err := h.Registry.Lookup(request.AppID, request.CapabilityID, request.CapabilityVersion); err != nil {
 		writeProtocolError(w, requestID, publicOrFallback(requestID, err), h.Log)
 		return
@@ -73,26 +90,70 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProtocolError(w, requestID, authenticationError(err), h.Log)
 		return
 	}
-	if !h.Admission.acquire() {
+	admissionCtx, release, admitted := h.admission().Acquire(r.Context())
+	if !admitted {
 		h.Guard.Release(authenticated.RequestID)
 		writeProtocolError(w, requestID, protocol.NewError(http.StatusServiceUnavailable, protocol.CodeLimitExceeded, "The service is not accepting new requests.", true), h.Log)
 		return
 	}
-	if h.Admission != nil {
-		defer h.Admission.release()
-	}
-	ctx, cancel := requestContext(r.Context())
+	defer release()
+	started := time.Now()
+	ctx, cancel := requestContext(admissionCtx)
 	defer cancel()
 	result, runErr := h.Runner.Stream(ctx, request)
 	if len(result.Events) == 0 {
+		h.observe(request, result.Provider, outcomeFor(runErr, ctx), usageClassification(result), time.Since(started))
 		writeProtocolError(w, requestID, publicOrFallback(requestID, runErr), h.Log)
 		return
 	}
+	h.observe(request, result.Provider, outcomeFor(runErr, ctx), usageClassification(result), time.Since(started))
 	if err := h.writeEvents(w, requestID, result.Events); err != nil {
 		// writeEvents records the sanitized disconnect outcome; stop without
 		// attempting to write a second response after the client is gone.
 		return
 	}
+}
+
+func (h *Handler) observe(request protocol.Request, provider protocol.ProviderMetadata, outcome, usage string, latency time.Duration) {
+	if h == nil {
+		return
+	}
+	observation := SanitizeObservation(Observation{
+		RequestID:           request.RequestID,
+		AppID:               request.AppID,
+		CapabilityID:        request.CapabilityID,
+		Provider:            provider.Provider,
+		Model:               provider.Model,
+		Latency:             latency,
+		Outcome:             outcome,
+		UsageClassification: usage,
+	})
+	if h.Metrics != nil {
+		h.Metrics.Observe(observation)
+	}
+	if sink, ok := h.Log.(ObservationSink); ok {
+		sink.Observe(observation)
+	}
+}
+
+func outcomeFor(runErr error, ctx context.Context) string {
+	if runErr != nil {
+		if ctx != nil && errors.Is(ctx.Err(), context.Canceled) {
+			return protocol.CodeCancelled
+		}
+		return protocol.CodeProviderFailure
+	}
+	return "completed"
+}
+
+func usageClassification(result orchestration.Result) string {
+	if result.Reconciliation.Knowledge != "" {
+		return result.Reconciliation.Knowledge
+	}
+	if result.Reconciliation.Uncertainty != "" {
+		return result.Reconciliation.Uncertainty
+	}
+	return "unknown"
 }
 
 func requestContext(parent context.Context) (context.Context, context.CancelFunc) {
@@ -110,7 +171,8 @@ func requestContext(parent context.Context) (context.Context, context.CancelFunc
 func (h *Handler) serveProbe(w http.ResponseWriter, ready bool) {
 	status := http.StatusOK
 	state := "ok"
-	if ready && (h.Guard == nil || !h.Guard.Ready(h.now()) || h.Registry == nil || h.Runner == nil || h.Runner.Open == nil || h.Runner.Usage == nil || !h.Admission.ready()) {
+	configReady := h.ConfigReady != nil && h.ConfigReady()
+	if ready && (!configReady || h.Guard == nil || !h.Guard.Ready(h.now()) || h.Registry == nil || h.Runner == nil || h.Runner.Open == nil || h.Runner.Usage == nil || !h.admission().Ready()) {
 		status = http.StatusServiceUnavailable
 		state = "not_ready"
 	}
@@ -124,6 +186,42 @@ func (h *Handler) now() time.Time {
 		return h.Now()
 	}
 	return time.Now()
+}
+
+func (h *Handler) admission() *Admission {
+	if h == nil {
+		return nil
+	}
+	if h.Lifecycle != nil && h.Lifecycle.Admission != nil {
+		return h.Lifecycle.Admission
+	}
+	return h.Admission
+}
+
+// Drain marks the handler unready, rejects new work, and gives active streams
+// a bounded grace period before canceling their request contexts.
+func (h *Handler) Drain(ctx context.Context, grace time.Duration) error {
+	if h == nil || h.admission() == nil {
+		return nil
+	}
+	if h.Lifecycle != nil {
+		if grace <= 0 {
+			return h.Lifecycle.Drain(ctx)
+		}
+		return h.Lifecycle.DrainWithGrace(ctx, grace)
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if grace <= 0 {
+		grace = protocol.DrainGraceMin
+	}
+	if grace > protocol.DrainGraceMax {
+		grace = protocol.DrainGraceMax
+	}
+	stopCtx, cancel := context.WithTimeout(ctx, grace)
+	defer cancel()
+	return h.admission().Drain(stopCtx)
 }
 
 func (h *Handler) writeEvents(w http.ResponseWriter, requestID string, events []protocol.Event) error {
