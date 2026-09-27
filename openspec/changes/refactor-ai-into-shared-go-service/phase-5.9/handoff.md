@@ -14,3 +14,15 @@ Review findings were addressed before handoff: `ChainConfigFromEnv` and `validat
 The review-fix RED/GREEN proof is in [phase-5.9-evidence.md](phase-5.9-evidence.md): the old dynamic local HTTP test reproduced a `401` message containing `quota` as an incorrect fallback, and the expanded six-case test now records the expected fallback calls and typed attempt classes for quota, rate-limit, auth, server and timeout responses.
 
 The next review boundary is dark evidence review. Phase 6 operations, paid-provider smoke and production routing remain deferred; no live write or cutover authorization is implied by this handoff.
+
+## Deferred Phase 6 operator action
+
+After Phase 6 establishes the Oracle Go container, external secret mount and readiness path, the next session MUST configure and validate these NVIDIA provider variables in the Go runtime (never in Vercel, the repository, or the image):
+
+```env
+AI_PROVIDER_CHAIN=nvidia/google/gemma-4-31b-it,google/gemini-3.5-flash-lite
+NVIDIA_API_KEY=<new-unexposed-key>
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1/chat/completions
+```
+
+The same external secret boundary MUST contain a new Google Gemini key or key pool for the fallback pair. Previously exposed keys MUST be revoked and must not be reused. Validate readiness and record the redacted configuration evidence during Phase 7 dark VM smoke; do not cut over or remove legacy Vercel provider variables until the later authorized cutover and rollback window.
