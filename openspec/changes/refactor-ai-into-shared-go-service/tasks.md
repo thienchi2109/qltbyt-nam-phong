@@ -128,11 +128,11 @@ Phụ thuộc: Phase 1 provider transport và Phase 5 dark BFF. Chuỗi mục ti
 
 Bằng chứng nghiệm thu: Adapter mapping, capability/model compatibility, quota classification, fallback-before-stream, attempt/usage attribution và fail-closed config tests.
 
-- [ ] 5.9.1 Định nghĩa typed provider adapter cho chat streaming, normalized events và provider-specific errors; adapter tự map quota exhaustion/rate-limit được duyệt, không để orchestration parse raw strings.
-- [ ] 5.9.2 Cấu hình deterministic ordered fallback chain bằng các cặp provider/model đã duyệt; cho phép A -> B khi capability, context, tool schema và policy tương thích. Mỗi cặp tối đa một attempt, tổng hard ceiling mặc định hai attempts.
-- [ ] 5.9.3 Chỉ fallback trước khi stream phát ra; không đổi provider/model giữa stream. Ghi redacted metadata cho từng attempt và request-level outcome, không ghi prompt/output/raw payload.
-- [ ] 5.9.4 Fail closed khi config thiếu secret, duplicate priority, model không tương thích hoặc không còn cặp hợp lệ; không gọi model để kiểm tra readiness.
-- [ ] 5.9.5 Viết deterministic fake-adapter tests cho primary success, quota exhaustion -> fallback, fallback failure, no-provider, attempt ceiling và usage attribution. Chưa circuit breaker/cooldown, weighted routing, paid-provider smoke, DB/RPC/schema hoặc production cutover.
+- [x] 5.9.1 Định nghĩa typed provider adapter cho chat streaming, normalized events và provider-specific errors; adapter tự map quota exhaustion/rate-limit được duyệt, không để orchestration parse raw strings. (Evidence: [Phase 5.9 evidence](phase-5.9/phase-5.9-evidence.md), Eino adapter wrapper and normalized event tests.)
+- [x] 5.9.2 Cấu hình deterministic ordered fallback chain bằng các cặp provider/model đã duyệt; cho phép A -> B khi capability, context, tool schema và policy tương thích. Mỗi cặp tối đa một attempt, tổng hard ceiling mặc định hai attempts. (Evidence: [Phase 5.9 evidence](phase-5.9/phase-5.9-evidence.md), chain/config tests.)
+- [x] 5.9.3 Chỉ fallback trước khi stream phát ra; không đổi provider/model giữa stream. Ghi redacted metadata cho từng attempt và request-level outcome, không ghi prompt/output/raw payload. (Evidence: [Phase 5.9 evidence](phase-5.9/phase-5.9-evidence.md), pre-stream/mid-stream/metadata tests.)
+- [x] 5.9.4 Fail closed khi config thiếu secret, duplicate priority, model không tương thích hoặc không còn cặp hợp lệ; không gọi model để kiểm tra readiness. (Evidence: [Phase 5.9 evidence](phase-5.9/phase-5.9-evidence.md), config fail-closed tests.)
+- [x] 5.9.5 Viết deterministic fake-adapter tests cho primary success, quota exhaustion -> fallback, fallback failure, no-provider, attempt ceiling và usage attribution. Chưa circuit breaker/cooldown, weighted routing, paid-provider smoke, DB/RPC/schema hoặc production cutover. (Evidence: [Phase 5.9 evidence](phase-5.9/phase-5.9-evidence.md), deterministic fake adapter and runner usage tests.)
 
 Điểm dừng/review: Review dark evidence với UI owner; chưa có cutover authorization thì không đổi current `/api/chat` traffic.
 

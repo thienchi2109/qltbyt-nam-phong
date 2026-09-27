@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"example.com/shared-ai-service/internal/protocol"
+	"example.com/shared-ai-service/internal/provider"
 	"example.com/shared-ai-service/internal/testmodel"
 	"example.com/shared-ai-service/internal/usage"
 	"github.com/cloudwego/eino/schema"
@@ -127,7 +128,7 @@ func TestQuotaRetryStopsAfterOutputAndKeepsUnknownDistinct(t *testing.T) {
 			t.Fatalf("retry call %d started without intent", calls)
 		}
 		if calls == 1 {
-			return nil, errors.New("status 429 quota exceeded")
+			return nil, &provider.ProviderError{Class: provider.ErrorClassRateLimited}
 		}
 		return testmodel.UsageMessage("recovered", "stop", 2, 2), nil
 	}}

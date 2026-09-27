@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"strings"
 
 	"example.com/shared-ai-service/internal/protocol"
 	"github.com/cloudwego/eino-ext/components/model/openai"
@@ -11,6 +12,7 @@ import (
 type openAISession struct {
 	transport  string
 	modelName  string
+	pair       ProviderModelPair
 	thinking   string
 	chat       model.ToolCallingChatModel
 	structured model.ToolCallingChatModel
@@ -25,12 +27,14 @@ func newOpenAISession(ctx context.Context, cfg Config) (*openAISession, error) {
 	if err != nil {
 		return nil, err
 	}
+	pair := ProviderModelPair{Provider: cfg.Transport, Model: cfg.Model, Config: cfg, Capabilities: DefaultChatProfile}
 	return &openAISession{
 		transport:  cfg.Transport,
 		modelName:  cfg.Model,
 		thinking:   ThinkingLevel(cfg.Model),
-		chat:       chat,
-		structured: structured,
+		pair:       pair,
+		chat:       newAdapterModel(chat, pair),
+		structured: newAdapterModel(structured, pair),
 	}, nil
 }
 
@@ -39,9 +43,13 @@ func newOpenAIModel(ctx context.Context, cfg Config, structured bool) (model.Too
 	if maxTokens <= 0 {
 		maxTokens = protocol.DefaultMaxOutputTokens
 	}
+	baseURL := cfg.BaseURL
+	if strings.HasSuffix(strings.TrimRight(baseURL, "/"), "/chat/completions") {
+		baseURL = strings.TrimSuffix(strings.TrimRight(baseURL, "/"), "/chat/completions")
+	}
 	modelCfg := &openai.ChatModelConfig{
 		APIKey:      cfg.APIKey,
-		BaseURL:     cfg.BaseURL,
+		BaseURL:     baseURL,
 		Model:       cfg.Model,
 		HTTPClient:  cfg.HTTPClient,
 		MaxTokens:   &maxTokens,
@@ -60,6 +68,8 @@ func newOpenAIModel(ctx context.Context, cfg Config, structured bool) (model.Too
 }
 
 func (s *openAISession) Transport() string { return s.transport }
+
+func (s *openAISession) Pair() ProviderModelPair { return s.pair }
 
 func (s *openAISession) ModelName() string { return s.modelName }
 

@@ -16,6 +16,7 @@ import (
 type googleSession struct {
 	mu          sync.Mutex
 	modelName   string
+	pair        ProviderModelPair
 	thinking    string
 	maxTokens   int
 	temperature *float32
@@ -49,6 +50,7 @@ func newGoogleSession(cfg Config) (*googleSession, error) {
 	}
 	return &googleSession{
 		modelName:   modelName,
+		pair:        ProviderModelPair{Provider: protocol.TransportGoogle, Model: modelName, Config: cfg, Capabilities: DefaultChatProfile},
 		thinking:    ThinkingLevel(modelName),
 		maxTokens:   maxTokens,
 		temperature: cfg.Temperature,
@@ -61,6 +63,8 @@ func newGoogleSession(cfg Config) (*googleSession, error) {
 }
 
 func (s *googleSession) Transport() string { return protocol.TransportGoogle }
+
+func (s *googleSession) Pair() ProviderModelPair { return s.pair }
 
 func (s *googleSession) ModelName() string { return s.modelName }
 
@@ -133,6 +137,7 @@ func (s *googleSession) model(ctx context.Context, structured bool) (model.ToolC
 	if err != nil {
 		return nil, 0, protocol.NewError(500, protocol.CodeProviderFailure, "The model transport could not be configured.", false).WithCause(err)
 	}
-	s.cache[cachedKey] = chat
-	return chat, index, nil
+	wrapped := newAdapterModel(chat, s.pair)
+	s.cache[cachedKey] = wrapped
+	return wrapped, index, nil
 }

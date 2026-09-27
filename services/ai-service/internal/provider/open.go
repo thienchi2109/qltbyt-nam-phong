@@ -22,11 +22,11 @@ type Session interface {
 // Open builds the retained transport named by cfg.
 func Open(ctx context.Context, cfg Config) (Session, error) {
 	switch cfg.Transport {
-	case protocol.TransportGateway, protocol.TransportOpenAICompatible:
+	case protocol.TransportGateway, protocol.TransportNVIDIA, protocol.TransportOpenAICompatible:
 		if cfg.APIKey == "" || cfg.Model == "" {
 			return nil, protocol.NewError(500, protocol.CodeInvalidRequest, "The model transport is missing its API key or model.", false)
 		}
-		if cfg.Transport == protocol.TransportGateway && cfg.BaseURL == "" {
+		if (cfg.Transport == protocol.TransportGateway || cfg.Transport == protocol.TransportNVIDIA) && cfg.BaseURL == "" {
 			return nil, protocol.NewError(500, protocol.CodeInvalidRequest, "The gateway transport is missing its endpoint.", false)
 		}
 		return newOpenAISession(ctx, cfg)

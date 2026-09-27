@@ -26,6 +26,53 @@ func TestResolveRetainsThreeTransports(t *testing.T) {
 	if _, err := Resolve(map[string]string{"AI_PROVIDER": "bifrost"}); err == nil {
 		t.Fatal("unsupported transport was accepted")
 	}
+	nvidia, err := ConfigFromEnv(map[string]string{
+		"AI_PROVIDER":     "nvidia",
+		"AI_MODEL":        "google/gemma-4-31b-it",
+		"NVIDIA_API_KEY":  "secret",
+		"NVIDIA_BASE_URL": "https://integrate.api.nvidia.com/v1/chat/completions",
+	})
+	if err != nil || nvidia.Transport != protocol.TransportNVIDIA || nvidia.Model != "google/gemma-4-31b-it" {
+		t.Fatalf("nvidia = %+v %v", nvidia, err)
+	}
+}
+
+func TestChainConfigFromEnvIsOrderedAndRequiresSecrets(t *testing.T) {
+	chain, err := ChainConfigFromEnv(map[string]string{
+		"AI_PROVIDER_CHAIN":            "nvidia/google/gemma-4-31b-it,google/gemini-3.5-flash-lite",
+		"NVIDIA_API_KEY":               "nvidia-secret",
+		"NVIDIA_BASE_URL":              "https://integrate.api.nvidia.com/v1/chat/completions",
+		"GOOGLE_GENERATIVE_AI_API_KEY": "google-secret",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(chain.Pairs) != 2 || chain.Pairs[0].Priority != 1 || chain.Pairs[0].Provider != protocol.TransportNVIDIA || chain.Pairs[1].Provider != protocol.TransportGoogle || chain.Pairs[1].Model != "gemini-3.5-flash-lite" {
+		t.Fatalf("chain = %+v", chain)
+	}
+	if _, err := ChainConfigFromEnv(map[string]string{"AI_PROVIDER_CHAIN": "nvidia/google/gemma-4-31b-it,google/gemini-3.5-flash-lite", "NVIDIA_API_KEY": "only-one", "NVIDIA_BASE_URL": "https://example.test/v1"}); err == nil {
+		t.Fatal("missing fallback secret was accepted")
+	}
+}
+
+func TestChainConfigFromEnvRejectsUnapprovedProviderModelPairs(t *testing.T) {
+	base := map[string]string{
+		"NVIDIA_API_KEY":               "nvidia-secret",
+		"NVIDIA_BASE_URL":              "https://example.test/v1",
+		"GOOGLE_GENERATIVE_AI_API_KEY": "google-secret",
+	}
+	for _, chain := range []string{
+		"nvidia/google/gemma-4-26b-a4b-it,google/gemini-3.5-flash-lite",
+		"nvidia/google/gemma-4-31b-it,google/gemini-3.8-flash",
+		"google/gemini-3.5-flash-lite,nvidia/google/gemma-4-31b-it",
+		"nvidia/google/gemma-4-31b-it,openai-compatible/gpt-4.1",
+	} {
+		env := cloneEnv(base)
+		env["AI_PROVIDER_CHAIN"] = chain
+		if _, err := ChainConfigFromEnv(env); err == nil {
+			t.Fatalf("unapproved chain %q was accepted", chain)
+		}
+	}
 }
 
 func TestGoogleTransportStripsProviderPrefix(t *testing.T) {

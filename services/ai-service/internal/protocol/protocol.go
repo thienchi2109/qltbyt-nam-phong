@@ -18,6 +18,7 @@ const (
 
 const (
 	TransportGateway          = "gateway"
+	TransportNVIDIA           = "nvidia"
 	TransportGoogle           = "google"
 	TransportOpenAICompatible = "openai-compatible"
 )
@@ -174,6 +175,27 @@ type Event struct {
 	ToolCallID string          `json:"tool_call_id,omitempty"`
 	Payload    json.RawMessage `json:"payload,omitempty"`
 	Error      *Error          `json:"error,omitempty"`
+	Provider   string          `json:"provider,omitempty"`
+	Model      string          `json:"model,omitempty"`
+	Attempt    int             `json:"attempt,omitempty"`
+}
+
+// ProviderAttempt is redacted request metadata. It intentionally excludes
+// prompts, outputs, credentials and upstream payloads.
+type ProviderAttempt struct {
+	Attempt    int    `json:"attempt"`
+	Provider   string `json:"provider"`
+	Model      string `json:"model"`
+	Outcome    string `json:"outcome"`
+	ErrorClass string `json:"error_class,omitempty"`
+}
+
+// ProviderMetadata identifies the actual provider/model and ordered attempts.
+type ProviderMetadata struct {
+	Provider string            `json:"provider,omitempty"`
+	Model    string            `json:"model,omitempty"`
+	Outcome  string            `json:"outcome,omitempty"`
+	Attempts []ProviderAttempt `json:"attempts,omitempty"`
 }
 
 // Error is the stable pre-stream and in-stream failure contract.

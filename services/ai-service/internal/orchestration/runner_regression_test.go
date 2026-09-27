@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"example.com/shared-ai-service/internal/protocol"
+	"example.com/shared-ai-service/internal/provider"
 	"example.com/shared-ai-service/internal/registry"
 	"example.com/shared-ai-service/internal/testmodel"
 	"example.com/shared-ai-service/internal/usage"
@@ -62,7 +63,7 @@ func TestConcurrentQuotaRotationUsesTheLeasedKey(t *testing.T) {
 		chat: &testmodel.Scripted{GenerateFunc: func(context.Context, []*schema.Message) (*schema.Message, error) {
 			close(started)
 			<-release
-			return nil, errors.New("429 quota exceeded")
+			return nil, &provider.ProviderError{Class: provider.ErrorClassRateLimited}
 		}},
 	}
 	reg := registry.New()

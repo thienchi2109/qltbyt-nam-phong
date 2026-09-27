@@ -30,6 +30,49 @@ type Resolved struct {
 	Model     string
 }
 
+// ChainConfigFromEnv parses an explicit ordered provider/model chain. The
+// format is `provider/model,provider/model`; model names may contain further
+// slashes. Secrets are read from the existing provider-specific variables.
+func ChainConfigFromEnv(env map[string]string) (ChainConfig, error) {
+	raw := read(env, "AI_PROVIDER_CHAIN")
+	if raw == "" {
+		return ChainConfig{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain is missing its configuration.", false)
+	}
+	var pairs []ProviderModelPair
+	for priority, item := range strings.Split(raw, ",") {
+		item = strings.TrimSpace(item)
+		separator := strings.IndexByte(item, '/')
+		if separator <= 0 || separator == len(item)-1 {
+			return ChainConfig{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains an invalid pair.", false)
+		}
+		providerName := strings.ToLower(strings.TrimSpace(item[:separator]))
+		modelName := strings.TrimSpace(item[separator+1:])
+		configEnv := cloneEnv(env)
+		configEnv["AI_PROVIDER"] = providerName
+		configEnv["AI_MODEL"] = modelName
+		configEnv["AI_DEFAULT_CHAT_PROVIDER"] = providerName
+		configEnv["AI_DEFAULT_CHAT_MODEL"] = modelName
+		cfg, err := ConfigFromEnv(configEnv)
+		if err != nil {
+			return ChainConfig{}, err
+		}
+		pairs = append(pairs, ProviderModelPair{Priority: priority + 1, Provider: providerName, Model: cfg.Model, Config: cfg, Capabilities: DefaultChatProfile})
+	}
+	validated, maxAttempts, err := validateChain(ChainConfig{Pairs: pairs, MaxAttempts: 2})
+	if err != nil {
+		return ChainConfig{}, err
+	}
+	return ChainConfig{Pairs: validated, MaxAttempts: maxAttempts}, nil
+}
+
+func cloneEnv(env map[string]string) map[string]string {
+	cloned := make(map[string]string, len(env)+4)
+	for key, value := range env {
+		cloned[key] = value
+	}
+	return cloned
+}
+
 // Resolve applies the retained transport selection rules.
 func Resolve(env map[string]string) (Resolved, error) {
 	providerName := firstNonEmpty(read(env, "AI_DEFAULT_CHAT_PROVIDER"), read(env, "AI_PROVIDER"))
@@ -54,9 +97,9 @@ func Resolve(env map[string]string) (Resolved, error) {
 		}
 	}
 	switch providerName {
-	case protocol.TransportGateway:
+	case protocol.TransportGateway, protocol.TransportNVIDIA:
 		if !providerPrefixedModel.MatchString(model) {
-			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The gateway model id must include a provider prefix.", false)
+			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider model id must include a provider prefix.", false)
 		}
 	case protocol.TransportGoogle:
 		model = normalizeGeminiModel(model)
@@ -86,6 +129,12 @@ func ConfigFromEnv(env map[string]string) (Config, error) {
 		cfg.BaseURL = read(env, "AI_GATEWAY_BASE_URL")
 		if cfg.APIKey == "" {
 			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The gateway transport is missing its API key.", false)
+		}
+	case protocol.TransportNVIDIA:
+		cfg.APIKey = firstNonEmpty(read(env, "NVIDIA_API_KEY"), read(env, "AI_NVIDIA_API_KEY"))
+		cfg.BaseURL = firstNonEmpty(read(env, "NVIDIA_BASE_URL"), read(env, "AI_NVIDIA_BASE_URL"))
+		if cfg.APIKey == "" || cfg.BaseURL == "" {
+			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The NVIDIA transport is missing its endpoint or API key.", false)
 		}
 	case protocol.TransportGoogle:
 		cfg.APIKeys = GoogleKeys(env)

@@ -3,7 +3,6 @@ package orchestration
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"example.com/shared-ai-service/internal/capability"
 	"example.com/shared-ai-service/internal/protocol"
@@ -77,12 +76,5 @@ func publicError(requestID string, err error) *protocol.Error {
 }
 
 func isQuotaError(err error) bool {
-	if err == nil {
-		return false
-	}
-	text := strings.ToLower(err.Error())
-	return strings.Contains(text, "429") ||
-		strings.Contains(text, "quota") ||
-		strings.Contains(text, "resource exhausted") ||
-		strings.Contains(text, "too many requests")
+	return protocol.IsProviderFallbackEligible(err)
 }

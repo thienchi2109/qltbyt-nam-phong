@@ -154,6 +154,12 @@ func (s *meterState) snapshot() ([]usage.CallUsage, bool) {
 	return calls, s.emitted
 }
 
+func (s *meterState) markStreamEvent() {
+	s.mu.Lock()
+	s.emitted = true
+	s.mu.Unlock()
+}
+
 type meteringModel struct {
 	inner model.ToolCallingChatModel
 	state *meterState
@@ -233,22 +239,20 @@ func forwardStream(reader *schema.StreamReader[*schema.Message], writer *schema.
 	}()
 	for {
 		chunk, err := reader.Recv()
+		if chunk != nil {
+			if chunk.ResponseMeta != nil && chunk.ResponseMeta.Usage != nil {
+				state.mergeStreamUsage(*chunk.ResponseMeta.Usage)
+			}
+			state.markStreamEvent()
+			if writer.Send(chunk, nil) {
+				return
+			}
+		}
 		if errors.Is(err, io.EOF) {
 			return
 		}
 		if err != nil {
 			terminalErr = err
-			return
-		}
-		if chunk.ResponseMeta != nil && chunk.ResponseMeta.Usage != nil {
-			state.mergeStreamUsage(*chunk.ResponseMeta.Usage)
-		}
-		if chunk.Content != "" || len(chunk.ToolCalls) > 0 {
-			state.mu.Lock()
-			state.emitted = true
-			state.mu.Unlock()
-		}
-		if writer.Send(chunk, nil) {
 			return
 		}
 	}
