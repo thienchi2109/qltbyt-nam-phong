@@ -43,6 +43,20 @@ redacted failures. The browser never supplies the authority for this endpoint.
 **Excludes:** `/api/chat` cutover, Go production wiring, SQL/live DB and paid
 provider smoke.
 
+**7.5B implementation handoff (worktree, not landed):** the route and focused
+contract tests are present under `src/app/api/internal/ai/broker/v1/`. The
+server-only verifier uses `AI_SERVICE_BFF_BROKER_SECRET` and enforces the
+7.5A HMAC issuer/audience, numeric positive claims and 120-second TTL. The
+allowlisted RPC schemas, derived facility/audit/quota arguments, cleanup
+boundary, streamed request/upstream body caps, strict recursive result schemas,
+Access-header transport compatibility, cancellation budget, response caps,
+correlation IDs and redacted errors are covered by 36 focused passing tests
+(23 route, 7 server-RPC body-cap, 6 token). Targeted TypeScript and diff
+checks pass. Trusted deployment Access provenance remains uncertified, so the
+package is `DISPOSABLE ONLY` until the changes are landed and
+the 7.5A review plus later Go/SQL/disposable acceptance gates are complete;
+overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.
+
 ### 7.5C — Internal Go broker/capability composition
 
 **Prerequisite:** `7.5A` PASS and `7.5B` contract/schema PASS.

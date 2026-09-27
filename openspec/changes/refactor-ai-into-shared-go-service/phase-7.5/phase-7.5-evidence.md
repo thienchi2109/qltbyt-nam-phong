@@ -36,14 +36,16 @@ completing one package does not tick or authorize another package.
   but it cannot certify production.
 - An authenticated Cloudflare Access lane requires evidence that the Access
   credential came from the trusted BFF source; browser-supplied Access headers
-  are negative evidence.
+  are negative evidence. The 7.5B route treats those headers as transport
+  metadata only and authorizes solely with the verified HMAC broker token;
+  trusted deployment injection is not certified by this worktree package.
 
 ## Package acceptance matrix
 
 | Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                               |
 | ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending |
-| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **NOT RUN** — depends on `7.5A`                                                                |
+| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending |
 | `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **NOT RUN** — depends on `7.5A` and `7.5B` contract                                            |
 | `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **NOT RUN** — depends on `7.5C`; production role/read-back is `7.5E`                           |
 | `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **NOT RUN** — no live apply authorized; unavailable lane is blocking                           |
@@ -69,13 +71,18 @@ check or mock does not satisfy this gate.
 
 ## Explicit blockers and scope fences
 
-- No runtime BFF broker endpoint has been accepted yet; this blocks `7.5B`.
+- The BFF endpoint has only disposable worktree evidence; landed exact-commit,
+  Go/Access and downstream acceptance remain blocking for `7.5C`.
+- Cloudflare Access headers remain compatible with `GoBffProxy` because they are
+  not rejected or used as authority at this route. Browser copies cannot
+  authorize without the broker token, but trusted deployment provenance still
+  requires the later Access/disposable acceptance lane.
 - No production Go composition has been certified; existing injected
   `Broker`/`QueryExecutor` interfaces are contract evidence only.
-- The current Go `Broker.Call` interface has no wire `operation` parameter, and
-  the current credential verifier accepts nonpositive optional facility claims;
-  both are explicit 7.5A contract requirements whose implementation and tests
-  belong to 7.5C. This evidence does not claim either runtime behavior.
+- The current Go `Broker.Call` interface has no wire `operation` parameter;
+  operation-aware Go transport remains a 7.5C requirement. The 7.5B Next.js
+  verifier now rejects nonpositive/noninteger facility claims, with focused
+  tests; Go-side runtime enforcement and transport evidence remain pending.
 - No SQL role/grant/password provisioning or catalog read-back has been run.
   `7.5E` must report static and baseline-forward separately; missing required
   lane evidence is `BLOCKING / INCOMPLETE`.
@@ -105,9 +112,8 @@ the orchestrator must not relabel a missing report as PASS.
   request/result schemas, server-derived facility and audit telemetry,
   operation mapping, response byte/row/item/field caps, generated error
   correlation for invalid request IDs, timeout/cancellation, redaction, scope
-  binding and negative matrix. Nonpositive facility rejection is a normative
-  7.5A requirement whose runtime evidence belongs to 7.5C; it is not claimed
-  as already implemented.
+  binding and negative matrix. The 7.5B worktree verifier covers nonpositive
+  facility rejection; Go-side enforcement remains a 7.5C requirement.
 - **Validation:** `openspec validate ... --strict` and `git diff --check` are
   required for this docs-only package; no runtime, SQL, deployment or live DB
   command is part of 7.5A.
@@ -117,3 +123,66 @@ the orchestrator must not relabel a missing report as PASS.
 - **Next-package boundary:** 7.5B may implement the route only after review of
   this artifact. No 7.5C–G package, Phase 8 cutover, Phase 9 cleanup, SQL/live
   DB work or paid-provider smoke is authorized by this report.
+
+### 7.5B package report — application-owned BFF broker endpoint
+
+- **Subject:** worktree based on `6f4ef73ccc2d64d189a2e196c7b9ee52f9b6891d`;
+  changes remain uncommitted and this report is not a landed-commit
+  certification.
+- **Route:** `POST /api/internal/ai/broker/v1`, Node.js runtime, with explicit
+  `GET`/`PUT`/`PATCH`/`DELETE` 405 responses.
+- **Implementation:** server-only compact HMAC verification using
+  `AI_SERVICE_BFF_BROKER_SECRET`; exact issuer/audience, positive numeric
+  identity/facility claims, UTC clock and 120-second maximum TTL; strict
+  allowlist and per-RPC input/result schemas; derived facility/audit/quota
+  fields; call/cleanup admission; streamed 64 KiB request/success and 8 KiB
+  error body caps; 5-second abort-aware downstream RPC budget; generated
+  correlation IDs; redacted stable errors; browser cookie/claim and Supabase
+  signing-secret rejection. Result schemas reject unknown recursive fields,
+  cap `condition_counts` at 100 keys and allow only the seven contract filter
+  keys. Access headers are transport metadata only; the broker HMAC is the
+  sole route authority.
+- **Changed source:** `src/app/api/internal/ai/broker/v1/route.ts`,
+  `src/lib/ai/bff-broker/BffBrokerContracts.ts`,
+  `src/lib/ai/bff-broker/BffBrokerResults.ts`,
+  `src/lib/ai/bff-broker/BoundedBody.ts`,
+  `src/lib/ai/go-bff/GoBffBrokerCredential.ts`, and the server RPC helper's
+  optional abort signal, with route/token/server-RPC focused tests under
+  `src/app/api/internal/ai/broker/v1/__tests__/`,
+  `src/lib/ai/go-bff/__tests__/` and `src/lib/ai/__tests__/`.
+- **Focused evidence:** 36 tests passed (23 BFF route, 7 server RPC body-cap,
+  6 broker-token); targeted TypeScript compilation passed; `git diff --check`
+  passed; route and contract hashes are recorded below.
+- **Worktree SHA-256:** route
+  `a97005b395c76dce4b287c3fce0631ac2ce8d68b58c7b00417fc3e949313434c`;
+  route tests
+  `f64d9b808fddb227b31f6fff14dd21b8750a2d3dc91805c95eb764057cf8416c`;
+  contracts
+  `3158e408ca2871ca58e7b0f6c5ec9581fc27ee12b107d7b0a69c9a164d028160`;
+  result schemas
+  `d5dd1fc77656e22a711fd24695bda65227c516716f84115e44814de815333c04`;
+  bounded body helper
+  `3d0117937e665f112fbc15af65dcc82abeb32e3119f70a5a2c7d9ca5d699d6a5`;
+  token verifier
+  `782cef3b291aef448c0c4972eb6ba1f6702b41a03e4da4d1e8369d64bf371146`;
+  token tests
+  `c8e6683bc98bce8f80e116ebd603769d6b9ce450404deceeac122b55697744c4`;
+  abortable RPC helper
+  `1aeeee28f10023e5c6a5af2aed6780526213620d41ca6d071b34b7023714d380`;
+  route/server-RPC tests
+  `0c44b5864aaa8d5b0a5e9ea165019018a228b3cd20748347ae5e42b8c0ef5473`.
+- **Redaction review:** no token, cookie, Supabase signing secret, SQL text,
+  upstream rows or raw upstream error is returned or logged. The test suite
+  covers forged/expired/future/over-TTL/wrong-audience credentials, invalid
+  IDs, browser authority, Access-header provenance boundary, widened scope,
+  cleanup mismatch, request-body cancellation, bounded request/upstream/error
+  bodies, bounded results and generated correlation IDs.
+- **Status:** `DISPOSABLE ONLY` — the route contract and focused tests are
+  implemented, but trusted deployment Access provenance is not certified and
+  no Go 7.5C transport, real deployment/Access lane,
+  production configuration, SQL/live DB operation, Oracle run or paid-provider
+  smoke was performed. Overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.
+- **Next-package boundary:** 7.5C may consume this route/schema contract only
+  after the 7.5A review gate and a landed exact subject commit are recorded.
+  This report does not authorize 7.5C–G, Phase 8, Phase 9, SQL/live DB work or
+  paid-provider smoke.

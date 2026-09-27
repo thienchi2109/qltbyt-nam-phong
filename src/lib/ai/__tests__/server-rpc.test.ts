@@ -11,7 +11,7 @@ vi.mock("jsonwebtoken", () => ({
   },
 }))
 
-import { callServerRpc, mintSupabaseJwt } from "../server-rpc"
+import { callServerRpc, mintSupabaseJwt, ServerRpcResponseTooLargeError } from "../server-rpc"
 
 describe("AI server RPC helper", () => {
   beforeEach(() => {
@@ -134,5 +134,37 @@ describe("AI server RPC helper", () => {
         }),
       })
     )
+  })
+
+  it("bounds successful upstream response reads at 64 KiB", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("x".repeat(64 * 1024 + 1), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      })
+    )
+
+    await expect(
+      callServerRpc("ai_equipment_lookup", {}, { id: "u1", role: "user", don_vi: 2 })
+    ).rejects.toMatchObject({
+      name: "ServerRpcResponseTooLargeError",
+      kind: "success",
+    } satisfies Partial<ServerRpcResponseTooLargeError>)
+  })
+
+  it("bounds error response reads at 8 KiB without exposing the body", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("x".repeat(8 * 1024 + 1), {
+        status: 500,
+        headers: { "content-type": "text/plain" },
+      })
+    )
+
+    await expect(
+      callServerRpc("ai_equipment_lookup", {}, { id: "u1", role: "user", don_vi: 2 })
+    ).rejects.toMatchObject({
+      name: "ServerRpcResponseTooLargeError",
+      kind: "error",
+    } satisfies Partial<ServerRpcResponseTooLargeError>)
   })
 })
