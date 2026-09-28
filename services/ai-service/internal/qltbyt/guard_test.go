@@ -133,3 +133,41 @@ func TestQueryGuardAllowsColumnLists(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryGuardAllowsParenthesizedExpressionsAndSafeAggregates(t *testing.T) {
+	cases := []struct {
+		name string
+		sql  string
+	}{
+		{name: "parenthesized selected column", sql: "select (equipment_id) from ai_readonly.equipment_search"},
+		{name: "parenthesized where expression", sql: "select equipment_id from ai_readonly.equipment_search where (equipment_id > 0)"},
+		{name: "parenthesized order expression", sql: "select equipment_id from ai_readonly.equipment_search order by (equipment_id)"},
+		{name: "count aggregate", sql: "select nguoi_dang_truc_tiep_quan_ly, COUNT(*) AS so_luong from ai_readonly.equipment_search group by nguoi_dang_truc_tiep_quan_ly"},
+		{name: "sum aggregate", sql: "select sum(equipment_id) from ai_readonly.equipment_search"},
+		{name: "min aggregate", sql: "select min(equipment_id) from ai_readonly.equipment_search"},
+		{name: "max aggregate", sql: "select max(equipment_id) from ai_readonly.equipment_search"},
+		{name: "avg aggregate", sql: "select avg(equipment_id) from ai_readonly.equipment_search"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := validateSQL(tc.sql); err != nil {
+				t.Fatalf("valid read-only query was rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestQueryGuardStillRejectsUnsafeFunctionCalls(t *testing.T) {
+	for _, sql := range []string{
+		"select set_config('app.current_facility_id', '2', true)",
+		"select pg_advisory_lock(1)",
+	} {
+		t.Run(sql, func(t *testing.T) {
+			_, err := validateSQL(sql)
+			var sqlErr *SQLError
+			if !errors.As(err, &sqlErr) || sqlErr.Code != "forbidden_function" {
+				t.Fatalf("err = %v", err)
+			}
+		})
+	}
+}

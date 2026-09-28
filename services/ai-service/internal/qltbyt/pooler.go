@@ -71,8 +71,24 @@ func poolerConnectionConfig(databaseURL string) (*pgx.ConnConfig, error) {
 	if err := ValidatePoolerURL(databaseURL); err != nil {
 		return nil, err
 	}
+	parsed, err := url.Parse(databaseURL)
+	if err != nil || parsed.User == nil {
+		return nil, errors.New("external pooler database URL is invalid")
+	}
+	expectedPassword, passwordSet := parsed.User.Password()
+	if !passwordSet {
+		return nil, errors.New("external pooler database URL is invalid")
+	}
 	config, err := pgx.ParseConfig(databaseURL)
 	if err != nil {
+		return nil, errors.New("external pooler database URL is invalid")
+	}
+	// ParseConfig inherits PG* startup settings and callbacks from the process
+	// environment. This pool is dedicated to the validated read-only endpoint.
+	config.RuntimeParams = nil
+	config.ValidateConnect = nil
+	config.Fallbacks = nil
+	if !strings.EqualFold(config.Host, parsed.Hostname()) || config.Port != 6543 || config.User != parsed.User.Username() || config.Password != expectedPassword || config.Database != "postgres" || config.TLSConfig == nil {
 		return nil, errors.New("external pooler database URL is invalid")
 	}
 	config.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol

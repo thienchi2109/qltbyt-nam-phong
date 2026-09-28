@@ -27,6 +27,7 @@ type validatedSQL struct {
 	SQLShape  string
 }
 
+// ponytail: the lexical scanner covers the current SQL subset; adopt a PostgreSQL AST parser if that subset expands.
 var (
 	forbiddenKeywordPattern  = regexp.MustCompile(`(?i)\b(?:alter|analyze|call|cluster|comment|copy|create|delete|drop|execute|grant|insert|listen|merge|notify|refresh|reindex|revoke|set|truncate|update|vacuum)\b`)
 	forbiddenFunctionPattern = regexp.MustCompile(`(?i)\b(?:set_config)\s*\(`)
@@ -54,10 +55,13 @@ var approvedViews = map[string]struct{}{
 	"quota_facts":       {},
 }
 
-var approvedQueryFunctions = map[string]struct{}{"coalesce": {}}
+var approvedQueryFunctions = map[string]struct{}{
+	"avg": {}, "coalesce": {}, "count": {}, "max": {}, "min": {}, "sum": {},
+}
 
 var querySyntaxParentheses = map[string]struct{}{
-	"all": {}, "any": {}, "as": {}, "exists": {}, "filter": {}, "group": {}, "in": {}, "over": {}, "within": {},
+	"all": {}, "and": {}, "any": {}, "as": {}, "by": {}, "exists": {}, "filter": {}, "from": {}, "group": {}, "having": {},
+	"in": {}, "join": {}, "not": {}, "on": {}, "or": {}, "over": {}, "select": {}, "values": {}, "where": {}, "within": {},
 }
 
 func validateSQL(sql string) (validatedSQL, error) {

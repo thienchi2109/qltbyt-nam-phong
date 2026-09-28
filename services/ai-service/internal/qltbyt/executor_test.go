@@ -6,6 +6,8 @@ import (
 	"database/sql/driver"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -226,7 +228,7 @@ func TestPoolerConnectionDisablesPreparedStatements(t *testing.T) {
 }
 
 func TestPoolerStartupDiagnosticKeepsOnlySafeCause(t *testing.T) {
-	err := poolerUnavailable("readiness", &pgconn.PgError{Code: "28P01", Message: "password=diagnostic-secret"})
+	err := poolerUnavailable("readiness", &pgconn.PgError{Code: "28P01", Message: "password=diagnostic-secret endpoint=pooler.example user=ai_query_tool"})
 	if err.Error() != "external pooler query executor is unavailable" {
 		t.Fatalf("public error = %q", err)
 	}
@@ -237,8 +239,47 @@ func TestPoolerStartupDiagnosticKeepsOnlySafeCause(t *testing.T) {
 	if got, want := diagnostic.PoolerDiagnostic(), "stage=readiness cause=postgres_sqlstate_28P01"; got != want {
 		t.Fatalf("diagnostic = %q, want %q", got, want)
 	}
-	if strings.Contains(diagnostic.PoolerDiagnostic(), "diagnostic-secret") {
-		t.Fatalf("diagnostic exposed driver details: %s", diagnostic.PoolerDiagnostic())
+	for _, sensitive := range []string{"diagnostic-secret", "pooler.example", "ai_query_tool"} {
+		if strings.Contains(diagnostic.PoolerDiagnostic(), sensitive) {
+			t.Fatalf("diagnostic exposed driver details: %s", diagnostic.PoolerDiagnostic())
+		}
+	}
+}
+
+func TestPoolerConnectionConfigIgnoresStartupEnvironment(t *testing.T) {
+	for name, value := range map[string]string{
+		"PGHOST":               "127.0.0.1",
+		"PGPORT":               "5432",
+		"PGUSER":               "postgres",
+		"PGPASSWORD":           "environment-secret",
+		"PGDATABASE":           "other",
+		"PGSSLMODE":            "disable",
+		"PGOPTIONS":            "-c default_transaction_read_only=off -c search_path=public",
+		"PGAPPNAME":            "environment-app",
+		"PGTZ":                 "UTC",
+		"PGTARGETSESSIONATTRS": "read-write",
+	} {
+		t.Setenv(name, value)
+	}
+	service := filepath.Join(t.TempDir(), "pg_service.conf")
+	if err := os.WriteFile(service, []byte("[untrusted]\nhost=127.0.0.1\nport=5432\nuser=postgres\ndbname=other\nsslmode=disable\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PGSERVICEFILE", service)
+	t.Setenv("PGSERVICE", "untrusted")
+
+	config, err := poolerConnectionConfig("postgresql://ai_query_tool.projectref:url-secret@pooler.example:6543/postgres?sslmode=require")
+	if err != nil {
+		t.Fatalf("pooler connection config rejected the validated URL: %v", err)
+	}
+	if config.Host != "pooler.example" || config.Port != 6543 || config.User != "ai_query_tool.projectref" || config.Password != "url-secret" || config.Database != "postgres" {
+		t.Fatal("pooler URL authority was overridden by the process environment")
+	}
+	if config.TLSConfig == nil {
+		t.Fatal("pooler URL TLS requirement was not preserved")
+	}
+	if len(config.RuntimeParams) != 0 || config.ValidateConnect != nil || len(config.Fallbacks) != 0 {
+		t.Fatal("process startup settings, validation callbacks, or TLS fallbacks were retained")
 	}
 }
 
@@ -257,8 +298,10 @@ func TestValidatePoolerURLRejectsConnectionParameterOverrides(t *testing.T) {
 			if err == nil {
 				t.Fatal("pooler URL accepted a query-string override")
 			}
-			if strings.Contains(err.Error(), "authority-secret") || strings.Contains(err.Error(), "override-secret") {
-				t.Fatalf("validation error exposed credentials: %v", err)
+			for _, sensitive := range []string{"authority-secret", "override-secret", "pooler.example", "ai_query_tool"} {
+				if strings.Contains(err.Error(), sensitive) {
+					t.Fatalf("validation error exposed connection details: %v", err)
+				}
 			}
 		})
 	}
