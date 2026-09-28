@@ -167,6 +167,16 @@ func TestQueryExecutorReadinessRejectsMissingDummyAndUnhealthyExecutors(t *testi
 	if response.Code != http.StatusOK {
 		t.Fatalf("complete Broker + SQL executor + registry readiness = %d %s, want 200", response.Code, response.Body.String())
 	}
+	deniedDB := sql.OpenDB(readinessConnector{deniedView: "equipment_search"})
+	t.Cleanup(func() { _ = deniedDB.Close() })
+	handler.ConfigReady = func() bool {
+		return QueryExecutorReady(context.Background(), &qltbyt.SQLExecutor{DB: deniedDB})
+	}
+	response = httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if response.Code != http.StatusServiceUnavailable {
+		t.Fatalf("catalog permission failure readiness = %d %s, want 503", response.Code, response.Body.String())
+	}
 }
 
 type fakeBroker struct{}
@@ -185,15 +195,21 @@ type dummyReadyQuery struct{ fakeQuery }
 
 func (*dummyReadyQuery) Ready(context.Context) error { return nil }
 
-type readinessConnector struct{}
+type readinessConnector struct{ deniedView string }
 
-type readinessDriver struct{}
+type readinessDriver struct{ deniedView string }
 
-type readinessConn struct{}
+type readinessConn struct{ deniedView string }
 
-func (readinessConnector) Connect(context.Context) (driver.Conn, error) { return readinessConn{}, nil }
-func (readinessConnector) Driver() driver.Driver                        { return readinessDriver{} }
-func (readinessDriver) Open(string) (driver.Conn, error)                { return readinessConn{}, nil }
+func (connector readinessConnector) Connect(context.Context) (driver.Conn, error) {
+	return readinessConn{deniedView: connector.deniedView}, nil
+}
+func (connector readinessConnector) Driver() driver.Driver {
+	return readinessDriver{deniedView: connector.deniedView}
+}
+func (driver readinessDriver) Open(string) (driver.Conn, error) {
+	return readinessConn{deniedView: driver.deniedView}, nil
+}
 func (readinessConn) Prepare(string) (driver.Stmt, error) {
 	return nil, errors.New("unexpected prepare")
 }
@@ -205,11 +221,25 @@ func (readinessConn) BeginTx(_ context.Context, options driver.TxOptions) (drive
 	}
 	return readinessTx{}, nil
 }
-func (readinessConn) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
-	if query != "select current_user, current_setting('transaction_read_only'), current_setting('default_transaction_read_only')" {
-		return nil, errors.New("unexpected query")
+func (conn readinessConn) QueryContext(_ context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	if query == "select current_user, current_setting('transaction_read_only'), current_setting('default_transaction_read_only')" {
+		return &readinessRows{columns: []string{"role", "read_only", "default_read_only"}, values: []driver.Value{"ai_query_tool", "on", "on"}, remaining: 1}, nil
 	}
-	return &readinessRows{}, nil
+	if query == "select c.relkind::text, pg_catalog.has_schema_privilege(current_user, n.oid, 'USAGE'), pg_catalog.has_table_privilege(current_user, c.oid, 'SELECT') from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'ai_readonly' and c.relname = $1" {
+		if len(args) != 1 {
+			return nil, errors.New("catalog metadata query is missing its view name")
+		}
+		view := args[0].Value.(string)
+		if !readinessViewExists(view) {
+			return &readinessRows{columns: []string{"relkind", "schema_usage", "select_privilege"}}, nil
+		}
+		return &readinessRows{
+			columns:   []string{"relkind", "schema_usage", "select_privilege"},
+			values:    []driver.Value{"v", true, conn.deniedView != view},
+			remaining: 1,
+		}, nil
+	}
+	return nil, errors.New("unexpected query")
 }
 
 type readinessTx struct{}
@@ -217,15 +247,29 @@ type readinessTx struct{}
 func (readinessTx) Commit() error   { return nil }
 func (readinessTx) Rollback() error { return nil }
 
-type readinessRows struct{ read bool }
+type readinessRows struct {
+	columns   []string
+	values    []driver.Value
+	remaining int
+}
 
-func (*readinessRows) Columns() []string { return []string{"role", "read_only", "default_read_only"} }
-func (*readinessRows) Close() error      { return nil }
+func (rows *readinessRows) Columns() []string { return rows.columns }
+func (*readinessRows) Close() error           { return nil }
 func (rows *readinessRows) Next(dest []driver.Value) error {
-	if rows.read {
+	if rows.remaining == 0 {
 		return io.EOF
 	}
-	rows.read = true
-	copy(dest, []driver.Value{"ai_query_tool", "on", "on"})
+	rows.remaining--
+	copy(dest, rows.values)
 	return nil
+}
+
+// This is the test database fixture for the current approved SQL views.
+func readinessViewExists(name string) bool {
+	switch name {
+	case "equipment_search", "maintenance_facts", "repair_facts", "usage_facts", "quota_facts":
+		return true
+	default:
+		return false
+	}
 }

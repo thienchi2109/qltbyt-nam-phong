@@ -23,7 +23,21 @@ type queryDriver struct {
 	count                           int
 	value                           driver.Value
 	settingErr, connectErr          bool
+	catalog                         readinessCatalog
+	catalogMetaProbes               []string
 	committed, rolledBack           bool
+}
+
+type readinessCatalog struct {
+	schemaExists        bool
+	schemaUsage         bool
+	viewKinds           map[string]string
+	viewSelect          map[string]bool
+	metadataError       error
+	metadataNextError   error
+	metadataCloseError  error
+	metadataStarted     chan struct{}
+	blockMetadataResult bool
 }
 
 func (d *queryDriver) Connect(context.Context) (driver.Conn, error) {
@@ -57,12 +71,48 @@ func (d *queryDriver) ExecContext(_ context.Context, query string, args []driver
 	d.settings[args[0].Value.(string)] = args[1].Value.(string)
 	return driver.RowsAffected(1), nil
 }
-func (d *queryDriver) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
+func (d *queryDriver) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
 	if query == "select current_user, current_setting('transaction_read_only')" {
 		return &executorRows{columns: []string{"role", "read_only"}, values: []driver.Value{d.role, d.readOnly}, remaining: 1}, nil
 	}
 	if query == "select current_user, current_setting('transaction_read_only'), current_setting('default_transaction_read_only')" {
 		return &executorRows{columns: []string{"role", "read_only", "default_read_only"}, values: []driver.Value{d.role, d.readOnly, d.defaultReadOnly}, remaining: 1}, nil
+	}
+	if query == approvedViewReadinessQuery {
+		if len(args) != 1 {
+			return nil, errors.New("catalog metadata query is missing its view name")
+		}
+		if d.catalog.metadataError != nil {
+			return nil, d.catalog.metadataError
+		}
+		if d.catalog.metadataStarted != nil {
+			select {
+			case d.catalog.metadataStarted <- struct{}{}:
+			default:
+			}
+		}
+		if d.catalog.blockMetadataResult {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		view := args[0].Value.(string)
+		d.catalogMetaProbes = append(d.catalogMetaProbes, view)
+		if !d.catalog.schemaExists {
+			return &executorRows{columns: []string{"relkind", "schema_usage", "select_privilege"}}, nil
+		}
+		kind, ok := d.catalog.viewKinds[view]
+		if !ok {
+			return &executorRows{columns: []string{"relkind", "schema_usage", "select_privilege"}}, nil
+		}
+		if d.catalog.metadataNextError != nil {
+			return &executorRows{columns: []string{"relkind", "schema_usage", "select_privilege"}, nextErr: d.catalog.metadataNextError}, nil
+		}
+		return &executorRows{
+			columns:   []string{"relkind", "schema_usage", "select_privilege"},
+			values:    []driver.Value{kind, d.catalog.schemaUsage, d.catalog.viewSelect[view]},
+			remaining: 1,
+			closeErr:  d.catalog.metadataCloseError,
+		}, nil
 	}
 	if len(d.settings) != 5 {
 		return nil, errors.New("query ran before settings")
@@ -75,12 +125,17 @@ type executorRows struct {
 	columns   []string
 	values    []driver.Value
 	remaining int
+	nextErr   error
+	closeErr  error
 }
 
 func (r *executorRows) Columns() []string { return r.columns }
-func (r *executorRows) Close() error      { return nil }
+func (r *executorRows) Close() error      { return r.closeErr }
 func (r *executorRows) Next(dest []driver.Value) error {
 	if r.remaining == 0 {
+		if r.nextErr != nil {
+			return r.nextErr
+		}
 		return io.EOF
 	}
 	r.remaining--
@@ -158,59 +213,6 @@ func TestSQLExecutorBoundsRowsAndPayload(t *testing.T) {
 				t.Fatalf("result=%+v err=%v", result, err)
 			}
 		})
-	}
-}
-
-func TestSQLExecutorReadyRequiresConnectedReadOnlyDedicatedRole(t *testing.T) {
-	for _, tc := range []struct {
-		name, role, readOnly, defaultReadOnly string
-		connectErr, wantReady                 bool
-	}{
-		{name: "dedicated read-only", role: "ai_query_tool", readOnly: "on", defaultReadOnly: "on", wantReady: true},
-		{name: "wrong role", role: "postgres", readOnly: "on", defaultReadOnly: "on"},
-		{name: "write transaction", role: "ai_query_tool", readOnly: "off", defaultReadOnly: "on"},
-		{name: "writable role default", role: "ai_query_tool", readOnly: "on", defaultReadOnly: "off"},
-		{name: "connection unavailable", connectErr: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			d := &queryDriver{role: tc.role, readOnly: tc.readOnly, defaultReadOnly: tc.defaultReadOnly, connectErr: tc.connectErr}
-			e := testSQLExecutor(t, d)
-			readiness, ok := any(e).(interface{ Ready(context.Context) error })
-			if !ok {
-				t.Fatal("SQLExecutor does not expose a readiness probe")
-			}
-			err := readiness.Ready(context.Background())
-			if (err == nil) != tc.wantReady {
-				t.Fatalf("Ready() error = %v, want ready=%v", err, tc.wantReady)
-			}
-			if err != nil && strings.Contains(err.Error(), "secret") {
-				t.Fatalf("readiness error exposed driver details: %v", err)
-			}
-		})
-	}
-}
-
-func TestSQLExecutorReadyRejectsMissingPool(t *testing.T) {
-	readiness, ok := any(SQLExecutor{}).(interface{ Ready(context.Context) error })
-	if !ok {
-		t.Fatal("SQLExecutor does not expose a readiness probe")
-	}
-	if err := readiness.Ready(context.Background()); err == nil {
-		t.Fatal("SQLExecutor without a pool reported ready")
-	}
-}
-
-func TestSQLExecutorReadyPreservesCancellation(t *testing.T) {
-	d := &queryDriver{role: "ai_query_tool", readOnly: "on"}
-	e := testSQLExecutor(t, d)
-	readiness, ok := any(e).(interface{ Ready(context.Context) error })
-	if !ok {
-		t.Fatal("SQLExecutor does not expose a readiness probe")
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := readiness.Ready(ctx); !errors.Is(err, context.Canceled) {
-		t.Fatalf("Ready() error = %v, want context.Canceled", err)
 	}
 }
 

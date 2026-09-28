@@ -157,6 +157,27 @@ provider smoke. Phase 8 remains the sole cutover gate.
 
 ## Handoff record
 
+Catalog-readiness follow-up verified on Oracle (2026-09-28): 15/15 disposable
+subtests PASS using `848073b5` plus the uncommitted executor fix. All five
+approved synthetic views are required. Revoked SELECT/USAGE or any missing
+view now yields 503, and restoring grants recovers 200. Runtime probes only
+catalog metadata/effective privileges, without executing tenant-dependent
+views. The previous false-200 defect is fixed for this tested matrix. Cleanup
+was verified; no production grants or Supavisor parity are certified. See
+`/tmp/refactor-ai-phase-7.5d-oracle-rerun.md` and the updated evidence hashes.
+No commit/push; overall Phase 7.5 remains BLOCKING / INCOMPLETE.
+
+Latest 7.5D checkpoint (2026-09-28): follow-up landed at `848073b5`.
+Oracle disposable integration on that exact code passed ten subtests but
+confirmed a readiness defect: revoking approved-view SELECT makes queries
+fail while `/readyz` stays 200. Fix catalog usability probing without runtime
+provisioning, then repeat the negative case. The fixture used a separate
+PostgreSQL cluster restored from baseline, synthetic catalog and PgBouncer;
+it does not certify production grants or Supavisor. All disposable resources,
+dump and credentials were cleaned up. See the latest 7.5D evidence entry and
+`/tmp/refactor-ai-phase-7.5d-oracle-verification.md`. No new commit or push was
+performed during this verification; task checkboxes remain unchanged.
+
 Current status is `BLOCKING / INCOMPLETE`; no package has been certified by this
 documentation update. Before dispatch, record the exact subject commit,
 configuration/image hashes, owner and approval boundary in

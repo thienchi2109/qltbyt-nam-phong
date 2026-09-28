@@ -7,6 +7,8 @@ import (
 	"errors"
 )
 
+const approvedViewReadinessQuery = "select c.relkind::text, pg_catalog.has_schema_privilege(current_user, n.oid, 'USAGE'), pg_catalog.has_table_privilege(current_user, c.oid, 'SELECT') from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'ai_readonly' and c.relname = $1"
+
 // SQLExecutor uses an injected, dedicated pool. It never opens a connection from
 // environment secrets or provisions the ai_query_tool role.
 type SQLExecutor struct {
@@ -59,6 +61,20 @@ func (e SQLExecutor) checkReady(ctx context.Context) error {
 	}
 	if role != "ai_query_tool" || transactionReadOnly != "on" || defaultReadOnly != "on" {
 		return sqlError("disabled", "A dedicated read-only query connection is required.")
+	}
+	for view := range approvedViews {
+		var relationKind string
+		var schemaUsage, selectPrivilege bool
+		err = tx.QueryRowContext(ctx, approvedViewReadinessQuery, view).Scan(&relationKind, &schemaUsage, &selectPrivilege)
+		if err != nil {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			return err
+		}
+		if relationKind != "v" || !schemaUsage || !selectPrivilege {
+			return sqlError("disabled", "The approved read-only query catalog is unavailable.")
+		}
 	}
 	return nil
 }
