@@ -45,12 +45,12 @@ func TestReserveUsesSelectedFacilityNotSessionFacility(t *testing.T) {
 			payload = call.Payload
 		}
 	}
-	for _, needle := range []string{`"p_user_id":"42"`, `"p_tenant_id":9`, `"p_rate_window_ms":60000`, `"p_rate_max":10`, `"p_user_daily_max":150`, `"p_tenant_daily_max":1500`, `"p_global_daily_max":5000`, `"p_ttl_ms":120000`} {
+	for _, needle := range []string{`"p_rate_window_ms":60000`, `"p_rate_max":10`, `"p_user_daily_max":150`, `"p_tenant_daily_max":1500`, `"p_global_daily_max":5000`, `"p_ttl_ms":120000`} {
 		if !strings.Contains(payload, needle) {
 			t.Fatalf("missing %s in %s", needle, payload)
 		}
 	}
-	if strings.Contains(payload, `"p_tenant_id":2`) || strings.Contains(payload, "Untrusted") || strings.Contains(payload, "12345") {
+	if strings.Contains(payload, "p_user_id") || strings.Contains(payload, "p_tenant_id") || strings.Contains(payload, "p_don_vi") || strings.Contains(payload, "Untrusted") || strings.Contains(payload, "12345") {
 		t.Fatalf("payload widened facility or display name: %s", payload)
 	}
 	if protocol.ReservationTTL.Milliseconds() != 120000 {
@@ -72,7 +72,7 @@ func TestReserveOmitsTenantWhenFacilityIsUnset(t *testing.T) {
 		t.Fatal(err)
 	}
 	payload := broker.snapshot()[len(broker.snapshot())-1].Payload
-	if !strings.Contains(payload, `"p_tenant_id":null`) {
+	if strings.Contains(payload, "p_user_id") || strings.Contains(payload, "p_tenant_id") || strings.Contains(payload, "p_don_vi") {
 		t.Fatalf("payload = %s", payload)
 	}
 }

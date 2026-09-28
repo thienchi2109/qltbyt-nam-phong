@@ -2,6 +2,7 @@ package qltbyt
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 	"sync"
 	"time"
@@ -30,7 +31,29 @@ func Register(reg *registry.Registry, assistant Assistant) error {
 	if reg == nil {
 		return protocol.NewError(500, protocol.CodeInvalidRequest, "The capability registry is missing.", false)
 	}
+	if !assistant.DependenciesReady() {
+		return protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The assistant dependencies are unavailable.", false)
+	}
 	return reg.Register(activate(assistant))
+}
+
+// DependenciesReady is the composition gate for the real capability tuple.
+// Registration must not make a broker-only or registry-only runtime ready.
+func (a Assistant) DependenciesReady() bool {
+	return dependencyValuePresent(a.Broker) && dependencyValuePresent(a.Query) && len(a.Secret) > 0
+}
+
+func dependencyValuePresent(value any) bool {
+	if value == nil {
+		return false
+	}
+	rv := reflect.ValueOf(value)
+	switch rv.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Interface, reflect.Map, reflect.Pointer, reflect.Slice:
+		return !rv.IsNil()
+	default:
+		return true
+	}
 }
 
 func activate(assistant Assistant) Assistant {
@@ -116,7 +139,7 @@ func (a Assistant) Prepare(ctx context.Context, request protocol.Request) (capab
 		QuotaUserID:   strconv.FormatInt(cred.UserID, 10),
 		QuotaTenantID: tenantID,
 		QuotaRole:     cred.RawRole,
-		QuotaCaller:   quotaCaller{assistant: a, cred: cred, scope: scope},
+		QuotaCaller:   quotaCaller{assistant: a, cred: cred, scope: scope, requestID: request.RequestID},
 	}
 	if budget != nil {
 		prepared.Cleanup = func() { a.releaseBudget(request.RequestID, budget) }

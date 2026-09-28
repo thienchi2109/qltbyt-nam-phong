@@ -98,7 +98,7 @@ func TestSuccessfulQueryAuditsBeforeRelease(t *testing.T) {
 		t.Fatalf("settings = %s", joined)
 	}
 	calls := broker.snapshot()
-	if len(calls) != 1 || calls[0].RPC != RPCAudit || calls[0].UserID != 42 || !strings.Contains(calls[0].Payload, `"p_status":"success"`) || !strings.Contains(calls[0].Payload, `"p_row_count":1`) || !strings.Contains(calls[0].Payload, `"p_facility_source":"session"`) || !strings.Contains(calls[0].Payload, `"p_tool_path":"query_database"`) {
+	if len(calls) != 1 || calls[0].RPC != RPCAudit || calls[0].UserID != 42 || !strings.Contains(calls[0].Payload, `"p_status":"success"`) || !strings.Contains(calls[0].Payload, `"p_row_count":1`) || !strings.Contains(calls[0].Payload, `"p_tool_path":"query_database"`) || strings.Contains(calls[0].Payload, "p_effective_facility_id") || strings.Contains(calls[0].Payload, "p_facility_source") || strings.Contains(calls[0].Payload, "p_raw_role") {
 		t.Fatalf("audit = %+v", calls)
 	}
 }
@@ -217,7 +217,7 @@ func TestCancellationDoesNotStartFurtherWorkOrWidenCleanup(t *testing.T) {
 		SQLShape: "select 1", ToolPath: QueryToolName, Status: "failure", LatencyMS: 1,
 		Effective: 7, FacilitySource: facilitySourceSelected, ErrorClass: "execution_error",
 	})
-	waiter := &spyBroker{wait: true, start: make(chan struct{})}
+	waiter := &blockingOperationBroker{start: make(chan struct{})}
 	timed := testAssistant(waiter, nil)
 	timed.Cleanup = 20 * time.Millisecond
 	errCh := make(chan error, 1)
@@ -337,13 +337,14 @@ func TestCatalogSkipsQuotaWhileChatAllowsReserve(t *testing.T) {
 	if len(calls) != 1 || calls[0].RPC != "ai_department_list" || calls[0].UserID != 42 {
 		t.Fatalf("calls = %+v", calls)
 	}
-	if !strings.Contains(calls[0].Payload, `"p_don_vi":2`) || strings.Contains(calls[0].Payload, `"p_don_vi":999`) {
-		t.Fatalf("payload = %s", calls[0].Payload)
+	if strings.Contains(calls[0].Payload, "p_don_vi") || strings.Contains(calls[0].Payload, "p_user_id") {
+		t.Fatalf("payload contains protected scope fields: %s", calls[0].Payload)
 	}
-	if !strings.Contains(calls[0].Payload, `"p_user_id":"42"`) || strings.Contains(calls[0].Payload, `"p_user_id":42`) {
-		t.Fatalf("user id must be a JSON string: %s", calls[0].Payload)
+	reservePayload, err := json.Marshal(buildReservePayload(cred, scope))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if _, err := assistant.gate().Call(context.Background(), cred, RPCQuotaReserve, []byte(`{"p_user_id":"42"}`)); err != nil {
+	if _, err := assistant.gate().Call(context.Background(), cred, RPCQuotaReserve, reservePayload); err != nil {
 		t.Fatalf("chat path rejected quota reserve: %v", err)
 	}
 	if _, err := assistant.gate().Call(context.Background(), cred, RPCKillSwitch, []byte(`{}`)); err != nil {

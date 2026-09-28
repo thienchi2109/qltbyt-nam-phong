@@ -3,7 +3,6 @@ package qltbyt
 import (
 	"bytes"
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"example.com/shared-ai-service/internal/protocol"
@@ -110,7 +109,9 @@ func validatedQueryArguments(arguments string) (string, string, error) {
 	return jsonString(fields["sql"]), jsonString(fields["reasoning"]), nil
 }
 
-func buildRPCPayload(name, arguments string, scope Scope, cred Credential) (json.RawMessage, error) {
+// buildRPCPayload emits only caller-controlled arguments. The BFF derives
+// identity and facility fields from the verified broker credential.
+func buildRPCPayload(name, arguments string, _ Scope, _ Credential) (json.RawMessage, error) {
 	fields, err := validateArguments(name, arguments)
 	if err != nil {
 		return nil, err
@@ -123,16 +124,6 @@ func buildRPCPayload(name, arguments string, scope Scope, cred Credential) (json
 			out[key] = value
 		}
 	}
-	facility, err := json.Marshal(scope.EffectiveFacilityID)
-	if err != nil {
-		return nil, err
-	}
-	user, err := json.Marshal(strconv.FormatInt(cred.UserID, 10))
-	if err != nil {
-		return nil, err
-	}
-	out["p_don_vi"] = facility
-	out["p_user_id"] = user
 	return json.Marshal(out)
 }
 

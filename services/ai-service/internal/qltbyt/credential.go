@@ -1,6 +1,7 @@
 package qltbyt
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -26,6 +27,10 @@ type Credential struct {
 	SessionFacilityID   *int64
 	RequestedFacilityID *int64
 	ReservationID       string
+	// token is retained only after verifying the BFF envelope so transports
+	// can propagate the original trusted credential without exposing it to
+	// capability code or logs.
+	token string
 }
 
 type credentialPayload struct {
@@ -55,7 +60,6 @@ func Mint(secret []byte, cred Credential) (string, error) {
 		RawRole:             cred.RawRole,
 		SessionFacilityID:   cred.SessionFacilityID,
 		RequestedFacilityID: cred.RequestedFacilityID,
-		ReservationID:       cred.ReservationID,
 	}
 	return signPayload(secret, payload)
 }
@@ -88,8 +92,37 @@ func parseCredential(secret []byte, token string, now time.Time) (Credential, er
 	if !hmac.Equal([]byte(expected), []byte(signature)) {
 		return Credential{}, errCredential
 	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(body, &fields); err != nil || fields == nil {
+		return Credential{}, errCredential
+	}
+	allowed := map[string]struct{}{
+		"iss": {}, "aud": {}, "iat": {}, "exp": {}, "user_id": {}, "role": {},
+		"session_facility_id": {}, "requested_facility_id": {},
+	}
+	for key := range fields {
+		if _, ok := allowed[key]; !ok {
+			return Credential{}, errCredential
+		}
+	}
+	for _, key := range []string{"session_facility_id", "requested_facility_id"} {
+		if raw, ok := fields[key]; ok {
+			var value int64
+			if string(raw) == "null" || json.Unmarshal(raw, &value) != nil || value <= 0 {
+				return Credential{}, errCredential
+			}
+		}
+	}
+	if raw, ok := fields["role"]; ok {
+		var role string
+		if string(raw) == "null" || json.Unmarshal(raw, &role) != nil || strings.TrimSpace(role) == "" {
+			return Credential{}, errCredential
+		}
+	}
 	var payload credentialPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
+	decoder := json.NewDecoder(bytes.NewReader(body))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&payload); err != nil {
 		return Credential{}, errCredential
 	}
 	if payload.BrowserCookie != "" {
@@ -105,6 +138,7 @@ func parseCredential(secret []byte, token string, now time.Time) (Credential, er
 		SessionFacilityID:   payload.SessionFacilityID,
 		RequestedFacilityID: payload.RequestedFacilityID,
 		ReservationID:       payload.ReservationID,
+		token:               token,
 	}
 	if err := validateCredential(cred, now); err != nil {
 		return Credential{}, err
@@ -116,7 +150,17 @@ func validateCredential(cred Credential, now time.Time) error {
 	if cred.Issuer != BrokerIssuer || cred.Audience != BrokerAudience {
 		return errCredential
 	}
+	if strings.TrimSpace(cred.RawRole) == "" {
+		return errCredential
+	}
 	if cred.UserID <= 0 {
+		return errCredential
+	}
+	if cred.IssuedAt.Unix() <= 0 || cred.ExpiresAt.Unix() <= 0 {
+		return errCredential
+	}
+	if (cred.SessionFacilityID != nil && *cred.SessionFacilityID <= 0) ||
+		(cred.RequestedFacilityID != nil && *cred.RequestedFacilityID <= 0) {
 		return errCredential
 	}
 	lifetime := cred.ExpiresAt.Sub(cred.IssuedAt)

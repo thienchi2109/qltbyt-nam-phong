@@ -135,7 +135,7 @@ func (a Assistant) runCatalog(ctx context.Context, cred Credential, scope Scope,
 	if err != nil {
 		return "", err
 	}
-	raw, err := a.gate().Call(ctx, cred, spec.RPC, payload)
+	raw, err := a.gate().Call(WithRequestID(ctx, requestID), cred, spec.RPC, payload)
 	if err != nil {
 		a.record(requestID, "rpc_error")
 		if ctx.Err() != nil {

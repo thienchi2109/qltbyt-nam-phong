@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"example.com/shared-ai-service/internal/composition"
 	"example.com/shared-ai-service/internal/ingress"
 	"example.com/shared-ai-service/internal/orchestration"
 	"example.com/shared-ai-service/internal/protocol"
@@ -36,6 +37,7 @@ type runtimeConfig struct {
 	hmacKeyID         string
 	hmacSecret        []byte
 	brokerSecret      []byte
+	brokerEndpoint    string
 	appID             string
 	capabilityID      string
 	capabilityVersion string
@@ -125,6 +127,9 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	if chainErr != nil {
 		return &serviceRuntime{config: config, configErr: chainErr, lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Metrics: metrics}}
 	}
+	// QueryExecutor composition belongs to 7.5D. The broker is composed here,
+	// but registration remains closed until that dependency is supplied.
+	capabilityReady := composition.RegisterAssistantWithEndpoint(reg, config.brokerEndpoint, nil, config.brokerSecret, nil)
 	runner := &orchestration.Runner{
 		Registry: reg,
 		Usage:    usage.NewMemory(time.Now),
@@ -150,7 +155,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 		Lifecycle: lifecycle,
 		Metrics:   metrics,
 		ConfigReady: func() bool {
-			if chain == nil || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
+			if chain == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
 				return false
 			}
 			_, lookupErr := reg.Lookup(config.appID, config.capabilityID, config.capabilityVersion)
@@ -203,6 +208,12 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 	if err != nil || reservationTTL < protocol.ReservationTTL {
 		return runtimeConfig{}, errors.New("reservation TTL is unavailable")
 	}
+	brokerEndpoint := strings.TrimSpace(firstNonEmpty(values["AI_SERVICE_BFF_BROKER_URL"], values["AI_SERVICE_BROKER_URL"]))
+	if brokerEndpoint != "" {
+		if _, err := composition.NewBroker(brokerEndpoint, nil); err != nil {
+			return runtimeConfig{}, err
+		}
+	}
 	listenAddr, err := privateListenAddr(values["AI_SERVICE_LISTEN_ADDR"])
 	if err != nil {
 		return runtimeConfig{}, err
@@ -216,6 +227,7 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 		hmacKeyID:         strings.TrimSpace(values["AI_SERVICE_HMAC_KEY_ID"]),
 		hmacSecret:        hmacSecret,
 		brokerSecret:      brokerSecret,
+		brokerEndpoint:    brokerEndpoint,
 		appID:             strings.TrimSpace(values["AI_SERVICE_APP_ID"]),
 		capabilityID:      strings.TrimSpace(values["AI_SERVICE_CAPABILITY_ID"]),
 		capabilityVersion: strings.TrimSpace(values["AI_SERVICE_CAPABILITY_VERSION"]),
@@ -268,6 +280,15 @@ func copyEnv(values map[string]string) map[string]string {
 		copy[key] = value
 	}
 	return copy
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 func positiveInt(value string, fallback int) (int, error) {

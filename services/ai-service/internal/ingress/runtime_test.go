@@ -6,10 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"example.com/shared-ai-service/internal/protocol"
+	"example.com/shared-ai-service/internal/testmodel"
 )
 
 func TestAdmissionStopRejectsAndCancelsActiveRequests(t *testing.T) {
@@ -69,6 +71,20 @@ func TestHandlerReadinessTurnsFalseBeforeDrain(t *testing.T) {
 	h.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/readyz", nil))
 	if ready.Code != http.StatusServiceUnavailable || !strings.Contains(ready.Body.String(), "not_ready") {
 		t.Fatalf("draining readiness = %d %s", ready.Code, ready.Body.String())
+	}
+}
+
+func TestReadyProbeRequiresRegistryAfterCompositionIsReady(t *testing.T) {
+	started := time.Now().Add(-Quarantine - time.Second)
+	key := Key{ID: "key-missing-capability-registry", Secret: []byte("secret-missing-capability-registry"), Issuer: "nextjs-bff", Audience: "ai-service-v1", AppID: "app", CapabilityID: "assistant"}
+	var opens atomic.Int32
+	h := testHandler(t, started, key, &opens, &testmodel.Scripted{})
+	h.ConfigReady = func() bool { return true }
+	h.Registry = nil
+	ready := httptest.NewRecorder()
+	h.ServeHTTP(ready, httptest.NewRequest(http.MethodGet, "/readyz", nil))
+	if ready.Code != http.StatusServiceUnavailable || !strings.Contains(ready.Body.String(), "not_ready") {
+		t.Fatalf("missing registry readiness = %d %s", ready.Code, ready.Body.String())
 	}
 }
 

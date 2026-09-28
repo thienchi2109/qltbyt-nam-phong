@@ -59,14 +59,20 @@ func (g gate) clock() time.Time {
 }
 
 func (g gate) Call(ctx context.Context, cred Credential, rpc string, payload json.RawMessage) (json.RawMessage, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if err := g.authorize(cred, rpc, false); err != nil {
 		return nil, err
 	}
-	if g.inner == nil {
+	if !dependencyValuePresent(g.inner) {
 		return nil, protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The data broker is unavailable.", false)
+	}
+	if operationBroker, ok := g.inner.(OperationAwareBroker); ok {
+		return operationBroker.CallOperation(ctx, OperationCall, cred, rpc, payload)
 	}
 	return g.inner.Call(ctx, cred, rpc, payload)
 }
@@ -75,6 +81,9 @@ func (g gate) Call(ctx context.Context, cred Credential, rpc string, payload jso
 // finish inside its own budget. It does not extend a parent deadline: quota
 // finalize stops when the runner cleanup deadline fires.
 func (g gate) Cleanup(parent context.Context, cred Credential, rpc string, payload json.RawMessage) (json.RawMessage, error) {
+	if parent == nil {
+		parent = context.Background()
+	}
 	if err := g.authorize(cred, rpc, true); err != nil {
 		return nil, err
 	}
@@ -96,10 +105,16 @@ func (g gate) Cleanup(parent context.Context, cred Credential, rpc string, paylo
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(parent), budget)
 	defer cancel()
-	if g.inner == nil {
+	if !dependencyValuePresent(g.inner) {
 		return nil, protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The data broker is unavailable.", false)
 	}
-	return g.inner.Call(ctx, cred, rpc, payload)
+	if cleanupBroker, ok := g.inner.(CleanupBroker); ok {
+		return cleanupBroker.Cleanup(ctx, cred, rpc, payload)
+	}
+	if operationBroker, ok := g.inner.(OperationAwareBroker); ok {
+		return operationBroker.CallOperation(ctx, OperationCleanup, cred, rpc, payload)
+	}
+	return nil, protocol.NewError(503, protocol.CodeCapabilityUnavailable, "The data broker does not support cleanup.", false)
 }
 
 func (g gate) authorize(cred Credential, rpc string, cleanup bool) error {

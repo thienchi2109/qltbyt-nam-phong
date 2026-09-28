@@ -3,7 +3,6 @@ package qltbyt
 import (
 	"context"
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	"example.com/shared-ai-service/internal/protocol"
@@ -13,10 +12,11 @@ type quotaCaller struct {
 	assistant Assistant
 	cred      Credential
 	scope     Scope
+	requestID string
 }
 
 func (c quotaCaller) KillSwitch(ctx context.Context) (bool, string, error) {
-	return c.assistant.killSwitch(ctx, c.cred)
+	return c.assistant.killSwitch(WithRequestID(ctx, c.requestID), c.cred)
 }
 
 func (c quotaCaller) ReserveQuota(ctx context.Context, _ *int64) (string, error) {
@@ -24,7 +24,7 @@ func (c quotaCaller) ReserveQuota(ctx context.Context, _ *int64) (string, error)
 	if err != nil {
 		return "", err
 	}
-	raw, err := c.assistant.gate().Call(ctx, c.cred, RPCQuotaReserve, payload)
+	raw, err := c.assistant.gate().Call(WithRequestID(ctx, c.requestID), c.cred, RPCQuotaReserve, payload)
 	if err != nil {
 		return "", err
 	}
@@ -52,24 +52,23 @@ func (c quotaCaller) FinalizeQuota(ctx context.Context, reservationID string, st
 	if err != nil {
 		return err
 	}
-	_, err = c.assistant.gate().Cleanup(ctx, c.cred, RPCQuotaFinalize, payload)
+	_, err = c.assistant.gate().Cleanup(WithRequestID(ctx, c.requestID), c.cred, RPCQuotaFinalize, payload)
 	return err
 }
 
 type reservePayload struct {
-	UserID       string `json:"p_user_id"`
-	TenantID     *int64 `json:"p_tenant_id"`
-	RateWindowMS int64  `json:"p_rate_window_ms"`
-	RateMax      int64  `json:"p_rate_max"`
-	UserDailyMax int64  `json:"p_user_daily_max"`
-	TenantDaily  int64  `json:"p_tenant_daily_max"`
-	GlobalDaily  int64  `json:"p_global_daily_max"`
-	TTLMS        int64  `json:"p_ttl_ms"`
+	RateWindowMS int64 `json:"p_rate_window_ms"`
+	RateMax      int64 `json:"p_rate_max"`
+	UserDailyMax int64 `json:"p_user_daily_max"`
+	TenantDaily  int64 `json:"p_tenant_daily_max"`
+	GlobalDaily  int64 `json:"p_global_daily_max"`
+	TTLMS        int64 `json:"p_ttl_ms"`
 }
 
-func buildReservePayload(cred Credential, scope Scope) reservePayload {
-	payload := reservePayload{
-		UserID:       strconv.FormatInt(cred.UserID, 10),
+// buildReservePayload emits only caller-controlled quota limits. The BFF
+// derives user and tenant scope from the verified broker credential.
+func buildReservePayload(_ Credential, _ Scope) reservePayload {
+	return reservePayload{
 		RateWindowMS: QuotaRateWindowMS,
 		RateMax:      QuotaRateMax,
 		UserDailyMax: QuotaUserDailyMax,
@@ -77,11 +76,6 @@ func buildReservePayload(cred Credential, scope Scope) reservePayload {
 		GlobalDaily:  QuotaGlobalDailyMax,
 		TTLMS:        protocol.ReservationTTL.Milliseconds(),
 	}
-	if scope.EffectiveFacilityID > 0 {
-		value := scope.EffectiveFacilityID
-		payload.TenantID = &value
-	}
-	return payload
 }
 
 type finalizePayload struct {

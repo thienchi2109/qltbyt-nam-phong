@@ -1,9 +1,8 @@
 # Phase 7.5 Evidence — Broker/query composition và readiness
 
-**Status:** `BLOCKING / INCOMPLETE` — this artifact records the approved
-contract and dispatch boundaries. Runtime packages, SQL quality-gate lanes,
-disposable acceptance and Oracle activation have not been run by this
-documentation update.
+**Status:** `BLOCKING / INCOMPLETE` — 7.5C has local disposable-only Go
+composition, transport and fail-closed readiness evidence. SQL quality-gate
+lanes, real-tuple disposable acceptance and Oracle activation remain unrun.
 
 **Subject commit/config:** `TBD` (every package must bind evidence to one
 exact subject commit and configuration hash before it can be accepted).
@@ -42,15 +41,15 @@ completing one package does not tick or authorize another package.
 
 ## Package acceptance matrix
 
-| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                               |
-| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending |
-| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending |
-| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **NOT RUN** — depends on `7.5A` and `7.5B` contract                                            |
-| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **NOT RUN** — depends on `7.5C`; production role/read-back is `7.5E`                           |
-| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **NOT RUN** — no live apply authorized; unavailable lane is blocking                           |
-| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                        |
-| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                           |
+| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                             |
+| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                               |
+| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                               |
+| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending |
+| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **NOT RUN** — depends on `7.5C`; production role/read-back is `7.5E`                                                         |
+| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **NOT RUN** — no live apply authorized; unavailable lane is blocking                                                         |
+| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                                                      |
+| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                         |
 
 ## Readiness acceptance
 
@@ -79,10 +78,12 @@ check or mock does not satisfy this gate.
   requires the later Access/disposable acceptance lane.
 - No production Go composition has been certified; existing injected
   `Broker`/`QueryExecutor` interfaces are contract evidence only.
-- The current Go `Broker.Call` interface has no wire `operation` parameter;
-  operation-aware Go transport remains a 7.5C requirement. The 7.5B Next.js
-  verifier now rejects nonpositive/noninteger facility claims, with focused
-  tests; Go-side runtime enforcement and transport evidence remain pending.
+- The capability-facing Go `Broker.Call` interface remains compatible with
+  injected fakes while the 7.5C HTTP transport carries an explicit `call` or
+  `cleanup` operation on the wire. The 7.5B Next.js verifier rejects
+  nonpositive/noninteger facility claims, and 7.5C now repeats those boundary
+  checks for the parsed credential; trusted deployment provenance and
+  downstream acceptance remain pending.
 - No SQL role/grant/password provisioning or catalog read-back has been run.
   `7.5E` must report static and baseline-forward separately; missing required
   lane evidence is `BLOCKING / INCOMPLETE`.
@@ -186,3 +187,15 @@ the orchestrator must not relabel a missing report as PASS.
   after the 7.5A review gate and a landed exact subject commit are recorded.
   This report does not authorize 7.5C–G, Phase 8, Phase 9, SQL/live DB work or
   paid-provider smoke.
+
+### 7.5C package report — Go broker/capability composition
+
+- **Subject:** local worktree based on `cf15f9b904af67443bd7ed6bda0229875afc99dc`; changes remain uncommitted and are not a landed-commit certification.
+- **Scope:** `internal/qltbyt/http_broker.go` adds the operation-aware HTTP transport for `POST /api/internal/ai/broker/v1`; `gate.Call` preserves `call` and bounded cleanup preserves `cleanup`. The transport forwards only the previously verified opaque broker token as `Authorization: Bearer`, binds `X-Request-ID`, preserves the explicit operation in the JSON envelope, rejects operation/RPC mismatches before network I/O, caps request/result/error bodies, and carries cancellation and the five-second budget.
+- **Claims:** Go credential parsing now rejects unknown claims, browser claims, null/non-integer/non-positive facility claims, missing/blank or malformed role values and malformed envelopes before capability work. The verified token is retained only in the parsed credential for trusted transport propagation; no project JWT signing secret or browser cookie is minted or forwarded.
+- **Composition:** `internal/composition` registers `qltbyt/assistant-chat/v1` only when Broker, QueryExecutor and broker secret are all present. The service entrypoint composes the broker boundary but passes no QueryExecutor until 7.5D, so broker-only, registry-only and nil-dependency states remain `/readyz=503`.
+- **Focused evidence:** `go test ./internal/qltbyt -run 'TestCleanup|TestFinalizeQuota|TestGateCleanup|TestAssistantDependenciesRejectTypedNilInterfaces|TestCancellationDoesNotStartFurtherWorkOrWidenCleanup' -count=1` — PASS; `go test ./internal/composition -run 'TestRegisterQLTBYTRejectsTypedNilDependencies|TestRegisterQLTBYTReadinessMatrixRejectsNilBrokerQueryAndRegistry|TestRegisterQLTBYTRegistersTheRealTupleOnlyWhenComplete' -count=1` — PASS; the focused package suites (`./internal/qltbyt ./internal/composition ./internal/ingress ./cmd/ai-service`) — PASS; `go test ./...` — PASS; `go vet ./...` — PASS; `git diff --check` — PASS.
+- **Fail-closed regressions:** cleanup now returns `503/capability_unavailable` without invoking a plain `Broker` when no cleanup-capable operation exists; reflection-backed dependency checks reject typed-nil `Broker` and `QueryExecutor` interfaces before registration or readiness.
+- **Redaction review:** tests and transport code avoid logging or returning token bytes, cookies, SQL, rows or upstream response bodies; only bounded, fixed protocol errors leave the transport.
+- **Status:** `DISPOSABLE ONLY` — local Go composition and fail-closed readiness behavior pass. QueryExecutor/pooler, SQL role/read-back, trusted Access provenance, disposable end-to-end acceptance and Oracle activation remain 7.5D–G blockers.
+- **Next-package boundary:** 7.5D may supply the external-pooler QueryExecutor and then repeat the full tuple readiness matrix. This package does not authorize SQL/live DB writes, deployment, Access activation, `/api/chat` cutover, Phase 9 cleanup or paid-provider smoke.

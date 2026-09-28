@@ -12,22 +12,25 @@ import (
 )
 
 type auditBody struct {
-	SQLShape       string `json:"p_sql_shape"`
-	ToolPath       string `json:"p_tool_path"`
-	Status         string `json:"p_status"`
-	LatencyMS      int64  `json:"p_latency_ms"`
-	Effective      int64  `json:"p_effective_facility_id"`
-	FacilitySource string `json:"p_facility_source"`
+	SQLShape  string `json:"p_sql_shape"`
+	ToolPath  string `json:"p_tool_path"`
+	Status    string `json:"p_status"`
+	LatencyMS int64  `json:"p_latency_ms"`
+	// Scope fields are retained for local authorization/validation only. The
+	// BFF derives them from the verified broker credential and they never cross
+	// the caller payload boundary.
+	Effective      int64  `json:"-"`
+	FacilitySource string `json:"-"`
 	ErrorClass     string `json:"p_error_class,omitempty"`
 	RowCount       *int   `json:"p_row_count,omitempty"`
 	PayloadBytes   *int   `json:"p_payload_bytes,omitempty"`
-	Requested      *int64 `json:"p_requested_facility_id,omitempty"`
-	Session        *int64 `json:"p_session_facility_id,omitempty"`
-	RawRole        string `json:"p_raw_role,omitempty"`
+	Requested      *int64 `json:"-"`
+	Session        *int64 `json:"-"`
+	RawRole        string `json:"-"`
 }
 
 func (a Assistant) queryEnabled() bool {
-	return a.Query != nil && a.Broker != nil
+	return dependencyValuePresent(a.Query) && dependencyValuePresent(a.Broker)
 }
 
 func (a Assistant) executeQuery(ctx context.Context, cred Credential, scope Scope, facilityID int64, sql, requestID string) (json.RawMessage, error) {
@@ -144,7 +147,7 @@ func (a Assistant) writeAudit(ctx context.Context, cred Credential, scope Scope,
 		a.record(requestID, "audit_error")
 		return sqlError("audit_error", "Assistant SQL audit logging failed.")
 	}
-	_, err = a.gate().Call(ctx, cred, RPCAudit, payload)
+	_, err = a.gate().Call(WithRequestID(ctx, requestID), cred, RPCAudit, payload)
 	if err != nil {
 		a.record(requestID, "audit_error")
 		return sqlError("audit_error", "Assistant SQL audit logging failed.")

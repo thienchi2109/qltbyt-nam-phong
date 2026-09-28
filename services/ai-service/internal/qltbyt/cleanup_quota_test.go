@@ -13,30 +13,30 @@ func TestCleanupAllowsFinalizeOnlyWithReservation(t *testing.T) {
 	cred := testCredential("admin", nil, facilityPtr(7))
 	parent, cancel := context.WithCancel(context.Background())
 	cancel()
-	broker := &spyBroker{}
+	broker := &operationOnlySpyBroker{}
 	assistant := testAssistant(broker, &spyQuery{})
-	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaReserve, []byte(`{"p_reservation_id":"res-1"}`)); err == nil || len(broker.snapshot()) != 0 {
+	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaReserve, []byte(`{"p_reservation_id":"res-1"}`)); err == nil || len(broker.operations) != 0 {
 		t.Fatal("cleanup called quota reserve")
 	}
-	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, nil); err == nil || len(broker.snapshot()) != 0 {
+	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, nil); err == nil || len(broker.operations) != 0 {
 		t.Fatal("cleanup called quota finalize")
 	}
 	for _, payload := range [][]byte{nil, {}, []byte(`{}`), []byte(`{"p_reservation_id":""}`), []byte(`{"p_reservation_id":"  "}`)} {
-		if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, payload); err == nil || len(broker.snapshot()) != 0 {
+		if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, payload); err == nil || len(broker.operations) != 0 {
 			t.Fatalf("accepted finalize payload %s", payload)
 		}
 	}
 	widened := []byte(`{"p_reservation_id":"res-1","p_user_id":999}`)
-	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, widened); err == nil || len(broker.snapshot()) != 0 {
+	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, widened); err == nil || len(broker.operations) != 0 {
 		t.Fatal("cleanup widened the user")
 	}
-	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, []byte(`{"p_reservation_id":"res-1","p_status":"success","p_tokens_in":0,"p_tokens_out":0}`)); err != nil || len(broker.snapshot()) != 1 {
-		t.Fatalf("valid finalize err=%v calls=%d", err, len(broker.snapshot()))
+	if _, err := assistant.gate().Cleanup(parent, cred, RPCQuotaFinalize, []byte(`{"p_reservation_id":"res-1","p_status":"success","p_tokens_in":0,"p_tokens_out":0}`)); err != nil || len(broker.operations) != 1 || broker.operations[0] != OperationCleanup {
+		t.Fatalf("valid finalize err=%v operations=%v", err, broker.operations)
 	}
 }
 
 func TestFinalizeQuotaPreservesRunnerCleanupDeadline(t *testing.T) {
-	broker := &spyBroker{wait: true, start: make(chan struct{})}
+	broker := &blockingOperationBroker{start: make(chan struct{})}
 	assistant := testAssistant(broker, nil)
 	assistant.Cleanup = 5 * time.Second
 	cred := testCredential("technician", facilityPtr(2), nil)
@@ -52,7 +52,7 @@ func TestFinalizeQuotaPreservesRunnerCleanupDeadline(t *testing.T) {
 
 func TestCleanupDeadlineCutsHungFinalize(t *testing.T) {
 	cred := testCredential("admin", nil, facilityPtr(7))
-	waiter := &spyBroker{wait: true, start: make(chan struct{})}
+	waiter := &blockingOperationBroker{start: make(chan struct{})}
 	assistant := testAssistant(waiter, nil)
 	assistant.Cleanup = 30 * time.Millisecond
 	started := time.Now()
@@ -74,7 +74,7 @@ func TestCleanupDeadlineCutsHungFinalize(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("hung finalize was not cut")
 	}
-	fast := testAssistant(&spyBroker{}, nil)
+	fast := testAssistant(&operationOnlySpyBroker{}, nil)
 	started = time.Now()
 	if _, err := fast.gate().Cleanup(context.Background(), cred, RPCQuotaFinalize, []byte(`{"p_reservation_id":"res-fast"}`)); err != nil {
 		t.Fatal(err)

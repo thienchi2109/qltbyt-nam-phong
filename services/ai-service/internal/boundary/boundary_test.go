@@ -28,6 +28,9 @@ func TestModuleStaysAppNeutralAndPinned(t *testing.T) {
 			if parent == "internal" && entry.Name() == "ql"+"tbyt" {
 				return filepath.SkipDir
 			}
+			if parent == "internal" && entry.Name() == "composition" {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 		if !strings.HasSuffix(path, ".go") {

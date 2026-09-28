@@ -51,7 +51,7 @@ func TestToolArgumentsRejectUnknownFieldsAndPublishSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := broker.snapshot()
-	if len(calls) != 1 || !strings.Contains(calls[0].Payload, `"query":"monitor"`) || !strings.Contains(calls[0].Payload, `"status":"hong"`) || !strings.Contains(calls[0].Payload, `"p_user_id":"42"`) || strings.Contains(calls[0].Payload, "secret") {
+	if len(calls) != 1 || !strings.Contains(calls[0].Payload, `"query":"monitor"`) || !strings.Contains(calls[0].Payload, `"status":"hong"`) || strings.Contains(calls[0].Payload, "p_user_id") || strings.Contains(calls[0].Payload, "p_don_vi") || strings.Contains(calls[0].Payload, "secret") {
 		t.Fatalf("payload = %s result %s", calls[0].Payload, raw)
 	}
 	tools := assistant.bindTools(cred, scope, "req-schema", []string{"equipmentLookup", "maintenancePlanLookup", QueryToolName, "departmentList"})
