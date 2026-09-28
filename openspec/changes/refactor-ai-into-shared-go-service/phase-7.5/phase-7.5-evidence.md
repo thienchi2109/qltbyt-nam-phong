@@ -1,8 +1,10 @@
 # Phase 7.5 Evidence — Broker/query composition và readiness
 
-**Status:** `BLOCKING / INCOMPLETE` — 7.5C has local disposable-only Go
-composition, transport and fail-closed readiness evidence. SQL quality-gate
-lanes, real-tuple disposable acceptance and Oracle activation remain unrun.
+**Status:** `BLOCKING / INCOMPLETE` for overall Phase 7.5. The four 7.5E role
+settings were applied live through Supabase MCP on 2026-09-28 under an explicit
+operation-specific user waiver of the DB gate. Live catalog read-back passed.
+Static remains `INCOMPLETE`; baseline-forward remains `NOT RUN`. This is not
+a gate PASS, pooler/readiness certification, or acceptance of 7.5F-G.
 
 **Subject commit/config:** `TBD` (every package must bind evidence to one
 exact subject commit and configuration hash before it can be accepted).
@@ -47,7 +49,7 @@ completing one package does not tick or authorize another package.
 | `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                     |
 | `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                       |
 | `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **BLOCKING / INCOMPLETE** — local Go contract proof passes; no disposable PostgreSQL role/connection evidence; production role/read-back is `7.5E` |
-| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **NOT RUN** — no live apply authorized; unavailable lane is blocking                                                                               |
+| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **BLOCKING / INCOMPLETE** — live settings applied under explicit waiver; static `INCOMPLETE`; baseline-forward not run; pooler unverified          |
 | `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                                                                            |
 | `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                               |
 
@@ -84,9 +86,10 @@ check or mock does not satisfy this gate.
   nonpositive/noninteger facility claims, and 7.5C now repeats those boundary
   checks for the parsed credential; trusted deployment provenance and
   downstream acceptance remain pending.
-- No SQL role/grant/password provisioning or catalog read-back has been run.
-  `7.5E` must report static and baseline-forward separately; missing required
-  lane evidence is `BLOCKING / INCOMPLETE`.
+- Live role and catalog read-back was SELECT-only on 2026-09-28. No password
+  was read and no live role, grant, or setting was changed. The local 7.5E
+  migration is uncommitted. Static on exact commit `ddad8cfd` is `INCOMPLETE`;
+  baseline-forward was not run. Those lanes keep the phase `BLOCKING / INCOMPLETE`.
 - No live DB write, migration, DDL, Supabase CLI operation or production
   credential provisioning is authorized by this artifact.
 - Phase 8 `/api/chat` cutover, Phase 9 legacy cleanup and paid-provider smoke
@@ -225,3 +228,70 @@ the orchestrator must not relabel a missing report as PASS.
 - **Redaction review:** URL and driver errors are normalized and never include passwords, SQL, rows or upstream messages; `AI_DATABASE_URL` is removed from provider environment forwarding. Query results and SQL remain behind the existing bounded public error/audit path.
 - **Status:** `BLOCKING / INCOMPLETE` — local composition and fail-closed behavior pass, but no disposable database or 7.5E role/grant/read-back evidence exists. The DB quality-gate static/baseline-forward state is not used to claim PASS.
 - **Next-package boundary:** 7.5E must separately provide role/grant/catalog read-back and report static plus baseline-forward lanes; 7.5F may then run disposable end-to-end readiness. This report does not authorize live SQL, Oracle activation, deployment, cutover, Phase 9 cleanup or paid-provider smoke.
+
+### 7.5E read-only inspection — existing role mapping
+
+- **Subject:** `ddad8cfd59ca2c46ab30e8d8a19a0ad05271eaad` on local `main`. This is the landed 7.5D head. It is ahead of `origin/main` and has not been pushed by this inspection.
+- **Method:** Supabase MCP read-only `SELECT` against project `cdthersvldpnlbvpufrr` (`ql-tbyt`, Postgres 17.6, `ACTIVE_HEALTHY`) on 2026-09-28. No `INSERT`, `UPDATE`, `DELETE`, DDL, migration, role change, password read, or pooler login was performed. Oracle baseline absence of `ai_query_tool` is not evidence about live.
+- **Existing roles:** both roles already exist. `ai_query_reader` is `NOLOGIN`, has no password, and is not superuser, createdb, createrole, replication, or bypassrls. `ai_query_tool` is `LOGIN`, has a password, inherits, and has the same negative privilege flags. `ai_query_tool` is a member of `ai_query_reader` without admin option. Neither role has `rolconfig` or a per-role database setting. Postgres holds admin option on both roles.
+- **Catalog:** schema `ai_readonly` is owned by `postgres`. The five relations `equipment_search`, `maintenance_facts`, `repair_facts`, `usage_facts`, and `quota_facts` are views owned by `postgres` with `security_barrier=true`. Functions `current_facility_id()`, `require_single_facility_scope()`, and `try_parse_iso_date(text)` are not security definer and pin `search_path=pg_catalog, pg_temp`.
+- **Effective grants for `ai_query_tool`:** schema `USAGE` and `SELECT` on all five views, no `INSERT` on `equipment_search`, no `SELECT` or `INSERT` on `public.thiet_bi`, and `EXECUTE` on the three functions. Direct table grants are `SELECT` to `ai_query_reader` on those five views; the login role inherits them. `CONNECT` and `TEMP` are effective. Database `CREATE` and `public` schema `CREATE` are not. No dedicated database ACL row for either AI role was visible. `PUBLIC` can execute `try_parse_iso_date(text)` and cannot execute the two scope functions.
+- **Applied live migration names:** `20260418103242 add_ai_readonly_semantic_layer_foundation`, `20260419033720 add_assistant_sql_audit_rpc`, and `20260426092400 expand_ai_readonly_equipment_reporting_surface`. These version numbers differ from the local filenames. The applied files were not renamed.
+- **Pooler:** `get_project` returned the direct database host, not a transaction-pooler hostname. The Go contract requires `postgresql`, port `6543`, database `/postgres`, only `sslmode=require|verify-ca|verify-full`, and username `ai_query_tool` or `ai_query_tool.<suffix>`. That live URL was not read or tested. The direct host must not be substituted for it.
+- **Static lane:** `node scripts/npm-run.js run db:quality-gate:local` printed `[db-quality-gate] SKIP no migration or gate registry changes` and exited 0. `SKIP` is not PASS.
+- **Baseline-forward lane:** not executed. No disposable database was created on the VPS or on Oracle. The lane has no measured PASS or FAIL from this session.
+- **Status:** `BLOCKING / INCOMPLETE`. This inspection did not change live settings. The later local migration records the four role settings and was not applied to live. Task checkboxes remain open. This inspection does not authorize 7.5F–G, deployment, cutover, Phase 8/9, or paid-provider smoke.
+
+### 7.5E local migration — role settings only
+
+Historical pre-apply checkpoint; superseded for live status by the entry below.
+
+- **Subject:** HEAD remains `ddad8cfd59ca2c46ab30e8d8a19a0ad05271eaad`. The migration, opt-in read-back, and registry entry are uncommitted worktree files, so this is not an exact-commit certification.
+- **Migration:** `supabase/migrations/20260928120000_set_ai_query_tool_read_only_role_settings.sql`. The executable change is four `ALTER ROLE ai_query_tool SET` statements: `default_transaction_read_only=on`, `statement_timeout=5s`, `idle_in_transaction_session_timeout=5s`, and `search_path=ai_readonly, pg_catalog`. The static harness also requires the file's header comment and `BEGIN`/`COMMIT` wrapper. The file does not create a role and does not change password, membership, grants, or `PUBLIC EXECUTE`.
+- **Read-back:** `supabase/tests/ai_query_tool_role_config_readback.sql` is registered opt-in with `isolated-database`. It is not a default-gate test. It checks that `rolconfig` is exactly those four stored values.
+- **Disposable result:** on 2026-09-28 an isolated Oracle container `ai75e-db` used cached image `qltbyt/postgres-dqg:17.6-pgnet-0.19.5-nix`, an internal network, and no published port. The fixture created `ai_query_tool` as `NOLOGIN` only inside that container, then applied the migration. Stored `rolconfig` matched the assertion and the read-back script passed. The container, network, and copied SQL files were removed. Read-only counts of `ai_query_tool` and `ai_query_reader` on baseline database `qltbyt_test` were 0 before and 0 after. This does not certify live or the baseline-forward lane.
+- **Static lane:** `db:quality-gate:local` returned `INCOMPLETE`, exit 2, `changed=2`, `findings=1512`, `warnings=1510`, `dangerous=0`, `blocking=2`, digest `49a54b07da0f9a410f77f9208672ffbba93afc92619b5b99e49d23c113a9ec19`. A second static report for the same HEAD, run id `ai75e-static-worktree`, has digest `1ad0e1b2ab64f3530c02ecf3bdc67b39a71ee8f155f990e15aa65799ce64144d`, `evidenceAvailable=false`, and `requiredChecksComplete=false`. The digests differ because the reports do not share `createdAt` or run id. Both name the same two blocking rules and no finding on the new migration text: `migration.subject-input` and `registry.sql-tests.evidence`. Those rules fire because the worktree migration set and SQL-test registry are not in commit `ddad8cfd`. The 1510 warnings are historical hygiene on other migrations. This is not PASS.
+- **Baseline-forward lane:** not run. The harness reads migration files from the exact subject commit. `ddad8cfd` does not contain this migration, so a run on that commit would not apply it. A later committed run still needs a database where `ai_query_tool` already exists; the Oracle baseline currently has neither AI role. No disposable gate database was created for this lane, and the migration was not applied to `qltbyt_test` or live.
+- **Status:** `BLOCKING / INCOMPLETE`. No Supabase CLI command and no Supabase MCP write were used. Checkbox 7.5E remains open. Live apply is waiting for review. This package does not authorize 7.5F–G, deployment, cutover, Phase 8/9, or paid-provider smoke.
+
+### 7.5E live role-setting apply — operation-specific waiver
+
+- **Authorization:** The user explicitly authorized this live role write and
+  explicitly waived the unavailable DB gate for this operation. No Supabase CLI
+  was used; Supabase MCP `apply_migration` was used on project
+  `cdthersvldpnlbvpufrr`.
+- **Applied identity:** Supabase recorded migration version `20260928132847`,
+  name `set_ai_query_tool_read_only_role_settings`. The SQL matched the local
+  reviewed migration `20260928120000_set_ai_query_tool_read_only_role_settings.sql`:
+  exactly four `ALTER ROLE ai_query_tool SET` statements, wrapped in
+  `BEGIN`/`COMMIT`.
+- **Live read-back (2026-09-28 13:29:07 UTC):** `ai_query_tool.rolconfig` is
+  exactly `default_transaction_read_only=on`, `statement_timeout=5s`,
+  `idle_in_transaction_session_timeout=5s`, and
+  `search_path=ai_readonly, pg_catalog`; no database-specific override exists.
+  `ai_query_tool` remains a LOGIN role with the same non-admin flags and remains
+  a non-admin member of `ai_query_reader`; `ai_query_reader` remains NOLOGIN.
+- **Preserved access checks:** `ai_query_tool` retains SELECT on all five
+  `ai_readonly` views and USAGE on the schema, has no SELECT/INSERT on
+  `public.thiet_bi`, and retains EXECUTE on the three scope/parse functions.
+  `PUBLIC EXECUTE` remains on `try_parse_iso_date(text)` and was not changed.
+- **Advisors:** Supabase security/performance advisors were read after apply;
+  security returned 19 ERROR, 477 WARN and 15 INFO; performance returned 64
+  INFO. No returned notice named `ai_query_tool` or `ai_readonly`. No pre-apply
+  advisor snapshot was captured, so these notices are not classified as new
+  or unchanged. This is advisory output, not a gate result.
+- **Boundary:** Static is still `INCOMPLETE` and baseline-forward is still
+  `NOT RUN`; no pooler login, `/readyz`, deployment, cutover, 7.5F-G, Phase 8/9
+  or paid-provider smoke was performed. Overall Phase 7.5 remains
+  `BLOCKING / INCOMPLETE`.
+
+- **Source binding:** reviewed base HEAD `ddad8cfd59ca2c46ab30e8d8a19a0ad05271eaad`;
+  local file SHA256 `050e12d9b01932165de21ff3ab77d788294f8d444a4f420cf3a34081d24ce8d7`.
+  The applied SQL omitted the local header comments and trailing newline;
+  archived live statement SHA256 `fc226738fdcf7f83f0f4f482a42355a3dee42d2de39b682a2d409b3bfe62d66a`.
+  Live `schema_migrations.statements` was read back and matches that exact
+  submitted SQL. Local and live versions/bytes differ; this evidence does not
+  repair migration metadata or certify an Oracle identity mapping. The applied
+  local file is preserved without rename or edit.
+- **USER REVIEW:** this waiver covers this operation only. No gate checkbox is
+  closed and no further live or runtime action is authorized by this entry.

@@ -1,5 +1,21 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest 7.5E live operation (2026-09-28)
+
+The user explicitly authorized applying the four reviewed role settings and
+waived the broken DB gate for this operation. Supabase MCP apply succeeded on
+project `cdthersvldpnlbvpufrr`, migration `20260928132847` /
+`set_ai_query_tool_read_only_role_settings`. Live read-back at 13:29:07 UTC
+confirmed all four stored settings, unchanged reader membership and checked
+grants. No password, grant, PUBLIC EXECUTE, or runtime deployment change occurred.
+See the final 7.5E live-operation entry in `phase-7.5-evidence.md` for identity
+and read-back details. Earlier no-live-apply statements are historical.
+
+Static remains INCOMPLETE; baseline-forward remains NOT RUN. The explicit
+waiver is not a gate PASS. Overall Phase 7.5 and its open checkboxes remain
+BLOCKING / INCOMPLETE; pooler login and readiness acceptance are unverified.
+USER REVIEW remains the boundary before any further live/runtime operation.
+
 Phase 7.5 is a gated handoff from Phase 7 dark smoke to Phase 8 exact-commit
 acceptance. Dispatch packages independently and preserve the stop boundary
 after each package. The package owner may return evidence and blockers without
@@ -166,6 +182,23 @@ views. The previous false-200 defect is fixed for this tested matrix. Cleanup
 was verified; no production grants or Supavisor parity are certified. See
 `/tmp/refactor-ai-phase-7.5d-oracle-rerun.md` and the updated evidence hashes.
 No commit/push; overall Phase 7.5 remains BLOCKING / INCOMPLETE.
+
+7.5E live read-only inspection (2026-09-28, subject `ddad8cfd`): Supabase MCP
+SELECT found existing `ai_query_reader` and passworded `ai_query_tool`, the
+five `ai_readonly` views, and inherited reader grants. Role GUCs are unset.
+Static lane returned SKIP because this subject has no migration diff;
+baseline-forward was not run. No live write or password read. See the 7.5E
+section in `phase-7.5-evidence.md`. Overall status remains BLOCKING /
+INCOMPLETE.
+
+7.5E local migration (2026-09-28, still uncommitted, HEAD `ddad8cfd`): file
+`supabase/migrations/20260928120000_set_ai_query_tool_read_only_role_settings.sql`
+contains only the four `ALTER ROLE ai_query_tool SET` statements plus the
+header and transaction wrapper required by the static harness. Isolated Oracle
+read-back passed and baseline role count stayed 0. Static on this exact commit
+is INCOMPLETE (`migration.subject-input`, `registry.sql-tests.evidence`).
+Baseline-forward was not run because the commit does not contain the file.
+No live apply. Overall status remains BLOCKING / INCOMPLETE.
 
 Latest 7.5D checkpoint (2026-09-28): follow-up landed at `848073b5`.
 Oracle disposable integration on that exact code passed ten subtests but

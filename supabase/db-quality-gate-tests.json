@@ -33,6 +33,16 @@
       "transactionContract": "isolated-database"
     },
     {
+      "evidence": ["Phase 7.5E disposable rolconfig read-back; not a live or default-gate test"],
+      "fixtureContract": "dedicated-fixture",
+      "path": "supabase/tests/ai_query_tool_role_config_readback.sql",
+      "purpose": "smoke",
+      "runnerRequirements": ["psql"],
+      "safety": "opt-in",
+      "timeoutSeconds": 30,
+      "transactionContract": "isolated-database"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "dedicated-fixture",
       "path": "supabase/tests/audit_logs_v2_smoke.sql",
