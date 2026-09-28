@@ -16,6 +16,23 @@ Pooler login and catalog privilege read-back from Oracle pass. See the final
 candidate deployment entry for the runtime result and BFF smoke blocker.
 This does not reopen accepted 7.5E tasks or convert waived DB lanes to PASS.
 
+**Latest Vercel configuration checkpoint:** four production BFF variables have
+now been added and their names/types/target read back: URL, HMAC key ID, HMAC
+secret, broker secret. The two secrets were transferred directly from the
+candidate's mounted files through protected process memory/stdin and saved as
+Sensitive. Earlier observations that no AI_SERVICE variables exist are historical.
+No redeploy or paid smoke occurred. The remaining Access client ID/secret is
+not available from the inspected sources: the existing Device Quota pair is
+Sensitive and Vercel does not return its values, and its AI policy coverage is
+unverified. No token was copied between services or Access policy changed.
+
+The Phase 7 tunnel evidence was also rechecked against connector logs:
+version 1 used 8080; version 2 routes `/v1/chat` to 127.0.0.1:18081 in host
+network mode. The earlier port-mismatch claim was incorrect; no tunnel change
+is needed. Phase 5 proves the Go route is `/api/chat/dark`, with `/api/chat`
+remaining on its existing implementation. A real session is still needed for
+end-to-end smoke; no session impersonation or authentication bypass is allowed.
+
 Phase 7.5 sits between Phase 7 dark smoke and Phase 8 exact-commit acceptance.
 It is an orchestration gate with seven independently dispatchable packages;
 completing one package does not tick or authorize another package.

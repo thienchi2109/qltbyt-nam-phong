@@ -1,5 +1,18 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest Vercel settings checkpoint
+
+Four production settings are now stored: AI_SERVICE_BFF_URL,
+AI_SERVICE_BFF_HMAC_KEY_ID, AI_SERVICE_BFF_HMAC_SECRET and
+AI_SERVICE_BFF_BROKER_SECRET. Secrets match the source bytes from Oracle's
+candidate mounts and are stored as Sensitive; post-write listing confirms
+names/types/production target, not decrypted equality. No redeploy or paid
+smoke ran. Access client ID/secret and a real user session remain prerequisites.
+Existing Device Quota Access variables cannot be recovered through Vercel
+because they are Sensitive; AI policy coverage was not assumed. Tunnel
+version 2 already points to candidate port 18081; version 1's 8080 is stale.
+The no-AI_SERVICE-variable observation below describes the earlier checkpoint.
+
 ## Latest candidate deployment (2026-09-28)
 
 The user authorized upgrading/recreating only the Oracle candidate, then one
