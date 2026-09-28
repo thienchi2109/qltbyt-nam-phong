@@ -295,3 +295,23 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   local file is preserved without rename or edit.
 - **USER REVIEW:** this waiver covers this operation only. No gate checkbox is
   closed and no further live or runtime action is authorized by this entry.
+
+### Oracle baseline schema/migration catch-up — `ai75e-catch-up-20260928`
+
+- **Scope:** schema/migration state only, after the live apply. No live DB
+  access, production data copy, password, or credential was copied.
+- **Execution:** on the private Oracle VM, persistent `qltbyt_test` was locked
+  and the live SQL recorded by Supabase was replayed. A `NOLOGIN`, no-password
+  `ai_query_tool` fixture was created because the migration contains
+  `ALTER ROLE`; it remains a non-login fixture for migration-state parity.
+- **Read-back:** migration count is `352`, high-water is
+  `20260928132847`, and the recorded name is
+  `set_ai_query_tool_read_only_role_settings`. Fixture `rolconfig` matches all
+  four settings; live SQL read-back SHA256 is
+  `fc226738fdcf7f83f0f4f482a42355a3dee42d2de39b682a2d409b3bfe62d66a`.
+- **Health:** invalid indexes `0`, unvalidated constraints `0`, and
+  `postgres` has no `CREATE` on `public`. Redacted evidence is stored at
+  `/opt/supabase-test/quality-gate/evidence/ai75e-catch-up-20260928/`.
+- **Boundary:** this is migration/schema catch-up, not baseline-forward PASS;
+  static and baseline-forward certification remain separate and the overall
+  Phase 7.5 status remains `BLOCKING / INCOMPLETE`.
