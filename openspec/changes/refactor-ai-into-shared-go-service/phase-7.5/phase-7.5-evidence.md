@@ -10,6 +10,12 @@ is not a gate PASS, pooler/readiness certification, or acceptance of 7.5F-G.
 **Subject commit/config:** `TBD` (every package must bind evidence to one
 exact subject commit and configuration hash before it can be accepted).
 
+**Latest candidate checkpoint (2026-09-28):** the authorized Oracle candidate
+upgrade uses exact source `5ea42ef24b1decf5638ad009a17509b36d3909ab`.
+Pooler login and catalog privilege read-back from Oracle pass. See the final
+candidate deployment entry for the runtime result and BFF smoke blocker.
+This does not reopen accepted 7.5E tasks or convert waived DB lanes to PASS.
+
 Phase 7.5 sits between Phase 7 dark smoke and Phase 8 exact-commit acceptance.
 It is an orchestration gate with seven independently dispatchable packages;
 completing one package does not tick or authorize another package.
@@ -341,3 +347,67 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 - **Boundary:** overall Phase 7.5 remains `BLOCKING / INCOMPLETE`. `7.5F`–`G`,
   deployment, `/api/chat` cutover, Phase 8/9, and paid-provider smoke stay
   unopened.
+
+### Candidate image/env deployment and pooler verification (2026-09-28)
+
+- **Authorization:** the user approved candidate-only secret/env update,
+  recreation, then an exact-commit image upgrade. One paid-provider smoke with
+  a read-only prompt and its quota/usage writes was separately approved. None
+  of these approvals opens production cutover or unrelated live DB writes.
+- **Build:** native Oracle ARM64 build from archived source
+  `5ea42ef24b1decf5638ad009a17509b36d3909ab`, pinned repository Dockerfile,
+  `TARGETARCH=arm64` and matching `VCS_REF`. Image digest is
+  `sha256:3e7b239b69b7feec68174c9c2f89bdd7fe1703125f0a979a2f6e8470abc25d3d`.
+  Build log is under `/opt/qltbyt-ai/releases/5ea42ef24b1decf5638ad009a17509b36d3909ab/build.log`.
+- **Deployment:** only Compose project `qltbyt-ai-candidate`, service
+  `ai-service`, container `qltbyt-ai-service-candidate` was recreated.
+  `/etc/qltbyt-ai/ai-service.env` remains mode 0600. Persistent override
+  `/opt/qltbyt-ai/compose.oracle-candidate.yml` references secret env variables
+  rather than containing their values. Override SHA256:
+  `91a4eccf511c967d78c87c95a73d1184018826aa704bb15207af2ae538f0ce2f`.
+  It supplies AI_DATABASE_URL, AI_SERVICE_BFF_BROKER_URL and the three
+  capability identifiers. Non-root 65532:65532, read-only filesystem, ALL
+  capabilities dropped, no-new-privileges, four secret mounts and host network
+  with private listener 127.0.0.1:18081 were preserved.
+- **Rollback:** previous image digest
+  `sha256:6608456a8d43b2e53de543c90af845720bf4d439969b404d7a57d2a10bbd7c52`
+  remains locally available. Private env/override snapshots were taken before
+  mutation; the pre-BFF snapshots have suffix `before-bff-20260928T152010Z`.
+  Rollback requires restoring the selected private snapshot and candidate-only
+  image override, then recreating only this Compose service. No rollback ran.
+- **Pooler read-back:** a bounded read-only psql transaction from Oracle used
+  the candidate's effective URL in process environment, without printing it.
+  It connected as `ai_query_tool`; both transaction_read_only and
+  default_transaction_read_only were on. All five ai_readonly relations were
+  views with effective schema USAGE and SELECT. No business rows were read,
+  no SQL write attempted, and no credentials were included in evidence.
+  This psql result is independent of the Go readiness probe.
+- **BFF preflight:** the application origin from existing operations docs is
+  `https://www.cvmems.vn`; `/api/internal/ai/broker/v1` returned 401 unauthorized
+  for a valid request ID without Authorization, confirming the route responds.
+  With a deliberately invalid bearer token it returned 503 unavailable.
+  At the pinned source, verifyBrokerToken checks AI_SERVICE_BFF_BROKER_SECRET
+  before parsing the token and emits this 503 when unset. This is evidence
+  consistent with missing BFF secret configuration, not a direct inspection of
+  production Next.js environment or proof of cross-service secret parity.
+- **Smoke:** NOT RUN. No paid request or quota/usage write occurred in this
+  operation. Authenticated end-to-end smoke requires the real BFF secret setup
+  and a trusted session-derived user/facility scope. No synthetic privileged
+  identity or authentication bypass was used. No Next.js deployment occurred.
+- **Final runtime read-back (2026-09-28 15:27:14 UTC):** `/healthz=200` and
+  `/readyz=200` on the candidate's private loopback listener. Earlier 503s
+  occurred before completing capability configuration and during the built-in
+  150-second restart quarantine. Readiness exercises the real Go SQL executor
+  and registered tuple; it does not perform an authenticated BFF RPC or prove
+  provider availability.
+- **Vercel read-only verification:** CLI 52.0.0 identified project
+  `qltbyt-namphong`, production deployment `dpl_52aTfNcVkihBDs9HGGjBAcbaW2qQ`,
+  Ready, aliased to `www.cvmems.vn`. `vercel env ls production` has no
+  `AI_SERVICE_*` variables, including `AI_SERVICE_BFF_BROKER_SECRET`, HMAC,
+  service URL and AI-specific Access credentials. Therefore secret parity
+  cannot yet be checked. Existing legacy AI variables (including an older
+  AI_DATABASE_URL) were not read, changed or assumed equivalent to the new
+  Oracle configuration. No Vercel env write or redeploy was performed.
+- **Boundary:** 7.5E.1-3 acceptance remains unchanged; static INCOMPLETE and
+  baseline-forward NOT RUN remain unchanged. This is positive candidate
+  evidence, not completion of the full 7.5F negative/auth/Access matrix or 7.5G.

@@ -1,5 +1,27 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest candidate deployment (2026-09-28)
+
+The user authorized upgrading/recreating only the Oracle candidate, then one
+read-only paid-provider smoke including quota/usage accounting. The candidate
+now uses source `5ea42ef24b1decf5638ad009a17509b36d3909ab`, image
+`sha256:3e7b239b69b7feec68174c9c2f89bdd7fe1703125f0a979a2f6e8470abc25d3d`.
+The protected env supplies the verified pooler URL; persistent candidate
+override `/opt/qltbyt-ai/compose.oracle-candidate.yml` passes that variable,
+the BFF endpoint, and `qltbyt / assistant-chat / v1` identifiers. Old image
+`sha256:6608456a8d43b2e53de543c90af845720bf4d439969b404d7a57d2a10bbd7c52`
+remains available for rollback. No production service or cutover was changed.
+
+Oracle-side read-only pooler verification passes. Final private probes at
+2026-09-28 15:27:14 UTC returned `/healthz=200` and `/readyz=200`, after the
+150-second restart quarantine. Paid smoke has not run:
+the deployed Next.js broker returns `503 unavailable` for the invalid-token
+preflight. Vercel CLI confirms production has no `AI_SERVICE_*` variables,
+including the BFF broker secret. Do not
+bypass authentication or deploy Next.js without a separately scoped operation.
+See the final candidate entry in `phase-7.5-evidence.md` for verified readiness
+and limits. Earlier candidate/no-URL entries are historical.
+
 ## Latest 7.5E live operation (2026-09-28)
 
 The user explicitly authorized applying the four reviewed role settings and
