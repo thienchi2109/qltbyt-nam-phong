@@ -1,10 +1,11 @@
 # Phase 7.5 Evidence — Broker/query composition và readiness
 
-**Status:** `BLOCKING / INCOMPLETE` for overall Phase 7.5. The four 7.5E role
-settings were applied live through Supabase MCP on 2026-09-28 under an explicit
-operation-specific user waiver of the DB gate. Live catalog read-back passed.
-Static remains `INCOMPLETE`; baseline-forward remains `NOT RUN`. This is not
-a gate PASS, pooler/readiness certification, or acceptance of 7.5F-G.
+**Status:** `BLOCKING / INCOMPLETE` for overall Phase 7.5. Tasks `7.5E.1`–`7.5E.3`
+are accepted. `7.5E.2` is accepted with the recorded waiver: static remains
+`INCOMPLETE` and baseline-forward remains `NOT RUN`. `7.5E.3` is accepted on
+the live role/grant/config read-back. Pooler connection verification moves to
+the next acceptance step, and Oracle credential parity is not required. This
+is not a gate PASS, pooler/readiness certification, or acceptance of 7.5F-G.
 
 **Subject commit/config:** `TBD` (every package must bind evidence to one
 exact subject commit and configuration hash before it can be accepted).
@@ -43,15 +44,15 @@ completing one package does not tick or authorize another package.
 
 ## Package acceptance matrix
 
-| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                   |
-| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                     |
-| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                     |
-| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                       |
-| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **BLOCKING / INCOMPLETE** — local Go contract proof passes; no disposable PostgreSQL role/connection evidence; production role/read-back is `7.5E` |
-| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **BLOCKING / INCOMPLETE** — live settings applied under explicit waiver; static `INCOMPLETE`; baseline-forward not run; pooler unverified          |
-| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                                                                            |
-| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                               |
+| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                                                                     |
+| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                                                                       |
+| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                                                                       |
+| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                         |
+| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **BLOCKING / INCOMPLETE** — local Go contract proof passes; no disposable PostgreSQL role/connection evidence; production role/read-back is `7.5E`                                                   |
+| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step |
+| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                                                                                                                              |
+| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                 |
 
 ## Readiness acceptance
 
@@ -86,10 +87,11 @@ check or mock does not satisfy this gate.
   nonpositive/noninteger facility claims, and 7.5C now repeats those boundary
   checks for the parsed credential; trusted deployment provenance and
   downstream acceptance remain pending.
-- Live role and catalog read-back was SELECT-only on 2026-09-28. No password
-  was read and no live role, grant, or setting was changed. The local 7.5E
-  migration is uncommitted. Static on exact commit `ddad8cfd` is `INCOMPLETE`;
-  baseline-forward was not run. Those lanes keep the phase `BLOCKING / INCOMPLETE`.
+- Tasks `7.5E.1`–`7.5E.3` are accepted. Static remains `INCOMPLETE` and
+  baseline-forward remains `NOT RUN` under the recorded waiver. Live
+  role/grant/config read-back is the `7.5E.3` evidence. Pooler connection
+  verification is the next acceptance step. Overall Phase 7.5 stays
+  `BLOCKING / INCOMPLETE` until `7.5F`–`G`.
 - No live DB write, migration, DDL, Supabase CLI operation or production
   credential provisioning is authorized by this artifact.
 - Phase 8 `/api/chat` cutover, Phase 9 legacy cleanup and paid-provider smoke
@@ -322,3 +324,20 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   was archived as `state-before.json`; the actual DB high-water is the new
   value above. Existing absence of `ai_readonly` is not repaired by this
   role-only migration and full schema parity is not claimed.
+
+### 7.5E task acceptance — 2026-09-28
+
+- **Decision:** the user accepted `7.5E.1`, `7.5E.2`, and `7.5E.3`.
+- **7.5E.1:** the existing-role mapping, local migration
+  `20260928120000_set_ai_query_tool_read_only_role_settings.sql`, live identity
+  `20260928132847`, and the recorded grant/config assertions are the subject
+  evidence.
+- **7.5E.2:** accepted with waiver. Static remains `INCOMPLETE`.
+  Baseline-forward remains `NOT RUN`. This tick is not a static PASS,
+  baseline-forward PASS, or aggregate gate PASS.
+- **7.5E.3:** accepted on the live role, grant, and config read-back recorded
+  above. Pooler connection verification moves to the next acceptance step.
+  Oracle credential parity is not required.
+- **Boundary:** overall Phase 7.5 remains `BLOCKING / INCOMPLETE`. `7.5F`–`G`,
+  deployment, `/api/chat` cutover, Phase 8/9, and paid-provider smoke stay
+  unopened.

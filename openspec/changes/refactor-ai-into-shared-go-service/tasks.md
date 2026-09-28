@@ -290,9 +290,11 @@ constraints, approved catalog and read-back of role/grants/object parity.
 Static và baseline-forward lanes phải được báo cáo riêng theo DB quality-gate
 contract; production/live apply không được suy ra từ disposable PASS.
 
-- [ ] 7.5E.1 Chuẩn bị migration/SQL plan hoặc existing-role mapping, exact subject hash và required grants/read-only assertions.
-- [ ] 7.5E.2 Chạy static + disposable baseline-forward quality gate nếu SQL thay đổi; giữ `BLOCKING / INCOMPLETE` khi lane unavailable.
-- [ ] 7.5E.3 Ghi read-back evidence cho role/pooler/catalog; live apply chỉ là operation-specific approval ngoài Phase 7.5.
+- [x] 7.5E.1 Chuẩn bị migration/SQL plan hoặc existing-role mapping, exact subject hash và required grants/read-only assertions.
+- [x] 7.5E.2 Chạy static + disposable baseline-forward quality gate nếu SQL thay đổi; giữ `BLOCKING / INCOMPLETE` khi lane unavailable.
+- [x] 7.5E.3 Ghi read-back evidence cho role/pooler/catalog; live apply chỉ là operation-specific approval ngoài Phase 7.5.
+
+Nghiệm thu 2026-09-28: `7.5E.2` được chấp nhận với waiver. Static vẫn `INCOMPLETE`, baseline-forward vẫn `NOT RUN`, và tick này không phải gate PASS. `7.5E.3` được nghiệm thu bằng live role/grant/config read-back. Kiểm chứng kết nối pooler chuyển sang bước acceptance tiếp theo. Không yêu cầu credential parity với Oracle.
 
 Điểm dừng: Dừng khi thiếu gate evidence, role/grant/read-back chưa rõ hoặc
 cần live migration/DDL mà chưa có explicit approval. Không gọi Supabase CLI,

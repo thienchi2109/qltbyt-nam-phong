@@ -11,10 +11,13 @@ grants. No password, grant, PUBLIC EXECUTE, or runtime deployment change occurre
 See the final 7.5E live-operation entry in `phase-7.5-evidence.md` for identity
 and read-back details. Earlier no-live-apply statements are historical.
 
-Static remains INCOMPLETE; baseline-forward remains NOT RUN. The explicit
-waiver is not a gate PASS. Overall Phase 7.5 and its open checkboxes remain
-BLOCKING / INCOMPLETE; pooler login and readiness acceptance are unverified.
-USER REVIEW remains the boundary before any further live/runtime operation.
+The user accepted tasks `7.5E.1`–`7.5E.3` on 2026-09-28. `7.5E.2` stays
+accepted only with the recorded waiver: static remains `INCOMPLETE` and
+baseline-forward remains `NOT RUN`. That tick is not a gate PASS. `7.5E.3` is
+accepted on the live role/grant/config read-back. Pooler connection
+verification moves to the next acceptance step. Oracle credential parity is
+not required. Overall Phase 7.5 remains `BLOCKING / INCOMPLETE` because
+`7.5F`–`G` and production certification are still open.
 
 Subsequently, the user authorized Oracle schema/migration catch-up. The new
 migration was applied to `qltbyt_test`; live and baseline each report 352
