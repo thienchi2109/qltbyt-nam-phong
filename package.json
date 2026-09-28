@@ -22,7 +22,7 @@
     "verify:ts-docstrings": "node scripts/check-ts-docstrings-in-diff.js",
     "verify:python-docstrings": "node scripts/check-python-docstrings.js",
     "verify:python-docstrings:changed": "node scripts/check-python-docstrings.js --changed",
-    "prepare": "lefthook install",
+    "prepare": "if [ \"$VERCEL\" != \"1\" ]; then lefthook install; fi",
     "hooks:install": "lefthook install",
     "test": "vitest",
     "test:run": "vitest run",
