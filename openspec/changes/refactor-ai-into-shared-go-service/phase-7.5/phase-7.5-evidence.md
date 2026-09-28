@@ -298,8 +298,8 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 
 ### Oracle baseline schema/migration catch-up — `ai75e-catch-up-20260928`
 
-- **Scope:** schema/migration state only, after the live apply. No live DB
-  access, production data copy, password, or credential was copied.
+- **Scope:** the newly applied migration only. Live metadata was checked
+  read-only; no further live write, data copy, or credential copy occurred.
 - **Execution:** on the private Oracle VM, persistent `qltbyt_test` was locked
   and the live SQL recorded by Supabase was replayed. A `NOLOGIN`, no-password
   `ai_query_tool` fixture was created because the migration contains
@@ -315,3 +315,10 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 - **Boundary:** this is migration/schema catch-up, not baseline-forward PASS;
   static and baseline-forward certification remain separate and the overall
   Phase 7.5 status remains `BLOCKING / INCOMPLETE`.
+- **State invalidation:** `baseline/current.json` was atomically marked
+  `healthy=false` before the transaction, retaining its previous certified
+  snapshot/high-water. It was not republished as healthy: the manual catch-up
+  has not passed maintenance identity/catalog certification. The old state
+  was archived as `state-before.json`; the actual DB high-water is the new
+  value above. Existing absence of `ai_readonly` is not repaired by this
+  role-only migration and full schema parity is not claimed.

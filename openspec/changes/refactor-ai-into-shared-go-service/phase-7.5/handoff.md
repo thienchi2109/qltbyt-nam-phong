@@ -16,6 +16,13 @@ waiver is not a gate PASS. Overall Phase 7.5 and its open checkboxes remain
 BLOCKING / INCOMPLETE; pooler login and readiness acceptance are unverified.
 USER REVIEW remains the boundary before any further live/runtime operation.
 
+Subsequently, the user authorized Oracle schema/migration catch-up. The new
+migration was applied to `qltbyt_test`; live and baseline each report 352
+migrations and high-water `20260928132847`. A passwordless NOLOGIN fixture
+retains the four role settings. Evidence is in the final Oracle catch-up
+section of `phase-7.5-evidence.md`. Gate state was invalidated (`healthy=false`)
+and not recertified; this does not claim full schema parity or gate PASS.
+
 Phase 7.5 is a gated handoff from Phase 7 dark smoke to Phase 8 exact-commit
 acceptance. Dispatch packages independently and preserve the stop boundary
 after each package. The package owner may return evidence and blockers without
