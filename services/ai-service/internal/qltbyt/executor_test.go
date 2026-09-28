@@ -8,23 +8,31 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // This driver exercises database/sql transaction wiring without a database.
 type queryDriver struct {
-	role, readOnly        string
-	settings              map[string]string
-	statement             string
-	count                 int
-	value                 driver.Value
-	settingErr            bool
-	committed, rolledBack bool
+	role, readOnly, defaultReadOnly string
+	settings                        map[string]string
+	statement                       string
+	count                           int
+	value                           driver.Value
+	settingErr, connectErr          bool
+	committed, rolledBack           bool
 }
 
-func (d *queryDriver) Connect(context.Context) (driver.Conn, error) { return d, nil }
-func (d *queryDriver) Driver() driver.Driver                        { return d }
-func (d *queryDriver) Open(string) (driver.Conn, error)             { return d, nil }
-func (d *queryDriver) Close() error                                 { return nil }
+func (d *queryDriver) Connect(context.Context) (driver.Conn, error) {
+	if d.connectErr {
+		return nil, errors.New("synthetic connection secret")
+	}
+	return d, nil
+}
+func (d *queryDriver) Driver() driver.Driver            { return d }
+func (d *queryDriver) Open(string) (driver.Conn, error) { return d, nil }
+func (d *queryDriver) Close() error                     { return nil }
 func (d *queryDriver) Prepare(string) (driver.Stmt, error) {
 	return nil, errors.New("unexpected prepare")
 }
@@ -50,6 +58,9 @@ func (d *queryDriver) ExecContext(_ context.Context, query string, args []driver
 func (d *queryDriver) QueryContext(_ context.Context, query string, _ []driver.NamedValue) (driver.Rows, error) {
 	if query == "select current_user, current_setting('transaction_read_only')" {
 		return &executorRows{columns: []string{"role", "read_only"}, values: []driver.Value{d.role, d.readOnly}, remaining: 1}, nil
+	}
+	if query == "select current_user, current_setting('transaction_read_only'), current_setting('default_transaction_read_only')" {
+		return &executorRows{columns: []string{"role", "read_only", "default_read_only"}, values: []driver.Value{d.role, d.readOnly, d.defaultReadOnly}, remaining: 1}, nil
 	}
 	if len(d.settings) != 5 {
 		return nil, errors.New("query ran before settings")
@@ -143,6 +154,111 @@ func TestSQLExecutorBoundsRowsAndPayload(t *testing.T) {
 			result, err := e.Execute(context.Background(), executorCall())
 			if err == nil || len(result.Rows) != 0 || !d.rolledBack {
 				t.Fatalf("result=%+v err=%v", result, err)
+			}
+		})
+	}
+}
+
+func TestSQLExecutorReadyRequiresConnectedReadOnlyDedicatedRole(t *testing.T) {
+	for _, tc := range []struct {
+		name, role, readOnly, defaultReadOnly string
+		connectErr, wantReady                 bool
+	}{
+		{name: "dedicated read-only", role: "ai_query_tool", readOnly: "on", defaultReadOnly: "on", wantReady: true},
+		{name: "wrong role", role: "postgres", readOnly: "on", defaultReadOnly: "on"},
+		{name: "write transaction", role: "ai_query_tool", readOnly: "off", defaultReadOnly: "on"},
+		{name: "writable role default", role: "ai_query_tool", readOnly: "on", defaultReadOnly: "off"},
+		{name: "connection unavailable", connectErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			d := &queryDriver{role: tc.role, readOnly: tc.readOnly, defaultReadOnly: tc.defaultReadOnly, connectErr: tc.connectErr}
+			e := testSQLExecutor(t, d)
+			readiness, ok := any(e).(interface{ Ready(context.Context) error })
+			if !ok {
+				t.Fatal("SQLExecutor does not expose a readiness probe")
+			}
+			err := readiness.Ready(context.Background())
+			if (err == nil) != tc.wantReady {
+				t.Fatalf("Ready() error = %v, want ready=%v", err, tc.wantReady)
+			}
+			if err != nil && strings.Contains(err.Error(), "secret") {
+				t.Fatalf("readiness error exposed driver details: %v", err)
+			}
+		})
+	}
+}
+
+func TestSQLExecutorReadyRejectsMissingPool(t *testing.T) {
+	readiness, ok := any(SQLExecutor{}).(interface{ Ready(context.Context) error })
+	if !ok {
+		t.Fatal("SQLExecutor does not expose a readiness probe")
+	}
+	if err := readiness.Ready(context.Background()); err == nil {
+		t.Fatal("SQLExecutor without a pool reported ready")
+	}
+}
+
+func TestSQLExecutorReadyPreservesCancellation(t *testing.T) {
+	d := &queryDriver{role: "ai_query_tool", readOnly: "on"}
+	e := testSQLExecutor(t, d)
+	readiness, ok := any(e).(interface{ Ready(context.Context) error })
+	if !ok {
+		t.Fatal("SQLExecutor does not expose a readiness probe")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := readiness.Ready(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("Ready() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestPoolerConnectionDisablesPreparedStatements(t *testing.T) {
+	config, err := poolerConnectionConfig("postgresql://ai_query_tool.projectref:secret@pooler.example:6543/postgres?sslmode=require")
+	if err != nil {
+		t.Fatalf("pooler connection config = %v", err)
+	}
+	if config.DefaultQueryExecMode != pgx.QueryExecModeSimpleProtocol {
+		t.Fatalf("pooler query mode = %v, want simple protocol", config.DefaultQueryExecMode)
+	}
+	if config.Host != "pooler.example" || config.Port != 6543 || config.User != "ai_query_tool.projectref" || config.Password != "secret" || config.Database != "postgres" {
+		t.Fatal("parsed pooler authority was overridden")
+	}
+}
+
+func TestPoolerStartupDiagnosticKeepsOnlySafeCause(t *testing.T) {
+	err := poolerUnavailable("readiness", &pgconn.PgError{Code: "28P01", Message: "password=diagnostic-secret"})
+	if err.Error() != "external pooler query executor is unavailable" {
+		t.Fatalf("public error = %q", err)
+	}
+	diagnostic, ok := err.(interface{ PoolerDiagnostic() string })
+	if !ok {
+		t.Fatal("pooler failure did not expose a server diagnostic")
+	}
+	if got, want := diagnostic.PoolerDiagnostic(), "stage=readiness cause=postgres_sqlstate_28P01"; got != want {
+		t.Fatalf("diagnostic = %q, want %q", got, want)
+	}
+	if strings.Contains(diagnostic.PoolerDiagnostic(), "diagnostic-secret") {
+		t.Fatalf("diagnostic exposed driver details: %s", diagnostic.PoolerDiagnostic())
+	}
+}
+
+func TestValidatePoolerURLRejectsConnectionParameterOverrides(t *testing.T) {
+	for _, parameter := range []string{
+		"host=override.example",
+		"port=5432",
+		"user=postgres",
+		"dbname=other",
+		"password=override-secret",
+		"application_name=unexpected",
+	} {
+		t.Run(parameter, func(t *testing.T) {
+			databaseURL := "postgresql://ai_query_tool:authority-secret@pooler.example:6543/postgres?sslmode=require&" + parameter
+			_, err := poolerConnectionConfig(databaseURL)
+			if err == nil {
+				t.Fatal("pooler URL accepted a query-string override")
+			}
+			if strings.Contains(err.Error(), "authority-secret") || strings.Contains(err.Error(), "override-secret") {
+				t.Fatalf("validation error exposed credentials: %v", err)
 			}
 		})
 	}

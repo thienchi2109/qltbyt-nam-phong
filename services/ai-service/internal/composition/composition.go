@@ -3,6 +3,7 @@
 package composition
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -10,8 +11,44 @@ import (
 	"example.com/shared-ai-service/internal/registry"
 )
 
+type QueryExecutor = qltbyt.QueryExecutor
+
+// ValidatePoolerURL enforces the app-owned external transaction-pooler contract.
+func ValidatePoolerURL(raw string) error {
+	return qltbyt.ValidatePoolerURL(raw)
+}
+
+// OpenPoolerQueryExecutor opens and verifies the dedicated read-only role.
+func OpenPoolerQueryExecutor(ctx context.Context, databaseURL string, maxOpen int) (QueryExecutor, error) {
+	executor, err := qltbyt.OpenPoolerSQLExecutor(ctx, databaseURL, maxOpen)
+	if err != nil {
+		return nil, err
+	}
+	return executor, nil
+}
+
+// PoolerDiagnostic returns a redacted startup/readiness cause for server logs.
+func PoolerDiagnostic(err error) string {
+	return qltbyt.PoolerDiagnostic(err)
+}
+
+// QueryExecutorReady accepts only the production SQL executor after its role probe succeeds.
+func QueryExecutorReady(ctx context.Context, executor QueryExecutor) bool {
+	query, ok := executor.(*qltbyt.SQLExecutor)
+	return ok && query != nil && query.Ready(ctx) == nil
+}
+
+// CloseQueryExecutor releases the pool opened by OpenPoolerQueryExecutor.
+func CloseQueryExecutor(executor QueryExecutor) error {
+	query, ok := executor.(*qltbyt.SQLExecutor)
+	if ok && query != nil {
+		return query.Close()
+	}
+	return nil
+}
+
 // Dependencies is the complete runtime tuple required before registering the
-// assistant capability. Query composition is supplied by 7.5D.
+// assistant capability. The pooler QueryExecutor is opened by 7.5D wiring.
 type Dependencies struct {
 	Broker       qltbyt.Broker
 	Query        qltbyt.QueryExecutor
@@ -19,8 +56,8 @@ type Dependencies struct {
 }
 
 // RegisterAssistantWithEndpoint composes the operation-aware HTTP broker and
-// capability in one fail-closed step. A nil QueryExecutor intentionally leaves
-// the tuple absent until 7.5D supplies it.
+// capability in one fail-closed step. A nil QueryExecutor leaves the tuple
+// absent.
 func RegisterAssistantWithEndpoint(reg *registry.Registry, endpoint string, client *http.Client, brokerSecret []byte, query qltbyt.QueryExecutor) bool {
 	if strings.TrimSpace(endpoint) == "" {
 		return false

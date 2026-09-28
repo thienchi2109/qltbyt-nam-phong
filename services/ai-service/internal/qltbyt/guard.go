@@ -30,6 +30,7 @@ type validatedSQL struct {
 var (
 	forbiddenKeywordPattern  = regexp.MustCompile(`(?i)\b(?:alter|analyze|call|cluster|comment|copy|create|delete|drop|execute|grant|insert|listen|merge|notify|refresh|reindex|revoke|set|truncate|update|vacuum)\b`)
 	forbiddenFunctionPattern = regexp.MustCompile(`(?i)\b(?:set_config)\s*\(`)
+	functionCallPattern      = regexp.MustCompile(`(?i)\b(?:([A-Za-z_][\w$]*)\s*\.\s*)?([A-Za-z_][\w$]*)\s*\(`)
 	forbiddenSchemaPattern   = regexp.MustCompile(`(?i)\b(?:auth|extensions|graphql_public|information_schema|pg_catalog|pg_temp|public|storage)\s*\.`)
 	tableSchemaPattern       = regexp.MustCompile(`(?i)\b(?:from|join)\s+([A-Za-z_][\w$]*)\s*\.`)
 	functionSchemaPattern    = regexp.MustCompile(`(?i)\b([A-Za-z_][\w$]*)\s*\.\s*[A-Za-z_][\w$]*\s*\(`)
@@ -51,6 +52,12 @@ var approvedViews = map[string]struct{}{
 	"repair_facts":      {},
 	"usage_facts":       {},
 	"quota_facts":       {},
+}
+
+var approvedQueryFunctions = map[string]struct{}{"coalesce": {}}
+
+var querySyntaxParentheses = map[string]struct{}{
+	"all": {}, "any": {}, "as": {}, "exists": {}, "filter": {}, "group": {}, "in": {}, "over": {}, "within": {},
 }
 
 func validateSQL(sql string) (validatedSQL, error) {
@@ -97,8 +104,20 @@ func validateSQL(sql string) (validatedSQL, error) {
 }
 
 func assertSQLSurface(text string) error {
-	if forbiddenFunctionPattern.MatchString(text) {
-		return sqlError("forbidden_function", "Forbidden SQL function detected.")
+	for _, match := range functionCallPattern.FindAllStringSubmatch(text, -1) {
+		if len(match) < 3 {
+			continue
+		}
+		name := strings.ToLower(match[2])
+		if match[1] != "" {
+			return sqlError("forbidden_function", "Forbidden SQL function detected.")
+		}
+		if _, ok := querySyntaxParentheses[name]; ok {
+			continue
+		}
+		if _, ok := approvedQueryFunctions[name]; !ok || forbiddenFunctionPattern.MatchString(match[0]) {
+			return sqlError("forbidden_function", "Forbidden SQL function detected.")
+		}
 	}
 	if forbiddenKeywordPattern.MatchString(text) {
 		return sqlError("forbidden_keyword", "Forbidden SQL keyword detected.")

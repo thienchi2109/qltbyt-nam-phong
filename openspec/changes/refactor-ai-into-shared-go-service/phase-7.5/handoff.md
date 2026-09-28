@@ -90,6 +90,18 @@ tuple readiness that can be satisfied by a partial composition.
 **Excludes:** SQL role/grant/password provisioning (7.5E), live DB writes,
 cutover and paid-provider smoke.
 
+**7.5D implementation handoff (worktree, not landed):** the Go runtime now
+validates `AI_DATABASE_URL` against the documented transaction-pooler contract,
+opens the existing QLTBYT SQL executor with pgx simple protocol and bounded
+connections, and requires a live `ai_query_tool` read-only role probe for
+readiness. URL, role, connection, dummy-executor and partial-tuple negatives
+have focused local tests; SQL parser/catalog/scope/timeout/row/payload behavior
+remains in the existing executor. `go test ./...` passes, but no disposable
+PostgreSQL/pooler connection or role/read-back evidence was available or used.
+The package remains `BLOCKING / INCOMPLETE`; do not treat local in-memory tests
+or false-positive SQL gate output as external-role certification. See the
+[7.5D evidence report](phase-7.5-evidence.md#75d-package-report--external-pooler-queryexecutor-composition).
+
 ### 7.5E — Separate SQL role/provisioning and read-back gate
 
 **Prerequisite:** `7.5A` contract and `7.5D` connection/role requirements.

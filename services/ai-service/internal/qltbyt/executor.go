@@ -4,12 +4,63 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 )
 
 // SQLExecutor uses an injected, dedicated pool. It never opens a connection from
 // environment secrets or provisions the ai_query_tool role.
 type SQLExecutor struct {
 	DB *sql.DB
+}
+
+func (e *SQLExecutor) Close() error {
+	if e == nil || e.DB == nil {
+		return nil
+	}
+	return e.DB.Close()
+}
+
+// Ready verifies that the active connection is the dedicated read-only role.
+func (e SQLExecutor) Ready(ctx context.Context) error {
+	err := e.checkReady(ctx)
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
+	return publicQueryError(err)
+}
+
+func (e SQLExecutor) checkReady(ctx context.Context) error {
+	if e.DB == nil {
+		return sqlError("disabled", "query_database is disabled.")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, cancel := context.WithTimeout(ctx, QueryTimeout)
+	defer cancel()
+	tx, err := e.DB.BeginTx(ctx, &sql.TxOptions{ReadOnly: true})
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return err
+	}
+	defer tx.Rollback()
+	var role, transactionReadOnly, defaultReadOnly string
+	err = tx.QueryRowContext(ctx, "select current_user, current_setting('transaction_read_only'), current_setting('default_transaction_read_only')").Scan(&role, &transactionReadOnly, &defaultReadOnly)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return err
+	}
+	if role != "ai_query_tool" || transactionReadOnly != "on" || defaultReadOnly != "on" {
+		return sqlError("disabled", "A dedicated read-only query connection is required.")
+	}
+	return nil
 }
 
 func (e SQLExecutor) Execute(ctx context.Context, call QueryCall) (result QueryResult, err error) {

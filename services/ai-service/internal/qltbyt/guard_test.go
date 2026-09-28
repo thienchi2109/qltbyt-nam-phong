@@ -76,6 +76,8 @@ func TestQueryGuardRejectsUnsafeStatements(t *testing.T) {
 		{sql: "select id from public.thiet_bi", code: "forbidden_schema"},
 		{sql: "select id from auth.users", code: "forbidden_schema"},
 		{sql: "select id from some_other_schema.equipment", code: "forbidden_schema"},
+		{sql: "select pg_advisory_lock(1)", code: "forbidden_function"},
+		{sql: "select ai_readonly.pg_advisory_lock(1)", code: "forbidden_function"},
 		{sql: "select pg_catalog.set_config('app.current_facility_id', '2', true)", code: "forbidden_function"},
 		{sql: "select 1 /* hidden update public.users */", code: "forbidden_keyword"},
 		{sql: "select * from ai_readonly.equipment_search --'\nwhere set_config('app.current_facility_id', '2', true) is not null", code: "forbidden_function"},

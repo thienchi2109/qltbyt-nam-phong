@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"example.com/shared-ai-service/internal/composition"
 )
 
 func TestReadSecretFileTrimsOnlyFileWhitespaceAndRejectsEmpty(t *testing.T) {
@@ -41,6 +46,7 @@ func TestLoadRuntimeConfigReadsExternalSecretsWithoutReplacingFileContract(t *te
 		"GOOGLE_GENERATIVE_AI_API_KEYS_FILE": "google",
 	}
 	env := map[string]string{
+		"AI_DATABASE_URL":               "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=require",
 		"AI_SERVICE_HMAC_KEY_ID":        "key-1",
 		"AI_PROVIDER_CHAIN":             "nvidia/google/gemma-4-31b-it,google/gemini-3.5-flash-lite",
 		"NVIDIA_BASE_URL":               "https://nvidia.invalid/v1/chat/completions",
@@ -63,11 +69,74 @@ func TestLoadRuntimeConfigReadsExternalSecretsWithoutReplacingFileContract(t *te
 	if cfg.reservationTTL < 120*time.Second {
 		t.Fatalf("reservation TTL = %s", cfg.reservationTTL)
 	}
+	if cfg.databaseURL != env["AI_DATABASE_URL"] {
+		t.Fatal("AI_DATABASE_URL was not retained for query composition")
+	}
+	if _, ok := cfg.providerEnv["AI_DATABASE_URL"]; ok {
+		t.Fatal("AI_DATABASE_URL was forwarded to provider configuration")
+	}
 	if cfg.providerEnv["NVIDIA_API_KEY"] != "nvidia" || cfg.providerEnv["GOOGLE_GENERATIVE_AI_API_KEYS"] != "google" {
 		t.Fatalf("provider env did not receive file values: %#v", cfg.providerEnv)
 	}
 	if cfg.providerEnv["NVIDIA_API_KEY_FILE"] == "" || cfg.providerEnv["GOOGLE_GENERATIVE_AI_API_KEYS_FILE"] == "" {
 		t.Fatal("file path contract was removed")
+	}
+}
+
+func TestLoadRuntimeConfigRequiresExternalPoolerURLContract(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		url  string
+	}{
+		{name: "missing URL"},
+		{name: "wrong role", url: "postgresql://postgres:secret@pooler.example:6543/postgres?sslmode=require"},
+		{name: "wrong port", url: "postgresql://ai_query_tool:secret@pooler.example:5432/postgres?sslmode=require"},
+		{name: "wrong database", url: "postgresql://ai_query_tool:secret@pooler.example:6543/app?sslmode=require"},
+		{name: "TLS disabled", url: "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=disable"},
+		{name: "local host", url: "postgresql://ai_query_tool:secret@localhost:6543/postgres?sslmode=require"},
+		{name: "loopback address", url: "postgresql://ai_query_tool:secret@127.0.0.1:6543/postgres?sslmode=require"},
+		{name: "wrong role prefix", url: "postgresql://ai_query_tool_admin:secret@pooler.example:6543/postgres?sslmode=require"},
+		{name: "missing password", url: "postgresql://ai_query_tool@pooler.example:6543/postgres?sslmode=require"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			env, cleanup := validRuntimeEnv(t)
+			defer cleanup()
+			env["AI_DATABASE_URL"] = tc.url
+			if _, err := loadRuntimeConfig(env); err == nil {
+				t.Fatal("invalid external-pooler configuration was accepted")
+			} else if strings.Contains(err.Error(), "secret") {
+				t.Fatalf("configuration error exposed credential data: %v", err)
+			}
+		})
+	}
+
+	for _, username := range []string{"ai_query_tool", "ai_query_tool.projectref"} {
+		t.Run("accepted pooler user "+username, func(t *testing.T) {
+			env, cleanup := validRuntimeEnv(t)
+			defer cleanup()
+			env["AI_DATABASE_URL"] = "postgresql://" + username + ":secret@pooler.example:6543/postgres?sslmode=require"
+			if _, err := loadRuntimeConfig(env); err != nil {
+				t.Fatalf("valid external-pooler configuration rejected: %v", err)
+			}
+		})
+	}
+}
+
+func TestPoolerStartupLogUsesRedactedDiagnostic(t *testing.T) {
+	_, err := composition.OpenPoolerQueryExecutor(context.Background(), "postgresql://ai_query_tool:authority-secret@pooler.example:6543/postgres?sslmode=require", 0)
+	if err == nil || err.Error() != "external pooler query executor is unavailable" {
+		t.Fatalf("pooler error = %v", err)
+	}
+	previous := log.Writer()
+	var output bytes.Buffer
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previous) })
+	logPoolerConnectionFailure(err)
+	if !strings.Contains(output.String(), "stage=configuration cause=sql_invalid_limits") {
+		t.Fatalf("pooler diagnostic missing from startup log: %s", output.String())
+	}
+	if strings.Contains(output.String(), "authority-secret") {
+		t.Fatalf("pooler startup log exposed credentials: %s", output.String())
 	}
 }
 
@@ -88,12 +157,13 @@ func TestRuntimeHandlerReadinessFailsClosedWhenConfigIsInvalid(t *testing.T) {
 	}
 }
 
-func TestRuntimeHandlerKeepsUnregisteredCapabilityUnreadyWithoutModelCall(t *testing.T) {
+func TestRuntimeHandlerReadinessFailsClosedWhenDatabaseURLIsMissing(t *testing.T) {
 	env, cleanup := validRuntimeEnv(t)
 	defer cleanup()
+	delete(env, "AI_DATABASE_URL")
 	runtime := newServiceRuntime(env)
-	if runtime == nil || runtime.configErr != nil {
-		t.Fatalf("valid runtime config = %#v", runtime)
+	if runtime == nil || runtime.configErr == nil {
+		t.Fatalf("missing AI_DATABASE_URL did not fail runtime configuration closed: %#v", runtime)
 	}
 	if runtime.handler.ConfigReady == nil || runtime.handler.ConfigReady() {
 		t.Fatal("empty capability registry was reported ready")
@@ -136,6 +206,7 @@ func TestPrivateListenAddrRejectsPublicBind(t *testing.T) {
 func TestCleanupGraceCannotExceedBoundedBudget(t *testing.T) {
 	env, cleanup := validRuntimeEnv(t)
 	defer cleanup()
+	env["AI_DATABASE_URL"] = "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=require"
 	env["AI_SERVICE_CLEANUP_GRACE"] = "6s"
 	if _, err := loadRuntimeConfig(env); err == nil {
 		t.Fatal("cleanup grace exceeded bounded budget")

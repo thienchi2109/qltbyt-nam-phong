@@ -38,6 +38,7 @@ type runtimeConfig struct {
 	hmacSecret        []byte
 	brokerSecret      []byte
 	brokerEndpoint    string
+	databaseURL       string
 	appID             string
 	capabilityID      string
 	capabilityVersion string
@@ -50,6 +51,7 @@ type serviceRuntime struct {
 	configErr error
 	handler   *ingress.Handler
 	lifecycle *ingress.Lifecycle
+	database  composition.QueryExecutor
 }
 
 func main() {
@@ -58,6 +60,7 @@ func main() {
 		log.Print("ai-service runtime initialization failed closed")
 		return
 	}
+	defer runtime.close()
 	if runtime.configErr != nil {
 		log.Print("ai-service configuration is unavailable; readiness remains false")
 	}
@@ -127,9 +130,14 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	if chainErr != nil {
 		return &serviceRuntime{config: config, configErr: chainErr, lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Metrics: metrics}}
 	}
-	// QueryExecutor composition belongs to 7.5D. The broker is composed here,
-	// but registration remains closed until that dependency is supplied.
-	capabilityReady := composition.RegisterAssistantWithEndpoint(reg, config.brokerEndpoint, nil, config.brokerSecret, nil)
+	var queryExecutor composition.QueryExecutor
+	if config.brokerEndpoint != "" {
+		queryExecutor, err = composition.OpenPoolerQueryExecutor(context.Background(), config.databaseURL, config.maxConcurrent)
+		if err != nil {
+			logPoolerConnectionFailure(err)
+		}
+	}
+	capabilityReady := composition.RegisterAssistantWithEndpoint(reg, config.brokerEndpoint, nil, config.brokerSecret, queryExecutor)
 	runner := &orchestration.Runner{
 		Registry: reg,
 		Usage:    usage.NewMemory(time.Now),
@@ -155,14 +163,27 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 		Lifecycle: lifecycle,
 		Metrics:   metrics,
 		ConfigReady: func() bool {
-			if chain == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
+			if chain == nil || queryExecutor == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
 				return false
 			}
 			_, lookupErr := reg.Lookup(config.appID, config.capabilityID, config.capabilityVersion)
-			return lookupErr == nil
+			if lookupErr != nil {
+				return false
+			}
+			return composition.QueryExecutorReady(context.Background(), queryExecutor)
 		},
 	}
-	return &serviceRuntime{config: config, handler: handler, lifecycle: lifecycle}
+	return &serviceRuntime{config: config, handler: handler, lifecycle: lifecycle, database: queryExecutor}
+}
+
+func logPoolerConnectionFailure(err error) {
+	log.Printf("ai-service external-pooler query connection is unavailable; readiness remains false (%s)", composition.PoolerDiagnostic(err))
+}
+
+func (runtime *serviceRuntime) close() {
+	if runtime != nil && runtime.database != nil {
+		_ = composition.CloseQueryExecutor(runtime.database)
+	}
 }
 
 func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
@@ -214,6 +235,11 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 			return runtimeConfig{}, err
 		}
 	}
+	databaseURL := strings.TrimSpace(values["AI_DATABASE_URL"])
+	if err := composition.ValidatePoolerURL(databaseURL); err != nil {
+		return runtimeConfig{}, err
+	}
+	delete(values, "AI_DATABASE_URL")
 	listenAddr, err := privateListenAddr(values["AI_SERVICE_LISTEN_ADDR"])
 	if err != nil {
 		return runtimeConfig{}, err
@@ -228,6 +254,7 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 		hmacSecret:        hmacSecret,
 		brokerSecret:      brokerSecret,
 		brokerEndpoint:    brokerEndpoint,
+		databaseURL:       databaseURL,
 		appID:             strings.TrimSpace(values["AI_SERVICE_APP_ID"]),
 		capabilityID:      strings.TrimSpace(values["AI_SERVICE_CAPABILITY_ID"]),
 		capabilityVersion: strings.TrimSpace(values["AI_SERVICE_CAPABILITY_VERSION"]),
