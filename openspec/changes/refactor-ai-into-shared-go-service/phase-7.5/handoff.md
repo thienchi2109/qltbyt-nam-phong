@@ -10,10 +10,12 @@ was rebuilt natively from the exact subject. The candidate digest is
 with OCI revision equal to the subject; private `/healthz=200` and
 `/readyz=200` now exercise the external-pooler tuple. A disposable
 broker-token clarification request also returned SSE `200` without provider
-work. Positive trusted Access was not run: `/api/chat/dark` requires a real
-NextAuth session and no session credential was available. `7.5F.3` records
-this reconciliation, and `7.5F.2` is checked as disposable-only evidence.
-`7.5F.1` and `7.5G` stay open. `7.5E` static remains `INCOMPLETE` and
+work. One production login attempt established a NextAuth session with an
+allowed role and facility scope, but the subsequent clarification-only
+`POST /api/chat/dark` returned HTTP `403` JSON `unauthorized` with no SSE.
+Trusted Access positive acceptance therefore remains blocked. `7.5F.3`
+records this reconciliation, and `7.5F.2` is checked as disposable-only
+evidence. `7.5F.1` and `7.5G` stay open. `7.5E` static remains `INCOMPLETE` and
 baseline-forward remains `NOT RUN`; the waiver is not a gate PASS. Overall
 Phase 7.5 remains `BLOCKING / INCOMPLETE`. See the final 7.5F sections in
 `phase-7.5-evidence.md`.
@@ -286,10 +288,9 @@ The maintainer explicitly waived the unresolved DB quality-gate lanes for this
 7.5E acceptance. Preserve the recorded `static=INCOMPLETE` and
 `baseline-forward=NOT RUN` statuses; this is a waiver, not a gate PASS.
 Vercel production redeploy reached `READY` and is aliased to `www.cvmems.vn`.
-Paid-provider smoke is intentionally deferred to manual frontend testing
-because no usable NextAuth credential exists in this environment. No synthetic
-identity or auth bypass was used. Do not claim provider smoke PASS, cut over
-`/api/chat`, or open downstream phases from this handoff.
+Paid-provider smoke is intentionally deferred to manual frontend testing. No
+synthetic identity or auth bypass was used. Do not claim provider smoke PASS,
+cut over `/api/chat`, or open downstream phases from this handoff.
 
 ## 7.5F execution record (2026-09-29)
 
@@ -338,8 +339,9 @@ An earlier exploratory request with an empty tool set returned `start` then
 quota/usage write was observed, and no further provider request was made.
 
 The trusted positive Cloudflare Access lane through production BFF remains
-blocked. `/api/chat/dark` requires a real NextAuth session, and no session
-credential was available. Browser-supplied Access headers remain negative
+blocked. One production login attempt established the NextAuth session, but
+the clarification-only `/api/chat/dark` request returned HTTP `403` JSON
+`unauthorized` with no SSE. Browser-supplied Access headers remain negative
 evidence; no Access secret was recovered, forged or bypassed. Therefore
 `7.5F.2` is checked as `DISPOSABLE ONLY`, `7.5F.1` remains open, and Phase 7.5
 stays `BLOCKING / INCOMPLETE`. The `7.5E` waiver remains

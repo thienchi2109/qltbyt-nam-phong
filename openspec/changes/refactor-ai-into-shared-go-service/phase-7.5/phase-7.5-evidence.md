@@ -526,3 +526,26 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   `static=INCOMPLETE`, `baseline-forward=NOT RUN`; `7.5G`, cutover, Phase 8/9
   and paid-provider smoke remain unopened. Overall Phase 7.5 is still
   `BLOCKING / INCOMPLETE`.
+
+### 7.5F.1 trusted Access attempt (2026-09-29)
+
+- **Credential handling:** the user-provided frontend credential was read once
+  from a mode-`0600` temporary handle in process memory and the handle was
+  deleted in `finally` before the request flow completed. No username,
+  password, CSRF value, cookie or session token was printed, persisted or
+  committed.
+- **NextAuth session:** production CSRF and credentials callback completed with
+  HTTP `200`; a subsequent session read returned an authenticated user with an
+  allowed `to_qltb` role and facility scope. This was one login attempt only;
+  no retry or alternate credential was used.
+- **Production BFF acceptance:** a clarification-only payload with the full
+  routing tool set was sent once to `POST https://www.cvmems.vn/api/chat/dark`.
+  The response was HTTP `403`, JSON `unauthorized`, with no SSE stream. No
+  provider, RPC, quota or usage evidence was observed. This does not prove
+  trusted Access acceptance; it is a production-BFF blocker after session
+  establishment.
+- **Boundary:** no Access secret was recovered or logged, no browser header was
+  forged, and no authentication bypass or live DB write was used. Do not tick
+  `7.5F.1`; the trusted positive Cloudflare Access lane remains
+  `BLOCKING / INCOMPLETE` until the production BFF accepts the authenticated
+  request and returns the clarification SSE response.
