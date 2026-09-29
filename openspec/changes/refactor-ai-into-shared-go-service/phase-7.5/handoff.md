@@ -405,3 +405,21 @@ startup/readiness evidence only. The active token-run tunnel, Cloudflare
 policy, Vercel settings and production BFF were untouched, so the host/bridge
 route mismatch and trusted Access blocker remain unresolved. No secret, provider
 request or live DB operation was performed; `7.5F.1` remains open.
+
+## Latest read-only pooler/catalog correlation (2026-09-29)
+
+A read-only transaction-pooler login as `ai_query_tool` succeeded. The session
+reported both `transaction_read_only=on` and
+`default_transaction_read_only=on`. Through that same role, the five approved
+`ai_readonly` relations — `equipment_search`, `maintenance_facts`,
+`repair_facts`, `usage_facts` and `quota_facts` — were all views and had
+effective schema `USAGE` plus `SELECT`.
+
+At the immediate candidate recreate checkpoint, private `/readyz` still
+returned `503`; DQSS remained health `200`, healthy, and restart `0`. The
+later post-quarantine `200` read-back is recorded above. The SQL result proves
+the pooler role/catalog boundary only; it does not identify a provider root
+cause, prove Tunnel/Access acceptance, or certify production readiness. No
+password/URL was recorded and no SQL write, role change, activation, provider
+request or live DB mutation occurred. The package remains
+`BLOCKING / INCOMPLETE`.

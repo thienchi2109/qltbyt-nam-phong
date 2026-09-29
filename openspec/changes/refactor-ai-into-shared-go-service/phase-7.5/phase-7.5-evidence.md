@@ -655,3 +655,29 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   configuration were not changed. The experiment therefore leaves the prior
   host/bridge route mismatch and the Cloudflare Access evidence gap unresolved;
   overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.
+
+### 7.5E/7.5F read-only pooler/catalog correlation (latest probe, 2026-09-29)
+
+- **Pooler authentication:** a read-only transaction-pooler connection as
+  `ai_query_tool` succeeded. On that connection, both
+  `transaction_read_only` and `default_transaction_read_only` were `on`.
+  The probe did not print or persist the pooler URL, password or any other
+  credential value.
+- **Approved catalog:** the five approved relations in `ai_readonly` —
+  `equipment_search`, `maintenance_facts`, `repair_facts`, `usage_facts` and
+  `quota_facts` — were confirmed as ordinary views (`relkind = 'v'`). The
+  login had effective schema `USAGE` and `SELECT` on all five views. This is
+  effective role/grant evidence through the pooler; it is not a provider smoke
+  result and does not certify the application path.
+- **Runtime correlation:** at the immediate candidate recreate checkpoint,
+  private `/readyz` remained `503` after the host/bridge experiments while
+  DQSS stayed `health=200`, `healthy`, restart count `0`. A later delayed
+  read-only check after the startup/quarantine window returned candidate
+  `/readyz=200` (recorded above); neither observation proves Tunnel reachability,
+  Access acceptance or provider availability.
+- **Interpretation/boundary:** the pooler login and catalog grants pass this
+  read-only check, but the candidate readiness failure remains a separate
+  blocker. No provider root cause is assigned from this evidence. No SQL write,
+  migration, role/password change, runtime activation, authentication retry or
+  live DB mutation occurred; 7.5E remains waived/incomplete and overall Phase
+  7.5 remains `BLOCKING / INCOMPLETE`.
