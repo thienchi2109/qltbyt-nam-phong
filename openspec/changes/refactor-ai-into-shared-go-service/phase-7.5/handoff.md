@@ -360,3 +360,31 @@ evidence; no Access secret was recovered, forged or bypassed. Therefore
 stays `BLOCKING / INCOMPLETE`. The `7.5E` waiver remains
 `static=INCOMPLETE`, `baseline-forward=NOT RUN`; no `7.5G`, cutover, Phase 8/9
 or paid-provider smoke was opened.
+
+## 7.5F.1 read-only access parity follow-up (2026-09-29)
+
+Vercel production metadata contains all six `AI_SERVICE_BFF_*` names with
+Production targets and encrypted/sensitive types. The values were not read.
+The prior request ran on `dpl_7Hhs8L9bwwj7cvbrDXFZDJidvgBV` (`a3267b53`); the
+current production alias is `dpl_8fUnWhGebwVxtEZLaSDJ6BPiQRQa` (`20ac0f26`).
+No Vercel log record exposes the outbound BFF hostname, so equality with the
+configured value cannot be certified. The independently verified service
+hostname is `ai-service.cdclims.cloud`.
+
+Oracle read-only inspection found a concrete activation mismatch. The local
+AI route file validates `ai-service.cdclims.cloud`, `^/v1/chat$` and
+`127.0.0.1:18081`, but the active host-network token-run
+`qltbyt-ai-cloudflared-new` does not mount that file and retained tunnel logs
+show the older `127.0.0.1:8080` origin. The disposable candidate listens only
+inside bridge network `qltbyt-ai_default` at `10.0.7.2:18081`; it has no host
+port mapping, while host port 8080 belongs to `coolify-proxy`. The active route
+therefore cannot reach this candidate. This is not live provider evidence and
+does not authorize activation or a runtime change.
+
+No Cloudflare API/dashboard access, Access application ID, policy revision or
+request-event log is available here. A maintainer must inspect the Access
+application for `ai-service.cdclims.cloud` and `/v1/chat`, verify the service
+token policy against the production BFF pair, and correlate the
+`2026-09-29T04:39Z` request before closing `7.5F.1`. No secret/token value,
+authentication retry, bypass, provider smoke or live DB write was performed;
+the package remains `BLOCKING / INCOMPLETE`.

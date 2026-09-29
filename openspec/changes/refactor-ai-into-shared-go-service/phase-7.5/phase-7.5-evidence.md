@@ -585,3 +585,46 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   revision because the response headers/body and Access request logs were not
   retained. No Access policy, secret, deployment, retry or runtime
   configuration was changed; `7.5F.1` remains `BLOCKING / INCOMPLETE`.
+
+### 7.5F.1 access parity check (read-only, 2026-09-29)
+
+- **Vercel metadata:** CLI `52.0.0` returned all six required production names
+  (`AI_SERVICE_BFF_URL`, HMAC key ID/secret, broker secret and Access client
+  ID/secret). Each targets `Production`; URL/key-ID metadata is `encrypted` and
+  the four secret-bearing entries are `sensitive`. Creation/update metadata is
+  `2026-09-28T23:30:19Z`–`23:36:56Z`. Values were not pulled, printed or
+  compared, and no Vercel write or redeploy was performed during this check.
+  The prior request deployment was `dpl_7Hhs8L9bwwj7cvbrDXFZDJidvgBV` (source
+  `a3267b53`, `01:13:28Z`); the current alias is `dpl_8fUnWhGebwVxtEZLaSDJ6BPiQRQa`
+  (source `20ac0f26`, `05:08:56Z`). Vercel logs returned no records for the
+  prior request window and no dark-chat record in the current deployment.
+- **Hostname boundary:** the `AI_SERVICE_BFF_URL` value itself remains unread,
+  so Vercel-to-Tunnel hostname equality is not certified. The independent Oracle
+  route and DNS lookup identify the intended hostname as
+  `ai-service.cdclims.cloud` (DNS `104.21.12.188`); no request was sent to
+  authenticate or smoke the provider.
+- **Oracle route/config:** `/etc/cloudflared/ai-service/config.yml` is valid and
+  maps `ai-service.cdclims.cloud` plus `^/v1/chat$` to
+  `http://127.0.0.1:18081` (SHA-256
+  `ad9d7ce53e4bc063440c689a940ed6ca3a81607afb95f9a93b832f7c4da6f783`). That
+  file is not mounted into the active `qltbyt-ai-cloudflared-new` container,
+  which runs a host-network `tunnel run --token` command. Its retained startup
+  traffic shows the older remote origin `http://127.0.0.1:8080` only; no
+  entries exist in the 04:30–05:20 UTC request window. The disposable candidate
+  is instead bridge-networked at `10.0.7.2`, listens on container-local
+  `127.0.0.1:18081`, and has no host port mapping; host port 8080 belongs to
+  `coolify-proxy`. Therefore the candidate cannot be reached by the active
+  host-network tunnel in this state. This is a concrete Oracle activation/config
+  mismatch, not evidence of a live production provider call.
+- **Cloudflare Access evidence:** no Cloudflare API/dashboard client, API token
+  environment, Access application ID, policy revision, request-event export or
+  Access log is available in this workspace. The repository policy only states
+  the required hostname/path and service-token boundary; it does not prove the
+  deployed client-ID/secret pair or policy revision. Maintainer inspection must
+  match the Access application for `ai-service.cdclims.cloud`, path `/v1/chat`,
+  service-token policy and the `2026-09-29T04:39Z` request before 7.5F.1 can
+  close.
+- **Boundary:** no secret/token value was read or recorded, no authentication
+  retry or bypass was attempted, no provider smoke was run, and no live DB
+  operation occurred. `7.5F.1` and overall Phase 7.5 remain
+  `BLOCKING / INCOMPLETE`.
