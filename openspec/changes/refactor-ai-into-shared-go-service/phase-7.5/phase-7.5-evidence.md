@@ -549,3 +549,35 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   `7.5F.1`; the trusted positive Cloudflare Access lane remains
   `BLOCKING / INCOMPLETE` until the production BFF accepts the authenticated
   request and returns the clarification SSE response.
+
+### 7.5F.1 403 layer attribution (read-only follow-up, 2026-09-29)
+
+- **Recorded request result:** the single trusted-login script reached its
+  `bff` stage after CSRF/callback/session checks. Its redacted result was
+  `loginStatus=200`, `sessionStatus=200`, role `to_qltb`, `hasFacility=true`,
+  then `status=403`, `contentType=application/json; charset=utf-8`,
+  `clarificationMarker=false`, `finishStop=false`, `unauthorized=true` and
+  `unavailable=false`. The script did not retain the response body, headers or
+  request ID, so those fields cannot distinguish the local role guard from a
+  proxied 403.
+- **Application boundary:** the dark route's only local 403 before the fetch is
+  the role guard (`isAllowedDarkChatRole`). Once it passes, `GoBffProxy` sends
+  the signed request and server-only Cloudflare Access headers. Any upstream
+  403, including a non-JSON Access denial, is normalized by the proxy to JSON
+  `unauthorized` with HTTP 403. Go ingress authentication failures are mapped
+  to HTTP 401, so this result is not evidence of a Go HMAC or broker-token
+  rejection.
+- **Oracle read-only correlation:** the active `qltbyt-ai-cloudflared-new`
+  configuration logged route version 2 as hostname `ai-service.cdclims.cloud`,
+  path `^/v1/chat$`, origin `http://127.0.0.1:18081`; its logs and the
+  candidate container logs had no records during `2026-09-29T04:30:00Z`–
+  `04:45:00Z`. Earlier unauthenticated probes to that hostname returned a
+  non-JSON HTTP `403`, which is consistent with an Access-edge denial but is
+  not the authenticated request itself.
+- **Conclusion and missing condition:** the exact producer of the authenticated
+  403 is not provable without the discarded response body/headers or Cloudflare
+  Access request logs. The strongest bounded diagnosis is a missing or
+  mismatched trusted BFF Access service-token acceptance (or endpoint/policy
+  parity), not a NextAuth login failure. No Access policy, secret, deployment,
+  retry or runtime configuration was changed; `7.5F.1` remains
+  `BLOCKING / INCOMPLETE`.

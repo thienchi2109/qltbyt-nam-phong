@@ -20,6 +20,16 @@ baseline-forward remains `NOT RUN`; the waiver is not a gate PASS. Overall
 Phase 7.5 remains `BLOCKING / INCOMPLETE`. See the final 7.5F sections in
 `phase-7.5-evidence.md`.
 
+The read-only attribution follow-up is recorded in the final evidence section:
+the sanitized attempt reached the BFF stage with `loginStatus=200`,
+`sessionStatus=200`, role `to_qltb` and a facility, then returned HTTP `403`
+JSON `unauthorized` without SSE. The response body/headers were not retained,
+so the exact local-versus-upstream producer cannot be proven. Oracle Tunnel v2
+routes only `/v1/chat` to the private candidate; no cloudflared or candidate
+log record appeared in the attempt window. The bounded diagnosis remains a
+trusted BFF Access service-token or endpoint/policy parity blocker; no fix or
+Access bypass was attempted.
+
 ## Latest Vercel settings checkpoint
 
 Four production settings are now stored: AI_SERVICE_BFF_URL,
