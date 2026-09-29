@@ -2,13 +2,18 @@
 
 **Status:** `BLOCKING / INCOMPLETE` for overall Phase 7.5. Tasks `7.5E.1`–`7.5E.3`
 are accepted. `7.5E.2` is accepted with the recorded waiver: static remains
-`INCOMPLETE` and baseline-forward remains `NOT RUN`. `7.5E.3` is accepted on
-the live role/grant/config read-back. Pooler connection verification moves to
-the next acceptance step, and Oracle credential parity is not required. This
-is not a gate PASS, pooler/readiness certification, or acceptance of 7.5F-G.
+`INCOMPLETE` and baseline-forward remains `NOT RUN`. That waiver is not a gate
+PASS. `7.5E.3` is accepted on the live role/grant/config read-back. Pooler
+connection verification moves to the next acceptance step, and Oracle
+credential parity is not required. The 2026-09-29 `7.5F` reconciliation is
+recorded below. `7.5F.1` and `7.5F.2` stay open. This is not pooler/readiness
+certification, production acceptance, or acceptance of `7.5G`.
 
-**Subject commit/config:** `TBD` (every package must bind evidence to one
-exact subject commit and configuration hash before it can be accepted).
+**Subject commit/config:** not accepted as one phase subject. The `7.5F`
+attempt binds Next.js and local disposable tests to
+`a3267b539e9169342b12d7a127980b549217fb33`. The running Oracle image remains
+revision `5ea42ef24b1decf5638ad009a17509b36d3909ab`, digest
+`sha256:3e7b239b69b7feec68174c9c2f89bdd7fe1703125f0a979a2f6e8470abc25d3d`.
 
 **Latest candidate checkpoint (2026-09-28):** the authorized Oracle candidate
 upgrade uses exact source `5ea42ef24b1decf5638ad009a17509b36d3909ab`.
@@ -67,15 +72,15 @@ completing one package does not tick or authorize another package.
 
 ## Package acceptance matrix
 
-| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                                                                     |
-| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                                                                       |
-| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                                                                       |
-| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                         |
-| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **BLOCKING / INCOMPLETE** — local Go contract proof passes; no disposable PostgreSQL role/connection evidence; production role/read-back is `7.5E`                                                   |
-| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step |
-| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **NOT RUN** — cannot certify production                                                                                                                                                              |
-| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                 |
+| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                                                                                                                                                |
+| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                                                                                                                                                  |
+| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                                                                                                                                                  |
+| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                                                                                                    |
+| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **DISPOSABLE ONLY / NOT EXACT-COMMIT** — later Oracle entry passed the tested catalog matrix on `848073b5` plus an uncommitted executor fix; that superseded the earlier "no disposable PostgreSQL" note. It is not production certification and is not evidence for `a3267b53` |
+| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step                                                                            |
+| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **BLOCKING / INCOMPLETE** — disposable token, browser-Access rejection, readiness and unsafe-SQL tests passed on `a3267b53`; positive trusted Access and exact-commit Go tuple negatives were not run                                                                           |
+| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                                                                                            |
 
 ## Readiness acceptance
 
@@ -113,8 +118,10 @@ check or mock does not satisfy this gate.
 - Tasks `7.5E.1`–`7.5E.3` are accepted. Static remains `INCOMPLETE` and
   baseline-forward remains `NOT RUN` under the recorded waiver. Live
   role/grant/config read-back is the `7.5E.3` evidence. Pooler connection
-  verification is the next acceptance step. Overall Phase 7.5 stays
-  `BLOCKING / INCOMPLETE` until `7.5F`–`G`.
+  verification is the next acceptance step. The 2026-09-29 reconciliation
+  records `7.5F` as `BLOCKING / INCOMPLETE`: `7.5F.3` is checked, while
+  `7.5F.1`, `7.5F.2` and `7.5G` stay open. Overall Phase 7.5 stays
+  `BLOCKING / INCOMPLETE`.
 - No live DB write, migration, DDL, Supabase CLI operation or production
   credential provisioning is authorized by this artifact.
 - Phase 8 `/api/chat` cutover, Phase 9 legacy cleanup and paid-provider smoke
@@ -445,3 +452,27 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 - **Result:** 7.5E is operationally closed under the explicit gate waiver,
   with the waiver, unrun smoke, and lane statuses preserved. This does not
   certify paid-provider availability or open 7.5F-G, cutover, Phase 8/9.
+
+### 7.5F disposable auth/readiness reconciliation (2026-09-29)
+
+- **Subject for this attempt:** `a3267b539e9169342b12d7a127980b549217fb33` on `main`. Worktree was clean and equal to `origin/main` before the reconciliation edit.
+- **Label:** `DISPOSABLE ONLY` for the tests below, and `BLOCKING / INCOMPLETE` for package acceptance. This is not `PRODUCTION-CANDIDATE`.
+- **7.5E boundary preserved:** static remains `INCOMPLETE`. Baseline-forward remains `NOT RUN`. The recorded waiver is not a static PASS, baseline-forward PASS, or aggregate gate PASS. No live SQL, migration, DDL, grant, password, or pooler login was performed in this package.
+- **Exact-commit parity:**
+  - Vercel production deployment `dpl_7Hhs8L9bwwj7cvbrDXFZDJidvgBV` is `READY`, source `git`, ref `main`, commit `a3267b539e9169342b12d7a127980b549217fb33`, message `docs: close out phase 7.5e with gate waiver`. Aliases include `https://www.cvmems.vn`.
+  - Oracle container `qltbyt-ai-service-candidate` was inspected read-only at `2026-09-29T01:27:33Z`. Image digest `sha256:3e7b239b69b7feec68174c9c2f89bdd7fe1703125f0a979a2f6e8470abc25d3d`. Label `org.opencontainers.image.revision=5ea42ef24b1decf5638ad009a17509b36d3909ab`. User `65532:65532`, read-only root, host network, listener `127.0.0.1:18081` only. Private probes: `/healthz=200`, `/readyz=200`.
+  - `git diff --quiet 5ea42ef24b1decf5638ad009a17509b36d3909ab a3267b53 -- services/ai-service src` is empty. The only non-doc difference is `package.json` `prepare`, which skips Lefthook when `VERCEL=1`. Go image commit parity with `a3267b53` therefore fails even though the Go and `src` trees match.
+- **Disposable tests on `a3267b53`, local source, not inside the Oracle image:**
+  - `go test -count=1 -timeout 180s ./internal/qltbyt ./internal/composition ./internal/ingress` — all three packages `ok`. The run includes broker token rejection, audit-before-release, unsafe SQL rejection before executor, nil/missing Broker, QueryExecutor and registry, dummy executor `/readyz=503`, and the in-process complete-tuple `/readyz=200` case.
+  - Vitest `route.test.ts` (23), `GoBffBrokerCredential.test.ts` (6), `GoBffConfig.test.ts` (9), `GoBffProxy.test.ts` (6), `src/app/api/chat/dark/__tests__/route.test.ts` (3) — 5 files, 47 tests passed. Browser-supplied `CF-Access-Client-Id` and `CF-Access-Client-Secret` do not authorize the broker route without a valid HMAC token (`401`). Fixture Access headers are injected only from server config.
+- **Live negative probes, no session and no secret values:**
+  - `POST https://www.cvmems.vn/api/internal/ai/broker/v1` without Authorization, with an invalid bearer, and with only browser-copy Access headers: each returned `401` and error code `unauthorized`.
+  - `POST https://www.cvmems.vn/api/chat/dark` without a session, including browser-copy Access headers: `401` `unauthorized`.
+  - `https://ai-service.cdclims.cloud/v1/chat` with browser-copy Access headers, and unauthenticated `/healthz` and `/readyz` on that hostname: each returned `403`. These public probes did not reach a ready chat or health response. The Phase 7 observation that public `/healthz` and `/readyz` returned `404` is historical; this run observed `403`.
+- **Not run, and not manufactured:**
+  - Positive trusted Access acceptance. Production names `AI_SERVICE_BFF_URL`, `AI_SERVICE_BFF_HMAC_KEY_ID`, `AI_SERVICE_BFF_HMAC_SECRET`, `AI_SERVICE_BFF_BROKER_SECRET`, `AI_SERVICE_BFF_CF_ACCESS_CLIENT_ID` and `AI_SERVICE_BFF_CF_ACCESS_CLIENT_SECRET` are present as encrypted Production variables. Their values were not read, copied, or sent. Device Quota Access variables were not reused. No NextAuth session was available.
+  - Positive live broker token and any RPC, quota, audit, or provider call.
+  - External-pooler negative tuple cases on this commit. Missing Broker, QueryExecutor, registry, and unsafe SQL were proven by local disposable tests. They were not repeated by changing the running candidate. The private `/readyz=200` belongs to image revision `5ea42ef`, not to git commit `a3267b53`.
+- **Reconciliation with `7.5A`–`E`:** `7.5A` remains `READY FOR REVIEW`, not PASS. `7.5B` and `7.5C` remain `DISPOSABLE ONLY`. `7.5D` has a later disposable Oracle catalog result on `848073b5` plus an uncommitted fix; the matrix no longer says that result is absent, and it still does not certify `a3267b53` or production. `7.5E` remains accepted only with the waiver above. Those predecessor statuses do not close `7.5F.1` or `7.5F.2`.
+- **Checkbox result:** `7.5F.3` is checked because this reconciliation is the direct evidence. `7.5F.1` and `7.5F.2` stay open. `7.5G`, Phase 8 `/api/chat` cutover, Phase 9 cleanup, and paid-provider smoke stay unopened.
+- **Status:** `BLOCKING / INCOMPLETE`.

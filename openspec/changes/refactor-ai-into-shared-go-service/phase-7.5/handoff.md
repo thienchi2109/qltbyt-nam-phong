@@ -1,5 +1,19 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest 7.5F checkpoint (2026-09-29)
+
+Subject `a3267b539e9169342b12d7a127980b549217fb33` was reconciled for disposable
+auth and readiness. Local Go and Vitest matrices passed, and unauthenticated
+production negatives rejected browser Access headers. The Oracle candidate
+image is still revision `5ea42ef24b1decf5638ad009a17509b36d3909ab`, so Go
+commit parity fails. Positive trusted Access was not run: the six production
+`AI_SERVICE_BFF_*` names exist, but their values were not read and no NextAuth
+session was available. `7.5F.3` records that reconciliation. `7.5F.1`,
+`7.5F.2`, and `7.5G` stay open. `7.5E` static remains `INCOMPLETE` and
+baseline-forward remains `NOT RUN`; the waiver is not a gate PASS. Overall
+Phase 7.5 remains `BLOCKING / INCOMPLETE`. See the final 7.5F section in
+`phase-7.5-evidence.md`.
+
 ## Latest Vercel settings checkpoint
 
 Four production settings are now stored: AI_SERVICE_BFF_URL,
@@ -272,3 +286,20 @@ Paid-provider smoke is intentionally deferred to manual frontend testing
 because no usable NextAuth credential exists in this environment. No synthetic
 identity or auth bypass was used. Do not claim provider smoke PASS, cut over
 `/api/chat`, or open downstream phases from this handoff.
+
+## 7.5F execution record (2026-09-29)
+
+The integration acceptance pass used the existing Vercel deployment and Oracle
+candidate. It did not rotate credentials, change runtime configuration, or
+write to a database. Disposable token, cancellation, redaction, audit-order,
+unsafe-SQL, and missing-tuple tests passed on `a3267b53`. Live checks proved
+only negative paths: broker `401` without a valid token, dark route `401`
+without a session, and Cloudflare `403` for browser-copy Access headers.
+`/readyz=200` was observed privately on the `5ea42ef` image and is not
+exact-commit evidence for `a3267b53`.
+
+`7.5A` is still ready for review rather than PASS. `7.5B` and `7.5C` remain
+disposable. `7.5D` disposable Oracle evidence is tied to `848073b5` plus an
+uncommitted fix. `7.5E` remains the waiver recorded above. Those facts keep
+`7.5F.1` and `7.5F.2` open and leave `7.5G`, cutover, Phase 8/9, and
+paid-provider smoke unopened.
