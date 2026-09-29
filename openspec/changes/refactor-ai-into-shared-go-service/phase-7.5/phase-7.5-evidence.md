@@ -428,3 +428,20 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 - **Boundary:** 7.5E.1-3 acceptance remains unchanged; static INCOMPLETE and
   baseline-forward NOT RUN remain unchanged. This is positive candidate
   evidence, not completion of the full 7.5F negative/auth/Access matrix or 7.5G.
+
+### 7.5E closeout waiver and production deployment (2026-09-29)
+
+- **Closeout decision:** the user explicitly waived completion of the DB
+  quality-gate lanes for this acceptance. Static remains `INCOMPLETE` and
+  baseline-forward remains `NOT RUN`; neither is relabeled as PASS.
+- **Deployment:** the exact-commit Vercel production deployment reached
+  `READY` and was aliased to `https://www.cvmems.vn`. The deployment included
+  the six approved `AI_SERVICE_BFF_*` variables; secret values are not recorded
+  here.
+- **Paid-provider smoke:** deferred by the user for manual frontend testing
+  because this environment has no usable NextAuth credentials. No synthetic
+  session, authentication bypass, provider request, or quota/usage write was
+  used to manufacture a result.
+- **Result:** 7.5E is operationally closed under the explicit gate waiver,
+  with the waiver, unrun smoke, and lane statuses preserved. This does not
+  certify paid-provider availability or open 7.5F-G, cutover, Phase 8/9.

@@ -261,3 +261,14 @@ documentation update. Before dispatch, record the exact subject commit,
 configuration/image hashes, owner and approval boundary in
 [phase-7.5-evidence.md](phase-7.5-evidence.md). Do not tick downstream package
 checkboxes from a predecessor's evidence.
+
+## 2026-09-29 closeout
+
+The maintainer explicitly waived the unresolved DB quality-gate lanes for this
+7.5E acceptance. Preserve the recorded `static=INCOMPLETE` and
+`baseline-forward=NOT RUN` statuses; this is a waiver, not a gate PASS.
+Vercel production redeploy reached `READY` and is aliased to `www.cvmems.vn`.
+Paid-provider smoke is intentionally deferred to manual frontend testing
+because no usable NextAuth credential exists in this environment. No synthetic
+identity or auth bypass was used. Do not claim provider smoke PASS, cut over
+`/api/chat`, or open downstream phases from this handoff.
