@@ -315,10 +315,10 @@ subject commit/config hashes và phân loại rõ `DISPOSABLE ONLY` hay
 `PRODUCTION-CANDIDATE`; disposable PASS không certify production.
 
 - [ ] 7.5F.1 Chạy positive/negative broker token and Access tests; browser-supplied Access credential must fail.
-- [ ] 7.5F.2 Chạy disposable real-tuple wiring/readiness checks, including missing Broker/QueryExecutor/registry and unsafe SQL cases.
+- [x] 7.5F.2 Chạy disposable real-tuple wiring/readiness checks, including missing Broker/QueryExecutor/registry and unsafe SQL cases.
 - [x] 7.5F.3 Reconcile evidence against `7.5A–E`; mark blockers instead of ticking downstream acceptance without proof.
 
-Đối soát 2026-09-29 trên subject `a3267b53`: `7.5F.3` chỉ ghi blocker. `7.5F.1` và `7.5F.2` vẫn mở. Positive trusted Access và exact-commit Go image parity chưa có bằng chứng trực tiếp. `7.5E` giữ `static=INCOMPLETE`, `baseline-forward=NOT RUN`; waiver không phải gate PASS. Không tick `7.5G`, Phase 8/9 hay paid-provider smoke.
+Đối soát 2026-09-29 trên subject `a3267b53`: `7.5F.2` đã có exact-commit ARM64 candidate `/healthz=200` + `/readyz=200`, positive disposable broker-token clarification, và local negative tuple/unsafe-SQL evidence; mục này chỉ là `DISPOSABLE ONLY`. `7.5F.1` vẫn mở vì positive trusted Access qua production BFF cần session credential. `7.5E` giữ `static=INCOMPLETE`, `baseline-forward=NOT RUN`; waiver không phải gate PASS. Không tick `7.5G`, Phase 8/9 hay paid-provider smoke.
 
 Điểm dừng: Dừng nếu Access lane lacks trusted BFF source, readiness `200` is
 possible without the real tuple, or disposable evidence is being presented as

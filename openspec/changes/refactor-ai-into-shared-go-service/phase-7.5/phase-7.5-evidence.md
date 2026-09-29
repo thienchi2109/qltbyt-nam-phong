@@ -5,21 +5,27 @@ are accepted. `7.5E.2` is accepted with the recorded waiver: static remains
 `INCOMPLETE` and baseline-forward remains `NOT RUN`. That waiver is not a gate
 PASS. `7.5E.3` is accepted on the live role/grant/config read-back. Pooler
 connection verification moves to the next acceptance step, and Oracle
-credential parity is not required. The 2026-09-29 `7.5F` reconciliation is
-recorded below. `7.5F.1` and `7.5F.2` stay open. This is not pooler/readiness
-certification, production acceptance, or acceptance of `7.5G`.
+credential parity is not required. The 2026-09-29 `7.5F` reconciliation and
+the exact-subject candidate rerun are recorded below. `7.5F.1` stays open for
+the trusted production-BFF Access positive path; `7.5F.2` has disposable
+exact-subject tuple evidence but remains disposable-only. This is not
+production acceptance or acceptance of `7.5G`.
 
 **Subject commit/config:** not accepted as one phase subject. The `7.5F`
-attempt binds Next.js and local disposable tests to
-`a3267b539e9169342b12d7a127980b549217fb33`. The running Oracle image remains
-revision `5ea42ef24b1decf5638ad009a17509b36d3909ab`, digest
-`sha256:3e7b239b69b7feec68174c9c2f89bdd7fe1703125f0a979a2f6e8470abc25d3d`.
+attempt binds Next.js, local disposable tests, and the rerun candidate to
+`a3267b539e9169342b12d7a127980b549217fb33`. The exact-subject Oracle image
+is revision `a3267b539e9169342b12d7a127980b549217fb33`, digest
+`sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`
+(`arm64/linux`).
 
-**Latest candidate checkpoint (2026-09-28):** the authorized Oracle candidate
-upgrade uses exact source `5ea42ef24b1decf5638ad009a17509b36d3909ab`.
-Pooler login and catalog privilege read-back from Oracle pass. See the final
-candidate deployment entry for the runtime result and BFF smoke blocker.
-This does not reopen accepted 7.5E tasks or convert waived DB lanes to PASS.
+**Latest candidate checkpoint (2026-09-29):** the disposable Oracle candidate
+was rebuilt natively for `arm64` from exact subject
+`a3267b539e9169342b12d7a127980b549217fb33` and recreated with a temporary
+override that mounted the configured secret files without recording values.
+Private `/healthz` and `/readyz` both returned `200` after the restart
+quarantine. The earlier `5ea42ef` deployment remains historical evidence and
+does not bind the current candidate. This does not reopen accepted 7.5E tasks
+or convert waived DB lanes to PASS.
 
 **Latest Vercel configuration checkpoint:** four production BFF variables have
 now been added and their names/types/target read back: URL, HMAC key ID, HMAC
@@ -79,7 +85,7 @@ completing one package does not tick or authorize another package.
 | `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                                                                                                    |
 | `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **DISPOSABLE ONLY / NOT EXACT-COMMIT** — later Oracle entry passed the tested catalog matrix on `848073b5` plus an uncommitted executor fix; that superseded the earlier "no disposable PostgreSQL" note. It is not production certification and is not evidence for `a3267b53` |
 | `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step                                                                            |
-| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **BLOCKING / INCOMPLETE** — disposable token, browser-Access rejection, readiness and unsafe-SQL tests passed on `a3267b53`; positive trusted Access and exact-commit Go tuple negatives were not run                                                                           |
+| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **BLOCKING / INCOMPLETE** — exact-subject ARM64 image parity, disposable broker-token clarification, browser-Access rejection, `/healthz=200`, `/readyz=200` and local tuple/unsafe-SQL negatives are evidenced; positive trusted Access through production BFF remains unrun   |
 | `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                                                                                            |
 
 ## Readiness acceptance
@@ -473,6 +479,50 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   - Positive trusted Access acceptance. Production names `AI_SERVICE_BFF_URL`, `AI_SERVICE_BFF_HMAC_KEY_ID`, `AI_SERVICE_BFF_HMAC_SECRET`, `AI_SERVICE_BFF_BROKER_SECRET`, `AI_SERVICE_BFF_CF_ACCESS_CLIENT_ID` and `AI_SERVICE_BFF_CF_ACCESS_CLIENT_SECRET` are present as encrypted Production variables. Their values were not read, copied, or sent. Device Quota Access variables were not reused. No NextAuth session was available.
   - Positive live broker token and any RPC, quota, audit, or provider call.
   - External-pooler negative tuple cases on this commit. Missing Broker, QueryExecutor, registry, and unsafe SQL were proven by local disposable tests. They were not repeated by changing the running candidate. The private `/readyz=200` belongs to image revision `5ea42ef`, not to git commit `a3267b53`.
-- **Reconciliation with `7.5A`–`E`:** `7.5A` remains `READY FOR REVIEW`, not PASS. `7.5B` and `7.5C` remain `DISPOSABLE ONLY`. `7.5D` has a later disposable Oracle catalog result on `848073b5` plus an uncommitted fix; the matrix no longer says that result is absent, and it still does not certify `a3267b53` or production. `7.5E` remains accepted only with the waiver above. Those predecessor statuses do not close `7.5F.1` or `7.5F.2`.
-- **Checkbox result:** `7.5F.3` is checked because this reconciliation is the direct evidence. `7.5F.1` and `7.5F.2` stay open. `7.5G`, Phase 8 `/api/chat` cutover, Phase 9 cleanup, and paid-provider smoke stay unopened.
+- **Historical reconciliation with `7.5A`–`E`:** `7.5A` remains `READY FOR REVIEW`, not PASS. `7.5B` and `7.5C` remain `DISPOSABLE ONLY`. `7.5D` has a later disposable Oracle catalog result on `848073b5` plus an uncommitted fix; the matrix no longer says that result is absent, and it still does not certify `a3267b53` or production. `7.5E` remains accepted only with the waiver above. At this pre-rerun checkpoint, exact-subject image parity and the real tuple were still pending.
+- **Historical checkbox result:** `7.5F.3` is checked because this reconciliation is the direct evidence. `7.5F.1` and `7.5F.2` were left open at that point. The exact-subject rerun below supersedes only the disposable image/token/tuple findings; `7.5G`, Phase 8 `/api/chat` cutover, Phase 9 cleanup, and paid-provider smoke stay unopened.
 - **Status:** `BLOCKING / INCOMPLETE`.
+
+### 7.5F exact-subject candidate rerun (2026-09-29)
+
+- **Subject and build:** the source worktree was detached at
+  `a3267b539e9169342b12d7a127980b549217fb33` and the pinned service Dockerfile
+  was built natively on the Oracle `arm64` host with `TARGETARCH=arm64`.
+  Docker reports repository digest/image ID
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`,
+  `org.opencontainers.image.revision` equal to the subject, and
+  `arm64/linux`. The previous `5ea42ef` image was not used for this run.
+- **Candidate runtime:** only the disposable
+  `qltbyt-ai-service-candidate` container was recreated. The temporary
+  Compose override attached the four existing root-owned secret files and
+  supplied the configured HMAC key ID, provider chain, BFF URL and external
+  pooler URL through variable references; no secret value was printed or
+  persisted in the repository. The container is `running/healthy`, user
+  `65532:65532`, and the image ID matches the digest above.
+- **Exact-subject private probes:** after the replay quarantine,
+  `docker exec ... /busybox wget` returned `/healthz={"status":"ok"}` and
+  `/readyz={"status":"ok"}` on `127.0.0.1:18081`. The `200` readiness result
+  exercises the configured Broker + external-pooler QueryExecutor + registered
+  `qltbyt/assistant-chat/v1` tuple. No SQL write, migration, grant or live
+  configuration change occurred.
+- **Positive disposable broker token:** a short-lived token was minted in
+  protected process memory from the candidate's mounted broker-secret file,
+  and the request was signed with the mounted HMAC file. A clarification-only
+  request carrying all routing tools returned an SSE `200` stream with
+  `start`, clarification text, `finish(stop)` and `[DONE]`; this proves the
+  exact candidate accepted the broker credential without invoking a provider.
+  Token, signature, request body and key values were not recorded.
+- An earlier exploratory request with an empty tool set returned `start` then
+  `cancelled` and is not acceptance evidence. No successful provider result or
+  quota/usage write was observed; no further provider request was made.
+- **Trusted Access boundary:** browser-copy Access headers remain negative
+  evidence only. The required positive Cloudflare Access request through the
+  production BFF was not run because `/api/chat/dark` requires a real NextAuth
+  session and no session credential was available. No Access secret was
+  recovered, forged or bypassed. `7.5F.1` therefore remains open; this
+  candidate evidence is `DISPOSABLE ONLY` and does not certify production.
+- **Scope/status:** this rerun updates exact-subject disposable image, broker
+  token and tuple evidence only. The DB waiver remains
+  `static=INCOMPLETE`, `baseline-forward=NOT RUN`; `7.5G`, cutover, Phase 8/9
+  and paid-provider smoke remain unopened. Overall Phase 7.5 is still
+  `BLOCKING / INCOMPLETE`.

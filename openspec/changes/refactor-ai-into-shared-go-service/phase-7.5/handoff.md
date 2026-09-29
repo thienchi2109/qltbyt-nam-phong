@@ -3,15 +3,19 @@
 ## Latest 7.5F checkpoint (2026-09-29)
 
 Subject `a3267b539e9169342b12d7a127980b549217fb33` was reconciled for disposable
-auth and readiness. Local Go and Vitest matrices passed, and unauthenticated
-production negatives rejected browser Access headers. The Oracle candidate
-image is still revision `5ea42ef24b1decf5638ad009a17509b36d3909ab`, so Go
-commit parity fails. Positive trusted Access was not run: the six production
-`AI_SERVICE_BFF_*` names exist, but their values were not read and no NextAuth
-session was available. `7.5F.3` records that reconciliation. `7.5F.1`,
-`7.5F.2`, and `7.5G` stay open. `7.5E` static remains `INCOMPLETE` and
+auth and readiness. Local Go and Vitest matrices passed, unauthenticated
+production negatives rejected browser Access headers, and the Oracle candidate
+was rebuilt natively from the exact subject. The candidate digest is
+`sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`
+with OCI revision equal to the subject; private `/healthz=200` and
+`/readyz=200` now exercise the external-pooler tuple. A disposable
+broker-token clarification request also returned SSE `200` without provider
+work. Positive trusted Access was not run: `/api/chat/dark` requires a real
+NextAuth session and no session credential was available. `7.5F.3` records
+this reconciliation, and `7.5F.2` is checked as disposable-only evidence.
+`7.5F.1` and `7.5G` stay open. `7.5E` static remains `INCOMPLETE` and
 baseline-forward remains `NOT RUN`; the waiver is not a gate PASS. Overall
-Phase 7.5 remains `BLOCKING / INCOMPLETE`. See the final 7.5F section in
+Phase 7.5 remains `BLOCKING / INCOMPLETE`. See the final 7.5F sections in
 `phase-7.5-evidence.md`.
 
 ## Latest Vercel settings checkpoint
@@ -301,5 +305,43 @@ exact-commit evidence for `a3267b53`.
 `7.5A` is still ready for review rather than PASS. `7.5B` and `7.5C` remain
 disposable. `7.5D` disposable Oracle evidence is tied to `848073b5` plus an
 uncommitted fix. `7.5E` remains the waiver recorded above. Those facts keep
-`7.5F.1` and `7.5F.2` open and leave `7.5G`, cutover, Phase 8/9, and
-paid-provider smoke unopened.
+`7.5F.1` open; the later exact-subject rerun checks `7.5F.2` as
+`DISPOSABLE ONLY`. `7.5G`, cutover, Phase 8/9, and paid-provider smoke remain
+unopened.
+
+## 7.5F exact-subject candidate rerun (2026-09-29)
+
+The Oracle host is `arm64`; the first local `amd64` transfer was rejected with
+`exec format error` and its disposable container was removed. The service was
+then built natively on Oracle from detached subject
+`a3267b539e9169342b12d7a127980b549217fb33` with the pinned Dockerfile and
+`TARGETARCH=arm64`. Docker recorded repository digest/image ID
+`sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`,
+`arm64/linux`, and OCI revision equal to the subject. Only the disposable
+`qltbyt-ai-service-candidate` container was recreated, using a temporary
+Compose override that mounted the existing secret files and referenced the
+protected BFF/pooler variables; no secret value was written to this repo.
+
+After the replay quarantine, private `docker exec` probes returned
+`/healthz={"status":"ok"}` and `/readyz={"status":"ok"}` on
+`127.0.0.1:18081`; the container is `running/healthy` as user `65532:65532`.
+The readiness result is direct evidence of the real Broker + external-pooler
+QueryExecutor + `qltbyt/assistant-chat/v1` tuple on the exact subject. A
+short-lived broker token and ingress HMAC were generated in protected process
+memory from the mounted candidate secret files. A clarification-only request
+with the complete routing tool set returned an SSE `200` (`start`, clarification,
+`finish(stop)`, `[DONE]`) without provider work, proving positive disposable
+broker-token acceptance. Token/signature/body/key values were not recorded.
+
+An earlier exploratory request with an empty tool set returned `start` then
+`cancelled`; it is not acceptance evidence. No successful provider result or
+quota/usage write was observed, and no further provider request was made.
+
+The trusted positive Cloudflare Access lane through production BFF remains
+blocked. `/api/chat/dark` requires a real NextAuth session, and no session
+credential was available. Browser-supplied Access headers remain negative
+evidence; no Access secret was recovered, forged or bypassed. Therefore
+`7.5F.2` is checked as `DISPOSABLE ONLY`, `7.5F.1` remains open, and Phase 7.5
+stays `BLOCKING / INCOMPLETE`. The `7.5E` waiver remains
+`static=INCOMPLETE`, `baseline-forward=NOT RUN`; no `7.5G`, cutover, Phase 8/9
+or paid-provider smoke was opened.
