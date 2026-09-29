@@ -31,7 +31,7 @@ because they are Sensitive; AI policy coverage was not assumed. Tunnel
 version 2 already points to candidate port 18081; version 1's 8080 is stale.
 The no-AI_SERVICE-variable observation below describes the earlier checkpoint.
 
-## Latest candidate deployment (2026-09-28)
+## Historical candidate deployment (2026-09-28)
 
 The user authorized upgrading/recreating only the Oracle candidate, then one
 read-only paid-provider smoke including quota/usage accounting. The candidate
