@@ -558,15 +558,19 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   then `status=403`, `contentType=application/json; charset=utf-8`,
   `clarificationMarker=false`, `finishStop=false`, `unauthorized=true` and
   `unavailable=false`. The script did not retain the response body, headers or
-  request ID, so those fields cannot distinguish the local role guard from a
-  proxied 403.
+  request ID. The role is in the route's allowlist, and the script's `bff`
+  stage is after its session/facility gate, so the route's local role 403 is
+  ruled out for this attempt.
 - **Application boundary:** the dark route's only local 403 before the fetch is
   the role guard (`isAllowedDarkChatRole`). Once it passes, `GoBffProxy` sends
   the signed request and server-only Cloudflare Access headers. Any upstream
   403, including a non-JSON Access denial, is normalized by the proxy to JSON
-  `unauthorized` with HTTP 403. Go ingress authentication failures are mapped
-  to HTTP 401, so this result is not evidence of a Go HMAC or broker-token
-  rejection.
+  `unauthorized` with HTTP 403. For this exact clarification payload, the Go
+  runner authenticates the broker credential before `Prepare`; invalid HMAC or
+  credential claims are HTTP 401, while the repair-plus-quota text is routed to
+  `MixedClarification` and emitted as SSE before any tool/provider work. The
+  Go origin therefore cannot account for this 403; the response was returned
+  by the Cloudflare Access edge in the upstream fetch.
 - **Oracle read-only correlation:** the active `qltbyt-ai-cloudflared-new`
   configuration logged route version 2 as hostname `ai-service.cdclims.cloud`,
   path `^/v1/chat$`, origin `http://127.0.0.1:18081`; its logs and the
@@ -574,10 +578,10 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   `04:45:00Z`. Earlier unauthenticated probes to that hostname returned a
   non-JSON HTTP `403`, which is consistent with an Access-edge denial but is
   not the authenticated request itself.
-- **Conclusion and missing condition:** the exact producer of the authenticated
-  403 is not provable without the discarded response body/headers or Cloudflare
-  Access request logs. The strongest bounded diagnosis is a missing or
-  mismatched trusted BFF Access service-token acceptance (or endpoint/policy
-  parity), not a NextAuth login failure. No Access policy, secret, deployment,
-  retry or runtime configuration was changed; `7.5F.1` remains
-  `BLOCKING / INCOMPLETE`.
+- **Conclusion and missing condition:** the missing condition is successful
+  Cloudflare Access service-token acceptance for the exact production BFF
+  endpoint and `/v1/chat` policy. The available evidence cannot narrow that to
+  a client-ID/secret mismatch, hostname/policy mismatch or Access policy
+  revision because the response headers/body and Access request logs were not
+  retained. No Access policy, secret, deployment, retry or runtime
+  configuration was changed; `7.5F.1` remains `BLOCKING / INCOMPLETE`.

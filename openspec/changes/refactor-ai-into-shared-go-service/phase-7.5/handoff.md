@@ -24,11 +24,14 @@ The read-only attribution follow-up is recorded in the final evidence section:
 the sanitized attempt reached the BFF stage with `loginStatus=200`,
 `sessionStatus=200`, role `to_qltb` and a facility, then returned HTTP `403`
 JSON `unauthorized` without SSE. The response body/headers were not retained,
-so the exact local-versus-upstream producer cannot be proven. Oracle Tunnel v2
-routes only `/v1/chat` to the private candidate; no cloudflared or candidate
-log record appeared in the attempt window. The bounded diagnosis remains a
-trusted BFF Access service-token or endpoint/policy parity blocker; no fix or
-Access bypass was attempted.
+but the role is allowlisted and the script reached its BFF stage. Go's source
+matrix maps invalid broker credentials to `401` and routes this exact
+repair-plus-quota payload to clarification SSE before provider work, so the
+`403` was returned by the Cloudflare Access edge in the upstream fetch. Oracle
+Tunnel v2 routes only `/v1/chat` to the private candidate; no cloudflared or
+candidate log record appeared in the attempt window. The missing condition is
+trusted BFF service-token acceptance for that endpoint/policy; no fix or Access
+bypass was attempted.
 
 ## Latest Vercel settings checkpoint
 
