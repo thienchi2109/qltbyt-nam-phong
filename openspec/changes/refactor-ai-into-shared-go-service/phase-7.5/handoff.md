@@ -388,3 +388,20 @@ token policy against the production BFF pair, and correlate the
 `2026-09-29T04:39Z` request before closing `7.5F.1`. No secret/token value,
 authentication retry, bypass, provider smoke or live DB write was performed;
 the package remains `BLOCKING / INCOMPLETE`.
+
+## 7.5F.1 candidate-only network experiment (2026-09-29)
+
+The coordinator briefly recreated only the disposable candidate with host
+networking to test the tunnel-facing topology, then restored the exact ARM64
+image in its prior bridge network. The host-network trial returned
+`/healthz=200` but `/readyz=503`; it was rolled back and is not a route or
+Access acceptance result. The immediate bridge rollback was container-healthy
+with `/healthz=200`, while `/readyz` was still `503` and the service produced no
+application logs. DQSS stayed healthy with restart count `0` throughout.
+
+A later read-only check at `2026-09-29T07:30:27Z` found the bridge candidate
+healthy with both private endpoints returning `200`. That delayed recovery is
+startup/readiness evidence only. The active token-run tunnel, Cloudflare
+policy, Vercel settings and production BFF were untouched, so the host/bridge
+route mismatch and trusted Access blocker remain unresolved. No secret, provider
+request or live DB operation was performed; `7.5F.1` remains open.

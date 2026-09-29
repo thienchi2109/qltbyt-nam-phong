@@ -628,3 +628,30 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   retry or bypass was attempted, no provider smoke was run, and no live DB
   operation occurred. `7.5F.1` and overall Phase 7.5 remain
   `BLOCKING / INCOMPLETE`.
+
+### 7.5F.1 candidate-only network experiment and rollback (2026-09-29)
+
+- **Scope:** the coordinator temporarily recreated only the disposable
+  `qltbyt-ai-service-candidate` with host networking to test the tunnel-facing
+  topology, then rolled it back to the prior bridge-network Compose setup. The
+  production BFF, Cloudflare policy/tunnel, Vercel variables and DQSS were not
+  changed; no secret value, provider request or live DB operation was used.
+- **Host-network trial:** private `/healthz` returned `200`, but `/readyz`
+  returned `503`. This was a failed disposable readiness observation, not a
+  route or Access fix. The candidate was reverted after the failed check.
+- **Immediate rollback read-back:** the exact ARM64 image
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`
+  was restored in bridge network `qltbyt-ai_default`; the container health
+  indicator and private `/healthz` were `OK`, while the coordinator's immediate
+  `/readyz` read-back remained `503` and the service emitted no application log
+  lines. DQSS remained healthy with restart count `0`.
+- **Later read-only state:** a subsequent check at `2026-09-29T07:30:27Z`,
+  after the startup/quarantine window, returned `200` for both candidate
+  `/healthz` and `/readyz`; the candidate stayed bridge-networked and DQSS
+  stayed healthy with restart count `0`. This later recovery does not prove
+  tunnel reachability, Access acceptance or production readiness, and does not
+  reopen `7.5F.1`.
+- **Boundary:** the active token-run cloudflared container and its remote
+  configuration were not changed. The experiment therefore leaves the prior
+  host/bridge route mismatch and the Cloudflare Access evidence gap unresolved;
+  overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.
