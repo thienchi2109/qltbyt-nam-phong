@@ -681,3 +681,32 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   migration, role/password change, runtime activation, authentication retry or
   live DB mutation occurred; 7.5E remains waived/incomplete and overall Phase
   7.5 remains `BLOCKING / INCOMPLETE`.
+
+### 7.5F candidate host-network topology trial (2026-09-29 12:51–12:55 UTC)
+
+- **Authorized disposable scope:** only `qltbyt-ai-service-candidate` was
+  recreated with the exact ARM64 image digest
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`
+  (OCI revision `a3267b539e9169342b12d7a127980b549217fb33`),
+  `network_mode=host`, and `AI_SERVICE_LISTEN_ADDR=127.0.0.1:18081`.
+  Compose used `--no-deps --force-recreate` for that service only. The
+  cloudflared connector, DQSS, Coolify, DNS, Access policy, Vercel settings and
+  database were not restarted or changed.
+- **Host-network result:** after recreation at `12:51:16Z`, the first probe was
+  during startup (`000/000`); from `12:51:26Z` through `12:53:18Z`, twelve
+  consecutive probes returned candidate `/healthz=200` and `/readyz=503`.
+  The container stayed healthy with restart count `0`. DQSS returned HTTP `200`,
+  remained `healthy`, and stayed at restart count `0` on every probe. The
+  readiness wait was therefore long enough to reject this topology trial.
+- **Rollback:** the candidate was recreated at `12:53:49Z` with the prior bridge
+  network `qltbyt-ai_default`, retaining the same image/listener. After startup,
+  `/healthz=200` and `/readyz=503` were observed on seven consecutive successful
+  probes through `12:55:02Z`; the candidate was healthy with restart count `0`.
+  The final read-back at `12:55:19Z` showed cloudflared start time unchanged at
+  `2026-09-27T07:11:21Z`, DQSS and Coolify healthy with restart count `0`, and
+  zero candidate application log lines. No route fix was claimed.
+- **Boundary:** because host-network readiness failed, no restored BFF trusted
+  lane or clarification-only production request was attempted after this trial,
+  and no paid-provider smoke ran. The result does not identify a provider root
+  cause; it leaves candidate readiness, Tunnel reachability and trusted Access
+  acceptance unresolved. Overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.

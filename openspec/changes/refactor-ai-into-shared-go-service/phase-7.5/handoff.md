@@ -423,3 +423,22 @@ cause, prove Tunnel/Access acceptance, or certify production readiness. No
 password/URL was recorded and no SQL write, role change, activation, provider
 request or live DB mutation occurred. The package remains
 `BLOCKING / INCOMPLETE`.
+
+## 7.5F host-network topology trial and rollback (2026-09-29)
+
+Only the disposable candidate was recreated with host networking, retaining the
+exact ARM64 image revision `a3267b539e9169342b12d7a127980b549217fb33`, digest
+`sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`, and
+loopback listener `127.0.0.1:18081`. The host-network run started at
+`12:51:16Z`; after startup, twelve consecutive probes through `12:53:18Z`
+returned `/healthz=200` and `/readyz=503`. DQSS stayed HTTP 200, healthy and
+restart 0 throughout.
+
+The candidate was then rolled back to bridge network `qltbyt-ai_default` at
+`12:53:49Z`. Seven post-start probes through `12:55:02Z` kept
+`/healthz=200` and `/readyz=503`, with the candidate healthy/restart 0. A final
+read-back confirmed cloudflared, DQSS and Coolify were unchanged; the candidate
+had no application log lines. Since readiness failed in both topologies, no
+production BFF trusted-lane probe or provider smoke was run. This is a
+candidate-readiness blocker only and does not establish a provider root cause;
+`7.5F.1` and overall Phase 7.5 remain `BLOCKING / INCOMPLETE`.
