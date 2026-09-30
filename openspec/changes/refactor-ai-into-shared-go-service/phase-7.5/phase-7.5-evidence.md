@@ -1,5 +1,23 @@
 # Phase 7.5 Evidence — Broker/query composition và readiness
 
+## 7.5G Oracle candidate activation (2026-09-30)
+
+- **Subject/runtime:** Oracle candidate `qltbyt-ai-service-candidate` is running
+  image `qltbyt-ai-service:75f1-cookie`; no image replacement or production
+  cutover was performed.
+- **Private activation evidence:** loopback `/healthz=200` and `/readyz=200`;
+  raw listener remained private. Candidate, DQSS (`dqss-issue-508`) and
+  cloudflared (`qltbyt-ai-cloudflared-new`) were running with restart count `0`.
+- **Auth boundary:** an unsigned loopback `POST /v1/chat` returned redacted
+  `401 unauthorized`, confirming the ingress boundary without printing or
+  rotating any secret.
+- **7.5G.2 status:** `BLOCKING / INCOMPLETE`. A trusted BFF Access credential
+  and redacted real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` smoke
+  were not executed in this run; readiness `200` is not promoted to that
+  acceptance claim.
+- **Scope:** no live DB write, quota/audit mutation, Web Push change, `/api/chat`
+  cutover, Phase 9 cleanup or paid-provider smoke.
+
 **Status:** `BLOCKING / INCOMPLETE` for overall Phase 7.5. Tasks `7.5E.1`–`7.5E.3`
 are accepted. `7.5E.2` is accepted with the recorded waiver: static remains
 `INCOMPLETE` and baseline-forward remains `NOT RUN`. That waiver is not a gate

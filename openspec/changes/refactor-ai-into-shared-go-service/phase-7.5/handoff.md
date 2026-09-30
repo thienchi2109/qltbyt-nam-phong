@@ -1,5 +1,16 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## 7.5G candidate activation checkpoint (2026-09-30)
+
+The Oracle candidate `qltbyt-ai-service-candidate` remained on
+`qltbyt-ai-service:75f1-cookie`. Private loopback probes returned
+`/healthz=200` and `/readyz=200`; candidate, DQSS and cloudflared all remained
+healthy with restart count `0`. An unsigned private `POST /v1/chat` returned
+`401 unauthorized`. No secret was printed or rotated, and no Web Push, live DB,
+`/api/chat`, cleanup or provider smoke operation occurred. 7.5G.1 and 7.5G.3
+are evidenced; 7.5G.2 remains `BLOCKING / INCOMPLETE` because this checkpoint
+does not prove the trusted-BFF real Broker + QueryExecutor registry tuple.
+
 ## Latest 7.5F checkpoint (2026-09-30)
 
 `7.5F.1` is checked at `DISPOSABLE ONLY` on probed image
