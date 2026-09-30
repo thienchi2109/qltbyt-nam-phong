@@ -2,7 +2,7 @@
 
 ## 7.6 (2026-09-30)
 
-`7.6` đã được ghi ở nhánh mock/disposable. Chat candidate dùng `usage.NewMemory`, không gọi `ai_quota_reserve` / `ai_quota_finalize`. Audit SQL chỉ đi qua `query_database`, và các probe dark đã ghi không có tool event. Read-only live ngày UTC `2026-09-30` không có reservation mới, rate event mới, hay audit `assistant_query_database`. Đây không phải live PASS. Ba RPC `ai_quota_reserve`, `ai_quota_finalize` và `assistant_query_database_audit_log` vẫn cần approval riêng trước một smoke live. `7.1`–`7.5` vẫn mở. Phase 7 chưa PASS. Phase 8 và Phase 9 không mở.
+Anh xác nhận Phase 7 đã xong ngày 2026-09-30. Checklist `7.1`–`7.6` được tick. `7.6` vẫn là mock/disposable: `usage.NewMemory` không gọi `ai_quota_reserve` / `ai_quota_finalize`, và read-only live ngày UTC `2026-09-30` không có reservation mới, rate event mới hay audit `assistant_query_database`. Ba RPC đó vẫn cần approval riêng trước một smoke live. Xác nhận này không mở Phase 8, Phase 9 hay cutover `/api/chat`.
 
 Ngày: 2026-09-27
 
@@ -57,8 +57,6 @@ Composition cần descriptor tuple, capability implementation, broker verifier,
 dedicated query role, audit/quota wiring và signed BFF HMAC request; không tự
 điền app/capability IDs.
 
-Evidence đầy đủ ở `phase-7-evidence.md`. Next step là duyệt/cung cấp production
-broker + dedicated query composition, rồi chạy disposable readiness gate với
-đúng tuple trước khi thay candidate; authenticated Cloudflare service-token
-probe vẫn deferred vì credential BFF-only không có ở Oracle/repo. Phase 7 chưa
-PASS, chưa cutover `/api/chat`, chưa live DB/migration write và chưa commit/push.
+Evidence đầy đủ ở `phase-7-evidence.md`. Đoạn này là checkpoint 2026-09-27.
+Checklist Phase 7 được anh xác nhận đóng ngày 2026-09-30 ở đầu file. Cutover
+`/api/chat` và live quota/audit write vẫn chưa xảy ra.

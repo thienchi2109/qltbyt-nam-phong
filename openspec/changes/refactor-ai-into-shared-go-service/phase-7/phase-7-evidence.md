@@ -63,7 +63,7 @@ app/capability IDs hoặc coi env placeholder là đăng ký hợp lệ.
 3. Sau khi route, Access service-token fixture và composition được duyệt, lặp lại provider smoke với telemetry
    status/latency được thu thập đúng; Google `403` cần credential/quota review.
 
-Phase 7 hiện **chưa PASS** và chưa phải Phase 8 acceptance.
+Phase 7 checklist `7.1`–`7.6` được anh xác nhận hoàn tất ngày 2026-09-30. Xác nhận này không phải live quota PASS và không mở Phase 8.
 
 ## 7.6 Quota và audit — mock/disposable (2026-09-30)
 
@@ -75,4 +75,4 @@ Image đang phục vụ vẫn là `qltbyt-ai-service:gemini-first`, digest `sha2
 
 Đọc live project `cdthersvldpnlbvpufrr` chỉ bằng `SELECT`, không ghi. Ngày UTC `2026-09-30` có 0 dòng `ai_quota_reservations.reserved_at`, 0 dòng `ai_rate_events.ts`, và 0 dòng `audit_logs` với `action_type = assistant_query_database`. Cùng kết quả 0 trong các cửa sổ của `probe-75f-1790757941136`, `probe-75f-1790760016926`, `probe-75f-llm-1790771778869`, `probe-75f-llm-1790772253364` và `probe-75f-gemini-1790773251352`. Bảng reservation đã có dòng cũ, nên một insert trong ngày này sẽ hiện ra. Không ghi user id, SQL shape hay secret.
 
-`7.1`–`7.5` không được tick. Phase 8, Phase 9, cutover `/api/chat`, DQSS, Web Push và paid-provider smoke không mở từ mục này.
+Anh xác nhận `7.1`–`7.5` đã xong cùng ngày. Checklist Phase 7 vì vậy được đóng. Phase 8, Phase 9, cutover `/api/chat`, DQSS, Web Push và paid-provider smoke không mở từ mục này.
