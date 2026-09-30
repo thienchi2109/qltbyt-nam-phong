@@ -1,6 +1,7 @@
 package ingress
 
 import (
+	"errors"
 	"net/http"
 	"testing"
 	"time"
@@ -32,15 +33,15 @@ func TestReplayGuardQuarantineCapacityAndReclaim(t *testing.T) {
 	}
 	tampered := signedRequest(key, now, "tampered")
 	tampered.body = []byte(`{"protocol_version":"v1","messages":[]}`)
-	if _, err := guard.Authenticate(now, tampered.header, tampered.body); err != ErrUnauthenticated {
+	if _, err := guard.Authenticate(now, tampered.header, tampered.body); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("tamper = %v", err)
 	}
 	old := signedRequest(key, now.Add(-ReplayWindow-time.Second), "old")
-	if _, err := guard.Authenticate(now, old.header, old.body); err != ErrUnauthenticated {
+	if _, err := guard.Authenticate(now, old.header, old.body); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("old = %v", err)
 	}
 	future := signedRequest(key, now.Add(ClockSkew+time.Second), "future")
-	if _, err := guard.Authenticate(now, future.header, future.body); err != ErrUnauthenticated {
+	if _, err := guard.Authenticate(now, future.header, future.body); !errors.Is(err, ErrUnauthenticated) {
 		t.Fatalf("future = %v", err)
 	}
 	for index := 0; index < NonceCapacity-1; index++ {

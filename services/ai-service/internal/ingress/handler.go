@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -61,6 +62,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	authenticated, err := h.Guard.Authenticate(now, r.Header, body)
 	if err != nil {
+		log.Printf("ai-service auth diagnostic=%s request_id=%s", authDiagnostic(err), requestID)
 		writeProtocolError(w, firstNonEmpty(authenticated.RequestID, requestID), authenticationError(err), h.Log)
 		return
 	}

@@ -92,25 +92,25 @@ func (g *ReplayGuard) Authenticate(now time.Time, header http.Header, body []byt
 	keyID := stringsTrim(header.Get(HeaderKeyID))
 	signature := stringsTrim(header.Get(HeaderSignature))
 	if requestID == "" || keyID == "" || signature == "" || len(body) == 0 {
-		return Authenticated{}, ErrUnauthenticated
+		return Authenticated{}, authFailure("hmac.missing_header")
 	}
 	unixSeconds, err := strconv.ParseInt(timestampText, 10, 64)
 	if err != nil || strconv.FormatInt(unixSeconds, 10) != timestampText {
-		return Authenticated{}, ErrUnauthenticated
+		return Authenticated{}, authFailure("hmac.timestamp_invalid")
 	}
 	timestamp := time.Unix(unixSeconds, 0).UTC()
 	if !timestamp.After(now.Add(-ReplayWindow)) || timestamp.After(now.Add(ClockSkew)) {
-		return Authenticated{}, ErrUnauthenticated
+		return Authenticated{}, authFailure("hmac.timestamp_out_of_window")
 	}
 	key, ok := g.keys[keyID]
 	if !ok || len(key.Secret) == 0 {
-		return Authenticated{}, ErrUnauthenticated
+		return Authenticated{}, authFailure("hmac.key_mismatch")
 	}
 	if !signaturesMatch(key.Secret, timestampText, requestID, keyID, signature, body) {
-		return Authenticated{}, ErrUnauthenticated
+		return Authenticated{}, authFailure("hmac.signature_mismatch")
 	}
 	if err := bindingMatches(key, requestID, body); err != nil {
-		return Authenticated{}, err
+		return Authenticated{}, authFailure("hmac.binding_mismatch")
 	}
 	return Authenticated{RequestID: requestID, Timestamp: timestamp, Key: key}, nil
 }
