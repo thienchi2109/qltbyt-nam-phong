@@ -45,8 +45,9 @@ type ChainConfig struct {
 	MaxAttempts int
 }
 
-// ApprovedPhase59Chain returns the named pair order without credentials. The
-// caller still has to attach secrets through Config before opening it.
+// ApprovedPhase59Chain returns the approved provider/model pairs without
+// credentials. The slice order is the original NVIDIA-first chain. Validation
+// accepts either pair first when both approved pairs are present once.
 func ApprovedPhase59Chain() []ProviderModelPair {
 	return []ProviderModelPair{
 		{Priority: 1, Provider: protocol.TransportNVIDIA, Model: "google/gemma-4-31b-it", Capabilities: DefaultChatProfile},
@@ -249,13 +250,27 @@ func validateChain(cfg ChainConfig) ([]ProviderModelPair, int, error) {
 	if cfg.MaxAttempts > 2 || cfg.MaxAttempts > len(cfg.Pairs) {
 		return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain has an invalid attempt ceiling.", false)
 	}
+	approvedByPair := make(map[string]ProviderModelPair, len(approved))
+	for _, pair := range approved {
+		approvedByPair[pair.Provider+"\n"+pair.Model] = pair
+	}
 	pairs := append([]ProviderModelPair(nil), cfg.Pairs...)
 	sort.SliceStable(pairs, func(i, j int) bool { return pairs[i].Priority < pairs[j].Priority })
+	seen := make(map[string]struct{}, len(pairs))
 	for i, pair := range pairs {
 		if pair.Priority <= 0 || (i > 0 && pairs[i-1].Priority == pair.Priority) || pair.Provider == "" || pair.Model == "" {
 			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain has invalid or duplicate priorities.", false)
 		}
-		if pair.Capabilities != approved[i].Capabilities {
+		key := pair.Provider + "\n" + pair.Model
+		approvedPair, ok := approvedByPair[key]
+		if !ok {
+			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains an unapproved provider/model pair.", false)
+		}
+		if _, dup := seen[key]; dup {
+			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains an unapproved provider/model pair.", false)
+		}
+		seen[key] = struct{}{}
+		if pair.Capabilities != approvedPair.Capabilities {
 			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains incompatible capabilities.", false)
 		}
 		if pair.Config.Transport != "" && pair.Config.Transport != pair.Provider {
@@ -264,9 +279,9 @@ func validateChain(cfg ChainConfig) ([]ProviderModelPair, int, error) {
 		if pair.Config.Model != "" && pair.Config.Model != pair.Model {
 			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback pair model does not match its approved model.", false)
 		}
-		if pair.Priority != approved[i].Priority || pair.Provider != approved[i].Provider || pair.Model != approved[i].Model {
-			return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains an unapproved provider/model pair.", false)
-		}
+	}
+	if len(seen) != len(approved) {
+		return nil, 0, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain must contain the approved primary and fallback pairs.", false)
 	}
 	return pairs, cfg.MaxAttempts, nil
 }

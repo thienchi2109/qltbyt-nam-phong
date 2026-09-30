@@ -64,7 +64,6 @@ func TestChainConfigFromEnvRejectsUnapprovedProviderModelPairs(t *testing.T) {
 	for _, chain := range []string{
 		"nvidia/google/gemma-4-26b-a4b-it,google/gemini-3.5-flash-lite",
 		"nvidia/google/gemma-4-31b-it,google/gemini-3.8-flash",
-		"google/gemini-3.5-flash-lite,nvidia/google/gemma-4-31b-it",
 		"nvidia/google/gemma-4-31b-it,openai-compatible/gpt-4.1",
 	} {
 		env := cloneEnv(base)
@@ -72,6 +71,21 @@ func TestChainConfigFromEnvRejectsUnapprovedProviderModelPairs(t *testing.T) {
 		if _, err := ChainConfigFromEnv(env); err == nil {
 			t.Fatalf("unapproved chain %q was accepted", chain)
 		}
+	}
+}
+
+func TestChainConfigFromEnvAllowsGeminiFirst(t *testing.T) {
+	chain, err := ChainConfigFromEnv(map[string]string{
+		"AI_PROVIDER_CHAIN":            "google/gemini-3.5-flash-lite,nvidia/google/gemma-4-31b-it",
+		"NVIDIA_API_KEY":               "nvidia-secret",
+		"NVIDIA_BASE_URL":              "https://example.test/v1",
+		"GOOGLE_GENERATIVE_AI_API_KEY": "google-secret",
+	})
+	if err != nil {
+		t.Fatalf("gemini-first chain: %v", err)
+	}
+	if len(chain.Pairs) != 2 || chain.Pairs[0].Provider != protocol.TransportGoogle || chain.Pairs[0].Model != "gemini-3.5-flash-lite" || chain.Pairs[1].Provider != protocol.TransportNVIDIA || chain.Pairs[1].Model != "google/gemma-4-31b-it" {
+		t.Fatalf("gemini-first pairs = %+v", chain.Pairs)
 	}
 }
 
