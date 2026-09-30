@@ -365,7 +365,7 @@ Phụ thuộc: Phase 7 dark smoke PASS và Phase 7.5F PASS trên cùng subject c
 
 Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, authorized cutover log, post-cutover smoke và no-fallback assertion.
 
-- [ ] 8.1 Chốt subject commit, image digest, source/config/fixture hashes và chạy lại toàn bộ contract, parity, security, UI, cancellation, quota, Tunnel và operator checks trên cùng subject.
+- [x] 8.1 Chốt subject commit, image digest, source/config/fixture hashes và chạy lại toàn bộ contract, parity, security, UI, cancellation, quota, Tunnel và operator checks trên cùng subject.
 - [ ] 8.2 Xác nhận PASS cần đủ evidence bắt buộc trên cùng subject commit/digest; thiếu evidence là `BLOCKING / INCOMPLETE`, không claim DONE.
 - [x] 8.3 Chỉ sau explicit authorization direct cutover, chuyển `/api/chat` sang Go backend và giữ nguyên browser/Vercel AI SDK contract.
 - [ ] 8.4 Sau cutover, production runtime phải thực hiện `ai_quota_reserve`/`ai_quota_finalize` và sanitized SQL audit theo capability policy; đây là behavior bắt buộc, không được tắt để né test.
@@ -376,9 +376,11 @@ Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, a
 
 `8.3`: `POST /api/chat` gọi `postGoBffChat`. UI giữ `api: "/api/chat"`, `runtime = "nodejs"`, `maxDuration = 60`. Orchestrator Next.js được đổi tên thành `src/app/api/chat/legacy-next-orchestrator.ts` và route sống không import file đó.
 
-`8.5` chưa tick. Route sống không có nhánh tự động về orchestrator Next.js. Rollback anh chọn là git revert commit cutover, việc đó khôi phục route Next.js cũ. Đó là revert có chủ đích, không phải fallback runtime và cũng không phải khôi phục image Go đã verify. Image đang phục vụ vẫn là `qltbyt-ai-service:gemini-first`, digest `sha256:512d7992464c2de7eb97221e83aa3983095036f37b816d8e7424bea3d52fac3c`, revision `unknown`. Image dừng `qltbyt-ai-service:75f1-cookie`, digest `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`, được giữ. Không build lại candidate trong lần này.
+`8.5` chưa tick. Route sống không có nhánh tự động về orchestrator Next.js. Rollback anh chọn là git revert commit cutover, việc đó khôi phục route Next.js cũ. Đó là revert có chủ đích, không phải fallback runtime và cũng không phải khôi phục image Go đã verify.
 
-`8.1`, `8.2`, `8.4`, `8.6` là `BLOCKING / INCOMPLETE`. Chưa có một subject commit + image digest + config. Candidate dùng `usage.NewMemory`, nên chat không gọi `ai_quota_reserve` / `ai_quota_finalize`. Audit SQL chỉ đi từ tool `query_database` khi image có đường đó. Phase 9 không mở. DQSS, Web Push, tunnel, DNS và Access không đổi.
+Đối soát 8.1, 2026-09-30: subject là commit `7f758c6ce9bda05c16a0aee6b382d785a99cf420`, image `qltbyt-ai-service:7f758c6c`, digest `sha256:48a6478b15bd2c8bc4a13535302c0ffeb9e5820d14d33ed9a29a688d6aa86bb8`, kiến trúc `arm64`, nhãn revision đúng commit đó. Container `qltbyt-ai-service-candidate` đã được đổi sang image này. `/healthz` 200. `/readyz` trả 503 trong 28 lần thăm cách 5 giây, rồi 200 và vẫn 200 sau đó. `POST /v1/chat` không chữ ký trên loopback là 401 `application/json`, không phải event-stream. `POST https://ai-service.cdclims.cloud/v1/chat` không chứng thực là 403 `text/plain`. Không gọi model. Go test, gofmt và go vet của `services/ai-service` pass. Vitest `go-bff`, `/api/chat` và assistant: 333 pass, 8 fail. Tám fail là placeholder `…` và class `size-14` của composer/trigger, không phải contract stream. Quota của subject này là `internal/usage` pass. Binary vẫn dùng `usage.NewMemory`, nên `8.4` chưa đạt.
+
+Image cũ được giữ ở container dừng `qltbyt-ai-service-candidate-gemini-first`, digest `sha256:512d7992464c2de7eb97221e83aa3983095036f37b816d8e7424bea3d52fac3c`, revision `unknown`. Image `qltbyt-ai-service:75f1-cookie`, digest `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`, vẫn còn. `8.2`, `8.4`, `8.5`, `8.6` chưa tick. Phase 9 không mở. DQSS, Web Push, tunnel, DNS và Access không đổi.
 
 Điểm dừng/review: Nếu cần agent-run live smoke, phải có approval cho đúng các quota reserve/finalize và audit operations; nếu không thì smoke là mock/disposable và không được ghi live PASS.
 
