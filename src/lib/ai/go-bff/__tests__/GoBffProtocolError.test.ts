@@ -71,14 +71,15 @@ describe("translateGoProtocolError", () => {
     expect(JSON.stringify(translated)).not.toContain(cookie)
   })
 
-  it("maps app quota separately while keeping the production chat route unchanged", () => {
+  it("maps app quota separately while the production chat route delegates to the Go BFF", () => {
     const quota = mapUnusedAppQuotaPayload(1500)
     expect(quota.code).toBe("ai_usage_limited")
     const root = process.cwd()
     const protocol = readFileSync(join(root, "src/lib/ai/go-bff/GoBffProtocolError.ts"), "utf8")
     const chat = readFileSync(join(root, "src/app/api/chat/route.ts"), "utf8")
     expect(protocol).not.toContain("GoBffAppQuota")
-    expect(chat).not.toContain("go-bff")
+    expect(chat).toContain("go-bff")
+    expect(chat).not.toContain("streamText")
     expect(chat).not.toContain("translateGoProtocolError")
   })
 })

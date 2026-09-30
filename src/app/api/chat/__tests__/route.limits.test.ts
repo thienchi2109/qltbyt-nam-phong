@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -8,22 +8,20 @@ const getChatModelMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
 const ORIGINAL_ENV = { ...process.env }
 
 function mockChatModelResult(model: string, providerOptions?: unknown) {
-  const provider = model.startsWith('google/') || model.startsWith('openai/')
-    ? 'gateway'
-    : 'google'
+  const provider = model.startsWith("google/") || model.startsWith("openai/") ? "gateway" : "google"
 
   return {
     model,
     keyIndex: 0,
     config: {
-      capability: 'default_chat',
+      capability: "default_chat",
       provider,
       model,
     },
@@ -31,24 +29,24 @@ function mockChatModelResult(model: string, providerOptions?: unknown) {
   }
 }
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: () => 1,
   handleProviderQuotaError: () => false,
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/limits', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/ai/limits')>()
+vi.mock("@/lib/ai/limits", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/ai/limits")>()
   return {
     ...actual,
     AI_MAX_OUTPUT_TOKENS: 111,
@@ -59,9 +57,13 @@ vi.mock('@/lib/ai/limits', async (importOriginal) => {
   }
 })
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -69,55 +71,54 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
     stepCountIs: (...args: unknown[]) => stepCountIsMock(...args),
-    convertToModelMessages: (...args: unknown[]) =>
-      convertToModelMessagesMock(...args),
+    convertToModelMessages: (...args: unknown[]) => convertToModelMessagesMock(...args),
   }
 })
 
-import { POST } from '../route'
-import { makeReadyStreamTextResult } from './stream-text-result-test-helpers'
+import { POST } from "../legacy-next-orchestrator"
+import { makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
 
-function buildMessage(id: string, text = 'Xin chao') {
+function buildMessage(id: string, text = "Xin chao") {
   return {
     id,
-    role: 'user',
-    parts: [{ type: 'text', text }],
+    role: "user",
+    parts: [{ type: "text", text }],
   }
 }
 
-describe('/api/chat limits', () => {
+describe("/api/chat limits", () => {
   beforeEach(() => {
     process.env = { ...ORIGINAL_ENV }
     vi.clearAllMocks()
 
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'admin', don_vi: 2 },
+      user: { id: "u1", role: "admin", don_vi: 2 },
     })
     getChatModelMock.mockReturnValue(
-      mockChatModelResult('gemini-2.5-flash', {
+      mockChatModelResult("gemini-2.5-flash", {
         google: {
-          thinkingConfig: { thinkingLevel: 'medium' },
+          thinkingConfig: { thinkingLevel: "medium" },
         },
-      }),
+      })
     )
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
     convertToModelMessagesMock.mockResolvedValue([
-      { role: 'user', content: 'converted-message-sentinel' },
+      { role: "user", content: "converted-message-sentinel" },
     ])
     streamTextMock.mockReturnValue(makeReadyStreamTextResult())
   })
@@ -126,10 +127,8 @@ describe('/api/chat limits', () => {
     process.env = { ...ORIGINAL_ENV }
   })
 
-  it('applies maxOutputTokens and stopWhen guardrails to streamText', async () => {
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1')] }) as never,
-    )
+  it("applies maxOutputTokens and stopWhen guardrails to streamText", async () => {
+    const res = await POST(buildRequest({ messages: [buildMessage("m1")] }) as never)
 
     expect(res.status).toBe(200)
     expect(stepCountIsMock).toHaveBeenCalledWith(3)
@@ -138,17 +137,13 @@ describe('/api/chat limits', () => {
       stopWhen?: unknown
     }
     expect(streamTextArgs?.maxOutputTokens).toBe(111)
-    expect(streamTextArgs?.stopWhen).toBe('STOP_WHEN_SENTINEL')
+    expect(streamTextArgs?.stopWhen).toBe("STOP_WHEN_SENTINEL")
   })
 
-  it('omits thinkingConfig for gemma models that do not support thinking levels', async () => {
-    getChatModelMock.mockReturnValue(
-      mockChatModelResult('gemma-4-26b-a4b-it'),
-    )
+  it("omits thinkingConfig for gemma models that do not support thinking levels", async () => {
+    getChatModelMock.mockReturnValue(mockChatModelResult("gemma-4-26b-a4b-it"))
 
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1')] }) as never,
-    )
+    const res = await POST(buildRequest({ messages: [buildMessage("m1")] }) as never)
 
     expect(res.status).toBe(200)
     const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
@@ -162,18 +157,16 @@ describe('/api/chat limits', () => {
     expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toBeUndefined()
   })
 
-  it('keeps thinkingConfig for gemini models that support thinking levels', async () => {
+  it("keeps thinkingConfig for gemini models that support thinking levels", async () => {
     getChatModelMock.mockReturnValue(
-      mockChatModelResult('gemini-2.5-flash', {
+      mockChatModelResult("gemini-2.5-flash", {
         google: {
-          thinkingConfig: { thinkingLevel: 'medium' },
+          thinkingConfig: { thinkingLevel: "medium" },
         },
-      }),
+      })
     )
 
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1')] }) as never,
-    )
+    const res = await POST(buildRequest({ messages: [buildMessage("m1")] }) as never)
 
     expect(res.status).toBe(200)
     const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
@@ -187,26 +180,24 @@ describe('/api/chat limits', () => {
     }
 
     expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toEqual({
-      thinkingLevel: 'medium',
+      thinkingLevel: "medium",
     })
   })
 
-  it('uses resolved Gateway provider options instead of legacy AI_MODEL for non-Google models', async () => {
-    process.env.AI_MODEL = 'gemini-3.1-flash-lite-preview'
+  it("uses resolved Gateway provider options instead of legacy AI_MODEL for non-Google models", async () => {
+    process.env.AI_MODEL = "gemini-3.1-flash-lite-preview"
     getChatModelMock.mockReturnValue({
-      model: 'gateway-openai-model',
+      model: "gateway-openai-model",
       keyIndex: 0,
       config: {
-        capability: 'default_chat',
-        provider: 'gateway',
-        model: 'openai/gpt-5.2',
+        capability: "default_chat",
+        provider: "gateway",
+        model: "openai/gpt-5.2",
       },
       providerOptions: undefined,
     })
 
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1')] }) as never,
-    )
+    const res = await POST(buildRequest({ messages: [buildMessage("m1")] }) as never)
 
     expect(res.status).toBe(200)
     const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
@@ -220,26 +211,24 @@ describe('/api/chat limits', () => {
     expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toBeUndefined()
   })
 
-  it('uses resolved Gateway Google provider options even when legacy AI_MODEL is non-Google', async () => {
-    process.env.AI_MODEL = 'openai/gpt-5.2'
+  it("uses resolved Gateway Google provider options even when legacy AI_MODEL is non-Google", async () => {
+    process.env.AI_MODEL = "openai/gpt-5.2"
     getChatModelMock.mockReturnValue({
-      model: 'gateway-google-model',
+      model: "gateway-google-model",
       keyIndex: 0,
       config: {
-        capability: 'default_chat',
-        provider: 'gateway',
-        model: 'google/gemini-3.1-flash-lite-preview',
+        capability: "default_chat",
+        provider: "gateway",
+        model: "google/gemini-3.1-flash-lite-preview",
       },
       providerOptions: {
         google: {
-          thinkingConfig: { thinkingLevel: 'medium' },
+          thinkingConfig: { thinkingLevel: "medium" },
         },
       },
     })
 
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1')] }) as never,
-    )
+    const res = await POST(buildRequest({ messages: [buildMessage("m1")] }) as never)
 
     expect(res.status).toBe(200)
     const streamTextArgs = streamTextMock.mock.calls[0]?.[0] as {
@@ -253,93 +242,89 @@ describe('/api/chat limits', () => {
     }
 
     expect(streamTextArgs?.providerOptions?.google?.thinkingConfig).toEqual({
-      thinkingLevel: 'medium',
+      thinkingLevel: "medium",
     })
   })
 
-  it('rejects requests exceeding message count limit', async () => {
+  it("rejects requests exceeding message count limit", async () => {
     const res = await POST(
       buildRequest({
-        messages: [buildMessage('m1'), buildMessage('m2'), buildMessage('m3')],
-      }) as never,
+        messages: [buildMessage("m1"), buildMessage("m2"), buildMessage("m3")],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Request exceeds message limit')
+    expect(text).toBe("Request exceeds message limit")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('rejects requests exceeding input size limit', async () => {
-    const longText = 'x'.repeat(5500)
-    const res = await POST(
-      buildRequest({ messages: [buildMessage('m1', longText)] }) as never,
-    )
+  it("rejects requests exceeding input size limit", async () => {
+    const longText = "x".repeat(5500)
+    const res = await POST(buildRequest({ messages: [buildMessage("m1", longText)] }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Request exceeds input size limit')
+    expect(text).toBe("Request exceeds input size limit")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('rejects requests that pass raw limit but exceed compacted context limit', async () => {
+  it("rejects requests that pass raw limit but exceed compacted context limit", async () => {
     const envelopeOutput = {
-      modelSummary: { summaryText: 'x'.repeat(500), itemCount: 1 },
-      followUpContext: { data: 'y'.repeat(500) },
+      modelSummary: { summaryText: "x".repeat(500), itemCount: 1 },
+      followUpContext: { data: "y".repeat(500) },
     }
     const messages = [
       {
-        id: 'm1',
-        role: 'user',
-        parts: [{ type: 'text', text: 'Xin chao' }],
+        id: "m1",
+        role: "user",
+        parts: [{ type: "text", text: "Xin chao" }],
       },
       {
-        id: 'm2',
-        role: 'assistant',
+        id: "m2",
+        role: "assistant",
         parts: [
           {
-            type: 'tool-equipmentLookup',
-            toolCallId: 'tc-1',
-            toolName: 'equipmentLookup',
-            state: 'output-available',
+            type: "tool-equipmentLookup",
+            toolCallId: "tc-1",
+            toolName: "equipmentLookup",
+            state: "output-available",
             output: envelopeOutput,
           },
         ],
       },
     ]
 
-    const res = await POST(
-      buildRequest({ messages }) as never,
-    )
+    const res = await POST(buildRequest({ messages }) as never)
     const text = await res.text()
 
     expect(res.status).toBe(400)
-    expect(text).toBe('Request exceeds compacted context limit')
+    expect(text).toBe("Request exceeds compacted context limit")
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('returns clarification before compacted budget enforcement for ambiguous repair intents', async () => {
+  it("returns clarification before compacted budget enforcement for ambiguous repair intents", async () => {
     const messages = [
       {
-        id: 'm1',
-        role: 'assistant',
+        id: "m1",
+        role: "assistant",
         parts: [
           {
-            type: 'tool-equipmentLookup',
-            toolCallId: 'tc-1',
-            toolName: 'equipmentLookup',
-            state: 'output-available',
+            type: "tool-equipmentLookup",
+            toolCallId: "tc-1",
+            toolName: "equipmentLookup",
+            state: "output-available",
             output: {
-              modelSummary: { summaryText: 'x'.repeat(500), itemCount: 1 },
-              followUpContext: { data: 'y'.repeat(500) },
+              modelSummary: { summaryText: "x".repeat(500), itemCount: 1 },
+              followUpContext: { data: "y".repeat(500) },
             },
           },
         ],
       },
       {
-        id: 'm2',
-        role: 'user',
-        parts: [{ type: 'text', text: 'Tình hình sửa chữa hiện tại thế nào?' }],
+        id: "m2",
+        role: "user",
+        parts: [{ type: "text", text: "Tình hình sửa chữa hiện tại thế nào?" }],
       },
     ]
 
@@ -347,49 +332,47 @@ describe('/api/chat limits', () => {
       buildRequest({
         selectedFacilityId: 2,
         messages,
-        requestedTools: ['equipmentLookup', 'repairSummary'],
-      }) as never,
+        requestedTools: ["equipmentLookup", "repairSummary"],
+      }) as never
     )
     const text = await res.text()
 
     expect(res.status).toBe(200)
-    expect(res.headers.get('content-type')).toContain('text/event-stream')
-    expect(text).toContain('trạng thái thiết bị')
-    expect(text).toContain('yêu cầu sửa chữa')
+    expect(res.headers.get("content-type")).toContain("text/event-stream")
+    expect(text).toContain("trạng thái thiết bị")
+    expect(text).toContain("yêu cầu sửa chữa")
     expect(convertToModelMessagesMock).not.toHaveBeenCalled()
     expect(streamTextMock).not.toHaveBeenCalled()
   })
 
-  it('passes requests with large envelope payloads that compact under budget', async () => {
+  it("passes requests with large envelope payloads that compact under budget", async () => {
     const envelopeOutput = {
-      modelSummary: { summaryText: 'OK', itemCount: 1 },
-      followUpContext: { data: 'small' },
-      uiArtifact: { rawPayload: { big: 'x'.repeat(2000) } },
+      modelSummary: { summaryText: "OK", itemCount: 1 },
+      followUpContext: { data: "small" },
+      uiArtifact: { rawPayload: { big: "x".repeat(2000) } },
     }
     const messages = [
       {
-        id: 'm1',
-        role: 'user',
-        parts: [{ type: 'text', text: 'Hi' }],
+        id: "m1",
+        role: "user",
+        parts: [{ type: "text", text: "Hi" }],
       },
       {
-        id: 'm2',
-        role: 'assistant',
+        id: "m2",
+        role: "assistant",
         parts: [
           {
-            type: 'tool-equipmentLookup',
-            toolCallId: 'tc-1',
-            toolName: 'equipmentLookup',
-            state: 'output-available',
+            type: "tool-equipmentLookup",
+            toolCallId: "tc-1",
+            toolName: "equipmentLookup",
+            state: "output-available",
             output: envelopeOutput,
           },
         ],
       },
     ]
 
-    const res = await POST(
-      buildRequest({ messages }) as never,
-    )
+    const res = await POST(buildRequest({ messages }) as never)
 
     expect(res.status).toBe(200)
     expect(streamTextMock).toHaveBeenCalled()
@@ -400,42 +383,40 @@ describe('/api/chat limits', () => {
       parts: Array<Record<string, unknown>>
     }>
     expect(compactedMessages?.[1]?.parts[0]?.output).toEqual({
-      modelSummary: { summaryText: 'OK', itemCount: 1 },
-      followUpContext: { data: 'small' },
+      modelSummary: { summaryText: "OK", itemCount: 1 },
+      followUpContext: { data: "small" },
     })
   })
 
-  it('draft tool outputs survive server compaction', async () => {
+  it("draft tool outputs survive server compaction", async () => {
     const draftOutput = {
-      kind: 'troubleshootingDraft',
+      kind: "troubleshootingDraft",
       draftOnly: true,
-      source: 'assistant',
-      steps: ['step1', 'step2'],
+      source: "assistant",
+      steps: ["step1", "step2"],
     }
     const messages = [
       {
-        id: 'm1',
-        role: 'user',
-        parts: [{ type: 'text', text: 'Troubleshoot' }],
+        id: "m1",
+        role: "user",
+        parts: [{ type: "text", text: "Troubleshoot" }],
       },
       {
-        id: 'm2',
-        role: 'assistant',
+        id: "m2",
+        role: "assistant",
         parts: [
           {
-            type: 'tool-generateTroubleshootingDraft',
-            toolCallId: 'tc-1',
-            toolName: 'generateTroubleshootingDraft',
-            state: 'output-available',
+            type: "tool-generateTroubleshootingDraft",
+            toolCallId: "tc-1",
+            toolName: "generateTroubleshootingDraft",
+            state: "output-available",
             output: draftOutput,
           },
         ],
       },
     ]
 
-    const res = await POST(
-      buildRequest({ messages }) as never,
-    )
+    const res = await POST(buildRequest({ messages }) as never)
 
     // Draft should pass through — not compacted, not rejected
     expect(res.status).toBe(200)

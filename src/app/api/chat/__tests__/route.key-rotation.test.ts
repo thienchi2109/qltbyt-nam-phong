@@ -12,13 +12,13 @@
  * and control streamText with async stream parts for quota and success cases.
  * This exercises the full route handler code path, not just the provider module.
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // ---------------------------------------------------------------------------
 // Mock setup — hoisted above all imports
 // ---------------------------------------------------------------------------
 
-vi.mock('server-only', () => ({}))
+vi.mock("server-only", () => ({}))
 
 const getServerSessionMock = vi.fn()
 const streamTextMock = vi.fn()
@@ -29,27 +29,31 @@ const handleProviderQuotaErrorMock = vi.fn()
 const buildSystemPromptMock = vi.fn()
 const reserveUsageMock = vi.fn(async () => ({
   allowed: true,
-  reservationId: '00000000-0000-4000-8000-000000000484',
+  reservationId: "00000000-0000-4000-8000-000000000484",
 }))
 const finalizeUsageMock = vi.fn(async () => undefined)
 
-vi.mock('next-auth', () => ({
+vi.mock("next-auth", () => ({
   getServerSession: (...args: unknown[]) => getServerSessionMock(...args),
 }))
 
-vi.mock('@/lib/ai/provider', () => ({
+vi.mock("@/lib/ai/provider", () => ({
   getChatModel: (...args: unknown[]) => getChatModelMock(...args),
   getKeyPoolSize: (...args: unknown[]) => getKeyPoolSizeMock(...args),
   handleProviderQuotaError: (...args: unknown[]) => handleProviderQuotaErrorMock(...args),
 }))
 
-vi.mock('@/lib/ai/prompts/system', () => ({
+vi.mock("@/lib/ai/prompts/system", () => ({
   buildSystemPrompt: (...args: unknown[]) => buildSystemPromptMock(...args),
 }))
 
-vi.mock('@/lib/ai/usage-metering', () => ({
-  classifyStreamFailure: ({ providerUsage }: { providerUsage?: { inputTokens?: number; outputTokens?: number } }) => ({
-    status: 'error_with_usage',
+vi.mock("@/lib/ai/usage-metering", () => ({
+  classifyStreamFailure: ({
+    providerUsage,
+  }: {
+    providerUsage?: { inputTokens?: number; outputTokens?: number }
+  }) => ({
+    status: "error_with_usage",
     inputTokens: providerUsage?.inputTokens ?? 0,
     outputTokens: providerUsage?.outputTokens ?? 0,
   }),
@@ -57,8 +61,8 @@ vi.mock('@/lib/ai/usage-metering', () => ({
   finalizeUsage: (...args: unknown[]) => finalizeUsageMock(...args),
 }))
 
-vi.mock('ai', async () => {
-  const actual = await vi.importActual<typeof import('ai')>('ai')
+vi.mock("ai", async () => {
+  const actual = await vi.importActual<typeof import("ai")>("ai")
   return {
     ...actual,
     streamText: (...args: unknown[]) => streamTextMock(...args),
@@ -66,9 +70,9 @@ vi.mock('ai', async () => {
   }
 })
 
-import { simulateReadableStream } from 'ai'
+import { simulateReadableStream } from "ai"
 
-import { POST } from '../route'
+import { POST } from "../legacy-next-orchestrator"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,16 +80,16 @@ import { POST } from '../route'
 
 const VALID_MESSAGES = [
   {
-    id: 'msg_1',
-    role: 'user',
-    parts: [{ type: 'text', text: 'Xin chào' }],
+    id: "msg_1",
+    role: "user",
+    parts: [{ type: "text", text: "Xin chào" }],
   },
 ]
 
 function buildRequest(body: unknown) {
-  return new Request('http://localhost/api/chat', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
+  return new Request("http://localhost/api/chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   })
 }
@@ -94,11 +98,11 @@ function buildValidRequest() {
   return buildRequest({
     selectedFacilityId: 17,
     messages: VALID_MESSAGES,
-    requestedTools: ['equipmentLookup'],
+    requestedTools: ["equipmentLookup"],
   })
 }
 
-function makeQuotaError(message = 'You exceeded your current quota') {
+function makeQuotaError(message = "You exceeded your current quota") {
   return new Error(message)
 }
 
@@ -107,12 +111,12 @@ function makeChatModel(model: string, keyIndex: number) {
     model,
     keyIndex,
     config: {
-      capability: 'default_chat',
-      provider: 'google',
+      capability: "default_chat",
+      provider: "google",
       model,
     },
-    providerOptions: model.includes('gemini')
-      ? { google: { thinkingConfig: { thinkingLevel: 'medium' } } }
+    providerOptions: model.includes("gemini")
+      ? { google: { thinkingConfig: { thinkingLevel: "medium" } } }
       : undefined,
   }
 }
@@ -122,8 +126,8 @@ function makeGatewayChatModel(model: string) {
     model,
     keyIndex: 0,
     config: {
-      capability: 'default_chat',
-      provider: 'gateway',
+      capability: "default_chat",
+      provider: "gateway",
       model,
     },
     providerOptions: undefined,
@@ -135,7 +139,7 @@ function makeStreamResult(
   options?: {
     returnSpy?: ReturnType<typeof vi.fn>
     responseError?: unknown
-  },
+  }
 ) {
   const returnSpy =
     options?.returnSpy ??
@@ -167,10 +171,7 @@ function makeStreamResult(
       }
 
       return simulateReadableStream({
-        chunks: [
-          { type: 'start' },
-          { type: 'finish', finishReason: 'stop' },
-        ],
+        chunks: [{ type: "start" }, { type: "finish", finishReason: "stop" }],
       })
     }),
     steps: Promise.resolve([]),
@@ -178,17 +179,13 @@ function makeStreamResult(
 }
 
 function makeQuotaStream(returnSpy?: ReturnType<typeof vi.fn>) {
-  return makeStreamResult([
-    { type: 'start' },
-    { type: 'error', error: makeQuotaError() },
-  ], { returnSpy })
+  return makeStreamResult([{ type: "start" }, { type: "error", error: makeQuotaError() }], {
+    returnSpy,
+  })
 }
 
 function makeReadyStream(returnSpy?: ReturnType<typeof vi.fn>) {
-  return makeStreamResult([
-    { type: 'start' },
-    { type: 'start-step' },
-  ], { returnSpy })
+  return makeStreamResult([{ type: "start" }, { type: "start-step" }], { returnSpy })
 }
 
 function makeOKStream() {
@@ -199,27 +196,27 @@ function makeOKStream() {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('/api/chat — API key rotation integration', () => {
+describe("/api/chat — API key rotation integration", () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
     // Default session: authenticated user with a facility.
     getServerSessionMock.mockResolvedValue({
-      user: { id: 'u1', role: 'to_qltb', don_vi: 17 },
+      user: { id: "u1", role: "to_qltb", don_vi: 17 },
     })
 
-    buildSystemPromptMock.mockReturnValue('SYSTEM_PROMPT_V1')
-    stepCountIsMock.mockReturnValue('STOP_WHEN_SENTINEL')
+    buildSystemPromptMock.mockReturnValue("SYSTEM_PROMPT_V1")
+    stepCountIsMock.mockReturnValue("STOP_WHEN_SENTINEL")
   })
 
   // -----------------------------------------------------------------
   // Happy path: no quota errors
   // -----------------------------------------------------------------
 
-  it('should succeed on the first attempt when no quota error occurs', async () => {
+  it("should succeed on the first attempt when no quota error occurs", async () => {
     // Given: a single-key pool and a working stream
     getKeyPoolSizeMock.mockReturnValue(1)
-    getChatModelMock.mockReturnValue(makeChatModel('google:gemini-flash', 0))
+    getChatModelMock.mockReturnValue(makeChatModel("google:gemini-flash", 0))
     streamTextMock.mockReturnValue(makeOKStream())
 
     // When: the route is called
@@ -235,19 +232,17 @@ describe('/api/chat — API key rotation integration', () => {
   // Key rotation: quota error on key 0 → auto-switch to key 1
   // -----------------------------------------------------------------
 
-  it('should retry with the next key when the first key hits a quota error', async () => {
+  it("should retry with the next key when the first key hits a quota error", async () => {
     // Given: a 3-key pool
     getKeyPoolSizeMock.mockReturnValue(3)
 
     // getChatModel returns key 0 first, then key 1 after rotation
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-with-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-with-key-1', 1))
+      .mockReturnValueOnce(makeChatModel("model-with-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-with-key-1", 1))
 
     // streamText: emits quota error on first call (key 0), succeeds on second (key 1)
-    streamTextMock
-      .mockReturnValueOnce(makeQuotaStream())
-      .mockReturnValueOnce(makeReadyStream())
+    streamTextMock.mockReturnValueOnce(makeQuotaStream()).mockReturnValueOnce(makeReadyStream())
 
     // handleProviderQuotaError: simulate successful rotation
     handleProviderQuotaErrorMock.mockReturnValueOnce(true)
@@ -265,15 +260,15 @@ describe('/api/chat — API key rotation integration', () => {
 
     // Second streamText call used the rotated model
     const secondCallArgs = streamTextMock.mock.calls[1]?.[0] as { model: string }
-    expect(secondCallArgs.model).toBe('model-with-key-1')
+    expect(secondCallArgs.model).toBe("model-with-key-1")
   })
 
-  it('retries within the same request when preflight stream emits a quota error part', async () => {
+  it("retries within the same request when preflight stream emits a quota error part", async () => {
     getKeyPoolSizeMock.mockReturnValue(2)
 
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-key-1', 1))
+      .mockReturnValueOnce(makeChatModel("model-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-key-1", 1))
 
     const firstReturnSpy = vi.fn(async () => ({ done: true, value: undefined }))
     const secondReturnSpy = vi.fn(async () => ({ done: true, value: undefined }))
@@ -293,18 +288,14 @@ describe('/api/chat — API key rotation integration', () => {
     expect(secondReturnSpy).toHaveBeenCalledOnce()
   })
 
-  it('rotates future requests when onError receives a quota error after preflight success', async () => {
+  it("rotates future requests when onError receives a quota error after preflight success", async () => {
     getKeyPoolSizeMock.mockReturnValue(1)
-    getChatModelMock.mockReturnValue(makeChatModel('model-key-0', 0))
+    getChatModelMock.mockReturnValue(makeChatModel("model-key-0", 0))
 
     streamTextMock.mockReturnValue(
-      makeStreamResult(
-        [
-          { type: 'start' },
-          { type: 'start-step' },
-        ],
-        { responseError: makeQuotaError() },
-      ),
+      makeStreamResult([{ type: "start" }, { type: "start-step" }], {
+        responseError: makeQuotaError(),
+      })
     )
 
     const res = await POST(buildValidRequest() as never)
@@ -315,9 +306,9 @@ describe('/api/chat — API key rotation integration', () => {
     expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
   })
 
-  it('preflight ignores leading start and succeeds on first meaningful part', async () => {
+  it("preflight ignores leading start and succeeds on first meaningful part", async () => {
     getKeyPoolSizeMock.mockReturnValue(1)
-    getChatModelMock.mockReturnValue(makeChatModel('model-key-0', 0))
+    getChatModelMock.mockReturnValue(makeChatModel("model-key-0", 0))
 
     const returnSpy = vi.fn(async () => ({
       done: true,
@@ -333,12 +324,12 @@ describe('/api/chat — API key rotation integration', () => {
     expect(returnSpy).toHaveBeenCalledOnce()
   })
 
-  it('preflight returns sanitized 500 when all attempted keys emit quota error parts', async () => {
+  it("preflight returns sanitized 500 when all attempted keys emit quota error parts", async () => {
     getKeyPoolSizeMock.mockReturnValue(2)
 
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-key-1', 1))
+      .mockReturnValueOnce(makeChatModel("model-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-key-1", 1))
 
     const firstReturnSpy = vi.fn(async () => ({
       done: true,
@@ -353,14 +344,12 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce(makeQuotaStream(firstReturnSpy))
       .mockReturnValueOnce(makeQuotaStream(secondReturnSpy))
 
-    handleProviderQuotaErrorMock
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(false)
+    handleProviderQuotaErrorMock.mockReturnValueOnce(true).mockReturnValueOnce(false)
 
     const res = await POST(buildValidRequest() as never)
 
     expect(res.status).toBe(500)
-    expect(await res.text()).not.toContain('exceeded your current quota')
+    expect(await res.text()).not.toContain("exceeded your current quota")
     expect(streamTextMock).toHaveBeenCalledTimes(2)
     expect(handleProviderQuotaErrorMock).toHaveBeenNthCalledWith(1, 0)
     expect(handleProviderQuotaErrorMock).toHaveBeenNthCalledWith(2, 1)
@@ -368,15 +357,12 @@ describe('/api/chat — API key rotation integration', () => {
     expect(secondReturnSpy).toHaveBeenCalledOnce()
   })
 
-  it('preflight preserves stream responses for non-quota error parts', async () => {
+  it("preflight preserves stream responses for non-quota error parts", async () => {
     getKeyPoolSizeMock.mockReturnValue(2)
-    getChatModelMock.mockReturnValue(makeChatModel('model-key-0', 0))
+    getChatModelMock.mockReturnValue(makeChatModel("model-key-0", 0))
 
     streamTextMock.mockReturnValue(
-      makeStreamResult([
-        { type: 'start' },
-        { type: 'error', error: new Error('Network timeout') },
-      ]),
+      makeStreamResult([{ type: "start" }, { type: "error", error: new Error("Network timeout") }])
     )
 
     const res = await POST(buildValidRequest() as never)
@@ -390,14 +376,14 @@ describe('/api/chat — API key rotation integration', () => {
   // Multi-hop rotation: key 0 → key 1 → key 2 (all fail except last)
   // -----------------------------------------------------------------
 
-  it('should rotate through multiple keys until one succeeds', async () => {
+  it("should rotate through multiple keys until one succeeds", async () => {
     // Given: a 3-key pool, keys 0 and 1 both fail, key 2 succeeds
     getKeyPoolSizeMock.mockReturnValue(3)
 
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-key-1', 1))
-      .mockReturnValueOnce(makeChatModel('model-key-2', 2))
+      .mockReturnValueOnce(makeChatModel("model-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-key-1", 1))
+      .mockReturnValueOnce(makeChatModel("model-key-2", 2))
 
     streamTextMock
       .mockReturnValueOnce(makeQuotaStream())
@@ -405,8 +391,8 @@ describe('/api/chat — API key rotation integration', () => {
       .mockReturnValueOnce(makeReadyStream())
 
     handleProviderQuotaErrorMock
-      .mockReturnValueOnce(true)  // key 0 → key 1
-      .mockReturnValueOnce(true)  // key 1 → key 2
+      .mockReturnValueOnce(true) // key 0 → key 1
+      .mockReturnValueOnce(true) // key 1 → key 2
 
     // When
     const res = await POST(buildValidRequest() as never)
@@ -423,22 +409,20 @@ describe('/api/chat — API key rotation integration', () => {
   // All keys exhausted: returns sanitized error
   // -----------------------------------------------------------------
 
-  it('should return a sanitized 500 error when all keys are exhausted', async () => {
+  it("should return a sanitized 500 error when all keys are exhausted", async () => {
     // Given: a 2-key pool, both keys fail with quota errors
     getKeyPoolSizeMock.mockReturnValue(2)
 
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-key-1', 1))
+      .mockReturnValueOnce(makeChatModel("model-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-key-1", 1))
 
-    streamTextMock
-      .mockReturnValueOnce(makeQuotaStream())
-      .mockReturnValueOnce(makeQuotaStream())
+    streamTextMock.mockReturnValueOnce(makeQuotaStream()).mockReturnValueOnce(makeQuotaStream())
 
     // First rotation succeeds, but second call all exhausted
     handleProviderQuotaErrorMock
-      .mockReturnValueOnce(true)   // key 0 → key 1
-      .mockReturnValueOnce(false)  // key 1 → none left
+      .mockReturnValueOnce(true) // key 0 → key 1
+      .mockReturnValueOnce(false) // key 1 → none left
 
     // When
     const res = await POST(buildValidRequest() as never)
@@ -448,18 +432,20 @@ describe('/api/chat — API key rotation integration', () => {
     const body = await res.text()
     // Should NOT leak internal quota details — just a safe user message
     expect(body).toBeTruthy()
-    expect(body).not.toContain('exceeded your current quota')
+    expect(body).not.toContain("exceeded your current quota")
   })
 
   // -----------------------------------------------------------------
   // Non-quota errors: should NOT trigger rotation
   // -----------------------------------------------------------------
 
-  it('should NOT rotate keys on non-quota errors (e.g. network timeout)', async () => {
+  it("should NOT rotate keys on non-quota errors (e.g. network timeout)", async () => {
     // Given: a 3-key pool, streamText throws a non-quota error
     getKeyPoolSizeMock.mockReturnValue(3)
-    getChatModelMock.mockReturnValue(makeChatModel('model-key-0', 0))
-    streamTextMock.mockImplementation(() => { throw new Error('Network timeout') })
+    getChatModelMock.mockReturnValue(makeChatModel("model-key-0", 0))
+    streamTextMock.mockImplementation(() => {
+      throw new Error("Network timeout")
+    })
 
     // When
     const res = await POST(buildValidRequest() as never)
@@ -474,21 +460,25 @@ describe('/api/chat — API key rotation integration', () => {
   // Last-attempt exhaustion: key still gets marked
   // -----------------------------------------------------------------
 
-  it('should mark the last key as exhausted even on the final attempt', async () => {
+  it("should mark the last key as exhausted even on the final attempt", async () => {
     // Given: a 2-key pool, both keys fail
     getKeyPoolSizeMock.mockReturnValue(2)
 
     getChatModelMock
-      .mockReturnValueOnce(makeChatModel('model-key-0', 0))
-      .mockReturnValueOnce(makeChatModel('model-key-1', 1))
+      .mockReturnValueOnce(makeChatModel("model-key-0", 0))
+      .mockReturnValueOnce(makeChatModel("model-key-1", 1))
 
     streamTextMock
-      .mockImplementationOnce(() => { throw makeQuotaError() })
-      .mockImplementationOnce(() => { throw makeQuotaError() })
+      .mockImplementationOnce(() => {
+        throw makeQuotaError()
+      })
+      .mockImplementationOnce(() => {
+        throw makeQuotaError()
+      })
 
     handleProviderQuotaErrorMock
-      .mockReturnValueOnce(true)   // key 0 → key 1
-      .mockReturnValueOnce(false)  // key 1 → none left
+      .mockReturnValueOnce(true) // key 0 → key 1
+      .mockReturnValueOnce(false) // key 1 → none left
 
     // When
     await POST(buildValidRequest() as never)
@@ -504,11 +494,11 @@ describe('/api/chat — API key rotation integration', () => {
   // getChatModel failure: should return sanitized error, not crash
   // -----------------------------------------------------------------
 
-  it('should return a sanitized error if getChatModel throws', async () => {
+  it("should return a sanitized error if getChatModel throws", async () => {
     // Given: provider setup fails (e.g., unsupported provider)
     getKeyPoolSizeMock.mockReturnValue(1)
     getChatModelMock.mockImplementation(() => {
-      throw new Error('Unsupported AI provider: openai')
+      throw new Error("Unsupported AI provider: openai")
     })
 
     // When
@@ -523,10 +513,10 @@ describe('/api/chat — API key rotation integration', () => {
   // Single-key pool: no rotation possible, surfaces error directly
   // -----------------------------------------------------------------
 
-  it('should surface quota error directly when pool has only one key', async () => {
+  it("should surface quota error directly when pool has only one key", async () => {
     // Given: a single-key pool
     getKeyPoolSizeMock.mockReturnValue(1)
-    getChatModelMock.mockReturnValue(makeChatModel('model-only-key', 0))
+    getChatModelMock.mockReturnValue(makeChatModel("model-only-key", 0))
     streamTextMock.mockReturnValue(makeQuotaStream())
 
     // handleProviderQuotaError returns false (no other keys)
@@ -542,9 +532,9 @@ describe('/api/chat — API key rotation integration', () => {
     expect(handleProviderQuotaErrorMock).toHaveBeenCalledWith(0)
   })
 
-  it('should attempt a non-rotating Gateway model only once', async () => {
+  it("should attempt a non-rotating Gateway model only once", async () => {
     getKeyPoolSizeMock.mockReturnValue(1)
-    getChatModelMock.mockReturnValue(makeGatewayChatModel('openai/gpt-5.2'))
+    getChatModelMock.mockReturnValue(makeGatewayChatModel("openai/gpt-5.2"))
     streamTextMock.mockReturnValue(makeQuotaStream())
     handleProviderQuotaErrorMock.mockReturnValue(false)
 

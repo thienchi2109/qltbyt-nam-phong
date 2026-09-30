@@ -348,7 +348,9 @@ listed exactly.
 
 Điểm dừng: Oracle activation fails closed on missing prior gate, missing
 trusted credential, tuple mismatch, raw-port exposure or unredacted evidence.
-Phase 8 `/api/chat` cutover and Phase 9 cleanup remain unopened.
+Phase 8 `/api/chat` cutover and Phase 9 cleanup remain unopened at this 7.5G checkpoint.
+
+Cập nhật 2026-09-30: anh sau đó yêu cầu mở Phase 8 và chuyển `/api/chat` sang Go. Câu trên là điểm dừng của gói 7.5G. Trạng thái cutover nằm ở đối soát Phase 8. Phase 9 vẫn đóng.
 
 Deploy/live DB: Packages `7.5A–D` and `7.5F` are contract/disposable work;
 `7.5E` is a separate SQL quality gate with no live write by default; `7.5G`
@@ -365,10 +367,18 @@ Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, a
 
 - [ ] 8.1 Chốt subject commit, image digest, source/config/fixture hashes và chạy lại toàn bộ contract, parity, security, UI, cancellation, quota, Tunnel và operator checks trên cùng subject.
 - [ ] 8.2 Xác nhận PASS cần đủ evidence bắt buộc trên cùng subject commit/digest; thiếu evidence là `BLOCKING / INCOMPLETE`, không claim DONE.
-- [ ] 8.3 Chỉ sau explicit authorization direct cutover, chuyển `/api/chat` sang Go backend và giữ nguyên browser/Vercel AI SDK contract.
+- [x] 8.3 Chỉ sau explicit authorization direct cutover, chuyển `/api/chat` sang Go backend và giữ nguyên browser/Vercel AI SDK contract.
 - [ ] 8.4 Sau cutover, production runtime phải thực hiện `ai_quota_reserve`/`ai_quota_finalize` và sanitized SQL audit theo capability policy; đây là behavior bắt buộc, không được tắt để né test.
 - [ ] 8.5 Sau cutover không có runtime fallback về Next.js model/tool orchestration. Rollback chỉ khôi phục Go image/config đã verify khi image trước đó tồn tại. Nếu sau cutover không còn image Go trước đó và candidate fail, route đã cutover ở trạng thái unavailable. Dark first deploy thất bại thì khác: nó chỉ chặn cutover và không tự tắt chat production hiện tại.
 - [ ] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup trong BFF 60 giây, drain grace tối đa 60-90 giây, full primary+secondary usage và `openspec validate ... --strict`.
+
+Đối soát 2026-09-30: anh yêu cầu làm Phase 8, chuyển backend AI sang Go, commit và push `main`, rồi tự test UI production. Nếu không ổn thì git rollback. Ủy quyền này đóng `8.3`. Nó không phải exact-commit PASS.
+
+`8.3`: `POST /api/chat` gọi `postGoBffChat`. UI giữ `api: "/api/chat"`, `runtime = "nodejs"`, `maxDuration = 60`. Orchestrator Next.js được đổi tên thành `src/app/api/chat/legacy-next-orchestrator.ts` và route sống không import file đó.
+
+`8.5` chưa tick. Route sống không có nhánh tự động về orchestrator Next.js. Rollback anh chọn là git revert commit cutover, việc đó khôi phục route Next.js cũ. Đó là revert có chủ đích, không phải fallback runtime và cũng không phải khôi phục image Go đã verify. Image đang phục vụ vẫn là `qltbyt-ai-service:gemini-first`, digest `sha256:512d7992464c2de7eb97221e83aa3983095036f37b816d8e7424bea3d52fac3c`, revision `unknown`. Image dừng `qltbyt-ai-service:75f1-cookie`, digest `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`, được giữ. Không build lại candidate trong lần này.
+
+`8.1`, `8.2`, `8.4`, `8.6` là `BLOCKING / INCOMPLETE`. Chưa có một subject commit + image digest + config. Candidate dùng `usage.NewMemory`, nên chat không gọi `ai_quota_reserve` / `ai_quota_finalize`. Audit SQL chỉ đi từ tool `query_database` khi image có đường đó. Phase 9 không mở. DQSS, Web Push, tunnel, DNS và Access không đổi.
 
 Điểm dừng/review: Nếu cần agent-run live smoke, phải có approval cho đúng các quota reserve/finalize và audit operations; nếu không thì smoke là mock/disposable và không được ghi live PASS.
 

@@ -54,7 +54,7 @@ import { simulateReadableStream } from "ai"
 
 import { AI_RATE_LIMIT_WINDOW_MS } from "@/lib/ai/limits"
 
-import { POST } from "../route"
+import { POST } from "../legacy-next-orchestrator"
 import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [

@@ -60,7 +60,7 @@ vi.mock("ai", async () => {
   }
 })
 
-import { POST } from "../route"
+import { POST } from "../legacy-next-orchestrator"
 import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [

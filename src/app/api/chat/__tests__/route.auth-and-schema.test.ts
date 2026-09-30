@@ -48,7 +48,7 @@ vi.mock("ai", async () => {
   }
 })
 
-import { POST } from "../route"
+import { POST } from "../legacy-next-orchestrator"
 import { makeChatModel, makeReadyStreamTextResult } from "./stream-text-result-test-helpers"
 
 const VALID_MESSAGES = [
@@ -129,7 +129,7 @@ describe("/api/chat auth + schema", () => {
     })
 
     try {
-      const { POST: postWithFutureRole } = await import("../route")
+      const { POST: postWithFutureRole } = await import("../legacy-next-orchestrator")
       const res = await postWithFutureRole(buildRequest({ messages: VALID_MESSAGES }) as never)
 
       expect(res.status).toBe(403)
