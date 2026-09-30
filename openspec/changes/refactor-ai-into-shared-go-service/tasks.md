@@ -174,7 +174,9 @@ Bằng chứng nghiệm thu: Exact image digest, redacted VM/Tunnel logs, smoke 
 - [ ] 7.3 Chạy smoke bằng test data: local health/readiness, chat SSE qua Tunnel, HMAC/replay, tool/RPC policy, draft, provider error và UI stream.
 - [ ] 7.4 Chạy cancel/abort, primary+secondary usage, idempotent finalize, unknown usage, drain grace tối đa 60-90 giây và `quotaTTL >= 120s`.
 - [ ] 7.5 Kiểm tra secret không ở image/log. Sau cutover không có fallback old runtime. Dark smoke fail khi chưa có verified Go image trước đó thì chặn cutover và không tự tắt chat production hiện tại. Rollback image chỉ khi image Go trước đó tồn tại.
-- [ ] 7.6 Nếu agent-run smoke chạm runtime quota/audit thật, liệt kê chính xác các operation và xin approval riêng; nếu không, chỉ dùng mock/disposable và không claim live PASS.
+- [x] 7.6 Nếu agent-run smoke chạm runtime quota/audit thật, liệt kê chính xác các operation và xin approval riêng; nếu không, chỉ dùng mock/disposable và không claim live PASS.
+
+Đối soát 2026-09-30: `7.6` được tick ở nhánh mock/disposable. Candidate chat dùng `usage.NewMemory`; lifecycle này không gọi `ai_quota_reserve` hay `ai_quota_finalize`. Audit `assistant_query_database_audit_log` chỉ nằm trên tool `query_database`. Các probe dark đã ghi không có tool event. Read-only live ngày UTC `2026-09-30` có 0 reservation mới, 0 rate event và 0 audit `assistant_query_database`. Tick này không phải live PASS và không ủy quyền ba RPC đó. `7.1`–`7.5`, Phase 8 và Phase 9 vẫn mở.
 
 Điểm dừng/review: Dừng tại dark VM; thiếu evidence hoặc smoke failure block cutover và phải review trước lần thử lại.
 

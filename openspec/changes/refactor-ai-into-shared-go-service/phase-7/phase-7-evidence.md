@@ -64,3 +64,15 @@ app/capability IDs hoặc coi env placeholder là đăng ký hợp lệ.
    status/latency được thu thập đúng; Google `403` cần credential/quota review.
 
 Phase 7 hiện **chưa PASS** và chưa phải Phase 8 acceptance.
+
+## 7.6 Quota và audit — mock/disposable (2026-09-30)
+
+Nhánh được chọn là mock/disposable. Agent-run smoke của phase này không được ghi là live PASS. Ba operation sau vẫn chưa được ủy quyền cho một smoke live: `public.ai_quota_reserve`, `public.ai_quota_finalize`, và `public.assistant_query_database_audit_log`.
+
+Source đã commit tại `8071eb2b56d25390e9fa08f3383a5ee2b6db5f21` và HEAD `2272f5e2fe6ccdaea4a1e5ab4e234b19413c16db` đều gắn `orchestration.Runner.Usage` bằng `usage.NewMemory` trong `services/ai-service/cmd/ai-service/main.go`. `Memory.Reserve` bỏ qua `ReserveRequest.Caller`. `TestMemoryIgnoresQuotaCallerAndTenant` dùng caller cố ý trả lỗi nếu bị gọi; `go test ./internal/usage -run TestMemoryIgnoresQuotaCallerAndTenant -count=1` PASS ngày 2026-09-30. `QuotaBook.Reserve` mới là đường gọi kill-switch, `ai_quota_reserve` và `ai_quota_finalize`. Process `cmd/ai-service` không tạo `QuotaBook`. Clarification trả về trước `Reserve`. `assistant_query_database_audit_log` chỉ được gọi trong tool `query_database`.
+
+Image đang phục vụ vẫn là `qltbyt-ai-service:gemini-first`, digest `sha256:512d7992464c2de7eb97221e83aa3983095036f37b816d8e7424bea3d52fac3c`, revision label `unknown`, build `2026-09-30T12:47:54Z`. Revision đó không biến image thành exact commit. Source liền trước build, `8071eb2b`, đã dùng `NewMemory`.
+
+Đọc live project `cdthersvldpnlbvpufrr` chỉ bằng `SELECT`, không ghi. Ngày UTC `2026-09-30` có 0 dòng `ai_quota_reservations.reserved_at`, 0 dòng `ai_rate_events.ts`, và 0 dòng `audit_logs` với `action_type = assistant_query_database`. Cùng kết quả 0 trong các cửa sổ của `probe-75f-1790757941136`, `probe-75f-1790760016926`, `probe-75f-llm-1790771778869`, `probe-75f-llm-1790772253364` và `probe-75f-gemini-1790773251352`. Bảng reservation đã có dòng cũ, nên một insert trong ngày này sẽ hiện ra. Không ghi user id, SQL shape hay secret.
+
+`7.1`–`7.5` không được tick. Phase 8, Phase 9, cutover `/api/chat`, DQSS, Web Push và paid-provider smoke không mở từ mục này.

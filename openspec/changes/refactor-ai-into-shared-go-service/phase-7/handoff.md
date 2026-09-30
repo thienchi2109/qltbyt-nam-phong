@@ -1,5 +1,9 @@
 # Phase 7 Handoff
 
+## 7.6 (2026-09-30)
+
+`7.6` đã được ghi ở nhánh mock/disposable. Chat candidate dùng `usage.NewMemory`, không gọi `ai_quota_reserve` / `ai_quota_finalize`. Audit SQL chỉ đi qua `query_database`, và các probe dark đã ghi không có tool event. Read-only live ngày UTC `2026-09-30` không có reservation mới, rate event mới, hay audit `assistant_query_database`. Đây không phải live PASS. Ba RPC `ai_quota_reserve`, `ai_quota_finalize` và `assistant_query_database_audit_log` vẫn cần approval riêng trước một smoke live. `7.1`–`7.5` vẫn mở. Phase 7 chưa PASS. Phase 8 và Phase 9 không mở.
+
 Ngày: 2026-09-27
 
 Target: `oracle-vps` (`ubuntu@149.118.148.179`)
