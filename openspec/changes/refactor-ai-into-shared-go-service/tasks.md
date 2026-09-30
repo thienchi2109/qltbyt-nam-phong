@@ -314,11 +314,11 @@ readiness `503/200`, cancellation and error redaction. Evidence phải gắn exa
 subject commit/config hashes và phân loại rõ `DISPOSABLE ONLY` hay
 `PRODUCTION-CANDIDATE`; disposable PASS không certify production.
 
-- [ ] 7.5F.1 Chạy positive/negative broker token and Access tests; browser-supplied Access credential must fail.
+- [x] 7.5F.1 Chạy positive/negative broker token and Access tests; browser-supplied Access credential must fail.
 - [x] 7.5F.2 Chạy disposable real-tuple wiring/readiness checks, including missing Broker/QueryExecutor/registry and unsafe SQL cases.
 - [x] 7.5F.3 Reconcile evidence against `7.5A–E`; mark blockers instead of ticking downstream acceptance without proof.
 
-Đối soát 2026-09-29 trên subject `a3267b53`: `7.5F.2` đã có exact-commit ARM64 candidate `/healthz=200` + `/readyz=200`, positive disposable broker-token clarification, và local negative tuple/unsafe-SQL evidence; mục này chỉ là `DISPOSABLE ONLY`. `7.5F.1` vẫn mở: NextAuth session establishment thành công, nhưng production BFF trả `403 unauthorized` cho clarification-only `/api/chat/dark` request và không có SSE. `7.5E` giữ `static=INCOMPLETE`, `baseline-forward=NOT RUN`; waiver không phải gate PASS. Không tick `7.5G`, Phase 8/9 hay paid-provider smoke.
+Đối soát 2026-09-30: `7.5F.1` được tick ở mức `DISPOSABLE ONLY` trên image đã probe `qltbyt-ai-service:diag-75f-cookie`, manifest list `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`. Positive: `probe-75f-1790757941136` lúc `2026-09-30T08:45:42.578Z` trả SSE `200`. Negative cùng image lúc `2026-09-30T09:00:54Z`: broker token sai trả `401 unauthorized` với `auth.credential`; cookie Access không kèm HMAC trả `401` với `auth.access_cookie` rồi `auth.hmac`; cookie phiên trả `401` với `auth.cookie`; header Access của trình duyệt trả `401` với `auth.hmac`; request công khai chỉ có cookie Access trả `403` HTML. `7.5F.2` giữ evidence disposable ngày 2026-09-29 trên subject `a3267b53`. Image đã probe không phải subject commit đã commit. Sau tick, container phục vụ được đổi sang image sạch `qltbyt-ai-service:75f1-cookie`, manifest list `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`, không probe model lần hai. Image đã tick được giữ ở container dừng `qltbyt-ai-service-candidate-cookie75f`. Các image debug cũ hơn đã xóa. `7.5E` giữ `static=INCOMPLETE`, `baseline-forward=NOT RUN`; waiver không phải gate PASS. Không tick `7.5G`, Phase 8/9 hay paid-provider smoke.
 
 Điểm dừng: Dừng nếu Access lane lacks trusted BFF source, readiness `200` is
 possible without the real tuple, or disposable evidence is being presented as

@@ -41,7 +41,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeProtocolError(w, requestID, protocol.NewError(http.StatusNotFound, protocol.CodeInvalidRequest, "The request is not supported.", false), h.Log)
 		return
 	}
-	if cookie := r.Header.Get("Cookie"); cookie != "" {
+	if rejectUntrustedCookie(r) {
 		writeProtocolError(w, requestID, protocol.NewError(http.StatusUnauthorized, protocol.CodeUnauthorized, "The request is not authorized.", false), h.Log)
 		return
 	}

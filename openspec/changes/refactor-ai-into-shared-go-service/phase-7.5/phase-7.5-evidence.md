@@ -6,10 +6,18 @@ are accepted. `7.5E.2` is accepted with the recorded waiver: static remains
 PASS. `7.5E.3` is accepted on the live role/grant/config read-back. Pooler
 connection verification moves to the next acceptance step, and Oracle
 credential parity is not required. The 2026-09-29 `7.5F` reconciliation and
-the exact-subject candidate rerun are recorded below. `7.5F.1` stays open for
-the trusted production-BFF Access positive path; `7.5F.2` has disposable
-exact-subject tuple evidence but remains disposable-only. This is not
-production acceptance or acceptance of `7.5G`.
+the exact-subject candidate rerun are recorded below. On 2026-09-30 task
+`7.5F.1` is checked at `DISPOSABLE ONLY` against image
+`qltbyt-ai-service:diag-75f-cookie`, manifest list
+`sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`.
+Positive probe `probe-75f-1790757941136` returned SSE `200`, and the negative
+broker-token and browser-supplied Access cases on that same image returned
+`401` or public `403` at `2026-09-30T09:00:54Z`. That image is not an exact
+subject commit. After that tick, the serving container was swapped to cleaned
+image `qltbyt-ai-service:75f1-cookie`
+(`sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`)
+without a second model probe. `7.5F.2` remains the 2026-09-29 disposable tuple
+result. This is not production acceptance or acceptance of `7.5G`.
 
 **Subject commit/config:** not accepted as one phase subject. The `7.5F`
 attempt binds Next.js, local disposable tests, and the rerun candidate to
@@ -26,6 +34,17 @@ Private `/healthz` and `/readyz` both returned `200` after the restart
 quarantine. The earlier `5ea42ef` deployment remains historical evidence and
 does not bind the current candidate. This does not reopen accepted 7.5E tasks
 or convert waived DB lanes to PASS.
+
+**Latest candidate checkpoint (2026-09-30):** the serving disposable container
+`qltbyt-ai-service-candidate` is cleaned image
+`qltbyt-ai-service:75f1-cookie`, manifest list
+`sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`.
+Private `/healthz` and `/readyz` are both `200`, Docker health is `healthy`,
+and the restart count is `0`. The probed image
+`qltbyt-ai-service:diag-75f-cookie`, manifest list
+`sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`,
+remains stopped as `qltbyt-ai-service-candidate-cookie75f`. See the 2026-09-30
+section below.
 
 **Latest Vercel configuration checkpoint:** four production BFF variables have
 now been added and their names/types/target read back: URL, HMAC key ID, HMAC
@@ -78,15 +97,15 @@ completing one package does not tick or authorize another package.
 
 ## Package acceptance matrix
 
-| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                                                                                                                                                |
-| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                                                                                                                                                  |
-| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                                                                                                                                                  |
-| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                                                                                                    |
-| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **DISPOSABLE ONLY / NOT EXACT-COMMIT** — later Oracle entry passed the tested catalog matrix on `848073b5` plus an uncommitted executor fix; that superseded the earlier "no disposable PostgreSQL" note. It is not production certification and is not evidence for `a3267b53` |
-| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step                                                                            |
-| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **BLOCKING / INCOMPLETE** — exact-subject ARM64 image parity, disposable broker-token clarification, browser-Access rejection, `/healthz=200`, `/readyz=200` and local tuple/unsafe-SQL negatives are evidenced; positive trusted Access through production BFF remains unrun   |
-| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                                                                                            |
+| Package                      | Owner / dispatch boundary          | Required evidence                                                                                                                                                                                          | Status / blocker                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `7.5A` Contract/ADR          | Architecture/spec owner; docs only | [Contract/ADR](phase-7.5a-contract.md): route, per-RPC schemas, scope/telemetry derivation, operation mapping, byte/row/field caps, allowlist, token TTL/claims, trusted credential source, negative cases | **READY FOR REVIEW** — docs recorded; exact landed subject commit/config binding still pending                                                                                                                                                                                                                                                                                                                                              |
+| `7.5B` BFF broker endpoint   | Next.js/BFF owner                  | Server-only credential source, token mint/verify, scope/allowlist, cancellation, redaction and route tests                                                                                                 | **DISPOSABLE ONLY** — focused worktree tests pass; landed/Go/Access acceptance remains pending                                                                                                                                                                                                                                                                                                                                              |
+| `7.5C` Go broker/capability  | Go runtime owner                   | Internal Broker composition, trusted token propagation, audit/quota calls, registry `qltbyt/assistant-chat/v1`                                                                                             | **DISPOSABLE ONLY** — local composition/transport/readiness evidence passes; landed and downstream acceptance remain pending                                                                                                                                                                                                                                                                                                                |
+| `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **DISPOSABLE ONLY / NOT EXACT-COMMIT** — later Oracle entry passed the tested catalog matrix on `848073b5` plus an uncommitted executor fix; that superseded the earlier "no disposable PostgreSQL" note. It is not production certification and is not evidence for `a3267b53`                                                                                                                                                             |
+| `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step                                                                                                                                                                                                                                        |
+| `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **DISPOSABLE ONLY** — `7.5F.1`–`7.5F.3` are checked. `7.5F.1` binds probed image `diag-75f-cookie` manifest `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61` (SSE `200` plus `2026-09-30T09:00:54Z` negatives). That image is not an exact subject commit. Serving then moved to cleaned `75f1-cookie` without a second model probe. `7.5F.2` remains the 2026-09-29 `a3267b53` tuple. Not a production candidate. |
+| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                                                                                                                                                                                                                                                        |
 
 ## Readiness acceptance
 
@@ -125,8 +144,13 @@ check or mock does not satisfy this gate.
   baseline-forward remains `NOT RUN` under the recorded waiver. Live
   role/grant/config read-back is the `7.5E.3` evidence. Pooler connection
   verification is the next acceptance step. The 2026-09-29 reconciliation
-  records `7.5F` as `BLOCKING / INCOMPLETE`: `7.5F.3` is checked, while
-  `7.5F.1`, `7.5F.2` and `7.5G` stay open. Overall Phase 7.5 stays
+  records `7.5F` as `BLOCKING / INCOMPLETE` at that date. The 2026-09-30
+  section supersedes the Access gap: `7.5F.1` is checked `DISPOSABLE ONLY` on
+  probed image `diag-75f-cookie`
+  (`sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`),
+  `7.5F.2` stays the 2026-09-29 disposable checkbox, `7.5F.3` stays checked,
+  and `7.5G` stays unopened. The serving container is later cleaned image
+  `75f1-cookie`, which is not the probed subject. Overall Phase 7.5 stays
   `BLOCKING / INCOMPLETE`.
 - No live DB write, migration, DDL, Supabase CLI operation or production
   credential provisioning is authorized by this artifact.
@@ -771,3 +795,117 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   adapter root cause is claimed. No provider request, DQSS restart, tunnel,
   DNS, Access, Vercel, or live DB change occurred. Keep `7.5F.1`/`7.5F.2`
   open and do not open 7.5G.
+
+### 7.5F production-BFF Access probe and cookie gate (2026-09-30)
+
+- **Label:** `DISPOSABLE ONLY`. Overall Phase 7.5 remains
+  `BLOCKING / INCOMPLETE`. This checkpoint is not `PRODUCTION-CANDIDATE`.
+- **Worktree:** `main` at `4b49a3b735ac618d92b7628d4867d176acc7b813`. The
+  Access-cookie allowlist is an uncommitted ingress change. Diagnostic log
+  lines were removed from that worktree after the successful probe, so the
+  serving binary and the worktree are different subjects.
+- **Probed candidate:** at the SSE `200`, `qltbyt-ai-service-candidate` was
+  tag `qltbyt-ai-service:diag-75f-cookie`, manifest list
+  `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`.
+  Host network, listener `127.0.0.1:18081`, user `65532:65532`, read-only
+  root. Its 20 environment values and 4 read-only mounts were copied from the
+  previous candidate. Read-back at probe time: Docker `healthy`, restart `0`,
+  `/healthz=200`, `/readyz=200`. The later swap section names the current
+  serving image.
+- **Stopped rollback containers at probe time:**
+  `qltbyt-ai-service-candidate-prev` held image
+  `sha256:c868ec93f1b529067140db3ad99300a1b0e0eff9115ced22424ae288f5b147ab`.
+  `qltbyt-ai-service-candidate-diag` held tag `qltbyt-ai-service:diag-75f`.
+  Both were removed after the cleaned image became healthy.
+- **Clean image at probe time:** `qltbyt-ai-service:75f1-cookie`, manifest
+  list
+  `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`.
+  The binary keeps the `cf_authorization` / `cf_appsession` allowlist and
+  contains no `auth diagnostic=` strings. It had not replaced the probed
+  candidate when these probe results were recorded. The swap section below is
+  the later serving state.
+- **Untouched runtime:** `dqss-issue-508` stayed `healthy` with restart `0`.
+  `qltbyt-ai-cloudflared-new` stayed running with restart `0`. No DNS, tunnel
+  route, Access policy, Vercel Production variable, secret file, or live DB
+  change was made. Secrets were not rotated.
+- **401 classification:** `probe-75f-1790753479879` and
+  `probe-75f-1790755749509` returned HTTP `401` JSON `unauthorized` from
+  `POST /api/chat/dark`. The Vercel warning for the second probe was
+  `[ai-bff] upstream failure` with `contentType=application/json`,
+  `cfRay=a431be719fb858bf-NRT`, and `class=go_protocol_json`. The candidate
+  serving at that time emitted no HMAC diagnostic. Any `Cookie` header was
+  rejected before HMAC. The BFF constructs its own headers and does not
+  forward the browser cookie. Cloudflare Access adds `CF_Authorization` and
+  `CF_AppSession` to the authenticated origin request.
+- **Allowlist under test:** only those two names, compared case-insensitively,
+  are removed before HMAC. A browser session cookie or a malformed cookie
+  header still returns HTTP `401` and does not open a model session. After the
+  log cleanup, `go test ./internal/ingress/ ./internal/qltbyt/ -count=1`
+  passed. `TestCredentialRejectionsHappenBeforeExecutor` still rejects a
+  browser-cookie broker token before the executor. Those tests belong to the
+  cleaned worktree, not to the serving image.
+- **Positive probe:** `probe-75f-1790757941136` at `2026-09-30T08:45:42.578Z`,
+  from a facility-scoped session, `POST /api/chat/dark`. The browser result was
+  HTTP `200`, `content-type=text/event-stream`, `finishReason=stop`, and
+  `[DONE]`. The stream asks the user to choose repairs, quota, or equipment
+  lookup. It contains no tool event. The serving candidate logged only
+  `auth.access_cookie` for that request id.
+- **Negative probes (same probed image, `2026-09-30T09:00:54Z`):** none
+  returned `200` or `text/event-stream`. Sentinel values did not appear in
+  response bodies.
+  - `neg-75f1-broker`: valid HMAC and a rejected broker token. HTTP `401`
+    `application/json` code `unauthorized`. Log only `auth.credential`.
+  - `neg-75f1-access-cookie`: `CF_Authorization` and `CF_AppSession` without
+    HMAC. HTTP `401` JSON `unauthorized`. Logs `auth.access_cookie`, then
+    `auth.hmac`.
+  - `neg-75f1-session-cookie`: a session cookie. HTTP `401`. Log `auth.cookie`
+    with `cookie_names=session`, before HMAC.
+  - `neg-75f1-access-header`: browser-supplied Access client headers without
+    HMAC. HTTP `401`. Log `auth.hmac`.
+  - Public `POST https://ai-service.cdclims.cloud/v1/chat` with only an Access
+    cookie: HTTP `403` `text/html`, not an event stream.
+- **Post-probe read-back:** that container stayed
+  `qltbyt-ai-service:diag-75f-cookie`, `running`, `healthy`, restart `0`,
+  `/healthz=200`, `/readyz=200`. DQSS stayed `healthy` with restart `0`.
+- **Checkbox result:** `7.5F.1` is checked at `DISPOSABLE ONLY` for manifest
+  list `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`.
+  The positive production-BFF Access SSE and the negative broker-token and
+  browser-supplied Access cases were observed on that one image. The image is
+  not a committed git subject. The worktree at `4b49a3b7` plus the uncommitted
+  cleaned ingress does not contain the diagnostic logs that this probed binary
+  still has. `7.5F.2` is unchanged and remains the 2026-09-29 disposable tuple
+  evidence for subject `a3267b53`. `7.5G`, `/api/chat` cutover, Phase 8/9, and
+  paid-provider smoke stay unopened. No second model probe was sent.
+
+### 7.5F cleaned image swap (2026-09-30)
+
+- **Label:** operational cleanup after the `7.5F.1` tick. This swap does not
+  move the `7.5F.1` subject onto the new digest and does not open `7.5G`.
+- **Serving container:** `qltbyt-ai-service-candidate` now runs
+  `qltbyt-ai-service:75f1-cookie`, manifest list
+  `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`.
+  The binary has the `cf_authorization` / `cf_appsession` allowlist once each
+  and has zero `auth diagnostic=` strings. Private probes returned
+  `/healthz=200` and `/readyz=200`; Docker health is `healthy`; restart count
+  is `0`. Runtime comparison matched 20 environment values and 4 read-only
+  mounts with the previous container. User, host network, read-only root,
+  restart policy, memory, CPU, pids, capabilities, tmpfs, ulimits, and init
+  were copied. An unsigned `POST /v1/chat` on loopback returned HTTP `401`
+  and was not `text/event-stream`.
+- **Rollback kept:** stopped container
+  `qltbyt-ai-service-candidate-cookie75f` still holds probed image
+  `qltbyt-ai-service:diag-75f-cookie`. It is the one-step rollback and the
+  image named by the `7.5F.1` tick.
+- **Removed after the clean container was healthy:** stopped containers
+  `qltbyt-ai-service-candidate-prev` and
+  `qltbyt-ai-service-candidate-diag`; tags `qltbyt-ai-service:diag-75f`,
+  `qltbyt-ai-service:current-candidate`,
+  `qltbyt/ai-service:phase-7.5f-a0ae98b8-arm64`, and
+  `qltbyt/ai-service:phase-7.5f-50746976-arm64`. No force removal was used.
+- **Kept image:** `qltbyt/ai-service:phase-7.5f-a3267b539e-arm64`, digest
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`,
+  remains the 2026-09-29 `7.5F.2` subject.
+- **Untouched:** DQSS stayed `healthy` with restart `0`. Cloudflared stayed
+  `running` with restart `0`. No DNS, tunnel route, Access policy, Vercel
+  variable, secret, live DB, or production `/api/chat` change was made. No
+  second model probe was sent.

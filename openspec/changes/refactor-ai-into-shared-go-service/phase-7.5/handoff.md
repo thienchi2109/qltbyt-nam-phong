@@ -1,5 +1,26 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest 7.5F checkpoint (2026-09-30)
+
+`7.5F.1` is checked at `DISPOSABLE ONLY` on probed image
+`qltbyt-ai-service:diag-75f-cookie`, manifest list
+`sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`.
+Positive probe `probe-75f-1790757941136` returned SSE `200` at
+`2026-09-30T08:45:42.578Z`. At `2026-09-30T09:00:54Z` that same image rejected
+the negative broker token and browser-supplied Access cases. The serving
+container was then swapped to cleaned image `qltbyt-ai-service:75f1-cookie`,
+manifest list
+`sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`.
+Private `/healthz=200`, `/readyz=200`, Docker `healthy`, restart `0`. An
+unsigned loopback `POST /v1/chat` returned HTTP `401` and was not an event
+stream. No second model probe was sent, so the checkbox stays bound to the
+probed image. That probed image is stopped as
+`qltbyt-ai-service-candidate-cookie75f`. Older debug tags were removed.
+`qltbyt/ai-service:phase-7.5f-a3267b539e-arm64` remains the `7.5F.2` subject.
+`7.5G`, `/api/chat` cutover, Phase 8/9, and paid-provider smoke stay unopened.
+Overall Phase 7.5 remains `BLOCKING / INCOMPLETE`. Sections below keep the
+2026-09-29 record, including the then-open `7.5F.1` status.
+
 ## Latest 7.5F candidate-origin checkpoint (2026-09-29)
 
 The disposable candidate was recreated from the exact `a3267b53` digest with
