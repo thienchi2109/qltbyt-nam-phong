@@ -14,9 +14,10 @@ manifest list
 Private `/healthz=200`, `/readyz=200`, Docker `healthy`, restart `0`. An
 unsigned loopback `POST /v1/chat` returned HTTP `401` and was not an event
 stream. No second model probe was sent, so the checkbox stays bound to the
-probed image. That probed image is stopped as
-`qltbyt-ai-service-candidate-cookie75f`. Older debug tags were removed.
-`qltbyt/ai-service:phase-7.5f-a3267b539e-arm64` remains the `7.5F.2` subject.
+probed image. After the cleaned image stayed healthy, that stopped probed
+image and the unused `phase-7.5f-a3267b539e-arm64` tag were removed without
+force. Both digests remain the evidence record. The only local AI service
+image left is `75f1-cookie`.
 `7.5G`, `/api/chat` cutover, Phase 8/9, and paid-provider smoke stay unopened.
 Overall Phase 7.5 remains `BLOCKING / INCOMPLETE`. Sections below keep the
 2026-09-29 record, including the then-open `7.5F.1` status.

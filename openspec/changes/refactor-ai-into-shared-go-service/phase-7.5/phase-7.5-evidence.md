@@ -43,7 +43,8 @@ Private `/healthz` and `/readyz` are both `200`, Docker health is `healthy`,
 and the restart count is `0`. The probed image
 `qltbyt-ai-service:diag-75f-cookie`, manifest list
 `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`,
-remains stopped as `qltbyt-ai-service-candidate-cookie75f`. See the 2026-09-30
+was removed after that read-back. Its digest remains the `7.5F.1` record.
+The only local AI service image left is `75f1-cookie`. See the 2026-09-30
 section below.
 
 **Latest Vercel configuration checkpoint:** four production BFF variables have
@@ -892,19 +893,22 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   restart policy, memory, CPU, pids, capabilities, tmpfs, ulimits, and init
   were copied. An unsigned `POST /v1/chat` on loopback returned HTTP `401`
   and was not `text/event-stream`.
-- **Rollback kept:** stopped container
-  `qltbyt-ai-service-candidate-cookie75f` still holds probed image
-  `qltbyt-ai-service:diag-75f-cookie`. It is the one-step rollback and the
-  image named by the `7.5F.1` tick.
 - **Removed after the clean container was healthy:** stopped containers
-  `qltbyt-ai-service-candidate-prev` and
-  `qltbyt-ai-service-candidate-diag`; tags `qltbyt-ai-service:diag-75f`,
+  `qltbyt-ai-service-candidate-prev`,
+  `qltbyt-ai-service-candidate-diag`, and
+  `qltbyt-ai-service-candidate-cookie75f`; tags `qltbyt-ai-service:diag-75f`,
+  `qltbyt-ai-service:diag-75f-cookie`,
   `qltbyt-ai-service:current-candidate`,
-  `qltbyt/ai-service:phase-7.5f-a0ae98b8-arm64`, and
-  `qltbyt/ai-service:phase-7.5f-50746976-arm64`. No force removal was used.
-- **Kept image:** `qltbyt/ai-service:phase-7.5f-a3267b539e-arm64`, digest
-  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`,
-  remains the 2026-09-29 `7.5F.2` subject.
+  `qltbyt/ai-service:phase-7.5f-a0ae98b8-arm64`,
+  `qltbyt/ai-service:phase-7.5f-50746976-arm64`, and
+  `qltbyt/ai-service:phase-7.5f-a3267b539e-arm64`. No force removal was used.
+  Unused build cache of about `3.1GB` was pruned. Root filesystem use moved
+  from `51G` to `48G`. The probed digest
+  `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61`
+  and the `7.5F.2` digest
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`
+  remain the evidence record. The only remaining local AI service image is
+  `qltbyt-ai-service:75f1-cookie`.
 - **Untouched:** DQSS stayed `healthy` with restart `0`. Cloudflared stayed
   `running` with restart `0`. No DNS, tunnel route, Access policy, Vercel
   variable, secret, live DB, or production `/api/chat` change was made. No
