@@ -17,25 +17,6 @@ var (
 	errBodyTooLarge    = errors.New("request body too large")
 )
 
-type authDiagnosticError struct {
-	cause error
-	code  string
-}
-
-func (e authDiagnosticError) Error() string { return e.cause.Error() }
-func (e authDiagnosticError) Unwrap() error { return e.cause }
-
-func authFailure(code string) error {
-	return authDiagnosticError{cause: ErrUnauthenticated, code: code}
-}
-func authDiagnostic(err error) string {
-	var e authDiagnosticError
-	if errors.As(err, &e) {
-		return e.code
-	}
-	return "auth.unknown"
-}
-
 // Log records only correlation and outcome. It must not receive prompts, SQL, or secrets.
 type Log interface {
 	Record(requestID, code string)
