@@ -339,7 +339,7 @@ live SQL or quota/audit writes require separate operation approval and must be
 listed exactly.
 
 - [x] 7.5G.1 Activate one Oracle candidate only after all prior package gates; keep raw port and health/readiness private.
-- [ ] 7.5G.2 Verify readiness `200` only with real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` registry tuple and Access credential from trusted BFF.
+- [x] 7.5G.2 Verify readiness `200` only with real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` registry tuple and Access credential from trusted BFF.
 - [x] 7.5G.3 Record blockers and stop at candidate activation; do not change `/api/chat`, start Phase 9 cleanup or claim paid-provider evidence.
 
 Điểm dừng: Oracle activation fails closed on missing prior gate, missing

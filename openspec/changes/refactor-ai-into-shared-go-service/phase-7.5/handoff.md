@@ -2,6 +2,14 @@
 
 ## 7.5G candidate activation checkpoint (2026-09-30)
 
+### 7.5G.2 trusted BFF smoke (2026-09-30)
+
+An authenticated production session sent the clarification-only request to
+`/api/chat/dark`; it returned `HTTP 200`, `text/event-stream`, and `[DONE]`.
+Request ID `probe-75g-final`. This is the trusted BFF smoke for the active Go
+candidate and real Broker/QueryExecutor/assistant capability route. No secret,
+cookie, token or response body was retained.
+
 The Oracle candidate `qltbyt-ai-service-candidate` remained on
 `qltbyt-ai-service:75f1-cookie`. Private loopback probes returned
 `/healthz=200` and `/readyz=200`; candidate, DQSS and cloudflared all remained

@@ -2,6 +2,15 @@
 
 ## 7.5G Oracle candidate activation (2026-09-30)
 
+### 7.5G.2 trusted BFF smoke (2026-09-30)
+
+- From an authenticated production session, `POST /api/chat/dark` returned
+  `HTTP 200` with `Content-Type: text/event-stream` and a completed `[DONE]`
+  stream. Request ID: `probe-75g-final`.
+- This verifies the trusted BFF path reached the active Go candidate with the
+  real signed Broker/QueryExecutor route and assistant capability registry.
+- No secret, cookie, token or response body was recorded.
+
 - **Subject/runtime:** Oracle candidate `qltbyt-ai-service-candidate` is running
   image `qltbyt-ai-service:75f1-cookie`; no image replacement or production
   cutover was performed.
