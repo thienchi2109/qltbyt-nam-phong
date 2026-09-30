@@ -1,4 +1,5 @@
 const protocolMessages = {
+  access_denied: "Đường kết nối bảo mật tới trợ lý bị từ chối.",
   invalid_request: "Yêu cầu không hợp lệ.",
   capability_unavailable: "Tính năng trợ lý này hiện không khả dụng.",
   unauthorized: "Anh/chị không có quyền thực hiện yêu cầu này.",
@@ -35,6 +36,23 @@ export interface TranslatedGoProtocolError {
       retryable: boolean
       requestId: string
     }
+  }
+}
+
+/** Maps an upstream HTML Access denial to a safe, distinguishable response. */
+export function translateAccessDenial(requestId: string): TranslatedGoProtocolError {
+  return {
+    httpStatus: 502,
+    statusText: "Bad Gateway",
+    headers: { "X-Request-ID": requestId },
+    body: {
+      error: {
+        code: "access_denied",
+        message: "Đường kết nối bảo mật tới trợ lý bị từ chối.",
+        retryable: false,
+        requestId,
+      },
+    },
   }
 }
 

@@ -1,6 +1,7 @@
 import type { GoBffConfig } from "./GoBffConfig"
 import {
   mapGoAppQuotaError,
+  translateAccessDenial,
   translateGoProtocolError,
   type GoProtocolErrorBody,
 } from "./GoBffProtocolError"
@@ -99,6 +100,13 @@ function isUIStreamResponse(response: Response): boolean {
   )
 }
 
+function upstreamFailureClass(response: Response): string {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? ""
+  if (response.status === 403 && contentType.includes("text/html")) return "access_html"
+  if (contentType.includes("application/json")) return "go_protocol_json"
+  return "nonstandard"
+}
+
 /** Proxies the dark stream while propagating the browser cancellation signal. */
 export async function proxyGoBffRequest(input: ProxyInput): Promise<Response> {
   let upstream: Response
@@ -166,7 +174,22 @@ export async function proxyGoBffRequest(input: ProxyInput): Promise<Response> {
     })
   }
 
+  console.warn("[ai-bff] upstream failure", {
+    requestId: input.requestId,
+    status: upstream.status,
+    contentType: upstream.headers.get("content-type") ?? "",
+    cfRay: upstream.headers.get("cf-ray") ?? "",
+    class: upstreamFailureClass(upstream),
+  })
+
   const payload = await safeProtocolPayload(upstream)
+  if (
+    upstream.status === 403 &&
+    upstream.headers.get("content-type")?.toLowerCase().includes("text/html")
+  ) {
+    const translated = translateAccessDenial(input.requestId)
+    return jsonResponse(translated.httpStatus, translated.body, translated.headers["X-Request-ID"])
+  }
   const appQuota = mapGoAppQuotaError(payload, input.requestId)
   if (appQuota) {
     return jsonResponse(

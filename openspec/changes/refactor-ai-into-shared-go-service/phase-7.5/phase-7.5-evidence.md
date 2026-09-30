@@ -710,3 +710,46 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
   and no paid-provider smoke ran. The result does not identify a provider root
   cause; it leaves candidate readiness, Tunnel reachability and trusted Access
   acceptance unresolved. Overall Phase 7.5 remains `BLOCKING / INCOMPLETE`.
+
+### 7.5F candidate provider initialization diagnostic (2026-09-29)
+
+- **Subject/image:** `a3267b539e9169342b12d7a127980b549217fb33`, digest
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`.
+- **Diagnostic:** a disposable ARM64 test binary copied into the candidate ran
+  `loadRuntimeConfig`, `provider.Open` for both configured chain entries and
+  `provider.NewChain` without inference calls, database calls or secret output.
+  Redacted output was `runtime_config=ok chain_config=ok`,
+  `adapter_index=0 open=ok`, `adapter_index=1 open=ok`,
+  `chain_open=ok inference_calls=0`.
+- **Stability:** nine probes from 13:22:26Z through 13:24:28Z returned
+  `/healthz=200` and `/readyz=200`. DQSS stayed `healthy`, restart `0` on every
+  probe. Candidate restart count remained `0` and image digest matched.
+- **Finding:** provider adapter initialization/configuration is not failing on
+  the current candidate. Earlier `503` observations are consistent with the
+  documented restart quarantine/readiness window; no provider, credential,
+  tunnel, DNS, Vercel, Access or live-DB change was made.
+- **Status:** disposable readiness evidence is now stable, but trusted Access
+  positive acceptance remains uncertified. Keep `7.5F.1` and `7.5F.2` open and
+  do not open 7.5G.
+
+### 7.5F candidate origin alignment and Access boundary (2026-09-29)
+
+- **Subject/image:** `a3267b539e9169342b12d7a127980b549217fb33`, digest
+  `sha256:c19c97cdad7fcd4415ad2fe69c19f1ab6d0a4bc239c2d455e320a263face56fc`.
+- **Finding and disposable change:** host port `8080` was occupied by the
+  unused `coolify-proxy` Traefik container. Its host listener was stopped after
+  read-only inspection; no DQSS, cloudflared, DNS, Access, Vercel or live DB
+  change was made. The candidate was then recreated only in disposable scope
+  with host networking and `AI_SERVICE_LISTEN_ADDR=127.0.0.1:8080`, matching the
+  active tunnel origin recorded in the prior trial logs.
+- **Readiness:** after the restart quarantine, private probes returned
+  `/healthz=200` and `/readyz=200`; candidate restart count was `0`. DQSS stayed
+  `healthy` with restart `0`. Web Push remained `running` (its historical
+  restart count stayed `1`).
+- **Tunnel probe:** a clarification-shaped unauthenticated `POST /v1/chat`
+  still returned `HTTP 403` Cloudflare Access HTML. No candidate request was
+  observed, so this probe does not certify origin delivery or trusted Access
+  acceptance.
+- **Status:** candidate-to-origin topology is corrected in disposable scope;
+  the remaining 7.5F blocker is trusted Access acceptance. Keep `7.5F.1` and
+  `7.5F.2` open; do not open 7.5G.

@@ -1,5 +1,16 @@
 # Phase 7.5 Handoff — Independent package dispatch
 
+## Latest 7.5F candidate-origin checkpoint (2026-09-29)
+
+The disposable candidate was recreated from the exact `a3267b53` digest with
+host networking and `127.0.0.1:8080`, after the unused `coolify-proxy` listener
+was stopped to free that port. Private `/healthz` and `/readyz` both returned
+`200` after quarantine; DQSS remained healthy with restart `0`, and Web Push
+remained running. A public clarification-only probe still received Cloudflare
+Access `403` before any candidate request, so trusted Access acceptance and
+end-to-end tunnel delivery remain uncertified. `7.5F.1` and `7.5F.2` stay open;
+7.5G remains unopened.
+
 ## Latest 7.5F checkpoint (2026-09-29)
 
 Subject `a3267b539e9169342b12d7a127980b549217fb33` was reconciled for disposable

@@ -12,6 +12,36 @@ const config = {
 }
 
 describe("proxyGoBffRequest", () => {
+  it("logs only redacted metadata for an upstream failure", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined)
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("secret-body", {
+          status: 403,
+          headers: { "content-type": "text/html", "cf-ray": "ray-1" },
+        })
+      )
+    )
+    await proxyGoBffRequest({
+      request: new Request("http://localhost/api/chat/dark", { method: "POST" }),
+      config,
+      requestId: "req-log",
+      timestamp: "1700000000",
+      signature: "signature",
+      rawBody: '{"secret":"request-body"}',
+    })
+    expect(warn).toHaveBeenCalledWith("[ai-bff] upstream failure", {
+      requestId: "req-log",
+      status: 403,
+      contentType: "text/html",
+      cfRay: "ray-1",
+      class: "access_html",
+    })
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("secret-body")
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("request-body")
+    warn.mockRestore()
+  })
   it("forwards the signed stream and abort signal without forwarding cookies", async () => {
     const body = new ReadableStream({
       start(controller) {
@@ -204,5 +234,34 @@ describe("proxyGoBffRequest", () => {
     const text = await response.text()
     expect(text).not.toContain("SELECT")
     expect(text).toContain("Bộ mô hình")
+  })
+
+  it("distinguishes an HTML Access denial from a Go protocol unauthorized response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("<html>Access denied</html>", {
+          status: 403,
+          headers: { "content-type": "text/html" },
+        })
+      )
+    )
+
+    const response = await proxyGoBffRequest({
+      request: new Request("http://localhost/api/chat/dark", { method: "POST" }),
+      config,
+      requestId: "req-access-denied",
+      timestamp: "1700000000",
+      signature: "signature",
+      rawBody: "{}",
+    })
+
+    expect(response.status).toBe(502)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: "access_denied",
+        message: "Đường kết nối bảo mật tới trợ lý bị từ chối.",
+      },
+    })
   })
 })
