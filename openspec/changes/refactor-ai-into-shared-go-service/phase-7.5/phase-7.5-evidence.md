@@ -7,9 +7,10 @@
 - From an authenticated production session, `POST /api/chat/dark` returned
   `HTTP 200` with `Content-Type: text/event-stream` and a completed `[DONE]`
   stream. Request ID: `probe-75g-final`.
-- This verifies the trusted BFF path reached the active Go candidate with the
-  real signed Broker/QueryExecutor route and assistant capability registry.
-- No secret, cookie, token or response body was recorded.
+- The maintainer confirmed on 2026-09-30 that this probe is the `7.5G` smoke
+  and that its HTTP 200 closes `7.5G.2`.
+- No secret, cookie, token or response body was recorded. The retained record
+  therefore does not include a `query_database` result.
 
 - **Subject/runtime:** Oracle candidate `qltbyt-ai-service-candidate` is running
   image `qltbyt-ai-service:75f1-cookie`; no image replacement or production
@@ -20,10 +21,10 @@
 - **Auth boundary:** an unsigned loopback `POST /v1/chat` returned redacted
   `401 unauthorized`, confirming the ingress boundary without printing or
   rotating any secret.
-- **7.5G.2 status:** `BLOCKING / INCOMPLETE`. A trusted BFF Access credential
-  and redacted real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` smoke
-  were not executed in this run; readiness `200` is not promoted to that
-  acceptance claim.
+- **7.5G.2 status:** Accepted on 2026-09-30 by maintainer confirmation of
+  `probe-75g-final` HTTP 200. `/healthz` and `/readyz` on the candidate were
+  also 200. This acceptance does not open Phase 8 or authorize a live
+  quota/audit write.
 - **Scope:** no live DB write, quota/audit mutation, Web Push change, `/api/chat`
   cutover, Phase 9 cleanup or paid-provider smoke.
 
@@ -44,7 +45,8 @@ subject commit. After that tick, the serving container was swapped to cleaned
 image `qltbyt-ai-service:75f1-cookie`
 (`sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432`)
 without a second model probe. `7.5F.2` remains the 2026-09-29 disposable tuple
-result. This is not production acceptance or acceptance of `7.5G`.
+result. This is not production acceptance. `7.5G.2` is separately accepted on
+the maintainer's 2026-09-30 confirmation that `probe-75g-final` returned HTTP 200.
 
 **Subject commit/config:** not accepted as one phase subject. The `7.5F`
 attempt binds Next.js, local disposable tests, and the rerun candidate to
@@ -133,7 +135,7 @@ completing one package does not tick or authorize another package.
 | `7.5D` QueryExecutor/pooler  | Go query/runtime owner             | External-pooler `AI_DATABASE_URL`, existing approved/disposable read-only executor, parser/catalog/scope/limits, readiness negative cases                                                                  | **DISPOSABLE ONLY / NOT EXACT-COMMIT** — later Oracle entry passed the tested catalog matrix on `848073b5` plus an uncommitted executor fix; that superseded the earlier "no disposable PostgreSQL" note. It is not production certification and is not evidence for `a3267b53`                                                                                                                                                             |
 | `7.5E` SQL gate              | Database quality-gate owner        | Static and baseline-forward lanes (separate), role/grant/pooler/catalog read-back                                                                                                                          | **ACCEPTED WITH WAIVER** — `7.5E.1`–`7.5E.3` ticked; static `INCOMPLETE`; baseline-forward `NOT RUN`; live role/grant/config read-back accepted; pooler connection moves to the next acceptance step                                                                                                                                                                                                                                        |
 | `7.5F` Disposable acceptance | Integration acceptance owner       | Positive/negative token and Access tests, real-tuple readiness checks, redacted matrix labeled `DISPOSABLE ONLY`                                                                                           | **DISPOSABLE ONLY** — `7.5F.1`–`7.5F.3` are checked. `7.5F.1` binds probed image `diag-75f-cookie` manifest `sha256:2f912b65f8226b546e0476b33c55e29f5216437a5f40cfbd739f62f796924d61` (SSE `200` plus `2026-09-30T09:00:54Z` negatives). That image is not an exact subject commit. Serving then moved to cleaned `75f1-cookie` without a second model probe. `7.5F.2` remains the 2026-09-29 `a3267b53` tuple. Not a production candidate. |
-| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **NOT RUN** — requires `7.5A–F` and operation-specific authorization                                                                                                                                                                                                                                                                                                                                                                        |
+| `7.5G` Oracle activation     | Oracle/runtime operations owner    | Exact image/config hashes, private Tunnel/Access, trusted BFF lane, local health/readiness, redacted smoke and drain/rollback                                                                              | **ACCEPTED** — maintainer confirmed `probe-75g-final` HTTP 200, `text/event-stream`, `[DONE]` on 2026-09-30. Candidate `/healthz` and `/readyz` were 200. Body was not retained. Does not open Phase 8.                                                                                                                                                                                                                                     |
 
 ## Readiness acceptance
 

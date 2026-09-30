@@ -344,6 +344,8 @@ listed exactly.
 - [x] 7.5G.2 Verify readiness `200` only with real Broker + QueryExecutor + `qltbyt/assistant-chat/v1` registry tuple and Access credential from trusted BFF.
 - [x] 7.5G.3 Record blockers and stop at candidate activation; do not change `/api/chat`, start Phase 9 cleanup or claim paid-provider evidence.
 
+Đối soát 2026-09-30: anh xác nhận đã probe `7.5G` và nhận HTTP 200. Đó là `probe-75g-final` trên `POST /api/chat/dark`, `text/event-stream`, có `[DONE]`. `/healthz` và `/readyz` của candidate cũng 200. `7.5G.2` được chấp nhận theo xác nhận này. Body không được lưu, nên hồ sơ không có kết quả `query_database`. Xác nhận này không mở Phase 8 và không ủy quyền ghi quota/audit live.
+
 Điểm dừng: Oracle activation fails closed on missing prior gate, missing
 trusted credential, tuple mismatch, raw-port exposure or unredacted evidence.
 Phase 8 `/api/chat` cutover and Phase 9 cleanup remain unopened.

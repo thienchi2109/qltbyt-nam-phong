@@ -4,20 +4,20 @@
 
 ### 7.5G.2 trusted BFF smoke (2026-09-30)
 
-An authenticated production session sent the clarification-only request to
-`/api/chat/dark`; it returned `HTTP 200`, `text/event-stream`, and `[DONE]`.
-Request ID `probe-75g-final`. This is the trusted BFF smoke for the active Go
-candidate and real Broker/QueryExecutor/assistant capability route. No secret,
-cookie, token or response body was retained.
+An authenticated production session posted to `/api/chat/dark` and received
+`HTTP 200`, `text/event-stream`, and `[DONE]`. Request ID `probe-75g-final`.
+The maintainer confirmed on 2026-09-30 that this 200 is the `7.5G` probe.
+No secret, cookie, token or response body was retained, so the record does not
+include a `query_database` result.
 
-The Oracle candidate `qltbyt-ai-service-candidate` remained on
-`qltbyt-ai-service:75f1-cookie`. Private loopback probes returned
-`/healthz=200` and `/readyz=200`; candidate, DQSS and cloudflared all remained
-healthy with restart count `0`. An unsigned private `POST /v1/chat` returned
-`401 unauthorized`. No secret was printed or rotated, and no Web Push, live DB,
-`/api/chat`, cleanup or provider smoke operation occurred. 7.5G.1 and 7.5G.3
-are evidenced; 7.5G.2 remains `BLOCKING / INCOMPLETE` because this checkpoint
-does not prove the trusted-BFF real Broker + QueryExecutor registry tuple.
+The note for that probe kept the candidate on `qltbyt-ai-service:75f1-cookie`.
+Private loopback probes returned `/healthz=200` and `/readyz=200`; candidate,
+DQSS and cloudflared all remained healthy with restart count `0`. An unsigned
+private `POST /v1/chat` returned `401 unauthorized`. No secret was printed or
+rotated, and no Web Push, live DB, `/api/chat`, cleanup or provider smoke
+operation occurred. `7.5G.1`, `7.5G.2` and `7.5G.3` are accepted on this
+checkpoint. The acceptance does not open Phase 8 or authorize a live
+quota/audit write.
 
 ## Latest 7.5F checkpoint (2026-09-30)
 
