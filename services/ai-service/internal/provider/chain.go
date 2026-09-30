@@ -100,7 +100,7 @@ func NewChain(ctx context.Context, cfg ChainConfig) (*ChainSession, error) {
 	for i, pair := range pairs {
 		opened, openErr := Open(ctx, pair.Config)
 		if openErr != nil {
-			return nil, openErr
+			return nil, wrapProviderError(pair, openErr)
 		}
 		sessions[i] = opened
 	}

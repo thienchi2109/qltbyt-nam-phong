@@ -47,11 +47,12 @@ type runtimeConfig struct {
 }
 
 type serviceRuntime struct {
-	config    runtimeConfig
-	configErr error
-	handler   *ingress.Handler
-	lifecycle *ingress.Lifecycle
-	database  composition.QueryExecutor
+	config           runtimeConfig
+	configErr        error
+	configDiagnostic string
+	handler          *ingress.Handler
+	lifecycle        *ingress.Lifecycle
+	database         composition.QueryExecutor
 }
 
 func main() {
@@ -62,7 +63,11 @@ func main() {
 	}
 	defer runtime.close()
 	if runtime.configErr != nil {
-		log.Print("ai-service configuration is unavailable; readiness remains false")
+		diagnostic := runtime.configDiagnostic
+		if diagnostic == "" {
+			diagnostic = protocol.DiagnosticProviderConfiguration
+		}
+		log.Printf("ai-service configuration is unavailable; readiness remains false diagnostic=%s", diagnostic)
 	}
 	server := &http.Server{
 		Addr:              runtime.config.listenAddr,
@@ -117,7 +122,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 				return false
 			},
 		}
-		return &serviceRuntime{config: runtimeConfig{listenAddr: defaultListenAddr}, configErr: err, handler: handler, lifecycle: lifecycle}
+		return &serviceRuntime{config: runtimeConfig{listenAddr: defaultListenAddr}, configErr: err, configDiagnostic: provider.ConfigurationDiagnostic(err), handler: handler, lifecycle: lifecycle}
 	}
 	admission := ingress.NewAdmission(config.maxConcurrent)
 	lifecycle, lifecycleErr := ingress.NewLifecycle(admission, config.drainGrace, config.cleanupGrace)
@@ -128,7 +133,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	reg := registry.New()
 	chain, chainErr := provider.NewChain(context.Background(), config.chain)
 	if chainErr != nil {
-		return &serviceRuntime{config: config, configErr: chainErr, lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Metrics: metrics}}
+		return &serviceRuntime{config: config, configErr: chainErr, configDiagnostic: provider.InitializationDiagnostic(chainErr), lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Metrics: metrics}}
 	}
 	var queryExecutor composition.QueryExecutor
 	if config.brokerEndpoint != "" {
@@ -211,7 +216,7 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 	}
 	chain, err := provider.ChainConfigFromEnv(values)
 	if err != nil {
-		return runtimeConfig{}, errors.New("provider configuration is unavailable")
+		return runtimeConfig{}, &runtimeConfigurationError{cause: err}
 	}
 	maxConcurrent, err := positiveInt(values["AI_SERVICE_MAX_CONCURRENT"], defaultMaxConcurrent)
 	if err != nil {

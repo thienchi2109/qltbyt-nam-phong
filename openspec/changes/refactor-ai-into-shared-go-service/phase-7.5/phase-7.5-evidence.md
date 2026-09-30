@@ -753,3 +753,21 @@ Historical pre-apply checkpoint; superseded for live status by the entry below.
 - **Status:** candidate-to-origin topology is corrected in disposable scope;
   the remaining 7.5F blocker is trusted Access acceptance. Keep `7.5F.1` and
   `7.5F.2` open; do not open 7.5G.
+
+### 7.5F redacted provider-initialization diagnostic (2026-09-30)
+
+- The candidate startup path now classifies `ChainConfigFromEnv` failures as
+  `provider.configuration.chain`, `.model`, or `.credentials`, and classifies
+  adapter-open failures as `provider.initialization.<provider>.<model>.<class>`.
+  Only fixed classifications and sanitized provider/model labels are retained;
+  wrapped SDK errors, secrets, URLs, and payloads are excluded from logs and
+  the HTTP protocol.
+- TDD evidence: provider diagnostic tests failed before the new symbols and
+  classifications existed, then passed after implementation. Fresh focused and
+  full checks passed with `cd services/ai-service && go test ./... -count=1`;
+  `gofmt` and `git diff --check` are clean.
+- This is instrumentation evidence only. The exact ARM64 candidate image has
+  not been rebuilt or rerun from this patch yet, so no provider, credential, or
+  adapter root cause is claimed. No provider request, DQSS restart, tunnel,
+  DNS, Access, Vercel, or live DB change occurred. Keep `7.5F.1`/`7.5F.2`
+  open and do not open 7.5G.

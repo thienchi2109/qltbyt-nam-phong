@@ -36,14 +36,14 @@ type Resolved struct {
 func ChainConfigFromEnv(env map[string]string) (ChainConfig, error) {
 	raw := read(env, "AI_PROVIDER_CHAIN")
 	if raw == "" {
-		return ChainConfig{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain is missing its configuration.", false)
+		return ChainConfig{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationChain, "The provider fallback chain is missing its configuration.")
 	}
 	var pairs []ProviderModelPair
 	for priority, item := range strings.Split(raw, ",") {
 		item = strings.TrimSpace(item)
 		separator := strings.IndexByte(item, '/')
 		if separator <= 0 || separator == len(item)-1 {
-			return ChainConfig{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider fallback chain contains an invalid pair.", false)
+			return ChainConfig{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationChain, "The provider fallback chain contains an invalid pair.")
 		}
 		providerName := strings.ToLower(strings.TrimSpace(item[:separator]))
 		modelName := strings.TrimSpace(item[separator+1:])
@@ -60,7 +60,7 @@ func ChainConfigFromEnv(env map[string]string) (ChainConfig, error) {
 	}
 	validated, maxAttempts, err := validateChain(ChainConfig{Pairs: pairs, MaxAttempts: 2})
 	if err != nil {
-		return ChainConfig{}, err
+		return ChainConfig{}, annotateConfigurationError(err, protocol.DiagnosticProviderConfigurationChain)
 	}
 	return ChainConfig{Pairs: validated, MaxAttempts: maxAttempts}, nil
 }
@@ -99,19 +99,19 @@ func Resolve(env map[string]string) (Resolved, error) {
 	switch providerName {
 	case protocol.TransportGateway, protocol.TransportNVIDIA:
 		if !providerPrefixedModel.MatchString(model) {
-			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The provider model id must include a provider prefix.", false)
+			return Resolved{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationModel, "The provider model id must include a provider prefix.")
 		}
 	case protocol.TransportGoogle:
 		model = normalizeGeminiModel(model)
 		if model == "" {
-			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The google transport is missing its model.", false)
+			return Resolved{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationModel, "The google transport is missing its model.")
 		}
 	case protocol.TransportOpenAICompatible:
 		if explicitModel == "" {
-			return Resolved{}, protocol.NewError(500, protocol.CodeInvalidRequest, "An explicit model is required for the openai-compatible transport.", false)
+			return Resolved{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationModel, "An explicit model is required for the openai-compatible transport.")
 		}
 	default:
-		return Resolved{}, protocol.NewError(400, protocol.CodeInvalidRequest, "The requested model transport is not supported.", false)
+		return Resolved{}, providerConfigurationErrorStatus(400, protocol.DiagnosticProviderConfigurationModel, "The requested model transport is not supported.")
 	}
 	return Resolved{Transport: providerName, Model: model}, nil
 }
@@ -128,25 +128,25 @@ func ConfigFromEnv(env map[string]string) (Config, error) {
 		cfg.APIKey = read(env, "AI_GATEWAY_API_KEY")
 		cfg.BaseURL = read(env, "AI_GATEWAY_BASE_URL")
 		if cfg.APIKey == "" {
-			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The gateway transport is missing its API key.", false)
+			return Config{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationCredentials, "The gateway transport is missing its API key.")
 		}
 	case protocol.TransportNVIDIA:
 		cfg.APIKey = firstNonEmpty(read(env, "NVIDIA_API_KEY"), read(env, "AI_NVIDIA_API_KEY"))
 		cfg.BaseURL = firstNonEmpty(read(env, "NVIDIA_BASE_URL"), read(env, "AI_NVIDIA_BASE_URL"))
 		if cfg.APIKey == "" || cfg.BaseURL == "" {
-			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The NVIDIA transport is missing its endpoint or API key.", false)
+			return Config{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationCredentials, "The NVIDIA transport is missing its endpoint or API key.")
 		}
 	case protocol.TransportGoogle:
 		cfg.APIKeys = GoogleKeys(env)
 		cfg.BaseURL = read(env, "GOOGLE_GENERATIVE_AI_BASE_URL")
 		if len(cfg.APIKeys) == 0 {
-			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The google transport is missing its API key.", false)
+			return Config{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationCredentials, "The google transport is missing its API key.")
 		}
 	case protocol.TransportOpenAICompatible:
 		cfg.APIKey = read(env, "AI_OPENAI_COMPATIBLE_API_KEY")
 		cfg.BaseURL = read(env, "AI_OPENAI_COMPATIBLE_BASE_URL")
 		if cfg.BaseURL == "" || cfg.APIKey == "" {
-			return Config{}, protocol.NewError(500, protocol.CodeInvalidRequest, "The openai-compatible transport is missing its endpoint or API key.", false)
+			return Config{}, providerConfigurationError(protocol.DiagnosticProviderConfigurationCredentials, "The openai-compatible transport is missing its endpoint or API key.")
 		}
 	}
 	return cfg, nil
@@ -191,6 +191,14 @@ func read(env map[string]string, key string) string {
 		return ""
 	}
 	return strings.TrimSpace(env[key])
+}
+
+func providerConfigurationError(diagnosticCode, message string) *protocol.Error {
+	return providerConfigurationErrorStatus(500, diagnosticCode, message)
+}
+
+func providerConfigurationErrorStatus(status int, diagnosticCode, message string) *protocol.Error {
+	return protocol.NewError(status, protocol.CodeInvalidRequest, message, false).WithDiagnostic(diagnosticCode)
 }
 
 func firstNonEmpty(values ...string) string {

@@ -453,3 +453,18 @@ had no application log lines. Since readiness failed in both topologies, no
 production BFF trusted-lane probe or provider smoke was run. This is a
 candidate-readiness blocker only and does not establish a provider root cause;
 `7.5F.1` and overall Phase 7.5 remain `BLOCKING / INCOMPLETE`.
+
+## 7.5F redacted provider-initialization diagnostic (2026-09-30)
+
+The disposable candidate code now records only stable startup classifications:
+`provider.configuration.chain`, `.model`, `.credentials`, or
+`provider.initialization.<provider>.<model>.<class>`. The adapter cause, SDK
+error text, credentials, URLs, and payloads are deliberately excluded from
+logs and HTTP responses. New TDD coverage was red before implementation and
+fresh focused/full `go test ./... -count=1` checks pass; formatting and
+`git diff --check` are clean.
+
+This patch has not been rebuilt or rerun on the exact candidate image, so it
+does not identify the provider root cause and does not certify `/readyz=200`.
+No provider request, DQSS restart, tunnel/DNS/Access/Vercel/live-DB change was
+performed. Keep `7.5F.1` and `7.5F.2` open; do not open 7.5G.

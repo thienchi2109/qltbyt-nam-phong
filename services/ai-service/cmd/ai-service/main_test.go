@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"example.com/shared-ai-service/internal/composition"
+	"example.com/shared-ai-service/internal/protocol"
 )
 
 func TestReadSecretFileTrimsOnlyFileWhitespaceAndRejectsEmpty(t *testing.T) {
@@ -119,6 +120,16 @@ func TestLoadRuntimeConfigRequiresExternalPoolerURLContract(t *testing.T) {
 				t.Fatalf("valid external-pooler configuration rejected: %v", err)
 			}
 		})
+	}
+}
+
+func TestRuntimeConfigFailureKeepsOnlyProviderConfigurationDiagnostic(t *testing.T) {
+	runtime := newServiceRuntime(map[string]string{})
+	if runtime == nil || runtime.configErr == nil {
+		t.Fatal("invalid configuration did not fail closed")
+	}
+	if runtime.configDiagnostic != protocol.DiagnosticProviderConfiguration {
+		t.Fatalf("configuration diagnostic = %q, want %q", runtime.configDiagnostic, protocol.DiagnosticProviderConfiguration)
 	}
 }
 

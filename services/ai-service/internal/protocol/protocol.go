@@ -32,6 +32,12 @@ const (
 	CodeProviderQuota         = "provider_quota"
 	CodeCancelled             = "cancelled"
 	CodeToolLimit             = "tool_limit"
+
+	DiagnosticProviderConfiguration            = "provider.configuration"
+	DiagnosticProviderConfigurationChain       = "provider.configuration.chain"
+	DiagnosticProviderConfigurationModel       = "provider.configuration.model"
+	DiagnosticProviderConfigurationCredentials = "provider.configuration.credentials"
+	DiagnosticProviderInitialization           = "provider.initialization"
 )
 
 const (
@@ -208,6 +214,8 @@ type Error struct {
 	RetryAfterMs int               `json:"retry_after_ms,omitempty"`
 	RequestID    string            `json:"request_id,omitempty"`
 	Cause        error             `json:"-"`
+	// DiagnosticCode is operational metadata only; it never crosses the wire.
+	DiagnosticCode string `json:"-"`
 }
 
 func (e *Error) Error() string {
@@ -241,6 +249,17 @@ func (e *Error) WithCause(cause error) *Error {
 	}
 	clone := *e
 	clone.Cause = cause
+	return &clone
+}
+
+// WithDiagnostic attaches a redacted operational classification without
+// changing the public protocol error.
+func (e *Error) WithDiagnostic(code string) *Error {
+	if e == nil {
+		return nil
+	}
+	clone := *e
+	clone.DiagnosticCode = code
 	return &clone
 }
 
