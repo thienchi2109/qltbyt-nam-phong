@@ -22,7 +22,6 @@ type Handler struct {
 	Runner    *orchestration.Runner
 	Admission *Admission
 	Lifecycle *Lifecycle
-	Metrics   ObservationSink
 	// ConfigReady lets the runtime entrypoint fail readiness closed when
 	// external provider/configuration validation has not completed.
 	ConfigReady func() bool
@@ -128,9 +127,6 @@ func (h *Handler) observe(request protocol.Request, provider protocol.ProviderMe
 		Outcome:             outcome,
 		UsageClassification: usage,
 	})
-	if h.Metrics != nil {
-		h.Metrics.Observe(observation)
-	}
 	if sink, ok := h.Log.(ObservationSink); ok {
 		sink.Observe(observation)
 	}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -108,6 +109,7 @@ func shutdown(runtime *serviceRuntime, server *http.Server) {
 }
 
 func newServiceRuntime(env map[string]string) *serviceRuntime {
+	logger := runtimeLog{slog.New(slog.NewJSONHandler(log.Writer(), nil))}
 	config, err := loadRuntimeConfig(env)
 	if err != nil {
 		admission := ingress.NewAdmission(defaultMaxConcurrent)
@@ -118,6 +120,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 		handler := &ingress.Handler{
 			Admission: admission,
 			Lifecycle: lifecycle,
+			Log:       logger,
 			ConfigReady: func() bool {
 				return false
 			},
@@ -129,11 +132,10 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	if lifecycleErr != nil {
 		return newServiceRuntime(map[string]string{})
 	}
-	metrics := ingress.NewMetrics()
 	reg := registry.New()
 	chain, chainErr := provider.NewChain(context.Background(), config.chain)
 	if chainErr != nil {
-		return &serviceRuntime{config: config, configErr: chainErr, configDiagnostic: provider.InitializationDiagnostic(chainErr), lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Metrics: metrics}}
+		return &serviceRuntime{config: config, configErr: chainErr, configDiagnostic: provider.InitializationDiagnostic(chainErr), lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Log: logger}}
 	}
 	var queryExecutor composition.QueryExecutor
 	if config.brokerEndpoint != "" {
@@ -166,7 +168,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 		Runner:    runner,
 		Admission: admission,
 		Lifecycle: lifecycle,
-		Metrics:   metrics,
+		Log:       logger,
 		ConfigReady: func() bool {
 			if chain == nil || queryExecutor == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
 				return false

@@ -113,7 +113,7 @@ func TestSanitizeObservationExcludesSensitiveContent(t *testing.T) {
 func TestHandlerObserverReceivesRedactedRuntimeFields(t *testing.T) {
 	observer := &captureObserver{}
 	h := &Handler{
-		Metrics: observer,
+		Log: observer,
 	}
 	h.observe(protocol.Request{RequestID: "request-123", AppID: "app-one", CapabilityID: "assistant"}, protocol.ProviderMetadata{Provider: "google", Model: "gemini-3.5-flash-lite", Outcome: "completed"}, "completed", "known-positive", time.Second)
 	if len(observer.events) != 1 {
