@@ -24,10 +24,16 @@ và chỉ ghi giá trị `registry/name@sha256:<64 hex>` vào
 `/etc/qltbyt-ai/ai-service.env`.
 
 ```sh
-docker build --pull=false --no-cache --build-arg VCS_REF=<commit> -t registry.example/qltbyt/ai-service:<commit> services/ai-service
+docker build --platform linux/arm64 --pull=false --no-cache \
+  --build-arg TARGETARCH=arm64 --build-arg VCS_REF=<commit> \
+  -t registry.example/qltbyt/ai-service:<commit> services/ai-service
 docker push registry.example/qltbyt/ai-service:<commit>
 docker inspect --format '{{index .RepoDigests 0}}' registry.example/qltbyt/ai-service:<commit>
 ```
+
+Oracle candidate là ARM64; nếu thiếu `TARGETARCH=arm64`, Docker có thể đóng gói
+binary `x86-64` vào image ARM64 và container sẽ restart với lỗi entrypoint không
+tồn tại. Kiểm tra kiến trúc binary trong image trước khi recreate candidate.
 
 Giữ image digest đã verify trước đó trong bản sao cấu hình bảo mật. Ghi hash của
 `docker-compose.yml`, Tunnel config và env không chứa secret vào deployment record.
