@@ -49,6 +49,67 @@ curl --fail --silent http://127.0.0.1:8080/readyz
 `/healthz` và `/readyz` chỉ được gọi từ Oracle host/private path. Tunnel chỉ route
 `POST /v1/chat`; Access service token chỉ nằm ở trusted BFF.
 
+## Recreate dark candidate bằng Docker thủ công
+
+Phần này chỉ dành cho candidate disposable trên Oracle VM khi Compose/systemd
+không phải là đường chạy đang được dùng. Không thao tác trực tiếp lên
+`qltbyt-ai-service` production. Luôn giữ container cũ để rollback; không dùng
+`docker rm -f` trước khi container mới đã được tạo và kiểm tra.
+
+Các biến `*_FILE` trong env của container phải trỏ tới đường dẫn **bên trong
+container** (`/run/secrets/...`). Đường dẫn `/etc/qltbyt-ai/...` chỉ là đường dẫn
+file secret trên host và không được đưa nguyên vào env của container.
+
+```sh
+set -eu
+candidate=qltbyt-ai-service-candidate
+previous="${candidate}-previous-<old-revision>"
+image='qltbyt/ai-service:<verified-revision-or-digest>'
+tmp_env="/root/${candidate}.env.recreate"
+
+# Lưu env hiện tại mà không in secret ra terminal.
+docker inspect "$candidate" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$tmp_env"
+chmod 600 "$tmp_env"
+sed -i \
+  -e 's#^AI_SERVICE_HMAC_SECRET_FILE=.*#AI_SERVICE_HMAC_SECRET_FILE=/run/secrets/ai_service_hmac_secret#' \
+  -e 's#^AI_SERVICE_BROKER_SECRET_FILE=.*#AI_SERVICE_BROKER_SECRET_FILE=/run/secrets/ai_service_broker_secret#' \
+  -e 's#^NVIDIA_API_KEY_FILE=.*#NVIDIA_API_KEY_FILE=/run/secrets/nvidia_api_key#' \
+  -e 's#^GOOGLE_GENERATIVE_AI_API_KEYS_FILE=.*#GOOGLE_GENERATIVE_AI_API_KEYS_FILE=/run/secrets/google_generative_ai_api_keys#' \
+  "$tmp_env"
+
+# Dừng và đổi tên container cũ để giữ nguyên rollback; không xóa nó.
+docker stop "$candidate"
+docker rename "$candidate" "$previous"
+
+docker run -d --name "$candidate" --restart unless-stopped \
+  --env-file "$tmp_env" --network host --user 65532:65532 \
+  --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+  --tmpfs /tmp:rw,noexec,nosuid,size=16m --init \
+  --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/nvidia.api-key,dst=/run/secrets/nvidia_api_key,readonly \
+  --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/google.api-keys,dst=/run/secrets/google_generative_ai_api_keys,readonly \
+  --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/hmac.secret,dst=/run/secrets/ai_service_hmac_secret,readonly \
+  --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/broker.secret,dst=/run/secrets/ai_service_broker_secret,readonly \
+  "$image"
+rm -f "$tmp_env"
+
+curl --fail --silent http://127.0.0.1:18081/healthz
+curl --fail --silent http://127.0.0.1:18081/readyz
+```
+
+Không truyền `--health-cmd` dạng chuỗi cho image distroless: Docker sẽ tạo
+`CMD-SHELL` nhưng image không có `/bin/sh`. Dùng hai probe host ở trên, hoặc
+healthcheck dạng mảng `CMD` trong Compose. Nếu probe thất bại, giữ log và khôi
+phục container cũ:
+
+```sh
+docker rm -f qltbyt-ai-service-candidate
+docker rename "${candidate}-previous-<old-revision>" qltbyt-ai-service-candidate
+docker start qltbyt-ai-service-candidate
+```
+
+Chỉ xóa container previous sau khi candidate mới đã qua cả hai probe và đã có
+release record ghi revision, digest, env/config hash và thời điểm kiểm tra.
+
 ## Rollback
 
 Rollback là thao tác image và cấu hình của operator. Dừng nhận request mới bằng
