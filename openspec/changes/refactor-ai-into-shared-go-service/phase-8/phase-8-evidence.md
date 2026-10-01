@@ -6,7 +6,7 @@ Ngày: 2026-09-30
 
 `8.3` được anh ủy quyền bằng yêu cầu chuyển backend AI sang Go, commit và push `main`, rồi test UI production. Rollback anh chọn là git revert nếu UI không ổn.
 
-`8.1` đóng trên subject dưới đây. `8.2`, `8.4`, `8.5`, `8.6` chưa PASS. Aggregate Phase 8 vẫn `BLOCKING / INCOMPLETE`.
+`8.1` đóng trên subject dưới đây. Đối soát `8.2` ngày 2026-10-01 trên đúng image đang chạy là `BLOCKING / INCOMPLETE`. `8.4`, `8.5`, `8.6` chưa PASS. Aggregate Phase 8 vẫn `BLOCKING / INCOMPLETE`. Không claim exact-commit PASS.
 
 ## Cutover code
 
@@ -48,6 +48,26 @@ Kiểm tra trên cùng subject:
 Không gọi NVIDIA hay Gemini. Không ghi live DB. DQSS `127.0.0.1:18080`, Web Push, Coolify `0.0.0.0:8080`, tunnel, DNS và Access không đổi.
 
 Rollback container dừng `qltbyt-ai-service-candidate-gemini-first` giữ digest `sha256:512d7992464c2de7eb97221e83aa3983095036f37b816d8e7424bea3d52fac3c`, revision `unknown`, build `2026-09-30T12:47:54Z`. Image `qltbyt-ai-service:75f1-cookie` digest `sha256:5b984f8fb0e2a7f782a0c2caf45110d12ab6eab957738080ae3d417de6bc9432` vẫn được giữ. Chain công khai đã ghi của cấu hình copy sang: `google/gemini-3.5-flash-lite`, rồi `nvidia/google/gemma-4-31b-it`.
+
+## 8.2
+
+Ngày 2026-10-01, container đang phục vụ vẫn là `qltbyt-ai-service-candidate`, image `qltbyt-ai-service:7f758c6c`, digest `sha256:48a6478b15bd2c8bc4a13535302c0ffeb9e5820d14d33ed9a29a688d6aa86bb8`, revision `7f758c6ce9bda05c16a0aee6b382d785a99cf420`, healthy, restart 0. `/healthz` và `/readyz` đều 200. Cây `services/ai-service` của commit docs `942421bb` trùng `7f758c6c`: `ce5def81347ffd23efc2ce30c18a0f7f92d44b5e`. `gemini-first` và `75f1-cookie` vẫn là container đã dừng. Không gọi model, không đổi image, không ghi live DB.
+
+PASS của Phase 8 cần đủ evidence trên cùng commit và cùng digest này. Evidence của commit hoặc image khác không được tính.
+
+| Cổng                                             | Trên subject này                                                                                               | Kết quả                                                                |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Health/readiness                                 | `/healthz` 200, `/readyz` 200 khi đối soát                                                                     | Đạt ở trạng thái cuối                                                  |
+| Contract, HMAC/replay, abort, parity, second-app | `go test ./...` của commit `7f758c6c` pass, gồm ingress, orchestration, protocol, qltbyt, `fixtures/secondapp` | Đạt ở source commit; không có probe replay/abort trên binary đang chạy |
+| Usage                                            | `internal/usage` pass; process đang chạy dùng `usage.NewMemory`                                                | Thiếu đối soát usage trên image                                        |
+| UI stream/route                                  | Vitest route và BFF pass; 8 assertion DOM composer/trigger fail                                                | Không đủ để ghi UI PASS                                                |
+| Tunnel                                           | `POST` công khai không chứng thực trả 403; không có SSE đã ký                                                  | Thiếu smoke Tunnel                                                     |
+| Phase 7 dark smoke                               | Hồ sơ cũ nằm ở commit/image khác                                                                               | Không cùng subject                                                     |
+| `7.5F`                                           | `DISPOSABLE ONLY` trên digest `sha256:2f912b65…` và subject `a3267b53`                                         | Không cùng subject                                                     |
+| Smoke sau cutover                                | Chưa có probe đã ký hoặc biên bản UI production gắn digest này                                                 | Thiếu                                                                  |
+| Rollback image đã verify                         | Image dừng `gemini-first` có revision `unknown`                                                                | Chưa phải image Go đã verify                                           |
+
+Vì các dòng thiếu ở trên, exact-commit PASS không thành lập. `8.2` không được tick. Phase 9 không mở.
 
 ## 8.4
 
