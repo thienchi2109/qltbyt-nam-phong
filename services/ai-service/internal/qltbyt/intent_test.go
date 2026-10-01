@@ -37,6 +37,7 @@ func TestIntentRoutesCuratedBeforeQueryDatabase(t *testing.T) {
 		{name: "reporting fallback", text: "Báo cáo tổng hợp số lượng thiết bị theo trạng thái của đơn vị hiện tại", tools: all, want: []string{"query_database"}},
 		{name: "curated lookup", text: "Tra cứu thông tin thiết bị monitor CMS8000", tools: all, want: []string{"equipmentLookup"}},
 		{name: "name lookup", text: "Tra cứu bơm tiêm điện", tools: all, want: []string{"equipmentLookup"}},
+		{name: "specific equipment lookup", text: "Tra cứu thiết bị máy bơm tiêm điện", tools: all, want: []string{"equipmentLookup"}},
 		{name: "detail report", text: "Báo cáo chi tiết tình trạng thiết bị theo khoa trong đơn vị hiện tại", tools: all, want: []string{"query_database"}},
 		{name: "only sql tool", text: "Xin chào", tools: []string{"query_database"}, want: []string{"query_database"}},
 	}

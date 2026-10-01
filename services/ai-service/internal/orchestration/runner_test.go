@@ -80,6 +80,28 @@ func TestToolLoopFinalizesMeasuredUsage(t *testing.T) {
 	}
 }
 
+func TestEquipmentLookupIntentWithoutToolCallEmitsProviderFailure(t *testing.T) {
+	modelStub := &testmodel.Scripted{GenerateFunc: func(context.Context, []*schema.Message) (*schema.Message, error) {
+		return testmodel.UsageMessage("", "stop", 1, 1), nil
+	}}
+	session := &staticSession{chat: modelStub}
+	runner, _, _ := newRunner(t, echoCapability{tool: "equipmentLookup"}, session)
+	request := testRequest()
+	request.RequestedTools = []string{"equipmentLookup"}
+
+	result, err := runner.Run(context.Background(), request)
+	var serviceErr *protocol.Error
+	if !errors.As(err, &serviceErr) || serviceErr.Code != protocol.CodeProviderFailure {
+		t.Fatalf("err = %#v", err)
+	}
+	if !hasEventSequence(result.Events, protocol.EventStart, protocol.EventError, protocol.EventFinish, protocol.EventDone) {
+		t.Fatalf("events = %#v", eventTypes(result.Events))
+	}
+	if eventText(result.Events) != "" {
+		t.Fatalf("unexpected assistant text = %q", eventText(result.Events))
+	}
+}
+
 type startTrackingMemory struct {
 	*usage.Memory
 	started *int

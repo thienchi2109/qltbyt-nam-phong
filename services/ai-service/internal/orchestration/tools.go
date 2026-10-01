@@ -14,6 +14,7 @@ var (
 	errToolInput  = errors.New("tool input limit")
 	errToolOutput = errors.New("tool output limit")
 	errToolSteps  = errors.New("tool step limit")
+	errNoToolCall = errors.New("model completed without text or tool call")
 )
 
 type toolTrace struct {

@@ -208,6 +208,9 @@ func (r *Runner) modelLoop(ctx context.Context, session ModelSession, messages [
 			text, err = generateWithAgent(ctx, metered, messages, tools, limits.MaxToolSteps)
 		}
 		if err == nil {
+			if !directStream && len(tools) > 0 && strings.TrimSpace(text) == "" && trace.startedCount() == 0 {
+				return "", errNoToolCall
+			}
 			return text, nil
 		}
 		lastErr = err
