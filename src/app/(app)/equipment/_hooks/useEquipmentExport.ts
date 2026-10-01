@@ -164,7 +164,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         fn: "equipment_list_enhanced",
         args: {
           p_q: debouncedSearch || null,
-          p_sort: sortParam,
+          p_sort: selectedDepartments.length > 1 ? "khoa_phong_quan_ly.asc" : sortParam,
           p_page: 1,
           p_page_size: MAX_EXPORT_PAGE_SIZE,
           p_don_vi: effectiveSelectedDonVi,

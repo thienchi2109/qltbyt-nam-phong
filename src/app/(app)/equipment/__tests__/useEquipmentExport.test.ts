@@ -490,6 +490,31 @@ describe("useEquipmentExport", () => {
   })
 
   describe("Full Export Flow (Issue #170)", () => {
+    it("requests department ordering when exporting multiple selected departments", async () => {
+      mockExportToExcel.mockResolvedValueOnce(undefined)
+      const filterParams = createDefaultFilterParams({
+        selectedDepartments: ["ICU", "Gây Mê Hồi Sức"],
+      })
+
+      const { result } = renderHook(() =>
+        useEquipmentExport(createDefaultParams({ total: 468, filterParams }))
+      )
+
+      await act(async () => {
+        await result.current.handleExportData()
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: "equipment_list_enhanced",
+          args: expect.objectContaining({
+            p_khoa_phong_array: ["ICU", "Gây Mê Hồi Sức"],
+            p_sort: "khoa_phong_quan_ly.asc",
+          }),
+        })
+      )
+    })
+
     it("should fetch ALL equipment with filters, not just current page", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
       const filterParams = createDefaultFilterParams({
