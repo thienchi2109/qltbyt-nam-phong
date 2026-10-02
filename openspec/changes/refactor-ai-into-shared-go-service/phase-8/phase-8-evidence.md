@@ -116,13 +116,13 @@ Lần recreate đầu fail do cú pháp `--mount ...,rw`. Trap khôi phục cont
 
 Anh đã ủy quyền smoke cho đúng ba operation quota/audit và gửi hai lượt tra cứu thiết bị trên UI bằng tài khoản đơn vị. Candidate vẫn là image digest `sha256:fd8dc48910d551adefc52b421671fe87b84d744624864939844143cab1bb6ff8`.
 
-- Lượt `2026-10-02T06:52:15.763Z`, request ID `f949c012-852d-4e90-a3e7-de755a338a4d`: candidate ghi `provider_failure`, provider `google`, model `gemini-3.5-flash-lite`, `usage_classification=unknown`.
-- Lượt `2026-10-02T06:54:08.619Z`, request ID `3d4b124a-32f6-4608-aa48-9d7dd572637d`: candidate ghi `provider_failure`, cùng provider/model và `usage_classification=unknown`; UI hiển thị lỗi chung.
+- Lượt `2026-10-02T06:52:15.763Z`, request ID `f949c012-852d-4e90-a3e7-de755a338a4d`: candidate ghi mã tổng quát `provider_failure`, provider `google`, model `gemini-3.5-flash-lite`, `usage_classification=unknown`.
+- Lượt `2026-10-02T06:54:08.619Z`, request ID `3d4b124a-32f6-4608-aa48-9d7dd572637d`: candidate ghi cùng mã tổng quát và provider/model; UI hiển thị lỗi chung.
 - Vercel production log của broker có các response `502` ngay trước hai kết quả trên (`06:52:15.588Z/06:52:15.691Z` và `06:54:08.264Z/06:54:08.542Z`). Log chỉ có request path/status, không có `request_id`, RPC hoặc operation; vì vậy không thể gán từng `502` chắc chắn cho reserve, finalize hay audit.
 - Read-only Supabase read-back thấy reservation `status=success` lúc `06:52:03.649Z` (tenant `17`, usage `28881/2496`) và `06:54:03.198Z` (tenant `17`, usage `12676/775`). Đây là bằng chứng quota row đã được finalize, nhưng bảng reservation không lưu request ID nên chưa đủ chứng minh từng RPC trên cùng request.
 - Không có dòng `audit_logs.action_type='assistant_query_database'` trong các cửa sổ `06:51:30–06:54:00Z` và `06:53:00–06:55:00Z`. Smoke này chưa chứng minh `query_database` gọi và hoàn tất audit; các `502` cho thấy còn lỗi broker/RPC cần truy tiếp.
 
-**Kết luận smoke:** candidate có quota lifecycle evidence một phần, nhưng tool/audit chưa được chứng minh và hai lượt đều lỗi provider. `8.4` tiếp tục `BLOCKING / INCOMPLETE`; không tick acceptance và không mở Phase 9. Không có live DB write thủ công ngoài các operation runtime đã được anh ủy quyền.
+**Kết luận smoke:** candidate có quota lifecycle evidence một phần, nhưng tool/audit chưa được chứng minh. Chưa có bằng chứng raw provider error; `provider_failure` cũng được dùng cho lỗi broker/RPC, và broker có `502` gần hai lượt. `8.4` tiếp tục `BLOCKING / INCOMPLETE`; không tick acceptance và không mở Phase 9. Không có live DB write thủ công ngoài các operation runtime đã được anh ủy quyền.
 
 ## Rollback
 
