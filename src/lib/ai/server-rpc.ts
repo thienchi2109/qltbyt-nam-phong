@@ -111,6 +111,7 @@ export async function callServerRpc<TResponse = unknown>(
     "success",
     options.signal
   )
+  if (text.trim() === "") return null as TResponse
   const isJson = response.headers.get("content-type")?.includes("application/json")
-  return (isJson ? JSON.parse(text || "null") : text) as TResponse
+  return (isJson ? JSON.parse(text) : text) as TResponse
 }

@@ -12,6 +12,7 @@ vi.mock("jsonwebtoken", () => ({
 }))
 
 import { callServerRpc, mintSupabaseJwt, ServerRpcResponseTooLargeError } from "../server-rpc"
+import { validateBrokerResult } from "../bff-broker/BffBrokerResults"
 
 describe("AI server RPC helper", () => {
   beforeEach(() => {
@@ -134,6 +135,27 @@ describe("AI server RPC helper", () => {
         }),
       })
     )
+  })
+
+  it("normalizes a successful empty RPC response to null for void functions", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    const result = await callServerRpc(
+      "ai_quota_finalize",
+      { p_reservation_id: "reservation-1" },
+      { id: "u1", role: "user", don_vi: 2 }
+    )
+
+    expect(result).toBeNull()
+    expect(validateBrokerResult("ai_quota_finalize", result)).toBeNull()
+  })
+
+  it("still rejects an empty unsuccessful RPC response", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 500 }))
+
+    await expect(
+      callServerRpc("ai_quota_finalize", {}, { id: "u1", role: "user", don_vi: 2 })
+    ).rejects.toThrow("Supabase RPC ai_quota_finalize failed (500)")
   })
 
   it("bounds successful upstream response reads at 64 KiB", async () => {

@@ -133,6 +133,12 @@ Anh đã ủy quyền smoke cho đúng ba operation quota/audit và gửi hai l�
 
 **Kết luận nguyên nhân:** lỗi UI là do broker làm hỏng thành công của `ai_quota_finalize` vì mismatch `void/204` với schema response, không phải bằng chứng Gemini không gọi được. `query_database`/audit vẫn là một câu hỏi riêng: chưa có audit row trong hai smoke nên chưa claim tool đã chạy. Không deploy fix trong lượt điều tra này.
 
+### Local fix sau RED test
+
+Đã sửa `src/lib/ai/server-rpc.ts` để response thành công có body rỗng (ví dụ HTTP 204 từ RPC `RETURNS void`) được chuẩn hóa thành `null`; response lỗi vẫn đi qua nhánh status/error hiện tại. Regression test dùng helper thật và validator broker thật: trước sửa **1 failed / 7 passed**, sau sửa **32/32 passed** trong nhóm helper/broker route, gồm cả test đảm bảo HTTP 500 rỗng vẫn ném lỗi. Các cổng local đã đạt: format, `verify:no-explicit-any`, dedupe diff-only, typecheck và React Doctor 100/100.
+
+Đây mới là bằng chứng source-local cho việc loại bỏ `502/result_too_large`; chưa có build/deploy hoặc smoke lại trên candidate nên `8.4` vẫn **BLOCKING / INCOMPLETE**, không tick acceptance. Bản sửa chưa chứng minh `query_database`/audit path và không thay đổi kết luận tool/audit của hai smoke trước.
+
 ## Rollback
 
 Không có fallback runtime về orchestrator Next.js. Nếu UI production lỗi, revert commit cutover để trả `src/app/api/chat/route.ts` về orchestrator cũ. Revert đó là thao tác git có chủ đích. `8.5` chưa tick vì điều khoản rollback trong task là khôi phục image Go đã verify, và việc đó chưa làm.
