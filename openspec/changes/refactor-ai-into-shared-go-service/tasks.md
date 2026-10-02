@@ -369,6 +369,9 @@ Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, a
 - [ ] 8.2 Xác nhận PASS cần đủ evidence bắt buộc trên cùng subject commit/digest; thiếu evidence là `BLOCKING / INCOMPLETE`, không claim DONE.
 - [x] 8.3 Chỉ sau explicit authorization direct cutover, chuyển `/api/chat` sang Go backend và giữ nguyên browser/Vercel AI SDK contract.
 - [ ] 8.4 Sau cutover, production runtime phải thực hiện `ai_quota_reserve`/`ai_quota_finalize` và sanitized SQL audit theo capability policy; đây là behavior bắt buộc, không được tắt để né test.
+
+  Cập nhật 2026-10-02: runtime `92a09f94` đã nối `QuotaBook`, deploy Oracle ARM64 digest `sha256:fd8dc48910d551adefc52b421671fe87b84d744624864939844143cab1bb6ff8`; health/readiness 200 khi đọc lại. Rollback container `qltbyt-ai-service-candidate-previous-913e0665` đã xóa theo yêu cầu maintainer. `8.4` vẫn `BLOCKING / INCOMPLETE` do thiếu live reserve/finalize/audit evidence cùng subject; xem `phase-8/phase-8-evidence.md`. Không claim restart quota recovery hoặc exact-commit production PASS.
+
 - [ ] 8.5 Sau cutover không có runtime fallback về Next.js model/tool orchestration. Rollback chỉ khôi phục Go image/config đã verify khi image trước đó tồn tại. Nếu sau cutover không còn image Go trước đó và candidate fail, route đã cutover ở trạng thái unavailable. Dark first deploy thất bại thì khác: nó chỉ chặn cutover và không tự tắt chat production hiện tại.
 - [ ] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup trong BFF 60 giây, drain grace tối đa 60-90 giây, full primary+secondary usage và `openspec validate ... --strict`.
 

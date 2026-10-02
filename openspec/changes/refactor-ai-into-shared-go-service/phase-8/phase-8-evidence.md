@@ -1,12 +1,12 @@
 # Phase 8 evidence
 
-Ngày: 2026-09-30
+Ngày bắt đầu: 2026-09-30. Cập nhật gần nhất: 2026-10-02.
 
 ## Trạng thái
 
 `8.3` được anh ủy quyền bằng yêu cầu chuyển backend AI sang Go, commit và push `main`, rồi test UI production. Rollback anh chọn là git revert nếu UI không ổn.
 
-`8.1` đóng trên subject dưới đây. Đối soát `8.2` ngày 2026-10-01 trên đúng image đang chạy là `BLOCKING / INCOMPLETE`. `8.4`, `8.5`, `8.6` chưa PASS. Aggregate Phase 8 vẫn `BLOCKING / INCOMPLETE`. Không claim exact-commit PASS.
+`8.1` đóng trên subject lịch sử dưới đây. Đối soát `8.2` ngày 2026-10-01 là `BLOCKING / INCOMPLETE`. Ngày 2026-10-02 candidate đã chuyển sang runtime commit `92a09f94`; chi tiết ở mục 8.4. `8.4`, `8.5`, `8.6` chưa PASS. Aggregate Phase 8 vẫn `BLOCKING / INCOMPLETE`. Không claim exact-commit PASS.
 
 ## Cutover code
 
@@ -71,11 +71,52 @@ Vì các dòng thiếu ở trên, exact-commit PASS không thành lập. `8.2` k
 
 ## 8.4
 
-Candidate chat dùng `usage.NewMemory`. `Memory.Reserve` không gọi `ai_quota_reserve` / `ai_quota_finalize`. `assistant_query_database_audit_log` chỉ được gọi từ tool `query_database`. `8.4` chưa đạt trên image đang phục vụ. Không tắt RPC để né test; image hiện tại chưa nối `QuotaBook`.
+Checkpoint trước 2026-10-02: candidate dùng `usage.NewMemory`, bỏ qua `ai_quota_reserve` / `ai_quota_finalize`. SQL audit chỉ được gọi từ `query_database`.
+
+### Runtime và deployment ngày 2026-10-02
+
+Anh duyệt implementation rồi yêu cầu commit, push, build và deploy candidate theo runbook. Runtime subject là `92a09f948d3608385c9475ee584684d1c447c65c`, commit `feat(ai): wire durable quota lifecycle`. Runbook được sửa riêng tại commit `a03c5b31`; commit docs đó không phải revision của image đang chạy.
+
+- `newServiceRuntime` dùng `usage.NewQuotaBook(config.usageDir, time.Now, nil)` thay `usage.NewMemory` và truyền cùng book vào `Runner`.
+- `Prepared.QuotaCaller` vẫn được truyền theo từng request; không thêm global caller hay persist broker credential.
+- Cấu hình journal mặc định là `/var/lib/ai-service/usage`. Lỗi khởi tạo journal làm runtime fail closed, không dựng runner.
+- QLTBYT quota caller và sanitized SQL audit adapter được giữ nguyên. Success SQL audit phải hoàn thành trước khi trả rows; failure audit không thay thế lỗi SQL ban đầu.
+- Không nối `QuotaBook.Recover` vào startup. Persistence của journal không chứng minh khả năng tái tạo caller sau restart. Quarantine của ingress replay guard cũng không phải quota recovery.
+
+Kiểm tra source trước commit: focused runtime/usage/QLTBYT tests PASS; `go test ./... -count=1`, `go vet ./...`, gofmt và `git diff --check` PASS. Prettier, diff-only dedupe và artifact contract PASS. `verify:no-explicit-any` không có TypeScript diff; pre-push typecheck PASS. Deployment validator và Compose `config --quiet` PASS với fixture disposable trong `/tmp`, không phải cấu hình live Oracle. Behavioral test `TestRunnerPassesPreparedCallerToQuotaBook` xác nhận reserve/finalize qua caller theo request khi provider chưa bắt đầu và usage được refund; không phải provider/live smoke.
+
+Build đầu tiên chạy nhầm trên VPS x86, fail ở `go mod download` với `exec format error`. Build thành công sau đó chạy trực tiếp trên Oracle `aarch64`, context `/tmp/ai-service-92a09f94`, với `--platform linux/arm64 --pull=false --no-cache --build-arg TARGETARCH=arm64 --build-arg VCS_REF=92a09f948d3608385c9475ee584684d1c447c65c`.
+
+Image tag `qltbyt/ai-service:92a09f94`, Docker read-back RepoDigest `qltbyt/ai-service@sha256:fd8dc48910d551adefc52b421671fe87b84d744624864939844143cab1bb6ff8`, architecture `arm64`, OS `linux`, revision label đúng runtime subject. Không có evidence registry publish riêng. Container `qltbyt-ai-service-candidate`, ID `92edae8e3672b17c499bfc1c2a9ed06a5a7feee3100ff0d26d44c38146d728a4`, bắt đầu `2026-10-02T03:50:19.22703508Z`.
+
+Deployment đọc lại trực tiếp trên Oracle lúc `2026-10-02T06:01:34Z`:
+
+- Container `running`, restart count `0`; không có Docker healthcheck trên đường chạy thủ công này.
+- Host-loopback `/healthz=200`, `/readyz=200`, cùng body `{"status":"ok"}`. Lượt probe startup trước đó đạt cả hai 200 sau 21 lần cách 5 giây; không có signed SSE/provider probe.
+- Host journal `/var/lib/qltbyt-ai/usage-candidate-92a09f94` mount tại `/var/lib/ai-service/usage`, `RW=true`, owner `65532:65532`, mode `0700`.
+- Bốn secret mounts vẫn `RW=false`; user `65532:65532`, root read-only, host network, memory `536870912`, NanoCPUs `1000000000`, pids limit `128`.
+- Listen `127.0.0.1:18081`; broker endpoint `https://www.cvmems.vn/api/internal/ai/broker/v1`; provider order được giữ từ candidate cũ: `google/gemini-3.5-flash-lite,nvidia/google/gemma-4-31b-it`.
+- Live provider order khác NVIDIA-first mà operator validator hiện yêu cầu. Fixture validator PASS không chứng minh validator PASS trên cấu hình candidate này. Không đổi provider order trong lượt deploy.
+
+Reference hashes được tính bằng `git archive --format=tar 92a09f948d3608385c9475ee584684d1c447c65c <path>`:
+
+| Path                           |  Bytes | SHA-256                                                            |
+| ------------------------------ | -----: | ------------------------------------------------------------------ |
+| `services/ai-service`          | 778240 | `d17656f1c4e1788ddd0a8a56f29326333a3f5b64551ee809b4d2a6c9fc8771c6` |
+| `ops/ai-service`               |  40960 | `b91dea7f1417c9b73379e30c1fd6d7bf7564ef7b4d97a20f377968d8dc4fe1c3` |
+| `services/ai-service/fixtures` |  10240 | `0afab8f31979799ac06e61a8afe2efff15db4f42f97f56697ad36954eb983784` |
+
+Đây là reference hashes của committed source, không phải attestation cho bytes build context trên Oracle. Read-back config hash `0cffa94e7c3b0bfb14a4f7d0001a0101663a0b981a0a72b6d45b5419559c870c`: SHA-256 của JSON với keys sorted, compact separators, gồm allowlisted non-secret env (listen/usage/app/capability/version/provider/concurrency/drain/cleanup/TTL/broker URL), mount source/destination/RW, user, read-only root, network, memory, CPU và pids. Hash không chứa secret values và không bao phủ toàn bộ deployment configuration.
+
+Lần recreate đầu fail do cú pháp `--mount ...,rw`. Trap khôi phục container cũ và được read-back `running`; retry với mount writable mặc định thành công. Runbook `a03c5b31` đã sửa cú pháp và bổ sung trap. Container rollback `qltbyt-ai-service-candidate-previous-913e0665` sau đó bị xóa theo yêu cầu explicit của anh; read-back xác nhận container không tồn tại và candidate vẫn chạy. Không thực hiện xóa image cũ.
+
+**Kết quả:** code/mock/disposable checks PASS và candidate deployment/health được xác minh. Production acceptance của `8.4` vẫn `BLOCKING / INCOMPLETE`: chưa có smoke sau cutover gắn cùng subject/digest chứng minh `ai_quota_reserve`, `ai_quota_finalize` và `assistant_query_database_audit_log`. Không gọi model hay chủ động thực hiện live quota/audit RPC trong lượt này; không suy ra production PASS từ tên candidate, test source hay probe health. Evidence 7/7.5F/8.1 cũ không được chuyển sang image mới. `8.4` không tick; Phase 9 không mở.
 
 ## Rollback
 
 Không có fallback runtime về orchestrator Next.js. Nếu UI production lỗi, revert commit cutover để trả `src/app/api/chat/route.ts` về orchestrator cũ. Revert đó là thao tác git có chủ đích. `8.5` chưa tick vì điều khoản rollback trong task là khôi phục image Go đã verify, và việc đó chưa làm.
+
+Ngày 2026-10-02: rollback container `qltbyt-ai-service-candidate-previous-913e0665` đã được xóa theo yêu cầu maintainer. Không diễn giải việc giữ/xóa container đó là PASS của `8.5`.
 
 ## Ngoài phạm vi
 
