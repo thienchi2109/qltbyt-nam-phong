@@ -18,17 +18,23 @@ node /opt/qltbyt-ai/validate-config.mjs
 
 ## Chuẩn bị image
 
-Build từ thư mục `services/ai-service` bằng Dockerfile đã pin Go `1.26.5` và
-base image bằng digest. Publish image theo tag bất biến, sau đó lấy digest registry
-và chỉ ghi giá trị `registry/name@sha256:<64 hex>` vào
+Build **trực tiếp trên Oracle VM ARM64** (`uname -m` phải là `aarch64`), không
+chạy lệnh build ARM64 trên VPS x86 hiện tại. Build từ thư mục
+`services/ai-service` bằng Dockerfile đã pin Go `1.26.5` và base image bằng
+digest. Source phải đúng clean commit cần triển khai. Publish image theo tag bất
+biến, sau đó lấy digest registry và chỉ ghi giá trị `registry/name@sha256:<64 hex>` vào
 `/etc/qltbyt-ai/ai-service.env`.
 
 ```sh
+test "$(uname -m)" = aarch64
+test -z "$(git status --short)"
+test "$(git rev-parse HEAD)" = "<commit>"
 docker build --platform linux/arm64 --pull=false --no-cache \
   --build-arg TARGETARCH=arm64 --build-arg VCS_REF=<commit> \
   -t registry.example/qltbyt/ai-service:<commit> services/ai-service
+docker image inspect --format 'arch={{.Architecture}} os={{.Os}} revision={{index .Config.Labels "org.opencontainers.image.revision"}} id={{.Id}}' registry.example/qltbyt/ai-service:<commit>
 docker push registry.example/qltbyt/ai-service:<commit>
-docker inspect --format '{{index .RepoDigests 0}}' registry.example/qltbyt/ai-service:<commit>
+docker image inspect --format '{{index .RepoDigests 0}}' registry.example/qltbyt/ai-service:<commit>
 ```
 
 Oracle candidate là ARM64; nếu thiếu `TARGETARCH=arm64`, Docker có thể đóng gói
@@ -78,34 +84,59 @@ previous="${candidate}-previous-<old-revision>"
 image='qltbyt/ai-service:<verified-revision-or-digest>'
 usage_host_dir="${AI_SERVICE_USAGE_HOST_DIR:?set journal host directory}"
 tmp_env="/root/${candidate}.env.recreate"
+rollback_ready=0
+
+restore_previous() {
+  status=$?
+  if [ "$status" -ne 0 ] && [ "$rollback_ready" -eq 1 ]; then
+    docker rm -f "$candidate" >/dev/null 2>&1 || true
+    docker rename "$previous" "$candidate" >/dev/null 2>&1 || true
+    docker start "$candidate" >/dev/null 2>&1 || true
+  fi
+  rm -f "$tmp_env" "${tmp_env}.new"
+  exit "$status"
+}
+trap restore_previous EXIT
 
 # Lưu env hiện tại mà không in secret ra terminal.
+if docker container inspect "$previous" >/dev/null 2>&1; then
+  echo "previous container name already exists; choose a new rollback name" >&2
+  exit 1
+fi
 docker inspect "$candidate" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$tmp_env"
 chmod 600 "$tmp_env"
-test -d "$usage_host_dir"
-test ! -L "$usage_host_dir"
-test "$(stat -c '%u:%g:%a' "$usage_host_dir")" = "65532:65532:700"
 sed -i \
   -e 's#^AI_SERVICE_HMAC_SECRET_FILE=.*#AI_SERVICE_HMAC_SECRET_FILE=/run/secrets/ai_service_hmac_secret#' \
   -e 's#^AI_SERVICE_BROKER_SECRET_FILE=.*#AI_SERVICE_BROKER_SECRET_FILE=/run/secrets/ai_service_broker_secret#' \
   -e 's#^NVIDIA_API_KEY_FILE=.*#NVIDIA_API_KEY_FILE=/run/secrets/nvidia_api_key#' \
   -e 's#^GOOGLE_GENERATIVE_AI_API_KEYS_FILE=.*#GOOGLE_GENERATIVE_AI_API_KEYS_FILE=/run/secrets/google_generative_ai_api_keys#' \
   "$tmp_env"
+grep -v '^AI_SERVICE_USAGE_DIR=' "$tmp_env" | grep -v '^AI_SERVICE_USAGE_HOST_DIR=' > "${tmp_env}.new"
+printf '%s\n%s\n' \
+  'AI_SERVICE_USAGE_DIR=/var/lib/ai-service/usage' \
+  "AI_SERVICE_USAGE_HOST_DIR=$usage_host_dir" >> "${tmp_env}.new"
+mv "${tmp_env}.new" "$tmp_env"
+test -d "$usage_host_dir"
+test ! -L "$usage_host_dir"
+test "$(stat -c '%u:%g:%a' "$usage_host_dir")" = "65532:65532:700"
 
 # Dừng và đổi tên container cũ để giữ nguyên rollback; không xóa nó.
-docker stop "$candidate"
+docker stop --time 65 "$candidate"
 docker rename "$candidate" "$previous"
+rollback_ready=1
 
 docker run -d --name "$candidate" --restart unless-stopped \
   --env-file "$tmp_env" --network host --user 65532:65532 \
   --read-only --cap-drop ALL --security-opt no-new-privileges:true \
-  --tmpfs /tmp:rw,noexec,nosuid,size=16m --init \
-  --mount type=bind,src="$usage_host_dir",dst=/var/lib/ai-service/usage,rw \
+  --stop-signal SIGTERM --stop-timeout 65 --memory 512m --cpus 1.0 --pids-limit 128 \
+  --ulimit nofile=4096:4096 --tmpfs /tmp:rw,noexec,nosuid,size=16m --init \
+  --mount type=bind,src="$usage_host_dir",dst=/var/lib/ai-service/usage \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/nvidia.api-key,dst=/run/secrets/nvidia_api_key,readonly \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/google.api-keys,dst=/run/secrets/google_generative_ai_api_keys,readonly \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/hmac.secret,dst=/run/secrets/ai_service_hmac_secret,readonly \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/broker.secret,dst=/run/secrets/ai_service_broker_secret,readonly \
   "$image"
+rollback_ready=0
 rm -f "$tmp_env"
 
 curl --fail --silent http://127.0.0.1:18081/healthz
