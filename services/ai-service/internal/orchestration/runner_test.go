@@ -130,6 +130,36 @@ func TestClarificationDoesNotReserveOrOpenProvider(t *testing.T) {
 	}
 }
 
+func TestStreamEmptyModelOutputReturnsProviderError(t *testing.T) {
+	emptyStream := &testmodel.Scripted{StreamFunc: func(context.Context, []*schema.Message) (*schema.StreamReader[*schema.Message], error) {
+		return schema.StreamReaderFromArray([]*schema.Message{}), nil
+	}}
+	runner, _, _ := newRunner(t, echoCapability{}, &staticSession{chat: emptyStream})
+	result, err := runner.Stream(context.Background(), testRequest())
+	var serviceErr *protocol.Error
+	if !errors.As(err, &serviceErr) || serviceErr.Code != protocol.CodeProviderFailure {
+		t.Fatalf("err = %#v", err)
+	}
+	if !hasEventSequence(result.Events, protocol.EventStart, protocol.EventError, protocol.EventFinish, protocol.EventDone) {
+		t.Fatalf("events = %#v", eventTypes(result.Events))
+	}
+}
+
+func TestRunEmptyModelOutputReturnsProviderError(t *testing.T) {
+	emptyModel := &testmodel.Scripted{GenerateFunc: func(context.Context, []*schema.Message) (*schema.Message, error) {
+		return schema.AssistantMessage("", nil), nil
+	}}
+	runner, _, _ := newRunner(t, echoCapability{}, &staticSession{chat: emptyModel})
+	result, err := runner.Run(context.Background(), testRequest())
+	var serviceErr *protocol.Error
+	if !errors.As(err, &serviceErr) || serviceErr.Code != protocol.CodeProviderFailure {
+		t.Fatalf("err = %#v", err)
+	}
+	if !hasEventSequence(result.Events, protocol.EventStart, protocol.EventError, protocol.EventFinish, protocol.EventDone) {
+		t.Fatalf("events = %#v", eventTypes(result.Events))
+	}
+}
+
 func TestUnknownCapabilityDoesNotOpenProvider(t *testing.T) {
 	session := &staticSession{chat: &testmodel.Scripted{}}
 	runner, _, opens := newRunner(t, echoCapability{}, session)

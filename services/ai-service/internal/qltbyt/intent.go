@@ -60,7 +60,7 @@ func routeIntent(messages []protocol.Message, requested []string) routeResult {
 	if quota := classifyQuota(text, nonSQL); quota != nil {
 		decisions = append(decisions, *quota)
 	}
-	if equipment := classifyEquipment(text, nonSQL); equipment != nil {
+	if equipment := classifyEquipment(text, nonSQL, hasEquipmentClarificationFollowUp(messages)); equipment != nil {
 		decisions = append(decisions, *equipment)
 	}
 	if len(decisions) > 1 {
@@ -134,7 +134,7 @@ func classifyQuota(text string, requested []string) *routeResult {
 	return &routeResult{Clarify: QuotaClarification}
 }
 
-func classifyEquipment(text string, requested []string) *routeResult {
+func classifyEquipment(text string, requested []string, clarificationFollowUp bool) *routeResult {
 	if !containsTool(requested, "equipmentLookup") {
 		return nil
 	}
@@ -142,13 +142,19 @@ func classifyEquipment(text string, requested []string) *routeResult {
 	lookup := lookupIntentPattern.MatchString(normalized)
 	equipment := equipmentWordPattern.MatchString(normalized)
 	specific := hasSpecificEquipmentDescriptor(normalized)
-	if !lookup || (!equipment && !specific) {
+	if !lookup && !clarificationFollowUp {
+		return nil
+	}
+	if !equipment && !specific {
 		return nil
 	}
 	if hasEquipmentIdentifier(text) || specific {
-		if shouldNarrowEquipment(normalized, requested) {
+		if shouldNarrowEquipment(normalized, requested) || (clarificationFollowUp && shouldNarrowEquipmentFollowUp(normalized, requested)) {
 			return &routeResult{Tools: keepOnly(requested, "equipmentLookup")}
 		}
+		return nil
+	}
+	if clarificationFollowUp {
 		return nil
 	}
 	return &routeResult{Clarify: EquipmentClarification}
@@ -169,7 +175,15 @@ func classifySQL(text string, requested []string) *routeResult {
 }
 
 func shouldNarrowEquipment(normalized string, requested []string) bool {
-	if !containsTool(requested, "equipmentLookup") || !lookupIntentPattern.MatchString(normalized) {
+	return equipmentRoutingAllowed(normalized, requested, true)
+}
+
+func shouldNarrowEquipmentFollowUp(normalized string, requested []string) bool {
+	return equipmentRoutingAllowed(normalized, requested, false)
+}
+
+func equipmentRoutingAllowed(normalized string, requested []string, requireLookup bool) bool {
+	if !containsTool(requested, "equipmentLookup") || (requireLookup && !lookupIntentPattern.MatchString(normalized)) {
 		return false
 	}
 	return !maintenancePattern.MatchString(normalized) &&
@@ -178,6 +192,28 @@ func shouldNarrowEquipment(normalized string, requested []string) bool {
 		!attachmentPattern.MatchString(normalized) &&
 		!quotaWordPattern.MatchString(normalized) &&
 		!reportingIntentPattern.MatchString(normalized)
+}
+
+func hasEquipmentClarificationFollowUp(messages []protocol.Message) bool {
+	latest := -1
+	for index := len(messages) - 1; index >= 0; index-- {
+		if messages[index].Role == protocol.RoleUser && strings.TrimSpace(messages[index].Content) != "" {
+			latest = index
+			break
+		}
+	}
+	if latest < 1 {
+		return false
+	}
+	for index := latest - 1; index >= 0; index-- {
+		if messages[index].Role == protocol.RoleAssistant {
+			return strings.TrimSpace(messages[index].Content) == EquipmentClarification
+		}
+		if messages[index].Role == protocol.RoleUser && strings.TrimSpace(messages[index].Content) != "" {
+			return false
+		}
+	}
+	return false
 }
 
 func holdBackQueryDatabase(requested []string) []string {

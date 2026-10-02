@@ -1,15 +1,41 @@
-import type { UIMessage } from 'ai'
+import type { UIMessage } from "ai"
 
 export interface EquipmentLookupHints {
   verbatimIdentifiers: string[]
 }
 
+/** Returns the concatenated text parts from a UI message. */
+export function getMessageText(message: UIMessage): string {
+  if (!Array.isArray(message.parts)) {
+    return ""
+  }
+
+  return message.parts
+    .map((part) => {
+      if (
+        part &&
+        typeof part === "object" &&
+        "type" in part &&
+        part.type === "text" &&
+        "text" in part &&
+        typeof part.text === "string"
+      ) {
+        return part.text
+      }
+
+      return ""
+    })
+    .filter(Boolean)
+    .join(" ")
+    .trim()
+}
+
 function trimToken(raw: string): string {
-  return raw.replace(/^[`"'([{<]+|[`"',.;:!?)\]}>]+$/g, '')
+  return raw.replace(/^[`"'([{<]+|[`"',.;:!?)\]}>]+$/g, "")
 }
 
 function normalizeIdentifier(value: string): string {
-  return value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  return value.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
 }
 
 function isLikelyEquipmentIdentifier(token: string): boolean {
@@ -25,43 +51,27 @@ function isLikelyEquipmentIdentifier(token: string): boolean {
   return digitCount >= 4 && hasLetter && hasStructure
 }
 
+/** Returns the latest non-empty user message text. */
 export function getLatestUserText(messages: UIMessage[]): string {
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
-    if (message?.role !== 'user' || !Array.isArray(message.parts)) {
+    if (message?.role !== "user" || !Array.isArray(message.parts)) {
       continue
     }
 
-    const text = message.parts
-      .map(part => {
-        if (
-          part &&
-          typeof part === 'object' &&
-          'type' in part &&
-          part.type === 'text' &&
-          'text' in part &&
-          typeof part.text === 'string'
-        ) {
-          return part.text
-        }
-
-        return ''
-      })
-      .filter(Boolean)
-      .join(' ')
-      .trim()
+    const text = getMessageText(message)
 
     if (text) {
       return text
     }
   }
 
-  return ''
+  return ""
 }
 
 function resolveVerbatimIdentifier(
   candidate: string | undefined,
-  identifiers: string[],
+  identifiers: string[]
 ): string | null {
   if (!candidate) {
     return null
@@ -77,7 +87,7 @@ function resolveVerbatimIdentifier(
     return null
   }
 
-  const matches = identifiers.filter(identifier => {
+  const matches = identifiers.filter((identifier) => {
     const normalizedIdentifier = normalizeIdentifier(identifier)
     return (
       normalizedIdentifier === normalizedCandidate ||
@@ -90,9 +100,10 @@ function resolveVerbatimIdentifier(
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+  return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+/** Extracts verbatim equipment identifiers from the latest user message. */
 export function extractEquipmentLookupHints(messages: UIMessage[]): EquipmentLookupHints {
   const latestUserText = getLatestUserText(messages)
   if (!latestUserText) {
@@ -100,20 +111,16 @@ export function extractEquipmentLookupHints(messages: UIMessage[]): EquipmentLoo
   }
 
   const verbatimIdentifiers = Array.from(
-    new Set(
-      latestUserText
-        .split(/\s+/)
-        .map(trimToken)
-        .filter(isLikelyEquipmentIdentifier),
-    ),
+    new Set(latestUserText.split(/\s+/).map(trimToken).filter(isLikelyEquipmentIdentifier))
   )
 
   return { verbatimIdentifiers }
 }
 
+/** Normalizes lookup arguments against identifiers present in the user message. */
 export function normalizeEquipmentLookupArgs(
   input: Record<string, unknown>,
-  hints?: EquipmentLookupHints,
+  hints?: EquipmentLookupHints
 ): Record<string, unknown> {
   const verbatimIdentifiers = hints?.verbatimIdentifiers ?? []
   if (verbatimIdentifiers.length === 0) {
@@ -122,11 +129,11 @@ export function normalizeEquipmentLookupArgs(
 
   const nextFilters = isPlainObject(input.filters) ? { ...input.filters } : undefined
   const rawEquipmentCode =
-    typeof nextFilters?.equipmentCode === 'string' ? nextFilters.equipmentCode : undefined
+    typeof nextFilters?.equipmentCode === "string" ? nextFilters.equipmentCode : undefined
   const resolvedFromFilter =
     resolveVerbatimIdentifier(rawEquipmentCode, verbatimIdentifiers) ?? rawEquipmentCode?.trim()
 
-  const rawQuery = typeof input.query === 'string' ? input.query.trim() : undefined
+  const rawQuery = typeof input.query === "string" ? input.query.trim() : undefined
   const resolvedFromQuery = resolveVerbatimIdentifier(rawQuery, verbatimIdentifiers)
 
   const exactEquipmentCode = resolvedFromFilter ?? resolvedFromQuery

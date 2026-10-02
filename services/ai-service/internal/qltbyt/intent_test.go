@@ -72,6 +72,30 @@ func TestIntentUsesLatestUserMessage(t *testing.T) {
 	}
 }
 
+func TestIntentRoutesEquipmentClarificationFollowUp(t *testing.T) {
+	messages := []protocol.Message{
+		{Role: protocol.RoleUser, Content: "Tra cứu thiết bị"},
+		{Role: protocol.RoleAssistant, Content: EquipmentClarification},
+		{Role: protocol.RoleUser, Content: "Máy bơm tiêm điện"},
+	}
+	result := routeIntent(messages, []string{"equipmentLookup", "repairSummary", "query_database"})
+	if stringsJoin(result.Tools) != stringsJoin([]string{"equipmentLookup"}) || result.Clarify != "" {
+		t.Fatalf("follow-up route = clarify %q tools %#v", result.Clarify, result.Tools)
+	}
+}
+
+func TestIntentRoutesEquipmentStatusFollowUpToLookup(t *testing.T) {
+	messages := []protocol.Message{
+		{Role: protocol.RoleUser, Content: "Tra cứu thiết bị"},
+		{Role: protocol.RoleAssistant, Content: EquipmentClarification},
+		{Role: protocol.RoleUser, Content: "Máy bơm tiêm điện đang sửa chữa"},
+	}
+	result := routeIntent(messages, []string{"equipmentLookup", "repairSummary", "query_database"})
+	if stringsJoin(result.Tools) != stringsJoin([]string{"equipmentLookup"}) || result.Clarify != "" {
+		t.Fatalf("status follow-up route = clarify %q tools %#v", result.Clarify, result.Tools)
+	}
+}
+
 func TestIntentKeepsToolsWhenNoUserText(t *testing.T) {
 	tools := []string{"equipmentLookup", "repairSummary"}
 	result := routeIntent(nil, tools)

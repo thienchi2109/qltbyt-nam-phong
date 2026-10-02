@@ -294,6 +294,58 @@ describe("routeChatIntent", () => {
       })
     })
 
+    it("routes an equipment name as the answer to the equipment clarification", () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage("Tra cứu thiết bị"),
+          {
+            id: "msg-2",
+            role: "assistant",
+            parts: [
+              {
+                type: "text" as const,
+                text: "Anh/chị muốn tra cứu thiết bị nào? Vui lòng cung cấp tên thiết bị cụ thể, mã thiết bị, model hoặc số serial trước khi tôi tra cứu.",
+              },
+            ],
+          } as UIMessage,
+          makeUserMessage("Máy bơm tiêm điện"),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: "proceed",
+        requestedTools: ["equipmentLookup"],
+      })
+    })
+
+    it("routes an equipment status follow-up to equipment lookup", () => {
+      const result = routeChatIntent({
+        messages: [
+          makeUserMessage("Tra cứu thiết bị"),
+          {
+            id: "msg-2",
+            role: "assistant",
+            parts: [
+              {
+                type: "text" as const,
+                text: "Anh/chị muốn tra cứu thiết bị nào? Vui lòng cung cấp tên thiết bị cụ thể, mã thiết bị, model hoặc số serial trước khi tôi tra cứu.",
+              },
+            ],
+          } as UIMessage,
+          makeUserMessage("Máy bơm tiêm điện đang sửa chữa"),
+        ],
+        requestedTools: [...ALL_CHAT_TOOLS],
+      })
+
+      expect(result).toEqual({
+        kind: "proceed",
+        requestedTools: ALL_CHAT_TOOLS.filter(
+          (tool) => tool !== "repairSummary" && tool !== "query_database"
+        ),
+      })
+    })
+
     it("returns proceed with all tools when no user messages exist", () => {
       const result = routeChatIntent({
         messages: [],
