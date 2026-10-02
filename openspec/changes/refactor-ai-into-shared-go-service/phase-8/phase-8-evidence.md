@@ -131,13 +131,23 @@ Anh đã ủy quyền smoke cho đúng ba operation quota/audit và gửi hai l�
 - Broker lại yêu cầu kết quả `ai_quota_finalize` phải là object rỗng hoặc `null` (`src/lib/ai/bff-broker/BffBrokerResults.ts:345`), nên `validateBrokerResult` ném `BrokerRequestError(502, "result_too_large")` khi nhận `""` (`BffBrokerResults.ts:384-388`). Route trả 502 sau khi DB đã finalize, rồi Go surface cùng mã tổng quát `provider_failure`.
 - Local executable reproduction với upstream HTTP `204` đã PASS: decoded result `""` → validator `502/result_too_large`. Điều này khớp với hai cặp Vercel `502`, reservation `status=success` và UI lỗi chung.
 
-**Kết luận nguyên nhân:** lỗi UI là do broker làm hỏng thành công của `ai_quota_finalize` vì mismatch `void/204` với schema response, không phải bằng chứng Gemini không gọi được. `query_database`/audit vẫn là một câu hỏi riêng: chưa có audit row trong hai smoke nên chưa claim tool đã chạy. Không deploy fix trong lượt điều tra này.
+**Kết luận nguyên nhân:** lỗi UI là do broker làm hỏng thành công của `ai_quota_finalize` vì mismatch `void/204` với schema response, không phải bằng chứng Gemini không gọi được. `query_database`/audit vẫn là một câu hỏi riêng: chưa có audit row trong hai smoke nên chưa claim tool đã chạy.
 
 ### Local fix sau RED test
 
 Đã sửa `src/lib/ai/server-rpc.ts` để response thành công có body rỗng (ví dụ HTTP 204 từ RPC `RETURNS void`) được chuẩn hóa thành `null`; response lỗi vẫn đi qua nhánh status/error hiện tại. Regression test dùng helper thật và validator broker thật: trước sửa **1 failed / 7 passed**, sau sửa **32/32 passed** trong nhóm helper/broker route, gồm cả test đảm bảo HTTP 500 rỗng vẫn ném lỗi. Các cổng local đã đạt: format, `verify:no-explicit-any`, dedupe diff-only, typecheck và React Doctor 100/100.
 
 Đây mới là bằng chứng source-local cho việc loại bỏ `502/result_too_large`; chưa có build/deploy hoặc smoke lại trên candidate nên `8.4` vẫn **BLOCKING / INCOMPLETE**, không tick acceptance. Bản sửa chưa chứng minh `query_database`/audit path và không thay đổi kết luận tool/audit của hai smoke trước.
+
+### Deploy candidate sau RED/GREEN
+
+Theo runbook, commit `5c35715b` được build trực tiếp trên Oracle ARM64 với `--platform linux/arm64 --pull=false --no-cache --build-arg TARGETARCH=arm64`. Image `qltbyt/ai-service:5c35715b` có image ID/digest `sha256:8e101d8ada99d013015f3a6f4dfcc06a35317542d2e4b7bd82d529231f3c307c`, label revision `5c35715b`, architecture `arm64`, OS `linux`.
+
+Candidate được recreate lúc `2026-10-02T12:46:30Z` bằng `sudo bash` trên Oracle sau khi preflight xác nhận host `aarch64`. Candidate cũ không bị xóa: `qltbyt-ai-service-candidate-previous-5c35715b` giữ image `92a09f94` ở trạng thái `exited`; candidate mới có container ID `450f90d39a5d96450061c204a32541cb9bde27ef5c9a165cddd1b80704d7e55a` và `restart_count=0`.
+
+Read-back sau deploy xác nhận user `65532:65532`, root filesystem read-only, host network, memory `512MiB`, CPU `1`, pids `128`; bốn secret mounts read-only; journal `/var/lib/qltbyt-ai/usage-candidate-92a09f94` writable tại `/var/lib/ai-service/usage`, owner `65532:65532`, mode `0700`; env tạm đã xóa. Host-loopback `/healthz` và `/readyz` đều trả 200 với `{"status":"ok"}`.
+
+Đây là deployment/health evidence của bản sửa, chưa phải production acceptance: chưa chạy lại UI smoke hoặc đối soát `ai_quota_reserve`, `ai_quota_finalize`, `assistant_query_database_audit_log` trên digest mới. `8.4` vẫn **BLOCKING / INCOMPLETE** và không tick acceptance.
 
 ## Rollback
 
