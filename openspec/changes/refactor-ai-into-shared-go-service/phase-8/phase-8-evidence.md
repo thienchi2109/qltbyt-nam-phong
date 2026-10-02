@@ -124,6 +124,16 @@ Anh đã ủy quyền smoke cho đúng ba operation quota/audit và gửi hai l�
 
 **Kết luận smoke:** candidate có quota lifecycle evidence một phần, nhưng tool/audit chưa được chứng minh. Chưa có bằng chứng raw provider error; `provider_failure` cũng được dùng cho lỗi broker/RPC, và broker có `502` gần hai lượt. `8.4` tiếp tục `BLOCKING / INCOMPLETE`; không tick acceptance và không mở Phase 9. Không có live DB write thủ công ngoài các operation runtime đã được anh ủy quyền.
 
+### Smoke PASS sau candidate fix — 2026-10-02T15:48Z
+
+- UI smoke chạy trên exact candidate digest `sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8`, runtime commit `5a5a75b9d936c0eb50b2ea02f69cedfdeb931dfe`.
+- Prompt `Tra cứu thông tin thiết bị monitor CMS8000`, account/tenant `17`; người vận hành xác nhận model gọi `equipmentLookup` 2 lần và UI trả lời không tìm thấy thiết bị CMS8000 ở đơn vị.
+- Candidate log ghi request `87153163-ef93-4b0f-a6b4-ca7358d5b277`, provider `google`, model `gemini-3.5-flash-lite`, `outcome=completed`, `usage_classification=known-positive`, `latency_ms=6346`; không có `provider_failure`.
+- Read-only Supabase read-back ghi reservation `c143ab4a-8217-4aa5-8fb0-f0ce0cb871c2`, tenant `17`, `status=success`, `reserved_at=2026-10-02 15:48:11.973692+00`, `tokens_in=21730`, `tokens_out=780`.
+- Đây là capability `equipmentLookup` và RPC đọc `ai_equipment_lookup`; theo capability policy, `assistant_query_database` audit không phát sinh cho lượt này. SQL audit vẫn cần smoke `query_database` riêng nếu muốn chứng minh nhánh audit đó.
+
+**Kết luận:** quota reserve/finalize và equipment-lookup response đã PASS trên exact candidate digest; không còn vòng lặp 5 lần hoặc lỗi chung `provider_failure`. Tick `8.4` cho capability smoke này. Không mở `Phase 9` từ kết quả này.
+
 ### Root cause đã xác nhận sau smoke
 
 - Journal trên Oracle liên kết trực tiếp hai request ID với reservation tương ứng và ghi nhiều dòng `usage_observed` từ provider. Ví dụ request `f949c012-852d-4e90-a3e7-de755a338a4d` có bốn lượt usage measured; request `3d4b124a-32f6-4608-aa48-9d7dd572637d` có hai lượt. Đây không giống lỗi provider chết trước khi trả usage.
