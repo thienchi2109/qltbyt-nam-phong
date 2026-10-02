@@ -164,7 +164,11 @@ func equipmentFollowUp(rows []json.RawMessage) json.RawMessage {
 		if err := json.Unmarshal(row, &object); err != nil {
 			continue
 		}
-		id, ok := positiveID(object["thiet_bi_id"])
+		rawID := object["thiet_bi_id"]
+		if len(rawID) == 0 {
+			rawID = object["id"]
+		}
+		id, ok := positiveID(rawID)
 		if !ok {
 			continue
 		}

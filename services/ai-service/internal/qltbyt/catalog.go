@@ -23,7 +23,7 @@ type ModelBudget struct {
 }
 
 var catalog = []ToolSpec{
-	{Name: "equipmentLookup", RPC: "ai_equipment_lookup", Description: "Lookup equipment details using approved read-only RPC.", Intents: []RoutingIntent{{Group: "repair", Role: "equipment-status"}, {Group: "equipmentLookup", Role: "specific-item"}}},
+	{Name: "equipmentLookup", RPC: "ai_equipment_lookup", Description: "Lookup equipment details using approved read-only RPC.", Budget: &ModelBudget{MaxItems: 10, Fields: []string{"id", "ma_thiet_bi", "ten_thiet_bi", "model", "serial", "so_luu_hanh", "tinh_trang_hien_tai", "khoa_phong_quan_ly", "vi_tri_lap_dat", "facility_name"}}, Intents: []RoutingIntent{{Group: "repair", Role: "equipment-status"}, {Group: "equipmentLookup", Role: "specific-item"}}},
 	{Name: "maintenanceSummary", RPC: "ai_maintenance_summary", Description: "Retrieve maintenance summary data via approved read-only RPC."},
 	{Name: "maintenancePlanLookup", RPC: "ai_maintenance_plan_lookup", Description: "Lookup maintenance, calibration, and inspection plans for a specific equipment item."},
 	{Name: "repairSummary", RPC: "ai_repair_summary", Description: "Retrieve repair summary data via approved read-only RPC.", Intents: []RoutingIntent{{Group: "repair", Role: "workflow-summary"}}},

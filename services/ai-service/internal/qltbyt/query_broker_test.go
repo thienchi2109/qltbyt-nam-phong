@@ -291,6 +291,26 @@ func TestCurrentTurnKeepsEvidenceAndHistoryStripsIt(t *testing.T) {
 	}
 }
 
+func TestEquipmentLookupModelOutputKeepsBoundedDetailsAndID(t *testing.T) {
+	lookupBody := []byte(`{"data":[{"id":7,"ma_thiet_bi":"TB-7","ten_thiet_bi":"Monitor","model":"CMS8000","tinh_trang_hien_tai":"hong"}],"total":1}`)
+	assistant := testAssistant(&spyBroker{body: lookupBody}, &spyQuery{})
+	cred := testCredential("technician", facilityPtr(2), nil)
+	scope := resolveScope(cred, true)
+	full, err := assistant.runCatalog(context.Background(), cred, scope, "req-eq-details", catalogMust("equipmentLookup"), `{"query":"CMS8000"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modelOutput := modelFacingOutput(full)
+	for _, needle := range []string{`"ma_thiet_bi":"TB-7"`, `"model":"CMS8000"`, `"tinh_trang_hien_tai":"hong"`, `"equipment":[{"thiet_bi_id":7`} {
+		if !strings.Contains(modelOutput, needle) {
+			t.Fatalf("model output missing %s: %s", needle, modelOutput)
+		}
+	}
+	if strings.Contains(modelOutput, "uiArtifact") {
+		t.Fatalf("model output leaked uiArtifact: %s", modelOutput)
+	}
+}
+
 func TestQueryDatabaseEnvelopeKeepsRowsAndChart(t *testing.T) {
 	rows := []byte(`[{"khoa_phong_quan_ly":"Khoa A","so_luong":2}]`)
 	executor := &spyQuery{result: QueryResult{Rows: rows, RowCount: 1, PayloadBytes: len(rows)}}
