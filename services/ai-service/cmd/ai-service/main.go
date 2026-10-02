@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -27,6 +28,7 @@ import (
 const (
 	defaultListenAddr    = "127.0.0.1:8080"
 	defaultMaxConcurrent = 16
+	defaultUsageDir      = "/var/lib/ai-service/usage"
 )
 
 type runtimeConfig struct {
@@ -35,6 +37,7 @@ type runtimeConfig struct {
 	drainGrace        time.Duration
 	cleanupGrace      time.Duration
 	reservationTTL    time.Duration
+	usageDir          string
 	hmacKeyID         string
 	hmacSecret        []byte
 	brokerSecret      []byte
@@ -53,6 +56,7 @@ type serviceRuntime struct {
 	configDiagnostic string
 	handler          *ingress.Handler
 	lifecycle        *ingress.Lifecycle
+	quotaBook        usage.Lifecycle
 	database         composition.QueryExecutor
 }
 
@@ -137,6 +141,18 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	if chainErr != nil {
 		return &serviceRuntime{config: config, configErr: chainErr, configDiagnostic: provider.InitializationDiagnostic(chainErr), lifecycle: lifecycle, handler: &ingress.Handler{Admission: admission, Lifecycle: lifecycle, Log: logger}}
 	}
+	quotaBook, quotaErr := usage.NewQuotaBook(config.usageDir, time.Now, nil)
+	if quotaErr != nil {
+		handler := &ingress.Handler{
+			Admission: admission,
+			Lifecycle: lifecycle,
+			Log:       logger,
+			ConfigReady: func() bool {
+				return false
+			},
+		}
+		return &serviceRuntime{config: config, configErr: quotaErr, configDiagnostic: protocol.DiagnosticProviderConfiguration, handler: handler, lifecycle: lifecycle}
+	}
 	var queryExecutor composition.QueryExecutor
 	if config.brokerEndpoint != "" {
 		queryExecutor, err = composition.OpenPoolerQueryExecutor(context.Background(), config.databaseURL, config.maxConcurrent)
@@ -147,7 +163,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 	capabilityReady := composition.RegisterAssistantWithEndpoint(reg, config.brokerEndpoint, nil, config.brokerSecret, queryExecutor)
 	runner := &orchestration.Runner{
 		Registry: reg,
-		Usage:    usage.NewMemory(time.Now),
+		Usage:    quotaBook,
 		Open: func(ctx context.Context, _ protocol.Request) (orchestration.ModelSession, error) {
 			// ChainSession owns per-request attempt state; build a fresh session
 			// so concurrent requests cannot share fallback cursors.
@@ -170,7 +186,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 		Lifecycle: lifecycle,
 		Log:       logger,
 		ConfigReady: func() bool {
-			if chain == nil || queryExecutor == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
+			if chain == nil || quotaBook == nil || queryExecutor == nil || !capabilityReady || reg == nil || len(config.hmacSecret) == 0 || len(config.brokerSecret) == 0 || config.appID == "" || config.capabilityID == "" || config.capabilityVersion == "" {
 				return false
 			}
 			_, lookupErr := reg.Lookup(config.appID, config.capabilityID, config.capabilityVersion)
@@ -180,7 +196,7 @@ func newServiceRuntime(env map[string]string) *serviceRuntime {
 			return composition.QueryExecutorReady(context.Background(), queryExecutor)
 		},
 	}
-	return &serviceRuntime{config: config, handler: handler, lifecycle: lifecycle, database: queryExecutor}
+	return &serviceRuntime{config: config, handler: handler, lifecycle: lifecycle, quotaBook: quotaBook, database: queryExecutor}
 }
 
 func logPoolerConnectionFailure(err error) {
@@ -236,6 +252,10 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 	if err != nil || reservationTTL < protocol.ReservationTTL {
 		return runtimeConfig{}, errors.New("reservation TTL is unavailable")
 	}
+	usageDir, err := usageDirectory(values["AI_SERVICE_USAGE_DIR"])
+	if err != nil {
+		return runtimeConfig{}, err
+	}
 	brokerEndpoint := strings.TrimSpace(firstNonEmpty(values["AI_SERVICE_BFF_BROKER_URL"], values["AI_SERVICE_BROKER_URL"]))
 	if brokerEndpoint != "" {
 		if _, err := composition.NewBroker(brokerEndpoint, nil); err != nil {
@@ -257,6 +277,7 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 		drainGrace:        drainGrace,
 		cleanupGrace:      cleanupGrace,
 		reservationTTL:    reservationTTL,
+		usageDir:          usageDir,
 		hmacKeyID:         strings.TrimSpace(values["AI_SERVICE_HMAC_KEY_ID"]),
 		hmacSecret:        hmacSecret,
 		brokerSecret:      brokerSecret,
@@ -268,6 +289,17 @@ func loadRuntimeConfig(env map[string]string) (runtimeConfig, error) {
 		providerEnv:       values,
 		chain:             chain,
 	}, nil
+}
+
+func usageDirectory(value string) (string, error) {
+	directory := strings.TrimSpace(value)
+	if directory == "" {
+		return defaultUsageDir, nil
+	}
+	if !filepath.IsAbs(directory) || filepath.Clean(directory) == string(filepath.Separator) {
+		return "", errors.New("usage journal directory is unavailable")
+	}
+	return filepath.Clean(directory), nil
 }
 
 func privateListenAddr(value string) (string, error) {

@@ -118,6 +118,25 @@ func TestDuplicateRefundedRequestDoesNotOpenOrReserveAgain(t *testing.T) {
 	}
 }
 
+func TestRunnerPassesPreparedCallerToQuotaBook(t *testing.T) {
+	spy := &runnerCaller{reserveID: "res-per-request"}
+	book, err := usage.NewQuotaBook(t.TempDir(), time.Now, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runner := &orchestration.Runner{
+		Registry: registryWith(t, quotaCapability{caller: spy}),
+		Usage:    book,
+		Open: func(context.Context, protocol.Request) (orchestration.ModelSession, error) {
+			return nil, errors.New("provider did not start")
+		},
+	}
+	result, err := runner.Run(context.Background(), quotaRequest())
+	if err == nil || !result.Reconciliation.Refund || spy.reserves != 1 || spy.finalizeCount() != 1 {
+		t.Fatalf("err=%v refund=%v reserves=%d finalizes=%d", err, result.Reconciliation.Refund, spy.reserves, spy.finalizeCount())
+	}
+}
+
 func TestIntentWriteFailureDoesNotOpenProvider(t *testing.T) {
 	spy := &runnerCaller{reserveID: "res-intent"}
 	book, err := usage.NewQuotaBook(t.TempDir(), func() time.Time { return time.Unix(1_700_000_000, 0).UTC() }, spy)

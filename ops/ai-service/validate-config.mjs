@@ -13,6 +13,7 @@ const required = [
   "AI_SERVICE_BROKER_SECRET_FILE",
   "NVIDIA_API_KEY_FILE",
   "GOOGLE_GENERATIVE_AI_API_KEYS_FILE",
+  "AI_SERVICE_USAGE_HOST_DIR",
   "AI_PROVIDER_CHAIN",
 ]
 
@@ -31,6 +32,10 @@ assert.equal(
 assert.equal(process.env.AI_SERVICE_LISTEN_ADDR ?? "127.0.0.1:8080", "127.0.0.1:8080")
 assert.equal(process.env.AI_SERVICE_DRAIN_GRACE ?? "60s", "60s")
 assert.equal(process.env.AI_SERVICE_CLEANUP_GRACE ?? "5s", "5s")
+assert.equal(
+  process.env.AI_SERVICE_USAGE_DIR ?? "/var/lib/ai-service/usage",
+  "/var/lib/ai-service/usage"
+)
 const maxConcurrent = Number(process.env.AI_SERVICE_MAX_CONCURRENT ?? 16)
 assert(
   Number.isSafeInteger(maxConcurrent) && maxConcurrent > 0,
@@ -49,6 +54,23 @@ for (const name of required.slice(2, 6)) {
   assert(stat.isFile(), `${name} must point to a regular file`)
   assert.equal(stat.mode & 0o077, 0, `${name} must not be group/world readable`)
 }
+
+const usageHostPath = path.resolve(process.env.AI_SERVICE_USAGE_HOST_DIR)
+const usageRelative = path.relative(repoRoot, usageHostPath)
+assert(
+  usageRelative.startsWith(".."),
+  "AI_SERVICE_USAGE_HOST_DIR must point outside the repository"
+)
+const usageLink = fs.lstatSync(usageHostPath)
+assert(usageLink.isDirectory(), "AI_SERVICE_USAGE_HOST_DIR must point to a directory")
+assert(!usageLink.isSymbolicLink(), "AI_SERVICE_USAGE_HOST_DIR must not be a symlink")
+assert.equal(
+  usageLink.mode & 0o077,
+  0,
+  "AI_SERVICE_USAGE_HOST_DIR must not be group/world accessible"
+)
+assert.equal(usageLink.uid, 65532, "AI_SERVICE_USAGE_HOST_DIR must be owned by UID 65532")
+assert.equal(usageLink.gid, 65532, "AI_SERVICE_USAGE_HOST_DIR must be owned by GID 65532")
 
 console.log("ai-service deployment config: PASS")
 

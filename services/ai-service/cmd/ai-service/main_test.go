@@ -15,7 +15,70 @@ import (
 
 	"example.com/shared-ai-service/internal/composition"
 	"example.com/shared-ai-service/internal/protocol"
+	"example.com/shared-ai-service/internal/usage"
 )
+
+func TestRuntimeUsesDurableQuotaBook(t *testing.T) {
+	env, cleanup := validRuntimeEnv(t)
+	defer cleanup()
+	usageDir := t.TempDir()
+	env["AI_DATABASE_URL"] = "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=require"
+	env["AI_SERVICE_USAGE_DIR"] = usageDir
+	runtime := newServiceRuntime(env)
+	if runtime == nil || runtime.quotaBook == nil {
+		t.Fatal("runtime did not create a quota book")
+	}
+	if _, ok := runtime.quotaBook.(*usage.QuotaBook); !ok {
+		t.Fatalf("runtime quota lifecycle = %T, want *usage.QuotaBook", runtime.quotaBook)
+	}
+	if runtime.config.usageDir != usageDir {
+		t.Fatalf("usage directory = %q, want %q", runtime.config.usageDir, usageDir)
+	}
+}
+
+func TestRuntimeConfigDefaultsUsageDirectory(t *testing.T) {
+	env, cleanup := validRuntimeEnv(t)
+	defer cleanup()
+	env["AI_DATABASE_URL"] = "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=require"
+	config, err := loadRuntimeConfig(env)
+	if err != nil {
+		t.Fatalf("load runtime config = %v", err)
+	}
+	if config.usageDir != defaultUsageDir {
+		t.Fatalf("usage directory = %q, want %q", config.usageDir, defaultUsageDir)
+	}
+}
+
+func TestUsageDirectoryRejectsRelativeAndRootPaths(t *testing.T) {
+	for _, value := range []string{"relative/usage", "/"} {
+		t.Run(value, func(t *testing.T) {
+			if _, err := usageDirectory(value); err == nil {
+				t.Fatalf("usage directory %q was accepted", value)
+			}
+		})
+	}
+}
+
+func TestRuntimeFailsReadinessWhenUsageJournalCannotOpen(t *testing.T) {
+	env, cleanup := validRuntimeEnv(t)
+	defer cleanup()
+	env["AI_DATABASE_URL"] = "postgresql://ai_query_tool:secret@pooler.example:6543/postgres?sslmode=require"
+	usagePath := filepath.Join(t.TempDir(), "journal-file")
+	if err := os.WriteFile(usagePath, []byte("not-a-directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	env["AI_SERVICE_USAGE_DIR"] = usagePath
+	runtime := newServiceRuntime(env)
+	if runtime == nil || runtime.configErr == nil {
+		t.Fatal("journal initialization failure did not fail runtime closed")
+	}
+	if runtime.quotaBook != nil {
+		t.Fatalf("quota book = %T, want nil", runtime.quotaBook)
+	}
+	if runtime.handler == nil || runtime.handler.ConfigReady == nil || runtime.handler.ConfigReady() {
+		t.Fatal("journal initialization failure reported ready")
+	}
+}
 
 func TestReadSecretFileTrimsOnlyFileWhitespaceAndRejectsEmpty(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "secret")

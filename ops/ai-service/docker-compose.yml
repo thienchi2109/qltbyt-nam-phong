@@ -27,6 +27,7 @@ services:
       AI_SERVICE_DRAIN_GRACE: "60s"
       AI_SERVICE_CLEANUP_GRACE: "5s"
       AI_SERVICE_MAX_CONCURRENT: "${AI_SERVICE_MAX_CONCURRENT:-16}"
+      AI_SERVICE_USAGE_DIR: "/var/lib/ai-service/usage"
       AI_SERVICE_RESERVATION_TTL: "120s"
       AI_PROVIDER_CHAIN: "${AI_PROVIDER_CHAIN:?set approved provider chain}"
       NVIDIA_BASE_URL: "${NVIDIA_BASE_URL:-https://integrate.api.nvidia.com/v1/chat/completions}"
@@ -36,6 +37,13 @@ services:
       AI_SERVICE_BROKER_SECRET_FILE: /run/secrets/ai_service_broker_secret
       NVIDIA_API_KEY_FILE: /run/secrets/nvidia_api_key
       GOOGLE_GENERATIVE_AI_API_KEYS_FILE: /run/secrets/google_generative_ai_api_keys
+    volumes:
+      - type: bind
+        source: "${AI_SERVICE_USAGE_HOST_DIR:?set journal host directory}"
+        target: /var/lib/ai-service/usage
+        read_only: false
+        bind:
+          create_host_path: false
     secrets:
       - source: ai_service_hmac_secret
         target: ai_service_hmac_secret

@@ -64,6 +64,10 @@ assert.match(compose, /AI_SERVICE_LISTEN_ADDR: "127\.0\.0\.1:8080"/)
 assert.match(compose, /AI_SERVICE_DRAIN_GRACE: "60s"/)
 assert.match(compose, /AI_SERVICE_CLEANUP_GRACE: "5s"/)
 assert.match(compose, /AI_SERVICE_RESERVATION_TTL: "120s"/)
+assert.match(compose, /AI_SERVICE_USAGE_DIR: "\/var\/lib\/ai-service\/usage"/)
+assert.match(compose, /AI_SERVICE_USAGE_HOST_DIR/)
+assert.match(compose, /target: \/var\/lib\/ai-service\/usage/)
+assert.match(compose, /create_host_path: false/)
 assert.match(compose, /read_only: true/)
 assert.match(compose, /cap_drop:[\s\S]*- ALL/)
 assert.match(compose, /no-new-privileges:true/)
@@ -93,6 +97,8 @@ assert.match(validator, /@sha256:\[0-9a-f\]\{64\}/)
 assert.match(validator, /must point outside the repository/)
 assert.match(validator, /must not be group\/world readable/)
 assert.match(validator, /AI_SERVICE_PREVIOUS_IMAGE/)
+assert.match(validator, /AI_SERVICE_USAGE_HOST_DIR/)
+assert.match(validator, /UID 65532|UID 65532|uid, 65532/)
 assert.match(ignore, /cloudflared\/credentials\.json/)
 assert.match(ignore, /secrets\//)
 
@@ -101,6 +107,7 @@ for (const name of [
   "AI_SERVICE_BROKER_SECRET_FILE",
   "NVIDIA_API_KEY_FILE",
   "GOOGLE_GENERATIVE_AI_API_KEYS_FILE",
+  "AI_SERVICE_USAGE_HOST_DIR",
 ]) {
   assert.match(env, new RegExp(`^${name}=`, "m"))
 }

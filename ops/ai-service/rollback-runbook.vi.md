@@ -43,10 +43,13 @@ Giữ image digest đã verify trước đó trong bản sao cấu hình bảo m
 Đặt bốn secret file ngoài Git, owner root, mode `0600`; Compose mount read-only
 vào container. `AI_SERVICE_IMAGE` bắt buộc là digest, còn
 `AI_SERVICE_PREVIOUS_IMAGE` chỉ được dùng khi đã có image trước đó. Kiểm tra cấu
-hình trước khi start:
+hình trước khi start. Journal directory phải nằm ngoài repository, không là
+symlink, owner `65532:65532`, mode `0700`; `AI_SERVICE_USAGE_DIR` luôn là
+`/var/lib/ai-service/usage`:
 
 ```sh
 docker compose --env-file /etc/qltbyt-ai/ai-service.env -f /opt/qltbyt-ai/docker-compose.yml config --quiet
+test "$(stat -c '%u:%g:%a' "$AI_SERVICE_USAGE_HOST_DIR")" = "65532:65532:700"
 systemctl start qltbyt-ai-service
 curl --fail --silent http://127.0.0.1:8080/healthz
 curl --fail --silent http://127.0.0.1:8080/readyz
@@ -64,18 +67,24 @@ không phải là đường chạy đang được dùng. Không thao tác trực
 
 Các biến `*_FILE` trong env của container phải trỏ tới đường dẫn **bên trong
 container** (`/run/secrets/...`). Đường dẫn `/etc/qltbyt-ai/...` chỉ là đường dẫn
-file secret trên host và không được đưa nguyên vào env của container.
+file secret trên host và không được đưa nguyên vào env của container. `AI_SERVICE_USAGE_HOST_DIR`
+là đường dẫn journal trên host; target cố định trong container là
+`/var/lib/ai-service/usage`.
 
 ```sh
 set -eu
 candidate=qltbyt-ai-service-candidate
 previous="${candidate}-previous-<old-revision>"
 image='qltbyt/ai-service:<verified-revision-or-digest>'
+usage_host_dir="${AI_SERVICE_USAGE_HOST_DIR:?set journal host directory}"
 tmp_env="/root/${candidate}.env.recreate"
 
 # Lưu env hiện tại mà không in secret ra terminal.
 docker inspect "$candidate" --format '{{range .Config.Env}}{{println .}}{{end}}' > "$tmp_env"
 chmod 600 "$tmp_env"
+test -d "$usage_host_dir"
+test ! -L "$usage_host_dir"
+test "$(stat -c '%u:%g:%a' "$usage_host_dir")" = "65532:65532:700"
 sed -i \
   -e 's#^AI_SERVICE_HMAC_SECRET_FILE=.*#AI_SERVICE_HMAC_SECRET_FILE=/run/secrets/ai_service_hmac_secret#' \
   -e 's#^AI_SERVICE_BROKER_SECRET_FILE=.*#AI_SERVICE_BROKER_SECRET_FILE=/run/secrets/ai_service_broker_secret#' \
@@ -91,6 +100,7 @@ docker run -d --name "$candidate" --restart unless-stopped \
   --env-file "$tmp_env" --network host --user 65532:65532 \
   --read-only --cap-drop ALL --security-opt no-new-privileges:true \
   --tmpfs /tmp:rw,noexec,nosuid,size=16m --init \
+  --mount type=bind,src="$usage_host_dir",dst=/var/lib/ai-service/usage,rw \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/nvidia.api-key,dst=/run/secrets/nvidia_api_key,readonly \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/google.api-keys,dst=/run/secrets/google_generative_ai_api_keys,readonly \
   --mount type=bind,src=/etc/qltbyt-ai/runtime-secrets/hmac.secret,dst=/run/secrets/ai_service_hmac_secret,readonly \
