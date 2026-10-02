@@ -124,6 +124,15 @@ Anh đã ủy quyền smoke cho đúng ba operation quota/audit và gửi hai l�
 
 **Kết luận smoke:** candidate có quota lifecycle evidence một phần, nhưng tool/audit chưa được chứng minh. Chưa có bằng chứng raw provider error; `provider_failure` cũng được dùng cho lỗi broker/RPC, và broker có `502` gần hai lượt. `8.4` tiếp tục `BLOCKING / INCOMPLETE`; không tick acceptance và không mở Phase 9. Không có live DB write thủ công ngoài các operation runtime đã được anh ủy quyền.
 
+### Root cause đã xác nhận sau smoke
+
+- Journal trên Oracle liên kết trực tiếp hai request ID với reservation tương ứng và ghi nhiều dòng `usage_observed` từ provider. Ví dụ request `f949c012-852d-4e90-a3e7-de755a338a4d` có bốn lượt usage measured; request `3d4b124a-32f6-4608-aa48-9d7dd572637d` có hai lượt. Đây không giống lỗi provider chết trước khi trả usage.
+- `public.ai_quota_finalize` có return type `void`. Supabase/PostgREST trả response rỗng cho RPC này; `callServerRpc` biến body rỗng thành chuỗi `""` (`src/lib/ai/server-rpc.ts:108-115`).
+- Broker lại yêu cầu kết quả `ai_quota_finalize` phải là object rỗng hoặc `null` (`src/lib/ai/bff-broker/BffBrokerResults.ts:345`), nên `validateBrokerResult` ném `BrokerRequestError(502, "result_too_large")` khi nhận `""` (`BffBrokerResults.ts:384-388`). Route trả 502 sau khi DB đã finalize, rồi Go surface cùng mã tổng quát `provider_failure`.
+- Local executable reproduction với upstream HTTP `204` đã PASS: decoded result `""` → validator `502/result_too_large`. Điều này khớp với hai cặp Vercel `502`, reservation `status=success` và UI lỗi chung.
+
+**Kết luận nguyên nhân:** lỗi UI là do broker làm hỏng thành công của `ai_quota_finalize` vì mismatch `void/204` với schema response, không phải bằng chứng Gemini không gọi được. `query_database`/audit vẫn là một câu hỏi riêng: chưa có audit row trong hai smoke nên chưa claim tool đã chạy. Không deploy fix trong lượt điều tra này.
+
 ## Rollback
 
 Không có fallback runtime về orchestrator Next.js. Nếu UI production lỗi, revert commit cutover để trả `src/app/api/chat/route.ts` về orchestrator cũ. Revert đó là thao tác git có chủ đích. `8.5` chưa tick vì điều khoản rollback trong task là khôi phục image Go đã verify, và việc đó chưa làm.
