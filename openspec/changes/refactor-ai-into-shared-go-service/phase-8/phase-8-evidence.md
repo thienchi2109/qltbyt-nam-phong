@@ -165,6 +165,14 @@ Không có fallback runtime về orchestrator Next.js. Nếu UI production lỗi
 
 Ngày 2026-10-02: rollback container `qltbyt-ai-service-candidate-previous-913e0665` đã được xóa theo yêu cầu maintainer. Không diễn giải việc giữ/xóa container đó là PASS của `8.5`.
 
+### Rollback acceptance probe — 2026-10-02T17:00Z
+
+`8.5` đã được kiểm chứng trên candidate sau cutover. Source route `src/app/api/chat/route.ts` chỉ import `postGoBffChat`; không có nhánh runtime gọi `legacy-next-orchestrator.ts` hoặc fallback model/tool orchestration.
+
+Operator đã thực hiện rollback thật trên Oracle theo runbook, không gọi model và không ghi live DB: candidate được chuyển sang image Go trước đó `qltbyt/ai-service:136e3a9a`, digest `sha256:913e06656d4d4b4812d9044525649596f4a0b5d01dc7d7b553284d3c3b969135`, architecture `arm64`, revision `136e3a9a`. Cùng env đã read-back từ candidate, journal `/var/lib/qltbyt-ai/usage-candidate-92a09f94` giữ owner/mode `65532:65532:700`, mounts secret read-only, root filesystem read-only, host network, user `65532:65532`, cap-drop `ALL`, `no-new-privileges`, memory `512MiB`, CPU `1`, pids `128`. Image cũ đạt `status=running`, `restart=0`, `/healthz=200`, `/readyz=200` sau readiness quarantine.
+
+Sau probe, operator dừng/xóa container rollback, khôi phục candidate image đã verify `sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8` (revision `5a5a75b9`), rồi xác nhận `status=running`, `restart=0`, `/healthz=200`, `/readyz=200`. Tên container previous và env tạm đã được dọn; image và journal không bị xóa. Đây là bằng chứng rollback artifact/config hoạt động, không mở Phase 9 và không thay thế các gate 8.2/8.6.
+
 ## Ngoài phạm vi
 
 Phase 9 đóng. DQSS `127.0.0.1:18080`, Web Push, tunnel, DNS, Access và Cloudflare proxy không đổi. Không ghi live DB.
