@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import NotificationsPage from "../page"
@@ -23,6 +23,64 @@ beforeEach(resetNotificationTestState)
 afterEach(() => vi.unstubAllGlobals())
 
 describe("NotificationsPage browser lifecycle", () => {
+  it("shares one register request between independently mounted clients for one endpoint", async () => {
+    const { getSubscription, subscription } = pushRegistration()
+    getSubscription.mockResolvedValue(subscription)
+    mocks.requestPermission.mockResolvedValue("granted")
+
+    let postCount = 0
+    let releasePosts!: () => void
+    const postsReleased = new Promise<void>((resolve) => {
+      releasePosts = resolve
+    })
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (url.endsWith("/subscriptions") && init?.method === "POST") {
+        postCount += 1
+        return postsReleased.then(() =>
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000002",
+            revision: "2",
+          })
+        )
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+
+    const firstView = mount()
+    const secondView = mount()
+    const firstClient = within(firstView.container)
+    const secondClient = within(secondView.container)
+    await waitFor(() =>
+      expect(firstClient.getByRole("button", { name: "Bật thông báo" })).toBeEnabled()
+    )
+    await waitFor(() =>
+      expect(secondClient.getByRole("button", { name: "Bật thông báo" })).toBeEnabled()
+    )
+
+    fireEvent.click(firstClient.getByRole("button", { name: "Bật thông báo" }))
+    fireEvent.click(secondClient.getByRole("button", { name: "Bật thông báo" }))
+
+    try {
+      await waitFor(() => expect(postCount).toBeGreaterThan(0))
+      expect(postCount).toBe(1)
+    } finally {
+      releasePosts()
+      firstView.unmount()
+      secondView.unmount()
+    }
+  })
+
   it("waits for previous-owner cleanup before registering a new owner", async () => {
     const { getSubscription, subscription } = pushRegistration()
     let subscribed = true

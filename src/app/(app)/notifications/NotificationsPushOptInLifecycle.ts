@@ -27,6 +27,20 @@ export type PushState =
 /** Web Push lifecycle entrypoint. */
 export const VAPID_VERSION_STORAGE_KEY = "web-push-vapid-key-version"
 
+type RegistrationResult = {
+  subscriptionId: string
+  revision: string
+  endpoint: string
+}
+
+type RegistrationFlight = {
+  controller: AbortController
+  promise: Promise<RegistrationResult>
+  waiters: number
+}
+
+const registrationFlights = new Map<string, RegistrationFlight>()
+
 function supportsWebPush(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -100,6 +114,61 @@ async function readPublicKey(): Promise<PublicKeyPayload> {
     registration_enabled: payload.registration_enabled,
     vapid: { version: artifact.version, public_key: artifact.public_key },
   }
+}
+
+function abortError(): DOMException {
+  return new DOMException("Operation cancelled", "AbortError")
+}
+
+function waitForRegistrationFlight<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  let onAbort: (() => void) | undefined
+  const abortPromise = new Promise<never>((_, reject) => {
+    if (signal.aborted) {
+      reject(abortError())
+      return
+    }
+    onAbort = () => reject(abortError())
+    signal.addEventListener("abort", onAbort, { once: true })
+  })
+  return Promise.race([promise, abortPromise]).finally(() => {
+    if (onAbort) signal.removeEventListener("abort", onAbort)
+  })
+}
+
+async function sendRegistrationRequest(
+  body: string,
+  endpoint: string,
+  signal: AbortSignal
+): Promise<RegistrationResult> {
+  let lastError: unknown = new Error("request_failed")
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      const response = await fetch("/api/web-push/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal,
+        body,
+      })
+      const payload = await readResponse(response)
+      if (!validateSubscriptionRegisterResponse(payload)) throw new Error("invalid_response")
+      return {
+        subscriptionId: payload.subscription_id as string,
+        revision: String(payload.revision),
+        endpoint,
+      }
+    } catch (error) {
+      if (signal.aborted) throw error
+      lastError = error
+      const code = errorCode(error)
+      if (!(
+        error instanceof TypeError ||
+        ["request_failed", "unavailable", "rate_limited"].includes(code)
+      )) {
+        throw error
+      }
+    }
+  }
+  throw lastError
 }
 
 function subscriptionPayload(subscription: PushSubscription) {
@@ -182,43 +251,39 @@ export async function registerPush(
   })
   if (signal.aborted) {
     if (createdSubscription) await subscription.unsubscribe()
-    throw new DOMException("Operation cancelled", "AbortError")
+    throw abortError()
   }
   const body = JSON.stringify({
     version: 1,
     vapid_key_version: vapid.version,
     subscription: subscriptionPayload(subscription),
   })
-  let lastError: unknown = new Error("request_failed")
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      onRequestSent?.()
-      const response = await fetch("/api/web-push/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal,
-        body,
-      })
-      const payload = await readResponse(response)
-      if (!validateSubscriptionRegisterResponse(payload)) throw new Error("invalid_response")
-      return {
-        subscriptionId: payload.subscription_id as string,
-        revision: String(payload.revision),
-        endpoint: subscription.endpoint,
-      }
-    } catch (error) {
-      if (signal.aborted) throw error
-      lastError = error
-      const code = errorCode(error)
-      if (!(
-        error instanceof TypeError ||
-        ["request_failed", "unavailable", "rate_limited"].includes(code)
-      )) {
-        throw error
-      }
+  if (signal.aborted) throw abortError()
+
+  const key = body
+  let flight = registrationFlights.get(key)
+  if (!flight) {
+    onRequestSent?.()
+    const controller = new AbortController()
+    const promise = sendRegistrationRequest(body, subscription.endpoint, controller.signal)
+    flight = { controller, promise, waiters: 0 }
+    registrationFlights.set(key, flight)
+    const currentFlight = flight
+    const clearFlight = () => {
+      if (registrationFlights.get(key) === currentFlight) registrationFlights.delete(key)
     }
+    void promise.then(clearFlight, clearFlight)
+  } else {
+    onRequestSent?.()
   }
-  throw lastError
+
+  flight.waiters += 1
+  try {
+    return await waitForRegistrationFlight(flight.promise, signal)
+  } finally {
+    flight.waiters -= 1
+    if (flight.waiters === 0) flight.controller.abort()
+  }
 }
 
 /** Web Push lifecycle entrypoint. */
