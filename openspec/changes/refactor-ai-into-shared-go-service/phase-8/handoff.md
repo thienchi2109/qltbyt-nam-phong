@@ -31,3 +31,7 @@ Candidate mới trên commit `5a5a75b9d936c0eb50b2ea02f69cedfdeb931dfe`, image d
 ### `8.5` PASS — rollback artifact and no runtime fallback (2026-10-02T17:00Z)
 
 `src/app/api/chat/route.ts` chỉ gọi `postGoBffChat`; route sống không import `legacy-next-orchestrator.ts` và không có fallback runtime. Rollback thật trên Oracle đã chuyển candidate sang Go image trước đó `136e3a9a` / digest `sha256:913e06656d4d4b4812d9044525649596f4a0b5d01dc7d7b553284d3c3b969135` (ARM64, revision `136e3a9a`), cùng env/mount/security config; health/readiness đều 200, restart `0`. Sau đó đã khôi phục candidate `5a5a75b9` / digest `sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8`, health/readiness đều 200, dọn previous container và env tạm. Không gọi model hoặc ghi live DB trong probe.
+
+### `8.6` PASS — maintainer acceptance (2026-10-03)
+
+Maintainer xác nhận đã tự kiểm tra PASS toàn bộ 8.6: signed SSE qua Tunnel, health/readiness local-only, budget BFF 60 giây (55 giây xử lý + tối đa 5 giây cleanup), drain grace 60–90 giây, full primary+secondary usage và strict OpenSpec validation. Đây là evidence do maintainer cung cấp; không phải agent tự tái chạy provider/live smoke trong lượt này.

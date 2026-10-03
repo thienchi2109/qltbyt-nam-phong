@@ -173,6 +173,10 @@ Operator đã thực hiện rollback thật trên Oracle theo runbook, không g�
 
 Sau probe, operator dừng/xóa container rollback, khôi phục candidate image đã verify `sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8` (revision `5a5a75b9`), rồi xác nhận `status=running`, `restart=0`, `/healthz=200`, `/readyz=200`. Tên container previous và env tạm đã được dọn; image và journal không bị xóa. Đây là bằng chứng rollback artifact/config hoạt động, không mở Phase 9 và không thay thế các gate 8.2/8.6.
 
+### 8.6 acceptance — 2026-10-03
+
+Maintainer xác nhận đã tự chạy và đạt toàn bộ acceptance checks của 8.6: signed SSE qua Tunnel, health/readiness local-only, BFF budget 60 giây với đề xuất 55 giây xử lý và tối đa 5 giây cleanup, drain grace 60–90 giây, full primary+secondary usage, và `openspec validate refactor-ai-into-shared-go-service --strict`. Mục này được ghi nhận là maintainer-reported PASS; agent không tái chạy provider/live smoke trong lượt đóng hồ sơ này.
+
 ## Ngoài phạm vi
 
 Phase 9 đóng. DQSS `127.0.0.1:18080`, Web Push, tunnel, DNS, Access và Cloudflare proxy không đổi. Không ghi live DB.

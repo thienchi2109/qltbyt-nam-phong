@@ -378,7 +378,9 @@ Bằng chứng nghiệm thu: Subject commit + image digest, acceptance report, a
 
   Cập nhật PASS 2026-10-02T17:00Z: source route `src/app/api/chat/route.ts` chỉ gọi `postGoBffChat` và không import orchestrator cũ. Trên Oracle, rollback thật đã chuyển candidate sang image Go trước đó `qltbyt/ai-service:136e3a9a` (digest `sha256:913e06656d4d4b4812d9044525649596f4a0b5d01dc7d7b553284d3c3b969135`, ARM64, revision `136e3a9a`) với cùng env/mount/security config; `/healthz` và `/readyz` đều 200, restart `0`. Sau đó đã khôi phục image đã verify `sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8`, readiness/health đều 200, previous container và env tạm đã dọn. Không có model call hoặc live DB write trong probe.
 
-- [ ] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup trong BFF 60 giây, drain grace tối đa 60-90 giây, full primary+secondary usage và `openspec validate ... --strict`.
+- [x] 8.6 Xác nhận SSE qua Tunnel, health/readiness local only, budget đề xuất 55 giây việc cộng tối đa 5 giây cleanup trong BFF 60 giây, drain grace tối đa 60-90 giây, full primary+secondary usage và `openspec validate ... --strict`.
+
+  Cập nhật PASS 2026-10-03: maintainer xác nhận đã tự chạy và đạt toàn bộ acceptance smoke/checks của 8.6, gồm signed SSE qua Tunnel, health/readiness local-only, budget 55 giây + tối đa 5 giây cleanup trong BFF 60 giây, drain grace 60-90 giây, full primary+secondary usage và strict OpenSpec validation. Đây là maintainer-reported evidence; không diễn giải thành một lần agent tự chạy lại provider/live smoke.
 
 Đối soát 2026-09-30: anh yêu cầu làm Phase 8, chuyển backend AI sang Go, commit và push `main`, rồi tự test UI production. Nếu không ổn thì git rollback. Ủy quyền này đóng `8.3`. Nó không phải exact-commit PASS.
 
