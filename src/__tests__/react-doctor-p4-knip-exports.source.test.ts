@@ -29,7 +29,11 @@ const unusedExportSurface = [
   },
   {
     file: "src/app/(app)/repair-requests/_hooks/useRepairRequestsDeepLinkView.ts",
-    exports: ["buildRepairRequestViewCleanupPath","parseRepairRequestIdParam","resolveRepairRequestView"],
+    exports: [
+      "buildRepairRequestViewCleanupPath",
+      "parseRepairRequestIdParam",
+      "resolveRepairRequestView",
+    ],
   },
   {
     file: "src/app/(app)/reports/hooks/use-inventory-data.ts",
@@ -49,7 +53,12 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/dashboard/kpi-cards.tsx",
-    exports: ["MaintenanceCountCard","MaintenancePlansCard","RepairRequestsCard","TotalEquipmentCard"],
+    exports: [
+      "MaintenanceCountCard",
+      "MaintenancePlansCard",
+      "RepairRequestsCard",
+      "TotalEquipmentCard",
+    ],
   },
   {
     file: "src/components/dynamic-chart.tsx",
@@ -57,7 +66,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/equipment-decommission-form.ts",
-    exports: ["DECOMMISSIONED_STATUS","getTodayDateForDecommissionField"],
+    exports: ["DECOMMISSIONED_STATUS", "getTodayDateForDecommissionField"],
   },
   {
     file: "src/components/equipment/equipment-table-columns.tsx",
@@ -69,7 +78,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/onboarding/tour-configs.ts",
-    exports: ["dashboardWelcomeTour","sidebarNavigationTour"],
+    exports: ["dashboardWelcomeTour", "sidebarNavigationTour"],
   },
   {
     file: "src/components/realtime-status.tsx",
@@ -81,7 +90,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/transfer-dialog.shared.ts",
-    exports: ["createTransferDialogFormDataFromTransfer","getSelectedEquipmentFromTransfer"],
+    exports: ["createTransferDialogFormDataFromTransfer", "getSelectedEquipmentFromTransfer"],
   },
   {
     file: "src/components/transfers/columnDefinitions.tsx",
@@ -89,7 +98,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/ui/alert-dialog.tsx",
-    exports: ["AlertDialogOverlay","AlertDialogPortal"],
+    exports: ["AlertDialogOverlay", "AlertDialogPortal"],
   },
   {
     file: "src/components/ui/badge.tsx",
@@ -97,15 +106,24 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/ui/calendar-widget/CalendarWidgetShared.tsx",
-    exports: ["getEventTypeColor","getEventTypeIcon"],
+    exports: ["getEventTypeColor", "getEventTypeIcon"],
   },
   {
     file: "src/components/ui/dialog.tsx",
-    exports: ["DialogClose","DialogOverlay","DialogPortal"],
+    exports: ["DialogClose", "DialogOverlay", "DialogPortal"],
   },
   {
     file: "src/components/ui/dropdown-menu.tsx",
-    exports: ["DropdownMenuGroup","DropdownMenuPortal","DropdownMenuRadioGroup","DropdownMenuRadioItem","DropdownMenuShortcut","DropdownMenuSub","DropdownMenuSubContent","DropdownMenuSubTrigger"],
+    exports: [
+      "DropdownMenuGroup",
+      "DropdownMenuPortal",
+      "DropdownMenuRadioGroup",
+      "DropdownMenuRadioItem",
+      "DropdownMenuShortcut",
+      "DropdownMenuSub",
+      "DropdownMenuSubContent",
+      "DropdownMenuSubTrigger",
+    ],
   },
   {
     file: "src/components/ui/form.tsx",
@@ -117,15 +135,21 @@ const unusedExportSurface = [
   },
   {
     file: "src/components/ui/select.tsx",
-    exports: ["SelectGroup","SelectLabel","SelectScrollDownButton","SelectScrollUpButton","SelectSeparator"],
+    exports: [
+      "SelectGroup",
+      "SelectLabel",
+      "SelectScrollDownButton",
+      "SelectScrollUpButton",
+      "SelectSeparator",
+    ],
   },
   {
     file: "src/components/ui/sheet.tsx",
-    exports: ["SheetClose","SheetFooter","SheetOverlay","SheetPortal"],
+    exports: ["SheetClose", "SheetFooter", "SheetOverlay", "SheetPortal"],
   },
   {
     file: "src/components/ui/table.tsx",
-    exports: ["TableCaption","TableFooter"],
+    exports: ["TableCaption", "TableFooter"],
   },
   {
     file: "src/components/ui/toast.tsx",
@@ -133,7 +157,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/hooks/use-cached-equipment.ts",
-    exports: ["useCreateEquipment","useEquipmentDetail"],
+    exports: ["useCreateEquipment", "useEquipmentDetail"],
   },
   {
     file: "src/hooks/use-dashboard-stats.ts",
@@ -165,23 +189,11 @@ const unusedExportSurface = [
   },
   {
     file: "src/lib/advanced-cache-manager.ts",
-    exports: ["CachePerformanceMonitor","InvalidationPatterns","createAdvancedCacheManager"],
-  },
-  {
-    file: "src/lib/ai/draft/repair-request-draft-extraction.ts",
-    exports: ["repairRequestDraftExtractionSchema"],
-  },
-  {
-    file: "src/lib/ai/draft/repair-request-draft-session.ts",
-    exports: ["REPAIR_REQUEST_DRAFT_CANCEL_PHRASES","REPAIR_REQUEST_DRAFT_START_PHRASES","hasRepairRequestDraftCancelIntent"],
+    exports: ["CachePerformanceMonitor", "InvalidationPatterns", "createAdvancedCacheManager"],
   },
   {
     file: "src/lib/ai/errors.ts",
-    exports: ["MODEL_PROVIDER_QUOTA_MESSAGE","extractErrorMessage"],
-  },
-  {
-    file: "src/lib/ai/sql/audited-executor.ts",
-    exports: ["writeAssistantSqlAudit"],
+    exports: ["MODEL_PROVIDER_QUOTA_MESSAGE", "extractErrorMessage"],
   },
   {
     file: "src/lib/ai/tools/registry.ts",
@@ -189,19 +201,26 @@ const unusedExportSurface = [
   },
   {
     file: "src/lib/category-import-validation.ts",
-    exports: ["HEADER_TO_DB_MAP","normalizeVietnamese"],
+    exports: ["HEADER_TO_DB_MAP", "normalizeVietnamese"],
   },
   {
     file: "src/lib/chart-utils.ts",
-    exports: ["CHART_COLORS","DEFAULT_CHART_CONFIG","RESPONSIVE_CONTAINER_PROPS","formatChartNumber","formatChartPercentage","processChartData"],
+    exports: [
+      "CHART_COLORS",
+      "DEFAULT_CHART_CONFIG",
+      "RESPONSIVE_CONTAINER_PROPS",
+      "formatChartNumber",
+      "formatChartPercentage",
+      "processChartData",
+    ],
   },
   {
     file: "src/lib/date-utils.ts",
-    exports: ["SUSPICIOUS_YEAR_THRESHOLD","parsePartialDateToISO"],
+    exports: ["SUSPICIOUS_YEAR_THRESHOLD", "parsePartialDateToISO"],
   },
   {
     file: "src/lib/department-utils.ts",
-    exports: ["getUserEffectiveDepartments","normalizeDepartmentName","validateEquipmentAccess"],
+    exports: ["getUserEffectiveDepartments", "normalizeDepartmentName", "validateEquipmentAccess"],
   },
   {
     file: "src/lib/excel-utils.ts",
@@ -209,7 +228,7 @@ const unusedExportSurface = [
   },
   {
     file: "src/lib/rbac.ts",
-    exports: ["DEPT_SCOPED_ROLES","EQUIPMENT_MANAGER_ROLES","GLOBAL_ROLES","PRIVILEGED_ROLES"],
+    exports: ["DEPT_SCOPED_ROLES", "EQUIPMENT_MANAGER_ROLES", "GLOBAL_ROLES", "PRIVILEGED_ROLES"],
   },
   {
     file: "src/lib/rpc-normalize.ts",
@@ -221,7 +240,14 @@ const unusedExportSurface = [
   },
   {
     file: "src/types/transfers-data-grid.ts",
-    exports: ["TransferCountsResponseSchema","TransferEquipmentInfoSchema","TransferKanbanColumnDataSchema","TransferListItemSchema","TransferOverdueSummaryItemSchema","TransferOverdueSummarySchema"],
+    exports: [
+      "TransferCountsResponseSchema",
+      "TransferEquipmentInfoSchema",
+      "TransferKanbanColumnDataSchema",
+      "TransferListItemSchema",
+      "TransferOverdueSummaryItemSchema",
+      "TransferOverdueSummarySchema",
+    ],
   },
 ] as const
 
@@ -233,12 +259,11 @@ const intentionalPublicExports = [
   },
 ] as const
 
-const escapeRegExp = (value: string) =>
-  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 
 const exportDeclarationPattern = (name: string) =>
   new RegExp(
-    `\\bexport\\s+(?:declare\\s+)?(?:async\\s+)?(?:const|let|var|function|class|interface|type|enum)\\s+${escapeRegExp(name)}\\b`,
+    `\\bexport\\s+(?:declare\\s+)?(?:async\\s+)?(?:const|let|var|function|class|interface|type|enum)\\s+${escapeRegExp(name)}\\b`
   )
 
 const namedExportPattern = (name: string) =>
@@ -251,10 +276,10 @@ describe("React Doctor P4 knip/exports cleanup", () => {
 
       for (const exportName of entry.exports) {
         expect(source, `${entry.file} still exports ${exportName}`).not.toMatch(
-          exportDeclarationPattern(exportName),
+          exportDeclarationPattern(exportName)
         )
         expect(source, `${entry.file} still re-exports ${exportName}`).not.toMatch(
-          namedExportPattern(exportName),
+          namedExportPattern(exportName)
         )
       }
     }
@@ -267,7 +292,7 @@ describe("React Doctor P4 knip/exports cleanup", () => {
       for (const exportName of entry.exports) {
         expect(entry.reason).toContain("use-cached-maintenance-barrel.test.ts")
         expect(source, entry.file + " must keep public export " + exportName).toMatch(
-          exportDeclarationPattern(exportName),
+          exportDeclarationPattern(exportName)
         )
       }
     }

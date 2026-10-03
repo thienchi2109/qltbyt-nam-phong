@@ -1,78 +1,21 @@
-import { tool, type ToolSet } from 'ai'
-
-import { generateTroubleshootingDraft } from '@/lib/ai/draft/troubleshooting-tool'
-import { ASSISTANT_SQL_TOOL_NAME } from '@/lib/ai/sql/constants'
-import type { AssistantSqlScope } from '@/lib/ai/sql/scope'
-import {
-  type EquipmentLookupHints,
-  normalizeEquipmentLookupArgs,
-} from '@/lib/ai/tools/equipment-lookup-identifiers'
-import { queryDatabaseTool } from '@/lib/ai/tools/query-database'
 import {
   QUERY_CATALOG,
   QUERY_CATALOG_PENDING_TOOL_NAMES,
-  QUERY_CATALOG_TOOL_NAME_SET,
   QUERY_CATALOG_TOOL_NAMES,
   getQueryCatalogMigrationStatusMap,
-  getQueryCatalogToolRpcMapping,
   type MigrationStatus,
-  type QueryCatalogToolName,
-} from '@/lib/ai/tools/query-catalog'
-import { executeRpcTool } from '@/lib/ai/tools/rpc-tool-executor'
+} from "@/lib/ai/tools/query-catalog"
 
-export type { MigrationStatus } from '@/lib/ai/tools/query-catalog'
+export type { MigrationStatus } from "@/lib/ai/tools/query-catalog"
 
-// ============================================
-// Draft Tool Definitions (non-RPC, advisory-only)
-// ============================================
+const ASSISTANT_SQL_TOOL_NAME = "query_database"
+const KNOWN_BUT_BLOCKED_TOOLS = new Set(["systemDiagnostics"])
 
-type DraftToolDefinition = {
-  description: string
-  draftKind: 'troubleshootingDraft' | 'repairRequestDraft'
-  requiresEvidence: boolean
-  minEvidenceCount?: number
-  tool: ToolSet[string] | null
-}
-
-const DRAFT_TOOL_DEFINITIONS: Record<string, DraftToolDefinition> = {
-  generateTroubleshootingDraft: {
-    description: 'Generate a schema-validated troubleshooting advisory draft.',
-    draftKind: 'troubleshootingDraft',
-    requiresEvidence: true,
-    minEvidenceCount: 2,
-    tool: generateTroubleshootingDraft,
-  },
-  generateRepairRequestDraft: {
-    description:
-      'Build a schema-validated repair-request draft from evidence. Orchestration-driven: invoked by route, not model-autonomous.',
-    draftKind: 'repairRequestDraft',
-    requiresEvidence: true,
-    minEvidenceCount: 1,
-    tool: null, // Orchestration-driven: route invokes buildRepairRequestDraft() directly
-  },
-}
+const ALLOWED_TOOL_NAMES = new Set([...QUERY_CATALOG_TOOL_NAMES, ASSISTANT_SQL_TOOL_NAME])
 
 /** Exposed for contract-shape tests only. Do NOT import in production code. */
-export const DRAFT_TOOL_DEFINITIONS_FOR_TEST = DRAFT_TOOL_DEFINITIONS
-
-const DRAFT_TOOL_NAMES = new Set(Object.keys(DRAFT_TOOL_DEFINITIONS))
-
-const KNOWN_BUT_BLOCKED_TOOLS = new Set(['systemDiagnostics'])
-
-const ALLOWED_TOOL_NAMES = new Set([
-  ...QUERY_CATALOG_TOOL_NAMES,
-  ...DRAFT_TOOL_NAMES,
-  ASSISTANT_SQL_TOOL_NAME,
-])
-
-/** Exposed for contract tests only. Do NOT import in production code. */
 export function getAllowedToolNamesForTest(): string[] {
   return [...ALLOWED_TOOL_NAMES].sort()
-}
-
-/** Returns tool name → RPC function mapping for contract-locking tests. */
-export function getToolRpcMapping(): Record<string, string> {
-  return getQueryCatalogToolRpcMapping()
 }
 
 /** Returns tool name → migrationStatus for contract-locking tests. */
@@ -80,23 +23,8 @@ export function getMigrationStatusMap(): Record<string, MigrationStatus> {
   return getQueryCatalogMigrationStatusMap()
 }
 
-/**
- * Read-only tools that have NOT yet been migrated to the envelope contract.
- * Listed explicitly so later audits and batch-migration scripts can iterate.
- *
- * Pending tools (pass 2+):
- *   - equipmentLookup      — large payload, needs field-level compaction
- *   - maintenanceSummary    — needs importantFields design
- *   - maintenancePlanLookup — needs importantFields design
- *   - repairSummary         — needs importantFields design
- *   - usageHistory          — needs importantFields design
- *   - attachmentLookup      — needs importantFields design
- *   - deviceQuotaLookup     — needs importantFields design
- *   - quotaComplianceSummary — needs importantFields design
- */
-export const PENDING_TOOL_NAMES: ReadonlySet<string> = new Set(
-  QUERY_CATALOG_PENDING_TOOL_NAMES,
-)
+/** Read-only tools that still need a later envelope-contract migration. */
+export const PENDING_TOOL_NAMES: ReadonlySet<string> = new Set(QUERY_CATALOG_PENDING_TOOL_NAMES)
 
 /** Exposed for contract-shape tests only. Do NOT import in production code. */
 export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = QUERY_CATALOG
@@ -104,17 +32,12 @@ export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = QUERY_CATALOG
 const KNOWN_TOOL_NAMES = new Set([
   ...QUERY_CATALOG_TOOL_NAMES,
   ...KNOWN_BUT_BLOCKED_TOOLS,
-  ...DRAFT_TOOL_NAMES,
   ASSISTANT_SQL_TOOL_NAME,
 ])
 
 function normalizeToolNames(toolNames: string[]): string[] {
-  const normalized = toolNames.map(name => name.trim()).filter(Boolean)
+  const normalized = toolNames.map((name) => name.trim()).filter(Boolean)
   return Array.from(new Set(normalized))
-}
-
-function isQueryCatalogToolName(toolName: string): toolName is QueryCatalogToolName {
-  return QUERY_CATALOG_TOOL_NAME_SET.has(toolName)
 }
 
 function hasWriteIntentToolName(toolName: string): boolean {
@@ -122,11 +45,11 @@ function hasWriteIntentToolName(toolName: string): boolean {
 }
 
 export type RequestedToolValidationResult =
-  | { ok: true; requestedTools: string[] }
-  | { ok: false; message: string }
+  { ok: true; requestedTools: string[] } | { ok: false; message: string }
 
+/** Validates the browser tool allowlist before the BFF signs a Go request. */
 export function validateRequestedTools(
-  requestedToolNames: string[],
+  requestedToolNames: string[]
 ): RequestedToolValidationResult {
   const requestedTools = normalizeToolNames(requestedToolNames)
   for (const toolName of requestedTools) {
@@ -147,79 +70,4 @@ export function validateRequestedTools(
   }
 
   return { ok: true, requestedTools }
-}
-
-export interface BuildToolRegistryParams {
-  assistantSqlScope?: AssistantSqlScope
-  request: Request
-  tenantId: number
-  userId: string
-  requestedTools: string[]
-  equipmentLookupHints?: EquipmentLookupHints
-}
-
-export function buildToolRegistry({
-  assistantSqlScope,
-  request,
-  tenantId,
-  userId,
-  requestedTools,
-  equipmentLookupHints,
-}: BuildToolRegistryParams): ToolSet {
-  const allowedRequestedTools = requestedTools.filter(toolName =>
-    ALLOWED_TOOL_NAMES.has(toolName),
-  )
-
-  const tools: ToolSet = {}
-
-  for (const toolName of allowedRequestedTools) {
-    if (toolName === ASSISTANT_SQL_TOOL_NAME) {
-      if (assistantSqlScope) {
-        tools[toolName] = queryDatabaseTool({
-          request,
-          scope: assistantSqlScope,
-        })
-      }
-      continue
-    }
-
-    // Draft tools: wire directly (no RPC proxy)
-    const draftDef = DRAFT_TOOL_DEFINITIONS[toolName]
-    if (draftDef) {
-      if (draftDef.tool) {
-        tools[toolName] = draftDef.tool
-      }
-      continue
-    }
-
-    // RPC-backed read-only tools
-    if (!isQueryCatalogToolName(toolName)) {
-      continue
-    }
-    const rpcDef = QUERY_CATALOG[toolName]
-
-    tools[toolName] = tool({
-      description: rpcDef.description,
-      inputSchema: rpcDef.inputSchema,
-      execute: async (input: Record<string, unknown>) =>
-        executeRpcTool({
-          request,
-          rpcFunction: rpcDef.rpcFunction,
-          toolName,
-          args: {
-            ...(toolName === 'equipmentLookup'
-              ? normalizeEquipmentLookupArgs(input, equipmentLookupHints)
-              : toolName === 'categorySuggestion'
-                ? {
-                    p_device_name: input.device_name,
-                  }
-              : input),
-            p_don_vi: tenantId,
-            p_user_id: userId,
-          },
-        }),
-    })
-  }
-
-  return tools
 }

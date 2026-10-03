@@ -1,6 +1,6 @@
-import { z } from 'zod'
+import { z } from "zod"
 
-export type MigrationStatus = 'migrated' | 'pending'
+export type MigrationStatus = "migrated" | "pending"
 
 interface QueryCatalogModelBudget {
   maxItems?: number
@@ -8,48 +8,31 @@ interface QueryCatalogModelBudget {
   modelVisibleFields?: string[]
 }
 
-export type QueryCatalogRoutingGroup = 'repair' | 'quota' | 'equipmentLookup'
-
-type QueryCatalogRoutingRole =
-  | 'equipment-status'
-  | 'workflow-summary'
-  | 'specific-item'
-  | 'facility-summary'
-
-interface QueryCatalogRoutingIntent {
-  group: QueryCatalogRoutingGroup
-  role: QueryCatalogRoutingRole
-}
-
 interface BaseQueryCatalogEntry {
   description: string
   rpcFunction: string
   inputSchema: z.ZodType<Record<string, unknown>>
-  routingIntents?: QueryCatalogRoutingIntent[]
 }
 
 interface MigratedQueryCatalogEntry extends BaseQueryCatalogEntry {
-  migrationStatus: 'migrated'
+  migrationStatus: "migrated"
   modelBudget: QueryCatalogModelBudget
 }
 
 interface PendingQueryCatalogEntry extends BaseQueryCatalogEntry {
-  migrationStatus: 'pending'
+  migrationStatus: "pending"
   modelBudget?: QueryCatalogModelBudget
 }
 
 export type QueryCatalogEntry = MigratedQueryCatalogEntry | PendingQueryCatalogEntry
 
+/** Curated read-only tool definitions shared by the BFF and contract tests. */
 export const QUERY_CATALOG = {
   equipmentLookup: {
     description:
-      'Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for exact `equipmentCode`, current status, department, location, classification, model, and serial; use the returned total for aggregate counts.',
-    rpcFunction: 'ai_equipment_lookup',
-    migrationStatus: 'pending',
-    routingIntents: [
-      { group: 'repair', role: 'equipment-status' },
-      { group: 'equipmentLookup', role: 'specific-item' },
-    ],
+      "Lookup equipment details using approved read-only RPC. Supports text search plus structured `filters` for exact `equipmentCode`, current status, department, location, classification, model, and serial; use the returned total for aggregate counts.",
+    rpcFunction: "ai_equipment_lookup",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         query: z.string().trim().min(1).max(200).optional(),
@@ -71,9 +54,9 @@ export const QUERY_CATALOG = {
       .strict(),
   },
   maintenanceSummary: {
-    description: 'Retrieve maintenance summary data via approved read-only RPC.',
-    rpcFunction: 'ai_maintenance_summary',
-    migrationStatus: 'pending',
+    description: "Retrieve maintenance summary data via approved read-only RPC.",
+    rpcFunction: "ai_maintenance_summary",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         fromDate: z.string().optional(),
@@ -83,9 +66,9 @@ export const QUERY_CATALOG = {
   },
   maintenancePlanLookup: {
     description:
-      'Lookup maintenance, calibration, and inspection plans for a specific equipment item.',
-    rpcFunction: 'ai_maintenance_plan_lookup',
-    migrationStatus: 'pending',
+      "Lookup maintenance, calibration, and inspection plans for a specific equipment item.",
+    rpcFunction: "ai_maintenance_plan_lookup",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -94,10 +77,9 @@ export const QUERY_CATALOG = {
       .strict(),
   },
   repairSummary: {
-    description: 'Retrieve repair summary data via approved read-only RPC.',
-    rpcFunction: 'ai_repair_summary',
-    migrationStatus: 'pending',
-    routingIntents: [{ group: 'repair', role: 'workflow-summary' }],
+    description: "Retrieve repair summary data via approved read-only RPC.",
+    rpcFunction: "ai_repair_summary",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         status: z.string().trim().min(1).max(50).optional(),
@@ -105,10 +87,9 @@ export const QUERY_CATALOG = {
       .strict(),
   },
   usageHistory: {
-    description:
-      'Retrieve usage summary evidence for a specific equipment item from usage logs.',
-    rpcFunction: 'ai_usage_summary',
-    migrationStatus: 'pending',
+    description: "Retrieve usage summary evidence for a specific equipment item from usage logs.",
+    rpcFunction: "ai_usage_summary",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -118,9 +99,9 @@ export const QUERY_CATALOG = {
   },
   attachmentLookup: {
     description:
-      'Lookup attachment metadata (file names, access types, URLs) for a specific equipment item. Returns normalized access contract.',
-    rpcFunction: 'ai_attachment_metadata',
-    migrationStatus: 'pending',
+      "Lookup attachment metadata (file names, access types, URLs) for a specific equipment item. Returns normalized access contract.",
+    rpcFunction: "ai_attachment_metadata",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -129,10 +110,9 @@ export const QUERY_CATALOG = {
   },
   deviceQuotaLookup: {
     description:
-      'Check quota status for a specific equipment item against the active quota decision.',
-    rpcFunction: 'ai_device_quota_lookup',
-    migrationStatus: 'pending',
-    routingIntents: [{ group: 'quota', role: 'specific-item' }],
+      "Check quota status for a specific equipment item against the active quota decision.",
+    rpcFunction: "ai_device_quota_lookup",
+    migrationStatus: "pending",
     inputSchema: z
       .object({
         p_thiet_bi_id: z.number().int().positive(),
@@ -140,18 +120,16 @@ export const QUERY_CATALOG = {
       .strict(),
   },
   quotaComplianceSummary: {
-    description:
-      'Get facility-level device quota compliance overview from the active decision.',
-    rpcFunction: 'ai_quota_compliance_summary',
-    migrationStatus: 'pending',
-    routingIntents: [{ group: 'quota', role: 'facility-summary' }],
+    description: "Get facility-level device quota compliance overview from the active decision.",
+    rpcFunction: "ai_quota_compliance_summary",
+    migrationStatus: "pending",
     inputSchema: z.object({}).strict(),
   },
   categorySuggestion: {
     description:
-      'Suggest the best matching equipment categories for a provided device name. Call this only after the user has given `device_name`; the RPC returns a bounded candidate set instead of the full category catalog.',
-    rpcFunction: 'ai_category_suggestion',
-    migrationStatus: 'migrated',
+      "Suggest the best matching equipment categories for a provided device name. Call this only after the user has given `device_name`; the RPC returns a bounded candidate set instead of the full category catalog.",
+    rpcFunction: "ai_category_suggestion",
+    migrationStatus: "migrated",
     inputSchema: z
       .object({
         device_name: z.string().trim().min(1).max(200),
@@ -159,51 +137,40 @@ export const QUERY_CATALOG = {
       .strict(),
     modelBudget: {
       maxItems: 10,
-      modelVisibleFields: ['ma_nhom', 'ten_nhom', 'parent_name', 'phan_loai', 'match_reason'],
+      modelVisibleFields: ["ma_nhom", "ten_nhom", "parent_name", "phan_loai", "match_reason"],
     },
   },
   departmentList: {
     description:
-      'List all departments (khoa/phòng) with equipment in the current facility. Call this BEFORE filtering equipmentLookup by department to get exact department names from the database.',
-    rpcFunction: 'ai_department_list',
-    migrationStatus: 'migrated',
+      "List all departments (khoa/phòng) with equipment in the current facility. Call this BEFORE filtering equipmentLookup by department to get exact department names from the database.",
+    rpcFunction: "ai_department_list",
+    migrationStatus: "migrated",
     inputSchema: z.object({}).strict(),
     modelBudget: {
       maxItems: 50,
-      modelVisibleFields: ['name', 'equipment_count'],
+      modelVisibleFields: ["name", "equipment_count"],
     },
   },
 } satisfies Record<string, QueryCatalogEntry>
 
 export type QueryCatalogToolName = keyof typeof QUERY_CATALOG
 
+/** Stable list of names exposed by the query catalog. */
 export const QUERY_CATALOG_TOOL_NAMES = Object.keys(QUERY_CATALOG) as QueryCatalogToolName[]
 
-export const QUERY_CATALOG_TOOL_NAME_SET: ReadonlySet<string> = new Set(QUERY_CATALOG_TOOL_NAMES)
-
-export function getQueryCatalogToolsByRoutingGroup(
-  group: QueryCatalogRoutingGroup,
-): QueryCatalogToolName[] {
-  return QUERY_CATALOG_TOOL_NAMES.filter(toolName => {
-    const entry: QueryCatalogEntry = QUERY_CATALOG[toolName]
-    return entry.routingIntents?.some(
-      routingIntent => routingIntent.group === group,
-    )
-  })
-}
-
+/** Returns each catalog tool name paired with its approved RPC function. */
 export function getQueryCatalogToolRpcMapping(): Record<string, string> {
   return Object.fromEntries(Object.entries(QUERY_CATALOG).map(([k, v]) => [k, v.rpcFunction]))
 }
 
+/** Returns each catalog tool name paired with its migration status. */
 export function getQueryCatalogMigrationStatusMap(): Record<string, MigrationStatus> {
-  return Object.fromEntries(
-    Object.entries(QUERY_CATALOG).map(([k, v]) => [k, v.migrationStatus]),
-  )
+  return Object.fromEntries(Object.entries(QUERY_CATALOG).map(([k, v]) => [k, v.migrationStatus]))
 }
 
+/** Names of catalog tools that still await the migrated envelope contract. */
 export const QUERY_CATALOG_PENDING_TOOL_NAMES: ReadonlySet<string> = new Set(
   Object.entries(QUERY_CATALOG)
-    .filter(([, def]) => def.migrationStatus === 'pending')
-    .map(([name]) => name),
+    .filter(([, def]) => def.migrationStatus === "pending")
+    .map(([name]) => name)
 )

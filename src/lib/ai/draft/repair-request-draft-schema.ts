@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod"
 
 /**
  * Zod schema for the repairRequestDraft artifact.
@@ -9,7 +9,7 @@ import { z } from 'zod'
  * the useCreateMutation payload.
  */
 
-const repairUnitSchema = z.enum(['noi_bo', 'thue_ngoai'])
+const repairUnitSchema = z.enum(["noi_bo", "thue_ngoai"])
 
 const equipmentRefSchema = z.object({
   thiet_bi_id: z.number().int().positive().optional(),
@@ -26,11 +26,11 @@ const formDataSchema = z.object({
   ten_don_vi_thue: z.string().nullable().optional(),
 })
 
-export const repairRequestDraftSchema = z.object({
-  kind: z.literal('repairRequestDraft'),
+const repairRequestDraftSchema = z.object({
+  kind: z.literal("repairRequestDraft"),
   draftOnly: z.literal(true),
-  source: z.literal('assistant'),
-  confidence: z.enum(['low', 'medium', 'high']),
+  source: z.literal("assistant"),
+  confidence: z.enum(["low", "medium", "high"]),
   equipment: equipmentRefSchema,
   formData: formDataSchema,
   missingFields: z.array(z.string()).optional(),
@@ -42,5 +42,5 @@ export type RepairRequestDraft = z.infer<typeof repairRequestDraftSchema>
 /** Payload type for context hydration (subset used by UI). */
 export type RepairRequestDraftPayload = Pick<
   RepairRequestDraft,
-  'equipment' | 'formData' | 'missingFields' | 'reviewNotes'
+  "equipment" | "formData" | "missingFields" | "reviewNotes"
 >

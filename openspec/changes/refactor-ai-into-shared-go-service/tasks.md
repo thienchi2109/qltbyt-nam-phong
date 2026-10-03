@@ -406,12 +406,12 @@ Phụ thuộc: Phase 8 exact-commit acceptance và post-cutover evidence; cleanu
 
 Bằng chứng nghiệm thu: Không còn legacy runtime path/fallback, focused UI/API + Go tests, required checks và OpenSpec validation.
 
-- [ ] 9.1 Liệt kê legacy runtime files/dependencies sau cutover và phân biệt rõ UI/shared imports còn sống.
-- [ ] 9.2 Xóa old model/provider/tool orchestration và dead route helpers sau khi exact cutover đã ổn định.
-- [ ] 9.3 Giữ lại UI shared imports, draft artifact renderer, request/stream types và fixtures nếu còn consumer; không xóa theo tên file.
-- [ ] 9.4 Dùng `rg`/dependency graph chứng minh không còn runtime reference tới legacy orchestrator hoặc fallback.
-- [ ] 9.5 Cập nhật runbook/OpenSpec evidence, rollback reference, ownership và follow-up cho Bifrost/platform/chat persistence/durable replay ngoài scope.
-- [ ] 9.6 Chạy focused UI/API, Go, format/type/React checks và `openspec validate refactor-ai-into-shared-go-service --strict`; chỉ tick mục có evidence.
+- [x] 9.1 Liệt kê legacy runtime files/dependencies sau cutover và phân biệt rõ UI/shared imports còn sống.
+- [x] 9.2 Xóa old model/provider/tool orchestration và dead route helpers sau khi exact cutover đã ổn định.
+- [x] 9.3 Giữ lại UI shared imports, draft artifact renderer, request/stream types và fixtures nếu còn consumer; không xóa theo tên file.
+- [x] 9.4 Dùng `rg`/dependency graph chứng minh không còn runtime reference tới legacy orchestrator hoặc fallback.
+- [x] 9.5 Cập nhật runbook/OpenSpec evidence, rollback reference, ownership và follow-up cho Bifrost/platform/chat persistence/durable replay ngoài scope.
+- [x] 9.6 Chạy focused UI/API, Go, format/type/React checks và `openspec validate refactor-ai-into-shared-go-service --strict`; chỉ tick mục có evidence.
 
 Điểm dừng/review: Final review kiểm tra rollback artifact vẫn dùng được và không có UI import bị xóa nhầm.
 

@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z } from "zod"
 
 /**
  * Zod schema for the troubleshootingDraft artifact.
@@ -9,7 +9,7 @@ import { z } from 'zod'
  * - Requires prior factual evidence from approved read-only tools.
  */
 
-const confidenceLevel = z.enum(['low', 'medium', 'high'])
+const confidenceLevel = z.enum(["low", "medium", "high"])
 
 const probableCauseSchema = z.object({
   label: z.string().min(1),
@@ -17,12 +17,7 @@ const probableCauseSchema = z.object({
   rationale: z.string().min(1),
 })
 
-const remediationStepType = z.enum([
-  'inspection',
-  'configuration',
-  'maintenance',
-  'escalation',
-])
+const remediationStepType = z.enum(["inspection", "configuration", "maintenance", "escalation"])
 
 const remediationStepSchema = z.object({
   step: z.string().min(1),
@@ -38,8 +33,8 @@ const equipmentContextSchema = z.object({
   tinh_trang_hien_tai: z.string().nullable().optional(),
 })
 
-export const troubleshootingDraftSchema = z.object({
-  kind: z.literal('troubleshootingDraft'),
+const troubleshootingDraftSchema = z.object({
+  kind: z.literal("troubleshootingDraft"),
   draftOnly: z.literal(true),
   basedOnEvidence: z.literal(true),
   evidenceRefs: z.array(z.string().min(1)).min(1),

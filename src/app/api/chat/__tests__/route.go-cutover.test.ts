@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -141,20 +141,15 @@ describe("/api/chat Go cutover", () => {
     })
   })
 
-  it("keeps the live route on the Go BFF and off the parked orchestrator", () => {
+  it("keeps the live route on the Go BFF with no legacy orchestrator", () => {
     const root = process.cwd()
     const routeSource = readFileSync(join(root, "src/app/api/chat/route.ts"), "utf8")
-    const legacySource = readFileSync(
-      join(root, "src/app/api/chat/legacy-next-orchestrator.ts"),
-      "utf8"
-    )
 
     expect(routeSource).toContain("postGoBffChat")
     expect(routeSource).toContain("go-bff")
     expect(routeSource).not.toContain("streamText")
     expect(routeSource).not.toContain("reserveUsage")
     expect(routeSource).not.toContain("legacy-next-orchestrator")
-    expect(legacySource).toContain("streamText")
-    expect(legacySource).toContain("reserveUsage")
+    expect(existsSync(join(root, "src/app/api/chat/legacy-next-orchestrator.ts"))).toBe(false)
   })
 })
