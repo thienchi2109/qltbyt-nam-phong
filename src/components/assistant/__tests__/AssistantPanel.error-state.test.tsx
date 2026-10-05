@@ -75,6 +75,7 @@ vi.mock("@/contexts/TenantSelectionContext", () => ({
 }))
 
 import { AssistantPanel } from "../AssistantPanel"
+import { validateRequestedTools } from "@/lib/ai/tools/registry"
 
 describe("AssistantPanel error state", () => {
   beforeEach(() => {
@@ -84,6 +85,16 @@ describe("AssistantPanel error state", () => {
     mocks.useChatState.status = "ready"
     mocks.useChatState.error = null
     mocks.tenantState.selectedFacilityId = 1
+  })
+
+  it("sends only requested tools accepted by the Go BFF", () => {
+    render(<AssistantPanel isOpen={true} onClose={vi.fn()} />)
+
+    const options = mocks.defaultChatTransport.mock.calls[0][0] as {
+      body: () => { requestedTools: string[] }
+    }
+    const { requestedTools } = options.body()
+    expect(validateRequestedTools(requestedTools)).toEqual({ ok: true, requestedTools })
   })
 
   it("renders error banner when error is present", () => {

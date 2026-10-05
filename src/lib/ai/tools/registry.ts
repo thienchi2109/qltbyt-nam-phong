@@ -10,8 +10,16 @@ export type { MigrationStatus } from "@/lib/ai/tools/query-catalog"
 
 const ASSISTANT_SQL_TOOL_NAME = "query_database"
 const KNOWN_BUT_BLOCKED_TOOLS = new Set(["systemDiagnostics"])
+const DESCRIPTOR_ONLY_TOOL_NAMES = new Set([
+  "generateTroubleshootingDraft",
+  "generateRepairRequestDraft",
+])
 
-const ALLOWED_TOOL_NAMES = new Set([...QUERY_CATALOG_TOOL_NAMES, ASSISTANT_SQL_TOOL_NAME])
+const ALLOWED_TOOL_NAMES = new Set([
+  ...QUERY_CATALOG_TOOL_NAMES,
+  ...DESCRIPTOR_ONLY_TOOL_NAMES,
+  ASSISTANT_SQL_TOOL_NAME,
+])
 
 /** Exposed for contract-shape tests only. Do NOT import in production code. */
 export function getAllowedToolNamesForTest(): string[] {
@@ -31,6 +39,7 @@ export const READ_ONLY_TOOL_DEFINITIONS_FOR_TEST = QUERY_CATALOG
 
 const KNOWN_TOOL_NAMES = new Set([
   ...QUERY_CATALOG_TOOL_NAMES,
+  ...DESCRIPTOR_ONLY_TOOL_NAMES,
   ...KNOWN_BUT_BLOCKED_TOOLS,
   ASSISTANT_SQL_TOOL_NAME,
 ])
