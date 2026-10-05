@@ -490,6 +490,30 @@ describe("useEquipmentExport", () => {
   })
 
   describe("Full Export Flow (Issue #170)", () => {
+    it("requests department ordering when exporting all equipment without a department filter", async () => {
+      mockExportToExcel.mockResolvedValueOnce(undefined)
+      const filterParams = createDefaultFilterParams({ selectedDepartments: [] })
+
+      const { result } = renderHook(() =>
+        useEquipmentExport(createDefaultParams({ total: 1948, filterParams }))
+      )
+
+      await act(async () => {
+        await result.current.handleExportData()
+      })
+
+      expect(mockCallRpc).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fn: "equipment_list_enhanced",
+          args: expect.objectContaining({
+            p_don_vi: 5,
+            p_khoa_phong_array: null,
+            p_sort: "khoa_phong_quan_ly.asc",
+          }),
+        })
+      )
+    })
+
     it("requests department ordering when exporting multiple selected departments", async () => {
       mockExportToExcel.mockResolvedValueOnce(undefined)
       const filterParams = createDefaultFilterParams({
