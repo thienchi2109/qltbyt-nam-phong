@@ -68,7 +68,14 @@ describe("EndUsageDialog validation", () => {
           tinh_trang_thiet_bi: null,
           ghi_chu: null,
           thiet_bi: { ten_thiet_bi: "Monitor", ma_thiet_bi: "TB-99", id: 99 },
-          nguoi_su_dung: { id: 7, username: "user", password: "", full_name: "Nguyễn Văn A", role: "to_qltb", created_at: "2026-04-15T01:00:00Z" },
+          nguoi_su_dung: {
+            id: 7,
+            username: "user",
+            password: "",
+            full_name: "Nguyễn Văn A",
+            role: "to_qltb",
+            created_at: "2026-04-15T01:00:00Z",
+          },
         }}
       />
     )
@@ -99,7 +106,14 @@ describe("EndUsageDialog validation", () => {
           tinh_trang_thiet_bi: "Tốt",
           ghi_chu: "",
           thiet_bi: { ten_thiet_bi: "Monitor", ma_thiet_bi: "TB-99", id: 99 },
-          nguoi_su_dung: { id: 7, username: "user", password: "", full_name: "Nguyễn Văn A", role: "to_qltb", created_at: "2026-04-15T01:00:00Z" },
+          nguoi_su_dung: {
+            id: 7,
+            username: "user",
+            password: "",
+            full_name: "Nguyễn Văn A",
+            role: "to_qltb",
+            created_at: "2026-04-15T01:00:00Z",
+          },
         }}
       />
     )
@@ -117,4 +131,9 @@ describe("EndUsageDialog validation", () => {
       })
     })
   })
+})
+
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
 })

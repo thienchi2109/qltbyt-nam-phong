@@ -14,6 +14,10 @@ import { createEquipmentColumns } from "@/components/equipment/equipment-table-c
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import type { Equipment } from "@/types/database"
 import { EquipmentContent } from "../equipment-content"
+import { readyStatusCatalog } from "@/hooks/__tests__/equipment-status-catalog-fixtures"
+vi.mock("@/hooks/use-equipment-status-catalog", () => ({
+  useEquipmentStatusCatalog: () => readyStatusCatalog,
+}))
 
 const mockCallRpc = vi.fn()
 const mockToast = vi.fn()
@@ -39,7 +43,9 @@ vi.mock("@/components/ui/card", () => ({
   Card: ({
     children,
     ...props
-  }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) => <div {...props}>{children}</div>,
+  }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) => (
+    <div {...props}>{children}</div>
+  ),
 }))
 
 vi.mock("@/components/mobile-usage-actions", () => ({
@@ -61,7 +67,9 @@ vi.mock("next/dynamic", () => ({
         <div data-testid="adapter-stub">
           <span data-testid="adapter-request-id">{request.id}</span>
           <span data-testid="adapter-active-count">{activeCount}</span>
-          <button type="button" onClick={onClose}>close linked request</button>
+          <button type="button" onClick={onClose}>
+            close linked request
+          </button>
         </div>
       )
     },
@@ -88,10 +96,7 @@ function DesktopHarness({
   equipment: Equipment
   onShowDetails?: (equipment: Equipment) => void
 }) {
-  const columns = React.useMemo(
-    () => createEquipmentColumns({ renderActions: () => null }),
-    [],
-  )
+  const columns = React.useMemo(() => createEquipmentColumns({ renderActions: () => null }), [])
   const table = useReactTable({
     data: [equipment],
     columns,
@@ -113,10 +118,7 @@ function DesktopHarness({
   )
 }
 
-function renderLinkedRequestHarness(
-  ui: React.ReactNode,
-  client = makeQueryClient(),
-) {
+function renderLinkedRequestHarness(ui: React.ReactNode, client = makeQueryClient()) {
   return {
     client,
     ...render(
@@ -125,7 +127,7 @@ function renderLinkedRequestHarness(
           {ui}
           <LinkedRequestSheetHost />
         </LinkedRequestProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     ),
   }
 }
@@ -166,15 +168,19 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<DesktopHarness equipment={baseEquipment} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     expect(await screen.findByTestId("adapter-request-id")).toHaveTextContent("7001")
-    expect(mockCallRpc).toHaveBeenCalledWith(expect.objectContaining({
-      fn: "repair_request_active_for_equipment",
-      args: { p_thiet_bi_id: 501 },
-    }))
+    expect(mockCallRpc).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fn: "repair_request_active_for_equipment",
+        args: { p_thiet_bi_id: 501 },
+      })
+    )
   })
 
   it("opens the active repair sheet from a mobile equipment card", async () => {
@@ -185,12 +191,18 @@ describe("equipment row linked request integration", () => {
     })
 
     renderLinkedRequestHarness(
-      <MobileEquipmentListItem equipment={baseEquipment} onShowDetails={vi.fn()} />,
+      <MobileEquipmentListItem
+        equipment={baseEquipment}
+        onShowDetails={vi.fn()}
+        statusCatalog={readyStatusCatalog}
+      />
     )
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     expect(await screen.findByTestId("adapter-request-id")).toHaveTextContent("7002")
   })
@@ -201,9 +213,11 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<DesktopHarness equipment={baseEquipment} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     expect(await screen.findByText("Đang mở yêu cầu sửa chữa")).toBeInTheDocument()
   })
@@ -214,9 +228,11 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<DesktopHarness equipment={baseEquipment} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     expect(await screen.findByText("Không thể mở yêu cầu sửa chữa")).toBeInTheDocument()
   })
@@ -230,9 +246,11 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<DesktopHarness equipment={baseEquipment} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     expect(await screen.findByTestId("adapter-active-count")).toHaveTextContent("3")
   })
@@ -243,9 +261,11 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<DesktopHarness equipment={baseEquipment} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith({ title: "Yêu cầu đã được hoàn thành" })
@@ -262,12 +282,14 @@ describe("equipment row linked request integration", () => {
     })
 
     renderLinkedRequestHarness(
-      <DesktopHarness equipment={baseEquipment} onShowDetails={onShowDetails} />,
+      <DesktopHarness equipment={baseEquipment} onShowDetails={onShowDetails} />
     )
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
     expect(onShowDetails).not.toHaveBeenCalled()
 
     await user.click(await screen.findByRole("button", { name: "close linked request" }))
@@ -279,7 +301,12 @@ describe("equipment row linked request integration", () => {
     const user = userEvent.setup()
     let resolveFirst: (value: unknown) => void = () => {}
     mockCallRpc
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          })
+      )
       .mockResolvedValueOnce({
         active_count: 1,
         request: { id: 8002, thiet_bi_id: 502 },
@@ -306,14 +333,18 @@ describe("equipment row linked request integration", () => {
 
     renderLinkedRequestHarness(<RaceHarness />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-501",
+      })
+    )
     await user.click(await screen.findByRole("button", { name: "Đóng" }))
     await user.click(screen.getByRole("button", { name: "switch equipment" }))
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-502",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-502",
+      })
+    )
 
     resolveFirst({
       active_count: 1,
@@ -342,7 +373,7 @@ describe("equipment row linked request integration", () => {
     }
 
     const view = renderLinkedRequestHarness(
-      <ProgrammaticOpenHarness equipment={baseEquipment} openEquipmentId={501} />,
+      <ProgrammaticOpenHarness equipment={baseEquipment} openEquipmentId={501} />
     )
 
     expect(await screen.findByTestId("adapter-request-id")).toHaveTextContent("7001")
@@ -353,15 +384,18 @@ describe("equipment row linked request integration", () => {
           <ProgrammaticOpenHarness equipment={secondEquipment} openEquipmentId={502} />
           <LinkedRequestSheetHost />
         </LinkedRequestProvider>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     )
 
     await waitFor(() => {
       expect(screen.getByTestId("adapter-request-id")).toHaveTextContent("8002")
     })
-    expect(mockCallRpc).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      fn: "repair_request_active_for_equipment",
-      args: { p_thiet_bi_id: 502 },
-    }))
+    expect(mockCallRpc).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        fn: "repair_request_active_for_equipment",
+        args: { p_thiet_bi_id: 502 },
+      })
+    )
   })
 })

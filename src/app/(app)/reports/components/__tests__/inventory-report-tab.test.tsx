@@ -2,6 +2,7 @@ import * as React from "react"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { InventoryReportTab } from "../inventory-report-tab"
+import { distribution } from "@/hooks/__tests__/equipment-status-distribution-fixtures"
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   useMaintenanceStats: vi.fn(),
   useUsageAnalytics: vi.fn(),
   useUnusedEquipmentReport: vi.fn(),
+  exportDialog: vi.fn(),
 }))
 
 vi.mock("@/hooks/use-toast", () => ({
@@ -52,7 +54,10 @@ vi.mock("../inventory-table", () => ({
 }))
 
 vi.mock("../export-report-dialog", () => ({
-  ExportReportDialog: () => <div data-testid="export-report-dialog" />,
+  ExportReportDialog: (props: unknown) => {
+    mocks.exportDialog(props)
+    return <div data-testid="export-report-dialog" />
+  },
 }))
 
 vi.mock("@/components/shared/ListFilterSearchCard", () => ({
@@ -111,7 +116,9 @@ vi.mock("@/components/ui/card", () => ({
 
 vi.mock("@/components/ui/button", () => ({
   Button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button type="button" {...props}>{children}</button>
+    <button type="button" {...props}>
+      {children}
+    </button>
   ),
 }))
 
@@ -249,6 +256,13 @@ describe("InventoryReportTab", () => {
     })
   })
 
+  it("forwards catalog-backed department/location distribution unchanged to the actual export owner", () => {
+    mocks.useEquipmentDistribution.mockReturnValue({ data: distribution })
+    render(<InventoryReportTab tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    expect(mocks.useEquipmentDistribution).toHaveBeenCalledWith("all", undefined, "42", 42, "42")
+    expect(mocks.exportDialog).toHaveBeenCalledWith(expect.objectContaining({ distribution }))
+  })
+
   it("renders inventory filters through the shared filter section and preserves search/action behavior", () => {
     render(<InventoryReportTab tenantFilter="1" effectiveTenantKey="tenant-a" />)
 
@@ -279,13 +293,7 @@ describe("InventoryReportTab", () => {
   })
 
   it("renders the unused equipment section for a selected facility", () => {
-    render(
-      <InventoryReportTab
-        tenantFilter="17"
-        selectedDonVi={17}
-        effectiveTenantKey="17"
-      />
-    )
+    render(<InventoryReportTab tenantFilter="17" selectedDonVi={17} effectiveTenantKey="17" />)
 
     expect(screen.getAllByText("Thiết bị chưa có nhu cầu sử dụng").length).toBeGreaterThan(0)
     expect(screen.getByText("Số thiết bị")).toBeInTheDocument()

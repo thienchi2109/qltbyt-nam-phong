@@ -9,6 +9,10 @@ import { createEquipmentColumns } from "@/components/equipment/equipment-table-c
 import type { DepartmentColorClasses } from "@/components/equipment/equipment-department-grouping"
 import type { Equipment } from "@/types/database"
 import { EquipmentContent } from "../equipment-content"
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
+})
 
 vi.mock("@/components/ui/tooltip", async () => {
   const { tooltipMockModule } = await import("@/test-utils/tooltip-mock-module")
@@ -104,9 +108,11 @@ describe("EquipmentContent desktop interactions", () => {
 
     render(<EquipmentContentHarness equipment={equipment} onShowDetails={onShowDetails} />)
 
-    await user.click(screen.getByRole("button", {
-      name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-102",
-    }))
+    await user.click(
+      screen.getByRole("button", {
+        name: "Xem yêu cầu sửa chữa hiện tại của thiết bị TB-102",
+      })
+    )
 
     expect(onShowDetails).not.toHaveBeenCalled()
 

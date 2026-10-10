@@ -12,7 +12,9 @@ vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
   DialogContent: ({ children, className }: { children: React.ReactNode; className?: string }) => (
-    <div data-testid="dialog-content" className={className}>{children}</div>
+    <div data-testid="dialog-content" className={className}>
+      {children}
+    </div>
   ),
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -39,7 +41,9 @@ vi.mock("@/components/ui/tooltip", () => ({
 }))
 
 vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailDetailsTab", () => ({
-  EquipmentDetailDetailsTab: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
+  EquipmentDetailDetailsTab: ({ children }: { children?: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }))
 
 vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailConfigTab", () => ({
@@ -132,7 +136,10 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
   it("hides delete button for qltb_khoa even when department matches", () => {
     const { container } = render(
-      <EquipmentDetailDialog {...baseProps} user={{ id: 2, role: "qltb_khoa", khoa_phong: "ICU" }} />
+      <EquipmentDetailDialog
+        {...baseProps}
+        user={{ id: 2, role: "qltb_khoa", khoa_phong: "ICU" }}
+      />
     )
 
     const deleteButton = container.querySelector('button[class*="border-destructive/30"]')
@@ -151,4 +158,9 @@ describe("EquipmentDetailDialog delete RBAC", () => {
 
     expect(mockOpenDeleteDialog).toHaveBeenCalledWith(equipment, "detail_dialog")
   })
+})
+
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
 })

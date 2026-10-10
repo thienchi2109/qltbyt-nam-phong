@@ -12,16 +12,24 @@ import {
   buildRepairRequestsByEquipmentHref,
 } from "@/lib/repair-request-deep-link"
 import { MobileUsageActions } from "./mobile-usage-actions"
+import { getEquipmentStatusMetadata, type EquipmentStatusRow } from "@/lib/equipment-status"
 
 interface MobileEquipmentListItemProps {
   equipment: Equipment
   onShowDetails: (equipment: Equipment) => void
+  statusCatalog: {
+    data?: readonly EquipmentStatusRow[]
+    isSuccess: boolean
+    fetchStatus: string
+    refetch: () => unknown
+  }
 }
 
 interface MobileEquipmentActionButtonsProps {
   equipment: Equipment
   status: Equipment["tinh_trang_hien_tai"]
   outOfService: boolean
+  startDisabled: boolean
   onCreateRepairRequest: (equipmentId: number) => void
   onViewRepairDetails: (equipmentId: number) => void
   onShowDetails: (equipment: Equipment) => void
@@ -40,6 +48,8 @@ const getStatusStyle = (status: Equipment["tinh_trang_hien_tai"]) => {
       return { dot: "bg-amber-500", text: "text-amber-700", bg: "bg-amber-50" }
     case "Chờ sửa chữa":
       return { dot: "bg-red-600", text: "text-red-700", bg: "bg-red-50" }
+    case "Thanh lý nội bộ":
+      return { dot: "bg-white", text: "text-white", bg: "bg-gray-800" }
     case "Ngưng sử dụng":
     case "Chưa có nhu cầu sử dụng":
       return { dot: "bg-gray-400", text: "text-gray-500", bg: "bg-gray-100" }
@@ -77,11 +87,7 @@ interface EquipmentCardStatusProps {
   statusStyle: ReturnType<typeof getStatusStyle>
 }
 
-function EquipmentCardStatus({
-  equipment,
-  status,
-  statusStyle,
-}: EquipmentCardStatusProps) {
+function EquipmentCardStatus({ equipment, status, statusStyle }: EquipmentCardStatusProps) {
   if (!status) return null
 
   return (
@@ -101,25 +107,32 @@ function EquipmentCardStatus({
 export function MobileEquipmentListItem({
   equipment,
   onShowDetails,
+  statusCatalog,
 }: MobileEquipmentListItemProps) {
   const { push } = useRouter()
 
   const status = equipment.tinh_trang_hien_tai
   const statusStyle = getStatusStyle(status)
   const outOfService = isOutOfService(status)
+  const metadataReady =
+    statusCatalog.isSuccess && statusCatalog.fetchStatus === "idle" && !!statusCatalog.data
+  const startDisabled =
+    !metadataReady ||
+    !!getEquipmentStatusMetadata(statusCatalog.data ?? [], status ?? "")?.blocks_operational_actions
 
   const handleCreateRepairRequest = React.useCallback(
     (equipmentId: number) => {
+      if (startDisabled) return
       push(buildRepairRequestCreateIntentHref(equipmentId))
     },
-    [push],
+    [push, startDisabled]
   )
 
   const handleViewRepairDetails = React.useCallback(
     (equipmentId: number) => {
       push(buildRepairRequestsByEquipmentHref(equipmentId))
     },
-    [push],
+    [push]
   )
 
   return (
@@ -133,16 +146,27 @@ export function MobileEquipmentListItem({
       activationLabel={`Thiết bị: ${equipment.ten_thiet_bi}`}
       onActivate={() => onShowDetails(equipment)}
       className={outOfService ? "opacity-70" : undefined}
-      actions={(
-        <MobileEquipmentActionButtons
-          equipment={equipment}
-          status={status}
-          outOfService={outOfService}
-          onCreateRepairRequest={handleCreateRepairRequest}
-          onViewRepairDetails={handleViewRepairDetails}
-          onShowDetails={onShowDetails}
-        />
-      )}
+      actions={
+        <>
+          {!metadataReady && (
+            <div className="text-sm text-muted-foreground">
+              Chưa tải được danh mục tình trạng.
+              <button type="button" onClick={() => void statusCatalog.refetch()}>
+                Thử lại
+              </button>
+            </div>
+          )}
+          <MobileEquipmentActionButtons
+            equipment={equipment}
+            status={status}
+            outOfService={outOfService}
+            startDisabled={startDisabled}
+            onCreateRepairRequest={handleCreateRepairRequest}
+            onViewRepairDetails={handleViewRepairDetails}
+            onShowDetails={onShowDetails}
+          />
+        </>
+      }
     />
   )
 }
@@ -158,11 +182,13 @@ function MobileEquipmentActionButtons({
   equipment,
   status,
   outOfService,
+  startDisabled,
   onCreateRepairRequest,
   onViewRepairDetails,
   onShowDetails,
 }: MobileEquipmentActionButtonsProps) {
-  const buttonBase = "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
+  const buttonBase =
+    "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
   const ghostBtn = `${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`
   const handleCreateRepairRequestClick = () => {
     onCreateRepairRequest(equipment.id)
@@ -175,16 +201,9 @@ function MobileEquipmentActionButtons({
   // Ngưng sử dụng → "Xem chi tiết" only
   if (outOfService) {
     return (
-      <fieldset
-        data-mobile-equipment-actions
-        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
-      >
+      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
-        <button
-          type="button"
-          className={ghostBtn}
-          onClick={() => onShowDetails(equipment)}
-        >
+        <button type="button" className={ghostBtn} onClick={() => onShowDetails(equipment)}>
           <Eye className="size-3.5" />
           Xem chi tiết
         </button>
@@ -195,10 +214,7 @@ function MobileEquipmentActionButtons({
   // Chờ sửa chữa → "Chi tiết sự cố" (red) + disabled play
   if (status === "Chờ sửa chữa") {
     return (
-      <fieldset
-        data-mobile-equipment-actions
-        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
-      >
+      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
         <button
           type="button"
@@ -208,7 +224,11 @@ function MobileEquipmentActionButtons({
           <AlertTriangle className="size-3.5" />
           Chi tiết sự cố
         </button>
-        <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
+        <MobileUsageActions
+          equipment={equipment}
+          startDisabled={startDisabled}
+          className="flex-1 h-auto py-2 text-[11px]"
+        />
       </fieldset>
     )
   }
@@ -216,40 +236,39 @@ function MobileEquipmentActionButtons({
   // Chờ bảo trì / Chờ hiệu chuẩn → "Xem chi tiết" + "Sử dụng"
   if (status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định") {
     return (
-      <fieldset
-        data-mobile-equipment-actions
-        className="flex min-w-0 flex-1 gap-2 border-0 p-0"
-      >
+      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
         <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
-        <button
-          type="button"
-          className={ghostBtn}
-          onClick={() => onShowDetails(equipment)}
-        >
+        <button type="button" className={ghostBtn} onClick={() => onShowDetails(equipment)}>
           <Eye className="size-3.5" />
           Xem chi tiết
         </button>
-        <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
+        <MobileUsageActions
+          equipment={equipment}
+          startDisabled={startDisabled}
+          className="flex-1 h-auto py-2 text-[11px]"
+        />
       </fieldset>
     )
   }
 
   // Default (Hoạt động) → "Báo sửa chữa" + "Sử dụng"
   return (
-    <fieldset
-      data-mobile-equipment-actions
-      className="flex min-w-0 flex-1 gap-2 border-0 p-0"
-    >
+    <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
       <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
       <button
         type="button"
         className={ghostBtn}
         onClick={handleCreateRepairRequestClick}
+        disabled={startDisabled}
       >
         <Wrench className="size-3.5" />
         Báo sửa chữa
       </button>
-      <MobileUsageActions equipment={equipment} className="flex-1 h-auto py-2 text-[11px]" />
+      <MobileUsageActions
+        equipment={equipment}
+        startDisabled={startDisabled}
+        className="flex-1 h-auto py-2 text-[11px]"
+      />
     </fieldset>
   )
 }

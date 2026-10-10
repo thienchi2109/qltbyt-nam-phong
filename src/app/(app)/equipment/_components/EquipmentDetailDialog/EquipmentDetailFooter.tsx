@@ -4,16 +4,12 @@ import * as React from "react"
 import { Edit, Loader2, Printer, QrCode, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface EquipmentDetailFooterProps {
   canDeleteEquipment: boolean
   canEdit: boolean
+  canSave?: boolean
   isEditingDetails: boolean
   isRegionalLeader: boolean
   isUpdating: boolean
@@ -25,9 +21,11 @@ interface EquipmentDetailFooterProps {
   onStartEditing: () => void
 }
 
+/** Renders footer actions for the equipment detail dialog. */
 export function EquipmentDetailFooter({
   canDeleteEquipment,
   canEdit,
+  canSave = true,
   isEditingDetails,
   isRegionalLeader,
   isUpdating,
@@ -66,7 +64,7 @@ export function EquipmentDetailFooter({
                 <Button
                   type="submit"
                   form="equipment-inline-edit-form"
-                  disabled={isUpdating}
+                  disabled={isUpdating || !canSave}
                 >
                   {isUpdating && <Loader2 className="mr-2 size-4 animate-spin" />}
                   Lưu thay đổi

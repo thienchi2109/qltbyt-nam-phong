@@ -2,6 +2,22 @@
   "schemaVersion": 1,
   "tests": [
     {
+      "evidence": ["Equipment status catalog seven-label contract"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_status_catalog_smoke.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20261009100000_add_equipment_status_catalog.sql",
+        "supabase/migrations/20261009100100_equipment_create_catalog_validation.sql",
+        "supabase/migrations/20261009100200_equipment_update_catalog_validation.sql"
+      ],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
+    },
+    {
       "evidence": ["Wayfinder #935 conservative bootstrap classification"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/ai_kill_switch_smoke.sql",
@@ -1304,6 +1320,48 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["Equipment status catalog consumer RPC guards and terminal preservation"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_status_catalog_consumers_smoke.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20261009101000_equipment_filter_buckets_catalog.sql",
+        "supabase/migrations/20261009101100_equipment_status_distribution_catalog.sql",
+        "supabase/migrations/20261009101200_equipment_status_distribution_legacy_catalog.sql",
+        "supabase/migrations/20261009101300_equipment_list_liquidation_catalog.sql",
+        "supabase/migrations/20261009101400_repair_request_create_terminal_guard.sql",
+        "supabase/migrations/20261009101500_usage_session_start_terminal_guard.sql",
+        "supabase/migrations/20261009101600_maintenance_bulk_insert_terminal_guard.sql",
+        "supabase/migrations/20261009101700_maintenance_task_update_terminal_guard.sql",
+        "supabase/migrations/20261009101800_maintenance_task_complete_terminal_guard.sql",
+        "supabase/migrations/20261009101900_repair_request_sync_terminal_policy.sql",
+        "supabase/migrations/20261009102000_repair_request_approve_terminal_guard.sql",
+        "supabase/migrations/20261009102100_repair_request_complete_terminal_preserve.sql",
+        "supabase/migrations/20261009102200_repair_request_delete_terminal_preserve.sql",
+        "supabase/migrations/20261009102300_maintenance_tasks_delete_lock_order.sql",
+        "supabase/migrations/20261009102400_repair_request_update_lock_order.sql"
+      ],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
+    },
+    {
+      "evidence": ["AI equipment lookup exact catalog labels before legacy aliases"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/ai_equipment_status_catalog_smoke.sql",
+      "requiredForMigrations": [
+        "supabase/migrations/20261009103000_ai_equipment_lookup_status_catalog.sql"
+      ],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "core-security"
     }
   ]
 }

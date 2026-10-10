@@ -14,6 +14,7 @@ function getTooltipCategoryName(entry: TooltipPayloadEntry): string | null {
   return typeof name === "string" && name.trim() ? name : null
 }
 
+/** Renders chart tooltip entries with stable keys and labels. */
 export const EquipmentChartTooltip = React.memo(function EquipmentChartTooltip({
   active,
   payload,
@@ -25,7 +26,7 @@ export const EquipmentChartTooltip = React.memo(function EquipmentChartTooltip({
 
   const total = tooltipEntries.reduce(
     (sum, entry) => sum + (typeof entry.value === "number" ? entry.value : 0),
-    0,
+    0
   )
   const keyedPayload = buildKeyedTooltipEntries<TooltipPayloadEntry>(tooltipEntries)
   const categoryName = tooltipEntries.map(getTooltipCategoryName).find(Boolean) ?? label
@@ -38,7 +39,11 @@ export const EquipmentChartTooltip = React.memo(function EquipmentChartTooltip({
           <div key={key} className="flex items-center justify-between gap-2 text-sm">
             <div className="flex items-center gap-2">
               <div className="size-3 rounded" style={{ backgroundColor: entry.color }} />
-              <span>{STATUS_LABELS[entry.dataKey as keyof typeof STATUS_LABELS]}</span>
+              <span>
+                {entry.name ??
+                  STATUS_LABELS[entry.dataKey as keyof typeof STATUS_LABELS] ??
+                  String(entry.dataKey ?? "")}
+              </span>
             </div>
             <span className="font-medium">{entry.value}</span>
           </div>

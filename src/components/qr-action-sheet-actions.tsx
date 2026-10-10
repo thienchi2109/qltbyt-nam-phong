@@ -6,9 +6,11 @@ import { QR_ACTION_ITEMS, type QRActionKey } from "./qr-action-sheet-config"
 
 interface QRActionSheetActionsProps {
   onAction: (action: QRActionKey) => void
+  repairDisabled: boolean
 }
 
-export function QRActionSheetActions({ onAction }: QRActionSheetActionsProps) {
+/** Renders the available QR equipment actions. */
+export function QRActionSheetActions({ onAction, repairDisabled }: QRActionSheetActionsProps) {
   return (
     <div className="space-y-3">
       <h4 className="font-semibold">Hành động có thể thực hiện:</h4>
@@ -23,9 +25,12 @@ export function QRActionSheetActions({ onAction }: QRActionSheetActionsProps) {
               variant={item.variant}
               className="justify-start h-auto p-4"
               onClick={() => onAction(item.action)}
+              disabled={item.action === "create-repair" && repairDisabled}
             >
               <div className="flex items-center gap-3">
-                <div className={`flex size-10 items-center justify-center rounded-full ${item.iconContainerClassName}`}>
+                <div
+                  className={`flex size-10 items-center justify-center rounded-full ${item.iconContainerClassName}`}
+                >
                   <Icon className={`size-5 ${item.iconClassName}`} />
                 </div>
                 <div className="text-left">

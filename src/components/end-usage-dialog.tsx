@@ -26,21 +26,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useEndUsageSession } from "@/hooks/use-usage-logs"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { useSession } from "next-auth/react"
 import { type SessionUser, type UsageLog } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 import { calculateUsageDurationMinutes } from "@/lib/usage-duration"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
-
-const equipmentStatusOptions = [
-  "Hoạt động",
-  "Chờ sửa chữa", 
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng"
-] as const
 
 const endUsageSchema = z.object({
   tinh_trang_ket_thuc: z.string().trim().min(1, "Vui lòng nhập tình trạng kết thúc"),
@@ -56,15 +48,12 @@ interface EndUsageDialogProps {
 }
 
 /** Renders the dialog for closing an active equipment usage session. */
-export function EndUsageDialog({
-  open,
-  onOpenChange,
-  usageLog,
-}: EndUsageDialogProps) {
+export function EndUsageDialog({ open, onOpenChange, usageLog }: EndUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const endUsageMutation = useEndUsageSession()
+  const { activeValues, canWrite, refetch } = useEquipmentStatusCatalog()
   const now = useHydrationSafeNow()
 
   const form = useForm<EndUsageFormData>({
@@ -97,7 +86,7 @@ export function EndUsageDialog({
         tinh_trang_ket_thuc: data.tinh_trang_ket_thuc,
         ghi_chu: data.ghi_chu,
       })
-      
+
       onOpenChange(false)
       form.reset()
     } catch (error) {
@@ -108,9 +97,8 @@ export function EndUsageDialog({
   const isLoading = endUsageMutation.isPending
 
   // Calculate usage duration
-  const usageDuration = usageLog && now !== null
-    ? calculateUsageDurationMinutes(usageLog.thoi_gian_bat_dau, now)
-    : 0
+  const usageDuration =
+    usageLog && now !== null ? calculateUsageDurationMinutes(usageLog.thoi_gian_bat_dau, now) : 0
 
   const formatDuration = (minutes: number) => {
     const hours = Math.floor(minutes / 60)
@@ -177,12 +165,20 @@ export function EndUsageDialog({
                     />
                   </FormControl>
                   <datalist id="end-usage-status-options">
-                    {equipmentStatusOptions.map((status) => (
+                    {activeValues.map((status) => (
                       <option key={status} value={status}>
                         {status}
                       </option>
                     ))}
                   </datalist>
+                  {!canWrite && (
+                    <div className="text-sm text-muted-foreground">
+                      Chưa tải được gợi ý tình trạng. Bạn vẫn có thể nhập tình trạng thiết bị.
+                      <Button type="button" variant="link" onClick={() => void refetch()}>
+                        Thử lại
+                      </Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

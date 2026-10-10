@@ -18,10 +18,8 @@ import type { Equipment } from "@/types/database"
 import type { DepartmentColorClasses } from "@/components/equipment/equipment-department-grouping"
 import { getEquipmentDepartmentLabel } from "@/components/equipment/equipment-department-grouping"
 import { cn } from "@/lib/utils"
-import {
-  formatFullDateToDisplay,
-  formatPartialDateToDisplay,
-} from "@/lib/date-utils"
+import { LIQUIDATION_STATUS_BADGE_CLASS } from "@/lib/equipment-status"
+import { formatFullDateToDisplay, formatPartialDateToDisplay } from "@/lib/date-utils"
 
 /** Partial date fields that should be formatted for display */
 const PARTIAL_DATE_FIELDS: Set<keyof Equipment> = new Set([
@@ -64,9 +62,10 @@ export function getClassificationVariant(
 ): "default" | "secondary" | "destructive" | "outline" {
   if (!classification) return "outline"
   const trimmed = classification.trim().toUpperCase()
-  if (trimmed === 'A' || trimmed === 'LOẠI A') return "default"
-  if (trimmed === 'B' || trimmed === 'LOẠI B' || trimmed === 'C' || trimmed === 'LOẠI C') return "secondary"
-  if (trimmed === 'D' || trimmed === 'LOẠI D') return "destructive"
+  if (trimmed === "A" || trimmed === "LOẠI A") return "default"
+  if (trimmed === "B" || trimmed === "LOẠI B" || trimmed === "C" || trimmed === "LOẠI C")
+    return "secondary"
+  if (trimmed === "D" || trimmed === "LOẠI D") return "destructive"
   return "outline"
 }
 
@@ -74,61 +73,52 @@ export function getClassificationVariant(
  * Human-readable labels for equipment table columns.
  */
 export const columnLabels: Record<string, string> = {
-  id: 'ID',
-  ma_thiet_bi: 'Mã thiết bị',
-  ten_thiet_bi: 'Tên thiết bị',
-  model: 'Model',
-  serial: 'Serial',
-  cau_hinh_thiet_bi: 'Cấu hình',
-  phu_kien_kem_theo: 'Phụ kiện kèm theo',
-  hang_san_xuat: 'Hãng sản xuất',
-  noi_san_xuat: 'Nơi sản xuất',
-  nam_san_xuat: 'Năm sản xuất',
-  ngay_nhap: 'Ngày nhập',
-  ngay_dua_vao_su_dung: 'Ngày đưa vào sử dụng',
-  nguon_kinh_phi: 'Nguồn kinh phí',
-  gia_goc: 'Giá gốc',
-  nam_tinh_hao_mon: 'Năm tính hao mòn',
-  ty_le_hao_mon: 'Tỷ lệ hao mòn theo TT23',
-  han_bao_hanh: 'Hạn bảo hành',
-  vi_tri_lap_dat: 'Vị trí lắp đặt',
-  nguoi_dang_truc_tiep_quan_ly: 'Người sử dụng',
-  khoa_phong_quan_ly: 'Khoa/phòng quản lý',
-  tinh_trang_hien_tai: 'Tình trạng',
-  ngay_ngung_su_dung: 'Ngày ngừng sử dụng',
-  ghi_chu: 'Ghi chú',
-  chu_ky_bt_dinh_ky: 'Chu kỳ BT định kỳ (ngày)',
-  ngay_bt_tiep_theo: 'Ngày BT tiếp theo',
-  chu_ky_hc_dinh_ky: 'Chu kỳ HC định kỳ (ngày)',
-  ngay_hc_tiep_theo: 'Ngày HC tiếp theo',
-  chu_ky_kd_dinh_ky: 'Chu kỳ KĐ định kỳ (ngày)',
-  ngay_kd_tiep_theo: 'Ngày KĐ tiếp theo',
-  phan_loai_theo_nd98: 'Phân loại theo NĐ98',
-  so_luu_hanh: 'Số lưu hành',
+  id: "ID",
+  ma_thiet_bi: "Mã thiết bị",
+  ten_thiet_bi: "Tên thiết bị",
+  model: "Model",
+  serial: "Serial",
+  cau_hinh_thiet_bi: "Cấu hình",
+  phu_kien_kem_theo: "Phụ kiện kèm theo",
+  hang_san_xuat: "Hãng sản xuất",
+  noi_san_xuat: "Nơi sản xuất",
+  nam_san_xuat: "Năm sản xuất",
+  ngay_nhap: "Ngày nhập",
+  ngay_dua_vao_su_dung: "Ngày đưa vào sử dụng",
+  nguon_kinh_phi: "Nguồn kinh phí",
+  gia_goc: "Giá gốc",
+  nam_tinh_hao_mon: "Năm tính hao mòn",
+  ty_le_hao_mon: "Tỷ lệ hao mòn theo TT23",
+  han_bao_hanh: "Hạn bảo hành",
+  vi_tri_lap_dat: "Vị trí lắp đặt",
+  nguoi_dang_truc_tiep_quan_ly: "Người sử dụng",
+  khoa_phong_quan_ly: "Khoa/phòng quản lý",
+  tinh_trang_hien_tai: "Tình trạng",
+  ngay_ngung_su_dung: "Ngày ngừng sử dụng",
+  ghi_chu: "Ghi chú",
+  chu_ky_bt_dinh_ky: "Chu kỳ BT định kỳ (ngày)",
+  ngay_bt_tiep_theo: "Ngày BT tiếp theo",
+  chu_ky_hc_dinh_ky: "Chu kỳ HC định kỳ (ngày)",
+  ngay_hc_tiep_theo: "Ngày HC tiếp theo",
+  chu_ky_kd_dinh_ky: "Chu kỳ KĐ định kỳ (ngày)",
+  ngay_kd_tiep_theo: "Ngày KĐ tiếp theo",
+  phan_loai_theo_nd98: "Phân loại theo NĐ98",
+  so_luu_hanh: "Số lưu hành",
 }
 
 /**
  * Available equipment status options.
  */
-export const equipmentStatusOptions = [
-  "Hoạt động",
-  "Chờ sửa chữa",
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng"
-] as const
-
 /**
  * Columns that support faceted filtering.
  */
 const filterableColumns: (keyof Equipment)[] = [
-  'khoa_phong_quan_ly',
-  'vi_tri_lap_dat',
-  'nguoi_dang_truc_tiep_quan_ly',
-  'phan_loai_theo_nd98',
-  'tinh_trang_hien_tai',
-  'nguon_kinh_phi'
+  "khoa_phong_quan_ly",
+  "vi_tri_lap_dat",
+  "nguoi_dang_truc_tiep_quan_ly",
+  "phan_loai_theo_nd98",
+  "tinh_trang_hien_tai",
+  "nguon_kinh_phi",
 ]
 
 interface CreateEquipmentColumnsConfig {
@@ -164,14 +154,19 @@ export function createEquipmentColumns(
       cell: ({ row }) => {
         const value = row.getValue(key)
 
-        if (key === 'tinh_trang_hien_tai') {
+        if (key === "tinh_trang_hien_tai") {
           const statusValue = value as Equipment["tinh_trang_hien_tai"]
           if (!statusValue) {
             return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
           }
           return (
             <div className="inline-flex items-center gap-1">
-              <Badge variant={getStatusVariant(statusValue)}>
+              <Badge
+                variant={getStatusVariant(statusValue)}
+                className={
+                  statusValue === "Thanh lý nội bộ" ? LIQUIDATION_STATUS_BADGE_CLASS : undefined
+                }
+              >
                 {statusValue}
               </Badge>
               <LinkedRequestRowIndicator equipment={row.original} />
@@ -179,7 +174,7 @@ export function createEquipmentColumns(
           )
         }
 
-        if (key === 'phan_loai_theo_nd98') {
+        if (key === "phan_loai_theo_nd98") {
           const classification = value as Equipment["phan_loai_theo_nd98"]
           if (!classification) {
             return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
@@ -191,14 +186,14 @@ export function createEquipmentColumns(
           )
         }
 
-        if (key === 'gia_goc') {
+        if (key === "gia_goc") {
           if (value === null || value === undefined) {
             return <div className="text-right italic text-muted-foreground">Chưa có dữ liệu</div>
           }
           return <div className="text-right">{Number(value).toLocaleString()}đ</div>
         }
 
-        if (key === 'ngay_ngung_su_dung') {
+        if (key === "ngay_ngung_su_dung") {
           if (value === null || value === undefined || value === "") {
             return <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
           }
@@ -236,11 +231,7 @@ export function createEquipmentColumns(
 
         if (key === "ma_thiet_bi") {
           return (
-            <TruncatedText
-              text={String(value)}
-              className={EQUIPMENT_CODE_WIDTH_CLASS}
-              focusable
-            />
+            <TruncatedText text={String(value)} className={EQUIPMENT_CODE_WIDTH_CLASS} focusable />
           )
         }
 

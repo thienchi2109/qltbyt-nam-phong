@@ -1,3 +1,5 @@
+import { getEquipmentStatusMetadata, type EquipmentStatusRow } from "@/lib/equipment-status"
+
 /** Canonical department label used to identify the liquidation warehouse. */
 export const LIQUIDATION_DEPARTMENT_NAME = "VT-TBYT- KHO THANH LÍ"
 /** Canonical equipment status used for decommissioned equipment. */
@@ -23,18 +25,21 @@ const NORMALIZED_LIQUIDATION_DEPARTMENT = normalizeDepartmentScope(LIQUIDATION_D
 
 /** Returns whether the equipment satisfies both liquidation-list conditions. */
 export function isLiquidationEndState(
-  values: EquipmentLiquidationStateValues | null | undefined
+  values: EquipmentLiquidationStateValues | null | undefined,
+  catalog: readonly EquipmentStatusRow[] = []
 ): boolean {
   return (
-    normalizeDepartmentScope(values?.khoa_phong_quan_ly) === NORMALIZED_LIQUIDATION_DEPARTMENT &&
-    (values?.tinh_trang_hien_tai ?? "").trim() === DECOMMISSIONED_EQUIPMENT_STATUS
+    !!getEquipmentStatusMetadata(catalog, values?.tinh_trang_hien_tai ?? "")?.is_liquidation ||
+    (normalizeDepartmentScope(values?.khoa_phong_quan_ly) === NORMALIZED_LIQUIDATION_DEPARTMENT &&
+      (values?.tinh_trang_hien_tai ?? "").trim() === DECOMMISSIONED_EQUIPMENT_STATUS)
   )
 }
 
 /** Returns whether an edit moved equipment into the liquidation-list end state. */
 export function didEnterLiquidationEndState(
   before: EquipmentLiquidationStateValues | null | undefined,
-  after: EquipmentLiquidationStateValues | null | undefined
+  after: EquipmentLiquidationStateValues | null | undefined,
+  catalog: readonly EquipmentStatusRow[] = []
 ): boolean {
-  return !isLiquidationEndState(before) && isLiquidationEndState(after)
+  return !isLiquidationEndState(before, catalog) && isLiquidationEndState(after, catalog)
 }

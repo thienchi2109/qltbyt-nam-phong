@@ -1,5 +1,11 @@
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
+import {
+  getEquipmentDistributionStatusCounts,
+  buildEquipmentDistributionStatusRows,
+  getEquipmentDistributionGroupCounts,
+} from "@/components/equipment-distribution-summary.utils"
+import { STATUS_LABELS as LEGACY_STATUS_LABELS } from "@/hooks/use-equipment-distribution"
 import type { EquipmentDistributionData } from "@/hooks/use-equipment-distribution"
 import type { MaintenanceStats } from "../hooks/use-maintenance-stats"
 import type { UsageOverview, DailyUsageItem } from "../hooks/use-usage-analytics"
@@ -33,9 +39,9 @@ export type ExportSheet = ExportJsonSheet | ExportArraySheet
 
 type StatisticsRow = Record<string, ExportJsonValue> & {
   "Khoa/Phòng": string
-  "Nhập": number
-  "Xuất": number
-  "Tổng": number
+  Nhập: number
+  Xuất: number
+  Tổng: number
 }
 
 type BuildExportSheetsArgs = {
@@ -56,22 +62,8 @@ const SOURCE_LABELS: Record<string, string> = {
   liquidation: "Thanh lý",
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  hoat_dong: 'Hoạt động',
-  cho_sua_chua: 'Chờ sửa chữa',
-  cho_bao_tri: 'Chờ bảo trì',
-  cho_hieu_chuan: 'Chờ HC/KĐ',
-  ngung_su_dung: 'Ngừng sử dụng',
-  chua_co_nhu_cau: 'Chưa có nhu cầu',
-  khac: 'Khác',
-}
-
 function getSourceLabel(source: string) {
   return SOURCE_LABELS[source] || source
-}
-
-function mapStatusLabel(key: string) {
-  return STATUS_LABELS[key] || key
 }
 
 function pct(value: number, total: number) {
@@ -100,9 +92,9 @@ function generateStatistics(rows: InventoryItem[]): StatisticsRow[] {
   return Array.from(deptStats.entries())
     .map(([dept, stats]) => ({
       "Khoa/Phòng": dept,
-      "Nhập": stats.nhap,
-      "Xuất": stats.xuat,
-      "Tổng": stats.tong,
+      Nhập: stats.nhap,
+      Xuất: stats.xuat,
+      Tổng: stats.tong,
     }))
     .sort((a, b) => b["Tổng"] - a["Tổng"])
 }
@@ -117,7 +109,10 @@ function buildSummarySheet(
     data: [
       ["BÁO CÁO TỔNG HỢP THIẾT BỊ"],
       [""],
-      ["Thời gian:", `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`],
+      [
+        "Thời gian:",
+        `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`,
+      ],
       ["Khoa/Phòng:", department === "all" ? "Tất cả" : department],
       ["Ngày xuất báo cáo:", format(new Date(), "dd/MM/yyyy HH:mm", { locale: vi })],
       [""],
@@ -138,11 +133,11 @@ function buildDetailedTransactionsSheet(data: InventoryItem[]): ExportJsonSheet 
   return {
     name: "Chi tiết giao dịch",
     data: data.map((item) => ({
-      "Ngày": format(new Date(item.ngay_nhap), "dd/MM/yyyy"),
+      Ngày: format(new Date(item.ngay_nhap), "dd/MM/yyyy"),
       "Mã thiết bị": item.ma_thiet_bi,
       "Tên thiết bị": item.ten_thiet_bi,
-      "Model": item.model || "",
-      "Serial": item.serial || "",
+      Model: item.model || "",
+      Serial: item.serial || "",
       "Khoa/Phòng": item.khoa_phong_quan_ly || "Chưa phân loại",
       "Loại giao dịch": item.type === "import" ? "Nhập" : "Xuất",
       "Nguồn/Hình thức": getSourceLabel(item.source),
@@ -170,70 +165,45 @@ function buildDistributionSheets(distribution?: EquipmentDistributionData): Expo
 
   const sheets: ExportSheet[] = []
   const total = distribution.totalEquipment || 0
-  const totals = distribution.byDepartment.reduce(
-    (acc, department) => {
-      acc.hoat_dong += department.hoat_dong || 0
-      acc.cho_sua_chua += department.cho_sua_chua || 0
-      acc.cho_bao_tri += department.cho_bao_tri || 0
-      acc.cho_hieu_chuan += department.cho_hieu_chuan || 0
-      acc.ngung_su_dung += department.ngung_su_dung || 0
-      acc.chua_co_nhu_cau += department.chua_co_nhu_cau || 0
-      acc.khac += department.khac || 0
-      return acc
-    },
-    { hoat_dong: 0, cho_sua_chua: 0, cho_bao_tri: 0, cho_hieu_chuan: 0, ngung_su_dung: 0, chua_co_nhu_cau: 0, khac: 0 },
+  const catalog = distribution.statusCatalog ?? []
+  const statusRows = buildEquipmentDistributionStatusRows(
+    catalog,
+    getEquipmentDistributionStatusCounts(distribution),
+    total
   )
-
+  const reportLabel = (row: { key: string; label: string }) =>
+    LEGACY_STATUS_LABELS[row.key as keyof typeof LEGACY_STATUS_LABELS] ?? row.label
   sheets.push({
     name: "Phân bố trạng thái",
-    data: [
-      { "Trạng thái": mapStatusLabel("hoat_dong"), "Số lượng": totals.hoat_dong, "Tỷ lệ (%)": pct(totals.hoat_dong, total) },
-      { "Trạng thái": mapStatusLabel("cho_sua_chua"), "Số lượng": totals.cho_sua_chua, "Tỷ lệ (%)": pct(totals.cho_sua_chua, total) },
-      { "Trạng thái": mapStatusLabel("cho_bao_tri"), "Số lượng": totals.cho_bao_tri, "Tỷ lệ (%)": pct(totals.cho_bao_tri, total) },
-      { "Trạng thái": mapStatusLabel("cho_hieu_chuan"), "Số lượng": totals.cho_hieu_chuan, "Tỷ lệ (%)": pct(totals.cho_hieu_chuan, total) },
-      { "Trạng thái": mapStatusLabel("ngung_su_dung"), "Số lượng": totals.ngung_su_dung, "Tỷ lệ (%)": pct(totals.ngung_su_dung, total) },
-      { "Trạng thái": mapStatusLabel("chua_co_nhu_cau"), "Số lượng": totals.chua_co_nhu_cau, "Tỷ lệ (%)": pct(totals.chua_co_nhu_cau, total) },
-      { "Trạng thái": mapStatusLabel("khac"), "Số lượng": totals.khac, "Tỷ lệ (%)": pct(totals.khac, total) },
-    ],
+    data: statusRows.map((row) => ({
+      "Trạng thái": reportLabel(row),
+      "Số lượng": row.count,
+      "Tỷ lệ (%)": pct(row.count, total),
+    })),
     type: "json",
     columnWidths: [28, 12, 12],
   })
 
-  if (distribution.byDepartment.length > 0) {
+  for (const [name, column, groups] of [
+    ["Trạng thái theo khoa", "Khoa/Phòng", distribution.byDepartment],
+    ["Trạng thái theo vị trí", "Vị trí", distribution.byLocation],
+  ] as const) {
+    if (groups.length === 0) continue
     sheets.push({
-      name: "Trạng thái theo khoa",
-      data: distribution.byDepartment.map((department) => ({
-        "Khoa/Phòng": department.name,
-        "Hoạt động": department.hoat_dong,
-        "Chờ sửa chữa": department.cho_sua_chua,
-        "Chờ bảo trì": department.cho_bao_tri,
-        "Chờ HC/KĐ": department.cho_hieu_chuan,
-        "Ngừng sử dụng": department.ngung_su_dung,
-        "Chưa có nhu cầu": department.chua_co_nhu_cau,
-        "Khác": department.khac || 0,
-        "Tổng": department.total,
+      name,
+      data: groups.map((group) => ({
+        [column]: group.name,
+        ...Object.fromEntries(
+          buildEquipmentDistributionStatusRows(
+            catalog,
+            getEquipmentDistributionGroupCounts(group),
+            group.total
+          ).map((row) => [reportLabel(row), row.count])
+        ),
+        Tổng: group.total,
       })),
       type: "json",
-      columnWidths: [28, 12, 14, 12, 12, 14, 16, 10, 10],
-    })
-  }
-
-  if (distribution.byLocation.length > 0) {
-    sheets.push({
-      name: "Trạng thái theo vị trí",
-      data: distribution.byLocation.map((location) => ({
-        "Vị trí": location.name,
-        "Hoạt động": location.hoat_dong,
-        "Chờ sửa chữa": location.cho_sua_chua,
-        "Chờ bảo trì": location.cho_bao_tri,
-        "Chờ HC/KĐ": location.cho_hieu_chuan,
-        "Ngừng sử dụng": location.ngung_su_dung,
-        "Chưa có nhu cầu": location.chua_co_nhu_cau,
-        "Khác": location.khac || 0,
-        "Tổng": location.total,
-      })),
-      type: "json",
-      columnWidths: [24, 12, 14, 12, 12, 14, 16, 10, 10],
+      columnWidths: [28, ...statusRows.map(() => 14), 10],
     })
   }
 
@@ -253,10 +223,22 @@ function buildMaintenanceSheets(maintenanceStats?: MaintenanceStats): ExportShee
         { "Chỉ số": "Hoàn thành", "Giá trị": maintenanceStats.repair_summary.completed },
         { "Chỉ số": "Đang xử lý", "Giá trị": maintenanceStats.repair_summary.in_progress },
         { "Chỉ số": "Chờ duyệt", "Giá trị": maintenanceStats.repair_summary.pending },
-        { "Chỉ số": "Tổng chi phí sửa chữa", "Giá trị": maintenanceStats.repair_summary.total_cost },
-        { "Chỉ số": "Chi phí TB ca hoàn thành", "Giá trị": maintenanceStats.repair_summary.average_completed_cost },
-        { "Chỉ số": "Có ghi nhận chi phí", "Giá trị": maintenanceStats.repair_summary.cost_recorded_count },
-        { "Chỉ số": "Thiếu chi phí", "Giá trị": maintenanceStats.repair_summary.cost_missing_count },
+        {
+          "Chỉ số": "Tổng chi phí sửa chữa",
+          "Giá trị": maintenanceStats.repair_summary.total_cost,
+        },
+        {
+          "Chỉ số": "Chi phí TB ca hoàn thành",
+          "Giá trị": maintenanceStats.repair_summary.average_completed_cost,
+        },
+        {
+          "Chỉ số": "Có ghi nhận chi phí",
+          "Giá trị": maintenanceStats.repair_summary.cost_recorded_count,
+        },
+        {
+          "Chỉ số": "Thiếu chi phí",
+          "Giá trị": maintenanceStats.repair_summary.cost_missing_count,
+        },
       ],
       type: "json",
       columnWidths: [30, 14],
@@ -264,7 +246,10 @@ function buildMaintenanceSheets(maintenanceStats?: MaintenanceStats): ExportShee
     {
       name: "Bảo trì - Tổng quan",
       data: [
-        { "Chỉ số": "Kế hoạch bảo trì", "Giá trị": maintenanceStats.maintenance_summary.total_plans },
+        {
+          "Chỉ số": "Kế hoạch bảo trì",
+          "Giá trị": maintenanceStats.maintenance_summary.total_plans,
+        },
         { "Chỉ số": "Tổng công việc", "Giá trị": maintenanceStats.maintenance_summary.total_tasks },
         { "Chỉ số": "Hoàn thành", "Giá trị": maintenanceStats.maintenance_summary.completed_tasks },
       ],
@@ -274,9 +259,10 @@ function buildMaintenanceSheets(maintenanceStats?: MaintenanceStats): ExportShee
   ]
 }
 
-function buildUsageSheets(
-  usageAnalytics?: { overview: UsageOverview; daily: DailyUsageItem[] }
-): ExportSheet[] {
+function buildUsageSheets(usageAnalytics?: {
+  overview: UsageOverview
+  daily: DailyUsageItem[]
+}): ExportSheet[] {
   if (!usageAnalytics) {
     return []
   }
@@ -287,7 +273,10 @@ function buildUsageSheets(
       data: [
         { "Chỉ số": "Phiên sử dụng (tổng)", "Giá trị": usageAnalytics.overview.total_sessions },
         { "Chỉ số": "Phiên đang hoạt động", "Giá trị": usageAnalytics.overview.active_sessions },
-        { "Chỉ số": "Thời gian sử dụng (phút)", "Giá trị": usageAnalytics.overview.total_usage_time },
+        {
+          "Chỉ số": "Thời gian sử dụng (phút)",
+          "Giá trị": usageAnalytics.overview.total_usage_time,
+        },
       ],
       type: "json",
       columnWidths: [36, 18],
@@ -295,8 +284,8 @@ function buildUsageSheets(
     {
       name: "Sử dụng TB - Theo ngày",
       data: (usageAnalytics.daily || []).map((item) => ({
-        "Ngày": item.date,
-        "Phiên": item.session_count,
+        Ngày: item.date,
+        Phiên: item.session_count,
         "Thời gian (phút)": item.total_usage_time,
         "Người dùng": item.unique_users,
         "Thiết bị": item.unique_equipment,
@@ -307,16 +296,10 @@ function buildUsageSheets(
   ]
 }
 
+/** Builds report export sheets from the selected report data. */
 export function buildExportSheets(args: BuildExportSheetsArgs): ExportSheet[] {
-  const {
-    data,
-    summary,
-    dateRange,
-    department,
-    distribution,
-    maintenanceStats,
-    usageAnalytics,
-  } = args
+  const { data, summary, dateRange, department, distribution, maintenanceStats, usageAnalytics } =
+    args
 
   return [
     buildSummarySheet(summary, dateRange, department),

@@ -7,12 +7,12 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Progress } from "@/components/ui/progress"
 import { DynamicPieChart } from "@/components/dynamic-chart"
-import { buildStatusDonutData } from "@/components/equipment-distribution-summary.utils"
 import {
-  useEquipmentDistribution,
-  STATUS_COLORS,
-  STATUS_LABELS,
-} from "@/hooks/use-equipment-distribution"
+  buildStatusDonutData,
+  getEquipmentDistributionStatusCounts,
+  buildEquipmentDistributionStatusRows,
+} from "@/components/equipment-distribution-summary.utils"
+import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 
 interface EquipmentDistributionSummaryProps {
   className?: string
@@ -26,15 +26,6 @@ const EQUIPMENT_DISTRIBUTION_SKELETON_KEYS = [
   "equipment-distribution-skeleton-2",
   "equipment-distribution-skeleton-3",
   "equipment-distribution-skeleton-4",
-] as const
-
-const STATUS_DISPLAY_ORDER = [
-  "hoat_dong",
-  "ngung_su_dung",
-  "chua_co_nhu_cau",
-  "cho_sua_chua",
-  "cho_bao_tri",
-  "cho_hieu_chuan",
 ] as const
 
 function getStatusIcon(statusKey: string) {
@@ -98,39 +89,16 @@ export function EquipmentDistributionSummary({
 
     const totalEquipment = data.totalEquipment
 
-    // Sum up all status counts from departments data
-    const statusCounts = data.byDepartment.reduce(
-      (acc, dept) => {
-        acc.hoat_dong += dept.hoat_dong
-        acc.cho_sua_chua += dept.cho_sua_chua
-        acc.cho_bao_tri += dept.cho_bao_tri
-        acc.cho_hieu_chuan += dept.cho_hieu_chuan
-        acc.ngung_su_dung += dept.ngung_su_dung
-        acc.chua_co_nhu_cau += dept.chua_co_nhu_cau
-        return acc
-      },
-      {
-        hoat_dong: 0,
-        cho_sua_chua: 0,
-        cho_bao_tri: 0,
-        cho_hieu_chuan: 0,
-        ngung_su_dung: 0,
-        chua_co_nhu_cau: 0,
-      }
+    const statusCounts = getEquipmentDistributionStatusCounts(data)
+    const statusPercentages = buildEquipmentDistributionStatusRows(
+      data.statusCatalog ?? [],
+      statusCounts,
+      totalEquipment
     )
-
-    // Calculate percentages
-    const statusPercentages = Object.entries(statusCounts).map(([key, count]) => ({
-      key,
-      count,
-      percentage: totalEquipment > 0 ? Math.round((count / totalEquipment) * 100) : 0,
-      label: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-      color: STATUS_COLORS[key as keyof typeof STATUS_COLORS],
-    }))
 
     // Health score calculation (active equipment percentage)
     const healthScore =
-      totalEquipment > 0 ? Math.round((statusCounts.hoat_dong / totalEquipment) * 100) : 0
+      totalEquipment > 0 ? Math.round(((statusCounts.hoat_dong ?? 0) / totalEquipment) * 100) : 0
 
     return {
       totalEquipment,
@@ -168,12 +136,6 @@ export function EquipmentDistributionSummary({
   const donutData = buildStatusDonutData(overallStats.statusPercentages)
   const hasDonutData = donutData.length > 0
   const visibleStatusRows = overallStats.statusPercentages
-    .filter((status) => status.count > 0)
-    .sort(
-      (a, b) =>
-        STATUS_DISPLAY_ORDER.indexOf(a.key as (typeof STATUS_DISPLAY_ORDER)[number]) -
-        STATUS_DISPLAY_ORDER.indexOf(b.key as (typeof STATUS_DISPLAY_ORDER)[number])
-    )
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -211,7 +173,7 @@ export function EquipmentDistributionSummary({
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">{overallStats.totalEquipment}</div>
             <p className="text-xs text-muted-foreground">
-              {overallStats.statusCounts.hoat_dong} đang hoạt động
+              {overallStats.statusCounts.hoat_dong ?? 0} đang hoạt động
             </p>
           </CardContent>
         </Card>

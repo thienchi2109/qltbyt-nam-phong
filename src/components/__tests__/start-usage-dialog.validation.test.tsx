@@ -64,7 +64,12 @@ describe("StartUsageDialog validation", () => {
       <StartUsageDialog
         open
         onOpenChange={vi.fn()}
-        equipment={{ id: 99, ten_thiet_bi: "Monitor", ma_thiet_bi: "TB-99", tinh_trang_hien_tai: null }}
+        equipment={{
+          id: 99,
+          ten_thiet_bi: "Monitor",
+          ma_thiet_bi: "TB-99",
+          tinh_trang_hien_tai: null,
+        }}
       />
     )
 
@@ -84,7 +89,12 @@ describe("StartUsageDialog validation", () => {
       <StartUsageDialog
         open
         onOpenChange={vi.fn()}
-        equipment={{ id: 99, ten_thiet_bi: "Monitor", ma_thiet_bi: "TB-99", tinh_trang_hien_tai: "Tốt" }}
+        equipment={{
+          id: 99,
+          ten_thiet_bi: "Monitor",
+          ma_thiet_bi: "TB-99",
+          tinh_trang_hien_tai: "Tốt",
+        }}
       />
     )
 
@@ -102,4 +112,9 @@ describe("StartUsageDialog validation", () => {
       })
     })
   })
+})
+
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
 })

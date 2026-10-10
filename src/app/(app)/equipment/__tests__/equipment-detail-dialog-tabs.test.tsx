@@ -1,50 +1,51 @@
-import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import * as React from 'react'
-import type { Equipment } from '@/types/database'
+import { render, screen, fireEvent } from "@testing-library/react"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import * as React from "react"
+import type { Equipment } from "@/types/database"
 
 const mockOpenDeleteDialog = vi.fn()
 
-vi.mock('../_hooks/useEquipmentContext', () => ({
+vi.mock("../_hooks/useEquipmentContext", () => ({
   useEquipmentContext: () => ({
     openDeleteDialog: mockOpenDeleteDialog,
   }),
 }))
 
-vi.mock('@/components/ui/dialog', () => ({
+vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ open, children }: { open: boolean; children: React.ReactNode }) =>
     open ? <div data-testid="dialog">{children}</div> : null,
-  DialogContent: ({ children }: { children: React.ReactNode }) =>
-    <div data-testid="dialog-content">{children}</div>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="dialog-content">{children}</div>
+  ),
   DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogTitle: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogDescription: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/EquipmentDetailDetailsTab', () => ({
+vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailDetailsTab", () => ({
   EquipmentDetailDetailsTab: ({ children }: { children?: React.ReactNode }) => (
     <div>Details tab content{children}</div>
   ),
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/EquipmentDetailFilesTab', () => ({
+vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailFilesTab", () => ({
   EquipmentDetailFilesTab: () => <div>Files tab content</div>,
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/EquipmentDetailHistoryTab', () => ({
+vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailHistoryTab", () => ({
   EquipmentDetailHistoryTab: () => <div>History tab content</div>,
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/EquipmentDetailUsageTab', () => ({
+vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailUsageTab", () => ({
   EquipmentDetailUsageTab: () => <div>Usage tab content</div>,
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/EquipmentDetailEditForm', () => ({
+vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailEditForm", () => ({
   EquipmentDetailEditForm: () => <form />,
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentHistory', () => ({
+vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentHistory", () => ({
   useEquipmentHistory: () => ({
     history: [],
     isLoading: false,
@@ -53,7 +54,7 @@ vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentHistory', () => 
   }),
 }))
 
-vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments', () => ({
+vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments", () => ({
   useEquipmentAttachments: () => ({
     attachments: [],
     isLoading: false,
@@ -65,7 +66,7 @@ vi.mock('../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments', ()
 }))
 
 const mockUpdateEquipment = vi.fn()
-vi.mock('@/components/equipment-edit/useEquipmentEditUpdate', () => ({
+vi.mock("@/components/equipment-edit/useEquipmentEditUpdate", () => ({
   useEquipmentEditUpdate: () => ({
     updateEquipment: mockUpdateEquipment,
     isPending: false,
@@ -74,20 +75,20 @@ vi.mock('@/components/equipment-edit/useEquipmentEditUpdate', () => ({
 }))
 
 // Import after mocks
-import { EquipmentDetailDialog } from '../_components/EquipmentDetailDialog'
-import type { UserSession } from '../_components/EquipmentDetailDialog/EquipmentDetailTypes'
+import { EquipmentDetailDialog } from "../_components/EquipmentDetailDialog"
+import type { UserSession } from "../_components/EquipmentDetailDialog/EquipmentDetailTypes"
 
-describe('EquipmentDetailDialog tabs', () => {
+describe("EquipmentDetailDialog tabs", () => {
   const equipment: Equipment = {
     id: 1,
-    ma_thiet_bi: 'EQ-001',
-    ten_thiet_bi: 'Máy siêu âm',
-    khoa_phong_quan_ly: 'Khoa Nội',
+    ma_thiet_bi: "EQ-001",
+    ten_thiet_bi: "Máy siêu âm",
+    khoa_phong_quan_ly: "Khoa Nội",
   }
 
   const user: UserSession = {
     id: 1,
-    role: 'admin',
+    role: "admin",
     khoa_phong: null,
   }
 
@@ -112,61 +113,66 @@ describe('EquipmentDetailDialog tabs', () => {
     }
   })
 
-  it('renders details tab by default', () => {
+  it("renders details tab by default", () => {
     render(<EquipmentDetailDialog {...baseProps} />)
 
-    expect(screen.getByText('Details tab content')).toBeInTheDocument()
+    expect(screen.getByText("Details tab content")).toBeInTheDocument()
   })
 
-  it('switches to files tab', async () => {
+  it("switches to files tab", async () => {
     render(<EquipmentDetailDialog {...baseProps} />)
 
-    const filesTab = screen.getByRole('tab', { name: 'File đính kèm' })
+    const filesTab = screen.getByRole("tab", { name: "File đính kèm" })
     fireEvent.mouseDown(filesTab)
     fireEvent.click(filesTab)
 
-    expect(await screen.findByText('Files tab content')).toBeInTheDocument()
+    expect(await screen.findByText("Files tab content")).toBeInTheDocument()
   })
 
-  it('switches to history tab', async () => {
+  it("switches to history tab", async () => {
     render(<EquipmentDetailDialog {...baseProps} />)
 
-    const historyTab = screen.getByRole('tab', { name: 'Lịch sử' })
+    const historyTab = screen.getByRole("tab", { name: "Lịch sử" })
     fireEvent.mouseDown(historyTab)
     fireEvent.click(historyTab)
 
-    expect(await screen.findByText('History tab content')).toBeInTheDocument()
+    expect(await screen.findByText("History tab content")).toBeInTheDocument()
   })
 
-  it('switches to usage tab', async () => {
+  it("switches to usage tab", async () => {
     render(<EquipmentDetailDialog {...baseProps} />)
 
-    const usageTab = screen.getByRole('tab', { name: 'Nhật ký sử dụng' })
+    const usageTab = screen.getByRole("tab", { name: "Nhật ký sử dụng" })
     fireEvent.mouseDown(usageTab)
     fireEvent.click(usageTab)
 
-    expect(await screen.findByText('Usage tab content')).toBeInTheDocument()
+    expect(await screen.findByText("Usage tab content")).toBeInTheDocument()
   })
 
-  it('enters edit mode and wires save button to the inline form', () => {
+  it("enters edit mode and wires save button to the inline form", () => {
     render(<EquipmentDetailDialog {...baseProps} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sửa thông tin' }))
+    fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
 
-    expect(screen.getByRole('button', { name: 'Hủy' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Lưu thay đổi' })).toHaveAttribute(
-      'form',
-      'equipment-inline-edit-form'
+    expect(screen.getByRole("button", { name: "Hủy" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Lưu thay đổi" })).toHaveAttribute(
+      "form",
+      "equipment-inline-edit-form"
     )
   })
 
-  it('calls onOpenChange(false) when close is clicked outside edit mode', () => {
+  it("calls onOpenChange(false) when close is clicked outside edit mode", () => {
     const onOpenChange = vi.fn()
 
     render(<EquipmentDetailDialog {...baseProps} onOpenChange={onOpenChange} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Đóng' }))
+    fireEvent.click(screen.getByRole("button", { name: "Đóng" }))
 
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
+})
+
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
 })

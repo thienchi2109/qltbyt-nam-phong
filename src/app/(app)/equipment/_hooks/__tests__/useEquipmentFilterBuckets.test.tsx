@@ -107,6 +107,51 @@ describe("useEquipmentFilterBuckets", () => {
     ])
   })
 
+  it("keeps seven catalog zero buckets, future labels, and raw inactive or unknown history selectable", async () => {
+    const labels = [
+      "Hoạt động",
+      "Chờ sửa chữa",
+      "Chờ bảo trì",
+      "Chờ hiệu chuẩn/kiểm định",
+      "Ngưng sử dụng",
+      "Chưa có nhu cầu sử dụng",
+      "Thanh lý nội bộ",
+      "Đang đánh giá kỹ thuật",
+      "Trạng thái đã ngừng cấp",
+      "  Giá trị lịch sử  ",
+    ]
+    callRpcMock.mockResolvedValue({
+      status: labels.map((name) => ({ name, count: 0 })),
+      status_catalog: labels.slice(0, 9).map((status_value, index) => ({
+        status_value,
+        display_order: index,
+        is_active: index < 8,
+        is_terminal: false,
+        requires_end_date: false,
+        blocks_operational_actions: false,
+        is_liquidation: index === 6,
+      })),
+    })
+    const queryClient = createQueryClient()
+    const { result } = renderHook(
+      () =>
+        useEquipmentFilterBuckets({
+          ...baseParams,
+          selectedStatuses: ["  Giá trị lịch sử  ", "Thanh lý nội bộ"],
+        }),
+      { wrapper: createWrapper(queryClient) }
+    )
+    await waitFor(() => expect(result.current.statuses).toHaveLength(10))
+    expect(result.current.statuses).toEqual(labels)
+    expect(result.current.filterData.status).toEqual(
+      labels.map((label) => ({ id: label, label, count: 0 }))
+    )
+    expect(getBucketCalls()[0]?.args?.p_tinh_trang_array).toEqual([
+      "  Giá trị lịch sử  ",
+      "Thanh lý nội bộ",
+    ])
+  })
+
   it("keys bucket data by draft filters without pagination inputs", async () => {
     const queryClient = createQueryClient()
     const { rerender } = renderHook(

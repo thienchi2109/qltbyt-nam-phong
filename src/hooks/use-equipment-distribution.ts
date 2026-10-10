@@ -1,7 +1,8 @@
 "use client"
 
-import { useQuery } from '@tanstack/react-query'
-import { callRpc } from '@/lib/rpc-client'
+import { useQuery } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
+import { equipmentStatusCatalogSchema, type EquipmentStatusRow } from "@/lib/equipment-status"
 
 export interface EquipmentDistributionItem {
   name: string
@@ -22,11 +23,14 @@ export interface EquipmentDistributionData {
   departments: string[]
   locations: string[]
   totalEquipment: number
+  statusCounts?: Record<string, number>
+  statusCatalog?: EquipmentStatusRow[]
 }
 
 interface EquipmentStatusDistributionRpc {
   total_equipment: number
-  status_counts: Record<string, number>
+  status_counts?: Record<string, number>
+  status_catalog?: EquipmentStatusRow[]
   by_department: EquipmentDistributionItem[]
   by_location: EquipmentDistributionItem[]
   departments: string[]
@@ -35,12 +39,18 @@ interface EquipmentStatusDistributionRpc {
 
 // Query keys for caching
 const equipmentDistributionKeys = {
-  all: ['equipment-distribution'] as const,
-  data: (params: { filterDept?: string; filterLoc?: string; tenant?: string }) => (
-    [...equipmentDistributionKeys.all, 'data', params.filterDept, params.filterLoc, params.tenant] as const
-  ),
+  all: ["equipment-distribution"] as const,
+  data: (params: { filterDept?: string; filterLoc?: string; tenant?: string }) =>
+    [
+      ...equipmentDistributionKeys.all,
+      "data",
+      params.filterDept,
+      params.filterLoc,
+      params.tenant,
+    ] as const,
 }
 
+/** Fetches catalog-aware equipment distribution data for active filters. */
 export function useEquipmentDistribution(
   filterDepartment?: string,
   filterLocation?: string,
@@ -52,16 +62,16 @@ export function useEquipmentDistribution(
     queryKey: equipmentDistributionKeys.data({
       filterDept: filterDepartment,
       filterLoc: filterLocation,
-      tenant: effectiveTenantKey || 'auto',
+      tenant: effectiveTenantKey || "auto",
     }),
     queryFn: async (): Promise<EquipmentDistributionData> => {
       const res = await callRpc<EquipmentStatusDistributionRpc>({
-        fn: 'equipment_status_distribution',
+        fn: "equipment_status_distribution",
         args: {
           p_q: null,
           p_don_vi: selectedDonVi || null,
-          p_khoa_phong: filterDepartment && filterDepartment !== 'all' ? filterDepartment : null,
-          p_vi_tri: filterLocation && filterLocation !== 'all' ? filterLocation : null,
+          p_khoa_phong: filterDepartment && filterDepartment !== "all" ? filterDepartment : null,
+          p_vi_tri: filterLocation && filterLocation !== "all" ? filterLocation : null,
         },
       })
 
@@ -81,10 +91,15 @@ export function useEquipmentDistribution(
         departments: res.departments || [],
         locations: res.locations || [],
         totalEquipment: res.total_equipment || 0,
+        statusCounts: res.status_counts,
+        statusCatalog:
+          res.status_catalog === undefined
+            ? undefined
+            : equipmentStatusCatalogSchema.parse(res.status_catalog),
       }
       return data
     },
-    enabled: (effectiveTenantKey ?? 'auto') !== 'unset',
+    enabled: (effectiveTenantKey ?? "auto") !== "unset",
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 15 * 60 * 1000, // 15 minutes
     retry: 2,
@@ -92,21 +107,22 @@ export function useEquipmentDistribution(
 }
 
 // Export status color mapping for consistency
+/** Chart colors keyed by legacy status wire value. */
 export const STATUS_COLORS = {
-  hoat_dong: '#22c55e',        // green-500
-  cho_sua_chua: '#ef4444',     // red-500
-  cho_bao_tri: '#f59e0b',      // amber-500
-  cho_hieu_chuan: '#8b5cf6',   // violet-500
-  ngung_su_dung: '#6b7280',    // gray-500
-  chua_co_nhu_cau: '#9ca3af'   // gray-400
+  hoat_dong: "#22c55e", // green-500
+  cho_sua_chua: "#ef4444", // red-500
+  cho_bao_tri: "#f59e0b", // amber-500
+  cho_hieu_chuan: "#8b5cf6", // violet-500
+  ngung_su_dung: "#6b7280", // gray-500
+  chua_co_nhu_cau: "#9ca3af", // gray-400
 } as const
 
+/** Display labels keyed by legacy status wire value. */
 export const STATUS_LABELS = {
-  hoat_dong: 'Hoạt động',
-  cho_sua_chua: 'Chờ sửa chữa',
-  cho_bao_tri: 'Chờ bảo trì',
-  cho_hieu_chuan: 'Chờ HC/KĐ',
-  ngung_su_dung: 'Ngừng sử dụng',
-  chua_co_nhu_cau: 'Chưa có nhu cầu'
-} as const 
-
+  hoat_dong: "Hoạt động",
+  cho_sua_chua: "Chờ sửa chữa",
+  cho_bao_tri: "Chờ bảo trì",
+  cho_hieu_chuan: "Chờ HC/KĐ",
+  ngung_su_dung: "Ngừng sử dụng",
+  chua_co_nhu_cau: "Chưa có nhu cầu",
+} as const

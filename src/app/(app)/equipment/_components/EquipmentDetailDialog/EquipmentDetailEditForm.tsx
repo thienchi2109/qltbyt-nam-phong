@@ -18,10 +18,12 @@ import { EquipmentDetailDatesSection } from "./EquipmentDetailDatesSection"
 import { EquipmentDetailLifecycleSection } from "./EquipmentDetailLifecycleSection"
 import { EquipmentDetailStatusSection } from "./EquipmentDetailStatusSection"
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
+import type { EquipmentStatusRow } from "@/lib/equipment-status"
 
 export interface EquipmentDetailEditFormProps {
   formId: string
   initialStatus?: string | null
+  statusCatalog?: readonly EquipmentStatusRow[]
   onSubmit: (values: EquipmentFormValues) => void
 }
 
@@ -29,6 +31,7 @@ export interface EquipmentDetailEditFormProps {
 export function EquipmentDetailEditForm({
   formId,
   initialStatus,
+  statusCatalog,
   onSubmit,
 }: EquipmentDetailEditFormProps): React.ReactNode {
   const form = useFormContext<EquipmentFormValues>()
@@ -37,6 +40,7 @@ export function EquipmentDetailEditForm({
     control: form.control,
     setValue: form.setValue,
     initialStatus,
+    statusCatalog,
   })
 
   return (

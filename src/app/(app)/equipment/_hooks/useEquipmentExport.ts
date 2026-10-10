@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { useToast } from "@/hooks/use-toast"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { downloadBlob, exportToExcel, generateEquipmentImportTemplate } from "@/lib/excel-utils"
 import {
   generateProfileSheet,
@@ -53,6 +54,7 @@ export interface UseEquipmentExportReturn {
 export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipmentExportReturn {
   const { total, filterParams, tenantBranding, userRole } = params
   const { toast } = useToast()
+  const statusCatalog = useEquipmentStatusCatalog()
   const [isExporting, setIsExporting] = React.useState(false)
   const abortControllerRef = React.useRef<AbortController | null>(null)
 
@@ -66,8 +68,9 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
   }, [])
 
   const handleDownloadTemplate = React.useCallback(async () => {
+    if (!statusCatalog.canWrite) return
     try {
-      const blob = await generateEquipmentImportTemplate()
+      const blob = await generateEquipmentImportTemplate(statusCatalog.activeValues)
       downloadBlob(blob, "Mau_Nhap_Thiet_Bi.xlsx")
     } catch (error) {
       console.error("Error downloading template:", error)
@@ -77,7 +80,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
         description: "Không thể tải template. Vui lòng thử lại.",
       })
     }
-  }, [toast])
+  }, [toast, statusCatalog.canWrite, statusCatalog.activeValues])
 
   const handleGenerateProfileSheet = React.useCallback(
     async (equipment: Equipment) => {

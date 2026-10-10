@@ -16,6 +16,8 @@
 
 Phạm vi đã chốt: catalog toàn hệ thống, bảy nhãn tiếng Việt; không tùy biến tenant, không trang quản trị, không dependency mới, không mã mới, không FK, không tự sửa/xóa lịch sử. Sửa tài liệu không cho phép chạy migration hay ghi live.
 
+Cập nhật yêu cầu của người dùng (2026-10-10): không backfill hay tự chuyển trạng thái bất kỳ thiết bị hiện có; người dùng tự chọn “Thanh lý nội bộ” trên UI theo quyền chuyển trạng thái hiện hữu, không thay đổi RBAC. Badge của trạng thái mới có nền xám đậm và chữ trắng; áp dụng nhất quán ở desktop/mobile/QR, kiểm tra tương phản và giữ màu sáu trạng thái cũ.
+
 Mỗi checkbox là một thao tác 2–5 phút; ma trận lớn thực hiện một ca mỗi lượt. Dùng context-mode cho tìm kiếm/test/gate; RTK cho Git ngắn. Trước đổi symbol: kiểm tra Code Review Graph/GitNexus impact, rồi `@code-deduplication` cho logic tái sử dụng. Đọc `AGENTS.md`, `CLAUDE.md`, `docs/runbooks/db-quality-gate-oracle.md`, `/root/Oracle/supabase-test.md`. Giữ hooks, không `--no-verify`. Gom unit tests RED với Green của task. SQL RED/Green chỉ được gọi sau candidate commit: baseline-forward control clone là RED nếu thiếu hành vi, candidate clone là GREEN; static PASS không phải SQL execution PASS.
 
 | status_value             | order | terminal | requires_end_date | blocks_operational_actions | is_liquidation |
@@ -229,6 +231,12 @@ ROLLBACK;
 
 ### Task 3: Add an append-only consumer RPC migration
 
+Source clarification (2026-10-10): the current `equipment_filter_buckets` returns bucket arrays and has no `status_counts` field. Preserve those arrays and add `status_catalog`; preserve the existing `status_counts` in the primary `equipment_status_distribution`, where that field exists. The legacy distribution overload returns `TABLE(tinh_trang, so_luong)` and must retain that shape. These clarifications do not introduce new response contracts.
+
+Review correction (2026-10-10): use the specified shared OR predicate for liquidation rank and its date chronology. Keep raw unknown status labels in filter buckets so exact list filtering still works; aggregate unknown history as `khac` only in reports. Read metadata includes inactive catalog rows, with inactive history counts retained. Add `20261009102300_maintenance_tasks_delete_lock_order.sql` to align the existing delete RPC with equipment-before-task/plan locking introduced here, preserving every existing authorization and closing rule. Bind this additional migration in the consumer test registry and retain a deterministic two-session update/delete regression check. This correctness extension supersedes the thirteen-migration count below.
+
+The two-session check also reproduced `40P01` between the existing `repair_request_update` joint row lock and the new equipment-first completion lock. Add `20261009102400_repair_request_update_lock_order.sql` with equipment-before-request locking and association recheck only, preserving all existing permissions and update behavior. Register all fifteen consumer migrations and retain the update/complete race check. These two peer-lock migrations prevent regressions introduced by the new lock order; they do not change transition permissions.
+
 **Files (one RPC/responsibility per immutable migration; each file must stay below 450 lines):**
 
 - Create: `supabase/migrations/20261009101000_equipment_filter_buckets_catalog.sql` (equipment_filter_buckets)
@@ -290,6 +298,8 @@ Source-size check on existing definitions: create 148 lines, update 187, filter 
 ## Chunk 2: Dynamic application consumers
 
 ### Task 4: Create one client catalog adapter
+
+Source clarification (2026-10-10): the catalog uses the existing QueryClient cache and is cleared when that client is cleared. Automatic clearing on logout has not been established in the current session wiring; Task 4 does not add session handling. Catalog readiness is a prerequisite for writes, combined with the existing authorization at each consumer, and grants no new permissions. Unknown metadata is represented by an absent lookup result; consumers retain the raw label and neutral display without an identity-only helper.
 
 **Files:**
 
@@ -356,6 +366,12 @@ Hook tái dùng `callRpc` + React Query conventions của `src/hooks/use-equipme
 
 ### Task 5: Replace UI, form, import, export, filter, and distribution literals
 
+Source clarification (2026-10-10): usage-session initial/final condition fields are existing free-text descriptions, distinct from equipment status admission. Replace their datalist suggestions and expose catalog retry, preserving free text and authorized session closing; catalog readiness does not grant or remove those permissions. Preserve the existing import trim of new user input before exact catalog admission, without adding fuzzy matching, normalization or historical rewrites.
+
+Necessary direct-owner wiring is included for add-dialog/detail-dialog schema and catalog props, raw edit defaults, distribution utilities/chart/inventory consumers and narrow equipment status type compatibility. Keep lifecycle date/transition rules for Task 6. Extract the existing template generator to `src/lib/equipment-import-template.ts`, import validator to `src/components/import-equipment-validation.ts`, and status assignment section to `AddEquipmentStatusSection.tsx` where needed to keep changed source files below the documented ceiling. Use focused catalog test files for oversized existing suites, preserving their unrelated coverage.
+
+The distribution chart tab and tooltip are direct consumers too: replace their six-status rendering list and preserve raw payload labels in tooltips. Reuse the existing distribution summary utilities; retain one legacy label-to-wire-key map only for response compatibility, never for admission.
+
 **Files:**
 
 - Modify: `src/components/equipment/equipment-table-columns.tsx`
@@ -402,6 +418,12 @@ git commit -m "feat: load equipment status options from catalog"
 
 ### Task 6: Apply catalog metadata to lifecycle surfaces
 
+Source clarification (2026-10-10): retain DD/MM/YYYY where the existing date input displays it; assert the persisted ISO date at the Asia/Ho_Chi_Minh day boundary. QR usage/history actions navigate rather than create a session, so keep those paths available and guard new operations at the actual start/repair entry and submission. Initial/final usage condition text stays free text, while equipment metadata governs new operational eligibility; existing-session close stays available under its existing RBAC. Preserve the differing legacy policies of each surface rather than broadening all terminal states.
+
+For metadata-only edits, omit an unchanged missing historical end-date field from the update patch; do not send an explicit clear or autofill it. Preserve explicit date edits, real restore clears, and unrelated null-valued fields.
+
+Necessary direct-owner wiring includes the equipment content owner (catalog props to mobile rows), QR sheet owner, detail form/tabs/index, existing add/edit schema owners, `mobile-usage-actions.tsx`, and `start-usage-dialog.tsx`. Reuse the existing status/date modules and catalog subscription; no duplicate transition helper, per-row catalog hook, or new provider framework.
+
 **Files:**
 
 - Modify: `src/components/equipment-decommission-form.ts`
@@ -420,7 +442,7 @@ git commit -m "feat: load equipment status options from catalog"
 - Inspect only: `src/components/equipment-edit/EquipmentEditTypes.ts` and `src/components/equipment-edit/useEquipmentEditUpdate.ts`; modify the existing schema owner found by symbol search, never create `src/components/equipment-edit-form.tsx`
 - Preserve: `src/lib/equipment-attention-preset.ts`
 
-- [ ] **Step 1: Write RED tests at the real paths above for transition detection, terminal date autofill, explicit-date precedence, Asia/Ho_Chi_Minh boundary, neutral styling, blocked repair/use/maintenance actions, metadata edit, and permitted restore.**
+- [ ] **Step 1: Write RED tests at the real paths above for transition detection, terminal date autofill, explicit-date precedence, Asia/Ho_Chi_Minh boundary, a dark-gray badge with white text for Thanh lý nội bộ, blocked repair/use/maintenance actions, metadata edit, and permitted restore.**
 - [ ] **Step 2: Use catalog metadata for new behavior while preserving verified legacy six-status UI policy. `blocks_operational_actions` must govern new terminal action blocking; do not broaden all terminal rows. `Ngưng sử dụng` remains compatible with its existing UI behavior through an explicit legacy policy helper, and `Thanh lý nội bộ` is not added to the attention preset.**
 - [ ] **Step 3: Keep `EquipmentEditTransitions.ts` at `src/components/equipment-edit/EquipmentEditTransitions.ts`; do not invent an app-path duplicate. Ensure `didEnterLiquidationEndState` handles catalog liquidation independent of department while preserving old warehouse semantics.**
 - [ ] **Step 4: Run the focused lifecycle suite.**
@@ -508,7 +530,7 @@ Expected: clean và up to date with origin. Không ghi live, không áp candidat
 - The seven exact Vietnamese labels, including `Thanh lý nội bộ`, are catalog-backed and accepted by create/update/import; unknown/inactive values fail closed at the server boundary cho create/chuyển trạng thái; inactive đã biết không đổi vẫn sửa metadata được.
 - Catalog metadata is constrained (`requires_end_date` implies terminal); terminal alone does not silently imply date or all-server action blocking.
 - Existing six labels, historical rows, legacy UI action policy, and report/distribution overloads remain compatible; no auto backfill, deletion, or client catalog writes occur.
-- New terminal status gets server and UI date autofill with explicit-date precedence, operational blocking, metadata-edit/permitted-restore paths, neutral styling, and liquidation-last ordering independent of department.
+- New terminal status gets server and UI date autofill with explicit-date precedence, operational blocking, metadata-edit/permitted-restore paths, a dark-gray badge with white text, and liquidation-last ordering independent of department.
 - Filters, zero-count distribution, import/template, export/report (`src/app/(app)/reports/components/export-report-dialog.utils.ts`), and Go AI status filters use the catalog/raw stored values.
 - Actual SQL smoke tests cover write validation, workflow guards, and repair sync approve/complete/delete; TypeScript mocks are supplementary. Every migration source file remains below 450 lines; repair approve fails closed while authorized historical complete/delete preserve terminal label/date and applied migrations are untouched.
 - Static and baseline-forward database lanes PASS on the same exact commit; TypeScript/React/Go focused gates PASS.

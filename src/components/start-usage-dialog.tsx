@@ -27,20 +27,13 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useSession } from "next-auth/react"
 import { useStartUsageSession } from "@/hooks/use-usage-logs"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { useToast } from "@/hooks/use-toast"
 import type { Equipment as DbEquipment, SessionUser } from "@/types/database"
 import { isRegionalLeaderRole } from "@/lib/rbac"
 import { formatVietnamDateTime } from "@/lib/date-utils"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
-
-const equipmentStatusOptions = [
-  "Hoạt động",
-  "Chờ sửa chữa", 
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng"
-] as const
+import { getEquipmentStatusMetadata } from "@/lib/equipment-status"
 
 const startUsageSchema = z.object({
   tinh_trang_ban_dau: z.string().trim().min(1, "Vui lòng nhập tình trạng ban đầu"),
@@ -49,7 +42,9 @@ const startUsageSchema = z.object({
 
 type StartUsageFormData = z.infer<typeof startUsageSchema>
 
-type EquipmentForStart = Pick<DbEquipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & { tinh_trang_hien_tai?: string | null }
+type EquipmentForStart = Pick<DbEquipment, "id" | "ten_thiet_bi" | "ma_thiet_bi"> & {
+  tinh_trang_hien_tai?: string | null
+}
 
 interface StartUsageDialogProps {
   open: boolean
@@ -58,11 +53,7 @@ interface StartUsageDialogProps {
 }
 
 /** Renders the dialog for starting a new equipment usage session. */
-export function StartUsageDialog({
-  open,
-  onOpenChange,
-  equipment,
-}: StartUsageDialogProps) {
+export function StartUsageDialog({ open, onOpenChange, equipment }: StartUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
@@ -79,6 +70,20 @@ export function StartUsageDialog({
     return null
   }, [user?.id])
   const startUsageMutation = useStartUsageSession()
+  const {
+    activeValues,
+    canWrite,
+    refetch,
+    data: statusCatalog,
+    isSuccess,
+    fetchStatus,
+  } = useEquipmentStatusCatalog()
+  const canStart =
+    isSuccess &&
+    fetchStatus === "idle" &&
+    !!statusCatalog &&
+    !getEquipmentStatusMetadata(statusCatalog, equipment?.tinh_trang_hien_tai ?? "")
+      ?.blocks_operational_actions
 
   const form = useForm<StartUsageFormData>({
     resolver: zodResolver(startUsageSchema),
@@ -98,7 +103,7 @@ export function StartUsageDialog({
   }, [equipment, open, form])
 
   const onSubmit = async (data: StartUsageFormData) => {
-    if (isRegionalLeader) {
+    if (isRegionalLeader || !canStart) {
       return
     }
     if (!equipment || !user) return
@@ -108,7 +113,7 @@ export function StartUsageDialog({
       toast({
         variant: "destructive",
         title: "Lỗi",
-        description: "Không xác định được người dùng hiện tại."
+        description: "Không xác định được người dùng hiện tại.",
       })
       return
     }
@@ -121,7 +126,7 @@ export function StartUsageDialog({
         tinh_trang_ban_dau: data.tinh_trang_ban_dau,
         ghi_chu: data.ghi_chu,
       })
-      
+
       onOpenChange(false)
       form.reset()
     } catch (error) {
@@ -174,12 +179,20 @@ export function StartUsageDialog({
                     />
                   </FormControl>
                   <datalist id="start-usage-status-options">
-                    {equipmentStatusOptions.map((status) => (
+                    {activeValues.map((status) => (
                       <option key={status} value={status}>
                         {status}
                       </option>
                     ))}
                   </datalist>
+                  {!canWrite && (
+                    <div className="text-sm text-muted-foreground">
+                      Chưa tải được gợi ý tình trạng. Bạn vẫn có thể nhập tình trạng thiết bị.
+                      <Button type="button" variant="link" onClick={() => void refetch()}>
+                        Thử lại
+                      </Button>
+                    </div>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -213,7 +226,7 @@ export function StartUsageDialog({
               >
                 Hủy
               </Button>
-              <Button type="submit" disabled={isLoading || isRegionalLeader}>
+              <Button type="submit" disabled={isLoading || isRegionalLeader || !canStart}>
                 {isLoading && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Bắt đầu sử dụng
               </Button>

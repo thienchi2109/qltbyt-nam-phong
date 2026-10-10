@@ -11,12 +11,7 @@ import { AlertTriangle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   columnLabels,
   getStatusVariant,
@@ -29,6 +24,7 @@ import {
   TEXT_DATE_FIELDS,
 } from "@/lib/date-utils"
 import type { Equipment } from "@/types/database"
+import { LIQUIDATION_STATUS_BADGE_CLASS } from "@/lib/equipment-status"
 
 /** Fields moved to the Config tab - excluded from Details tab */
 const CONFIG_TAB_FIELDS = new Set(["cau_hinh_thiet_bi", "phu_kien_kem_theo"])
@@ -56,7 +52,12 @@ function FieldValue({
   if (fieldKey === "tinh_trang_hien_tai") {
     const statusValue = value as Equipment["tinh_trang_hien_tai"]
     return statusValue ? (
-      <Badge variant={getStatusVariant(statusValue)}>{statusValue}</Badge>
+      <Badge
+        variant={getStatusVariant(statusValue)}
+        className={statusValue === "Thanh lý nội bộ" ? LIQUIDATION_STATUS_BADGE_CLASS : undefined}
+      >
+        {statusValue}
+      </Badge>
     ) : (
       <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
     )
@@ -66,9 +67,7 @@ function FieldValue({
   if (fieldKey === "phan_loai_theo_nd98") {
     const classification = value as Equipment["phan_loai_theo_nd98"]
     return classification ? (
-      <Badge variant={getClassificationVariant(classification)}>
-        {classification.trim()}
-      </Badge>
+      <Badge variant={getClassificationVariant(classification)}>{classification.trim()}</Badge>
     ) : (
       <div className="italic text-muted-foreground">Chưa có dữ liệu</div>
     )
@@ -104,10 +103,7 @@ function FieldValue({
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex items-center">
-                  <AlertTriangle
-                    className="size-4 text-amber-500 cursor-help"
-                    aria-hidden="true"
-                  />
+                  <AlertTriangle className="size-4 text-amber-500 cursor-help" aria-hidden="true" />
                   <span className="sr-only">{SUSPICIOUS_DATE_WARNING}</span>
                 </span>
               </TooltipTrigger>
@@ -129,6 +125,7 @@ function FieldValue({
   return <>{String(value)}</>
 }
 
+/** Renders the equipment detail fields for view or edit mode. */
 export function EquipmentDetailDetailsTab({
   displayEquipment,
   isEditing,
@@ -140,17 +137,16 @@ export function EquipmentDetailDetailsTab({
   }
 
   // View mode: display all fields (excluding id and config tab fields)
-  const visibleFields = (Object.keys(columnLabels) as Array<keyof Equipment>)
-    .filter((key) => key !== "id" && !CONFIG_TAB_FIELDS.has(key))
+  const visibleFields = (Object.keys(columnLabels) as Array<keyof Equipment>).filter(
+    (key) => key !== "id" && !CONFIG_TAB_FIELDS.has(key)
+  )
 
   return (
     <ScrollArea className="h-full pr-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 py-4">
         {visibleFields.map((key) => (
           <div key={key} className="border-b pb-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              {columnLabels[key]}
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">{columnLabels[key]}</p>
             <div className="font-semibold break-words">
               <FieldValue fieldKey={key} value={displayEquipment[key]} />
             </div>

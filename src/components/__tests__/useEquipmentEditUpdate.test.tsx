@@ -2,9 +2,14 @@ import * as React from "react"
 import { renderHook, waitFor } from "@testing-library/react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { readyStatusCatalog } from "@/hooks/__tests__/equipment-status-catalog-fixtures"
 
 const mockToast = vi.fn()
 const mockCallRpc = vi.fn()
+const mockCatalog = vi.fn()
+vi.mock("@/hooks/use-equipment-status-catalog", () => ({
+  useEquipmentStatusCatalog: () => mockCatalog(),
+}))
 
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: mockToast }),
@@ -38,6 +43,68 @@ function createWrapper() {
 describe("useEquipmentEditUpdate", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCatalog.mockReturnValue(readyStatusCatalog)
+  })
+
+  it.each(["paused", "fetching", "error"])(
+    "rejects a previously obtained update after catalog becomes %s",
+    async (state) => {
+      const { result, rerender } = renderHook(() => useEquipmentEditUpdate(), {
+        wrapper: createWrapper(),
+      })
+      const update = result.current.updateEquipment
+      mockCatalog.mockReturnValue({
+        ...readyStatusCatalog,
+        isSuccess: state !== "error",
+        fetchStatus: state === "error" ? "idle" : state,
+      })
+      rerender()
+      await expect(update({ id: 15, patch: { ten_thiet_bi: "Metadata mới" } })).rejects.toThrow()
+      expect(mockCallRpc).not.toHaveBeenCalled()
+    }
+  )
+
+  it("rejects new entry after deactivation but allows unchanged known inactive metadata", async () => {
+    const catalog = {
+      ...readyStatusCatalog,
+      data: readyStatusCatalog.data.map((row) => ({ ...row, is_active: false })),
+      activeValues: [],
+      canWrite: false,
+    }
+    mockCatalog.mockReturnValue(catalog)
+    const { result, rerender } = renderHook(
+      ({ currentStatus }) => useEquipmentEditUpdate({ ...{ currentStatus } }),
+      {
+        initialProps: { currentStatus: "Chờ bảo trì" },
+        wrapper: createWrapper(),
+      }
+    )
+    await expect(
+      result.current.updateEquipment({ id: 15, patch: { tinh_trang_hien_tai: "Hoạt động" } })
+    ).rejects.toThrow()
+    expect(mockCallRpc).not.toHaveBeenCalled()
+    rerender({ currentStatus: "Hoạt động" })
+    mockCallRpc.mockResolvedValueOnce(undefined)
+    await expect(
+      result.current.updateEquipment({
+        id: 15,
+        patch: { tinh_trang_hien_tai: "Hoạt động", ghi_chu: "Metadata mới" },
+      })
+    ).resolves.toMatchObject({ ghi_chu: "Metadata mới" })
+  })
+
+  it("rejects explicit unknown status without canonicalizing the raw value", async () => {
+    const { result } = renderHook(
+      () => useEquipmentEditUpdate({ ...{ currentStatus: "  Giá trị lịch sử  " } }),
+      { wrapper: createWrapper() }
+    )
+    await expect(
+      result.current.updateEquipment({
+        id: 15,
+        patch: { tinh_trang_hien_tai: "  Giá trị lịch sử  " },
+      })
+    ).rejects.toThrow()
+    expect(mockCallRpc).not.toHaveBeenCalled()
   })
 
   it("submits equipment_update with the patch and shows one success toast", async () => {

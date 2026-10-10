@@ -140,6 +140,82 @@ describe("EquipmentDetailDialog decommission date", () => {
     }
   })
 
+  it("keeps a missing historical liquidation date absent from a metadata-only update", async () => {
+    render(
+      <EquipmentDetailDialog
+        {...baseProps}
+        equipment={
+          {
+            id: 84,
+            ma_thiet_bi: "EQ-084",
+            ten_thiet_bi: "Monitor lịch sử",
+            khoa_phong_quan_ly: "ICU",
+            vi_tri_lap_dat: "P-01",
+            nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+            tinh_trang_hien_tai: "Thanh lý nội bộ",
+            ngay_ngung_su_dung: null,
+          } as Equipment
+        }
+      />
+    )
+    fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
+    fireEvent.change(await screen.findByLabelText("Tên thiết bị"), {
+      target: { value: "Metadata mới" },
+    })
+    expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue("")
+    fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+    await waitFor(() => expect(mockUpdateEquipment).toHaveBeenCalled())
+    const patch = mockUpdateEquipment.mock.calls[0]?.[0]?.patch
+    expect(patch).toMatchObject({
+      ten_thiet_bi: "Metadata mới",
+      tinh_trang_hien_tai: "Thanh lý nội bộ",
+    })
+    expect(patch).not.toHaveProperty("ngay_ngung_su_dung")
+  })
+
+  it("reports catalog liquidation across departments without claiming a different status or warehouse", async () => {
+    const now = vi.spyOn(Date, "now").mockReturnValue(new Date("2026-03-24T17:00:00Z").getTime())
+    try {
+      render(
+        <EquipmentDetailDialog
+          {...baseProps}
+          equipment={
+            {
+              id: 85,
+              ma_thiet_bi: "EQ-085",
+              ten_thiet_bi: "Monitor",
+              khoa_phong_quan_ly: "ICU",
+              vi_tri_lap_dat: "P-01",
+              nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+              tinh_trang_hien_tai: "Hoạt động",
+            } as Equipment
+          }
+        />
+      )
+      fireEvent.click(screen.getByRole("button", { name: "Sửa thông tin" }))
+      fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "Thanh lý nội bộ" } })
+      fireEvent.click(screen.getByRole("button", { name: "Lưu thay đổi" }))
+      await waitFor(() =>
+        expect(mockUpdateEquipment).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 85,
+            patch: expect.objectContaining({
+              khoa_phong_quan_ly: "ICU",
+              tinh_trang_hien_tai: "Thanh lý nội bộ",
+              ngay_ngung_su_dung: "2026-03-25",
+            }),
+            successToast: expect.objectContaining({ title: "Đã chuyển thiết bị" }),
+          })
+        )
+      )
+      const description = mockUpdateEquipment.mock.calls[0]?.[0]?.successToast?.description
+      expect(description).toContain("cuối danh sách")
+      expect(description).not.toMatch(/Ngưng sử dụng|Kho thanh lý/)
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it("does not auto-fill on initial load for an existing decommissioned record without a date", async () => {
     render(
       <EquipmentDetailDialog
@@ -214,8 +290,7 @@ describe("EquipmentDetailDialog decommission date", () => {
           }),
           successToast: {
             title: "Đã chuyển thiết bị",
-            description:
-              "Thiết bị đã được chuyển về cuối danh sách vì đang Ngưng sử dụng và thuộc Kho thanh lý.",
+            description: expect.stringContaining("cuối danh sách"),
           },
         })
       })
@@ -298,4 +373,9 @@ describe("EquipmentDetailDialog decommission date", () => {
     })
     expect(baseProps.onEquipmentUpdated).not.toHaveBeenCalled()
   })
+})
+
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
 })

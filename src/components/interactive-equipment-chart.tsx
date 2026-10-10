@@ -8,9 +8,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { 
-  useEquipmentDistribution
-} from "@/hooks/use-equipment-distribution"
+import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 import { EquipmentChartFilters } from "@/components/interactive-equipment-chart-controls"
 import { EquipmentChartDistributionTab } from "@/components/interactive-equipment-chart-distribution-tab"
 import { cn } from "@/lib/utils"
@@ -23,15 +21,20 @@ interface InteractiveEquipmentChartProps {
 }
 
 /** Renders the interactive equipment distribution chart for a facility scope. */
-export function InteractiveEquipmentChart({ className, tenantFilter, selectedDonVi, effectiveTenantKey }: InteractiveEquipmentChartProps) {
-  const [viewType, setViewType] = React.useState<'department' | 'location'>('department')
-  const [selectedDepartment, setSelectedDepartment] = React.useState<string>('all')
-  const [selectedLocation, setSelectedLocation] = React.useState<string>('all')
-  
+export function InteractiveEquipmentChart({
+  className,
+  tenantFilter,
+  selectedDonVi,
+  effectiveTenantKey,
+}: InteractiveEquipmentChartProps) {
+  const [viewType, setViewType] = React.useState<"department" | "location">("department")
+  const [selectedDepartment, setSelectedDepartment] = React.useState<string>("all")
+  const [selectedLocation, setSelectedLocation] = React.useState<string>("all")
+
   // Apply cross-filtering to the hook
-  const crossFilterDept = viewType === 'location' ? selectedDepartment : undefined
-  const crossFilterLoc = viewType === 'department' ? selectedLocation : undefined
-  
+  const crossFilterDept = viewType === "location" ? selectedDepartment : undefined
+  const crossFilterLoc = viewType === "department" ? selectedLocation : undefined
+
   const { data, isLoading, error } = useEquipmentDistribution(
     crossFilterDept,
     crossFilterLoc,
@@ -42,18 +45,18 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
 
   // Reset filters function
   const resetFilters = () => {
-    setSelectedDepartment('all')
-    setSelectedLocation('all')
+    setSelectedDepartment("all")
+    setSelectedLocation("all")
   }
 
   // Check if any filters are active
-  const hasActiveFilters = selectedDepartment !== 'all' || selectedLocation !== 'all'
+  const hasActiveFilters = selectedDepartment !== "all" || selectedLocation !== "all"
 
   // Filtered data based on current selection with cross-filtering
   const chartData = React.useMemo(() => {
     if (!data) return []
 
-    return viewType === 'department' ? data.byDepartment : data.byLocation
+    return viewType === "department" ? data.byDepartment : data.byLocation
   }, [data, viewType])
 
   // Statistics
@@ -61,17 +64,17 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
     if (!data) return null
 
     const totalCategories = chartData.length
-    const totalEquipment = (typeof data.totalEquipment === 'number' && !Number.isNaN(data.totalEquipment))
-      ? data.totalEquipment
-      : chartData.reduce((sum, item) => sum + item.total, 0)
-    const avgEquipmentPerCategory = totalCategories > 0 
-      ? Math.round(totalEquipment / totalCategories) 
-      : 0
-    
+    const totalEquipment =
+      typeof data.totalEquipment === "number" && !Number.isNaN(data.totalEquipment)
+        ? data.totalEquipment
+        : chartData.reduce((sum, item) => sum + item.total, 0)
+    const avgEquipmentPerCategory =
+      totalCategories > 0 ? Math.round(totalEquipment / totalCategories) : 0
+
     return {
       totalCategories,
       totalEquipment,
-      avgEquipmentPerCategory
+      avgEquipmentPerCategory,
     }
   }, [chartData, data])
 
@@ -105,23 +108,23 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <div className="min-w-0">
             <CardTitle className="flex items-center gap-2">
               <BarChart3 className="size-5" />
-              Phân bố Thiết bị theo {viewType === 'department' ? 'Khoa/Phòng' : 'Vị trí'}
+              Phân bố Thiết bị theo {viewType === "department" ? "Khoa/Phòng" : "Vị trí"}
             </CardTitle>
             <CardDescription className="flex items-center gap-2 flex-wrap">
               <span>Biểu đồ tương tác thể hiện số lượng và trạng thái thiết bị</span>
-              {selectedDepartment !== 'all' && viewType === 'location' && (
+              {selectedDepartment !== "all" && viewType === "location" && (
                 <Badge variant="secondary" className="text-xs">
                   Khoa/Phòng: {selectedDepartment}
                 </Badge>
               )}
-              {selectedLocation !== 'all' && viewType === 'department' && (
+              {selectedLocation !== "all" && viewType === "department" && (
                 <Badge variant="secondary" className="text-xs">
                   Vị trí: {selectedLocation}
                 </Badge>
               )}
             </CardDescription>
           </div>
-          
+
           {stats && (
             <div className="flex w-full flex-wrap gap-4 text-sm xl:w-auto xl:justify-end">
               <div className="text-center">
@@ -130,7 +133,9 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
               </div>
               <div className="text-center">
                 <div className="font-semibold text-green-600">{stats.totalCategories}</div>
-                <div className="text-muted-foreground">{viewType === 'department' ? 'Khoa/Phòng' : 'Vị trí'}</div>
+                <div className="text-muted-foreground">
+                  {viewType === "department" ? "Khoa/Phòng" : "Vị trí"}
+                </div>
               </div>
               <div className="text-center">
                 <div className="font-semibold text-purple-600">{stats.avgEquipmentPerCategory}</div>
@@ -142,12 +147,19 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
       </CardHeader>
 
       <CardContent data-testid="equipment-chart-content" className="min-w-0">
-        <Tabs value={viewType} onValueChange={(value) => setViewType(value as 'department' | 'location')} className="min-w-0 space-y-4">
+        <Tabs
+          value={viewType}
+          onValueChange={(value) => setViewType(value as "department" | "location")}
+          className="min-w-0 space-y-4"
+        >
           <div
             data-testid="equipment-chart-toolbar"
             className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between"
           >
-            <div data-testid="equipment-chart-tabs-scroll" className="w-full overflow-x-auto pb-1 xl:w-auto">
+            <div
+              data-testid="equipment-chart-tabs-scroll"
+              className="w-full overflow-x-auto pb-1 xl:w-auto"
+            >
               <TabsList className="w-max min-w-max">
                 <TabsTrigger value="department" className="flex items-center gap-2">
                   <Building2 className="size-4" />
@@ -163,7 +175,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
             {/* Cross Filters and Reset */}
             <div className="flex w-full flex-wrap items-center gap-2 xl:w-auto xl:justify-end">
               {/* When viewing by department, allow filtering by location */}
-              {viewType === 'department' && data?.locations && (
+              {viewType === "department" && data?.locations && (
                 <EquipmentChartFilters
                   viewType="location"
                   selectedFilter={selectedLocation}
@@ -173,9 +185,9 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
                   isLoading={isLoading}
                 />
               )}
-              
+
               {/* When viewing by location, allow filtering by department */}
-              {viewType === 'location' && data?.departments && (
+              {viewType === "location" && data?.departments && (
                 <EquipmentChartFilters
                   viewType="department"
                   selectedFilter={selectedDepartment}
@@ -204,6 +216,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <EquipmentChartDistributionTab
             value="department"
             chartData={chartData}
+            statusCatalog={data?.statusCatalog}
             isLoading={isLoading}
             hasActiveFilters={hasActiveFilters}
             onResetFilters={resetFilters}
@@ -212,6 +225,7 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
           <EquipmentChartDistributionTab
             value="location"
             chartData={chartData}
+            statusCatalog={data?.statusCatalog}
             isLoading={isLoading}
             hasActiveFilters={hasActiveFilters}
             onResetFilters={resetFilters}
@@ -220,4 +234,4 @@ export function InteractiveEquipmentChart({ className, tenantFilter, selectedDon
       </CardContent>
     </Card>
   )
-} 
+}

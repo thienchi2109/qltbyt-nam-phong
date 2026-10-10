@@ -2,6 +2,7 @@ package qltbyt
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -9,6 +10,43 @@ import (
 	"example.com/shared-ai-service/internal/protocol"
 	"github.com/cloudwego/eino/schema"
 )
+
+func TestEquipmentStatusLabelsReachBrokerUnchanged(t *testing.T) {
+	for _, status := range []string{"Thanh lý nội bộ", "Hoạt động dự phòng", "Kiểm định lịch sử", "hoat dong", "Unknown catalog status"} {
+		for _, placement := range []string{"top-level", "filters"} {
+			t.Run(status+"/"+placement, func(t *testing.T) {
+				input := map[string]any{"status": status}
+				if placement == "filters" {
+					input = map[string]any{"filters": input}
+				}
+				arguments, err := json.Marshal(input)
+				if err != nil {
+					t.Fatal(err)
+				}
+				broker := &spyBroker{}
+				assistant := testAssistant(broker, &spyQuery{})
+				_, err = assistant.runCatalog(context.Background(), testCredential("technician", facilityPtr(2), nil), resolvedScope(t, "technician", 2), "req-status", catalogMust("equipmentLookup"), string(arguments))
+				if err != nil {
+					t.Fatal(err)
+				}
+				calls := broker.snapshot()
+				if len(calls) != 1 || calls[0].RPC != "ai_equipment_lookup" {
+					t.Fatalf("broker calls = %+v", calls)
+				}
+				var payload map[string]any
+				if err := json.Unmarshal([]byte(calls[0].Payload), &payload); err != nil {
+					t.Fatal(err)
+				}
+				if placement == "filters" {
+					payload = payload["filters"].(map[string]any)
+				}
+				if payload["status"] != status {
+					t.Fatalf("status changed: %+v", payload)
+				}
+			})
+		}
+	}
+}
 
 func TestNullCatalogArgumentsDoNotPanic(t *testing.T) {
 	names := []string{

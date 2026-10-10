@@ -8,118 +8,55 @@
  * - Action button functionality
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen, waitFor, fireEvent } from '@testing-library/react'
-import * as React from 'react'
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react"
+import * as React from "react"
 
-// Mock the rpc-client module
-vi.mock('@/lib/rpc-client', () => ({
-  callRpc: vi.fn(),
+import {
+  mockCallRpc,
+  mockEquipment,
+  mockOnClose,
+  mockOnAction,
+  renderQRActionSheet,
+} from "./qr-action-sheet.fixtures"
+import { QRActionSheet } from "../qr-action-sheet"
+import { readyStatusCatalog } from "@/hooks/__tests__/equipment-status-catalog-fixtures"
+vi.mock("@/hooks/use-equipment-status-catalog", () => ({
+  useEquipmentStatusCatalog: () => readyStatusCatalog,
 }))
 
-// Mock the toast hook
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: vi.fn(),
-  }),
-}))
-
-// Mock radix-ui sheet component for testing
-vi.mock('@/components/ui/sheet', () => ({
-  Sheet: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
-    open ? <div data-testid="sheet">{children}</div> : null,
-  SheetContent: ({ children }: { children: React.ReactNode }) =>
-    <div data-testid="sheet-content">{children}</div>,
-  SheetHeader: ({ children }: { children: React.ReactNode }) =>
-    <div data-testid="sheet-header">{children}</div>,
-  SheetTitle: ({ children }: { children: React.ReactNode }) =>
-    <h2 data-testid="sheet-title">{children}</h2>,
-  SheetDescription: ({ children }: { children: React.ReactNode }) =>
-    <p data-testid="sheet-description">{children}</p>,
-}))
-
-// Import after mocks
-import { QRActionSheet } from '../qr-action-sheet'
-import { callRpc } from '@/lib/rpc-client'
-
-const mockCallRpc = vi.mocked(callRpc)
-
-// Sample equipment data for tests
-const mockEquipment = {
-  id: 123,
-  ma_thiet_bi: 'TB-001',
-  ten_thiet_bi: 'Máy siêu âm',
-  model: 'SU-500',
-  serial: 'SN12345',
-  hang_san_xuat: 'GE Healthcare',
-  noi_san_xuat: 'USA',
-  nam_san_xuat: 2020,
-  ngay_nhap: '2020-01-01',
-  ngay_dua_vao_su_dung: '2020-02-01',
-  nguon_kinh_phi: 'Ngân sách',
-  gia_goc: 500000000,
-  nam_tinh_hao_mon: 10,
-  ty_le_hao_mon: '10%',
-  han_bao_hanh: '2023-01-01',
-  vi_tri_lap_dat: 'Phòng khám 1',
-  nguoi_dang_truc_tiep_quan_ly: 'Nguyễn Văn A',
-  khoa_phong_quan_ly: 'Khoa Nội',
-  tinh_trang_hien_tai: 'Hoạt động',
-  ghi_chu: '',
-  chu_ky_bt_dinh_ky: 90,
-  ngay_bt_tiep_theo: '2024-03-01',
-  chu_ky_hc_dinh_ky: 365,
-  ngay_hc_tiep_theo: '2024-12-01',
-  chu_ky_kd_dinh_ky: 365,
-  ngay_kd_tiep_theo: '2024-12-01',
-  phan_loai_theo_nd98: 'Loại B',
-}
-
-function renderQRActionSheet(qrCode = 'TB-001') {
-  return render(
-    <QRActionSheet
-      qrCode={qrCode}
-      onClose={mockOnClose}
-      onAction={mockOnAction}
-    />
-  )
-}
-
-const mockOnClose = vi.fn()
-const mockOnAction = vi.fn()
-
-describe('QRActionSheet', () => {
+describe("QRActionSheet", () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
   })
 
   afterEach(() => {
     const actWarnings = consoleErrorSpy.mock.calls
       .map(([firstArg]) => String(firstArg))
-      .filter(message => message.includes('not wrapped in act'))
+      .filter((message) => message.includes("not wrapped in act"))
 
     expect(actWarnings).toHaveLength(0)
     consoleErrorSpy.mockRestore()
     vi.resetAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should display the scanned QR code', async () => {
+  describe("Rendering", () => {
+    it("should display the scanned QR code", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
-      expect(screen.getByText('TB-001')).toBeInTheDocument()
+      expect(screen.getByText("TB-001")).toBeInTheDocument()
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
     })
 
-    it('should show loading state while fetching equipment', async () => {
+    it("should show loading state while fetching equipment", async () => {
       // Create a promise that we can control
       let resolvePromise: (value: typeof mockEquipment) => void
       const pendingPromise = new Promise<typeof mockEquipment>((resolve) => {
@@ -129,7 +66,7 @@ describe('QRActionSheet', () => {
 
       renderQRActionSheet()
 
-      expect(screen.getByText('Đang tìm kiếm thiết bị...')).toBeInTheDocument()
+      expect(screen.getByText(/Đang tìm kiếm thiết bị/)).toBeInTheDocument()
 
       await act(async () => {
         resolvePromise!(mockEquipment)
@@ -137,24 +74,24 @@ describe('QRActionSheet', () => {
       })
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
     })
 
-    it('should display equipment details after successful fetch', async () => {
+    it("should display equipment details after successful fetch", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
 
-      expect(screen.getByText('SU-500 • GE Healthcare')).toBeInTheDocument()
-      expect(screen.getByText('Hoạt động')).toBeInTheDocument()
+      expect(screen.getByText("SU-500 • GE Healthcare")).toBeInTheDocument()
+      expect(screen.getByText("Hoạt động")).toBeInTheDocument()
     })
 
-    it('should display a zero original price instead of falling back to N/A', async () => {
+    it("should display a zero original price instead of falling back to N/A", async () => {
       mockCallRpc.mockResolvedValueOnce({
         ...mockEquipment,
         gia_goc: 0,
@@ -163,166 +100,164 @@ describe('QRActionSheet', () => {
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Giá gốc:')).toBeInTheDocument()
+        expect(screen.getByText("Giá gốc:")).toBeInTheDocument()
       })
 
-      const originalPriceRow = screen.getByText('Giá gốc:').closest('div')
+      const originalPriceRow = screen.getByText("Giá gốc:").closest("div")
       expect(originalPriceRow).toHaveTextContent(/0\s*₫/)
-      expect(originalPriceRow).not.toHaveTextContent('N/A')
+      expect(originalPriceRow).not.toHaveTextContent("N/A")
     })
 
-    it('should display error message when equipment not found', async () => {
+    it("should display error message when equipment not found", async () => {
       mockCallRpc.mockResolvedValueOnce(null)
 
-      renderQRActionSheet('INVALID-CODE')
+      renderQRActionSheet("INVALID-CODE")
 
       await waitFor(() => {
-        expect(screen.getByText('Không tìm thấy thiết bị')).toBeInTheDocument()
+        expect(screen.getByText("Không tìm thấy thiết bị")).toBeInTheDocument()
       })
 
-      expect(screen.getByText(/Không tìm thấy thiết bị với mã "INVALID-CODE" trong hệ thống/)).toBeInTheDocument()
+      expect(
+        screen.getByText(/Không tìm thấy thiết bị với mã "INVALID-CODE" trong hệ thống/)
+      ).toBeInTheDocument()
     })
   })
 
-  describe('Security: RPC Usage', () => {
-    it('should call equipment_get_by_code RPC (not direct table access)', async () => {
+  describe("Security: RPC Usage", () => {
+    it("should call equipment_get_by_code RPC (not direct table access)", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
         expect(mockCallRpc).toHaveBeenCalledWith({
-          fn: 'equipment_get_by_code',
-          args: { p_ma_thiet_bi: 'TB-001' },
+          fn: "equipment_get_by_code",
+          args: { p_ma_thiet_bi: "TB-001" },
         })
       })
     })
 
-    it('should trim QR code before sending to RPC', async () => {
+    it("should trim QR code before sending to RPC", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
-      renderQRActionSheet('  TB-001  ')
+      renderQRActionSheet("  TB-001  ")
 
       await waitFor(() => {
         expect(mockCallRpc).toHaveBeenCalledWith({
-          fn: 'equipment_get_by_code',
-          args: { p_ma_thiet_bi: 'TB-001' },
+          fn: "equipment_get_by_code",
+          args: { p_ma_thiet_bi: "TB-001" },
         })
       })
     })
 
-    it('should NOT pass p_don_vi parameter (tenant is enforced server-side)', async () => {
+    it("should NOT pass p_don_vi parameter (tenant is enforced server-side)", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
         const callArgs = mockCallRpc.mock.calls[0][0]
-        expect(callArgs.args).not.toHaveProperty('p_don_vi')
+        expect(callArgs.args).not.toHaveProperty("p_don_vi")
       })
     })
   })
 
-  describe('Error Handling', () => {
-    it('should display access denied error when RPC throws access denied', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Equipment not found or access denied'))
+  describe("Error Handling", () => {
+    it("should display access denied error when RPC throws access denied", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Equipment not found or access denied"))
 
-      renderQRActionSheet('TB-FORBIDDEN')
+      renderQRActionSheet("TB-FORBIDDEN")
 
       await waitFor(() => {
-        expect(screen.getByText('Không có quyền truy cập')).toBeInTheDocument()
+        expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument()
       })
 
       expect(screen.getByText(/không thuộc quyền quản lý của bạn/)).toBeInTheDocument()
     })
 
-    it('should clear equipment details and remove action paths after an access denied lookup', async () => {
+    it("should clear equipment details and remove action paths after an access denied lookup", async () => {
       mockCallRpc
         .mockResolvedValueOnce(mockEquipment)
-        .mockRejectedValueOnce(new Error('Equipment not found or access denied'))
+        .mockRejectedValueOnce(new Error("Equipment not found or access denied"))
 
       const { rerender } = renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
-        expect(screen.getByText('Xem thông tin chi tiết')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
+        expect(screen.getByText("Xem thông tin chi tiết")).toBeInTheDocument()
       })
 
       rerender(
-        <QRActionSheet
-          qrCode="TB-FORBIDDEN"
-          onClose={mockOnClose}
-          onAction={mockOnAction}
-        />
+        <QRActionSheet qrCode="TB-FORBIDDEN" onClose={mockOnClose} onAction={mockOnAction} />
       )
 
       await waitFor(() => {
-        expect(screen.getByText('Không có quyền truy cập')).toBeInTheDocument()
+        expect(screen.getByText("Không có quyền truy cập")).toBeInTheDocument()
       })
 
-      expect(screen.queryByText('Máy siêu âm')).not.toBeInTheDocument()
-      expect(screen.queryByText('SU-500 • GE Healthcare')).not.toBeInTheDocument()
-      expect(screen.queryByText('Ghi nhật ký sử dụng thiết bị')).not.toBeInTheDocument()
-      expect(screen.queryByText('Xem thông tin chi tiết')).not.toBeInTheDocument()
-      expect(screen.queryByText('Lịch sử bảo trì & sửa chữa')).not.toBeInTheDocument()
-      expect(screen.queryByText('Tạo yêu cầu sửa chữa')).not.toBeInTheDocument()
-      expect(screen.queryByText('Cập nhật trạng thái')).not.toBeInTheDocument()
+      expect(screen.queryByText("Máy siêu âm")).not.toBeInTheDocument()
+      expect(screen.queryByText("SU-500 • GE Healthcare")).not.toBeInTheDocument()
+      expect(screen.queryByText("Ghi nhật ký sử dụng thiết bị")).not.toBeInTheDocument()
+      expect(screen.queryByText("Xem thông tin chi tiết")).not.toBeInTheDocument()
+      expect(screen.queryByText("Lịch sử bảo trì & sửa chữa")).not.toBeInTheDocument()
+      expect(screen.queryByText("Tạo yêu cầu sửa chữa")).not.toBeInTheDocument()
+      expect(screen.queryByText("Cập nhật trạng thái")).not.toBeInTheDocument()
       expect(mockOnAction).not.toHaveBeenCalled()
     })
 
-    it('should display not found error when equipment does not exist', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Equipment not found'))
+    it("should display not found error when equipment does not exist", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Equipment not found"))
 
-      renderQRActionSheet('TB-NONEXISTENT')
+      renderQRActionSheet("TB-NONEXISTENT")
 
       await waitFor(() => {
-        expect(screen.getByText('Không tìm thấy thiết bị')).toBeInTheDocument()
+        expect(screen.getByText("Không tìm thấy thiết bị")).toBeInTheDocument()
       })
     })
 
-    it('should display network error when connection fails', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Network request failed'))
+    it("should display network error when connection fails", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Network request failed"))
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Lỗi kết nối mạng')).toBeInTheDocument()
+        expect(screen.getByText("Lỗi kết nối mạng")).toBeInTheDocument()
       })
     })
 
-    it('should display network error when RPC rejects with a network string', async () => {
-      mockCallRpc.mockRejectedValueOnce('Network request failed')
+    it("should display network error when RPC rejects with a network string", async () => {
+      mockCallRpc.mockRejectedValueOnce("Network request failed")
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Lỗi kết nối mạng')).toBeInTheDocument()
+        expect(screen.getByText("Lỗi kết nối mạng")).toBeInTheDocument()
       })
     })
 
-    it('should show retry button on error', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Equipment not found'))
+    it("should show retry button on error", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Equipment not found"))
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Thử lại')).toBeInTheDocument()
+        expect(screen.getByText("Thử lại")).toBeInTheDocument()
       })
     })
 
-    it('should retry search when retry button clicked', async () => {
-      mockCallRpc.mockRejectedValueOnce(new Error('Network request failed'))
+    it("should retry search when retry button clicked", async () => {
+      mockCallRpc.mockRejectedValueOnce(new Error("Network request failed"))
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Thử lại')).toBeInTheDocument()
+        expect(screen.getByText("Thử lại")).toBeInTheDocument()
       })
 
       // Setup success for retry
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
-      const retryButton = screen.getByText('Thử lại')
+      const retryButton = screen.getByText("Thử lại")
       fireEvent.click(retryButton)
 
       await waitFor(() => {
@@ -331,63 +266,61 @@ describe('QRActionSheet', () => {
     })
   })
 
-  describe('Action Buttons', () => {
-    it('should call onAction with equipment when action button clicked', async () => {
+  describe("Action Buttons", () => {
+    it("should call onAction with equipment when action button clicked", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
 
-      const viewDetailsButton = screen.getByText('Xem thông tin chi tiết')
+      const viewDetailsButton = screen.getByText("Xem thông tin chi tiết")
       fireEvent.click(viewDetailsButton)
 
-      expect(mockOnAction).toHaveBeenCalledWith('view-details', mockEquipment)
+      expect(mockOnAction).toHaveBeenCalledWith("view-details", mockEquipment)
     })
 
-    it('should render all action buttons when equipment is found', async () => {
+    it("should render all action buttons when equipment is found", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Ghi nhật ký sử dụng thiết bị')).toBeInTheDocument()
-        expect(screen.getByText('Xem thông tin chi tiết')).toBeInTheDocument()
-        expect(screen.getByText('Lịch sử bảo trì & sửa chữa')).toBeInTheDocument()
-        expect(screen.getByText('Tạo yêu cầu sửa chữa')).toBeInTheDocument()
-        expect(screen.getByText('Cập nhật trạng thái')).toBeInTheDocument()
+        expect(screen.getByText("Ghi nhật ký sử dụng thiết bị")).toBeInTheDocument()
+        expect(screen.getByText("Xem thông tin chi tiết")).toBeInTheDocument()
+        expect(screen.getByText("Lịch sử bảo trì & sửa chữa")).toBeInTheDocument()
+        expect(screen.getByText("Tạo yêu cầu sửa chữa")).toBeInTheDocument()
+        expect(screen.getByText("Cập nhật trạng thái")).toBeInTheDocument()
       })
     })
   })
 
-  describe('Close Behavior', () => {
-    it('should expose an accessible close button label in the header', async () => {
+  describe("Close Behavior", () => {
+    it("should expose an accessible close button label in the header", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
 
-      expect(
-        screen.getByRole('button', { name: 'Đóng bảng hành động QR' })
-      ).toBeInTheDocument()
+      expect(screen.getByRole("button", { name: "Đóng bảng hành động QR" })).toBeInTheDocument()
     })
 
-    it('should call onClose when close button is clicked', async () => {
+    it("should call onClose when close button is clicked", async () => {
       mockCallRpc.mockResolvedValueOnce(mockEquipment)
 
       renderQRActionSheet()
 
       // Wait for equipment to load
       await waitFor(() => {
-        expect(screen.getByText('Máy siêu âm')).toBeInTheDocument()
+        expect(screen.getByText("Máy siêu âm")).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByRole('button', { name: 'Đóng bảng hành động QR' }))
+      fireEvent.click(screen.getByRole("button", { name: "Đóng bảng hành động QR" }))
       expect(mockOnClose).toHaveBeenCalled()
     })
   })

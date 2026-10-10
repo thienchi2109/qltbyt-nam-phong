@@ -35,6 +35,7 @@ const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
   "equipment_locations_list_for_tenant",
   "equipment_classifications_list_for_tenant",
   "equipment_statuses_list_for_tenant",
+  "equipment_status_catalog_list",
   "equipment_funding_sources_list_for_tenant",
   "equipment_filter_buckets",
   "equipment_department_distribution",
@@ -171,6 +172,14 @@ const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
 ] as const
 
 describe("RPC expert disposition completeness", () => {
+  it("exposes the read-only equipment catalog with the existing expert denial", () => {
+    expect(ALLOWED_FUNCTIONS.has("equipment_status_catalog_list")).toBe(true)
+    expect(
+      EXPERT_DENIED_RPC_FUNCTION_NAMES.filter((fn) => fn === "equipment_status_catalog_list")
+    ).toHaveLength(1)
+    expect(EXPERT_ALLOWED_FUNCTIONS.has("equipment_status_catalog_list")).toBe(false)
+  })
+
   it("classifies every generic transport RPC exactly once", () => {
     const classifiedFunctions = [
       ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
@@ -185,8 +194,8 @@ describe("RPC expert disposition completeness", () => {
   it("enforces the exact expert allow set from the Phase 7 disposition", () => {
     expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(79)
     expect(EXPERT_RETAINED_RPC_FUNCTION_NAMES).toEqual(["change_password", "don_vi_branding_get"])
-    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(159)
-    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 240)
+    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(160)
+    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 241)
     expect([...EXPERT_ALLOWED_FUNCTIONS]).toEqual([
       ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
       ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,

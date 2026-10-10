@@ -5,9 +5,11 @@ const importSharedEquipmentEditModule = (relativePath: string) =>
 
 describe("equipment edit shared contract", () => {
   it("exports a shared route-agnostic schema module", async () => {
-    await expect(importSharedEquipmentEditModule("../equipment-edit/EquipmentEditTypes.ts")).resolves.toEqual(
+    await expect(
+      importSharedEquipmentEditModule("../equipment-edit/EquipmentEditTypes.ts")
+    ).resolves.toEqual(
       expect.objectContaining({
-        equipmentFormSchema: expect.any(Object),
+        createEquipmentFormSchema: expect.any(Function),
       })
     )
   })
@@ -69,22 +71,34 @@ describe("equipment edit shared contract", () => {
   it("schema accepts depreciation and maintenance schedule fields", async () => {
     const mod = await importSharedEquipmentEditModule("../equipment-edit/EquipmentEditTypes.ts")
 
-    const parsed = mod.equipmentFormSchema.parse({
-      ma_thiet_bi: "EQ-001",
-      ten_thiet_bi: "Máy siêu âm",
-      vi_tri_lap_dat: "Phòng 101",
-      khoa_phong_quan_ly: "Khoa Nội",
-      nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
-      tinh_trang_hien_tai: "Hoạt động",
-      nam_tinh_hao_mon: "2026",
-      ty_le_hao_mon: "10%",
-      chu_ky_bt_dinh_ky: "90",
-      ngay_bt_tiep_theo: "01/04/2026",
-      chu_ky_hc_dinh_ky: "",
-      ngay_hc_tiep_theo: "",
-      chu_ky_kd_dinh_ky: "365",
-      ngay_kd_tiep_theo: "30/04/2026",
-    })
+    const parsed = mod
+      .createEquipmentFormSchema([
+        {
+          status_value: "Hoạt động",
+          display_order: 1,
+          is_active: true,
+          is_terminal: false,
+          requires_end_date: false,
+          blocks_operational_actions: false,
+          is_liquidation: false,
+        },
+      ])
+      .parse({
+        ma_thiet_bi: "EQ-001",
+        ten_thiet_bi: "Máy siêu âm",
+        vi_tri_lap_dat: "Phòng 101",
+        khoa_phong_quan_ly: "Khoa Nội",
+        nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+        tinh_trang_hien_tai: "Hoạt động",
+        nam_tinh_hao_mon: "2026",
+        ty_le_hao_mon: "10%",
+        chu_ky_bt_dinh_ky: "90",
+        ngay_bt_tiep_theo: "01/04/2026",
+        chu_ky_hc_dinh_ky: "",
+        ngay_hc_tiep_theo: "",
+        chu_ky_kd_dinh_ky: "365",
+        ngay_kd_tiep_theo: "30/04/2026",
+      })
 
     expect(parsed).toEqual(
       expect.objectContaining({

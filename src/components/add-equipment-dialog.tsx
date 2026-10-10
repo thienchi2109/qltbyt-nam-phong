@@ -20,6 +20,7 @@ import {
 import { Form } from "@/components/ui/form"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { getUnknownErrorMessage } from "@/lib/error-utils"
 import { isRegionalLeaderRole, ROLES } from "@/lib/rbac"
 import { callRpc } from "@/lib/rpc-client"
@@ -36,7 +37,7 @@ import {
   AddEquipmentDateFinanceSection,
 } from "./add-equipment-dialog.sections"
 import {
-  addEquipmentFormSchema,
+  createAddEquipmentFormSchema,
   DEFAULT_ADD_EQUIPMENT_FORM_VALUES,
   type AddEquipmentFormValues,
 } from "./add-equipment-dialog.schema"
@@ -51,17 +52,15 @@ interface CreateEquipmentArgs extends Record<string, unknown> {
   p_payload: AddEquipmentFormValues
 }
 
-export function AddEquipmentDialog({
-  open,
-  onOpenChange,
-  onSuccess,
-}: AddEquipmentDialogProps) {
+/** Renders and submits the add-equipment dialog. */
+export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipmentDialogProps) {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const { data: session } = useSession()
   const user = session?.user
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const isUserRole = user?.role?.toLowerCase().trim() === ROLES.USER
+  const statusCatalog = useEquipmentStatusCatalog()
 
   const { data: departments = [] } = useQuery({
     queryKey: ["departments_list"],
@@ -85,7 +84,9 @@ export function AddEquipmentDialog({
   )
 
   const form = useForm<AddEquipmentFormValues>({
-    resolver: zodResolver(addEquipmentFormSchema),
+    resolver: zodResolver(
+      createAddEquipmentFormSchema(statusCatalog.activeValues, statusCatalog.data ?? [])
+    ),
     defaultValues: DEFAULT_ADD_EQUIPMENT_FORM_VALUES,
   })
 
@@ -93,6 +94,7 @@ export function AddEquipmentDialog({
     control: form.control,
     setValue: form.setValue,
     initialStatus: null,
+    statusCatalog: statusCatalog.data ?? [],
   })
 
   React.useEffect(() => {
@@ -132,14 +134,14 @@ export function AddEquipmentDialog({
   })
 
   async function onSubmit(values: AddEquipmentFormValues) {
+    if (!statusCatalog.canWrite) return
     if (isRegionalLeader || isUserRole) {
       toast({
         variant: "destructive",
         title: "Không có quyền",
-        description:
-          isUserRole
-            ? "Tài khoản người dùng không được phép thêm thiết bị."
-            : "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
+        description: isUserRole
+          ? "Tài khoản người dùng không được phép thêm thiết bị."
+          : "Tài khoản khu vực chỉ được phép xem dữ liệu thiết bị.",
       })
       return
     }
@@ -170,6 +172,14 @@ export function AddEquipmentDialog({
                 <AddEquipmentAdditionalDetailsSection />
               </div>
             </ScrollArea>
+            {!statusCatalog.canWrite && (
+              <div role="status" className="py-2 text-sm">
+                Chưa tải được danh sách tình trạng.
+                <Button type="button" variant="link" onClick={() => void statusCatalog.refetch()}>
+                  Thử lại
+                </Button>
+              </div>
+            )}
             <DialogFooter className="pt-6">
               <Button
                 type="button"
@@ -181,7 +191,12 @@ export function AddEquipmentDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || isRegionalLeader || isUserRole}
+                disabled={
+                  createMutation.isPending ||
+                  isRegionalLeader ||
+                  isUserRole ||
+                  !statusCatalog.canWrite
+                }
               >
                 {createMutation.isPending && <Loader2 className="mr-2 size-4 animate-spin" />}
                 Lưu

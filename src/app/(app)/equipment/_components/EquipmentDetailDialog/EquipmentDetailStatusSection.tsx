@@ -4,7 +4,8 @@ import * as React from "react"
 import { useFormContext } from "react-hook-form"
 
 import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
-import { equipmentStatusOptions } from "@/components/equipment/equipment-table-columns"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
+import { Button } from "@/components/ui/button"
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { RequiredFormLabel } from "@/components/ui/required-form-label"
 import {
@@ -22,6 +23,10 @@ const CLASSIFICATION_OPTIONS = ["A", "B", "C", "D"] as const
 /** Renders status, notes, and classification fields in the equipment detail edit form. */
 export function EquipmentDetailStatusSection() {
   const form = useFormContext<EquipmentFormValues>()
+  const statusCatalog = useEquipmentStatusCatalog()
+  const currentStatus = form.watch("tinh_trang_hien_tai")
+  const historicalStatus =
+    currentStatus && !statusCatalog.activeValues.includes(currentStatus) ? currentStatus : null
 
   return (
     <>
@@ -38,7 +43,12 @@ export function EquipmentDetailStatusSection() {
                 </SelectTrigger>
               </FormControl>
               <SelectContent>
-                {equipmentStatusOptions.map((status) => (
+                {historicalStatus && (
+                  <SelectItem value={historicalStatus} disabled>
+                    {historicalStatus}
+                  </SelectItem>
+                )}
+                {statusCatalog.activeValues.map((status) => (
                   <SelectItem key={status} value={status}>
                     {status}
                   </SelectItem>
@@ -49,6 +59,15 @@ export function EquipmentDetailStatusSection() {
           </FormItem>
         )}
       />
+
+      {!(statusCatalog.isSuccess && statusCatalog.fetchStatus === "idle") && (
+        <div role="status" className="text-sm">
+          Chưa tải được danh sách tình trạng.
+          <Button type="button" variant="link" onClick={() => void statusCatalog.refetch()}>
+            Thử lại
+          </Button>
+        </div>
+      )}
 
       <EquipmentEditTextareaField name="ghi_chu" label="Ghi chú" rows={3} />
 

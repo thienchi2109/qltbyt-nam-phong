@@ -1,45 +1,45 @@
-import * as React from 'react'
-import { render, screen } from '@testing-library/react'
-import { describe, it, expect, vi } from 'vitest'
-import { EquipmentDistributionSummary } from '@/components/equipment-distribution-summary'
+import * as React from "react"
+import { render, screen } from "@testing-library/react"
+import { describe, it, expect, vi } from "vitest"
+import { EquipmentDistributionSummary } from "@/components/equipment-distribution-summary"
 
 const mockUseEquipmentDistribution = vi.fn()
 const mockDynamicPieChart = vi.fn(({ data }) => (
   <div data-testid="status-donut">{JSON.stringify(data)}</div>
 ))
 
-vi.mock('@/hooks/use-equipment-distribution', () => ({
+vi.mock("@/hooks/use-equipment-distribution", () => ({
   useEquipmentDistribution: (...args: unknown[]) => mockUseEquipmentDistribution(...args),
   STATUS_COLORS: {
-    hoat_dong: '#22c55e',
-    cho_sua_chua: '#ef4444',
-    cho_bao_tri: '#f59e0b',
-    cho_hieu_chuan: '#8b5cf6',
-    ngung_su_dung: '#6b7280',
-    chua_co_nhu_cau: '#9ca3af',
+    hoat_dong: "#22c55e",
+    cho_sua_chua: "#ef4444",
+    cho_bao_tri: "#f59e0b",
+    cho_hieu_chuan: "#8b5cf6",
+    ngung_su_dung: "#6b7280",
+    chua_co_nhu_cau: "#9ca3af",
   },
   STATUS_LABELS: {
-    hoat_dong: 'Hoạt động',
-    cho_sua_chua: 'Chờ sửa chữa',
-    cho_bao_tri: 'Chờ bảo trì',
-    cho_hieu_chuan: 'Chờ HC/KĐ',
-    ngung_su_dung: 'Ngừng sử dụng',
-    chua_co_nhu_cau: 'Chưa có nhu cầu',
+    hoat_dong: "Hoạt động",
+    cho_sua_chua: "Chờ sửa chữa",
+    cho_bao_tri: "Chờ bảo trì",
+    cho_hieu_chuan: "Chờ HC/KĐ",
+    ngung_su_dung: "Ngừng sử dụng",
+    chua_co_nhu_cau: "Chưa có nhu cầu",
   },
 }))
 
-vi.mock('@/components/dynamic-chart', () => ({
+vi.mock("@/components/dynamic-chart", () => ({
   DynamicPieChart: (props: unknown) => mockDynamicPieChart(props),
 }))
 
-describe('EquipmentDistributionSummary donut', () => {
-  it('renders donut chart for selected facility and includes balanced layout wrapper', () => {
+describe("EquipmentDistributionSummary donut", () => {
+  it("renders donut chart for selected facility and includes balanced layout wrapper", () => {
     mockUseEquipmentDistribution.mockReturnValue({
       data: {
         totalEquipment: 10,
         byDepartment: [
           {
-            name: 'Khoa A',
+            name: "Khoa A",
             total: 10,
             hoat_dong: 8,
             cho_sua_chua: 2,
@@ -50,30 +50,34 @@ describe('EquipmentDistributionSummary donut', () => {
           },
         ],
         byLocation: [],
-        departments: ['Khoa A'],
+        departments: ["Khoa A"],
         locations: [],
       },
       isLoading: false,
       error: null,
     })
 
-    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    render(
+      <EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />
+    )
 
-    expect(screen.getByTestId('status-donut')).toBeInTheDocument()
-    expect(mockUseEquipmentDistribution).toHaveBeenCalledWith(undefined, undefined, '42', 42, '42')
-    expect(mockDynamicPieChart.mock.calls[0]?.[0]).not.toHaveProperty('colors')
-    expect(screen.getByTestId('status-distribution-layout')).toBeInTheDocument()
-    expect(screen.getByTestId('status-distribution-layout')).toHaveClass('xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]')
-    expect(screen.getByTestId('status-distribution-layout').className).not.toContain('lg:grid-cols')
+    expect(screen.getByTestId("status-donut")).toBeInTheDocument()
+    expect(mockUseEquipmentDistribution).toHaveBeenCalledWith(undefined, undefined, "42", 42, "42")
+    expect(mockDynamicPieChart.mock.calls[0]?.[0]).not.toHaveProperty("colors")
+    expect(screen.getByTestId("status-distribution-layout")).toBeInTheDocument()
+    expect(screen.getByTestId("status-distribution-layout")).toHaveClass(
+      "xl:grid-cols-[minmax(280px,380px)_minmax(0,1fr)]"
+    )
+    expect(screen.getByTestId("status-distribution-layout").className).not.toContain("lg:grid-cols")
   })
 
-  it('shows empty-state message when all status counts are zero', () => {
+  it("shows empty-state message when all status counts are zero", () => {
     mockUseEquipmentDistribution.mockReturnValue({
       data: {
         totalEquipment: 0,
         byDepartment: [
           {
-            name: 'Khoa A',
+            name: "Khoa A",
             total: 0,
             hoat_dong: 0,
             cho_sua_chua: 0,
@@ -84,24 +88,26 @@ describe('EquipmentDistributionSummary donut', () => {
           },
         ],
         byLocation: [],
-        departments: ['Khoa A'],
+        departments: ["Khoa A"],
         locations: [],
       },
       isLoading: false,
       error: null,
     })
 
-    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    render(
+      <EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />
+    )
 
-    expect(screen.getByText('Không có dữ liệu trạng thái')).toBeInTheDocument()
+    expect(screen.getByText("Không có dữ liệu trạng thái")).toBeInTheDocument()
   })
-  it('renders legend keys for donut status colors', () => {
+  it("renders legend keys for donut status colors", () => {
     mockUseEquipmentDistribution.mockReturnValue({
       data: {
         totalEquipment: 10,
         byDepartment: [
           {
-            name: 'Khoa A',
+            name: "Khoa A",
             total: 10,
             hoat_dong: 8,
             cho_sua_chua: 2,
@@ -112,28 +118,30 @@ describe('EquipmentDistributionSummary donut', () => {
           },
         ],
         byLocation: [],
-        departments: ['Khoa A'],
+        departments: ["Khoa A"],
         locations: [],
       },
       isLoading: false,
       error: null,
     })
 
-    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    render(
+      <EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />
+    )
 
-    expect(screen.getByTestId('status-donut-legend')).toBeInTheDocument()
-    expect(screen.getAllByTestId('status-donut-legend-item')).toHaveLength(2)
-    expect(screen.getByTestId('status-donut-legend-swatch-hoat_dong')).toBeInTheDocument()
-    expect(screen.getByTestId('status-donut-legend-swatch-cho_sua_chua')).toBeInTheDocument()
+    expect(screen.getByTestId("status-donut-legend")).toBeInTheDocument()
+    expect(screen.getAllByTestId("status-donut-legend-item")).toHaveLength(2)
+    expect(screen.getByTestId("status-donut-legend-swatch-hoat_dong")).toBeInTheDocument()
+    expect(screen.getByTestId("status-donut-legend-swatch-cho_sua_chua")).toBeInTheDocument()
   })
 
-  it('renders a compact status comparison list with total count and progress bars', () => {
+  it("renders a compact status comparison list with total count and progress bars", () => {
     mockUseEquipmentDistribution.mockReturnValue({
       data: {
         totalEquipment: 100,
         byDepartment: [
           {
-            name: 'Khoa A',
+            name: "Khoa A",
             total: 100,
             hoat_dong: 63,
             cho_sua_chua: 5,
@@ -144,22 +152,39 @@ describe('EquipmentDistributionSummary donut', () => {
           },
         ],
         byLocation: [],
-        departments: ['Khoa A'],
+        departments: ["Khoa A"],
         locations: [],
       },
       isLoading: false,
       error: null,
     })
 
-    render(<EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    render(
+      <EquipmentDistributionSummary tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />
+    )
 
-    expect(screen.getByTestId('status-donut-total')).toHaveTextContent('100')
-    expect(screen.getByTestId('status-comparison-list')).toBeInTheDocument()
-    expect(screen.getAllByTestId('status-comparison-row')).toHaveLength(4)
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Hoạt động' })).toHaveAttribute('value', '63')
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Hoạt động' })).toHaveAttribute('max', '100')
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Ngừng sử dụng' })).toHaveAttribute('value', '15')
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Chưa có nhu cầu' })).toHaveAttribute('value', '17')
-    expect(screen.getByRole('progressbar', { name: 'Tỷ lệ Chờ sửa chữa' })).toHaveAttribute('value', '5')
+    expect(screen.getByTestId("status-donut-total")).toHaveTextContent("100")
+    expect(screen.getByTestId("status-comparison-list")).toBeInTheDocument()
+    expect(screen.getAllByTestId("status-comparison-row")).toHaveLength(6)
+    expect(screen.getByRole("progressbar", { name: "Tỷ lệ Hoạt động" })).toHaveAttribute(
+      "value",
+      "63"
+    )
+    expect(screen.getByRole("progressbar", { name: "Tỷ lệ Hoạt động" })).toHaveAttribute(
+      "max",
+      "100"
+    )
+    expect(screen.getByRole("progressbar", { name: "Tỷ lệ Ngừng sử dụng" })).toHaveAttribute(
+      "value",
+      "15"
+    )
+    expect(screen.getByRole("progressbar", { name: "Tỷ lệ Chưa có nhu cầu" })).toHaveAttribute(
+      "value",
+      "17"
+    )
+    expect(screen.getByRole("progressbar", { name: "Tỷ lệ Chờ sửa chữa" })).toHaveAttribute(
+      "value",
+      "5"
+    )
   })
 })

@@ -5,43 +5,56 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TabsContent } from "@/components/ui/tabs"
-import {
-  STATUS_COLORS,
-  STATUS_LABELS,
-  type EquipmentDistributionItem,
-} from "@/hooks/use-equipment-distribution"
+import { type EquipmentDistributionItem } from "@/hooks/use-equipment-distribution"
 import { cn } from "@/lib/utils"
+import {
+  buildEquipmentDistributionStatusRows,
+  getEquipmentDistributionGroupCounts,
+} from "@/components/equipment-distribution-summary.utils"
+import type { EquipmentStatusRow } from "@/lib/equipment-status"
 import { EquipmentChartTooltip } from "@/components/interactive-equipment-chart-tooltip"
 
 const DISTRIBUTION_CHART_HEIGHT = 400
 const DENSE_CATEGORY_THRESHOLD = 20
 const DENSE_CATEGORY_WIDTH = 56
-const STATUS_BARS = Object.entries(STATUS_COLORS).map(([key, color]) => ({
-  key,
-  color,
-  name: STATUS_LABELS[key as keyof typeof STATUS_LABELS],
-  stackId: "status",
-}))
-
 interface EquipmentChartDistributionTabProps {
   value: "department" | "location"
   chartData: EquipmentDistributionItem[]
+  statusCatalog?: EquipmentStatusRow[]
   isLoading: boolean
   hasActiveFilters: boolean
   onResetFilters: () => void
 }
 
+/** Renders a department or location equipment distribution chart. */
 export function EquipmentChartDistributionTab({
   value,
   chartData,
+  statusCatalog = [],
   isLoading,
   hasActiveFilters,
   onResetFilters,
 }: EquipmentChartDistributionTabProps) {
+  const counts: Record<string, number> = {}
+  for (const group of chartData) {
+    for (const [key, count] of Object.entries(getEquipmentDistributionGroupCounts(group)))
+      counts[key] = (counts[key] ?? 0) + count
+  }
+  const statusRows = buildEquipmentDistributionStatusRows(
+    statusCatalog,
+    counts,
+    chartData.reduce((sum, group) => sum + group.total, 0)
+  )
+  const statusBars = statusRows.map((row) => ({
+    key: row.key,
+    color: row.color,
+    name: row.label,
+    stackId: "status",
+  }))
   const isDenseChart = chartData.length > DENSE_CATEGORY_THRESHOLD
   const chartContainerClassName = cn(
     "min-w-0 max-w-full",
-    isDenseChart && "w-0 min-w-full overflow-x-auto pb-2",
+    isDenseChart && "w-0 min-w-full overflow-x-auto pb-2"
   )
   const chartWidth = isDenseChart ? `${chartData.length * DENSE_CATEGORY_WIDTH}px` : undefined
 
@@ -59,8 +72,8 @@ export function EquipmentChartDistributionTab({
                   {" "}
                   <Button variant="link" className="p-0 h-auto" onClick={onResetFilters}>
                     Xóa bộ lọc
-                  </Button>
-                  {" "}để xem tất cả dữ liệu.
+                  </Button>{" "}
+                  để xem tất cả dữ liệu.
                 </>
               )}
             </AlertDescription>
@@ -74,7 +87,7 @@ export function EquipmentChartDistributionTab({
                 data={chartData}
                 height={DISTRIBUTION_CHART_HEIGHT}
                 xAxisKey="name"
-                bars={STATUS_BARS}
+                bars={statusBars}
                 showGrid={true}
                 showTooltip={true}
                 showLegend={false}
@@ -86,12 +99,9 @@ export function EquipmentChartDistributionTab({
           </div>
 
           <div className="flex flex-wrap gap-4 justify-center pt-4 border-t">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
+            {statusRows.map(({ key, label, color }) => (
               <div key={key} className="flex items-center gap-2">
-                <div
-                  className="size-3 rounded"
-                  style={{ backgroundColor: STATUS_COLORS[key as keyof typeof STATUS_COLORS] }}
-                />
+                <div className="size-3 rounded" style={{ backgroundColor: color }} />
                 <span className="text-sm">{label}</span>
               </div>
             ))}

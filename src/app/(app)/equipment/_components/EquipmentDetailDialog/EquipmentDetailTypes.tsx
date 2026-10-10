@@ -4,16 +4,9 @@
  */
 
 import * as React from "react"
-import {
-  ArrowRightLeft,
-  Calendar,
-  CheckCircle,
-  Settings,
-  Trash2,
-  Wrench,
-} from "lucide-react"
+import { ArrowRightLeft, Calendar, CheckCircle, Settings, Trash2, Wrench } from "lucide-react"
 export {
-  equipmentFormSchema,
+  createEquipmentFormSchema,
   type EquipmentFormValues,
 } from "@/components/equipment-edit/EquipmentEditTypes"
 

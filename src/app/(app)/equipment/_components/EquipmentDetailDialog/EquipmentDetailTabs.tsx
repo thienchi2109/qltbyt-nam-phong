@@ -6,6 +6,7 @@ import { FormProvider, type UseFormReturn } from "react-hook-form"
 import type { Attachment, HistoryItem } from "@/app/(app)/equipment/types"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import type { Equipment } from "@/types/database"
+import type { EquipmentStatusRow } from "@/lib/equipment-status"
 
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
@@ -30,6 +31,7 @@ interface EquipmentDetailTabsDetailProps {
   displayEquipment: Equipment
   editForm: UseFormReturn<EquipmentFormValues>
   isEditingDetails: boolean
+  statusCatalog: readonly EquipmentStatusRow[]
   onSubmitInlineEdit: (values: EquipmentFormValues) => Promise<void>
   onTabChange: (value: string) => void
   tabsScrollRef: React.MutableRefObject<HTMLDivElement | null>
@@ -47,6 +49,7 @@ interface EquipmentDetailTabsProps {
   usageEquipment: Equipment
 }
 
+/** Renders the equipment detail dialog tab panels. */
 export function EquipmentDetailTabs({
   attachments,
   detail,
@@ -82,6 +85,7 @@ export function EquipmentDetailTabs({
             <EquipmentDetailEditForm
               formId="equipment-inline-edit-form"
               initialStatus={detail.displayEquipment.tinh_trang_hien_tai ?? null}
+              statusCatalog={detail.statusCatalog}
               onSubmit={detail.onSubmitInlineEdit}
             />
           </EquipmentDetailDetailsTab>
@@ -108,10 +112,7 @@ export function EquipmentDetailTabs({
       </TabsContent>
 
       <TabsContent value="history" className="flex-grow overflow-hidden">
-        <EquipmentDetailHistoryTab
-          history={history.history}
-          isLoading={history.isLoadingHistory}
-        />
+        <EquipmentDetailHistoryTab history={history.history} isLoading={history.isLoadingHistory} />
       </TabsContent>
 
       <TabsContent value="usage" className="flex-grow overflow-hidden">

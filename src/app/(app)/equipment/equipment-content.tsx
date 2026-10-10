@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table"
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import type { Equipment } from "@/types/database"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 
 export interface EquipmentContentProps {
   isGlobal: boolean
@@ -43,6 +44,7 @@ export function EquipmentContent({
   columns,
   onShowDetails,
 }: EquipmentContentProps) {
+  const statusCatalog = useEquipmentStatusCatalog()
   // Global users and regional leaders must select a tenant/facility first
   if ((isGlobal || isRegionalLeader) && !shouldFetchEquipment) {
     return (
@@ -122,6 +124,7 @@ export function EquipmentContent({
             key={row.original.id}
             equipment={row.original}
             onShowDetails={onShowDetails}
+            statusCatalog={statusCatalog}
           />
         ))}
       </div>
@@ -145,10 +148,7 @@ export function EquipmentContent({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
+                      : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>

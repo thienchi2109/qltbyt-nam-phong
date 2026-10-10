@@ -1,11 +1,44 @@
 import { describe, expect, it } from "vitest"
 
 import {
-  addEquipmentFormSchema,
+  createAddEquipmentFormSchema,
   DEFAULT_ADD_EQUIPMENT_FORM_VALUES,
 } from "../add-equipment-dialog.schema"
 
+const addEquipmentFormSchema = createAddEquipmentFormSchema([
+  "Hoạt động",
+  "Chờ sửa chữa",
+  "Chờ bảo trì",
+  "Chờ hiệu chuẩn/kiểm định",
+  "Ngưng sử dụng",
+  "Chưa có nhu cầu sử dụng",
+  "Thanh lý nội bộ",
+])
+
 describe("add-equipment-dialog schema", () => {
+  it.each([
+    "Hoạt động",
+    "Chờ sửa chữa",
+    "Chờ bảo trì",
+    "Chờ hiệu chuẩn/kiểm định",
+    "Ngưng sử dụng",
+    "Chưa có nhu cầu sử dụng",
+    "Thanh lý nội bộ",
+  ])("accepts the exact catalog label %s without changing it", (status) => {
+    const result = addEquipmentFormSchema.safeParse({
+      ...DEFAULT_ADD_EQUIPMENT_FORM_VALUES,
+      ma_thiet_bi: "EQ-001",
+      ten_thiet_bi: "Máy siêu âm",
+      vi_tri_lap_dat: "Phòng 101",
+      khoa_phong_quan_ly: "Khoa Nội",
+      nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
+      tinh_trang_hien_tai: status,
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.tinh_trang_hien_tai).toBe(status)
+  })
+
   it("keeps the expected default empty state for required fields", () => {
     expect(DEFAULT_ADD_EQUIPMENT_FORM_VALUES.ma_thiet_bi).toBe("")
     expect(DEFAULT_ADD_EQUIPMENT_FORM_VALUES.ten_thiet_bi).toBe("")

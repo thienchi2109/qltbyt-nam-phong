@@ -1,5 +1,6 @@
 import type { ComponentType } from "react"
 import { ClipboardList, Eye, History, Settings, Wrench } from "lucide-react"
+import { LIQUIDATION_STATUS_BADGE_CLASS } from "@/lib/equipment-status"
 
 export type QRActionKey =
   "usage-log" | "view-details" | "view-history" | "create-repair" | "update-status"
@@ -77,6 +78,8 @@ const VIETNAMESE_CURRENCY_FORMATTER = new Intl.NumberFormat("vi-VN", {
 /** Returns the status badge color classes for a device status label. */
 export function getStatusColor(status: string | null) {
   switch (status) {
+    case "Thanh lý nội bộ":
+      return LIQUIDATION_STATUS_BADGE_CLASS
     case "Hoạt động":
       return "bg-green-100 text-green-800 border-green-200"
     case "Chờ sửa chữa":

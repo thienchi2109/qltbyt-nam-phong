@@ -1,7 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { Search, X } from "lucide-react"
@@ -13,6 +19,8 @@ import { QRActionSheetActions } from "./qr-action-sheet-actions"
 import { QRActionSheetEquipmentDetails } from "./qr-action-sheet-equipment-details"
 import { QRActionSheetErrorState } from "./qr-action-sheet-error-state"
 import type { QRActionKey, QRErrorType } from "./qr-action-sheet-config"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
+import { getEquipmentStatusMetadata } from "@/lib/equipment-status"
 
 interface QRActionSheetProps {
   qrCode: string // Mã thiết bị từ QR code
@@ -20,12 +28,20 @@ interface QRActionSheetProps {
   onAction: (action: QRActionKey, equipment?: Equipment) => void
 }
 
+/** Loads equipment from a QR code and renders available actions. */
 export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps) {
   const [equipment, setEquipment] = React.useState<Equipment | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [errorType, setErrorType] = React.useState<QRErrorType>(null)
   const { toast } = useToast()
+  const statusCatalog = useEquipmentStatusCatalog()
+  const metadataReady =
+    statusCatalog.isSuccess && statusCatalog.fetchStatus === "idle" && !!statusCatalog.data
+  const repairDisabled =
+    !metadataReady ||
+    !!getEquipmentStatusMetadata(statusCatalog.data ?? [], equipment?.tinh_trang_hien_tai ?? "")
+      ?.blocks_operational_actions
 
   const searchEquipment = React.useCallback(async () => {
     try {
@@ -36,8 +52,8 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
       // Use dedicated RPC for exact ma_thiet_bi lookup with tenant security
       const normalizedCode = qrCode.trim()
       const result = await callRpc<Equipment | null>({
-        fn: 'equipment_get_by_code',
-        args: { p_ma_thiet_bi: normalizedCode }
+        fn: "equipment_get_by_code",
+        args: { p_ma_thiet_bi: normalizedCode },
       })
 
       if (!result) {
@@ -74,23 +90,30 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
     }
   }, [qrCode])
 
-  React.useEffect(function loadEquipmentForCode() {
-    if (qrCode) {
-      searchEquipment()
-    }
-  }, [qrCode, searchEquipment])
+  React.useEffect(
+    function loadEquipmentForCode() {
+      if (qrCode) {
+        searchEquipment()
+      }
+    },
+    [qrCode, searchEquipment]
+  )
 
-  const handleActionClick = React.useCallback((action: QRActionKey) => {
-    if (equipment) {
-      onAction(action, equipment)
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Không thể thực hiện",
-        description: "Không tìm thấy thông tin thiết bị"
-      })
-    }
-  }, [equipment, onAction, toast])
+  const handleActionClick = React.useCallback(
+    (action: QRActionKey) => {
+      if (action === "create-repair" && repairDisabled) return
+      if (equipment) {
+        onAction(action, equipment)
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Không thể thực hiện",
+          description: "Không tìm thấy thông tin thiết bị",
+        })
+      }
+    },
+    [equipment, onAction, repairDisabled, toast]
+  )
 
   return (
     <Sheet open={true} onOpenChange={onClose}>
@@ -101,11 +124,16 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
               <Search className="size-5" />
               <SheetTitle>Kết quả quét QR</SheetTitle>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Đóng bảng hành động QR">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="Đóng bảng hành động QR"
+            >
               <X className="size-4" />
             </Button>
           </div>
-          
+
           <div className="bg-muted/50 rounded-lg p-3">
             <p className="text-sm text-muted-foreground">Mã thiết bị đã quét:</p>
             <p className="font-mono font-semibold text-lg">{qrCode}</p>
@@ -135,11 +163,19 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
               <Separator />
 
-              <QRActionSheetActions onAction={handleActionClick} />
+              {!metadataReady && (
+                <div className="text-sm text-muted-foreground">
+                  Chưa tải được danh mục tình trạng.
+                  <Button type="button" variant="link" onClick={() => void statusCatalog.refetch()}>
+                    Thử lại
+                  </Button>
+                </div>
+              )}
+              <QRActionSheetActions onAction={handleActionClick} repairDisabled={repairDisabled} />
             </>
           )}
         </div>
       </SheetContent>
     </Sheet>
   )
-} 
+}

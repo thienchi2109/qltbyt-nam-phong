@@ -26,7 +26,7 @@ import type { Equipment } from "@/types/database"
 import { useEquipmentContext } from "../../_hooks/useEquipmentContext"
 
 import {
-  equipmentFormSchema,
+  createEquipmentFormSchema,
   type EquipmentFormValues,
   type UserSession,
 } from "./EquipmentDetailTypes"
@@ -41,11 +41,12 @@ import { useEquipmentHistory } from "./hooks/useEquipmentHistory"
 import { useEquipmentAttachments } from "./hooks/useEquipmentAttachments"
 import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
 import { EquipmentDetailTabs } from "./EquipmentDetailTabs"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
+import { getEquipmentStatusMetadata } from "@/lib/equipment-status"
 
 const LIQUIDATION_SUCCESS_TOAST = {
   title: "Đã chuyển thiết bị",
-  description:
-    "Thiết bị đã được chuyển về cuối danh sách vì đang Ngưng sử dụng và thuộc Kho thanh lý.",
+  description: "Thiết bị đã được chuyển về cuối danh sách do trạng thái thanh lý.",
 }
 
 export interface EquipmentDetailDialogProps {
@@ -88,6 +89,15 @@ function EquipmentDetailDialogState({
   // Ref for scrolling active tab into view on mobile
   const tabsScrollRef = React.useRef<HTMLDivElement>(null)
   const { openDeleteDialog } = useEquipmentContext()
+  const statusCatalog = useEquipmentStatusCatalog()
+  const currentStatus = savedValues?.tinh_trang_hien_tai ?? equipment?.tinh_trang_hien_tai
+  const currentStatusKnown =
+    typeof currentStatus === "string" &&
+    !!getEquipmentStatusMetadata(statusCatalog.data ?? [], currentStatus)
+  const canSaveStatus =
+    statusCatalog.isSuccess &&
+    statusCatalog.fetchStatus === "idle" &&
+    (statusCatalog.activeValues.length > 0 || currentStatusKnown)
 
   // Scroll active tab into view when tab changes (mobile accessibility)
   React.useEffect(() => {
@@ -101,7 +111,7 @@ function EquipmentDetailDialogState({
 
   // Form
   const editForm = useForm<EquipmentFormValues>({
-    resolver: zodResolver(equipmentFormSchema),
+    resolver: zodResolver(createEquipmentFormSchema(statusCatalog.data ?? [], currentStatus)),
     defaultValues: DEFAULT_EQUIPMENT_FORM_VALUES,
   })
 
@@ -136,6 +146,7 @@ function EquipmentDetailDialogState({
   })
 
   const { updateEquipment, isPending: isUpdating } = useEquipmentEditUpdate({
+    currentStatus,
     onSuccess: (savedPatch) => {
       setSavedValues((prev) => ({ ...prev, ...savedPatch }))
       setIsEditingDetails(false)
@@ -145,14 +156,26 @@ function EquipmentDetailDialogState({
 
   // Handlers
   const onSubmitInlineEdit = async (values: EquipmentFormValues): Promise<void> => {
-    if (!equipment) return
+    if (!equipment || !canSaveStatus) return
     const previousValues = savedValues ?? equipmentToFormValues(equipment)
-    const enteredLiquidationEndState = didEnterLiquidationEndState(previousValues, values)
+    const enteredLiquidationEndState = didEnterLiquidationEndState(
+      previousValues,
+      values,
+      statusCatalog.data ?? []
+    )
+    const patch: Partial<EquipmentFormValues> = { ...values }
+    if (
+      values.tinh_trang_hien_tai === previousValues.tinh_trang_hien_tai &&
+      !previousValues.ngay_ngung_su_dung?.trim() &&
+      !values.ngay_ngung_su_dung?.trim()
+    ) {
+      delete patch.ngay_ngung_su_dung
+    }
 
     try {
       await updateEquipment({
         id: equipment.id,
-        patch: values,
+        patch,
         ...(enteredLiquidationEndState ? { successToast: LIQUIDATION_SUCCESS_TOAST } : {}),
       })
     } catch {
@@ -226,6 +249,7 @@ function EquipmentDetailDialogState({
   }
 
   const detailTabsProps = {
+    statusCatalog: statusCatalog.data ?? [],
     currentTab,
     displayEquipment,
     editForm,
@@ -267,6 +291,7 @@ function EquipmentDetailDialogState({
           <EquipmentDetailFooter
             canDeleteEquipment={canDeleteEquipment}
             canEdit={canEdit}
+            canSave={canSaveStatus}
             isEditingDetails={isEditingDetails}
             isRegionalLeader={isRegionalLeader}
             isUpdating={isUpdating}

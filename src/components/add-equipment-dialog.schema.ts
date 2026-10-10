@@ -1,4 +1,5 @@
 import { z } from "zod"
+import type { EquipmentStatusRow } from "@/lib/equipment-status"
 
 import {
   FULL_DATE_ERROR_MESSAGE,
@@ -12,67 +13,66 @@ import {
   normalizePartialDateForForm,
 } from "@/lib/date-utils"
 
-export const ADD_EQUIPMENT_STATUS_OPTIONS = [
-  "Hoạt động",
-  "Chờ sửa chữa",
-  "Chờ bảo trì",
-  "Chờ hiệu chuẩn/kiểm định",
-  "Ngưng sử dụng",
-  "Chưa có nhu cầu sử dụng",
-] as const
+/** Creates the add-equipment validation schema for the active status catalog. */
+export function createAddEquipmentFormSchema(
+  activeValues: readonly string[],
+  catalog: readonly EquipmentStatusRow[] = []
+) {
+  return z
+    .object({
+      ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
+      ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
+      model: z.string().optional(),
+      serial: z.string().optional(),
+      so_luu_hanh: z.string().optional(),
+      hang_san_xuat: z.string().optional(),
+      noi_san_xuat: z.string().optional(),
+      nam_san_xuat: z.coerce.number().optional().nullable(),
+      ngay_nhap: z
+        .string()
+        .optional()
+        .nullable()
+        .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
+        .transform(normalizePartialDateForForm),
+      ngay_dua_vao_su_dung: z
+        .string()
+        .optional()
+        .nullable()
+        .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
+        .transform(normalizePartialDateForForm),
+      ngay_ngung_su_dung: z
+        .string()
+        .optional()
+        .nullable()
+        .refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE)
+        .transform(normalizeFullDateForForm),
+      nguon_kinh_phi: z.string().optional(),
+      gia_goc: z.coerce.number().optional().nullable(),
+      han_bao_hanh: z
+        .string()
+        .optional()
+        .nullable()
+        .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
+        .transform(normalizePartialDateForForm),
+      vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc"),
+      khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc"),
+      nguoi_dang_truc_tiep_quan_ly: z
+        .string()
+        .min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc"),
+      tinh_trang_hien_tai: z
+        .string({ required_error: "Tình trạng hiện tại là bắt buộc" })
+        .min(1, "Tình trạng hiện tại là bắt buộc")
+        .refine((value) => activeValues.includes(value), "Tình trạng không hợp lệ"),
+      cau_hinh_thiet_bi: z.string().optional(),
+      phu_kien_kem_theo: z.string().optional(),
+      ghi_chu: z.string().optional(),
+    })
+    .superRefine((values, ctx) => validateDecommissionDateRules(values, ctx, catalog))
+}
 
-export const addEquipmentFormSchema = z
-  .object({
-    ma_thiet_bi: z.string().min(1, "Mã thiết bị là bắt buộc"),
-    ten_thiet_bi: z.string().min(1, "Tên thiết bị là bắt buộc"),
-    model: z.string().optional(),
-    serial: z.string().optional(),
-    so_luu_hanh: z.string().optional(),
-    hang_san_xuat: z.string().optional(),
-    noi_san_xuat: z.string().optional(),
-    nam_san_xuat: z.coerce.number().optional().nullable(),
-    ngay_nhap: z
-      .string()
-      .optional()
-      .nullable()
-      .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
-      .transform(normalizePartialDateForForm),
-    ngay_dua_vao_su_dung: z
-      .string()
-      .optional()
-      .nullable()
-      .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
-      .transform(normalizePartialDateForForm),
-    ngay_ngung_su_dung: z
-      .string()
-      .optional()
-      .nullable()
-      .refine(isValidFullDate, FULL_DATE_ERROR_MESSAGE)
-      .transform(normalizeFullDateForForm),
-    nguon_kinh_phi: z.string().optional(),
-    gia_goc: z.coerce.number().optional().nullable(),
-    han_bao_hanh: z
-      .string()
-      .optional()
-      .nullable()
-      .refine(isValidPartialDate, PARTIAL_DATE_ERROR_MESSAGE)
-      .transform(normalizePartialDateForForm),
-    vi_tri_lap_dat: z.string().min(1, "Vị trí lắp đặt là bắt buộc"),
-    khoa_phong_quan_ly: z.string().min(1, "Khoa/Phòng quản lý là bắt buộc"),
-    nguoi_dang_truc_tiep_quan_ly: z
-      .string()
-      .min(1, "Người trực tiếp quản lý (sử dụng) là bắt buộc"),
-    tinh_trang_hien_tai: z.enum(ADD_EQUIPMENT_STATUS_OPTIONS, {
-      required_error: "Tình trạng hiện tại là bắt buộc",
-    }),
-    cau_hinh_thiet_bi: z.string().optional(),
-    phu_kien_kem_theo: z.string().optional(),
-    ghi_chu: z.string().optional(),
-  })
-  .superRefine(validateDecommissionDateRules)
+export type AddEquipmentFormValues = z.infer<ReturnType<typeof createAddEquipmentFormSchema>>
 
-export type AddEquipmentFormValues = z.infer<typeof addEquipmentFormSchema>
-
+/** Default values used when opening the add-equipment form. */
 export const DEFAULT_ADD_EQUIPMENT_FORM_VALUES: AddEquipmentFormValues = {
   ma_thiet_bi: "",
   ten_thiet_bi: "",

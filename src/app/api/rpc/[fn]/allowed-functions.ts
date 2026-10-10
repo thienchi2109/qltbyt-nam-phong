@@ -45,6 +45,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "equipment_locations_list_for_tenant",
   "equipment_classifications_list_for_tenant",
   "equipment_statuses_list_for_tenant",
+  "equipment_status_catalog_list",
   "equipment_funding_sources_list_for_tenant",
   "equipment_filter_buckets",
   "equipment_department_distribution",

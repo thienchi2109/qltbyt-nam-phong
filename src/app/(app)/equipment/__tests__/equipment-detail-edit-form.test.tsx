@@ -37,21 +37,43 @@ vi.mock("@/components/ui/select", () => ({
 
 import { EquipmentDetailEditForm } from "../_components/EquipmentDetailDialog/EquipmentDetailEditForm"
 import {
-  equipmentFormSchema,
+  createEquipmentFormSchema,
   type EquipmentFormValues,
 } from "../_components/EquipmentDetailDialog/EquipmentDetailTypes"
 import { DEFAULT_EQUIPMENT_FORM_VALUES } from "@/components/equipment-edit/EquipmentEditFormDefaults"
 import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
+import { readyStatusCatalog } from "@/hooks/__tests__/equipment-status-catalog-fixtures"
+
+const catalog = [
+  ...readyStatusCatalog.data,
+  {
+    ...readyStatusCatalog.data[0],
+    status_value: "Kết thúc theo dõi",
+    is_terminal: true,
+  },
+]
+vi.mock("@/hooks/use-equipment-status-catalog", () => ({
+  useEquipmentStatusCatalog: () => ({
+    data: catalog,
+    activeValues: catalog.map((r) => r.status_value),
+    canWrite: true,
+    isSuccess: true,
+    fetchStatus: "idle",
+    refetch: vi.fn(),
+  }),
+}))
 
 function FormHarness({
   initialStatus = "Hoạt động",
+  initialDate = null,
   onSubmit,
 }: {
   initialStatus?: string | null
+  initialDate?: string | null
   onSubmit: (values: EquipmentFormValues) => void
 }) {
   const form = useForm<EquipmentFormValues>({
-    resolver: zodResolver(equipmentFormSchema),
+    resolver: zodResolver(createEquipmentFormSchema(catalog, initialStatus)),
     defaultValues: {
       ...DEFAULT_EQUIPMENT_FORM_VALUES,
       ma_thiet_bi: "EQ-001",
@@ -59,7 +81,8 @@ function FormHarness({
       vi_tri_lap_dat: "Phòng 101",
       khoa_phong_quan_ly: "Khoa Nội",
       nguoi_dang_truc_tiep_quan_ly: "Nguyễn Văn A",
-      tinh_trang_hien_tai: "Hoạt động",
+      tinh_trang_hien_tai: initialStatus ?? "Hoạt động",
+      ngay_ngung_su_dung: initialDate,
     },
   })
 
@@ -68,6 +91,7 @@ function FormHarness({
       <EquipmentDetailEditForm
         formId="equipment-inline-edit-form"
         initialStatus={initialStatus}
+        {...{ statusCatalog: catalog }}
         onSubmit={onSubmit}
       />
     </FormProvider>
@@ -87,6 +111,118 @@ function RequiredTextareaHarness() {
 }
 
 describe("EquipmentDetailEditForm", () => {
+  it.each(["2026-03-24T16:59:59Z", "2026-03-24T17:00:00Z"])(
+    "autofills catalog-required end date at the Vietnam boundary %s",
+    async (now) => {
+      const onSubmit = vi.fn()
+      const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(new Date(now).getTime())
+      try {
+        render(<FormHarness onSubmit={onSubmit} />)
+        fireEvent.change(screen.getAllByRole("combobox")[0], {
+          target: { value: "Thanh lý nội bộ" },
+        })
+        const date = now.includes("16:59") ? "24/03/2026" : "25/03/2026"
+        expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue(date)
+        fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+        await waitFor(() =>
+          expect(onSubmit).toHaveBeenCalledWith(
+            expect.objectContaining({
+              tinh_trang_hien_tai: "Thanh lý nội bộ",
+              ngay_ngung_su_dung: date === "24/03/2026" ? "2026-03-24" : "2026-03-25",
+            }),
+            expect.anything()
+          )
+        )
+      } finally {
+        dateNowSpy.mockRestore()
+      }
+    }
+  )
+
+  it("preserves an explicit end date when entering catalog liquidation", async () => {
+    const onSubmit = vi.fn()
+    render(<FormHarness onSubmit={onSubmit} />)
+    fireEvent.change(screen.getByLabelText("Ngày ngừng sử dụng"), {
+      target: { value: "20/03/2026" },
+    })
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "Thanh lý nội bộ" } })
+    expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue("20/03/2026")
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ngay_ngung_su_dung: "2026-03-20",
+        }),
+        expect.anything()
+      )
+    )
+  })
+
+  it("preserves a valid existing date across terminal statuses", async () => {
+    const onSubmit = vi.fn()
+    render(
+      <FormHarness initialStatus="Ngưng sử dụng" initialDate="20/03/2026" onSubmit={onSubmit} />
+    )
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "Thanh lý nội bộ" } })
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ngay_ngung_su_dung: "2026-03-20",
+        }),
+        expect.anything()
+      )
+    )
+  })
+
+  it("clears the end date on a permitted restore to active equipment", async () => {
+    const onSubmit = vi.fn()
+    render(
+      <FormHarness initialStatus="Thanh lý nội bộ" initialDate="20/03/2026" onSubmit={onSubmit} />
+    )
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "Hoạt động" } })
+    expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue("")
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tinh_trang_hien_tai: "Hoạt động",
+          ngay_ngung_su_dung: null,
+        }),
+        expect.anything()
+      )
+    )
+  })
+
+  it.each(["Thanh lý nội bộ", "Kết thúc theo dõi"])(
+    "does not backfill missing historical end date on metadata edits for %s",
+    async (status) => {
+      const onSubmit = vi.fn()
+      render(<FormHarness initialStatus={status} onSubmit={onSubmit} />)
+      fireEvent.change(screen.getByLabelText("Tên thiết bị"), { target: { value: "Metadata mới" } })
+      expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue("")
+      fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            tinh_trang_hien_tai: status,
+            ngay_ngung_su_dung: null,
+          }),
+          expect.anything()
+        )
+      )
+    }
+  )
+
+  it("does not mandate an end date for terminal-only metadata", async () => {
+    const onSubmit = vi.fn()
+    render(<FormHarness onSubmit={onSubmit} />)
+    fireEvent.change(screen.getAllByRole("combobox")[0], { target: { value: "Kết thúc theo dõi" } })
+    expect(screen.getByLabelText("Ngày ngừng sử dụng")).toHaveValue("")
+    fireEvent.submit(document.getElementById("equipment-inline-edit-form")!)
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled())
+  })
+
   it("renders key fields and classification options", () => {
     render(<FormHarness onSubmit={vi.fn()} />)
 

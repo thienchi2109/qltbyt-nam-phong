@@ -18,6 +18,7 @@ import { EquipmentToolbarDesktopFilters } from "./equipment-toolbar-layout"
 import { EquipmentHeroButton } from "./heroui-pilot/controls"
 import { useQRScanner } from "./useEquipmentQRScanner"
 import type { Equipment } from "@/types/database"
+import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 
 const QRScannerCamera = dynamic(
   () => import("@/components/qr-scanner-camera").then((mod) => ({ default: mod.QRScannerCamera })),
@@ -92,6 +93,7 @@ export function EquipmentToolbar({
   onShowEquipmentDetails,
 }: EquipmentToolbarProps) {
   const qr = useQRScanner()
+  const statusCatalog = useEquipmentStatusCatalog()
   const compactFilters = filterMode === "sheet"
   const { isFiltered } = filterState
   const { canCreateEquipment, isExporting = false } = actionState
@@ -133,7 +135,20 @@ export function EquipmentToolbar({
         label: "Tải Excel mẫu",
         textValue: "Tải Excel mẫu",
         onAction: onDownloadTemplate,
+        isDisabled: !statusCatalog.canWrite,
       },
+      ...(!statusCatalog.canWrite
+        ? [
+            {
+              id: "status-retry",
+              label: "Thử lại",
+              textValue: "Thử lại",
+              onAction: () => {
+                void statusCatalog.refetch()
+              },
+            },
+          ]
+        : []),
       {
         id: "export",
         label: isExporting ? "Đang tải..." : "Tải về dữ liệu",
@@ -142,7 +157,14 @@ export function EquipmentToolbar({
         isDisabled: isExporting,
       },
     ],
-    [isExporting, onDownloadTemplate, onExportData, onOpenColumnsDialog]
+    [
+      isExporting,
+      onDownloadTemplate,
+      onExportData,
+      onOpenColumnsDialog,
+      statusCatalog.canWrite,
+      statusCatalog.refetch,
+    ]
   )
 
   const mobileFilterControl = React.useMemo(

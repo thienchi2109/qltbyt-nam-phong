@@ -34,15 +34,21 @@ interface EquipmentSlim {
 interface MobileUsageActionsProps {
   equipment: EquipmentSlim
   className?: string
+  startDisabled?: boolean
 }
 
-export function MobileUsageActions({ equipment, className = "" }: MobileUsageActionsProps) {
+/** Renders mobile start and end usage actions for one equipment item. */
+export function MobileUsageActions({
+  equipment,
+  className = "",
+  startDisabled = false,
+}: MobileUsageActionsProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
   const userId = React.useMemo(() => {
     const uid = user?.id
-    const n = typeof uid === 'string' ? Number(uid) : uid
+    const n = typeof uid === "string" ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
   const { data: activeUsageLogs } = useActiveUsageLogs()
@@ -53,12 +59,13 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
 
   // Find active usage session for this equipment
   const activeSession = activeUsageLogs?.find(
-    log => log.thiet_bi_id === equipment.id && log.trang_thai === 'dang_su_dung'
+    (log) => log.thiet_bi_id === equipment.id && log.trang_thai === "dang_su_dung"
   )
 
   // Check if current user is using this equipment
-  const isCurrentUserUsing = !!activeSession && (userId != null && activeSession.nguoi_su_dung_id === userId)
-  
+  const isCurrentUserUsing =
+    !!activeSession && userId != null && activeSession.nguoi_su_dung_id === userId
+
   // Check if equipment is in use by someone else
   const isInUseByOther = activeSession && !isCurrentUserUsing
 
@@ -71,12 +78,13 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
     return `${mins}m`
   }
 
-  const usageDuration = activeSession && now !== null
-    ? calculateUsageDurationMinutes(activeSession.thoi_gian_bat_dau, now)
-    : 0
+  const usageDuration =
+    activeSession && now !== null
+      ? calculateUsageDurationMinutes(activeSession.thoi_gian_bat_dau, now)
+      : 0
 
   const handleStartUsage = () => {
-    if (isRegionalLeader) return
+    if (isRegionalLeader || startDisabled) return
     setIsSheetOpen(false)
     setIsStartDialogOpen(true)
   }
@@ -100,6 +108,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
             variant={activeSession ? "default" : "outline"}
             size="sm"
             className={`gap-2 ${className}`}
+            disabled={!activeSession && startDisabled}
           >
             {activeSession ? (
               <>
@@ -114,12 +123,10 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
             )}
           </Button>
         </SheetTrigger>
-        
+
         <SheetContent side="bottom" className="h-auto max-h-[80vh]">
           <SheetHeader>
-            <SheetTitle className="text-left">
-              {equipment.ten_thiet_bi}
-            </SheetTitle>
+            <SheetTitle className="text-left">{equipment.ten_thiet_bi}</SheetTitle>
             <SheetDescription className="text-left">
               Mã thiết bị: {equipment.ma_thiet_bi}
             </SheetDescription>
@@ -134,22 +141,22 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                     <div className="size-3 bg-green-500 rounded-full animate-pulse" />
                     <span className="font-medium text-green-800">Đang được sử dụng</span>
                   </div>
-                  
+
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <User className="size-4 text-green-600" />
                       <span className="text-green-700">
-                        {activeSession.nguoi_su_dung?.full_name || 'Không xác định'}
+                        {activeSession.nguoi_su_dung?.full_name || "Không xác định"}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Clock className="size-4 text-green-600" />
                       <span className="text-green-700">
                         Bắt đầu: {formatVietnamDateTime(activeSession.thoi_gian_bat_dau)}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Clock className="size-4 text-green-600" />
                       <span className="text-green-700 font-medium">
@@ -187,9 +194,11 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="text-muted-foreground">Tình trạng hiện tại: </span>
-                      <span className="font-medium">{equipment.tinh_trang_hien_tai || 'Chưa xác định'}</span>
+                      <span className="font-medium">
+                        {equipment.tinh_trang_hien_tai || "Chưa xác định"}
+                      </span>
                     </div>
-                    
+
                     {equipment.khoa_phong_quan_ly && (
                       <div>
                         <span className="text-muted-foreground">Khoa/Phòng: </span>
@@ -204,7 +213,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
                   onClick={handleStartUsage}
                   className="w-full gap-2"
                   size="lg"
-                  disabled={isRegionalLeader}
+                  disabled={isRegionalLeader || startDisabled}
                 >
                   <Play className="size-5" />
                   Bắt đầu sử dụng thiết bị
@@ -226,7 +235,7 @@ export function MobileUsageActions({ equipment, className = "" }: MobileUsageAct
           tinh_trang_hien_tai: equipment.tinh_trang_hien_tai ?? undefined,
         }}
       />
-      
+
       <EndUsageDialog
         open={isEndDialogOpen}
         onOpenChange={setIsEndDialogOpen}

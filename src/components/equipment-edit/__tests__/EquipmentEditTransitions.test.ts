@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { readyStatusCatalog } from "@/hooks/__tests__/equipment-status-catalog-fixtures"
 
 import {
   DECOMMISSIONED_EQUIPMENT_STATUS,
@@ -18,6 +19,45 @@ const liquidationEquipment = {
 }
 
 describe("equipment liquidation transition", () => {
+  it("detects catalog liquidation across departments independently of the label", () => {
+    const catalog = [
+      ...readyStatusCatalog.data,
+      {
+        ...readyStatusCatalog.data[6],
+        status_value: "Thanh lý theo danh mục",
+      },
+    ]
+    for (const status of ["Thanh lý nội bộ", "Thanh lý theo danh mục"]) {
+      const after = { ...activeEquipment, tinh_trang_hien_tai: status }
+      expect(
+        Reflect.apply(didEnterLiquidationEndState, undefined, [activeEquipment, after, catalog])
+      ).toBe(true)
+      expect(Reflect.apply(didEnterLiquidationEndState, undefined, [after, after, catalog])).toBe(
+        false
+      )
+    }
+  })
+
+  it("does not mistake terminal metadata for liquidation or broaden the legacy warehouse rule", () => {
+    const catalog = [
+      ...readyStatusCatalog.data,
+      {
+        ...readyStatusCatalog.data[6],
+        status_value: "Kết thúc theo dõi",
+        is_liquidation: false,
+      },
+    ]
+    for (const status of ["Kết thúc theo dõi", "Ngưng sử dụng"]) {
+      expect(
+        Reflect.apply(didEnterLiquidationEndState, undefined, [
+          activeEquipment,
+          { ...activeEquipment, tinh_trang_hien_tai: status },
+          catalog,
+        ])
+      ).toBe(false)
+    }
+  })
+
   it.each([
     {
       name: "only department changes because status already matches",

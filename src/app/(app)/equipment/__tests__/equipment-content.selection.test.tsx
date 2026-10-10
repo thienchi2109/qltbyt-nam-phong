@@ -36,6 +36,10 @@ import { LinkedRequestProvider } from "@/components/equipment-linked-request"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
 import type { Equipment } from "@/types/database"
 import { EquipmentContent } from "../equipment-content"
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
+})
 
 vi.mock("@/components/ui/tooltip", async () => {
   const { tooltipMockModule } = await import("@/test-utils/tooltip-mock-module")
@@ -85,7 +89,7 @@ function EquipmentSelectionHarness({
         renderActions: () => null,
         canBulkSelect,
       }),
-    [canBulkSelect],
+    [canBulkSelect]
   )
 
   const table = useReactTable({
@@ -172,9 +176,7 @@ describe("EquipmentContent multi-selection (canBulkSelect=true / admin+global)",
   it("row checkbox click does not bubble to row onClick (no detail dialog)", () => {
     const data = [makeEquipment(101)]
     const onShowDetails = vi.fn()
-    render(
-      <EquipmentSelectionHarness data={data} onShowDetails={onShowDetails} />,
-    )
+    render(<EquipmentSelectionHarness data={data} onShowDetails={onShowDetails} />)
 
     fireEvent.click(getRowCheckbox(101))
 
@@ -185,9 +187,7 @@ describe("EquipmentContent multi-selection (canBulkSelect=true / admin+global)",
   it("selection is preserved across admin-like parent re-renders", () => {
     const data = [makeEquipment(101), makeEquipment(202), makeEquipment(303)]
 
-    const { rerender } = render(
-      <EquipmentSelectionHarness data={data} externalTick={0} />,
-    )
+    const { rerender } = render(<EquipmentSelectionHarness data={data} externalTick={0} />)
 
     fireEvent.click(getRowCheckbox(202))
     expect(screen.getByTestId("selected-ids")).toHaveTextContent("202")
@@ -204,12 +204,7 @@ describe("EquipmentContent multi-selection (canBulkSelect=true / admin+global)",
   })
 
   it("selecting multiple distinct rows keeps only those rows selected", () => {
-    const data = [
-      makeEquipment(101),
-      makeEquipment(202),
-      makeEquipment(303),
-      makeEquipment(404),
-    ]
+    const data = [makeEquipment(101), makeEquipment(202), makeEquipment(303), makeEquipment(404)]
     render(<EquipmentSelectionHarness data={data} />)
 
     fireEvent.click(getRowCheckbox(101))
