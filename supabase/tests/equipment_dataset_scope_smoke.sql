@@ -136,4 +136,46 @@ BEGIN
 END;
 $$;
 
+-- Dashboard/report consumers use the same explicit, non-default dataset
+-- argument.  No new RPC name is introduced; each check is against an
+-- overload of the existing function and therefore preserves the old call.
+DO $$
+DECLARE
+  v_name text;
+  v_definition text;
+  v_signature text;
+  v_found boolean;
+  v_dashboard_functions constant text[] := ARRAY[
+    'dashboard_kpi_summary', 'dashboard_equipment_total',
+    'dashboard_maintenance_count', 'equipment_attention_list',
+    'equipment_attention_list_paginated', 'usage_log_list',
+    'usage_analytics_overview', 'usage_analytics_daily',
+    'get_maintenance_report_data', 'maintenance_stats_for_reports',
+    'get_facilities_with_equipment_count', 'dinh_muc_compliance_summary',
+    'dinh_muc_compliance_detail'
+  ];
+BEGIN
+  FOREACH v_name IN ARRAY v_dashboard_functions LOOP
+    v_found := false;
+    FOR v_signature, v_definition IN
+      SELECT p.oid::regprocedure::text, lower(pg_get_functiondef(p.oid))
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = v_name
+    LOOP
+      IF position('p_equipment_dataset' IN v_definition) > 0 THEN
+        v_found := true;
+        IF position('btrim(coalesce' IN v_definition) = 0
+          OR position('mượn' IN v_definition) = 0 THEN
+          RAISE EXCEPTION 'dashboard dataset predicate missing in %', v_signature;
+        END IF;
+      END IF;
+    END LOOP;
+    IF NOT v_found THEN
+      RAISE EXCEPTION 'scoped dashboard/report overload missing for public.%', v_name;
+    END IF;
+  END LOOP;
+END;
+$$;
+
 ROLLBACK;
