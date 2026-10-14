@@ -1,3 +1,5 @@
+import { normalizeEquipmentDataset, type EquipmentDataset } from "./equipmentDataset"
+
 export interface EquipmentDataQueryParamsInput {
   effectiveTenantKey: string
   userRole: string
@@ -10,6 +12,7 @@ export interface EquipmentDataQueryParamsInput {
   selectedStatuses: string[]
   selectedClassifications: string[]
   selectedFundingSources: string[]
+  equipmentDataset?: EquipmentDataset | string | null
 }
 
 /** Builds the shared equipment query-key parameters and RPC arguments. */
@@ -26,7 +29,10 @@ export function buildEquipmentDataQueryParams(params: EquipmentDataQueryParamsIn
     selectedStatuses,
     selectedClassifications,
     selectedFundingSources,
+    equipmentDataset,
   } = params
+
+  const normalizedEquipmentDataset = normalizeEquipmentDataset(equipmentDataset)
 
   const q = debouncedSearch || null
   const departmentFilters = selectedDepartments.length > 0 ? selectedDepartments : null
@@ -49,6 +55,7 @@ export function buildEquipmentDataQueryParams(params: EquipmentDataQueryParamsIn
       tinh_trang_array: statusFilters,
       phan_loai_array: classificationFilters,
       nguon_kinh_phi_array: fundingSourceFilters,
+      equipmentDataset: normalizedEquipmentDataset,
     },
     rpcArgs: {
       p_q: q,
@@ -59,6 +66,7 @@ export function buildEquipmentDataQueryParams(params: EquipmentDataQueryParamsIn
       p_tinh_trang_array: statusFilters,
       p_phan_loai_array: classificationFilters,
       p_nguon_kinh_phi_array: fundingSourceFilters,
+      p_equipment_dataset: normalizedEquipmentDataset,
     },
   }
 }

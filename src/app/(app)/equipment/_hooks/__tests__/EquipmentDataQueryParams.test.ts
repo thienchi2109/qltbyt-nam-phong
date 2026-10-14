@@ -101,4 +101,35 @@ describe("buildEquipmentDataQueryParams", () => {
     expect(rpcArgs).not.toHaveProperty("role")
     expect(rpcArgs).not.toHaveProperty("diaBan")
   })
+
+  it("includes the normalized dataset in both the cache key and RPC args", () => {
+    const { queryKeyParams, rpcArgs } = buildEquipmentDataQueryParams({
+      ...baseInput,
+      equipmentDataset: "placed",
+      selectedDepartments: [],
+      selectedUsers: [],
+      selectedLocations: [],
+      selectedStatuses: [],
+      selectedClassifications: [],
+      selectedFundingSources: [],
+    })
+
+    expect(queryKeyParams.equipmentDataset).toBe("placed")
+    expect(rpcArgs.p_equipment_dataset).toBe("placed")
+  })
+
+  it("defaults omitted dataset arguments to regular", () => {
+    const { queryKeyParams, rpcArgs } = buildEquipmentDataQueryParams({
+      ...baseInput,
+      selectedDepartments: [],
+      selectedUsers: [],
+      selectedLocations: [],
+      selectedStatuses: [],
+      selectedClassifications: [],
+      selectedFundingSources: [],
+    })
+
+    expect(queryKeyParams.equipmentDataset).toBe("regular")
+    expect(rpcArgs.p_equipment_dataset).toBe("regular")
+  })
 })
