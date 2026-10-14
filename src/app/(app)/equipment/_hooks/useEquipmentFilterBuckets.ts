@@ -7,6 +7,7 @@ import type { ColumnFiltersState } from "@tanstack/react-table"
 import { callRpc } from "@/lib/rpc-client"
 import type { FilterBottomSheetData } from "../types"
 import { buildEquipmentDataQueryParams } from "./EquipmentDataQueryParams"
+import { isPlacedEquipment, type EquipmentDataset } from "./equipmentDataset"
 
 export interface UseEquipmentFilterBucketsParams {
   shouldFetchData: boolean
@@ -21,6 +22,7 @@ export interface UseEquipmentFilterBucketsParams {
   selectedStatuses: string[]
   selectedClassifications: string[]
   selectedFundingSources: string[]
+  equipmentDataset?: EquipmentDataset
 }
 
 export interface EquipmentSelectedFilters {
@@ -108,6 +110,7 @@ export function useEquipmentFilterBuckets(
     selectedStatuses,
     selectedClassifications,
     selectedFundingSources,
+    equipmentDataset = "regular",
   } = params
 
   const { queryKeyParams, rpcArgs } = buildEquipmentDataQueryParams({
@@ -122,6 +125,7 @@ export function useEquipmentFilterBuckets(
     selectedStatuses,
     selectedClassifications,
     selectedFundingSources,
+    equipmentDataset,
   })
 
   const { data: filterBucketsData } = useQuery<EquipmentFilterBucketsResponse>({
@@ -154,6 +158,9 @@ export function useEquipmentFilterBuckets(
   const classificationsData = normalizeBucket(filterBucketsData, "classification")
   const statusesData = normalizeBucket(filterBucketsData, "status")
   const fundingSourcesData = normalizeBucket(filterBucketsData, "fundingSource")
+  const scopedFundingSourcesData = fundingSourcesData.filter((item) =>
+    equipmentDataset === "placed" ? isPlacedEquipment(item.name) : !isPlacedEquipment(item.name)
+  )
 
   const selectedFilterOptions = React.useMemo<UseEquipmentFilterBucketsReturn>(() => {
     const mapNames = (items: FilterBucketItem[]) => items.map((x) => x.name).filter(Boolean)
@@ -166,7 +173,7 @@ export function useEquipmentFilterBuckets(
       locations: mapNames(locationsData),
       statuses: mapNames(statusesData),
       classifications: mapNames(classificationsData),
-      fundingSources: mapNames(fundingSourcesData),
+      fundingSources: mapNames(scopedFundingSourcesData),
       filterData: filterBucketsData
         ? {
             status: mapOptions(statusesData),
@@ -174,7 +181,7 @@ export function useEquipmentFilterBuckets(
             location: mapOptions(locationsData),
             user: mapOptions(usersData),
             classification: mapOptions(classificationsData),
-            fundingSource: mapOptions(fundingSourcesData),
+            fundingSource: mapOptions(scopedFundingSourcesData),
           }
         : EMPTY_FILTER_DATA,
     }
@@ -184,7 +191,7 @@ export function useEquipmentFilterBuckets(
     locationsData,
     statusesData,
     classificationsData,
-    fundingSourcesData,
+    scopedFundingSourcesData,
     filterBucketsData,
   ])
 

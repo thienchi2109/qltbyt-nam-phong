@@ -30,6 +30,7 @@ describe("Full Export Flow (Issue #170)", () => {
           p_don_vi: 5,
           p_khoa_phong_array: null,
           p_sort: "khoa_phong_quan_ly.asc",
+          p_equipment_dataset: "placed",
         }),
       })
     )
@@ -55,6 +56,7 @@ describe("Full Export Flow (Issue #170)", () => {
         args: expect.objectContaining({
           p_khoa_phong_array: ["ICU", "Gây Mê Hồi Sức"],
           p_sort: "khoa_phong_quan_ly.asc",
+          p_equipment_dataset: "placed",
         }),
       })
     )
@@ -86,6 +88,7 @@ describe("Full Export Flow (Issue #170)", () => {
           p_tinh_trang_array: ["Hoạt động"],
           p_page_size: 10000,
           p_page: 1,
+          p_equipment_dataset: "placed",
         }),
       })
     )

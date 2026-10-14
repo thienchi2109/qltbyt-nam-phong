@@ -24,6 +24,7 @@ import { EquipmentBulkDeleteBar } from "./EquipmentBulkDeleteBar"
 import { EquipmentDepartmentSummary } from "./EquipmentDepartmentSummary"
 import { EquipmentMobileFloatingActions } from "./EquipmentMobileFloatingActions"
 import { useEquipmentContext } from "../_hooks/useEquipmentContext"
+import { EquipmentDatasetTabs } from "./EquipmentDatasetTabs"
 
 const EQUIPMENT_ENTITY = { singular: "thiết bị" } as const
 
@@ -73,7 +74,12 @@ export function EquipmentPageClient() {
   return (
     <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
       <LinkedRequestProvider>
-        <EquipmentPageContent pageState={pageState} />
+        <EquipmentDatasetTabs
+          dataset={pageState.equipmentDataset}
+          onDatasetChange={pageState.setEquipmentDataset}
+        >
+          <EquipmentPageContent pageState={pageState} />
+        </EquipmentDatasetTabs>
       </LinkedRequestProvider>
     </EquipmentDialogProvider>
   )

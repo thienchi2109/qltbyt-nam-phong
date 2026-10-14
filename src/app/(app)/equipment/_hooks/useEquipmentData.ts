@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { callRpc } from "@/lib/rpc-client"
 import { useActiveUsageLogs } from "@/hooks/use-usage-logs"
 import { buildEquipmentDataQueryParams } from "./EquipmentDataQueryParams"
+import type { EquipmentDataset } from "./equipmentDataset"
 import { useEquipmentFilterBuckets } from "./useEquipmentFilterBuckets"
 import type { Equipment } from "../types"
 import type {
@@ -32,6 +33,7 @@ export interface UseEquipmentDataParams {
   selectedStatuses: string[]
   selectedClassifications: string[]
   selectedFundingSources: string[]
+  equipmentDataset?: EquipmentDataset
   // From TenantSelectionContext via useEquipmentAuth
   selectedFacilityId: number | null | undefined
   showSelector: boolean
@@ -75,7 +77,7 @@ export interface UseEquipmentDataReturn {
   isLoadingActiveUsage: boolean
 
   // Cache invalidation
-  invalidateEquipmentForCurrentTenant: () => void
+  invalidateEquipmentForCurrentTenant: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 /** Loads equipment table data, filter buckets, and department distribution for the current scope. */
@@ -98,6 +100,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     selectedStatuses,
     selectedClassifications,
     selectedFundingSources,
+    equipmentDataset = "regular",
     // From context
     selectedFacilityId,
     showSelector,
@@ -139,6 +142,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     selectedStatuses,
     selectedClassifications,
     selectedFundingSources,
+    equipmentDataset,
   })
 
   // Active usage logs
@@ -201,7 +205,6 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       })
       return result
     },
-    placeholderData: keepPreviousData,
     staleTime: 120_000,
     gcTime: 10 * 60_000,
     refetchOnWindowFocus: false,
@@ -267,31 +270,45 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       selectedStatuses,
       selectedClassifications,
       selectedFundingSources,
+      equipmentDataset,
     })
 
   // Cache invalidation - check all cache isolation fields
-  const invalidateEquipmentForCurrentTenant = React.useCallback(() => {
-    if (isGlobal && !shouldFetchData) return
-    queryClient.invalidateQueries({
-      predicate: (q) => {
-        const key = q.queryKey
-        if (!Array.isArray(key)) return false
-        if (
-          key[0] !== "equipment_list_enhanced" &&
-          key[0] !== "equipment_department_distribution" &&
-          key[0] !== "equipment_filter_buckets"
-        )
-          return false
-        const queryParams = key[1] as Record<string, unknown>
-        return (
-          queryParams?.tenant === effectiveTenantKey &&
-          queryParams?.role === userRole &&
-          queryParams?.diaBan === userDiaBanId
-        )
-      },
-      refetchType: "active",
-    })
-  }, [queryClient, effectiveTenantKey, userRole, userDiaBanId, isGlobal, shouldFetchData])
+  const invalidateEquipmentForCurrentTenant = React.useCallback(
+    (datasets: EquipmentDataset | EquipmentDataset[] = equipmentDataset) => {
+      if (isGlobal && !shouldFetchData) return
+      const datasetSet = new Set(Array.isArray(datasets) ? datasets : [datasets])
+      queryClient.invalidateQueries({
+        predicate: (q) => {
+          const key = q.queryKey
+          if (!Array.isArray(key)) return false
+          if (
+            key[0] !== "equipment_list_enhanced" &&
+            key[0] !== "equipment_department_distribution" &&
+            key[0] !== "equipment_filter_buckets"
+          )
+            return false
+          const queryParams = key[1] as Record<string, unknown>
+          return (
+            queryParams?.tenant === effectiveTenantKey &&
+            queryParams?.role === userRole &&
+            queryParams?.diaBan === userDiaBanId &&
+            datasetSet.has(queryParams?.equipmentDataset as EquipmentDataset)
+          )
+        },
+        refetchType: "active",
+      })
+    },
+    [
+      queryClient,
+      effectiveTenantKey,
+      userRole,
+      userDiaBanId,
+      isGlobal,
+      shouldFetchData,
+      equipmentDataset,
+    ]
+  )
 
   // Cache invalidation event listeners
   React.useEffect(() => {

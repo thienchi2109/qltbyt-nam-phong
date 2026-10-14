@@ -5,6 +5,7 @@ import type { ColumnFiltersState } from "@tanstack/react-table"
 
 import type { FilterBottomSheetData } from "../types"
 import { getEquipmentSelectedFilters, useEquipmentFilterBuckets } from "./useEquipmentFilterBuckets"
+import type { EquipmentDataset } from "./equipmentDataset"
 
 interface UseEquipmentFilterSheetCascadeParams {
   shouldFetchData: boolean
@@ -15,6 +16,7 @@ interface UseEquipmentFilterSheetCascadeParams {
   userDiaBanId?: number | null
   effectiveSelectedDonVi: number | null
   debouncedSearch: string
+  equipmentDataset?: EquipmentDataset
   onApply: (next: ColumnFiltersState) => void
   onClearAll: () => void
 }
@@ -38,6 +40,7 @@ export function useEquipmentFilterSheetCascade({
   userDiaBanId,
   effectiveSelectedDonVi,
   debouncedSearch,
+  equipmentDataset = "regular",
   onApply,
   onClearAll,
 }: UseEquipmentFilterSheetCascadeParams): UseEquipmentFilterSheetCascadeReturn {
@@ -59,6 +62,7 @@ export function useEquipmentFilterSheetCascade({
     userDiaBanId,
     effectiveSelectedDonVi,
     debouncedSearch,
+    equipmentDataset,
     ...sheetSelectedFilters,
   })
 

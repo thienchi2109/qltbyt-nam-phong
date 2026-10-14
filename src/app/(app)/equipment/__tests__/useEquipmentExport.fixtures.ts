@@ -86,6 +86,7 @@ const createDefaultFilterParams = (
   selectedStatuses: [],
   selectedClassifications: [],
   selectedFundingSources: [],
+  equipmentDataset: "placed",
   ...overrides,
 })
 

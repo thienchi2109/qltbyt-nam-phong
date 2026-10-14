@@ -49,6 +49,7 @@ const baseParams: UseEquipmentFilterBucketsParams = {
   selectedStatuses: ["Hoat dong"],
   selectedClassifications: ["Class A"],
   selectedFundingSources: ["Fund A"],
+  equipmentDataset: "placed",
 }
 
 function getBucketCalls() {
@@ -89,6 +90,7 @@ describe("useEquipmentFilterBuckets", () => {
       p_tinh_trang_array: ["Hoat dong"],
       p_phan_loai_array: ["Class A"],
       p_nguon_kinh_phi_array: ["Fund A"],
+      p_equipment_dataset: "placed",
     })
   })
 
@@ -189,6 +191,7 @@ describe("useEquipmentFilterBuckets", () => {
       tinh_trang_array: ["Bao tri"],
       phan_loai_array: ["Class A"],
       nguon_kinh_phi_array: ["Fund A"],
+      equipmentDataset: "placed",
     })
     expect(latestBucketKeyParams).not.toHaveProperty("page")
     expect(latestBucketKeyParams).not.toHaveProperty("size")
@@ -209,6 +212,7 @@ describe("useEquipmentFilterBuckets", () => {
           selectedStatuses: [],
           selectedClassifications: [],
           selectedFundingSources: [],
+          equipmentDataset: "regular",
         }),
       {
         wrapper: createWrapper(queryClient),
@@ -234,6 +238,7 @@ describe("useEquipmentFilterBuckets", () => {
       tinh_trang_array: null,
       phan_loai_array: null,
       nguon_kinh_phi_array: null,
+      equipmentDataset: "regular",
     })
     expect(bucketKeyParams).not.toHaveProperty("page")
     expect(bucketKeyParams).not.toHaveProperty("size")
@@ -246,6 +251,7 @@ describe("useEquipmentFilterBuckets", () => {
       p_vi_tri_lap_dat_array: null,
       p_tinh_trang_array: null,
       p_phan_loai_array: null,
+      p_equipment_dataset: "regular",
       p_nguon_kinh_phi_array: null,
     })
   })

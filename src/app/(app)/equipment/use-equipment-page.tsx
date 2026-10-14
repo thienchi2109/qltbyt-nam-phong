@@ -16,6 +16,8 @@ import { useEquipmentTable } from "./_hooks/useEquipmentTable"
 import { useEquipmentExport } from "./_hooks/useEquipmentExport"
 import { useEquipmentRouteSync } from "./_hooks/useEquipmentRouteSync"
 import { buildDepartmentColorClassByLabel } from "@/components/equipment/equipment-department-grouping"
+import { useEquipmentDatasetTab } from "./_hooks/useEquipmentDatasetTab"
+import type { EquipmentDataset } from "./_hooks/equipmentDataset"
 
 // Re-export hook return type
 export type { UseEquipmentPageReturn } from "./types"
@@ -35,6 +37,28 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   // Create pagination state for data hook coordination
   // Note: This is the source of truth for pagination. The table hook syncs to this.
   const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize: 20 })
+
+  const handleDatasetChange = React.useCallback(
+    (nextDataset: EquipmentDataset) => {
+      setPagination((current) => (current.pageIndex === 0 ? current : { ...current, pageIndex: 0 }))
+      filters.setColumnFilters((current) => {
+        const withoutFunding = current.filter((filter) => filter.id !== "nguon_kinh_phi")
+        const fundingFilter = current.find((filter) => filter.id === "nguon_kinh_phi")
+        if (nextDataset === "placed") {
+          return [...withoutFunding, { id: "nguon_kinh_phi", value: ["Mượn"] }]
+        }
+        if (!Array.isArray(fundingFilter?.value)) return withoutFunding
+        const regularFunding = fundingFilter.value.filter(
+          (value): value is string => typeof value === "string" && value.trim() !== "Mượn"
+        )
+        return regularFunding.length > 0
+          ? [...withoutFunding, { ...fundingFilter, value: regularFunding }]
+          : withoutFunding
+      })
+    },
+    [filters.setColumnFilters]
+  )
+  const datasetTab = useEquipmentDatasetTab({ onDatasetChange: handleDatasetChange })
 
   // Data hook needs params from auth and filters
   // Use explicit property dependencies instead of entire objects for better memoization
@@ -57,6 +81,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       selectedStatuses: filters.selectedStatuses,
       selectedClassifications: filters.selectedClassifications,
       selectedFundingSources: filters.selectedFundingSources,
+      equipmentDataset: datasetTab.dataset,
       // Pass context values from auth hook
       selectedFacilityId: auth.selectedFacilityId,
       showSelector: auth.showSelector,
@@ -85,6 +110,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       filters.selectedStatuses,
       filters.selectedClassifications,
       filters.selectedFundingSources,
+      datasetTab.dataset,
     ]
   )
 
@@ -195,6 +221,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       selectedStatuses: filters.selectedStatuses,
       selectedClassifications: filters.selectedClassifications,
       selectedFundingSources: filters.selectedFundingSources,
+      equipmentDataset: datasetTab.dataset,
     }),
     [
       filters.debouncedSearch,
@@ -206,6 +233,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       filters.selectedStatuses,
       filters.selectedClassifications,
       filters.selectedFundingSources,
+      datasetTab.dataset,
     ]
   )
 
@@ -235,6 +263,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     debouncedSearch: filters.debouncedSearch,
     onApply: setColumnFiltersAndReset,
     onClearAll: handleClearAllColumnFilters,
+    equipmentDataset: datasetTab.dataset,
   })
 
   // Tenant change effect: keep tenant-scoped filter state and show toast
@@ -287,6 +316,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       isGlobal: auth.isGlobal,
       isRegionalLeader: auth.isRegionalLeader,
       effectiveTenantKey: auth.effectiveTenantKey,
+      equipmentDataset: datasetTab.dataset,
+      setEquipmentDataset: datasetTab.setDataset,
 
       // Router & Route sync
       router: routeSync.router,
@@ -380,6 +411,8 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       onDataMutationSuccessWithStatePreservation,
       canBulkSelect,
       tenantBranding,
+      datasetTab.dataset,
+      datasetTab.setDataset,
     ]
   )
 }

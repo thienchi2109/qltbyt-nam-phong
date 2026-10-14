@@ -10,6 +10,7 @@ import type { Table, ColumnDef, ColumnFiltersState, VisibilityState } from "@tan
 import type { useRouter } from "next/navigation"
 import type { RouteAction } from "./_hooks/useEquipmentRouteSync"
 import type { FacilityOption } from "@/types/tenant"
+import type { EquipmentDataset } from "./_hooks/equipmentDataset"
 
 // Re-export commonly used types
 export type { Equipment, UsageLog, SessionUser }
@@ -114,6 +115,8 @@ export interface UseEquipmentPageReturn {
   isGlobal: boolean
   isRegionalLeader: boolean
   effectiveTenantKey: string
+  equipmentDataset: EquipmentDataset
+  setEquipmentDataset: (dataset: EquipmentDataset) => void
 
   // Router & Route sync
   router: ReturnType<typeof useRouter>
@@ -176,7 +179,7 @@ export interface UseEquipmentPageReturn {
   handleExportData: () => Promise<void>
   handleGenerateProfileSheet: (equipment: Equipment) => Promise<void>
   handleGenerateDeviceLabel: (equipment: Equipment) => Promise<void>
-  onDataMutationSuccess: () => void
+  onDataMutationSuccess: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
   onDataMutationSuccessWithStatePreservation: () => void
 
   // UI state

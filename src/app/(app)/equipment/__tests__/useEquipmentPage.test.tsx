@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   handleGenerateProfileSheet: vi.fn(),
   handleGenerateDeviceLabel: vi.fn(),
   useEquipmentRouteSync: vi.fn(),
+  datasetTabOptions: null as { onDatasetChange?: (dataset: "regular" | "placed") => void } | null,
 }))
 
 type AuthState = {
@@ -177,6 +178,18 @@ vi.mock("@/app/(app)/equipment/_hooks/useEquipmentRouteSync", () => ({
       pendingAction: null,
       clearPendingAction: mocks.clearPendingAction,
       isFetchingHighlight: false,
+    }
+  },
+}))
+
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentDatasetTab", () => ({
+  useEquipmentDatasetTab: (options: {
+    onDatasetChange?: (dataset: "regular" | "placed") => void
+  }) => {
+    mocks.datasetTabOptions = options
+    return {
+      dataset: "regular",
+      setDataset: (dataset: "regular" | "placed") => options.onDatasetChange?.(dataset),
     }
   },
 }))

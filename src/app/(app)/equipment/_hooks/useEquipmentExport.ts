@@ -13,6 +13,7 @@ import { columnLabels } from "@/components/equipment/equipment-table-columns"
 import { callRpc } from "@/lib/rpc-client"
 import type { Equipment, EquipmentListResponse } from "../types"
 import type { TenantBranding } from "@/hooks/use-tenant-branding"
+import { DEFAULT_EQUIPMENT_DATASET, type EquipmentDataset } from "./equipmentDataset"
 
 /** Maximum items to export in a single request */
 const MAX_EXPORT_PAGE_SIZE = 10000
@@ -30,6 +31,7 @@ export interface ExportFilterParams {
   selectedStatuses: string[]
   selectedClassifications: string[]
   selectedFundingSources: string[]
+  equipmentDataset?: EquipmentDataset
 }
 
 export interface UseEquipmentExportParams {
@@ -177,6 +179,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
           p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
           p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
           p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+          p_equipment_dataset: filterParams.equipmentDataset ?? DEFAULT_EQUIPMENT_DATASET,
         },
         signal,
       })

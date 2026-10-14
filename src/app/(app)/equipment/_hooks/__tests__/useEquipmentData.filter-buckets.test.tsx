@@ -59,6 +59,7 @@ const baseParams: UseEquipmentDataParams = {
   selectedStatuses: ["Hoat dong"],
   selectedClassifications: ["Class A"],
   selectedFundingSources: ["Fund A"],
+  equipmentDataset: "placed",
   selectedFacilityId: null,
   showSelector: false,
   facilities: [],
@@ -123,6 +124,7 @@ describe("useEquipmentData filter bucket query", () => {
       p_tinh_trang_array: ["Hoat dong"],
       p_phan_loai_array: ["Class A"],
       p_nguon_kinh_phi_array: ["Fund A"],
+      p_equipment_dataset: "placed",
     })
   })
 
@@ -147,6 +149,7 @@ describe("useEquipmentData filter bucket query", () => {
       tinh_trang_array: ["Hoat dong"],
       phan_loai_array: ["Class A"],
       nguon_kinh_phi_array: ["Fund A"],
+      equipmentDataset: "placed",
     }
     const listKeyParams = queryClient
       .getQueryCache()
@@ -205,6 +208,7 @@ describe("useEquipmentData filter bucket query", () => {
       selectedStatuses: [],
       selectedClassifications: [],
       selectedFundingSources: [],
+      equipmentDataset: "regular",
     }
 
     renderHook(() => useEquipmentData(emptyFilterParams), {
@@ -229,6 +233,7 @@ describe("useEquipmentData filter bucket query", () => {
       tinh_trang_array: null,
       phan_loai_array: null,
       nguon_kinh_phi_array: null,
+      equipmentDataset: "regular",
     }
     const listKeyParams = queryClient
       .getQueryCache()
@@ -261,6 +266,7 @@ describe("useEquipmentData filter bucket query", () => {
       p_vi_tri_lap_dat_array: null,
       p_tinh_trang_array: null,
       p_phan_loai_array: null,
+      p_equipment_dataset: "regular",
       p_nguon_kinh_phi_array: null,
     }
 
@@ -273,5 +279,32 @@ describe("useEquipmentData filter bucket query", () => {
     })
     expect(getRpcCall("equipment_department_distribution")?.args).toEqual(emptyRpcFilters)
     expect(getRpcCall("equipment_filter_buckets")?.args).toEqual(emptyRpcFilters)
+  })
+
+  it("reuses a cached dataset query when switching back to a previously visited tab", async () => {
+    const queryClient = createQueryClient()
+    const { rerender } = renderHook((params: UseEquipmentDataParams) => useEquipmentData(params), {
+      initialProps: baseParams,
+      wrapper: createWrapper(queryClient),
+    })
+
+    await waitFor(() => expect(getRpcCall("equipment_list_enhanced")).toBeDefined())
+    const callsAfterPlaced = callRpcMock.mock.calls.length
+
+    rerender({ ...baseParams, equipmentDataset: "regular" })
+    await waitFor(() => {
+      const keys = queryClient.getQueryCache().findAll({ queryKey: ["equipment_list_enhanced"] })
+      expect(
+        keys.some(
+          (query) =>
+            (query.queryKey[1] as { equipmentDataset?: string }).equipmentDataset === "regular"
+        )
+      ).toBe(true)
+    })
+    const callsAfterRegular = callRpcMock.mock.calls.length
+
+    rerender(baseParams)
+    await waitFor(() => expect(callRpcMock.mock.calls.length).toBe(callsAfterRegular))
+    expect(callsAfterRegular).toBeGreaterThan(callsAfterPlaced)
   })
 })
