@@ -4,7 +4,7 @@
 
 **Goal:** Add a server-filtered “Thiết bị thường” / “Thiết bị đặt” tabbed Equipment list where `nguon_kinh_phi = "Mượn"` is isolated from normal equipment, equipment search/filter/pagination stay inside the active dataset, and borrowed equipment is excluded from equipment KPIs and Reports.
 
-**Architecture:** The active Equipment dataset is an explicit server-side scope (`regular`, `placed`, or internal backwards-compatible `all`) carried through the existing paginated RPCs and React Query keys. The UI reuses the repository’s shadcn controlled-tabs and URL state pattern, while the existing Equipment toolbar, table, actions, filters, and export remain shared. Reports and KPI callers always request `regular`; only the Equipment page’s “Thiết bị đặt” tab requests `placed`.
+**Architecture:** The active Equipment dataset is an explicit server-side scope (`regular`, `placed`, or internal backwards-compatible `all`) carried through the existing paginated RPCs and React Query keys. Tab changes must reuse the TanStack Query cache for the active dataset: do not force a refetch merely because the tab changed; the first visit may fetch, while returning to a tab uses its cached query under the existing stale-time policy. Mutations invalidate only the affected dataset keys. The UI reuses the repository’s shadcn controlled-tabs and URL state pattern, while the existing Equipment toolbar, table, actions, filters, and export remain shared. Reports and KPI callers always request `regular`; only the Equipment page’s “Thiết bị đặt” tab requests `placed`.
 
 **Tech Stack:** Next.js App Router, React, TanStack Query/Table, shadcn Tabs, Supabase/Postgres RPCs and immutable forward migrations, Vitest, SQL quality-gate registry.
 
@@ -136,6 +136,7 @@ Modify:
 - [ ] **Step 1: Add failing assertions** that every list, department, bucket, and export RPC call includes the active scope and that every React Query key changes when scope changes.
 - [ ] **Step 2: Run the focused hook tests** and expect failures.
 - [ ] **Step 3: Add `equipmentDataset` to query-key params and RPC args.** Keep all existing search/filter/sort arrays unchanged.
+- [ ] **Step 4: Preserve per-dataset TanStack Query cache on tab changes.** Do not invalidate or refetch solely on tab selection; add a focused cache-reuse assertion, and invalidate only the dataset affected by a successful mutation.
 - [ ] **Step 4: Ensure active dataset is applied before server pagination and export caps.** The placed export must never fetch regular rows and the regular export must never fetch Mượn rows.
 - [ ] **Step 5: Scope filter buckets** so regular does not offer an impossible Mượn option and placed exposes only the locked Mượn funding value plus the other common filters.
 - [ ] **Step 6: Run focused hook tests** and expect PASS.
