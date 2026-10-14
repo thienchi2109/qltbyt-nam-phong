@@ -3574,14 +3574,14 @@ BEGIN
 
   RETURN QUERY
   SELECT to_jsonb(row) FROM (
-    SELECT 
+    SELECT
       date_trunc('day', nk.thoi_gian_bat_dau)::date as date,
       COUNT(*) as session_count,
       COALESCE(SUM(
-        CASE 
-          WHEN nk.thoi_gian_ket_thuc IS NOT NULL 
+        CASE
+          WHEN nk.thoi_gian_ket_thuc IS NOT NULL
           THEN EXTRACT(EPOCH FROM (nk.thoi_gian_ket_thuc - nk.thoi_gian_bat_dau)) / 60
-          ELSE 0 
+          ELSE 0
         END
       ), 0)::int as total_usage_time,
       COUNT(DISTINCT nk.nguoi_su_dung_id) as unique_users,
@@ -3646,10 +3646,10 @@ BEGIN
     'total_sessions', COUNT(*),
     'active_sessions', COUNT(*) FILTER (WHERE nk.trang_thai = 'dang_su_dung'),
     'total_usage_time', COALESCE(SUM(
-      CASE 
-        WHEN nk.thoi_gian_ket_thuc IS NOT NULL 
+      CASE
+        WHEN nk.thoi_gian_ket_thuc IS NOT NULL
         THEN EXTRACT(EPOCH FROM (nk.thoi_gian_ket_thuc - nk.thoi_gian_bat_dau)) / 60
-        ELSE 0 
+        ELSE 0
       END
     ), 0)::int
   ) INTO result
@@ -3852,4 +3852,3 @@ GRANT EXECUTE ON FUNCTION public.maintenance_stats_for_reports(date,date,bigint,
 GRANT EXECUTE ON FUNCTION public.get_facilities_with_equipment_count(text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.dinh_muc_compliance_summary(bigint,bigint,text) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.dinh_muc_compliance_detail(bigint,bigint,text) TO authenticated, service_role;
-
