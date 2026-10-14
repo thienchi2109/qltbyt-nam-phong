@@ -2037,6 +2037,9 @@ DECLARE
   v_decision_don_vi BIGINT;
   v_allowed_facilities BIGINT[];
 BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
   -- Fallback for older tokens using 'role' instead of 'app_role'
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
@@ -2168,6 +2171,9 @@ DECLARE
   v_allowed_facilities BIGINT[];
   v_facility_name TEXT;
 BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
   -- Fallback for older tokens using 'role' instead of 'app_role'
   IF v_role IS NULL OR v_role = '' THEN
     v_role := current_setting('request.jwt.claims', true)::json->>'role';
@@ -3541,12 +3547,16 @@ CREATE OR REPLACE FUNCTION public.usage_analytics_daily(p_days integer, p_don_vi
  RETURNS SETOF jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_allowed BIGINT[] := public.allowed_don_vi_for_session();
   v_effective BIGINT[] := NULL;
 BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
   IF v_role = 'global' THEN
     IF p_don_vi IS NOT NULL THEN
       v_effective := ARRAY[p_don_vi];
@@ -3602,6 +3612,7 @@ CREATE OR REPLACE FUNCTION public.usage_analytics_overview(p_don_vi bigint, p_eq
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
 AS $function$
 DECLARE
   v_role TEXT := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
@@ -3609,6 +3620,9 @@ DECLARE
   v_effective BIGINT[] := NULL;
   result JSONB;
 BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
   IF v_role = 'global' THEN
     IF p_don_vi IS NOT NULL THEN
       v_effective := ARRAY[p_don_vi];

@@ -239,6 +239,10 @@ BEGIN
           OR position('mượn' IN v_definition) = 0 THEN
           RAISE EXCEPTION 'dashboard dataset predicate missing in %', v_signature;
         END IF;
+        IF position('invalid equipment dataset' IN v_definition) = 0
+          OR position('22023' IN v_definition) = 0 THEN
+          RAISE EXCEPTION 'dashboard dataset validation guard missing in %', v_signature;
+        END IF;
         IF position('from public.thiet_bi' IN v_definition) > 0
           AND position(
                 'btrim(coalesce(tb.nguon_kinh_phi' IN
