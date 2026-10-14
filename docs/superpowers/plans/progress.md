@@ -86,3 +86,36 @@ Proceed to Phase 3 UI/data-flow work only with the database-gate boundary above 
 - Oracle baseline-forward remains **INCOMPLETE / BLOCKING** with `dynamic.preflight.stale-environment`; no runtime SQL evidence exists, so aggregate DB-gate PASS must not be claimed and live apply remains out of scope.
 
 No push or live database writes were performed.
+
+## Checkpoint: Phase 3 implementation complete, isolated for review
+
+- **Scope:** Chunk 3, Task 5–6 (Equipment tabs and active-dataset data flow)
+- **Worker branch/worktree:** `feat/equipment-placed-phase3` / `.worktrees/equipment-placed-phase3`
+- **Worker commit:** `0b30f49b` (`feat: add equipment dataset tabs and scoped queries`)
+- **Main branch:** unchanged by Phase 3; no merge and no push performed.
+
+### Delivered
+
+- Added URL-persisted controlled tabs: **Thiết bị thường** (default `regular`) and **Thiết bị đặt** (`placed`), with invalid-tab fallback, browser history synchronization, URL replacement without scroll, and pagination reset.
+- Kept tab state outside the existing filter context; shared toolbar, table/cards, summaries, pagination, actions, dialogs, mobile filters, and export remain single implementations.
+- Threaded the active dataset through list, department distribution, filter buckets, and export RPC arguments/query keys using `p_equipment_dataset`.
+- Locked the placed funding bucket to `Mượn`; removed list `keepPreviousData` so regular rows cannot flash under the placed tab.
+- Added dataset-aware mutation invalidation with support for invalidating source and destination datasets when needed.
+
+### Independent verification
+
+- `git diff --check f8ac3786..0b30f49b` — PASS
+- `format:check` — PASS
+- `verify:no-explicit-any` — PASS
+- `verify:dedupe` — PASS
+- `typecheck` — PASS
+- Focused Phase 3 suite — **8 files, 33 tests passed**
+- React Doctor — **84/100, no issues found**
+- Worker recorded RED evidence for missing tab hook, dataset RPC arguments, and dataset query keys before Green implementation.
+
+### Boundaries carried forward
+
+- Phase 2 DB Quality Gate remains **INCOMPLETE/BLOCKED** because static findings are advisory and Oracle baseline-forward is stale; Phase 3 made no SQL/live DB changes.
+- Phase 2 migration caveats remain: normalize the dynamic report dataset bind value in a later SQL hardening pass, and verify partial-index planner use with disposable `EXPLAIN` after the baseline is refreshed.
+
+Safe checkpoint reached. Await user direction before merging Phase 3 or starting the next phase.
