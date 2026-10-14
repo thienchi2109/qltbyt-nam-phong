@@ -166,6 +166,7 @@ DECLARE
   v_scoped_count integer;
   v_legacy_count integer;
   v_defaulted_scoped integer;
+  v_expected_scoped integer;
   v_contract_names constant text[] := ARRAY[
     'equipment_list_enhanced', 'equipment_department_distribution',
     'equipment_filter_buckets', 'equipment_count_enhanced',
@@ -181,6 +182,7 @@ DECLARE
   ];
 BEGIN
   FOREACH v_name IN ARRAY v_contract_names LOOP
+    v_expected_scoped := CASE WHEN v_name IN ('equipment_status_distribution', 'usage_log_list') THEN 2 ELSE 1 END;
     SELECT
       count(*) FILTER (WHERE p.proargnames @> ARRAY['p_equipment_dataset']::text[]),
       count(*) FILTER (WHERE NOT (p.proargnames @> ARRAY['p_equipment_dataset']::text[])),
@@ -193,7 +195,7 @@ BEGIN
     JOIN pg_namespace AS n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = v_name;
 
-    IF v_scoped_count <> 1 OR v_legacy_count < 1 THEN
+    IF v_scoped_count <> v_expected_scoped OR v_legacy_count < v_expected_scoped THEN
       RAISE EXCEPTION 'RPC compatibility overload contract failed for public.% (scoped %, legacy %)',
         v_name, v_scoped_count, v_legacy_count;
     END IF;
