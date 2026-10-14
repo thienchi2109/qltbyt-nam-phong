@@ -1848,12 +1848,22 @@ CREATE OR REPLACE FUNCTION public.dashboard_repair_request_stats(p_equipment_dat
 AS $function$
 DECLARE
   v_role text := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_user_id text := NULLIF(COALESCE(public._get_jwt_claim('user_id'), public._get_jwt_claim('sub')), '');
   v_allowed bigint[] := public.allowed_don_vi_for_session_safe();
   v_department_scope text := public._normalize_department_scope(public._get_jwt_claim('khoa_phong'));
   result jsonb;
 BEGIN
   IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
     RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'Missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Missing user_id claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_role = 'admin' THEN
+    v_role := 'global';
   END IF;
   WITH repair_counts AS (
     SELECT
