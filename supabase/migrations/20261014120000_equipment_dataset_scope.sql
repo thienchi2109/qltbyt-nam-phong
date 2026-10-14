@@ -92,6 +92,7 @@ BEGIN
     JOIN public.thiet_bi tb ON tb.don_vi = sf.facility_id
     JOIN public.nhom_thiet_bi ntb ON ntb.id = tb.nhom_thiet_bi_id AND ntb.don_vi_id = tb.don_vi
     WHERE tb.is_deleted = false
+      AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
       AND (
         ntb.ten_nhom ILIKE ('%' || v_sanitized_query || '%')
         OR EXISTS (
@@ -133,6 +134,7 @@ BEGIN
       ON tb.don_vi = mg.facility_id
      AND tb.nhom_thiet_bi_id = mg.nhom_thiet_bi_id
      AND tb.is_deleted = false
+     AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
     WHERE mg.nhom_thiet_bi_id IS NOT NULL
     GROUP BY mg.facility_id, mg.nhom_thiet_bi_id
   ),
@@ -1774,6 +1776,7 @@ BEGIN
         FROM public.thiet_bi tb
         WHERE coalesce(tb.is_deleted, false) = false
           AND tb.don_vi = $1
+          AND ($6::text = 'all' OR ($6::text = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR ($6::text = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
           AND tb.tinh_trang_hien_tai = 'Chưa có nhu cầu sử dụng'
           AND (
             $2::text IS NULL
@@ -1817,7 +1820,7 @@ BEGIN
     v_order_sql
   )
   INTO v_items
-  USING v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit;
+  USING v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit, p_equipment_dataset;
 
   RETURN jsonb_build_object(
     'summary', coalesce(v_summary, jsonb_build_object(
@@ -1837,15 +1840,78 @@ BEGIN
 END;
 $function$
 
-GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) TO authenticated, service_role;
+CREATE OR REPLACE FUNCTION public.dashboard_repair_request_stats(p_equipment_dataset text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+  v_role text := lower(COALESCE(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
+  v_allowed bigint[] := public.allowed_don_vi_for_session_safe();
+  v_department_scope text := public._normalize_department_scope(public._get_jwt_claim('khoa_phong'));
+  result jsonb;
+BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
+  WITH repair_counts AS (
+    SELECT
+      COUNT(*) FILTER (WHERE yc.trang_thai = 'Chờ xử lý') AS pending,
+      COUNT(*) FILTER (WHERE yc.trang_thai = 'Đã duyệt') AS approved,
+      COUNT(*) FILTER (WHERE yc.trang_thai IN ('Hoàn thành', 'Không HT')) AS completed
+    FROM public.yeu_cau_sua_chua yc
+    INNER JOIN public.thiet_bi tb ON tb.id = yc.thiet_bi_id
+    WHERE tb.is_deleted = false
+      AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_role = 'global' OR tb.don_vi = ANY(v_allowed))
+      AND (v_role <> 'user' OR public._normalize_department_scope(tb.khoa_phong_quan_ly) = v_department_scope)
+  )
+  SELECT jsonb_build_object('total', COALESCE(pending + approved, 0), 'pending', COALESCE(pending, 0), 'approved', COALESCE(approved, 0), 'completed', COALESCE(completed, 0)) INTO result FROM repair_counts;
+  RETURN COALESCE(result, jsonb_build_object('total', 0, 'pending', 0, 'approved', 0, 'completed', 0));
+END;
+$function$;
+
+-- Maintenance plans contain no equipment relation; this scoped overload keeps
+-- the dataset contract while preserving the existing plan-only metric.
+CREATE OR REPLACE FUNCTION public.dashboard_maintenance_plan_stats(p_equipment_dataset text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+BEGIN
+  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN
+    RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023';
+  END IF;
+  RETURN public.dashboard_maintenance_plan_stats();
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.dashboard_repair_request_stats(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_repair_request_stats(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.dashboard_maintenance_plan_stats(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.dashboard_maintenance_plan_stats(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_department_distribution(text,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_department_distribution(text,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_filter_buckets(text,bigint,text[],text[],text[],text[],text[],text[],text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_filter_buckets(text,bigint,text[],text[],text[],text[],text[],text[],text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_count_enhanced(text[],text,bigint,text,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_count_enhanced(text[],text,bigint,text,text) TO anon, authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(text,bigint,text,text,text) TO PUBLIC;
-GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(bigint,text,text,text) TO PUBLIC;
+REVOKE ALL ON FUNCTION public.equipment_status_distribution(text,bigint,text,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(text,bigint,text,text,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_status_distribution(bigint,text,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.equipment_status_distribution(bigint,text,text,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_list_for_reports(text,text,integer,integer,bigint,text,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_list_for_reports(text,text,integer,integer,bigint,text,text) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_aggregates_for_reports(bigint[],text,date,date,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_aggregates_for_reports(bigint[],text,date,date,text) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.unused_equipment_report_for_reports(bigint,text,text,integer,integer,text,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.unused_equipment_report_for_reports(bigint,text,text,integer,integer,text,text) TO anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_aggregate_search(text,text,bigint,integer,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_aggregate_search(text,text,bigint,integer,text) TO authenticated, service_role;
 
 CREATE OR REPLACE FUNCTION public.dashboard_equipment_total(p_equipment_dataset text)
@@ -1947,8 +2013,8 @@ BEGIN
   RETURN jsonb_build_object(
     'totalEquipment', public.dashboard_equipment_total(p_equipment_dataset),
     'maintenanceCount', public.dashboard_maintenance_count(p_equipment_dataset),
-    'repairRequests', public.dashboard_repair_request_stats(),
-    'maintenancePlans', public.dashboard_maintenance_plan_stats()
+    'repairRequests', public.dashboard_repair_request_stats(p_equipment_dataset),
+    'maintenancePlans', public.dashboard_maintenance_plan_stats(p_equipment_dataset)
   );
 END;
 $function$
@@ -3852,17 +3918,31 @@ END;
 $function$
 
 
+REVOKE ALL ON FUNCTION public.dashboard_kpi_summary(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_kpi_summary(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.dashboard_equipment_total(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_equipment_total(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.dashboard_maintenance_count(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dashboard_maintenance_count(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_attention_list(integer,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_attention_list(integer,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.equipment_attention_list_paginated(integer,integer,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_attention_list_paginated(integer,integer,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.usage_log_list(bigint,text,boolean,timestamptz,timestamptz,integer,integer,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.usage_log_list(bigint,text,boolean,timestamptz,timestamptz,integer,integer,bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.usage_log_list(text,text,integer,integer,date,date,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.usage_log_list(text,text,integer,integer,date,date,bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.usage_analytics_overview(bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.usage_analytics_overview(bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.usage_analytics_daily(integer,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.usage_analytics_daily(integer,bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_maintenance_report_data(date,date,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_maintenance_report_data(date,date,bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.maintenance_stats_for_reports(date,date,bigint,text,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.maintenance_stats_for_reports(date,date,bigint,text,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.get_facilities_with_equipment_count(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_facilities_with_equipment_count(text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.dinh_muc_compliance_summary(bigint,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dinh_muc_compliance_summary(bigint,bigint,text) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.dinh_muc_compliance_detail(bigint,bigint,text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dinh_muc_compliance_detail(bigint,bigint,text) TO authenticated, service_role;

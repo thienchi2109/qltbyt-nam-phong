@@ -110,7 +110,15 @@ BEGIN
       v_predicate_position := position('btrim(coalesce' IN v_definition);
       IF v_name IN ('equipment_list_enhanced', 'equipment_list_for_reports',
                     'unused_equipment_report_for_reports') THEN
-        v_limit_position := position('limit' IN v_definition);
+        -- Match LIMIT as a SQL token; position('limit' ...) incorrectly
+        -- matches identifiers such as v_limit declared before the predicate.
+        v_limit_position := regexp_instr(
+          v_definition,
+          '(^|[^[:alnum:]_])limit([^[:alnum:]_]|$)',
+          1,
+          1,
+          'i'
+        );
         IF v_limit_position = 0 THEN
           RAISE EXCEPTION 'pagination source token missing in %', v_signature;
         END IF;
@@ -222,7 +230,8 @@ DECLARE
     'usage_analytics_overview', 'usage_analytics_daily',
     'get_maintenance_report_data', 'maintenance_stats_for_reports',
     'get_facilities_with_equipment_count', 'dinh_muc_compliance_summary',
-    'dinh_muc_compliance_detail'
+    'dinh_muc_compliance_detail', 'dashboard_repair_request_stats',
+    'dashboard_maintenance_plan_stats'
   ];
 BEGIN
   FOREACH v_name IN ARRAY v_dashboard_functions LOOP
@@ -235,9 +244,14 @@ BEGIN
     LOOP
       IF position('p_equipment_dataset' IN v_definition) > 0 THEN
         v_found := true;
-        IF position('btrim(coalesce' IN v_definition) = 0
-          OR position('mượn' IN v_definition) = 0 THEN
+        IF v_name <> 'dashboard_maintenance_plan_stats'
+          AND (position('btrim(coalesce' IN v_definition) = 0
+            OR position('mượn' IN v_definition) = 0) THEN
           RAISE EXCEPTION 'dashboard dataset predicate missing in %', v_signature;
+        END IF;
+        IF v_name = 'dashboard_maintenance_plan_stats'
+          AND position('thiet_bi' IN v_definition) > 0 THEN
+          RAISE EXCEPTION 'plan-only dashboard metric unexpectedly references equipment in %', v_signature;
         END IF;
         IF position('invalid equipment dataset' IN v_definition) = 0
           OR position('22023' IN v_definition) = 0 THEN
