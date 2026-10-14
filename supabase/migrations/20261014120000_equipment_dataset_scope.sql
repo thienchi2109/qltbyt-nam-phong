@@ -823,7 +823,8 @@ BEGIN
       COALESCE(NULLIF(TRIM(tb.phan_loai_theo_nd98), ''), v_unclassified_label) AS classification_name,
       COALESCE(NULLIF(TRIM(tb.nguon_kinh_phi), ''), v_empty_funding_label) AS funding_source_name
     FROM public.thiet_bi tb
-    WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
       AND tb.is_deleted = false
       AND (
         v_role <> 'user'
@@ -2095,7 +2096,8 @@ BEGIN
       tb.nhom_thiet_bi_id,
       COUNT(*)::BIGINT AS cnt
     FROM public.thiet_bi tb
-    WHERE tb.don_vi = p_don_vi
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND tb.don_vi = p_don_vi
       AND tb.nhom_thiet_bi_id IS NOT NULL
     GROUP BY tb.nhom_thiet_bi_id
   ),
@@ -2230,7 +2232,8 @@ BEGIN
         (
           SELECT COUNT(*)::BIGINT
           FROM public.thiet_bi tb
-          WHERE tb.don_vi = p_don_vi
+          WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+            AND tb.don_vi = p_don_vi
             AND tb.nhom_thiet_bi_id IS NULL
         ) AS unassigned_equipment;
       RETURN;
@@ -2245,7 +2248,8 @@ BEGIN
       tb.nhom_thiet_bi_id,
       COUNT(*)::BIGINT AS so_luong_hien_co
     FROM public.thiet_bi tb
-    WHERE tb.don_vi = p_don_vi
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND tb.don_vi = p_don_vi
       AND tb.nhom_thiet_bi_id IS NOT NULL
     GROUP BY tb.nhom_thiet_bi_id
   ),
@@ -2276,7 +2280,8 @@ BEGIN
     (
       SELECT COUNT(*)::BIGINT
       FROM public.thiet_bi tb
-      WHERE tb.don_vi = p_don_vi
+      WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+        AND tb.don_vi = p_don_vi
         AND tb.nhom_thiet_bi_id IS NULL
     ) AS unassigned_equipment
   FROM compliance_status cs
@@ -2643,7 +2648,8 @@ BEGIN
       tb.ma_thiet_bi AS equipment_code,
       tb.don_vi AS facility_id
     FROM public.thiet_bi tb
-    WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
   ),
   repair_data_raw AS (
     SELECT
@@ -3472,7 +3478,8 @@ BEGIN
       )
       FROM public.yeu_cau_sua_chua yc
       LEFT JOIN public.thiet_bi tb ON yc.thiet_bi_id = tb.id
-      WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
         AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
         AND coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh) IS NOT NULL
         AND (coalesce(yc.ngay_yeu_cau, yc.ngay_duyet, yc.ngay_hoan_thanh) AT TIME ZONE 'Asia/Ho_Chi_Minh')::date BETWEEN v_from AND v_to
@@ -3500,7 +3507,8 @@ BEGIN
       FROM public.ke_hoach_bao_tri kh
       LEFT JOIN public.cong_viec_bao_tri cv ON kh.id = cv.ke_hoach_id
       LEFT JOIN public.thiet_bi tb ON cv.thiet_bi_id = tb.id
-      WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
         AND (p_khoa_phong IS NULL OR tb.khoa_phong_quan_ly = p_khoa_phong)
         AND kh.nam BETWEEN v_from_year AND v_to_year
     )
@@ -3578,7 +3586,8 @@ BEGIN
       COUNT(DISTINCT nk.thiet_bi_id) as unique_equipment
     FROM public.nhat_ky_su_dung nk
     LEFT JOIN public.thiet_bi tb ON nk.thiet_bi_id = tb.id
-    WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
       AND nk.thoi_gian_bat_dau >= CURRENT_DATE - INTERVAL '1 day' * p_days
     GROUP BY date_trunc('day', nk.thoi_gian_bat_dau)
     ORDER BY date DESC
@@ -3644,7 +3653,8 @@ BEGIN
   ) INTO result
   FROM public.nhat_ky_su_dung nk
   LEFT JOIN public.thiet_bi tb ON nk.thiet_bi_id = tb.id
-  WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective));
+  WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+    AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective));
 
   RETURN COALESCE(result, jsonb_build_object(
     'total_sessions', 0,
@@ -3731,7 +3741,8 @@ BEGIN
   FROM public.nhat_ky_su_dung nk
   LEFT JOIN public.thiet_bi tb ON tb.id = nk.thiet_bi_id
   LEFT JOIN public.nhan_vien nv ON nv.id = nk.nguoi_su_dung_id
-  WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+    WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+      AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
     AND (p_thiet_bi_id IS NULL OR nk.thiet_bi_id = p_thiet_bi_id)
     AND (NOT p_active_only OR nk.trang_thai = 'dang_su_dung')
     AND (p_trang_thai IS NULL OR nk.trang_thai = p_trang_thai)
@@ -3808,7 +3819,8 @@ BEGIN
   FROM public.nhat_ky_su_dung nk
   LEFT JOIN public.thiet_bi tb ON nk.thiet_bi_id = tb.id
   LEFT JOIN public.nhan_vien u ON nk.nguoi_su_dung_id = u.id
-  WHERE (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
+  WHERE (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+    AND (v_effective IS NULL OR tb.don_vi = ANY(v_effective))
     AND (p_status IS NULL OR nk.trang_thai = p_status)
     AND (p_date_from IS NULL OR nk.thoi_gian_bat_dau::date >= p_date_from)
     AND (p_date_to IS NULL OR nk.thoi_gian_bat_dau::date <= p_date_to)
