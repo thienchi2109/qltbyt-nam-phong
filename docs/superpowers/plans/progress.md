@@ -62,3 +62,27 @@ Begin Phase 2 only after this checkpoint is accepted: add the immutable migratio
 ### Next checkpoint
 
 Proceed to Phase 3 UI/data-flow work only with the database-gate boundary above carried forward. Implement the two Equipment tabs with dataset-specific TanStack Query keys and cache reuse.
+
+## Phase 2 migration review checkpoint
+
+- **Reviewed range:** `87d3dbd0..5eb5dbc1`
+- **Migration reviewer:** gpt-6-astra, medium, migration-only review
+- **Verdict:** **APPROVE WITH CAVEATS** for migration logic.
+- **Review fixes landed:** aggregate-search branches, unused-report paginated SQL, nested KPI metrics, PUBLIC ACL revokes, auth/admin compatibility, exact registry coverage, and source-contract assertions.
+
+### Independent verification after review
+
+- `git diff --check 87d3dbd0..HEAD` — PASS
+- Structural audit — **26 scoped overload declarations / 24 unique RPCs**, registry covers all 24 names, search-path clauses present, ACL revoke/grant statements present.
+- Focused dataset Vitest — **2 files, 8 tests passed**
+- `typecheck` — PASS
+- Static DB Quality Gate — **INCOMPLETE**, current run `findings=1639`, `warnings=1545`, `dangerous=26`, `blocking=68`, digest `97151285d2ca8ccfe9192e709d09502938a18845a2ba54faae3b1c1e9b744267`; treat as advisory per user instruction and do not bypass.
+- Broader Equipment directory Vitest — **3 files / 5 tests failed**; this was not used as the focused dataset acceptance signal and needs separate baseline triage.
+
+### Remaining caveats
+
+- `unused_equipment_report_for_reports` accepts normalized dataset input in validation/summary, while its dynamic paginated-row branch compares the raw bind value. The current UI contract sends lowercase canonical values; whitespace/mixed-case direct RPC calls remain unverified.
+- The partial index uses `coalesce(is_deleted, false)=false` while several queries use `is_deleted=false`; disposable `EXPLAIN`/catalog evidence is still needed to confirm planner usage.
+- Oracle baseline-forward remains **INCOMPLETE / BLOCKING** with `dynamic.preflight.stale-environment`; no runtime SQL evidence exists, so aggregate DB-gate PASS must not be claimed and live apply remains out of scope.
+
+No push or live database writes were performed.
