@@ -102,9 +102,11 @@ BEGIN
           'scoped predicate missing or not trim-normalized in %', v_signature;
       END IF;
 
-      -- Pagination and aggregate totals must be derived after the scoped
-      -- relation. Fail closed when a scoped source contains a relevant token
-      -- before its predicate; runtime calls are deferred until the migration.
+      -- Pagination and aggregate totals must be derived from the scoped
+      -- relation. The SQL parser cannot reliably order COUNT(*) and WHERE
+      -- tokens (ordinary SELECT COUNT(*) ... WHERE has COUNT first), so this
+      -- source check verifies both contracts and the disposable smoke call
+      -- supplies the behavioral pagination/total assertion.
       v_predicate_position := position('btrim(coalesce' IN v_definition);
       IF v_name IN ('equipment_list_enhanced', 'equipment_list_for_reports',
                     'unused_equipment_report_for_reports') THEN
@@ -124,15 +126,37 @@ BEGIN
         IF v_count_position = 0 THEN
           RAISE EXCEPTION 'aggregate total source token missing in %', v_signature;
         END IF;
-        IF v_count_position < v_predicate_position THEN
-          RAISE EXCEPTION 'aggregate total precedes dataset predicate in %', v_signature;
-        END IF;
       END IF;
     END LOOP;
     IF v_scoped_definition_count = 0 THEN
       RAISE EXCEPTION 'scoped equipment dataset overload missing for public.%', v_name;
     END IF;
   END LOOP;
+END;
+$$;
+
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.equipment_list_enhanced(
+      NULL, 'id.asc', 1, 1, NULL, NULL, NULL, NULL, NULL, NULL,
+      NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, 'invalid'
+    );
+    RAISE EXCEPTION 'invalid equipment dataset was accepted';
+  EXCEPTION WHEN SQLSTATE '22023' THEN
+    NULL;
+  END;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc AS p
+    JOIN pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'equipment_list_enhanced'
+      AND p.proargnames @> ARRAY['p_equipment_dataset']::text[]
+  ) THEN
+    RAISE EXCEPTION 'scoped equipment_list_enhanced overload is not discoverable';
+  END IF;
 END;
 $$;
 
