@@ -170,6 +170,58 @@ $$;
 
 DO $$
 DECLARE
+  v_definition text;
+  v_index_predicate text;
+  v_is_deleted_not_null boolean;
+BEGIN
+  SELECT lower(pg_get_functiondef(p.oid))
+  INTO v_definition
+  FROM pg_proc AS p
+  JOIN pg_namespace AS n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'unused_equipment_report_for_reports'
+    AND p.proargnames @> ARRAY['p_equipment_dataset']::text[];
+
+  IF v_definition IS NULL
+    OR position('v_equipment_dataset := lower(btrim(coalesce(p_equipment_dataset' IN v_definition) = 0
+    OR position('coalesce(tb.is_deleted' IN v_definition) > 0
+    OR position('using v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit, v_equipment_dataset' IN v_definition) = 0
+    OR position('using v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit, p_equipment_dataset' IN v_definition) > 0 THEN
+    RAISE EXCEPTION 'unused equipment report must normalize dataset once and bind the normalized value';
+  END IF;
+
+  SELECT lower(pg_get_expr(i.indpred, i.indrelid))
+  INTO v_index_predicate
+  FROM pg_index AS i
+  JOIN pg_class AS c ON c.oid = i.indexrelid
+  JOIN pg_namespace AS n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'idx_thiet_bi_dataset_placed';
+
+  IF v_index_predicate IS NULL
+    OR position('is_deleted = false' IN v_index_predicate) = 0
+    OR position('coalesce(is_deleted' IN v_index_predicate) > 0 THEN
+    RAISE EXCEPTION 'placed dataset index must match the scoped is_deleted = false predicate';
+  END IF;
+
+  SELECT a.attnotnull
+  INTO v_is_deleted_not_null
+  FROM pg_attribute AS a
+  JOIN pg_class AS c ON c.oid = a.attrelid
+  JOIN pg_namespace AS n ON n.oid = c.relnamespace
+  WHERE n.nspname = 'public'
+    AND c.relname = 'thiet_bi'
+    AND a.attname = 'is_deleted'
+    AND NOT a.attisdropped;
+
+  IF v_is_deleted_not_null IS DISTINCT FROM true THEN
+    RAISE EXCEPTION 'thiet_bi.is_deleted must remain NOT NULL for the scoped index contract';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
   v_name text;
   v_scoped_count integer;
   v_legacy_count integer;

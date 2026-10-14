@@ -1,5 +1,5 @@
 -- Equipment regular/placed dataset scope (immutable).
-CREATE INDEX IF NOT EXISTS idx_thiet_bi_dataset_placed ON public.thiet_bi (don_vi, (btrim(coalesce(nguon_kinh_phi, '')))) WHERE coalesce(is_deleted, false) = false AND btrim(coalesce(nguon_kinh_phi, '')) = 'Mượn';
+CREATE INDEX IF NOT EXISTS idx_thiet_bi_dataset_placed ON public.thiet_bi (don_vi, (btrim(coalesce(nguon_kinh_phi, '')))) WHERE is_deleted = false AND btrim(coalesce(nguon_kinh_phi, '')) = 'Mượn';
 
 CREATE OR REPLACE FUNCTION public.equipment_aggregate_search(p_query text, p_group_by text, p_region_id bigint, p_limit integer, p_equipment_dataset text)
  RETURNS jsonb
@@ -1583,8 +1583,10 @@ DECLARE
   v_department_options jsonb;
   v_items jsonb;
   v_total_count integer;
+  v_equipment_dataset text;
 BEGIN
-  IF lower(btrim(coalesce(p_equipment_dataset, ''))) NOT IN ('all', 'regular', 'placed') THEN RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023'; END IF;
+  v_equipment_dataset := lower(btrim(coalesce(p_equipment_dataset, '')));
+  IF v_equipment_dataset NOT IN ('all', 'regular', 'placed') THEN RAISE EXCEPTION 'Invalid equipment dataset: %', p_equipment_dataset USING ERRCODE = '22023'; END IF;
     v_role := lower(coalesce(public._get_jwt_claim('app_role'), public._get_jwt_claim('role'), ''));
   v_user_id := nullif(public._get_jwt_claim('user_id'), '');
   v_claim_don_vi := nullif(public._get_jwt_claim('don_vi'), '')::bigint;
@@ -1650,7 +1652,7 @@ BEGIN
       tb.gia_goc,
       tb.don_vi
     FROM public.thiet_bi tb
-    WHERE coalesce(tb.is_deleted, false) = false AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
+    WHERE tb.is_deleted = false AND (v_equipment_dataset = 'all' OR (v_equipment_dataset = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (v_equipment_dataset = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
       AND tb.don_vi = v_effective_don_vi
       AND tb.tinh_trang_hien_tai = 'Chưa có nhu cầu sử dụng'
       AND (
@@ -1774,7 +1776,7 @@ BEGIN
           tb.gia_goc,
           tb.don_vi
         FROM public.thiet_bi tb
-        WHERE coalesce(tb.is_deleted, false) = false
+        WHERE tb.is_deleted = false
           AND tb.don_vi = $1
           AND ($6::text = 'all' OR ($6::text = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR ($6::text = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
           AND tb.tinh_trang_hien_tai = 'Chưa có nhu cầu sử dụng'
@@ -1820,7 +1822,7 @@ BEGIN
     v_order_sql
   )
   INTO v_items
-  USING v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit, p_equipment_dataset;
+  USING v_effective_don_vi, p_khoa_phong, v_pattern, v_offset, v_limit, v_equipment_dataset;
 
   RETURN jsonb_build_object(
     'summary', coalesce(v_summary, jsonb_build_object(
