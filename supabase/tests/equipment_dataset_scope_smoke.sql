@@ -253,6 +253,12 @@ BEGIN
           AND position('thiet_bi' IN v_definition) > 0 THEN
           RAISE EXCEPTION 'plan-only dashboard metric unexpectedly references equipment in %', v_signature;
         END IF;
+        IF v_name = 'dashboard_repair_request_stats'
+          AND (position('missing role claim' IN v_definition) = 0
+            OR position('missing user_id claim' IN v_definition) = 0
+            OR position('v_role = ''admin''' IN v_definition) = 0) THEN
+          RAISE EXCEPTION 'dashboard repair auth compatibility guard missing in %', v_signature;
+        END IF;
         IF position('invalid equipment dataset' IN v_definition) = 0
           OR position('22023' IN v_definition) = 0 THEN
           RAISE EXCEPTION 'dashboard dataset validation guard missing in %', v_signature;
