@@ -4,7 +4,7 @@
     {
       "evidence": [
         "Equipment regular/placed dataset partition and scoped RPC source contract",
-        "Protected objects: public.equipment_list_enhanced, public.equipment_department_distribution, public.equipment_filter_buckets, public.equipment_count_enhanced, public.equipment_status_distribution, public.equipment_list_for_reports, public.equipment_aggregates_for_reports, public.unused_equipment_report_for_reports, public.equipment_aggregate_search"
+        "Protected objects: public.equipment_list_enhanced, public.equipment_department_distribution, public.equipment_filter_buckets, public.equipment_count_enhanced, public.equipment_status_distribution, public.equipment_list_for_reports, public.equipment_aggregates_for_reports, public.unused_equipment_report_for_reports, public.equipment_aggregate_search, public.dashboard_kpi_summary, public.dashboard_equipment_total, public.dashboard_maintenance_count, public.dashboard_repair_request_stats, public.dashboard_maintenance_plan_stats, public.equipment_attention_list, public.equipment_attention_list_paginated, public.usage_log_list, public.usage_analytics_overview, public.usage_analytics_daily, public.get_maintenance_report_data, public.maintenance_stats_for_reports, public.get_facilities_with_equipment_count, public.dinh_muc_compliance_summary, public.dinh_muc_compliance_detail"
       ],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/equipment_dataset_scope_smoke.sql",
