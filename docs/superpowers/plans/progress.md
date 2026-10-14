@@ -119,3 +119,25 @@ No push or live database writes were performed.
 - Phase 2 migration caveats remain: normalize the dynamic report dataset bind value in a later SQL hardening pass, and verify partial-index planner use with disposable `EXPLAIN` after the baseline is refreshed.
 
 Safe checkpoint reached. Await user direction before merging Phase 3 or starting the next phase.
+
+## Checkpoint: Phase 2 caveats hardened
+
+- **Worker branch/worktree:** `fix/equipment-phase2-caveats` / `.worktrees/equipment-phase2-caveats`
+- **Worker commit:** `350aa32a` (`fix: harden phase 2 dataset caveats`)
+- **Main branch:** SQL fix remains isolated; no merge and no push performed.
+
+### Delivered
+
+- `unused_equipment_report_for_reports` now normalizes `p_equipment_dataset` once with `lower(btrim(...))` and uses that value for both summary and dynamic paginated rows.
+- The placed partial index now uses `is_deleted = false`, matching the query predicates and existing `NOT NULL` schema semantics.
+- The same report’s summary and paginated-row predicates use `is_deleted = false`; the smoke contract rejects the old `coalesce` form for this target.
+- Extended the read-only smoke contract to verify normalized binding, raw-bind removal, index predicate, `pg_attribute.attnotnull`, and `pg_index` evidence.
+
+### Independent verification
+
+- Worktree clean at `350aa32a`
+- `git diff --check 38e27b79..350aa32a` — PASS
+- Independent source assertions — all PASS (normalization, summary/page bind, no target `coalesce`, index predicate, NOT NULL/index evidence)
+- Static DB Quality Gate — **INCOMPLETE**, `findings=1639`, `warnings=1545`, `dangerous=26`, `blocking=68`; advisory only, no bypass and no disposable DB run.
+
+Both Phase 2 caveats are now addressed in source and contract checks. Runtime EXPLAIN/baseline-forward evidence remains future validation when the Oracle environment is refreshed.
