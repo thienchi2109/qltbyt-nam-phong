@@ -11,7 +11,12 @@ DECLARE
   v_page_total integer;
   v_name text;
   v_definition text;
-  v_core_definitions text;
+  v_signature text;
+  v_scoped_definition_count integer;
+  v_predicate_position integer;
+  v_limit_position integer;
+  v_count_position integer;
+  v_function record;
   v_required_functions constant text[] := ARRAY[
     'equipment_list_enhanced',
     'equipment_department_distribution',
@@ -24,8 +29,8 @@ DECLARE
     'equipment_aggregate_search'
   ];
 BEGIN
-  -- The funding classifier is deliberately trim-normalized and total: every
-  -- row belongs to exactly one UI dataset, including NULL and blank funding.
+  -- Unit semantics only: this classifier proves the partition rule itself;
+  -- the pg_proc checks below are the RPC source proof.
   WITH source(id, funding) AS (
     VALUES
       (1, NULL::text),
@@ -72,43 +77,62 @@ BEGIN
   END IF;
 
   -- Every equipment list/aggregate source must expose the named scope. The
-  -- migration may retain an unscoped compatibility wrapper, so inspect all
-  -- overload definitions and require at least one scoped definition per RPC.
+  -- migration may retain an unscoped compatibility wrapper, so inspect each
+  -- overload independently and validate the predicate in that same definition.
   FOREACH v_name IN ARRAY v_required_functions LOOP
-    SELECT string_agg(lower(pg_get_functiondef(p.oid)), E'\n')
-    INTO v_definition
-    FROM pg_proc AS p
-    JOIN pg_namespace AS n ON n.oid = p.pronamespace
-    WHERE n.nspname = 'public' AND p.proname = v_name;
+    v_scoped_definition_count := 0;
+    FOR v_function IN
+      SELECT p.oid, p.oid::regprocedure::text AS signature,
+             lower(pg_get_functiondef(p.oid)) AS definition
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public' AND p.proname = v_name
+    LOOP
+      -- Compatibility wrappers are intentionally unscoped; only scoped
+      -- overloads (identified by their argument name) require these checks.
+      IF position('p_equipment_dataset' IN v_function.definition) = 0 THEN
+        CONTINUE;
+      END IF;
+      v_scoped_definition_count := v_scoped_definition_count + 1;
+      v_definition := v_function.definition;
+      v_signature := v_function.signature;
+      IF position('btrim(coalesce' IN v_definition) = 0
+        OR position('mượn' IN v_definition) = 0 THEN
+        RAISE EXCEPTION
+          'scoped predicate missing or not trim-normalized in %', v_signature;
+      END IF;
 
-    IF v_definition IS NULL OR position('p_equipment_dataset' IN v_definition) = 0 THEN
-      RAISE EXCEPTION 'equipment dataset argument missing from public.%', v_name;
+      -- Pagination and aggregate totals must be derived after the scoped
+      -- relation. Fail closed when a scoped source contains a relevant token
+      -- before its predicate; runtime calls are deferred until the migration.
+      v_predicate_position := position('btrim(coalesce' IN v_definition);
+      IF v_name IN ('equipment_list_enhanced', 'equipment_list_for_reports',
+                    'unused_equipment_report_for_reports') THEN
+        v_limit_position := position('limit' IN v_definition);
+        IF v_limit_position = 0 THEN
+          RAISE EXCEPTION 'pagination source token missing in %', v_signature;
+        END IF;
+        IF v_limit_position < v_predicate_position THEN
+          RAISE EXCEPTION 'pagination precedes dataset predicate in %', v_signature;
+        END IF;
+      END IF;
+      IF v_name IN ('equipment_department_distribution', 'equipment_filter_buckets',
+                    'equipment_count_enhanced', 'equipment_status_distribution',
+                    'equipment_aggregates_for_reports', 'unused_equipment_report_for_reports',
+                    'equipment_aggregate_search') THEN
+        v_count_position := position('count(' IN v_definition);
+        IF v_count_position = 0 THEN
+          RAISE EXCEPTION 'aggregate total source token missing in %', v_signature;
+        END IF;
+        IF v_count_position < v_predicate_position THEN
+          RAISE EXCEPTION 'aggregate total precedes dataset predicate in %', v_signature;
+        END IF;
+      END IF;
+    END LOOP;
+    IF v_scoped_definition_count = 0 THEN
+      RAISE EXCEPTION 'scoped equipment dataset overload missing for public.%', v_name;
     END IF;
   END LOOP;
-
-  -- Core predicates must use the same trim-normalized borrowed marker.
-  SELECT string_agg(lower(pg_get_functiondef(p.oid)), E'\n')
-  INTO v_core_definitions
-  FROM pg_proc AS p
-  JOIN pg_namespace AS n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public'
-    AND p.proname IN (
-      'equipment_list_enhanced',
-      'equipment_department_distribution',
-      'equipment_filter_buckets',
-      'equipment_count_enhanced',
-      'equipment_status_distribution',
-      'equipment_list_for_reports',
-      'equipment_aggregates_for_reports',
-      'unused_equipment_report_for_reports',
-      'equipment_aggregate_search'
-    );
-
-  IF v_core_definitions IS NULL
-    OR position('btrim' IN v_core_definitions) = 0
-    OR position('mượn' IN v_core_definitions) = 0 THEN
-    RAISE EXCEPTION 'equipment dataset predicate is not trim-normalized';
-  END IF;
 END;
 $$;
 
