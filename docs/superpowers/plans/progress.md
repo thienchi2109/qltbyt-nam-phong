@@ -124,7 +124,8 @@ Safe checkpoint reached. Await user direction before merging Phase 3 or starting
 
 - **Worker branch/worktree:** `fix/equipment-phase2-caveats` / `.worktrees/equipment-phase2-caveats`
 - **Worker commit:** `350aa32a` (`fix: harden phase 2 dataset caveats`)
-- **Main branch:** SQL fix remains isolated; no merge and no push performed.
+- **Integrated main commit:** `934afcbb` (cherry-picked worker fix)
+- **Push:** not pushed.
 
 ### Delivered
 
