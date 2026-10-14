@@ -2,6 +2,21 @@
   "schemaVersion": 1,
   "tests": [
     {
+      "evidence": [
+        "Equipment regular/placed dataset partition and scoped RPC source contract",
+        "Protected objects: public.equipment_list_enhanced, public.equipment_department_distribution, public.equipment_filter_buckets, public.equipment_count_enhanced, public.equipment_status_distribution, public.equipment_list_for_reports, public.equipment_aggregates_for_reports, public.unused_equipment_report_for_reports, public.equipment_aggregate_search"
+      ],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/equipment_dataset_scope_smoke.sql",
+      "requiredForMigrations": ["supabase/migrations/20261014120000_equipment_dataset_scope.sql"],
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
+    },
+    {
       "evidence": ["Equipment status catalog seven-label contract"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/equipment_status_catalog_smoke.sql",
