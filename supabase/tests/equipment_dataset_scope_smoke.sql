@@ -160,6 +160,50 @@ BEGIN
 END;
 $$;
 
+DO $$
+DECLARE
+  v_name text;
+  v_scoped_count integer;
+  v_legacy_count integer;
+  v_defaulted_scoped integer;
+  v_contract_names constant text[] := ARRAY[
+    'equipment_list_enhanced', 'equipment_department_distribution',
+    'equipment_filter_buckets', 'equipment_count_enhanced',
+    'equipment_status_distribution', 'equipment_list_for_reports',
+    'equipment_aggregates_for_reports', 'unused_equipment_report_for_reports',
+    'equipment_aggregate_search', 'dashboard_kpi_summary',
+    'dashboard_equipment_total', 'dashboard_maintenance_count',
+    'equipment_attention_list', 'equipment_attention_list_paginated',
+    'usage_log_list', 'usage_analytics_overview', 'usage_analytics_daily',
+    'get_maintenance_report_data', 'maintenance_stats_for_reports',
+    'get_facilities_with_equipment_count', 'dinh_muc_compliance_summary',
+    'dinh_muc_compliance_detail'
+  ];
+BEGIN
+  FOREACH v_name IN ARRAY v_contract_names LOOP
+    SELECT
+      count(*) FILTER (WHERE p.proargnames @> ARRAY['p_equipment_dataset']::text[]),
+      count(*) FILTER (WHERE NOT (p.proargnames @> ARRAY['p_equipment_dataset']::text[])),
+      count(*) FILTER (
+        WHERE p.proargnames @> ARRAY['p_equipment_dataset']::text[]
+          AND p.pronargdefaults > 0
+      )
+    INTO v_scoped_count, v_legacy_count, v_defaulted_scoped
+    FROM pg_proc AS p
+    JOIN pg_namespace AS n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.proname = v_name;
+
+    IF v_scoped_count <> 1 OR v_legacy_count < 1 THEN
+      RAISE EXCEPTION 'RPC compatibility overload contract failed for public.% (scoped %, legacy %)',
+        v_name, v_scoped_count, v_legacy_count;
+    END IF;
+    IF v_defaulted_scoped <> 0 THEN
+      RAISE EXCEPTION 'scoped overload must not have defaults for public.%', v_name;
+    END IF;
+  END LOOP;
+END;
+$$;
+
 -- Dashboard/report consumers use the same explicit, non-default dataset
 -- argument.  No new RPC name is introduced; each check is against an
 -- overload of the existing function and therefore preserves the old call.
