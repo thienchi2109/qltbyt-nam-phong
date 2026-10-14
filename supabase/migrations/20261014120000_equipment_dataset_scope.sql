@@ -1945,8 +1945,8 @@ BEGIN
   END IF;
 
   RETURN jsonb_build_object(
-    'totalEquipment', public.dashboard_equipment_total(),
-    'maintenanceCount', public.dashboard_maintenance_count(),
+    'totalEquipment', public.dashboard_equipment_total(p_equipment_dataset),
+    'maintenanceCount', public.dashboard_maintenance_count(p_equipment_dataset),
     'repairRequests', public.dashboard_repair_request_stats(),
     'maintenancePlans', public.dashboard_maintenance_plan_stats()
   );
@@ -2338,6 +2338,7 @@ BEGIN
   SELECT *
   FROM public.thiet_bi tb
   WHERE tb.don_vi = ANY(v_allowed_don_vi)
+    AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
     AND tb.is_deleted = false
     AND tb.tinh_trang_hien_tai IN ('Chờ sửa chữa', 'Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định')
   ORDER BY tb.ngay_bt_tiep_theo ASC NULLS LAST
@@ -2409,6 +2410,7 @@ BEGIN
       v_role = 'global'
       OR tb.don_vi = ANY(v_allowed_don_vi)
     )
+    AND (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'all' OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'placed' AND btrim(coalesce(tb.nguon_kinh_phi, '')) = 'Mượn') OR (lower(btrim(coalesce(p_equipment_dataset, ''))) = 'regular' AND btrim(coalesce(tb.nguon_kinh_phi, '')) <> 'Mượn'))
     AND tb.is_deleted = false
     AND tb.tinh_trang_hien_tai IN ('Chờ sửa chữa', 'Chờ bảo trì', 'Chờ hiệu chuẩn/kiểm định')
   ),

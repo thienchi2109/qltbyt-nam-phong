@@ -237,6 +237,13 @@ BEGIN
           OR position('mượn' IN v_definition) = 0 THEN
           RAISE EXCEPTION 'dashboard dataset predicate missing in %', v_signature;
         END IF;
+        IF position('from public.thiet_bi' IN v_definition) > 0
+          AND position(
+                'btrim(coalesce(tb.nguon_kinh_phi' IN
+                substring(v_definition FROM position('from public.thiet_bi' IN v_definition))
+              ) = 0 THEN
+          RAISE EXCEPTION 'dataset predicate is only a pre-query guard in %', v_signature;
+        END IF;
       END IF;
     END LOOP;
     IF NOT v_found THEN
