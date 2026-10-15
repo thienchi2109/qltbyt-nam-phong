@@ -8,7 +8,10 @@
       ],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/equipment_dataset_scope_smoke.sql",
-      "requiredForMigrations": ["supabase/migrations/20261014120000_equipment_dataset_scope.sql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261014120000_equipment_dataset_scope.sql",
+        "supabase/migrations/20261015050000_equipment_dataset_scope_anon_acl.sql"
+      ],
       "purpose": "phase-gate",
       "runnerRequirements": ["psql"],
       "safety": "default-safe",

@@ -266,6 +266,61 @@ BEGIN
 END;
 $$;
 
+-- Every dataset-scoped overload is authenticated-only.  Check the exact
+-- overload identity so a legacy same-name function cannot mask an ACL leak.
+DO $$
+DECLARE
+  v_name text;
+  v_function record;
+  v_scoped_count integer;
+  v_anon_enabled boolean;
+  v_scoped_functions constant text[] := ARRAY[
+    'equipment_aggregate_search', 'equipment_aggregates_for_reports',
+    'equipment_count_enhanced', 'equipment_department_distribution',
+    'equipment_filter_buckets', 'equipment_list_enhanced',
+    'equipment_list_for_reports', 'equipment_status_distribution',
+    'unused_equipment_report_for_reports', 'dashboard_repair_request_stats',
+    'dashboard_maintenance_plan_stats', 'dashboard_equipment_total',
+    'dashboard_kpi_summary', 'dashboard_maintenance_count',
+    'dinh_muc_compliance_detail', 'dinh_muc_compliance_summary',
+    'equipment_attention_list', 'equipment_attention_list_paginated',
+    'get_facilities_with_equipment_count', 'get_maintenance_report_data',
+    'maintenance_stats_for_reports', 'usage_analytics_daily',
+    'usage_analytics_overview', 'usage_log_list'
+  ];
+BEGIN
+  FOREACH v_name IN ARRAY v_scoped_functions LOOP
+    v_scoped_count := 0;
+    FOR v_function IN
+      SELECT p.oid, p.oid::regprocedure::text AS signature,
+             has_function_privilege('anon', p.oid, 'EXECUTE') AS anon_enabled,
+             has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated_enabled,
+             has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role_enabled
+      FROM pg_proc AS p
+      JOIN pg_namespace AS n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'public'
+        AND p.proname = v_name
+        AND p.proargnames @> ARRAY['p_equipment_dataset']::text[]
+    LOOP
+      v_scoped_count := v_scoped_count + 1;
+      v_anon_enabled := v_function.anon_enabled;
+      IF v_anon_enabled THEN
+        RAISE EXCEPTION 'anon EXECUTE must be revoked from scoped overload %',
+          v_function.signature;
+      END IF;
+      IF NOT v_function.authenticated_enabled OR NOT v_function.service_role_enabled THEN
+        RAISE EXCEPTION
+          'authenticated/service_role EXECUTE must remain granted on scoped overload %',
+          v_function.signature;
+      END IF;
+    END LOOP;
+    IF v_scoped_count = 0 THEN
+      RAISE EXCEPTION 'scoped overload missing for ACL contract: public.%', v_name;
+    END IF;
+  END LOOP;
+END;
+$$;
+
 -- Dashboard/report consumers use the same explicit, non-default dataset
 -- argument.  No new RPC name is introduced; each check is against an
 -- overload of the existing function and therefore preserves the old call.
