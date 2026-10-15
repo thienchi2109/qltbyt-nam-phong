@@ -142,3 +142,29 @@ Safe checkpoint reached. Await user direction before merging Phase 3 or starting
 - Static DB Quality Gate — **INCOMPLETE**, `findings=1639`, `warnings=1545`, `dangerous=26`, `blocking=68`; advisory only, no bypass and no disposable DB run.
 
 Both Phase 2 caveats are now addressed in source and contract checks. Runtime EXPLAIN/baseline-forward evidence remains future validation when the Oracle environment is refreshed.
+
+## Checkpoint: Phase 3 complete (isolated, not merged)
+
+- **Worker branch/worktree:** `feat/equipment-placed-phase3` / `.worktrees/equipment-placed-phase3`
+- **Base:** `0b30f49b`
+- **Latest worker commit:** `059e3d9d` (`fix: close phase 3 dataset invalidation caveats`), on top of `76f9a596`
+- **Main branch:** unchanged by Phase 3; no merge, push, or live DB write performed.
+
+### Delivered
+
+- Wired dialog mutations through the page-level dataset-aware TanStack Query invalidator.
+- Invalidates only affected regular/placed dataset list, distribution, and filter-bucket caches; mixed imports and funding moves invalidate both source and destination datasets.
+- Preserved the current dataset across repeated saves in one detail dialog after a funding-source move.
+- Routed successful Start Usage and End Usage mutations through the same equipment cache invalidation path.
+- Preserved `?tab=placed` deep-link behavior, including the `Nguồn kinh phí = Mượn` filter initialization.
+
+### Verification
+
+- Reviewer: **APPROVE**, no actionable findings on `0b30f49b..059e3d9d`.
+- Focused Phase 3 review suite: 5 files / 36 tests — PASS.
+- Full Equipment suite: 52 files / 417 tests — PASS.
+- `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`, React Doctor, and `git diff --check` — PASS.
+- React Doctor score: 84/100, no issues reported.
+- Database Quality Gate remains advisory/`INCOMPLETE`; Phase 3 has no SQL or live DB changes.
+
+Safe checkpoint reached. Await explicit direction before merging Phase 3 or starting the next phase.
