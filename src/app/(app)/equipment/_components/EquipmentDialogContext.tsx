@@ -49,6 +49,7 @@ export interface EquipmentDialogContextValue {
   user: SessionUser | null
   isGlobal: boolean
   isRegionalLeader: boolean
+  equipmentDataset: EquipmentDataset
 
   // Dialog state
   dialogState: DialogState
@@ -88,6 +89,7 @@ const EquipmentDialogContext = React.createContext<EquipmentDialogContextValue |
 interface EquipmentDialogProviderProps {
   children: React.ReactNode
   effectiveTenantKey: string
+  equipmentDataset?: EquipmentDataset
   onDataMutationSuccess?: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
@@ -95,6 +97,7 @@ interface EquipmentDialogProviderProps {
 export function EquipmentDialogProvider({
   children,
   effectiveTenantKey,
+  equipmentDataset = "regular",
   onDataMutationSuccess: invalidateEquipment,
 }: EquipmentDialogProviderProps) {
   const queryClient = useQueryClient()
@@ -145,6 +148,10 @@ export function EquipmentDialogProvider({
       }
       // Also invalidate related queries
       queryClient.invalidateQueries({ queryKey: ["active_usage_logs"] })
+      queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] })
+      queryClient.invalidateQueries({ queryKey: ["reports"] })
+      queryClient.invalidateQueries({ queryKey: ["reports-facilities-list"] })
+      queryClient.invalidateQueries({ queryKey: ["usage-analytics"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
 
       // Dispatch event for other components
@@ -271,6 +278,7 @@ export function EquipmentDialogProvider({
       user,
       isGlobal,
       isRegionalLeader,
+      equipmentDataset,
       dialogState,
       openAddDialog,
       openImportDialog,
@@ -293,6 +301,7 @@ export function EquipmentDialogProvider({
       user,
       isGlobal,
       isRegionalLeader,
+      equipmentDataset,
       dialogState,
       openAddDialog,
       openImportDialog,

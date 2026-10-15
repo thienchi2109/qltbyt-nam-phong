@@ -74,6 +74,7 @@ export function EquipmentPageClient() {
   return (
     <EquipmentDialogProvider
       effectiveTenantKey={pageState.effectiveTenantKey}
+      equipmentDataset={pageState.equipmentDataset}
       onDataMutationSuccess={pageState.onDataMutationSuccess}
     >
       <LinkedRequestProvider>

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Equipment } from "@/types/database"
 import { useEquipmentContext } from "../../_hooks/useEquipmentContext"
+import type { EquipmentDataset } from "../../_hooks/equipmentDataset"
 
 import {
   createEquipmentFormSchema,
@@ -56,6 +57,7 @@ export interface EquipmentDetailDialogProps {
   onOpenChange: (open: boolean) => void
   user: UserSession | null
   isRegionalLeader: boolean
+  equipmentDataset: EquipmentDataset
   onGenerateProfileSheet: (equipment: Equipment) => void
   onGenerateDeviceLabel: (equipment: Equipment) => void
   onEquipmentUpdated: (savedPatch?: Partial<SharedEquipmentFormValues>) => void
@@ -78,6 +80,7 @@ function EquipmentDetailDialogState({
   onOpenChange,
   user,
   isRegionalLeader,
+  equipmentDataset,
   onGenerateProfileSheet,
   onGenerateDeviceLabel,
   onEquipmentUpdated,
@@ -287,6 +290,7 @@ function EquipmentDetailDialogState({
           detail={detailTabsProps}
           history={historyTabsProps}
           usageEquipment={equipment}
+          equipmentDataset={equipmentDataset}
         />
         <DialogFooter className="shrink-0 pt-4 border-t">
           <EquipmentDetailFooter

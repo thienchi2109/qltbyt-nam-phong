@@ -150,6 +150,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     tenantId: currentTenantId,
     enabled: true,
     refetchInterval: 5 * 60 * 1000,
+    equipmentDataset,
   })
 
   // Tenant list query (for global users - kept for backward compatibility with tenant change toasts)

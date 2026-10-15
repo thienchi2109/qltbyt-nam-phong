@@ -1,8 +1,6 @@
 "use client"
-
 import React from "react"
 import { Clock, User, FileText, Trash2, Square } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -26,7 +24,11 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useEquipmentUsageLogs, useEquipmentUsageLogsMore, useDeleteUsageLog } from "@/hooks/use-usage-logs"
+import {
+  useEquipmentUsageLogs,
+  useEquipmentUsageLogsMore,
+  useDeleteUsageLog,
+} from "@/hooks/use-usage-logs"
 import { useSession } from "next-auth/react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { getUsageLogFinalStatus, getUsageLogInitialStatus } from "@/lib/usage-log-status"
@@ -36,62 +38,65 @@ import { formatVietnamDateTime } from "@/lib/date-utils"
 import { useHydrationSafeNow } from "@/components/time/HydrationSafeRelativeTime"
 import { EndUsageDialog } from "./end-usage-dialog"
 import { UsageLogPrint } from "./usage-log-print"
+import type { EquipmentDataset } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 import {
   formatUsageDuration,
   getUsageLogPageSignature,
   UsageHistoryEmptyState,
   UsageHistoryLoadingState,
 } from "./usage-history-tab.utils"
-
 interface UsageHistoryTabProps {
-  equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
+  equipment: Pick<Equipment, "id" | "ten_thiet_bi" | "ma_thiet_bi"> & Partial<Equipment>
+  equipmentDataset?: EquipmentDataset
 }
-
-export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
+/** Renders paginated usage history and session actions for equipment. */
+export function UsageHistoryTab({ equipment, equipmentDataset = "regular" }: UsageHistoryTabProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const canDeleteUsageLogs = isGlobalRole(user?.role)
   const userId = React.useMemo(() => {
     const uid = user?.id
-    const n = typeof uid === 'string' ? Number(uid) : uid
+    const n = typeof uid === "string" ? Number(uid) : uid
     return Number.isFinite(n) ? (n as number) : null
   }, [user?.id])
   const isMobile = useIsMobile()
   const [isEndDialogOpen, setIsEndDialogOpen] = React.useState(false)
   const [selectedUsageLog, setSelectedUsageLog] = React.useState<UsageLog | null>(null)
   const [loadMoreOffset, setLoadMoreOffset] = React.useState(0)
-  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<Record<number, Record<number, UsageLog[]>>>({})
+  const [loadedUsageLogPages, setLoadedUsageLogPages] = React.useState<
+    Record<number, Record<number, UsageLog[]>>
+  >({})
   const now = useHydrationSafeNow()
-
   // Initial load - recent usage logs (last 3 months, 50 records)
   const { data: recentUsageLogs, isLoading } = useEquipmentUsageLogs(equipment.id.toString(), {
     limit: 50,
     daysBack: 90, // Last 3 months
+    equipmentDataset,
   })
-  
   // Load more historical data
-  const { data: moreUsageLogs, isLoading: isLoadingMore, isFetching: isFetchingMore } = useEquipmentUsageLogsMore(
-    equipment.id.toString(),
-    loadMoreOffset,
-    {
-      limit: 50,
-      daysBack: 365, // Full year for load more
-    }
-  )
-
+  const {
+    data: moreUsageLogs,
+    isLoading: isLoadingMore,
+    isFetching: isFetchingMore,
+  } = useEquipmentUsageLogsMore(equipment.id.toString(), loadMoreOffset, {
+    limit: 50,
+    daysBack: 365, // Full year for load more
+    equipmentDataset,
+  })
   // Keep each loaded page by offset so refetches can replace stale rows.
   React.useEffect(() => {
     if (!moreUsageLogs || loadMoreOffset === 0) {
       return
     }
-
     setLoadedUsageLogPages((previousPages) => {
       const equipmentPages = previousPages[equipment.id] || {}
       const currentPage = equipmentPages[loadMoreOffset]
-      if (currentPage && getUsageLogPageSignature(currentPage) === getUsageLogPageSignature(moreUsageLogs)) {
+      if (
+        currentPage &&
+        getUsageLogPageSignature(currentPage) === getUsageLogPageSignature(moreUsageLogs)
+      ) {
         return previousPages
       }
-
       return {
         ...previousPages,
         [equipment.id]: {
@@ -101,7 +106,6 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
       }
     })
   }, [equipment.id, loadMoreOffset, moreUsageLogs])
-
   const usageLogs = React.useMemo(() => {
     const recentLogs = recentUsageLogs || []
     const loadedLogs = Object.entries(loadedUsageLogPages[equipment.id] || {})
@@ -116,12 +120,13 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
 
   // Find active usage session for current user
   const activeSession = usageLogs?.find(
-    log => log.trang_thai === 'dang_su_dung' && (userId != null && log.nguoi_su_dung_id === userId)
+    (log) => log.trang_thai === "dang_su_dung" && userId != null && log.nguoi_su_dung_id === userId
   )
 
   // Check if equipment is currently in use by someone else
   const isInUseByOther = usageLogs?.some(
-    log => log.trang_thai === 'dang_su_dung' && (userId == null || log.nguoi_su_dung_id !== userId)
+    (log) =>
+      log.trang_thai === "dang_su_dung" && (userId == null || log.nguoi_su_dung_id !== userId)
   )
 
   const handleEndUsage = (usageLog: UsageLog) => {
@@ -162,16 +167,17 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
   }
 
   const canEndUsage = !!activeSession
-  
+
   const handleLoadMore = () => {
     setLoadMoreOffset((prev) => {
-      const base = prev || (recentUsageLogs?.length || 0)
+      const base = prev || recentUsageLogs?.length || 0
       return base + 50
     })
   }
-  
+
   const hasMoreData = (moreUsageLogs?.length || 0) === 50 // If we got a full page, there might be more
-  const showLoadMore = !isLoading && !isLoadingMore && usageLogs.length >= 50 && (loadMoreOffset === 0 || hasMoreData)
+  const showLoadMore =
+    !isLoading && !isLoadingMore && usageLogs.length >= 50 && (loadMoreOffset === 0 || hasMoreData)
 
   if (isLoading) {
     return <UsageHistoryLoadingState />
@@ -194,15 +200,13 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
           </Button>
         )}
 
-        <UsageLogPrint equipment={equipment} />
+        <UsageLogPrint equipment={equipment} equipmentDataset={equipmentDataset} />
       </div>
 
       {/* Status Messages */}
       {isInUseByOther && (
         <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            Thiết bị này đang được sử dụng bởi người khác.
-          </p>
+          <p className="text-sm text-yellow-800">Thiết bị này đang được sử dụng bởi người khác.</p>
         </div>
       )}
 
@@ -218,191 +222,196 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
       {/* Usage History */}
       <div>
         <h4 className="font-medium mb-3">Lịch sử sử dụng</h4>
-        
+
         {!usageLogs || usageLogs.length === 0 ? (
           <UsageHistoryEmptyState />
         ) : (
           <>
             {isMobile ? (
-          // Mobile Card Layout
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-3">
-              {usageLogs.map((log) => (
-                <Card key={log.id} className="mobile-card-spacing">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between">
-                      <div className="space-y-1">
+              // Mobile Card Layout
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-3">
+                  {usageLogs.map((log) => (
+                    <Card key={log.id} className="mobile-card-spacing">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <User className="size-4 text-muted-foreground" />
+                              <span className="font-medium text-sm">
+                                {log.nguoi_su_dung?.full_name || "Không xác định"}
+                              </span>
+                            </div>
+                            <Badge
+                              variant={log.trang_thai === "dang_su_dung" ? "default" : "secondary"}
+                            >
+                              {USAGE_STATUS[log.trang_thai]}
+                            </Badge>
+                          </div>
+
+                          {canDeleteUsageLogs && log.trang_thai === "hoan_thanh" && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="size-8 p-0"
+                                  aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                                >
+                                  <Trash2 className="size-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Bạn có chắc chắn muốn xóa bản ghi sử dụng này không?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteUsageLog(log.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Xóa
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="pt-0 space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <User className="size-4 text-muted-foreground" />
-                          <span className="font-medium text-sm">
-                            {log.nguoi_su_dung?.full_name || 'Không xác định'}
+                          <Clock className="size-4 text-muted-foreground" />
+                          <span>
+                            {formatVietnamDateTime(log.thoi_gian_bat_dau)}
+                            {log.thoi_gian_ket_thuc && (
+                              <> - {formatVietnamDateTime(log.thoi_gian_ket_thuc)}</>
+                            )}
                           </span>
                         </div>
-                        <Badge variant={log.trang_thai === 'dang_su_dung' ? 'default' : 'secondary'}>
-                          {USAGE_STATUS[log.trang_thai]}
-                        </Badge>
-                      </div>
-                      
-                      {canDeleteUsageLogs && log.trang_thai === 'hoan_thanh' && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="size-8 p-0"
-                              aria-label={`Xóa nhật ký sử dụng ${log.id}`}
-                            >
-                              <Trash2 className="size-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Bạn có chắc chắn muốn xóa bản ghi sử dụng này không?
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Hủy</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteUsageLog(log.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Xóa
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="pt-0 space-y-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Clock className="size-4 text-muted-foreground" />
-                      <span>
-                        {formatVietnamDateTime(log.thoi_gian_bat_dau)}
-                        {log.thoi_gian_ket_thuc && (
-                          <> - {formatVietnamDateTime(log.thoi_gian_ket_thuc)}</>
-                        )}
-                      </span>
-                    </div>
-                    
-                    <div>
-                      <span className="text-muted-foreground">Thời gian: </span>
-                      <span className="font-medium">
-                        {formatUsageDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc, now)}
-                      </span>
-                    </div>
-                    
-                    <div>
-                      <span className="text-muted-foreground">Tình trạng ban đầu: </span>
-                      <span>{getUsageLogInitialStatus(log) || '-'}</span>
-                    </div>
 
-                    <div>
-                      <span className="text-muted-foreground">Tình trạng kết thúc: </span>
-                      <span>{getUsageLogFinalStatus(log) || '-'}</span>
-                    </div>
-                    
-                    {log.ghi_chu && (
-                      <div className="flex gap-2">
-                        <FileText className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{log.ghi_chu}</span>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-        ) : (
-          // Desktop Table Layout
-          <ScrollArea className="h-[400px]">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Người sử dụng</TableHead>
-                  <TableHead>Thời gian bắt đầu</TableHead>
-                  <TableHead>Thời gian kết thúc</TableHead>
-                  <TableHead>Thời lượng</TableHead>
-                  <TableHead>Tình trạng ban đầu</TableHead>
-                  <TableHead>Tình trạng kết thúc</TableHead>
-                  <TableHead>Trạng thái</TableHead>
-                  <TableHead>Ghi chú</TableHead>
-                  {canDeleteUsageLogs && <TableHead className="w-[50px]"></TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usageLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="font-medium">
-                      {log.nguoi_su_dung?.full_name || 'Không xác định'}
-                    </TableCell>
-                    <TableCell>
-                      {formatVietnamDateTime(log.thoi_gian_bat_dau)}
-                    </TableCell>
-                    <TableCell>
-                      {log.thoi_gian_ket_thuc 
-                        ? formatVietnamDateTime(log.thoi_gian_ket_thuc)
-                        : '-'
-                      }
-                    </TableCell>
-                    <TableCell>
-                      {formatUsageDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc, now)}
-                    </TableCell>
-                    <TableCell>{getUsageLogInitialStatus(log) || '-'}</TableCell>
-                    <TableCell>{getUsageLogFinalStatus(log) || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={log.trang_thai === 'dang_su_dung' ? 'default' : 'secondary'}>
-                        {USAGE_STATUS[log.trang_thai]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {log.ghi_chu || '-'}
-                    </TableCell>
-                    {canDeleteUsageLogs && (
-                      <TableCell>
-                        {log.trang_thai === 'hoan_thanh' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="size-8 p-0"
-                                aria-label={`Xóa nhật ký sử dụng ${log.id}`}
-                              >
-                                <Trash2 className="size-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Bạn có chắc chắn muốn xóa bản ghi sử dụng này không?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Hủy</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteUsageLog(log.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  Xóa
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                        <div>
+                          <span className="text-muted-foreground">Thời gian: </span>
+                          <span className="font-medium">
+                            {formatUsageDuration(
+                              log.thoi_gian_bat_dau,
+                              log.thoi_gian_ket_thuc,
+                              now
+                            )}
+                          </span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-foreground">Tình trạng ban đầu: </span>
+                          <span>{getUsageLogInitialStatus(log) || "-"}</span>
+                        </div>
+
+                        <div>
+                          <span className="text-muted-foreground">Tình trạng kết thúc: </span>
+                          <span>{getUsageLogFinalStatus(log) || "-"}</span>
+                        </div>
+
+                        {log.ghi_chu && (
+                          <div className="flex gap-2">
+                            <FileText className="size-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                            <span className="text-muted-foreground">{log.ghi_chu}</span>
+                          </div>
                         )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            ) : (
+              // Desktop Table Layout
+              <ScrollArea className="h-[400px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Người sử dụng</TableHead>
+                      <TableHead>Thời gian bắt đầu</TableHead>
+                      <TableHead>Thời gian kết thúc</TableHead>
+                      <TableHead>Thời lượng</TableHead>
+                      <TableHead>Tình trạng ban đầu</TableHead>
+                      <TableHead>Tình trạng kết thúc</TableHead>
+                      <TableHead>Trạng thái</TableHead>
+                      <TableHead>Ghi chú</TableHead>
+                      {canDeleteUsageLogs && <TableHead className="w-[50px]"></TableHead>}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {usageLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="font-medium">
+                          {log.nguoi_su_dung?.full_name || "Không xác định"}
+                        </TableCell>
+                        <TableCell>{formatVietnamDateTime(log.thoi_gian_bat_dau)}</TableCell>
+                        <TableCell>
+                          {log.thoi_gian_ket_thuc
+                            ? formatVietnamDateTime(log.thoi_gian_ket_thuc)
+                            : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {formatUsageDuration(log.thoi_gian_bat_dau, log.thoi_gian_ket_thuc, now)}
+                        </TableCell>
+                        <TableCell>{getUsageLogInitialStatus(log) || "-"}</TableCell>
+                        <TableCell>{getUsageLogFinalStatus(log) || "-"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={log.trang_thai === "dang_su_dung" ? "default" : "secondary"}
+                          >
+                            {USAGE_STATUS[log.trang_thai]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {log.ghi_chu || "-"}
+                        </TableCell>
+                        {canDeleteUsageLogs && (
+                          <TableCell>
+                            {log.trang_thai === "hoan_thanh" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="size-8 p-0"
+                                    aria-label={`Xóa nhật ký sử dụng ${log.id}`}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Bạn có chắc chắn muốn xóa bản ghi sử dụng này không?
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Hủy</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteUsageLog(log.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Xóa
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </ScrollArea>
             )}
-            
+
             {/* Load More Button */}
             {showLoadMore && (
               <div className="text-center mt-4">
@@ -418,7 +427,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
                       Đang tải…
                     </>
                   ) : (
-                    'Tải thêm lịch sử'
+                    "Tải thêm lịch sử"
                   )}
                 </Button>
               </div>
@@ -428,7 +437,7 @@ export function UsageHistoryTab({ equipment }: UsageHistoryTabProps) {
       </div>
 
       {/* Dialogs */}
-      
+
       <EndUsageDialog
         open={isEndDialogOpen}
         onOpenChange={setIsEndDialogOpen}

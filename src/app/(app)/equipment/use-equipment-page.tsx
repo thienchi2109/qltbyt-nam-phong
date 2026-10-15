@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useQueryClient } from "@tanstack/react-query"
 import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { useToast } from "@/hooks/use-toast"
 import { createEquipmentColumns } from "@/components/equipment/equipment-table-columns"
@@ -27,6 +28,7 @@ import type { UseEquipmentPageReturn } from "./types"
 
 /** Composes Equipment page auth, filters, data, table state, and actions. */
 export function useEquipmentPage(): UseEquipmentPageReturn {
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const { data: tenantBranding } = useTenantBranding()
 
@@ -298,11 +300,21 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   const onImportSuccess = React.useCallback(
     (datasets?: EquipmentDataset | EquipmentDataset[]) => {
       onDataMutationSuccess(datasets)
+      for (const queryKey of [
+        ["reports"],
+        ["reports-facilities-list"],
+        ["usage-analytics"],
+        ["dashboard-stats"],
+        ["usage-logs", "active"],
+        ["active_usage_logs"],
+      ]) {
+        queryClient.invalidateQueries({ queryKey })
+      }
       if (datasets === "placed" || (Array.isArray(datasets) && datasets.includes("placed"))) {
         datasetTab.setDataset("placed")
       }
     },
-    [onDataMutationSuccess, datasetTab.setDataset]
+    [datasetTab.setDataset, onDataMutationSuccess, queryClient]
   )
 
   const onDataMutationSuccessWithStatePreservation = React.useCallback(() => {

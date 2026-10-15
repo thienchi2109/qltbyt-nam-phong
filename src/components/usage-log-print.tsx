@@ -28,28 +28,32 @@ import { useTenantBranding } from "@/hooks/use-tenant-branding"
 import { parseDateInputAsLocalDate } from "@/components/usage-log-print-builder-utils"
 import { buildUsageLogCsv, buildUsageLogPrintHtml } from "@/components/usage-log-print-builders"
 import { type Equipment } from "@/types/database"
+import type { EquipmentDataset } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 
 interface UsageLogPrintProps {
-  equipment: Pick<Equipment, 'id' | 'ten_thiet_bi' | 'ma_thiet_bi'> & Partial<Equipment>
+  equipment: Pick<Equipment, "id" | "ten_thiet_bi" | "ma_thiet_bi"> & Partial<Equipment>
+  equipmentDataset?: EquipmentDataset
 }
 
 // Status filter options configuration
 const STATUS_FILTER_OPTIONS = [
-  { value: 'all', label: 'Tất cả' },
-  { value: 'hoan_thanh', label: 'Hoàn thành' },
-  { value: 'dang_su_dung', label: 'Đang sử dụng' },
+  { value: "all", label: "Tất cả" },
+  { value: "hoan_thanh", label: "Hoàn thành" },
+  { value: "dang_su_dung", label: "Đang sử dụng" },
 ] as const
 
-export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
+/** Provides print and CSV export actions for equipment usage history. */
+export function UsageLogPrint({ equipment, equipmentDataset = "regular" }: UsageLogPrintProps) {
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const [dateFrom, setDateFrom] = React.useState("")
   const [dateTo, setDateTo] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
 
-  const { data: usageLogs } = useEquipmentUsageLogs(equipment.id.toString())
+  const { data: usageLogs } = useEquipmentUsageLogs(equipment.id.toString(), { equipmentDataset })
   const branding = useTenantBranding()
-  const tenantName = branding.data?.name || 'Nền tảng QLTBYT'
-  const tenantLogoUrl = branding.data?.logo_url || 'https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png'
+  const tenantName = branding.data?.name || "Nền tảng QLTBYT"
+  const tenantLogoUrl =
+    branding.data?.logo_url || "https://i.postimg.cc/26dHxmnV/89307731ad9526cb7f84-1-Photoroom.png"
 
   // Filter logs based on date range and status
   const filteredLogs = React.useMemo(() => {
@@ -57,13 +61,15 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
 
     // Pre-calculate date boundaries to avoid creating Date objects in loop
     const fromDate = dateFrom ? parseDateInputAsLocalDate(dateFrom) : null
-    const toDate = dateTo ? (() => {
-      const date = parseDateInputAsLocalDate(dateTo)
-      date.setHours(23, 59, 59, 999) // End of day
-      return date
-    })() : null
+    const toDate = dateTo
+      ? (() => {
+          const date = parseDateInputAsLocalDate(dateTo)
+          date.setHours(23, 59, 59, 999) // End of day
+          return date
+        })()
+      : null
 
-    return usageLogs.filter(log => {
+    return usageLogs.filter((log) => {
       // Date filtering with pre-calculated boundaries
       const logDate = new Date(log.thoi_gian_bat_dau)
 
@@ -87,7 +93,7 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       dateTo,
       now: new Date(),
     })
-    const printWindow = window.open('', '_blank')
+    const printWindow = window.open("", "_blank")
 
     if (printWindow) {
       printWindow.document.open()
@@ -107,19 +113,22 @@ export function UsageLogPrint({ equipment }: UsageLogPrintProps) {
       filteredLogs,
       now: new Date(),
     })
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+
     if (link.download !== undefined) {
       const url = URL.createObjectURL(blob)
-      link.setAttribute('href', url)
-      link.setAttribute('download', `nhat-ky-su-dung-${equipment.ma_thiet_bi}-${format(new Date(), 'yyyy-MM-dd')}.csv`)
-      link.style.visibility = 'hidden'
+      link.setAttribute("href", url)
+      link.setAttribute(
+        "download",
+        `nhat-ky-su-dung-${equipment.ma_thiet_bi}-${format(new Date(), "yyyy-MM-dd")}.csv`
+      )
+      link.style.visibility = "hidden"
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
     }
-    
+
     setIsDialogOpen(false)
   }
 

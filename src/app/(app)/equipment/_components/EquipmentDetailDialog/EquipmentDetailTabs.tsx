@@ -15,6 +15,7 @@ import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
 import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
 import { EquipmentDetailHistoryTab } from "./EquipmentDetailHistoryTab"
 import { EquipmentDetailUsageTab } from "./EquipmentDetailUsageTab"
+import type { EquipmentDataset } from "../../_hooks/equipmentDataset"
 
 interface EquipmentDetailTabsAttachmentsProps {
   addAttachment: (params: { name: string; url: string }) => Promise<void>
@@ -47,6 +48,7 @@ interface EquipmentDetailTabsProps {
   detail: EquipmentDetailTabsDetailProps
   history: EquipmentDetailTabsHistoryProps
   usageEquipment: Equipment
+  equipmentDataset: EquipmentDataset
 }
 
 /** Renders the equipment detail dialog tab panels. */
@@ -55,6 +57,7 @@ export function EquipmentDetailTabs({
   detail,
   history,
   usageEquipment,
+  equipmentDataset,
 }: EquipmentDetailTabsProps): React.ReactNode {
   return (
     <Tabs
@@ -116,7 +119,7 @@ export function EquipmentDetailTabs({
       </TabsContent>
 
       <TabsContent value="usage" className="flex-grow overflow-hidden">
-        <EquipmentDetailUsageTab equipment={usageEquipment} />
+        <EquipmentDetailUsageTab equipment={usageEquipment} equipmentDataset={equipmentDataset} />
       </TabsContent>
     </Tabs>
   )

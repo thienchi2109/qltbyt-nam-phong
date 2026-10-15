@@ -1,7 +1,20 @@
 import { useQuery } from "@tanstack/react-query"
-import { callRpc } from "@/lib/rpc-client"
 import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from "date-fns"
-import { type UsageLog } from "@/types/database"
+import { fetchUsageLogs } from "./use-usage-analytics.rpc"
+import type {
+  DailyUsageData,
+  EquipmentUsageStats,
+  UsageOverview,
+  UsageLogWithRelations,
+  UserUsageStats,
+} from "./use-usage-analytics.types"
+
+export type {
+  DailyUsageData,
+  EquipmentUsageStats,
+  UsageOverview,
+  UserUsageStats,
+} from "./use-usage-analytics.types"
 
 // Query keys for analytics
 const usageAnalyticsKeys = {
@@ -16,50 +29,6 @@ const usageAnalyticsKeys = {
     [...usageAnalyticsKeys.all, "daily-usage", params || {}] as const,
 }
 
-export interface UsageOverview {
-  totalSessions: number
-  activeSessions: number
-  totalUsageTime: number // in minutes
-  averageSessionTime: number // in minutes
-  mostUsedEquipment: {
-    id: number
-    ten_thiet_bi: string
-    ma_thiet_bi: string
-    sessionCount: number
-    totalTime: number
-  } | null
-  topUser: {
-    id: number
-    full_name: string
-    sessionCount: number
-    totalTime: number
-  } | null
-}
-
-export interface EquipmentUsageStats {
-  id: number
-  ten_thiet_bi: string
-  ma_thiet_bi: string
-  khoa_phong_quan_ly?: string
-  sessionCount: number
-  totalUsageTime: number // in minutes
-  averageSessionTime: number
-  lastUsed?: string
-  currentlyInUse: boolean
-}
-
-export interface UserUsageStats {
-  id: number
-  full_name: string
-  khoa_phong?: string
-  sessionCount: number
-  totalUsageTime: number // in minutes
-  averageSessionTime: number
-  equipmentUsed: number // unique equipment count
-  lastActivity?: string
-}
-
-// Internal accumulator with Set for equipment uniqueness
 interface UserUsageStatsInternal {
   id: number
   full_name: string
@@ -69,60 +38,6 @@ interface UserUsageStatsInternal {
   averageSessionTime: number
   equipmentUsed: Set<number>
   lastActivity?: string
-}
-
-export interface DailyUsageData {
-  date: string
-  sessionCount: number
-  totalUsageTime: number
-  uniqueUsers: number
-  uniqueEquipment: number
-}
-
-type UsageLogWithRelations = UsageLog & {
-  thiet_bi?: {
-    id: number
-    ma_thiet_bi: string
-    ten_thiet_bi: string
-    khoa_phong_quan_ly?: string | null
-    don_vi?: number | null
-  } | null
-  nguoi_su_dung?: {
-    id: number
-    full_name: string
-    khoa_phong?: string | null
-  } | null
-}
-
-interface UsageLogQueryOptions {
-  equipmentId?: number | null
-  status?: "dang_su_dung" | "hoan_thanh"
-  activeOnly?: boolean
-  startedFrom?: Date
-  startedTo?: Date
-  limit?: number
-  donVi?: number | null
-}
-
-async function fetchUsageLogs(
-  options: UsageLogQueryOptions = {}
-): Promise<UsageLogWithRelations[]> {
-  const payload = await callRpc<UsageLogWithRelations[]>({
-    fn: "usage_log_list",
-    args: {
-      p_thiet_bi_id: options.equipmentId ?? null,
-      p_trang_thai: options.status ?? null,
-      p_active_only: options.activeOnly ?? false,
-      p_started_from: options.startedFrom ? options.startedFrom.toISOString() : null,
-      p_started_to: options.startedTo ? options.startedTo.toISOString() : null,
-      p_limit: options.limit ?? 2000,
-      p_offset: 0,
-      p_don_vi: options.donVi ?? null,
-      p_equipment_dataset: "regular",
-    },
-  })
-
-  return payload ?? []
 }
 
 // Get usage overview statistics

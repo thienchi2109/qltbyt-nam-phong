@@ -38,6 +38,7 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
   const {
     user,
     isRegionalLeader,
+    equipmentDataset,
     dialogState,
     closeAddDialog,
     closeImportDialog,
@@ -129,6 +130,7 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         onOpenChange={(open) => !open && closeDetailDialog()}
         user={user}
         isRegionalLeader={isRegionalLeader}
+        equipmentDataset={equipmentDataset}
         onGenerateProfileSheet={onGenerateProfileSheet}
         onGenerateDeviceLabel={onGenerateDeviceLabel}
         onEquipmentUpdated={handleEquipmentUpdated}
