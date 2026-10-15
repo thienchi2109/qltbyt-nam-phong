@@ -164,6 +164,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     setSearchTerm: filters.setSearchTerm,
     pagination,
     setPagination,
+    isFetching: data.isFetching,
     selectedDonVi: auth.selectedDonVi,
     selectedFacilityId: data.selectedFacilityId,
     columnVisibilityUserId: auth.user?.id ? String(auth.user.id) : undefined,

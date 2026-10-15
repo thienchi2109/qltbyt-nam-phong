@@ -57,6 +57,7 @@ export interface UseEquipmentTableParams {
   // Controlled pagination state (lifted to parent to avoid desync)
   pagination: { pageIndex: number; pageSize: number }
   setPagination: React.Dispatch<React.SetStateAction<{ pageIndex: number; pageSize: number }>>
+  isFetching?: boolean
   // For pagination reset on filter change
   selectedDonVi: number | null
   selectedFacilityId: number | null | undefined
@@ -95,6 +96,7 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
     setSearchTerm,
     pagination,
     setPagination,
+    isFetching = false,
     selectedDonVi,
     selectedFacilityId,
     columnVisibilityUserId,
@@ -202,10 +204,10 @@ export function useEquipmentTable(params: UseEquipmentTableParams): UseEquipment
 
   // Clamp page index when pageCount decreases (e.g., after deletions)
   React.useEffect(() => {
-    if (pagination.pageIndex >= pageCount) {
+    if (!isFetching && pagination.pageIndex >= pageCount) {
       setPagination((prev) => ({ ...prev, pageIndex: Math.max(0, pageCount - 1) }))
     }
-  }, [pageCount, pagination.pageIndex, setPagination])
+  }, [isFetching, pageCount, pagination.pageIndex, setPagination])
 
   // Table instance
   const table = useReactTable({

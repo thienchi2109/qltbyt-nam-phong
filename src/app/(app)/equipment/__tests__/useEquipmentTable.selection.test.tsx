@@ -209,6 +209,48 @@ describe("useEquipmentTable server sorting", () => {
   })
 })
 
+describe("useEquipmentTable pagination", () => {
+  it("preserves the requested page while the next page query is fetching", () => {
+    const { result, rerender } = renderHook(
+      ({ total, isFetching }: { total: number; isFetching: boolean }) => {
+        const [sorting, setSorting] = React.useState([])
+        const [columnFilters, setColumnFilters] = React.useState([])
+        const [searchTerm, setSearchTerm] = React.useState("")
+        const [pagination, setPagination] = React.useState({
+          pageIndex: 0,
+          pageSize: 20,
+        })
+
+        return useEquipmentTable({
+          data,
+          total,
+          columns,
+          sorting,
+          setSorting,
+          columnFilters,
+          setColumnFilters,
+          debouncedSearch: searchTerm,
+          setSearchTerm,
+          pagination,
+          setPagination,
+          selectedDonVi: 5,
+          selectedFacilityId: 5,
+          isFetching,
+        })
+      },
+      { initialProps: { total: 60, isFetching: false } }
+    )
+
+    act(() => {
+      result.current.table.setPageIndex(1)
+    })
+
+    rerender({ total: 0, isFetching: true })
+
+    expect(result.current.pagination.pageIndex).toBe(1)
+  })
+})
+
 describe("useEquipmentTable responsive visibility", () => {
   it("auto-hides the desktop-only columns on 768px-1800px screens", async () => {
     setMediaQueryResponses({
