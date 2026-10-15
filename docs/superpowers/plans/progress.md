@@ -143,12 +143,13 @@ Safe checkpoint reached. Await user direction before merging Phase 3 or starting
 
 Both Phase 2 caveats are now addressed in source and contract checks. Runtime EXPLAIN/baseline-forward evidence remains future validation when the Oracle environment is refreshed.
 
-## Checkpoint: Phase 3 complete (isolated, not merged)
+## Checkpoint: Phase 3 complete and merged locally
 
 - **Worker branch/worktree:** `feat/equipment-placed-phase3` / `.worktrees/equipment-placed-phase3`
 - **Base:** `0b30f49b`
 - **Latest worker commit:** `059e3d9d` (`fix: close phase 3 dataset invalidation caveats`), on top of `76f9a596`
-- **Main branch:** unchanged by Phase 3; no merge, push, or live DB write performed.
+- **Merge commit on `main`:** `ce12d384` (`merge: integrate equipment placed phase 3`)
+- **Cleanup:** Phase 3 worktree and local branch removed; no push or live DB write performed.
 
 ### Delivered
 
@@ -167,4 +168,4 @@ Both Phase 2 caveats are now addressed in source and contract checks. Runtime EX
 - React Doctor score: 84/100, no issues reported.
 - Database Quality Gate remains advisory/`INCOMPLETE`; Phase 3 has no SQL or live DB changes.
 
-Safe checkpoint reached. Await explicit direction before merging Phase 3 or starting the next phase.
+Safe checkpoint reached. `main` is clean and ready for Phase 4.
