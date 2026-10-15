@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Equipment } from "@/types/database"
 import { useEquipmentContext } from "../../_hooks/useEquipmentContext"
-import type { EquipmentDataset } from "../../_hooks/equipmentDataset"
+import { isPlacedEquipment, type EquipmentDataset } from "../../_hooks/equipmentDataset"
 
 import {
   createEquipmentFormSchema,
@@ -223,6 +223,12 @@ function EquipmentDetailDialogState({
 
   if (!equipment || !displayEquipment) return null
 
+  const usageEquipmentDataset: EquipmentDataset = isPlacedEquipment(
+    savedValues?.nguon_kinh_phi ?? equipment.nguon_kinh_phi
+  )
+    ? "placed"
+    : "regular"
+
   const handleTabChange = (value: string) => {
     setCurrentTab(value)
   }
@@ -289,8 +295,8 @@ function EquipmentDetailDialogState({
           attachments={attachmentTabsProps}
           detail={detailTabsProps}
           history={historyTabsProps}
-          usageEquipment={equipment}
-          equipmentDataset={equipmentDataset}
+          usageEquipment={displayEquipment}
+          equipmentDataset={usageEquipmentDataset}
         />
         <DialogFooter className="shrink-0 pt-4 border-t">
           <EquipmentDetailFooter

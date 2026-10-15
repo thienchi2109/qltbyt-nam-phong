@@ -4,6 +4,10 @@ import * as React from "react"
 import type { Equipment } from "@/types/database"
 
 const mockOpenDeleteDialog = vi.fn()
+type UpdateOptions = {
+  onSuccess?: (patch: { nguon_kinh_phi?: string }) => void
+}
+const mockUpdateOptions = vi.hoisted(() => ({ current: undefined as UpdateOptions | undefined }))
 
 vi.mock("../_hooks/useEquipmentContext", () => ({
   useEquipmentContext: () => ({
@@ -38,7 +42,17 @@ vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailHistoryTab", () => 
 }))
 
 vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailUsageTab", () => ({
-  EquipmentDetailUsageTab: () => <div>Usage tab content</div>,
+  EquipmentDetailUsageTab: ({
+    equipment,
+    equipmentDataset,
+  }: {
+    equipment: Equipment
+    equipmentDataset: string
+  }) => (
+    <div data-testid="usage-tab-content" data-dataset={equipmentDataset}>
+      Usage tab content: {equipment.nguon_kinh_phi}
+    </div>
+  ),
 }))
 
 vi.mock("../_components/EquipmentDetailDialog/EquipmentDetailEditForm", () => ({
@@ -67,11 +81,14 @@ vi.mock("../_components/EquipmentDetailDialog/hooks/useEquipmentAttachments", ()
 
 const mockUpdateEquipment = vi.fn()
 vi.mock("@/components/equipment-edit/useEquipmentEditUpdate", () => ({
-  useEquipmentEditUpdate: () => ({
-    updateEquipment: mockUpdateEquipment,
-    isPending: false,
-    error: null,
-  }),
+  useEquipmentEditUpdate: (options: UpdateOptions) => {
+    mockUpdateOptions.current = options
+    return {
+      updateEquipment: mockUpdateEquipment,
+      isPending: false,
+      error: null,
+    }
+  },
 }))
 
 // Import after mocks
@@ -84,6 +101,7 @@ describe("EquipmentDetailDialog tabs", () => {
     ma_thiet_bi: "EQ-001",
     ten_thiet_bi: "Máy siêu âm",
     khoa_phong_quan_ly: "Khoa Nội",
+    nguon_kinh_phi: "Ngân sách",
   }
 
   const user: UserSession = {
@@ -98,6 +116,7 @@ describe("EquipmentDetailDialog tabs", () => {
     onOpenChange: vi.fn(),
     user,
     isRegionalLeader: false,
+    equipmentDataset: "regular" as const,
     onGenerateProfileSheet: vi.fn(),
     onGenerateDeviceLabel: vi.fn(),
     onEquipmentUpdated: vi.fn(),
@@ -105,6 +124,7 @@ describe("EquipmentDetailDialog tabs", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUpdateOptions.current = undefined
     if (!HTMLElement.prototype.scrollIntoView) {
       Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
         writable: true,
@@ -146,7 +166,31 @@ describe("EquipmentDetailDialog tabs", () => {
     fireEvent.mouseDown(usageTab)
     fireEvent.click(usageTab)
 
-    expect(await screen.findByText("Usage tab content")).toBeInTheDocument()
+    expect(await screen.findByTestId("usage-tab-content")).toBeInTheDocument()
+  })
+
+  it("routes usage history through saved funding changes in both directions", async () => {
+    render(<EquipmentDetailDialog {...baseProps} />)
+
+    const usageTab = screen.getByRole("tab", { name: "Nhật ký sử dụng" })
+    fireEvent.mouseDown(usageTab)
+    fireEvent.click(usageTab)
+    expect(await screen.findByTestId("usage-tab-content")).toHaveAttribute(
+      "data-dataset",
+      "regular"
+    )
+
+    await React.act(async () => {
+      mockUpdateOptions.current?.onSuccess?.({ nguon_kinh_phi: "Mượn" })
+    })
+    expect(screen.getByTestId("usage-tab-content")).toHaveAttribute("data-dataset", "placed")
+    expect(screen.getByTestId("usage-tab-content")).toHaveTextContent("Mượn")
+
+    await React.act(async () => {
+      mockUpdateOptions.current?.onSuccess?.({ nguon_kinh_phi: "Ngân sách" })
+    })
+    expect(screen.getByTestId("usage-tab-content")).toHaveAttribute("data-dataset", "regular")
+    expect(screen.getByTestId("usage-tab-content")).toHaveTextContent("Ngân sách")
   })
 
   it("enters edit mode and wires save button to the inline form", () => {
