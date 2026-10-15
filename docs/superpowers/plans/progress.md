@@ -169,3 +169,34 @@ Both Phase 2 caveats are now addressed in source and contract checks. Runtime EX
 - Database Quality Gate remains advisory/`INCOMPLETE`; Phase 3 has no SQL or live DB changes.
 
 Safe checkpoint reached. `main` is clean and ready for Phase 4.
+
+## Checkpoint: Phase 4 implementation complete, reviewed, and ready for handoff
+
+- **Scope:** Chunk 4–5, Tasks 7–9 (import classification, shared invalidation, KPI/Reports exclusion)
+- **Main commits:** `6da74cb0`, `16cf0772`, `2418eaee`, `906e8fbc`, `815ca233`
+- **Push:** not pushed, per user instruction; `main` remains clean and ahead of `origin/main` locally.
+
+### Delivered
+
+- Mixed imports classify each row using trimmed `Nguồn kinh phí`; any normalized `Mượn` row switches to **Thiết bị đặt** while ordinary rows remain in **Thiết bị thường**.
+- Dashboard/KPI, Device Quota, Reports, maintenance/utilization aggregates, report exports, usage logs, and facility-count callers use the fixed `regular` dataset where required.
+- Equipment detail usage history, load-more, and active-session paths carry the active dataset; an open detail dialog follows the saved funding source after regular↔placed edits.
+- Import and mutation success invalidate equipment list/buckets/distribution plus dashboard, Reports, maintenance-report, usage-analytics, and active usage-log query families; import query caches are invalidated after success.
+- TanStack Query keys remain dataset-specific, so switching tabs reuses each dataset cache instead of refetching the other dataset.
+- Hard file-size violations were resolved; no optional extraction was added solely for the 350-line advisory threshold.
+
+### Independent verification
+
+- Focused import/invalidation tests — **9/9 passed**
+- Detail-dialog dataset regression — **7/7 passed**
+- Reviewer changed-test set — **12 files / 62 tests passed**
+- `format:check`, `verify:no-explicit-any`, `verify:dedupe`, `typecheck`, and `git diff --check` — PASS
+- React Doctor — **84/100**, no issues reported
+- Astra reviewer (gpt-6-astra, medium) — **APPROVE**, no actionable findings
+
+### Database and rollout boundary
+
+- No live Supabase writes and no push were performed.
+- Database Quality Gate remains **INCOMPLETE/advisory** because the repository gate has known false positives and the Oracle baseline-forward environment is stale; no bypass was authorized. This does not authorize migration apply or deployment.
+
+Safe checkpoint reached. Await user direction before any push, live migration, or deployment.
