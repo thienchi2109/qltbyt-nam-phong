@@ -200,3 +200,8 @@ Safe checkpoint reached. `main` is clean and ready for Phase 4.
 - Database Quality Gate remains **INCOMPLETE/advisory** because the repository gate has known false positives and the Oracle baseline-forward environment is stale; no bypass was authorized. This does not authorize migration apply or deployment.
 
 Safe checkpoint reached. Await user direction before any push, live migration, or deployment.
+
+## Phase 5 disposition
+
+- **User authorization (2026-10-15):** Phase 5 verification/handoff is explicitly waived.
+- Proceeding to the separately authorized live migration apply through Supabase MCP; no push or deployment is implied by this waiver.
