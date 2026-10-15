@@ -50,10 +50,16 @@ interface StartUsageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   equipment: EquipmentForStart | null
+  onSuccess?: () => void
 }
 
 /** Renders the dialog for starting a new equipment usage session. */
-export function StartUsageDialog({ open, onOpenChange, equipment }: StartUsageDialogProps) {
+export function StartUsageDialog({
+  open,
+  onOpenChange,
+  equipment,
+  onSuccess,
+}: StartUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
@@ -127,6 +133,7 @@ export function StartUsageDialog({ open, onOpenChange, equipment }: StartUsageDi
         ghi_chu: data.ghi_chu,
       })
 
+      onSuccess?.()
       onOpenChange(false)
       form.reset()
     } catch (error) {

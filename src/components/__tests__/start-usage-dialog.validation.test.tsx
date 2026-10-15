@@ -85,10 +85,12 @@ describe("StartUsageDialog validation", () => {
   })
 
   it("submits both initial status fields when the input is valid", async () => {
+    const onSuccess = vi.fn()
     render(
       <StartUsageDialog
         open
         onOpenChange={vi.fn()}
+        onSuccess={onSuccess}
         equipment={{
           id: 99,
           ten_thiet_bi: "Monitor",
@@ -110,6 +112,7 @@ describe("StartUsageDialog validation", () => {
         tinh_trang_ban_dau: "Hoạt động tốt",
         ghi_chu: "",
       })
+      expect(onSuccess).toHaveBeenCalledTimes(1)
     })
   })
 })

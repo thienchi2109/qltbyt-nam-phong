@@ -45,19 +45,43 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
     onDataMutationSuccess,
   } = useEquipmentContext()
 
+  const detailDatasetRef = React.useRef<{
+    equipmentId: number
+    dataset: EquipmentDataset
+  } | null>(null)
+  React.useEffect(() => {
+    const equipment = dialogState.detailEquipment
+    if (!equipment) {
+      detailDatasetRef.current = null
+      return
+    }
+    if (detailDatasetRef.current?.equipmentId !== equipment.id) {
+      detailDatasetRef.current = {
+        equipmentId: equipment.id,
+        dataset: isPlacedEquipment(equipment.nguon_kinh_phi) ? "placed" : "regular",
+      }
+    }
+  }, [dialogState.detailEquipment])
+
   const handleEquipmentUpdated = React.useCallback(
     (savedPatch?: Partial<EquipmentFormValues>) => {
-      const sourceDataset: EquipmentDataset = isPlacedEquipment(
-        dialogState.detailEquipment?.nguon_kinh_phi
-      )
-        ? "placed"
-        : "regular"
+      const detailEquipment = dialogState.detailEquipment
+      const trackedDataset = detailDatasetRef.current
+      const sourceDataset: EquipmentDataset =
+        trackedDataset && trackedDataset.equipmentId === detailEquipment?.id
+          ? trackedDataset.dataset
+          : isPlacedEquipment(detailEquipment?.nguon_kinh_phi)
+            ? "placed"
+            : "regular"
       const destinationDataset =
         savedPatch && "nguon_kinh_phi" in savedPatch
           ? isPlacedEquipment(savedPatch.nguon_kinh_phi)
             ? "placed"
             : "regular"
           : sourceDataset
+      if (detailEquipment) {
+        detailDatasetRef.current = { equipmentId: detailEquipment.id, dataset: destinationDataset }
+      }
       onDataMutationSuccess(
         sourceDataset === destinationDataset ? sourceDataset : [sourceDataset, destinationDataset]
       )
@@ -116,12 +140,14 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         open={dialogState.isStartUsageOpen}
         onOpenChange={handleStartUsageClose}
         equipment={dialogState.startUsageEquipment}
+        onSuccess={onDataMutationSuccess}
       />
 
       <EndUsageDialog
         open={dialogState.isEndUsageOpen}
         onOpenChange={handleEndUsageClose}
         usageLog={dialogState.endUsageLog}
+        onSuccess={onDataMutationSuccess}
       />
     </>
   )

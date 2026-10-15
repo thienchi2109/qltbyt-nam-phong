@@ -92,10 +92,12 @@ describe("EndUsageDialog validation", () => {
   })
 
   it("submits both final status fields when the input is valid", async () => {
+    const onSuccess = vi.fn()
     render(
       <EndUsageDialog
         open
         onOpenChange={vi.fn()}
+        onSuccess={onSuccess}
         usageLog={{
           id: 1,
           thiet_bi_id: 99,
@@ -129,6 +131,7 @@ describe("EndUsageDialog validation", () => {
         tinh_trang_ket_thuc: "Cần bảo trì",
         ghi_chu: "",
       })
+      expect(onSuccess).toHaveBeenCalledTimes(1)
     })
   })
 })

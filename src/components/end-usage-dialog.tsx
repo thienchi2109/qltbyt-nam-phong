@@ -45,10 +45,11 @@ interface EndUsageDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   usageLog: UsageLog | null
+  onSuccess?: () => void
 }
 
 /** Renders the dialog for closing an active equipment usage session. */
-export function EndUsageDialog({ open, onOpenChange, usageLog }: EndUsageDialogProps) {
+export function EndUsageDialog({ open, onOpenChange, usageLog, onSuccess }: EndUsageDialogProps) {
   const { data: session } = useSession()
   const user = session?.user as SessionUser | undefined
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
@@ -87,6 +88,7 @@ export function EndUsageDialog({ open, onOpenChange, usageLog }: EndUsageDialogP
         ghi_chu: data.ghi_chu,
       })
 
+      onSuccess?.()
       onOpenChange(false)
       form.reset()
     } catch (error) {
