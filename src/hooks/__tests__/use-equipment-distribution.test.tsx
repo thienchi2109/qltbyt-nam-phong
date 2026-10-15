@@ -38,7 +38,13 @@ describe("catalog distribution RPC adapter", () => {
     expect(rpc).toHaveBeenCalledWith(
       expect.objectContaining({
         fn: "equipment_status_distribution",
-        args: { p_q: null, p_don_vi: 42, p_khoa_phong: "Khoa Nội", p_vi_tri: "101" },
+        args: {
+          p_q: null,
+          p_don_vi: 42,
+          p_khoa_phong: "Khoa Nội",
+          p_vi_tri: "101",
+          p_equipment_dataset: "regular",
+        },
       })
     )
   })
