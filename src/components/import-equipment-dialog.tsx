@@ -28,6 +28,8 @@ import {
   buildImportToastMessage,
 } from "@/components/bulk-import"
 import type { BulkImportRpcResult } from "@/components/bulk-import"
+import type { EquipmentDataset } from "@/app/(app)/equipment/_hooks/equipmentDataset"
+import { isPlacedEquipment } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 
 import {
   validateEquipmentData,
@@ -114,7 +116,7 @@ const numberFields = new Set<string>(["gia_goc"])
 interface ImportEquipmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: (dataset?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 /** Renders and submits the equipment import dialog. */
@@ -268,7 +270,9 @@ export function ImportEquipmentDialog({
       })
 
       setSuccess()
-      onSuccess()
+      const hasPlaced = dataToInsert.some((item) => isPlacedEquipment(item.nguon_kinh_phi))
+      const hasRegular = dataToInsert.some((item) => !isPlacedEquipment(item.nguon_kinh_phi))
+      onSuccess(hasPlaced && hasRegular ? ["regular", "placed"] : hasPlaced ? "placed" : "regular")
       handleClose()
     } catch (error: unknown) {
       const errorMessage = getUnknownErrorMessage(error)

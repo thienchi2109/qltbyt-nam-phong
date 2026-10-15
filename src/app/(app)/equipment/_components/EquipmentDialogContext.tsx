@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useSession } from "next-auth/react"
 import { isGlobalRole, isRegionalLeaderRole, ROLES } from "@/lib/rbac"
 import type { Equipment, UsageLog, SessionUser } from "../types"
+import type { EquipmentDataset } from "../_hooks/equipmentDataset"
 
 // ============================================
 // Design Note
@@ -70,7 +71,7 @@ export interface EquipmentDialogContextValue {
   closeAllDialogs: () => void
 
   // Cache invalidation callback for dialogs
-  onDataMutationSuccess: () => void
+  onDataMutationSuccess: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 // ============================================
@@ -87,12 +88,14 @@ const EquipmentDialogContext = React.createContext<EquipmentDialogContextValue |
 interface EquipmentDialogProviderProps {
   children: React.ReactNode
   effectiveTenantKey: string
+  onDataMutationSuccess?: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 /** Provides equipment dialog orchestration state for the Equipment page. */
 export function EquipmentDialogProvider({
   children,
   effectiveTenantKey,
+  onDataMutationSuccess: invalidateEquipment,
 }: EquipmentDialogProviderProps) {
   const queryClient = useQueryClient()
   const { data: session } = useSession()
@@ -120,24 +123,35 @@ export function EquipmentDialogProvider({
   })
 
   // Cache invalidation
-  const onDataMutationSuccess = React.useCallback(() => {
-    queryClient.invalidateQueries({
-      predicate: (q) => {
-        const key = q.queryKey
-        if (!Array.isArray(key)) return false
-        if (key[0] !== "equipment_list_enhanced" && key[0] !== "equipment_department_distribution") return false
-        const params = key[1] as Record<string, unknown>
-        return params?.tenant === effectiveTenantKey
-      },
-      refetchType: "active",
-    })
-    // Also invalidate related queries
-    queryClient.invalidateQueries({ queryKey: ["active_usage_logs"] })
-    queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
+  const onDataMutationSuccess = React.useCallback(
+    (datasets?: EquipmentDataset | EquipmentDataset[]) => {
+      invalidateEquipment?.(datasets)
+      if (!invalidateEquipment) {
+        queryClient.invalidateQueries({
+          predicate: (q) => {
+            const key = q.queryKey
+            if (!Array.isArray(key)) return false
+            if (
+              key[0] !== "equipment_list_enhanced" &&
+              key[0] !== "equipment_department_distribution" &&
+              key[0] !== "equipment_filter_buckets"
+            )
+              return false
+            const params = key[1] as Record<string, unknown>
+            return params?.tenant === effectiveTenantKey
+          },
+          refetchType: "active",
+        })
+      }
+      // Also invalidate related queries
+      queryClient.invalidateQueries({ queryKey: ["active_usage_logs"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
 
-    // Dispatch event for other components
-    window.dispatchEvent(new CustomEvent("equipment-cache-invalidated"))
-  }, [queryClient, effectiveTenantKey])
+      // Dispatch event for other components
+      window.dispatchEvent(new CustomEvent("equipment-cache-invalidated"))
+    },
+    [effectiveTenantKey, invalidateEquipment, queryClient]
+  )
 
   // Dialog open actions
   const openAddDialog = React.useCallback(() => {
@@ -299,11 +313,7 @@ export function EquipmentDialogProvider({
     ]
   )
 
-  return (
-    <EquipmentDialogContext.Provider value={value}>
-      {children}
-    </EquipmentDialogContext.Provider>
-  )
+  return <EquipmentDialogContext.Provider value={value}>{children}</EquipmentDialogContext.Provider>
 }
 
 export { EquipmentDialogContext }

@@ -23,13 +23,17 @@ export function useEquipmentDatasetTab(options: UseEquipmentDatasetTabOptions = 
   const { onDatasetChange } = options
   const [dataset, setDatasetState] = React.useState<EquipmentDataset>(readDatasetFromLocation)
   const datasetRef = React.useRef(dataset)
+  const initialSyncRef = React.useRef(true)
 
   React.useEffect(() => {
     const syncFromLocation = () => {
       const next = readDatasetFromLocation()
-      if (next !== datasetRef.current) onDatasetChange?.(next)
+      if (next !== datasetRef.current || (initialSyncRef.current && next === "placed")) {
+        onDatasetChange?.(next)
+      }
       datasetRef.current = next
       setDatasetState(next)
+      initialSyncRef.current = false
     }
     window.addEventListener("popstate", syncFromLocation)
     syncFromLocation()

@@ -39,4 +39,13 @@ describe("useEquipmentDatasetTab", () => {
 
     expect(result.current.dataset).toBe("placed")
   })
+
+  it("locks placed funding on a direct placed deep link", () => {
+    window.history.replaceState({}, "", "/equipment?tab=placed")
+    const onDatasetChange = vi.fn()
+
+    renderHook(() => useEquipmentDatasetTab({ onDatasetChange }))
+
+    expect(onDatasetChange).toHaveBeenCalledWith("placed")
+  })
 })

@@ -12,6 +12,8 @@ import type { TenantBranding } from "@/hooks/use-tenant-branding"
 import { EquipmentDetailDialog } from "./_components/EquipmentDetailDialog"
 import { EquipmentDeleteDialog } from "./_components/EquipmentDeleteDialog"
 import { useEquipmentContext } from "./_hooks/useEquipmentContext"
+import { isPlacedEquipment, type EquipmentDataset } from "./_hooks/equipmentDataset"
+import type { EquipmentFormValues } from "@/components/equipment-edit/EquipmentEditTypes"
 
 // ============================================
 // Props - Minimal props for export handlers only
@@ -25,6 +27,7 @@ export interface EquipmentDialogsProps {
 // ============================================
 // Component - Consumes context for dialog state
 // ============================================
+/** Renders the equipment CRUD and usage dialogs owned by the page context. */
 export const EquipmentDialogs = React.memo(function EquipmentDialogs({
   onGenerateProfileSheet,
   onGenerateDeviceLabel,
@@ -41,6 +44,26 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
     closeEndUsageDialog,
     onDataMutationSuccess,
   } = useEquipmentContext()
+
+  const handleEquipmentUpdated = React.useCallback(
+    (savedPatch?: Partial<EquipmentFormValues>) => {
+      const sourceDataset: EquipmentDataset = isPlacedEquipment(
+        dialogState.detailEquipment?.nguon_kinh_phi
+      )
+        ? "placed"
+        : "regular"
+      const destinationDataset =
+        savedPatch && "nguon_kinh_phi" in savedPatch
+          ? isPlacedEquipment(savedPatch.nguon_kinh_phi)
+            ? "placed"
+            : "regular"
+          : sourceDataset
+      onDataMutationSuccess(
+        sourceDataset === destinationDataset ? sourceDataset : [sourceDataset, destinationDataset]
+      )
+    },
+    [dialogState.detailEquipment, onDataMutationSuccess]
+  )
 
   const handleStartUsageClose = React.useCallback(
     (open: boolean) => {
@@ -82,7 +105,7 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
         isRegionalLeader={isRegionalLeader}
         onGenerateProfileSheet={onGenerateProfileSheet}
         onGenerateDeviceLabel={onGenerateDeviceLabel}
-        onEquipmentUpdated={onDataMutationSuccess}
+        onEquipmentUpdated={handleEquipmentUpdated}
       />
 
       <LinkedRequestSheetHost />

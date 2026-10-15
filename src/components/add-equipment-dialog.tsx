@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { Loader2 } from "lucide-react"
 import { useSession } from "next-auth/react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 
 import { useDecommissionDateAutofill } from "@/components/equipment-decommission-form"
 import { Button } from "@/components/ui/button"
@@ -41,11 +41,13 @@ import {
   DEFAULT_ADD_EQUIPMENT_FORM_VALUES,
   type AddEquipmentFormValues,
 } from "./add-equipment-dialog.schema"
+import type { EquipmentDataset } from "@/app/(app)/equipment/_hooks/equipmentDataset"
+import { isPlacedEquipment } from "@/app/(app)/equipment/_hooks/equipmentDataset"
 
 interface AddEquipmentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: (dataset?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 interface CreateEquipmentArgs extends Record<string, unknown> {
@@ -55,7 +57,6 @@ interface CreateEquipmentArgs extends Record<string, unknown> {
 /** Renders and submits the add-equipment dialog. */
 export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipmentDialogProps) {
   const { toast } = useToast()
-  const queryClient = useQueryClient()
   const { data: session } = useSession()
   const user = session?.user
   const isRegionalLeader = isRegionalLeaderRole(user?.role)
@@ -110,16 +111,12 @@ export function AddEquipmentDialog({ open, onOpenChange, onSuccess }: AddEquipme
         args: { p_payload: payload },
       })
     },
-    onSuccess: () => {
+    onSuccess: (_data, payload) => {
       toast({
         title: "Thành công",
         description: "Đã thêm thiết bị mới vào danh mục.",
       })
-      queryClient.invalidateQueries({ queryKey: ["equipment_list"] })
-      queryClient.invalidateQueries({ queryKey: ["equipment_list_enhanced"] })
-      queryClient.invalidateQueries({ queryKey: ["equipment_count"] })
-      queryClient.invalidateQueries({ queryKey: ["equipment_count_enhanced"] })
-      onSuccess()
+      onSuccess(isPlacedEquipment(payload.nguon_kinh_phi) ? "placed" : "regular")
       onOpenChange(false)
       form.reset()
     },

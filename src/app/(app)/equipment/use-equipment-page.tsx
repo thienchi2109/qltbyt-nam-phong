@@ -288,9 +288,12 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
   }, [auth.effectiveTenantKey, auth.showSelector, auth.selectedDonVi, data.tenantOptions, toast])
 
   // Mutation success handlers
-  const onDataMutationSuccess = React.useCallback(() => {
-    data.invalidateEquipmentForCurrentTenant()
-  }, [data.invalidateEquipmentForCurrentTenant])
+  const onDataMutationSuccess = React.useCallback(
+    (datasets?: EquipmentDataset | EquipmentDataset[]) => {
+      data.invalidateEquipmentForCurrentTenant(datasets)
+    },
+    [data.invalidateEquipmentForCurrentTenant]
+  )
 
   const onDataMutationSuccessWithStatePreservation = React.useCallback(() => {
     const currentState = table.table.getState()

@@ -43,6 +43,7 @@ import { EquipmentDetailFooter } from "./EquipmentDetailFooter"
 import { EquipmentDetailTabs } from "./EquipmentDetailTabs"
 import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
 import { getEquipmentStatusMetadata } from "@/lib/equipment-status"
+import type { EquipmentFormValues as SharedEquipmentFormValues } from "@/components/equipment-edit/EquipmentEditTypes"
 
 const LIQUIDATION_SUCCESS_TOAST = {
   title: "Đã chuyển thiết bị",
@@ -57,7 +58,7 @@ export interface EquipmentDetailDialogProps {
   isRegionalLeader: boolean
   onGenerateProfileSheet: (equipment: Equipment) => void
   onGenerateDeviceLabel: (equipment: Equipment) => void
-  onEquipmentUpdated: () => void
+  onEquipmentUpdated: (savedPatch?: Partial<SharedEquipmentFormValues>) => void
 }
 
 /**
@@ -150,7 +151,7 @@ function EquipmentDetailDialogState({
     onSuccess: (savedPatch) => {
       setSavedValues((prev) => ({ ...prev, ...savedPatch }))
       setIsEditingDetails(false)
-      onEquipmentUpdated()
+      onEquipmentUpdated(savedPatch)
     },
   })
 

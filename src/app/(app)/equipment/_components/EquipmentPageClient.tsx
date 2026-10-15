@@ -72,7 +72,10 @@ export function EquipmentPageClient() {
   }
 
   return (
-    <EquipmentDialogProvider effectiveTenantKey={pageState.effectiveTenantKey}>
+    <EquipmentDialogProvider
+      effectiveTenantKey={pageState.effectiveTenantKey}
+      onDataMutationSuccess={pageState.onDataMutationSuccess}
+    >
       <LinkedRequestProvider>
         <EquipmentDatasetTabs
           dataset={pageState.equipmentDataset}

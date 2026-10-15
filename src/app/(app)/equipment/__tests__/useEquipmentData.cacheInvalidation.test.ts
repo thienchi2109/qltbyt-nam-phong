@@ -99,6 +99,7 @@ describe("useEquipmentData cache invalidation", () => {
           role: "user",
           diaBan: undefined,
           donVi: 5,
+          equipmentDataset: "regular",
         },
       ],
     })

@@ -395,6 +395,7 @@ describe("useEquipmentData", () => {
         p_tinh_trang_array: ["Hoat dong"],
         p_phan_loai_array: ["May loai A"],
         p_nguon_kinh_phi_array: ["Ngan sach"],
+        p_equipment_dataset: "regular",
       })
       expect(distributionCall?.args).not.toHaveProperty("p_page")
       expect(distributionCall?.args).not.toHaveProperty("p_page_size")
