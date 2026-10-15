@@ -205,3 +205,14 @@ Safe checkpoint reached. Await user direction before any push, live migration, o
 
 - **User authorization (2026-10-15):** Phase 5 verification/handoff is explicitly waived.
 - Proceeding to the separately authorized live migration apply through Supabase MCP; no push or deployment is implied by this waiver.
+
+## Live migration apply checkpoint
+
+- **Live apply:** `equipment_dataset_scope` succeeded through Supabase MCP after two transactional, fully rolled-back failures were corrected locally:
+  - missing `;` after 24 PL/pgSQL `$function$` terminators;
+  - one malformed `equipment_list_enhanced` GRANT signature.
+- **Live migration identity:** `20261015040835 / equipment_dataset_scope` (the MCP assigned the live version); no duplicate local-history row was created.
+- **Applied source commit:** `f999ee45`; no push performed.
+- **Read-back:** `idx_thiet_bi_dataset_placed` exists and is valid with predicate `is_deleted = false AND btrim(coalesce(nguon_kinh_phi, '')) = 'Mượn'`; scoped overloads for list, usage logs, KPI, maintenance, and compliance functions exist alongside legacy overloads.
+- **Disposable Oracle baseline-forward:** `INCOMPLETE` before execution because `dynamic.preflight.stale-environment`; no disposable SQL tests ran. Static/local gate timed out without producing a usable report.
+- **Advisors:** security/performance advisors returned the project’s existing findings plus warnings for newly scoped `SECURITY DEFINER` overloads. Post-apply ACL read-back shows these new overloads retain an explicit `anon=X` grant despite the migration’s `REVOKE ... FROM PUBLIC`; this is recorded for follow-up review and was not changed outside the authorized migration apply.
