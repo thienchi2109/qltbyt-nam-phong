@@ -216,3 +216,10 @@ Safe checkpoint reached. Await user direction before any push, live migration, o
 - **Read-back:** `idx_thiet_bi_dataset_placed` exists and is valid with predicate `is_deleted = false AND btrim(coalesce(nguon_kinh_phi, '')) = 'Mượn'`; scoped overloads for list, usage logs, KPI, maintenance, and compliance functions exist alongside legacy overloads.
 - **Disposable Oracle baseline-forward:** `INCOMPLETE` before execution because `dynamic.preflight.stale-environment`; no disposable SQL tests ran. Static/local gate timed out without producing a usable report.
 - **Advisors:** security/performance advisors returned the project’s existing findings plus warnings for newly scoped `SECURITY DEFINER` overloads. Post-apply ACL read-back shows these new overloads retain an explicit `anon=X` grant despite the migration’s `REVOKE ... FROM PUBLIC`; this is recorded for follow-up review and was not changed outside the authorized migration apply.
+
+## Follow-up ACL migration checkpoint
+
+- **Migration:** `20261015050000_equipment_dataset_scope_anon_acl.sql` applied through Supabase MCP; live migration identity `20261015060448 / equipment_dataset_scope_anon_acl`.
+- **Scope:** append-only ACL follow-up; the already-applied `equipment_dataset_scope` migration was not edited.
+- **Live read-back:** 26 scoped overloads found; `anon` execution revoked on all 26; `authenticated` and `service_role` execution retained on all 26; mismatches `0`.
+- **Database Quality Gate:** remains `INCOMPLETE/advisory` under the documented stale-environment/false-positive caveat; this read-back is live ACL evidence only and is not an aggregate gate PASS.
