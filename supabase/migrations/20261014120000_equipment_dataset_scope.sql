@@ -1906,7 +1906,7 @@ REVOKE ALL ON FUNCTION public.dashboard_maintenance_plan_stats(text) FROM PUBLIC
 GRANT EXECUTE ON FUNCTION public.dashboard_maintenance_plan_stats(text) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.equipment_list_enhanced(text,text,integer,integer,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],boolean,text) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.equipment_department_distribution(text,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.equipment_department_distribution(text,bigint,text,text[],text,text[],text,text[],text,text[],text,text[],text,text[],text) TO authenticated, service_role;
 REVOKE ALL ON FUNCTION public.equipment_filter_buckets(text,bigint,text[],text[],text[],text[],text[],text[],text) FROM PUBLIC;
