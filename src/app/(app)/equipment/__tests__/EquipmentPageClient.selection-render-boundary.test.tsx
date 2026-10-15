@@ -162,6 +162,7 @@ function createPageState(table: TestTable): EquipmentPageState {
     handleGenerateProfileSheet: vi.fn(),
     handleGenerateDeviceLabel: vi.fn(),
     onDataMutationSuccess: vi.fn(),
+    onImportSuccess: vi.fn(),
     onDataMutationSuccessWithStatePreservation: vi.fn(),
     isMobile: false,
     isCardView: false,

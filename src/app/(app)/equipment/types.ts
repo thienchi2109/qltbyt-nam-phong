@@ -180,6 +180,7 @@ export interface UseEquipmentPageReturn {
   handleGenerateProfileSheet: (equipment: Equipment) => Promise<void>
   handleGenerateDeviceLabel: (equipment: Equipment) => Promise<void>
   onDataMutationSuccess: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
+  onImportSuccess: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
   onDataMutationSuccessWithStatePreservation: () => void
 
   // UI state

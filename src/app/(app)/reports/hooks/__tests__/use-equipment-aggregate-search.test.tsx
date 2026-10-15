@@ -181,6 +181,7 @@ describe("useEquipmentAggregateSearch", () => {
           p_group_by: "region",
           p_region_id: null,
           p_limit: 50,
+          p_equipment_dataset: "regular",
         },
         signal: expect.any(AbortSignal),
       })
@@ -234,6 +235,7 @@ describe("useEquipmentAggregateSearch", () => {
       expect.objectContaining({
         args: expect.objectContaining({
           p_limit: 100,
+          p_equipment_dataset: "regular",
         }),
       })
     )

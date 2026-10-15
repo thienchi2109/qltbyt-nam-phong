@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { callRpc } from '@/lib/rpc-client'
+import { useQuery } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
 
 export interface MaintenanceStats {
   repair_summary: {
@@ -19,8 +19,12 @@ export interface MaintenanceStats {
   }
 }
 
-export interface DateRange { from: Date; to: Date }
+export interface DateRange {
+  from: Date
+  to: Date
+}
 
+/** Loads maintenance and repair statistics for Reports. */
 export function useMaintenanceStats(
   dateRange: DateRange,
   selectedDepartment: string,
@@ -28,22 +32,27 @@ export function useMaintenanceStats(
   effectiveTenantKey?: string
 ) {
   return useQuery({
-    queryKey: ['reports', 'maintenance-stats', {
-      from: dateRange.from.toISOString().slice(0,10),
-      to: dateRange.to.toISOString().slice(0,10),
-      dept: selectedDepartment,
-      tenant: effectiveTenantKey || 'auto'
-    }],
+    queryKey: [
+      "reports",
+      "maintenance-stats",
+      {
+        from: dateRange.from.toISOString().slice(0, 10),
+        to: dateRange.to.toISOString().slice(0, 10),
+        dept: selectedDepartment,
+        tenant: effectiveTenantKey || "auto",
+      },
+    ],
     queryFn: async (): Promise<MaintenanceStats> => {
       try {
         const res = await callRpc<MaintenanceStats>({
-          fn: 'maintenance_stats_for_reports',
+          fn: "maintenance_stats_for_reports",
           args: {
-            p_date_from: dateRange.from.toISOString().slice(0,10),
-            p_date_to: dateRange.to.toISOString().slice(0,10),
+            p_date_from: dateRange.from.toISOString().slice(0, 10),
+            p_date_to: dateRange.to.toISOString().slice(0, 10),
             p_don_vi: selectedDonVi ?? null,
-            p_khoa_phong: selectedDepartment !== 'all' ? selectedDepartment : null,
-          }
+            p_khoa_phong: selectedDepartment !== "all" ? selectedDepartment : null,
+            p_equipment_dataset: "regular",
+          },
         })
         return res
       } catch (e) {
@@ -63,7 +72,7 @@ export function useMaintenanceStats(
         }
       }
     },
-    enabled: (effectiveTenantKey ?? 'auto') !== 'unset',
+    enabled: (effectiveTenantKey ?? "auto") !== "unset",
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: 2,

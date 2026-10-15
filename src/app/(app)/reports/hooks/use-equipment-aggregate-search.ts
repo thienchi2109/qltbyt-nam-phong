@@ -77,6 +77,7 @@ function buildEquipmentAggregateSearchRpcArgs(
     p_group_by: params.groupBy,
     p_region_id: params.regionId ?? null,
     p_limit: normalizeEquipmentAggregateSearchLimit(params.limit),
+    p_equipment_dataset: "regular",
   }
 }
 

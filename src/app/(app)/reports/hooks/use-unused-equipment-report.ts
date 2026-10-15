@@ -57,19 +57,20 @@ export interface UseUnusedEquipmentReportParams {
 }
 
 const unusedEquipmentReportKeys = {
-  data: (params: UseUnusedEquipmentReportParams) => [
-    "reports",
-    "unused-equipment",
-    {
-      selectedDonVi: params.selectedDonVi ?? null,
-      searchTerm: params.searchTerm,
-      selectedDepartment: params.selectedDepartment,
-      page: params.page,
-      pageSize: params.pageSize,
-      sort: params.sort,
-      enabled: params.enabled,
-    },
-  ] as const,
+  data: (params: UseUnusedEquipmentReportParams) =>
+    [
+      "reports",
+      "unused-equipment",
+      {
+        selectedDonVi: params.selectedDonVi ?? null,
+        searchTerm: params.searchTerm,
+        selectedDepartment: params.selectedDepartment,
+        page: params.page,
+        pageSize: params.pageSize,
+        sort: params.sort,
+        enabled: params.enabled,
+      },
+    ] as const,
 }
 
 const EMPTY_UNUSED_EQUIPMENT_REPORT: UnusedEquipmentReportData = {
@@ -88,6 +89,7 @@ const EMPTY_UNUSED_EQUIPMENT_REPORT: UnusedEquipmentReportData = {
   pageSize: 10,
 }
 
+/** Loads the server-filtered unused regular equipment report. */
 export function useUnusedEquipmentReport(params: UseUnusedEquipmentReportParams) {
   return useQuery({
     queryKey: unusedEquipmentReportKeys.data(params),
@@ -101,6 +103,7 @@ export function useUnusedEquipmentReport(params: UseUnusedEquipmentReportParams)
           p_page: params.page,
           p_page_size: params.pageSize,
           p_sort: params.sort,
+          p_equipment_dataset: "regular",
         },
         signal,
       })

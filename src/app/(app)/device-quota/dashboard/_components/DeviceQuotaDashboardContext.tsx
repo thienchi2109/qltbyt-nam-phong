@@ -49,7 +49,10 @@ interface DeviceQuotaDashboardContextValue {
 // Context
 // ============================================
 
-const DeviceQuotaDashboardContext = React.createContext<DeviceQuotaDashboardContextValue | null>(null)
+/** Provides device quota dashboard compliance data to child components. */
+const DeviceQuotaDashboardContext = React.createContext<DeviceQuotaDashboardContextValue | null>(
+  null
+)
 
 // ============================================
 // Provider
@@ -59,6 +62,7 @@ interface DeviceQuotaDashboardProviderProps {
   children: React.ReactNode
 }
 
+/** Loads and provides the active facility's regular equipment quota summary. */
 export function DeviceQuotaDashboardProvider({ children }: DeviceQuotaDashboardProviderProps) {
   const { data: session } = useSession()
   const user = session?.user as AuthUser | null
@@ -73,13 +77,14 @@ export function DeviceQuotaDashboardProvider({ children }: DeviceQuotaDashboardP
     isError,
     refetch,
   } = useQuery({
-    queryKey: ['dinh_muc_compliance_summary', { donViId }],
+    queryKey: ["dinh_muc_compliance_summary", { donViId }],
     queryFn: async () => {
       const result = await callRpc<ComplianceSummary[]>({
-        fn: 'dinh_muc_compliance_summary',
+        fn: "dinh_muc_compliance_summary",
         args: {
           p_quyet_dinh_id: null, // Auto-find active decision
           p_don_vi: donViId,
+          p_equipment_dataset: "regular",
         },
       })
       // RPC returns array with single row
@@ -90,21 +95,17 @@ export function DeviceQuotaDashboardProvider({ children }: DeviceQuotaDashboardP
     gcTime: 5 * 60 * 1000, // 5 minutes
   })
 
-  const value = React.useMemo<DeviceQuotaDashboardContextValue>(() => ({
-    user,
-    donViId,
-    complianceSummary: complianceSummaryData || null,
-    isLoading,
-    isError,
-    refetch,
-  }), [
-    user,
-    donViId,
-    complianceSummaryData,
-    isLoading,
-    isError,
-    refetch,
-  ])
+  const value = React.useMemo<DeviceQuotaDashboardContextValue>(
+    () => ({
+      user,
+      donViId,
+      complianceSummary: complianceSummaryData || null,
+      isLoading,
+      isError,
+      refetch,
+    }),
+    [user, donViId, complianceSummaryData, isLoading, isError, refetch]
+  )
 
   return (
     <DeviceQuotaDashboardContext.Provider value={value}>

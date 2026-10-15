@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   handleGenerateProfileSheet: vi.fn(),
   handleGenerateDeviceLabel: vi.fn(),
   useEquipmentRouteSync: vi.fn(),
+  setDataset: vi.fn(),
   datasetTabOptions: null as { onDatasetChange?: (dataset: "regular" | "placed") => void } | null,
 }))
 
@@ -189,7 +190,10 @@ vi.mock("@/app/(app)/equipment/_hooks/useEquipmentDatasetTab", () => ({
     mocks.datasetTabOptions = options
     return {
       dataset: "regular",
-      setDataset: (dataset: "regular" | "placed") => options.onDatasetChange?.(dataset),
+      setDataset: (dataset: "regular" | "placed") => {
+        mocks.setDataset(dataset)
+        options.onDatasetChange?.(dataset)
+      },
     }
   },
 }))
@@ -404,6 +408,34 @@ describe("useEquipmentPage tenant switching", () => {
     expect(mocks.setColumnFilters).toHaveBeenCalledWith([
       { id: "tinh_trang_hien_tai", value: ["Chờ sửa chữa"] },
     ])
+  })
+
+  it("switches to the placed dataset after an import containing borrowed equipment", () => {
+    const { result } = renderEquipmentPageHook()
+
+    act(() => {
+      result.current.onImportSuccess("placed")
+    })
+
+    expect(mocks.setDataset).toHaveBeenCalledWith("placed")
+    expect(mocks.invalidateEquipmentForCurrentTenant).toHaveBeenCalledWith("placed")
+  })
+
+  it("invalidates mixed imports without losing either dataset and leaves regular imports in place", () => {
+    const { result } = renderEquipmentPageHook()
+    act(() => result.current.onImportSuccess(["regular", "placed"]))
+    expect(mocks.setDataset).toHaveBeenCalledWith("placed")
+    expect(mocks.invalidateEquipmentForCurrentTenant).toHaveBeenCalledWith(["regular", "placed"])
+
+    mocks.setDataset.mockClear()
+    act(() => result.current.onImportSuccess("regular"))
+    expect(mocks.setDataset).not.toHaveBeenCalled()
+  })
+
+  it("does not switch tabs for an edit that moves equipment from placed to regular", () => {
+    const { result } = renderEquipmentPageHook()
+    act(() => result.current.onDataMutationSuccess(["placed", "regular"]))
+    expect(mocks.setDataset).not.toHaveBeenCalled()
   })
 
   it("resets pagination when route search params hydrate the search filter", () => {

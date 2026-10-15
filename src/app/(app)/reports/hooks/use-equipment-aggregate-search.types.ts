@@ -23,6 +23,7 @@ export interface EquipmentAggregateSearchRpcArgs extends Record<string, unknown>
   p_group_by: EquipmentAggregateSearchGroupBy
   p_region_id: number | null
   p_limit: number
+  p_equipment_dataset: "regular"
 }
 
 export interface EquipmentAggregateSearchRow {

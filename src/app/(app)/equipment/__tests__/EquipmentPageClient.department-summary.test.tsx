@@ -182,6 +182,7 @@ function createPageState(overrides?: Partial<EquipmentPageState>): EquipmentPage
     handleGenerateProfileSheet: vi.fn(),
     handleGenerateDeviceLabel: vi.fn(),
     onDataMutationSuccess: vi.fn(),
+    onImportSuccess: vi.fn(),
     onDataMutationSuccessWithStatePreservation: vi.fn(),
     isMobile: false,
     isCardView: false,

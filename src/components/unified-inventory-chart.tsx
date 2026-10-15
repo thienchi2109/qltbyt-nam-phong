@@ -86,9 +86,8 @@ function buildFacilityDonutData(items: FacilityDonutSourceItem[]): FacilityDonut
   const otherValue = chartableItems
     .slice(FACILITY_DONUT_LIMIT)
     .reduce((sum, item) => sum + item.value, 0)
-  const donutItems = otherValue > 0
-    ? [...topItems, { key: "other", name: "Khác", value: otherValue }]
-    : topItems
+  const donutItems =
+    otherValue > 0 ? [...topItems, { key: "other", name: "Khác", value: otherValue }] : topItems
 
   return donutItems.map((item, index) => ({
     ...item,
@@ -101,6 +100,7 @@ function formatPercent(value: number, total: number): string {
   return `${((value / total) * 100).toFixed(1).replace(/\.0$/, "")}%`
 }
 
+/** Renders the inventory distribution chart for the regular equipment dataset. */
 export function UnifiedInventoryChart({
   tenantFilter,
   selectedDonVi,
@@ -108,7 +108,7 @@ export function UnifiedInventoryChart({
   isGlobalOrRegionalLeader,
 }: UnifiedInventoryChartProps) {
   const { data: session } = useSession()
-  const rawRole = (session as SessionWithRole | null | undefined)?.user?.role ?? ''
+  const rawRole = (session as SessionWithRole | null | undefined)?.user?.role ?? ""
   const role = String(rawRole).toLowerCase()
   const isGlobal = isGlobalRole(rawRole)
   const isRegionalLeader = isRegionalLeaderRole(rawRole)
@@ -136,13 +136,20 @@ function UnifiedInventoryChartContent({
   isGlobal,
   isRegionalLeader,
 }: UnifiedInventoryChartContentProps) {
-  const isAllMode = tenantFilter === 'all'
+  const isAllMode = tenantFilter === "all"
 
   // All-facilities view: fetch facilities with counts
-  const { data: facilities, isLoading, error } = useQuery<FacilityRow[]>({
-    queryKey: ['unified-inventory-chart', 'facilities', role],
+  const {
+    data: facilities,
+    isLoading,
+    error,
+  } = useQuery<FacilityRow[]>({
+    queryKey: ["unified-inventory-chart", "facilities", role],
     queryFn: async () => {
-      const res = await callRpc<FacilitiesRpcRow[]>({ fn: 'get_facilities_with_equipment_count', args: {} })
+      const res = await callRpc<FacilitiesRpcRow[]>({
+        fn: "get_facilities_with_equipment_count",
+        args: { p_equipment_dataset: "regular" },
+      })
       return Array.isArray(res) ? res : []
     },
     enabled: isAllMode,
@@ -159,7 +166,7 @@ function UnifiedInventoryChartContent({
       }))
       .sort((a, b) => {
         if (b.value !== a.value) return b.value - a.value
-        return a.name.localeCompare(b.name, 'vi')
+        return a.name.localeCompare(b.name, "vi")
       })
     return items
   }, [facilities])
@@ -167,7 +174,7 @@ function UnifiedInventoryChartContent({
   const donutData = React.useMemo(() => buildFacilityDonutData(sortedData), [sortedData])
   const donutTotal = React.useMemo(
     () => donutData.reduce((sum, item) => sum + item.value, 0),
-    [donutData],
+    [donutData]
   )
 
   if (!isAllMode) {
@@ -183,10 +190,10 @@ function UnifiedInventoryChartContent({
 
   // All-facilities mode UI
   const message = isGlobal
-    ? 'Đang hiển thị tỷ trọng thiết bị theo cơ sở trên toàn hệ thống. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”.'
+    ? "Đang hiển thị tỷ trọng thiết bị theo cơ sở trên toàn hệ thống. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”."
     : isRegionalLeader
-    ? 'Đang hiển thị tỷ trọng thiết bị theo cơ sở trong phạm vi của bạn. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”.'
-    : ''
+      ? "Đang hiển thị tỷ trọng thiết bị theo cơ sở trong phạm vi của bạn. Donut hiển thị Top 10 cơ sở và gộp phần còn lại vào “Khác”."
+      : ""
 
   return (
     <Card aria-label="Biểu đồ phân bố thiết bị theo cơ sở">
@@ -243,7 +250,9 @@ function UnifiedInventoryChartContent({
                   <div className="size-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{item.name}</div>
-                    <div className="text-xs text-muted-foreground">{formatPercent(item.value, donutTotal)}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatPercent(item.value, donutTotal)}
+                    </div>
                   </div>
                   <div className="text-right text-sm font-semibold">{item.value} thiết bị</div>
                 </div>

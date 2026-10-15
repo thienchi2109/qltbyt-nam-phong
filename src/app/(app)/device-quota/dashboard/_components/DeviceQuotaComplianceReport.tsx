@@ -83,6 +83,7 @@ export function DeviceQuotaComplianceReport({
         args: {
           p_quyet_dinh_id: decisionId,
           p_don_vi: null, // RPC will enforce tenant isolation
+          p_equipment_dataset: "regular",
         },
       })
       return result || []
@@ -224,7 +225,10 @@ export function DeviceQuotaComplianceReport({
               <tbody>
                 {complianceData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="border border-black px-3 py-4 text-center text-sm text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="border border-black px-3 py-4 text-center text-sm text-gray-500"
+                    >
                       Không có dữ liệu
                     </td>
                   </tr>
@@ -249,11 +253,14 @@ export function DeviceQuotaComplianceReport({
                       row.chenh_lech > 0
                         ? `+${row.chenh_lech}`
                         : row.chenh_lech < 0
-                        ? row.chenh_lech.toString()
-                        : "0"
+                          ? row.chenh_lech.toString()
+                          : "0"
 
                     return (
-                      <tr key={row.nhom_thiet_bi_id} className="hover:bg-gray-50 print:hover:bg-transparent">
+                      <tr
+                        key={row.nhom_thiet_bi_id}
+                        className="hover:bg-gray-50 print:hover:bg-transparent"
+                      >
                         <td className="border border-black px-3 py-2 text-sm text-center">
                           {index + 1}
                         </td>
@@ -271,10 +278,14 @@ export function DeviceQuotaComplianceReport({
                         <td className="border border-black px-3 py-2 text-sm text-center font-medium">
                           {row.so_luong_hien_co}
                         </td>
-                        <td className={`border border-black px-3 py-2 text-sm text-center font-medium ${statusColorClass}`}>
+                        <td
+                          className={`border border-black px-3 py-2 text-sm text-center font-medium ${statusColorClass}`}
+                        >
                           {chenhLechDisplay}
                         </td>
-                        <td className={`border border-black px-3 py-2 text-sm text-center font-semibold ${statusColorClass}`}>
+                        <td
+                          className={`border border-black px-3 py-2 text-sm text-center font-semibold ${statusColorClass}`}
+                        >
                           {statusText}
                         </td>
                       </tr>

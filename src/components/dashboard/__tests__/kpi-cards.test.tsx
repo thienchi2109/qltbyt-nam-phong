@@ -72,6 +72,7 @@ describe("KPICards", () => {
     expect(mockCallRpc).toHaveBeenCalledTimes(1)
     expect(mockCallRpc).toHaveBeenCalledWith({
       fn: "dashboard_kpi_summary",
+      args: { p_equipment_dataset: "regular" },
     })
   })
 
@@ -105,6 +106,7 @@ describe("KPICards", () => {
     })
     expect(mockCallRpc).toHaveBeenCalledWith({
       fn: "dashboard_kpi_summary",
+      args: { p_equipment_dataset: "regular" },
     })
   })
 })

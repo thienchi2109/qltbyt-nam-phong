@@ -78,6 +78,7 @@ describe("useUnusedEquipmentReport", () => {
           p_page: 2,
           p_page_size: 20,
           p_sort: "ten_thiet_bi.asc",
+          p_equipment_dataset: "regular",
         },
         signal: expect.any(AbortSignal),
       })

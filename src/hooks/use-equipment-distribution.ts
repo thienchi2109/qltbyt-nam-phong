@@ -72,6 +72,7 @@ export function useEquipmentDistribution(
           p_don_vi: selectedDonVi || null,
           p_khoa_phong: filterDepartment && filterDepartment !== "all" ? filterDepartment : null,
           p_vi_tri: filterLocation && filterLocation !== "all" ? filterLocation : null,
+          p_equipment_dataset: "regular",
         },
       })
 

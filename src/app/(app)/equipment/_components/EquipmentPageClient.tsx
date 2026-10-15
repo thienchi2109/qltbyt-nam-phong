@@ -243,6 +243,7 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
       />
 
       <EquipmentDialogs
+        onImportSuccess={pageState.onImportSuccess}
         onGenerateProfileSheet={handleGenerateProfileSheet}
         onGenerateDeviceLabel={handleGenerateDeviceLabel}
         tenantBranding={tenantBranding}

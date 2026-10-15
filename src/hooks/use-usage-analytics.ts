@@ -1,18 +1,19 @@
-import { useQuery } from '@tanstack/react-query'
-import { callRpc } from '@/lib/rpc-client'
-import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from 'date-fns'
-import { type UsageLog } from '@/types/database'
+import { useQuery } from "@tanstack/react-query"
+import { callRpc } from "@/lib/rpc-client"
+import { differenceInMinutes, startOfDay, endOfDay, subDays, format } from "date-fns"
+import { type UsageLog } from "@/types/database"
 
 // Query keys for analytics
 const usageAnalyticsKeys = {
-  all: ['usage-analytics'] as const,
-  overview: (params?: Record<string, unknown>) => [...usageAnalyticsKeys.all, 'overview', params || {}] as const,
+  all: ["usage-analytics"] as const,
+  overview: (params?: Record<string, unknown>) =>
+    [...usageAnalyticsKeys.all, "overview", params || {}] as const,
   equipmentStats: (params?: Record<string, unknown>) =>
-    [...usageAnalyticsKeys.all, 'equipment-stats', params || {}] as const,
+    [...usageAnalyticsKeys.all, "equipment-stats", params || {}] as const,
   userStats: (params?: Record<string, unknown>) =>
-    [...usageAnalyticsKeys.all, 'user-stats', params || {}] as const,
+    [...usageAnalyticsKeys.all, "user-stats", params || {}] as const,
   dailyUsage: (params?: Record<string, unknown>) =>
-    [...usageAnalyticsKeys.all, 'daily-usage', params || {}] as const,
+    [...usageAnalyticsKeys.all, "daily-usage", params || {}] as const,
 }
 
 export interface UsageOverview {
@@ -95,7 +96,7 @@ type UsageLogWithRelations = UsageLog & {
 
 interface UsageLogQueryOptions {
   equipmentId?: number | null
-  status?: 'dang_su_dung' | 'hoan_thanh'
+  status?: "dang_su_dung" | "hoan_thanh"
   activeOnly?: boolean
   startedFrom?: Date
   startedTo?: Date
@@ -103,9 +104,11 @@ interface UsageLogQueryOptions {
   donVi?: number | null
 }
 
-async function fetchUsageLogs(options: UsageLogQueryOptions = {}): Promise<UsageLogWithRelations[]> {
+async function fetchUsageLogs(
+  options: UsageLogQueryOptions = {}
+): Promise<UsageLogWithRelations[]> {
   const payload = await callRpc<UsageLogWithRelations[]>({
-    fn: 'usage_log_list',
+    fn: "usage_log_list",
     args: {
       p_thiet_bi_id: options.equipmentId ?? null,
       p_trang_thai: options.status ?? null,
@@ -115,6 +118,7 @@ async function fetchUsageLogs(options: UsageLogQueryOptions = {}): Promise<Usage
       p_limit: options.limit ?? 2000,
       p_offset: 0,
       p_don_vi: options.donVi ?? null,
+      p_equipment_dataset: "regular",
     },
   })
 
@@ -122,13 +126,14 @@ async function fetchUsageLogs(options: UsageLogQueryOptions = {}): Promise<Usage
 }
 
 // Get usage overview statistics
+/** Computes utilization overview from regular equipment usage logs. */
 export function useUsageOverview(
   tenantFilter?: string,
   selectedDonVi?: number | null,
   effectiveTenantKey?: string
 ) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.overview({ tenant: effectiveTenantKey || 'auto' }),
+    queryKey: usageAnalyticsKeys.overview({ tenant: effectiveTenantKey || "auto" }),
     queryFn: async (): Promise<UsageOverview> => {
       const usageLogs = await fetchUsageLogs({
         donVi: selectedDonVi ?? null,
@@ -136,16 +141,13 @@ export function useUsageOverview(
       })
 
       const totalSessions = usageLogs.length
-      const activeSessions = usageLogs.filter((log) => log.trang_thai === 'dang_su_dung').length
+      const activeSessions = usageLogs.filter((log) => log.trang_thai === "dang_su_dung").length
 
       const totalUsageTime = usageLogs.reduce((total, log) => {
         if (log.thoi_gian_ket_thuc) {
           return (
             total +
-            differenceInMinutes(
-              new Date(log.thoi_gian_ket_thuc),
-              new Date(log.thoi_gian_bat_dau)
-            )
+            differenceInMinutes(new Date(log.thoi_gian_ket_thuc), new Date(log.thoi_gian_bat_dau))
           )
         }
         return total
@@ -156,7 +158,7 @@ export function useUsageOverview(
       const equipmentUsage = new Map<
         number,
         {
-          equipment: NonNullable<UsageLogWithRelations['thiet_bi']>
+          equipment: NonNullable<UsageLogWithRelations["thiet_bi"]>
           sessionCount: number
           totalTime: number
         }
@@ -183,12 +185,13 @@ export function useUsageOverview(
       })
 
       const mostUsedEquipment =
-        Array.from(equipmentUsage.values()).sort((a, b) => b.sessionCount - a.sessionCount)[0] || null
+        Array.from(equipmentUsage.values()).sort((a, b) => b.sessionCount - a.sessionCount)[0] ||
+        null
 
       const userUsage = new Map<
         number,
         {
-          user: NonNullable<UsageLogWithRelations['nguoi_su_dung']>
+          user: NonNullable<UsageLogWithRelations["nguoi_su_dung"]>
           sessionCount: number
           totalTime: number
         }
@@ -243,12 +246,13 @@ export function useUsageOverview(
             : null,
       }
     },
-    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
+    enabled: effectiveTenantKey !== "unset", // Gate query for global users
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }
 
 // Get equipment usage statistics
+/** Computes per-equipment utilization from regular equipment usage logs. */
 export function useEquipmentUsageStats(
   dateRange?: { from: Date; to: Date },
   tenantFilter?: string,
@@ -256,7 +260,10 @@ export function useEquipmentUsageStats(
   effectiveTenantKey?: string
 ) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.equipmentStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
+    queryKey: usageAnalyticsKeys.equipmentStats({
+      dateRange,
+      tenant: effectiveTenantKey || "auto",
+    }),
     queryFn: async (): Promise<EquipmentUsageStats[]> => {
       const usageLogs = await fetchUsageLogs({
         startedFrom: dateRange ? startOfDay(dateRange.from) : undefined,
@@ -291,7 +298,7 @@ export function useEquipmentUsageStats(
           )
         }
 
-        if (log.trang_thai === 'dang_su_dung') {
+        if (log.trang_thai === "dang_su_dung") {
           existing.currentlyInUse = true
         }
 
@@ -303,19 +310,19 @@ export function useEquipmentUsageStats(
       })
 
       equipmentStats.forEach((stats) => {
-        stats.averageSessionTime = stats.sessionCount > 0
-          ? Math.round(stats.totalUsageTime / stats.sessionCount)
-          : 0
+        stats.averageSessionTime =
+          stats.sessionCount > 0 ? Math.round(stats.totalUsageTime / stats.sessionCount) : 0
       })
 
       return Array.from(equipmentStats.values()).sort((a, b) => b.sessionCount - a.sessionCount)
     },
-    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
+    enabled: effectiveTenantKey !== "unset", // Gate query for global users
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
 // Get user usage statistics
+/** Computes per-user utilization from regular equipment usage logs. */
 export function useUserUsageStats(
   dateRange?: { from: Date; to: Date },
   tenantFilter?: string,
@@ -323,7 +330,7 @@ export function useUserUsageStats(
   effectiveTenantKey?: string
 ) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.userStats({ dateRange, tenant: effectiveTenantKey || 'auto' }),
+    queryKey: usageAnalyticsKeys.userStats({ dateRange, tenant: effectiveTenantKey || "auto" }),
     queryFn: async (): Promise<UserUsageStats[]> => {
       const usageLogs = await fetchUsageLogs({
         startedFrom: dateRange ? startOfDay(dateRange.from) : undefined,
@@ -361,7 +368,10 @@ export function useUserUsageStats(
           existing.equipmentUsed.add(log.thiet_bi.id)
         }
 
-        if (!existing.lastActivity || new Date(log.thoi_gian_bat_dau) > new Date(existing.lastActivity)) {
+        if (
+          !existing.lastActivity ||
+          new Date(log.thoi_gian_bat_dau) > new Date(existing.lastActivity)
+        ) {
           existing.lastActivity = log.thoi_gian_bat_dau
         }
 
@@ -382,12 +392,13 @@ export function useUserUsageStats(
 
       return result.sort((a, b) => b.sessionCount - a.sessionCount)
     },
-    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
+    enabled: effectiveTenantKey !== "unset", // Gate query for global users
     staleTime: 2 * 60 * 1000, // 2 minutes
   })
 }
 
 // Get daily usage data for charts
+/** Computes daily utilization from regular equipment usage logs. */
 export function useDailyUsageData(
   days: number = 30,
   tenantFilter?: string,
@@ -395,7 +406,7 @@ export function useDailyUsageData(
   effectiveTenantKey?: string
 ) {
   return useQuery({
-    queryKey: usageAnalyticsKeys.dailyUsage({ days, tenant: effectiveTenantKey || 'auto' }),
+    queryKey: usageAnalyticsKeys.dailyUsage({ days, tenant: effectiveTenantKey || "auto" }),
     queryFn: async (): Promise<DailyUsageData[]> => {
       const endDate = new Date()
       const startDate = subDays(endDate, days - 1)
@@ -407,11 +418,14 @@ export function useDailyUsageData(
         limit: Math.max(days * 200, 2000),
       })
 
-      const dailyData = new Map<string, DailyUsageData & { __uu?: Set<number>; __ue?: Set<number> }>()
+      const dailyData = new Map<
+        string,
+        DailyUsageData & { __uu?: Set<number>; __ue?: Set<number> }
+      >()
 
       for (let i = 0; i < days; i++) {
         const date = subDays(endDate, i)
-        const dateKey = format(date, 'yyyy-MM-dd')
+        const dateKey = format(date, "yyyy-MM-dd")
         dailyData.set(dateKey, {
           date: dateKey,
           sessionCount: 0,
@@ -424,7 +438,7 @@ export function useDailyUsageData(
       }
 
       usageLogs.forEach((log) => {
-        const dateKey = format(new Date(log.thoi_gian_bat_dau), 'yyyy-MM-dd')
+        const dateKey = format(new Date(log.thoi_gian_bat_dau), "yyyy-MM-dd")
         const existing = dailyData.get(dateKey)
 
         if (!existing) {
@@ -456,7 +470,7 @@ export function useDailyUsageData(
         }))
         .sort((a, b) => a.date.localeCompare(b.date))
     },
-    enabled: effectiveTenantKey !== 'unset', // Gate query for global users
+    enabled: effectiveTenantKey !== "unset", // Gate query for global users
     staleTime: 5 * 60 * 1000, // 5 minutes
   })
 }

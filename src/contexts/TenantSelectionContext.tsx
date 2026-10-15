@@ -111,7 +111,7 @@ export function TenantSelectionProvider({
         { id: number; name: string; code?: string; equipment_count: number }[]
       >({
         fn: "get_facilities_with_equipment_count",
-        args: {},
+        args: { p_equipment_dataset: "regular" },
       })
       // Map equipment_count to count for FacilityOption compatibility
       return result.map((f) => ({

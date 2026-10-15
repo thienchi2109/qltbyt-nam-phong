@@ -295,6 +295,16 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
     [data.invalidateEquipmentForCurrentTenant]
   )
 
+  const onImportSuccess = React.useCallback(
+    (datasets?: EquipmentDataset | EquipmentDataset[]) => {
+      onDataMutationSuccess(datasets)
+      if (datasets === "placed" || (Array.isArray(datasets) && datasets.includes("placed"))) {
+        datasetTab.setDataset("placed")
+      }
+    },
+    [onDataMutationSuccess, datasetTab.setDataset]
+  )
+
   const onDataMutationSuccessWithStatePreservation = React.useCallback(() => {
     const currentState = table.table.getState()
     table.setPreservePageState({
@@ -383,6 +393,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       handleGenerateProfileSheet: exports.handleGenerateProfileSheet,
       handleGenerateDeviceLabel: exports.handleGenerateDeviceLabel,
       onDataMutationSuccess,
+      onImportSuccess,
       onDataMutationSuccessWithStatePreservation,
 
       // UI state
@@ -411,6 +422,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       filterSheet,
       exports,
       onDataMutationSuccess,
+      onImportSuccess,
       onDataMutationSuccessWithStatePreservation,
       canBulkSelect,
       tenantBranding,

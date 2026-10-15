@@ -22,6 +22,7 @@ export interface EquipmentDialogsProps {
   onGenerateProfileSheet: (equipment: Equipment) => Promise<void>
   onGenerateDeviceLabel: (equipment: Equipment) => Promise<void>
   tenantBranding: TenantBranding | undefined
+  onImportSuccess?: (datasets?: EquipmentDataset | EquipmentDataset[]) => void
 }
 
 // ============================================
@@ -32,6 +33,7 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
   onGenerateProfileSheet,
   onGenerateDeviceLabel,
   tenantBranding,
+  onImportSuccess,
 }: EquipmentDialogsProps) {
   const {
     user,
@@ -118,7 +120,7 @@ export const EquipmentDialogs = React.memo(function EquipmentDialogs({
       <ImportEquipmentDialog
         open={dialogState.isImportOpen}
         onOpenChange={(open) => !open && closeImportDialog()}
-        onSuccess={onDataMutationSuccess}
+        onSuccess={onImportSuccess ?? onDataMutationSuccess}
       />
 
       <EquipmentDetailDialog

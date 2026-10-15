@@ -35,6 +35,46 @@ describe("Dialog Open/Close Behavior", () => {
 })
 
 describe("Import Submission", () => {
+  it.each([
+    { name: "regular rows", funding: "Ngân sách", expected: "regular" },
+    { name: "borrowed rows with surrounding whitespace", funding: "  Mượn ", expected: "placed" },
+  ])("routes $name to its dataset", async ({ funding, expected }) => {
+    setupMockHookState({
+      status: "parsed",
+      selectedFile: createMockFile(),
+      parsedData: [createMockEquipment({ nguon_kinh_phi: funding })],
+      parseError: null,
+      validationErrors: [],
+    })
+    mockCallRpc.mockResolvedValue({ inserted: 1, failed: 0, total: 1, details: [] })
+    const onSuccess = vi.fn()
+
+    render(<ImportEquipmentDialog open={true} onOpenChange={() => {}} onSuccess={onSuccess} />)
+    fireEvent.click(screen.getByTestId("submit-button"))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(expected))
+  })
+
+  it("invalidates both datasets and routes mixed imports to the placed tab", async () => {
+    setupMockHookState({
+      status: "parsed",
+      selectedFile: createMockFile(),
+      parsedData: [
+        createMockEquipment({ nguon_kinh_phi: "Ngân sách" }),
+        createMockEquipment({ ma_thiet_bi: "EQ002", nguon_kinh_phi: " Mượn " }),
+      ],
+      parseError: null,
+      validationErrors: [],
+    })
+    mockCallRpc.mockResolvedValue({ inserted: 2, failed: 0, total: 2, details: [] })
+    const onSuccess = vi.fn()
+
+    render(<ImportEquipmentDialog open={true} onOpenChange={() => {}} onSuccess={onSuccess} />)
+    fireEvent.click(screen.getByTestId("submit-button"))
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith(["regular", "placed"]))
+  })
+
   it("should call RPC with correct arguments on submit", async () => {
     const mockEquipment = createMockEquipment()
     const { mockSetSubmitting, mockSetSuccess } = setupMockHookState({

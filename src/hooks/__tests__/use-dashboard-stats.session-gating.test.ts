@@ -4,6 +4,7 @@ import { renderHook } from "@testing-library/react"
 const mocks = vi.hoisted(() => ({
   useQuery: vi.fn(),
   useSession: vi.fn(),
+  callRpc: vi.fn(),
 }))
 
 vi.mock("@tanstack/react-query", () => ({
@@ -14,15 +15,17 @@ vi.mock("next-auth/react", () => ({
   useSession: () => mocks.useSession(),
 }))
 
-import {
-  useEquipmentAttention,
-  useEquipmentAttentionPaginated,
-} from "@/hooks/use-dashboard-stats"
+vi.mock("@/lib/rpc-client", () => ({
+  callRpc: mocks.callRpc,
+}))
+
+import { useEquipmentAttention, useEquipmentAttentionPaginated } from "@/hooks/use-dashboard-stats"
 
 describe("use-dashboard-stats session gating", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.useQuery.mockImplementation((options: unknown) => options)
+    mocks.callRpc.mockResolvedValue([])
     mocks.useSession.mockReturnValue({
       data: { user: { id: "u1", role: "global", dia_ban_id: 12 } },
       status: "authenticated",
@@ -82,5 +85,29 @@ describe("use-dashboard-stats session gating", () => {
         enabled: true,
       })
     )
+  })
+
+  it("pins equipment attention RPCs to the regular dataset", () => {
+    renderHook(() => useEquipmentAttention())
+    const attentionOptions = mocks.useQuery.mock.calls[0]?.[0] as {
+      queryFn: () => Promise<unknown>
+    }
+    return attentionOptions.queryFn().then(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith({
+        fn: "equipment_attention_list",
+        args: { p_limit: 5, p_equipment_dataset: "regular" },
+      })
+    })
+  })
+
+  it("pins paginated attention rows to the regular dataset", () => {
+    renderHook(() => useEquipmentAttentionPaginated({ page: 2, pageSize: 25 }))
+    const options = mocks.useQuery.mock.calls[0]?.[0] as { queryFn: () => Promise<unknown> }
+    return options.queryFn().then(() => {
+      expect(mocks.callRpc).toHaveBeenCalledWith({
+        fn: "equipment_attention_list_paginated",
+        args: { p_page: 2, p_page_size: 25, p_equipment_dataset: "regular" },
+      })
+    })
   })
 })
