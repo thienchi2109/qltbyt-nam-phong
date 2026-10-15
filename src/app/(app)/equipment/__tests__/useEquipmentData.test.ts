@@ -607,10 +607,11 @@ describe("useEquipmentData", () => {
   })
 
   describe("Error Handling", () => {
-    it("should handle RPC errors gracefully", async () => {
+    it("should expose RPC errors instead of treating them as an empty result", async () => {
+      const rpcError = new Error("Network error")
       mockCallRpc.mockImplementation(({ fn }: { fn: string }) => {
         if (fn === "equipment_list_enhanced") {
-          return Promise.reject(new Error("Network error"))
+          return Promise.reject(rpcError)
         }
         return Promise.resolve([])
       })
@@ -625,6 +626,8 @@ describe("useEquipmentData", () => {
 
       // Should have empty data on error
       expect(result.current.data).toEqual([])
+      expect(result.current.total).toBe(0)
+      expect(result.current.error).toBe(rpcError)
     })
 
     it("should handle null response from RPC", async () => {

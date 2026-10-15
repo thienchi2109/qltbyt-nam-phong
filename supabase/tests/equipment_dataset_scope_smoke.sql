@@ -225,7 +225,6 @@ DECLARE
   v_name text;
   v_scoped_count integer;
   v_legacy_count integer;
-  v_defaulted_scoped integer;
   v_expected_scoped integer;
   v_contract_names constant text[] := ARRAY[
     'equipment_list_enhanced', 'equipment_department_distribution',
@@ -245,12 +244,8 @@ BEGIN
     v_expected_scoped := CASE WHEN v_name IN ('equipment_status_distribution', 'usage_log_list') THEN 2 ELSE 1 END;
     SELECT
       count(*) FILTER (WHERE p.proargnames @> ARRAY['p_equipment_dataset']::text[]),
-      count(*) FILTER (WHERE NOT (p.proargnames @> ARRAY['p_equipment_dataset']::text[])),
-      count(*) FILTER (
-        WHERE p.proargnames @> ARRAY['p_equipment_dataset']::text[]
-          AND p.pronargdefaults > 0
-      )
-    INTO v_scoped_count, v_legacy_count, v_defaulted_scoped
+      count(*) FILTER (WHERE NOT (p.proargnames @> ARRAY['p_equipment_dataset']::text[]))
+    INTO v_scoped_count, v_legacy_count
     FROM pg_proc AS p
     JOIN pg_namespace AS n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public' AND p.proname = v_name;
@@ -259,10 +254,43 @@ BEGIN
       RAISE EXCEPTION 'RPC compatibility overload contract failed for public.% (scoped %, legacy %)',
         v_name, v_scoped_count, v_legacy_count;
     END IF;
-    IF v_defaulted_scoped <> 0 THEN
-      RAISE EXCEPTION 'scoped overload must not have defaults for public.%', v_name;
-    END IF;
   END LOOP;
+END;
+$$;
+
+-- Exercise the exact named payload emitted by the frontend compatibility
+-- contract.  A missing overload must surface as PostgreSQL 42883 instead of
+-- being hidden by a positional call to a legacy/defaulted overload.
+DO $$
+DECLARE
+  v_response jsonb;
+BEGIN
+  SELECT public.equipment_list_enhanced(
+    p_q => 'monitor',
+    p_don_vi => 42,
+    p_khoa_phong_array => ARRAY['ICU']::text[],
+    p_nguoi_su_dung_array => ARRAY['Dr A']::text[],
+    p_vi_tri_lap_dat_array => ARRAY['Room 1']::text[],
+    p_tinh_trang_array => ARRAY['Hoat dong']::text[],
+    p_phan_loai_array => ARRAY['Class A']::text[],
+    p_nguon_kinh_phi_array => ARRAY['Fund A']::text[],
+    p_equipment_dataset => 'regular',
+    p_sort => 'id.asc',
+    p_page => 1,
+    p_page_size => 25,
+    p_liquidation_last => true
+  )
+  INTO v_response;
+
+  IF jsonb_typeof(v_response) IS DISTINCT FROM 'object'
+    OR NOT (v_response ? 'data')
+    OR NOT (v_response ? 'total')
+    OR jsonb_typeof(v_response->'data') IS DISTINCT FROM 'array'
+    OR jsonb_typeof(v_response->'total') IS DISTINCT FROM 'number' THEN
+    RAISE EXCEPTION
+      'frontend-shaped equipment_list_enhanced contract must return JSON data/total: %',
+      v_response;
+  END IF;
 END;
 $$;
 

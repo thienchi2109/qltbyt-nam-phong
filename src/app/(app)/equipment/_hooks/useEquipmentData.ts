@@ -48,6 +48,7 @@ export interface UseEquipmentDataReturn {
   departmentDistribution: EquipmentDepartmentDistributionItem[]
   isLoading: boolean
   isFetching: boolean
+  error: unknown
 
   // Computed fetch flag (for UI display)
   shouldFetchData: boolean
@@ -180,6 +181,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
     data: equipmentRes,
     isLoading: isEqLoading,
     isFetching: isEqFetching,
+    error: equipmentError,
   } = useQuery<EquipmentListResponse>({
     queryKey: [
       "equipment_list_enhanced",
@@ -333,6 +335,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       departmentDistribution,
       isLoading,
       isFetching,
+      error: equipmentError,
       shouldFetchData,
       departments,
       users,
@@ -358,6 +361,7 @@ export function useEquipmentData(params: UseEquipmentDataParams): UseEquipmentDa
       departmentDistribution,
       isLoading,
       isFetching,
+      equipmentError,
       shouldFetchData,
       departments,
       users,

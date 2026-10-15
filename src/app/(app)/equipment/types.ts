@@ -131,6 +131,7 @@ export interface UseEquipmentPageReturn {
   departmentDistribution: EquipmentDepartmentDistributionItem[]
   isLoading: boolean
   isFetching: boolean
+  equipmentError?: unknown
   shouldFetchEquipment: boolean
 
   // Table

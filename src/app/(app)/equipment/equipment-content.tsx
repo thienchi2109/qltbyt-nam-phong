@@ -4,6 +4,7 @@ import * as React from "react"
 import type { ColumnDef, Table } from "@tanstack/react-table"
 import { flexRender } from "@tanstack/react-table"
 import { Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,6 +20,7 @@ import {
 import { MobileEquipmentListItem } from "@/components/mobile-equipment-list-item"
 import type { Equipment } from "@/types/database"
 import { useEquipmentStatusCatalog } from "@/hooks/use-equipment-status-catalog"
+import { getUnknownErrorMessage } from "@/lib/error-utils"
 
 export interface EquipmentContentProps {
   isGlobal: boolean
@@ -26,6 +28,7 @@ export interface EquipmentContentProps {
   shouldFetchEquipment: boolean
   isLoading: boolean
   isFetching: boolean
+  error?: unknown
   isCardView: boolean
   table: Table<Equipment>
   columns: ColumnDef<Equipment>[]
@@ -39,6 +42,7 @@ export function EquipmentContent({
   shouldFetchEquipment,
   isLoading,
   isFetching,
+  error,
   isCardView,
   table,
   columns,
@@ -98,6 +102,17 @@ export function EquipmentContent({
           ))}
         </TableBody>
       </UITable>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Không thể tải dữ liệu thiết bị</AlertTitle>
+        <AlertDescription>
+          {getUnknownErrorMessage(error, "Đã xảy ra lỗi khi tải danh sách thiết bị.")}
+        </AlertDescription>
+      </Alert>
     )
   }
 

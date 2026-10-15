@@ -357,6 +357,7 @@ export function useEquipmentPage(): UseEquipmentPageReturn {
       departmentDistribution: data.departmentDistribution,
       isLoading: data.isLoading,
       isFetching: data.isFetching,
+      equipmentError: data.error,
       shouldFetchEquipment: data.shouldFetchData,
 
       // Table

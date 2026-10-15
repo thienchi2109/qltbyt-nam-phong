@@ -117,6 +117,7 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
     departmentDistribution,
     isLoading,
     isFetching,
+    equipmentError,
     shouldFetchEquipment,
 
     // Table
@@ -299,6 +300,7 @@ function EquipmentPageContent({ pageState }: { pageState: ReturnType<typeof useE
               shouldFetchEquipment={shouldFetchEquipment}
               isLoading={isLoading}
               isFetching={isFetching}
+              error={equipmentError}
               isCardView={isCardView}
               table={table}
               columns={columns}

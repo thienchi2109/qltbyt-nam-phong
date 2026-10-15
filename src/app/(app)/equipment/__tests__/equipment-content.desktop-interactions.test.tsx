@@ -23,10 +23,12 @@ function EquipmentContentHarness({
   equipment,
   onShowDetails,
   departmentColorClassByLabel,
+  error,
 }: {
-  equipment: Equipment
+  equipment?: Equipment
   onShowDetails: (equipment: Equipment) => void
   departmentColorClassByLabel?: Record<string, DepartmentColorClasses>
+  error?: Error | null
 }) {
   const columns = React.useMemo(
     () =>
@@ -38,7 +40,7 @@ function EquipmentContentHarness({
   )
 
   const table = useReactTable({
-    data: [equipment],
+    data: equipment ? [equipment] : [],
     columns,
     getCoreRowModel: getCoreRowModel(),
   })
@@ -51,6 +53,7 @@ function EquipmentContentHarness({
         shouldFetchEquipment={true}
         isLoading={false}
         isFetching={false}
+        error={error}
         isCardView={false}
         table={table}
         columns={columns}
@@ -61,6 +64,16 @@ function EquipmentContentHarness({
 }
 
 describe("EquipmentContent desktop interactions", () => {
+  it("renders RPC errors distinctly from a successful empty result", () => {
+    const error = new Error("RPC equipment_list_enhanced failed (503)")
+
+    render(<EquipmentContentHarness onShowDetails={vi.fn()} error={error} />)
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Không thể tải dữ liệu thiết bị")
+    expect(screen.getByRole("alert")).toHaveTextContent(error.message)
+    expect(screen.queryByText("Không tìm thấy kết quả phù hợp")).not.toBeInTheDocument()
+  })
+
   it("keeps row clicks working from truncated text while exposing tooltip text on hover and focus", () => {
     const equipment: Equipment = {
       id: 101,
