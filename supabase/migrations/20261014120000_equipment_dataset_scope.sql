@@ -320,7 +320,7 @@ BEGIN
     'summary', v_summary
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_aggregates_for_reports(p_don_vi_array bigint[], p_khoa_phong text, p_date_from date, p_date_to date, p_equipment_dataset text)
@@ -444,7 +444,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_count_enhanced(p_statuses text[], p_q text, p_don_vi bigint, p_khoa_phong text, p_equipment_dataset text)
@@ -550,7 +550,7 @@ BEGIN
 
   RETURN COALESCE(v_cnt, 0);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_department_distribution(p_q text, p_don_vi bigint, p_khoa_phong text, p_khoa_phong_array text[], p_nguoi_su_dung text, p_nguoi_su_dung_array text[], p_vi_tri_lap_dat text, p_vi_tri_lap_dat_array text[], p_tinh_trang text, p_tinh_trang_array text[], p_phan_loai text, p_phan_loai_array text[], p_nguon_kinh_phi text, p_nguon_kinh_phi_array text[], p_equipment_dataset text)
@@ -725,7 +725,7 @@ BEGIN
     v_where
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_filter_buckets(p_q text, p_don_vi bigint, p_khoa_phong_array text[], p_nguoi_su_dung_array text[], p_vi_tri_lap_dat_array text[], p_tinh_trang_array text[], p_phan_loai_array text[], p_nguon_kinh_phi_array text[], p_equipment_dataset text)
@@ -934,7 +934,7 @@ BEGIN
 
   RETURN COALESCE(v_result, v_empty_result);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_list_enhanced(p_q text, p_sort text, p_page integer, p_page_size integer, p_don_vi bigint, p_khoa_phong text, p_khoa_phong_array text[], p_nguoi_su_dung text, p_nguoi_su_dung_array text[], p_vi_tri_lap_dat text, p_vi_tri_lap_dat_array text[], p_tinh_trang text, p_tinh_trang_array text[], p_phan_loai text, p_phan_loai_array text[], p_nguon_kinh_phi text, p_nguon_kinh_phi_array text[], p_liquidation_last boolean, p_equipment_dataset text)
@@ -1203,7 +1203,7 @@ BEGIN
     'pageSize', p_page_size
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_list_for_reports(p_q text, p_sort text, p_page integer, p_page_size integer, p_don_vi bigint, p_khoa_phong text, p_equipment_dataset text)
@@ -1317,7 +1317,7 @@ BEGIN
     v_limit,
     CASE WHEN v_role = 'user' THEN v_department_scope ELSE NULL END;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_status_distribution(p_q text, p_don_vi bigint, p_khoa_phong text, p_vi_tri text, p_equipment_dataset text)
@@ -1489,7 +1489,7 @@ BEGIN
     'locations', '[]'::jsonb
   )) || jsonb_build_object('status_catalog', v_catalog);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_status_distribution(p_don_vi bigint, p_khoa_phong text, p_vi_tri text, p_equipment_dataset text)
@@ -1555,7 +1555,7 @@ BEGIN
   WHERE NOT EXISTS (SELECT 1 FROM public.equipment_status_catalog c WHERE c.status_value = f.status_value)
   HAVING COUNT(*) > 0;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.unused_equipment_report_for_reports(p_don_vi bigint, p_q text, p_khoa_phong text, p_page integer, p_page_size integer, p_sort text, p_equipment_dataset text)
@@ -1840,7 +1840,7 @@ BEGIN
     'pageSize', v_limit
   );
 END;
-$function$
+$function$;
 
 CREATE OR REPLACE FUNCTION public.dashboard_repair_request_stats(p_equipment_dataset text)
  RETURNS jsonb
@@ -1985,7 +1985,7 @@ BEGIN
 
   RETURN COALESCE(result, 0);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.dashboard_kpi_summary(p_equipment_dataset text)
@@ -2029,7 +2029,7 @@ BEGIN
     'maintenancePlans', public.dashboard_maintenance_plan_stats(p_equipment_dataset)
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.dashboard_maintenance_count(p_equipment_dataset text)
@@ -2099,7 +2099,7 @@ BEGIN
 
   RETURN COALESCE(result, 0);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.dinh_muc_compliance_detail(p_quyet_dinh_id bigint, p_don_vi bigint, p_equipment_dataset text)
@@ -2232,7 +2232,7 @@ BEGIN
     END,
     cdata.ma_nhom;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.dinh_muc_compliance_summary(p_quyet_dinh_id bigint, p_don_vi bigint, p_equipment_dataset text)
@@ -2373,7 +2373,7 @@ BEGIN
   WHERE qd.id = v_decision_id
   GROUP BY qd.so_quyet_dinh;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_attention_list(p_limit integer, p_equipment_dataset text)
@@ -2428,7 +2428,7 @@ BEGIN
   ORDER BY tb.ngay_bt_tiep_theo ASC NULLS LAST
   LIMIT GREATEST(p_limit, 1);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.equipment_attention_list_paginated(p_page integer, p_page_size integer, p_equipment_dataset text)
@@ -2535,7 +2535,7 @@ BEGIN
     'hasMore', false
   ));
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_facilities_with_equipment_count(p_equipment_dataset text)
@@ -2613,7 +2613,7 @@ BEGIN
 
   RETURN COALESCE(v_result, '[]'::jsonb);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_maintenance_report_data(p_date_from date, p_date_to date, p_don_vi bigint, p_equipment_dataset text)
@@ -3463,7 +3463,7 @@ BEGIN
     )
   );
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.maintenance_stats_for_reports(p_date_from date, p_date_to date, p_don_vi bigint, p_khoa_phong text, p_equipment_dataset text)
@@ -3618,7 +3618,7 @@ BEGIN
     )
   ));
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.usage_analytics_daily(p_days integer, p_don_vi bigint, p_equipment_dataset text)
@@ -3683,7 +3683,7 @@ BEGIN
     ORDER BY date DESC
   ) row;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.usage_analytics_overview(p_don_vi bigint, p_equipment_dataset text)
@@ -3756,7 +3756,7 @@ BEGIN
     'total_usage_time', 0
   ));
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.usage_log_list(p_thiet_bi_id bigint, p_trang_thai text, p_active_only boolean, p_started_from timestamp with time zone, p_started_to timestamp with time zone, p_limit integer, p_offset integer, p_don_vi bigint, p_equipment_dataset text)
@@ -3846,7 +3846,7 @@ BEGIN
   OFFSET v_offset
   LIMIT v_limit;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.usage_log_list(p_q text, p_status text, p_page integer, p_page_size integer, p_date_from date, p_date_to date, p_don_vi bigint, p_equipment_dataset text)
@@ -3927,7 +3927,7 @@ BEGIN
   OFFSET v_offset
   LIMIT GREATEST(p_page_size, 1);
 END;
-$function$
+$function$;
 
 
 REVOKE ALL ON FUNCTION public.dashboard_kpi_summary(text) FROM PUBLIC;
