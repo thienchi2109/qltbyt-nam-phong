@@ -151,6 +151,7 @@ export function EquipmentDialogProvider({
       queryClient.invalidateQueries({ queryKey: ["usage-logs", "active"] })
       queryClient.invalidateQueries({ queryKey: ["reports"] })
       queryClient.invalidateQueries({ queryKey: ["reports-facilities-list"] })
+      queryClient.invalidateQueries({ queryKey: ["maintenance-reports"] })
       queryClient.invalidateQueries({ queryKey: ["usage-analytics"] })
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] })
 

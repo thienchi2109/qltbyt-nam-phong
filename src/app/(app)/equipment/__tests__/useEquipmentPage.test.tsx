@@ -121,6 +121,7 @@ describe("useEquipmentPage tenant switching", () => {
     for (const queryKey of [
       ["reports"],
       ["reports-facilities-list"],
+      ["maintenance-reports"],
       ["usage-analytics"],
       ["dashboard-stats"],
       ["usage-logs", "active"],
