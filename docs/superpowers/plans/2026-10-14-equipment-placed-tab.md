@@ -210,3 +210,7 @@ Modify:
 - [ ] **Step 3:** Before live rollout, require readable `static PASS` and `baseline-forward PASS` evidence for the exact landed commit, then apply the migration before deploying the client so the new named RPC argument exists first. If the user authorizes a DB-gate bypass, record the exact commit digest, failing false-positive signature, replacement disposable SQL/source evidence, and status `BYPASS AUTHORIZED / INCOMPLETE`; that status prohibits live apply and client deploy until the user separately authorizes a safe alternative.
 - [ ] **Step 4:** Smoke-test: open default Thiết bị thường; switch to Thiết bị đặt; search; change each shared filter; paginate; export both tabs; import regular/Mượn/mixed files; edit funding in both directions; verify KPI/Reports exclude Mượn.
 - [ ] **Step 5:** Commit/push only after the user-approved gate/bypass status and all focused evidence are recorded.
+
+## Plan status
+
+**CLOSED (2026-10-16).** Phases 1-4 were implemented and merged, Phase 5 verification/handoff was explicitly waived by the user, and the dataset-scope migration plus ACL follow-up were applied to live through Supabase MCP. This plan has no Phase 6. The DB Quality Gate remains documented as `INCOMPLETE/advisory`; that status is retained as an evidence limitation and is not being reclassified as PASS. Future follow-up work must use a separate plan.

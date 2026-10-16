@@ -223,3 +223,11 @@ Safe checkpoint reached. Await user direction before any push, live migration, o
 - **Scope:** append-only ACL follow-up; the already-applied `equipment_dataset_scope` migration was not edited.
 - **Live read-back:** 26 scoped overloads found; `anon` execution revoked on all 26; `authenticated` and `service_role` execution retained on all 26; mismatches `0`.
 - **Database Quality Gate:** remains `INCOMPLETE/advisory` under the documented stale-environment/false-positive caveat; this read-back is live ACL evidence only and is not an aggregate gate PASS.
+
+## Plan closure: Equipment placed-dataset rollout complete
+
+- **Closed:** 2026-10-16, at the user's direction.
+- **Phase status:** Phases 1-4 implemented and merged; Phase 5 verification/handoff explicitly waived by the user; no Phase 6 exists in this plan.
+- **Live rollout:** dataset-scope migration and append-only ACL follow-up were applied through Supabase MCP and read back successfully. Subsequent production compatibility and pagination hotfixes were committed and pushed to `origin/main`.
+- **Evidence boundary:** the DB Quality Gate remains `INCOMPLETE/advisory` because of the documented false-positive/stale-environment caveat. This closure records rollout completion and does not convert that gate into PASS.
+- **Follow-up:** any new work is a separate issue/plan; do not reopen this plan for the already-applied migrations.
