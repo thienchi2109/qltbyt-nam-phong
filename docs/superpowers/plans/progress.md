@@ -231,3 +231,12 @@ Safe checkpoint reached. Await user direction before any push, live migration, o
 - **Live rollout:** dataset-scope migration and append-only ACL follow-up were applied through Supabase MCP and read back successfully. Subsequent production compatibility and pagination hotfixes were committed and pushed to `origin/main`.
 - **Evidence boundary:** the DB Quality Gate remains `INCOMPLETE/advisory` because of the documented false-positive/stale-environment caveat. This closure records rollout completion and does not convert that gate into PASS.
 - **Follow-up:** any new work is a separate issue/plan; do not reopen this plan for the already-applied migrations.
+
+## Manual Oracle baseline catch-up: 2026-10-16
+
+- **Authorization:** User explicitly authorized manual catch-up of persistent `qltbyt_test`.
+- **Scope:** Read-only live migration inventory was compared first; only Oracle `qltbyt_test` was written. Live Supabase was not modified.
+- **Applied live identities, in order:** `20261015040835/equipment_dataset_scope`, `20261015060448/equipment_dataset_scope_anon_acl`, `20261015081453/equipment_list_enhanced_frontend_compatibility`, `20261015081559/equipment_list_enhanced_frontend_compatibility_acl`.
+- **Read-back:** `qltbyt_test` high-water is `20261015081559` with 375 migration rows; all four stored SQL SHA-256 values match the reviewed source files. The placed index exists, the 13-argument compatibility overload exists, dataset-scoped functions are present, `anon` execution is revoked, `authenticated` execution is retained, and `postgres` has no residual `CREATE` on `public`.
+- **Structural checks:** `invalid_indexes=0`, `unvalidated_constraints=0`, equipment rows `5025`.
+- **Evidence boundary:** the Oracle quality-gate state file remains an older `healthy=false` snapshot and was not rewritten during this manual DB-only operation; future baseline-gate reconciliation must refresh or explicitly recover that state before claiming a quality-gate PASS.
