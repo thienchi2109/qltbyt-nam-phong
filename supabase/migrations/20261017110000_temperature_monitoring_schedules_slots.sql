@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS public.temperature_monitoring_schedule_shifts (
   CONSTRAINT temperature_monitoring_schedule_shifts_code_nonempty CHECK (btrim(code) <> ''),
   CONSTRAINT temperature_monitoring_schedule_shifts_name_nonempty CHECK (btrim(name) <> ''),
   CONSTRAINT temperature_monitoring_schedule_shifts_sort_order_nonnegative CHECK (sort_order >= 0),
-  UNIQUE (schedule_profile_id, code)
+  UNIQUE (schedule_profile_id, code),
+  UNIQUE (schedule_profile_id, id)
 );
 
 CREATE INDEX IF NOT EXISTS temperature_monitoring_schedule_shifts_profile_order_idx
@@ -23,14 +24,18 @@ CREATE INDEX IF NOT EXISTS temperature_monitoring_schedule_shifts_profile_order_
 CREATE TABLE IF NOT EXISTS public.temperature_monitoring_schedule_shift_overrides (
   schedule_profile_id UUID NOT NULL REFERENCES public.temperature_monitoring_schedule_profiles(id) ON DELETE CASCADE,
   don_vi BIGINT NOT NULL REFERENCES public.don_vi(id) ON DELETE CASCADE,
-  shift_id UUID NOT NULL REFERENCES public.temperature_monitoring_schedule_shifts(id) ON DELETE CASCADE,
+  shift_id UUID NOT NULL,
   name TEXT,
   start_local TIME,
   end_local TIME,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (schedule_profile_id, don_vi, shift_id),
-  CONSTRAINT temperature_monitoring_shift_override_name_nonempty CHECK (name IS NULL OR btrim(name) <> '')
+  CONSTRAINT temperature_monitoring_shift_override_name_nonempty CHECK (name IS NULL OR btrim(name) <> ''),
+  CONSTRAINT temperature_monitoring_shift_override_shift_fk
+    FOREIGN KEY (schedule_profile_id, shift_id)
+    REFERENCES public.temperature_monitoring_schedule_shifts(schedule_profile_id, id)
+    ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS temperature_monitoring_shift_overrides_lookup_idx
@@ -61,6 +66,58 @@ ON CONFLICT (schedule_profile_id, code) DO UPDATE SET
 
 REVOKE ALL ON TABLE public.temperature_monitoring_schedule_shifts FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON TABLE public.temperature_monitoring_schedule_shift_overrides FROM PUBLIC, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.temperature_monitoring_schedule_shift_override_upsert(
+  p_schedule_profile_id UUID,
+  p_don_vi BIGINT,
+  p_shift_id UUID,
+  p_name TEXT DEFAULT NULL,
+  p_start_local TIME DEFAULT NULL,
+  p_end_local TIME DEFAULT NULL,
+  p_is_active BOOLEAN DEFAULT TRUE
+)
+RETURNS public.temperature_monitoring_schedule_shift_overrides
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  v_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
+  v_role TEXT := lower(COALESCE(NULLIF(v_claims->>'app_role',''), NULLIF(v_claims->>'role','')));
+  v_don_vi BIGINT := NULLIF(v_claims->>'don_vi','')::BIGINT;
+  v_row public.temperature_monitoring_schedule_shift_overrides;
+BEGIN
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_role NOT IN ('global', 'admin', 'to_qltb') THEN
+    RAISE EXCEPTION 'temperature monitoring schedule requires equipment manager role' USING ERRCODE = '42501';
+  END IF;
+  IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_don_vi IS DISTINCT FROM p_don_vi) THEN
+    RAISE EXCEPTION 'schedule override is outside tenant scope' USING ERRCODE = '42501';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.temperature_monitoring_schedule_shifts s
+    WHERE s.schedule_profile_id = p_schedule_profile_id AND s.id = p_shift_id
+  ) THEN
+    RAISE EXCEPTION 'schedule shift does not belong to profile' USING ERRCODE = '22023';
+  END IF;
+  IF (p_start_local IS NULL AND p_end_local IS NOT NULL) OR (p_start_local IS NOT NULL AND p_end_local IS NULL) THEN
+    RAISE EXCEPTION 'override start and end must be supplied together' USING ERRCODE = '22023';
+  END IF;
+  INSERT INTO public.temperature_monitoring_schedule_shift_overrides
+    (schedule_profile_id, don_vi, shift_id, name, start_local, end_local, is_active)
+  VALUES (p_schedule_profile_id, p_don_vi, p_shift_id, NULLIF(btrim(p_name), ''), p_start_local, p_end_local, COALESCE(p_is_active, TRUE))
+  ON CONFLICT (schedule_profile_id, don_vi, shift_id) DO UPDATE SET
+    name = EXCLUDED.name, start_local = EXCLUDED.start_local, end_local = EXCLUDED.end_local,
+    is_active = EXCLUDED.is_active, updated_at = now()
+  RETURNING * INTO v_row;
+  RETURN v_row;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.temperature_monitoring_schedule_shift_override_upsert(UUID, BIGINT, UUID, TEXT, TIME, TIME, BOOLEAN) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.temperature_monitoring_schedule_shift_override_upsert(UUID, BIGINT, UUID, TEXT, TIME, TIME, BOOLEAN) TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.temperature_monitoring_slots_list(
   p_from_date DATE DEFAULT (CURRENT_DATE - 29),
@@ -96,13 +153,19 @@ DECLARE
   v_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role TEXT := lower(COALESCE(NULLIF(v_claims->>'app_role',''), NULLIF(v_claims->>'role','')));
   v_don_vi BIGINT := NULLIF(v_claims->>'don_vi','')::BIGINT;
-  v_khoa_phong TEXT := NULLIF(btrim(v_claims->>'khoa_phong'),'');
+  v_khoa_phong TEXT := public._normalize_department_scope(v_claims->>'khoa_phong');
   v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200);
   v_cursor_date DATE;
   v_cursor_equipment BIGINT;
   v_cursor_shift TEXT;
   v_cursor_parts TEXT[];
 BEGIN
+  IF v_role IS NULL OR v_role = '' THEN
+    RAISE EXCEPTION 'missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_khoa_phong IS NULL) THEN
+    RAISE EXCEPTION 'tenant and department claims are required' USING ERRCODE = '42501';
+  END IF;
   IF p_from_date IS NULL OR p_to_date IS NULL OR p_from_date > p_to_date THEN
     RAISE EXCEPTION 'invalid monitoring date range' USING ERRCODE = '22023';
   END IF;
@@ -147,10 +210,10 @@ BEGIN
     FROM dates d
     JOIN public.thiet_bi t ON COALESCE(t.is_deleted, FALSE) = FALSE
       AND (p_equipment_id IS NULL OR t.id = p_equipment_id)
-      AND (v_role IN ('global', 'admin') OR (v_don_vi IS NOT NULL AND t.don_vi = v_don_vi AND v_khoa_phong IS NOT NULL AND NULLIF(btrim(t.khoa_phong_quan_ly), '') = v_khoa_phong))
+      AND (v_role IN ('global', 'admin') OR (t.don_vi = v_don_vi AND public._normalize_department_scope(t.khoa_phong_quan_ly) = v_khoa_phong))
       AND COALESCE(NULLIF(btrim(t.tinh_trang_hien_tai), ''), '') = 'Hoạt động'
-      AND (NULLIF(t.ngay_dua_vao_su_dung, '') IS NULL OR (t.ngay_dua_vao_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_dua_vao_su_dung::DATE <= d.monitoring_date))
-      AND (NULLIF(t.ngay_ngung_su_dung, '') IS NULL OR (t.ngay_ngung_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_ngung_su_dung::DATE > d.monitoring_date))
+      AND (NULLIF(btrim(t.ngay_dua_vao_su_dung), '') IS NULL OR (ai_readonly.try_parse_iso_date(t.ngay_dua_vao_su_dung) IS NOT NULL AND ai_readonly.try_parse_iso_date(t.ngay_dua_vao_su_dung) <= d.monitoring_date))
+      AND (NULLIF(btrim(t.ngay_ngung_su_dung), '') IS NULL OR (ai_readonly.try_parse_iso_date(t.ngay_ngung_su_dung) IS NOT NULL AND ai_readonly.try_parse_iso_date(t.ngay_ngung_su_dung) > d.monitoring_date))
     JOIN public.temperature_monitoring_configuration_versions v ON v.equipment_id = t.id
       AND v.monitoring_enabled
     JOIN public.temperature_monitoring_schedule_shifts s ON s.schedule_profile_id = v.schedule_profile_id
@@ -162,6 +225,13 @@ BEGIN
       AND (v.effective_period @> (((d.monitoring_date + COALESCE(so.start_local, s.start_local)) AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))))
     ORDER BY v.equipment_id, d.monitoring_date, s.id, lower(v.effective_period) DESC
   ),
+  configured_on_date AS (
+    SELECT DISTINCT v.equipment_id, d.monitoring_date
+    FROM dates d
+    JOIN public.temperature_monitoring_configuration_versions v
+      ON v.monitoring_enabled
+     AND v.effective_period @> (d.monitoring_date::TIMESTAMP AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))
+  ),
   unconfigured AS (
     SELECT t.id AS equipment_id, t.ma_thiet_bi AS equipment_code, t.ten_thiet_bi AS equipment_name,
            d.monitoring_date, NULL::UUID AS shift_id, NULL::TEXT AS shift_code,
@@ -172,17 +242,25 @@ BEGIN
     FROM dates d
     JOIN public.thiet_bi t ON COALESCE(t.is_deleted, FALSE) = FALSE
       AND (p_equipment_id IS NULL OR t.id = p_equipment_id)
-      AND (v_role IN ('global', 'admin') OR (v_don_vi IS NOT NULL AND t.don_vi = v_don_vi AND v_khoa_phong IS NOT NULL AND NULLIF(btrim(t.khoa_phong_quan_ly), '') = v_khoa_phong))
+      AND (v_role IN ('global', 'admin') OR (t.don_vi = v_don_vi AND public._normalize_department_scope(t.khoa_phong_quan_ly) = v_khoa_phong))
       AND COALESCE(NULLIF(btrim(t.tinh_trang_hien_tai), ''), '') = 'Hoạt động'
-      AND (NULLIF(t.ngay_dua_vao_su_dung, '') IS NULL OR (t.ngay_dua_vao_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_dua_vao_su_dung::DATE <= d.monitoring_date))
-      AND (NULLIF(t.ngay_ngung_su_dung, '') IS NULL OR (t.ngay_ngung_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_ngung_su_dung::DATE > d.monitoring_date))
+      AND (NULLIF(btrim(t.ngay_dua_vao_su_dung), '') IS NULL OR (ai_readonly.try_parse_iso_date(t.ngay_dua_vao_su_dung) IS NOT NULL AND ai_readonly.try_parse_iso_date(t.ngay_dua_vao_su_dung) <= d.monitoring_date))
+      AND (NULLIF(btrim(t.ngay_ngung_su_dung), '') IS NULL OR (ai_readonly.try_parse_iso_date(t.ngay_ngung_su_dung) IS NOT NULL AND ai_readonly.try_parse_iso_date(t.ngay_ngung_su_dung) > d.monitoring_date))
       AND p_include_unconfigured
-      AND NOT EXISTS (SELECT 1 FROM effective e WHERE e.equipment_id = t.id AND e.monitoring_date = d.monitoring_date)
+      AND p_shift_codes IS NULL
+      AND NOT EXISTS (SELECT 1 FROM configured_on_date c WHERE c.equipment_id = t.id AND c.monitoring_date = d.monitoring_date)
   ),
   projected AS (
-    SELECT e.*, 'Chưa ghi'::TEXT AS status FROM effective e
+    SELECT e.equipment_id, e.equipment_code, e.equipment_name, e.monitoring_date,
+           e.shift_id, e.shift_code, e.shift_name, e.shift_start_local, e.shift_end_local,
+           e.configuration_version_id, e.display_timezone, e.slot_start, e.slot_end,
+           'Chưa ghi'::TEXT AS status
+    FROM effective e
     UNION ALL
-    SELECT u.* FROM unconfigured u
+    SELECT u.equipment_id, u.equipment_code, u.equipment_name, u.monitoring_date,
+           u.shift_id, u.shift_code, u.shift_name, u.shift_start_local, u.shift_end_local,
+           u.configuration_version_id, u.display_timezone, u.slot_start, u.slot_end, u.status
+    FROM unconfigured u
   )
   SELECT e.equipment_id, e.equipment_code, e.equipment_name, e.monitoring_date, e.shift_id,
          e.shift_code, e.shift_name, e.shift_start_local, e.shift_end_local, e.slot_start,

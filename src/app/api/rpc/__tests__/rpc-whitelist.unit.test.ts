@@ -49,6 +49,7 @@ describe("RPC proxy whitelist", () => {
     "temperature_monitoring_configuration_get",
     "temperature_monitoring_configuration_history",
     "temperature_monitoring_slots_list",
+    "temperature_monitoring_schedule_shift_override_upsert",
   ])("allows temperature monitoring configuration RPC %s through whitelist checks", async (fn) => {
     const res = await invokeRpcProxy(fn)
     expect(res.status).toBe(411)

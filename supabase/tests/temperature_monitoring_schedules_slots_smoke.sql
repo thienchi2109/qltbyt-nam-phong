@@ -14,10 +14,12 @@ BEGIN
       WHERE p.code='default' AND s.code IN ('sang','chieu','toi','dem')) <> 4 THEN
     RAISE EXCEPTION 'default Sáng/Chiều/Tối/Đêm catalog missing';
   END IF;
-  IF to_regprocedure('public.temperature_monitoring_slots_list(date,date,text[],bigint,text,integer,boolean)') IS NULL THEN
+  IF to_regprocedure('public.temperature_monitoring_slots_list(date,date,text[],bigint,text,integer,boolean)') IS NULL
+     OR to_regprocedure('public.temperature_monitoring_schedule_shift_override_upsert(uuid,bigint,uuid,text,time without time zone,time without time zone,boolean)') IS NULL THEN
     RAISE EXCEPTION 'TM-03 slot projection RPC missing';
   END IF;
   IF NOT has_function_privilege('authenticated', 'public.temperature_monitoring_slots_list(date,date,text[],bigint,text,integer,boolean)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.temperature_monitoring_schedule_shift_override_upsert(uuid,bigint,uuid,text,time without time zone,time without time zone,boolean)', 'EXECUTE')
      OR has_function_privilege('anon', 'public.temperature_monitoring_slots_list(date,date,text[],bigint,text,integer,boolean)', 'EXECUTE') THEN
     RAISE EXCEPTION 'TM-03 RPC grants are not fail-closed';
   END IF;
@@ -29,6 +31,13 @@ BEGIN
      OR position('Hoạt động' IN v_def) = 0
      OR position('effective_period' IN v_def) = 0 THEN
     RAISE EXCEPTION 'TM-03 projection guards missing';
+  END IF;
+  IF position('missing role claim' IN v_def) = 0
+     OR position('_normalize_department_scope' IN v_def) = 0
+     OR position('try_parse_iso_date' IN v_def) = 0
+     OR position('SELECT e.equipment_id' IN v_def) = 0
+     OR position('p_shift_codes IS NULL' IN v_def) = 0 THEN
+    RAISE EXCEPTION 'TM-03 fail-closed and deterministic projection guards missing';
   END IF;
   IF has_table_privilege('authenticated', 'public.temperature_monitoring_schedule_shifts', 'SELECT')
      OR has_table_privilege('authenticated', 'public.temperature_monitoring_schedule_shift_overrides', 'SELECT') THEN
