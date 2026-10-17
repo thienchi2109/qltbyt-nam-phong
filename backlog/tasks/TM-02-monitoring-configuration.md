@@ -1,6 +1,6 @@
 # TM-02 — Monitoring configuration and effective versions
 
-- Status: Todo
+- Status: In Progress
 - Milestone: Temperature Monitoring / Foundation
 - Depends on: TM-01
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -41,3 +41,18 @@ DB Quality Gate hiện có false positive chưa được khắc phục. Kết qu
 ## Takeover gate
 
 The takeover agent must survey current equipment profile/configuration seams, role helpers, schema conventions and test patterns, then write and review a detailed TM-02 plan before implementation.
+
+## TM-02 detailed implementation plan (2026-10-17)
+
+1. **Read-only seam survey (complete before code):** use `public.thiet_bi(id, don_vi)` as the equipment boundary; resolve actor/tenant from `request.jwt.claims` (`user_id`, `don_vi`, `app_role`); keep `admin`/`global` handling fail-closed in SQL while application callers use `isGlobalRole()`. Reuse `nhan_vien` for responsible users and add narrow catalog tables for schedule profiles and recording methods.
+2. **Schema:** add an opt-in device configuration table plus immutable effective-dated policy versions. Version rows contain Celsius limits (`numeric(6,1)`), schedule/method references, non-null timezone defaulting to `Asia/Ho_Chi_Minh`, primary/reserve responsible users, and mandatory change reason. Use a GiST exclusion constraint to prevent overlapping ranges per equipment and checks for finite values/lower < upper. Add append-only audit rows and a trigger that rejects updates/deletes.
+3. **RPC seam:** expose scoped list/read and a single transactional upsert/toggle RPC. The RPC verifies role (`to_qltb` or global/admin), tenant ownership, mandatory reason, no retroactive start after existing slot/reading rows (when those tables exist), and appends an audit event. Incomplete policy (missing responsible, method or schedule) is represented explicitly and never marked operationally enabled.
+4. **Tests first:** add a focused SQL characterization test that asserts table/column/check/index/trigger/function grants and static guards. Run it red before migration, then green after migration in the disposable/static harness; no live writes.
+5. **Verification:** run migration static checks and the focused test; report static and baseline-forward lanes separately because the current gate has known false positives. Keep migration and test files under the repository size ceiling and avoid frontend/UI changes.
+
+## Implementation evidence (2026-10-17)
+
+- Added `20261017100000_temperature_monitoring_configuration.sql` with catalogs, per-equipment enablement, effective-dated version snapshots, GiST non-overlap protection, tenant/role-guarded RPCs, history read seam and append-only audit trigger.
+- Added `supabase/tests/temperature_monitoring_configuration_smoke.sql` covering object existence, exclusion constraint, append-only trigger, RPC signatures and anonymous read denial.
+- `git diff --check`: PASS. Files are 176/53 lines (below the 450-line ceiling).
+- DB static gate: `node scripts/npm-run.js run db:quality-gate:local` did not complete within 45 seconds (`EXIT:124`); this is recorded as INCOMPLETE and was not bypassed. Baseline-forward: NOT RUN (no disposable Oracle gate evidence available in this worker turn).
