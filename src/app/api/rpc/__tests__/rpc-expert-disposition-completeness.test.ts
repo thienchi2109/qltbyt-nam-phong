@@ -41,6 +41,15 @@ const EXPERT_DENIED_RPC_FUNCTION_NAMES = [
   "equipment_department_distribution",
   "equipment_aggregate_search",
   "equipment_bulk_import",
+  "temperature_monitoring_configuration_upsert",
+  "temperature_monitoring_configuration_get",
+  "temperature_monitoring_configuration_history",
+  "device_quota_regulatory_catalog_get",
+  "device_quota_unit_catalog_draft_create_or_open",
+  "device_quota_unit_catalog_draft_get",
+  "device_quota_unit_catalog_draft_save",
+  "device_quota_unit_catalog_draft_exclude",
+  "device_quota_unit_catalog_draft_restore",
   "repair_request_list",
   "repair_request_get",
   "repair_request_create",
@@ -192,15 +201,15 @@ describe("RPC expert disposition completeness", () => {
   })
 
   it("enforces the exact expert allow set from the Phase 7 disposition", () => {
-    expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(79)
+    expect(TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES).toHaveLength(80)
     expect(EXPERT_RETAINED_RPC_FUNCTION_NAMES).toEqual(["change_password", "don_vi_branding_get"])
-    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(160)
-    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 241)
+    expect(EXPERT_DENIED_RPC_FUNCTION_NAMES).toHaveLength(169)
+    expect(ALLOWED_FUNCTIONS).toHaveProperty("size", 251)
     expect([...EXPERT_ALLOWED_FUNCTIONS]).toEqual([
       ...TECHNICAL_CONFIGURATION_RPC_FUNCTION_NAMES,
       ...EXPERT_RETAINED_RPC_FUNCTION_NAMES,
     ])
-    expect(EXPERT_ALLOWED_FUNCTIONS).toHaveProperty("size", 81)
+    expect(EXPERT_ALLOWED_FUNCTIONS).toHaveProperty("size", 82)
     expect(EXPERT_DENIED_RPC_FUNCTION_NAMES.every((fn) => !EXPERT_ALLOWED_FUNCTIONS.has(fn))).toBe(
       true
     )
