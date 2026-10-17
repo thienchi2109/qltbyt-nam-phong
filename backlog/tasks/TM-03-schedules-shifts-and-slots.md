@@ -45,3 +45,10 @@ Implementation plan:
 5. Run formatting and the repository static DB quality gate; run/report Oracle baseline-forward separately when available. Commit on the TM-03 feature branch; leave Done status for independent review.
 
 Invariants and risks: no empty slot rows are persisted; slot identity is equipment/date/shift; global/admin role handling must remain claim-based; existing equipment date columns are text and are parsed defensively; baseline-forward may be unavailable or report known harness false positives.
+
+## Implementation handoff (review pending)
+
+- Commits: `27576cbd5fe9e8445d28340b5464cf6bdff45df0` (migration, registry, smoke test, RPC allowlist) and `b1e84c2f` (whitelist unit coverage).
+- Verification: Prettier, `verify:no-explicit-any`, `verify:dedupe`, typecheck, RPC whitelist tests (53 passed), and React Doctor (100/100) passed.
+- DB quality gate: local static reported `INCOMPLETE` with existing harness findings (digest `9453155efa90655107c11d62694ce2672ef38328b82356a0a000e486953fd140`); baseline-forward exact-commit run reported `INCOMPLETE` with unavailable migration high-water and no evidence (digest `90bc5a7cc969867d94cce350311d0325e8ddcb10b1a9762aa48f60969314a182`). No live write or disposable clone was created; therefore no clone cleanup was required.
+- Limitation: SQL execution against Oracle was unavailable because the required exact-commit baseline manifest/live read-only inputs were not present; gate results are not aggregate PASS. Independent review must validate migration execution and date/override behavior before marking this task Done.
