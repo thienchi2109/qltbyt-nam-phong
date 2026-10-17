@@ -1,5 +1,11 @@
 # Agent Instructions
 
+## Backlog.md trên VPS này
+
+- CPU profile của VPS thiếu SSE4.2; không chạy CLI/Bun của Backlog.md. Dùng
+  Markdown thủ công dưới `backlog/tasks/` theo
+  [`docs/runbooks/backlog-md-vps-compatibility.md`](docs/runbooks/backlog-md-vps-compatibility.md).
+
 ## Fast Code Search with tgrep
 
 - Local binary: `/root/.local/bin/tgrep`. Use it for repeated content/regex searches; keep `rg` as fallback and for scripts.
