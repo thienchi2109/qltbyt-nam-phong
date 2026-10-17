@@ -241,4 +241,3 @@ REVOKE ALL ON FUNCTION public.temperature_monitoring_configuration_get(BIGINT) F
 GRANT EXECUTE ON FUNCTION public.temperature_monitoring_configuration_get(BIGINT) TO authenticated;
 REVOKE ALL ON FUNCTION public.temperature_monitoring_configuration_history(BIGINT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.temperature_monitoring_configuration_history(BIGINT) TO authenticated;
-
