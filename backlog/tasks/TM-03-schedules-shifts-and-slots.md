@@ -1,6 +1,6 @@
 # TM-03 — Schedules, shifts and missing-slot projection
 
-- Status: In Progress
+- Status: Done
 - Milestone: Temperature Monitoring / Foundation
 - Depends on: TM-01, TM-02
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -54,3 +54,4 @@ Invariants and risks: no empty slot rows are persisted; slot identity is equipme
 - Limitation: SQL execution against Oracle was unavailable because the required exact-commit baseline manifest/live read-only inputs were not present; gate results are not aggregate PASS. Independent review must validate migration execution and date/override behavior before marking this task Done.
 - Reviewer follow-up (2026-10-17): commit `1548b318` adds fail-closed JWT/tenant guards, normalized department matching, safe ISO date parsing, composite profile/shift integrity, one explicit-column configured/unconfigured projection page, selected-shift semantics, and an authorized shift-override RPC. Local runtime fixture execution remains unavailable; smoke coverage therefore records source-level contract assertions and this explicit runtime gap.
 - Disposable runtime evidence (2026-10-17): Oracle clone `tm03_gate_20261017i` was created from `qltbyt_test`, schema ownership was adjusted inside the clone only, TM-02 and TM-03 migrations at commit `51406527b8a2caa53f3cb1506247cca96d190f15` were applied, and both `temperature_monitoring_schedules_slots_smoke.sql` and `temperature_monitoring_schedules_slots_behavior.sql` passed inside rollback transactions, including override audit and admin/unconfigured paths. Cleanup dropped the clone and an independent query returned no matching database; no live or restored-baseline writes occurred. The behavior fixture covers overnight/effective dates, tenant override, selected shift, tenant isolation, cursor continuation, disabled/unconfigured/decommissioned equipment, 90-day limits, missing-role, invalid-cursor, audit, and include-unconfigured guards.
+- Independent review approval (2026-10-17): reviewer approved HEAD `4034c781af388eaf046e2a9bdc78f446dff32954` with no blocking findings. The static DB gate remains `INCOMPLETE` because of known harness false positives/limitations; disposable runtime smoke and behavior lanes passed with cleanup verified.
