@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS public.temperature_monitoring_configuration_versions 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT temperature_monitoring_versions_period_valid CHECK (NOT isempty(effective_period)),
   CONSTRAINT temperature_monitoring_versions_limits_order CHECK (lower_c < upper_c),
-  CONSTRAINT temperature_monitoring_versions_limits_finite CHECK (lower_c NOT IN ('Infinity'::NUMERIC, '-Infinity'::NUMERIC) AND upper_c NOT IN ('Infinity'::NUMERIC, '-Infinity'::NUMERIC)),
+  CONSTRAINT temperature_monitoring_versions_limits_finite CHECK (lower_c NOT IN ('Infinity'::NUMERIC, '-Infinity'::NUMERIC, 'NaN'::NUMERIC) AND upper_c NOT IN ('Infinity'::NUMERIC, '-Infinity'::NUMERIC, 'NaN'::NUMERIC)),
   CONSTRAINT temperature_monitoring_versions_timezone_nonempty CHECK (btrim(display_timezone) <> ''),
   CONSTRAINT temperature_monitoring_versions_reason_nonempty CHECK (btrim(change_reason) <> '')
 );
@@ -50,6 +50,19 @@ ALTER TABLE public.temperature_monitoring_configuration_versions
 ALTER TABLE public.temperature_monitoring_configuration_versions
   ADD CONSTRAINT temperature_monitoring_versions_no_overlap
   EXCLUDE USING GIST (equipment_id WITH =, effective_period WITH &&);
+
+CREATE OR REPLACE FUNCTION public.temperature_monitoring_configuration_version_immutable()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'temperature monitoring configuration versions are immutable; create a new effective version' USING ERRCODE = '55000';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS temperature_monitoring_configuration_version_immutable_trg
+  ON public.temperature_monitoring_configuration_versions;
+CREATE TRIGGER temperature_monitoring_configuration_version_immutable_trg
+  BEFORE UPDATE OR DELETE ON public.temperature_monitoring_configuration_versions
+  FOR EACH ROW EXECUTE FUNCTION public.temperature_monitoring_configuration_version_immutable();
 
 CREATE TABLE IF NOT EXISTS public.temperature_monitoring_configuration_audit (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -38,6 +38,15 @@ BEGIN
     RAISE EXCEPTION 'append-only audit trigger missing';
   END IF;
 
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgrelid = 'public.temperature_monitoring_configuration_versions'::regclass
+      AND tgname = 'temperature_monitoring_configuration_version_immutable_trg'
+      AND NOT tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'immutable configuration version trigger missing';
+  END IF;
+
   IF has_table_privilege('anon', 'public.temperature_monitoring_configuration_versions', 'SELECT') THEN
     RAISE EXCEPTION 'anonymous role can read configuration versions';
   END IF;
