@@ -33,15 +33,18 @@ BEGIN
     RAISE EXCEPTION 'overnight/effective slot projection failed: %', v_rows;
   END IF;
 
-  INSERT INTO public.temperature_monitoring_schedule_shift_overrides(schedule_profile_id, don_vi, shift_id, start_local, end_local, is_active)
-  VALUES (v_profile, v_don_vi, v_shift, '23:00', '07:00', TRUE);
+  PERFORM public.temperature_monitoring_schedule_shift_override_upsert(v_profile, v_don_vi, v_shift, NULL, '23:00', '07:00', TRUE);
   SELECT * INTO v_rows FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['dem'],v_equipment,NULL,20,false) LIMIT 1;
   IF v_rows.shift_start_local <> '23:00'::time OR (v_rows.slot_end AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <> '2026-07-03' THEN
     RAISE EXCEPTION 'tenant shift override projection failed: %', v_rows;
   END IF;
 
   SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['sang'],v_equipment,NULL,20,false);
-  IF v_count <> 0 THEN RAISE EXCEPTION 'shift filter leaked non-selected shift'; END IF;
+  IF v_count = 0 OR EXISTS (
+    SELECT 1
+    FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['sang'],v_equipment,NULL,20,false)
+    WHERE shift_code <> 'sang'
+  ) THEN RAISE EXCEPTION 'shift filter leaked non-selected shift'; END IF;
 
   SELECT next_cursor INTO v_cursor FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,NULL,1,false) LIMIT 1;
   IF v_cursor IS NULL THEN RAISE EXCEPTION 'cursor was not returned'; END IF;
