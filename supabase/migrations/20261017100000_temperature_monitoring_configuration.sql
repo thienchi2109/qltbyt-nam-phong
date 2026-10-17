@@ -89,6 +89,13 @@ CREATE TRIGGER temperature_monitoring_configuration_audit_immutable_trg
   BEFORE UPDATE OR DELETE ON public.temperature_monitoring_configuration_audit
   FOR EACH ROW EXECUTE FUNCTION public.temperature_monitoring_configuration_audit_immutable();
 
+REVOKE ALL ON TABLE public.temperature_monitoring_configurations,
+  public.temperature_monitoring_configuration_versions,
+  public.temperature_monitoring_configuration_audit,
+  public.temperature_monitoring_schedule_profiles,
+  public.temperature_monitoring_recording_methods
+  FROM PUBLIC, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION public.temperature_monitoring_configuration_upsert(
   p_equipment_id BIGINT,
   p_monitoring_enabled BOOLEAN,
