@@ -182,6 +182,9 @@ BEGIN
       v_cursor_date := v_cursor_parts[1]::DATE;
       v_cursor_equipment := v_cursor_parts[2]::BIGINT;
       v_cursor_shift := v_cursor_parts[3];
+      IF v_cursor_shift <> '00000000-0000-0000-0000-000000000000' THEN
+        PERFORM v_cursor_shift::UUID;
+      END IF;
     EXCEPTION WHEN OTHERS THEN
       RAISE EXCEPTION 'invalid cursor' USING ERRCODE = '22023';
     END;
@@ -219,6 +222,8 @@ BEGIN
     JOIN public.temperature_monitoring_schedule_shifts s ON s.schedule_profile_id = v.schedule_profile_id
       AND s.is_active
       AND (p_shift_codes IS NULL OR s.code = ANY(p_shift_codes))
+    JOIN public.temperature_monitoring_schedule_profiles sp ON sp.id = s.schedule_profile_id
+      AND sp.is_active
     LEFT JOIN public.temperature_monitoring_schedule_shift_overrides so ON so.schedule_profile_id = s.schedule_profile_id
       AND so.shift_id = s.id AND so.don_vi = t.don_vi AND so.is_active
     WHERE (p_include_unconfigured OR v.monitoring_enabled)
@@ -230,7 +235,11 @@ BEGIN
     FROM dates d
     JOIN public.temperature_monitoring_configuration_versions v
       ON v.monitoring_enabled
-     AND v.effective_period @> (d.monitoring_date::TIMESTAMP AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))
+    JOIN public.temperature_monitoring_schedule_shifts cs
+      ON cs.schedule_profile_id = v.schedule_profile_id AND cs.is_active
+    JOIN public.temperature_monitoring_schedule_profiles csp
+      ON csp.id = cs.schedule_profile_id AND csp.is_active
+     AND v.effective_period @> ((d.monitoring_date + cs.start_local) AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))
   ),
   unconfigured AS (
     SELECT t.id AS equipment_id, t.ma_thiet_bi AS equipment_code, t.ten_thiet_bi AS equipment_name,

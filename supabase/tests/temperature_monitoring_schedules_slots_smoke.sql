@@ -36,7 +36,10 @@ BEGIN
      OR position('_normalize_department_scope' IN v_def) = 0
      OR position('try_parse_iso_date' IN v_def) = 0
      OR position('SELECT e.equipment_id' IN v_def) = 0
-     OR position('p_shift_codes IS NULL' IN v_def) = 0 THEN
+     OR position('p_shift_codes IS NULL' IN v_def) = 0
+     OR position('sp.is_active' IN v_def) = 0
+     OR position('cs.start_local' IN v_def) = 0
+     OR position('PERFORM v_cursor_shift::UUID' IN v_def) = 0 THEN
     RAISE EXCEPTION 'TM-03 fail-closed and deterministic projection guards missing';
   END IF;
   IF has_table_privilege('authenticated', 'public.temperature_monitoring_schedule_shifts', 'SELECT')
