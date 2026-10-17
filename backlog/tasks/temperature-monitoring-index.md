@@ -17,6 +17,13 @@ Trước khi bắt đầu **mỗi Task/Phase**, agent tiếp quản phải:
 
 Không gộp khảo sát/plan của một phase để biện minh cho phase khác. Mọi thay đổi phải giữ đúng phạm vi task và cập nhật dependency/evidence trong task tương ứng.
 
+### Frontend/UI design gate
+
+TM-07 và TM-08 không được bắt đầu implementation UI/frontend cho đến khi có
+thiết kế/layout được người dùng chốt rõ ràng. Agent của từng task vẫn phải
+khảo sát seam và lập plan riêng sau khi thiết kế được chốt; không được xem
+master spec hoặc wireframe cũ là phê duyệt giao diện.
+
 ## Phase map
 
 | ID    | Task                                              | Depends on          | Outcome                                                        |

@@ -27,3 +27,9 @@ Provide one mobile-first workspace for selecting a shift, entering readings and 
 ## Takeover gate
 
 The agent must survey current Equipment mobile cards, bottom sheets, route synchronization and accessibility tests, then write a detailed TM-07 plan before editing UI.
+
+## Frontend design gate
+
+Implementation is blocked until the mobile-first screen design/layout, entry
+flow and responsive states are explicitly reviewed and approved by the user.
+The master spec describes behavior only; it is not UI approval.

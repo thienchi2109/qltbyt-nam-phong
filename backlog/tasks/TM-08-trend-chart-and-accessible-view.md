@@ -27,3 +27,10 @@ Show temperature trend and limits without hiding abnormal points or excluding us
 ## Takeover gate
 
 The agent must survey `DynamicLineChart`, chart utilities, report chart tests and accessibility conventions, then submit a detailed TM-08 plan before changing chart code.
+
+## Frontend design gate
+
+Implementation is blocked until the chart layout, interaction model, tooltip,
+table fallback and mobile/desktop responsive states are explicitly reviewed and
+approved by the user. The master spec describes behavior only; it is not UI
+approval.
