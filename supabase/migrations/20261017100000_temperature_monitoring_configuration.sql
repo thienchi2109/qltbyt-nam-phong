@@ -186,7 +186,12 @@ BEGIN
   ON CONFLICT (equipment_id) DO UPDATE SET monitoring_enabled = EXCLUDED.monitoring_enabled, updated_at = now()
   RETURNING * INTO v_cfg;
   INSERT INTO public.temperature_monitoring_configuration_audit (equipment_id,version_id,event_type,before_state,after_state,reason,actor_user_id)
-  VALUES (p_equipment_id,(v_after->>'version_id')::UUID,CASE WHEN p_monitoring_enabled THEN CASE WHEN v_before IS NULL THEN 'create' ELSE 'enable' END ELSE 'disable' END,v_before,v_after,p_change_reason,v_user_id);
+  VALUES (p_equipment_id,(v_after->>'version_id')::UUID,
+    CASE WHEN v_before IS NULL THEN 'create'
+         WHEN p_monitoring_enabled AND COALESCE(v_current_enabled,FALSE) = FALSE THEN 'enable'
+         WHEN p_monitoring_enabled THEN 'version'
+         ELSE 'disable' END,
+    v_before,v_after,p_change_reason,v_user_id);
   RETURN v_cfg;
 END;
 $$;
