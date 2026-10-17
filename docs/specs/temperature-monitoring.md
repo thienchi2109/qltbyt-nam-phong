@@ -98,3 +98,4 @@ Hệ thống bảo vệ một bản ghi chính cho mỗi thiết bị, ngày the
 - Không dùng timeline `equipment_history_list` làm nguồn duy nhất cho lịch sử nhiệt độ vì đó là lịch sử vòng đời thiết bị có phạm vi rộng.
 - Biểu đồ hiện có chưa hỗ trợ đầy đủ reference lines, marker theo điểm và event tooltip; Temperature Monitoring cần mở rộng seam biểu đồ hiện tại hoặc dùng component chuyên biệt nhưng vẫn giữ lazy loading Recharts.
 - Bản spec này mô tả phạm vi, hành vi và các quyết định đã thống nhất; chưa mô tả thứ tự triển khai, migration cụ thể hay kế hoạch chia phase.
+- Đây là master spec định hướng ban đầu, không phải implementation plan đã chốt. Trước mỗi Task/Phase, agent tiếp quản phải khảo sát codebase và các seam liên quan, sau đó lập plan chi tiết riêng cho Task/Phase đó để review trước khi triển khai.
