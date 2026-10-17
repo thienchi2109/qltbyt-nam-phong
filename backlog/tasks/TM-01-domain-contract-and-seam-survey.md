@@ -20,7 +20,7 @@ Convert the agreed business rules into a reviewed domain contract without implem
 
 - A reviewed contract lists states, transitions, immutable fields and conflict behavior.
 - A seam map names the existing modules to reuse and explicitly records gaps.
-- A detailed implementation plan for TM-02 onward is proposed only after this task's survey; it does not silently replace each task's own takeover plan.
+- High-level dependency guidance for TM-02 onward is recorded after this task's survey; each TM-02..TM-10 task must perform its own read-only survey and write a detailed task-specific plan before implementation. This contract does not replace those takeover plans.
 - No production code, migration or live data is changed by this task.
 
 ## Takeover gate
