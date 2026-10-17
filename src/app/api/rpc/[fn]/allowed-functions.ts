@@ -55,6 +55,7 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "temperature_monitoring_configuration_upsert",
   "temperature_monitoring_configuration_get",
   "temperature_monitoring_configuration_history",
+  "temperature_monitoring_slots_list",
   // Repairs
   "repair_request_list",
   "repair_request_get",
