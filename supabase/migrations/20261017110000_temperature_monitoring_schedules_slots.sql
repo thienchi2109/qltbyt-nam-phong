@@ -235,11 +235,17 @@ BEGIN
     FROM dates d
     JOIN public.temperature_monitoring_configuration_versions v
       ON v.monitoring_enabled
+    JOIN public.thiet_bi ct ON ct.id = v.equipment_id
     JOIN public.temperature_monitoring_schedule_shifts cs
       ON cs.schedule_profile_id = v.schedule_profile_id AND cs.is_active
     JOIN public.temperature_monitoring_schedule_profiles csp
       ON csp.id = cs.schedule_profile_id AND csp.is_active
-     AND v.effective_period @> ((d.monitoring_date + cs.start_local) AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))
+    LEFT JOIN public.temperature_monitoring_schedule_shift_overrides cso
+      ON cso.schedule_profile_id = cs.schedule_profile_id
+     AND cso.shift_id = cs.id
+     AND cso.don_vi = ct.don_vi
+     AND cso.is_active
+    WHERE v.effective_period @> ((d.monitoring_date + COALESCE(cso.start_local, cs.start_local)) AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))
   ),
   unconfigured AS (
     SELECT t.id AS equipment_id, t.ma_thiet_bi AS equipment_code, t.ten_thiet_bi AS equipment_name,
