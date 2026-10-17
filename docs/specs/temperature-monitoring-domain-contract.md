@@ -96,7 +96,7 @@ The following is dependency guidance only, not implementation planning: TM-02 co
 - The canonical equipment tenant key is represented by `don_vi`/facility in the proxy, but the temperature tables' exact foreign-key names are not chosen.
 - The master decision requires `Asia/Ho_Chi_Minh` as the default display timezone; whether a later configuration version may choose another non-null timezone needs owner sign-off.
 - The role-to-capability matrix and who may reopen/approve/export need owner sign-off before TM-02/TM-05.
-- Exact numeric precision, inclusive/exclusive limit semantics, and unable-to-measure reason catalog are not present in the codebase.
+- TM-04 resolves numeric input as inclusive `[-200.0, +300.0] °C`, at most one decimal with no rounding; device thresholds are inclusive. Unable-to-measure uses a structured free-text reason, without a fixed reason catalog (approved 2026-10-17).
 - Conflict error code/payload and cursor shape must be standardized by TM-04 before UI work.
 - Deviation severity thresholds, reassignment rules and repair-link cardinality remain product decisions.
 - Long-range export execution mode, rate limits and retention are operational decisions for TM-09.

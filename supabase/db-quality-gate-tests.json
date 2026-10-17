@@ -1408,6 +1408,21 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["backlog/tasks/TM-04-measurement-entry-and-duplicate-guard.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/temperature_monitoring_measurements_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261017120000_temperature_monitoring_measurements.sql",
+        "supabase/migrations/20261017120100_temperature_monitoring_recorded_slots.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }
