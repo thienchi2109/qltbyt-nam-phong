@@ -1394,6 +1394,20 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["backlog/tasks/TM-03-schedules-shifts-and-slots.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/temperature_monitoring_schedules_slots_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261017110000_temperature_monitoring_schedules_slots.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }
