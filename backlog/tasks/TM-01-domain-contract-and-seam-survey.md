@@ -37,4 +37,6 @@ Before work starts, the agent must perform the mandatory read-only survey and wr
 ### Concerns carried forward
 
 - Temperature-specific RPC names, tables, conflict payload, capability matrix, numeric precision and deviation policy do not exist yet and must be resolved by the owning implementation tasks.
-- The contract treats `Asia/Ho_Chi_Minh` as the default display timezone while leaving per-configuration timezone support as an explicit assumption to confirm.
+- Every configuration version now requires a non-null display timezone with `Asia/Ho_Chi_Minh` as the master-spec default; whether later versions may choose another timezone remains an owner decision.
+- The slot state remains exactly `Chưa ghi`, `Đã ghi`, `Bất thường` or `Chờ xác nhận`; deviation closure is a separate lifecycle and never creates a `Closed` slot state.
+- v1 notifications are explicitly in-app badge/inbox plus audit; Web Push remains deferred.
