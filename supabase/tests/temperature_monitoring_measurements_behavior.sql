@@ -132,6 +132,16 @@ BEGIN
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
 
+  FOREACH role_name IN ARRAY ARRAY['to_qltb','global','admin'] LOOP
+    FOREACH bad_value IN ARRAY ARRAY[NULL,'','invalid','999999999999999999999999999'] LOOP
+      PERFORM set_config('request.jwt.claims',((claims-'user_id')||jsonb_build_object('app_role',role_name)
+        || CASE WHEN bad_value IS NULL THEN '{}'::JSONB ELSE jsonb_build_object('user_id',bad_value) END)::TEXT,TRUE);
+      PERFORM pg_temp.tm04_expect_error(format('SELECT status FROM public.temperature_monitoring_slots_list(%L,%L,NULL,%s,NULL,20,FALSE)','2026-07-02','2026-07-02',equipment),'42501');
+      PERFORM pg_temp.tm04_expect_error(format('SELECT status FROM public.temperature_monitoring_slots_list(%L,%L,NULL,%s,NULL,20,FALSE)','2026-07-06','2026-07-06',equipment),'42501');
+    END LOOP;
+  END LOOP;
+  PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
+
   UPDATE public.thiet_bi SET tinh_trang_hien_tai='Ngưng sử dụng' WHERE id=equipment;
   UPDATE public.temperature_monitoring_schedule_profiles SET is_active=FALSE WHERE id=profile;
   PERFORM public.temperature_monitoring_schedule_shift_override_upsert(profile,tenant,shift,NULL,'23:00','07:00');

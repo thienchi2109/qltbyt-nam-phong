@@ -108,7 +108,7 @@ BEGIN
   EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
   END;
 
-  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi + 999999,'khoa_phong',v_dept)::text, true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','user_id',v_user_id,'don_vi',v_don_vi + 999999,'khoa_phong',v_dept)::text, true);
   SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,NULL,20,false);
   IF v_count <> 0 THEN RAISE EXCEPTION 'tenant scope leaked fixture equipment'; END IF;
 END;

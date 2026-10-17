@@ -30,18 +30,31 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-  v_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
-  v_role TEXT := lower(COALESCE(NULLIF(v_claims->>'app_role',''), NULLIF(v_claims->>'role','')));
-  v_don_vi BIGINT := NULLIF(v_claims->>'don_vi','')::BIGINT;
-  v_khoa_phong TEXT := public._normalize_department_scope(v_claims->>'khoa_phong');
+  v_claims JSONB;
+  v_role TEXT;
+  v_user_id BIGINT;
+  v_don_vi BIGINT;
+  v_khoa_phong TEXT;
   v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200);
   v_cursor_date DATE;
   v_cursor_equipment BIGINT;
   v_cursor_shift TEXT;
   v_cursor_parts TEXT[];
 BEGIN
+  BEGIN
+    v_claims := COALESCE(NULLIF(current_setting('request.jwt.claims', true), ''), '{}')::jsonb;
+    v_user_id := NULLIF(v_claims->>'user_id', '')::BIGINT;
+    v_don_vi := NULLIF(v_claims->>'don_vi', '')::BIGINT;
+  EXCEPTION WHEN invalid_text_representation OR numeric_value_out_of_range THEN
+    RAISE EXCEPTION 'invalid authentication scope' USING ERRCODE = '42501';
+  END;
+  v_role := lower(COALESCE(NULLIF(v_claims->>'app_role',''), NULLIF(v_claims->>'role','')));
+  v_khoa_phong := public._normalize_department_scope(v_claims->>'khoa_phong');
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'missing user_id claim' USING ERRCODE = '42501';
   END IF;
   IF v_role NOT IN ('global', 'admin') AND (v_don_vi IS NULL OR v_khoa_phong IS NULL) THEN
     RAISE EXCEPTION 'tenant and department claims are required' USING ERRCODE = '42501';
