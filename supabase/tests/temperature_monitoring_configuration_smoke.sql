@@ -71,6 +71,14 @@ BEGIN
      OR to_regprocedure('public.temperature_monitoring_configuration_history(bigint)') IS NULL THEN
     RAISE EXCEPTION 'TM-02 RPC seam missing';
   END IF;
+  IF NOT has_function_privilege('authenticated', 'public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.temperature_monitoring_configuration_get(bigint)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.temperature_monitoring_configuration_get(bigint)', 'EXECUTE')
+     OR NOT has_function_privilege('authenticated', 'public.temperature_monitoring_configuration_history(bigint)', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.temperature_monitoring_configuration_history(bigint)', 'EXECUTE') THEN
+    RAISE EXCEPTION 'TM-02 RPC grants are not fail-closed';
+  END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
