@@ -51,6 +51,21 @@ BEGIN
     RAISE EXCEPTION 'anonymous role can read configuration versions';
   END IF;
 
+  FOREACH v_name IN ARRAY ARRAY[
+    'temperature_monitoring_configurations',
+    'temperature_monitoring_configuration_versions',
+    'temperature_monitoring_configuration_audit',
+    'temperature_monitoring_schedule_profiles',
+    'temperature_monitoring_recording_methods'
+  ] LOOP
+    IF has_table_privilege('authenticated', 'public.' || v_name, 'SELECT')
+       OR has_table_privilege('authenticated', 'public.' || v_name, 'INSERT')
+       OR has_table_privilege('authenticated', 'public.' || v_name, 'UPDATE')
+       OR has_table_privilege('authenticated', 'public.' || v_name, 'DELETE') THEN
+      RAISE EXCEPTION 'authenticated role has direct table privilege on %', v_name;
+    END IF;
+  END LOOP;
+
   IF to_regprocedure('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)') IS NULL
      OR to_regprocedure('public.temperature_monitoring_configuration_get(bigint)') IS NULL
      OR to_regprocedure('public.temperature_monitoring_configuration_history(bigint)') IS NULL THEN
