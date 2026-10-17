@@ -6,6 +6,9 @@ DO $$
 DECLARE
   v_don_vi BIGINT;
   v_equipment BIGINT;
+  v_disabled BIGINT;
+  v_unconfigured BIGINT;
+  v_decommissioned BIGINT;
   v_profile UUID;
   v_shift UUID;
   v_dept TEXT := 'TM03 Fixture';
@@ -19,6 +22,15 @@ BEGIN
   INSERT INTO public.thiet_bi (ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai, ngay_dua_vao_su_dung, ngay_ngung_su_dung)
   VALUES ('TM03-FIXTURE-' || substr(gen_random_uuid()::text, 1, 8), 'TM03 fixture', v_don_vi, v_dept, 'Hoạt động', '2026-01-01', NULL)
   RETURNING id INTO v_equipment;
+  INSERT INTO public.thiet_bi (ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai)
+  VALUES ('TM03-DISABLED-' || substr(gen_random_uuid()::text, 1, 8), 'TM03 disabled', v_don_vi, v_dept, 'Hoạt động')
+  RETURNING id INTO v_disabled;
+  INSERT INTO public.thiet_bi (ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai)
+  VALUES ('TM03-UNCONFIGURED-' || substr(gen_random_uuid()::text, 1, 8), 'TM03 unconfigured', v_don_vi, v_dept, 'Hoạt động')
+  RETURNING id INTO v_unconfigured;
+  INSERT INTO public.thiet_bi (ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai)
+  VALUES ('TM03-DECOMMISSIONED-' || substr(gen_random_uuid()::text, 1, 8), 'TM03 decommissioned', v_don_vi, v_dept, 'Ngưng sử dụng')
+  RETURNING id INTO v_decommissioned;
   SELECT id INTO v_profile FROM public.temperature_monitoring_schedule_profiles WHERE code='default' AND is_active;
   SELECT id INTO v_shift FROM public.temperature_monitoring_schedule_shifts WHERE schedule_profile_id=v_profile AND code='dem' AND is_active;
   IF v_profile IS NULL OR v_shift IS NULL THEN RAISE EXCEPTION 'TM-03 default overnight shift fixture missing'; END IF;
@@ -26,6 +38,9 @@ BEGIN
   INSERT INTO public.temperature_monitoring_configuration_versions
     (equipment_id, effective_period, monitoring_enabled, lower_c, upper_c, schedule_profile_id, display_timezone, change_reason)
   VALUES (v_equipment, tstzrange('2026-07-01 15:00+00', '2026-07-03 15:00+00', '[)'), TRUE, 2, 8, v_profile, 'Asia/Ho_Chi_Minh', 'TM03 fixture');
+  INSERT INTO public.temperature_monitoring_configuration_versions
+    (equipment_id, effective_period, monitoring_enabled, change_reason)
+  VALUES (v_disabled, tstzrange('2026-07-01 00:00+00', '2026-07-03 00:00+00', '[)'), FALSE, 'TM03 disabled fixture');
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
   SELECT * INTO v_rows FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['dem'],v_equipment,NULL,20,false) LIMIT 1;
@@ -50,6 +65,32 @@ BEGIN
   IF v_cursor IS NULL THEN RAISE EXCEPTION 'cursor was not returned'; END IF;
   SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,v_cursor,20,false);
   IF v_count < 1 THEN RAISE EXCEPTION 'cursor did not advance to remaining shifts'; END IF;
+
+  SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_disabled,NULL,20,false);
+  IF v_count <> 0 THEN RAISE EXCEPTION 'disabled monitoring equipment produced slots'; END IF;
+  SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_unconfigured,NULL,20,false);
+  IF v_count <> 0 THEN RAISE EXCEPTION 'unconfigured equipment produced slots'; END IF;
+  SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_decommissioned,NULL,20,false);
+  IF v_count <> 0 THEN RAISE EXCEPTION 'decommissioned equipment produced slots'; END IF;
+
+  BEGIN
+    PERFORM public.temperature_monitoring_slots_list('2026-01-01','2026-04-01',NULL,v_equipment,NULL,20,false);
+    RAISE EXCEPTION '90-day limit did not fail closed';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
+
+  BEGIN
+    PERFORM set_config('request.jwt.claims', '{}', true);
+    PERFORM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,NULL,20,false);
+    RAISE EXCEPTION 'missing role claim did not fail closed';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
+  BEGIN
+    PERFORM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,'not-a-cursor',20,false);
+    RAISE EXCEPTION 'invalid cursor did not fail closed';
+  EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
+  END;
 
   PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi + 999999,'khoa_phong',v_dept)::text, true);
   SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,NULL,20,false);
