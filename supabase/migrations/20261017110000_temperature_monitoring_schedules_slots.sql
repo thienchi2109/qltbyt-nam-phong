@@ -100,7 +100,7 @@ DECLARE
   v_limit INTEGER := LEAST(GREATEST(COALESCE(p_limit, 50), 1), 200);
   v_cursor_date DATE;
   v_cursor_equipment BIGINT;
-  v_cursor_shift UUID;
+  v_cursor_shift TEXT;
   v_cursor_parts TEXT[];
 BEGIN
   IF p_from_date IS NULL OR p_to_date IS NULL OR p_from_date > p_to_date THEN
@@ -118,7 +118,7 @@ BEGIN
       IF cardinality(v_cursor_parts) <> 3 THEN RAISE EXCEPTION 'invalid cursor'; END IF;
       v_cursor_date := v_cursor_parts[1]::DATE;
       v_cursor_equipment := v_cursor_parts[2]::BIGINT;
-      v_cursor_shift := v_cursor_parts[3]::UUID;
+      v_cursor_shift := v_cursor_parts[3];
     EXCEPTION WHEN OTHERS THEN
       RAISE EXCEPTION 'invalid cursor' USING ERRCODE = '22023';
     END;
@@ -149,8 +149,8 @@ BEGIN
       AND (p_equipment_id IS NULL OR t.id = p_equipment_id)
       AND (v_role IN ('global', 'admin') OR (v_don_vi IS NOT NULL AND t.don_vi = v_don_vi AND v_khoa_phong IS NOT NULL AND NULLIF(btrim(t.khoa_phong_quan_ly), '') = v_khoa_phong))
       AND COALESCE(NULLIF(btrim(t.tinh_trang_hien_tai), ''), '') = 'Hoạt động'
-      AND (NULLIF(t.ngay_dua_vao_su_dung, '') IS NULL OR NULLIF(t.ngay_dua_vao_su_dung, '')::DATE <= d.monitoring_date)
-      AND (NULLIF(t.ngay_ngung_su_dung, '') IS NULL OR NULLIF(t.ngay_ngung_su_dung, '')::DATE > d.monitoring_date)
+      AND (NULLIF(t.ngay_dua_vao_su_dung, '') IS NULL OR (t.ngay_dua_vao_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_dua_vao_su_dung::DATE <= d.monitoring_date))
+      AND (NULLIF(t.ngay_ngung_su_dung, '') IS NULL OR (t.ngay_ngung_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_ngung_su_dung::DATE > d.monitoring_date))
     JOIN public.temperature_monitoring_configuration_versions v ON v.equipment_id = t.id
       AND v.monitoring_enabled
     JOIN public.temperature_monitoring_schedule_shifts s ON s.schedule_profile_id = v.schedule_profile_id
@@ -160,35 +160,38 @@ BEGIN
       AND so.shift_id = s.id AND so.don_vi = t.don_vi AND so.is_active
     WHERE (p_include_unconfigured OR v.monitoring_enabled)
       AND (v.effective_period @> (((d.monitoring_date + COALESCE(so.start_local, s.start_local)) AT TIME ZONE COALESCE(NULLIF(btrim(v.display_timezone), ''), 'Asia/Ho_Chi_Minh'))))
-      AND (v_cursor_date IS NULL OR (d.monitoring_date, t.id, s.id) > (v_cursor_date, v_cursor_equipment, v_cursor_shift))
     ORDER BY v.equipment_id, d.monitoring_date, s.id, lower(v.effective_period) DESC
+  ),
+  unconfigured AS (
+    SELECT t.id AS equipment_id, t.ma_thiet_bi AS equipment_code, t.ten_thiet_bi AS equipment_name,
+           d.monitoring_date, NULL::UUID AS shift_id, NULL::TEXT AS shift_code,
+           NULL::TEXT AS shift_name, NULL::TIME AS shift_start_local, NULL::TIME AS shift_end_local,
+           NULL::UUID AS configuration_version_id, 'Asia/Ho_Chi_Minh'::TEXT AS display_timezone,
+           NULL::TIMESTAMPTZ AS slot_start, NULL::TIMESTAMPTZ AS slot_end,
+           'Chưa cấu hình'::TEXT AS status
+    FROM dates d
+    JOIN public.thiet_bi t ON COALESCE(t.is_deleted, FALSE) = FALSE
+      AND (p_equipment_id IS NULL OR t.id = p_equipment_id)
+      AND (v_role IN ('global', 'admin') OR (v_don_vi IS NOT NULL AND t.don_vi = v_don_vi AND v_khoa_phong IS NOT NULL AND NULLIF(btrim(t.khoa_phong_quan_ly), '') = v_khoa_phong))
+      AND COALESCE(NULLIF(btrim(t.tinh_trang_hien_tai), ''), '') = 'Hoạt động'
+      AND (NULLIF(t.ngay_dua_vao_su_dung, '') IS NULL OR (t.ngay_dua_vao_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_dua_vao_su_dung::DATE <= d.monitoring_date))
+      AND (NULLIF(t.ngay_ngung_su_dung, '') IS NULL OR (t.ngay_ngung_su_dung ~ '^\d{4}-\d{2}-\d{2}$' AND t.ngay_ngung_su_dung::DATE > d.monitoring_date))
+      AND p_include_unconfigured
+      AND NOT EXISTS (SELECT 1 FROM effective e WHERE e.equipment_id = t.id AND e.monitoring_date = d.monitoring_date)
+  ),
+  projected AS (
+    SELECT e.*, 'Chưa ghi'::TEXT AS status FROM effective e
+    UNION ALL
+    SELECT u.* FROM unconfigured u
   )
   SELECT e.equipment_id, e.equipment_code, e.equipment_name, e.monitoring_date, e.shift_id,
          e.shift_code, e.shift_name, e.shift_start_local, e.shift_end_local, e.slot_start,
-         e.slot_end, e.configuration_version_id, e.display_timezone, 'Chưa ghi'::TEXT,
-         encode(convert_to((e.monitoring_date::TEXT || '|' || e.equipment_id::TEXT || '|' || e.shift_id::TEXT), 'UTF8'), 'base64')
-  FROM effective e
-  ORDER BY e.monitoring_date, e.equipment_id, e.shift_id
+         e.slot_end, e.configuration_version_id, e.display_timezone, e.status,
+         encode(convert_to((e.monitoring_date::TEXT || '|' || e.equipment_id::TEXT || '|' || COALESCE(e.shift_id::TEXT, '00000000-0000-0000-0000-000000000000')), 'UTF8'), 'base64')
+  FROM projected e
+  WHERE v_cursor_date IS NULL OR (e.monitoring_date, e.equipment_id, COALESCE(e.shift_id::TEXT, '00000000-0000-0000-0000-000000000000')) > (v_cursor_date, v_cursor_equipment, v_cursor_shift)
+  ORDER BY e.monitoring_date, e.equipment_id, COALESCE(e.shift_id::TEXT, '00000000-0000-0000-0000-000000000000')
   LIMIT v_limit;
-
-  IF p_include_unconfigured THEN
-    RETURN QUERY
-    SELECT t.id, t.ma_thiet_bi, t.ten_thiet_bi, d.monitoring_date, NULL::UUID,
-           NULL::TEXT, NULL::TEXT, NULL::TIME, NULL::TIME, NULL::TIMESTAMPTZ,
-           NULL::TIMESTAMPTZ, NULL::UUID, 'Asia/Ho_Chi_Minh'::TEXT, 'Chưa cấu hình'::TEXT, NULL::TEXT
-    FROM generate_series(p_from_date, p_to_date, INTERVAL '1 day') d(monitoring_date)
-    JOIN public.thiet_bi t ON COALESCE(t.is_deleted, FALSE) = FALSE
-      AND (p_equipment_id IS NULL OR t.id = p_equipment_id)
-      AND COALESCE(NULLIF(btrim(t.tinh_trang_hien_tai), ''), '') = 'Hoạt động'
-      AND NOT EXISTS (
-        SELECT 1 FROM public.temperature_monitoring_configuration_versions v
-        WHERE v.equipment_id = t.id AND v.monitoring_enabled
-          AND v.effective_period @> (d.monitoring_date::DATE::TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh')
-      )
-      AND (v_role IN ('global', 'admin') OR t.don_vi = v_don_vi)
-    ORDER BY d.monitoring_date, t.id
-    LIMIT v_limit;
-  END IF;
 END;
 $$;
 
