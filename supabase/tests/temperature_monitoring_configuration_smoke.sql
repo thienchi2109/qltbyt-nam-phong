@@ -90,6 +90,7 @@ BEGIN
 
   IF position('scale(p_lower_c) > 1' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
      OR position('substitute user is outside tenant scope' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('substitute user does not exist' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
      OR position('khoa_phong_quan_ly' IN pg_get_functiondef('public.temperature_monitoring_configuration_get(bigint)'::regprocedure)) = 0
      OR position('monitoring configuration is incomplete' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
      OR position('effective start is required' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0

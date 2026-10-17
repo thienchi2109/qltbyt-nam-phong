@@ -156,6 +156,9 @@ BEGIN
   IF p_responsible_primary_user_id IS NOT NULL AND v_role NOT IN ('global','admin') AND NOT EXISTS (SELECT 1 FROM public.nhan_vien n WHERE n.id = p_responsible_primary_user_id AND n.don_vi = v_don_vi AND NULLIF(btrim(n.khoa_phong),'') IS NOT DISTINCT FROM v_khoa_phong) THEN
     RAISE EXCEPTION 'responsible user is outside tenant scope' USING ERRCODE = '42501';
   END IF;
+  IF EXISTS (SELECT 1 FROM unnest(COALESCE(p_responsible_substitute_user_ids,'{}')) AS s(user_id) WHERE NOT EXISTS (SELECT 1 FROM public.nhan_vien n WHERE n.id=s.user_id)) THEN
+    RAISE EXCEPTION 'substitute user does not exist' USING ERRCODE = '22023';
+  END IF;
   IF v_role NOT IN ('global','admin') AND EXISTS (SELECT 1 FROM unnest(COALESCE(p_responsible_substitute_user_ids,'{}')) AS s(user_id) WHERE NOT EXISTS (SELECT 1 FROM public.nhan_vien n WHERE n.id=s.user_id AND n.don_vi=v_don_vi AND NULLIF(btrim(n.khoa_phong),'') IS NOT DISTINCT FROM v_khoa_phong)) THEN
     RAISE EXCEPTION 'substitute user is outside tenant scope' USING ERRCODE = '42501';
   END IF;
