@@ -5,6 +5,7 @@ BEGIN;
 DO $$
 DECLARE
   v_don_vi BIGINT;
+  v_user_id BIGINT;
   v_equipment BIGINT;
   v_disabled BIGINT;
   v_unconfigured BIGINT;
@@ -18,6 +19,8 @@ DECLARE
 BEGIN
   SELECT id INTO v_don_vi FROM public.don_vi ORDER BY id LIMIT 1;
   IF v_don_vi IS NULL THEN RAISE EXCEPTION 'TM-03 fixture requires one don_vi row'; END IF;
+  SELECT id INTO v_user_id FROM public.nhan_vien ORDER BY id LIMIT 1;
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'TM-03 fixture requires one nhan_vien row'; END IF;
 
   INSERT INTO public.thiet_bi (ma_thiet_bi, ten_thiet_bi, don_vi, khoa_phong_quan_ly, tinh_trang_hien_tai, ngay_dua_vao_su_dung, ngay_ngung_su_dung)
   VALUES ('TM03-FIXTURE-' || substr(gen_random_uuid()::text, 1, 8), 'TM03 fixture', v_don_vi, v_dept, 'Hoạt động', '2026-01-01', NULL)
@@ -42,7 +45,7 @@ BEGIN
     (equipment_id, effective_period, monitoring_enabled, change_reason)
   VALUES (v_disabled, tstzrange('2026-07-01 00:00+00', '2026-07-03 00:00+00', '[)'), FALSE, 'TM03 disabled fixture');
 
-  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','user_id',v_user_id,'don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
   SELECT * INTO v_rows FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['dem'],v_equipment,NULL,20,false) LIMIT 1;
   IF v_rows.shift_code <> 'dem' OR v_rows.status <> 'Chưa ghi' OR (v_rows.slot_start AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <> '2026-07-02' OR (v_rows.slot_end AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <> '2026-07-03' THEN
     RAISE EXCEPTION 'overnight/effective slot projection failed: %', v_rows;
@@ -53,6 +56,10 @@ BEGIN
   IF v_rows.shift_start_local <> '23:00'::time OR (v_rows.slot_end AT TIME ZONE 'Asia/Ho_Chi_Minh')::date <> '2026-07-03' THEN
     RAISE EXCEPTION 'tenant shift override projection failed: %', v_rows;
   END IF;
+  SELECT count(*) INTO v_count
+  FROM public.temperature_monitoring_schedule_shift_override_audit
+  WHERE schedule_profile_id = v_profile AND don_vi = v_don_vi AND shift_id = v_shift;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'shift override audit event missing'; END IF;
 
   SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',ARRAY['sang'],v_equipment,NULL,20,false);
   IF v_count = 0 OR EXISTS (
@@ -74,6 +81,15 @@ BEGIN
   IF v_count <> 0 THEN RAISE EXCEPTION 'decommissioned equipment produced slots'; END IF;
 
   BEGIN
+    PERFORM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_unconfigured,NULL,20,true);
+    RAISE EXCEPTION 'non-admin unconfigured filter did not fail closed';
+  EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
+  END;
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','admin','user_id',v_user_id,'don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
+  SELECT count(*) INTO v_count FROM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_unconfigured,NULL,20,true);
+  IF v_count <> 1 THEN RAISE EXCEPTION 'admin unconfigured filter did not return equipment'; END IF;
+
+  BEGIN
     PERFORM public.temperature_monitoring_slots_list('2026-01-01','2026-04-01',NULL,v_equipment,NULL,20,false);
     RAISE EXCEPTION '90-day limit did not fail closed';
   EXCEPTION WHEN SQLSTATE '22023' THEN NULL;
@@ -85,7 +101,7 @@ BEGIN
     RAISE EXCEPTION 'missing role claim did not fail closed';
   EXCEPTION WHEN SQLSTATE '42501' THEN NULL;
   END;
-  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
+  PERFORM set_config('request.jwt.claims', jsonb_build_object('app_role','to_qltb','user_id',v_user_id,'don_vi',v_don_vi,'khoa_phong',v_dept)::text, true);
   BEGIN
     PERFORM public.temperature_monitoring_slots_list('2026-07-02','2026-07-02',NULL,v_equipment,'not-a-cursor',20,false);
     RAISE EXCEPTION 'invalid cursor did not fail closed';

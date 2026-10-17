@@ -6,7 +6,8 @@ DECLARE
   v_def TEXT;
 BEGIN
   IF to_regclass('public.temperature_monitoring_schedule_shifts') IS NULL
-     OR to_regclass('public.temperature_monitoring_schedule_shift_overrides') IS NULL THEN
+     OR to_regclass('public.temperature_monitoring_schedule_shift_overrides') IS NULL
+     OR to_regclass('public.temperature_monitoring_schedule_shift_override_audit') IS NULL THEN
     RAISE EXCEPTION 'TM-03 shift tables missing';
   END IF;
   IF (SELECT count(*) FROM public.temperature_monitoring_schedule_shifts s
@@ -41,6 +42,14 @@ BEGIN
      OR position('cs.start_local' IN v_def) = 0
      OR position('PERFORM v_cursor_shift::UUID' IN v_def) = 0 THEN
     RAISE EXCEPTION 'TM-03 fail-closed and deterministic projection guards missing';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_trigger
+    WHERE tgrelid = 'public.temperature_monitoring_schedule_shift_override_audit'::regclass
+      AND tgname = 'temperature_monitoring_schedule_shift_override_audit_immutable_trg'
+      AND NOT tgisinternal
+  ) THEN
+    RAISE EXCEPTION 'shift override audit append-only trigger missing';
   END IF;
   IF has_table_privilege('authenticated', 'public.temperature_monitoring_schedule_shifts', 'SELECT')
      OR has_table_privilege('authenticated', 'public.temperature_monitoring_schedule_shift_overrides', 'SELECT') THEN

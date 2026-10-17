@@ -42,6 +42,36 @@ CREATE INDEX IF NOT EXISTS temperature_monitoring_shift_overrides_lookup_idx
   ON public.temperature_monitoring_schedule_shift_overrides (don_vi, schedule_profile_id, shift_id)
   WHERE is_active;
 
+CREATE TABLE IF NOT EXISTS public.temperature_monitoring_schedule_shift_override_audit (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  schedule_profile_id UUID NOT NULL,
+  don_vi BIGINT NOT NULL,
+  shift_id UUID NOT NULL,
+  before_state JSONB,
+  after_state JSONB NOT NULL,
+  actor_user_id BIGINT NOT NULL REFERENCES public.nhan_vien(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT temperature_monitoring_shift_override_audit_fk
+    FOREIGN KEY (schedule_profile_id, don_vi, shift_id)
+    REFERENCES public.temperature_monitoring_schedule_shift_overrides(schedule_profile_id, don_vi, shift_id)
+    ON DELETE RESTRICT
+);
+
+CREATE OR REPLACE FUNCTION public.temperature_monitoring_schedule_shift_override_audit_immutable()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'temperature monitoring schedule shift override audit is append-only' USING ERRCODE = '55000';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS temperature_monitoring_schedule_shift_override_audit_immutable_trg
+  ON public.temperature_monitoring_schedule_shift_override_audit;
+CREATE TRIGGER temperature_monitoring_schedule_shift_override_audit_immutable_trg
+  BEFORE UPDATE OR DELETE ON public.temperature_monitoring_schedule_shift_override_audit
+  FOR EACH ROW EXECUTE FUNCTION public.temperature_monitoring_schedule_shift_override_audit_immutable();
+
+REVOKE ALL ON TABLE public.temperature_monitoring_schedule_shift_override_audit FROM PUBLIC, anon, authenticated;
+
 INSERT INTO public.temperature_monitoring_schedule_profiles (code, name, is_active)
 VALUES ('default', 'Lịch mặc định', TRUE)
 ON CONFLICT (code) DO UPDATE SET is_active = TRUE;
@@ -85,10 +115,15 @@ DECLARE
   v_claims JSONB := COALESCE(current_setting('request.jwt.claims', true), '{}')::jsonb;
   v_role TEXT := lower(COALESCE(NULLIF(v_claims->>'app_role',''), NULLIF(v_claims->>'role','')));
   v_don_vi BIGINT := NULLIF(v_claims->>'don_vi','')::BIGINT;
+  v_user_id BIGINT := NULLIF(v_claims->>'user_id','')::BIGINT;
   v_row public.temperature_monitoring_schedule_shift_overrides;
+  v_before JSONB;
 BEGIN
   IF v_role IS NULL OR v_role = '' THEN
     RAISE EXCEPTION 'missing role claim' USING ERRCODE = '42501';
+  END IF;
+  IF v_user_id IS NULL OR NOT EXISTS (SELECT 1 FROM public.nhan_vien WHERE id = v_user_id) THEN
+    RAISE EXCEPTION 'authenticated actor is required' USING ERRCODE = '42501';
   END IF;
   IF v_role NOT IN ('global', 'admin', 'to_qltb') THEN
     RAISE EXCEPTION 'temperature monitoring schedule requires equipment manager role' USING ERRCODE = '42501';
@@ -105,6 +140,9 @@ BEGIN
   IF (p_start_local IS NULL AND p_end_local IS NOT NULL) OR (p_start_local IS NOT NULL AND p_end_local IS NULL) THEN
     RAISE EXCEPTION 'override start and end must be supplied together' USING ERRCODE = '22023';
   END IF;
+  SELECT to_jsonb(x) INTO v_before
+  FROM public.temperature_monitoring_schedule_shift_overrides x
+  WHERE x.schedule_profile_id = p_schedule_profile_id AND x.don_vi = p_don_vi AND x.shift_id = p_shift_id;
   INSERT INTO public.temperature_monitoring_schedule_shift_overrides
     (schedule_profile_id, don_vi, shift_id, name, start_local, end_local, is_active)
   VALUES (p_schedule_profile_id, p_don_vi, p_shift_id, NULLIF(btrim(p_name), ''), p_start_local, p_end_local, COALESCE(p_is_active, TRUE))
@@ -112,6 +150,9 @@ BEGIN
     name = EXCLUDED.name, start_local = EXCLUDED.start_local, end_local = EXCLUDED.end_local,
     is_active = EXCLUDED.is_active, updated_at = now()
   RETURNING * INTO v_row;
+  INSERT INTO public.temperature_monitoring_schedule_shift_override_audit
+    (schedule_profile_id, don_vi, shift_id, before_state, after_state, actor_user_id)
+  VALUES (v_row.schedule_profile_id, v_row.don_vi, v_row.shift_id, v_before, to_jsonb(v_row), v_user_id);
   RETURN v_row;
 END;
 $$;
