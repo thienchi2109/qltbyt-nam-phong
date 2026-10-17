@@ -51,6 +51,10 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "equipment_department_distribution",
   "equipment_aggregate_search",
   "equipment_bulk_import",
+  // Temperature monitoring configuration
+  "temperature_monitoring_configuration_upsert",
+  "temperature_monitoring_configuration_get",
+  "temperature_monitoring_configuration_history",
   // Repairs
   "repair_request_list",
   "repair_request_get",

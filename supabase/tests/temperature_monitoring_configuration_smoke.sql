@@ -56,6 +56,26 @@ BEGIN
      OR to_regprocedure('public.temperature_monitoring_configuration_history(bigint)') IS NULL THEN
     RAISE EXCEPTION 'TM-02 RPC seam missing';
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='temperature_monitoring_configuration_versions'
+      AND column_name='monitoring_enabled' AND is_nullable='NO'
+  ) THEN
+    RAISE EXCEPTION 'effective enablement snapshot missing';
+  END IF;
+
+  IF position('scale(p_lower_c) > 1' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('substitute user is outside tenant scope' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('khoa_phong_quan_ly' IN pg_get_functiondef('public.temperature_monitoring_configuration_get(bigint)'::regprocedure)) = 0
+     OR position('monitoring configuration is incomplete' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('effective start is required' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('disabled version cannot carry' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('v_role NOT IN (''to_qltb'',''global'',''admin'')' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('authenticated actor is required' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0
+     OR position('v_before' IN pg_get_functiondef('public.temperature_monitoring_configuration_upsert(bigint,boolean,timestamptz,timestamptz,numeric,numeric,uuid,text,bigint,bigint[],text,text)'::regprocedure)) = 0 THEN
+    RAISE EXCEPTION 'TM-02 validation guards missing';
+  END IF;
 END;
 $$;
 
