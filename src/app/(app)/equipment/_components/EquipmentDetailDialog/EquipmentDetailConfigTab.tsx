@@ -8,13 +8,9 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
+import { useTemperatureConfiguration } from "@/hooks/use-temperature-configuration"
 import { Input } from "@/components/ui/input"
-import { useTemperatureQuery, useTemperatureMutation } from "@/hooks/use-temperature-monitoring"
-import { isGlobalRole } from "@/lib/rbac"
-import { temperatureInstant } from "@/lib/temperature-monitoring"
-import type { TemperatureChoices, TemperatureStaff } from "@/types/temperature-monitoring"
 
 import { EquipmentEditTextareaField } from "@/components/equipment-edit/EquipmentEditFieldControls"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -53,68 +49,25 @@ export function EquipmentDetailConfigTab({
   displayEquipment,
   isEditing,
 }: EquipmentDetailConfigTabProps): React.ReactNode {
-  const { data: session } = useSession()
-  const manager = isGlobalRole(session?.user?.role) || session?.user?.role === "to_qltb"
-  const [staffSearch, setStaffSearch] = React.useState("")
-  const [staffCursor, setStaffCursor] = React.useState<number | null>(null)
-  const [message, setMessage] = React.useState("")
-  const choices = useTemperatureQuery<TemperatureChoices>(
-    "temperature_monitoring_configuration_choices",
-    { p_equipment_id: displayEquipment.id },
-    manager && !isEditing
-  )
-  const staff = useTemperatureQuery<TemperatureStaff>(
-    "temperature_monitoring_staff_choices",
-    { p_equipment_id: displayEquipment.id, p_query: staffSearch || null, p_cursor: staffCursor },
-    manager && !isEditing
-  )
-  const mutation = useTemperatureMutation()
-  const summary = useTemperatureQuery<NonNullable<TemperatureChoices["configuration"]>[]>(
-    "temperature_monitoring_configuration_get",
-    { p_equipment_id: displayEquipment.id },
-    !manager && !isEditing
-  )
-  const current = choices.data?.configuration ?? summary.data?.[0]
-  const [staffSelection, setStaffSelection] = React.useState<{
-    equipment: number
-    primary: number | ""
-    substitutes: number[]
-  } | null>(null)
-  const selectedStaff: { equipment: number; primary: number | ""; substitutes: number[] } =
-    staffSelection?.equipment === displayEquipment.id
-      ? staffSelection
-      : {
-          equipment: displayEquipment.id,
-          primary: current?.responsible_primary_user_id ?? "",
-          substitutes: current?.responsible_substitute_user_ids ?? [],
-        }
-  const save = async (form: FormData) => {
-    const enabled = form.get("enabled") === "on"
-    const text = (name: string) => String(form.get(name) ?? "")
-    setMessage("")
-    try {
-      await mutation.mutateAsync({
-        fn: "temperature_monitoring_configuration_upsert",
-        args: {
-          p_equipment_id: displayEquipment.id,
-          p_monitoring_enabled: enabled,
-          p_effective_from: temperatureInstant(text("from"), text("timezone")),
-          p_effective_to: text("to") ? temperatureInstant(text("to"), text("timezone")) : null,
-          p_lower_c: enabled ? Number(text("lower")) : null,
-          p_upper_c: enabled ? Number(text("upper")) : null,
-          p_schedule_profile_id: enabled ? text("profile") : null,
-          p_display_timezone: text("timezone"),
-          p_responsible_primary_user_id: enabled ? Number(text("primary")) : null,
-          p_responsible_substitute_user_ids: enabled ? form.getAll("substitutes").map(Number) : [],
-          p_recording_method_code: enabled ? text("method") : null,
-          p_change_reason: text("reason"),
-        },
-      })
-      setMessage("Đã lưu phiên bản cấu hình.")
-    } catch (error) {
-      setMessage("Không lưu được cấu hình. Kiểm tra khoảng hiệu lực, quyền và dữ liệu rồi thử lại.")
-    }
-  }
+  const {
+    showSection,
+    display,
+    primaryChoices,
+    substituteChoices,
+    manager,
+    staffSearch,
+    setStaffSearch,
+    staffCursor,
+    setStaffCursor,
+    message,
+    choices,
+    staff,
+    mutation,
+    summary,
+    selectedStaff,
+    setStaffSelection,
+    save,
+  } = useTemperatureConfiguration(displayEquipment.id, isEditing)
   if (isEditing) return <ConfigEditForm />
 
   // View mode: display both fields with proper multiline formatting
@@ -135,22 +88,12 @@ export function EquipmentDetailConfigTab({
             <Button onClick={() => void summary.refetch()}>Thử lại</Button>
           </p>
         )}
-        {(manager || summary.isSuccess) && (
+        {showSection && (
           <section className="space-y-3 border-t pt-4">
             <h3 className="font-semibold">Theo dõi nhiệt độ</h3>
-            <p>
-              {current?.monitoring_enabled
-                ? `${current.lower_c}–${current.upper_c} °C · ${current.recording_method_code} · ${current.display_timezone}`
-                : "Chưa bật theo dõi nhiệt độ"}
-            </p>
-            {current?.monitoring_enabled && (
-              <p>
-                Phụ trách chính: #{current.responsible_primary_user_id} · Thay thế:{" "}
-                {current.responsible_substitute_user_ids.map((id) => `#${id}`).join(", ") ||
-                  "Không có"}
-              </p>
-            )}
-            {current?.monitoring_enabled && (
+            <p>{display.summary}</p>
+            {display.enabled && <p>{display.responsible}</p>}
+            {display.enabled && (
               <Button variant="outline" asChild>
                 <Link href={`/temperature-monitoring?equipment=${displayEquipment.id}`}>
                   Mở sổ nhiệt độ
@@ -174,11 +117,7 @@ export function EquipmentDetailConfigTab({
                 className="space-y-3"
               >
                 <label className="flex items-center gap-2">
-                  <input
-                    name="enabled"
-                    type="checkbox"
-                    defaultChecked={current?.monitoring_enabled}
-                  />
+                  <input name="enabled" type="checkbox" defaultChecked={display.enabled} />
                   Bật theo dõi nhiệt độ
                 </label>
                 <p className="text-sm text-muted-foreground">
@@ -196,21 +135,11 @@ export function EquipmentDetailConfigTab({
                   </label>
                   <label>
                     Ngưỡng dưới °C
-                    <Input
-                      name="lower"
-                      type="number"
-                      step="0.1"
-                      defaultValue={current?.lower_c ?? ""}
-                    />
+                    <Input name="lower" type="number" step="0.1" defaultValue={display.lower} />
                   </label>
                   <label>
                     Ngưỡng trên °C
-                    <Input
-                      name="upper"
-                      type="number"
-                      step="0.1"
-                      defaultValue={current?.upper_c ?? ""}
-                    />
+                    <Input name="upper" type="number" step="0.1" defaultValue={display.upper} />
                   </label>
                 </div>
                 <label>
@@ -218,10 +147,7 @@ export function EquipmentDetailConfigTab({
                   <select
                     name="profile"
                     className="w-full h-11 rounded border px-2"
-                    defaultValue={
-                      current?.schedule_profile_id ??
-                      choices.data.profiles.find((p) => p.code === "default")?.id
-                    }
+                    defaultValue={display.profile}
                   >
                     {choices.data.profiles.map((p) => (
                       <option key={p.id} value={p.id}>
@@ -232,19 +158,14 @@ export function EquipmentDetailConfigTab({
                 </label>
                 <label>
                   Múi giờ
-                  <Input
-                    name="timezone"
-                    readOnly
-                    required
-                    defaultValue={current?.display_timezone ?? "Asia/Ho_Chi_Minh"}
-                  />
+                  <Input name="timezone" readOnly required defaultValue={display.timezone} />
                 </label>
                 <label>
                   Cách ghi nhận
                   <select
                     name="method"
                     className="w-full h-11 rounded border px-2"
-                    defaultValue={current?.recording_method_code ?? "manual"}
+                    defaultValue={display.method}
                   >
                     {choices.data.methods.map((m) => (
                       <option key={m.code} value={m.code}>
@@ -286,15 +207,9 @@ export function EquipmentDetailConfigTab({
                     }
                   >
                     <option value="">Chọn nhân sự</option>
-                    {selectedStaff.primary &&
-                      !staff.data?.items.some((n) => n.id === selectedStaff.primary) && (
-                        <option value={selectedStaff.primary}>
-                          #{selectedStaff.primary} (hiện tại)
-                        </option>
-                      )}
-                    {staff.data?.items.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.full_name}
+                    {primaryChoices.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.full_name}
                       </option>
                     ))}
                   </select>
@@ -315,16 +230,9 @@ export function EquipmentDetailConfigTab({
                       })
                     }
                   >
-                    {selectedStaff.substitutes
-                      .filter((id) => !staff.data?.items.some((person) => person.id === id))
-                      .map((id) => (
-                        <option key={id} value={id}>
-                          #{id} (đã chọn)
-                        </option>
-                      ))}
-                    {staff.data?.items.map((n) => (
-                      <option key={n.id} value={n.id}>
-                        {n.full_name}
+                    {substituteChoices.map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.full_name}
                       </option>
                     ))}
                   </select>

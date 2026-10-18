@@ -463,3 +463,38 @@ Formal `static`: **INCOMPLETE** (120-second attempt timed out; startup only in
 `baseline-forward`: **INCOMPLETE**. Owner-deferred harness repair remains deferred;
 disposable tests do not certify either formal lane.
 No live write, persistent baseline mutation, deployment, push or merge occurred.
+
+## React Doctor worker checkpoint — 2026-10-18
+
+Base: `dba12e8313e7f947ca685cc7b7db57c131362707`. Four of eight original
+warnings resolved using only existing UI: equipment configuration state/query/save
+ownership moved to `use-temperature-configuration.ts`; scoped filter/query/paging
+ownership moved to `use-temperature-workspace-filters.ts`; logbook slot/capture/
+independent-review selectors moved to `temperature-logbook-selectors.ts`; mobile
+primary label/icon selection simplified without changing classes or row composition.
+CRG refreshed at the base; GitNexus was stale for new TM07 symbols, so direct
+references and focused tests backed up its low-risk result. Existing shared UI and
+temperature RPC helpers are reused; there is no new UI component, SQL, dependency,
+suppression, or reduced scan scope.
+
+Ordered format, explicit-any, diff-only dedupe, typecheck and whitespace checks pass.
+Focused seven-file suite: **109/109 PASS** (previously 107), including real-page
+measurement pending/RPC-failure retention and review validation/pending/RPC-failure/
+conflict retention. These are jsdom checks, not new browser evidence.
+Tracked diff React Doctor: **90/100, 4 warnings, 25 files**. Remaining in
+`TemperatureMonitoringPageClient.tsx`: complexity at line 15 (cyclomatic 48,
+cognitive 38, depth 1), giant component at line 15 (function lines 15–448, threshold
+300), form preventDefault at lines 224 and 268. All new hook/helper files are staged
+and included. No new warnings.
+
+Native form-action experiment with controlled drafts was rejected: React 19 resets
+a focused numeric input to its stale default after a failed save. The new review
+regression caught this; that experiment and draft hook are absent from this safe
+checkpoint. Remaining structural remediation would require private page presentation
+sections built from existing primitives, an explicit exception to the owner's
+no-new-components instruction. A bounded followup may test explicit cancellable
+native form reset semantics without altering numeric controls.
+
+The three existing review findings and formal SQL static/baseline-forward
+**INCOMPLETE** status are unchanged. Local commit only; lead independently verifies
+and reviews before requesting any contract exception.

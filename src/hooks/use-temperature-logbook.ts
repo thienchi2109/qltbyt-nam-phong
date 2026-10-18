@@ -1,24 +1,21 @@
 "use client"
 
+import {
+  temperatureReviewActions,
+  automaticTemperatureSlot,
+  temperatureCaptureDefault,
+} from "@/lib/temperature-logbook-selectors"
 import { useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { format, subDays } from "date-fns"
+import { useTemperatureWorkspaceFilters } from "@/hooks/use-temperature-workspace-filters"
 import { useIsMobile } from "@/hooks/use-mobile"
-import {
-  useTemperatureMutation,
-  useTemperatureQuery,
-  useTemperatureWorkspace,
-} from "@/hooks/use-temperature-monitoring"
+import { useTemperatureMutation, useTemperatureQuery } from "@/hooks/use-temperature-monitoring"
 import { isGlobalRole } from "@/lib/rbac"
 import {
-  currentTemperatureSlot,
   validateTemperatureCapture,
-  temperatureLocalTime,
   temperatureDeviationFields,
   TEMPERATURE_DEVIATION_ACTIONS,
-  TEMPERATURE_SLOT_STATUSES,
-  TEMPERATURE_DEVIATION_STATUSES,
   TEMPERATURE_EMPTY_MESSAGES,
   temperatureCardMeta,
   temperatureDeviationArguments,
@@ -42,21 +39,7 @@ export function useTemperatureLogbook() {
   const writer = manager || ["user", "technician", "qltb_khoa"].includes(role ?? "")
   const mobile = useIsMobile()
   const equipment = Number(params.get("equipment")) || null
-  const [tab, setTab] = useState(() =>
-    params.has("date") || params.has("kind") ? "history" : "current"
-  )
-  const [range, setRange] = useState(() => ({
-    from: params.get("date") ?? params.get("from") ?? format(subDays(new Date(), 29), "yyyy-MM-dd"),
-    to: params.get("date") ?? params.get("to") ?? format(new Date(), "yyyy-MM-dd"),
-  }))
-  const [status, setStatus] = useState("")
-  const [historyKind, setHistoryKind] = useState(() => params.get("kind") ?? "readings")
-  const historyDeviations = ["deviations", "open_deviations"].includes(historyKind)
-  const [deviationStatus, setDeviationStatus] = useState("")
-  const [shift, setShift] = useState("")
-  const [entryDate, setEntryDate] = useState("")
   const [chosenDeviationAction, setDeviationAction] = useState("update_action")
-  const [cursor, setCursor] = useState<Record<string, unknown> | null>(null)
   const [selected, setSelected] = useState<TemperatureSlot | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [message, setMessage] = useState("")
@@ -69,39 +52,22 @@ export function useTemperatureLogbook() {
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const dirtyRef = useRef(false)
   const savingRef = useRef(false)
-  const validRange =
-    range.from <= range.to && (Date.parse(range.to) - Date.parse(range.from)) / 86400000 < 90
-  const query = useTemperatureWorkspace(
-    {
-      ...(tab === "history"
-        ? { p_from_date: range.from, p_to_date: range.to }
-        : entryDate
-          ? { p_from_date: entryDate, p_to_date: entryDate }
-          : {}),
-      p_equipment_id: equipment,
-      p_status:
-        tab === "current" && !entryDate
-          ? "current"
-          : tab === "history" && !historyDeviations
-            ? status || null
-            : null,
-      p_kind: tab === "history" ? historyKind : "readings",
-      p_deviation_status: tab === "history" && historyDeviations ? deviationStatus || null : null,
-      p_shift_codes: shift ? [shift] : null,
-      p_cursor: cursor,
-      p_limit: 50,
-    },
-    tab === "current" || validRange
-  )
-  const rows = query.data?.items ?? []
-  let automatic: TemperatureSlot | null = null
-  if (equipment && !dismissed && !cursor) {
-    if (params.has("reading"))
-      automatic = rows.find((row) => row.reading_id === params.get("reading")) ?? null
-    else if (tab === "current")
-      automatic = currentTemperatureSlot(rows, query.data?.server_now ?? "")
-  }
-  const slot = selected ?? automatic
+  const filters = useTemperatureWorkspaceFilters(params, equipment, () => {
+    setSelected(null)
+    setDismissed(false)
+  })
+  const { tab, cursor, setCursor, query, rows } = filters
+  const slot =
+    selected ??
+    automaticTemperatureSlot(
+      equipment,
+      dismissed,
+      cursor,
+      params,
+      tab,
+      rows,
+      query.data?.server_now ?? ""
+    )
   const readingQuery = useTemperatureQuery<TemperatureReading>(
     "temperature_monitoring_reading_get",
     { p_reading_id: slot?.reading_id },
@@ -120,10 +86,7 @@ export function useTemperatureLogbook() {
     { p_equipment_id: slot?.equipment_id, p_cursor: staffCursor, p_limit: 100 },
     manager && !!slot
   )
-  const captureDefault =
-    slot && query.data && currentTemperatureSlot([slot], query.data.server_now)
-      ? temperatureLocalTime(query.data.server_now, slot.display_timezone ?? "Asia/Ho_Chi_Minh")
-      : ""
+  const captureDefault = temperatureCaptureDefault(slot, query.data?.server_now)
   const captureInput = {
     name: "captured",
     type: "datetime-local",
@@ -173,32 +136,12 @@ export function useTemperatureLogbook() {
     },
     !!slot && showEvents
   )
-  const independent =
-    manager &&
-    !!reading &&
-    actor !== reading.reading.operator_user_id &&
-    actor !== reading.effective.author_user_id &&
-    actor !== reading.pending_amendment?.author_user_id
   const queryErrors = [
     { query: readingQuery, label: "số đo" },
     { query: deviationQuery, label: "xử lý sai lệch" },
     { query: events, label: "nhật ký" },
   ]
-  const reviewActions = []
-  if (!reading?.pending_amendment)
-    reviewActions.push({ value: "amend", label: "Đề xuất sửa số đo" })
-  if (independent) {
-    if (reading?.pending_amendment)
-      reviewActions.push(
-        { value: "approve_amendment", label: "Duyệt đề xuất" },
-        { value: "reject_amendment", label: "Từ chối đề xuất" }
-      )
-    else
-      reviewActions.push({
-        value: reading?.review_required ? "confirm" : "reopen",
-        label: reading?.review_required ? "Xác nhận số đo gốc" : "Mở lại xét duyệt",
-      })
-  }
+  const { independent, reviewActions } = temperatureReviewActions(manager, actor, reading)
   const timestamp = (value: string | null, zone = slot?.display_timezone) =>
     value ? new Date(value).toLocaleString("vi-VN", { timeZone: zone }) : "—"
   const openSlot = (row: TemperatureSlot) => {
@@ -231,14 +174,6 @@ export function useTemperatureLogbook() {
     setCursor(null)
     setSelected(null)
     setDismissed(false)
-  }
-  const setPreset = (days: string) => {
-    if (days !== "custom")
-      setRange({
-        from: format(subDays(new Date(), Number(days) - 1), "yyyy-MM-dd"),
-        to: format(new Date(), "yyyy-MM-dd"),
-      })
-    resetPage()
   }
   const run = async (fn: string, args: Record<string, unknown>) => {
     setMessage("")
@@ -348,6 +283,7 @@ export function useTemperatureLogbook() {
     }
   }
   return {
+    ...filters,
     reviewTextFields: [
       { name: "unableReason", label: "Lý do không đo được", required: false },
       { name: "reason", label: "Lý do thao tác", required: true },
@@ -367,28 +303,6 @@ export function useTemperatureLogbook() {
     emptyMessage: query.data?.empty_reason
       ? TEMPERATURE_EMPTY_MESSAGES[query.data.empty_reason]
       : "Không có kết quả.",
-    historyFilters: [
-      {
-        label: "Loại lịch sử",
-        value: historyKind,
-        set: setHistoryKind,
-        options: [
-          { value: "readings", label: "Ô đo" },
-          { value: "deviations", label: "Sai lệch" },
-          { value: "review_queue", label: "Chờ xác nhận độc lập" },
-          { value: "open_deviations", label: "Sai lệch mở" },
-        ],
-      },
-      {
-        label: "Trạng thái",
-        value: historyDeviations ? deviationStatus : status,
-        set: historyDeviations ? setDeviationStatus : setStatus,
-        options: [
-          "",
-          ...(historyDeviations ? TEMPERATURE_DEVIATION_STATUSES : TEMPERATURE_SLOT_STATUSES),
-        ].map((value) => ({ value, label: value || "Tất cả" })),
-      },
-    ],
     readingDetails: temperatureReadingDetails(reading, timestamp),
     openSlot,
     closeSheet,
@@ -399,26 +313,13 @@ export function useTemperatureLogbook() {
     readingTextFields,
     queryErrors,
     captureDefault,
-    entryDate,
-    setEntryDate,
     deviationAction,
     setDeviationAction,
-    setPreset,
     deviationFields,
     eventLabels,
     staff,
     staffCursor,
     setStaffCursor,
-    tab,
-    setTab,
-    range,
-    setRange,
-    status,
-    setStatus,
-    shift,
-    setShift,
-    cursor,
-    setCursor,
     setSelected,
     setDismissed,
     message,
@@ -428,9 +329,6 @@ export function useTemperatureLogbook() {
     showEvents,
     setShowEvents,
     mutation,
-    validRange,
-    query,
-    rows,
     slot,
     readingQuery,
     reading,

@@ -1,6 +1,12 @@
-import { act, renderHook } from "@testing-library/react"
+import { act, renderHook, render, screen, fireEvent, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { TemperatureMonitoringPageClient } from "@/app/(app)/temperature-monitoring/TemperatureMonitoringPageClient"
 import { useTemperatureLogbook } from "../use-temperature-logbook"
+
+vi.mock("@/components/shared/SideSheetShell", () => ({
+  SideSheetShell: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
+    open ? <section>{children}</section> : null,
+}))
 
 const mock = vi.hoisted(() => ({
   mutate: vi.fn(),
@@ -188,6 +194,83 @@ describe("per-device persistence", () => {
     result.current.restoreFocus(new Event("close", { cancelable: true }))
     expect(document.activeElement).toBe(heading)
     heading.remove()
+  })
+  it("retains measurement draft and edits made while a failed save is pending", async () => {
+    let reject!: (error: Error) => void
+    mock.mutate.mockImplementation(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail
+        })
+    )
+    render(<TemperatureMonitoringPageClient />)
+    fireEvent.change(screen.getByLabelText("Nhiệt độ (°C)"), { target: { value: "5" } })
+    fireEvent.change(screen.getByLabelText("Ghi chú"), { target: { value: "draft" } })
+    fireEvent.submit(screen.getByRole("button", { name: "Lưu số đo" }).closest("form")!)
+    await waitFor(() => expect(mock.mutate).toHaveBeenCalledTimes(1))
+    fireEvent.change(screen.getByLabelText("Ghi chú"), { target: { value: "edited while saving" } })
+    await act(async () => reject(new Error("RPC unavailable")))
+    await waitFor(() => expect(screen.getByText(/Không lưu được/)).toBeInTheDocument())
+    expect(screen.getByLabelText("Nhiệt độ (°C)")).toHaveValue(5)
+    expect(screen.getByLabelText("Ghi chú")).toHaveValue("edited while saving")
+    expect(screen.getByLabelText(/Giờ đo thực tế/)).toHaveValue("2026-07-02T23:00")
+  })
+  it("keeps review operation, proposed value and reason after validation, RPC failure and conflict", async () => {
+    mock.rows = [{ ...slot, reading_id: "reading-42" }]
+    mock.query.mockImplementation((fn: string) =>
+      fn === "temperature_monitoring_reading_get"
+        ? {
+            data: {
+              reading: {
+                id: "reading-42",
+                value_c: 5,
+                captured_at: "2026-07-02T16:00Z",
+                created_at: "2026-07-02T16:01Z",
+                operator_user_id: 7,
+              },
+              effective: { value_c: 5, author_user_id: 7 },
+              revision: 0,
+              review_required: true,
+            },
+          }
+        : {}
+    )
+    render(<TemperatureMonitoringPageClient />)
+    const reason = screen.getByLabelText("Lý do thao tác")
+    const value = screen.getByLabelText("Số đo đề xuất")
+    const action = screen.getByLabelText("Thao tác")
+    const submit = screen.getByRole("button", { name: "Gửi thao tác" }).closest("form")!
+    fireEvent.change(reason, { target: { value: "Kiểm tra lại" } })
+    fireEvent.submit(submit)
+    await waitFor(() =>
+      expect(screen.getByText("Nhập số đo đề xuất hoặc chọn không đo được.")).toBeInTheDocument()
+    )
+    expect(mock.mutate).not.toHaveBeenCalled()
+    expect(reason).toHaveValue("Kiểm tra lại")
+    fireEvent.change(value, { target: { value: "6" } })
+    let reject!: (error: Error) => void
+    mock.mutate.mockImplementationOnce(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail
+        })
+    )
+    fireEvent.submit(submit)
+    await waitFor(() => expect(mock.mutate).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole("button", { name: "Hoàn tất" }))
+    expect(screen.getByText("Đang lưu, vui lòng đợi.")).toBeInTheDocument()
+    fireEvent.change(reason, { target: { value: "Bổ sung khi đang lưu" } })
+    await act(async () => reject(new Error("unavailable")))
+    await waitFor(() => expect(screen.getByText(/Không lưu được/)).toBeInTheDocument())
+    expect(value).toHaveValue(6)
+    expect(reason).toHaveValue("Bổ sung khi đang lưu")
+    expect(action).toHaveValue("amend")
+    mock.mutate.mockResolvedValueOnce({ outcome: "conflict" })
+    fireEvent.submit(submit)
+    await waitFor(() => expect(screen.getByText(/Dữ liệu đã thay đổi/)).toBeInTheDocument())
+    expect(value).toHaveValue(6)
+    expect(reason).toHaveValue("Bổ sung khi đang lưu")
+    expect(action).toHaveValue("amend")
   })
   it("guards dirty close and blocks dismissal while saving", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)

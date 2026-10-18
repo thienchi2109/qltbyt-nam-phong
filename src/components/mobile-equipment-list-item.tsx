@@ -180,6 +180,12 @@ export function MobileEquipmentListItem({
  * - Chờ bảo trì / Chờ hiệu chuẩn: "Xem chi tiết" + "Sử dụng"
  * - Ngưng sử dụng / Chưa có nhu cầu: "Xem chi tiết" only
  */
+function mobileEquipmentPrimaryAction(repair: boolean, details: boolean, compact: boolean) {
+  if (repair) return { label: "Chi tiết sự cố", icon: AlertTriangle }
+  if (details) return { label: "Xem chi tiết", icon: Eye }
+  return { label: compact ? "Sửa chữa" : "Báo sửa chữa", icon: Wrench }
+}
+
 function MobileEquipmentActionButtons({
   equipment,
   status,
@@ -193,19 +199,12 @@ function MobileEquipmentActionButtons({
   const compact = equipment.temperature_monitoring_enabled === true
   const repair = status === "Chờ sửa chữa"
   const details = outOfService || status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định"
-  let actionLabel = compact ? "Sửa chữa" : "Báo sửa chữa"
-  let ActionIcon = Wrench
+  const primary = mobileEquipmentPrimaryAction(repair, details, compact)
+  const ActionIcon = primary.icon
   const onPrimaryAction = () => {
     if (repair) onViewRepairDetails(equipment.id)
     else if (details) onShowDetails(equipment)
     else onCreateRepairRequest(equipment.id)
-  }
-  if (repair) {
-    actionLabel = "Chi tiết sự cố"
-    ActionIcon = AlertTriangle
-  } else if (details) {
-    actionLabel = "Xem chi tiết"
-    ActionIcon = Eye
   }
   const buttonBase = `flex-1 flex min-w-0 items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150 ${compact ? "min-h-11 px-1 whitespace-normal" : ""}`
   return (
@@ -219,7 +218,7 @@ function MobileEquipmentActionButtons({
         onClick={onPrimaryAction}
       >
         {!compact && <ActionIcon className="size-3.5" />}
-        {actionLabel}
+        {primary.label}
       </button>
       {!outOfService && (
         <MobileUsageActions
