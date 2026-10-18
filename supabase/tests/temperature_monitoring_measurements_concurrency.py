@@ -18,7 +18,7 @@ def run(command):
         return result.stdout
 
     database = query('SELECT current_database();').strip().splitlines()[-1]
-    assert database.startswith(('tm04_', 'tm05_')), 'Only an explicitly disposable tm04_*/tm05_* database is permitted'
+    assert database.startswith(('tm04_', 'tm05_', 'tm06_')), 'Only an explicitly disposable tm04_*/tm05_*/tm06_* database is permitted'
     fixture = json.loads(query("""
 WITH t AS (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
 e AS (INSERT INTO public.thiet_bi(ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai)

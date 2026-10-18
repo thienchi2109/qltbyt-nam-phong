@@ -15,7 +15,7 @@ def run(command):
         assert result.returncode == 0, result.stderr[-1800:]
         return result.stdout.strip()
 
-    assert query('SELECT current_database();').startswith('tm05_'), 'disposable tm05_* database required'
+    assert query('SELECT current_database();').startswith(('tm05_', 'tm06_')), 'disposable tm05_*/tm06_* database required'
     fixture = json.loads(query("""
 WITH t AS (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
 e AS (INSERT INTO public.thiet_bi(ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai)

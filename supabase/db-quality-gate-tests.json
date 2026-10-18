@@ -1439,6 +1439,23 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["backlog/tasks/TM-06-deviation-and-corrective-action.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/temperature_monitoring_deviations_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261018040000_temperature_monitoring_deviation_state.sql",
+        "supabase/migrations/20261018040100_temperature_monitoring_deviation_actions.sql",
+        "supabase/migrations/20261018040200_temperature_monitoring_deviation_queries.sql",
+        "supabase/migrations/20261018040300_temperature_monitoring_user_recording.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }

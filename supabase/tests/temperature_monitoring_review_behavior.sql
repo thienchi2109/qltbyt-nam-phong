@@ -132,7 +132,7 @@ BEGIN
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_amendment_create(%L,%s,5,NULL,%L)',normal_id,state->>'revision',' '),'22023');
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_amendment_create(%L,%s,5,NULL,%L)',normal_id,state->>'revision',E'\t\n'),'22023');
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_amendment_create(%L,%s,5,%L,%L)',normal_id,state->>'revision','both','invalid'),'22023');
-  FOREACH role_name IN ARRAY ARRAY['user','regional_leader','unknown',''] LOOP
+  FOREACH role_name IN ARRAY ARRAY['regional_leader','unknown',''] LOOP
     PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('user_id',reviewer,'app_role',role_name))::TEXT,TRUE);
     PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_amendment_create(%L,%s,5,NULL,%L)',normal_id,state->>'revision','denied'),'42501');
   END LOOP;

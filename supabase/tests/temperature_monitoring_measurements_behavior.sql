@@ -105,13 +105,13 @@ BEGIN
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5,NULL,%L)',equipment,'2026-07-06',shift,'infinity'),'22023');
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-11',shift),'22023');
 
-  FOREACH role_name IN ARRAY ARRAY['user','regional_leader','unknown',''] LOOP
+  FOREACH role_name IN ARRAY ARRAY['regional_leader','unknown',''] LOOP
     PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('app_role',role_name))::TEXT,TRUE);
     PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
   END LOOP;
   PERFORM set_config('request.jwt.claims','{}',TRUE);
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
-  FOREACH role_name IN ARRAY ARRAY['technician','qltb_khoa','global','admin'] LOOP
+  FOREACH role_name IN ARRAY ARRAY['technician','qltb_khoa','user','global','admin'] LOOP
     PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('app_role',role_name))::TEXT,TRUE);
     result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5);
     IF result->>'outcome' <> 'conflict' THEN RAISE EXCEPTION 'approved writer role failed: %',role_name; END IF;
