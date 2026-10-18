@@ -4,6 +4,28 @@ import type {
   TemperatureReading,
 } from "@/types/temperature-monitoring"
 
+/** Preserve native form semantics when registered drafts call the existing RPC handlers. */
+export function temperatureFormData(values: Record<string, string | boolean>) {
+  const data = new FormData()
+  for (const [name, value] of Object.entries(values)) {
+    if (value !== false) data.set(name, value === true ? "on" : value)
+  }
+  return data
+}
+
+/** Match the existing numeric input bounds and tenth-degree step without rounding values. */
+export function temperatureValueValidation(value: string) {
+  if (value === "") return true
+  const number = Number(value)
+  return (
+    (Number.isFinite(number) &&
+      number >= -200 &&
+      number <= 300 &&
+      Math.abs(number * 10 - Math.round(number * 10)) < 1e-9) ||
+    "Nhập nhiệt độ từ -200 đến 300 °C theo bước 0,1."
+  )
+}
+
 /** Associate validation errors with the control and focus it. */
 export function focusTemperatureField(
   container: HTMLElement | null,

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { currentTemperatureSlot, validateTemperatureCapture } from "./temperature-monitoring"
+import {
+  currentTemperatureSlot,
+  validateTemperatureCapture,
+  temperatureFormData,
+  temperatureValueValidation,
+} from "./temperature-monitoring"
 import type { TemperatureSlot } from "@/types/temperature-monitoring"
 
 const overnight = {
@@ -8,6 +13,16 @@ const overnight = {
 } as TemperatureSlot
 
 describe("authoritative temperature intervals", () => {
+  it("keeps numeric input bounds and precision without rounding and maps registered checkbox semantics", () => {
+    for (const value of ["", "-200", "300", "-0.1", "7.3", "5.00"])
+      expect(temperatureValueValidation(value)).toBe(true)
+    for (const value of ["-200.1", "300.1", "5.25", "NaN", "Infinity"])
+      expect(temperatureValueValidation(value)).not.toBe(true)
+    const values = temperatureFormData({ value: "5.0", unable: false, note: "nháp" })
+    expect(values.get("value")).toBe("5.0")
+    expect(values.has("unable")).toBe(false)
+    expect(temperatureFormData({ unable: true }).get("unable")).toBe("on")
+  })
   it("selects only an unambiguous active server interval, including overnight", () => {
     expect(currentTemperatureSlot([overnight], "2026-07-02T16:00:00Z")).toBe(overnight)
     expect(currentTemperatureSlot([overnight], overnight.slot_end)).toBeNull()

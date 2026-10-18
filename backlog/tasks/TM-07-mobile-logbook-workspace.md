@@ -506,3 +506,34 @@ while `defaultPrevented` remained false: React did not deliver the synthetic
 onReset during its action-reset commit. That experiment is reverted; the safe
 checkpoint retains the original submit handlers and its 90/100/four-warning result.
 No native listener/value mutation/timer workaround was added.
+
+### Owner-approved composition exception — 2026-10-18
+
+Owner explicitly approved exactly five route-private compositions using existing
+UI primitives and installed React Hook Form: `TemperatureMonitoringFilters`,
+`TemperatureMonitoringSlotSheet`, `TemperatureMonitoringMeasurementForm`,
+`TemperatureMonitoringReviewSection`, and `TemperatureMonitoringDeviationSection`.
+The canonical layout/domain contract now records this narrow exception; it grants
+no general component-library permission. PageClient is reduced to 92 lines.
+Registered forms retain drafts across validation, pending saves, RPC failures,
+conflicts and same-record refreshes; record identity changes initialize fresh
+drafts. Legal action changes synchronize only the selected action. Validation
+errors expose field associations and `aria-invalid`; number validation checks
+finite bounds and numeric tenth-step without rounding, while RPC/server guards
+remain authoritative. The adapter preserves the existing FormData contract.
+
+Focused regression coverage adds numeric bounds/step, same-slot/next-device
+timezone, unable mapping and deviation-operation registration/reset checks;
+review coverage now includes authoritative revision/action refresh and focus.
+Helper table covers integer, fractional, out-of-range, nonfinite and off-step
+inputs. These are jsdom/unit checks, not new mobile-browser evidence.
+
+Standard tracked-diff React Doctor scope includes all **30 changed files**:
+**zero diagnostics / No issues found, score 93/100**. The score is reported as
+returned; no suppression, scope reduction, score/cache/config override or new
+dependency was introduced. Final ordered formatting, explicit-any, diff-only
+dedupe, typecheck, seven-file behavior suite (**113/113 PASS**), standard React
+Doctor and whitespace checks all passed before the local commit. Formal SQL
+`static` and `baseline-forward`
+remain **INCOMPLETE**, and the three prior review findings remain outside this
+refactor. No SQL changes, live/persistent DB writes, deployment, push or merge.

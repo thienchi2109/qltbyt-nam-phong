@@ -66,7 +66,8 @@ No top-of-page logbook button; fixed footer unchanged
 Compose existing `Tabs`, `ListFilterSearchCard`, `MobileCompactCard`, `Badge`,
 `Alert`, `Button`, `Input`, `Select`, `Textarea`, `Form`/labels and pagination
 buttons directly in the necessary page integration. Do not create temperature UI
-components, copied card variants or a new component library. Reuse app tokens,
+components, copied card variants or a new component library, except the narrow
+owner-approved 2026-10-18 composition exception below. Reuse app tokens,
 fonts and spacing; no redesign or new animation system.
 
 ```text
@@ -224,7 +225,14 @@ retry/setup feedback; no fixture IDs or uncontrolled free-text user IDs.
 Implementation must fit necessary page/integration files below 450 lines using
 existing components. Data/mutations/validation may use minimal non-UI hooks after
 semantic reuse search; no JSX helper module or hidden new domain component to
-evade this rule. If a readable safe composition cannot fit, surface the exact file
+evade this rule, except the narrow owner-approved 2026-10-18 exception: exactly
+five route-private compositions under `temperature-monitoring/` —
+`TemperatureMonitoringFilters`, `TemperatureMonitoringSlotSheet`,
+`TemperatureMonitoringMeasurementForm`, `TemperatureMonitoringReviewSection` and
+`TemperatureMonitoringDeviationSection` — may compose existing UI primitives and
+installed React Hook Form to resolve the eight original React Doctor warnings.
+This does not authorize a new component library or further domain components.
+If a readable safe composition cannot fit, surface the exact file
 and responsibilities before coding. Workspace/catalog/time-validation/notification
 RPC gaps remain separately scoped forward migrations after lead approval; original
 11 migrations/inventory entries remain unchanged. No chart/export/dependency work.

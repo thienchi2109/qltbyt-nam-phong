@@ -102,7 +102,11 @@ The following is dependency guidance only, not implementation planning: TM-02 co
   TM-08/TM-09. Reuse existing UI components only: no new generic/domain UI
   component files, copied/forked components or library. Compose existing
   primitives in necessary page/integration files; any conflict with the source
-  file ceiling must be raised before coding.
+  file ceiling must be raised before coding. Narrow owner exception approved
+  2026-10-18: only the five route-private compositions named in
+  `temperature-monitoring-tm07-layout.md` may use existing UI primitives and
+  installed React Hook Form to resolve the original React Doctor warnings.
+  The reuse constraint otherwise remains; no new component library is authorized.
 - TM-07 owner interview round 2 (2026-10-18): separate `Ghi theo ca` for selected
   current monitoring date/shift from independent `Lịch sử` with default 30 and
   7/30/90 presets; add the existing menu item plus Equipment crosslink, leaving
