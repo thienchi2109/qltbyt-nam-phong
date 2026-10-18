@@ -498,3 +498,11 @@ native form reset semantics without altering numeric controls.
 The three existing review findings and formal SQL static/baseline-forward
 **INCOMPLETE** status are unchanged. Local commit only; lead independently verifies
 and reviews before requesting any contract exception.
+
+Bounded native-reset followup: explicit JSX `onReset={event =>
+event.preventDefault()}` removed the two submit warnings (93/100, two warnings),
+but both real-page retention checks failed. The browser reset event was cancelable
+while `defaultPrevented` remained false: React did not deliver the synthetic
+onReset during its action-reset commit. That experiment is reverted; the safe
+checkpoint retains the original submit handlers and its 90/100/four-warning result.
+No native listener/value mutation/timer workaround was added.
