@@ -13,11 +13,14 @@ const mock = vi.hoisted(() => ({
   query: vi.fn(),
   rows: [] as Record<string, unknown>[],
   role: "user",
+  searchParams: "equipment=42",
   workspace: vi.fn(),
   toast: vi.fn(),
   dismiss: vi.fn(),
 }))
-vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("equipment=42") }))
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(mock.searchParams),
+}))
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { id: 7, role: mock.role } } }),
 }))
@@ -51,6 +54,7 @@ const slot = {
 describe("per-device persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mock.searchParams = "equipment=42"
     mock.toast.mockReturnValue({ id: "prompt-1", dismiss: mock.dismiss })
     mock.rows = [slot]
     mock.role = "user"
@@ -386,5 +390,12 @@ describe("per-device persistence", () => {
     await waitFor(() => expect(mock.mutate).toHaveBeenCalledTimes(3))
     expect(mock.mutate.mock.calls[2][0].args.p_amendment_id).toBe("amendment-42")
     expect(mock.mutate.mock.calls[2][0].args.p_action).toBe("approve_amendment")
+  })
+
+  it("prompts for one equipment before showing a trend in Lịch sử", () => {
+    mock.searchParams = "date=2026-10-18"
+    render(<TemperatureMonitoringPageClient />)
+    expect(screen.getByRole("tab", { name: "Lịch sử" })).toHaveAttribute("aria-selected", "true")
+    expect(screen.getByText("Chọn một thiết bị để xem biểu đồ")).toBeInTheDocument()
   })
 })

@@ -10,7 +10,13 @@ import type {
 } from "@/types/temperature-monitoring"
 
 /** Scope every temperature cache entry to the current identity; SQL owns authorization. */
-export function useTemperatureQuery<T>(fn: string, args: Record<string, unknown>, enabled = true) {
+export function useTemperatureQuery<T>(
+  fn: string,
+  args: Record<string, unknown>,
+  enabled = true,
+  queryFn?: (signal: AbortSignal) => Promise<T>,
+  queryKeySuffix?: string
+) {
   const { data: session } = useSession()
   return useQuery({
     queryKey: [
@@ -21,8 +27,9 @@ export function useTemperatureQuery<T>(fn: string, args: Record<string, unknown>
       session?.user?.khoa_phong,
       fn,
       args,
+      ...(queryKeySuffix ? [queryKeySuffix] : []),
     ],
-    queryFn: ({ signal }) => callRpc<T>({ fn, args, signal }),
+    queryFn: ({ signal }) => queryFn?.(signal) ?? callRpc<T>({ fn, args, signal }),
     enabled: enabled && !!session?.user?.id,
     staleTime: 15_000,
     refetchInterval: args.p_status === "current" ? 30_000 : false,

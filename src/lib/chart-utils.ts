@@ -3,10 +3,14 @@
  * This ensures Recharts is only loaded when actually needed for chart rendering
  */
 
-type RechartsModule = typeof import('recharts')
+import type * as React from "react"
 
-export type ChartTooltipProps<TValue extends number | string, TName extends string> =
-  import('recharts').TooltipProps<TValue, TName>
+type RechartsModule = typeof import("recharts")
+
+export type ChartTooltipProps<
+  TValue extends number | string,
+  TName extends string,
+> = import("recharts").TooltipProps<TValue, TName>
 
 // Type definitions for Recharts (to avoid importing the full library)
 export interface ChartData {
@@ -15,25 +19,46 @@ export interface ChartData {
 
 export type RechartsComponents = Pick<
   RechartsModule,
-  | 'LineChart'
-  | 'BarChart'
-  | 'AreaChart'
-  | 'PieChart'
-  | 'ScatterChart'
-  | 'ResponsiveContainer'
-  | 'XAxis'
-  | 'YAxis'
-  | 'ZAxis'
-  | 'CartesianGrid'
-  | 'Tooltip'
-  | 'Legend'
-  | 'Line'
-  | 'Bar'
-  | 'Area'
-  | 'Scatter'
-  | 'Pie'
-  | 'Cell'
+  | "LineChart"
+  | "BarChart"
+  | "AreaChart"
+  | "PieChart"
+  | "ScatterChart"
+  | "ResponsiveContainer"
+  | "XAxis"
+  | "YAxis"
+  | "ZAxis"
+  | "CartesianGrid"
+  | "Tooltip"
+  | "Legend"
+  | "Line"
+  | "Bar"
+  | "Area"
+  | "Scatter"
+  | "Pie"
+  | "Cell"
 >
+
+export interface DynamicLineChartProps {
+  data: ChartData[]
+  height?: number
+  xAxisKey: string
+  xAxisProps?: Omit<React.ComponentProps<RechartsComponents["XAxis"]>, "dataKey">
+  lines: Array<{
+    key: string
+    color: string
+    name?: string
+    type?: React.ComponentProps<RechartsComponents["Line"]>["type"]
+    connectNulls?: React.ComponentProps<RechartsComponents["Line"]>["connectNulls"]
+    dot?: React.ComponentProps<RechartsComponents["Line"]>["dot"]
+    strokeDasharray?: React.ComponentProps<RechartsComponents["Line"]>["strokeDasharray"]
+  }>
+  showGrid?: boolean
+  showTooltip?: boolean
+  showLegend?: boolean
+  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
+  margin?: { top?: number; right?: number; bottom?: number; left?: number }
+}
 
 /**
  * Dynamically import Recharts library only when needed
@@ -42,7 +67,7 @@ export type RechartsComponents = Pick<
 export async function loadChartsLibrary(): Promise<RechartsComponents> {
   try {
     // Dynamic import - only loads when this function is called
-    const recharts = await import('recharts')
+    const recharts = await import("recharts")
     return {
       LineChart: recharts.LineChart,
       BarChart: recharts.BarChart,
@@ -64,8 +89,8 @@ export async function loadChartsLibrary(): Promise<RechartsComponents> {
       Cell: recharts.Cell,
     }
   } catch (error) {
-    console.error('Failed to load charts library:', error)
-    throw new Error('Không thể tải thư viện biểu đồ. Vui lòng thử lại.')
+    console.error("Failed to load charts library:", error)
+    throw new Error("Không thể tải thư viện biểu đồ. Vui lòng thử lại.")
   }
 }
 
@@ -89,24 +114,24 @@ export interface ChartErrorFallbackProps {
  * Common chart colors for consistent theming
  */
 const CHART_COLORS = {
-  primary: '#447896',
-  secondary: '#64748b',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  danger: '#ef4444',
-  info: '#3b82f6',
-  muted: '#94a3b8',
+  primary: "#447896",
+  secondary: "#64748b",
+  success: "#22c55e",
+  warning: "#f59e0b",
+  danger: "#ef4444",
+  info: "#3b82f6",
+  muted: "#94a3b8",
 } as const
 
 /**
  * Status colors for equipment charts
  */
 export const STATUS_COLORS = {
-  hoat_dong: '#22c55e',      // Green - Active
-  bao_tri: '#f59e0b',        // Orange - Maintenance  
-  hong: '#ef4444',           // Red - Broken
-  thanh_ly: '#64748b',       // Gray - Liquidated
-  cho_sua_chua: '#3b82f6',   // Blue - Waiting for repair
+  hoat_dong: "#22c55e", // Green - Active
+  bao_tri: "#f59e0b", // Orange - Maintenance
+  hong: "#ef4444", // Red - Broken
+  thanh_ly: "#64748b", // Gray - Liquidated
+  cho_sua_chua: "#3b82f6", // Blue - Waiting for repair
 } as const
 
 /**
@@ -116,15 +141,15 @@ const DEFAULT_CHART_CONFIG = {
   margin: { top: 20, right: 30, left: 20, bottom: 5 },
   animationDuration: 300,
   grid: {
-    strokeDasharray: '3 3',
-    stroke: '#e2e8f0',
+    strokeDasharray: "3 3",
+    stroke: "#e2e8f0",
   },
   tooltip: {
     contentStyle: {
-      backgroundColor: 'white',
-      border: '1px solid #e2e8f0',
-      borderRadius: '6px',
-      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+      backgroundColor: "white",
+      border: "1px solid #e2e8f0",
+      borderRadius: "6px",
+      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
     },
   },
 } as const
@@ -146,7 +171,7 @@ function formatChartNumber(value: number): string {
  * Format percentage for chart display
  */
 function formatChartPercentage(value: number, total: number): string {
-  if (total === 0) return '0%'
+  if (total === 0) return "0%"
   return `${((value / total) * 100).toFixed(1)}%`
 }
 
@@ -159,12 +184,15 @@ function processChartData<T extends Record<string, unknown>>(
   valueField: keyof T,
   labelFormatter?: (key: string) => string
 ): ChartData[] {
-  const grouped = data.reduce((acc, item) => {
-    const key = String(item[keyField])
-    const value = Number(item[valueField]) || 0
-    acc[key] = (acc[key] || 0) + value
-    return acc
-  }, {} as Record<string, number>)
+  const grouped = data.reduce(
+    (acc, item) => {
+      const key = String(item[keyField])
+      const value = Number(item[valueField]) || 0
+      acc[key] = (acc[key] || 0) + value
+      return acc
+    },
+    {} as Record<string, number>
+  )
 
   return Object.entries(grouped).map(([key, value]) => ({
     name: labelFormatter ? labelFormatter(key) : key,
@@ -177,7 +205,7 @@ function processChartData<T extends Record<string, unknown>>(
  * Common responsive container props
  */
 const RESPONSIVE_CONTAINER_PROPS = {
-  width: '100%' as const,
-  height: '100%' as const,
+  width: "100%" as const,
+  height: "100%" as const,
   debounce: 50,
 } as const

@@ -30,6 +30,8 @@ export interface TemperatureSlot {
   value_c: number | null
   captured_at: string | null
   created_at: string | null
+  note?: string | null
+  unable_reason?: { reason: string } | null
   operator_user_id: number | null
   proposal_author_user_id: number | null
   revision: number

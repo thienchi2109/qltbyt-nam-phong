@@ -8,9 +8,9 @@
 
 **Tech Stack:** Existing React/TypeScript workspace, temperature workspace RPC, current chart primitives, and Vitest.
 
-**Status:** Draft proposal; UI implementation is blocked pending explicit user approval of this layout. Branch `feat/temperature-monitoring-tm-08`, base `af3a4cce10b4ad64a8a4ffe596926108226b056d`.
+**Status:** Owner approved this exact layout, 200-observation chart windows, 50-row table pages, and the narrow route-private composition exception on 2026-10-18. Branch `feat/temperature-monitoring-tm-08`, base `af3a4cce10b4ad64a8a4ffe596926108226b056d`.
 
-**Implementation gate:** All runtime, DTO/type, hook, page, chart, and test edits in Tasks 1–3 are deferred until the owner explicitly approves this design, including the proposed route-private composition exception or inline fallback. The tasks below describe work after that gate only.
+**Implementation gate:** Released by the owner's explicit approval above. Keep future UI changes within this layout and task scope.
 
 ---
 
@@ -24,9 +24,9 @@
 - Keep empty and unable-to-measure slots as gaps; never coerce null to zero or connect a line across a gap. Break lines at missing/unable states and chart-window edges.
 - Show operator as `#<operator_user_id>`; do not add name lookup or one detail request per point. Use the existing slot sheet from an explicit `Xem chi tiết` button.
 - Reuse `src/components/dynamic-chart.tsx` and preserve its lazy Recharts loader; do not eagerly import Recharts into the workspace. Reuse the chart-plus-table accessibility precedent in `src/app/(app)/reports/components/equipment-search-report-tab.tsx`. No new RPC, database migration, dependency, or server aggregation is in scope.
-- A dedicated route-private `TemperatureMonitoringTrendView.tsx` is proposed as a narrow exception to the five compositions currently allowed by the domain contract. It is not approved yet; if declined, keep the view inline while `use-temperature-logbook.ts` remains untouched at 449 lines and no file exceeds 450.
+- The owner approved one task-scoped route-private `TemperatureMonitoringTrendView.tsx` as a narrow exception to the five compositions currently allowed by the domain contract. Add no generic/shared UI composition; keep `use-temperature-logbook.ts` untouched at 449 lines and no file above 450.
 
-## Proposed layout — approval required before UI implementation
+## Approved layout
 
 Desktop — inside the existing `Lịch sử` section after its filters:
 
@@ -62,25 +62,23 @@ Observation table → its own labelled horizontal-scroll region
 
 **Files:** `src/app/(app)/temperature-monitoring/TemperatureMonitoringPageClient.tsx`; `src/app/(app)/temperature-monitoring/TemperatureMonitoringFilters.tsx`; `src/hooks/use-temperature-workspace-filters.ts`; `src/types/temperature-monitoring.ts`; proposed mapper `src/lib/temperature-trend.ts` only if the page/hook would otherwise grow; proposed test `src/hooks/__tests__/use-temperature-trend.test.ts`. Do not grow `src/hooks/use-temperature-logbook.ts` (449 lines).
 
-- [ ] Add failing cases for a point on cursor page 2, later-page failure, mixed empty/recorded chronological ordering by resolved x (including overnight slots), stable equal-time ties, changed-threshold boundary, approved amendment with linked deviation, and unable-state gaps. Verify server shift/status filters remain intact.
-- [ ] Run the focused test and confirm the failures exercise those contracts.
-- [ ] Make the smallest mapping/query change. Drain all pages at the selected filters, sort after collection, keep all point metadata together, and return an error if a page fails. Add `note` to the DTO only if the current RPC row already supplies it.
-- [ ] Rerun the focused test; confirm all cases pass and no N+1 detail calls were introduced.
+- [x] Add cursor-page, later-error, abort, repeated-cursor, chronological/equal-time ordering, cache identity/filter, cache-shape coexistence, and stale-equipment regression cases.
+- [x] Implement full-page collection with the existing RPC/query boundary; add only the note and unable-reason fields already returned by that RPC. No per-point requests.
+- [x] Independently rerun all 9 data tests successfully. Worker observed an initial RED during development but saved no RED log; do not treat that as independently retained evidence.
 
-### Task 2: Implement the proposed chart and accessible view (after UI approval)
+### Task 2: Implement the approved chart and accessible view
 
-**Files:** `src/app/(app)/temperature-monitoring/page.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringPageClient.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringFilters.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringSlotSheet.tsx`, `src/components/dynamic-chart.tsx`, `src/lib/chart-utils.ts`; proposed route-private `src/app/(app)/temperature-monitoring/TemperatureMonitoringTrendView.tsx` only after its exception is approved; proposed test `src/app/(app)/temperature-monitoring/__tests__/TemperatureMonitoringTrendView.test.tsx`. Reuse `src/components/__tests__/dynamic-bar-chart.tooltip.test.tsx` and `src/app/(app)/reports/components/__tests__/equipment-search-report-tab.test.tsx` as precedent.
+**Files:** `src/app/(app)/temperature-monitoring/page.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringPageClient.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringFilters.tsx`, `src/app/(app)/temperature-monitoring/TemperatureMonitoringSlotSheet.tsx`, `src/components/dynamic-chart.tsx`, `src/lib/chart-utils.ts`, approved route-private `src/app/(app)/temperature-monitoring/TemperatureMonitoringTrendView.tsx`, and `src/app/(app)/temperature-monitoring/__tests__/TemperatureMonitoringTrendView.test.tsx`. Reuse `src/components/__tests__/dynamic-bar-chart.tooltip.test.tsx` and `src/app/(app)/reports/components/__tests__/equipment-search-report-tab.test.tsx` as precedent.
 
-- [ ] Add failing component cases for loading/empty/all-unable/error/retry states; scope change cancelling old data; exact equipment prompt; bounded 200-point windows with outside-window anomaly count; 50-row full table and anomaly shortcut; touch and keyboard actions; table/tooltip metadata; and gap/threshold break behavior.
-- [ ] Run the focused test and confirm each scenario fails for the missing behavior.
-- [ ] Add the responsive chart/table using existing primitives: straight effective-value line, discrete snapshot-bound segments, no downsampling, complete paginated table, explicit detail buttons, and deviation markers independent of current effective range.
-- [ ] Rerun the focused component test and confirm the accessible table is complete at mobile and desktop widths.
+- [x] Add 7 component cases for 200-observation windows/outside anomaly counts, full-table pagination, gaps/threshold changes, point metadata/timezone, touch/focus/Enter/Space/Escape, scope reset, equipment validation, error/retry, unable/unrecorded rows, and the named empty table.
+- [x] Implement the responsive chart/table using existing primitives, straight effective-value segments, snapshot-bound breaks, explicit detail actions, and persistent abnormal markers.
+- [x] Independently pass the view, data, workspace, and shared-wrapper/consumer regressions. Mobile behavior is supported by the semantic table/scroll-region structure; no real-browser or authenticated E2E validation was performed.
 
 ### Task 3: Verify and hand off
 
-- [ ] Run, in order: `node scripts/npm-run.js run format:check`; `node scripts/npm-run.js run verify:no-explicit-any`; `node scripts/npm-run.js run verify:dedupe`; `node scripts/npm-run.js run typecheck`; focused temperature-monitoring tests; `node scripts/npm-run.js run react-doctor`.
-- [ ] Run the `code-deduplication` skill before commit because chart mapping/view behavior reuses existing seams; document the reuse result.
-- [ ] Confirm no SQL, generated RPC types, new dependency, or unrelated UI changed. Record exact commit and verification results in TM-08.
+- [x] Run, in order: `node scripts/npm-run.js run format:check`; `node scripts/npm-run.js run verify:no-explicit-any`; `node scripts/npm-run.js run verify:dedupe`; `node scripts/npm-run.js run typecheck`; 11 focused test files (57/57 PASS); `node scripts/npm-run.js run react-doctor` (93/100, one non-blocking page-complexity warning).
+- [x] Apply `code-deduplication`: reuse the scoped temperature query, existing workspace filters/RPC, lazy chart wrapper, and slot sheet. Keep domain-specific cursor/threshold mapping in the existing trend module; share its table/detail values instead of duplicating metadata rendering. Graph results were backstopped with source search; stale GitNexus results were not used as proof of zero impact.
+- [x] Confirm no SQL, generated RPC types, dependency, or unrelated UI behavior changed. Separate reviewer found no blockers after the lead's type/test corrections. Local evidence and remaining limits are recorded in TM-08.
 
 ## Acceptance
 
@@ -88,4 +86,4 @@ Observation table → its own labelled horizontal-scroll region
 - Observations are chronological and use effective amended values with original capture context and snapshot limits.
 - Null states remain gaps; deviation linkage stays visible after a corrected value returns in range.
 - Chart interactions expose point details by keyboard and touch, and the accessible table contains every observation without depending on color.
-- No UI implementation begins until the user approves this layout and the route-private composition decision.
+- Keep implementation within the owner-approved layout and route-private composition exception; request renewed approval only if that design scope must change.

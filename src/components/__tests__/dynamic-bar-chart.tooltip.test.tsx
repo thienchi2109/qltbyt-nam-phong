@@ -5,6 +5,11 @@ import type { ChartTooltipProps } from "@/lib/chart-utils"
 
 import { DynamicBarChart, DynamicLineChart, DynamicPieChart } from "@/components/dynamic-chart"
 
+const runtime = vi.hoisted(() => ({
+  lineProps: [] as Record<string, unknown>[],
+  xAxisProps: undefined as Record<string, unknown> | undefined,
+}))
+
 vi.mock("@/components/chart-fallbacks", () => ({
   ChartLoadingFallback: () => <div data-testid="chart-loading" />,
   ChartErrorFallback: () => <div data-testid="chart-error" />,
@@ -49,13 +54,19 @@ vi.mock("@/lib/chart-utils", async (importOriginal) => {
         ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         BarChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         Bar: () => <div />,
-        XAxis: () => <div />,
+        XAxis: (props: Record<string, unknown>) => {
+          runtime.xAxisProps = props
+          return <div />
+        },
         YAxis: () => <div />,
         CartesianGrid: () => <div />,
         Tooltip,
         Legend: () => <div />,
         LineChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-        Line: () => <div />,
+        Line: (props: Record<string, unknown>) => {
+          runtime.lineProps.push(props)
+          return <div />
+        },
         AreaChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
         Area: () => <div />,
         ScatterChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -84,7 +95,7 @@ describe("DynamicBarChart tooltip integration", () => {
         xAxisKey="name"
         bars={[{ key: "value", color: "#0088FE" }]}
         customTooltip={MemoTooltip}
-      />,
+      />
     )
 
     await waitFor(() => {
@@ -94,9 +105,7 @@ describe("DynamicBarChart tooltip integration", () => {
   })
 
   it("passes custom line chart tooltip components to Recharts as a React element", async () => {
-    function LineTooltip({
-      payload,
-    }: ChartTooltipProps<number, string>) {
+    function LineTooltip({ payload }: ChartTooltipProps<number, string>) {
       const name = payload?.[0]?.payload?.name
       return <div data-testid="line-tooltip">{name}</div>
     }
@@ -107,7 +116,7 @@ describe("DynamicBarChart tooltip integration", () => {
         xAxisKey="name"
         lines={[{ key: "value", color: "#0088FE" }]}
         customTooltip={LineTooltip}
-      />,
+      />
     )
 
     await waitFor(() => {
@@ -116,10 +125,47 @@ describe("DynamicBarChart tooltip integration", () => {
     expect(screen.queryByTestId("default-tooltip")).not.toBeInTheDocument()
   })
 
+  it("preserves line defaults and forwards trend-specific straight, gap, dot, and time-axis props", async () => {
+    runtime.lineProps = []
+    runtime.xAxisProps = undefined
+    const pointMarker = <circle />
+
+    render(
+      <DynamicLineChart
+        data={[{ time: 1, value: 3 }]}
+        xAxisKey="time"
+        xAxisProps={{
+          type: "number",
+          scale: "time",
+          domain: ["dataMin", "dataMax"],
+          tickFormatter: (value) => String(value),
+        }}
+        lines={[
+          { key: "default", color: "#64748b" },
+          { key: "trend", color: "#0f766e", type: "linear", connectNulls: false, dot: pointMarker },
+        ]}
+      />
+    )
+
+    await waitFor(() => expect(runtime.lineProps).toHaveLength(2))
+    expect(runtime.xAxisProps).toMatchObject({
+      dataKey: "time",
+      type: "number",
+      scale: "time",
+      domain: ["dataMin", "dataMax"],
+    })
+    expect(runtime.lineProps[0]).toMatchObject({ type: "monotone", dataKey: "default" })
+    expect(runtime.lineProps[0]?.connectNulls).toBeUndefined()
+    expect(runtime.lineProps[1]).toMatchObject({
+      type: "linear",
+      connectNulls: false,
+      dataKey: "trend",
+      dot: pointMarker,
+    })
+  })
+
   it("passes custom pie chart tooltip components to Recharts as a React element", async () => {
-    function PieTooltip({
-      payload,
-    }: ChartTooltipProps<number, string>) {
+    function PieTooltip({ payload }: ChartTooltipProps<number, string>) {
       const name = payload?.[0]?.payload?.name
       return <div data-testid="pie-tooltip">{name}</div>
     }
@@ -131,7 +177,7 @@ describe("DynamicBarChart tooltip integration", () => {
         nameKey="name"
         colors={["#0088FE"]}
         customTooltip={PieTooltip}
-      />,
+      />
     )
 
     await waitFor(() => {

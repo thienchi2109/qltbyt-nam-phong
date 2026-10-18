@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   loadChartsLibrary,
   type ChartData,
+  type DynamicLineChartProps,
   type ChartTooltipProps,
   type RechartsComponents,
 } from "@/lib/chart-utils"
@@ -21,12 +22,7 @@ interface DynamicChartProps {
  * Dynamic Chart Component
  * Loads Recharts library only when needed and provides loading/error states
  */
-function DynamicChart({
-  children,
-  height = 300,
-  fallbackHeight,
-  onError,
-}: DynamicChartProps) {
+function DynamicChart({ children, height = 300, fallbackHeight, onError }: DynamicChartProps) {
   const [components, setComponents] = React.useState<RechartsComponents | null>(null)
   const [error, setError] = React.useState<Error | null>(null)
 
@@ -37,7 +33,7 @@ function DynamicChart({
       const chartComponents = await loadChartsLibrary()
       setComponents(chartComponents)
     } catch (err) {
-      const error = err instanceof Error ? err : new Error('Unknown error loading charts')
+      const error = err instanceof Error ? err : new Error("Unknown error loading charts")
       setError(error)
       onError?.(error)
     }
@@ -53,11 +49,7 @@ function DynamicChart({
 
   if (error) {
     return (
-      <ChartErrorFallback 
-        error={error} 
-        onRetry={loadCharts}
-        height={fallbackHeight || height}
-      />
+      <ChartErrorFallback error={error} onRetry={loadCharts} height={fallbackHeight || height} />
     )
   }
 
@@ -72,39 +64,19 @@ function DynamicChart({
  * Specific chart components with dynamic loading
  */
 
-interface LineChartProps {
-  data: ChartData[]
-  height?: number
-  xAxisKey: string
-  lines: Array<{
-    key: string
-    color: string
-    name?: string
-  }>
-  showGrid?: boolean
-  showTooltip?: boolean
-  showLegend?: boolean
-  customTooltip?: React.ElementType<ChartTooltipProps<number, string>>
-  margin?: {
-    top?: number
-    right?: number
-    bottom?: number
-    left?: number
-  }
-}
-
 /** Renders a lazy-loaded line chart. */
 export function DynamicLineChart({
   data,
   height = 300,
   xAxisKey,
+  xAxisProps,
   lines,
   showGrid = true,
   showTooltip = true,
   showLegend = true,
   customTooltip,
   margin,
-}: LineChartProps) {
+}: DynamicLineChartProps) {
   const CustomTooltipContent = customTooltip
 
   return (
@@ -123,20 +95,22 @@ export function DynamicLineChart({
             }
           >
             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
-            <XAxis dataKey={xAxisKey} />
+            <XAxis dataKey={xAxisKey} {...xAxisProps} />
             <YAxis />
-            {showTooltip && (
-              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
-            )}
+            {showTooltip &&
+              (CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />)}
             {showLegend && <Legend />}
-            {lines.map(line => (
+            {lines.map((line) => (
               <Line
                 key={line.key}
-                type="monotone"
+                type={line.type ?? "monotone"}
                 dataKey={line.key}
                 stroke={line.color}
                 name={line.name || line.key}
                 strokeWidth={2}
+                connectNulls={line.connectNulls}
+                dot={line.dot}
+                strokeDasharray={line.strokeDasharray}
               />
             ))}
           </LineChart>
@@ -171,8 +145,8 @@ interface BarChartBaseProps {
 }
 
 type BarChartProps =
-  | (BarChartBaseProps & { layout?: 'horizontal'; yAxisKey?: string })
-  | (BarChartBaseProps & { layout: 'vertical'; yAxisKey: string })
+  | (BarChartBaseProps & { layout?: "horizontal"; yAxisKey?: string })
+  | (BarChartBaseProps & { layout: "vertical"; yAxisKey: string })
 
 /** Renders a lazy-loaded bar chart. */
 export function DynamicBarChart({
@@ -180,7 +154,7 @@ export function DynamicBarChart({
   height = 300,
   xAxisKey,
   yAxisKey,
-  layout = 'horizontal',
+  layout = "horizontal",
   bars,
   showGrid = true,
   showTooltip = true,
@@ -189,27 +163,39 @@ export function DynamicBarChart({
   customTooltip,
   margin,
 }: BarChartProps) {
-  const isVertical = layout === 'vertical'
+  const isVertical = layout === "vertical"
   const verticalYAxisKey = yAxisKey
 
   if (isVertical && !verticalYAxisKey) {
-    throw new Error('DynamicBarChart requires yAxisKey when layout is vertical')
+    throw new Error("DynamicBarChart requires yAxisKey when layout is vertical")
   }
   const CustomTooltipContent = customTooltip
 
   return (
     <DynamicChart height={height}>
-      {({ BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
+      {({
+        BarChart,
+        Bar,
+        Cell,
+        XAxis,
+        YAxis,
+        CartesianGrid,
+        Tooltip,
+        Legend,
+        ResponsiveContainer,
+      }) => (
         <ResponsiveContainer width="100%" height={height}>
           <BarChart
-            layout={isVertical ? 'vertical' : undefined}
+            layout={isVertical ? "vertical" : undefined}
             data={data}
-            margin={margin || {
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: xAxisAngle !== 0 ? 100 : 5
-            }}
+            margin={
+              margin || {
+                top: 20,
+                right: 30,
+                left: 20,
+                bottom: xAxisAngle !== 0 ? 100 : 5,
+              }
+            }
           >
             {showGrid && <CartesianGrid strokeDasharray="3 3" />}
             {isVertical ? (
@@ -229,11 +215,10 @@ export function DynamicBarChart({
                 <YAxis />
               </>
             )}
-            {showTooltip && (
-              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
-            )}
+            {showTooltip &&
+              (CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />)}
             {showLegend && <Legend />}
-            {bars.map(bar => (
+            {bars.map((bar) => (
               <Bar
                 key={bar.key}
                 dataKey={bar.key}
@@ -247,7 +232,10 @@ export function DynamicBarChart({
 
                       return data.map((entry) => {
                         const fill = entry[cellColorKey]
-                        const rawCellKey = entry[xAxisKey] ?? (verticalYAxisKey ? entry[verticalYAxisKey] : null) ?? fill
+                        const rawCellKey =
+                          entry[xAxisKey] ??
+                          (verticalYAxisKey ? entry[verticalYAxisKey] : null) ??
+                          fill
 
                         return typeof fill === "string" ? (
                           <Cell key={`${bar.key}-${String(rawCellKey)}`} fill={fill} />
@@ -291,7 +279,7 @@ export function DynamicScatterChart<TData extends object>({
   yAxisKey,
   zAxisKey,
   scatterName,
-  fill = 'hsl(var(--chart-1))',
+  fill = "hsl(var(--chart-1))",
   showGrid = true,
   showTooltip = true,
   showLegend = true,
@@ -299,7 +287,17 @@ export function DynamicScatterChart<TData extends object>({
 }: ScatterChartProps<TData>) {
   return (
     <DynamicChart height={height}>
-      {({ ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer }) => (
+      {({
+        ScatterChart,
+        Scatter,
+        XAxis,
+        YAxis,
+        ZAxis,
+        CartesianGrid,
+        Tooltip,
+        Legend,
+        ResponsiveContainer,
+      }) => (
         <ResponsiveContainer width="100%" height={height}>
           <ScatterChart
             margin={
@@ -315,7 +313,7 @@ export function DynamicScatterChart<TData extends object>({
             <XAxis dataKey={xAxisKey} type="number" />
             <YAxis dataKey={yAxisKey} type="number" />
             {zAxisKey ? <ZAxis dataKey={zAxisKey} range={[100, 320]} /> : null}
-            {showTooltip && <Tooltip cursor={{ strokeDasharray: '3 3' }} />}
+            {showTooltip && <Tooltip cursor={{ strokeDasharray: "3 3" }} />}
             {showLegend && <Legend />}
             <Scatter data={data} fill={fill} name={scatterName || yAxisKey} />
           </ScatterChart>
@@ -356,7 +354,7 @@ export function DynamicPieChart({
   const CustomTooltipContent = customTooltip
   const pieSliceCells = React.useMemo(
     () => buildPieSliceCells(data, nameKey, colors, colorKey),
-    [colorKey, colors, data, nameKey],
+    [colorKey, colors, data, nameKey]
   )
 
   return (
@@ -372,17 +370,19 @@ export function DynamicPieChart({
               cy="50%"
               innerRadius={innerRadius}
               outerRadius={outerRadius}
-              label={showLabels ? ({ name, value, percent }: { name: string; value: number; percent: number }) => 
-                `${name}: ${value} (${(percent * 100).toFixed(0)}%)` : false
+              label={
+                showLabels
+                  ? ({ name, value, percent }: { name: string; value: number; percent: number }) =>
+                      `${name}: ${value} (${(percent * 100).toFixed(0)}%)`
+                  : false
               }
             >
               {pieSliceCells.map((cell) => (
                 <Cell key={cell.key} fill={cell.fill} />
               ))}
             </Pie>
-            {showTooltip && (
-              CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />
-            )}
+            {showTooltip &&
+              (CustomTooltipContent ? <Tooltip content={<CustomTooltipContent />} /> : <Tooltip />)}
           </PieChart>
         </ResponsiveContainer>
       )}
@@ -425,7 +425,7 @@ export function DynamicAreaChart({
             <YAxis />
             {showTooltip && <Tooltip />}
             {showLegend && <Legend />}
-            {areas.map(area => (
+            {areas.map((area) => (
               <Area
                 key={area.key}
                 type="monotone"

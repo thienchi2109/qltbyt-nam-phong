@@ -75,21 +75,19 @@ export function useTemperatureWorkspaceFilters(
   const [cursor, setCursor] = useState<Record<string, unknown> | null>(null)
   const validRange =
     range.from <= range.to && (Date.parse(range.to) - Date.parse(range.from)) / 86400000 < 90
-  const query = useTemperatureWorkspace(
-    workspaceArguments({
-      tab,
-      range,
-      entryDate,
-      equipment,
-      historyDeviations,
-      status,
-      historyKind,
-      deviationStatus,
-      shift,
-      cursor,
-    }),
-    tab === "current" || validRange
-  )
+  const workspaceArgs = workspaceArguments({
+    tab,
+    range,
+    entryDate,
+    equipment,
+    historyDeviations,
+    status,
+    historyKind,
+    deviationStatus,
+    shift,
+    cursor,
+  })
+  const query = useTemperatureWorkspace(workspaceArgs, tab === "current" || validRange)
   const rows = query.data?.items ?? []
   const setPreset = (days: string) => {
     if (days !== "custom")
@@ -119,6 +117,7 @@ export function useTemperatureWorkspaceFilters(
     setCursor,
     query,
     rows,
+    workspaceArgs,
     validRange,
     setPreset,
     historyFilters: [
