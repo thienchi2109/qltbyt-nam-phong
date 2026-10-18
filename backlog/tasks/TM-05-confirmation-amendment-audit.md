@@ -1,6 +1,7 @@
 # TM-05 — Confirmation, amendment and audit history
 
 - Status: In Progress
+- Integration: Merged into local `main` on 2026-10-18; not pushed. Implementation and independent review complete; formal DB gate certification remains incomplete.
 - Milestone: Temperature Monitoring / Core workflow
 - Depends on: TM-04
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -113,6 +114,13 @@ Owner approved the three recommendations on 2026-10-18; lead approved the techni
 - The independent wrapper verified clone deletion with count 0. Lead then separately queried Oracle `pg_database` for all `tm05_%` names: count 0, exit 0. No candidate was applied to the restored baseline or live database.
 - Clarification of the approved amendment contract: a reason-only unable-to-unable correction is allowed through the same controlled immutable proposal/approval workflow. It retains NULL value and explicit unable classification; it never fabricates a numeric measurement or overwrites the original reason. No additional implementation was required for this existing value-or-reason contract.
 - Implementation and independent review are complete locally. Formal **static: INCOMPLETE** and **baseline-forward: INCOMPLETE** remain separate outstanding certification lanes; Status stays **In Progress**. No aggregate gate PASS, Done status or live-write permission follows from review/runtime success. No push, PR, merge, UI implementation, TM-06 lifecycle work, live write or persistent-baseline mutation was performed.
+
+## Local integration (2026-10-18)
+
+- User authorized local merge without pushing. Fast-forwarded `main` from `864ce95493f7b2027184b48d1c11ade07eeb47b8` to reviewed handoff `b3554a081120044d805dff108608252d1f995b97`; no conflict or implementation change was introduced.
+- Post-merge verification: RPC whitelist **60/60 PASS**, `git diff --check` PASS, and merged `main` exactly matched the reviewed handoff before this documentation-only update.
+- Implementation and independent review are integrated locally. Formal **static: INCOMPLETE** and **baseline-forward: INCOMPLETE** remain outstanding; Status stays **In Progress**, without aggregate gate PASS or live-write authorization.
+- No push, PR, live DB write, restored-baseline mutation or additional task implementation. No new disposable clone was created during integration.
 
 ## Evidence and execution boundaries
 
