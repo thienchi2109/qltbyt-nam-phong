@@ -25,6 +25,7 @@ BEGIN
     RAISE EXCEPTION 'TM-03 RPC grants are not fail-closed';
   END IF;
   v_def := pg_get_functiondef('public.temperature_monitoring_slots_list(date,date,text[],bigint,text,integer,boolean)'::regprocedure);
+  v_def := v_def || pg_get_functiondef('public._temperature_monitoring_slot_rows(date,date,text[],bigint,boolean)'::regprocedure);
   IF position('monitoring date range cannot exceed 90 days' IN v_def) = 0
      OR position('invalid cursor' IN v_def) = 0
      OR position('Chưa ghi' IN v_def) = 0
@@ -36,7 +37,7 @@ BEGIN
   IF position('missing role claim' IN v_def) = 0
      OR position('_normalize_department_scope' IN v_def) = 0
      OR position('try_parse_iso_date' IN v_def) = 0
-     OR position('SELECT e.equipment_id' IN v_def) = 0
+     OR position('FROM projected e' IN v_def) = 0
      OR position('p_shift_codes IS NULL' IN v_def) = 0
      OR position('sp.is_active' IN v_def) = 0
      OR position('cs.start_local' IN v_def) = 0

@@ -1,4 +1,5 @@
 export interface Equipment {
+  temperature_monitoring_enabled?: boolean
   id: number
   ma_thiet_bi: string
   ten_thiet_bi: string

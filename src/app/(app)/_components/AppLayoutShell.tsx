@@ -105,10 +105,17 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
   const { isSidebarOpen, isChangePasswordOpen, isAssistantOpen, isSigningOut } = uiState
   const deferDropdownAction = useDeferredDropdownAction()
   const branding = useTenantBranding()
-  const { counts: notificationCounts } = useAppNotificationCounts({
-    enabled: !isExpertShell && status === "authenticated" && shouldFetchData,
-    facilityId: selectedFacilityId,
-  })
+  const { counts: notificationCounts, temperature: temperatureNotifications } =
+    useAppNotificationCounts({
+      enabled: !isExpertShell && status === "authenticated" && shouldFetchData,
+      facilityId: selectedFacilityId,
+      identityScope: [
+        session?.user?.id,
+        session?.user?.role,
+        session?.user?.don_vi,
+        session?.user?.khoa_phong,
+      ].join("|"),
+    })
 
   const navItems = React.useMemo(() => {
     return getAppNavigationItems(user.role)
@@ -261,6 +268,7 @@ function AppLayoutShellContent({ children, user, isExpertShell }: AppLayoutShell
                       repairCount={notificationCounts.repair}
                       transferCount={notificationCounts.transfer}
                       maintenanceCount={notificationCounts.maintenance}
+                      temperature={temperatureNotifications}
                     />
                   </>
                 )}

@@ -200,6 +200,15 @@ describe("useAppNotificationCounts", () => {
         "Đã duyệt": 2,
       })
 
+    const temperature = {
+      pending_review: 21,
+      open_deviations: 1,
+      items: [],
+      from_date: "2026-06-01",
+      to_date: "2026-06-30",
+    }
+    mocks.callRpc.mockResolvedValueOnce(temperature)
+
     const queryClient = new QueryClient({
       defaultOptions: {
         queries: {
@@ -227,6 +236,16 @@ describe("useAppNotificationCounts", () => {
       })
     )
 
-    expect(mocks.callRpc).toHaveBeenCalledTimes(2)
+    expect(firstHook.result.current.temperature).toEqual(temperature)
+    expect(secondHook.result.current.temperature).toEqual(temperature)
+    expect(mocks.callRpc.mock.calls.map(([call]) => call.fn)).toEqual([
+      "header_notifications_summary",
+      "maintenance_plan_status_counts",
+      "temperature_monitoring_notification_summary",
+    ])
+    expect(mocks.callRpc.mock.calls[2][0]).toEqual({
+      fn: "temperature_monitoring_notification_summary",
+      signal: expect.any(AbortSignal),
+    })
   })
 })

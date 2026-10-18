@@ -18,7 +18,7 @@ def run(command):
         return result.stdout
 
     database = query('SELECT current_database();').strip().splitlines()[-1]
-    assert database.startswith(('tm04_', 'tm05_', 'tm06_')), 'Only an explicitly disposable tm04_*/tm05_*/tm06_* database is permitted'
+    assert database.startswith(('tm04_', 'tm05_', 'tm06_', 'tm07_')), 'Only an explicitly disposable tm04_*/tm05_*/tm06_* database is permitted'
     fixture = json.loads(query("""
 WITH t AS (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
 e AS (INSERT INTO public.thiet_bi(ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai)
@@ -36,7 +36,7 @@ VALUES ({fixture['equipment']},tstzrange('2026-07-01 00:00Z','2026-07-10 00:00Z'
     scope = f"SELECT set_config('request.jwt.claims','{claims}',false);\n"
 
     def reading(date, value):
-        return f"SELECT public.temperature_monitoring_measurement_create({fixture['equipment']},'{date}','{fixture['shift']}',{value},NULL,'{date} 23:00Z');\n"
+        return f"SELECT public.temperature_monitoring_measurement_create({fixture['equipment']},'{date}','{fixture['shift']}',{value},NULL,'{date} 16:00Z');\n"
 
     def json_result(output):
         return [json.loads(line) for line in output.splitlines() if line.startswith('{') and 'outcome' in line][-1]

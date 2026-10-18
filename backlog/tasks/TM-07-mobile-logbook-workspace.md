@@ -366,7 +366,8 @@ The owner approved the linked layout with the revised third mobile card action.
 The app has no mobile hamburger/sheet menu; none is proposed. No top-of-page mobile
 logbook button will be added. Fixed footer stays unchanged. Exact execution-plan
 and backend/composition checkpoints below remain with the lead, not the owner.
-No runtime/SQL implementation has been made.
+Runtime/SQL implementation and its evidence are recorded below; configuration
+replacement remains the blocking contract decision.
 
 ## Revised-entry execution checkpoint
 
@@ -395,3 +396,66 @@ No runtime/SQL implementation has been made.
   implementation checkpoint. Do not force a 450-line fit, add domain components
   or silently broaden SQL scope. Original 11 migrations remain unchanged; new
   approved forward migrations get separate inventory entries.
+
+## Runtime checkpoint — 2026-10-18
+
+Implementation is in progress on `feat/temperature-monitoring-tm-07`, based on
+`8394991ac37339039f302d00edba75f7d9c22d36`. Six forward migration files are recorded
+separately in the migration inventory; the original eleven are unchanged.
+
+- Valid RED: mobile entry button absent; workspace RPC absent (`42883`) on a
+  disposable clone. Initial SQL fixture FK failure was corrected before recording
+  the valid RED.
+- Disposable GREEN: workspace behavior, six prior SQL regression suites and all
+  three real lock-wait concurrency suites passed. Each run independently verified
+  clone absence after cleanup (`count=0`). These runs added schema privileges and
+  the exact historical date helper only inside the disposable clone; they are not
+  formal baseline-forward evidence.
+- Frontend focused checks: 107 tests passed, including save-observation-before-
+  corrective-action, preserving the saved reading after corrective failure,
+  stable retry request IDs, ambiguous current intervals, dated notifications,
+  three-RPC shared notification cache behavior, same-row equipment entry,
+  equipment-zone conversion, staff selection across pages, legal deviation
+  transitions, dirty/pending close protection and focus restoration/validation.
+- Isolated Chromium row check at 320/375 px, with idle and active usage labels,
+  compiled the real project CSS and consumed rendered card markup; all three
+  buttons measured 44–49 px high without row wrapping or horizontal overflow.
+  Usage behavior was stubbed; this is not authenticated full-app E2E evidence.
+- Ordered verification: format, explicit-any, diff-only dedupe and typecheck
+  passed. React Doctor's staged-file scan includes all 22 changed source/test
+  files: 90/100, with eight warnings (four control-flow complexity, two large
+  components, two async-form preventDefault). An earlier untracked-file scan
+  omitted new sources and is not the final score.
+- Independent fixed-base review identified and drove corrections for history
+  kind/lifecycle filters, IANA configuration times, reader responsibility,
+  independent-review explanations, actual reassignment reasons, original versus
+  effective readings, dirty/pending close guards, loading/skeleton feedback,
+  field validation/focus, empty causes and dated queue links.
+- Additional SQL RED (`/tmp/tm07-history-red.log`, missing lifecycle contract
+  `42883`) became GREEN. Latest `/tmp/tm07-queues-green.log` passed the new
+  behavior assertions and six regressions; cleanup independently read back zero
+  clones. `/tmp/tm07-races2.log` contains the three passing real race suites.
+  Later changes affect read/filter paths only; the original race evidence is
+  retained separately.
+- Composition: one new page/PageClient; existing UI primitives only. State and
+  mutations live in non-UI hooks, with no JSX helpers or new domain components.
+  Pure wall-time resolution, form validation/mapping and reading-detail mapping
+  reuse the existing module library. Existing deferred dropdown actions, shared
+  notification cache and Equipment list projection are reused.
+
+### Blocking configuration contract checkpoint
+
+`20261017100000_temperature_monitoring_configuration.sql` defines nonoverlapping
+`tstzrange` versions and an UPDATE/DELETE immutability trigger, while upsert inserts
+new periods directly. Existing `[start,infinity)` prevents every later update or
+disable. The current contract forbids mutating a version with readings. The worker
+reported the precise conflict to lead and has not modified that policy. Possible
+forward choices are narrowly audited end closure or an append-only supersession
+ledger; either requires an explicit contract decision. Configuration completion
+must not be claimed before that decision and its regression evidence.
+
+Formal `static`: **INCOMPLETE** (120-second attempt timed out; startup only in
+`/tmp/tm07-static.log`, no remaining executor process). Formal
+`baseline-forward`: **INCOMPLETE**. Owner-deferred harness repair remains deferred;
+disposable tests do not certify either formal lane.
+No live write, persistent baseline mutation, deployment, push or merge occurred.

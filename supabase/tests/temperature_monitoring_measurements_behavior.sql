@@ -46,11 +46,11 @@ BEGIN
   claims := jsonb_build_object('app_role','to_qltb','user_id',actor,'don_vi',tenant,'khoa_phong',' TM04 Fixture ');
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
 
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,2,NULL,'2026-07-03 00:00Z','lower edge');
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,2,NULL,'2026-07-02 16:00Z','lower edge');
   IF result->>'outcome' <> 'created' OR result->>'slot_status' <> 'Đã ghi' THEN RAISE EXCEPTION 'inclusive lower edge: %',result; END IF;
   original := result->'reading';
   IF original->>'source' <> 'manual' OR (original->>'operator_user_id')::BIGINT <> actor
-    OR original->>'note' <> 'lower edge' OR (original->>'captured_at')::TIMESTAMPTZ <> '2026-07-03 00:00Z'
+    OR original->>'note' <> 'lower edge' OR (original->>'captured_at')::TIMESTAMPTZ <> '2026-07-02 16:00Z'
     OR (original->>'configuration_version_id')::UUID <> version
     OR (original->>'lower_c')::NUMERIC <> 2 OR (original->>'upper_c')::NUMERIC <> 8
     OR original->'snapshot'->>'display_timezone' <> 'Asia/Ho_Chi_Minh'
@@ -58,36 +58,36 @@ BEGIN
     OR (original->'snapshot'->>'slot_end')::TIMESTAMPTZ <= (original->'snapshot'->>'slot_start')::TIMESTAMPTZ THEN
     RAISE EXCEPTION 'trusted snapshot/observation fields missing: %',original;
   END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9,NULL,'2026-07-03 00:01Z');
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9,NULL,'2026-07-02 16:01Z');
   IF result->>'outcome' <> 'conflict' OR result->'reading' <> original OR result->>'next_action' <> 'amendment' THEN
     RAISE EXCEPTION 'duplicate did not preserve canonical reading: %',result;
   END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,8);
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,8,NULL,'2026-07-03 16:00Z');
   IF result->>'slot_status' <> 'Đã ghi' THEN RAISE EXCEPTION 'inclusive upper edge failed'; END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,8.1);
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,8.1,NULL,'2026-07-04 16:00Z');
   IF result->>'slot_status' <> 'Chờ xác nhận' OR (SELECT count(*) FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') <> 1 THEN
     RAISE EXCEPTION 'breach event missing: %',result;
   END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-05',shift,NULL,'Thiết bị đang vệ sinh');
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-05',shift,NULL,'Thiết bị đang vệ sinh','2026-07-05 16:00Z');
   IF result->>'slot_status' <> 'Chờ xác nhận' OR result->'reading'->'unable_reason'->>'reason' <> 'Thiết bị đang vệ sinh' THEN
     RAISE EXCEPTION 'unable-to-measure reason failed: %',result;
   END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-07',shift,1.9);
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-07',shift,1.9,NULL,'2026-07-07 16:00Z');
   IF result->>'slot_status' <> 'Chờ xác nhận' OR NOT EXISTS (
     SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID
       AND event_type='deviation_created' AND after_state->>'direction'='below'
   ) THEN RAISE EXCEPTION 'lower threshold breach event failed'; END IF;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-08',shift,2,NULL,'2026-07-09 00:00Z');
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-08',shift,2,NULL,'2026-07-08 20:00Z');
   IF result->>'slot_status' <> 'Đã ghi' OR (result->'reading'->>'configuration_version_id')::UUID <> version THEN
     RAISE EXCEPTION 'capture time incorrectly selected mid-shift policy: %',result;
   END IF;
   BEGIN
-    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-06',shift,-200.0);
+    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-06',shift,-200.0,NULL,'2026-07-06 16:00Z');
     IF result->>'slot_status' <> 'Chờ xác nhận' OR (result->'reading'->>'value_c')::NUMERIC <> -200.0
       OR NOT EXISTS (SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') THEN
       RAISE EXCEPTION 'physical lower endpoint did not persist with device-threshold breach: %',result;
     END IF;
-    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-09',shift,300.0);
+    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-09',shift,300.0,NULL,'2026-07-09 16:00Z');
     IF result->>'slot_status' <> 'Chờ xác nhận' OR (result->'reading'->>'value_c')::NUMERIC <> 300.0
       OR NOT EXISTS (SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') THEN
       RAISE EXCEPTION 'physical upper endpoint did not persist with device-threshold breach: %',result;
@@ -113,7 +113,7 @@ BEGIN
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
   FOREACH role_name IN ARRAY ARRAY['technician','qltb_khoa','user','global','admin'] LOOP
     PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('app_role',role_name))::TEXT,TRUE);
-    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5);
+    result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5,NULL,'2026-07-02 16:00Z');
     IF result->>'outcome' <> 'conflict' THEN RAISE EXCEPTION 'approved writer role failed: %',role_name; END IF;
   END LOOP;
   PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('don_vi',tenant+999999))::TEXT,TRUE);
@@ -159,7 +159,7 @@ BEGIN
     RAISE EXCEPTION 'saved slot leaked across tenant';
   END IF;
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5);
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5,NULL,'2026-07-02 16:00Z');
   IF result->>'outcome' <> 'conflict' THEN RAISE EXCEPTION 'authorized historical conflict failed'; END IF;
   IF (SELECT count(*) FROM public.temperature_readings WHERE equipment_id=equipment) <> 6
     OR (SELECT count(*) FROM public.temperature_monitoring_reading_events e JOIN public.temperature_readings r ON r.id=e.reading_id WHERE r.equipment_id=equipment) <> 8 THEN
@@ -180,7 +180,7 @@ BEGIN
     RAISE EXCEPTION 'reading/event RLS is disabled';
   END IF;
   SET LOCAL ROLE authenticated;
-  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5);
+  result := public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,5,NULL,'2026-07-02 16:00Z');
   IF result->>'outcome' <> 'conflict' THEN RAISE EXCEPTION 'authenticated RPC execution failed'; END IF;
   PERFORM pg_temp.tm04_expect_error('SELECT id FROM public.temperature_readings LIMIT 1','42501');
   PERFORM pg_temp.tm04_expect_error('INSERT INTO public.temperature_monitoring_reading_events DEFAULT VALUES','42501');
@@ -207,7 +207,7 @@ DO $$
 DECLARE result JSONB;
 BEGIN
   BEGIN
-    result := public.temperature_monitoring_measurement_create(current_setting('tm04.equipment')::BIGINT,'2026-07-06',current_setting('tm04.shift')::UUID,9);
+    result := public.temperature_monitoring_measurement_create(current_setting('tm04.equipment')::BIGINT,'2026-07-06',current_setting('tm04.shift')::UUID,9,NULL,'2026-07-06 17:00Z');
     RAISE EXCEPTION 'audit failure unexpectedly succeeded';
   EXCEPTION WHEN SQLSTATE 'P0001' THEN
     IF SQLERRM <> 'temperature measurement could not be saved' THEN RAISE; END IF;

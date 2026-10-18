@@ -107,6 +107,15 @@ export function EquipmentActionsMenu({
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenuLabel>Hành động</DropdownMenuLabel>
         <DropdownMenuItem onSelect={handleShowDetails}>Xem chi tiết</DropdownMenuItem>
+        {equipment.temperature_monitoring_enabled && (
+          <DropdownMenuItem
+            onSelect={() =>
+              deferDropdownAction(() => push(`/temperature-monitoring?equipment=${equipment.id}`))
+            }
+          >
+            Sổ nhiệt độ
+          </DropdownMenuItem>
+        )}
         {!isCurrentUserUsing && (
           <DropdownMenuItem
             disabled={startUsageDisabled}

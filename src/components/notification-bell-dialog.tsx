@@ -13,9 +13,11 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { TemperatureNotifications } from "@/types/temperature-monitoring"
 import { AppNotificationBadge } from "@/components/app-notification-badge"
 
 interface NotificationBellDialogProps {
+  temperature?: TemperatureNotifications | null
   allRepairRequests?: Array<{ trang_thai?: string }>
   allTransferRequests?: Array<{ trang_thai?: string }>
   // Optional direct counts (preferred). When provided, component won't re-count from arrays
@@ -26,6 +28,7 @@ interface NotificationBellDialogProps {
 
 /** Displays current alerts and the notification settings link. */
 export function NotificationBellDialog({
+  temperature,
   allRepairRequests,
   allTransferRequests,
   repairCount: repairCountProp,
@@ -54,7 +57,12 @@ export function NotificationBellDialog({
 
   const maintenanceCount = typeof maintenanceCountProp === "number" ? maintenanceCountProp : 0
 
-  const totalAlertsCount = repairCount + transferCount + maintenanceCount
+  const totalAlertsCount =
+    repairCount +
+    transferCount +
+    maintenanceCount +
+    (temperature?.pending_review ?? 0) +
+    (temperature?.open_deviations ?? 0)
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -89,6 +97,45 @@ export function NotificationBellDialog({
             </div>
           ) : (
             <div className="space-y-6">
+              {temperature &&
+                (temperature.pending_review > 0 || temperature.open_deviations > 0) && (
+                  <section>
+                    <h3 className="font-semibold">
+                      Sổ nhiệt độ · {temperature.from_date} – {temperature.to_date}
+                    </h3>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      {[
+                        ["review_queue", "Chờ xác nhận", temperature.pending_review],
+                        ["open_deviations", "Sai lệch mở", temperature.open_deviations],
+                      ].map(([kind, label, count]) => (
+                        <Link
+                          key={kind}
+                          className="min-h-11 p-3 underline"
+                          onClick={handleDetailClick}
+                          href={`/temperature-monitoring?kind=${kind}&from=${temperature.from_date}&to=${temperature.to_date}`}
+                        >
+                          {label}: {count}
+                        </Link>
+                      ))}
+                    </div>
+                    {temperature.items.map((item) => (
+                      <Button
+                        key={`${item.reading_id}-${item.kind}`}
+                        variant="link"
+                        className="h-auto w-full justify-start whitespace-normal text-left"
+                        asChild
+                      >
+                        <Link
+                          href={`/temperature-monitoring?equipment=${item.equipment_id}&date=${item.monitoring_date}&reading=${item.reading_id}`}
+                          onClick={handleDetailClick}
+                        >
+                          {item.equipment_name} · {item.monitoring_date} ·{" "}
+                          {item.kind === "review" ? "Xét duyệt" : "Xử lý sai lệch"}
+                        </Link>
+                      </Button>
+                    ))}
+                  </section>
+                )}
               {repairCount > 0 && (
                 <section>
                   <h3 className="text-md font-semibold mb-2 flex items-center">

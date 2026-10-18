@@ -112,6 +112,35 @@ describe("MobileEquipmentListItem", () => {
     mocks.catalog.mockReturnValue(readyStatusCatalog)
   })
 
+  it("opens the scoped enabled equipment logbook from the same action row", async () => {
+    const user = userEvent.setup()
+    const onShowDetails = vi.fn()
+    const enabled = { ...equipment, temperature_monitoring_enabled: true }
+    render(
+      <LinkedRequestProvider>
+        <MobileEquipmentListItem
+          equipment={enabled}
+          onShowDetails={onShowDetails}
+          statusCatalog={readyStatusCatalog}
+        />
+      </LinkedRequestProvider>
+    )
+    const entry = screen.getByRole("button", { name: "Sổ nhiệt độ" })
+    expect(entry.closest("fieldset")).toBe(
+      screen.getByRole("group", { name: "Hành động cho Máy X-quang" })
+    )
+    expect(screen.getByRole("button", { name: "Báo sửa chữa" })).toHaveTextContent("Sửa chữa")
+    await user.click(entry)
+    expect(mocks.push).toHaveBeenCalledWith("/temperature-monitoring?equipment=42")
+    expect(onShowDetails).not.toHaveBeenCalled()
+  })
+
+  it("keeps the original action layout when monitoring is not enabled", () => {
+    renderStatus("Hoạt động")
+    expect(screen.queryByRole("button", { name: "Sổ nhiệt độ" })).not.toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Báo sửa chữa" })).toHaveTextContent("Báo sửa chữa")
+  })
+
   it("wires one owner catalog read to real mobile rows and guards their repair action", () => {
     render(<OwnerHarness />)
     const repair = screen.queryByRole("button", { name: "Báo sửa chữa" })

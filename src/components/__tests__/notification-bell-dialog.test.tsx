@@ -37,6 +37,44 @@ describe("NotificationBellDialog", () => {
     })
   })
 
+  it("shows dated temperature counts and opens the exact equipment/reading", async () => {
+    const user = userEvent.setup()
+    render(
+      <NotificationBellDialog
+        temperature={{
+          pending_review: 25,
+          open_deviations: 2,
+          from_date: "2026-06-01",
+          to_date: "2026-06-30",
+          items: [
+            {
+              equipment_id: 42,
+              equipment_name: "Tủ lạnh",
+              monitoring_date: "2026-06-30",
+              reading_id: "reading42",
+              kind: "review",
+            },
+          ],
+        }}
+      />
+    )
+    expect(screen.getByText("27")).toBeInTheDocument()
+    await user.click(screen.getByRole("button", { name: /mở thông báo/i }))
+    expect(screen.getByText("Sổ nhiệt độ · 2026-06-01 – 2026-06-30")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Chờ xác nhận:/ })).toHaveAttribute(
+      "href",
+      "/temperature-monitoring?kind=review_queue&from=2026-06-01&to=2026-06-30"
+    )
+    expect(screen.getByRole("link", { name: /Sai lệch mở:/ })).toHaveAttribute(
+      "href",
+      "/temperature-monitoring?kind=open_deviations&from=2026-06-01&to=2026-06-30"
+    )
+    expect(screen.getByRole("link", { name: /Tủ lạnh/ })).toHaveAttribute(
+      "href",
+      "/temperature-monitoring?equipment=42&date=2026-06-30&reading=reading42"
+    )
+  })
+
   it("includes maintenance count in the total badge and dialog content", async () => {
     const user = userEvent.setup()
 

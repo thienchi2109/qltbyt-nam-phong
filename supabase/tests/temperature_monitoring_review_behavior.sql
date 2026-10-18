@@ -55,7 +55,7 @@ BEGIN
   VALUES(equipment,tstzrange('2026-07-01Z','2026-07-10Z','[)'),2,8,profile,'tm05-fixture',actor,'TM05 fixture');
   claims:=jsonb_build_object('app_role','to_qltb','user_id',actor,'don_vi',tenant,'khoa_phong','TM05 Fixture');
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9,NULL,'2026-07-02 16:00Z');
   reading_id:=(result->'reading'->>'id')::UUID;
   result:=public.temperature_monitoring_reading_get(reading_id);
   IF result->>'slot_status'<>'Chờ xác nhận' OR result->>'review_required'<>'true'
@@ -64,9 +64,9 @@ BEGIN
   END IF;
   original:=result->'reading';
   prior:=result-'reading'-'pending_amendment';
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,2,NULL,'2026-07-04Z','original note');
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,2,NULL,'2026-07-03 16:00Z','original note');
   normal_id:=(result->'reading'->>'id')::UUID;
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,NULL,'not measurable');
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,NULL,'not measurable','2026-07-04 16:00Z');
   unable_id:=(result->'reading'->>'id')::UUID;
 
   -- A pending original review may be amended; a rejection restores it exactly.
@@ -117,7 +117,7 @@ BEGIN
     OR NOT EXISTS(SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=normal_id AND event_type='deviation_created'
       AND after_state->>'direction'='above' AND (after_state->'reading'->>'value_c')::NUMERIC=8.1 AND (after_state->'reading'->>'upper_c')::NUMERIC=8) THEN RAISE EXCEPTION 'corrected breach handoff'; END IF;
   IF (SELECT status FROM public.temperature_monitoring_slots_list('2026-07-03','2026-07-03',ARRAY['dem'],equipment,NULL,10,FALSE))<>'Bất thường' THEN RAISE EXCEPTION 'saved-slot effective projection'; END IF;
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,7);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,7,NULL,'2026-07-03 16:00Z');
   IF result->>'outcome'<>'conflict' OR result->>'slot_status'<>'Bất thường' OR result->'effective'->>'value_c'<>'8.1' THEN RAISE EXCEPTION 'duplicate effective projection'; END IF;
   result:=public.temperature_monitoring_reading_review(normal_id,(state->>'revision')::BIGINT,'reject_amendment','stale',proposal);
   IF result->>'outcome'<>'conflict' THEN RAISE EXCEPTION 'stale decision not conflict'; END IF;

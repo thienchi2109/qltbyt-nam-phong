@@ -15,7 +15,7 @@ def run(command):
         assert result.returncode == 0, result.stderr[-1800:]
         return result.stdout.strip()
 
-    assert query('SELECT current_database();').startswith(('tm05_', 'tm06_')), 'disposable tm05_*/tm06_* database required'
+    assert query('SELECT current_database();').startswith(('tm05_', 'tm06_', 'tm07_')), 'disposable tm05_*/tm06_* database required'
     fixture = json.loads(query("""
 WITH t AS (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
 e AS (INSERT INTO public.thiet_bi(ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai)
@@ -40,7 +40,7 @@ VALUES({fixture['equipment']},tstzrange('2026-07-01Z','2026-07-10Z','[)'),2,8,'{
 
     readings = []
     for day, value in [(2, 5), (3, 9), (4, 5), (5, 5)]:
-        readings.append(result(query(scope(operator) + f"SELECT public.temperature_monitoring_measurement_create({fixture['equipment']},'2026-07-0{day}','{fixture['shift']}',{value});")))
+        readings.append(result(query(scope(operator) + f"SELECT public.temperature_monitoring_measurement_create({fixture['equipment']},'2026-07-0{day}','{fixture['shift']}',{value},NULL,'2026-07-0{day} 16:00Z');")))
     originals = [item['reading'] for item in readings]
 
     def amend(index, revision=0):

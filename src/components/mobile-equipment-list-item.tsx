@@ -33,6 +33,7 @@ interface MobileEquipmentActionButtonsProps {
   onCreateRepairRequest: (equipmentId: number) => void
   onViewRepairDetails: (equipmentId: number) => void
   onShowDetails: (equipment: Equipment) => void
+  onOpenLogbook: (equipmentId: number) => void
 }
 
 /**
@@ -163,6 +164,7 @@ export function MobileEquipmentListItem({
             startDisabled={startDisabled}
             onCreateRepairRequest={handleCreateRepairRequest}
             onViewRepairDetails={handleViewRepairDetails}
+            onOpenLogbook={(id) => push(`/temperature-monitoring?equipment=${id}`)}
             onShowDetails={onShowDetails}
           />
         </>
@@ -186,89 +188,59 @@ function MobileEquipmentActionButtons({
   onCreateRepairRequest,
   onViewRepairDetails,
   onShowDetails,
+  onOpenLogbook,
 }: MobileEquipmentActionButtonsProps) {
-  const buttonBase =
-    "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150"
-  const ghostBtn = `${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`
-  const handleCreateRepairRequestClick = () => {
-    onCreateRepairRequest(equipment.id)
+  const compact = equipment.temperature_monitoring_enabled === true
+  const repair = status === "Chờ sửa chữa"
+  const details = outOfService || status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định"
+  let actionLabel = compact ? "Sửa chữa" : "Báo sửa chữa"
+  let ActionIcon = Wrench
+  const onPrimaryAction = () => {
+    if (repair) onViewRepairDetails(equipment.id)
+    else if (details) onShowDetails(equipment)
+    else onCreateRepairRequest(equipment.id)
   }
-
-  const handleViewRepairDetailsClick = () => {
-    onViewRepairDetails(equipment.id)
+  if (repair) {
+    actionLabel = "Chi tiết sự cố"
+    ActionIcon = AlertTriangle
+  } else if (details) {
+    actionLabel = "Xem chi tiết"
+    ActionIcon = Eye
   }
-
-  // Ngưng sử dụng → "Xem chi tiết" only
-  if (outOfService) {
-    return (
-      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
-        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
-        <button type="button" className={ghostBtn} onClick={() => onShowDetails(equipment)}>
-          <Eye className="size-3.5" />
-          Xem chi tiết
-        </button>
-      </fieldset>
-    )
-  }
-
-  // Chờ sửa chữa → "Chi tiết sự cố" (red) + disabled play
-  if (status === "Chờ sửa chữa") {
-    return (
-      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
-        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
-        <button
-          type="button"
-          className={`${buttonBase} flex-[2] bg-destructive text-destructive-foreground hover:opacity-90`}
-          onClick={handleViewRepairDetailsClick}
-        >
-          <AlertTriangle className="size-3.5" />
-          Chi tiết sự cố
-        </button>
-        <MobileUsageActions
-          equipment={equipment}
-          startDisabled={startDisabled}
-          className="flex-1 h-auto py-2 text-[11px]"
-        />
-      </fieldset>
-    )
-  }
-
-  // Chờ bảo trì / Chờ hiệu chuẩn → "Xem chi tiết" + "Sử dụng"
-  if (status === "Chờ bảo trì" || status === "Chờ hiệu chuẩn/kiểm định") {
-    return (
-      <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
-        <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
-        <button type="button" className={ghostBtn} onClick={() => onShowDetails(equipment)}>
-          <Eye className="size-3.5" />
-          Xem chi tiết
-        </button>
-        <MobileUsageActions
-          equipment={equipment}
-          startDisabled={startDisabled}
-          className="flex-1 h-auto py-2 text-[11px]"
-        />
-      </fieldset>
-    )
-  }
-
-  // Default (Hoạt động) → "Báo sửa chữa" + "Sử dụng"
+  const buttonBase = `flex-1 flex min-w-0 items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-bold transition-all active:scale-95 duration-150 ${compact ? "min-h-11 px-1 whitespace-normal" : ""}`
   return (
     <fieldset data-mobile-equipment-actions className="flex min-w-0 flex-1 gap-2 border-0 p-0">
       <legend className="sr-only">{`Hành động cho ${equipment.ten_thiet_bi}`}</legend>
       <button
         type="button"
-        className={ghostBtn}
-        onClick={handleCreateRepairRequestClick}
-        disabled={startDisabled}
+        className={`${buttonBase} ${repair ? `${!compact ? "flex-[2] " : ""}bg-destructive text-destructive-foreground hover:opacity-90` : "bg-muted/60 hover:bg-muted text-muted-foreground"}`}
+        aria-label={!repair && !details ? "Báo sửa chữa" : undefined}
+        disabled={!repair && !details && startDisabled}
+        onClick={onPrimaryAction}
       >
-        <Wrench className="size-3.5" />
-        Báo sửa chữa
+        {!compact && <ActionIcon className="size-3.5" />}
+        {actionLabel}
       </button>
-      <MobileUsageActions
-        equipment={equipment}
-        startDisabled={startDisabled}
-        className="flex-1 h-auto py-2 text-[11px]"
-      />
+      {!outOfService && (
+        <MobileUsageActions
+          equipment={equipment}
+          startDisabled={startDisabled}
+          className={
+            compact
+              ? "flex-auto min-w-0 min-h-11 h-auto px-1 py-2 text-[11px] whitespace-normal [&_svg]:hidden [&_.animate-pulse]:hidden"
+              : "flex-1 h-auto py-2 text-[11px]"
+          }
+        />
+      )}
+      {compact && (
+        <button
+          type="button"
+          className={`${buttonBase} bg-muted/60 hover:bg-muted text-muted-foreground`}
+          onClick={() => onOpenLogbook(equipment.id)}
+        >
+          Sổ nhiệt độ
+        </button>
+      )}
     </fieldset>
   )
 }

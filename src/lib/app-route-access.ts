@@ -26,6 +26,7 @@ export const APP_ROUTE_ACCESS_RULES = [
   { pathPrefix: "/device-quota", policy: "deviceQuota" },
   { pathPrefix: "/dashboard", policy: "authenticated" },
   { pathPrefix: "/notifications", policy: "authenticated" },
+  { pathPrefix: "/temperature-monitoring", policy: "authenticated" },
   { pathPrefix: "/equipment", policy: "authenticated" },
   { pathPrefix: "/forms", policy: "authenticated" },
   { pathPrefix: "/maintenance", policy: "authenticated" },

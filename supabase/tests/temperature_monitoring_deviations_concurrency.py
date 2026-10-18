@@ -14,7 +14,7 @@ def run(command):
         assert result.returncode == 0, result.stderr[-1800:]
         return result.stdout.strip()
 
-    assert query('SELECT current_database();').startswith('tm06_'), 'disposable tm06_* required'
+    assert query('SELECT current_database();').startswith(('tm06_', 'tm07_')), 'disposable tm06_* required'
     fixture = json.loads(query("""
 WITH t AS (SELECT id FROM public.don_vi ORDER BY id LIMIT 1),
 e AS (INSERT INTO public.thiet_bi(ma_thiet_bi,ten_thiet_bi,don_vi,khoa_phong_quan_ly,tinh_trang_hien_tai)
@@ -70,7 +70,7 @@ VALUES({equipment},tstzrange('2026-07-01Z','2026-07-20Z','[)'),2,8,'{fixture['pr
                     process.kill()
                     process.wait(timeout=5)
 
-    create = f"SELECT public.temperature_monitoring_measurement_create({equipment},'2026-07-02','{shift}',9);"
+    create = f"SELECT public.temperature_monitoring_measurement_create({equipment},'2026-07-02','{shift}',9,NULL,'2026-07-02 16:00Z');"
     a, b, error = race(create, create)
     assert a['outcome']=='created' and b['outcome']=='conflict', (a,b,error)
     reading = a['reading']['id']
@@ -91,7 +91,7 @@ VALUES({equipment},tstzrange('2026-07-01Z','2026-07-20Z','[)'),2,8,'{fixture['pr
     assert a['outcome']=='updated' and b['outcome']=='conflict', (a,b,error)
     print('PASS real lock wait different actions -> stale revision conflict', flush=True)
 
-    normal = result(query(scope()+f"SELECT public.temperature_monitoring_measurement_create({equipment},'2026-07-03','{shift}',5);"))['reading']['id']
+    normal = result(query(scope()+f"SELECT public.temperature_monitoring_measurement_create({equipment},'2026-07-03','{shift}',5,NULL,'2026-07-03 16:00Z');"))['reading']['id']
     amendment = result(query(scope(author, 'user')+f"SELECT public.temperature_monitoring_amendment_create('{normal}',0,10,NULL,'new breach');"))
     proposal, revision = amendment['pending_amendment']['id'], amendment['revision']
     approve = scope(reviewer)+f"SELECT public.temperature_monitoring_reading_review('{normal}',{revision},'approve_amendment','checked','{proposal}');"

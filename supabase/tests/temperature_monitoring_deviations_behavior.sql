@@ -68,7 +68,7 @@ BEGIN
   VALUES('tm06-owner-'||gen_random_uuid(),'fixture','TM06 owner','user','TM06 Fixture',tenant,TRUE) RETURNING id INTO owner_id;
   claims:=jsonb_build_object('app_role','user','user_id',actor,'don_vi',tenant,'khoa_phong','TM06 Fixture');
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9,NULL,'2026-07-02 16:00Z');
   IF result->>'outcome'<>'created' THEN RAISE EXCEPTION 'scoped user must record a temperature: %',result; END IF;
   reading_id:=(result->'reading'->>'id')::UUID;
   original:=result->'reading';
@@ -76,7 +76,7 @@ BEGIN
   case_id:=(result->'deviation'->>'id')::UUID;
   IF case_id IS NULL OR result->'deviation'->>'severity'<>'Nhẹ' OR result->'deviation'->>'status'<>'Mở'
     OR result->'deviation'->'triggering_snapshot'->'reading'<>original THEN RAISE EXCEPTION 'breach case/snapshot invalid: %',result; END IF;
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-02',shift,9,NULL,'2026-07-02 16:00Z');
   IF result->>'outcome'<>'conflict' OR (SELECT count(*) FROM public.temperature_monitoring_deviations d WHERE d.reading_id=tm06.reading_id)<>1 THEN
     RAISE EXCEPTION 'retry duplicated breach';
   END IF;
@@ -128,7 +128,7 @@ BEGIN
   IF result->'reading_state'->>'slot_status'<>'Đã ghi' OR result->'deviation'->'triggering_snapshot'->'reading'<>original
     OR result->'deviation'->>'status'<>'Đã đóng' THEN RAISE EXCEPTION 'approved correction changed breach snapshot/lifecycle'; END IF;
   PERFORM set_config('request.jwt.claims',claims::TEXT,TRUE);
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,5);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,5,NULL,'2026-07-03 16:00Z');
   normal_id:=(result->'reading'->>'id')::UUID;
   result:=public.temperature_monitoring_deviation_get(NULL,normal_id);
   IF result->'deviation'<>'null'::JSONB THEN RAISE EXCEPTION 'in range created case'; END IF;
@@ -171,7 +171,7 @@ BEGIN
   PERFORM pg_temp.tm06_expect_error(format('SELECT pg_temp.tm06_action(%L,2,%L,%L)',second_case,'link_repair',jsonb_build_object('repair_request_id',other_repair)),'22023');
   result:=pg_temp.tm06_action(second_case,2,'link_repair',jsonb_build_object('repair_request_id',repair_id));
   PERFORM pg_temp.tm06_expect_error(format('UPDATE public.yeu_cau_sua_chua SET thiet_bi_id=%s WHERE id=%s',other_equipment,repair_id),'23514');
-  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,11);
+  result:=public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,11,NULL,'2026-07-04 16:00Z');
   result:=public.temperature_monitoring_deviation_get(NULL,(result->'reading'->>'id')::UUID);
   -- Immediate action is independently mandatory, even when a result is supplied.
   prior:=result->'deviation';
