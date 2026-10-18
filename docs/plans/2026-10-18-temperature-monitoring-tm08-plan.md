@@ -76,7 +76,7 @@ Observation table → its own labelled horizontal-scroll region
 
 ### Task 3: Verify and hand off
 
-- [x] Run, in order: `node scripts/npm-run.js run format:check`; `node scripts/npm-run.js run verify:no-explicit-any`; `node scripts/npm-run.js run verify:dedupe`; `node scripts/npm-run.js run typecheck`; 11 focused test files (57/57 PASS); `node scripts/npm-run.js run react-doctor` (93/100, one non-blocking page-complexity warning).
+- [x] Re-run, in order, on implementation commit `c9de07de8d7d86cb67bf33a44038c6b151b78301`: `node scripts/npm-run.js run format:check`; `node scripts/npm-run.js run verify:no-explicit-any`; `node scripts/npm-run.js run verify:dedupe`; `node scripts/npm-run.js run typecheck`; 11 focused test files (57/57 PASS); `node scripts/npm-run.js run react-doctor` (91/100, nine non-blocking warnings). The earlier 93/100 scan omitted untracked new files and is superseded.
 - [x] Apply `code-deduplication`: reuse the scoped temperature query, existing workspace filters/RPC, lazy chart wrapper, and slot sheet. Keep domain-specific cursor/threshold mapping in the existing trend module; share its table/detail values instead of duplicating metadata rendering. Graph results were backstopped with source search; stale GitNexus results were not used as proof of zero impact.
 - [x] Confirm no SQL, generated RPC types, dependency, or unrelated UI behavior changed. Separate reviewer found no blockers after the lead's type/test corrections. Local evidence and remaining limits are recorded in TM-08.
 

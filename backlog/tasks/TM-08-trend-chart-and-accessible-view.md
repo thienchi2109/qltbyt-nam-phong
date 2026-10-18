@@ -50,9 +50,10 @@ dependency, RPC, or SQL change is authorized by this approval.
 ## Independent completion evidence
 
 - Lead ran the required ordered chain on the final source: formatting, explicit-any, diff-only dedupe, and TypeScript checks PASS; **11 Vitest files / 57 tests PASS**. Coverage includes temperature history, cursor/cache isolation, point/table interactions, the shared chart wrapper, assistant charts, and maintenance/inventory consumers.
-- React Doctor: **93/100**, one non-blocking `no-high-complexity-react-function` warning at `TemperatureMonitoringPageClient.tsx`. Track further page simplification here; no additional component exception was requested for a scanner warning.
+- Exact-commit React Doctor: **91/100**, nine warnings: high complexity (page and trend), large trend component, reset-all-state and four state-adjustment findings on the scope-reset effect, and a redundant explicit region role. Separate reviewer classifies these as non-blocking; the owner requested a fresh read-only worker assessment before deciding whether to fix them. The earlier 93/100 pre-commit scan omitted untracked files and is superseded.
 - Separate `post_implementation_reviewer` reviewed the complete working-tree diff (including new files) against `af3a4cce10b4ad64a8a4ffe596926108226b056d`, then checked the lead's final corrections: no remaining correctness/spec blockers.
 - Semantic reuse: scoped query/cache invalidation, workspace RPC/filters, lazy `DynamicLineChart`, and slot sheet are reused. Table and selected-point metadata share one mapper. No new dependency, migration, RPC, or per-point lookup.
 - All changed source files are at most 450 formatted lines: trend view 450, shared chart 444. The existing 449-line logbook hook is unchanged.
-- Verified source fingerprint: `fb0831350d690437e5d2570dacd886629f3d21a0b134b302a8684295c8abb9f7` (SHA-256 over sorted changed code paths and bytes). Local commit identity is recorded below after hooks complete.
+- Implementation commit: `c9de07de8d7d86cb67bf33a44038c6b151b78301`, with hooks enabled and passing. The lead re-ran the full ordered verification chain on this exact commit.
+- Verified source fingerprint: `0d6d9937861d0ce21ea552311d059086c6ceb18b71973e00d21412c16d75b93c` (SHA-256 over sorted changed code paths and bytes, including required JSDoc added before commit).
 - Limits: no real-browser/authenticated E2E, deployment, merge, push, or live DB write. TM-07's formal DB gates remain `INCOMPLETE`; this SQL-free task does not clear that debt. TM-09 is outside this task.
