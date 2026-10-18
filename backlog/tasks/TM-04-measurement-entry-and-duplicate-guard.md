@@ -1,6 +1,7 @@
 # TM-04 — Measurement entry and duplicate guard
 
 - Status: In Progress
+- Integration: Merged into local `main` on 2026-10-18; not pushed. Implementation and independent review complete; formal DB gate certification remains incomplete.
 - Milestone: Temperature Monitoring / Core workflow
 - Depends on: TM-02, TM-03
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -94,3 +95,10 @@ Checkpoint: survey/plan only. No migration, application code, runtime fixture, c
 - Lead's independent no-explicit-any, diff-only dedupe, typecheck, 56/56 whitelist tests and React Doctor 100/100 passed on `a3b0272f`; TypeScript is unchanged in `648bd587`. The final review correction changed SQL/tests/docs only, so the full TypeScript chain was not repeated for that correction.
 - Formal **static: INCOMPLETE** (bounded local/CLI attempts produced no digest-bearing report); **exact-commit baseline-forward: INCOMPLETE** (not certified). Disposable behavior/concurrency PASS cannot substitute for either lane. Aggregate migration gate PASS and migration work DONE are not claimed; Status stays **In Progress** until the required gate evidence is available. Known harness issues have not been waived or repaired in TM-04, and the user's acknowledgement does not authorize a live bypass/write.
 - Handoff is committed locally with a clean worktree. No push, PR, merge, live DB write, persistent-baseline write or additional task implementation was performed. Follow-up is limited to formal gate certification and the user's later integration/live decisions.
+
+## Local integration (2026-10-18)
+
+- User authorized merging TM-04 into local `main` without pushing. Fast-forwarded `main` from `5da5c6d67912d564a3f51b6357fd87ee1a61f156` to reviewed handoff `d4e47e3ebb8a7a6bdea86bbe647b3e4c7ab30231`; no conflict or implementation change was introduced.
+- Implementation and independent review are complete and integrated locally. Formal static and exact-commit baseline-forward remain **INCOMPLETE**; Status stays **In Progress**, with no aggregate DB gate PASS or live-apply authorization implied by this merge.
+- Post-merge verification: RPC whitelist regression **56/56 PASS**, `git diff --check` PASS, and merged `main` exactly matched the reviewed handoff before this documentation-only update.
+- No push, PR, live DB write, restored-baseline mutation or additional task implementation. Prior disposable cleanup evidence remains count 0; no new clone was created for this integration.
