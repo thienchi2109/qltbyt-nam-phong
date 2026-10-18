@@ -1,15 +1,16 @@
 # TM-07 layout proposal
 
-Status: **PROPOSED — awaiting owner layout approval**. Q1–Q9 shared understanding
-is confirmed. This document illustrates the approved behavior; the canonical
-business contract remains `temperature-monitoring-domain-contract.md`. No runtime
-UI/SQL implementation is authorized by this proposal.
+Status: **APPROVED by owner — revised mobile card entry**. Q1–Q9 shared
+understanding is confirmed. This document illustrates approved behavior; the
+canonical business contract remains `temperature-monitoring-domain-contract.md`.
+Runtime/SQL implementation awaits the lead's execution-plan checkpoint.
 
 ## Tóm tắt để duyệt bố cục
 
-1. Mobile có nút **Sổ nhiệt độ** rộng toàn hàng ngay đầu trang Thiết bị; người có
-   role `user` cũng thấy và dùng được. Hiện ứng dụng không có menu hamburger
-   mobile; giữ nguyên thanh điều hướng dưới và thêm mục sidebar trên desktop.
+1. Mobile thêm **Sổ nhiệt độ** thành hành động thứ ba trong hàng nút cuối thẻ
+   thiết bị đã bật theo dõi và đúng phạm vi quyền: **Sửa chữa · Sử dụng · Sổ nhiệt
+   độ**. Role `user` cũng được ghi nhận nhiệt độ theo phạm vi quyền, không chỉ người phụ trách. Không thêm nút đầu
+   trang, menu hamburger hoặc đổi footer mobile.
 2. Hai tab **Ghi theo ca** và **Lịch sử** độc lập; lịch sử mặc định 30 ngày,
    chọn nhanh 7/30/90 ngày và luôn hiển thị khoảng đang xem.
 3. Chạm thẻ thiết bị để mở một sheet: dưới màn hình trên mobile, bên phải trên
@@ -18,35 +19,46 @@ UI/SQL implementation is authorized by this proposal.
 4. Xem/đề xuất điều chỉnh, xác nhận và xử lý sai lệch trong cùng sheet theo quyền;
    cấu hình nhiệt độ tối thiểu nằm trong hồ sơ thiết bị dành cho quản lý.
 5. Chỉ ghép component hiện có, giữ giao diện ứng dụng; ưu tiên màn hình 320/375 px,
-   nút chính cao ít nhất 44 px, cuộn được khi mở bàn phím. Bố cục này đang chờ
-   duyệt; chưa triển khai frontend hoặc SQL.
+   nút chính cao ít nhất 44 px, cuộn được khi mở bàn phím. Bố cục này đã
+   được chủ dự án duyệt; chưa triển khai frontend hoặc SQL.
 
 ## 1. Reach the workspace on mobile
 
 - Desktop: add `Sổ nhiệt độ` to existing `APP_NAV_ITEMS`
   (`src/components/app-navigation.tsx:39`), subject to existing route-access rules.
-- Mobile: show a prominent existing `Button` + Next `Link`, labelled
-  **Sổ nhiệt độ**, directly above `EquipmentToolbar` in
-  `src/app/(app)/equipment/_components/EquipmentPageClient.tsx:254`. Full width at
-  320/375px, at least 44 px high; available to role `user` independently of
-  `canCreateEquipment`. Existing footer **Thiết bị** → this visible button → sổ.
+- Mobile: extend existing `MobileEquipmentActionButtons` in
+  `src/components/mobile-equipment-list-item.tsx:181`. An enabled, authorized
+  equipment card has a third existing Button **Sổ nhiệt độ** in the same bottom
+  row as repair/use. Eligibility comes from the existing equipment-list RPC's
+  batched projection, never per-card RPCs. Role `user` is included independently
+  of `canCreateEquipment` and responsibility assignment.
+- At 320/375 px retain all three labels and >= 44 px height. Shorten visible
+  **Báo sửa chữa** to **Sửa chữa** only in the compact three-action layout; keep
+  its full accessible name. Reduce decorative icons/horizontal padding, allow a
+  natural two-line label, and give temperature extra width if needed. Never clip,
+  hide meaning behind icons, scroll the row horizontally or wrap buttons onto
+  another row. Preserve active-use status and each status branch's actions.
+  Non-enabled/unauthorized cards retain their existing action layout.
+- Desktop: use existing `EquipmentActionsMenu` in
+  `src/components/equipment/equipment-actions-menu.tsx:38` for the same eligible
+  **Sổ nhiệt độ** action; existing desktop navigation item may remain.
 - Do not rely on a mobile hamburger: current `AppLayoutShell.tsx:183` hides the
   sidebar until `lg`, and its menu toggle at 222 is `hidden lg:flex`. There is no
   mobile navigation sheet today. No new hamburger or fixed-footer change.
-- Use approved `/temperature-monitoring` destination and existing authenticated
-  layout/route-access boundary. Carry the current explicit facility/equipment
-  selection only when present and valid; server scope remains authoritative.
+- Use `/temperature-monitoring?equipment=ID` and the existing authenticated
+  layout/route-access boundary. Preselect the clicked equipment and its current
+  effective slot; history remains accessible. Carry explicit facility only when
+  present and valid; server scope remains authoritative.
   Existing router/search-param conventions suffice; no new URL-state framework.
 
 ```text
-Equipment · 320/375px
-┌──────────────────────────────┐
-│ [ Sổ nhiệt độ             → ]│ ← visible full-width Button
-│ Danh mục thiết bị             │
-│ [Tìm thiết bị…] [Bộ lọc…]     │
-│ Existing equipment cards…    │
-└──────────────────────────────┘
- Existing fixed footer unchanged
+Eligible Equipment card · 320/375 px
+┌─────────────────────────────────┐
+│ TL-001 · Tủ lạnh vaccine         │
+│ Existing details / status…       │
+│ [Sửa chữa] [Sử dụng] [Sổ nhiệt độ]│ ← same row, >= 44 px high
+└─────────────────────────────────┘
+No top-of-page logbook button; fixed footer unchanged
 ```
 
 ## 2. One responsive workspace, two contexts
@@ -149,8 +161,9 @@ Selected equipment sheet · mobile
 
 ```mermaid
 flowchart TD
-  A[Thiết bị: nút Sổ nhiệt độ] --> B[Ghi theo ca hoặc Lịch sử]
-  B --> C[Chọn thẻ: một Sheet]
+  A[Thẻ thiết bị: hành động thứ ba Sổ nhiệt độ] --> B[Thiết bị được chọn + ca hiện tại]
+  B --> K[Ghi theo ca hoặc Lịch sử]
+  K --> C[Chọn thẻ: một Sheet]
   C --> D[Lưu quan sát]
   D --> E{Kết quả}
   E -->|Trong ngưỡng| F[Đã lưu → Hoàn tất]

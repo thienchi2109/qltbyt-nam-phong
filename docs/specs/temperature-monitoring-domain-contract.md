@@ -121,11 +121,18 @@ The following is dependency guidance only, not implementation planning: TM-02 co
   the returned configured timezone; no new timezone management is included.
   Owner confirmed shared understanding of Q1–Q9. The owner additionally requires
   a visible/clickable temperature entry in the mobile viewport and a mobile-first
-  responsive workspace; a desktop-only sidebar item is insufficient. The proposal
-  uses a prominent existing Button in mobile Equipment plus the existing desktop
-  menu, with the fixed mobile footer unchanged. Concrete layout approval and
-  scoped backend implementation checkpoint remain pending; see the
-  [TM-07 layout proposal](temperature-monitoring-tm07-layout.md).
+  responsive workspace; a desktop-only sidebar item is insufficient. Owner approved
+  the revised layout: eligible mobile equipment cards add `Sổ nhiệt độ` as the
+  third action in the existing repair/use row, with readable compact labels and
+
+  > = 44 px touch height at 320/375 px. Eligibility requires monitoring enabled and
+  > authorized scope; `user` may record temperature within authorized scope independently of responsibility assignment.
+  > Non-enabled cards retain their existing actions. The action preselects equipment
+  > and its current effective slot, with history accessible. Desktop uses the
+  > equipment row menu; existing desktop navigation may remain. No top-of-page
+  > mobile button, hamburger or footer change. Layout approval is complete; only
+  > the lead's exact backend/execution-plan checkpoint remains before runtime/SQL
+  > implementation. See the [approved layout](temperature-monitoring-tm07-layout.md).
 
 - The canonical equipment tenant key is represented by `don_vi`/facility in the proxy, but the temperature tables' exact foreign-key names are not chosen.
 - The master decision requires `Asia/Ho_Chi_Minh` as the default display timezone; whether a later configuration version may choose another non-null timezone needs owner sign-off.

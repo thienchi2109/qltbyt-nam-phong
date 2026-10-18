@@ -1,6 +1,6 @@
 # TM-07 — Mobile logbook workspace
 
-- Status: In Progress — shared understanding confirmed; layout approval pending
+- Status: In Progress — shared understanding and revised layout approved; lead execution-plan checkpoint pending
 - Milestone: Temperature Monitoring / Entry UX
 - Depends on: TM-03, TM-04, TM-06
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -41,7 +41,8 @@ Fixed base: `8394991ac37339039f302d00edba75f7d9c22d36`; branch:
 implementation plan, not a second specification or an approved screen design.
 No runtime UI, SQL, fixture, dependency, live operation or deployment is authorized
 by this checkpoint. The lead completed the owner interview using `grilling`;
-shared understanding is confirmed, while concrete layout approval is pending.
+shared understanding and revised mobile card-row layout are approved. Runtime/SQL
+implementation awaits the lead's exact execution-plan checkpoint.
 
 - Canonical behavior remains in `docs/specs/temperature-monitoring.md` and
   `docs/specs/temperature-monitoring-domain-contract.md`. TM-04/05/06 execution
@@ -60,7 +61,7 @@ shared understanding is confirmed, while concrete layout approval is pending.
 
 | Concern            | Exact existing seam                                                                                                                   | Decision / constraint                                                                                                                                                                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Navigation         | `src/components/app-navigation.tsx`; `src/lib/app-route-access.ts`                                                                    | Desktop sidebar and route policy; no mobile menu sheet exists. Use visible Equipment Button entry on mobile; footer remains fixed and unchanged.                                                                                                          |
+| Navigation         | `src/components/app-navigation.tsx`; `src/lib/app-route-access.ts`                                                                    | Desktop sidebar and route policy; no mobile menu sheet. Approved mobile entry is the third action on enabled scoped Equipment cards; footer unchanged.                                                                                                    |
 | Mobile cards       | `src/components/shared/MobileCompactCard.tsx`; `src/components/mobile-equipment-list-item.tsx`                                        | Reuse accessible activation/button/action-region pattern and visual language. Do not reuse Equipment-specific operational-action restrictions as temperature permission rules.                                                                            |
 | Sheets             | `src/components/shared/mobile-bottom-sheet.tsx`; `src/components/ui/sheet.tsx`                                                        | Existing Radix focus trap, Escape/backdrop close, hidden title and opener restoration support a single-sheet flow if approved. No new overlay primitive needed.                                                                                           |
 | Overlay sequencing | `src/components/ui/use-deferred-dropdown-action.ts`                                                                                   | Reuse `useOverlayActionTransition` only when an originating menu/sheet must close before another overlay opens. Keep one active modal; no local timer replacement.                                                                                        |
@@ -195,7 +196,7 @@ Blocking dependencies to scope separately before implementation:
   and inventory entries added after the scoped checkpoint. This proposal does not
   change/apply any existing migration.
 
-## Conditional implementation plan — blocked at design/dependency gates
+## Implementation plan — awaiting lead dependency/composition checkpoint
 
 > For agentic workers: use `superpowers:executing-plans` or the lead's authorized
 > subagent workflow after approval. This checklist is preparation only.
@@ -239,15 +240,21 @@ generic form framework, chart (TM-08), export (TM-09) or redesign.
 - [x] Owner confirmed Q1–Q9 shared understanding and explicitly requires a visible,
       operable mobile-viewport entry plus mobile-first responsive design. Do not
       treat a desktop-only sidebar item as fulfilling that requirement.
-- [ ] Approve concrete mobile/desktop arrangement and minimal badge/inbox proposal
-      through the lead's layout checkpoint. No additional interview is needed for
+- [x] Owner approved the revised concrete layout: eligible mobile cards add the
+      third `Sổ nhiệt độ` action in the same repair/use row; compact readable labels, >= 44 px height, no horizontal scroll/clipping at 320/375 px. Non-enabled
+      cards keep existing actions. Desktop uses its row action menu; desktop app
+      navigation may remain. No mobile top button, hamburger or footer change.
+      Clicking preselects equipment and its current effective slot, with history
+      accessible. Scoped `user` recording is independent of responsible assignment.
+      No additional interview is needed for
       canonical default4 shifts/tenant overrides, unable reason, ordinary conflict
       handling or already-approved role invariants.
 - [x] Lead requested the compact layout proposal; written at
       `docs/specs/temperature-monitoring-tm07-layout.md` with mobile320/375/desktop,
       visible Equipment entry, existing sheet, review/action/configuration states
       and accessibility/keyboard/loading/error/empty/conflict behavior.
-- [ ] Obtain explicit owner layout approval and lead implementation checkpoint.
+- [x] Owner layout approval received; no repeat design confirmation is required.
+- [ ] Obtain lead's exact backend/composition execution-plan checkpoint.
 - [ ] Separately scope/approve necessary backend read-model/catalog work and its
       validation before SQL changes. Keep the existing 11 migration identities intact.
 
@@ -355,13 +362,36 @@ No files listed below have been created by this survey.
 ## Current stop condition
 
 Interview shared understanding is confirmed; no unanswered policy question remains.
-The linked layout proposal is ready for lead review and owner approval. Actual
-navigation survey correction: the app has no mobile hamburger/sheet menu today;
-`AppLayoutShell.tsx:183` hides sidebar below `lg`, and its menu toggle at 222 is
-`hidden lg:flex`. The proposal therefore uses existing Button+Link directly above
-`EquipmentToolbar` at `EquipmentPageClient.tsx:254`, visible full-width at 320/375 px,
-including role `user` independently of `canCreateEquipment`; existing desktop
-menu and fixed mobile footer remain. No shell navigation rewrite is proposed.
+The owner approved the linked layout with the revised third mobile card action.
+The app has no mobile hamburger/sheet menu; none is proposed. No top-of-page mobile
+logbook button will be added. Fixed footer stays unchanged. Exact execution-plan
+and backend/composition checkpoints below remain with the lead, not the owner.
+No runtime/SQL implementation has been made.
 
-Await explicit owner layout approval, separate exact backend-gap scope and lead
-implementation checkpoint. No runtime/SQL implementation or commit has been made.
+## Revised-entry execution checkpoint
+
+- Existing list projection: latest `equipment_list_enhanced` body is 267 lines
+  (`20261014120000_equipment_dataset_scope.sql:940–1206`). A separate forward
+  migration will preserve its exact signature, filters, scopes, sort/pagination
+  and ACL while adding one server-authoritative `temperature_monitoring_enabled`
+  boolean for active monitoring in the caller's temperature scope. No per-card
+  RPC, responsibility-only gate or client inference from an equipment name.
+- Add the optional projection field to `src/types/database.ts`; existing
+  `useEquipmentData.ts` already transports Equipment rows. Mobile integration is
+  `src/components/mobile-equipment-list-item.tsx` (275 lines), desktop integration
+  `src/components/equipment/equipment-actions-menu.tsx` (139 lines). Reuse existing
+  action components/status branches; no new UI component or top-toolbar edit.
+  Existing `MobileUsageActions` accepts `className` for compact sizing; preserve
+  `Đang sử dụng` semantics, allowing in-button wrapping. Scope-authorized `user`
+  retains create/amendment capability independently of responsible staff.
+- Behavioral RED → GREEN: enabled versus non-enabled card actions, unauthorized
+  scope, `user`, desktop menu, click isolation/deep-link equipment/current-slot
+  selection, compact three-label row at 320/375 px and non-enabled layout
+  regression. Browser geometry must prove same-row buttons, >= 44 px height and
+  no clipping/overflow; jsdom alone is not geometry evidence.
+- No entry-integration source file currently conflicts with the 450-line ceiling.
+  Final workspace composition budget, exact workspace/catalog/time-validation /
+  notification RPC signatures and forward migration filenames remain the lead's
+  implementation checkpoint. Do not force a 450-line fit, add domain components
+  or silently broaden SQL scope. Original 11 migrations remain unchanged; new
+  approved forward migrations get separate inventory entries.
