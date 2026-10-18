@@ -99,6 +99,7 @@ Hệ thống bảo vệ một bản ghi chính cho mỗi thiết bị, ngày the
 
 ## Further Notes
 
+- Danh sách 11 migration TM-01–TM-06 đang giữ local, chưa apply live và quyết định defer sửa gate được ghi tại [migration inventory](temperature-monitoring-migration-inventory.md).
 - Cần hiển thị rõ trên UI rằng dữ liệu thủ công chỉ phản ánh thời điểm nhân viên đo và nhập.
 - Không dùng timeline `equipment_history_list` làm nguồn duy nhất cho lịch sử nhiệt độ vì đó là lịch sử vòng đời thiết bị có phạm vi rộng.
 - Biểu đồ hiện có chưa hỗ trợ đầy đủ reference lines, marker theo điểm và event tooltip; Temperature Monitoring cần mở rộng seam biểu đồ hiện tại hoặc dùng component chuyên biệt nhưng vẫn giữ lazy loading Recharts.
