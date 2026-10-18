@@ -94,6 +94,39 @@ The following is dependency guidance only, not implementation planning: TM-02 co
 
 ## Unresolved assumptions / review questions
 
+- TM-07 owner interview round 1 (2026-10-18): entry saves one equipment observation
+  immediately; no batch save. Persist an abnormal observation before prompting a
+  separate corrective action, so missing/failed action entry cannot discard the
+  observation. TM-07 includes minimal role-based reading confirmation, immutable
+  amendment proposal/review and deviation operations; charts/exports stay in
+  TM-08/TM-09. Reuse existing UI components only: no new generic/domain UI
+  component files, copied/forked components or library. Compose existing
+  primitives in necessary page/integration files; any conflict with the source
+  file ceiling must be raised before coding.
+- TM-07 owner interview round 2 (2026-10-18): separate `Ghi theo ca` for selected
+  current monitoring date/shift from independent `Lịch sử` with default 30 and
+  7/30/90 presets; add the existing menu item plus Equipment crosslink, leaving
+  the fixed mobile footer unchanged. Minimal manager configuration lives in the
+  Equipment profile, composed from existing components; no catalog admin screen.
+- TM-07 owner interview round 3 (2026-10-18): seed and preselect one manual method,
+  `Đọc nhiệt kế và nhập tay`. Scoped historical entry is allowed with required
+  actual observation `captured_at` for prior shifts and separate server-entry
+  `created_at`. Reject not-started selected slots and future capture timestamps
+  server-side; the interactive 90-day browse bound is not a mutation-age limit.
+  Preserve slot-start policy snapshots and overnight shift-start monitoring date.
+  Q9 approved: actual capture must lie within the authoritative selected
+  `[slot_start,slot_end)`, including overnight slots; late entry remains allowed.
+  New validation governs future calls only and never reinterprets or mutates
+  existing immutable readings. Timezone UI uses the existing default and displays
+  the returned configured timezone; no new timezone management is included.
+  Owner confirmed shared understanding of Q1–Q9. The owner additionally requires
+  a visible/clickable temperature entry in the mobile viewport and a mobile-first
+  responsive workspace; a desktop-only sidebar item is insufficient. The proposal
+  uses a prominent existing Button in mobile Equipment plus the existing desktop
+  menu, with the fixed mobile footer unchanged. Concrete layout approval and
+  scoped backend implementation checkpoint remain pending; see the
+  [TM-07 layout proposal](temperature-monitoring-tm07-layout.md).
+
 - The canonical equipment tenant key is represented by `don_vi`/facility in the proxy, but the temperature tables' exact foreign-key names are not chosen.
 - The master decision requires `Asia/Ho_Chi_Minh` as the default display timezone; whether a later configuration version may choose another non-null timezone needs owner sign-off.
 - TM-05 owner approval (2026-10-18): confirmation/amendment decisions/reopen use `global/admin/to_qltb` within current equipment scope, with decision actor distinct from original operator and proposal author. Amendment uses TM-04 writer roles and may be submitted during original review; rejection restores exact prior effective/review state. Any confirmed result, including unable-to-measure, may be reopened with mandatory reason and no pending amendment. Confirmed unable-to-measure projects `Đã ghi` with NULL value, preserved reason and explicit unable classification; it is never measured/in-range numeric data. Export capability remains for TM-09 sign-off.
