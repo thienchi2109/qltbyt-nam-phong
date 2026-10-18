@@ -94,6 +94,7 @@ export interface TemperatureChoices {
     display_timezone: string
   } | null
   server_now: string
+  suggested_effective_from: string | null
 }
 export interface TemperatureStaff {
   items: { id: number; full_name: string }[]

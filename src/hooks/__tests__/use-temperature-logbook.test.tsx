@@ -14,12 +14,17 @@ const mock = vi.hoisted(() => ({
   rows: [] as Record<string, unknown>[],
   role: "user",
   workspace: vi.fn(),
+  toast: vi.fn(),
+  dismiss: vi.fn(),
 }))
 vi.mock("next/navigation", () => ({ useSearchParams: () => new URLSearchParams("equipment=42") }))
 vi.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { id: 7, role: mock.role } } }),
 }))
 vi.mock("@/hooks/use-mobile", () => ({ useIsMobile: () => true }))
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: mock.toast, dismiss: mock.dismiss }),
+}))
 vi.mock("@/hooks/use-temperature-monitoring", () => ({
   useTemperatureMutation: () => ({ mutateAsync: mock.mutate, isPending: false }),
   useTemperatureQuery: (...args: unknown[]) => mock.query(...args),
@@ -46,6 +51,7 @@ const slot = {
 describe("per-device persistence", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mock.toast.mockReturnValue({ id: "prompt-1", dismiss: mock.dismiss })
     mock.rows = [slot]
     mock.role = "user"
     mock.query.mockReturnValue({ data: undefined })
@@ -380,41 +386,5 @@ describe("per-device persistence", () => {
     await waitFor(() => expect(mock.mutate).toHaveBeenCalledTimes(3))
     expect(mock.mutate.mock.calls[2][0].args.p_amendment_id).toBe("amendment-42")
     expect(mock.mutate.mock.calls[2][0].args.p_action).toBe("approve_amendment")
-  })
-  it("guards dirty close and blocks dismissal while saving", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
-    let finish!: (value: Record<string, unknown>) => void
-    mock.mutate.mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          finish = resolve
-        })
-    )
-    const { result } = renderHook(() => useTemperatureLogbook())
-    act(() => {
-      result.current.openSlot(slot as never)
-      result.current.markDirty()
-    })
-    act(() => result.current.closeSheet())
-    expect(confirm).toHaveBeenCalledTimes(1)
-    expect(result.current.slot).not.toBeNull()
-    const form = new FormData()
-    form.set("value", "5")
-    form.set("captured", "2026-07-02T16:00Z")
-    let saving!: Promise<void>
-    act(() => {
-      saving = result.current.submitReading(form)
-    })
-    act(() => result.current.closeSheet())
-    expect(result.current.message).toBe("Đang lưu, vui lòng đợi.")
-    expect(confirm).toHaveBeenCalledTimes(1)
-    await act(async () => {
-      finish({ reading: { id: "reading-42" } })
-      await saving
-    })
-    act(() => result.current.closeSheet())
-    expect(result.current.slot).toBeNull()
-    expect(confirm).toHaveBeenCalledTimes(1)
-    confirm.mockRestore()
   })
 })

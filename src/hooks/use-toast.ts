@@ -3,10 +3,7 @@
 // Inspired by react-hot-toast library
 import * as React from "react"
 
-import type {
-  ToastActionElement,
-  ToastProps,
-} from "@/components/ui/toast"
+import type { ToastProps } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
 const TOAST_REMOVE_DELAY = 1000000
@@ -15,7 +12,7 @@ type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
   description?: React.ReactNode
-  action?: ToastActionElement
+  action?: React.ReactNode
 }
 
 const actionTypes = {
@@ -85,9 +82,7 @@ const reducer = (state: State, action: Action): State => {
     case "UPDATE_TOAST":
       return {
         ...state,
-        toasts: state.toasts.map((t) =>
-          t.id === action.toast.id ? { ...t, ...action.toast } : t
-        ),
+        toasts: state.toasts.map((t) => (t.id === action.toast.id ? { ...t, ...action.toast } : t)),
       }
 
     case "DISMISS_TOAST": {
@@ -142,8 +137,10 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/** Show a notification and return controls scoped to its identity. */
 function toast({ ...props }: Toast) {
   const id = genId()
+  const onOpenChange = props.onOpenChange
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -159,6 +156,7 @@ function toast({ ...props }: Toast) {
       id,
       open: true,
       onOpenChange: (open) => {
+        onOpenChange?.(open)
         if (!open) dismiss()
       },
     },
@@ -171,6 +169,7 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/** Subscribe to the shared notification store and its controls. */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 

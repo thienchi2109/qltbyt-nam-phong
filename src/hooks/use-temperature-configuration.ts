@@ -4,7 +4,7 @@ import * as React from "react"
 import { useSession } from "next-auth/react"
 import { useTemperatureQuery, useTemperatureMutation } from "@/hooks/use-temperature-monitoring"
 import { isGlobalRole } from "@/lib/rbac"
-import { temperatureInstant } from "@/lib/temperature-monitoring"
+import { temperatureInstant, temperatureLocalTime } from "@/lib/temperature-monitoring"
 import type { TemperatureChoices, TemperatureStaff } from "@/types/temperature-monitoring"
 
 /** Preserve selected staff absent from the current scoped server page. */
@@ -67,6 +67,10 @@ export function useTemperatureConfiguration(equipmentId: number, isEditing: bool
     !manager && !isEditing
   )
   const current = choices.data?.configuration ?? summary.data?.[0]
+  const suggestedEffectiveFrom = choices.data?.suggested_effective_from ?? null
+  const suggestedEffectiveFromLocal = suggestedEffectiveFrom
+    ? temperatureLocalTime(suggestedEffectiveFrom, current?.display_timezone ?? "Asia/Ho_Chi_Minh")
+    : ""
   const [staffSelection, setStaffSelection] = React.useState<{
     equipment: number
     primary: number | ""
@@ -84,13 +88,19 @@ export function useTemperatureConfiguration(equipmentId: number, isEditing: bool
     const enabled = form.get("enabled") === "on"
     const text = (name: string) => String(form.get(name) ?? "")
     setMessage("")
+    if (!choices.data?.suggested_effective_from) {
+      setMessage(
+        "Chưa có ranh giới hiệu lực hợp lệ; phiên bản tương lai hiện có cần được giải quyết trước."
+      )
+      return
+    }
     try {
       await mutation.mutateAsync({
         fn: "temperature_monitoring_configuration_upsert",
         args: {
           p_equipment_id: equipmentId,
           p_monitoring_enabled: enabled,
-          p_effective_from: temperatureInstant(text("from"), text("timezone")),
+          p_effective_from: choices.data.suggested_effective_from,
           p_effective_to: text("to") ? temperatureInstant(text("to"), text("timezone")) : null,
           p_lower_c: enabled ? Number(text("lower")) : null,
           p_upper_c: enabled ? Number(text("upper")) : null,
@@ -110,6 +120,8 @@ export function useTemperatureConfiguration(equipmentId: number, isEditing: bool
   return {
     showSection: manager || summary.isSuccess,
     display: configurationDisplay(current, choices.data?.profiles),
+    suggestedEffectiveFrom,
+    suggestedEffectiveFromLocal,
     primaryChoices: configurationStaffOptions(
       staff.data?.items,
       selectedStaff.primary ? [selectedStaff.primary] : [],

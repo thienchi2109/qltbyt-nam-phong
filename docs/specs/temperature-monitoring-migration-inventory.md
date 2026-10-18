@@ -36,20 +36,22 @@ temperature-monitoring migration names in `supabase_migrations.schema_migrations
 
 ## TM-07 forward additions (local draft, 2026-10-18)
 
-The original eleven files above remain unchanged. Six additional local migrations
-implement the approved TM-07 read/projection/capture contracts; none was applied
+The original eleven files above remain unchanged. Seven additional local migrations
+implement the approved TM-07 contracts (18 pending in total); none was applied
 to live. Formal static and baseline-forward remain **INCOMPLETE**.
 
-| Migration                                                        | Contract                                                                                                                            |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `20261018050000_temperature_monitoring_slot_source.sql`          | Private scoped slot source plus compatible public slots wrapper.                                                                    |
-| `20261018050100_temperature_monitoring_workspace.sql`            | Rich workspace; server intervals; reading/deviation lifecycle and independent queue filters before pagination; scoped empty causes. |
-| `20261018050200_temperature_monitoring_choices.sql`              | Manager-only methods/profile/staff choices and default manual method.                                                               |
-| `20261018050300_temperature_monitoring_capture_time.sql`         | Prospective actual capture validation; original snapshots/conflicts preserved.                                                      |
-| `20261018050400_temperature_monitoring_equipment_projection.sql` | Batch exact-scope tracking eligibility inside existing Equipment projection.                                                        |
-| `20261018050500_temperature_monitoring_notifications.sql`        | Dated independent-review inbox, full scoped counts and deterministic twenty-item bound.                                             |
+| Migration                                                             | Contract                                                                                                                            |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `20261018050000_temperature_monitoring_slot_source.sql`               | Private scoped slot source plus compatible public slots wrapper.                                                                    |
+| `20261018050100_temperature_monitoring_workspace.sql`                 | Rich workspace; server intervals; reading/deviation lifecycle and independent queue filters before pagination; scoped empty causes. |
+| `20261018050200_temperature_monitoring_choices.sql`                   | Manager-only methods/profile/staff choices and default manual method.                                                               |
+| `20261018050300_temperature_monitoring_capture_time.sql`              | Prospective actual capture validation; original snapshots/conflicts preserved.                                                      |
+| `20261018050400_temperature_monitoring_equipment_projection.sql`      | Batch exact-scope tracking eligibility inside existing Equipment projection.                                                        |
+| `20261018050500_temperature_monitoring_notifications.sql`             | Dated independent-review inbox, full scoped counts and deterministic twenty-item bound.                                             |
+| `20261018060000_temperature_monitoring_configuration_replacement.sql` | Atomic successor creation and audited closure of only the open predecessor's upper bound; server-suggested future boundary.         |
 
-Configuration replacement remains a separate contract checkpoint: TM-02's
-immutable version and nonoverlap constraints reject replacing an open-ended
-version. TM-07 has not weakened either constraint. A decision on the forward
-replacement seam is required before configuration update/disable can be complete.
+The owner approved the narrow configuration replacement exception after grilling:
+only an open predecessor's upper bound may close exactly at its audited successor's
+start. Policy fields and the lower bound remain immutable; DELETE remains forbidden.
+Successor, closure and audit must commit or roll back together, and nonoverlap is
+checked before the RPC returns. This approval does not authorize live application.

@@ -1,6 +1,6 @@
 # TM-07 — Mobile logbook workspace
 
-- Status: In Progress — shared understanding and revised layout approved; lead execution-plan checkpoint pending
+- Status: In Progress — local UI implemented; approved review fixes in verification; formal SQL static/baseline-forward remain INCOMPLETE
 - Milestone: Temperature Monitoring / Entry UX
 - Depends on: TM-03, TM-04, TM-06
 - Master spec: `docs/specs/temperature-monitoring.md`
@@ -447,16 +447,29 @@ separately in the migration inventory; the original eleven are unchanged.
   reuse the existing module library. Existing deferred dropdown actions, shared
   notification cache and Equipment list projection are reused.
 
-### Blocking configuration contract checkpoint
+### Configuration contract checkpoint — decision approved; implementation pending
 
 `20261017100000_temperature_monitoring_configuration.sql` defines nonoverlapping
 `tstzrange` versions and an UPDATE/DELETE immutability trigger, while upsert inserts
 new periods directly. Existing `[start,infinity)` prevents every later update or
-disable. The current contract forbids mutating a version with readings. The worker
-reported the precise conflict to lead and has not modified that policy. Possible
-forward choices are narrowly audited end closure or an append-only supersession
-ledger; either requires an explicit contract decision. Configuration completion
-must not be claimed before that decision and its regression evidence.
+disable. The worker reported the precise conflict before changing policy. Owner
+grilling is now complete: permit narrowly audited upper-bound closure, not an
+append-only supersession ledger. A manager RPC may close only the open-ended
+predecessor at the successor's effective start, preserving its lower bound and
+all policy fields. Closure, successor and mandatory reason/actor audit are atomic;
+failure rolls all of them back. Preserve nonoverlap, direct-write restrictions,
+date/shift-boundary and no-retroactive rules, slot-start snapshots and overnight
+backfill. This approves a new forward migration only; the original seventeen
+local migration files remain unchanged and unapplied to live. Configuration
+completion still requires implementation, regression evidence and review.
+
+The other approved fixes preserve the actual entry draft through duplicate/stale
+save, refetch and explicit viewing of the winner; existing amendment immutability
+remains unchanged. Dirty close uses an actionable existing toast, not
+`window.confirm` or a second dialog. Toast dismissal/timeout/replacement preserves
+the draft; only explicit discard closes, with pending-save and stale-session
+guards. Preserve the later React Doctor/RHF/Zod refactor; this decision does not
+revert its authorized form composition or claim a new verification result.
 
 Formal `static`: **INCOMPLETE** (120-second attempt timed out; startup only in
 `/tmp/tm07-static.log`, no remaining executor process). Formal
@@ -557,3 +570,69 @@ Ordered formatting, explicit-any, diff-only dedupe, typecheck, focused seven-fil
 suite (**116/116 PASS**), standard React Doctor (**31 files, zero diagnostics,
 93/100**) and whitespace gates passed for this correction before its local commit.
 The added schema module is included in the unchanged standard diff scan scope.
+
+### Owner-approved review fixes — local/disposable evidence, 2026-10-18
+
+The conflict path now keeps the original measurement form mounted and retains
+its unsaved value/reason, actual capture time and note through refetch and explicit
+viewing of the winner. An authorized amendment targets that winner and changes
+only the fields supported by the existing amendment contract.
+
+Dirty close uses the existing actionable toast. Its action is portaled into the
+current sheet so keyboard and pointer interaction remain inside the modal scope.
+Dismissal, timeout and replacement preserve the draft. Explicit discard rechecks
+pending saves, the live actor/slot and prompt generation; stale actions are inert.
+The existing configuration tab, form primitives and logbook composition remain
+in use; no dependency or additional domain UI component was added.
+
+Forward migration `20261018060000_temperature_monitoring_configuration_replacement.sql`
+implements the approved narrow end-closure exception. Replacement, predecessor
+closure and actor/reason audit are atomic; policy fields and lower bounds remain
+immutable, DELETE remains forbidden and nonoverlap is checked before RPC return.
+Scope is locked and rechecked before mutation; assigned staff must be active and
+match equipment tenant/normalized department. Initial activation accepts a local
+date boundary or the chosen profile's shift start. Replacement/re-enable inherits
+the previous schedule boundary, including overrides. The manager form submits
+the server-suggested future instant and blocks when no valid suggestion exists.
+
+Independent lead DB evidence is **DISPOSABLE ONLY**:
+
+- All 18 pending migrations applied to fresh clones of `qltbyt_test`; the original
+  17 migration files are byte-identical to base `c75f1fac`.
+- Replacement behavior plus seven SQL regression suites passed. Coverage includes
+  initial/re-enable boundaries, active catalogs/actor, normalized staff scope,
+  successful replacement, future conflict and forced audit failure after mutation.
+  Failure preserves predecessor JSON/range, version/audit counts and configuration.
+- The existing measurement, review and deviation race suites passed with real
+  observed lock waits. The new configuration race also passed with a real wait,
+  exact stale-start rejection and one successor/paired audit. It does not add a
+  configuration-specific equipment-transfer race; no such coverage is claimed.
+- Logs: `/tmp/tm07-lead-final-db.log` (eight SQL suites and three existing race
+  passes; its initial new-race assertion expected an exclusion error instead of
+  the correct earlier stale-start rejection), then
+  `/tmp/tm07-lead-config-final-db.log` (fresh eight-suite and corrected race PASS).
+  `/tmp/tm07_lead_verify.py` snapshots sources and records SHA-256 identities.
+  The race runner later gained a CLI-only entry point; its tested race logic is
+  unchanged. Cleanup and an independent catalog query both confirmed **0** TM-07
+  disposable databases remain. No live or restored-baseline writes occurred.
+- Replacement migration SHA-256:
+  `60b8b015ef59098d2aa76bf018552e3ba796a47ae70b8db004ff6c9c4f294125`.
+- Formal `static`: **INCOMPLETE**, bounded 60-second attempt exited 124 after
+  startup (`/tmp/tm07-fix-static.log`). Formal `baseline-forward`: **INCOMPLETE**.
+  The owner-deferred gate repair remains deferred; disposable results do not
+  certify either formal lane or authorize live application.
+
+Migration inventory now records **18 pending local migrations**, comprising the
+original 11 through TM-06 and seven TM-07 additions. No push, merge or live apply.
+
+Final independent client verification on frozen behavior: formatting, no explicit
+`any`, diff-only dedupe, TypeScript, **121/121 tests across nine files**, and React
+Doctor (**34 files, 93/100, zero diagnostics**) passed. Review found and resolved
+one additional toast-replacement issue: every dirty-close retry creates a fresh
+prompt generation; regression RED expected a third toast and observed only two,
+then GREEN preserved the draft and made only the newest discard action effective.
+The final docstring gate exposed missing JSDoc in the changed shared toast and
+selector modules; concise export documentation was added without runtime changes.
+All changed source/test files remain at or below 450 lines (logbook hook: 448).
+Final client and SQL reviewers reported no remaining findings. Authenticated
+browser E2E and formal DB certification are not claimed by these checks.

@@ -159,6 +159,10 @@ Selected equipment sheet · mobile
 - Duplicate/stale: show authoritative existing/revised result with an inline
   conflict Alert. Keep unsent text; offer **Xem bản ghi hiện tại** and permitted
   **Đề xuất điều chỉnh**, never overwrite/retry a review decision automatically.
+  Keep the keyed entry form and its actual draft mounted through background
+  refetch and explicit viewing of the existing reading. State clearly that the
+  draft was not saved. An amendment retains the original capture time and note;
+  do not silently copy those draft fields into the canonical record.
 
 ```mermaid
 flowchart TD
@@ -208,19 +212,26 @@ effective interval and mandatory change reason. Preselect approved manual method
 display timezone, without a new timezone-management UI. Real scoped catalogs/staff
 populate choices. Missing catalog/staff data blocks saving with explanatory
 retry/setup feedback; no fixture IDs or uncontrolled free-text user IDs.
+Owner-approved replacement/disable (2026-10-18): use a valid current/future
+date/shift boundary in the equipment timezone. Close only the open-ended
+predecessor's upper bound, create the successor and audit the reason atomically;
+keep all other predecessor fields and historical slot policies unchanged. Show
+the actual scheduled boundary and refetch effective configuration after saving;
+do not show a future change as already active. A rejected save retains the form
+and gives safe, actionable feedback.
 
 ## 6. Responsive and state acceptance
 
-| Case        | Concrete requirement                                                                                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 320/375px   | One column, min-width: 0, full-width primary entry/save, visible labels, >= 44 px important targets, wrapping long equipment names; no page horizontal scroll.                                                                        |
-| Keyboard    | Sheet sized to available dynamic viewport with bounded scrolling body; field and save footer reachable after keyboard opens; safe-area spacing. Validate decimal/minus and datetime controls on a real mobile browser when available. |
-| Focus       | Sheet title/description, labelled fields, visible focus, `aria-invalid`/error association; focus first invalid field; status live region after save; restore original trigger, or list heading if card disappears due to filter.      |
-| Close       | Explicit close/Cancel and Escape/backdrop follow the same dirty-input check inside the current surface; no second modal. Pending save cannot be dismissed into an ambiguous result.                                                   |
-| Loading     | Skeleton list, labelled selected-record loading, disable affected save only; no actionable rows from previous scope/filter.                                                                                                           |
-| Error       | Inline scoped retry; preserve unsent form values; state observation success separately from action failure; no raw SQL error display.                                                                                                 |
-| Empty       | Distinguish no monitored equipment/no eligible slots/no matching filter/no pending work; manager profile-configuration link where permitted, never enable monitoring silently.                                                        |
-| Permissions | Small-width role `user` entry is visible/clickable, and create/amendment actions remain available in exact server scope; read-only sessions see data without write controls.                                                          |
+| Case        | Concrete requirement                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 320/375px   | One column, min-width: 0, full-width primary entry/save, visible labels, >= 44 px important targets, wrapping long equipment names; no page horizontal scroll.                                                                                                                                                                                                                                     |
+| Keyboard    | Sheet sized to available dynamic viewport with bounded scrolling body; field and save footer reachable after keyboard opens; safe-area spacing. Validate decimal/minus and datetime controls on a real mobile browser when available.                                                                                                                                                              |
+| Focus       | Sheet title/description, labelled fields, visible focus, `aria-invalid`/error association; focus first invalid field; status live region after save; restore original trigger, or list heading if card disappears due to filter.                                                                                                                                                                   |
+| Close       | Explicit close/Cancel and Escape/backdrop use the existing actionable toast for dirty input, never `window.confirm` or a second dialog. Showing/dismissing/replacing/timing out the toast keeps the sheet and draft. Only **Bỏ thay đổi và đóng** discards, after rechecking pending-save and sheet/session identity; toast actions remain keyboard/touch accessible within the modal focus scope. |
+| Loading     | Skeleton list, labelled selected-record loading, disable affected save only; no actionable rows from previous scope/filter.                                                                                                                                                                                                                                                                        |
+| Error       | Inline scoped retry; preserve unsent form values; state observation success separately from action failure; no raw SQL error display.                                                                                                                                                                                                                                                              |
+| Empty       | Distinguish no monitored equipment/no eligible slots/no matching filter/no pending work; manager profile-configuration link where permitted, never enable monitoring silently.                                                                                                                                                                                                                     |
+| Permissions | Small-width role `user` entry is visible/clickable, and create/amendment actions remain available in exact server scope; read-only sessions see data without write controls.                                                                                                                                                                                                                       |
 
 Implementation must fit necessary page/integration files below 450 lines using
 existing components. Data/mutations/validation may use minimal non-UI hooks after

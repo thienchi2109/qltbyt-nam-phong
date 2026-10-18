@@ -7,6 +7,20 @@ import { TemperatureMonitoringReviewSection } from "./TemperatureMonitoringRevie
 import { TemperatureMonitoringDeviationSection } from "./TemperatureMonitoringDeviationSection"
 import type { useTemperatureLogbook } from "@/hooks/use-temperature-logbook"
 
+function renderReadingActions(w: ReturnType<typeof useTemperatureLogbook>) {
+  if (!w.slot?.reading_id) return null
+  return (
+    <>
+      <Button variant="outline" onClick={w.closeSheet}>
+        {w.deviation ? "Để sau" : "Hoàn tất"}
+      </Button>
+      <Button variant="outline" onClick={() => w.setShowEvents(!w.showEvents)}>
+        Nhật ký thay đổi
+      </Button>
+    </>
+  )
+}
+
 /** Compose the selected slot and preserve the existing sheet focus/close lifecycle. */
 export function TemperatureMonitoringSlotSheet({
   w,
@@ -38,20 +52,28 @@ export function TemperatureMonitoringSlotSheet({
           <p role="status" aria-live="polite">
             {w.message || (w.selectedLoading && "Đang tải số đo và sai lệch…")}
           </p>
-          {w.queryErrors
-            .filter((item) => item.query.error)
-            .map((item) => (
-              <p role="alert" key={item.label}>
-                Không tải được {item.label}.
-                <Button onClick={() => void item.query.refetch()}>Thử lại</Button>
-              </p>
-            ))}
+          {w.queryErrors.map((item) => (
+            <p role="alert" key={item.label}>
+              Không tải được {item.label}.
+              <Button onClick={() => void item.query.refetch()}>Thử lại</Button>
+            </p>
+          ))}
           {!w.slot.reading_id && w.writer && (
             <TemperatureMonitoringMeasurementForm
               key={`${w.slot.equipment_id}-${w.slot.monitoring_date}-${w.slot.shift_id}`}
               w={w}
               slot={w.slot}
             />
+          )}
+          {w.conflictReadingId && (
+            <div className="space-y-2 rounded border p-3">
+              <p role="status">Số đo chưa được lưu vì ca này đã có bản ghi.</p>
+              {!w.conflictViewed && (
+                <Button type="button" variant="outline" onClick={w.viewConflictReading}>
+                  Xem bản ghi hiện tại
+                </Button>
+              )}
+            </div>
           )}
           {w.reading && (
             <TemperatureMonitoringReviewSection key={w.slot.reading_id} w={w} reading={w.reading} />
@@ -63,16 +85,7 @@ export function TemperatureMonitoringSlotSheet({
               deviation={w.deviation}
             />
           )}
-          {w.slot.reading_id && (
-            <>
-              <Button variant="outline" onClick={w.closeSheet}>
-                {w.deviation ? "Để sau" : "Hoàn tất"}
-              </Button>
-              <Button variant="outline" onClick={() => w.setShowEvents(!w.showEvents)}>
-                Nhật ký thay đổi
-              </Button>
-            </>
-          )}
+          {renderReadingActions(w)}
           {w.showEvents && (
             <>
               {w.events.data?.events.map((event) => (

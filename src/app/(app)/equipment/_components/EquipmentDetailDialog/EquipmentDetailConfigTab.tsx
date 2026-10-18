@@ -49,9 +49,11 @@ export function EquipmentDetailConfigTab({
   displayEquipment,
   isEditing,
 }: EquipmentDetailConfigTabProps): React.ReactNode {
+  const configuration = useTemperatureConfiguration(displayEquipment.id, isEditing)
   const {
     showSection,
     display,
+    suggestedEffectiveFromLocal,
     primaryChoices,
     substituteChoices,
     manager,
@@ -67,21 +69,25 @@ export function EquipmentDetailConfigTab({
     selectedStaff,
     setStaffSelection,
     save,
-  } = useTemperatureConfiguration(displayEquipment.id, isEditing)
+  } = configuration
   if (isEditing) return <ConfigEditForm />
 
-  // View mode: display both fields with proper multiline formatting
+  const equipmentFields = (
+    <>
+      <LongTextField
+        label={columnLabels.cau_hinh_thiet_bi}
+        value={displayEquipment.cau_hinh_thiet_bi}
+      />
+      <LongTextField
+        label={columnLabels.phu_kien_kem_theo}
+        value={displayEquipment.phu_kien_kem_theo}
+      />
+    </>
+  )
   return (
     <ScrollArea className="h-full pr-4">
       <div className="space-y-6 py-4">
-        <LongTextField
-          label={columnLabels.cau_hinh_thiet_bi}
-          value={displayEquipment.cau_hinh_thiet_bi}
-        />
-        <LongTextField
-          label={columnLabels.phu_kien_kem_theo}
-          value={displayEquipment.phu_kien_kem_theo}
-        />
+        {equipmentFields}
         {summary.error && (
           <p role="alert">
             Không tải được tóm tắt nhiệt độ.
@@ -91,15 +97,7 @@ export function EquipmentDetailConfigTab({
         {showSection && (
           <section className="space-y-3 border-t pt-4">
             <h3 className="font-semibold">Theo dõi nhiệt độ</h3>
-            <p>{display.summary}</p>
-            {display.enabled && <p>{display.responsible}</p>}
-            {display.enabled && (
-              <Button variant="outline" asChild>
-                <Link href={`/temperature-monitoring?equipment=${displayEquipment.id}`}>
-                  Mở sổ nhiệt độ
-                </Link>
-              </Button>
-            )}
+            {renderTemperatureSummary(displayEquipment.id, display)}
             {manager && choices.isPending && <p role="status">Đang tải cấu hình…</p>}
             {manager && choices.error && (
               <p role="alert">
@@ -127,7 +125,12 @@ export function EquipmentDetailConfigTab({
                 <div className="grid grid-cols-2 gap-3">
                   <label>
                     Từ (giờ thiết bị)
-                    <Input name="from" type="datetime-local" required />
+                    <Input
+                      type="datetime-local"
+                      step={1}
+                      value={suggestedEffectiveFromLocal}
+                      readOnly
+                    />
                   </label>
                   <label>
                     Đến (tùy chọn)
@@ -255,18 +258,44 @@ export function EquipmentDetailConfigTab({
                   Lý do thay đổi
                   <Input name="reason" required maxLength={2000} />
                 </label>
-                <Button type="submit" disabled={mutation.isPending}>
+                {!choices.data.suggested_effective_from && (
+                  <p role="alert">
+                    Chưa có ranh giới hiệu lực hợp lệ; phiên bản tương lai hiện có cần được giải
+                    quyết trước.
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  disabled={mutation.isPending || !choices.data.suggested_effective_from}
+                >
                   Lưu cấu hình nhiệt độ
                 </Button>
               </form>
             )}
-            <p role="status" aria-live="polite">
-              {message}
-            </p>
           </section>
         )}
+        <p role="status" aria-live="polite">
+          {message}
+        </p>
       </div>
     </ScrollArea>
+  )
+}
+
+function renderTemperatureSummary(
+  equipmentId: Equipment["id"],
+  display: ReturnType<typeof useTemperatureConfiguration>["display"]
+): React.ReactNode {
+  return (
+    <>
+      <p>{display.summary}</p>
+      {display.enabled && <p>{display.responsible}</p>}
+      {display.enabled && (
+        <Button variant="outline" asChild>
+          <Link href={`/temperature-monitoring?equipment=${equipmentId}`}>Mở sổ nhiệt độ</Link>
+        </Button>
+      )}
+    </>
   )
 }
 

@@ -1,21 +1,19 @@
 "use client"
 
-import {
-  temperatureReviewActions,
-  automaticTemperatureSlot,
-  temperatureCaptureDefault,
-} from "@/lib/temperature-logbook-selectors"
-import { useRef, useState } from "react"
+import * as temperatureSelectors from "@/lib/temperature-logbook-selectors"
+import { createElement, useEffect, useLayoutEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useTemperatureWorkspaceFilters } from "@/hooks/use-temperature-workspace-filters"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useTemperatureMutation, useTemperatureQuery } from "@/hooks/use-temperature-monitoring"
 import { isGlobalRole } from "@/lib/rbac"
+import { ToastAction } from "@/components/ui/toast"
+import { useToast } from "@/hooks/use-toast"
 import {
   validateTemperatureCapture,
   temperatureDeviationFields,
-  TEMPERATURE_DEVIATION_ACTIONS,
   TEMPERATURE_EMPTY_MESSAGES,
   temperatureCardMeta,
   temperatureDeviationArguments,
@@ -41,6 +39,8 @@ export function useTemperatureLogbook() {
   const equipment = Number(params.get("equipment")) || null
   const [chosenDeviationAction, setDeviationAction] = useState("update_action")
   const [selected, setSelected] = useState<TemperatureSlot | null>(null)
+  const [conflictReadingId, setConflictReadingId] = useState<string | null>(null)
+  const [conflictViewed, setConflictViewed] = useState(false)
   const [dismissed, setDismissed] = useState(false)
   const [message, setMessage] = useState("")
   const [eventCursor, setEventCursor] = useState<string | null>(null)
@@ -52,6 +52,16 @@ export function useTemperatureLogbook() {
   const sheetRef = useRef<HTMLDivElement | null>(null)
   const dirtyRef = useRef(false)
   const savingRef = useRef(false)
+  const closePromptRef = useRef<{
+    id: string
+    generation: number
+    slotKey: string
+    actor: number
+    dismiss: () => void
+  } | null>(null)
+  const closePromptGenerationRef = useRef(0)
+  const actorRef = useRef(actor)
+  const { toast } = useToast()
   const filters = useTemperatureWorkspaceFilters(params, equipment, () => {
     setSelected(null)
     setDismissed(false)
@@ -59,7 +69,7 @@ export function useTemperatureLogbook() {
   const { tab, cursor, setCursor, query, rows } = filters
   const slot =
     selected ??
-    automaticTemperatureSlot(
+    temperatureSelectors.automaticTemperatureSlot(
       equipment,
       dismissed,
       cursor,
@@ -68,16 +78,22 @@ export function useTemperatureLogbook() {
       rows,
       query.data?.server_now ?? ""
     )
+  const slotKey = temperatureSelectors.temperatureSlotKey(slot)
+  const liveIdentityRef = useRef({ slotKey, actor })
+  useLayoutEffect(() => {
+    liveIdentityRef.current = { slotKey, actor }
+  }, [slotKey, actor])
+  const activeReadingId = slot?.reading_id ?? (conflictViewed ? conflictReadingId : null)
   const readingQuery = useTemperatureQuery<TemperatureReading>(
     "temperature_monitoring_reading_get",
-    { p_reading_id: slot?.reading_id },
-    !!slot?.reading_id
+    { p_reading_id: activeReadingId },
+    !!activeReadingId
   )
   const reading = readingQuery.data
   const deviationQuery = useTemperatureQuery<{ deviation: TemperatureDeviation | null }>(
     "temperature_monitoring_deviation_get",
-    { p_reading_id: slot?.reading_id },
-    !!slot?.reading_id
+    { p_reading_id: activeReadingId },
+    !!activeReadingId
   )
   const deviation = deviationQuery.data?.deviation
   const [staffCursor, setStaffCursor] = useState<number | null>(null)
@@ -86,37 +102,21 @@ export function useTemperatureLogbook() {
     { p_equipment_id: slot?.equipment_id, p_cursor: staffCursor, p_limit: 100 },
     manager && !!slot
   )
-  const captureDefault = temperatureCaptureDefault(slot, query.data?.server_now)
+  const captureDefault = temperatureSelectors.temperatureCaptureDefault(
+    slot,
+    query.data?.server_now
+  )
   const captureInput = {
-    name: "captured",
-    type: "datetime-local",
-    required: true,
-    step: "1",
+    ...temperatureSelectors.TEMPERATURE_CAPTURE_INPUT,
     defaultValue: captureDefault,
   }
-  const readingTextFields = [
-    { name: "reason", label: "Lý do không đo được" },
-    { name: "note", label: "Ghi chú" },
-  ]
-  const deviationActions = TEMPERATURE_DEVIATION_ACTIONS.filter(
-    (action) =>
-      (manager || !action.manager) &&
-      !["Đã đóng", "Đã hủy"].includes(deviation?.status ?? "") &&
-      (!action.statuses || action.statuses.includes(deviation?.status ?? ""))
+  const readingTextFields = temperatureSelectors.TEMPERATURE_READING_TEXT_FIELDS
+  const { deviationActions, deviationAction } = temperatureSelectors.temperatureDeviationSelection(
+    manager,
+    deviation?.status,
+    chosenDeviationAction
   )
-  const deviationAction = deviationActions.some((action) => action.value === chosenDeviationAction)
-    ? chosenDeviationAction
-    : "update_action"
   const deviationFields = temperatureDeviationFields(deviation, deviationAction)
-  const eventLabels: Record<string, string> = {
-    reading_created: "Ghi số đo",
-    deviation_created: "Mở sai lệch",
-    amendment_proposed: "Đề xuất sửa",
-    amendment_approved: "Duyệt đề xuất",
-    amendment_rejected: "Từ chối đề xuất",
-    reading_confirmed: "Xác nhận số đo",
-    reading_reopened: "Mở lại xét duyệt",
-  }
   const events = useTemperatureQuery<{
     events: {
       id: string
@@ -136,16 +136,54 @@ export function useTemperatureLogbook() {
     },
     !!slot && showEvents
   )
-  const queryErrors = [
-    { query: readingQuery, label: "số đo" },
-    { query: deviationQuery, label: "xử lý sai lệch" },
-    { query: events, label: "nhật ký" },
-  ]
-  const { independent, reviewActions } = temperatureReviewActions(manager, actor, reading)
+  const queryErrors = temperatureSelectors.temperatureQueryErrors(
+    readingQuery,
+    deviationQuery,
+    events
+  )
+  const { independent, reviewActions } = temperatureSelectors.temperatureReviewActions(
+    manager,
+    actor,
+    reading
+  )
+  const clearClosePrompt = () => {
+    const prompt = closePromptRef.current
+    closePromptRef.current = null
+    closePromptGenerationRef.current += 1
+    prompt?.dismiss()
+  }
+  const resetSheetDraft = () => {
+    clearClosePrompt()
+    dirtyRef.current = false
+    setConflictReadingId(null)
+    setConflictViewed(false)
+  }
+  const closeSheetNow = (wasDismissed: boolean) => {
+    resetSheetDraft()
+    setSelected(null)
+    setDismissed(wasDismissed)
+  }
+  useEffect(() => {
+    if (!Object.is(actorRef.current, actor)) {
+      actorRef.current = actor
+      closeSheetNow(false)
+      setMessage("")
+      return
+    }
+    const prompt = closePromptRef.current
+    if (prompt && (prompt.slotKey !== slotKey || prompt.actor !== actor)) clearClosePrompt()
+  }, [slotKey, actor])
+  useEffect(
+    () => () => {
+      closePromptRef.current?.dismiss()
+      closePromptRef.current = null
+    },
+    []
+  )
   const timestamp = (value: string | null, zone = slot?.display_timezone) =>
     value ? new Date(value).toLocaleString("vi-VN", { timeZone: zone }) : "—"
   const openSlot = (row: TemperatureSlot) => {
-    dirtyRef.current = false
+    resetSheetDraft()
     triggerRef.current = document.activeElement as HTMLElement | null
     setSelected(row)
     setMessage("")
@@ -157,10 +195,57 @@ export function useTemperatureLogbook() {
       setMessage("Đang lưu, vui lòng đợi.")
       return
     }
-    if (dirtyRef.current && !window.confirm("Dữ liệu chưa lưu. Đóng và bỏ thay đổi?")) return
-    dirtyRef.current = false
-    setSelected(null)
-    setDismissed(true)
+    if (dirtyRef.current) {
+      clearClosePrompt()
+      const generation = ++closePromptGenerationRef.current
+      setMessage("Bản nháp vẫn được giữ. Xác nhận bỏ thay đổi để đóng sổ nhiệt độ.")
+      const onDiscard = () => {
+        const active = closePromptRef.current
+        if (
+          !active ||
+          active.generation !== generation ||
+          active.slotKey !== liveIdentityRef.current.slotKey ||
+          active.actor !== liveIdentityRef.current.actor
+        )
+          return
+        if (savingRef.current || mutation.isPending) {
+          setMessage("Đang lưu, vui lòng đợi.")
+          clearClosePrompt()
+          return
+        }
+        closeSheetNow(true)
+        setMessage("")
+      }
+      const action = createElement(
+        ToastAction,
+        { altText: "Bỏ thay đổi và đóng sổ nhiệt độ", className: "mt-3 h-11", onClick: onDiscard },
+        "Bỏ thay đổi và đóng"
+      )
+      const prompt = toast({
+        title: "Thay đổi chưa lưu",
+        description:
+          "Bản nháp chưa lưu vẫn được giữ. Chọn bỏ thay đổi để đóng và xóa dữ liệu đã nhập.",
+        action: sheetRef.current ? createPortal(action, sheetRef.current) : action,
+        onOpenChange: (open) => {
+          if (open) return
+          const active = closePromptRef.current
+          if (active?.generation === generation) {
+            closePromptRef.current = null
+            closePromptGenerationRef.current += 1
+            setMessage("")
+          }
+        },
+      })
+      closePromptRef.current = {
+        id: prompt.id,
+        generation,
+        slotKey,
+        actor,
+        dismiss: prompt.dismiss,
+      }
+      return
+    }
+    closeSheetNow(true)
     setMessage("")
   }
   const restoreFocus = (event: Event) => {
@@ -171,16 +256,14 @@ export function useTemperatureLogbook() {
     }
   }
   const resetPage = () => {
+    closeSheetNow(false)
     setCursor(null)
-    setSelected(null)
-    setDismissed(false)
   }
   const run = async (fn: string, args: Record<string, unknown>) => {
     setMessage("")
     savingRef.current = true
     try {
       const result = await mutation.mutateAsync({ fn, args })
-      if (result.outcome !== "conflict") dirtyRef.current = false
       setMessage(
         result.outcome === "conflict"
           ? "Dữ liệu đã thay đổi. Đã tải lại; kiểm tra trước khi gửi lại."
@@ -220,6 +303,15 @@ export function useTemperatureLogbook() {
         p_note: String(form.get("note") ?? "") || null,
       })
       if (result && "reading" in result) {
+        if (result.outcome === "conflict") {
+          dirtyRef.current = true
+          setSelected(slot)
+          setConflictReadingId(result.reading.id)
+          setConflictViewed(false)
+          setMessage("Bản nháp chưa được lưu. Xem bản ghi hiện tại trước khi đề xuất điều chỉnh.")
+          return
+        }
+        dirtyRef.current = false
         setSelected({ ...slot, reading_id: result.reading.id })
         if (
           result.effective?.value_c != null &&
@@ -250,21 +342,26 @@ export function useTemperatureLogbook() {
       return
     }
     const common = {
-      p_reading_id: slot.reading_id,
+      p_reading_id: activeReadingId,
       p_expected_revision: reading.revision,
       p_reason: String(form.get("reason")),
     }
-    return action === "amend"
-      ? run("temperature_monitoring_amendment_create", {
-          ...common,
-          p_value_c: form.get("unable") === "on" ? null : Number(form.get("value")),
-          p_unable_reason: form.get("unable") === "on" ? String(form.get("unableReason")) : null,
-        })
-      : run("temperature_monitoring_reading_review", {
-          ...common,
-          p_action: action,
-          p_amendment_id: action.includes("amendment") ? reading.pending_amendment?.id : null,
-        })
+    const result =
+      action === "amend"
+        ? run("temperature_monitoring_amendment_create", {
+            ...common,
+            p_value_c: form.get("unable") === "on" ? null : Number(form.get("value")),
+            p_unable_reason: form.get("unable") === "on" ? String(form.get("unableReason")) : null,
+          })
+        : run("temperature_monitoring_reading_review", {
+            ...common,
+            p_action: action,
+            p_amendment_id: action.includes("amendment") ? reading.pending_amendment?.id : null,
+          })
+    return result?.then((value) => {
+      if (!conflictReadingId && value?.outcome !== "conflict") dirtyRef.current = false
+      return value
+    })
   }
   const submitDeviation = (form: FormData) => {
     if (!deviation) return
@@ -275,6 +372,9 @@ export function useTemperatureLogbook() {
       return run("temperature_monitoring_deviation_update", {
         ...args,
         p_request_id: requestRef.current.id,
+      }).then((result) => {
+        if (!conflictReadingId && result?.outcome !== "conflict") dirtyRef.current = false
+        return result
       })
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Kiểm tra dữ liệu nhập.")
@@ -284,10 +384,7 @@ export function useTemperatureLogbook() {
   }
   return {
     ...filters,
-    reviewTextFields: [
-      { name: "unableReason", label: "Lý do không đo được", required: false },
-      { name: "reason", label: "Lý do thao tác", required: true },
-    ],
+    reviewTextFields: temperatureSelectors.TEMPERATURE_REVIEW_TEXT_FIELDS,
     sheetRef,
     selectedLoading: !!slot?.reading_id && (readingQuery.isPending || deviationQuery.isPending),
     headingRef,
@@ -316,7 +413,7 @@ export function useTemperatureLogbook() {
     deviationAction,
     setDeviationAction,
     deviationFields,
-    eventLabels,
+    eventLabels: temperatureSelectors.TEMPERATURE_EVENT_LABELS,
     staff,
     staffCursor,
     setStaffCursor,
@@ -330,6 +427,9 @@ export function useTemperatureLogbook() {
     setShowEvents,
     mutation,
     slot,
+    conflictReadingId,
+    conflictViewed,
+    viewConflictReading: () => setConflictViewed(true),
     readingQuery,
     reading,
     deviationQuery,
