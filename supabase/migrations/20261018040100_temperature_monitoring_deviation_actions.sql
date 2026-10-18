@@ -1,4 +1,5 @@
 -- Revision and request identity protect case changes without coupling reading review.
+BEGIN;
 CREATE FUNCTION public.temperature_monitoring_deviation_update(
   p_deviation_id UUID,p_expected_revision BIGINT,p_request_id UUID,p_action TEXT,
   p_immediate_action TEXT DEFAULT NULL,p_cause TEXT DEFAULT NULL,p_evidence TEXT DEFAULT NULL,
@@ -114,3 +115,4 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.temperature_monitoring_deviation_update(UUID,BIGINT,UUID,TEXT,TEXT,TEXT,TEXT,BIGINT,TIMESTAMPTZ,TEXT,TEXT,INTEGER,TEXT) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.temperature_monitoring_deviation_update(UUID,BIGINT,UUID,TEXT,TEXT,TEXT,TEXT,BIGINT,TIMESTAMPTZ,TEXT,TEXT,INTEGER,TEXT) TO authenticated;
+COMMIT;

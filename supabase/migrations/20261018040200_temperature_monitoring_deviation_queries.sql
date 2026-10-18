@@ -1,3 +1,5 @@
+-- Bounded, scoped deviation queries expose inbox/history and independent repair links.
+BEGIN;
 CREATE INDEX temperature_deviation_events_history_idx ON public.temperature_monitoring_deviation_events(deviation_id,id);
 
 CREATE FUNCTION public.temperature_monitoring_deviation_get(p_deviation_id UUID DEFAULT NULL,p_reading_id UUID DEFAULT NULL)
@@ -118,3 +120,4 @@ REVOKE ALL ON FUNCTION public.temperature_monitoring_deviation_get(UUID,UUID),
 GRANT EXECUTE ON FUNCTION public.temperature_monitoring_deviation_get(UUID,UUID),
   public.temperature_monitoring_deviations_list(DATE,DATE,BIGINT,TEXT,TEXT,BIGINT,INTEGER,INTEGER,JSONB),
   public.temperature_monitoring_deviation_history(UUID,INTEGER,BIGINT) TO authenticated;
+COMMIT;

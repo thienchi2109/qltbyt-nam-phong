@@ -1,4 +1,5 @@
 -- TM-06 cases are materialized from the first immutable breach event, not current policy.
+BEGIN;
 CREATE TABLE public.temperature_monitoring_deviations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   reading_id UUID NOT NULL UNIQUE REFERENCES public.temperature_readings(id),
@@ -123,3 +124,4 @@ FOR EACH ROW EXECUTE FUNCTION public._temperature_monitoring_repair_link_guard()
 REVOKE ALL ON FUNCTION public._temperature_monitoring_deviation_owner(BIGINT,BIGINT),
   public._temperature_monitoring_deviation_guard(),public._temperature_monitoring_materialize_deviation(public.temperature_monitoring_reading_events),
   public._temperature_monitoring_breach_insert(),public._temperature_monitoring_repair_link_guard() FROM PUBLIC,anon,authenticated;
+COMMIT;

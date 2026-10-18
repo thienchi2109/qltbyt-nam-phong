@@ -1,4 +1,5 @@
 -- Approved scoped user recording/proposal capability; review authority is unchanged.
+BEGIN;
 CREATE OR REPLACE FUNCTION public._temperature_monitoring_assert_scope(p_equipment_id BIGINT,p_lock BOOLEAN DEFAULT FALSE)
 RETURNS TABLE(actor_id BIGINT,role_name TEXT) LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE
@@ -151,3 +152,4 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.temperature_monitoring_measurement_create(BIGINT,DATE,UUID,NUMERIC,TEXT,TIMESTAMPTZ,TEXT) FROM PUBLIC,anon;
 GRANT EXECUTE ON FUNCTION public.temperature_monitoring_measurement_create(BIGINT,DATE,UUID,NUMERIC,TEXT,TIMESTAMPTZ,TEXT) TO authenticated;
+COMMIT;
