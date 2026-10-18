@@ -537,3 +537,23 @@ Doctor and whitespace checks all passed before the local commit. Formal SQL
 `static` and `baseline-forward`
 remain **INCOMPLETE**, and the three prior review findings remain outside this
 refactor. No SQL changes, live/persistent DB writes, deployment, push or merge.
+
+### Final review correction — form boundary schemas
+
+The final reviewer identified one P2 standards finding: REVIEW.md requires React
+Hook Form with Zod schemas. All three registered forms now use `zodResolver` and
+three constant schemas in `src/lib/temperature-monitoring-form-schemas.ts`, using
+the already installed libraries. Schema-inferred measurement/review field types
+replace handwritten shapes. The old numeric validator and inline RHF validation
+rules are removed; one shared numeric schema preserves bounds/step and original
+strings. Deviation validation reuses existing selected-operation field metadata;
+unused operation fields are not required. Review numeric requirements apply only
+to amendments. Contextual capture/reassignment/authorization checks remain in
+the existing hooks and server. New boundary tables complement the unchanged
+draft-retention/pending/refetch/identity lifecycle coverage; no new dependency or
+additional UI component is introduced.
+
+Ordered formatting, explicit-any, diff-only dedupe, typecheck, focused seven-file
+suite (**116/116 PASS**), standard React Doctor (**31 files, zero diagnostics,
+93/100**) and whitespace gates passed for this correction before its local commit.
+The added schema module is included in the unchanged standard diff scan scope.

@@ -1,11 +1,13 @@
 "use client"
 
-import { useId } from "react"
+import { useEffect, useId } from "react"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { temperatureFormData } from "@/lib/temperature-monitoring"
+import { temperatureDeviationFormSchema } from "@/lib/temperature-monitoring-form-schemas"
 import type { TemperatureDeviation } from "@/types/temperature-monitoring"
 import type { useTemperatureLogbook } from "@/hooks/use-temperature-logbook"
 
@@ -18,7 +20,13 @@ export function TemperatureMonitoringDeviationSection({
   deviation: TemperatureDeviation
 }) {
   const errorId = useId()
-  const form = useForm<Record<string, string>>({ shouldUnregister: true })
+  const form = useForm<Record<string, string>>({
+    shouldUnregister: true,
+    resolver: zodResolver(temperatureDeviationFormSchema),
+  })
+  useEffect(() => {
+    form.setValue("action", w.deviationAction)
+  }, [form, w.deviationAction])
   return (
     <>
       <h2 className="font-semibold">Xử lý sai lệch · {deviation.status}</h2>
@@ -53,10 +61,7 @@ export function TemperatureMonitoringDeviationSection({
               {field.label}
               {field.type === "textarea" ? (
                 <Textarea
-                  {...form.register(field.name, {
-                    required: field.required ? "Nhập nội dung bắt buộc." : false,
-                    maxLength: { value: 2000, message: "Nhập tối đa 2000 ký tự." },
-                  })}
+                  {...form.register(field.name)}
                   aria-invalid={!!form.formState.errors[field.name]}
                   aria-describedby={
                     form.formState.errors[field.name] ? `${errorId}-${field.name}` : undefined
@@ -67,9 +72,7 @@ export function TemperatureMonitoringDeviationSection({
                 />
               ) : (
                 <Input
-                  {...form.register(field.name, {
-                    required: field.required ? "Nhập nội dung bắt buộc." : false,
-                  })}
+                  {...form.register(field.name)}
                   aria-invalid={!!form.formState.errors[field.name]}
                   aria-describedby={
                     form.formState.errors[field.name] ? `${errorId}-${field.name}` : undefined
@@ -126,12 +129,7 @@ export function TemperatureMonitoringDeviationSection({
           <label>
             Lý do thao tác
             <Textarea
-              {...form.register("reason", {
-                required: ["severity", "cancel"].includes(w.deviationAction)
-                  ? "Nhập lý do thao tác."
-                  : false,
-                maxLength: { value: 2000, message: "Nhập tối đa 2000 ký tự." },
-              })}
+              {...form.register("reason")}
               aria-invalid={!!form.formState.errors.reason}
               aria-describedby={form.formState.errors.reason ? `${errorId}-reason` : undefined}
               required={["severity", "cancel"].includes(w.deviationAction)}

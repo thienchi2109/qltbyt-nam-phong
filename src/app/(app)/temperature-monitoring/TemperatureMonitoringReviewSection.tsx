@@ -2,20 +2,17 @@
 
 import { useEffect, useId } from "react"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { temperatureFormData, temperatureValueValidation } from "@/lib/temperature-monitoring"
+import { temperatureFormData } from "@/lib/temperature-monitoring"
+import {
+  temperatureReviewFormSchema,
+  type TemperatureReviewFields,
+} from "@/lib/temperature-monitoring-form-schemas"
 import type { TemperatureReading } from "@/types/temperature-monitoring"
 import type { useTemperatureLogbook } from "@/hooks/use-temperature-logbook"
-
-type ReviewFields = {
-  action: string
-  value: string
-  unable: boolean
-  unableReason: string
-  reason: string
-}
 
 /** Keep review drafts independent from authoritative revisions and pending requests. */
 export function TemperatureMonitoringReviewSection({
@@ -26,7 +23,8 @@ export function TemperatureMonitoringReviewSection({
   reading: TemperatureReading
 }) {
   const errorId = useId()
-  const form = useForm<ReviewFields>({
+  const form = useForm<TemperatureReviewFields>({
+    resolver: zodResolver(temperatureReviewFormSchema),
     defaultValues: {
       action: w.reviewActions[0]?.value ?? "",
       value: "",
@@ -70,7 +68,7 @@ export function TemperatureMonitoringReviewSection({
           <label>
             Số đo đề xuất
             <Input
-              {...form.register("value", { validate: temperatureValueValidation })}
+              {...form.register("value")}
               aria-invalid={!!form.formState.errors.value}
               aria-describedby={form.formState.errors.value ? `${errorId}-value` : undefined}
               type="number"
@@ -87,10 +85,7 @@ export function TemperatureMonitoringReviewSection({
             <label key={field.name}>
               {field.label}
               <Textarea
-                {...form.register(field.name as "unableReason" | "reason", {
-                  required: field.required ? "Nhập lý do thao tác." : false,
-                  maxLength: { value: 2000, message: "Nhập tối đa 2000 ký tự." },
-                })}
+                {...form.register(field.name as "unableReason" | "reason")}
                 aria-invalid={!!form.formState.errors[field.name as "unableReason" | "reason"]}
                 aria-describedby={
                   form.formState.errors[field.name as "unableReason" | "reason"]

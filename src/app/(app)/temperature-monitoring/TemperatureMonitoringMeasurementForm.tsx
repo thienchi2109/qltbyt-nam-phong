@@ -2,20 +2,17 @@
 
 import { useId } from "react"
 import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { temperatureFormData, temperatureValueValidation } from "@/lib/temperature-monitoring"
+import { temperatureFormData } from "@/lib/temperature-monitoring"
+import {
+  temperatureMeasurementFormSchema,
+  type TemperatureMeasurementFields,
+} from "@/lib/temperature-monitoring-form-schemas"
 import type { TemperatureSlot } from "@/types/temperature-monitoring"
 import type { useTemperatureLogbook } from "@/hooks/use-temperature-logbook"
-
-type ReadingFields = {
-  value: string
-  unable: boolean
-  captured: string
-  reason: string
-  note: string
-}
 
 /** Register one slot's draft and retain it until the authoritative save transitions the sheet. */
 export function TemperatureMonitoringMeasurementForm({
@@ -26,7 +23,8 @@ export function TemperatureMonitoringMeasurementForm({
   slot: TemperatureSlot
 }) {
   const errorId = useId()
-  const form = useForm<ReadingFields>({
+  const form = useForm<TemperatureMeasurementFields>({
+    resolver: zodResolver(temperatureMeasurementFormSchema),
     defaultValues: { value: "", unable: false, captured: w.captureDefault, reason: "", note: "" },
   })
   return (
@@ -37,7 +35,7 @@ export function TemperatureMonitoringMeasurementForm({
       <label>
         Nhiệt độ (°C)
         <Input
-          {...form.register("value", { validate: temperatureValueValidation })}
+          {...form.register("value")}
           aria-invalid={!!form.formState.errors.value}
           aria-describedby={form.formState.errors.value ? `${errorId}-value` : undefined}
           type="number"
@@ -54,7 +52,7 @@ export function TemperatureMonitoringMeasurementForm({
         Giờ đo thực tế ({slot.display_timezone})
         <Input
           {...w.captureInput}
-          {...form.register("captured", { required: "Chọn giờ đo thực tế." })}
+          {...form.register("captured")}
           aria-invalid={!!form.formState.errors.captured}
           aria-describedby={form.formState.errors.captured ? `${errorId}-captured` : undefined}
         />
@@ -63,9 +61,7 @@ export function TemperatureMonitoringMeasurementForm({
         <label key={field.name}>
           {field.label}
           <Textarea
-            {...form.register(field.name as "reason" | "note", {
-              maxLength: { value: 2000, message: "Nhập tối đa 2000 ký tự." },
-            })}
+            {...form.register(field.name as "reason" | "note")}
             aria-invalid={!!form.formState.errors[field.name as "reason" | "note"]}
             aria-describedby={
               form.formState.errors[field.name as "reason" | "note"]
