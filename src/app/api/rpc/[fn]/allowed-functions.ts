@@ -58,6 +58,10 @@ export const ALLOWED_FUNCTIONS = new Set<string>([
   "temperature_monitoring_slots_list",
   "temperature_monitoring_schedule_shift_override_upsert",
   "temperature_monitoring_measurement_create",
+  "temperature_monitoring_reading_get",
+  "temperature_monitoring_amendment_create",
+  "temperature_monitoring_reading_review",
+  "temperature_monitoring_reading_history",
   // Repairs
   "repair_request_list",
   "repair_request_get",

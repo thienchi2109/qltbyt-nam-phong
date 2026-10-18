@@ -65,7 +65,7 @@ BEGIN
   result := public.temperature_monitoring_measurement_create(equipment,'2026-07-03',shift,8);
   IF result->>'slot_status' <> 'Đã ghi' THEN RAISE EXCEPTION 'inclusive upper edge failed'; END IF;
   result := public.temperature_monitoring_measurement_create(equipment,'2026-07-04',shift,8.1);
-  IF result->>'slot_status' <> 'Bất thường' OR (SELECT count(*) FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') <> 1 THEN
+  IF result->>'slot_status' <> 'Chờ xác nhận' OR (SELECT count(*) FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') <> 1 THEN
     RAISE EXCEPTION 'breach event missing: %',result;
   END IF;
   result := public.temperature_monitoring_measurement_create(equipment,'2026-07-05',shift,NULL,'Thiết bị đang vệ sinh');
@@ -73,7 +73,7 @@ BEGIN
     RAISE EXCEPTION 'unable-to-measure reason failed: %',result;
   END IF;
   result := public.temperature_monitoring_measurement_create(equipment,'2026-07-07',shift,1.9);
-  IF result->>'slot_status' <> 'Bất thường' OR NOT EXISTS (
+  IF result->>'slot_status' <> 'Chờ xác nhận' OR NOT EXISTS (
     SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID
       AND event_type='deviation_created' AND after_state->>'direction'='below'
   ) THEN RAISE EXCEPTION 'lower threshold breach event failed'; END IF;
@@ -83,12 +83,12 @@ BEGIN
   END IF;
   BEGIN
     result := public.temperature_monitoring_measurement_create(equipment,'2026-07-06',shift,-200.0);
-    IF result->>'slot_status' <> 'Bất thường' OR (result->'reading'->>'value_c')::NUMERIC <> -200.0
+    IF result->>'slot_status' <> 'Chờ xác nhận' OR (result->'reading'->>'value_c')::NUMERIC <> -200.0
       OR NOT EXISTS (SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') THEN
       RAISE EXCEPTION 'physical lower endpoint did not persist with device-threshold breach: %',result;
     END IF;
     result := public.temperature_monitoring_measurement_create(equipment,'2026-07-09',shift,300.0);
-    IF result->>'slot_status' <> 'Bất thường' OR (result->'reading'->>'value_c')::NUMERIC <> 300.0
+    IF result->>'slot_status' <> 'Chờ xác nhận' OR (result->'reading'->>'value_c')::NUMERIC <> 300.0
       OR NOT EXISTS (SELECT 1 FROM public.temperature_monitoring_reading_events WHERE reading_id=(result->'reading'->>'id')::UUID AND event_type='deviation_created') THEN
       RAISE EXCEPTION 'physical upper endpoint did not persist with device-threshold breach: %',result;
     END IF;

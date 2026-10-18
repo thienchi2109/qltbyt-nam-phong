@@ -41,15 +41,16 @@ This contract makes the decisions in [`temperature-monitoring.md`](./temperature
 
 The slot state is exactly one of `Chưa ghi`, `Đã ghi`, `Bất thường` or `Chờ xác nhận`. It is a projection over the reading and amendment review; deviation has a separate lifecycle and never adds a `Closed` slot state. `Chưa ghi` has no canonical reading; the other states have one.
 
-| Current                   | Event / guard                                | Next                              | Required side effects                                                              |
-| ------------------------- | -------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------- |
-| Chưa ghi                  | Valid numeric reading within snapshot limits | Đã ghi                            | Insert canonical reading and audit event.                                          |
-| Chưa ghi                  | Unable-to-measure reason supplied            | Chờ xác nhận                      | Insert reading with reason; require reviewer decision.                             |
-| Chưa ghi                  | Numeric reading outside limits               | Bất thường → Chờ xác nhận         | Insert reading, open one deviation, audit both; reviewer queue is visible.         |
-| Đã ghi                    | Submit amendment                             | Chờ xác nhận                      | Insert immutable amendment proposal; original remains effective until decision.    |
-| Bất thường / Chờ xác nhận | Approve amendment or review result           | Recompute as Đã ghi or Bất thường | Record decision and audit; deviation remains/updates according to resulting value. |
-| Bất thường / Chờ xác nhận | Reject amendment                             | Prior effective state             | Preserve proposal and rejection reason; no overwrite.                              |
-| Đã ghi / Bất thường       | Authorized reopen with mandatory reason      | Chờ xác nhận                      | Append reopen audit event; direct edit remains forbidden.                          |
+| Current                   | Event / guard                                | Next                              | Required side effects                                                                               |
+| ------------------------- | -------------------------------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Chưa ghi                  | Valid numeric reading within snapshot limits | Đã ghi                            | Insert canonical reading and audit event.                                                           |
+| Chưa ghi                  | Unable-to-measure reason supplied            | Chờ xác nhận                      | Insert reading with reason; require reviewer decision.                                              |
+| Chờ xác nhận              | Confirm unable-to-measure result             | Đã ghi                            | Preserve NULL value/reason and explicit unable flag; never count as measured/in-range numeric data. |
+| Chưa ghi                  | Numeric reading outside limits               | Bất thường → Chờ xác nhận         | Insert reading, open one deviation, audit both; reviewer queue is visible.                          |
+| Đã ghi                    | Submit amendment                             | Chờ xác nhận                      | Insert immutable amendment proposal; original remains effective until decision.                     |
+| Bất thường / Chờ xác nhận | Approve amendment or review result           | Recompute as Đã ghi or Bất thường | Record decision and audit; deviation remains/updates according to resulting value.                  |
+| Bất thường / Chờ xác nhận | Reject amendment                             | Prior effective state             | Preserve proposal and rejection reason; no overwrite.                                               |
+| Đã ghi / Bất thường       | Authorized reopen with mandatory reason      | Chờ xác nhận                      | Append reopen audit event; direct edit remains forbidden.                                           |
 
 Deviation is a separate state machine: `Mở` → `Đang xử lý` → `Chờ xác minh` → `Đã đóng`, or `Mở`/`Đang xử lý` → `Đã hủy` only with an authorized reason. Closing requires immediate action and verification result. Closing a deviation does **not** transition the slot to `Closed`: the slot remains `Bất thường` when its confirmed reading is out of range, or `Đã ghi` when an approved amendment/review recomputes it in range; an unresolved amendment remains `Chờ xác nhận`.
 
@@ -95,7 +96,7 @@ The following is dependency guidance only, not implementation planning: TM-02 co
 
 - The canonical equipment tenant key is represented by `don_vi`/facility in the proxy, but the temperature tables' exact foreign-key names are not chosen.
 - The master decision requires `Asia/Ho_Chi_Minh` as the default display timezone; whether a later configuration version may choose another non-null timezone needs owner sign-off.
-- The role-to-capability matrix and who may reopen/approve/export need owner sign-off before TM-02/TM-05.
+- TM-05 owner approval (2026-10-18): confirmation/amendment decisions/reopen use `global/admin/to_qltb` within current equipment scope, with decision actor distinct from original operator and proposal author. Amendment uses TM-04 writer roles and may be submitted during original review; rejection restores exact prior effective/review state. Any confirmed result, including unable-to-measure, may be reopened with mandatory reason and no pending amendment. Confirmed unable-to-measure projects `Đã ghi` with NULL value, preserved reason and explicit unable classification; it is never measured/in-range numeric data. Export capability remains for TM-09 sign-off.
 - TM-04 resolves numeric input as inclusive `[-200.0, +300.0] °C`, at most one decimal with no rounding; device thresholds are inclusive. Unable-to-measure uses a structured free-text reason, without a fixed reason catalog (approved 2026-10-17).
 - Conflict error code/payload and cursor shape must be standardized by TM-04 before UI work.
 - Deviation severity thresholds, reassignment rules and repair-link cardinality remain product decisions.

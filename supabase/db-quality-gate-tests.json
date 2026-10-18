@@ -491,7 +491,7 @@
         "failureSignature": "6fb7b109db1d79e15d9c405ee48bf4aec91e642fc533127a6f234d6549264530",
         "sqlState": "P0001",
         "protectedObjects": ["public.get_maintenance_report_data"],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: Expected existing maintenance report payload keys to remain present",
+        "reason": "N\u1ee3 c\u0169 \u0111\u00e3 t\u00e1i hi\u1ec7n tr\u00ean c\u1ea3 hai DB d\u00f9ng t\u1ea1m; assertion: Expected existing maintenance report payload keys to remain present",
         "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
       },
       "purpose": "smoke",
@@ -738,7 +738,7 @@
           "public.technical_configuration_baseline_import_apply_v2",
           "public._technical_configuration_baseline_import_apply_v2"
         ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: public v2 apply not activated: expected PT409/hierarchical_import_apply_not_activated, got 42501/permission_denied",
+        "reason": "N\u1ee3 c\u0169 \u0111\u00e3 t\u00e1i hi\u1ec7n tr\u00ean c\u1ea3 hai DB d\u00f9ng t\u1ea1m; assertion: public v2 apply not activated: expected PT409/hierarchical_import_apply_not_activated, got 42501/permission_denied",
         "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
       },
       "purpose": "phase-gate",
@@ -888,7 +888,7 @@
           "public.technical_configuration_dossiers_delete",
           "public.audit_logs"
         ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: permission denied for schema public",
+        "reason": "N\u1ee3 c\u0169 \u0111\u00e3 t\u00e1i hi\u1ec7n tr\u00ean c\u1ea3 hai DB d\u00f9ng t\u1ea1m; assertion: permission denied for schema public",
         "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
       },
       "purpose": "phase-gate",
@@ -1019,7 +1019,7 @@
           "public.technical_configuration_option_import_apply",
           "public._technical_configuration_option_import_validate"
         ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: permission denied for schema public",
+        "reason": "N\u1ee3 c\u0169 \u0111\u00e3 t\u00e1i hi\u1ec7n tr\u00ean c\u1ea3 hai DB d\u00f9ng t\u1ea1m; assertion: permission denied for schema public",
         "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
       },
       "purpose": "phase-gate",
@@ -1191,7 +1191,7 @@
           "public.lich_su_thiet_bi",
           "public.audit_log"
         ],
-        "reason": "Nợ cũ đã tái hiện trên cả hai DB dùng tạm; assertion: permission denied for schema public",
+        "reason": "N\u1ee3 c\u0169 \u0111\u00e3 t\u00e1i hi\u1ec7n tr\u00ean c\u1ea3 hai DB d\u00f9ng t\u1ea1m; assertion: permission denied for schema public",
         "evidence": "oracle:issue989-compare-ce2c8350-20260905t0504z/report.json"
       },
       "purpose": "smoke",
@@ -1418,6 +1418,22 @@
       "requiredForMigrations": [
         "supabase/migrations/20261017120000_temperature_monitoring_measurements.sql",
         "supabase/migrations/20261017120100_temperature_monitoring_recorded_slots.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["backlog/tasks/TM-05-confirmation-amendment-audit.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/temperature_monitoring_review_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261018030000_temperature_monitoring_review_state.sql",
+        "supabase/migrations/20261018030100_temperature_monitoring_review_actions.sql",
+        "supabase/migrations/20261018030200_temperature_monitoring_review_projection.sql"
       ],
       "safety": "default-safe",
       "timeoutSeconds": 60,
