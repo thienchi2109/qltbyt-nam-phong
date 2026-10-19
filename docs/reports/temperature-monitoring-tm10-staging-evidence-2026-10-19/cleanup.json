@@ -1,0 +1,187 @@
+{
+  "time_utc": "2026-10-19T13:12:22.895723+00:00",
+  "source_commit": "834aafee8059c7142a629a01d5f24b6992ecf71c",
+  "removed_database": "tm10_staging_20261019_a834aafee",
+  "removed_containers": ["tm10-staging-api", "tm10-staging-rest"],
+  "removed_unit": "qltbyt-tm10-staging.service",
+  "removed_root": "/home/ubuntu/qltbyt-tm10-staging-20261019",
+  "checks": {
+    "other_containers_unchanged": true,
+    "images_unchanged": true,
+    "networks_unchanged": true,
+    "volumes_unchanged": true,
+    "other_running_services_unchanged": true,
+    "other_databases_unchanged": true,
+    "baseline_counts_accounts_unchanged": true,
+    "staging_root_removed": true,
+    "staging_unit_unloaded": true,
+    "staging_ports_closed": true
+  },
+  "preserved_other_container_count": 19,
+  "preserved_other_container_identities": {
+    "labops-test-chromium": {
+      "id": "a6c27707ad7a6a8bbc52186953ae87ac5c3da14d2007ee60eedb88120ff6851c",
+      "image": "sha256:a1bea5d50966baa89aada2d5b5ad2d3b0ceee83d84a3550301b282301b930510",
+      "started_at": "2026-10-19T07:48:19.361109702Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "labops-test-app-1": {
+      "id": "dabe6071b5ee2afc941781777ca90d83cfbb740defc96ad060b4559dd0b6ff40",
+      "image": "sha256:a60c41d5996ea1efc0b7c1abbbc0628a3f04409d7e2be5d8f7dbedc11ec4e749",
+      "started_at": "2026-10-19T07:47:54.036789019Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "labops-test-postgres-1": {
+      "id": "22daa71bc19bbdcaf911b18480d8b875a9b15cfa5eb7daff3dd6d4f18e7a4b2f",
+      "image": "sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24",
+      "started_at": "2026-10-19T07:47:43.727352342Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "qltbyt-ai-service-candidate": {
+      "id": "20d0cb67bfd89ce35fe76163ad30e8af1fe91e86698a3572f61d1ec2d34b9ad1",
+      "image": "sha256:1039b18a17bc464aaeed226beae9799858433c79630305c674a8e7627e8d87b8",
+      "started_at": "2026-10-02T17:02:43.240838951Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "qltbyt-ai-cloudflared-new": {
+      "id": "de64882e603f6cf85e39dc26e5fd630f6b2dec608e3385e7085f30b8c209f234",
+      "image": "sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c",
+      "started_at": "2026-09-27T07:11:21.945287247Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "web-push-live-canary-web-push-1": {
+      "id": "e193e60130ba3672e41edeb320c37e755b1067ca4466c9391b5be79d4d51d3d7",
+      "image": "sha256:fd50044094241dae43320b379418715121c8aa89d17745f6a3d075a555efc4d5",
+      "started_at": "2026-09-30T07:58:17.319839785Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "supabase-db": {
+      "id": "a5cb10b9b378070963c1bc592b3c6ff277a511e9a9b4d551891284854b5444e5",
+      "image": "sha256:60c7f363de07ab64e772bef68510ff7a3b2aa3c10ba0c73af770d3fc1fa90f7e",
+      "started_at": "2026-08-18T10:39:53.515049594Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-storage": {
+      "id": "3295913d7dba039a21dde9fe929014920dfc3df500d35fed159b63b65f81056a",
+      "image": "sha256:c8eb9858eafec891a97c27125470aaad54703c3f4eb4d55ca7f1bf6c6411febf",
+      "started_at": "2026-08-18T10:10:51.481267837Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-edge-functions": {
+      "id": "500676602a3ee68186cae425660679e6423b26b22029662c0e71d8881484067a",
+      "image": "sha256:2781daf92394db91f7e94129cc3d04ec474ad16a8fe64b3fbeef6e7d557ab120",
+      "started_at": "2026-08-18T10:11:01.723782272Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "realtime-dev.supabase-realtime": {
+      "id": "20d997a8d6cb46b4d0cccc3ce055297f155c7e8d518f6545bc88738ba4e1e27d",
+      "image": "sha256:aa1c92c0cf326007563641730ec9da9c60478caa6853887775365fa2c097a471",
+      "started_at": "2026-08-18T10:39:55.204024655Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 14
+    },
+    "supabase-meta": {
+      "id": "5ebe72f00bed5ec381d238e0e166f99cf78af1fd0b91529d67a3afb8dc5e3e22",
+      "image": "sha256:a84cc713585eea7b401e4a2561ec4a1e48c87083d1c7ecb4502f204bb4391300",
+      "started_at": "2026-08-18T10:10:50.716977872Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-pooler": {
+      "id": "502d37809c8088b959725a3ac5e2f65d2c07242934bc902a4e981d85553ba202",
+      "image": "sha256:31c2f05b13b11069660fdfae2f6cfd37b509748d2710aca121cfee8b16cb8b07",
+      "started_at": "2026-08-18T10:10:50.72005233Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-auth": {
+      "id": "80d71aa98dc54df0a8a54e45593169a96664157516a15919bf37ae25723ec260",
+      "image": "sha256:385184459f57569c54c25209f51f3b2be99ddd7c4ce9e3555b5d3eea8447b7cf",
+      "started_at": "2026-08-18T10:10:50.72538332Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-rest": {
+      "id": "a3521d7e306df60e24b44c6dae8075a9c25106e215a67f26509944d4d2e451dd",
+      "image": "sha256:54000f24847d01a2c2302e0041cf0618b875c57fb48507d743cfa9aaa50bf43c",
+      "started_at": "2026-08-18T10:10:50.724158633Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-kong": {
+      "id": "2d63fbaf86293448caca693a51475d44bf6b1206e618682b0101e44feddc7f9a",
+      "image": "sha256:9a2ae6699a2ce0d60592eb176555d3594a22782c20cc6557a61ff3a7e8b559a3",
+      "started_at": "2026-08-18T10:10:55.864451461Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-studio": {
+      "id": "2f9c5a57a0775f9ea26489707d0b8319cd3207bfc266cecf5620355146927900",
+      "image": "sha256:606aca9fdaa753b60968d5c304e2ada83869b76c9043684e63d5885aca9550e8",
+      "started_at": "2026-08-18T10:10:50.205983087Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "supabase-imgproxy": {
+      "id": "d23b269ce46981728aa9b3f1c2a6e255268a8c4d17232c4a8121f4022ed5a110",
+      "image": "sha256:3b709e4a0e5e8e0e959b556b7031229202b4b8e7e7d955c517ea7abed68ee34d",
+      "started_at": "2026-08-18T10:10:50.205269763Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    },
+    "qltbyt-zbs-dispatch-scheduler": {
+      "id": "f5b3877b1be4b14ebafb8681d92f7f1a2285445a38acafc7c63b97f14a1d14d9",
+      "image": "sha256:67a04963f6f2359f0f418895467ecec0694218957623142d73a19fb727b3875d",
+      "started_at": "2026-07-02T02:32:30.977244025Z",
+      "status": "running",
+      "health": null,
+      "restart_count": 0
+    },
+    "dqss-issue-508": {
+      "id": "72eb00706801eec428bb185f3ac5e33b4755affa82ef117854c0e8cef8e668bb",
+      "image": "sha256:3863fa2e73d6447856f4d2c8d239e7473885b29876b07be0d813b92eaefa7654",
+      "started_at": "2026-06-06T02:03:25.322963049Z",
+      "status": "running",
+      "health": "healthy",
+      "restart_count": 0
+    }
+  },
+  "baseline_counts": {
+    "database": "qltbyt_test",
+    "users": 68,
+    "equipment": 5025,
+    "tenants": 28,
+    "migrations": 375
+  },
+  "formal_static": "INCOMPLETE",
+  "formal_baseline_forward": "INCOMPLETE",
+  "image_comparison_note": "All 30 image IDs, tags, digests and metadata unchanged. Excluded Containers reference count because the two staging containers were removed; initial raw comparison detected only that expected change.",
+  "image_count": 30,
+  "outcome": "PASS"
+}

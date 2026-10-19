@@ -1,0 +1,14 @@
+{
+  "source_commit": "834aafee8059c7142a629a01d5f24b6992ecf71c",
+  "database": "tm10_staging_20261019_a834aafee",
+  "baseline_counts_unchanged": true,
+  "cloned_accounts_unchanged": true,
+  "candidate_identity_via_api": true,
+  "temperature_rpcs_present_for_authenticated": true,
+  "auth_invalid_credentials_rejected": true,
+  "public_api_schema": "public",
+  "formal_static": "INCOMPLETE",
+  "formal_baseline_forward": "INCOMPLETE",
+  "full_browser_uat": "NOT RUN",
+  "data_preserved": true
+}
