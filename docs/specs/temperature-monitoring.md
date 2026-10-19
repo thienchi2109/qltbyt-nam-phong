@@ -72,7 +72,7 @@ Hệ thống bảo vệ một bản ghi chính cho mỗi thiết bị, ngày the
 - Server dùng cursor pagination theo ngày/ca/thiết bị và chỉ trả dữ liệu trong phạm vi người dùng được phép xem. Query key/cache bao gồm thiết bị, khoảng ngày, ca và trạng thái; sau khi ghi chỉ invalidate phạm vi hẹp.
 - Biểu đồ một thiết bị hiển thị điểm gốc trong cửa sổ tối đa 90 ngày, giới hạn dưới/trên theo snapshot, marker bất thường và tooltip chạm/hover. Không được làm mất các điểm bất thường khi giảm mật độ; nếu có tổng hợp phải ghi rõ trên UI. Luôn có bảng dữ liệu thay thế.
 - Tiêu đề sổ và biểu đồ hiển thị phạm vi hiện tại, ví dụ: “Đang xem 18/07/2026–16/10/2026 · tối đa 90 ngày”.
-- Export cho phép mọi khoảng ngày mà người dùng được phân quyền, kể cả nhiều năm. Export chạy server-side theo luồng hoặc background khi dữ liệu lớn, có giới hạn kích thước/rate limit, và chứa snapshot giới hạn, trạng thái, người nhập/xác nhận, amendment và sai lệch.
+- TM-09 owner chốt 2026-10-19, thay thế yêu cầu nhiều năm trong một lần xuất: mỗi lần export chỉ chọn ngày trong cùng một năm dương lịch; nhiều năm xuất thành các file riêng tương ứng. Được chọn bất kỳ năm lịch sử, kể cả trọn năm nhuận 366 ngày, độc lập giới hạn xem 90 ngày. Excel chứa các bản ghi đã nhập (kể cả không đo được), snapshot ngưỡng, trạng thái, người nhập/xác nhận, amendment và sai lệch; không sinh ca chưa ghi/quá hạn. Giữ nguyên phạm vi đọc đơn vị/khoa phòng hiện hành. Server tạo XLSX theo luồng vào file tạm rồi mới tải file hoàn chỉnh; giới hạn 100.000 dòng dữ liệu, 25 MiB, 60 giây tạo file, 1 yêu cầu/người và 2 yêu cầu/process đồng thời, 5 lần bắt đầu/người/10 phút. Không lưu giữ file lâu dài; trạng thái được đọc tại từng trang, không hứa snapshot giao dịch toàn bộ.
 
 ## Testing Decisions
 

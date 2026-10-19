@@ -189,4 +189,39 @@ describe("AI server RPC helper", () => {
       kind: "error",
     } satisfies Partial<ServerRpcResponseTooLargeError>)
   })
+
+  it("allows an explicit bounded export response cap while preserving the default", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ value: "x".repeat(70 * 1024) }), {
+        headers: { "content-type": "application/json" },
+      })
+    )
+    await expect(
+      callServerRpc(
+        "temperature_monitoring_export_page",
+        {},
+        { id: "31", role: "admin" },
+        { maxResponseBytes: 1024 * 1024 }
+      )
+    ).resolves.toHaveProperty("value")
+    for (const maxResponseBytes of [0, -1, 1.5, 1024 * 1024 + 1, NaN]) {
+      await expect(
+        callServerRpc(
+          "temperature_monitoring_export_page",
+          {},
+          { id: "31", role: "admin" },
+          { maxResponseBytes }
+        )
+      ).rejects.toThrow("Invalid server RPC response limit")
+    }
+    fetchMock.mockResolvedValueOnce(new Response("x".repeat(1024 * 1024 + 1)))
+    await expect(
+      callServerRpc(
+        "temperature_monitoring_export_page",
+        {},
+        { id: "31", role: "admin" },
+        { maxResponseBytes: 1024 * 1024 }
+      )
+    ).rejects.toMatchObject({ kind: "success" })
+  })
 })

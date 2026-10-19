@@ -72,8 +72,12 @@ export async function callServerRpc<TResponse = unknown>(
   fn: string,
   args: Record<string, unknown>,
   user: SupabaseRpcUser,
-  options: { signal?: AbortSignal } = {}
+  options: { signal?: AbortSignal; maxResponseBytes?: number } = {}
 ): Promise<TResponse> {
+  const successMaxBytes = options.maxResponseBytes ?? SERVER_RPC_SUCCESS_MAX_BYTES
+  if (!Number.isInteger(successMaxBytes) || successMaxBytes < 1 || successMaxBytes > 1024 * 1024) {
+    throw new RangeError("Invalid server RPC response limit")
+  }
   const token = mintSupabaseJwt(user)
   const supabaseUrl = getRequiredEnv("NEXT_PUBLIC_SUPABASE_URL")
   const requestInit: RequestInit = {
@@ -105,12 +109,7 @@ export async function callServerRpc<TResponse = unknown>(
     throw new Error(message)
   }
 
-  const text = await readBoundedResponseText(
-    response,
-    SERVER_RPC_SUCCESS_MAX_BYTES,
-    "success",
-    options.signal
-  )
+  const text = await readBoundedResponseText(response, successMaxBytes, "success", options.signal)
   if (text.trim() === "") return null as TResponse
   const isJson = response.headers.get("content-type")?.includes("application/json")
   return (isJson ? JSON.parse(text) : text) as TResponse

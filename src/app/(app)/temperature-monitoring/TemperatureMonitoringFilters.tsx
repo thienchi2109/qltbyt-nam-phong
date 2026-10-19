@@ -1,8 +1,10 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import type { useTemperatureLogbook } from "@/hooks/use-temperature-logbook"
+import { useTemperatureExport } from "@/hooks/use-temperature-export"
 
 /** Compose the existing current/history controls without changing server filters. */
 export function TemperatureMonitoringFilters({
@@ -10,6 +12,7 @@ export function TemperatureMonitoringFilters({
 }: {
   w: ReturnType<typeof useTemperatureLogbook>
 }) {
+  const exporter = useTemperatureExport(w.range)
   return (
     <ListFilterSearchCard
       title={w.tab === "current" ? "Ca đang diễn ra" : "Lịch sử nhiệt độ"}
@@ -109,6 +112,71 @@ export function TemperatureMonitoringFilters({
               ))}
             </select>
           </label>
+          {w.tab === "history" && (
+            <fieldset
+              className="col-span-full flex min-w-0 flex-wrap items-end gap-3 rounded border p-3"
+              disabled={exporter.phase !== "idle"}
+            >
+              <legend className="px-1 font-medium">Xuất Excel — bản ghi đã nhập</legend>
+              <p className="w-full text-sm text-muted-foreground">
+                Xem trên màn hình: tối đa 90 ngày. Xuất trong cùng một năm; các năm khác xuất riêng.
+                Không gồm ca chưa ghi/quá hạn. Dùng thiết bị và ca đang chọn.
+              </p>
+              <label>
+                Xuất từ
+                <Input
+                  type="date"
+                  value={exporter.range.from}
+                  onChange={(e) => exporter.setRange({ ...exporter.range, from: e.target.value })}
+                />
+              </label>
+              <label>
+                Xuất đến
+                <Input
+                  type="date"
+                  value={exporter.range.to}
+                  onChange={(e) => exporter.setRange({ ...exporter.range, to: e.target.value })}
+                />
+              </label>
+              <label>
+                Trạng thái xuất
+                <select
+                  className="h-11 rounded border px-2"
+                  value={exporter.status}
+                  onChange={(e) => exporter.setStatus(e.target.value)}
+                >
+                  <option value="">Tất cả bản ghi</option>
+                  {["Đã ghi", "Chờ xác nhận", "Bất thường"].map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
+              <Button
+                type="button"
+                disabled={!exporter.valid}
+                onClick={() => void exporter.download(w.workspaceArgs.p_equipment_id, w.shift)}
+              >
+                Xuất Excel
+              </Button>
+            </fieldset>
+          )}
+          {w.tab === "history" && (
+            <div className="col-span-full" role="status" aria-live="polite">
+              {exporter.phase === "preparing"
+                ? "Đang chuẩn bị Excel…"
+                : exporter.phase === "downloading"
+                  ? "Đang tải file Excel…"
+                  : exporter.message ||
+                    (!exporter.valid
+                      ? "Chọn ngày hợp lệ trong cùng một năm; các năm khác xuất riêng."
+                      : "")}
+              {exporter.phase !== "idle" && (
+                <Button type="button" variant="outline" onClick={exporter.cancel}>
+                  Hủy xuất
+                </Button>
+              )}
+            </div>
+          )}
         </>
       }
     />
