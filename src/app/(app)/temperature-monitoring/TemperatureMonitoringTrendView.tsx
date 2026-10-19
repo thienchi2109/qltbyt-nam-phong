@@ -291,7 +291,6 @@ export function TemperatureMonitoringTrendView({
           {activeSelected ? (
             <section
               id="temperature-trend-point-details"
-              role="region"
               aria-live="polite"
               aria-label="Chi tiết điểm đo"
               tabIndex={-1}

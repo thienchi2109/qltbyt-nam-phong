@@ -57,3 +57,10 @@ dependency, RPC, or SQL change is authorized by this approval.
 - Implementation commit: `c9de07de8d7d86cb67bf33a44038c6b151b78301`, with hooks enabled and passing. The lead re-ran the full ordered verification chain on this exact commit.
 - Verified source fingerprint: `0d6d9937861d0ce21ea552311d059086c6ceb18b71973e00d21412c16d75b93c` (SHA-256 over sorted changed code paths and bytes, including required JSDoc added before commit).
 - Limits: no real-browser/authenticated E2E, deployment, merge, push, or live DB write. TM-07's formal DB gates remain `INCOMPLETE`; this SQL-free task does not clear that debt. TM-09 is outside this task.
+
+## Approved ARIA cleanup — 2026-10-19
+
+- After an independent read-only assessment, the owner approved removing only the redundant explicit `role="region"` from the labelled point-detail `<section>`. A new `gpt-6.1-sol/high` worker made the one-line deletion; the implicit named region, live announcement, focus, and Escape behavior remain intact.
+- Lead independently passed the ordered format, explicit-any, diff-only dedupe, typecheck, existing trend-view tests (**7/7 PASS**), and React Doctor checks. Doctor remains **91/100**, now **8 warnings**; the ARIA warning is gone. The earlier 57/57 result remains the broader implementation evidence at `c9de07de`; this cleanup reran only the affected 7-test suite.
+- Keep the five scope-reset and three complexity/size warnings as reviewed non-blocking debt. No state-reset refactor or additional component was introduced. The trend view is now 449 formatted lines.
+- Cleanup source fingerprint: `0cb6607101219eda69fb814d12d218cd3d2d6cd10eced6be55dc5b9d1b84b58d`, using the same sorted-path/bytes algorithm above. Main and live systems remain unchanged.
