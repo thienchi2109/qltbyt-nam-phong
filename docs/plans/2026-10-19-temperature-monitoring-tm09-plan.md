@@ -257,3 +257,9 @@ aggregate TM-09 completion remain **INCOMPLETE**. No live apply is authorized.
   Disposable SQL source digest:
   `304eb91493f4c1a2565b240e3df53d26cbca048883d3c7759fb9064d23578a9b`.
   Formal static and baseline-forward certification remain separate and INCOMPLETE.
+- Local implementation commit: `a625464e48630170f90a14b68d1efab3ba4a00c8`.
+  Required local static attempt on that commit timed out after 60 seconds
+  (exit 124), with no digest-bearing result; see
+  `/tmp/tm09-formal-static-a625464e.log`. Baseline-forward was not executed;
+  deferred harness maintenance remains outside TM-09. This is reviewed local
+  implementation evidence, not a DONE/aggregate DB PASS or live-apply approval.
