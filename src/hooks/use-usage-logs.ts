@@ -66,8 +66,13 @@ export function useEquipmentUsageLogs(
         fn: "usage_log_list",
         args: {
           p_thiet_bi_id: numericId,
+          p_trang_thai: null,
+          p_active_only: false,
           p_limit: limit,
           p_started_from: dateFrom + "T00:00:00Z", // Only fetch recent usage
+          p_started_to: null,
+          p_offset: 0,
+          p_don_vi: null,
           p_equipment_dataset: equipmentDataset,
         },
       })
@@ -117,9 +122,13 @@ export function useEquipmentUsageLogsMore(
         fn: "usage_log_list",
         args: {
           p_thiet_bi_id: numericId,
+          p_trang_thai: null,
+          p_active_only: false,
           p_limit: limit,
           p_offset: offset,
           p_started_from: dateFrom + "T00:00:00Z",
+          p_started_to: null,
+          p_don_vi: null,
           p_equipment_dataset: equipmentDataset,
         },
       })
@@ -157,8 +166,13 @@ export function useActiveUsageLogs(
       const data = await callRpc<UsageLog[]>({
         fn: "usage_log_list",
         args: {
+          p_thiet_bi_id: null,
+          p_trang_thai: null,
           p_active_only: true,
+          p_started_from: null,
+          p_started_to: null,
           p_limit: 200,
+          p_offset: 0,
           p_don_vi: tenantId ?? null, // Filter by tenant if specified
           p_equipment_dataset: equipmentDataset,
         },
