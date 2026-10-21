@@ -1,0 +1,1246 @@
+{
+  "schemaVersion": 1,
+  "projectRef": "cdthersvldpnlbvpufrr",
+  "sourceCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438",
+  "capturedAt": "2026-10-21T09:15:42Z",
+  "operation": "Sequential live apply of 19 local Temperature Monitoring migrations through Supabase MCP",
+  "authorization": {
+    "live_apply": "Explicit owner request to apply local pending Temperature Monitoring migrations sequentially",
+    "gate_bypass": "Explicit owner instruction: Cho phép bypass DB Gate (vì lỗi chưa khắc phục được của gate)"
+  },
+  "formalGate": {
+    "static": "INCOMPLETE / bypassed by owner",
+    "baselineForward": "INCOMPLETE / bypassed by owner",
+    "aggregate": "NOT CERTIFIED"
+  },
+  "rawObservations": "oracle:tm-live-20261021-091542-raw/observations/{01..19}.json",
+  "migrations": [
+    {
+      "file": "20261017100000_temperature_monitoring_configuration.sql",
+      "name": "temperature_monitoring_configuration",
+      "source_sha256": "f2df065e1e8d4f417b3cf283ae79500cefe421cd241a6f578aaba454b6f9350f",
+      "result": "APPLIED",
+      "live_version": "20261021091142",
+      "live_sql_md5": "c0c689f578f33ad94cac4a7465211112",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_configuration",
+          "liveVersion": "20261021091142",
+          "migrationPath": "supabase/migrations/20261017100000_temperature_monitoring_configuration.sql",
+          "sha256": "38c944bce37beeda7567b7c1df80dd05506993f35e9a98dc3a4325ef2a1e1e7f"
+        },
+        "digest": "794790aebf6831b6c9b007830f3179b9f4fd1975b8919addbce36813bddfc5bb",
+        "evidenceId": "oracle:tm-live-20261021-091542-01/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 17170,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "794790aebf6831b6c9b007830f3179b9f4fd1975b8919addbce36813bddfc5bb",
+          "liveName": "temperature_monitoring_configuration",
+          "liveVersion": "20261021091142",
+          "migrationPath": "supabase/migrations/20261017100000_temperature_monitoring_configuration.sql",
+          "observedCanonicalSha256": "38c944bce37beeda7567b7c1df80dd05506993f35e9a98dc3a4325ef2a1e1e7f",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "cdb40f8544e03a70e9d364bca3f554408b42073f6deffe3f4cd990f60023a867",
+          "receivedAt": "2026-10-21T09:16:51.673Z",
+          "schemaVersion": 1,
+          "sha256": "38c944bce37beeda7567b7c1df80dd05506993f35e9a98dc3a4325ef2a1e1e7f",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261017110000_temperature_monitoring_schedules_slots.sql",
+      "name": "temperature_monitoring_schedules_slots",
+      "source_sha256": "906c06319719aa813f1153d18b32cc51688d58fda47953477489dc70ecb576d0",
+      "result": "APPLIED",
+      "live_version": "20261021091149",
+      "live_sql_md5": "099f9a51217f51698634de0c43198626",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_schedules_slots",
+          "liveVersion": "20261021091149",
+          "migrationPath": "supabase/migrations/20261017110000_temperature_monitoring_schedules_slots.sql",
+          "sha256": "2e12bceff13efd23c3fa57237b086d8e4928e8a8a1bad11408f413cda6b23fcc"
+        },
+        "digest": "f103e5c253cafe289e762e3ec4b22fc9ea4943153611a861ead519d422ca15ea",
+        "evidenceId": "oracle:tm-live-20261021-091542-02/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 17845,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "f103e5c253cafe289e762e3ec4b22fc9ea4943153611a861ead519d422ca15ea",
+          "liveName": "temperature_monitoring_schedules_slots",
+          "liveVersion": "20261021091149",
+          "migrationPath": "supabase/migrations/20261017110000_temperature_monitoring_schedules_slots.sql",
+          "observedCanonicalSha256": "2e12bceff13efd23c3fa57237b086d8e4928e8a8a1bad11408f413cda6b23fcc",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "b5348888555c04517fd2b51fa9aae290ad9b80da4431d439dd92173bfb005260",
+          "receivedAt": "2026-10-21T09:16:52.267Z",
+          "schemaVersion": 1,
+          "sha256": "2e12bceff13efd23c3fa57237b086d8e4928e8a8a1bad11408f413cda6b23fcc",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261017120000_temperature_monitoring_measurements.sql",
+      "name": "temperature_monitoring_measurements",
+      "source_sha256": "a8effc18728d2e248acb91714af55c1b18beaea85b073bf04fcab5348e7c129e",
+      "result": "APPLIED",
+      "live_version": "20261021091150",
+      "live_sql_md5": "cd0754d711bc67d0456d5ba2dd8e69c6",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_measurements",
+          "liveVersion": "20261021091150",
+          "migrationPath": "supabase/migrations/20261017120000_temperature_monitoring_measurements.sql",
+          "sha256": "3fabe8202dc0a4498c2b9f1b662351ec6dfa6849906c4ed0301e51d20a6297db"
+        },
+        "digest": "ac01cd3af4fbf120b5600bdb2a5168a34f2deb80544eb6db49e32785f7bc94f7",
+        "evidenceId": "oracle:tm-live-20261021-091542-03/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 13693,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "ac01cd3af4fbf120b5600bdb2a5168a34f2deb80544eb6db49e32785f7bc94f7",
+          "liveName": "temperature_monitoring_measurements",
+          "liveVersion": "20261021091150",
+          "migrationPath": "supabase/migrations/20261017120000_temperature_monitoring_measurements.sql",
+          "observedCanonicalSha256": "3fabe8202dc0a4498c2b9f1b662351ec6dfa6849906c4ed0301e51d20a6297db",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "58398e4e0ca91b55797659154c7eef52f431a9cc5138adba893d4342032a231a",
+          "receivedAt": "2026-10-21T09:16:52.499Z",
+          "schemaVersion": 1,
+          "sha256": "3fabe8202dc0a4498c2b9f1b662351ec6dfa6849906c4ed0301e51d20a6297db",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261017120100_temperature_monitoring_recorded_slots.sql",
+      "name": "temperature_monitoring_recorded_slots",
+      "source_sha256": "8160dc4bc072876f182354eaad7b1c3cbe338868e81c370bac5a40a4400574de",
+      "result": "APPLIED",
+      "live_version": "20261021091151",
+      "live_sql_md5": "a3b49a18dbee88b42521450189bc4bee",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_recorded_slots",
+          "liveVersion": "20261021091151",
+          "migrationPath": "supabase/migrations/20261017120100_temperature_monitoring_recorded_slots.sql",
+          "sha256": "832b30b713c8f3cdabf30d5f7377ec7ab4134eaddf89d4f0f1368b1dd289e3b1"
+        },
+        "digest": "d657a8452a97115b26300b953fb1f43511f7e0b7b2d0bc380927ef40f5b54eb1",
+        "evidenceId": "oracle:tm-live-20261021-091542-04/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 11895,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "d657a8452a97115b26300b953fb1f43511f7e0b7b2d0bc380927ef40f5b54eb1",
+          "liveName": "temperature_monitoring_recorded_slots",
+          "liveVersion": "20261021091151",
+          "migrationPath": "supabase/migrations/20261017120100_temperature_monitoring_recorded_slots.sql",
+          "observedCanonicalSha256": "832b30b713c8f3cdabf30d5f7377ec7ab4134eaddf89d4f0f1368b1dd289e3b1",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "46b162065496f1f424a0118001e0550a00213396f83aeab1ade1e1e93ee79c79",
+          "receivedAt": "2026-10-21T09:16:52.743Z",
+          "schemaVersion": 1,
+          "sha256": "832b30b713c8f3cdabf30d5f7377ec7ab4134eaddf89d4f0f1368b1dd289e3b1",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018030000_temperature_monitoring_review_state.sql",
+      "name": "temperature_monitoring_review_state",
+      "source_sha256": "8d7866df4c854db8365487644646342960aef46124f75641a41be807296bf338",
+      "result": "APPLIED",
+      "retry_reason": "MCP timestamp version collision; absence of review table/function/column and migration row verified before retry",
+      "live_version": "20261021091227",
+      "live_sql_md5": "62ee72c2b38096c0a01273efc4f4c542",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_review_state",
+          "liveVersion": "20261021091227",
+          "migrationPath": "supabase/migrations/20261018030000_temperature_monitoring_review_state.sql",
+          "sha256": "981bbc2fe99a48f73f72e1abc198cc6ad975ebc34f04fbc108fa6c47fc534417"
+        },
+        "digest": "db2bc5c21f30fe177eb7069bae7bc907c3f020fdb7c12bbc9987fad191b41007",
+        "evidenceId": "oracle:tm-live-20261021-091542-05/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 9131,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "db2bc5c21f30fe177eb7069bae7bc907c3f020fdb7c12bbc9987fad191b41007",
+          "liveName": "temperature_monitoring_review_state",
+          "liveVersion": "20261021091227",
+          "migrationPath": "supabase/migrations/20261018030000_temperature_monitoring_review_state.sql",
+          "observedCanonicalSha256": "981bbc2fe99a48f73f72e1abc198cc6ad975ebc34f04fbc108fa6c47fc534417",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "26289f3be378cd8ab266fa46f51098aba00d7b20b9c5cf438ddc72b1c6c0cbac",
+          "receivedAt": "2026-10-21T09:16:52.986Z",
+          "schemaVersion": 1,
+          "sha256": "981bbc2fe99a48f73f72e1abc198cc6ad975ebc34f04fbc108fa6c47fc534417",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018030100_temperature_monitoring_review_actions.sql",
+      "name": "temperature_monitoring_review_actions",
+      "source_sha256": "e8a867b8ccb6ace812d66702f80420ed61078f5b73cdb956b450b623a5ba6c42",
+      "result": "APPLIED",
+      "live_version": "20261021091237",
+      "live_sql_md5": "25f367c23aa89827749603b8f9259727",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_review_actions",
+          "liveVersion": "20261021091237",
+          "migrationPath": "supabase/migrations/20261018030100_temperature_monitoring_review_actions.sql",
+          "sha256": "22aa71e81b380f9b351f5a8abb6d635816fc840f0c4bcc551db806f7ca57bc87"
+        },
+        "digest": "162fd004f77b83a0fcc708d7fce4c1c05b4b7c71348c221f9b0fef104b16f08c",
+        "evidenceId": "oracle:tm-live-20261021-091542-06/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 12565,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "162fd004f77b83a0fcc708d7fce4c1c05b4b7c71348c221f9b0fef104b16f08c",
+          "liveName": "temperature_monitoring_review_actions",
+          "liveVersion": "20261021091237",
+          "migrationPath": "supabase/migrations/20261018030100_temperature_monitoring_review_actions.sql",
+          "observedCanonicalSha256": "22aa71e81b380f9b351f5a8abb6d635816fc840f0c4bcc551db806f7ca57bc87",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "1cc92982b6e5d3c7b2f09cf4c6085d0e0fb73884d46da5e9db92f385e1ca6ebc",
+          "receivedAt": "2026-10-21T09:16:53.238Z",
+          "schemaVersion": 1,
+          "sha256": "22aa71e81b380f9b351f5a8abb6d635816fc840f0c4bcc551db806f7ca57bc87",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018030200_temperature_monitoring_review_projection.sql",
+      "name": "temperature_monitoring_review_projection",
+      "source_sha256": "14af24f5cf9618df335c3c43c68d718b6640f1828b836a817651b201db031c88",
+      "result": "APPLIED",
+      "live_version": "20261021091239",
+      "live_sql_md5": "00e9883c2b1296d40916c21be1dd96fd",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_review_projection",
+          "liveVersion": "20261021091239",
+          "migrationPath": "supabase/migrations/20261018030200_temperature_monitoring_review_projection.sql",
+          "sha256": "e92fd0cba5add1b76b71b99189aec47f1cd3296e88fbb3910998baa22af37fc1"
+        },
+        "digest": "b6eda33a078760888fcc22b2b0da677055be7f7d05dd3921417d21917e332ae2",
+        "evidenceId": "oracle:tm-live-20261021-091542-07/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 20506,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "b6eda33a078760888fcc22b2b0da677055be7f7d05dd3921417d21917e332ae2",
+          "liveName": "temperature_monitoring_review_projection",
+          "liveVersion": "20261021091239",
+          "migrationPath": "supabase/migrations/20261018030200_temperature_monitoring_review_projection.sql",
+          "observedCanonicalSha256": "e92fd0cba5add1b76b71b99189aec47f1cd3296e88fbb3910998baa22af37fc1",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "c3cb12bba27f6bc61fe9fa81a773815b53b284f8cd6a39603bfa4e0418b4f3a4",
+          "receivedAt": "2026-10-21T09:16:53.470Z",
+          "schemaVersion": 1,
+          "sha256": "e92fd0cba5add1b76b71b99189aec47f1cd3296e88fbb3910998baa22af37fc1",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018040000_temperature_monitoring_deviation_state.sql",
+      "name": "temperature_monitoring_deviation_state",
+      "source_sha256": "3e306d61371032154c5652a61d80665c2d01e90756d30b2512334781a3c5beb2",
+      "result": "APPLIED",
+      "live_version": "20261021091241",
+      "live_sql_md5": "d1199054e2d42600f898ccb34849d748",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_deviation_state",
+          "liveVersion": "20261021091241",
+          "migrationPath": "supabase/migrations/20261018040000_temperature_monitoring_deviation_state.sql",
+          "sha256": "dc9cab6bbb8698bd1423b08f20d37e4e961126d494797214e562a91768807077"
+        },
+        "digest": "1c34dba316c2f3e498c6f271c7a3c78cb1b2d5e11b34d51921ed3158d5a02b25",
+        "evidenceId": "oracle:tm-live-20261021-091542-08/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 8023,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "1c34dba316c2f3e498c6f271c7a3c78cb1b2d5e11b34d51921ed3158d5a02b25",
+          "liveName": "temperature_monitoring_deviation_state",
+          "liveVersion": "20261021091241",
+          "migrationPath": "supabase/migrations/20261018040000_temperature_monitoring_deviation_state.sql",
+          "observedCanonicalSha256": "dc9cab6bbb8698bd1423b08f20d37e4e961126d494797214e562a91768807077",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "81bc9b2b96c4ae76b1f476e292a71556c443b44f7799d4cca8a82c294bae9e98",
+          "receivedAt": "2026-10-21T09:16:53.707Z",
+          "schemaVersion": 1,
+          "sha256": "dc9cab6bbb8698bd1423b08f20d37e4e961126d494797214e562a91768807077",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018040100_temperature_monitoring_deviation_actions.sql",
+      "name": "temperature_monitoring_deviation_actions",
+      "source_sha256": "a3544942764d3ff106eadf7665ca9ceb90b085729c5a4e19e8186b01707d68b4",
+      "result": "APPLIED",
+      "live_version": "20261021091243",
+      "live_sql_md5": "8c27c1dc8000d078fb7e06ae792a4276",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_deviation_actions",
+          "liveVersion": "20261021091243",
+          "migrationPath": "supabase/migrations/20261018040100_temperature_monitoring_deviation_actions.sql",
+          "sha256": "2f0b306e923ed74e333642ce2d96764ec99d9f3a91be7b08f2a226f154f993b3"
+        },
+        "digest": "debd81ebd2271449227cb66177ed56eb007e8eae3ca7d6bbd4a3489eac23a32d",
+        "evidenceId": "oracle:tm-live-20261021-091542-09/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 8138,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "debd81ebd2271449227cb66177ed56eb007e8eae3ca7d6bbd4a3489eac23a32d",
+          "liveName": "temperature_monitoring_deviation_actions",
+          "liveVersion": "20261021091243",
+          "migrationPath": "supabase/migrations/20261018040100_temperature_monitoring_deviation_actions.sql",
+          "observedCanonicalSha256": "2f0b306e923ed74e333642ce2d96764ec99d9f3a91be7b08f2a226f154f993b3",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "0ebae577b1945c6501624e0beeede810b9c64fa436b8e2b56cd1c10a7f23711d",
+          "receivedAt": "2026-10-21T09:16:53.947Z",
+          "schemaVersion": 1,
+          "sha256": "2f0b306e923ed74e333642ce2d96764ec99d9f3a91be7b08f2a226f154f993b3",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018040200_temperature_monitoring_deviation_queries.sql",
+      "name": "temperature_monitoring_deviation_queries",
+      "source_sha256": "9f63e3f23a212f8eb08834d5ebe851acb11cb594622340341d6ecbbccbbf93a2",
+      "result": "APPLIED",
+      "live_version": "20261021091245",
+      "live_sql_md5": "5ac53222282ba99b7cd8f1d7584c1fe1",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_deviation_queries",
+          "liveVersion": "20261021091245",
+          "migrationPath": "supabase/migrations/20261018040200_temperature_monitoring_deviation_queries.sql",
+          "sha256": "75f1f4bc08d599c64abee8c0b876b66c202f0fd00469cfe10d166ea2bb680f28"
+        },
+        "digest": "580f7a2bff6affd35b85a834d7deee79fa3f48082ab313c2ee02c88799596b42",
+        "evidenceId": "oracle:tm-live-20261021-091542-10/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 7858,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "580f7a2bff6affd35b85a834d7deee79fa3f48082ab313c2ee02c88799596b42",
+          "liveName": "temperature_monitoring_deviation_queries",
+          "liveVersion": "20261021091245",
+          "migrationPath": "supabase/migrations/20261018040200_temperature_monitoring_deviation_queries.sql",
+          "observedCanonicalSha256": "75f1f4bc08d599c64abee8c0b876b66c202f0fd00469cfe10d166ea2bb680f28",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "1418ad8cca884c9b3c4f90d83df21b6b90279da470bb5ced182c6dcfb29cdc39",
+          "receivedAt": "2026-10-21T09:16:54.182Z",
+          "schemaVersion": 1,
+          "sha256": "75f1f4bc08d599c64abee8c0b876b66c202f0fd00469cfe10d166ea2bb680f28",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018040300_temperature_monitoring_user_recording.sql",
+      "name": "temperature_monitoring_user_recording",
+      "source_sha256": "10d09dfff4b9835c1369b3cdfacb1c9e12b46a2a59c48a04f44bb0301988192a",
+      "result": "APPLIED",
+      "live_version": "20261021091255",
+      "live_sql_md5": "fc3fc9503cf17a50fa800c44e413ce0c",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_user_recording",
+          "liveVersion": "20261021091255",
+          "migrationPath": "supabase/migrations/20261018040300_temperature_monitoring_user_recording.sql",
+          "sha256": "b573e488c2881dea38aaf8c64d4cc962b761ba40214b39a32c9cac82e9abab80"
+        },
+        "digest": "213902066fbd3daaa76dab63f5066dc7a23962a5a80b8240cf58570aa9bba55b",
+        "evidenceId": "oracle:tm-live-20261021-091542-11/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 9909,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "213902066fbd3daaa76dab63f5066dc7a23962a5a80b8240cf58570aa9bba55b",
+          "liveName": "temperature_monitoring_user_recording",
+          "liveVersion": "20261021091255",
+          "migrationPath": "supabase/migrations/20261018040300_temperature_monitoring_user_recording.sql",
+          "observedCanonicalSha256": "b573e488c2881dea38aaf8c64d4cc962b761ba40214b39a32c9cac82e9abab80",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "dbf89f580a548dd54dd987b6a26aab6364e2fe592086f514e7d22ce045651865",
+          "receivedAt": "2026-10-21T09:16:54.415Z",
+          "schemaVersion": 1,
+          "sha256": "b573e488c2881dea38aaf8c64d4cc962b761ba40214b39a32c9cac82e9abab80",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050000_temperature_monitoring_slot_source.sql",
+      "name": "temperature_monitoring_slot_source",
+      "source_sha256": "556ad5ec62f5d9a6dc96ee75ae7b1e3fa8b2875aac7403cff750a78d7bd03425",
+      "result": "APPLIED",
+      "live_version": "20261021091256",
+      "live_sql_md5": "ecd0abcfd9497d5364f271b126d226bf",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_slot_source",
+          "liveVersion": "20261021091256",
+          "migrationPath": "supabase/migrations/20261018050000_temperature_monitoring_slot_source.sql",
+          "sha256": "1dcad0dc383f270cd80ad259210879cb7dea387ca87b3ec65a9d7bb1b97638ce"
+        },
+        "digest": "c720f92cbc1a1e309c95f6ad1ba9d0c1799fbeb02d4b31f01ba1463e4e5e6e2d",
+        "evidenceId": "oracle:tm-live-20261021-091542-12/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 15628,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "c720f92cbc1a1e309c95f6ad1ba9d0c1799fbeb02d4b31f01ba1463e4e5e6e2d",
+          "liveName": "temperature_monitoring_slot_source",
+          "liveVersion": "20261021091256",
+          "migrationPath": "supabase/migrations/20261018050000_temperature_monitoring_slot_source.sql",
+          "observedCanonicalSha256": "1dcad0dc383f270cd80ad259210879cb7dea387ca87b3ec65a9d7bb1b97638ce",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "97a3cea6f82c2da0f4a24501bf6e3def2cba6bef3463d38b28d88c546780469f",
+          "receivedAt": "2026-10-21T09:16:54.661Z",
+          "schemaVersion": 1,
+          "sha256": "1dcad0dc383f270cd80ad259210879cb7dea387ca87b3ec65a9d7bb1b97638ce",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050100_temperature_monitoring_workspace.sql",
+      "name": "temperature_monitoring_workspace",
+      "source_sha256": "6fc4a2ed40fae4397bf98afd45241bf827415e3b925dde630e90cd68e92536eb",
+      "result": "APPLIED",
+      "live_version": "20261021091258",
+      "live_sql_md5": "dc1771c8d6a43f15b82bdd876eb5ac60",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_workspace",
+          "liveVersion": "20261021091258",
+          "migrationPath": "supabase/migrations/20261018050100_temperature_monitoring_workspace.sql",
+          "sha256": "2a76f544333fe5408f0006982a07722c6e5bd5909fd56ff07f29ba98a8fc3767"
+        },
+        "digest": "ec965a976dbf520faf586ac8aa1a70677b1c3f96a805154a8e31763d5bad2c18",
+        "evidenceId": "oracle:tm-live-20261021-091542-13/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 7562,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "ec965a976dbf520faf586ac8aa1a70677b1c3f96a805154a8e31763d5bad2c18",
+          "liveName": "temperature_monitoring_workspace",
+          "liveVersion": "20261021091258",
+          "migrationPath": "supabase/migrations/20261018050100_temperature_monitoring_workspace.sql",
+          "observedCanonicalSha256": "2a76f544333fe5408f0006982a07722c6e5bd5909fd56ff07f29ba98a8fc3767",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "460aac47c48b90c1456b7bb1dc1fcb6ae3ac0ca9b7e25dc3f0ab9112afc489db",
+          "receivedAt": "2026-10-21T09:16:54.904Z",
+          "schemaVersion": 1,
+          "sha256": "2a76f544333fe5408f0006982a07722c6e5bd5909fd56ff07f29ba98a8fc3767",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050200_temperature_monitoring_choices.sql",
+      "name": "temperature_monitoring_choices",
+      "source_sha256": "856cdfbc53da7dcd8ffc978ed103e0b8fab044af645bd49bbc2c7d78074e9ded",
+      "result": "APPLIED",
+      "live_version": "20261021091300",
+      "live_sql_md5": "fd8b4eae3087a1be771334f8ced8966e",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_choices",
+          "liveVersion": "20261021091300",
+          "migrationPath": "supabase/migrations/20261018050200_temperature_monitoring_choices.sql",
+          "sha256": "27f6c7db984eca063c8f38804156c3897b7cf23ca4c06fc5ad1456be7b5c81c7"
+        },
+        "digest": "6c2a06978c4c171aef04cd7c4acbb4721c6e37b6d4f934cc49775fc837b77138",
+        "evidenceId": "oracle:tm-live-20261021-091542-14/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 5024,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "6c2a06978c4c171aef04cd7c4acbb4721c6e37b6d4f934cc49775fc837b77138",
+          "liveName": "temperature_monitoring_choices",
+          "liveVersion": "20261021091300",
+          "migrationPath": "supabase/migrations/20261018050200_temperature_monitoring_choices.sql",
+          "observedCanonicalSha256": "27f6c7db984eca063c8f38804156c3897b7cf23ca4c06fc5ad1456be7b5c81c7",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "457da873c7d0a40d6da4fc7a98d54f16662127cf467ca926ebfb465f72e4947b",
+          "receivedAt": "2026-10-21T09:16:55.139Z",
+          "schemaVersion": 1,
+          "sha256": "27f6c7db984eca063c8f38804156c3897b7cf23ca4c06fc5ad1456be7b5c81c7",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050300_temperature_monitoring_capture_time.sql",
+      "name": "temperature_monitoring_capture_time",
+      "source_sha256": "630b40217a8201a62abaf081ce9bdc8031780e77e3c810ba2956a5c5d0e9f59f",
+      "result": "APPLIED",
+      "live_version": "20261021091302",
+      "live_sql_md5": "1fdb5796ca988980aeeb37f84bb7a19c",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_capture_time",
+          "liveVersion": "20261021091302",
+          "migrationPath": "supabase/migrations/20261018050300_temperature_monitoring_capture_time.sql",
+          "sha256": "f76f7ce95f3775d7b5accb1b8e74387bf0b217666ac3350e88fbea00b4dc4c20"
+        },
+        "digest": "6265dcc55e734860516ffe5d5271e72cf9af3d052a74cbf13020c7f6b8161320",
+        "evidenceId": "oracle:tm-live-20261021-091542-15/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 8113,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "6265dcc55e734860516ffe5d5271e72cf9af3d052a74cbf13020c7f6b8161320",
+          "liveName": "temperature_monitoring_capture_time",
+          "liveVersion": "20261021091302",
+          "migrationPath": "supabase/migrations/20261018050300_temperature_monitoring_capture_time.sql",
+          "observedCanonicalSha256": "f76f7ce95f3775d7b5accb1b8e74387bf0b217666ac3350e88fbea00b4dc4c20",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "8a31285b10d57236034ac30db4e810229f89704e3f82ae3c68bc6c8bcb1d0b9c",
+          "receivedAt": "2026-10-21T09:16:55.390Z",
+          "schemaVersion": 1,
+          "sha256": "f76f7ce95f3775d7b5accb1b8e74387bf0b217666ac3350e88fbea00b4dc4c20",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050400_temperature_monitoring_equipment_projection.sql",
+      "name": "temperature_monitoring_equipment_projection",
+      "source_sha256": "1a96c2589e9da7eb4175d6198b87099966620ac766561983e696fe7060cb41c9",
+      "result": "APPLIED",
+      "live_version": "20261021091310",
+      "live_sql_md5": "5480f034a5afa237c4b624f20a088161",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_equipment_projection",
+          "liveVersion": "20261021091310",
+          "migrationPath": "supabase/migrations/20261018050400_temperature_monitoring_equipment_projection.sql",
+          "sha256": "6245e562b9b3dd04ce11a0a408bbed07c1b116e4421a8065f440ef385dec4095"
+        },
+        "digest": "1d82e703a8f0ad166f45da928992168888a19684a1d776ae05a1fc42a6b3c7c8",
+        "evidenceId": "oracle:tm-live-20261021-091542-16/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 14109,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "1d82e703a8f0ad166f45da928992168888a19684a1d776ae05a1fc42a6b3c7c8",
+          "liveName": "temperature_monitoring_equipment_projection",
+          "liveVersion": "20261021091310",
+          "migrationPath": "supabase/migrations/20261018050400_temperature_monitoring_equipment_projection.sql",
+          "observedCanonicalSha256": "6245e562b9b3dd04ce11a0a408bbed07c1b116e4421a8065f440ef385dec4095",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "186668733735f71d74d968bf20bd465554868e8fda81c5f25439f5f9debf1718",
+          "receivedAt": "2026-10-21T09:16:55.623Z",
+          "schemaVersion": 1,
+          "sha256": "6245e562b9b3dd04ce11a0a408bbed07c1b116e4421a8065f440ef385dec4095",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018050500_temperature_monitoring_notifications.sql",
+      "name": "temperature_monitoring_notifications",
+      "source_sha256": "f9e20ee3b53f43887e5a802dc9a3b3b48c9ff09ac97701fc46ef86d7cf53826e",
+      "result": "APPLIED",
+      "live_version": "20261021091311",
+      "live_sql_md5": "e975bf1d346578e35136d257aef2a12e",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_notifications",
+          "liveVersion": "20261021091311",
+          "migrationPath": "supabase/migrations/20261018050500_temperature_monitoring_notifications.sql",
+          "sha256": "a2895f15039a8bf5d7af30fd6da46c656c463fe0cc7bb02242055923e989e1e0"
+        },
+        "digest": "59464c87e095822fd7137c772244d1b7dff032bf17dca85a626a6d7d4464987d",
+        "evidenceId": "oracle:tm-live-20261021-091542-17/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 3062,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "59464c87e095822fd7137c772244d1b7dff032bf17dca85a626a6d7d4464987d",
+          "liveName": "temperature_monitoring_notifications",
+          "liveVersion": "20261021091311",
+          "migrationPath": "supabase/migrations/20261018050500_temperature_monitoring_notifications.sql",
+          "observedCanonicalSha256": "a2895f15039a8bf5d7af30fd6da46c656c463fe0cc7bb02242055923e989e1e0",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "cacd0c6dae8a7ed73a9c469ab474d62b6cd0ac63bbe2a2f5784fa818eeb0db8e",
+          "receivedAt": "2026-10-21T09:16:55.862Z",
+          "schemaVersion": 1,
+          "sha256": "a2895f15039a8bf5d7af30fd6da46c656c463fe0cc7bb02242055923e989e1e0",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261018060000_temperature_monitoring_configuration_replacement.sql",
+      "name": "temperature_monitoring_configuration_replacement",
+      "source_sha256": "60b8b015ef59098d2aa76bf018552e3ba796a47ae70b8db004ff6c9c4f294125",
+      "result": "APPLIED",
+      "live_version": "20261021091313",
+      "live_sql_md5": "5c30d19944c33003264119f8dbb8a7de",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_configuration_replacement",
+          "liveVersion": "20261021091313",
+          "migrationPath": "supabase/migrations/20261018060000_temperature_monitoring_configuration_replacement.sql",
+          "sha256": "166f11db4ab69e5500e2803c99941c8a8cee31eaca84f0b8019f00039c19e334"
+        },
+        "digest": "b40d5d6ccef7c979565b61f37447a7c46d63e17d9361d0800d48f6fd2c768f31",
+        "evidenceId": "oracle:tm-live-20261021-091542-18/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 20090,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "b40d5d6ccef7c979565b61f37447a7c46d63e17d9361d0800d48f6fd2c768f31",
+          "liveName": "temperature_monitoring_configuration_replacement",
+          "liveVersion": "20261021091313",
+          "migrationPath": "supabase/migrations/20261018060000_temperature_monitoring_configuration_replacement.sql",
+          "observedCanonicalSha256": "166f11db4ab69e5500e2803c99941c8a8cee31eaca84f0b8019f00039c19e334",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "c5f0c9ac44bc29f264980fd23eab4d6415a74667b848a7134257347cfdf5b1d1",
+          "receivedAt": "2026-10-21T09:16:56.095Z",
+          "schemaVersion": 1,
+          "sha256": "166f11db4ab69e5500e2803c99941c8a8cee31eaca84f0b8019f00039c19e334",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    },
+    {
+      "file": "20261019090000_temperature_monitoring_export.sql",
+      "name": "temperature_monitoring_export",
+      "source_sha256": "3b0a1a4d3a129f95bc1037b5b4a18a2da356539297d758ed1449ba058b263bf2",
+      "result": "APPLIED",
+      "live_version": "20261021091315",
+      "live_sql_md5": "ffa41e86edaa7963d27464b02876d8f9",
+      "exact_sql_verified": true,
+      "read_back": {
+        "binding": {
+          "liveName": "temperature_monitoring_export",
+          "liveVersion": "20261021091315",
+          "migrationPath": "supabase/migrations/20261019090000_temperature_monitoring_export.sql",
+          "sha256": "157b97b2f6092ff42af4c669e60c2520c7b00d04770d88d4853e11486ca37e39"
+        },
+        "digest": "188f78af8582dafd1e3a679acfc689be48420f661687b3c018a37bf58de31c62",
+        "evidenceId": "oracle:tm-live-20261021-091542-19/read-back.json",
+        "outcome": "PASS",
+        "record": {
+          "canonicalBytes": 10958,
+          "capturedAt": "2026-10-21T09:15:42Z",
+          "digest": "188f78af8582dafd1e3a679acfc689be48420f661687b3c018a37bf58de31c62",
+          "liveName": "temperature_monitoring_export",
+          "liveVersion": "20261021091315",
+          "migrationPath": "supabase/migrations/20261019090000_temperature_monitoring_export.sql",
+          "observedCanonicalSha256": "157b97b2f6092ff42af4c669e60c2520c7b00d04770d88d4853e11486ca37e39",
+          "projectRef": "cdthersvldpnlbvpufrr",
+          "rawObservationDigest": "f0a481ca6a0d0af97d4cbb555712dc7ba8cb1287487bdf31496d2f6e56dd4eaf",
+          "receivedAt": "2026-10-21T09:16:56.330Z",
+          "schemaVersion": 1,
+          "sha256": "157b97b2f6092ff42af4c669e60c2520c7b00d04770d88d4853e11486ca37e39",
+          "source": "supabase-mcp",
+          "statementCount": 1,
+          "subjectCommit": "08fd658ad29f7a9bc6e4aede33f41e75d9621438"
+        },
+        "status": "verified"
+      }
+    }
+  ],
+  "catalogChecks": {
+    "tables": [
+      {
+        "name": "temperature_monitoring_configuration_audit",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_configuration_versions",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_configurations",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_deviation_events",
+        "rls": true,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_deviations",
+        "rls": true,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_reading_events",
+        "rls": true,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_recording_methods",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_schedule_profiles",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_schedule_shift_override_audit",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_schedule_shift_overrides",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_monitoring_schedule_shifts",
+        "rls": false,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_reading_amendments",
+        "rls": true,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      },
+      {
+        "name": "temperature_readings",
+        "rls": true,
+        "authenticated_direct_insert": false,
+        "anon_direct_select": false
+      }
+    ],
+    "rpc_count": 24,
+    "unsafe_security_definers": [],
+    "anon_rpc_execute": [
+      "temperature_monitoring_configuration_audit_immutable",
+      "temperature_monitoring_schedule_shift_override_audit_immutable"
+    ],
+    "authenticated_private_helper_execute": []
+  },
+  "additionalChecks": {
+    "anon_and_authenticated_all_direct_table_privileges_absent": true,
+    "anon_business_rpc_execute_absent": true,
+    "anon_executable_functions_are_two_trigger_returning_invoker_functions_only": true,
+    "configuration_reading_deviation_row_counts_at_capture": {
+      "configurations": 0,
+      "readings": 0,
+      "deviations": 0
+    }
+  },
+  "incident": {
+    "step": 5,
+    "error": "23505 duplicate schema_migrations_pkey; MCP generated version 20261021091151 collided with prior successful migration",
+    "beforeRetry": "Verified review-state migration row absent; table temperature_reading_amendments, scope helper and event_sequence column absent; prior version belongs to recorded_slots migration",
+    "resolution": "Retried same unchanged SQL after new timestamp; success. Later apply calls spaced by at least 1.2 seconds.",
+    "history_repair_performed": false
+  },
+  "advisories": {
+    "security": [
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviation_events",
+        "detail": "Table \\`public.temperature_monitoring_deviation_events\\` has RLS enabled, but no policies exist",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Table \\`public.temperature_monitoring_deviations\\` has RLS enabled, but no policies exist",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "object": "temperature_monitoring_reading_events",
+        "detail": "Table \\`public.temperature_monitoring_reading_events\\` has RLS enabled, but no policies exist",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "object": "temperature_reading_amendments",
+        "detail": "Table \\`public.temperature_reading_amendments\\` has RLS enabled, but no policies exist",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "rls_enabled_no_policy",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Table \\`public.temperature_readings\\` has RLS enabled, but no policies exist",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "object": "temperature_monitoring_configuration_audit_immutable",
+        "detail": "Function \\`public.temperature_monitoring_configuration_audit_immutable\\` has a role mutable search_path",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "function_search_path_mutable",
+        "level": "WARN",
+        "object": "temperature_monitoring_schedule_shift_override_audit_immutable",
+        "detail": "Function \\`public.temperature_monitoring_schedule_shift_override_audit_immutable\\` has a role mutable search_path",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_amendment_create",
+        "detail": "Function `public.temperature_monitoring_amendment_create(p_reading_id uuid, p_expected_revision bigint, p_value_c numeric, p_unable_reason text, p_reason text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_amendment_create`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_configuration_choices",
+        "detail": "Function `public.temperature_monitoring_configuration_choices(p_equipment_id bigint)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_configuration_choices`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_configuration_get",
+        "detail": "Function `public.temperature_monitoring_configuration_get(p_equipment_id bigint)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_configuration_get`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_configuration_history",
+        "detail": "Function `public.temperature_monitoring_configuration_history(p_equipment_id bigint)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_configuration_history`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_configuration_upsert",
+        "detail": "Function `public.temperature_monitoring_configuration_upsert(p_equipment_id bigint, p_monitoring_enabled boolean, p_effective_from timestamp with time zone, p_effective_to timestamp with time zone, p_lower_c numeric, p_upper_c numeric, p_schedule_profile_id uuid, p_display_timezone text, p_responsible_primary_user_id bigint, p_responsible_substitute_user_ids bigint[], p_recording_method_code text, p_change_reason text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_configuration_upsert`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_deviation_get",
+        "detail": "Function `public.temperature_monitoring_deviation_get(p_deviation_id uuid, p_reading_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_deviation_get`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_deviation_history",
+        "detail": "Function `public.temperature_monitoring_deviation_history(p_deviation_id uuid, p_limit integer, p_before_id bigint)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_deviation_history`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_deviation_update",
+        "detail": "Function `public.temperature_monitoring_deviation_update(p_deviation_id uuid, p_expected_revision bigint, p_request_id uuid, p_action text, p_immediate_action text, p_cause text, p_evidence text, p_owner_user_id bigint, p_due_at timestamp with time zone, p_severity text, p_verification_result text, p_repair_request_id integer, p_reason text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_deviation_update`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_deviations_list",
+        "detail": "Function `public.temperature_monitoring_deviations_list(p_date_from date, p_date_to date, p_equipment_id bigint, p_status text, p_severity text, p_owner_user_id bigint, p_repair_request_id integer, p_limit integer, p_cursor jsonb)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_deviations_list`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_export_page",
+        "detail": "Function `public.temperature_monitoring_export_page(p_from_date date, p_to_date date, p_equipment_id bigint, p_shift_codes text[], p_status text, p_dataset text, p_cursor jsonb, p_limit integer, p_started_at timestamp with time zone, p_reading_ids uuid[])` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_export_page`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_measurement_create",
+        "detail": "Function `public.temperature_monitoring_measurement_create(p_equipment_id bigint, p_monitoring_date date, p_shift_id uuid, p_value_c numeric, p_unable_reason text, p_captured_at timestamp with time zone, p_note text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_measurement_create`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_notification_summary",
+        "detail": "Function `public.temperature_monitoring_notification_summary(p_from_date date, p_to_date date)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_notification_summary`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_reading_get",
+        "detail": "Function `public.temperature_monitoring_reading_get(p_reading_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_reading_get`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_reading_history",
+        "detail": "Function `public.temperature_monitoring_reading_history(p_equipment_id bigint, p_from_date date, p_to_date date, p_cursor text, p_limit integer)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_reading_history`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_reading_review",
+        "detail": "Function `public.temperature_monitoring_reading_review(p_reading_id uuid, p_expected_revision bigint, p_action text, p_reason text, p_amendment_id uuid)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_reading_review`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_schedule_shift_override_upsert",
+        "detail": "Function `public.temperature_monitoring_schedule_shift_override_upsert(p_schedule_profile_id uuid, p_don_vi bigint, p_shift_id uuid, p_name text, p_start_local time without time zone, p_end_local time without time zone, p_is_active boolean)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_schedule_shift_override_upsert`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_slots_list",
+        "detail": "Function `public.temperature_monitoring_slots_list(p_from_date date, p_to_date date, p_shift_codes text[], p_equipment_id bigint, p_cursor text, p_limit integer, p_include_unconfigured boolean)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_slots_list`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_staff_choices",
+        "detail": "Function `public.temperature_monitoring_staff_choices(p_equipment_id bigint, p_query text, p_cursor bigint, p_limit integer)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_staff_choices`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      },
+      {
+        "name": "authenticated_security_definer_function_executable",
+        "level": "WARN",
+        "object": "temperature_monitoring_workspace_list",
+        "detail": "Function `public.temperature_monitoring_workspace_list(p_from_date date, p_to_date date, p_equipment_id bigint, p_shift_codes text[], p_status text, p_cursor jsonb, p_limit integer, p_kind text, p_deviation_status text)` can be executed by the `authenticated` role as a `SECURITY DEFINER` function via `/rest/v1/rpc/temperature_monitoring_workspace_list`. Revoke `EXECUTE` or switch it to `SECURITY INVOKER` if that is not intentional.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+      }
+    ],
+    "performance": [
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_audit",
+        "detail": "Table \\`public.temperature_monitoring_configuration_audit\\` has a foreign key \\`temperature_monitoring_configuration_audit_actor_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_audit",
+        "detail": "Table \\`public.temperature_monitoring_configuration_audit\\` has a foreign key \\`temperature_monitoring_configuration_audit_equipment_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_audit",
+        "detail": "Table \\`public.temperature_monitoring_configuration_audit\\` has a foreign key \\`temperature_monitoring_configuration_audit_version_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_versions",
+        "detail": "Table \\`public.temperature_monitoring_configuration_versions\\` has a foreign key \\`temperature_monitoring_configu_responsible_primary_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_versions",
+        "detail": "Table \\`public.temperature_monitoring_configuration_versions\\` has a foreign key \\`temperature_monitoring_configuration_recording_method_code_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_versions",
+        "detail": "Table \\`public.temperature_monitoring_configuration_versions\\` has a foreign key \\`temperature_monitoring_configuration_v_schedule_profile_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_versions",
+        "detail": "Table \\`public.temperature_monitoring_configuration_versions\\` has a foreign key \\`temperature_monitoring_configuration_versions_created_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviation_events",
+        "detail": "Table \\`public.temperature_monitoring_deviation_events\\` has a foreign key \\`temperature_monitoring_deviation_events_actor_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Table \\`public.temperature_monitoring_deviations\\` has a foreign key \\`temperature_monitoring_deviations_created_by_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Table \\`public.temperature_monitoring_deviations\\` has a foreign key \\`temperature_monitoring_deviations_owner_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_reading_events",
+        "detail": "Table \\`public.temperature_monitoring_reading_events\\` has a foreign key \\`temperature_monitoring_reading_events_actor_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_schedule_shift_override_audit",
+        "detail": "Table \\`public.temperature_monitoring_schedule_shift_override_audit\\` has a foreign key \\`temperature_monitoring_schedule_shift_overri_actor_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_schedule_shift_override_audit",
+        "detail": "Table \\`public.temperature_monitoring_schedule_shift_override_audit\\` has a foreign key \\`temperature_monitoring_shift_override_audit_fk\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_monitoring_schedule_shift_overrides",
+        "detail": "Table \\`public.temperature_monitoring_schedule_shift_overrides\\` has a foreign key \\`temperature_monitoring_shift_override_shift_fk\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_reading_amendments",
+        "detail": "Table \\`public.temperature_reading_amendments\\` has a foreign key \\`temperature_reading_amendments_author_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Table \\`public.temperature_readings\\` has a foreign key \\`temperature_readings_configuration_version_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Table \\`public.temperature_readings\\` has a foreign key \\`temperature_readings_operator_user_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unindexed_foreign_keys",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Table \\`public.temperature_readings\\` has a foreign key \\`temperature_readings_shift_id_fkey\\` without a covering index. This can lead to suboptimal query performance.",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0001_unindexed_foreign_keys"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_reading_amendments",
+        "detail": "Index \\`temperature_reading_amendments_reading_idx\\` on table \\`public.temperature_reading_amendments\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_reading_events",
+        "detail": "Index \\`temperature_monitoring_reading_events_latest_idx\\` on table \\`public.temperature_monitoring_reading_events\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Index \\`temperature_readings_equipment_date_idx\\` on table \\`public.temperature_readings\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Index \\`temperature_deviations_date_idx\\` on table \\`public.temperature_monitoring_deviations\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Index \\`temperature_deviations_equipment_date_idx\\` on table \\`public.temperature_monitoring_deviations\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviations",
+        "detail": "Index \\`temperature_deviations_repair_idx\\` on table \\`public.temperature_monitoring_deviations\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_deviation_events",
+        "detail": "Index \\`temperature_deviation_events_history_idx\\` on table \\`public.temperature_monitoring_deviation_events\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_configuration_versions",
+        "detail": "Index \\`temperature_monitoring_versions_no_overlap\\` on table \\`public.temperature_monitoring_configuration_versions\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_schedule_shifts",
+        "detail": "Index \\`temperature_monitoring_schedule_shifts_profile_order_idx\\` on table \\`public.temperature_monitoring_schedule_shifts\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_monitoring_schedule_shift_overrides",
+        "detail": "Index \\`temperature_monitoring_shift_overrides_lookup_idx\\` on table \\`public.temperature_monitoring_schedule_shift_overrides\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      },
+      {
+        "name": "unused_index",
+        "level": "INFO",
+        "object": "temperature_readings",
+        "detail": "Index \\`temperature_readings_date_slot_idx\\` on table \\`public.temperature_readings\\` has not been used",
+        "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index"
+      }
+    ]
+  },
+  "limitations": [
+    "No production application deployment or live browser UAT performed",
+    "No business fixture/account/temperature reading created on live",
+    "No Oracle baseline refresh/catch-up or applied-history lock reconciliation performed",
+    "No gate PASS inferred from successful live apply or read-back",
+    "No new remediation DDL beyond the 19 authorized source migrations"
+  ]
+}
