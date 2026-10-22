@@ -11,6 +11,40 @@ import {
 import { useEquipmentExport } from "../_hooks/useEquipmentExport"
 
 describe("Full Export Flow (Issue #170)", () => {
+  it.each(["regular", "placed"] as const)(
+    "sends the complete dataset-aware RPC payload when exporting %s equipment",
+    async (equipmentDataset) => {
+      const filterParams = createDefaultFilterParams({ equipmentDataset })
+      const { result } = renderHook(() => useEquipmentExport(createDefaultParams({ filterParams })))
+
+      await act(async () => {
+        await result.current.handleExportData()
+      })
+
+      // The 13-argument compatibility overload has no defaults; omitted keys fail resolution.
+      expect(mockCallRpc).toHaveBeenCalledExactlyOnceWith({
+        fn: "equipment_list_enhanced",
+        args: {
+          p_q: null,
+          p_sort: "khoa_phong_quan_ly.asc",
+          p_page: 1,
+          p_page_size: 10000,
+          p_don_vi: 5,
+          p_khoa_phong_array: null,
+          p_nguoi_su_dung_array: null,
+          p_vi_tri_lap_dat_array: null,
+          p_tinh_trang_array: null,
+          p_phan_loai_array: null,
+          p_nguon_kinh_phi_array: null,
+          p_liquidation_last: expect.any(Boolean),
+          p_equipment_dataset: equipmentDataset,
+        },
+        signal: expect.any(AbortSignal),
+      })
+      expect(mockExportToExcel).toHaveBeenCalledOnce()
+    }
+  )
+
   it("requests department ordering when exporting all equipment without a department filter", async () => {
     mockExportToExcel.mockResolvedValueOnce(undefined)
     const filterParams = createDefaultFilterParams({ selectedDepartments: [] })
