@@ -179,6 +179,7 @@ export function useEquipmentExport(params: UseEquipmentExportParams): UseEquipme
           p_tinh_trang_array: selectedStatuses.length > 0 ? selectedStatuses : null,
           p_phan_loai_array: selectedClassifications.length > 0 ? selectedClassifications : null,
           p_nguon_kinh_phi_array: selectedFundingSources.length > 0 ? selectedFundingSources : null,
+          p_liquidation_last: false,
           p_equipment_dataset: filterParams.equipmentDataset ?? DEFAULT_EQUIPMENT_DATASET,
         },
         signal,
