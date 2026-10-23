@@ -1,6 +1,6 @@
 # Global/admin tenant options regression — 2026-10-23
 
-Status: **Forward migration prepared after owner approval; regression RED → GREEN on a disposable clone; live unchanged. Formal DB Gate INCOMPLETE.**
+Status: **LIVE APPLY / READ-BACK PASS under explicit owner-approved gate bypass; qltbyt_test catch-up PASS. Formal DB Gate INCOMPLETE.**
 
 Source inspected: `edaca7fab41ba8835777718092e5f7c45466dc55`. Two read-only scouts used `gpt-6-luna` with `max` reasoning. The owner subsequently approved writing the repair migration. No application code or applied migration was edited.
 
@@ -73,4 +73,14 @@ The owner separately approved an explicit exception for manual catch-up of the 2
 - The 34 TM function bodies, owners, security modes and search paths match live. Direct EXECUTE grantee lists still differ under the Oracle defaults, including missing implicit service_role grants. No unrelated ACL reconciliation, AI reader-role creation, or full AI schema restoration was performed. These limitations remain formal-gate debt.
 - Evidence: `docs/reports/oracle-baseline-manual-catchup-2026-10-23.json`; local operation files: `/root/Oracle/tenant-debug-catchup-20261023/`.
 
-No live write was performed, and the tenant-options repair was applied only to a disposable clone.
+## Authorized live apply and final test catch-up
+
+After reviewing the migration, the owner explicitly authorized bypassing this repair's gate, applying it to live through Supabase MCP, then catching up `qltbyt_test` manually. Source commit: `5d7c58a3d82d5989771dfc371fac0c3386047d22`.
+
+- Live apply succeeded as `20261023150839/fix_global_facility_options_dataset_alias`; migration count **397 → 398**. Stored SQL SHA-256 is `4312b0c5ef387651eb94d02ce23ff2276dc5d643e163beeb419a07b0d53cc428`, matching the reviewed source bytes.
+- All four registered read-only behavior checks passed on live: `to_qltb` tenant isolation plus global regular/placed/all options and counts. Owner, signature, SECURITY DEFINER, search_path and ACL remain unchanged; equipment count remains **5,507**. No browser smoke was performed.
+- Advisors show no added or removed findings: security **564 → 564**, performance **190 → 190**.
+- Manual catch-up applied exactly this now-confirmed live migration to `qltbyt_test`, also **397 → 398**, with high-water **20261023150839**. Exact SQL hash/body read-back and all four read-only behavior checks passed. Historical migration metadata hash, 5,025 equipment rows, ACL, and unhealthy gate-state hash remain unchanged; invalid indexes/unvalidated constraints remain zero; no temporary CREATE privilege remains. The lease was released.
+- This is successful authorized live apply and test catch-up, not formal static/baseline-forward certification. No application data was synchronized from live.
+
+Evidence: `docs/reports/global-tenant-options-live-apply-2026-10-23.json`. The original static result remains timeout/exit 124; baseline-forward remains blocked at stale-environment preflight (digest `800e68b73d275b1153d212db9151510a564a10ca7e27fb474d27b6aade813088`).

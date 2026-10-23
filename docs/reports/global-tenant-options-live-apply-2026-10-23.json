@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-23T15:12:17.439Z",
+  "projectId": "cdthersvldpnlbvpufrr",
+  "sourceCommit": "5d7c58a3d82d5989771dfc371fac0c3386047d22",
+  "authorization": "Owner explicitly authorized gate bypass, live apply of this repair via Supabase MCP, then manual qltbyt_test catch-up.",
+  "migration": {
+    "path": "supabase/migrations/20261023150000_fix_global_facility_options_dataset_alias.sql",
+    "version": "20261023150839",
+    "name": "fix_global_facility_options_dataset_alias",
+    "sql_sha256": "4312b0c5ef387651eb94d02ce23ff2276dc5d643e163beeb419a07b0d53cc428",
+    "exactSqlReadBack": true
+  },
+  "live": {
+    "apply": "PASS",
+    "before": {
+      "migration_count": 397,
+      "high_water": "20261023023010",
+      "equipment_rows": 5507,
+      "signature": "get_facilities_with_equipment_count(text)",
+      "owner": "postgres",
+      "security_definer": true,
+      "config": ["search_path=public, pg_temp"],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "body_md5": "ac55de3e9bf38ed14ba03746c80c13aa"
+    },
+    "after": {
+      "migration_count": 398,
+      "equipment_rows": 5507,
+      "signature": "get_facilities_with_equipment_count(text)",
+      "owner": "postgres",
+      "security_definer": true,
+      "config": ["search_path=public, pg_temp"],
+      "acl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "body_md5": "359d197dc079f8ea265724c98461fe34"
+    },
+    "readOnlyBehaviorChecks": 4,
+    "behaviorChecks": "to_qltb tenant isolation; global regular, placed, all options and counts",
+    "browserSmoke": "NOT RUN",
+    "dataWritesBeyondMigration": "NONE"
+  },
+  "advisors": {
+    "security": {
+      "before": 564,
+      "after": 564,
+      "added": 0,
+      "removed": 0
+    },
+    "performance": {
+      "before": 190,
+      "after": 190,
+      "added": 0,
+      "removed": 0
+    }
+  },
+  "testCatchUp": {
+    "outcome": "MANUAL CATCH-UP PASS",
+    "runId": "facility_repair_1792768250569",
+    "migrationCountBefore": 397,
+    "migrationCountAfter": 398,
+    "highWaterBefore": "20261023023010",
+    "highWaterAfter": "20261023150839",
+    "exactSqlReadBack": true,
+    "bodyMd5After": "359d197dc079f8ea265724c98461fe34",
+    "readOnlyBehaviorChecks": 4,
+    "equipmentRowsBeforeAndAfter": 5025,
+    "oldHistoryMd5BeforeAndAfter": "28f3479a2e33b9dbcfa71b92be65fc88",
+    "stateFileSha256BeforeAndAfter": "49ccca605a0e78bca3cba34122e2c9ef0285c82ef6de41db200848571f9ec513",
+    "invalidIndexes": 0,
+    "unvalidatedConstraints": 0,
+    "postgresCreatePublic": false,
+    "lockReleased": true
+  },
+  "gate": {
+    "static": "INCOMPLETE; timeout exit 124",
+    "baselineForward": "INCOMPLETE; stale-environment preflight",
+    "bypass": "EXPLICITLY AUTHORIZED FOR THIS MIGRATION",
+    "certifiedPass": false
+  },
+  "limits": [
+    "Browser smoke was not run; runtime RPC behavior was checked directly in read-only SQL.",
+    "Manual catch-up preserves the old unhealthy gate state and historical SQL metadata; it is not baseline-state recovery.",
+    "Only migration/schema state was caught up; application data was not synchronized from live."
+  ]
+}

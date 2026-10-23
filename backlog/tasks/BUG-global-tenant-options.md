@@ -1,6 +1,6 @@
 # BUG — Global/admin tenant options RPC
 
-- Status: Repair migration prepared; disposable RED → GREEN; formal DB Gate INCOMPLETE; not applied live
+- Status: Done under explicit gate bypass; live repair and manual test DB catch-up verified; formal DB Gate INCOMPLETE
 - Evidence: `docs/reports/global-tenant-options-debug-2026-10-23.md`
 - Regression: `supabase/tests/facility_options_dataset_behavior.sql`
 
@@ -14,6 +14,8 @@ The dataset overload of `get_facilities_with_equipment_count` references an unde
 - The owner approved preparing the forward migration; a live write needs separate explicit authorization.
 
 Migration: `supabase/migrations/20261023150000_fix_global_facility_options_dataset_alias.sql`. The unchanged regression passes for all three datasets after the candidate on a fresh caught-up Oracle clone; authenticated global returns 28 facilities and `to_qltb` response/ACL remain unchanged. The test is required for this migration in the gate registry. Clone removal was confirmed.
+
+After explicit owner authorization, live apply recorded version `20261023150839`; exact SQL hash and four read-only behavior checks passed on both live and persistent `qltbyt_test`. Both now have 398 migrations. No browser smoke or formal gate PASS is claimed. Evidence: `docs/reports/global-tenant-options-live-apply-2026-10-23.json`.
 
 ## Separate follow-up scope
 
