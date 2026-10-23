@@ -2,6 +2,20 @@
   "schemaVersion": 1,
   "tests": [
     {
+      "evidence": ["docs/reports/global-tenant-options-debug-2026-10-23.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/facility_options_dataset_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261023150000_fix_global_facility_options_dataset_alias.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 30,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
+    },
+    {
       "evidence": ["backlog/tasks/TM-09-long-range-export.md"],
       "fixtureContract": "isolated-fixture",
       "path": "supabase/tests/temperature_monitoring_export_behavior.sql",

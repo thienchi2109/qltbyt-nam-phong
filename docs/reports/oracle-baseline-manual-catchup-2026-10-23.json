@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-23T14:56:16.320Z",
+  "operation": "manual Oracle test baseline catch-up",
+  "projectId": "cdthersvldpnlbvpufrr",
+  "sourceCommit": "edaca7fab41ba8835777718092e5f7c45466dc55",
+  "authorization": "2026-10-23 user explicitly approved manual Oracle qltbyt_test catch-up for these 22 live-confirmed migrations and the missing date helper, preserving historical metadata and gate INCOMPLETE.",
+  "liveAccess": "READ ONLY via Supabase MCP",
+  "testDatabase": "qltbyt_test",
+  "outcome": "MANUAL CATCH-UP PASS",
+  "formalGate": "INCOMPLETE; no state recovery or certification",
+  "runId": "tenant_debug_1792766800524",
+  "before": {
+    "migrationCount": 375,
+    "highWater": "20261015081559",
+    "equipmentRows": 5025,
+    "invalidIndexes": 0,
+    "unvalidatedConstraints": 0,
+    "postgresCreatePublic": false,
+    "historicalMetadataMd5": "0e53312beef99e45d43fb12c6e91595b"
+  },
+  "after": {
+    "migrationCount": 397,
+    "highWater": "20261023023010",
+    "equipmentRows": 5025,
+    "invalidIndexes": 0,
+    "unvalidatedConstraints": 0,
+    "postgresCreatePublic": false,
+    "historicalMetadataMd5": "0e53312beef99e45d43fb12c6e91595b"
+  },
+  "stateSha256BeforeAndAfter": "49ccca605a0e78bca3cba34122e2c9ef0285c82ef6de41db200848571f9ec513",
+  "helper": {
+    "signature": "ai_readonly.try_parse_iso_date(text)",
+    "bodySha256": "bf9329c4721421e65f8863f40e8775a652a0912ffa178b78371053b1da8c98e2",
+    "fullSqlArtifactSha256": "efaf033f1869cf4231022b0ace3f16b352e54d847c195b626d7349d4560dbb33",
+    "restored": "Only missing schema and date parser, before TM migration execution; no historical migration metadata overwritten."
+  },
+  "migrations": [
+    {
+      "version": "20261021091142",
+      "name": "temperature_monitoring_configuration",
+      "statement_count": 1,
+      "sql_sha256": "f2df065e1e8d4f417b3cf283ae79500cefe421cd241a6f578aaba454b6f9350f",
+      "path": "supabase/migrations/20261017100000_temperature_monitoring_configuration.sql"
+    },
+    {
+      "version": "20261021091149",
+      "name": "temperature_monitoring_schedules_slots",
+      "statement_count": 1,
+      "sql_sha256": "906c06319719aa813f1153d18b32cc51688d58fda47953477489dc70ecb576d0",
+      "path": "supabase/migrations/20261017110000_temperature_monitoring_schedules_slots.sql"
+    },
+    {
+      "version": "20261021091150",
+      "name": "temperature_monitoring_measurements",
+      "statement_count": 1,
+      "sql_sha256": "a8effc18728d2e248acb91714af55c1b18beaea85b073bf04fcab5348e7c129e",
+      "path": "supabase/migrations/20261017120000_temperature_monitoring_measurements.sql"
+    },
+    {
+      "version": "20261021091151",
+      "name": "temperature_monitoring_recorded_slots",
+      "statement_count": 1,
+      "sql_sha256": "8160dc4bc072876f182354eaad7b1c3cbe338868e81c370bac5a40a4400574de",
+      "path": "supabase/migrations/20261017120100_temperature_monitoring_recorded_slots.sql"
+    },
+    {
+      "version": "20261021091227",
+      "name": "temperature_monitoring_review_state",
+      "statement_count": 1,
+      "sql_sha256": "8d7866df4c854db8365487644646342960aef46124f75641a41be807296bf338",
+      "path": "supabase/migrations/20261018030000_temperature_monitoring_review_state.sql"
+    },
+    {
+      "version": "20261021091237",
+      "name": "temperature_monitoring_review_actions",
+      "statement_count": 1,
+      "sql_sha256": "e8a867b8ccb6ace812d66702f80420ed61078f5b73cdb956b450b623a5ba6c42",
+      "path": "supabase/migrations/20261018030100_temperature_monitoring_review_actions.sql"
+    },
+    {
+      "version": "20261021091239",
+      "name": "temperature_monitoring_review_projection",
+      "statement_count": 1,
+      "sql_sha256": "14af24f5cf9618df335c3c43c68d718b6640f1828b836a817651b201db031c88",
+      "path": "supabase/migrations/20261018030200_temperature_monitoring_review_projection.sql"
+    },
+    {
+      "version": "20261021091241",
+      "name": "temperature_monitoring_deviation_state",
+      "statement_count": 1,
+      "sql_sha256": "3e306d61371032154c5652a61d80665c2d01e90756d30b2512334781a3c5beb2",
+      "path": "supabase/migrations/20261018040000_temperature_monitoring_deviation_state.sql"
+    },
+    {
+      "version": "20261021091243",
+      "name": "temperature_monitoring_deviation_actions",
+      "statement_count": 1,
+      "sql_sha256": "a3544942764d3ff106eadf7665ca9ceb90b085729c5a4e19e8186b01707d68b4",
+      "path": "supabase/migrations/20261018040100_temperature_monitoring_deviation_actions.sql"
+    },
+    {
+      "version": "20261021091245",
+      "name": "temperature_monitoring_deviation_queries",
+      "statement_count": 1,
+      "sql_sha256": "9f63e3f23a212f8eb08834d5ebe851acb11cb594622340341d6ecbbccbbf93a2",
+      "path": "supabase/migrations/20261018040200_temperature_monitoring_deviation_queries.sql"
+    },
+    {
+      "version": "20261021091255",
+      "name": "temperature_monitoring_user_recording",
+      "statement_count": 1,
+      "sql_sha256": "10d09dfff4b9835c1369b3cdfacb1c9e12b46a2a59c48a04f44bb0301988192a",
+      "path": "supabase/migrations/20261018040300_temperature_monitoring_user_recording.sql"
+    },
+    {
+      "version": "20261021091256",
+      "name": "temperature_monitoring_slot_source",
+      "statement_count": 1,
+      "sql_sha256": "556ad5ec62f5d9a6dc96ee75ae7b1e3fa8b2875aac7403cff750a78d7bd03425",
+      "path": "supabase/migrations/20261018050000_temperature_monitoring_slot_source.sql"
+    },
+    {
+      "version": "20261021091258",
+      "name": "temperature_monitoring_workspace",
+      "statement_count": 1,
+      "sql_sha256": "6fc4a2ed40fae4397bf98afd45241bf827415e3b925dde630e90cd68e92536eb",
+      "path": "supabase/migrations/20261018050100_temperature_monitoring_workspace.sql"
+    },
+    {
+      "version": "20261021091300",
+      "name": "temperature_monitoring_choices",
+      "statement_count": 1,
+      "sql_sha256": "856cdfbc53da7dcd8ffc978ed103e0b8fab044af645bd49bbc2c7d78074e9ded",
+      "path": "supabase/migrations/20261018050200_temperature_monitoring_choices.sql"
+    },
+    {
+      "version": "20261021091302",
+      "name": "temperature_monitoring_capture_time",
+      "statement_count": 1,
+      "sql_sha256": "630b40217a8201a62abaf081ce9bdc8031780e77e3c810ba2956a5c5d0e9f59f",
+      "path": "supabase/migrations/20261018050300_temperature_monitoring_capture_time.sql"
+    },
+    {
+      "version": "20261021091310",
+      "name": "temperature_monitoring_equipment_projection",
+      "statement_count": 1,
+      "sql_sha256": "1a96c2589e9da7eb4175d6198b87099966620ac766561983e696fe7060cb41c9",
+      "path": "supabase/migrations/20261018050400_temperature_monitoring_equipment_projection.sql"
+    },
+    {
+      "version": "20261021091311",
+      "name": "temperature_monitoring_notifications",
+      "statement_count": 1,
+      "sql_sha256": "f9e20ee3b53f43887e5a802dc9a3b3b48c9ff09ac97701fc46ef86d7cf53826e",
+      "path": "supabase/migrations/20261018050500_temperature_monitoring_notifications.sql"
+    },
+    {
+      "version": "20261021091313",
+      "name": "temperature_monitoring_configuration_replacement",
+      "statement_count": 1,
+      "sql_sha256": "60b8b015ef59098d2aa76bf018552e3ba796a47ae70b8db004ff6c9c4f294125",
+      "path": "supabase/migrations/20261018060000_temperature_monitoring_configuration_replacement.sql"
+    },
+    {
+      "version": "20261021091315",
+      "name": "temperature_monitoring_export",
+      "statement_count": 1,
+      "sql_sha256": "3b0a1a4d3a129f95bc1037b5b4a18a2da356539297d758ed1449ba058b263bf2",
+      "path": "supabase/migrations/20261019090000_temperature_monitoring_export.sql"
+    },
+    {
+      "version": "20261023022933",
+      "name": "temperature_monitoring_manager_tenant_scope",
+      "statement_count": 1,
+      "sql_sha256": "c3a8d76e00e90fb4b53d8dc28d8b9d1d9f583c9df85cadcb7fb4f120b520f73a",
+      "path": "supabase/migrations/20261023030000_temperature_monitoring_manager_tenant_scope.sql"
+    },
+    {
+      "version": "20261023022954",
+      "name": "temperature_monitoring_manager_slot_scope",
+      "statement_count": 1,
+      "sql_sha256": "b75b55b9325078649050b9e82dae645d742cf93785e295db55b43998c2a4baa4",
+      "path": "supabase/migrations/20261023030100_temperature_monitoring_manager_slot_scope.sql"
+    },
+    {
+      "version": "20261023023010",
+      "name": "temperature_monitoring_manager_data_scope",
+      "statement_count": 1,
+      "sql_sha256": "e9ccf231ab83c010d3f187d6a937bfb081846df4252f76158dd499cdbbdff286",
+      "path": "supabase/migrations/20261023030200_temperature_monitoring_manager_data_scope.sql"
+    }
+  ],
+  "disposableValidation": {
+    "appliedMigrations": 22,
+    "registeredDefaultSafeTmSuitesPassed": 7,
+    "tmFunctionBodiesOwnersSecurityModesAndSearchPathsMatchingLive": 34,
+    "remainingCloneCount": 0,
+    "lockReleased": true
+  },
+  "limitations": [
+    "Historical SQL differences in migration versions 20261015081453 and 20261015081559 remain unchanged.",
+    "Gate state v2 remains healthy=false with old high-water; manual migration catch-up is not gate recovery.",
+    "The 34 TM routines have different direct EXECUTE grantee lists from live, including missing implicit service_role grants under the Oracle default privileges; no unrelated ACL reconciliation was performed.",
+    "The pre-existing AI reader role and full ai_readonly surface are absent; only the explicitly approved date-parser prerequisite was restored.",
+    "The root-cause repair migration is not included in this baseline catch-up; it is validated separately on a disposable clone."
+  ]
+}
