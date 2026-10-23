@@ -1,6 +1,6 @@
 # BUG — Temperature Monitoring equipment-manager tenant scope
 
-- Status: In Progress
+- Status: Done under explicit DB Gate bypass
 - Spec: `docs/specs/temperature-monitoring.md`
 - Evidence: `docs/reports/temperature-monitoring-manager-scope-2026-10-23.md`
 
@@ -16,4 +16,6 @@
 
 ## Current evidence and remaining work
 
-Disposable regression plus nine existing TM suites PASS; test database cleanup confirmed. Independent standards/spec review has no remaining concrete findings. Static timed out (exit 124); formal baseline-forward remains INCOMPLETE. Owner explicitly authorized integration, DB Gate bypass for this batch, and sequential live apply of the three migrations on 2026-10-23. Integration/apply/read-back are in progress.
+Disposable regression plus nine existing TM suites PASS; test database cleanup confirmed. Independent standards/spec review has no remaining concrete findings. Source commit `c2f1c9c3` was integrated and pushed to main with hooks enabled. After the owner's explicit authorization on 2026-10-23, three migrations were applied sequentially through Supabase MCP and their exact SQL was read back. `ntchi2` same-tenant/different-department read RPCs now succeed; cross-tenant, ordinary-role wrong-department, and missing-role requests remain denied. No live configuration or reading was created.
+
+Static timed out (exit 124); formal baseline-forward remains INCOMPLETE under the explicitly approved bypass. Formal certification and remaining feature-wide TM-10 UAT remain tracked in `TM-10-integration-performance-release.md`; this bug's closure does not certify TM-10.

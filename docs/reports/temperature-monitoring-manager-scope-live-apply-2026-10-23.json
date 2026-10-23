@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-10-23 02:31:48 UTC",
+  "projectId": "cdthersvldpnlbvpufrr",
+  "sourceCommit": "c2f1c9c3b368edd624ed0424cbd8cc94bbd7c38c",
+  "authorization": "Owner explicitly authorized integration, DB Gate bypass for this batch, and sequential live apply through Supabase MCP on 2026-10-23.",
+  "gate": {
+    "static": "INCOMPLETE (45s timeout, exit 124)",
+    "baselineForward": "INCOMPLETE (known unhealthy baseline)",
+    "bypass": "EXPLICITLY AUTHORIZED",
+    "certifiedPass": false
+  },
+  "migrations": [
+    {
+      "order": 1,
+      "path": "supabase/migrations/20261023030000_temperature_monitoring_manager_tenant_scope.sql",
+      "name": "temperature_monitoring_manager_tenant_scope",
+      "liveVersion": "20261023022933",
+      "sourceSha256": "c3a8d76e00e90fb4b53d8dc28d8b9d1d9f583c9df85cadcb7fb4f120b520f73a",
+      "exactSqlReadback": true
+    },
+    {
+      "order": 2,
+      "path": "supabase/migrations/20261023030100_temperature_monitoring_manager_slot_scope.sql",
+      "name": "temperature_monitoring_manager_slot_scope",
+      "liveVersion": "20261023022954",
+      "sourceSha256": "b75b55b9325078649050b9e82dae645d742cf93785e295db55b43998c2a4baa4",
+      "exactSqlReadback": true
+    },
+    {
+      "order": 3,
+      "path": "supabase/migrations/20261023030200_temperature_monitoring_manager_data_scope.sql",
+      "name": "temperature_monitoring_manager_data_scope",
+      "liveVersion": "20261023023010",
+      "sourceSha256": "e9ccf231ab83c010d3f187d6a937bfb081846df4252f76158dd499cdbbdff286",
+      "exactSqlReadback": true
+    }
+  ],
+  "migrationHistory": {
+    "before": 394,
+    "after": 397,
+    "allPreviousVersionsPreserved": true
+  },
+  "functions": {
+    "count": 8,
+    "allBodiesMatchSource": true,
+    "signaturesSecurityDefinerSearchPathAndAclUnchanged": true,
+    "observations": [
+      {
+        "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+        "proname": "_temperature_monitoring_assert_scope",
+        "arguments": "p_equipment_id bigint, p_lock boolean",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "902776154ea4643b66e0605c8bd9bed9"
+      },
+      {
+        "proacl": "{postgres=X/postgres,service_role=X/postgres}",
+        "proname": "_temperature_monitoring_slot_rows",
+        "arguments": "p_from_date date, p_to_date date, p_shift_codes text[], p_equipment_id bigint, p_include_unconfigured boolean",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "37c6bfc379ae72db4f7dadba430ab918"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_configuration_history",
+        "arguments": "p_equipment_id bigint",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "94a4b31d7e965aedc23b971323888815"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_deviations_list",
+        "arguments": "p_date_from date, p_date_to date, p_equipment_id bigint, p_status text, p_severity text, p_owner_user_id bigint, p_repair_request_id integer, p_limit integer, p_cursor jsonb",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "8a5f78e3fcbac30cfe623a1e80e439f8"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_export_page",
+        "arguments": "p_from_date date, p_to_date date, p_equipment_id bigint, p_shift_codes text[], p_status text, p_dataset text, p_cursor jsonb, p_limit integer, p_started_at timestamp with time zone, p_reading_ids uuid[]",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "b7f2978ed8c0bedd019cd95d9e457100"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_measurement_create",
+        "arguments": "p_equipment_id bigint, p_monitoring_date date, p_shift_id uuid, p_value_c numeric, p_unable_reason text, p_captured_at timestamp with time zone, p_note text",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "a6653dcdc6c0d886eba052d9cb029371"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_slots_list",
+        "arguments": "p_from_date date, p_to_date date, p_shift_codes text[], p_equipment_id bigint, p_cursor text, p_limit integer, p_include_unconfigured boolean",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "b7534d3654b38d64d06a259505839480"
+      },
+      {
+        "proacl": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+        "proname": "temperature_monitoring_workspace_list",
+        "arguments": "p_from_date date, p_to_date date, p_equipment_id bigint, p_shift_codes text[], p_status text, p_cursor jsonb, p_limit integer, p_kind text, p_deviation_status text",
+        "proconfig": ["search_path=public, pg_temp"],
+        "prosecdef": true,
+        "source_md5": "83e1628349c2b8c45eda65e4e3d8f0a3"
+      }
+    ]
+  },
+  "liveReadSmoke": {
+    "role": "to_qltb",
+    "account": "ntchi2",
+    "slot_rows": 0,
+    "equipment_id": 2895,
+    "export_items": 0,
+    "history_rows": 0,
+    "choices_loaded": true,
+    "deviation_items": 0,
+    "workspace_items": 0,
+    "configuration_rows": 0,
+    "different_department": true,
+    "staff_choices_rpc_rows": 1
+  },
+  "negativeReadSmoke": [
+    {
+      "check": "cross-tenant-denial",
+      "sqlstate": "42501",
+      "expectedDenial": true
+    },
+    {
+      "check": "ordinary-role-department-denial",
+      "sqlstate": "42501",
+      "expectedDenial": true
+    },
+    {
+      "check": "missing-role-history-denial",
+      "sqlstate": "42501",
+      "expectedDenial": true
+    }
+  ],
+  "dataCounts": {
+    "before": {
+      "readings": 0,
+      "versions": 0,
+      "configuration": 0
+    },
+    "after": {
+      "readings": 0,
+      "versions": 0,
+      "configuration": 0
+    }
+  },
+  "advisors": {
+    "security": {
+      "before": 564,
+      "after": 564,
+      "added": [],
+      "removed": []
+    },
+    "performance": {
+      "before": 193,
+      "after": 192,
+      "added": [],
+      "removed": [
+        {
+          "name": "unused_index",
+          "title": "Unused Index",
+          "level": "INFO",
+          "facing": "EXTERNAL",
+          "categories": ["PERFORMANCE"],
+          "description": "Detects if an index has never been used and may be a candidate for removal.",
+          "detail": "Index \\`temperature_readings_equipment_date_idx\\` on table \\`public.temperature_readings\\` has not been used",
+          "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index",
+          "metadata": {
+            "schema": "public",
+            "name": "temperature_readings",
+            "type": "table"
+          },
+          "cache_key": "unused_index_public_temperature_readings_temperature_readings_equipment_date_idx",
+          "observed_at": "2026-10-23T02:28:51.426Z"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "No live configuration or reading was created; live checks replayed read-only RPCs with account claims.",
+    "No browser/UI or measurement-write verification was performed against production in this apply operation.",
+    "No Oracle container, image, service, or persistent baseline was modified."
+  ],
+  "privateEvidencePath": "/root/Oracle/tm-manager-scope-live-20261023/read-back.json"
+}

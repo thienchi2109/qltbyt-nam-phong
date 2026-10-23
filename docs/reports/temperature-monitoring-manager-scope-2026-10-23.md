@@ -1,6 +1,6 @@
 # Temperature Monitoring manager scope repair — 2026-10-23
 
-Status: **DISPOSABLE ONLY PASS; formal DB Gate INCOMPLETE; not applied live.**
+Status: **LIVE APPLY / READ-BACK PASS under explicit DB Gate bypass; formal DB Gate INCOMPLETE.**
 
 Owner authorization on 2026-10-23: integrate the repair, bypass the DB Gate for this batch, and apply exactly the three migrations below sequentially to live through Supabase MCP. This approval does not change the gate results to PASS.
 
@@ -10,11 +10,11 @@ Owner authorization on 2026-10-23: integrate the repair, bypass the DB Gate for 
 
 The configuration choices failure also causes the UI to display its disabled-monitoring fallback. No account, department, or UI change is needed for the permission repair.
 
-## Candidate changes
+## Applied changes
 
-Worktree: `/tmp/qltbyt-temperature-scope-fix-20261023`; branch: `fix/temperature-manager-tenant-scope`; base: `0dacaadacf1458366a6e3f9c6cb07b0f708a772e`.
+Source commit: `c2f1c9c3b368edd624ed0424cbd8cc94bbd7c38c`, integrated and pushed to `main`; base: `0dacaadacf1458366a6e3f9c6cb07b0f708a772e`. The clean temporary implementation worktree and merged local fix branch were removed after integration.
 
-Apply these new migrations in order, only after explicit authorization:
+These new migrations were applied sequentially through Supabase MCP after explicit authorization:
 
 1. `20261023030000_temperature_monitoring_manager_tenant_scope.sql`: shared equipment scope and configuration history.
 2. `20261023030100_temperature_monitoring_manager_slot_scope.sql`: slots and workspace scope.
@@ -22,7 +22,23 @@ Apply these new migrations in order, only after explicit authorization:
 
 `to_qltb` still requires the equipment's tenant. Other non-global roles retain their department restrictions and action permissions. Staff assignment still requires the target equipment's tenant and department. Global/admin behavior, row locks, pagination, capture-time checks, and audit behavior are preserved. Existing applied migration files are unchanged.
 
-Review identified a pre-existing missing-role/user guard in configuration history. The candidate now delegates to the shared scope helper; an added regression proves missing identity claims are denied.
+Review identified a pre-existing missing-role/user guard in configuration history. The repaired function delegates to the shared scope helper; an added regression proves missing identity claims are denied.
+
+## Live verification
+
+| Local migration timestamp | Recorded live version |
+| ------------------------- | --------------------- |
+| `20261023030000`          | `20261023022933`      |
+| `20261023030100`          | `20261023022954`      |
+| `20261023030200`          | `20261023023010`      |
+
+- All three MCP apply calls succeeded. Exact SQL read-back matched the landed files. Migration history increased from 394 to 397 and preserved every previous version. MCP generated the live versions above; local filenames remain unchanged.
+- All eight replaced function bodies match the candidate source. Function signatures, SECURITY DEFINER flags, search paths, and ACLs are unchanged.
+- Account-claims replay for active `ntchi2` (`to_qltb`, tenant 17) loaded configuration choices for equipment 2895, whose department differs from the account's. Configuration get/history/staff choices, slots, workspace, export, and deviations read RPCs completed without a permission error.
+- Negative live read checks returned the expected `42501`: manager accessing another tenant, ordinary user accessing a different department, and configuration history with no role claim.
+- Live configuration, configuration-version, and reading counts remained zero. No measurement/configuration write or browser smoke was performed in production; the complete write flow was validated only in a disposable clone.
+- Advisors introduced no new findings: security 564 → 564; performance 193 → 192, with one existing performance finding removed.
+- Evidence: `docs/reports/temperature-monitoring-manager-scope-live-apply-2026-10-23.json`; full SQL read-back and snapshots are retained locally at `/root/Oracle/tm-manager-scope-live-20261023/read-back.json`.
 
 ## Evidence
 
@@ -42,11 +58,11 @@ Review identified a pre-existing missing-role/user guard in configuration histor
 | Static lane: `timeout 45s node scripts/npm-run.js run db:quality-gate:local` | INCOMPLETE, exit 124, no digest-bearing report                      |
 | Formal baseline-forward                                                      | INCOMPLETE; not executed against the known unhealthy baseline state |
 | Aggregate certification                                                      | INCOMPLETE                                                          |
-| Live apply                                                                   | Not performed                                                       |
+| Live apply                                                                   | PASS, three migrations applied and read back                        |
 
 No baseline refresh, persistent-baseline migration, Docker build/restart/prune, or changes to other containers/images/services were performed. Operations used `docker exec` in the existing PostgreSQL container and created/dropped only the generated test databases. Live database access for diagnosis was read-only.
 
-The earlier DB Gate bypass applied to the October 21 migration batch. It does not authorize these new migrations. Before live apply, obtain operation-specific permission through Supabase MCP and explicit acceptance of any unresolved gate bypass. Source work remains uncommitted and unpushed on the isolated fix branch; the main checkout is clean at the base SHA. The incomplete mandatory migration gate prevents normal closeout; hooks have not been bypassed.
+The owner explicitly approved a new DB Gate bypass and live write for these three migrations on October 23. Formal static/baseline-forward certification remains INCOMPLETE; successful apply and RPC read-back are not certification. Commit/push hooks remained enabled and passed, including typecheck on push. No app deployment, Oracle maintenance, or unrelated migration was performed.
 
 ## Migration SHA-256
 
