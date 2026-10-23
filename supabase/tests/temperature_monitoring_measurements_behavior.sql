@@ -118,7 +118,7 @@ BEGIN
   END LOOP;
   PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('don_vi',tenant+999999))::TEXT,TRUE);
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
-  PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('khoa_phong','other'))::TEXT,TRUE);
+  PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('app_role','user','khoa_phong','other'))::TEXT,TRUE);
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');
   PERFORM set_config('request.jwt.claims',(claims-'user_id')::TEXT,TRUE);
   PERFORM pg_temp.tm04_expect_error(format('SELECT public.temperature_monitoring_measurement_create(%s,%L,%L,5)',equipment,'2026-07-02',shift),'42501');

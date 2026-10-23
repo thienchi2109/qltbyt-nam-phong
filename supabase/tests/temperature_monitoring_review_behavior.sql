@@ -144,7 +144,7 @@ BEGIN
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_reading_get(%L)',normal_id),'42501');
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_reading_review(%L,0,%L,%L)',normal_id,'confirm','stale unauthorized'),'42501');
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_reading_history(%s,%L,%L)',equipment,'2026-07-01','2026-07-10'),'42501');
-  PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('user_id',reviewer,'khoa_phong','elsewhere'))::TEXT,TRUE);
+  PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('user_id',reviewer,'app_role','user','khoa_phong','elsewhere'))::TEXT,TRUE);
   PERFORM pg_temp.tm05_expect_error(format('SELECT public.temperature_monitoring_reading_get(%L)',normal_id),'42501');
   PERFORM set_config('request.jwt.claims',(claims||jsonb_build_object('user_id',reviewer))::TEXT,TRUE);
 

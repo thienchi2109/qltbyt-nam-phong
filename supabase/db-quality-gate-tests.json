@@ -1470,6 +1470,22 @@
       "timeoutSeconds": 60,
       "transactionContract": "rollback-required",
       "gateScope": "migration-specific"
+    },
+    {
+      "evidence": ["docs/specs/temperature-monitoring.md"],
+      "fixtureContract": "isolated-fixture",
+      "path": "supabase/tests/temperature_monitoring_manager_scope_behavior.sql",
+      "purpose": "phase-gate",
+      "runnerRequirements": ["psql"],
+      "requiredForMigrations": [
+        "supabase/migrations/20261023030000_temperature_monitoring_manager_tenant_scope.sql",
+        "supabase/migrations/20261023030100_temperature_monitoring_manager_slot_scope.sql",
+        "supabase/migrations/20261023030200_temperature_monitoring_manager_data_scope.sql"
+      ],
+      "safety": "default-safe",
+      "timeoutSeconds": 60,
+      "transactionContract": "rollback-required",
+      "gateScope": "migration-specific"
     }
   ]
 }

@@ -70,12 +70,12 @@ BEGIN
     OR page->'items'->0->'triggering_snapshot' IS NULL THEN RAISE EXCEPTION 'amended breach deviation lost'; END IF;
   page:=public.temperature_monitoring_export_page('2024-01-01','2024-12-31',equipment,NULL,NULL,'deviation_events',NULL,25,watermark,ids);
   IF page->'items'->0->>'action'<>'opened' OR (page->'items'->0->>'actor_user_id')::BIGINT<>actor THEN RAISE EXCEPTION 'deviation actor lost'; END IF;
-  -- Same read roles retain the exact department restriction, including regional/to_qltb.
+  -- Department-scoped readers retain the restriction; to_qltb manages the entire tenant.
   FOREACH role_name IN ARRAY ARRAY['user','technician','qltb_khoa','to_qltb','regional_leader','admin','global'] LOOP
     PERFORM set_config('request.jwt.claims',jsonb_build_object('app_role',role_name,'user_id',actor,'don_vi',tenant,'khoa_phong','TM09 Dept')::TEXT,TRUE);
     page:=public.temperature_monitoring_export_page('2024-01-01','2024-12-31',equipment);
     IF jsonb_array_length(page->'items')<>3 THEN RAISE EXCEPTION 'authorized role excluded: %',role_name; END IF;
-    IF role_name NOT IN ('admin','global') THEN
+    IF role_name NOT IN ('admin','global','to_qltb') THEN
       PERFORM pg_temp.tm09_error(format('SELECT public.temperature_monitoring_export_page(%L,%L,%s)','2024-01-01','2024-12-31',foreign_equipment),'42501');
     END IF;
   END LOOP;
