@@ -100,4 +100,31 @@ describe("temperature staff selection across pages", () => {
     expect(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
     expect(screen.getByRole("alert")).toHaveTextContent(/chưa có ranh giới hiệu lực hợp lệ/i)
   })
+
+  it("explains blocked saves and saves after the required reason is supplied", async () => {
+    const user = userEvent.setup()
+    render(
+      <EquipmentDetailConfigTab
+        displayEquipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi" }}
+        isEditing={false}
+      />
+    )
+
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
+
+    expect(mock.save).not.toHaveBeenCalled()
+    expect(screen.getByRole("status")).toHaveTextContent(/chưa lưu cấu hình.*lý do thay đổi/i)
+    expect(screen.getByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeChecked()
+
+    await user.type(screen.getByLabelText("Lý do thay đổi"), "Bật theo dõi nhiệt độ")
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
+
+    await waitFor(() => expect(mock.save).toHaveBeenCalledTimes(1))
+    expect(mock.save.mock.calls[0][0].args).toMatchObject({
+      p_equipment_id: 3779,
+      p_monitoring_enabled: true,
+      p_change_reason: "Bật theo dõi nhiệt độ",
+    })
+    expect(screen.getByRole("status")).toHaveTextContent("Đã lưu phiên bản cấu hình.")
+  })
 })

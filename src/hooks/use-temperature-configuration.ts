@@ -138,6 +138,8 @@ export function useTemperatureConfiguration(equipmentId: number, isEditing: bool
     staffCursor,
     setStaffCursor,
     message,
+    reportInvalid: () =>
+      setMessage("Chưa lưu cấu hình: vui lòng điền các trường bắt buộc, gồm Lý do thay đổi."),
     choices,
     staff,
     mutation,

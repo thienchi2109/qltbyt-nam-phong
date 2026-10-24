@@ -8,6 +8,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTemperatureConfiguration } from "@/hooks/use-temperature-configuration"
 import { Input } from "@/components/ui/input"
@@ -62,6 +63,7 @@ export function EquipmentDetailConfigTab({
     staffCursor,
     setStaffCursor,
     message,
+    reportInvalid,
     choices,
     staff,
     mutation,
@@ -108,6 +110,7 @@ export function EquipmentDetailConfigTab({
             {manager && choices.data && (
               <form
                 key={`${displayEquipment.id}-${choices.data.server_now}`}
+                onInvalid={reportInvalid}
                 onSubmit={(event) => {
                   event.preventDefault()
                   void save(new FormData(event.currentTarget))
@@ -267,8 +270,13 @@ export function EquipmentDetailConfigTab({
                 <Button
                   type="submit"
                   disabled={mutation.isPending || !choices.data.suggested_effective_from}
+                  aria-busy={mutation.isPending}
                 >
-                  Lưu cấu hình nhiệt độ
+                  <span hidden={!mutation.isPending}>
+                    <Loader2 aria-hidden="true" className="mr-2 inline size-4 animate-spin" />
+                    Đang lưu…
+                  </span>
+                  <span hidden={mutation.isPending}>Lưu cấu hình nhiệt độ</span>
                 </Button>
               </form>
             )}
