@@ -3,7 +3,7 @@
 - Status: In Review
 - Issue: [#1007](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1007)
 - Updated: 2026-10-25
-- Stage: đã triển khai và review code/dữ liệu; còn smoke trên Excel/LibreOffice và print preview thực tế.
+- Stage: đã merge trực tiếp vào main và đồng bộ remote; còn smoke trên Excel/LibreOffice và print preview thực tế.
 - Evidence baseline: khảo sát tại `7dc0a2bb`; branch triển khai `feat/reports-excel-presentation` từ `4f245b79`.
 - Reference chính do người dùng chọn: [Shortcut — Inventory Spreadsheet](https://shortcut.ai/templates/inventory-spreadsheet-template).
 
@@ -87,6 +87,12 @@ Phương án nhẹ hơn là chỉ làm đẹp bảng hiện có; ít thay đổi
 - RED: cùng dữ liệu cache, chuyển từ `isError: false` sang `true`; assertion ở export owner thất bại vì vẫn nhận dữ liệu maintenance. GREEN: test chuyển trạng thái này và roundtrip workbook thông báo thiếu dữ liệu đều PASS (**15/15** trong hai suite liên quan).
 - Test dùng trạng thái hook được mock và boundary export props; việc React Query giữ cache sau refetch lỗi đã được reviewer xác minh bằng probe thực. Không thêm hook, truy vấn hoặc nhánh xử lý workbook mới.
 - Reviewer gpt-6.1-sol/xhigh xác nhận P2 đã xử lý, không còn blocker; tự chạy lại **15/15 PASS**. Coordinator chạy lại đủ gate bắt buộc và **29/29 PASS** (7 file); React Doctor diff **93/100, no issues**.
+
+## Tích hợp và dọn branch
+
+- 2026-10-25: fast-forward trực tiếp vào `main`, không mở PR; gồm thiết kế Excel `d53be811` và sửa lỗi maintenance cache `43320fe2`.
+- Đã chạy lại **29/29 test PASS** trên main sau merge và push thành công; đã xóa branch `feat/reports-excel-presentation` ở local/remote và worktree `.worktrees/rpt-1007-excel`.
+- Issue tiếp tục mở chỉ để theo dõi smoke Excel/LibreOffice và print preview thực tế; chưa coi preview HTML là bằng chứng cho bước này.
 
 ## Tham khảo bổ trợ
 
