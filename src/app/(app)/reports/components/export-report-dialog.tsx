@@ -25,6 +25,7 @@ import type { EquipmentDistributionData } from "@/hooks/use-equipment-distributi
 import type { MaintenanceStats } from "../hooks/use-maintenance-stats"
 import type { UsageOverview, DailyUsageItem } from "../hooks/use-usage-analytics"
 import { buildExportSheets, type ExportReportDateRange } from "./export-report-dialog.utils"
+import type { ExportReportScope } from "./export-report-dialog.presentation"
 
 interface ExportReportDialogProps {
   open: boolean
@@ -36,6 +37,9 @@ interface ExportReportDialogProps {
   distribution?: EquipmentDistributionData
   maintenanceStats?: MaintenanceStats
   usageAnalytics?: { overview: UsageOverview; daily: DailyUsageItem[] }
+  reportScope?: ExportReportScope
+  maintenanceStatsUnavailable?: boolean
+  reportDataAvailable: boolean
 }
 
 type ExportReportDialogContentProps = Omit<ExportReportDialogProps, "open"> & {
@@ -50,7 +54,7 @@ function buildDefaultFileName(dateRange: ExportReportDateRange): string {
 
 /** Renders the aggregate report export dialog and resets content state per filename. */
 export function ExportReportDialog(props: ExportReportDialogProps) {
-  const { open, onOpenChange, ...contentProps } = props
+  const { open, onOpenChange, reportDataAvailable, ...contentProps } = props
   const defaultFileName = buildDefaultFileName(props.dateRange)
 
   return (
@@ -58,6 +62,7 @@ export function ExportReportDialog(props: ExportReportDialogProps) {
       {open ? (
         <ExportReportDialogContent
           {...contentProps}
+          reportDataAvailable={reportDataAvailable}
           defaultFileName={defaultFileName}
           onOpenChange={onOpenChange}
           key={defaultFileName}
@@ -76,6 +81,9 @@ function ExportReportDialogContent({
   distribution,
   maintenanceStats,
   usageAnalytics,
+  reportScope,
+  maintenanceStatsUnavailable,
+  reportDataAvailable,
   defaultFileName,
 }: ExportReportDialogContentProps) {
   const { toast } = useToast()
@@ -84,6 +92,8 @@ function ExportReportDialogContent({
   const fileNameInputRef = React.useRef<HTMLInputElement>(null)
 
   const handleExport = async () => {
+    if (!reportDataAvailable) return
+
     const fileName = fileNameInputRef.current?.value ?? defaultFileName
 
     setIsExporting(true)
@@ -97,6 +107,8 @@ function ExportReportDialogContent({
           distribution,
           maintenanceStats,
           usageAnalytics,
+          reportScope,
+          maintenanceStatsUnavailable,
         }),
         fileName
       )
@@ -126,7 +138,11 @@ function ExportReportDialogContent({
           <FileSpreadsheet className="size-5" />
           Xuất báo cáo Excel
         </DialogTitle>
-        <DialogDescription>Xuất báo cáo tổng hợp thiết bị ra file Excel</DialogDescription>
+        <DialogDescription>
+          {reportDataAvailable
+            ? "Xuất báo cáo tổng hợp thiết bị ra file Excel"
+            : "Dữ liệu báo cáo chưa sẵn sàng. Hãy tải lại dữ liệu trước khi xuất file."}
+        </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
@@ -179,7 +195,10 @@ function ExportReportDialogContent({
         <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isExporting}>
           Hủy
         </Button>
-        <Button onClick={handleExport} disabled={isExporting || !hasFileName}>
+        <Button
+          onClick={handleExport}
+          disabled={isExporting || !hasFileName || !reportDataAvailable}
+        >
           {isExporting && <Loader2 className="mr-2 size-4 animate-spin" />}
           <Download className="mr-2 size-4" />
           {isExporting ? "Đang xuất..." : "Xuất Excel"}

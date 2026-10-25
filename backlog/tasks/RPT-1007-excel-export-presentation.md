@@ -1,17 +1,17 @@
 # RPT-1007 — Thiết kế Excel Báo cáo theo mẫu Shortcut
 
-- Status: Todo
+- Status: In Review
 - Issue: [#1007](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1007)
 - Updated: 2026-10-25
-- Stage: đã khảo sát; hướng thiết kế đang đề xuất, chưa sửa exporter.
-- Evidence baseline: `main` tại `7dc0a2bb`.
+- Stage: đã triển khai và review code/dữ liệu; còn smoke trên Excel/LibreOffice và print preview thực tế.
+- Evidence baseline: khảo sát tại `7dc0a2bb`; branch triển khai `feat/reports-excel-presentation` từ `4f245b79`.
 - Reference chính do người dùng chọn: [Shortcut — Inventory Spreadsheet](https://shortcut.ai/templates/inventory-spreadsheet-template).
 
 ## Mục tiêu và phạm vi
 
 File XLSX từ tab Báo cáo Xuất-Nhập-Tồn có bố cục chuyên nghiệp, làm nổi bật chỉ số quan trọng, dễ đọc trên màn hình và khi in. Áp dụng ngôn ngữ trình bày của mẫu Shortcut vào workbook nhiều sheet hiện tại; giữ nội dung và ngữ nghĩa dữ liệu Reports.
 
-CSV riêng của tab Sử dụng, exporter danh sách Thiết bị và workbook Temperature Monitoring nằm ngoài task này. Bổ sung sheet/KPI mới là thay đổi nội dung cần chốt riêng.
+CSV riêng của tab Sử dụng, exporter danh sách Thiết bị và workbook Temperature Monitoring nằm ngoài task này. Người dùng cho phép làm giàu thông tin nếu có nguồn kiểm chứng; ưu tiên metadata phạm vi và số dòng xuất thực tế, không suy diễn chỉ số mới từ dữ liệu khác ngữ nghĩa.
 
 ## Kết quả khảo sát code
 
@@ -52,7 +52,7 @@ Phương án nhẹ hơn là chỉ làm đẹp bảng hiện có; ít thay đổi
 ## Các ngữ nghĩa phải giữ rõ
 
 - Tổng nhập/xuất/Biến động theo kỳ, còn Tồn kho và phân bố trạng thái là snapshot hiện tại; không trình bày như một phép đối chiếu số dư cùng kỳ.
-- Search lọc chi tiết nhưng summary nhập/xuất được tính trước search. Metadata phải nói rõ phạm vi mỗi phần, không hứa tổng chi tiết bằng KPI khi phạm vi khác nhau.
+- Search lọc chi tiết; ở chế độ một đơn vị, RPC thiết bị còn nhận `p_q` trước khi tính Tổng nhập và Biến động, trong khi Tổng xuất tính trước bộ lọc chi tiết cục bộ và Tồn kho không nhận từ khóa. Chế độ nhiều đơn vị dùng aggregate không nhận từ khóa. Metadata không được tuyên bố mọi KPI bỏ qua tìm kiếm hoặc hứa tổng chi tiết bằng KPI.
 - Dữ liệu sử dụng bổ sung chưa nhận khoa/phòng; overview không có date args, daily dùng số ngày suy ra từ khoảng chọn. Không gán nhãn chung khiến sheet này có vẻ theo đúng kỳ/khoa của sheet giao dịch. Thay đổi logic scope cần task riêng nếu được duyệt.
 - Giữ nhãn trạng thái catalog, kể cả trạng thái 0 và trạng thái lịch sử/không rõ; không làm mất trạng thái để bảng gọn hơn. Giữ số lượng hồ sơ thiếu chi phí khác chi phí bằng 0.
 
@@ -60,12 +60,25 @@ Phương án nhẹ hơn là chỉ làm đẹp bảng hiện có; ít thay đổi
 
 - [x] Khảo sát luồng xuất, nội dung, style, test seam và khả năng tái sử dụng bằng subagent read-only.
 - [x] Xem preview và kiểm tra workbook mẫu Shortcut thực; ghi nguồn và giới hạn tham khảo.
-- [ ] Chốt layout bằng workbook minh hoạ dùng dữ liệu giả, có cả sheet Tổng quan và một sheet chi tiết.
-- [ ] Áp dụng thiết kế cho mọi sheet hiện có, nhấn mạnh KPI và có metadata đúng phạm vi; giữ lựa chọn sheet xuất.
-- [ ] Giữ tenant scope, dataset, bộ lọc, số hàng, thứ tự, cột, nhãn và giá trị; không đổi RPC/migration trong task trình bày.
-- [ ] TDD bằng test đọc lại workbook ExcelJS thật: kiểm tra dữ liệu/KPI cùng style, merges, number formats, freeze, filter và page setup; không chỉ mock download hoặc kiểm tra hàm tồn tại.
-- [ ] Kiểm tra file nhỏ, nhiều hàng, rỗng, tên dài, VND/null/0, phần trăm 0/25/100, trạng thái lịch sử và chế độ nhiều đơn vị; mở file để review trực quan và print preview.
-- [ ] Chạy gate TS/React bắt buộc khi triển khai; ghi rõ mức kiểm chứng workbook tự động và smoke Excel/LibreOffice thực tế.
+- [x] Có workbook minh hoạ dùng dữ liệu giả; coordinator đã xem preview Tổng quan, Chi tiết và Sửa chữa dựng từ giá trị/style XLSX thực.
+- [x] Áp dụng thiết kế cho mọi sheet hiện có, nhấn mạnh KPI và có metadata đúng phạm vi; giữ tập sheet xuất hiện có.
+- [x] Giữ tenant scope, dataset, bộ lọc, số hàng, thứ tự, cột và giá trị; làm rõ nhãn trung bình chi phí theo nguồn, không đổi RPC/migration.
+- [x] TDD bằng test đọc lại workbook ExcelJS thật: kiểm tra dữ liệu/KPI cùng style, merges, number formats, freeze, filter và page setup; không chỉ mock download hoặc kiểm tra hàm tồn tại.
+- [x] Kiểm tra tự động file nhỏ, 250 dòng, rỗng, tên dài, VND/null/0, phần trăm 0/25/100, trạng thái lịch sử và chế độ nhiều đơn vị.
+- [x] Chạy gate TS/React bắt buộc; phân biệt kiểm chứng workbook tự động, preview từ XLSX và smoke ứng dụng thực tế.
+- [ ] Mở XLSX bằng Excel/LibreOffice, kiểm tra auto-fit tên dài, freeze/filter và print preview A4 nhiều trang. VPS không có ứng dụng này; giữ issue mở cho bước thủ công.
+
+## Kết quả triển khai và bằng chứng
+
+- Layout navy/Aptos, bốn KPI lớn, header tương phản, zebra nhẹ, wrap và độ rộng cột; số/VND/% vẫn là numeric. Freeze/filter đúng vùng dữ liệu, A4 ngang, fit một trang theo chiều rộng, lặp header và đánh số trang.
+- Metadata lấy từ bộ lọc/context: ID đơn vị khi chưa có tên được truyền xuống, tập dữ liệu thường, kỳ/khoa, từ khóa và số dòng chi tiết thực. Usage ghi rõ overview toàn thời gian và daily theo cửa sổ lăn, không nhận khoa/phòng. Không thêm KPI suy diễn hoặc tên đơn vị giả.
+- Chặn xuất khi dữ liệu chính chưa có, lỗi, đang fetch hoặc là placeholder; kết quả thành công có số 0 vẫn xuất được. Lỗi maintenance không còn bị biến thành các chỉ số 0; workbook ghi rõ khi số liệu không khả dụng.
+- Tái sử dụng ExcelJS và seam multi-sheet hiện có; theme Reports chỉ áp dụng khi có `presentation`. Roundtrip bảo vệ kiểu/giá trị và header thưa của cách xuất cũ. Không thêm dependency, không sửa exporter Thiết bị/Temperature/CSV riêng.
+- RED → GREEN: ba ca workbook trình bày; lỗi maintenance bị che thành zero; chặn xuất dữ liệu chính chưa khả dụng; tương thích legacy, nhãn phạm vi tìm kiếm và format VND trung bình chi phí. Giữ các ca hồi quy có ý nghĩa sau triển khai.
+- Coordinator chạy 7 file test: **29/29 PASS**, gồm workbook roundtrip, dialog, Inventory tab, hồi quy khoa/phòng RPT-1006, status catalog, maintenance hook và loader ExcelJS. Gate format, no-explicit-any, dedupe diff-only, typecheck, exported JSDoc và whitespace PASS. React Doctor diff scan: **93/100, no issues**.
+- Review độc lập Standards và Spec/truthfulness: đã sửa các phát hiện về legacy serialization, nhãn search, VND của trung bình chi phí và kích thước file test; giữ fallback ID thay vì thêm plumbing chỉ để lấy tên.
+- Mẫu dữ liệu giả trên VPS: `/tmp/rpt-1007-excel-synthetic-final.xlsx`. Có thể tái tạo bằng `RPT1007_SAMPLE_XLSX=/tmp/rpt-1007-excel-synthetic-final.xlsx node scripts/npm-run.js exec vitest run 'src/app/(app)/reports/components/__tests__/export-report-workbook.test.ts'`.
+- Giới hạn: preview HTML lấy từ cell/style XLSX, không phải render native Excel/LibreOffice. Chưa xác nhận print preview và auto-fit trong ứng dụng thật; bước này còn mở ở checklist trên.
 
 ## Tham khảo bổ trợ
 

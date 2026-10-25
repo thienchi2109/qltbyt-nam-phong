@@ -1,6 +1,8 @@
 import { createExcelWorkbook, downloadBlob } from "./excel-workbook"
+import { addReportWorksheets, type MultiSheetExcelSheet } from "./excel-report-workbook"
 export { createExcelWorkbook, downloadBlob, readExcelFile, worksheetToJson } from "./excel-workbook"
 export type { ExcelWorkbook } from "./excel-workbook"
+export type { MultiSheetExcelPresentation, MultiSheetExcelSheet } from "./excel-report-workbook"
 export { generateEquipmentImportTemplate } from "./equipment-import-template"
 
 /** Exports record data to a single-sheet Excel workbook and downloads it. */
@@ -134,93 +136,13 @@ async function exportArrayToExcel(
  * Create a multi-sheet Excel workbook
  */
 export async function createMultiSheetExcel(
-  sheets: Array<{
-    name: string
-    data: Record<string, unknown>[] | unknown[][]
-    type: "json" | "array"
-    columnWidths?: number[]
-  }>,
+  sheets: MultiSheetExcelSheet[],
   filename: string
 ): Promise<void> {
   try {
     const workbook = await createExcelWorkbook()
 
-    for (const sheet of sheets) {
-      const worksheet = workbook.addWorksheet(sheet.name)
-
-      if (sheet.type === "json") {
-        const jsonData = sheet.data as Record<string, unknown>[]
-
-        if (jsonData.length > 0) {
-          // Extract headers from all rows to handle sparse data
-          const headers = Array.from(new Set(jsonData.flatMap((row) => Object.keys(row))))
-
-          // Add header row
-          worksheet.addRow(headers)
-
-          // Style header row
-          const headerRow = worksheet.getRow(1)
-          headerRow.font = { bold: true }
-          headerRow.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFE0E0E0" },
-          }
-
-          // Add data rows
-          jsonData.forEach((item) => {
-            const row = headers.map((header) => item[header])
-            worksheet.addRow(row)
-          })
-
-          // Set column widths
-          if (sheet.columnWidths) {
-            sheet.columnWidths.forEach((width, index) => {
-              const column = worksheet.getColumn(index + 1)
-              column.width = width
-            })
-          } else {
-            headers.forEach((header, index) => {
-              const column = worksheet.getColumn(index + 1)
-              column.width = Math.max(header.length + 2, 12)
-            })
-          }
-        }
-      } else {
-        // Array type
-        const arrayData = sheet.data as unknown[][]
-
-        // Add all rows
-        arrayData.forEach((row) => {
-          worksheet.addRow(row)
-        })
-
-        // Style header row if there's data
-        if (arrayData.length > 0) {
-          const headerRow = worksheet.getRow(1)
-          headerRow.font = { bold: true }
-          headerRow.fill = {
-            type: "pattern",
-            pattern: "solid",
-            fgColor: { argb: "FFE0E0E0" },
-          }
-        }
-
-        // Set column widths
-        if (sheet.columnWidths) {
-          sheet.columnWidths.forEach((width, index) => {
-            const column = worksheet.getColumn(index + 1)
-            column.width = width
-          })
-        } else if (arrayData.length > 0) {
-          arrayData[0].forEach((cell, index) => {
-            const column = worksheet.getColumn(index + 1)
-            const cellLength = String(cell ?? "").length
-            column.width = Math.max(cellLength + 2, 12)
-          })
-        }
-      }
-    }
+    addReportWorksheets(workbook, sheets)
 
     // Generate and download
     const buffer = await workbook.xlsx.writeBuffer()

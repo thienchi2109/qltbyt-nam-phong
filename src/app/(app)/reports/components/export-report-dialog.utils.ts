@@ -1,5 +1,4 @@
 import { format } from "date-fns"
-import { vi } from "date-fns/locale"
 import {
   getEquipmentDistributionStatusCounts,
   buildEquipmentDistributionStatusRows,
@@ -10,6 +9,8 @@ import type { EquipmentDistributionData } from "@/hooks/use-equipment-distributi
 import type { MaintenanceStats } from "../hooks/use-maintenance-stats"
 import type { UsageOverview, DailyUsageItem } from "../hooks/use-usage-analytics"
 import type { InventoryItem, InventorySummary } from "../hooks/use-inventory-data"
+import type { MultiSheetExcelPresentation } from "@/lib/excel-utils"
+import { addReportPresentation, type ExportReportScope } from "./export-report-dialog.presentation"
 
 export interface ExportReportDateRange {
   from: Date
@@ -26,6 +27,8 @@ type ExportJsonSheet = {
   data: ExportJsonRow[]
   type: "json"
   columnWidths?: number[]
+  headers?: string[]
+  presentation?: MultiSheetExcelPresentation
 }
 
 type ExportArraySheet = {
@@ -33,6 +36,8 @@ type ExportArraySheet = {
   data: ExportArrayRow[]
   type: "array"
   columnWidths?: number[]
+  headers?: string[]
+  presentation?: MultiSheetExcelPresentation
 }
 
 export type ExportSheet = ExportJsonSheet | ExportArraySheet
@@ -52,6 +57,8 @@ type BuildExportSheetsArgs = {
   distribution?: EquipmentDistributionData
   maintenanceStats?: MaintenanceStats
   usageAnalytics?: { overview: UsageOverview; daily: DailyUsageItem[] }
+  reportScope?: ExportReportScope
+  maintenanceStatsUnavailable?: boolean
 }
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -99,33 +106,29 @@ function generateStatistics(rows: InventoryItem[]): StatisticsRow[] {
     .sort((a, b) => b["Tổng"] - a["Tổng"])
 }
 
-function buildSummarySheet(
-  summary: InventorySummary,
-  dateRange: ExportReportDateRange,
-  department: string
-): ExportArraySheet {
+function buildSummarySheet(summary: InventorySummary, detailRowCount: number): ExportArraySheet {
   return {
     name: "Tổng quan",
     data: [
-      ["BÁO CÁO TỔNG HỢP THIẾT BỊ"],
-      [""],
-      [
-        "Thời gian:",
-        `${format(dateRange.from, "dd/MM/yyyy")} - ${format(dateRange.to, "dd/MM/yyyy")}`,
-      ],
-      ["Khoa/Phòng:", department === "all" ? "Tất cả" : department],
-      ["Ngày xuất báo cáo:", format(new Date(), "dd/MM/yyyy HH:mm", { locale: vi })],
-      [""],
       ["TỔNG QUAN"],
-      ["Thiết bị nhập:", summary.totalImported],
-      ["Thiết bị xuất:", summary.totalExported],
-      ["Tồn kho hiện tại:", summary.currentStock],
-      ["Biến động thuần:", summary.netChange >= 0 ? `+${summary.netChange}` : summary.netChange],
-      [""],
+      ["Thiết bị nhập:", "", "Thiết bị xuất:", "", "Tồn kho hiện tại:", "", "Biến động thuần:", ""],
+      [
+        summary.totalImported,
+        "",
+        summary.totalExported,
+        "",
+        summary.currentStock,
+        "",
+        summary.netChange,
+        "",
+      ],
       ["CHI TIẾT GIAO DỊCH"],
+      [
+        `Dòng chi tiết trong file: ${detailRowCount}. Tồn kho hiện tại theo dữ liệu hiện có từ nguồn; KPI và chi tiết có phạm vi tổng hợp khác nhau, không đối chiếu trực tiếp với số dòng chi tiết.`,
+      ],
     ],
     type: "array",
-    columnWidths: [25, 30],
+    columnWidths: [18, 5, 18, 5, 20, 5, 18, 5],
   }
 }
 
@@ -228,7 +231,7 @@ function buildMaintenanceSheets(maintenanceStats?: MaintenanceStats): ExportShee
           "Giá trị": maintenanceStats.repair_summary.total_cost,
         },
         {
-          "Chỉ số": "Chi phí TB ca hoàn thành",
+          "Chỉ số": "Chi phí TB ca hoàn thành có ghi nhận chi phí",
           "Giá trị": maintenanceStats.repair_summary.average_completed_cost,
         },
         {
@@ -298,15 +301,27 @@ function buildUsageSheets(usageAnalytics?: {
 
 /** Builds report export sheets from the selected report data. */
 export function buildExportSheets(args: BuildExportSheetsArgs): ExportSheet[] {
-  const { data, summary, dateRange, department, distribution, maintenanceStats, usageAnalytics } =
-    args
+  const {
+    data,
+    summary,
+    dateRange,
+    department,
+    distribution,
+    maintenanceStats,
+    usageAnalytics,
+    reportScope,
+    maintenanceStatsUnavailable,
+  } = args
 
-  return [
-    buildSummarySheet(summary, dateRange, department),
-    buildDetailedTransactionsSheet(data),
-    buildStatisticsSheet(data),
-    ...buildDistributionSheets(distribution),
-    ...buildMaintenanceSheets(maintenanceStats),
-    ...buildUsageSheets(usageAnalytics),
-  ]
+  return addReportPresentation(
+    [
+      buildSummarySheet(summary, data.length),
+      buildDetailedTransactionsSheet(data),
+      buildStatisticsSheet(data),
+      ...buildDistributionSheets(distribution),
+      ...buildMaintenanceSheets(maintenanceStats),
+      ...buildUsageSheets(usageAnalytics),
+    ],
+    { dateRange, department, detailRowCount: data.length, reportScope, maintenanceStatsUnavailable }
+  )
 }

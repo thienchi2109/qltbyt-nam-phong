@@ -8,7 +8,13 @@ import { vi } from "date-fns/locale"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { ListFilterSearchCard } from "@/components/shared/ListFilterSearchCard"
 import { cn } from "@/lib/utils"
 import type { DateRange } from "../hooks/use-report-filters"
@@ -58,6 +64,7 @@ interface InventoryReportFilterSectionProps {
   readonly departments: string[]
   readonly isGlobalOrRegionalLeader?: boolean
   readonly isLoading: boolean
+  readonly canExport: boolean
   readonly onRefresh: () => void
   readonly onExport: () => void
 }
@@ -73,13 +80,15 @@ export function InventoryReportFilterSection({
   departments,
   isGlobalOrRegionalLeader,
   isLoading,
+  canExport,
   onRefresh,
   onExport,
 }: InventoryReportFilterSectionProps) {
+  const exportUnavailableDescriptionId = React.useId()
   const maxReportDate = React.useSyncExternalStore(
     subscribeToMaxReportDate,
     getMaxReportDateSnapshot,
-    getMaxReportDateSnapshot,
+    getMaxReportDateSnapshot
   )
 
   const filterControls = (
@@ -128,7 +137,16 @@ export function InventoryReportFilterSection({
       <Button variant="outline" onClick={onRefresh} disabled={isLoading}>
         Làm mới
       </Button>
-      <Button onClick={onExport}>
+      {!canExport ? (
+        <span id={exportUnavailableDescriptionId} className="sr-only">
+          Dữ liệu báo cáo chưa sẵn sàng để xuất.
+        </span>
+      ) : null}
+      <Button
+        onClick={onExport}
+        disabled={!canExport}
+        aria-describedby={canExport ? undefined : exportUnavailableDescriptionId}
+      >
         <Download className="mr-2 size-4" />
         Xuất báo cáo
       </Button>
@@ -137,12 +155,12 @@ export function InventoryReportFilterSection({
 
   return (
     <ListFilterSearchCard
-      title={(
+      title={
         <span className="flex items-center gap-2">
           <FileText className="size-5" />
           Báo cáo Xuất-Nhập-Tồn thiết bị
         </span>
-      )}
+      }
       description="Theo dõi tình hình xuất, nhập và tồn kho thiết bị theo thời gian"
       searchValue={searchTerm}
       onSearchChange={onSearchTermChange}

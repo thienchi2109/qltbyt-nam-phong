@@ -60,39 +60,10 @@ vi.mock("../export-report-dialog", () => ({
   },
 }))
 
-vi.mock("@/components/shared/ListFilterSearchCard", () => ({
-  ListFilterSearchCard: ({
-    title,
-    description,
-    searchValue,
-    onSearchChange,
-    searchPlaceholder,
-    filterControls,
-    actions,
-  }: {
-    title?: React.ReactNode
-    description?: React.ReactNode
-    searchValue?: string
-    onSearchChange?: (value: string) => void
-    searchPlaceholder?: string
-    filterControls?: React.ReactNode
-    actions?: React.ReactNode
-  }) => (
-    <section data-testid="reports-shared-filter-section">
-      {title ? <h2>{title}</h2> : null}
-      {description ? <p>{description}</p> : null}
-      {searchPlaceholder ? (
-        <input
-          aria-label={searchPlaceholder}
-          value={searchValue ?? ""}
-          onChange={(event) => onSearchChange?.(event.target.value)}
-        />
-      ) : null}
-      {filterControls}
-      {actions}
-    </section>
-  ),
-}))
+vi.mock("@/components/shared/ListFilterSearchCard", async () => {
+  const { ListFilterSearchCardStub } = await import("./inventory-report-tab.test-fixtures")
+  return { ListFilterSearchCard: ListFilterSearchCardStub }
+})
 
 vi.mock("@/components/interactive-equipment-chart", () => ({
   InteractiveEquipmentChart: () => <div data-testid="interactive-equipment-chart" />,
@@ -152,6 +123,19 @@ vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }))
 
+const successfulZeroResult = {
+  data: {
+    data: [],
+    summary: { totalImported: 0, totalExported: 0, currentStock: 0, netChange: 0 },
+    departments: ["Khoa Nội"],
+  },
+  isLoading: false,
+  isFetching: false,
+  isError: false,
+  isPlaceholderData: false,
+  error: null,
+}
+
 describe("InventoryReportTab", () => {
   const setSearchTerm = vi.fn()
   const setSelectedDepartment = vi.fn()
@@ -172,21 +156,7 @@ describe("InventoryReportTab", () => {
       setSelectedDepartment,
       setSearchTerm,
     })
-    mocks.useInventoryData.mockReturnValue({
-      data: {
-        data: [],
-        summary: {
-          totalImported: 0,
-          totalExported: 0,
-          currentStock: 0,
-          netChange: 0,
-        },
-        departments: ["Khoa Nội"],
-      },
-      isLoading: false,
-      error: null,
-      refetch,
-    })
+    mocks.useInventoryData.mockReturnValue({ ...successfulZeroResult, refetch })
     mocks.useEquipmentDistribution.mockReturnValue({ data: [] })
     mocks.useMaintenanceStats.mockReturnValue({ data: [] })
     mocks.useUsageAnalytics.mockReturnValue({ data: [] })
@@ -254,6 +224,51 @@ describe("InventoryReportTab", () => {
         })
       )
     })
+  })
+
+  it.each([
+    {
+      name: "no result while the query is disabled",
+      query: { data: undefined },
+      canExport: false,
+    },
+    {
+      name: "an initial query error",
+      query: {
+        data: undefined,
+        isError: true,
+        error: new Error("Inventory unavailable"),
+      },
+      canExport: false,
+    },
+    {
+      name: "a filter refetch with prior data",
+      query: { isFetching: true },
+      canExport: false,
+    },
+    {
+      name: "placeholder data for a changed filter",
+      query: { isPlaceholderData: true },
+      canExport: false,
+    },
+    {
+      name: "a successfully loaded zero-result report",
+      query: {},
+      canExport: true,
+    },
+  ])("respects primary report availability: $name", ({ query, canExport }) => {
+    mocks.useInventoryData.mockReturnValue({ ...successfulZeroResult, ...query, refetch })
+
+    render(<InventoryReportTab tenantFilter="1" effectiveTenantKey="tenant-a" />)
+
+    const exportButton = screen.getByRole("button", { name: "Xuất báo cáo" })
+    expect(exportButton.disabled).toBe(!canExport)
+    fireEvent.click(exportButton)
+    expect(mocks.exportDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining(
+        canExport ? { open: true } : { open: false, reportDataAvailable: false }
+      )
+    )
   })
 
   it("forwards catalog-backed department/location distribution unchanged to the actual export owner", () => {

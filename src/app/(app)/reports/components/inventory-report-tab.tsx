@@ -78,6 +78,9 @@ export function InventoryReportTab({
   const {
     data: inventoryResult,
     isLoading,
+    isError: inventoryQueryError,
+    isFetching,
+    isPlaceholderData,
     error,
     refetch,
   } = useInventoryData(
@@ -88,6 +91,8 @@ export function InventoryReportTab({
     selectedDonVi,
     effectiveTenantKey
   )
+  const reportDataAvailable =
+    Boolean(inventoryResult) && !inventoryQueryError && !error && !isFetching && !isPlaceholderData
 
   // Extract data from query result
   const data = inventoryResult?.data || []
@@ -109,7 +114,7 @@ export function InventoryReportTab({
   )
 
   // Maintenance/Repairs summary (tenant + department + date range)
-  const { data: maintenanceStats } = useMaintenanceStats(
+  const { data: maintenanceStats, isError: maintenanceStatsError } = useMaintenanceStats(
     dateRange,
     selectedDepartment,
     selectedDonVi,
@@ -121,6 +126,18 @@ export function InventoryReportTab({
   const rawDays = Math.ceil((dateRange.to.getTime() - dateRange.from.getTime()) / msPerDay)
   const days = Math.min(Math.max(rawDays, 1), 365)
   const { data: usageAnalytics } = useUsageAnalytics(days, selectedDonVi, effectiveTenantKey)
+  const reportScope = {
+    facility:
+      typeof selectedDonVi === "number"
+        ? `Đơn vị #${selectedDonVi}`
+        : selectedDonVi === null || tenantFilter === "all"
+          ? "Các cơ sở trong phạm vi được cấp quyền"
+          : "Phạm vi theo quyền tài khoản",
+    dataset: "Thiết bị thường",
+    searchTerm,
+    usageDays: days,
+    allFacilities: tenantFilter === "all",
+  }
 
   const handleRefresh = () => {
     refetch()
@@ -144,6 +161,7 @@ export function InventoryReportTab({
           departments={departments}
           isGlobalOrRegionalLeader={isGlobalOrRegionalLeader}
           isLoading={isLoading}
+          canExport={reportDataAvailable}
           onRefresh={handleRefresh}
           onExport={() => setShowExportDialog(true)}
         />
@@ -278,7 +296,10 @@ export function InventoryReportTab({
         department={selectedDepartment}
         distribution={distributionData}
         maintenanceStats={maintenanceStats}
+        maintenanceStatsUnavailable={maintenanceStatsError || !maintenanceStats}
         usageAnalytics={usageAnalytics}
+        reportScope={reportScope}
+        reportDataAvailable={reportDataAvailable}
       />
     </>
   )
