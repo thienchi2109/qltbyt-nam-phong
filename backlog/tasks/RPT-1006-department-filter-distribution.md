@@ -3,7 +3,8 @@
 - Status: Done
 - Issue: [#1006](https://github.com/thienchi2109/qltbyt-nam-phong/issues/1006)
 - Updated: 2026-10-25
-- Branch: `test/reports-department-filter-red`
+- Branch: `main` (nguồn: `test/reports-department-filter-red`)
+- Integration: fast-forward vào `main` tại `6b4ae222`; 22/22 test PASS sau merge.
 - Scope: sửa frontend và xác minh GREEN theo regression đã chốt.
 
 ## Vấn đề và root cause
@@ -42,4 +43,4 @@ Hai widget nhận prop `filterDepartment` tùy chọn từ Reports. Giá trị `
 
 Hai regression từ commit RED `3e12b7d6` giữ nguyên SHA-256 `d4c49abd216010898484b8acb4fa61a81bdf5993b021bc6ae6fe0927a57220ef` và PASS. Tổng cộng 22/22 test liên quan PASS trên 5 file; format, no-explicit-any, dedupe diff-only, typecheck PASS; React Doctor diff-only 92/100, không có finding. Review độc lập không còn blocker.
 
-Reset drill-down được xác nhận qua remount trong review mã nguồn, chưa có assertion riêng mô phỏng thao tác drill-down. Chưa kiểm chứng browser/live hoặc merge/deploy; bằng chứng GREEN ở mức React test với RPC giả lập.
+Reset drill-down được xác nhận qua remount trong review mã nguồn, chưa có assertion riêng mô phỏng thao tác drill-down. Chưa kiểm chứng browser/live hoặc deploy; bằng chứng GREEN ở mức React test với RPC giả lập.
