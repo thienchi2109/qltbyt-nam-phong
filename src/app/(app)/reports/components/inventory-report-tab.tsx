@@ -295,7 +295,7 @@ export function InventoryReportTab({
         dateRange={dateRange}
         department={selectedDepartment}
         distribution={distributionData}
-        maintenanceStats={maintenanceStats}
+        maintenanceStats={maintenanceStatsError ? undefined : maintenanceStats}
         maintenanceStatsUnavailable={maintenanceStatsError || !maintenanceStats}
         usageAnalytics={usageAnalytics}
         reportScope={reportScope}

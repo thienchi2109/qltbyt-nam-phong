@@ -3,6 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { InventoryReportTab } from "../inventory-report-tab"
 import { distribution } from "@/hooks/__tests__/equipment-status-distribution-fixtures"
+import { maintenanceStats } from "./export-report-workbook.fixtures"
+import {
+  successfulZeroResult,
+  unusedEquipmentReportResult,
+} from "./inventory-report-tab.test-fixtures"
 
 const mocks = vi.hoisted(() => ({
   toast: vi.fn(),
@@ -123,19 +128,6 @@ vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: () => <div data-testid="skeleton" />,
 }))
 
-const successfulZeroResult = {
-  data: {
-    data: [],
-    summary: { totalImported: 0, totalExported: 0, currentStock: 0, netChange: 0 },
-    departments: ["Khoa Nội"],
-  },
-  isLoading: false,
-  isFetching: false,
-  isError: false,
-  isPlaceholderData: false,
-  error: null,
-}
-
 describe("InventoryReportTab", () => {
   const setSearchTerm = vi.fn()
   const setSelectedDepartment = vi.fn()
@@ -161,45 +153,7 @@ describe("InventoryReportTab", () => {
     mocks.useMaintenanceStats.mockReturnValue({ data: [] })
     mocks.useUsageAnalytics.mockReturnValue({ data: [] })
     mocks.useUnusedEquipmentReport.mockReturnValue({
-      data: {
-        summary: {
-          totalCount: 2,
-          deviceTypeCount: 1,
-          departmentCount: 1,
-          totalOriginalValue: 3000000,
-        },
-        topDeviceGroups: [
-          {
-            deviceName: "Máy thở HFNC",
-            equipmentCount: 2,
-            totalOriginalValue: 3000000,
-          },
-        ],
-        departments: [
-          {
-            departmentName: "ICU",
-            equipmentCount: 2,
-            totalOriginalValue: 3000000,
-          },
-        ],
-        items: [
-          {
-            id: 1,
-            maThietBi: "TB001",
-            tenThietBi: "Máy thở HFNC",
-            model: "HFNC",
-            serial: "SER001",
-            khoaPhongQuanLy: "ICU",
-            ngayNhap: "2026-01-10",
-            createdAt: "2026-01-10T00:00:00.000Z",
-            giaGoc: 3000000,
-            donVi: 17,
-          },
-        ],
-        totalCount: 2,
-        page: 1,
-        pageSize: 10,
-      },
+      data: unusedEquipmentReportResult,
       isLoading: false,
       error: null,
     })
@@ -271,11 +225,26 @@ describe("InventoryReportTab", () => {
     )
   })
 
-  it("forwards catalog-backed department/location distribution unchanged to the actual export owner", () => {
+  it("forwards report data and omits cached maintenance results after a failed refetch", () => {
     mocks.useEquipmentDistribution.mockReturnValue({ data: distribution })
-    render(<InventoryReportTab tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    mocks.useMaintenanceStats.mockReturnValue({ data: maintenanceStats, isError: false })
+    const { rerender } = render(
+      <InventoryReportTab tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />
+    )
     expect(mocks.useEquipmentDistribution).toHaveBeenCalledWith("all", undefined, "42", 42, "42")
-    expect(mocks.exportDialog).toHaveBeenCalledWith(expect.objectContaining({ distribution }))
+    expect(mocks.exportDialog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        distribution,
+        maintenanceStats,
+        maintenanceStatsUnavailable: false,
+      })
+    )
+
+    mocks.useMaintenanceStats.mockReturnValue({ data: maintenanceStats, isError: true })
+    rerender(<InventoryReportTab tenantFilter="42" selectedDonVi={42} effectiveTenantKey="42" />)
+    expect(mocks.exportDialog).toHaveBeenLastCalledWith(
+      expect.objectContaining({ maintenanceStats: undefined, maintenanceStatsUnavailable: true })
+    )
   })
 
   it("renders inventory filters through the shared filter section and preserves search/action behavior", () => {

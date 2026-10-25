@@ -80,6 +80,14 @@ Phương án nhẹ hơn là chỉ làm đẹp bảng hiện có; ít thay đổi
 - Mẫu dữ liệu giả trên VPS: `/tmp/rpt-1007-excel-synthetic-final.xlsx`. Có thể tái tạo bằng `RPT1007_SAMPLE_XLSX=/tmp/rpt-1007-excel-synthetic-final.xlsx node scripts/npm-run.js exec vitest run 'src/app/(app)/reports/components/__tests__/export-report-workbook.test.ts'`.
 - Giới hạn: preview HTML lấy từ cell/style XLSX, không phải render native Excel/LibreOffice. Chưa xác nhận print preview và auto-fit trong ứng dụng thật; bước này còn mở ở checklist trên.
 
+## Sửa finding từ review gpt-6.1-sol/xhigh
+
+- P2: sau lần tải maintenance thành công, refetch lỗi vẫn giữ cache; workbook đã xuất số liệu cũ mà không có thông báo lỗi.
+- Sửa tại điểm truyền props: khi maintenance query báo lỗi, không truyền số liệu cache vào hộp xuất; dùng thông báo không có số liệu khả dụng hiện có. Kết quả tải thành công vẫn được giữ nguyên.
+- RED: cùng dữ liệu cache, chuyển từ `isError: false` sang `true`; assertion ở export owner thất bại vì vẫn nhận dữ liệu maintenance. GREEN: test chuyển trạng thái này và roundtrip workbook thông báo thiếu dữ liệu đều PASS (**15/15** trong hai suite liên quan).
+- Test dùng trạng thái hook được mock và boundary export props; việc React Query giữ cache sau refetch lỗi đã được reviewer xác minh bằng probe thực. Không thêm hook, truy vấn hoặc nhánh xử lý workbook mới.
+- Reviewer gpt-6.1-sol/xhigh xác nhận P2 đã xử lý, không còn blocker; tự chạy lại **15/15 PASS**. Coordinator chạy lại đủ gate bắt buộc và **29/29 PASS** (7 file); React Doctor diff **93/100, no issues**.
+
 ## Tham khảo bổ trợ
 
 - [Microsoft — Excel tables](https://support.microsoft.com/en-us/office/overview-of-excel-tables-7ab0bb7d-3a9e-4b56-a3c9-6c94334e492c): header/filter, banded rows, total row.
