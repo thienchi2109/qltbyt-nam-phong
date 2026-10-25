@@ -16,6 +16,7 @@ import { useEquipmentDistribution } from "@/hooks/use-equipment-distribution"
 
 interface EquipmentDistributionSummaryProps {
   className?: string
+  filterDepartment?: string
   tenantFilter?: string
   selectedDonVi?: number | null
   effectiveTenantKey?: string
@@ -71,12 +72,13 @@ function getStatusProgressStyle(
 /** Renders equipment distribution totals and status breakdowns. */
 export function EquipmentDistributionSummary({
   className,
+  filterDepartment,
   tenantFilter,
   selectedDonVi,
   effectiveTenantKey,
 }: EquipmentDistributionSummaryProps) {
   const { data, isLoading, error } = useEquipmentDistribution(
-    undefined,
+    filterDepartment,
     undefined,
     tenantFilter,
     selectedDonVi,

@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 
 interface InteractiveEquipmentChartProps {
   className?: string
+  filterDepartment?: string
   tenantFilter?: string
   selectedDonVi?: number | null
   effectiveTenantKey?: string
@@ -23,6 +24,7 @@ interface InteractiveEquipmentChartProps {
 /** Renders the interactive equipment distribution chart for a facility scope. */
 export function InteractiveEquipmentChart({
   className,
+  filterDepartment,
   tenantFilter,
   selectedDonVi,
   effectiveTenantKey,
@@ -36,7 +38,7 @@ export function InteractiveEquipmentChart({
   const crossFilterLoc = viewType === "department" ? selectedLocation : undefined
 
   const { data, isLoading, error } = useEquipmentDistribution(
-    crossFilterDept,
+    filterDepartment ?? crossFilterDept,
     crossFilterLoc,
     tenantFilter,
     selectedDonVi,

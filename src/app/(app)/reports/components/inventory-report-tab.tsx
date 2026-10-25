@@ -39,47 +39,50 @@ function InventoryReportErrorToast({ error, toast }: InventoryReportErrorToastPr
     toast({
       variant: "destructive",
       title: "Lỗi tải dữ liệu",
-      description: getUnknownErrorMessage(error, "Không thể tải dữ liệu báo cáo")
+      description: getUnknownErrorMessage(error, "Không thể tải dữ liệu báo cáo"),
     })
   }, [error, toast])
 
   return null
 }
 
-export function InventoryReportTab({ 
-  tenantFilter, 
-  selectedDonVi, 
+/** Renders inventory reports scoped to the selected facility and department. */
+export function InventoryReportTab({
+  tenantFilter,
+  selectedDonVi,
   effectiveTenantKey,
   isGlobalOrRegionalLeader,
 }: InventoryReportTabProps) {
   const { toast } = useToast()
-  
+
   // Persisted filters per tenant via TanStack Query cache
-  const tenantCacheKey = effectiveTenantKey || 'auto'
-  const { filters, setDateRange, setSelectedDepartment, setSearchTerm } = useReportInventoryFilters(tenantCacheKey)
+  const tenantCacheKey = effectiveTenantKey || "auto"
+  const { filters, setDateRange, setSelectedDepartment, setSearchTerm } =
+    useReportInventoryFilters(tenantCacheKey)
   const dateRange = filters.dateRange
   const selectedDepartment = filters.selectedDepartment
+  const filterDepartment = selectedDepartment === "all" ? undefined : selectedDepartment
   const searchTerm = filters.searchTerm
   const [showExportDialog, setShowExportDialog] = React.useState(false)
 
   // Hide Department filter for RL/global and ensure it's reset to 'all'
   React.useEffect(() => {
-    if (isGlobalOrRegionalLeader && selectedDepartment !== 'all') {
-      setSelectedDepartment('all')
+    if (isGlobalOrRegionalLeader && selectedDepartment !== "all") {
+      setSelectedDepartment("all")
     }
   }, [isGlobalOrRegionalLeader, selectedDepartment, setSelectedDepartment])
 
   // (debug removed)
-  
+
   // Fetch data using React Query hook with tenant parameters
-  const { 
-    data: inventoryResult, 
-    isLoading, 
+  const {
+    data: inventoryResult,
+    isLoading,
     error,
-    refetch 
+    refetch,
   } = useInventoryData(
-    dateRange, 
-    selectedDepartment, 
+    dateRange,
+    selectedDepartment,
     searchTerm,
     tenantFilter,
     selectedDonVi,
@@ -92,7 +95,7 @@ export function InventoryReportTab({
     totalImported: 0,
     totalExported: 0,
     currentStock: 0,
-    netChange: 0
+    netChange: 0,
   }
   const departments = inventoryResult?.departments || []
 
@@ -123,7 +126,7 @@ export function InventoryReportTab({
     refetch()
     toast({
       title: "Đã làm mới dữ liệu",
-      description: "Báo cáo đã được cập nhật với dữ liệu mới nhất."
+      description: "Báo cáo đã được cập nhật với dữ liệu mới nhất.",
     })
   }
 
@@ -156,12 +159,10 @@ export function InventoryReportTab({
               <div className="text-2xl font-bold">
                 {isLoading ? <Skeleton className="h-8 w-16" /> : summary.totalImported}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Thiết bị nhập trong kỳ
-              </p>
+              <p className="text-xs text-muted-foreground">Thiết bị nhập trong kỳ</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tổng xuất</CardTitle>
@@ -171,12 +172,10 @@ export function InventoryReportTab({
               <div className="text-2xl font-bold">
                 {isLoading ? <Skeleton className="h-8 w-16" /> : summary.totalExported}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Thiết bị xuất trong kỳ
-              </p>
+              <p className="text-xs text-muted-foreground">Thiết bị xuất trong kỳ</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Tồn kho</CardTitle>
@@ -186,17 +185,16 @@ export function InventoryReportTab({
               <div className="text-2xl font-bold">
                 {isLoading ? <Skeleton className="h-8 w-16" /> : summary.currentStock}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Thiết bị hiện có
-              </p>
+              <p className="text-xs text-muted-foreground">Thiết bị hiện có</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 [&>*+*]:mt-0">
               <CardTitle className="text-sm font-medium">Biến động</CardTitle>
               <Badge variant={summary.netChange >= 0 ? "default" : "destructive"}>
-                {summary.netChange >= 0 ? "+" : ""}{summary.netChange}
+                {summary.netChange >= 0 ? "+" : ""}
+                {summary.netChange}
               </Badge>
             </CardHeader>
             <CardContent>
@@ -211,12 +209,17 @@ export function InventoryReportTab({
         </div>
 
         {/* Equipment Distribution Overview - Only show for single facility */}
-        {tenantFilter !== 'all' && (
-          <EquipmentDistributionSummary tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        {tenantFilter !== "all" && (
+          <EquipmentDistributionSummary
+            filterDepartment={filterDepartment}
+            tenantFilter={tenantFilter}
+            selectedDonVi={selectedDonVi}
+            effectiveTenantKey={effectiveTenantKey}
+          />
         )}
 
         {/* Unified Inventory Chart (RL/Global only) - all mode shows facilities distribution; single mode renders interactive */}
-        <UnifiedInventoryChart 
+        <UnifiedInventoryChart
           tenantFilter={tenantFilter}
           selectedDonVi={selectedDonVi}
           effectiveTenantKey={effectiveTenantKey}
@@ -224,14 +227,18 @@ export function InventoryReportTab({
         />
 
         {/* Interactive Equipment Distribution Chart (non-RL/Global users) - Only show for single facility */}
-        {tenantFilter !== 'all' && !isGlobalOrRegionalLeader && (
-          <InteractiveEquipmentChart tenantFilter={tenantFilter} selectedDonVi={selectedDonVi} effectiveTenantKey={effectiveTenantKey} />
+        {tenantFilter !== "all" && !isGlobalOrRegionalLeader && (
+          <InteractiveEquipmentChart
+            key={selectedDepartment}
+            filterDepartment={filterDepartment}
+            tenantFilter={tenantFilter}
+            selectedDonVi={selectedDonVi}
+            effectiveTenantKey={effectiveTenantKey}
+          />
         )}
 
         {/* Charts Section */}
-        {tenantFilter !== 'all' && (
-          <InventoryCharts data={data} isLoading={isLoading} />
-        )}
+        {tenantFilter !== "all" && <InventoryCharts data={data} isLoading={isLoading} />}
 
         <UnusedEquipmentReportSection
           key={selectedDonVi ?? "unselected"}
@@ -240,20 +247,17 @@ export function InventoryReportTab({
         />
 
         {/* Detailed Table - Only show for single facility */}
-        {tenantFilter === 'all' ? (
+        {tenantFilter === "all" ? (
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-center p-8 text-center">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-center text-4xl mb-4">
-                    📊
-                  </div>
-                  <h3 className="text-lg font-semibold">
-                    Đang hiển thị dữ liệu tổng hợp
-                  </h3>
+                  <div className="flex items-center justify-center text-4xl mb-4">📊</div>
+                  <h3 className="text-lg font-semibold">Đang hiển thị dữ liệu tổng hợp</h3>
                   <p className="text-sm text-muted-foreground max-w-md">
-                    Bảng chi tiết giao dịch không khả dụng khi xem tất cả cơ sở. Ở trên, bạn có thể xem biểu đồ phân bố theo cơ sở. 
-                    Vui lòng chọn một cơ sở cụ thể để xem chi tiết giao dịch.
+                    Bảng chi tiết giao dịch không khả dụng khi xem tất cả cơ sở. Ở trên, bạn có thể
+                    xem biểu đồ phân bố theo cơ sở. Vui lòng chọn một cơ sở cụ thể để xem chi tiết
+                    giao dịch.
                   </p>
                 </div>
               </div>
@@ -278,4 +282,4 @@ export function InventoryReportTab({
       />
     </>
   )
-} 
+}
