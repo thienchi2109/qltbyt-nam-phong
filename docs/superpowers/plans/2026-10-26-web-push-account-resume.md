@@ -19,7 +19,7 @@
 - [x] Run focused tests to GREEN, then simplify the diff and review owner/revision/abort boundaries.
 - [x] Run formatting, no-explicit-any, diff-only dedupe, typecheck, focused tests, and React Doctor in repository order through one context-mode batch.
 - [x] Obtain independent spec and code-quality review against base `8859e3c322771ce15732061c816f20faa6195416`; fix valid findings and rerun affected checks.
-- [ ] Commit and push the isolated feature branch with hooks enabled. Leave production deployment and iPhone real-device verification explicitly pending.
+- [x] Commit and push the isolated feature branch with hooks enabled. Leave production deployment and iPhone real-device verification explicitly pending.
 
 ## Verification and handoff
 
