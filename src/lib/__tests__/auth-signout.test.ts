@@ -17,6 +17,7 @@ vi.mock("@/lib/web-push/browser-lifecycle", () => ({
 }))
 
 import { signOutWithReason } from "../auth-signout"
+import { readBrowserPushConsent, setBrowserPushConsent } from "../web-push/browser-consent"
 
 class FakeBroadcastChannel {
   readonly name: string
@@ -136,6 +137,40 @@ describe("signOutWithReason", () => {
     expect(mocks.cleanupBrowserSubscription).toHaveBeenCalledOnce()
     expect(mocks.cleanupBrowserSubscription).toHaveBeenCalledWith("owner-a")
   })
+
+  it("persists push opt-out in the initiating tab before forced-password cleanup completes", async () => {
+    setBrowserPushConsent("owner-a", true)
+    setBrowserPushConsent("owner-b", true)
+    const deferred = createDeferred<string>()
+    mocks.cleanupBrowserSubscription.mockReturnValueOnce(deferred.promise)
+
+    const signOutPromise = signOutWithReason({
+      reason: "forced_password_change",
+      userId: "owner-a",
+    })
+
+    const consentDuringCleanup = readBrowserPushConsent("owner-a")
+    expect(mocks.signOut).not.toHaveBeenCalled()
+    deferred.resolve("remote")
+    await signOutPromise
+
+    expect(consentDuringCleanup).toBe(false)
+    expect(readBrowserPushConsent("owner-a")).toBe(false)
+    expect(readBrowserPushConsent("owner-b")).toBe(true)
+    expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+  })
+
+  it.each(["session_expired", "user_initiated"] as const)(
+    "retains push consent for %s signout",
+    async (reason) => {
+      setBrowserPushConsent("owner-a", true)
+
+      await signOutWithReason({ reason, userId: "owner-a" })
+
+      expect(readBrowserPushConsent("owner-a")).toBe(true)
+      expect(mocks.cleanupBrowserSubscription).not.toHaveBeenCalled()
+    }
+  )
 
   it("broadcasts signout intent to sibling tabs before redirecting the current tab", async () => {
     await signOutWithReason({

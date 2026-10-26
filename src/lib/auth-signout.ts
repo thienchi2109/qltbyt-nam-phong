@@ -1,6 +1,7 @@
 import { signOut } from "next-auth/react"
 
 import { broadcastAuthSignout } from "@/lib/auth-signout-broadcast"
+import { setBrowserPushConsent } from "@/lib/web-push/browser-consent"
 import { cleanupBrowserSubscription } from "@/lib/web-push/browser-lifecycle"
 import type { AuthPendingSignoutReason } from "@/types/auth"
 
@@ -49,6 +50,7 @@ export async function signOutWithReason({
   userId,
 }: SignOutWithReasonOptions): Promise<void> {
   if (reason === "forced_password_change" && userId) {
+    setBrowserPushConsent(String(userId), false)
     await cleanupBrowserSubscription(String(userId))
   }
 
