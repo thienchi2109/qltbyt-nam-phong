@@ -1,6 +1,8 @@
-import { act, fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
+import { NextAuthSessionProvider } from "@/providers/session-provider"
 import NotificationsPage from "../page"
 import {
   mocks,
@@ -13,7 +15,10 @@ import {
   storeSubscription,
 } from "./NotificationsPushOptInTestUtils"
 
-vi.mock("next-auth/react", () => ({ useSession: () => mocks.session() }))
+vi.mock("next-auth/react", () => ({
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
+  useSession: () => mocks.session(),
+}))
 vi.mock("@/contexts/TenantSelectionContext", () => ({ useTenantSelection: () => mocks.tenant() }))
 vi.mock("@/components/shared/TenantSelector", () => ({
   TenantSelector: () => <button>Đơn vị mục tiêu</button>,
@@ -23,6 +28,128 @@ beforeEach(resetNotificationTestState)
 afterEach(() => vi.unstubAllGlobals())
 
 describe("NotificationsPage browser lifecycle", () => {
+  it("restores an opted-in account after switching away and back", async () => {
+    const { getSubscription, subscribe, subscription } = pushRegistration()
+    let currentSubscription: typeof subscription | null = subscription
+    getSubscription.mockImplementation(async () => currentSubscription)
+    subscription.unsubscribe.mockImplementation(async () => {
+      currentSubscription = null
+      return true
+    })
+    vi.stubGlobal("Notification", {
+      permission: "granted",
+      requestPermission: mocks.requestPermission,
+    })
+    storeSubscription("owner-a")
+    const requestOrder: string[] = []
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url.includes("/public-key")) {
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      }
+      if (url.endsWith("/subscriptions/revoke") && init?.method === "POST") {
+        requestOrder.push("revoke")
+        return Promise.resolve(response({ version: 1, revoked: true }))
+      }
+      if (url.endsWith("/subscriptions") && init?.method === "POST") {
+        requestOrder.push("register")
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000002",
+            revision: "2",
+          })
+        )
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+
+    session("user", "owner-a")
+    const view = render(
+      <NextAuthSessionProvider session={null}>
+        <NotificationsPage />
+      </NextAuthSessionProvider>,
+      { wrapper: createReactQueryWrapper(createTestQueryClient()) }
+    )
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+
+    session("user", "owner-b")
+    view.rerender(
+      <NextAuthSessionProvider session={null}>
+        <NotificationsPage />
+      </NextAuthSessionProvider>
+    )
+    await waitFor(() => expect(subscription.unsubscribe).toHaveBeenCalledOnce())
+    expect(requestOrder).toEqual([])
+    expect(subscribe).not.toHaveBeenCalled()
+
+    session("user", "owner-a")
+    view.rerender(
+      <NextAuthSessionProvider session={null}>
+        <NotificationsPage />
+      </NextAuthSessionProvider>
+    )
+
+    await waitFor(() => expect(subscribe).toHaveBeenCalledOnce())
+    expect(requestOrder).toEqual(["revoke", "register"])
+    expect(mocks.requestPermission).not.toHaveBeenCalled()
+    view.unmount()
+  })
+
+  it("allows a fresh opt-in to reconnect after three failed registration attempts", async () => {
+    pushRegistration()
+    vi.stubGlobal("Notification", {
+      permission: "granted",
+      requestPermission: mocks.requestPermission,
+    })
+    mocks.requestPermission.mockResolvedValue("granted")
+    let postCount = 0
+    let recovered = false
+    mocks.fetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/public-key"))
+        return Promise.resolve(
+          response({
+            version: 1,
+            registration_enabled: true,
+            vapid: { version: "test-v1", public_key: publicKey, fingerprint: "sha256:test" },
+          })
+        )
+      if (init?.method === "POST") {
+        postCount += 1
+        if (!recovered) return Promise.reject(new TypeError("network unavailable"))
+        return Promise.resolve(
+          response({
+            version: 1,
+            subscription_id: "00000000-0000-4000-8000-000000000004",
+            revision: "4",
+          })
+        )
+      }
+      return Promise.resolve(response({ version: 1, don_vi_id: "7", candidates: [] }))
+    })
+    const user = userEvent.setup()
+    mount()
+
+    const firstButton = await screen.findByRole("button", { name: "Bật thông báo" })
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const button = attempt === 0 ? firstButton : screen.getByRole("button", { name: "Thử lại" })
+      const previousPosts = postCount
+      await user.click(button)
+      await waitFor(() => expect(postCount).toBeGreaterThan(previousPosts))
+      await waitFor(() => expect(screen.getByRole("button", { name: "Thử lại" })).toBeEnabled())
+    }
+
+    recovered = true
+    await user.click(screen.getByRole("button", { name: "Thử lại" }))
+    await screen.findByText("Thông báo đã bật trên trình duyệt.")
+  })
+
   it("shares one register request between independently mounted clients for one endpoint", async () => {
     const { getSubscription, subscription } = pushRegistration()
     getSubscription.mockResolvedValue(subscription)
@@ -191,6 +318,7 @@ describe("NotificationsPage browser lifecycle", () => {
   it("cancels a pending revoke without allowing its late response to overwrite the UI", async () => {
     const { getSubscription, subscription } = pushRegistration()
     getSubscription.mockResolvedValue(subscription)
+    window.localStorage.setItem("qltbyt:web-push:consent:99", "true")
     storeSubscription("99", {
       subscriptionId: "00000000-0000-4000-8000-000000000009",
       revision: "17",
@@ -222,6 +350,7 @@ describe("NotificationsPage browser lifecycle", () => {
     await screen.findByRole("button", { name: "Hủy thao tác" })
     await user.click(screen.getByRole("button", { name: "Hủy thao tác" }))
     await screen.findByText("Đã hủy thao tác tắt thông báo.")
+    expect(window.localStorage.getItem("qltbyt:web-push:consent:99")).toBe("false")
     expect(screen.getByRole("button", { name: "Thử lại" })).toBeEnabled()
     expect(window.localStorage.getItem("qltbyt:web-push:subscription:99")).toContain(
       '"status":"revoking"'

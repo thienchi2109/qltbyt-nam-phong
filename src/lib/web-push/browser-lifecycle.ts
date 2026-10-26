@@ -2,6 +2,7 @@ import {
   parseSubscriptionRevokeRequest,
   validateSubscriptionRevokeResponse,
 } from "./subscription-validation"
+import { readBrowserPushConsent, setBrowserPushConsent } from "./browser-consent"
 
 const STORAGE_PREFIX = "qltbyt:web-push:subscription:"
 const STORAGE_VERSION = 1
@@ -237,6 +238,7 @@ export async function cleanupBrowserSubscription(
   if (!ownerId || typeof window === "undefined") return "skipped"
   if (signal?.aborted) return "pending"
   const record = readBrowserSubscriptionRecord(ownerId)
+  if (record) writeBrowserSubscriptionRecord({ ...record, status: "revoking" })
   let localClean = false
   try {
     await unsubscribeLocalSubscription(record?.endpoint, signal)
@@ -252,7 +254,6 @@ export async function cleanupBrowserSubscription(
   }
 
   if (signal?.aborted) return "pending"
-  writeBrowserSubscriptionRecord({ ...record, status: "revoking" })
   if (typeof navigator !== "undefined" && navigator.onLine === false) return "pending"
   for (let attempt = 0; attempt < CLEANUP_ATTEMPTS; attempt += 1) {
     if (signal?.aborted) return "pending"
@@ -315,6 +316,9 @@ async function discardLocalBrowserSubscriptionOnce(ownerId: string): Promise<voi
   const record = readBrowserSubscriptionRecord(ownerId)
   if (!record) {
     return
+  }
+  if (record.status === "enabled" && readBrowserPushConsent(ownerId) === null) {
+    setBrowserPushConsent(ownerId, true)
   }
   try {
     await unsubscribeLocalSubscription(record.endpoint)

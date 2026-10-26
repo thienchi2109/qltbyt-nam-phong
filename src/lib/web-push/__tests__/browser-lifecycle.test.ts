@@ -1,6 +1,7 @@
 import * as React from "react"
-import { act, render, waitFor } from "@testing-library/react"
+import { act, render as testingRender, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 import { readPreflight } from "@/app/(app)/notifications/NotificationsPushOptInLifecycle"
 import { signOutWithReason } from "@/lib/auth-signout"
 import { NextAuthSessionProvider } from "@/providers/session-provider"
@@ -25,6 +26,10 @@ vi.mock("next-auth/react", () => ({
 }))
 
 const ENDPOINT = "https://push.example.test/subscription"
+
+function render(element: React.ReactElement) {
+  return testingRender(element, { wrapper: createReactQueryWrapper(createTestQueryClient()) })
+}
 
 function record(ownerId: string, status: "enabled" | "revoking" = "enabled") {
   return {

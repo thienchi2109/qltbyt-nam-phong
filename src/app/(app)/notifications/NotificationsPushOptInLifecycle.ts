@@ -2,15 +2,14 @@ import {
   hasMatchingLocalBrowserSubscription,
   readBrowserSubscriptionRecord,
 } from "@/lib/web-push/browser-lifecycle"
-import { validateSubscriptionRegisterResponse } from "@/lib/web-push/subscription-validation"
+import { hasBrowserPushConsent } from "@/lib/web-push/browser-consent"
+import {
+  errorCode,
+  readPublicKey,
+  VAPID_VERSION_STORAGE_KEY,
+  type PublicKeyPayload,
+} from "@/lib/web-push/browser-registration"
 
-/** Web Push lifecycle entrypoint. */
-export type VapidArtifact = { version: string; public_key: string }
-/** Web Push lifecycle entrypoint. */
-export type PublicKeyPayload = {
-  registration_enabled: boolean
-  vapid: VapidArtifact | null
-}
 /** Web Push lifecycle entrypoint. */
 export type PushState =
   | "loading"
@@ -24,23 +23,6 @@ export type PushState =
   | "unconfirmed"
   | "cancelled"
 
-/** Web Push lifecycle entrypoint. */
-export const VAPID_VERSION_STORAGE_KEY = "web-push-vapid-key-version"
-
-type RegistrationResult = {
-  subscriptionId: string
-  revision: string
-  endpoint: string
-}
-
-type RegistrationFlight = {
-  controller: AbortController
-  promise: Promise<RegistrationResult>
-  waiters: number
-}
-
-const registrationFlights = new Map<string, RegistrationFlight>()
-
 function supportsWebPush(): boolean {
   return (
     typeof window !== "undefined" &&
@@ -48,143 +30,6 @@ function supportsWebPush(): boolean {
     "serviceWorker" in navigator &&
     typeof window.PushManager !== "undefined"
   )
-}
-
-function decodeBase64Url(value: string): Uint8Array<ArrayBuffer> {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/")
-  const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=")
-  const binary = window.atob(padded)
-  const bytes = new Uint8Array(new ArrayBuffer(binary.length))
-  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
-  return bytes
-}
-
-async function readResponse(response: Response): Promise<Record<string, unknown>> {
-  let payload: unknown = null
-  try {
-    payload = await response.json()
-  } catch {
-    payload = null
-  }
-  if (!response.ok) {
-    const code =
-      payload && typeof payload === "object" && !Array.isArray(payload) && "error" in payload
-        ? (payload.error as { code?: unknown } | null)?.code
-        : null
-    throw new Error(typeof code === "string" ? code : "request_failed")
-  }
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new Error("invalid_response")
-  }
-  return payload as Record<string, unknown>
-}
-
-function waitForServiceWorker(signal: AbortSignal): Promise<ServiceWorkerRegistration> {
-  let timeout: ReturnType<typeof setTimeout> | undefined
-  let onAbort: (() => void) | undefined
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeout = setTimeout(() => reject(new Error("service_worker_timeout")), 8000)
-  })
-  const abortPromise = new Promise<never>((_, reject) => {
-    onAbort = () => reject(new DOMException("Operation cancelled", "AbortError"))
-    signal.addEventListener("abort", onAbort, { once: true })
-  })
-  return Promise.race([navigator.serviceWorker.ready, timeoutPromise, abortPromise]).finally(() => {
-    if (timeout) clearTimeout(timeout)
-    if (onAbort) signal.removeEventListener("abort", onAbort)
-  })
-}
-
-async function readPublicKey(): Promise<PublicKeyPayload> {
-  const payload = await readResponse(await fetch("/api/web-push/public-key"))
-  const vapid = payload.vapid
-  if (
-    payload.version !== 1 ||
-    typeof payload.registration_enabled !== "boolean" ||
-    !(vapid === null || (typeof vapid === "object" && vapid !== null))
-  ) {
-    throw new Error("invalid_response")
-  }
-  if (!vapid) return { registration_enabled: false, vapid: null }
-  const artifact = vapid as Record<string, unknown>
-  if (typeof artifact.version !== "string" || typeof artifact.public_key !== "string") {
-    throw new Error("invalid_response")
-  }
-  return {
-    registration_enabled: payload.registration_enabled,
-    vapid: { version: artifact.version, public_key: artifact.public_key },
-  }
-}
-
-function abortError(): DOMException {
-  return new DOMException("Operation cancelled", "AbortError")
-}
-
-function waitForRegistrationFlight<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  let onAbort: (() => void) | undefined
-  const abortPromise = new Promise<never>((_, reject) => {
-    if (signal.aborted) {
-      reject(abortError())
-      return
-    }
-    onAbort = () => reject(abortError())
-    signal.addEventListener("abort", onAbort, { once: true })
-  })
-  return Promise.race([promise, abortPromise]).finally(() => {
-    if (onAbort) signal.removeEventListener("abort", onAbort)
-  })
-}
-
-async function sendRegistrationRequest(
-  body: string,
-  endpoint: string,
-  signal: AbortSignal
-): Promise<RegistrationResult> {
-  let lastError: unknown = new Error("request_failed")
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const response = await fetch("/api/web-push/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal,
-        body,
-      })
-      const payload = await readResponse(response)
-      if (!validateSubscriptionRegisterResponse(payload)) throw new Error("invalid_response")
-      return {
-        subscriptionId: payload.subscription_id as string,
-        revision: String(payload.revision),
-        endpoint,
-      }
-    } catch (error) {
-      if (signal.aborted) throw error
-      lastError = error
-      const code = errorCode(error)
-      if (!(
-        error instanceof TypeError ||
-        ["request_failed", "unavailable", "rate_limited"].includes(code)
-      )) {
-        throw error
-      }
-    }
-  }
-  throw lastError
-}
-
-function subscriptionPayload(subscription: PushSubscription) {
-  const value = subscription.toJSON()
-  if (!value.endpoint || !value.keys?.p256dh || !value.keys.auth) {
-    throw new Error("invalid_subscription")
-  }
-  return {
-    endpoint: value.endpoint,
-    keys: { p256dh: value.keys.p256dh, auth: value.keys.auth },
-  }
-}
-
-/** Web Push lifecycle entrypoint. */
-export function errorCode(error: unknown): string {
-  return error instanceof Error ? error.message : "request_failed"
 }
 
 /** Web Push lifecycle entrypoint. */
@@ -225,68 +70,6 @@ function initialState(artifact: PublicKeyPayload | undefined, rotated = false): 
 }
 
 /** Web Push lifecycle entrypoint. */
-export async function registerPush(
-  vapid: VapidArtifact,
-  forceResubscribe: boolean,
-  signal: AbortSignal,
-  onRequestSent?: () => void
-) {
-  const registration = await waitForServiceWorker(signal)
-  if (signal.aborted) throw new DOMException("Operation cancelled", "AbortError")
-  if (!registration.pushManager) throw new Error("unsupported")
-  let subscription = await registration.pushManager.getSubscription()
-  const storedVersion = window.localStorage.getItem(VAPID_VERSION_STORAGE_KEY)
-  if (
-    subscription &&
-    (forceResubscribe || (storedVersion !== null && storedVersion !== vapid.version))
-  ) {
-    await subscription.unsubscribe()
-    subscription = null
-  }
-  if (signal.aborted) throw new DOMException("Operation cancelled", "AbortError")
-  const createdSubscription = !subscription
-  subscription ??= await registration.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: decodeBase64Url(vapid.public_key),
-  })
-  if (signal.aborted) {
-    if (createdSubscription) await subscription.unsubscribe()
-    throw abortError()
-  }
-  const body = JSON.stringify({
-    version: 1,
-    vapid_key_version: vapid.version,
-    subscription: subscriptionPayload(subscription),
-  })
-  if (signal.aborted) throw abortError()
-
-  const key = body
-  let flight = registrationFlights.get(key)
-  if (!flight) {
-    onRequestSent?.()
-    const controller = new AbortController()
-    const promise = sendRegistrationRequest(body, subscription.endpoint, controller.signal)
-    flight = { controller, promise, waiters: 0 }
-    registrationFlights.set(key, flight)
-    const currentFlight = flight
-    const clearFlight = () => {
-      if (registrationFlights.get(key) === currentFlight) registrationFlights.delete(key)
-    }
-    void promise.then(clearFlight, clearFlight)
-  } else {
-    onRequestSent?.()
-  }
-
-  flight.waiters += 1
-  try {
-    return await waitForRegistrationFlight(flight.promise, signal)
-  } finally {
-    flight.waiters -= 1
-    if (flight.waiters === 0) flight.controller.abort()
-  }
-}
-
-/** Web Push lifecycle entrypoint. */
 export async function readPreflight(ownerId: string) {
   if (!supportsWebPush()) return { state: "unsupported" as const, artifact: null }
   if (Notification.permission === "denied") return { state: "blocked" as const, artifact: null }
@@ -303,6 +86,9 @@ export async function readPreflight(ownerId: string) {
     return { state: "unconfirmed" as const, artifact }
   }
   if (stored?.status === "cancelled") return { state: "cancelled" as const, artifact }
+  if (hasBrowserPushConsent(ownerId) && Notification.permission === "granted") {
+    return { state: "unconfirmed" as const, artifact }
+  }
   return { state: initialState(artifact), artifact }
 }
 

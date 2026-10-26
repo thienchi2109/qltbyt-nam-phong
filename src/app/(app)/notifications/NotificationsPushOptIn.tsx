@@ -9,17 +9,16 @@ import {
   cleanupBrowserSubscription,
   discardLocalBrowserSubscription,
   readBrowserSubscriptionRecord,
+  readStoredBrowserSubscriptionOwnerIds,
   retryBrowserSubscriptionCleanup,
-  waitForPendingBrowserSubscriptionCleanup,
   writeBrowserSubscriptionRecord,
 } from "@/lib/web-push/browser-lifecycle"
+import { hasBrowserPushConsent, setBrowserPushConsent } from "@/lib/web-push/browser-consent"
+import { errorCode, registerBrowserSubscription } from "@/lib/web-push/browser-registration"
 import { HomeScreenGuide, LockScreenPreview } from "./NotificationsPushOptInGuidance"
 import {
-  VAPID_VERSION_STORAGE_KEY,
   displayState,
-  errorCode,
   readPreflight,
-  registerPush,
   registrationErrorState,
   requestPermission,
   rotationState,
@@ -42,13 +41,10 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
   const [operationPhase, setOperationPhase] = React.useState<"preparing" | "requesting">(
     "preparing"
   )
-  const [retryExhausted, setRetryExhausted] = React.useState(false)
   const operationRef = React.useRef<PushOperation | null>(null)
   const operationIdRef = React.useRef(0)
-  const registrationAttemptsRef = React.useRef(0)
   const previousOwnerRef = React.useRef(userId)
   const ownerCleanupRef = React.useRef<Promise<unknown>>(Promise.resolve())
-  const ownerCleanupFailedRef = React.useRef(false)
   const preflight = useQuery({
     queryKey: ["web-push", "public-key", userId],
     queryFn: () => readPreflight(userId),
@@ -68,9 +64,7 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
   )
   const persistedRevoke = readBrowserSubscriptionRecord(userId)?.status === "revoking"
   const actionDisabled =
-    busy ||
-    retryExhausted ||
-    ["loading", "disabled", "blocked", "unsupported", "enabled"].includes(state)
+    busy || ["loading", "disabled", "blocked", "unsupported", "enabled"].includes(state)
 
   React.useEffect(() => {
     const previousOwner = previousOwnerRef.current
@@ -79,17 +73,9 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
       operationRef.current = null
       setBusy(false)
       setResult(null)
-      setRetryExhausted(false)
       setOperationKind("register")
-      registrationAttemptsRef.current = 0
-      ownerCleanupFailedRef.current = true
       const cleanup = discardLocalBrowserSubscription(previousOwner)
-      const trackedCleanup = cleanup
-        .then(() => {
-          if (ownerCleanupRef.current === trackedCleanup) ownerCleanupFailedRef.current = false
-        })
-        .catch(() => undefined)
-      ownerCleanupRef.current = trackedCleanup
+      ownerCleanupRef.current = cleanup.catch(() => undefined)
       previousOwnerRef.current = userId
     }
   }, [userId])
@@ -106,6 +92,7 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
   const cancelOperation = () => {
     const operation = operationRef.current
     if (!operation) return
+    setBrowserPushConsent(userId, false)
     operation.controller.abort()
     operationRef.current = null
     setBusy(false)
@@ -144,7 +131,7 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
 
   const handleEnable = async () => {
     if (actionDisabled) return
-    if (persistedRevoke) {
+    if (persistedRevoke && !hasBrowserPushConsent(userId)) {
       const operation = beginOperation("revoke")
       setOperationPhase("requesting")
       try {
@@ -169,62 +156,38 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
     }
     const vapid = preflight.data?.artifact?.vapid
     if (!vapid) return
-    if (registrationAttemptsRef.current >= 3) {
-      setRetryExhausted(true)
-      return
-    }
-    registrationAttemptsRef.current += 1
     const operation = beginOperation("register")
     // Capture permission in the click handler before waiting on account cleanup.
     let permissionPromise: Promise<NotificationPermission>
     try {
       permissionPromise = requestPermission()
       await ownerCleanupRef.current
-      await waitForPendingBrowserSubscriptionCleanup()
       if (!isCurrentOperation(operation)) return
-      if (ownerCleanupFailedRef.current) {
-        setResult("error")
-        return
-      }
+      await Promise.all(
+        readStoredBrowserSubscriptionOwnerIds()
+          .filter((ownerId) => ownerId !== userId)
+          .map((ownerId) => discardLocalBrowserSubscription(ownerId))
+      )
+      if (!isCurrentOperation(operation)) return
       const permission = await permissionPromise
       if (!isCurrentOperation(operation)) return
       if (permission !== "granted") {
         setResult("blocked")
         return
       }
+      setBrowserPushConsent(userId, true)
       setOperationPhase("requesting")
-      const registered = await registerPush(
+      await registerBrowserSubscription(
+        userId,
         vapid,
         state === "resubscribe",
         operation.controller.signal,
         () => {
           if (!isCurrentOperation(operation)) return
           setOperationPhase("requesting")
-          const stored = readBrowserSubscriptionRecord(userId)
-          writeBrowserSubscriptionRecord({
-            version: 1,
-            ownerId: userId,
-            vapidKeyVersion: vapid.version,
-            status: "unconfirmed",
-            ...(stored?.subscriptionId && stored.revision
-              ? { subscriptionId: stored.subscriptionId, revision: stored.revision }
-              : {}),
-          })
         }
       )
       if (!isCurrentOperation(operation)) return
-      writeBrowserSubscriptionRecord({
-        version: 1,
-        ownerId: userId,
-        vapidKeyVersion: vapid.version,
-        status: "enabled",
-        subscriptionId: registered.subscriptionId,
-        revision: registered.revision,
-        endpoint: registered.endpoint,
-      })
-      window.localStorage.setItem(VAPID_VERSION_STORAGE_KEY, vapid.version)
-      registrationAttemptsRef.current = 0
-      setRetryExhausted(false)
       setResult("enabled")
     } catch (error) {
       if (!isCurrentOperation(operation)) return
@@ -235,7 +198,6 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
       } else {
         const nextState = registrationErrorState(error)
         setResult(nextState)
-        if (registrationAttemptsRef.current >= 3) setRetryExhausted(true)
       }
     } finally {
       if (operationRef.current?.id === operation.id) {
@@ -248,6 +210,7 @@ export function NotificationsPushOptIn({ userId }: { userId: string }) {
 
   const handleDisable = async () => {
     if (busy) return
+    setBrowserPushConsent(userId, false)
     const operation = beginOperation("revoke")
     try {
       const cleanup = await cleanupBrowserSubscription(

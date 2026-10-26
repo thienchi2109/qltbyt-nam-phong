@@ -270,7 +270,7 @@ describe("NotificationsPage Web Push opt-in", () => {
     expect(mocks.requestPermission).toHaveBeenCalledTimes(1)
   })
 
-  it("bounds registration retries and labels an unresolved request unconfirmed", async () => {
+  it("bounds each registration attempt and exposes another retry after an unresolved request", async () => {
     pushRegistration()
     mocks.requestPermission.mockResolvedValue("granted")
     let postCount = 0
@@ -299,14 +299,7 @@ describe("NotificationsPage Web Push opt-in", () => {
       await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
     ).toBeInTheDocument()
     expect(postCount).toBe(2)
-
-    await user.click(screen.getByRole("button", { name: "Thử lại" }))
-    await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
-    expect(postCount).toBe(4)
-    await user.click(screen.getByRole("button", { name: "Thử lại" }))
-    await screen.findByText(/Yêu cầu đã gửi nhưng chưa xác nhận trên máy chủ\./)
-    expect(postCount).toBe(6)
-    expect(screen.getByRole("button", { name: "Thử lại" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Thử lại" })).toBeEnabled()
   })
 
   it("rehydrates an enabled browser subscription after a reload", async () => {
