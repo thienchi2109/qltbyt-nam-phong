@@ -118,22 +118,40 @@ Hệ thống SHALL cho mọi người dùng đã đăng nhập tự bật/tắt 
 
 ### Requirement: Subscription Lifecycle
 
-Hệ thống SHALL hỗ trợ nhiều browser cho một account, thu hồi subscription khi tắt thông báo/đăng xuất và ngăn browser đổi account còn nhận dưới owner cũ.
+Hệ thống SHALL hỗ trợ nhiều browser cho một account, thu hồi subscription khi chủ động tắt thông báo hoặc đổi mật khẩu bắt buộc và ngăn browser đổi account còn nhận dưới owner cũ. Hệ thống SHALL nhớ lựa chọn nhận thông báo theo account trên từng browser; hết phiên thông thường không được biến lựa chọn bật thành tắt.
 
 #### Scenario: Multiple browsers
 
 - **WHEN** account hợp lệ có nhiều subscription hoạt động
 - **THEN** mỗi subscription có delivery/result riêng, lỗi một endpoint không gửi lại endpoint đã thành công
 
-#### Scenario: Signout or account switch
+#### Scenario: Explicit disable or account switch
 
-- **WHEN** user đăng xuất/tắt thông báo khi backend reachable
+- **WHEN** user chủ động tắt thông báo khi backend reachable
 - **THEN** gỡ liên kết nhận trên browser đó và không cấp pending delivery mới cho subscription đã thu hồi
 - **AND** chuyển account không tái sử dụng ownership cũ
 
+#### Scenario: Return to an opted-in account
+
+- **WHEN** A đã bật thông báo, chuyển sang B rồi đăng nhập lại A trên cùng browser mà không chủ động tắt
+- **THEN** browser SHALL ngắt subscription A trong lúc dùng B và giữ lựa chọn bật của A
+- **AND** khi trở về A, app SHALL hoàn tất cleanup của A bằng phiên A và tự khôi phục đăng ký A nếu browser permission còn granted
+- **AND** không gọi permission prompt tự động, không dùng phiên B để revoke hoặc register thay A, không để registration lỗi thời còn nhận sau khi đổi owner
+
+#### Scenario: Explicit opt-out and legacy state
+
+- **WHEN** người dùng chủ động tắt hoặc hủy thao tác, cleanup do đổi mật khẩu bắt buộc, hoặc chỉ có bản ghi legacy revoking không chứng minh được ý định tiếp tục nhận
+- **THEN** app SHALL NOT suy diễn trạng thái đó thành quyền tự bật lại khi đổi account hoặc reload
+
+#### Scenario: Reconnect after restore failure
+
+- **WHEN** tự khôi phục gặp lỗi mạng hoặc browser yêu cầu thao tác người dùng
+- **THEN** giữ lựa chọn bật và hiển thị thao tác kết nối lại có retry bounded
+- **AND** reconnect SHALL NOT xin lại permission nếu browser vẫn báo granted
+
 #### Scenario: Offline cleanup
 
-- **WHEN** logout xảy ra lúc backend không reachable
+- **WHEN** tắt thông báo, đổi mật khẩu bắt buộc hoặc đổi account xảy ra lúc backend không reachable
 - **THEN** không chặn logout vô hạn, thực hiện local unsubscribe và retry cleanup khi có thể
 - **AND** không tuyên bố đã thu hồi server hoặc bản tin provider đã nhận khi chưa có bằng chứng
 

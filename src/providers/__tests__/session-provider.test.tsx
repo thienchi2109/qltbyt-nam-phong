@@ -1,5 +1,5 @@
 import * as React from "react"
-import { render, waitFor } from "@testing-library/react"
+import { act, render, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
@@ -10,7 +10,17 @@ const mocks = vi.hoisted(() => ({
   useSession: vi.fn(() => ({ data: null })),
   cleanupBrowserSubscription: vi.fn(),
   discardLocalBrowserSubscription: vi.fn(),
+  readBrowserSubscriptionRecord: vi.fn(() => null),
   readStoredBrowserSubscriptionOwnerIds: vi.fn(() => []),
+  readPublicKey: vi.fn(),
+  registerBrowserSubscription: vi.fn(),
+  invalidateQueries: vi.fn(),
+}))
+
+vi.mock("@tanstack/react-query", () => ({
+  useQueryClient: () => ({
+    invalidateQueries: (...args: unknown[]) => mocks.invalidateQueries(...args),
+  }),
 }))
 
 vi.mock("next-auth/react", () => ({
@@ -24,6 +34,14 @@ vi.mock("@/lib/web-push/browser-lifecycle", () => ({
   discardLocalBrowserSubscription: (...args: unknown[]) =>
     mocks.discardLocalBrowserSubscription(...args),
   readStoredBrowserSubscriptionOwnerIds: () => mocks.readStoredBrowserSubscriptionOwnerIds(),
+  readBrowserSubscriptionRecord: (...args: unknown[]) =>
+    mocks.readBrowserSubscriptionRecord(...args),
+}))
+
+vi.mock("@/lib/web-push/browser-registration", () => ({
+  readPublicKey: (...args: unknown[]) => mocks.readPublicKey(...args),
+  registerBrowserSubscription: (...args: unknown[]) => mocks.registerBrowserSubscription(...args),
+  VAPID_VERSION_STORAGE_KEY: "web-push-vapid-key-version",
 }))
 
 import { NextAuthSessionProvider } from "../session-provider"
@@ -106,6 +124,7 @@ describe("NextAuthSessionProvider", () => {
   })
 
   it("cleans the authenticated owner before handling a sibling-tab signout", async () => {
+    window.localStorage.setItem("qltbyt:web-push:consent:owner-a", "true")
     mocks.useSession.mockReturnValue({
       status: "authenticated",
       data: { user: { id: "owner-a" } },
@@ -130,7 +149,44 @@ describe("NextAuthSessionProvider", () => {
     await waitFor(() => {
       expect(mocks.cleanupBrowserSubscription).toHaveBeenCalledWith("owner-a")
       expect(mocks.signOut).toHaveBeenCalledWith({ callbackUrl: "/" })
+      expect(window.localStorage.getItem("qltbyt:web-push:consent:owner-a")).toBe("false")
     })
+  })
+
+  it("does not restore after consent is withdrawn while the public key is loading", async () => {
+    mocks.useSession.mockReturnValue({
+      status: "authenticated",
+      data: { user: { id: "owner-a" } },
+    })
+    vi.stubGlobal("Notification", { permission: "granted" })
+    window.localStorage.setItem("qltbyt:web-push:consent:owner-a", "true")
+    let releaseKey!: (value: {
+      registration_enabled: boolean
+      vapid: { version: string; public_key: string } | null
+    }) => void
+    mocks.readPublicKey.mockReturnValueOnce(
+      new Promise((resolve) => {
+        releaseKey = resolve
+      })
+    )
+
+    render(
+      <NextAuthSessionProvider session={null}>
+        <div>child</div>
+      </NextAuthSessionProvider>
+    )
+    await waitFor(() => expect(mocks.readPublicKey).toHaveBeenCalledOnce())
+
+    window.localStorage.setItem("qltbyt:web-push:consent:owner-a", "false")
+    await act(async () => {
+      releaseKey({
+        registration_enabled: true,
+        vapid: { version: "test-v1", public_key: "test-public-key" },
+      })
+    })
+    await waitFor(() => expect(mocks.invalidateQueries).toHaveBeenCalledOnce())
+
+    expect(mocks.registerBrowserSubscription).not.toHaveBeenCalled()
   })
 
   it("uses the storage fallback when BroadcastChannel is unavailable", async () => {
