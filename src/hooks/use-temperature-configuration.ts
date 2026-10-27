@@ -34,9 +34,10 @@ function configurationDisplay(
       current?.schedule_profile_id ?? profiles.find((profile) => profile.code === "default")?.id,
     timezone: current?.display_timezone ?? "Asia/Ho_Chi_Minh",
     method: current?.recording_method_code ?? "manual",
-    summary: current?.monitoring_enabled
-      ? `${current.lower_c}–${current.upper_c} °C · ${current.recording_method_code} · ${current.display_timezone}`
-      : "Chưa bật theo dõi nhiệt độ",
+    summary:
+      current?.monitoring_enabled && current.lower_c != null && current.upper_c != null
+        ? `${current.lower_c}–${current.upper_c} °C · ${current.recording_method_code} · ${current.display_timezone}`
+        : "Chưa bật theo dõi nhiệt độ",
     responsible: current
       ? `Phụ trách chính: #${current.responsible_primary_user_id} · Thay thế: ${(current.responsible_substitute_user_ids ?? []).map((id) => `#${id}`).join(", ") || "Không có"}`
       : "",

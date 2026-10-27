@@ -56,67 +56,98 @@ const scheduledConfiguration: NonNullable<TemperatureChoices["configuration"]> =
   responsible_substitute_user_ids: null,
 }
 
-it("opens the real configuration tab with user-event when the saved version is future-only", async () => {
-  callRpc.mockReset()
-  callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
-    if (fn === "temperature_monitoring_configuration_choices") {
-      return {
-        configuration: scheduledConfiguration,
-        methods: [],
-        profiles: [],
-        server_now: "2026-10-27T03:00:00Z",
-        suggested_effective_from: null,
-      }
+it.each([
+  { state: "future-only", enabled: false, lower: null, upper: null },
+  { state: "enabled without an effective version", enabled: true, lower: null, upper: null },
+  { state: "missing the lower bound", enabled: true, lower: null, upper: 8 },
+  { state: "missing the upper bound", enabled: true, lower: 2, upper: null },
+  { state: "zero lower bound", enabled: true, lower: 0, upper: 8 },
+  { state: "zero upper bound", enabled: true, lower: -2, upper: 0 },
+])(
+  "opens the real configuration tab and displays a safe summary when $state",
+  async ({ enabled, lower, upper }) => {
+    const configuration = {
+      ...scheduledConfiguration,
+      monitoring_enabled: enabled,
+      lower_c: lower,
+      upper_c: upper,
     }
-    if (fn === "temperature_monitoring_staff_choices") return { items: [], next_cursor: null }
-    throw new Error(`unexpected RPC ${fn}`)
-  })
-  const user = userEvent.setup()
-  const client = createTestQueryClient()
-  const view = render(
-    <EquipmentDetailDialog
-      equipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi", ma_thiet_bi: "TB-3779" }}
-      open
-      onOpenChange={vi.fn()}
-      user={{ id: 302, role: "to_qltb", khoa_phong: null }}
-      isRegionalLeader={false}
-      equipmentDataset="regular"
-      onGenerateProfileSheet={vi.fn()}
-      onGenerateDeviceLabel={vi.fn()}
-      onEquipmentUpdated={vi.fn()}
-    />,
-    { wrapper: createReactQueryWrapper(client) }
-  )
-  try {
-    const dialog = within(screen.getByRole("dialog"))
-    const details = dialog.getByRole("tab", { name: "Thông tin chi tiết" })
-    const config = dialog.getByRole("tab", { name: "Cấu hình & Phụ kiện" })
-    expect(details).toHaveAttribute("aria-selected", "true")
-    expect(dialog.queryByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeNull()
-    expect(callRpc).not.toHaveBeenCalled()
+    const expectedSummary =
+      lower === null || upper === null
+        ? "Chưa bật theo dõi nhiệt độ"
+        : `${lower}–${upper} °C · manual · Asia/Ho_Chi_Minh`
+    if (lower !== null && upper !== null) {
+      configuration.recording_method_code = "manual"
+      configuration.display_timezone = "Asia/Ho_Chi_Minh"
+    }
+    callRpc.mockReset()
+    callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
+      if (fn === "temperature_monitoring_configuration_choices") {
+        return {
+          configuration,
+          methods: [],
+          profiles: [],
+          server_now: "2026-10-27T03:00:00Z",
+          suggested_effective_from: null,
+        }
+      }
+      if (fn === "temperature_monitoring_staff_choices") return { items: [], next_cursor: null }
+      throw new Error(`unexpected RPC ${fn}`)
+    })
+    const user = userEvent.setup()
+    const client = createTestQueryClient()
+    const view = render(
+      <EquipmentDetailDialog
+        equipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi", ma_thiet_bi: "TB-3779" }}
+        open
+        onOpenChange={vi.fn()}
+        user={{ id: 302, role: "to_qltb", khoa_phong: null }}
+        isRegionalLeader={false}
+        equipmentDataset="regular"
+        onGenerateProfileSheet={vi.fn()}
+        onGenerateDeviceLabel={vi.fn()}
+        onEquipmentUpdated={vi.fn()}
+      />,
+      { wrapper: createReactQueryWrapper(client) }
+    )
+    try {
+      const dialog = within(screen.getByRole("dialog"))
+      const details = dialog.getByRole("tab", { name: "Thông tin chi tiết" })
+      const config = dialog.getByRole("tab", { name: "Cấu hình & Phụ kiện" })
+      expect(details).toHaveAttribute("aria-selected", "true")
+      expect(dialog.queryByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeNull()
+      expect(callRpc).not.toHaveBeenCalled()
 
-    await user.click(config)
+      await user.click(config)
 
-    expect(config).toHaveAttribute("aria-selected", "true")
-    const panel = within(dialog.getByRole("tabpanel", { name: "Cấu hình & Phụ kiện" }))
-    expect(await panel.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
-    expect(panel.getByText("Chưa bật theo dõi nhiệt độ")).toBeInTheDocument()
-    expect(panel.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
-
-    await user.click(details)
-    await user.click(config)
-    expect(config).toHaveAttribute("aria-selected", "true")
-    expect(await dialog.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
-    expect(
-      callRpc.mock.calls.filter(
-        ([request]) => request.fn === "temperature_monitoring_configuration_upsert"
+      expect(config).toHaveAttribute("aria-selected", "true")
+      const panel = within(dialog.getByRole("tabpanel", { name: "Cấu hình & Phụ kiện" }))
+      expect(await panel.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toHaveProperty(
+        "checked",
+        enabled
       )
-    ).toHaveLength(0)
-  } finally {
-    view.unmount()
-    client.clear()
+      expect(panel.getByText(expectedSummary)).toBeInTheDocument()
+      expect(panel.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
+
+      await user.click(details)
+      await user.click(config)
+      expect(config).toHaveAttribute("aria-selected", "true")
+      expect(await dialog.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toHaveProperty(
+        "checked",
+        enabled
+      )
+      expect(dialog.getByText(expectedSummary)).toBeInTheDocument()
+      expect(
+        callRpc.mock.calls.filter(
+          ([request]) => request.fn === "temperature_monitoring_configuration_upsert"
+        )
+      ).toHaveLength(0)
+    } finally {
+      view.unmount()
+      client.clear()
+    }
   }
-})
+)
 
 it.each([
   { state: "currently effective", effective: true },
