@@ -87,13 +87,13 @@ export interface TemperatureChoices {
   profiles: { id: string; name: string; code: string }[]
   configuration: {
     monitoring_enabled: boolean
-    lower_c: number
-    upper_c: number
-    schedule_profile_id: string
-    responsible_primary_user_id: number
-    responsible_substitute_user_ids: number[]
-    recording_method_code: string
-    display_timezone: string
+    lower_c: number | null
+    upper_c: number | null
+    schedule_profile_id: string | null
+    responsible_primary_user_id: number | null
+    responsible_substitute_user_ids: number[] | null
+    recording_method_code: string | null
+    display_timezone: string | null
   } | null
   server_now: string
   suggested_effective_from: string | null

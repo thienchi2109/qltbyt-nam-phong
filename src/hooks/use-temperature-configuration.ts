@@ -38,7 +38,7 @@ function configurationDisplay(
       ? `${current.lower_c}–${current.upper_c} °C · ${current.recording_method_code} · ${current.display_timezone}`
       : "Chưa bật theo dõi nhiệt độ",
     responsible: current
-      ? `Phụ trách chính: #${current.responsible_primary_user_id} · Thay thế: ${current.responsible_substitute_user_ids.map((id) => `#${id}`).join(", ") || "Không có"}`
+      ? `Phụ trách chính: #${current.responsible_primary_user_id} · Thay thế: ${(current.responsible_substitute_user_ids ?? []).map((id) => `#${id}`).join(", ") || "Không có"}`
       : "",
   }
 }
