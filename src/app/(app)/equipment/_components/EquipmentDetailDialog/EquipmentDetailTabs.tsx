@@ -10,6 +10,7 @@ import type { EquipmentStatusRow } from "@/lib/equipment-status"
 
 import type { EquipmentFormValues } from "./EquipmentDetailTypes"
 import { EquipmentDetailConfigTab } from "./EquipmentDetailConfigTab"
+import { EquipmentDetailTemperatureTab } from "./EquipmentDetailTemperatureTab"
 import { EquipmentDetailDetailsTab } from "./EquipmentDetailDetailsTab"
 import { EquipmentDetailEditForm } from "./EquipmentDetailEditForm"
 import { EquipmentDetailFilesTab } from "./EquipmentDetailFilesTab"
@@ -69,6 +70,7 @@ export function EquipmentDetailTabs({
         <TabsList className="w-max">
           <TabsTrigger value="details">Thông tin chi tiết</TabsTrigger>
           <TabsTrigger value="config">Cấu hình & Phụ kiện</TabsTrigger>
+          <TabsTrigger value="temperature">Sổ theo dõi nhiệt độ</TabsTrigger>
           <TabsTrigger value="files">File đính kèm</TabsTrigger>
           <TabsTrigger value="history">Lịch sử</TabsTrigger>
           <TabsTrigger value="usage">Nhật ký sử dụng</TabsTrigger>
@@ -101,6 +103,13 @@ export function EquipmentDetailTabs({
           />
         </TabsContent>
       </FormProvider>
+
+      <TabsContent value="temperature" className="flex-grow overflow-hidden">
+        <EquipmentDetailTemperatureTab
+          displayEquipment={detail.displayEquipment}
+          isEditing={detail.isEditingDetails}
+        />
+      </TabsContent>
 
       <TabsContent value="files" className="flex-grow overflow-hidden">
         <EquipmentDetailFilesTab

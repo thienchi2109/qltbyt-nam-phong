@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { EquipmentDetailConfigTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailConfigTab"
+import { EquipmentDetailTemperatureTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailTemperatureTab"
 
 const mock = vi.hoisted(() => ({
   save: vi.fn().mockResolvedValue({}),
@@ -18,8 +18,14 @@ vi.mock("@/hooks/use-temperature-monitoring", () => ({
     data:
       fn === "temperature_monitoring_configuration_choices"
         ? {
-            methods: [{ code: "manual", name: "Nhập tay" }],
-            profiles: [{ id: "profile", code: "default", name: "Bốn ca" }],
+            methods: [
+              { code: "manual", name: "Nhập tay" },
+              { code: "device", name: "Thiết bị" },
+            ],
+            profiles: [
+              { id: "profile", code: "default", name: "Bốn ca" },
+              { id: "alternate", code: "alternate", name: "Hai ca" },
+            ],
             server_now: "2026-07-02T16:00:00Z",
             suggested_effective_from: mock.suggestedEffectiveFrom,
             configuration: {
@@ -56,7 +62,7 @@ describe("temperature staff selection across pages", () => {
   it("preserves existing and selected assignments outside the current staff page", async () => {
     const user = userEvent.setup()
     render(
-      <EquipmentDetailConfigTab
+      <EquipmentDetailTemperatureTab
         displayEquipment={{ id: 42, ten_thiet_bi: "Tủ lạnh" }}
         isEditing={false}
       />
@@ -65,22 +71,24 @@ describe("temperature staff selection across pages", () => {
     expect(screen.getByLabelText("Từ (giờ thiết bị)")).toHaveValue("2026-08-01T00:00:45.000")
     expect(screen.getByLabelText("Từ (giờ thiết bị)")).toHaveAttribute("readonly")
     await user.click(screen.getByRole("button", { name: "Nhân sự tiếp" }))
-    const substitutes = screen.getByLabelText("Nhân sự thay thế")
-    expect(
-      Array.from((substitutes as HTMLSelectElement).selectedOptions, (option) => option.value)
-    ).toEqual(["8", "9"])
-    await user.selectOptions(substitutes, ["8", "9", "10"])
+    await user.click(screen.getByLabelText("Nhân sự thay thế"))
+    expect(screen.getByRole("menuitemcheckbox", { name: "#8 (đã chọn)" })).toBeChecked()
+    expect(screen.getByRole("menuitemcheckbox", { name: "#9 (đã chọn)" })).toBeChecked()
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Người mới" }))
+    await user.keyboard("{Escape}")
     fireEvent.change(screen.getByLabelText("Đến (tùy chọn)"), {
       target: { value: "2026-09-01T00:00" },
     })
     fireEvent.change(screen.getByLabelText("Lý do thay đổi"), {
       target: { value: "Giữ phân công" },
     })
-    fireEvent.submit(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }).closest("form")!)
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
     await waitFor(() => expect(mock.save).toHaveBeenCalled())
     expect(mock.save.mock.calls[0][0].args).toMatchObject({
       p_responsible_primary_user_id: 7,
       p_responsible_substitute_user_ids: [8, 9, 10],
+      p_schedule_profile_id: "profile",
+      p_recording_method_code: "manual",
       p_effective_from: "2026-07-31T17:00:45+00:00",
       p_effective_to: "2026-08-31T17:00:00.000Z",
     })
@@ -90,7 +98,7 @@ describe("temperature staff selection across pages", () => {
   it("blocks configuration replacement when the server has no valid future boundary", () => {
     mock.suggestedEffectiveFrom = null
     render(
-      <EquipmentDetailConfigTab
+      <EquipmentDetailTemperatureTab
         displayEquipment={{ id: 42, ten_thiet_bi: "Tủ lạnh" }}
         isEditing={false}
       />
@@ -104,7 +112,7 @@ describe("temperature staff selection across pages", () => {
   it("explains blocked saves and saves after the required reason is supplied", async () => {
     const user = userEvent.setup()
     render(
-      <EquipmentDetailConfigTab
+      <EquipmentDetailTemperatureTab
         displayEquipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi" }}
         isEditing={false}
       />
@@ -115,6 +123,8 @@ describe("temperature staff selection across pages", () => {
     expect(mock.save).not.toHaveBeenCalled()
     expect(screen.getByRole("status")).toHaveTextContent(/chưa lưu cấu hình.*lý do thay đổi/i)
     expect(screen.getByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeChecked()
+    expect(screen.getByLabelText("Lý do thay đổi")).toBeRequired()
+    expect(screen.getByLabelText("Lý do thay đổi")).toHaveAttribute("maxlength", "2000")
 
     await user.type(screen.getByLabelText("Lý do thay đổi"), "Bật theo dõi nhiệt độ")
     await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
@@ -126,5 +136,46 @@ describe("temperature staff selection across pages", () => {
       p_change_reason: "Bật theo dõi nhiệt độ",
     })
     expect(screen.getByRole("status")).toHaveTextContent("Đã lưu phiên bản cấu hình.")
+  })
+
+  it("submits changed single selections and removes only the unchecked substitute", async () => {
+    const user = userEvent.setup()
+    render(<EquipmentDetailTemperatureTab displayEquipment={{ id: 42 }} isEditing={false} />)
+    for (const [label, option] of [
+      ["Hồ sơ ca", "Hai ca"],
+      ["Cách ghi nhận", "Thiết bị"],
+      ["Phụ trách chính", "Thay thế"],
+    ]) {
+      await user.click(screen.getByRole("combobox", { name: label }))
+      await user.click(await screen.findByRole("option", { name: option }))
+    }
+    await user.click(screen.getByLabelText("Nhân sự thay thế"))
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Thay thế" }))
+    expect(screen.getByRole("menuitemcheckbox", { name: "#9 (đã chọn)" })).toBeChecked()
+    await user.keyboard("{Escape}")
+    await user.type(screen.getByLabelText("Lý do thay đổi"), "Đổi phân công")
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
+    await waitFor(() => expect(mock.save).toHaveBeenCalledTimes(1))
+    expect(mock.save.mock.calls[0][0].args).toMatchObject({
+      p_schedule_profile_id: "alternate",
+      p_recording_method_code: "device",
+      p_responsible_primary_user_id: 8,
+      p_responsible_substitute_user_ids: [9],
+    })
+  })
+
+  it("shows a failed save and allows retrying the same form", async () => {
+    mock.save.mockRejectedValueOnce(new Error("unavailable"))
+    const user = userEvent.setup()
+    render(<EquipmentDetailTemperatureTab displayEquipment={{ id: 42 }} isEditing={false} />)
+    await user.type(screen.getByLabelText("Lý do thay đổi"), "Thử lưu")
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/không lưu được cấu hình/i)
+    )
+    await user.click(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" }))
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Đã lưu phiên bản cấu hình.")
+    )
   })
 })
