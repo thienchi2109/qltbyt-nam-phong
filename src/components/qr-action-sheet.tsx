@@ -117,7 +117,7 @@ export function QRActionSheet({ qrCode, onClose, onAction }: QRActionSheetProps)
 
   return (
     <Sheet open={true} onOpenChange={onClose}>
-      <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="h-[90vh] overflow-y-auto" hideCloseButton>
         <SheetHeader className="gap-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
