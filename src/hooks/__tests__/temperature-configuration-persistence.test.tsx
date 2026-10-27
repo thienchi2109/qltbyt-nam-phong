@@ -1,8 +1,9 @@
-import { act, render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { QueryClient, QueryClientProvider, QueryObserver } from "@tanstack/react-query"
 import { expect, it, vi } from "vitest"
 import { EquipmentDetailConfigTab } from "@/app/(app)/equipment/_components/EquipmentDetailDialog/EquipmentDetailConfigTab"
+import { EquipmentDetailDialog } from "@/app/(app)/equipment/_components/EquipmentDetailDialog"
 import type { TemperatureChoices } from "@/types/temperature-monitoring"
 import { createReactQueryWrapper, createTestQueryClient } from "@/test-utils/react-query"
 
@@ -15,6 +16,32 @@ vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 vi.mock("@/components/equipment/equipment-table-columns", () => ({ columnLabels: {} }))
+vi.mock("@/app/(app)/equipment/_hooks/useEquipmentContext", () => ({
+  useEquipmentContext: () => ({ openDeleteDialog: vi.fn() }),
+}))
+vi.mock("@/hooks/use-equipment-status-catalog", async () => {
+  const { readyStatusCatalog } = await import("@/hooks/__tests__/equipment-status-catalog-fixtures")
+  return { useEquipmentStatusCatalog: () => readyStatusCatalog }
+})
+vi.mock(
+  "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentHistory",
+  () => ({
+    useEquipmentHistory: () => ({ history: [], isLoading: false }),
+  })
+)
+vi.mock(
+  "@/app/(app)/equipment/_components/EquipmentDetailDialog/hooks/useEquipmentAttachments",
+  () => ({
+    useEquipmentAttachments: () => ({
+      attachments: [],
+      isLoading: false,
+      addAttachment: vi.fn(),
+      deleteAttachment: vi.fn(),
+      isAdding: false,
+      isDeleting: false,
+    }),
+  })
+)
 
 // configuration_get LEFT JOINs the currently effective version; future-only
 // versions leave these columns null, even though the configuration row exists.
@@ -29,7 +56,7 @@ const scheduledConfiguration: NonNullable<TemperatureChoices["configuration"]> =
   responsible_substitute_user_ids: null,
 }
 
-it("opens a previously saved future-only configuration without submitting again", async () => {
+it("opens the real configuration tab with user-event when the saved version is future-only", async () => {
   callRpc.mockReset()
   callRpc.mockImplementation(async ({ fn }: { fn: string }) => {
     if (fn === "temperature_monitoring_configuration_choices") {
@@ -44,18 +71,42 @@ it("opens a previously saved future-only configuration without submitting again"
     if (fn === "temperature_monitoring_staff_choices") return { items: [], next_cursor: null }
     throw new Error(`unexpected RPC ${fn}`)
   })
+  const user = userEvent.setup()
   const client = createTestQueryClient()
   const view = render(
-    <EquipmentDetailConfigTab
-      displayEquipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi" }}
-      isEditing={false}
+    <EquipmentDetailDialog
+      equipment={{ id: 3779, ten_thiet_bi: "Ngân hàng máu, 180 túi", ma_thiet_bi: "TB-3779" }}
+      open
+      onOpenChange={vi.fn()}
+      user={{ id: 302, role: "to_qltb", khoa_phong: null }}
+      isRegionalLeader={false}
+      equipmentDataset="regular"
+      onGenerateProfileSheet={vi.fn()}
+      onGenerateDeviceLabel={vi.fn()}
+      onEquipmentUpdated={vi.fn()}
     />,
     { wrapper: createReactQueryWrapper(client) }
   )
   try {
-    expect(await screen.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
-    expect(screen.getByText("Chưa bật theo dõi nhiệt độ")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
+    const dialog = within(screen.getByRole("dialog"))
+    const details = dialog.getByRole("tab", { name: "Thông tin chi tiết" })
+    const config = dialog.getByRole("tab", { name: "Cấu hình & Phụ kiện" })
+    expect(details).toHaveAttribute("aria-selected", "true")
+    expect(dialog.queryByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).toBeNull()
+    expect(callRpc).not.toHaveBeenCalled()
+
+    await user.click(config)
+
+    expect(config).toHaveAttribute("aria-selected", "true")
+    const panel = within(dialog.getByRole("tabpanel", { name: "Cấu hình & Phụ kiện" }))
+    expect(await panel.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
+    expect(panel.getByText("Chưa bật theo dõi nhiệt độ")).toBeInTheDocument()
+    expect(panel.getByRole("button", { name: "Lưu cấu hình nhiệt độ" })).toBeDisabled()
+
+    await user.click(details)
+    await user.click(config)
+    expect(config).toHaveAttribute("aria-selected", "true")
+    expect(await dialog.findByRole("checkbox", { name: "Bật theo dõi nhiệt độ" })).not.toBeChecked()
     expect(
       callRpc.mock.calls.filter(
         ([request]) => request.fn === "temperature_monitoring_configuration_upsert"
